@@ -1,0 +1,371 @@
+<?php
+/**
+ * Nexyfab Professional PHP Email Bridge for Cafe24
+ * This file provides rich HTML email notifications for both Admin and Users.
+ */
+
+header('Content-Type: application/json; charset=utf-8');
+
+// 1. ë³´ì•ˆ ?¤ì • (Honeypot)
+if (!empty($_POST['website'])) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "error" => "Spam detected"]);
+    exit;
+}
+
+// 2. reCAPTCHA v3 ê²€ì¦?
+$secretKey = "6Ld2Z3gsAAAAACez0Ovy6qxJQKaOF1bkYc-SEUBM";
+$token = $_POST['g-recaptcha-response'] ?? '';
+
+if (!empty($token)) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://www.google.com/recaptcha/api/siteverify");
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['secret' => $secretKey, 'response' => $token]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    $captchaData = json_decode($response);
+    
+    if (!$captchaData->success || $captchaData->score < 0.5) {
+        http_response_code(403);
+        echo json_encode(["success" => false, "error" => "reCAPTCHA verification failed"]);
+        exit;
+    }
+}
+
+// 3. ?°ì´???…ìˆ˜ ë°??„ì²˜ë¦?
+$type = $_POST['action'] ?? 'unknown';
+$langInput = $_POST['lang'] ?? 'en';
+$lang = ($langInput === 'kr' || $langInput === 'ko') ? 'ko' : $langInput;
+
+$name = $_POST['name'] ?? '';
+$company = $_POST['company'] ?? '';
+
+// ê²€??ê²°ê³¼ ?¼ì—?œëŠ” company ?„ë“œ??'?´ë¦„(?Œì‚¬)' ?•íƒœë¡??¤ì–´?¤ëŠ” ê²½ìš°ê°€ ë§ìŒ
+if (empty($name) && !empty($company)) {
+    $parts = explode('(', $company);
+    $name = trim($parts[0]);
+}
+if (empty($name)) $name = 'Guest User';
+
+$phone = $_POST['phone'] ?? '';
+$email = $_POST['email'] ?? '';
+
+// ê´€ë¦¬ì ?˜ì‹  ?´ë©”??
+$adminEmails = "info@Nexyfab.com, jjkk012012@naver.com, gomd999@naver.com, qkrwlstn7930@naver.com";
+
+// 4. ê´€ë¦¬ì???´ë©”???´ìš© êµ¬ì„± (Rich HTML)
+$adminSubject = "";
+$adminHtml = "";
+
+if ($type === 'send_project_inquiry') {
+    $adminSubject = "[Project Inquiry] New request from $name ($company)";
+    $adminHtml = "
+        <h3>New Project Inquiry</h3>
+        <p><strong>Name:</strong> $name</p>
+        <p><strong>Company:</strong> $company</p>
+        <p><strong>Phone:</strong> $phone</p>
+        <p><strong>Email:</strong> $email</p>
+        <p><strong>Language Setting:</strong> " . strtoupper($lang) . "</p>
+        <p><strong>Request Field:</strong> " . ($_POST['request_field'] ?? 'N/A') . "</p>
+        <p><strong>Scope:</strong> " . ($_POST['scope'] ?? 'N/A') . "</p>
+        <p><strong>Budget:</strong> " . ($_POST['budget_range'] ?? 'N/A') . "</p>
+        <p><strong>Message:</strong><br/>" . nl2br($_POST['message'] ?? '') . "</p>
+    ";
+} else if ($type === 'send_partner_register') {
+    $adminSubject = "[Partner Registration] New registration from $name ($company)";
+    $field = $_POST['field'] ?? ($_POST['match_field'] ?? 'N/A');
+    $adminHtml = "
+        <h3>New Partner Registration</h3>
+        <p><strong>Partner Type:</strong> " . ($_POST['partner_type'] ?? 'N/A') . "</p>
+        <p><strong>Name:</strong> $name</p>
+        <p><strong>Company:</strong> $company</p>
+        <p><strong>Phone:</strong> $phone</p>
+        <p><strong>Email:</strong> $email</p>
+        <p><strong>Language Setting:</strong> " . strtoupper($lang) . "</p>
+        <p><strong>Matching Field:</strong> $field</p>
+        <p><strong>Reference Count:</strong> " . ($_POST['ref_count'] ?? '0') . "</p>
+        <p><strong>Total Amount:</strong> " . ($_POST['accumulated_amount'] ?? 'N/A') . "</p>
+        <p><strong>Experience:</strong><br/>" . nl2br($_POST['tech_experience'] ?? '') . "</p>
+    ";
+} else if ($type === 'send_match_inquiry') {
+    $factoriesInput = $_POST['factory_list'] ?? [];
+    if (!is_array($factoriesInput)) $factoriesInput = [$factoriesInput];
+    
+    $factoryListHtml = "";
+    foreach ($factoriesInput as $jsonStr) {
+        $data = json_decode($jsonStr, true);
+        if ($data) {
+            $factoryListHtml .= "
+            <li style='margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 6px; list-style: none;'>
+                <div style='font-weight: bold; color: #0b5cff; margin-bottom: 5px;'>[" . $data['country'] . "] " . $data['name'] . "</div>
+                <div style='font-size: 13px; color: #666;'>
+                    <strong>Address:</strong> " . $data['address'] . "<br/>
+                    <strong>Industry:</strong> " . $data['industry'] . "<br/>
+                    <strong>Product:</strong> " . $data['product'] . "
+                </div>
+            </li>";
+        } else {
+            $factoryListHtml .= "<li>" . htmlspecialchars($jsonStr) . "</li>";
+        }
+    }
+    if (empty($factoriesInput)) $factoryListHtml = "<p><i>No specific factories selected.</i></p>";
+
+    $adminSubject = "[Match Inquiry] New inquiry from $name ($company)";
+    $adminHtml = "
+        <h3>New Match Inquiry (Search Results)</h3>
+        <p><strong>Name:</strong> $name</p>
+        <p><strong>Company:</strong> $company</p>
+        <p><strong>Phone:</strong> $phone</p>
+        <p><strong>Email:</strong> $email</p>
+        <p><strong>Language Setting:</strong> " . strtoupper($lang) . "</p>
+        <p style='background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107;'><strong>Search Query:</strong> " . ($_POST['search_query'] ?? 'N/A') . "</p>
+        <p><strong>Selected Factories:</strong></p>
+        <ul style='padding-left: 0;'>
+            $factoryListHtml
+        </ul>
+    ";
+} else if ($type === 'send_auto_order') {
+    $adminSubject = "[Auto Order] New order from $name ($company)";
+    $adminHtml = "
+        <h3>New Auto Order</h3>
+        <p><strong>Item:</strong> " . ($_POST['item'] ?? 'N/A') . "</p>
+        <p><strong>Quantity:</strong> " . ($_POST['qty'] ?? '0') . "</p>
+        <p><strong>Company:</strong> $company</p>
+        <p><strong>Name:</strong> $name</p>
+        <p><strong>Phone:</strong> $phone</p>
+        <p><strong>Email:</strong> $email</p>
+        <p><strong>Language Setting:</strong> " . strtoupper($lang) . "</p>
+        <p><strong>Address:</strong> " . ($_POST['address'] ?? 'N/A') . "</p>
+        <p><strong>Note:</strong> Password entered for verification.</p>
+    ";
+} else if ($type === 'send_bom_order') {
+    $cartJson = $_POST['cart'] ?? '[]';
+    $cart = json_decode($cartJson, true) ?: [];
+    $isRegular = ($_POST['is_regular'] === 'true') ? 'Regular' : 'Single';
+    $cycle = $_POST['cycle'] ?? 'None';
+
+    $adminSubject = "[BOM Order] $isRegular order from $name ($company)";
+    
+    $bomTableRows = "";
+    foreach ($cart as $idx => $item) {
+        $bomTableRows .= "
+            <tr>
+              <td>" . ($idx + 1) . "</td>
+              <td>" . ($item['category'] ?? '') . "</td>
+              <td>" . ($item['itemName'] ?? '') . "</td>
+              <td>" . ($item['specification'] ?? '') . "</td>
+              <td>" . ($item['quantity'] ?? '') . "</td>
+            </tr>";
+    }
+
+    $adminHtml = "
+        <h3>New BOM (Component) Order</h3>
+        <p><strong>Order Type:</strong> $isRegular</p>
+        " . ($isRegular === 'Regular' ? "<p><strong>Cycle:</strong> $cycle</p>" : "") . "
+        <p><strong>Company:</strong> $company</p>
+        <p><strong>Name:</strong> $name</p>
+        <p><strong>Phone:</strong> $phone</p>
+        <p><strong>Email:</strong> $email</p>
+        <p><strong>Language Setting:</strong> " . strtoupper($lang) . "</p>
+        
+        <h4>BOM List:</h4>
+        <table border='1' cellpadding='5' style='border-collapse: collapse;'>
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Category</th>
+              <th>Item Name</th>
+              <th>Spec</th>
+              <th>Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            $bomTableRows
+          </tbody>
+        </table>
+    ";
+}
+
+// 5. ê´€ë¦¬ìš© ?°ì´???€???¨ìˆ˜
+function save_inquiry_to_admin($postData) {
+    try {
+        // Cafe24 ë°°í¬ ?˜ê²½(ë£¨íŠ¸)ê³?ë¡œì»¬ ?˜ê²½ ëª¨ë‘ ê³ ë ¤??ê²½ë¡œ ?¤ì •
+        $adminDataFile = __DIR__ . '/adminlink/inquiries.json';
+        
+        // ë§Œì•½ root/adminlink êµ¬ì¡°ê°€ ?„ë‹ˆ?¼ë©´ (?´ì „ ê³µì‚¬ ì¤‘ì¸ public ?˜ìœ„?¼ë©´)
+        if (!file_exists(dirname($adminDataFile))) {
+            $adminDataFile = __DIR__ . '/../adminlink/inquiries.json';
+        }
+
+        // ?´ë”???ˆëŠ”???Œì¼ë§??†ëŠ” ê²½ìš° ì´ˆê¸°??
+        if (!file_exists($adminDataFile)) {
+            if (!is_dir(dirname($adminDataFile))) {
+                mkdir(dirname($adminDataFile), 0755, true);
+            }
+            file_put_contents($adminDataFile, '[]');
+        }
+
+        $currentData = json_decode(file_get_contents($adminDataFile), true) ?: [];
+        
+        $newEntry = $postData;
+        $newEntry['id'] = uniqid('inquiry_', true);
+        $newEntry['date'] = date("Y-m-d H:i:s");
+        
+        // ë¯¼ê°???•ë³´???œì™¸?˜ê±°???•ë¦¬
+        unset($newEntry['g-recaptcha-response']);
+        unset($newEntry['website']);
+
+        $currentData[] = $newEntry;
+        file_put_contents($adminDataFile, json_encode($currentData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    } catch (Exception $e) {
+        // ë°±ì—… ?€???¤íŒ¨ ???´ë©”??ë°œì†¡?ëŠ” ì§€?¥ì„ ì£¼ì? ?Šë„ë¡?ë¬´ì‹œ
+    }
+}
+
+// ?°ì´??ë°±ì—… ?¤í–‰
+save_inquiry_to_admin($_POST);
+
+// 6. ?´ë©”??ë°œì†¡ ?¬í¼ ?¨ìˆ˜
+function send_formatted_mail($to, $subject, $htmlContent, $fromName, $fromEmail) {
+    $boundary = md5(time());
+    $headers = "MIME-Version: 1.0\r\n";
+    $headers .= "From: " . "=?UTF-8?B?" . base64_encode($fromName) . "?=" . " <$fromEmail>\r\n";
+    $headers .= "Reply-To: $fromEmail\r\n";
+    $headers .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
+
+    // Text & HTML part
+    $message = "--$boundary\r\n";
+    $message .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $message .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $message .= $htmlContent . "\r\n\r\n";
+
+    // Attachments
+    if (!empty($_FILES['attachments']['name'][0])) {
+        foreach ($_FILES['attachments']['tmp_name'] as $key => $tmpName) {
+            if ($_FILES['attachments']['error'][$key] == 0) {
+                $fileName = $_FILES['attachments']['name'][$key];
+                $fileContent = base64_encode(file_get_contents($tmpName));
+                $message .= "--$boundary\r\n";
+                $message .= "Content-Type: application/octet-stream; name=\"$fileName\"\r\n";
+                $message .= "Content-Description: $fileName\r\n";
+                $message .= "Content-Disposition: attachment; filename=\"$fileName\"\r\n";
+                $message .= "Content-Transfer-Encoding: base64\r\n\r\n";
+                $message .= $fileContent . "\r\n\r\n";
+            }
+        }
+    }
+    $message .= "--$boundary--";
+
+    return mail($to, "=?UTF-8?B?" . base64_encode($subject) . "?=", $message, $headers);
+}
+
+// 6. ê´€ë¦¬ì ?˜ì‹ ??ìµœì¢… ?ˆì´?„ì›ƒ
+$adminFullHtml = "
+<div style=\"background-color: #f4f7f6; padding: 40px 20px; font-family: 'Segoe UI', Arial, sans-serif;\">
+  <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid #333;\">
+    <div style=\"padding: 30px;\">
+      <h2 style=\"color: #333; margin-top: 0; font-size: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px;\">New System Notification</h2>
+      <div style=\"margin-top: 20px; color: #555; line-height: 1.8;\">
+        $adminHtml
+      </div>
+    </div>
+    <div style=\"padding: 15px 30px; background-color: #f9fafb; color: #999; font-size: 12px; text-align: center;\">
+      This is an automated system notification for Nexyfab.
+    </div>
+  </div>
+</div>
+";
+
+send_formatted_mail($adminEmails, $adminSubject, $adminFullHtml, "Nexyfab System", "info@Nexyfab.com");
+
+// 7. ?¬ìš©?ìš© ?ë™ ?‘ë‹µ(Auto-Reply) êµ¬ì„±
+$autoReplyDict = [
+    'ko' => [
+        'subject' => '[Nexyfab] ë¬¸ì˜?˜ì‹  ?´ìš©???•ìƒ?ìœ¼ë¡??‘ìˆ˜?˜ì—ˆ?µë‹ˆ??',
+        'greeting' => "?ˆë…•?˜ì„¸?? {$name}??",
+        'body' => "Nexyfabë¥?ë°©ë¬¸??ì£¼ì…”??ì§„ì‹¬?¼ë¡œ ê°ì‚¬?œë¦½?ˆë‹¤.<br/><br/>ê³ ê°?˜ê»˜??ë¬¸ì˜?˜ì‹  ?´ìš©?€ ?„ì¬ ?•ìƒ?ìœ¼ë¡??‘ìˆ˜?˜ì–´ ?´ë‹¹ ë¶€?œë¡œ ?„ë‹¬?˜ì—ˆ?µë‹ˆ?? ?„ë¬¸ê°€ ?€???´ìš©??ê²€? í•œ ?? ?ì—…??ê¸°ì? 48?œê°„ ?´ë‚´??ê¸°ì¬??ì£¼ì‹  ?°ë½ì²˜ë¡œ ?µë????œë¦´ ?ˆì •?…ë‹ˆ??",
+        'closing' => 'ê°ì‚¬?©ë‹ˆ??<br/>Nexyfab ?€ ?œë¦¼',
+        'address' => '?€?œë?êµ?ê²½ê¸°??êµ¬ë¦¬??ê±´ì›?€ë¡?4ë²ˆê¸¸ 27, 701??,
+        'phone' => '031-515-9704',
+        'footer' => 'ë³?ë©”ì¼?€ ë°œì‹  ?„ìš©?´ë©°, ê´€??ë¬¸ì˜?¬í•­?€ info@Nexyfab.com?¼ë¡œ ?°ë½ ì£¼ì‹œê¸?ë°”ë?ˆë‹¤.'
+    ],
+    'en' => [
+        'subject' => '[Nexyfab] We have received your inquiry.',
+        'greeting' => "Dear $name,",
+        'body' => "Thank you for reaching out to Nexyfab.<br/><br/>We are pleased to confirm that your inquiry has been successfully received and assigned to our specialist team. We will carefully review your request and get back to you within 48 business hours.",
+        'closing' => 'Best regards,<br/>Nexyfab Team',
+        'address' => 'Rm 701, 27, Geonwon-daero 34beon-gil, Guri-si, Gyeonggi-do, Republic of Korea',
+        'phone' => '+82 31-515-9704',
+        'footer' => 'This is an automated message. For further assistance, please contact us at info@Nexyfab.com.'
+    ],
+    'ja' => [
+        'subject' => '[Nexyfab] ?Šå•?„åˆ?ã›?’å—?‘ä»˜?‘ã¾?—ãŸ??,
+        'greeting' => "{$name} æ§?,
+        'body' => "?“ã®åº¦ã¯ Nexyfab ?¸ãŠ?ã„?ˆã‚?›ã„?Ÿã ?ã€èª ?«ã‚?ŠãŒ?¨ã†?”ã–?„ã¾?™ã€?br/><br/>?Šå•?„åˆ?ã›?„ãŸ? ã„?Ÿå†…å®¹ã¯æ­£å¸¸?«å—?‘ä»˜?‘ã‚‰?Œã€æ‹…å½“éƒ¨ç½²ã¸è»?€ã•?Œã¾?—ãŸ?‚å†…å®¹ã‚’ç¢ºèª??¸Š?é€šå¸¸1???¶æ??¥ä»¥?…ã«?”è¿”ä¿¡ã•?›ã¦?„ãŸ? ã?¾ã™?‚ã„?¾ã—?°ã‚‰?ãŠå¾…ã¡?ã ?•ã„?¾ã›??,
+        'closing' => '?ˆã‚?—ã?Šé¡˜?„ã„?Ÿã—?¾ã™??br/>Nexyfab ?ãƒ¼??,
+        'address' => 'å¤§éŸ“æ°‘å›½ äº¬ç•¿??ä¹é‡Œå¸?å»ºå…ƒå¤§è·¯34?ªè¡— 27, 701??,
+        'phone' => '+82 31-515-9704',
+        'footer' => '?¬ãƒ¡?¼ãƒ«??…ä¿¡å°‚?¨ã§?™ã€‚ã”ä¸æ˜?ªç‚¹?Œã”?–ã„?¾ã—?Ÿã‚‰ info@Nexyfab.com ?¾ã§?Šå•?„åˆ?ã›?ã ?•ã„??
+    ],
+    'cn' => [
+        'subject' => '[Nexyfab] ?¨çš„?¨è?å·²æ”¶?°ã€?,
+        'greeting' => "{$name} ?¨å?ï¼?,
+        'body' => "?Ÿè°¢?¨å’¨è¯?Nexyfab??br/><br/>?‘ä»¬å·²æˆ?Ÿæ”¶?°æ‚¨?„ç”³è¯·ï¼Œ?¸å…³ä¸“å???˜Ÿæ­£åœ¨è¿›è¡Œå®¡æ ¸?‚æˆ‘ä»¬å°†??48 å°æ—¶ï¼ˆå·¥ä½œæ—¥ï¼‰å†…ä¸ºæ‚¨?ä¾›?æ??é¦ˆï¼Œè?ä¿æŒ?”ç³»?¹å¼?…é€šã€?,
+        'closing' => 'é¡ºé¢‚?†ç?ï¼?br/>Nexyfab ??˜Ÿ',
+        'address' => 'å¤§éŸ©æ°‘å›½ äº¬ç•¿??ä¹é‡Œå¸?å»ºå…ƒå¤§è·¯34è·?27, 701??,
+        'phone' => '+82 31-515-9704',
+        'footer' => 'æ­¤é‚®ä»¶ç”±ç³»ç»Ÿ?ªåŠ¨?‘å‡º?‚å¦‚?‰ç–‘??¼Œè¯·é€šè¿‡ info@Nexyfab.com ä¸æˆ‘ä»¬è”ç³»ã€?
+    ]
+];
+
+$reply = $autoReplyDict[$lang] ?? $autoReplyDict['en'];
+
+$typeLabel = ($lang === 'ko') ? '?‘ìˆ˜ ? í˜•' : (($lang === 'ja') ? '?—ä»˜?¿ã‚¤?? : (($lang === 'cn') ? '?¨è?ç±»å‹' : 'Inquiry Type'));
+$typeName = 'Matching Inquiry';
+if ($type === 'send_project_inquiry') $typeName = ($lang === 'ko') ? '?„ë¡œ?íŠ¸ ë¬¸ì˜' : 'Project Inquiry';
+else if ($type === 'send_partner_register') $typeName = ($lang === 'ko') ? '?ŒíŠ¸???±ë¡' : 'Partner Registration';
+else if ($type === 'send_bom_order') $typeName = ($lang === 'ko') ? 'BOM ê²¬ì /ì£¼ë¬¸' : 'BOM Order/Quote';
+else if ($type === 'send_auto_order') $typeName = ($lang === 'ko') ? '?ë™??ë¶€??ì£¼ë¬¸' : 'Auto Parts Order';
+else if ($lang === 'ko') $typeName = 'ë§¤ì¹­ ?œë¹„??ë¬¸ì˜';
+
+$year = date("Y");
+
+$userFullHtml = "
+<div style=\"background-color: #f6f9fc; padding: 50px 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6;\">
+  <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-top: 6px solid #0b5cff;\">
+    <div style=\"padding: 40px;\">
+      <div style=\"margin-bottom: 30px;\">
+        <h1 style=\"color: #0b5cff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;\">Nexyfab</h1>
+      </div>
+      <div style=\"font-size: 16px; color: #1a1a1a;\">
+        <p style=\"margin-bottom: 25px; font-weight: 600; font-size: 18px;\">{$reply['greeting']}</p>
+        <p style=\"margin-bottom: 30px; color: #444;\">{$reply['body']}</p>
+        <div style=\"padding: 25px; background-color: #f8faff; border-radius: 8px; border-left: 4px solid #0b5cff; margin-bottom: 30px;\">
+          <p style=\"margin: 0; font-size: 14px; color: #666;\">
+            <strong>$typeLabel:</strong> $typeName
+          </p>
+        </div>
+        <p style=\"margin-bottom: 0;\">{$reply['closing']}</p>
+      </div>
+    </div>
+    <div style=\"padding: 30px 40px; background-color: #fcfdfe; border-top: 1px solid #f0f0f0;\">
+      <div style=\"margin-bottom: 15px;\">
+        <p style=\"font-size: 11px; color: #888; margin: 0 0 5px 0; line-height: 1.4;\">{$reply['address']}</p>
+        <p style=\"font-size: 11px; color: #888; margin: 0; line-height: 1.4;\">Tel: {$reply['phone']} | Email: info@Nexyfab.com</p>
+      </div>
+      <p style=\"font-size: 12px; color: #999; margin: 0 0 10px 0;\">{$reply['footer']}</p>
+      <p style=\"font-size: 11px; color: #bbb; margin: 0;\">&copy; $year Nexyfab. All rights reserved.</p>
+    </div>
+  </div>
+  <div style=\"text-align: center; margin-top: 20px;\">
+    <a href=\"https://Nexyfab.com\" style=\"font-size: 12px; color: #0b5cff; text-decoration: none; font-weight: 500;\">Visit our website</a>
+  </div>
+</div>
+";
+
+send_formatted_mail($email, $reply['subject'], $userFullHtml, "Nexyfab", "info@Nexyfab.com");
+
+echo json_encode(["success" => true, "message" => "Emails sent successfully"]);
+?>

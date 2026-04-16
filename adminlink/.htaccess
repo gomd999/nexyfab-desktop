@@ -1,0 +1,7 @@
+<Files "inquiries.json">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# 로봇 검색 제외
+Header set X-Robots-Tag "noindex, nofollow"

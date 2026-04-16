@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Nexyfab - Global R&amp;D and Manufacturing Matching Platform</title>
+    <link>https://nexyfab.com</link>
+    <description>Your Ideal Manufacturing Partner. Global R&amp;D Prototype, Development Strategy Roadmap, and Smart Component Ordering.</description>
+    <language>ko-kr</language>
+    <pubDate>Fri, 27 Feb 2026 18:55:00 +0900</pubDate>
+    <lastBuildDate>Fri, 27 Feb 2026 18:55:00 +0900</lastBuildDate>
+    <item>
+      <title>글로벌 R&amp;D 시제품 제작 및 기술 매칭 서비스 안내</title>
+      <link>https://nexyfab.com/kr/</link>
+      <description>유사 레퍼런스와 기술 범위를 기반으로 실제 구현 가능성이 높은 제조 파트너를 추천합니다.</description>
+      <pubDate>Fri, 27 Feb 2026 00:00:00 +0900</pubDate>
+      <guid>https://nexyfab.com/kr/</guid>
+    </item>
+    <item>
+      <title>전략적 개발 로드맵 제안 서비스</title>
+      <link>https://nexyfab.com/kr/how-it-works/</link>
+      <description>단순 제작 연결이 아닌 개발 방향과 범위를 먼저 정리하여 프로젝트 정의를 명확히 합니다.</description>
+      <pubDate>Fri, 27 Feb 2026 00:00:00 +0900</pubDate>
+      <guid>https://nexyfab.com/kr/how-it-works/</guid>
+    </item>
+  </channel>
+</rss>

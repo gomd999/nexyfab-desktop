@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/billing/retry",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/jobs/process",
+      "schedule": "* * * * *"
+    }
+  ]
+}

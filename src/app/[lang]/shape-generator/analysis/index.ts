@@ -1,0 +1,11 @@
+export { computeDeviation, type DeviationResult } from './deviationAnalysis';
+export { validateGeometry, type ValidationResult } from './geometryValidation';
+export { analyzePrintability, type PrintAnalysisResult, type PrintAnalysisOptions, type PrintIssue } from './printAnalysis';
+export { runSimpleFEA, type FEAResult, type FEABoundaryCondition, type FEAMaterial, type FEAOptions } from './simpleFEA';
+export { computeMassProperties, type MassProperties } from './massProperties';
+export { analyzeDFM, type DFMResult, type DFMIssue, type ManufacturingProcess, type DFMOptions } from './dfmAnalysis';
+export { default as ManufacturerMatch, type Manufacturer } from './ManufacturerMatch';
+export { runParametricSweep, computeSensitivity, type SweepParam, type SweepConfig, type SweepObjective, type SweepResult, type SensitivityEntry } from './parametricSweep';
+export { default as ParametricSweepPanel } from './ParametricSweepPanel';
+export { computeStackup, monteCarloStackup, type ToleranceDimension, type StackupResult, type MonteCarloResult } from './toleranceStackup';
+export { default as ToleranceStackupPanel } from './ToleranceStackupPanel';

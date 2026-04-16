@@ -1,0 +1,11 @@
+name = "nexyfab"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[pages_build_output_dir]
+directory = ".vercel/output"
+
+[vars]
+# 환경 변수는 여기 또는 Cloudflare Dashboard에서 설정
+# NEXT_PUBLIC_API_URL = "https://api.nexyfab.com"
+# SENTRY_AUTH_TOKEN = ""

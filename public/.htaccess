@@ -1,0 +1,62 @@
+# Nexyfab Domain Unification & Legacy Support (.htaccess)
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1. covaetdesign.mycafe24.com 접속 시 301 리다이렉트 및 No-Index 설정
+  RewriteCond %{HTTP_HOST} ^covaetdesign\.mycafe24\.com$ [NC]
+  RewriteRule ^(.*)$ https://nexyfab.com/$1 [L,R=301]
+
+  # 2. nexyfab.com 접속 시 301 리다이렉트 (브랜드 변경 지원)
+  RewriteCond %{HTTP_HOST} ^nexyfab\.com$ [NC,OR]
+  RewriteCond %{HTTP_HOST} ^www\.nexyfab\.com$ [NC]
+  RewriteRule ^(.*)$ https://nexyfab.com/$1 [L,R=301]
+
+  # 3. www 없는 주소로 통일 (Canonical Domain)
+  RewriteCond %{HTTP_HOST} ^www\.nexyfab\.com$ [NC]
+  RewriteRule ^(.*)$ https://nexyfab.com/$1 [L,R=301]
+
+  # 4. HTTPS 강제
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 5. 브라우저 언어 기반 자동 리다이렉트 (루프 방지 및 기본언어 en)
+  
+  # 이미 언어 코드가 붙어있거나, 실제 파일/폴더인 경우 더 이상 처리하지 않음 (루프 방지 핵심)
+  RewriteCond %{REQUEST_URI} ^/(kr|en|ja|cn|_next|api|pds|data|robots\.txt|sitemap\.xml|og-image\.png|search\.php|send-mail\.php|naver.*\.html) [NC,OR]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # --- 여기부터는 언어 코드가 없는 경로만 도달함 ---
+
+  # 한국어 설정 -> /kr/
+  RewriteCond %{HTTP:Accept-Language} ^ko [NC]
+  RewriteRule ^(.*)$ /kr/$1 [L,R=301]
+
+  # 일본어 설정 -> /ja/
+  RewriteCond %{HTTP:Accept-Language} ^ja [NC]
+  RewriteRule ^(.*)$ /ja/$1 [L,R=301]
+
+  # 중국어 설정 -> /cn/
+  RewriteCond %{HTTP:Accept-Language} ^zh [NC]
+  RewriteRule ^(.*)$ /cn/$1 [L,R=301]
+
+  # 그 외 모든 경우 (기본값) -> /en/
+  RewriteRule ^(.*)$ /en/$1 [L,R=301]
+
+  # 6. Next.js Static Export (.html 확장자 제거된 주소 대응)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.*)$ $1.html [L]
+</IfModule>
+
+# 404 에러 페이지 설정 (구형 페이지 제거 가속화)
+ErrorDocument 404 /404.html
+
+# 카페24 도구 도메인 인덱싱 방지 (이미 301로 넘기지만 한 번 더 명시)
+<IfModule mod_headers.c>
+  SetEnvIf Host "covaetdesign.mycafe24.com" NO_INDEX=1
+  Header set X-Robots-Tag "noindex, nofollow" env=NO_INDEX
+</IfModule>

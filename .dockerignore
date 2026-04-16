@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+README.md
+*.md
+.env*.local
+.env
+data/
+adminlink/
+playwright-report/
+e2e/
+coverage/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,590 @@
+{
+  "box": {
+    "vertexCount": 24,
+    "triangleCount": 12,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -25,
+        -15,
+        -10
+      ],
+      "max": [
+        25,
+        15,
+        10
+      ]
+    },
+    "volume_mm3": 30000,
+    "surfaceArea_mm2": 6200,
+    "positionHash": "9b52dcc9"
+  },
+  "cylinder": {
+    "vertexCount": 292,
+    "triangleCount": 192,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -20,
+        -25,
+        -20
+      ],
+      "max": [
+        20,
+        25,
+        20
+      ]
+    },
+    "volume_mm3": 62652.572,
+    "surfaceArea_mm2": 8784.803,
+    "positionHash": "411812e3"
+  },
+  "disk": {
+    "vertexCount": 388,
+    "triangleCount": 256,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -40,
+        -4,
+        -40
+      ],
+      "max": [
+        40,
+        4,
+        40
+      ]
+    },
+    "volume_mm3": 40147.821,
+    "surfaceArea_mm2": 12046.767,
+    "positionHash": "724bcdf7"
+  },
+  "ellipsoid": {
+    "vertexCount": 825,
+    "triangleCount": 1472,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -60,
+        -40,
+        -50
+      ],
+      "max": [
+        60,
+        40,
+        50
+      ]
+    },
+    "volume_mm3": 497294.857,
+    "surfaceArea_mm2": 31072.976,
+    "positionHash": "300fd0ef"
+  },
+  "ellipticDisk": {
+    "vertexCount": 1524,
+    "triangleCount": 508,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -80,
+        -5,
+        -50
+      ],
+      "max": [
+        80,
+        5,
+        50
+      ]
+    },
+    "volume_mm3": 125613.245,
+    "surfaceArea_mm2": 29260.861,
+    "positionHash": "5f928adf"
+  },
+  "sphere": {
+    "vertexCount": 561,
+    "triangleCount": 960,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -25,
+        -25,
+        -25
+      ],
+      "max": [
+        25,
+        25,
+        25
+      ]
+    },
+    "volume_mm3": 64405.341,
+    "surfaceArea_mm2": 7791.059,
+    "positionHash": "cb8585cf"
+  },
+  "cone": {
+    "vertexCount": 131,
+    "triangleCount": 64,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -25,
+        -40,
+        -25
+      ],
+      "max": [
+        25,
+        40,
+        25
+      ]
+    },
+    "volume_mm3": 52024.087,
+    "surfaceArea_mm2": 8520.361,
+    "positionHash": "5f77b743"
+  },
+  "torus": {
+    "vertexCount": 1225,
+    "triangleCount": 2304,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -50,
+        -50,
+        -10
+      ],
+      "max": [
+        50,
+        50,
+        10
+      ]
+    },
+    "volume_mm3": 77835.26,
+    "surfaceArea_mm2": 15718.229,
+    "positionHash": "4964b2bf"
+  },
+  "wedge": {
+    "vertexCount": 24,
+    "triangleCount": 8,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -25,
+        -20,
+        -15
+      ],
+      "max": [
+        25,
+        20,
+        15
+      ]
+    },
+    "volume_mm3": 30000,
+    "surfaceArea_mm2": 6620.937,
+    "positionHash": "075b968f"
+  },
+  "pipe": {
+    "vertexCount": 196,
+    "triangleCount": 288,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -30,
+        -50,
+        -30
+      ],
+      "max": [
+        30,
+        50,
+        30
+      ]
+    },
+    "volume_mm3": 240168.196,
+    "surfaceArea_mm2": 21968.73,
+    "positionHash": "f097d9df"
+  },
+  "lBracket": {
+    "vertexCount": 48,
+    "triangleCount": 24,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -40,
+        0,
+        -20
+      ],
+      "max": [
+        40,
+        60,
+        20
+      ]
+    },
+    "volume_mm3": 42240,
+    "surfaceArea_mm2": 13952,
+    "positionHash": "bbb82661"
+  },
+  "flange": {
+    "vertexCount": 1084,
+    "triangleCount": 864,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -60,
+        -7.6,
+        -60
+      ],
+      "max": [
+        60,
+        7.6,
+        60
+      ]
+    },
+    "volume_mm3": 158556.45,
+    "surfaceArea_mm2": 30584.78,
+    "positionHash": "3eb8ef89"
+  },
+  "plateBend": {
+    "vertexCount": 48,
+    "triangleCount": 24,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -50,
+        -1.5,
+        0
+      ],
+      "max": [
+        50,
+        40,
+        61.5
+      ]
+    },
+    "volume_mm3": 30000,
+    "surfaceArea_mm2": 21800,
+    "positionHash": "efbbe40b"
+  },
+  "gear": {
+    "vertexCount": 28392,
+    "triangleCount": 9464,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -26,
+        -26,
+        -7.5
+      ],
+      "max": [
+        26,
+        26,
+        7.5
+      ]
+    },
+    "volume_mm3": 787793.088,
+    "surfaceArea_mm2": 172668.198,
+    "positionHash": "a78000d5"
+  },
+  "fanBlade": {
+    "vertexCount": 1527,
+    "triangleCount": 2544,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -124.707,
+        -15,
+        -143.495
+      ],
+      "max": [
+        150,
+        40.5,
+        144.422
+      ]
+    },
+    "volume_mm3": 88717.49,
+    "surfaceArea_mm2": 48669.523,
+    "positionHash": "4fc16ac0"
+  },
+  "sprocket": {
+    "vertexCount": 3324,
+    "triangleCount": 1108,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -40.34,
+        -40.378,
+        -4
+      ],
+      "max": [
+        40.34,
+        40.378,
+        4
+      ]
+    },
+    "volume_mm3": 37059.925,
+    "surfaceArea_mm2": 13559.475,
+    "positionHash": "72fabcb9"
+  },
+  "pulley": {
+    "vertexCount": 392,
+    "triangleCount": 672,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -50,
+        -12.5,
+        -50
+      ],
+      "max": [
+        50,
+        12.5,
+        50
+      ]
+    },
+    "volume_mm3": 184848.847,
+    "surfaceArea_mm2": 27484.852,
+    "positionHash": "e9599fe7"
+  },
+  "sweep": {
+    "vertexCount": 3225,
+    "triangleCount": 6144,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -44.96,
+        -14.77,
+        -44.99
+      ],
+      "max": [
+        44.984,
+        114.658,
+        44.945
+      ]
+    },
+    "volume_mm3": 395208.008,
+    "surfaceArea_mm2": 53850.702,
+    "positionHash": "281d4bb6"
+  },
+  "loft": {
+    "vertexCount": 2082,
+    "triangleCount": 4160,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -20,
+        -40,
+        -20
+      ],
+      "max": [
+        20,
+        40,
+        20
+      ]
+    },
+    "volume_mm3": 58266.976,
+    "surfaceArea_mm2": 9146.461,
+    "positionHash": "f4bd8d23"
+  },
+  "bolt": {
+    "vertexCount": 444,
+    "triangleCount": 148,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -8.5,
+        -63.5,
+        -9.815
+      ],
+      "max": [
+        8.5,
+        3.5,
+        9.815
+      ]
+    },
+    "volume_mm3": 6434.137,
+    "surfaceArea_mm2": 2950.792,
+    "positionHash": "8e7c3695"
+  },
+  "spring": {
+    "vertexCount": 5005,
+    "triangleCount": 9216,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -17,
+        -41.989,
+        -17
+      ],
+      "max": [
+        17,
+        41.983,
+        16.998
+      ]
+    },
+    "volume_mm3": 9038.834,
+    "surfaceArea_mm2": 9402.928,
+    "positionHash": "415e7531"
+  },
+  "tSlot": {
+    "vertexCount": 252,
+    "triangleCount": 84,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -20,
+        -100,
+        -20
+      ],
+      "max": [
+        20,
+        100,
+        20
+      ]
+    },
+    "volume_mm3": 145546.666,
+    "surfaceArea_mm2": 82328.294,
+    "positionHash": "68b0bc1d"
+  },
+  "hexNut": {
+    "vertexCount": 360,
+    "triangleCount": 120,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -8.5,
+        -4,
+        -9.815
+      ],
+      "max": [
+        8.5,
+        4,
+        9.815
+      ]
+    },
+    "volume_mm3": 1381.085,
+    "surfaceArea_mm2": 1066.999,
+    "positionHash": "04129d5b"
+  },
+  "washer": {
+    "vertexCount": 2304,
+    "triangleCount": 768,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -12,
+        -1.25,
+        -12
+      ],
+      "max": [
+        12,
+        1.25,
+        12
+      ]
+    },
+    "volume_mm3": 892.753,
+    "surfaceArea_mm2": 989.042,
+    "positionHash": "979c0b5f"
+  },
+  "iBeam": {
+    "vertexCount": 132,
+    "triangleCount": 44,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -50,
+        -500,
+        -100
+      ],
+      "max": [
+        50,
+        500,
+        100
+      ]
+    },
+    "volume_mm3": 3808000,
+    "surfaceArea_mm2": 791616,
+    "positionHash": "1f6eee61"
+  },
+  "functionSurface": {
+    "vertexCount": 2178,
+    "triangleCount": 4352,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -50,
+        -25,
+        -50
+      ],
+      "max": [
+        50,
+        20,
+        50
+      ]
+    },
+    "volume_mm3": 250000,
+    "surfaceArea_mm2": 39851.027,
+    "positionHash": "47096e6b"
+  },
+  "latheProfile": {
+    "vertexCount": 1715,
+    "triangleCount": 3264,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -45,
+        -40,
+        -45
+      ],
+      "max": [
+        45,
+        40,
+        45
+      ]
+    },
+    "volume_mm3": 366088.339,
+    "surfaceArea_mm2": 25215.496,
+    "positionHash": "61c931d7"
+  },
+  "bearing": {
+    "vertexCount": 9144,
+    "triangleCount": 3048,
+    "indexed": false,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -23.5,
+        -7,
+        -23.5
+      ],
+      "max": [
+        23.5,
+        7,
+        23.5
+      ]
+    },
+    "volume_mm3": 11269.685,
+    "surfaceArea_mm2": 8547.18,
+    "positionHash": "8dd45e9f"
+  }
+}
