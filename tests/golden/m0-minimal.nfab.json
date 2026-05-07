@@ -1,0 +1,54 @@
+{
+  "magic": "nfab",
+  "version": 1,
+  "createdAt": 1714468800000,
+  "updatedAt": 1714468800000,
+  "name": "M0 golden — minimal box",
+  "tree": {
+    "nodes": [
+      {
+        "id": "m0-root-node",
+        "type": "baseShape",
+        "label": "Base Shape",
+        "icon": "📦",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [],
+        "editingActive": false,
+        "timestamp": 1714468800000
+      }
+    ],
+    "rootId": "m0-root-node",
+    "activeNodeId": "m0-root-node"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 20,
+      "height": 20,
+      "depth": 20
+    },
+    "paramExpressions": {
+      "width": "20",
+      "height": "20",
+      "depth": "20"
+    },
+    "materialId": "al6061",
+    "color": "#8b9cf4",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 50,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  }
+}

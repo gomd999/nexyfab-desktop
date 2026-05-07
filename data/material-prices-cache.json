@@ -1,0 +1,30 @@
+{
+  "prices": {
+    "aluminum_6061": 6723,
+    "steel_s45c": 1184,
+    "stainless_304": 8525,
+    "brass": 11675,
+    "titanium": 88324,
+    "abs_plastic": 2000,
+    "pom": 3000,
+    "pc": 3000
+  },
+  "lme_usd_per_ton": {
+    "aluminum": 3065.1885,
+    "copper": 9500,
+    "steel": 580,
+    "nickel": 15500,
+    "crude": 75
+  },
+  "usd_krw": 1513,
+  "sources": {
+    "usd_krw": "open.er-api.com (실시간)",
+    "aluminum": "Alpha Vantage LME 실시간 (2026. 4. 3.)",
+    "copper": "LME 기준값",
+    "steel": "HRC 기준값 + 환율 연동",
+    "nickel": "LME 기준값 + 환율 연동",
+    "crude": "WTI 기준값 + 환율 연동"
+  },
+  "lastUpdated": "2026-04-03T01:38:44.872Z",
+  "cached": false
+}

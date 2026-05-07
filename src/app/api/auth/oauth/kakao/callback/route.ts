@@ -1,0 +1,176 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getDbAdapter } from '@/lib/db-adapter';
+import { signJWT } from '@/lib/jwt';
+import { getStorage } from '@/lib/storage';
+import { recordLoginAndCheck } from '@/lib/login-security';
+import { randomBytes, createHash } from 'crypto';
+import { SERVICE_NAME } from '@/lib/service-config';
+import { accessTokenCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { parseUserStageColumn } from '@/lib/stage-engine';
+
+export const dynamic = 'force-dynamic';
+
+const ALLOWED_LANGS = new Set(['ko', 'en', 'ja', 'zh']);
+
+export async function GET(req: NextRequest) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nexyfab.com';
+  const code = req.nextUrl.searchParams.get('code');
+  const stateParam = req.nextUrl.searchParams.get('state') ?? '';
+  const clientId = process.env.KAKAO_CLIENT_ID;
+  const clientSecret = process.env.KAKAO_CLIENT_SECRET;
+  const redirectUri = `${siteUrl}/api/auth/oauth/kakao/callback`;
+
+  // Parse state: format is `<token>:<lang>`
+  const [returnedState, rawLang] = stateParam.split(':');
+  const lang = ALLOWED_LANGS.has(rawLang ?? '') ? rawLang : 'ko';
+
+  // Verify CSRF state
+  const storedState = req.cookies.get('oauth_state')?.value;
+  if (!storedState || storedState !== returnedState) {
+    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_csrf`);
+  }
+
+  if (!code || !clientId) {
+    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_failed`);
+  }
+
+  try {
+    // 1. Exchange code for token
+    const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        ...(clientSecret ? { client_secret: clientSecret } : {}),
+        redirect_uri: redirectUri,
+        code,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!tokenRes.ok) throw new Error('Token exchange failed');
+    const tokenData = await tokenRes.json() as { access_token: string };
+
+    // 2. Get user info
+    const userRes = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!userRes.ok) throw new Error('User info failed');
+    const userData = await userRes.json() as {
+      id: number;
+      kakao_account?: { email?: string; profile?: { nickname?: string; thumbnail_image_url?: string; profile_image_url?: string } };
+    };
+
+    const email = userData.kakao_account?.email;
+    const name = userData.kakao_account?.profile?.nickname ?? 'Kakao User';
+
+    if (!email) {
+      return NextResponse.redirect(`${siteUrl}/${lang}/login?error=email_required`);
+    }
+
+    // 3. Upsert user
+    const db = getDbAdapter();
+    const ip = getTrustedClientIp(req.headers);
+    let user = await db.queryOne<{ id: string; email: string; plan: string; name: string }>(
+      'SELECT id, email, plan, name FROM nf_users WHERE email = ?', email,
+    );
+    const loginNow = Date.now();
+
+    if (!user) {
+      const userId = `u-${crypto.randomUUID()}`;
+      await db.execute(
+        `INSERT INTO nf_users (id, email, name, plan, email_verified, created_at, signup_source, language, country,
+          last_login_at, login_count, signup_ip, last_login_ip,
+          services, signup_service, ${SERVICE_NAME}_plan, oauth_provider, oauth_id, updated_at)
+         VALUES (?, ?, ?, 'free', 1, ?, 'kakao', ?, 'KR',
+          ?, 1, ?, ?,
+          ?, ?, 'free', 'kakao', ?, ?)`,
+        userId, email, name, loginNow, lang,
+        loginNow, ip, ip,
+        JSON.stringify([SERVICE_NAME]), SERVICE_NAME, String(userData.id ?? ''), loginNow,
+      );
+      user = { id: userId, email, plan: 'free', name };
+    } else {
+      const currentServices: string[] = JSON.parse(
+        (await db.queryOne<{ services: string }>('SELECT services FROM nf_users WHERE id = ?', user.id))?.services || '[]',
+      );
+      if (!currentServices.includes(SERVICE_NAME)) currentServices.push(SERVICE_NAME);
+      await db.execute(
+        `UPDATE nf_users SET last_login_at = ?, login_count = COALESCE(login_count, 0) + 1, last_login_ip = ?,
+          services = ?, oauth_provider = COALESCE(oauth_provider, 'kakao'),
+          ${SERVICE_NAME}_plan = COALESCE(${SERVICE_NAME}_plan, 'free'), updated_at = ? WHERE id = ?`,
+        loginNow, ip, JSON.stringify(currentServices), loginNow, user.id,
+      );
+    }
+
+    // 3-b. 프로필 사진 R2 업로드
+    const pictureUrl = userData.kakao_account?.profile?.profile_image_url;
+    if (pictureUrl) {
+      try {
+        const imgRes = await fetch(pictureUrl, { signal: AbortSignal.timeout(5_000) });
+        if (imgRes.ok) {
+          const buf = Buffer.from(await imgRes.arrayBuffer());
+          const ext = imgRes.headers.get('content-type')?.includes('png') ? 'png' : 'jpg';
+          const storage = getStorage();
+          const { url } = await storage.upload(buf, `avatar.${ext}`, `avatars/${user.id}`);
+          await db.execute('UPDATE nf_users SET avatar_url = ? WHERE id = ?', url, user.id);
+        }
+      } catch {
+        // 프로필 사진 실패해도 로그인은 정상 진행
+      }
+    }
+
+    // 4. 보안 검사
+    const { blocked } = await recordLoginAndCheck(
+      { userId: user.id, ip, country: 'KR', userAgent: req.headers.get('user-agent'), method: 'kakao', success: true },
+      req.headers,
+    );
+    if (blocked) {
+      return NextResponse.redirect(`${siteUrl}/${lang}/login?error=account_locked`);
+    }
+
+    // 5. Issue JWT + refresh token
+    const stageRow = await db.queryOne<{ stage: string | null }>(
+      'SELECT stage FROM nf_users WHERE id = ?',
+      user.id,
+    );
+    const accessToken = await signJWT(
+      {
+        sub: user.id,
+        email: user.email,
+        plan: user.plan,
+        emailVerified: true,
+        service: SERVICE_NAME,
+        nexyfabStage: parseUserStageColumn(stageRow?.stage),
+      },
+      15 * 60,
+    );
+    const rawRefresh = randomBytes(40).toString('hex');
+    const refreshHash = createHash('sha256').update(rawRefresh).digest('hex');
+    const now = Date.now();
+    // 동시 접속 방지: 기존 세션 revoke
+    await db.execute(
+      "UPDATE nf_refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0",
+      user.id,
+    );
+    await db.execute(
+      `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
+       VALUES (?, ?, ?, ?, 0, ?)`,
+      `rt-${crypto.randomUUID()}`, user.id, refreshHash, now + 30 * 24 * 3600_000, now,
+    );
+
+    const response = NextResponse.redirect(`${siteUrl}/${lang}/nexyfab/dashboard`);
+    // Clear state cookie
+    response.cookies.set('oauth_state', '', { maxAge: 0, path: '/api/auth/oauth' });
+    const ac = accessTokenCookie(accessToken, 'lax');
+    response.cookies.set(ac.name, ac.value, ac.options);
+    const rc = refreshTokenCookie(rawRefresh, 'lax');
+    response.cookies.set(rc.name, rc.value, rc.options);
+    return response;
+  } catch (err) {
+    console.error('[kakao/callback]', err);
+    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_failed`);
+  }
+}

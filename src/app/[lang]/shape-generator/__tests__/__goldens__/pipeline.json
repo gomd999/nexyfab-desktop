@@ -1,0 +1,86 @@
+{
+  "box-subtract-cylinder": {
+    "vertexCount": 1081,
+    "triangleCount": 363,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -30,
+        -20,
+        -15
+      ],
+      "max": [
+        30,
+        20,
+        15
+      ]
+    },
+    "volume_mm3": 59514.219,
+    "surfaceArea_mm2": 12684.95,
+    "positionHash": "dc5d496b"
+  },
+  "box-union-sphere": {
+    "vertexCount": 1957,
+    "triangleCount": 1584,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -30,
+        -20,
+        -20
+      ],
+      "max": [
+        60,
+        20,
+        20
+      ]
+    },
+    "volume_mm3": 100083.619,
+    "surfaceArea_mm2": 13689.701,
+    "positionHash": "a2797967"
+  },
+  "box-fillet-default": {
+    "vertexCount": 24,
+    "triangleCount": 12,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -30,
+        -20,
+        -15
+      ],
+      "max": [
+        30,
+        20,
+        15
+      ]
+    },
+    "volume_mm3": 72000,
+    "surfaceArea_mm2": 10800,
+    "positionHash": "5cb8ec95"
+  },
+  "box-chamfer-default": {
+    "vertexCount": 24,
+    "triangleCount": 12,
+    "indexed": true,
+    "hasNormals": true,
+    "bbox": {
+      "min": [
+        -30,
+        -20,
+        -15
+      ],
+      "max": [
+        30,
+        20,
+        15
+      ]
+    },
+    "volume_mm3": 72000,
+    "surfaceArea_mm2": 10800,
+    "positionHash": "b01fe5d5"
+  }
+}

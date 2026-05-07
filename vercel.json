@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/billing/retry",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/jobs/process",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/quote-expire",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/order-delays",
+      "schedule": "0 10 * * *"
+    }
+  ]
+}

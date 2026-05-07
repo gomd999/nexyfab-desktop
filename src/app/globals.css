@@ -1,0 +1,398 @@
+@import "tailwindcss";
+
+/* ── 공통 애니메이션 keyframes ── */
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes nf-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes nf-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@keyframes nf-save-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+@keyframes nf-dot {
+  0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+  40%          { transform: scale(1);   opacity: 1; }
+}
+@keyframes nf-blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+@keyframes nf-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes nxbell-drop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes nf-skeleton-pulse {
+  0%, 100% { background: #fff; }
+  50%       { background: #f8fafc; }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes ctxFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sketch-toast-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes funnel-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+@keyframes wb-slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes sct-slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes tutorial-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(88,166,255,0.55); }
+  50%  { box-shadow: 0 0 0 10px rgba(88,166,255,0); }
+  100% { box-shadow: 0 0 0 0   rgba(88,166,255,0); }
+}
+@keyframes dfm-glow {
+  0%, 100% { box-shadow: 0 0 6px  rgba(46,160,67,0.3); }
+  50%       { box-shadow: 0 0 14px rgba(46,160,67,0.7); }
+}
+@keyframes genSpinner {
+  to { transform: rotate(360deg); }
+}
+@keyframes genViewerSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes toast-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+@keyframes pipelinePulse {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(56,139,253,0.5); }
+  50%       { box-shadow: 0 0 0 6px rgba(56,139,253,0); }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* ── 색상 토큰 ── */
+  --color-primary:        #0b5cff;
+  --color-primary-dark:   #083db0;
+  --color-primary-hover:  #0a52e8;
+  --color-primary-light:  #eff6ff;
+  --color-primary-alpha:  rgba(11,92,255,0.10);
+
+  --color-surface:        #ffffff;
+  --color-surface-muted:  #f8fafc;
+  --color-border:         #f0f0f0;
+  --color-border-soft:    rgba(229,231,235,0.6);
+
+  --color-text-primary:   #111827;
+  --color-text-secondary: #374151;
+  --color-text-muted:     #6b7280;
+  --color-text-faint:     #9ca3af;
+
+  /* ── 타이포 토큰 ── */
+  --font-sans: 'Pretendard', 'Noto Sans KR', 'Geist', Arial, sans-serif;
+  --font-mono: var(--font-geist-mono);
+
+  /* ── 간격 토큰 ── */
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
+
+  /* ── 그림자 토큰 ── */
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.05);
+  --shadow-lg:   0 8px 40px rgba(0,0,0,0.12);
+  --shadow-blue: 0 4px 16px rgba(11,92,255,0.3);
+
+  /* ── 전환 토큰 ── */
+  --transition-fast: all 0.15s ease;
+  --transition-mid:  all 0.25s ease;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* ── 포커스 링 (접근성) ── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── 반응형 헬퍼 ── */
+.desktop-only { display: flex; }
+.mobile-only  { display: none; }
+
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+  .mobile-only  { display: flex !important; }
+}
+
+/* ── 스크롤 reveal 애니메이션 ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 공통 버튼 ── */
+.nf-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  text-decoration: none;
+  box-shadow: var(--shadow-blue);
+  transition: var(--transition-fast);
+  border: none;
+  cursor: pointer;
+}
+.nf-btn-primary:hover,
+.nf-btn-primary:focus-visible {
+  background: var(--color-primary-dark);
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(11,92,255,0.4);
+}
+
+.nf-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  border: 1.5px solid var(--color-border);
+  transition: var(--transition-fast);
+  cursor: pointer;
+}
+.nf-btn-ghost:hover,
+.nf-btn-ghost:focus-visible {
+  background: var(--color-surface-muted);
+  border-color: #d1d5db;
+}
+
+/* ── 공통 카드 ── */
+.nf-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl);
+  padding: 28px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+}
+
+/* ── 온보딩 모달 ── */
+.nf-onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.nf-onboarding-modal {
+  background: #161b22;
+  border-radius: 20px;
+  padding: 48px 36px 36px;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid #30363d;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+.nf-onboarding-path-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition-fast);
+  color: #e6edf3;
+  width: 100%;
+}
+.nf-onboarding-path-btn:hover,
+.nf-onboarding-path-btn:focus-visible {
+  border-color: var(--color-primary) !important;
+  background: #0d1520 !important;
+}
+
+@media (max-width: 480px) {
+  .nf-onboarding-modal {
+    padding: 32px 20px 24px;
+    border-radius: 16px;
+  }
+}
+
+/* ── Hero 사이드 패널 반응형 ── */
+@media (max-width: 767px) {
+  .nf-hero-side-panel { display: none !important; }
+}
+
+/* ── 피처 탭 반응형 ── */
+@media (max-width: 480px) {
+  .nf-feat-tabs { flex-wrap: wrap; }
+}
+
+/* ── 가격 카드 그리드 반응형 ── */
+.nf-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 64px;
+}
+@media (max-width: 640px) {
+  .nf-pricing-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Commission 플랜 카드 반응형 ── */
+.nf-commission-plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 480px) {
+  .nf-commission-plan-grid { grid-template-columns: 1fr; }
+}
+
+/* ── 대시보드 사이드바 반응형 ── */
+@media (max-width: 767px) {
+  #customer-sidebar   { display: none !important; }
+  #customer-main      { padding: 20px 16px 80px !important; }
+  #customer-topbar    { padding: 0 16px !important; }
+  #customer-mobile-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 50;
+    background: #fff;
+    border-top: 1px solid var(--color-border);
+    padding: 8px 8px env(safe-area-inset-bottom);
+    justify-content: space-around;
+  }
+}
+
+/* ── RTL 지원 ── */
+[dir="rtl"] .nf-onboarding-modal,
+[dir="rtl"] .nf-card {
+  text-align: right;
+}
+[dir="rtl"] .nf-btn-primary,
+[dir="rtl"] .nf-btn-ghost {
+  flex-direction: row-reverse;
+}
+[dir="rtl"] .nf-onboarding-path-btn {
+  text-align: right;
+  flex-direction: row-reverse;
+}
+
+/* Shape selector star button — visible on parent hover */
+.shape-star-btn { opacity: 0 !important; }
+div:hover > .shape-star-btn,
+div:focus-within > .shape-star-btn { opacity: 1 !important; }
+
+/* Shape-generator page: hide site chrome, lock viewport */
+body.sg-mode { overflow: hidden; height: 100dvh; display: flex; flex-direction: column; }
+body.sg-mode > header,
+body.sg-mode > footer,
+body.sg-mode > div[data-cookie-banner] { display: none; }
+
+/* Shape-generator top toolbar: prevent label wrap, scroll horizontally if needed */
+.sg-topbar { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.sg-topbar::-webkit-scrollbar { height: 4px; }
+.sg-topbar::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+.sg-topbar button,
+.sg-topbar a,
+.sg-topbar > div { white-space: nowrap; flex-shrink: 0; }
+.sg-topbar button > span,
+.sg-topbar a > span { white-space: nowrap; }
+
+/* Fullscreen auto-hide: collapse top bars smoothly */
+.sg-autohide { transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease, border-width 0.22s ease; overflow: hidden; max-height: 200px; }
+body.sg-fs-hide .sg-autohide {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-top-width: 0 !important;
+  border-bottom-width: 0 !important;
+  pointer-events: none;
+}
+/* Top reveal zone when hidden — invisible strip at screen top that shows bars on hover */
+body.sg-fs-hide::before {
+  content: '';
+  position: fixed; top: 0; left: 0; right: 0; height: 6px;
+  background: transparent; z-index: 99999; pointer-events: auto;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}

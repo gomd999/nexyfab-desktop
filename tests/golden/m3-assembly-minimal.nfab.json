@@ -1,0 +1,87 @@
+{
+  "magic": "nfab",
+  "version": 1,
+  "createdAt": 1714468800000,
+  "updatedAt": 1714468800000,
+  "name": "M3 golden — two-part assembly + mate",
+  "tree": {
+    "nodes": [
+      {
+        "id": "m3-root-node",
+        "type": "baseShape",
+        "label": "Base Shape",
+        "icon": "📦",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [],
+        "editingActive": false,
+        "timestamp": 1714468800000
+      }
+    ],
+    "rootId": "m3-root-node",
+    "activeNodeId": "m3-root-node"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 20,
+      "height": 20,
+      "depth": 20
+    },
+    "paramExpressions": {
+      "width": "20",
+      "height": "20",
+      "depth": "20"
+    },
+    "materialId": "al6061",
+    "color": "#8b9cf4",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 50,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  },
+  "assembly": {
+    "placedParts": [
+      {
+        "id": "pp-m3-a",
+        "name": "A",
+        "shapeId": "box",
+        "params": { "width": 10, "height": 10, "depth": 10 },
+        "qty": 1,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0]
+      },
+      {
+        "id": "pp-m3-b",
+        "name": "B",
+        "shapeId": "box",
+        "params": { "width": 10, "height": 10, "depth": 10 },
+        "qty": 1,
+        "position": [50, 0, 0],
+        "rotation": [0, 22.5, 0]
+      }
+    ],
+    "mates": [
+      {
+        "id": "mate-m3-golden-1",
+        "type": "coincident",
+        "partA": "A",
+        "partB": "B",
+        "faceA": 0,
+        "faceB": 1,
+        "locked": true
+      }
+    ]
+  }
+}

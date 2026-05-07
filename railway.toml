@@ -1,0 +1,30 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node server.js"
+healthcheckPath = "/api/health/live"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[[cronJobs]]
+name = "email-processor"
+schedule = "*/5 * * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/jobs/process -H 'x-cron-secret: $CRON_SECRET'"
+
+[[cronJobs]]
+name = "quote-expiry-reminder"
+schedule = "0 9 * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/jobs/quote-expiry-reminder -H 'x-cron-secret: $CRON_SECRET'"
+
+[[cronJobs]]
+name = "db-backup"
+schedule = "0 2 * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/jobs/db-backup -H 'x-cron-secret: $CRON_SECRET'"
+
+[[cronJobs]]
+name = "webhook-prune"
+schedule = "0 3 * * 0"
+command = "curl -s -X GET http://localhost:$PORT/api/cron/webhook-prune -H 'Authorization: Bearer $CRON_SECRET'"

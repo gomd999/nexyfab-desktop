@@ -1,0 +1,27 @@
+---
+description: Web + Tauri two-track — gate native features with hasDesktopPower
+globs: "**/shape-generator/**/*.{ts,tsx},**/lib/tauri.ts,**/lib/useDesktopPower.ts,**/lib/platform/*.{ts,tsx},**/io/projectFile.ts,**/src-tauri/**/*.rs"
+alwaysApply: false
+---
+
+# NexyFab: Tauri two-track
+
+- **웹(브라우저)**: 기본 플로우 유지 — Blob 다운로드, `<input type="file">`, R2 등.
+- **Tauri 데스크톱**: 네이티브 다이얼로그·fs·최근 파일·(향후) 사이드카 등 **브라우저에서 어려운 작업**만 추가.
+
+## 게이트 규칙
+
+1. **파일·디스크·대용량 내보내기** → `hasDesktopPower('nativeFilesystem')` 또는 `hasDesktopPower('directDiskExport')`. 웹 폴백은 기존 `downloadBlob` / file picker 경로.
+2. **새 데스크톱 전용 기능** → `src/lib/tauri.ts`의 `DESKTOP_POWER_IMPL`에 키를 추가하고, 구현 전에는 `false`, 준비되면 `true`.
+3. **“앱 창인지”만 필요** (타이틀 바, PostHog 데스크톱 분기, 첫 실행 마법사) → `isTauriApp()` 유지. 능력과 혼동하지 않기.
+4. React에서 능력별 UI 분기 → `useDesktopPower` / `useDesktopPowerSnapshot` (`src/lib/useDesktopPower.ts`).
+
+## Rust 쪽
+
+- `src-tauri`에 `invoke` 추가 시 프론트는 같은 `DesktopPowerKey`로만 노출하는 것을 권장.
+
+## 상용 릴리스
+
+- `npm run release:checklist` — 수동 점검 목록 출력.
+- `npm run tauri:build:release` — `TAURI_UPDATER_PUBKEY` 있으면 `updater.merge.json` 생성 후 빌드.
+- 제3자 고지 페이지: `src/app/[lang]/third-party-notices/`, 데스크톱 파일 메뉴에서 링크.
