@@ -37,6 +37,7 @@ import intakeFromText from './intake-from-text';
 import shapeToJscad from './shape-to-jscad';
 import aiAdvisor from './ai-advisor';
 import costCopilot from './cost-copilot';
+import costCopilotTighter from './cost-copilot.tighter';
 import dfmExplainer from './dfm-explainer';
 import processRouter from './process-router';
 import orderPriority from './order-priority';
@@ -79,6 +80,7 @@ const PROMPTS: Record<string, PromptDefinition> = {
   [shapeToJscad.id]: shapeToJscad,
   [aiAdvisor.id]: aiAdvisor,
   [costCopilot.id]: costCopilot,
+  [costCopilotTighter.id]: costCopilotTighter,
   [dfmExplainer.id]: dfmExplainer,
   [processRouter.id]: processRouter,
   [orderPriority.id]: orderPriority,

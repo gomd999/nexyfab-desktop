@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
-import { getPrompt } from '@/lib/ai/prompts';
+import { getPromptVariant } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
 
   const { recordAIHistory } = await import('@/lib/ai-history');
 
-  const prompt = getPrompt('cost-copilot');
+  const prompt = getPromptVariant('cost-copilot', planCheck.userId);
   const messages: ChatMessage[] = [
     { role: 'system', content: prompt.template },
     ...(body.history ?? []).slice(-6).map(h => ({ role: h.role, content: h.content })),
