@@ -181,3 +181,61 @@ Sequencing flips: instead of "4 prep steps + 1 extraction", the work is now
 useState but it's a pure derivation of `placedParts` and can be a `useMemo`).
 The 1-week estimate from the prior memory entry can probably come down to
 2-3 dedicated days once the boundary is chosen.
+
+## Sub-step 5.x — callback hooks (landed)
+
+Before attempting the component extraction, the canvas's callback clusters
+were pulled into dedicated hooks in `hooks/`. This locked stable
+useCallback identity into ShapePreview's prop bag *and* lets the future
+MainWorkspaceCanvas consume one hook per cluster instead of accepting five
+separate prop callbacks.
+
+| Sub-step | Hook | Replaces |
+|---|---|---|
+| 5.1 | `useCanvasSelectionHandlers` | inline onElementSelect (65 lines of mate-pairing) + highlightTriangles memo |
+| 5.2 | `useCanvasFileImport` | inline onFileImport (42 lines of import pipeline + BOM build) |
+| 5.3 | `useRadialCommand` | inline onRadialCommand (radial menu dispatcher) |
+| 5.4 | `useNurbsCpEdit` | two IIFEs + onNurbsCPParamChange (NURBS CP cluster) |
+| 5.5 | `useCanvasPinCommentHandlers` | 5 inline pin-comment callbacks (add/resolve/delete/react/reply) |
+
+Inner.tsx after step 5.x lands: ~8839 lines (down from 8918 at the start
+of step 5.1). The remaining canvas JSX is mostly *data* — ShapePreview
+prop bindings backed by store reads, derived memos, and the five hooks
+above. Every callback that was an inline arrow function in the prop bag
+has been hoisted out.
+
+## Step 5 final — extraction blocker
+
+What's left is choosing the boundary between
+`ShapeGeneratorInner` (orchestrator) and `MainWorkspaceCanvas` (renderer).
+Two viable approaches:
+
+**Approach A — pass everything as a typed props object.**
+Define `MainWorkspaceCanvasProps` with ~50 fields, build it once in
+Inner.tsx, spread it into a new `<MainWorkspaceCanvas {...props} />` mount.
+Pros: mechanical refactor, no behavior change. Cons: doesn't reduce
+coupling — Inner.tsx still computes everything; the new component just
+forwards.
+
+**Approach B — let MainWorkspaceCanvas call hooks/stores directly.**
+`useAssemblyState`, `useViewportState`, `useSketchState`, `useSceneStore`,
+`useUIStore`, `useSelectionStore` are all module-scoped singletons; calling
+them from a second component works because they share the same state.
+The remaining props are the ones Inner.tsx genuinely *computes* —
+`effectiveResult`, `viewportShapeResult`, `effectiveBomParts`, the FEA/DFM
+condition slots, the imperative refs (`sceneRef`, `captureRef`,
+`renderCanvasRef`). That's ~15-20 props, not 50.
+Pros: real reduction in surface area; canvas reads its own state. Cons:
+some hooks (e.g. `useAssemblyState` with its Yjs CRDT singleton) are not
+designed to be called from two places — needs validation that the second
+call doesn't double-subscribe or break the awareness counter.
+
+Approach B is the right destination; A is the safe stepping stone. The
+honest recommendation is to do A first (mechanical, shippable, files
+separated), validate that nothing regresses, then incrementally move
+prop computations into the canvas component over a few PRs — exactly the
+same incremental pattern that worked for the J5 migrations on analysis
+panels.
+
+This is the *focused dedicated session* the prior memory entry referenced.
+A is ~2-3 hours; B is the multi-week reduction. Both are unblocked.
