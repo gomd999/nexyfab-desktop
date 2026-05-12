@@ -14,6 +14,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 // ─── Types (mirror the DFMIssue client shape, trimmed to what LLM needs) ──
 
@@ -252,55 +255,75 @@ export async function POST(req: NextRequest) {
     params,
   };
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
+  const prompt = getPrompt('dfm-explainer');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({ issue, process: procKind, material, params, requestedLanguage: lang ?? 'en' }) },
+  ];
 
-  if (!apiKey) {
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'dfm_insights');
+      const explanation = ruleBasedExplain(issue, procKind);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'dfm_insights',
+        title: historyTitle,
+        payload: { explanation },
+        context: historyContext,
+        projectId,
+      });
+      return NextResponse.json({ explanation });
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[dfm-explainer] AI provider failed, using rule-based fallback:', detail);
     recordUsageEvent(planCheck.userId, 'dfm_insights');
-    const explanation = ruleBasedExplain(issue, procKind);
+    const fallback = ruleBasedExplain(issue, procKind);
     recordAIHistory({
       userId: planCheck.userId,
       feature: 'dfm_insights',
       title: historyTitle,
-      payload: { explanation },
+      payload: { explanation: fallback },
       context: historyContext,
       projectId,
     });
-    return NextResponse.json({ explanation });
+    return NextResponse.json({ explanation: fallback });
   }
 
-  const systemPrompt =
-    'You are a manufacturing engineering expert. Given a detected Design-for-Manufacturing issue, ' +
-    'explain the root cause, the impact on the specified manufacturing process, ' +
-    '1-3 alternative fix strategies (each with a short rationale), and a qualitative cost note. ' +
-    'Respond with a JSON object with these exact keys: "rootCause", "rootCauseKo", "processImpact", "processImpactKo", ' +
-    '"alternatives" (array of { "label", "labelKo", "rationale", "rationaleKo", "paramHint"?: { "key", "delta" } }), ' +
-    '"costNote", "costNoteKo". ' +
-    'Keep each text field under 200 characters. Do NOT wrap JSON in markdown code blocks.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ issue, process: procKind, material, params, requestedLanguage: lang ?? 'en' }) },
-        ],
-        temperature: 0.3,
-        max_tokens: 1024,
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<DFMExplanation>;
 
     if (!parsed.rootCause || !parsed.processImpact) throw new Error('Invalid LLM response shape');
@@ -334,7 +357,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ explanation });
   } catch (err) {
-    console.warn('[dfm-explainer] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[dfm-explainer] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'dfm_insights');
     const fallback = ruleBasedExplain(issue, procKind);
     recordAIHistory({

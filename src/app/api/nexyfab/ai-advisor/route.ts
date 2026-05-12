@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -226,62 +229,74 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'shape, params, material, useCase are required' }, { status: 400 });
   }
 
-  // Server-only key — never exposed to client
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  const baseUrl = process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
-
   // Rule-based material advice (used regardless of AI availability)
   const materialAdvice = loadContext ? ruleBasedMaterial(material, useCase, loadContext) : undefined;
 
-  if (!apiKey) {
+  const prompt = getPrompt('ai-advisor');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({ shape, currentParameters: params, material, useCase, loadContext, requestedLanguage: lang }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'ai_advisor');
+      const advice = ruleBased(shape, params, material, useCase);
+      return NextResponse.json({
+        advice,
+        materialAdvice,
+        dfmIssues: generateDfMFeedback(body),
+        noSuggestions: advice.length === 0,
+        noSuggestionsKo: advice.length === 0 ? '현재 파라미터에서 룰 기반 최적화 제안이 없습니다.' : undefined,
+      });
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[ai-advisor] AI provider failed, using rule-based fallback:', detail);
+    const fallbackAdvice = ruleBased(shape, params, material, useCase);
     recordUsageEvent(planCheck.userId, 'ai_advisor');
-    const advice = ruleBased(shape, params, material, useCase);
     return NextResponse.json({
-      advice,
+      advice: fallbackAdvice,
       materialAdvice,
       dfmIssues: generateDfMFeedback(body),
-      noSuggestions: advice.length === 0,
-      noSuggestionsKo: advice.length === 0 ? '현재 파라미터에서 룰 기반 최적화 제안이 없습니다.' : undefined,
+      noSuggestions: fallbackAdvice.length === 0,
+      noSuggestionsKo: fallbackAdvice.length === 0 ? '현재 파라미터에서 최적화 제안이 없습니다.' : undefined,
     });
   }
 
-  const systemPrompt =
-    'You are a mechanical engineering expert specializing in manufacturing optimization. ' +
-    'Analyze the provided shape parameters and suggest optimal dimensions. ' +
-    'Respond with a JSON object with key "advice": an array of objects, each with these exact keys: ' +
-    '"param" (parameter name), "currentValue" (number), "suggestedValue" (number), ' +
-    '"reason" (English explanation), "reasonKo" (Korean explanation). ' +
-    'Only include parameters that should actually be changed. ' +
-    'Keep suggestions practical and within safe engineering tolerances. ' +
-    'Do NOT wrap the JSON in markdown code blocks.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ shape, currentParameters: params, material, useCase, loadContext, requestedLanguage: lang }) },
-        ],
-        temperature: 0.3,
-        max_tokens: 1024,
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status}`);
-    }
-
-    const data = await response.json() as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as { advice?: DimensionAdvice[] } | DimensionAdvice[];
 
     const rawAdvice = Array.isArray(parsed) ? parsed : (parsed.advice ?? []);
@@ -306,7 +321,7 @@ export async function POST(req: NextRequest) {
     recordUsageEvent(planCheck.userId, 'ai_advisor');
     return NextResponse.json({ advice, materialAdvice });
   } catch (err) {
-    console.warn('[ai-advisor] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[ai-advisor] AI response parse failed, using rule-based fallback:', err);
     const fallbackAdvice = ruleBased(shape, params, material, useCase);
     recordUsageEvent(planCheck.userId, 'ai_advisor');
     return NextResponse.json({

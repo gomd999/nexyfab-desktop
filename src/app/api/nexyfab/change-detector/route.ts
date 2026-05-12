@@ -13,6 +13,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface DesignSpec {
   /** Rev label, e.g. "Rev A", "v2.1" */
@@ -218,50 +221,67 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'prev and next design specs are required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `${body.prev.label ?? 'Rev A'} → ${body.next.label ?? 'Rev B'}`;
   const historyContext = { prevLabel: body.prev.label, nextLabel: body.next.label, activeRfqs: body.activeRfqs?.length };
 
-  if (!apiKey) {
+  const prompt = getPrompt('change-detector');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({ prev: body.prev, next: body.next, activeRfqs: body.activeRfqs, lang: body.lang ?? 'ko' }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'change_detector');
+      const fallback = ruleBasedResult(body);
+      recordAIHistory({ userId: planCheck.userId, feature: 'change_detector', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[change-detector] fallback:', detail);
     recordUsageEvent(planCheck.userId, 'change_detector');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'change_detector', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You analyze manufacturing design spec changes between two revisions. ' +
-    'Given prev and next spec objects, return JSON: { ' +
-    '"diffs": [{field, fieldKo, prev, next, impact("high"|"medium"|"low"), impactKo}], ' +
-    '"costImpact": "increase"|"decrease"|"neutral"|"unknown", "costImpactKo", ' +
-    '"leadImpact": "increase"|"decrease"|"neutral"|"unknown", "leadImpactKo", ' +
-    '"reRfqRequired": boolean, "reRfqReason"(EN), "reRfqReasonKo"(KR), ' +
-    '"actions": string[], "actionsKo": string[], ' +
-    '"summary"(EN), "summaryKo"(KR), "affectedRfqs": string[] }. ' +
-    'Be concise and focus on manufacturing impact. No markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ prev: body.prev, next: body.next, activeRfqs: body.activeRfqs, lang: body.lang ?? 'ko' }) },
-        ],
-        temperature: 0.2,
-        max_tokens: 2000,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek error: ${response.status}`);
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const parsed = JSON.parse(stripMarkdownJson(data.choices?.[0]?.message?.content ?? '')) as Partial<ChangeDetectorResult>;
+    const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<ChangeDetectorResult>;
     if (!parsed.diffs) throw new Error('Invalid shape');
 
     const result: ChangeDetectorResult = {
@@ -284,7 +304,7 @@ export async function POST(req: NextRequest) {
     recordAIHistory({ userId: planCheck.userId, feature: 'change_detector', title: historyTitle, payload: result, context: historyContext, projectId: body.projectId });
     return NextResponse.json(result);
   } catch (err) {
-    console.warn('[change-detector] fallback:', err);
+    console.warn('[change-detector] parse fallback:', err);
     recordUsageEvent(planCheck.userId, 'change_detector');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'change_detector', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });

@@ -11,6 +11,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface QuoteInput {
   id: string;
@@ -187,8 +190,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rfq and at least one quote are required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `${body.rfq.projectName ?? 'RFQ'} — ${body.quotes.length} quotes`;
@@ -199,7 +200,67 @@ export async function POST(req: NextRequest) {
     material: body.rfq.material,
   };
 
-  if (!apiKey) {
+  const prompt = getPrompt('quote-negotiator');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({
+      rfq: body.rfq,
+      quotes: body.quotes,
+      negotiateWith: body.negotiateWith,
+      goal: body.goal ?? 'both',
+      lang: body.lang ?? 'ko',
+    }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'quote_negotiator');
+      const fallback = ruleBasedResult(body);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'quote_negotiator',
+        title: historyTitle,
+        payload: fallback,
+        context: historyContext,
+        projectId: body.projectId,
+      });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[quote-negotiator] AI provider failed, using rule-based fallback:', detail);
     recordUsageEvent(planCheck.userId, 'quote_negotiator');
     const fallback = ruleBasedResult(body);
     recordAIHistory({
@@ -213,42 +274,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You are a procurement negotiation expert. Given an RFQ context and a list of supplier quotes, ' +
-    'produce a JSON response with: ' +
-    '"ranked" (sorted array of quotes with tags best_price|fastest|balanced|expensive, vsLowest %, score 0-100), ' +
-    '"recommendation" (EN), "recommendationKo" (KR), ' +
-    '"negotiations" (array of {supplierId, supplierName, subject, subjectKo, body, bodyKo, asks[], asksKo[]} for each non-best supplier), ' +
-    '"summary" (EN), "summaryKo" (KR). ' +
-    'Negotiations should be polite but assertive — reference competing quote count, request specific % off or lead-time reduction. ' +
-    'Tone: professional. Body under 1500 chars. asks 3-5 items. Return JSON only, no markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({
-            rfq: body.rfq,
-            quotes: body.quotes,
-            negotiateWith: body.negotiateWith,
-            goal: body.goal ?? 'both',
-            lang: body.lang ?? 'ko',
-          }) },
-        ],
-        temperature: 0.4,
-        max_tokens: 3000,
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<NegotiatorResult>;
 
     if (!parsed.ranked || !parsed.recommendation) throw new Error('Invalid LLM response shape');
@@ -273,7 +299,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(result);
   } catch (err) {
-    console.warn('[quote-negotiator] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[quote-negotiator] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'quote_negotiator');
     const fallback = ruleBasedResult(body);
     recordAIHistory({

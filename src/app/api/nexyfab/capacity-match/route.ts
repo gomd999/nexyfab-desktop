@@ -9,6 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface PartnerProfile {
   processes: string[];
@@ -251,48 +254,67 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'partner.idleWindowDays must be >= 1' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `캐파 매칭 — ${body.partner.processes.join('/')} · ${body.partner.idleWindowDays}일`;
   const historyContext = { processes: body.partner.processes, idleWindowDays: body.partner.idleWindowDays, rfqCount: body.openRfqs?.length ?? 0 };
 
-  if (!apiKey) {
+  const prompt = getPrompt('capacity-match');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({ partner: body.partner, openRfqs: body.openRfqs ?? [], lang: body.lang ?? 'ko' }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'capacity_match');
+      const fallback = ruleBasedResult(body);
+      recordAIHistory({ userId: planCheck.userId, feature: 'capacity_match', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[capacity-match] fallback:', detail);
     recordUsageEvent(planCheck.userId, 'capacity_match');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'capacity_match', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You are a manufacturing capacity matchmaker. Given a partner profile (processes, certs, idle days, hourly rate) ' +
-    'and a list of open RFQs, rank the RFQs by fit and generate a short pitch email per match. ' +
-    'Return JSON: { matches: [{ rfqId, projectName, matchScore(0-100), matchReasons[], matchReasonsKo[], ' +
-    'estimatedMarginKrw(null if unknown), urgency("high"|"medium"|"low"), urgencyKo, ' +
-    'pitchSubject, pitchBody, pitchSubjectKo, pitchBodyKo }], ' +
-    'summary(EN), summaryKo(KR), idleWindowDays, totalMatched }. ' +
-    'Sort matches by matchScore descending. No markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ partner: body.partner, openRfqs: body.openRfqs ?? [], lang: body.lang ?? 'ko' }) },
-        ],
-        temperature: 0.25,
-        max_tokens: 3000,
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek error: ${response.status}`);
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const parsed = JSON.parse(stripMarkdownJson(data.choices?.[0]?.message?.content ?? '')) as Partial<CapacityMatchResult>;
+    const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<CapacityMatchResult>;
     if (!Array.isArray(parsed.matches)) throw new Error('Invalid shape');
 
     const result: CapacityMatchResult = {
@@ -307,7 +329,7 @@ export async function POST(req: NextRequest) {
     recordAIHistory({ userId: planCheck.userId, feature: 'capacity_match', title: historyTitle, payload: result, context: historyContext, projectId: body.projectId });
     return NextResponse.json(result);
   } catch (err) {
-    console.warn('[capacity-match] fallback:', err);
+    console.warn('[capacity-match] parse fallback:', err);
     recordUsageEvent(planCheck.userId, 'capacity_match');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'capacity_match', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });

@@ -11,6 +11,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface RequestBody {
   industry: string;
@@ -107,7 +110,7 @@ function ruleBasedCerts(body: RequestBody): CertFilterResponse {
   const required = entry.required;
   const recommended = entry.recommended;
 
-  const requiredCodes = new Set(required.map(c => c.code));
+  const _requiredCodes = new Set(required.map(c => c.code));
   const supplierScores = body.suppliers?.map(s => {
     const certs = (s.certifications ?? []).map(c => c.toUpperCase().replace(/[^A-Z0-9_]/g, '_'));
     const have = required.filter(r => certs.some(c => c.includes(r.code.replace(/_/g, '')) || c === r.code)).map(r => r.code);
@@ -154,8 +157,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'industry is required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `${body.industry}${body.region ? ` (${body.region})` : ''} — ${body.useCase ?? 'general'}`;
@@ -167,7 +168,69 @@ export async function POST(req: NextRequest) {
     process: body.process,
   };
 
-  if (!apiKey) {
+  const prompt = getPrompt('cert-filter');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({
+      industry: body.industry,
+      region: body.region,
+      useCase: body.useCase,
+      material: body.material,
+      process: body.process,
+      suppliers: body.suppliers?.slice(0, 20),
+      requestedLanguage: body.lang ?? 'en',
+    }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'cert_filter');
+      const fallback = ruleBasedCerts(body);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'cert_filter',
+        title: historyTitle,
+        payload: fallback,
+        context: historyContext,
+        projectId: body.projectId,
+      });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[cert-filter] AI provider failed, using rule-based fallback:', detail);
     recordUsageEvent(planCheck.userId, 'cert_filter');
     const fallback = ruleBasedCerts(body);
     recordAIHistory({
@@ -181,44 +244,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You are a manufacturing compliance expert. Given an industry, region, use case, material, and process, ' +
-    'return the certifications and regulations most commonly required for that part to be acceptable to buyers/regulators. ' +
-    'Distinguish required (must-have for serious buyers) vs recommended (nice-to-have / improves trust). ' +
-    'Use real cert codes (ISO 13485, AS9100, IATF 16949, FDA 21 CFR, NADCAP, CE, RoHS, REACH, NSF, etc.). ' +
-    'If suppliers are provided, compute supplierScores comparing each supplier.certifications against required. ' +
-    'Return JSON: { "industry", "required": CertEntry[], "recommended": CertEntry[], "supplierScores"?, "summary", "summaryKo" }. ' +
-    'CertEntry shape: { "code", "name", "nameKo", "required": boolean, "reason", "reasonKo", "region"? }. ' +
-    'Keep reasons under 140 chars. Do NOT wrap JSON in markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({
-            industry: body.industry,
-            region: body.region,
-            useCase: body.useCase,
-            material: body.material,
-            process: body.process,
-            suppliers: body.suppliers?.slice(0, 20),
-            requestedLanguage: body.lang ?? 'en',
-          }) },
-        ],
-        temperature: 0.3,
-        max_tokens: 1800,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<CertFilterResponse>;
 
     if (!Array.isArray(parsed.required) && !Array.isArray(parsed.recommended)) {
@@ -261,7 +287,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(cleaned);
   } catch (err) {
-    console.warn('[cert-filter] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[cert-filter] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'cert_filter');
     const fallback = ruleBasedCerts(body);
     recordAIHistory({

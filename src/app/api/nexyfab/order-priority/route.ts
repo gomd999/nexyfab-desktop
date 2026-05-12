@@ -9,6 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface IncomingQuote {
   id: string;
@@ -201,47 +204,67 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'quotes array is required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `Order Priority — ${body.quotes.length} quotes`;
   const historyContext = { quotesCount: body.quotes.length, partnerProcesses: body.partner?.processes };
 
-  if (!apiKey) {
+  const prompt = getPrompt('order-priority');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({ quotes: body.quotes, partner: body.partner, lang: body.lang ?? 'ko' }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'order_priority');
+      const fallback = ruleBasedResult(body);
+      recordAIHistory({ userId: planCheck.userId, feature: 'order_priority', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[order-priority] fallback:', detail);
     recordUsageEvent(planCheck.userId, 'order_priority');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'order_priority', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You are a manufacturing partner business advisor. Given a list of incoming RFQs and the partner\'s capacity profile, ' +
-    'rank each RFQ by attractiveness (margin × DFM fit × deadline urgency × process match). ' +
-    'Return JSON: { "ranked": [{id, projectName, estimatedAmount, score(0-100), tag("priority"|"good_fit"|"consider"|"pass"), ' +
-    'estimatedMarginKrw, marginPct, reasons[], reasonsKo[], riskFlags[], riskFlagsKo[]}], ' +
-    '"summary"(EN), "summaryKo"(KR), "topPick"(EN), "topPickKo"(KR) }. ' +
-    'Be concise. No markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ quotes: body.quotes, partner: body.partner, lang: body.lang ?? 'ko' }) },
-        ],
-        temperature: 0.3,
-        max_tokens: 2500,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek error: ${response.status}`);
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const parsed = JSON.parse(stripMarkdownJson(data.choices?.[0]?.message?.content ?? '')) as Partial<PriorityResult>;
+    const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<PriorityResult>;
     if (!parsed.ranked) throw new Error('Invalid shape');
 
     const result: PriorityResult = {
@@ -256,7 +279,7 @@ export async function POST(req: NextRequest) {
     recordAIHistory({ userId: planCheck.userId, feature: 'order_priority', title: historyTitle, payload: result, context: historyContext, projectId: body.projectId });
     return NextResponse.json(result);
   } catch (err) {
-    console.warn('[order-priority] fallback:', err);
+    console.warn('[order-priority] parse fallback:', err);
     recordUsageEvent(planCheck.userId, 'order_priority');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'order_priority', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });

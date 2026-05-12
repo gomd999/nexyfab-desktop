@@ -11,6 +11,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface RfqBrief {
   quoteId?: string;
@@ -187,8 +190,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rfq is required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `${body.rfq.projectName ?? body.rfq.partName ?? 'RFQ'} × ${body.rfq.quantity ?? 1}`;
@@ -200,7 +201,65 @@ export async function POST(req: NextRequest) {
     dfmScore: body.rfq.dfmScore,
   };
 
-  if (!apiKey) {
+  const prompt = getPrompt('rfq-responder');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({
+      rfq: body.rfq,
+      partner: body.partner,
+      requestedLanguage: body.lang ?? 'ko',
+    }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'rfq_responder');
+      const fallback = ruleBasedDraft(body);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'rfq_responder',
+        title: historyTitle,
+        payload: fallback,
+        context: historyContext,
+        projectId: body.projectId,
+      });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[rfq-responder] AI provider failed, using rule-based fallback:', detail);
     recordUsageEvent(planCheck.userId, 'rfq_responder');
     const fallback = ruleBasedDraft(body);
     recordAIHistory({
@@ -214,42 +273,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You assist a manufacturing partner in drafting a quote response to an incoming RFQ. ' +
-    'Given the RFQ brief and the partner capacity profile, produce a realistic Korean-market quote with: ' +
-    '(1) estimatedAmountKrw — total quote in KRW, rounded to nearest 1000; ' +
-    '(2) estimatedDays — lead time in calendar days including QC/dispatch; ' +
-    '(3) note (EN) + noteKo (KR) — 2-3 sentences explaining what is included; ' +
-    '(4) breakdown — 3-5 line items {label, labelKo, amountKrw} summing close to the total; ' +
-    '(5) caveats / caveatsKo — risks (budget mismatch, low DFM, missing certs, capacity) the partner should review; ' +
-    '(6) confidence 0..1. ' +
-    'Use the partner hourlyRateKrw and materialMargin if provided; else assume 80,000 KRW/hr and 35% material margin. ' +
-    'Return JSON only. Do NOT wrap in markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({
-            rfq: body.rfq,
-            partner: body.partner,
-            requestedLanguage: body.lang ?? 'ko',
-          }) },
-        ],
-        temperature: 0.4,
-        max_tokens: 1600,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<ResponseDraft> & { estimatedAmountKrw?: number };
 
     const rawAmount = parsed.estimatedAmountKrw ?? parsed.estimatedAmount ?? 0;
@@ -282,7 +306,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(draft);
   } catch (err) {
-    console.warn('[rfq-responder] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[rfq-responder] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'rfq_responder');
     const fallback = ruleBasedDraft(body);
     recordAIHistory({

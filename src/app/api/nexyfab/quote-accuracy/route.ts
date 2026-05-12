@@ -10,6 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 interface QuoteEntry {
   entryId?: string;
@@ -202,47 +205,67 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'entries array is required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `견적 정확도 분석 — ${body.entries.length}건`;
   const historyContext = { entryCount: body.entries.length, processes: [...new Set(body.entries.map(e => e.process ?? '기타'))] };
 
-  if (!apiKey) {
+  const prompt = getPrompt('quote-accuracy');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify({ entries: body.entries, partner: body.partner, lang: body.lang ?? 'ko' }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'quote_accuracy');
+      const fallback = ruleBasedResult(body);
+      recordAIHistory({ userId: planCheck.userId, feature: 'quote_accuracy', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[quote-accuracy] fallback:', detail);
     recordUsageEvent(planCheck.userId, 'quote_accuracy');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'quote_accuracy', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You are a manufacturing quote accuracy analyst. Given historical quote entries (draftAmount, acceptedAmount, actualCost, process), ' +
-    'calculate per-process bias and accuracy, then suggest calibration adjustments. ' +
-    'Return JSON: { overallAccuracy(0-100), overallBiasPercent(+ = overquote), ' +
-    'processBias: [{ process, biasPercent, avgAccuracy, sampleCount, recommendation(EN), recommendationKo(KR) }], ' +
-    'suggestions: [{ title(EN), titleKo(KR), detail(EN), detailKo(KR), adjustmentPercent }], ' +
-    'summary(EN), summaryKo(KR), entriesAnalysed }. No markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ entries: body.entries, partner: body.partner, lang: body.lang ?? 'ko' }) },
-        ],
-        temperature: 0.2,
-        max_tokens: 2500,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek error: ${response.status}`);
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const parsed = JSON.parse(stripMarkdownJson(data.choices?.[0]?.message?.content ?? '')) as Partial<QuoteAccuracyResult>;
+    const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<QuoteAccuracyResult>;
     if (typeof parsed.overallAccuracy !== 'number') throw new Error('Invalid shape');
 
     const result: QuoteAccuracyResult = {
@@ -259,7 +282,7 @@ export async function POST(req: NextRequest) {
     recordAIHistory({ userId: planCheck.userId, feature: 'quote_accuracy', title: historyTitle, payload: result, context: historyContext, projectId: body.projectId });
     return NextResponse.json(result);
   } catch (err) {
-    console.warn('[quote-accuracy] fallback:', err);
+    console.warn('[quote-accuracy] parse fallback:', err);
     recordUsageEvent(planCheck.userId, 'quote_accuracy');
     const fallback = ruleBasedResult(body);
     recordAIHistory({ userId: planCheck.userId, feature: 'quote_accuracy', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });

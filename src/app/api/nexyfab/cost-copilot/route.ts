@@ -12,6 +12,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -207,12 +210,73 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'userMessage, materialId, and process are required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
-
   const { recordAIHistory } = await import('@/lib/ai-history');
 
-  if (!apiKey) {
+  const prompt = getPrompt('cost-copilot');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    ...(body.history ?? []).slice(-6).map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: JSON.stringify({
+      userMessage: body.userMessage,
+      currentState: {
+        params: body.params,
+        materialId: body.materialId,
+        process: body.process,
+        quantity: body.quantity,
+      },
+      requestedLanguage: body.lang ?? 'en',
+    }) },
+  ];
+
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'cost_copilot');
+      const fallback = ruleBasedSuggest(body);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'cost_copilot',
+        title: body.userMessage.slice(0, 120),
+        payload: fallback,
+        context: { params: body.params, materialId: body.materialId, process: body.process, quantity: body.quantity },
+        projectId: body.projectId,
+      });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[cost-copilot] AI provider failed, using rule-based fallback:', detail);
     recordUsageEvent(planCheck.userId, 'cost_copilot');
     const fallback = ruleBasedSuggest(body);
     recordAIHistory({
@@ -226,52 +290,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(fallback);
   }
 
-  const systemPrompt =
-    'You are a Design-for-Cost expert for CNC, injection, sheet-metal, casting, and 3D-printing parts. ' +
-    'The user gives you the current design state (params, material, process, quantity) plus a goal in natural language. ' +
-    'Return 1-4 concrete change suggestions that move toward their goal. For each suggestion choose the right lever: ' +
-    '(a) parameter deltas (paramDeltas, numeric adds/subtracts), (b) material swap (materialSwap = material id), ' +
-    '(c) process swap (processSwap = process id). Available material ids: aluminum, steel, titanium, copper, gold, ' +
-    'abs_white, abs_black, nylon, glass, rubber, wood, ceramic. Available process ids: cnc_milling, cnc_turning, ' +
-    'injection_molding, sheet_metal, casting, 3d_printing. Include estimatedSavingsPercent (negative = increase) ' +
-    'and a tradeoff caveat. Also give a short top-level reply (en+ko). ' +
-    'Respond with JSON: { "reply", "replyKo", "suggestions": [ { "id", "title", "titleKo", "rationale", "rationaleKo", ' +
-    '"paramDeltas"?, "materialSwap"?, "processSwap"?, "estimatedSavingsPercent", "caveat"?, "caveatKo"? } ] }. ' +
-    'Keep text fields under 180 characters. Do NOT wrap JSON in markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...(body.history ?? []).slice(-6),
-          { role: 'user', content: JSON.stringify({
-            userMessage: body.userMessage,
-            currentState: {
-              params: body.params,
-              materialId: body.materialId,
-              process: body.process,
-              quantity: body.quantity,
-            },
-            requestedLanguage: body.lang ?? 'en',
-          }) },
-        ],
-        temperature: 0.4,
-        max_tokens: 2048,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<CopilotResponse>;
 
     if (!parsed.reply || !Array.isArray(parsed.suggestions)) throw new Error('Invalid LLM response shape');
@@ -310,7 +329,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(reply);
   } catch (err) {
-    console.warn('[cost-copilot] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[cost-copilot] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'cost_copilot');
     const fallback = ruleBasedSuggest(body);
     recordAIHistory({

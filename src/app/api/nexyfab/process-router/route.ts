@@ -11,6 +11,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
+import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -232,55 +235,75 @@ export async function POST(req: NextRequest) {
   };
   const historyProjectId = body.projectId;
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
+  const prompt = getPrompt('process-router');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: prompt.template },
+    { role: 'user', content: JSON.stringify(body) },
+  ];
 
-  if (!apiKey) {
+  let content = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: prompt.defaults.maxTokens,
+      temperature: prompt.defaults.temperature,
+      timeoutMs: prompt.defaults.timeoutMs,
+      task: prompt.id,
+    });
+    content = result.text;
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      success: true,
+    });
+  } catch (e) {
+    recordPromptCall({
+      userId: planCheck.userId,
+      promptId: prompt.id,
+      promptVersion: prompt.version,
+      provider: e instanceof AiProviderError ? e.provider : 'unknown',
+      model: 'unknown',
+      latencyMs: 0,
+      success: false,
+      errorClass: classifyAiError(e),
+    });
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'process_router');
+      const ranked = ruleBasedRank(body);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'process_router',
+        title: historyTitle,
+        payload: { ranked },
+        context: historyContext,
+        projectId: historyProjectId,
+      });
+      return NextResponse.json({ ranked });
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[process-router] AI provider failed, using rule-based fallback:', detail);
     recordUsageEvent(planCheck.userId, 'process_router');
-    const ranked = ruleBasedRank(body);
+    const fallback = ruleBasedRank(body);
     recordAIHistory({
       userId: planCheck.userId,
       feature: 'process_router',
       title: historyTitle,
-      payload: { ranked },
+      payload: { ranked: fallback },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked });
+    return NextResponse.json({ ranked: fallback });
   }
 
-  const systemPrompt =
-    'You are a manufacturing process selection expert. Given geometry metrics, material, quantity, ' +
-    'and a list of candidate processes with their estimated cost/lead-time, rank them from best to worst fit. ' +
-    'For each process, provide: fitness score (0-100), reasoning (English + Korean), pros (2-3 bullet list, en + ko), ' +
-    'cons (2-3 bullet list, en + ko), and bestFor tags. ' +
-    'Respond with a JSON object: { "ranked": [{ "process", "rank", "score", "reasoning", "reasoningKo", ' +
-    '"pros": [], "prosKo": [], "cons": [], "consKo": [], "bestFor": [] }] }. ' +
-    'Rank 1 = best fit. Do NOT wrap in markdown.';
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify(body) },
-        ],
-        temperature: 0.3,
-        max_tokens: 2048,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = JSON.parse(stripMarkdownJson(content)) as { ranked?: RankedProcess[] };
 
     if (!Array.isArray(parsed.ranked) || parsed.ranked.length === 0) throw new Error('Empty ranked array');
@@ -311,7 +334,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ranked });
   } catch (err) {
-    console.warn('[process-router] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[process-router] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'process_router');
     const fallback = ruleBasedRank(body);
     recordAIHistory({
