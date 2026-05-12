@@ -86,7 +86,7 @@ describe('sanitizeObject', () => {
 
   it('leaves non-string fields unchanged', () => {
     const obj = { flag: true, num: 42, arr: [1, 2] };
-    const result = sanitizeObject(obj as any);
+    const result = sanitizeObject(obj);
     expect(result.flag).toBe(true);
     expect(result.num).toBe(42);
     expect(result.arr).toEqual([1, 2]);

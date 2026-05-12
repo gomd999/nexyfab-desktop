@@ -297,7 +297,8 @@ export async function evaluateStaleUsers(opts: {
 
   const rows = await db.queryAll<{ id: string }>(
     `SELECT id FROM nf_users
-      WHERE last_order_at IS NOT NULL AND last_order_at >= ?
+      WHERE id <> 'demo-user'
+        AND last_order_at IS NOT NULL AND last_order_at >= ?
       ORDER BY last_order_at DESC LIMIT ?`,
     since, limit,
   );

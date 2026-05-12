@@ -25,12 +25,18 @@ async function enrichAuthUser(base: { userId: string; email: string; plan: strin
     db.queryAll<{ org_id: string }>(
       'SELECT org_id FROM nf_org_members WHERE user_id = ?', base.userId,
     ),
-    db.queryOne<{ role: string; email_verified: number }>(
-      'SELECT role, email_verified FROM nf_users WHERE id = ?', base.userId,
+    db.queryOne<{ role: string; email_verified: number; pro_grace_until: number | null }>(
+      'SELECT role, email_verified, pro_grace_until FROM nf_users WHERE id = ?', base.userId,
     ),
   ]);
+  // Partner Pro grace: if the stored plan is free but a deal-driven grace
+  // window is still active, surface 'pro' so downstream tier checks let
+  // the partner use Pro tooling to evaluate the customer's 3D model.
+  const { resolveEffectivePlan } = await import('./partner-pro-grace');
+  const effectivePlan = resolveEffectivePlan(base.plan, userRow?.pro_grace_until ?? null);
   return {
     ...base,
+    plan: effectivePlan,
     globalRole: userRow?.role ?? 'user',
     roles: roleRows.map(r => ({ product: r.product, role: r.role, orgId: r.org_id }) as UserRole),
     orgIds: orgRows.map(r => r.org_id),
@@ -47,10 +53,18 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   const token = cookieToken || headerToken;
   if (!token) return null;
 
-  // Demo token fallback (legacy) — BOTH NODE_ENV=development AND ALLOW_DEMO_AUTH=true required
+  // Demo token fallback (legacy). Triple-gated: NODE_ENV must equal
+  // 'development' (not 'test', not unset), ALLOW_DEMO_AUTH must be the
+  // literal string 'true', and the hostname/host header must not look
+  // production. Last gate is belt-and-suspenders against env leaks.
+  const hostHeader = req.headers.get('host') ?? '';
+  const looksProduction = hostHeader.includes('nexyfab.com')
+    || hostHeader.includes('nexysys.com')
+    || hostHeader.includes('railway.app');
   if (
     process.env.NODE_ENV === 'development' &&
-    process.env.ALLOW_DEMO_AUTH === 'true'
+    process.env.ALLOW_DEMO_AUTH === 'true' &&
+    !looksProduction
   ) {
     const demoTokenListRaw = process.env.DEMO_TOKEN_LIST ?? '';
     const allowedDemoTokens = demoTokenListRaw

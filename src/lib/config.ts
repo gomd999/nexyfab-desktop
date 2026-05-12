@@ -2,7 +2,7 @@
 // 서버 시작 시 필수 환경변수를 검증합니다.
 // Next.js는 Edge/Node 모두에서 실행될 수 있으므로 런타임 체크로 처리합니다.
 
-function requireEnv(key: string): string {
+function _requireEnv(key: string): string {
   const val = process.env[key];
   if (!val && process.env.NODE_ENV === 'production') {
     throw new Error(`[FATAL] Missing required environment variable: ${key}`);

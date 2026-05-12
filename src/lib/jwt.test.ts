@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll as _beforeAll } from 'vitest';
 import { signJWT, verifyJWT } from './jwt';
 
 describe('JWT', () => {

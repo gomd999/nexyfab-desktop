@@ -47,6 +47,9 @@ function getTransporter(): nodemailer.Transporter {
 export async function sendEmail(
   opts: SendEmailOptions,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+  const t0 = Date.now();
+  let statusCode = 0;
+  let errorMessage: string | undefined;
   try {
     const fromAddress = process.env.SMTP_FROM || process.env.MAIL_FROM || 'noreply@nexyfab.com';
     const fromName = process.env.SMTP_FROM_NAME || 'NexyFab';
@@ -68,10 +71,25 @@ export async function sendEmail(
       if (testUrl) console.log('[email] Preview:', testUrl);
     }
 
+    statusCode = 200;
     return { ok: true, messageId: info.messageId };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
+    errorMessage = error;
     console.error('[email] Send failed:', error);
     return { ok: false, error };
+  } finally {
+    void (async () => {
+      try {
+        const { recordApiUsage } = await import('./api-meter');
+        recordApiUsage({
+          provider: 'resend',
+          endpoint: 'mail.send',
+          statusCode,
+          latencyMs: Date.now() - t0,
+          errorMessage,
+        });
+      } catch { /* ignore */ }
+    })();
   }
 }

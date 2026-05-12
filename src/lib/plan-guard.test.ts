@@ -28,7 +28,7 @@ describe('meetsPlan', () => {
 
   it('handles unknown plan gracefully (treated as free)', () => {
     // unknown plan falls back to rank 0 (=free), so meets 'free' but not 'pro'
-    expect(meetsPlan('unknown' as any, 'free')).toBe(true);
-    expect(meetsPlan('unknown' as any, 'pro')).toBe(false);
+    expect(meetsPlan('unknown', 'free')).toBe(true);
+    expect(meetsPlan('unknown', 'pro')).toBe(false);
   });
 });

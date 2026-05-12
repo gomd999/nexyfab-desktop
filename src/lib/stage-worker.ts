@@ -31,6 +31,9 @@ import type { Stage } from './stage-engine';
 
 const MAX_RETRIES = 5;
 
+/** Sentinel user — 데모 세션; Stage 알림·아웃박스 처리 대상에서 제외 (`stage-overview` 집계와 정렬). */
+const DEMO_USER_ID = 'demo-user';
+
 interface StageEventRow {
   id:           string;
   user_id:      string;
@@ -86,14 +89,25 @@ export async function processStageEvents(opts: ProcessOptions = {}): Promise<Pro
   const limit = opts.limit   ?? 50;
   const base  = opts.baseUrl ?? process.env.PUBLIC_BASE_URL ?? 'https://nexyfab.com';
 
+  // 데모 유저 Stage 이벤트는 메일·업셀 링크 대상이 아니므로 아웃박스에서 소진만 한다
+  // (미처리 행이 쌓이면 `stage-overview` pendingCount 노이즈가 된다).
+  const sweepAt = Date.now();
+  await db.execute(
+    `UPDATE nf_stage_event
+        SET processed_at = ?, last_error = 'demo_user_skipped'
+      WHERE processed_at IS NULL AND user_id = ?`,
+    sweepAt,
+    DEMO_USER_ID,
+  ).catch(() => {});
+
   const events = await db.queryAll<StageEventRow>(
     `SELECT id, user_id, from_stage, to_stage, trigger_type,
             trigger_value, occurred_at, retry_count
        FROM nf_stage_event
-      WHERE processed_at IS NULL AND retry_count < ?
+      WHERE processed_at IS NULL AND retry_count < ? AND user_id <> ?
       ORDER BY occurred_at ASC
       LIMIT ?`,
-    MAX_RETRIES, limit,
+    MAX_RETRIES, DEMO_USER_ID, limit,
   );
 
   const result: ProcessResult = {

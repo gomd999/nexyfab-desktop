@@ -1643,6 +1643,13 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       ALTER TABLE nf_users ADD COLUMN last_quarterly_history_roll_period TEXT;
     `,
   },
+  {
+    version: 73,
+    name: 'rfq_analysis_summary',
+    sql: `
+      ALTER TABLE nf_rfqs ADD COLUMN analysis_summary TEXT;
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {

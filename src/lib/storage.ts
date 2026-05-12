@@ -60,7 +60,7 @@ function getS3Storage(): StorageAdapter {
   const endpoint = process.env.S3_ENDPOINT; // R2: https://<accountid>.r2.cloudflarestorage.com
   const publicUrl = process.env.S3_PUBLIC_URL; // R2 public bucket URL (optional)
 
-  function makeClient(S3Client: any) {
+  function makeClient(S3Client: typeof import('@aws-sdk/client-s3').S3Client) {
     return new S3Client({
       region,
       ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
@@ -77,40 +77,75 @@ function getS3Storage(): StorageAdapter {
     return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
   }
 
+  // Wrap each S3 op so it lands in nf_api_usage. Helps spot R2 outages,
+  // sustained 5xx, or unusually slow object PUTs (large STEP/STL files).
+  async function withMeter<T>(endpoint: string, fn: () => Promise<T>): Promise<T> {
+    const t0 = Date.now();
+    let statusCode = 200;
+    let errorMessage: string | undefined;
+    try {
+      return await fn();
+    } catch (err) {
+      statusCode = 0;
+      errorMessage = (err as Error).message;
+      throw err;
+    } finally {
+      void (async () => {
+        try {
+          const { recordApiUsage } = await import('./api-meter');
+          recordApiUsage({
+            provider: 'r2',
+            endpoint,
+            statusCode,
+            latencyMs: Date.now() - t0,
+            errorMessage,
+          });
+        } catch { /* ignore */ }
+      })();
+    }
+  }
+
   return {
     async upload(buffer, filename, directory) {
-      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-      const id = randomUUID();
-      const key = `${directory}/${id}/${filename}`;
-      await makeClient(S3Client).send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: getMimeType(filename),
-      }));
-      return { key, url: getFileUrl(key), size: buffer.length };
+      return withMeter('putObject', async () => {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const id = randomUUID();
+        const key = `${directory}/${id}/${filename}`;
+        await makeClient(S3Client).send(new PutObjectCommand({
+          Bucket: bucket, Key: key, Body: buffer, ContentType: getMimeType(filename),
+        }));
+        return { key, url: getFileUrl(key), size: buffer.length };
+      });
     },
     async uploadRaw(buffer, key, contentType = 'application/octet-stream') {
-      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-      await makeClient(S3Client).send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: buffer, ContentType: contentType }));
+      await withMeter('putObject', async () => {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+        await makeClient(S3Client).send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: buffer, ContentType: contentType }));
+      });
     },
     async download(key) {
-      const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
-      const res = await makeClient(S3Client).send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-      const chunks: Buffer[] = [];
-      for await (const chunk of (res.Body as AsyncIterable<Uint8Array>)) {
-        chunks.push(Buffer.from(chunk));
-      }
-      return Buffer.concat(chunks);
+      return withMeter('getObject', async () => {
+        const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const res = await makeClient(S3Client).send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+        const chunks: Buffer[] = [];
+        for await (const chunk of (res.Body as AsyncIterable<Uint8Array>)) {
+          chunks.push(Buffer.from(chunk));
+        }
+        return Buffer.concat(chunks);
+      });
     },
     async getSignedUrl(key, expiresInSeconds = 900) {
-      const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
-      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-      return getSignedUrl(makeClient(S3Client), new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
+      return withMeter('getSignedUrl', async () => {
+        const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        return getSignedUrl(makeClient(S3Client), new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
+      });
     },
     async delete(key) {
-      const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
-      await makeClient(S3Client).send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      await withMeter('deleteObject', async () => {
+        const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+        await makeClient(S3Client).send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      });
     },
   };
 }

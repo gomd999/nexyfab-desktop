@@ -25,6 +25,8 @@ export const CadAuditAction = {
   DRAWING_EXPORT: 'cad.drawing.export',
   CAM_TOOLPATH_REQUEST: 'cad.cam.toolpath',
   MESH_EXPORT: 'cad.mesh.export',
+  /** SCAD coding agent multi-turn run (one user prompt = one audit row). */
+  SCAD_AGENT_RUN: 'cad.scad_agent.run',
 } as const;
 
 export function logCadPipelineAudit(opts: {

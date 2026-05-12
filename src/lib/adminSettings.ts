@@ -10,6 +10,20 @@ export interface AdminSettings {
     bodyScripts: string;
     adminEmails: string;
     fbPixelId?: string;
+    /**
+     * Landing-page social proof numbers. Configurable so we can scale them
+     * up as the partner DB grows without code edits. The string literal is
+     * inserted verbatim (so admin can write "30만+", "300K+", "10,000+",
+     * etc.) — the i18n dict reads `landingFactoryCount` for the headline
+     * and `landingFactoryCountQualifier` (e.g. "한·중", "verified") so the
+     * claim stays specific and defensible.
+     *
+     * Per the no-mock policy: until we can defend a higher number with a
+     * data-source citation, the default deliberately understates ("10K+")
+     * rather than the inherited "300K+" headline figure.
+     */
+    landingFactoryCount?: string;
+    landingFactoryCountQualifier?: string;
 }
 
 const SETTINGS_FILE_PATH = path.join(process.cwd(), 'admin-settings.json');
@@ -23,6 +37,10 @@ export const defaultSettings: AdminSettings = {
     bodyScripts: '',
     adminEmails: 'info@Nexyfab.com',
     fbPixelId: '',
+    // Defensible until partner DB ingestion is verified. Operator increases
+    // this in admin-settings.json once the registry counts are confirmed.
+    landingFactoryCount: '10,000+',
+    landingFactoryCountQualifier: 'verified',
 };
 
 let cachedSettings: AdminSettings | null = null;

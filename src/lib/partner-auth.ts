@@ -6,7 +6,7 @@
  * Sessions are stored in nf_partner_sessions (DB).
  */
 import { createHash } from 'crypto';
-import { getAuthUser, type AuthUser } from './auth-middleware';
+import { getAuthUser, type AuthUser as _AuthUser } from './auth-middleware';
 import { getDbAdapter } from './db-adapter';
 
 export interface PartnerInfo {

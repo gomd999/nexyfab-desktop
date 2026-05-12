@@ -1360,3 +1360,293 @@ ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS erp_integration_contract BOOLEAN N
 
 -- ─── v72: 분기 히스토리 롤 idempotency (Asia/Seoul 기준 `YYYY-Qn`) ───────
 ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS last_quarterly_history_roll_period TEXT;
+
+-- ─── v73: M1 — buyer↔partner thread messages ─────────────────────────
+-- Per-RFQ or per-order conversation thread. Replaces email-only handoffs.
+-- Both buyer (rfq.user_id / order.user_id) and the assigned partner
+-- (factories.partner_email / orders.partner_email) read+write.
+CREATE TABLE IF NOT EXISTS nf_thread_messages (
+  id                   TEXT PRIMARY KEY,
+  thread_kind          TEXT NOT NULL,           -- 'rfq' | 'order'
+  thread_id            TEXT NOT NULL,
+  sender_user_id       TEXT,                    -- set when buyer
+  sender_partner_email TEXT,                    -- set when partner
+  sender_type          TEXT NOT NULL,           -- 'buyer' | 'partner' | 'admin' | 'system'
+  body                 TEXT NOT NULL,
+  attachments_json     TEXT,                    -- JSON array of https URLs
+  read_at              BIGINT,
+  created_at           BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_thread_msgs ON nf_thread_messages(thread_kind, thread_id, created_at);
+
+-- ─── v74: M4 — order milestone uploads (partner→buyer visibility) ─────
+-- Partner posts photos+notes per production step. Distinct from
+-- nf_milestones (those are user-defined task list items); this table
+-- captures the partner-side progress feed.
+CREATE TABLE IF NOT EXISTS nf_order_milestones (
+  id                TEXT PRIMARY KEY,
+  order_id          TEXT NOT NULL,
+  step              TEXT NOT NULL,           -- 'production_start'|'qc'|'packing'|'shipped'|'note'
+  note              TEXT,
+  attachments_json  TEXT,                    -- JSON array of https URLs
+  by_partner_email  TEXT NOT NULL,
+  created_at        BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_order_milestones ON nf_order_milestones(order_id, created_at);
+
+-- ─── v75: B7 — RFQ template library ───────────────────────────────────
+-- User-saved RFQ templates for quick re-quoting. System templates ship
+-- in code (lib/nexyfab/rfqSystemTemplates.ts), this stores user's own.
+CREATE TABLE IF NOT EXISTS nf_rfq_templates (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  fields_json   TEXT NOT NULL,             -- JSON RFQ field defaults
+  source_rfq_id TEXT,                      -- when cloned from an existing RFQ
+  created_at    BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_rfq_tpl_user ON nf_rfq_templates(user_id, created_at DESC);
+
+-- ─── v76: B3 — partner multi-dim metric events (formal registration) ──
+-- Existing partner-metrics.ts creates this table lazily; declaring it
+-- here so fresh deploys have it ready before the first event fires.
+CREATE TABLE IF NOT EXISTS nf_partner_metric_events (
+  id                   TEXT PRIMARY KEY,
+  partner_email        TEXT NOT NULL,
+  kind                 TEXT NOT NULL,        -- 'order_delivered_on_time'|'order_delivered_late'|'quote_responded'|'review_received'|'defect_reported'|'defect_resolved'
+  order_id             TEXT,
+  quote_id             TEXT,
+  review_id            TEXT,
+  value                REAL,
+  days_late            REAL,
+  lead_time_days       REAL,
+  response_minutes     REAL,
+  rating               REAL,
+  quality_rating       REAL,
+  communication_rating REAL,
+  deadline_rating      REAL,
+  created_at           BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pme_partner ON nf_partner_metric_events(partner_email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pme_kind    ON nf_partner_metric_events(partner_email, kind);
+
+-- ─── v77: Q — Concierge (managed marketplace) ────────────────────────
+-- Per-RFQ × per-factory contact tracking. Operations team updates the
+-- status as they reach out to factories from the directory; customers
+-- see a blurred-name progress feed so they know their RFQ is being
+-- worked on. Realistic acknowledgement that nf_factories is mostly
+-- public-directory data, not pre-signed partners.
+CREATE TABLE IF NOT EXISTS nf_concierge_status (
+  id              TEXT PRIMARY KEY,
+  rfq_id          TEXT NOT NULL,
+  factory_id      TEXT NOT NULL,
+  status          TEXT NOT NULL,          -- 'recommended'|'contacted'|'responded'|'declined'|'quote_drafting'|'quote_received'|'partner_signup'
+  last_note       TEXT,                   -- ops-only memo (or shown to customer if marked public_note=true)
+  public_note     BOOLEAN NOT NULL DEFAULT FALSE,
+  last_action_at  BIGINT NOT NULL,
+  last_action_by  TEXT,                   -- admin user id
+  created_at      BIGINT NOT NULL,
+  updated_at      BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_concierge_rfq    ON nf_concierge_status(rfq_id, last_action_at DESC);
+CREATE INDEX IF NOT EXISTS idx_concierge_factory ON nf_concierge_status(factory_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_concierge_pair ON nf_concierge_status(rfq_id, factory_id);
+
+-- ─── v78: Q — Partner invite magic links ─────────────────────────────
+-- When a directory factory expresses interest, ops generates an invite
+-- token. The factory clicks the magic link, sees pre-filled info +
+-- partner agreement, sets a password, and becomes an active partner
+-- in <1 minute. Tokens are single-use and time-bound.
+CREATE TABLE IF NOT EXISTS nf_partner_invites (
+  id                  TEXT PRIMARY KEY,
+  token               TEXT NOT NULL UNIQUE,
+  factory_id          TEXT,
+  prefill_email       TEXT,
+  prefill_name        TEXT,                 -- contact person name
+  prefill_company     TEXT,
+  prefill_phone       TEXT,                 -- contact person phone (담당자 번호)
+  prefill_biz_reg_no  TEXT,                 -- 사업자 등록 번호 (10 digits, may include hyphens)
+  rfq_context_id      TEXT,                 -- optional: which RFQ triggered this invite
+  created_by          TEXT,                 -- admin user id
+  created_at          BIGINT NOT NULL,
+  expires_at          BIGINT NOT NULL,
+  accepted_at         BIGINT,
+  accepted_by_email   TEXT,
+  accepted_by_ip      TEXT,
+  -- Final values captured at acceptance (may differ from prefill if user edited).
+  -- These three are REQUIRED at acceptance per partner agreement v1.0.
+  final_biz_reg_no    TEXT,
+  final_phone         TEXT,
+  final_company       TEXT,
+  resulting_user_id   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_partner_invites_token  ON nf_partner_invites(token);
+CREATE INDEX IF NOT EXISTS idx_partner_invites_factory ON nf_partner_invites(factory_id);
+
+-- ─── v79: Q — Partner agreement consent log ──────────────────────────
+-- Tracks which partner accepted which agreement version, when, from
+-- which IP. Required for legal enforceability (anti-poach, escrow
+-- mandate). Versions are stored as files under /legal/, this table
+-- just tracks acceptance signatures.
+CREATE TABLE IF NOT EXISTS nf_partner_agreement_consents (
+  id                  TEXT PRIMARY KEY,
+  user_id             TEXT NOT NULL,
+  partner_email       TEXT,
+  agreement_version   TEXT NOT NULL,      -- e.g. 'v1.0'
+  accepted_at         BIGINT NOT NULL,
+  ip_address          TEXT,
+  user_agent          TEXT,
+  invite_id           TEXT                -- back-ref to nf_partner_invites if signed via magic link
+);
+CREATE INDEX IF NOT EXISTS idx_consents_user    ON nf_partner_agreement_consents(user_id, accepted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_consents_version ON nf_partner_agreement_consents(agreement_version);
+
+-- ─── v80: Q — Escrow transaction ledger (interface stub) ─────────────
+-- Tracks money flowing through NexyFab's account between buyer and
+-- factory. Real PG (Toss/KG/Stripe) integration happens at the
+-- payment gateway layer; this table is the system-of-record for what
+-- was received and what was released. Status transitions happen via
+-- /admin/escrow or PG webhook (when wired).
+--
+-- Mandatory by partner agreement v1.0 — no off-platform settlement
+-- allowed during the 24-month exclusivity window.
+CREATE TABLE IF NOT EXISTS nf_escrow_transactions (
+  id                    TEXT PRIMARY KEY,
+  order_id              TEXT NOT NULL,
+  buyer_user_id         TEXT NOT NULL,
+  partner_email         TEXT NOT NULL,
+  gross_amount_krw      BIGINT NOT NULL,  -- buyer pays this
+  commission_pct        REAL NOT NULL,    -- 8.0 / 7.0 / 5.0 depending on plan
+  commission_amount_krw BIGINT NOT NULL,  -- gross × pct
+  net_amount_krw        BIGINT NOT NULL,  -- gross − commission, paid to factory
+  status                TEXT NOT NULL,    -- 'pending'|'received'|'held'|'released'|'refunded'|'disputed'
+  pg_provider           TEXT,             -- 'toss'|'kg'|'stripe'|'manual'
+  pg_transaction_id     TEXT,
+  received_at           BIGINT,
+  released_at           BIGINT,
+  refunded_at           BIGINT,
+  notes                 TEXT,
+  created_at            BIGINT NOT NULL,
+  updated_at            BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_escrow_order   ON nf_escrow_transactions(order_id);
+CREATE INDEX IF NOT EXISTS idx_escrow_partner ON nf_escrow_transactions(partner_email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_escrow_status  ON nf_escrow_transactions(status);
+
+
+-- ─── v81: Partner Pro grace window ───────────────────────────────────
+-- Partners get temporary Pro tier access while they have an active
+-- deal in flight (from quote submission through escrow release + 30d).
+-- Resolved at auth time: if pro_grace_until > now and stored plan is
+-- free, the user is treated as Pro for tooling access. Stored plan is
+-- never overwritten — paid Pro subscriptions remain authoritative.
+ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS pro_grace_until BIGINT;
+CREATE INDEX IF NOT EXISTS idx_users_pro_grace ON nf_users(pro_grace_until) WHERE pro_grace_until IS NOT NULL;
+
+
+-- ─── v82: Payment idempotency ────────────────────────────────────────
+-- Application-level guard against double-charge race conditions where
+-- two concurrent PATCH /payment calls slip past the SQLite busy_timeout.
+-- The (toss_order_id, payment_key) pair is unique because Toss returns
+-- the same paymentKey for retries — INSERT will fail if we already
+-- committed this exact attempt, so the second confirmer sees the unique
+-- violation and aborts before re-charging.
+CREATE TABLE IF NOT EXISTS nf_payment_attempts (
+  id              TEXT PRIMARY KEY,
+  order_id        TEXT NOT NULL,
+  toss_order_id   TEXT NOT NULL,
+  payment_key     TEXT NOT NULL,
+  amount_krw      BIGINT NOT NULL,
+  status          TEXT NOT NULL,        -- 'succeeded' | 'failed'
+  user_id         TEXT NOT NULL,
+  raw_response    TEXT,
+  created_at      BIGINT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_attempt_pair
+  ON nf_payment_attempts(toss_order_id, payment_key);
+CREATE INDEX IF NOT EXISTS idx_payment_attempt_order
+  ON nf_payment_attempts(order_id, created_at DESC);
+
+
+-- ─── v83: Order → Quote linkage ──────────────────────────────────────
+-- nf_orders previously only stored rfq_id. The escrow ledger needs to
+-- find the contract → commission_rate, which is keyed by quote_id, so
+-- without this column we have to traverse rfq → quotes → contract (3
+-- hops, fragile if multiple quotes exist for one RFQ).
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS quote_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_orders_quote_id ON nf_orders(quote_id);
+
+
+-- ─── v84: API usage telemetry ────────────────────────────────────────
+-- Granular log of every external API call so the admin console can plot
+-- cost / latency / error rate per provider. Replaces the scattered
+-- aiMeter / funnel-event / Sentry data with a single queryable table.
+--
+-- High write volume — keep rows lean (no full request/response bodies).
+-- Aggregate queries should hit the indexed (provider, called_at) range.
+CREATE TABLE IF NOT EXISTS nf_api_usage (
+  id              TEXT PRIMARY KEY,
+  provider        TEXT NOT NULL,        -- 'deepseek' | 'anthropic' | 'openai' | 'gemini' | 'toss' | 'resend' | 'r2' | ...
+  endpoint        TEXT,                 -- e.g. 'chat.completions' | 'payments/confirm'
+  feature         TEXT,                 -- e.g. 'shape-chat' | 'scad-agent' | 'rfq-writer'
+  status_code     INTEGER,              -- HTTP status; 0 = network/exception
+  latency_ms      INTEGER NOT NULL,
+  tokens_in       INTEGER,              -- AI providers only
+  tokens_out      INTEGER,              -- AI providers only
+  cost_usd        REAL,                 -- computed at call time
+  user_id         TEXT,                 -- nf_users.id when known
+  error_message   TEXT,                 -- truncated to 500 chars
+  called_at       BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_api_usage_provider_time
+  ON nf_api_usage(provider, called_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_usage_feature_time
+  ON nf_api_usage(feature, called_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_usage_user_time
+  ON nf_api_usage(user_id, called_at DESC) WHERE user_id IS NOT NULL;
+
+-- ─── v85: Admin runtime settings ─────────────────────────────────────
+-- Hot-swappable config that would otherwise need a redeploy to change:
+-- API keys (encrypted), feature flag overrides, budget thresholds, etc.
+-- Reads are cached in-process for 30s; writes invalidate the cache.
+--
+-- Encryption: value_encrypted uses AES-256-GCM with NEXYFAB_SECRET_KEY
+-- as the master key. The value_plain column holds non-secret config
+-- (booleans, thresholds) where encryption would be ceremony.
+CREATE TABLE IF NOT EXISTS nf_admin_settings (
+  key             TEXT PRIMARY KEY,
+  value_plain     TEXT,                 -- non-secret value
+  value_encrypted TEXT,                 -- secret value (AES-GCM, base64)
+  scope           TEXT NOT NULL,        -- 'api_key' | 'feature_flag' | 'budget' | 'config'
+  description     TEXT,
+  updated_by      TEXT,                 -- nf_users.id of last editor
+  updated_at      BIGINT NOT NULL,
+  created_at      BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_settings_scope ON nf_admin_settings(scope);
+
+-- ─── v86: Admin audit log ────────────────────────────────────────────
+-- Immutable record of every admin action that mutates state — secret
+-- rotation, feature flag toggles, escrow overrides, anti-poach verdicts.
+-- Required for incident forensics and (future) compliance.
+CREATE TABLE IF NOT EXISTS nf_admin_audit (
+  id              TEXT PRIMARY KEY,
+  admin_user_id   TEXT NOT NULL,
+  action          TEXT NOT NULL,        -- e.g. 'setting.rotate' | 'feature_flag.toggle'
+  target          TEXT,                 -- key/id of mutated entity
+  old_value_hash  TEXT,                 -- sha256 of prior value (no leaks)
+  new_value_hash  TEXT,                 -- sha256 of new value
+  metadata        TEXT,                 -- additional context, JSON
+  ip_address      TEXT,
+  user_agent      TEXT,
+  created_at      BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_user_time
+  ON nf_admin_audit(admin_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_action_time
+  ON nf_admin_audit(action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_target
+  ON nf_admin_audit(target, created_at DESC) WHERE target IS NOT NULL;
+
+-- ─── v87: RFQ optional CAE hint snapshot (client self-report, not verified) ──
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS analysis_summary TEXT;

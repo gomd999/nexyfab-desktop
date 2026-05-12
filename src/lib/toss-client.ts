@@ -23,21 +23,45 @@ async function tossFetch<T>(
   path: string,
   body?: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch(`${TOSS_BASE}${path}`, {
-    method,
-    headers: {
-      Authorization:  getAuthHeader(),
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(15_000),
-  });
-  const json = await res.json() as T;
-  if (!res.ok) {
-    const e = json as { code?: string; message?: string };
-    throw new Error(`[Toss] ${method} ${path} → ${res.status}: ${e.message ?? JSON.stringify(json)}`);
+  const t0 = Date.now();
+  let statusCode = 0;
+  let errorMessage: string | undefined;
+  try {
+    const res = await fetch(`${TOSS_BASE}${path}`, {
+      method,
+      headers: {
+        Authorization:  getAuthHeader(),
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15_000),
+    });
+    statusCode = res.status;
+    const json = await res.json() as T;
+    if (!res.ok) {
+      const e = json as { code?: string; message?: string };
+      errorMessage = `${e.message ?? JSON.stringify(json)}`;
+      throw new Error(`[Toss] ${method} ${path} → ${res.status}: ${errorMessage}`);
+    }
+    return json;
+  } catch (err) {
+    if (!errorMessage) errorMessage = (err as Error).message;
+    throw err;
+  } finally {
+    // Fire-and-forget — don't let metering break payment confirms.
+    void (async () => {
+      try {
+        const { recordApiUsage } = await import('./api-meter');
+        recordApiUsage({
+          provider: 'toss',
+          endpoint: `${method} ${path}`,
+          statusCode,
+          latencyMs: Date.now() - t0,
+          errorMessage,
+        });
+      } catch { /* ignore */ }
+    })();
   }
-  return json;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

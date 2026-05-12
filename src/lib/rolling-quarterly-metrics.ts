@@ -35,7 +35,8 @@ export async function updateRollingQuarterlyOrderKrw(opts: {
          WHERE o.user_id = nf_users.id
            AND o.created_at >= ?
            AND o.status IN ('delivered', 'completed')
-      ), 0)`,
+      ), 0)
+     WHERE id <> 'demo-user'`,
     since,
   );
 

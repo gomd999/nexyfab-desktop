@@ -94,3 +94,23 @@ export async function verifyAdmin(req: NextRequest): Promise<boolean> {
 
   return false;
 }
+
+/**
+ * Strict super-admin gate. Used for actions that mutate platform secrets
+ * (API key rotation, encryption key changes) — verifyAdmin's three paths
+ * include shared-secret headers and signed cookies that any operator can
+ * obtain. This one requires the actual nf_users.role = 'super_admin'.
+ *
+ * Returns the authenticated super-admin user on success, null otherwise.
+ */
+export async function verifySuperAdmin(req: NextRequest): Promise<{
+  userId: string; email: string;
+} | null> {
+  try {
+    const authUser = await getAuthUser(req);
+    if (authUser?.globalRole === 'super_admin') {
+      return { userId: authUser.userId, email: authUser.email };
+    }
+  } catch { /* not authenticated */ }
+  return null;
+}
