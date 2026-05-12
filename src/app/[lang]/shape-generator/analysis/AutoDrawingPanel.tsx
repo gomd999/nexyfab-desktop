@@ -8,15 +8,18 @@ import {
   type DrawingConfig,
   type DrawingResult,
   type DrawingLine,
-  type DrawingText,
-  type ToleranceSpec,
-  type RoughnessSpec,
+  type DrawingText as _DrawingText,
+  type ToleranceSpec as _ToleranceSpec,
+  type RoughnessSpec as _RoughnessSpec,
   computeDrawingGeometryFingerprint,
   generateDrawing,
 } from './autoDrawing';
 import { DRAWING_TITLE_REVISION_LABEL, exportDrawingPDF, exportDrawingDXF } from './drawingExport';
 import { bumpDrawingRevision } from './drawingRevisionPolicy';
 import { reportInfo } from '../lib/telemetry';
+import { autoExplodedDrawing } from '../assembly/autoExplodedDrawing';
+import AutoExplodedSVG from '../assembly/AutoExplodedSVG';
+import { buildDetailView, buildSectionView } from './drawingViewExtras';
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
@@ -198,6 +201,16 @@ interface AutoDrawingPanelProps {
   partName: string;
   material: string;
   onClose: () => void;
+  /**
+   * Optional assembly snapshot — when present, the panel offers an
+   * "Exploded View" tab that renders BOM-numbered balloons over the
+   * exploded part centres (F8 / G8). When undefined, the tab is hidden.
+   */
+  explodedParts?: Array<{
+    id: string;
+    name: string;
+    worldCenter: [number, number, number];
+  }>;
 }
 
 /* ─── View checkboxes ────────────────────────────────────────────────────── */
@@ -234,6 +247,7 @@ export default function AutoDrawingPanel({
   partName,
   material,
   onClose,
+  explodedParts,
 }: AutoDrawingPanelProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
@@ -266,6 +280,20 @@ export default function AutoDrawingPanel({
   const [drawing, setDrawing] = useState<DrawingResult | null>(null);
   /** `computeDrawingGeometryFingerprint` at last successful Generate — mismatch ⇒ stale preview */
   const [fpAtLastGenerate, setFpAtLastGenerate] = useState<string | null>(null);
+
+  // K2/K3 — detail + section view specs. Keep them simple: each entry has a
+  // unique label letter (A, B, C, …). User adds via the toolbar buttons; the
+  // helper functions `buildDetailView` / `buildSectionView` are called on
+  // every render from the latest `drawing.views`.
+  const [detailSpecs, setDetailSpecs] = useState<Array<{
+    label: string; centerX: number; centerY: number; radius: number;
+    magnification: number; placeX: number; placeY: number; sourceViewIdx: number;
+  }>>([]);
+  const [sectionSpecs, setSectionSpecs] = useState<Array<{
+    label: string; x1: number; y1: number; x2: number; y2: number;
+    placeX: number; placeY: number; width: number; height: number;
+    sourceViewIdx: number;
+  }>>([]);
 
   const toggleView = useCallback((v: ProjectionView) => {
     setSelectedViews((prev) => {
@@ -846,9 +874,204 @@ export default function AutoDrawingPanel({
                 {DRAWING_TITLE_REVISION_LABEL}: {drawing.titleBlock.revision}
               </text>
             </g>
+
+            {/* K2 — Detail views. Render the focal-circle marker on the
+                source view + the magnified view box at placeX/placeY. */}
+            {detailSpecs.map((spec, di) => {
+              const sourceView = drawing.views[spec.sourceViewIdx];
+              if (!sourceView) return null;
+              const result = buildDetailView(sourceView.lines, spec);
+              return (
+                <g key={`detail-${di}`}>
+                  {/* Marker on source view */}
+                  <g transform={`translate(${sourceView.position.x}, ${sourceView.position.y})`}>
+                    <circle
+                      cx={result.marker.cx}
+                      cy={sourceView.height - result.marker.cy}
+                      r={result.marker.r}
+                      fill="none" stroke="#cc0000" strokeWidth={0.4}
+                      strokeDasharray="2 1"
+                    />
+                    <text
+                      x={result.marker.cx + result.marker.r + 1}
+                      y={sourceView.height - result.marker.cy}
+                      fontSize={3} fill="#cc0000" fontWeight={700}
+                    >{result.marker.label}</text>
+                  </g>
+                  {/* Detail view box */}
+                  <rect
+                    x={result.bounds.x} y={result.bounds.y}
+                    width={result.bounds.w} height={result.bounds.h}
+                    fill="none" stroke="#000" strokeWidth={0.3}
+                  />
+                  <text
+                    x={result.bounds.x + result.bounds.w / 2}
+                    y={result.bounds.y - 1}
+                    fontSize={2.5} fill="#555" textAnchor="middle"
+                  >{result.caption}</text>
+                  {/* Detail-projected lines */}
+                  {result.lines.map((line, li) => (
+                    <line
+                      key={li}
+                      x1={line.x1}
+                      y1={line.y1}
+                      x2={line.x2}
+                      y2={line.y2}
+                      {...lineStrokeProps(line.type)}
+                    />
+                  ))}
+                </g>
+              );
+            })}
+
+            {/* K3 — Section views. Cut line on source + hatched section box. */}
+            {sectionSpecs.map((spec, si) => {
+              const sourceView = drawing.views[spec.sourceViewIdx];
+              if (!sourceView) return null;
+              const result = buildSectionView(spec);
+              return (
+                <g key={`section-${si}`}>
+                  {/* Cut line on source view */}
+                  <g transform={`translate(${sourceView.position.x}, ${sourceView.position.y})`}>
+                    <line
+                      x1={result.cutLine.x1} y1={sourceView.height - result.cutLine.y1}
+                      x2={result.cutLine.x2} y2={sourceView.height - result.cutLine.y2}
+                      stroke="#cc0000" strokeWidth={0.4} strokeDasharray="4 1 1 1"
+                    />
+                    <text
+                      x={result.cutLine.x1 - 2}
+                      y={sourceView.height - result.cutLine.y1}
+                      fontSize={3} fill="#cc0000" fontWeight={700}
+                    >{result.cutLine.label}</text>
+                    <text
+                      x={result.cutLine.x2 + 1}
+                      y={sourceView.height - result.cutLine.y2}
+                      fontSize={3} fill="#cc0000" fontWeight={700}
+                    >{result.cutLine.label}</text>
+                  </g>
+                  {/* Section view box outline */}
+                  <rect
+                    x={result.bounds.x} y={result.bounds.y}
+                    width={result.bounds.w} height={result.bounds.h}
+                    fill="#fff" stroke="#000" strokeWidth={0.3}
+                  />
+                  {/* Hatching */}
+                  {result.hatch.map((line, li) => (
+                    <line
+                      key={li}
+                      x1={line.x1} y1={line.y1}
+                      x2={line.x2} y2={line.y2}
+                      stroke="#cc0000" strokeWidth={0.15}
+                    />
+                  ))}
+                  <text
+                    x={result.bounds.x + result.bounds.w / 2}
+                    y={result.bounds.y - 1}
+                    fontSize={2.5} fill="#555" textAnchor="middle"
+                  >{result.caption}</text>
+                </g>
+              );
+            })}
           </svg>
         </div>
       )}
+
+      {/* K2/K3 — quick-add buttons for detail and section views. Specs use
+          sensible placeholder positions; the user can tweak by re-clicking
+          to remove the last entry. A future iteration will add inline
+          editing of focal point / cut line. */}
+      {drawing && (
+        <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid #21262d' }}>
+          <button
+            onClick={() => {
+              const idx = detailSpecs.length;
+              const nextLabel = String.fromCharCode(65 + idx); // A, B, C...
+              const sourceView = drawing.views[0];
+              if (!sourceView) return;
+              setDetailSpecs(prev => [...prev, {
+                label: nextLabel,
+                centerX: sourceView.width / 2,
+                centerY: sourceView.height / 2,
+                radius: Math.min(sourceView.width, sourceView.height) / 6,
+                magnification: 2,
+                placeX: drawing.paperWidth - 60,
+                placeY: 30 + idx * 50,
+                sourceViewIdx: 0,
+              }]);
+            }}
+            style={{
+              padding: '4px 10px', borderRadius: 4,
+              border: '1px solid #388bfd', background: '#388bfd22',
+              color: '#388bfd', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            }}
+          >+ Detail View</button>
+          <button
+            onClick={() => {
+              const idx = sectionSpecs.length;
+              const nextLabel = String.fromCharCode(65 + idx);
+              const sourceView = drawing.views[0];
+              if (!sourceView) return;
+              setSectionSpecs(prev => [...prev, {
+                label: nextLabel,
+                x1: 0,
+                y1: sourceView.height / 2,
+                x2: sourceView.width,
+                y2: sourceView.height / 2,
+                placeX: drawing.paperWidth - 100,
+                placeY: drawing.paperHeight / 2 + idx * 60,
+                width: 80,
+                height: 50,
+                sourceViewIdx: 0,
+              }]);
+            }}
+            style={{
+              padding: '4px 10px', borderRadius: 4,
+              border: '1px solid #d29922', background: '#d2992222',
+              color: '#d29922', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            }}
+          >+ Section View</button>
+          {(detailSpecs.length > 0 || sectionSpecs.length > 0) && (
+            <button
+              onClick={() => { setDetailSpecs([]); setSectionSpecs([]); }}
+              style={{
+                padding: '4px 10px', borderRadius: 4,
+                border: '1px solid #30363d', background: 'transparent',
+                color: '#8b949e', fontSize: 11, cursor: 'pointer',
+              }}
+            >Clear extras</button>
+          )}
+        </div>
+      )}
+
+      {/* G8 — Exploded view section. Renders BOM-numbered balloons over the
+          assembly's projected centres so the panel can double as an
+          assembly-instruction sheet. Only shown when the host passes
+          explodedParts. */}
+      {explodedParts && explodedParts.length > 0 && (
+        <ExplodedViewSection parts={explodedParts} />
+      )}
+    </div>
+  );
+}
+
+/* ─── Exploded view sub-section (G8) ─────────────────────────────────────── */
+
+function ExplodedViewSection({
+  parts,
+}: {
+  parts: NonNullable<AutoDrawingPanelProps['explodedParts']>;
+}) {
+  const layout = useMemo(
+    () => autoExplodedDrawing(parts, { balloonRadius: 6, balloonSpacing: 18 }),
+    [parts],
+  );
+
+  return (
+    <div style={{ marginTop: 16, padding: 12, background: '#0d1117', borderRadius: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9', marginBottom: 8 }}>
+        🎯 Exploded View ({parts.length} parts)
+      </div>
+      <AutoExplodedSVG layout={layout} width={760} height={420} />
     </div>
   );
 }

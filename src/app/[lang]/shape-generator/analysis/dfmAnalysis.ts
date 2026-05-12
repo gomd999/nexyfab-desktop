@@ -13,6 +13,22 @@ export interface DFMIssue {
   suggestion: string;
   faceIndices?: number[];
   location?: [number, number, number];
+  /**
+   * Optional pointer to the feature in the design tree responsible for this
+   * issue. Populated only when face→feature provenance is available
+   * (planned: pipelineManager will tag faces with their originating featureId
+   * during apply). When set, clicking the issue in DFMPanel highlights the
+   * feature in FeatureTree via sceneStore.highlightedFeatureId.
+   */
+  targetFeatureId?: string;
+  /**
+   * Confidence in the heuristic that produced this issue (0–1).
+   * Geometric checks (draft angle, sharp corner) score high; sampling-based
+   * checks (thin wall on tessellated mesh) score lower. The UI shows this
+   * to the user so they can judge how seriously to take each warning.
+   * Auto-populated by `assignConfidence` when omitted.
+   */
+  confidence?: number;
 }
 
 export interface DFMResult {
@@ -268,7 +284,7 @@ function analyzeCNCMilling(
       // dihedral angle between faces: if normals point inward with sharp angle
       if (dot < -0.5 && dot > -1.0) {
         // This is an internal concave corner
-        const cross = new THREE.Vector3().crossVectors(info.normals[0], info.normals[1]);
+        const _cross = new THREE.Vector3().crossVectors(info.normals[0], info.normals[1]);
         const dihedralAngle = Math.acos(Math.max(-1, Math.min(1, dot))) * RAD2DEG;
         if (dihedralAngle > 120) {
           info.faces.forEach(f => sharpCornerFaces.add(f));
@@ -330,7 +346,7 @@ function analyzeCNCTurning(
   tris: TriData[],
   _edgeMap: Map<string, EdgeInfo>,
   dims: THREE.Vector3,
-  opts: Required<DFMOptions>,
+  _opts: Required<DFMOptions>,
   _nonIndexed: THREE.BufferGeometry,
 ): DFMIssue[] {
   const issues: DFMIssue[] = [];
@@ -883,6 +899,49 @@ function difficultyFromScore(score: number): DFMResult['estimatedDifficulty'] {
   return 'infeasible';
 }
 
+/**
+ * Per-issue-type heuristic confidence (Q7).
+ *
+ * - High (≥0.85): purely geometric, deterministic checks.
+ * - Medium (0.6–0.8): rely on triangle sampling / mesh quality.
+ * - Low (<0.6): aggregate estimates (e.g. support volume) where mesh
+ *   tessellation density meaningfully changes the result.
+ *
+ * Customers see this as a label so they know which issues need a human
+ * review pass. Lower numbers don't mean "wrong" — they mean "rerun on
+ * higher-resolution mesh or B-rep before quoting".
+ */
+const ISSUE_CONFIDENCE: Record<DFMIssue['type'], number> = {
+  draft_angle:    0.92,
+  sharp_corner:   0.88,
+  uniform_wall:   0.85,
+  aspect_ratio:   0.85,
+  undercut:       0.82,
+  thin_wall:      0.72,
+  deep_pocket:    0.7,
+  tool_access:    0.7,
+  overhang:       0.7,
+  bridge:         0.65,
+  support_volume: 0.55,
+};
+
+function assignConfidence(issue: DFMIssue): DFMIssue {
+  if (typeof issue.confidence === 'number') return issue;
+  return { ...issue, confidence: ISSUE_CONFIDENCE[issue.type] ?? 0.7 };
+}
+
+/**
+ * Aggregate confidence for a DFM result. Higher when issues are
+ * individually well-determined; lower when many low-confidence flags
+ * stack up. Returned as 0–1.
+ */
+export function aggregateDfmConfidence(issues: DFMIssue[]): number {
+  if (issues.length === 0) return 1.0; // no flags = full confidence
+  let sum = 0;
+  for (const i of issues) sum += i.confidence ?? ISSUE_CONFIDENCE[i.type] ?? 0.7;
+  return sum / issues.length;
+}
+
 /* ─── Main analysis function ─────────────────────────────────────────────── */
 
 export function analyzeDFM(
@@ -916,14 +975,25 @@ export function analyzeDFM(
     '3d_printing': analyze3DPrinting,
   };
 
+  // B1 — face provenance: pipelineManager tags each output geometry with the
+  // most-recently-applied feature id. Surface that id on every DFMIssue so
+  // FeatureTree can highlight the responsible feature when the user clicks
+  // an issue. Coarse — every issue points to the same (last) feature — but
+  // a deterministic improvement over today's `undefined` field.
+  const lastFeatureId = (geometry.userData?.lastFeatureId as string | undefined) ?? undefined;
+
   return processes.map(process => {
     const analyze = analyzerMap[process];
-    const issues = analyze(tris, edgeMap, dims, opts, nonIndexed);
-    const score = computeScore(issues);
+    const rawIssues = analyze(tris, edgeMap, dims, opts, nonIndexed);
+    const taggedIssues = (lastFeatureId
+      ? rawIssues.map(i => (i.targetFeatureId ? i : { ...i, targetFeatureId: lastFeatureId }))
+      : rawIssues
+    ).map(assignConfidence);
+    const score = computeScore(taggedIssues);
     return {
       process,
       score,
-      issues,
+      issues: taggedIssues,
       feasible: score >= 25,
       estimatedDifficulty: difficultyFromScore(score),
     };

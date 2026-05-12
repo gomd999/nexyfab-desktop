@@ -4,6 +4,13 @@
  *
  * Security: runs inside new Function() with only the jscad namespace exposed.
  * No DOM / window / fetch / require available inside the sandbox.
+ *
+ * DoS mitigations (since main-thread sandbox cannot be terminated):
+ *   - MAX_CODE_LENGTH: rejects huge AI responses outright
+ *   - MAX_TRIANGLES: caps mesh size before allocating Float32Array
+ *   - Static scan: rejects obvious infinite-loop / huge-allocation patterns
+ *   - Deadline-aware Math proxy: throws once wall-clock budget is exceeded
+ *     (geometry math always touches Math.sin/cos/sqrt/PI, so this trips fast)
  */
 
 import * as THREE from 'three';
@@ -15,6 +22,22 @@ import * as expansions from '@jscad/modeling/src/operations/expansions';
 import * as hulls from '@jscad/modeling/src/operations/hulls';
 import * as measurements from '@jscad/modeling/src/measurements';
 import { geom3 } from '@jscad/modeling/src/geometries';
+import type Geom3 from '@jscad/modeling/src/geometries/geom3/type';
+import type Poly3 from '@jscad/modeling/src/geometries/poly3/type';
+import type Vec3 from '@jscad/modeling/src/maths/vec3/type';
+
+const MAX_CODE_LENGTH = 32_000;        // ~32 KB AI-generated code
+const MAX_TRIANGLES = 1_000_000;       // 1 M tris ≈ 36 MB Float32 buffers
+const DEFAULT_TIMEOUT_MS = 10_000;     // soft wall-clock budget
+
+// Patterns that almost always indicate hostile or runaway code.
+const DOS_PATTERNS: RegExp[] = [
+  /\bwhile\s*\(\s*(true|1)\s*\)/i,        // while(true)
+  /\bfor\s*\(\s*;;\s*\)/,                 // for(;;)
+  /new\s+Array\s*\(\s*\d{7,}/,            // new Array(10_000_000+)
+  /\.fill\s*\(\s*[^)]*\)\s*\.fill/,       // chained fill bombs
+  /Array\s*\.\s*from\s*\(\s*\{\s*length\s*:\s*\d{7,}/, // Array.from({length: 1e7})
+];
 
 const JSCAD_SANDBOX = {
   primitives,
@@ -24,7 +47,6 @@ const JSCAD_SANDBOX = {
   expansions,
   hulls,
   measurements,
-  Math,
 };
 
 export interface JscadRunResult {
@@ -33,34 +55,87 @@ export interface JscadRunResult {
   triCount: number;
 }
 
-export function runJscadCode(code: string): JscadRunResult {
+export interface JscadRunOptions {
+  timeoutMs?: number;
+}
+
+/** Builds a Math proxy that throws once `deadline` is exceeded. */
+function makeDeadlineMath(deadline: number): typeof Math {
+  const handler: ProxyHandler<typeof Math> = {
+    get(target, prop, receiver) {
+      if (Date.now() > deadline) {
+        throw new Error('JSCAD execution timed out (>10s)');
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  };
+  return new Proxy(Math, handler);
+}
+
+export function runJscadCode(code: string, options: JscadRunOptions = {}): JscadRunResult {
   const warnings: string[] = [];
 
-  // Execute code in isolated sandbox
-  let solid: any;
-  try {
-     
-    const fn = new Function('jscad', 'Math', `"use strict";\n${code}\nreturn main();`);
-    solid = fn(JSCAD_SANDBOX, Math);
-  } catch (e: any) {
-    throw new Error(`코드 실행 오류: ${e?.message ?? e}`);
+  if (typeof code !== 'string' || code.length === 0) {
+    throw new Error('빈 코드입니다.');
+  }
+  if (code.length > MAX_CODE_LENGTH) {
+    throw new Error(`코드가 너무 깁니다 (${code.length} > ${MAX_CODE_LENGTH} bytes).`);
+  }
+  for (const pat of DOS_PATTERNS) {
+    if (pat.test(code)) {
+      throw new Error(`거부된 패턴: ${pat.source}`);
+    }
   }
 
-  if (!solid || typeof solid !== 'object') {
+  const timeoutMs = Math.max(1000, Math.min(60_000, options.timeoutMs ?? DEFAULT_TIMEOUT_MS));
+  const deadline = Date.now() + timeoutMs;
+  const startedAt = Date.now();
+  const guardedMath = makeDeadlineMath(deadline);
+
+  // Execute code in isolated sandbox
+  let solid: unknown;
+  try {
+    const fn = new Function('jscad', 'Math', `"use strict";\n${code}\nreturn main();`);
+    solid = fn(JSCAD_SANDBOX, guardedMath);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`코드 실행 오류: ${msg}`);
+  }
+
+  if (Date.now() > deadline) {
+    throw new Error('JSCAD execution timed out (>10s)');
+  }
+
+  if (solid == null || typeof solid !== 'object') {
+    throw new Error('main() 이 솔리드를 반환하지 않았습니다.');
+  }
+  let normalized: Geom3 | Geom3[];
+  if (Array.isArray(solid)) {
+    if (solid.length === 0 || !solid.every((x) => geom3.isA(x))) {
+      throw new Error('main() 이 솔리드를 반환하지 않았습니다.');
+    }
+    normalized = solid as Geom3[];
+  } else if (geom3.isA(solid)) {
+    normalized = solid;
+  } else {
     throw new Error('main() 이 솔리드를 반환하지 않았습니다.');
   }
 
-  const geometry = jscadSolidToThree(solid, warnings);
+  const geometry = jscadSolidToThree(normalized, warnings);
+  const elapsed = Date.now() - startedAt;
+  if (elapsed > timeoutMs) {
+    warnings.push(`실행 시간 초과 경고: ${elapsed}ms`);
+  }
   return { geometry, warnings, triCount: geometry.attributes.position.count / 3 };
 }
 
-function jscadSolidToThree(solid: any, warnings: string[]): THREE.BufferGeometry {
+function jscadSolidToThree(solid: Geom3 | Geom3[], warnings: string[]): THREE.BufferGeometry {
   // Handle array of solids (union result)
-  const solids: any[] = Array.isArray(solid) ? solid : [solid];
+  const solids: Geom3[] = Array.isArray(solid) ? solid : [solid];
 
   // geom3.toPolygons() correctly applies the deferred transform matrix
   // Direct solid.polygons access SKIPS the transform — shapes would render at wrong position/orientation
-  const allPolygons: any[] = [];
+  const allPolygons: Poly3[] = [];
   for (const s of solids) {
     if (!s || typeof s !== 'object') continue;
     try {
@@ -83,13 +158,17 @@ function jscadSolidToThree(solid: any, warnings: string[]): THREE.BufferGeometry
     if (n >= 3) triCount += n - 2;
   }
 
+  if (triCount > MAX_TRIANGLES) {
+    throw new Error(`삼각형 수 한도 초과: ${triCount} > ${MAX_TRIANGLES}`);
+  }
+
   // Pre-allocate typed arrays — much faster than dynamic push()
   const positions = new Float32Array(triCount * 9);
   const normals = new Float32Array(triCount * 9);
   let idx = 0;
 
   for (const poly of allPolygons) {
-    const verts: any[] = poly.vertices;
+    const verts: Vec3[] = poly.vertices;
     if (!verts || verts.length < 3) continue;
 
     // Fan triangulate convex polygon
@@ -129,8 +208,6 @@ function jscadSolidToThree(solid: any, warnings: string[]): THREE.BufferGeometry
   return geo;
 }
 
-function extractVec3(v: any): [number, number, number] {
-  if (Array.isArray(v)) return [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0];
-  if (v && typeof v === 'object') return [v.x ?? v[0] ?? 0, v.y ?? v[1] ?? 0, v.z ?? v[2] ?? 0];
-  return [0, 0, 0];
+function extractVec3(v: Vec3): [number, number, number] {
+  return [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0];
 }

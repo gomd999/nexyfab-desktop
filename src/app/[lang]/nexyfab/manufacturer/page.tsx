@@ -89,7 +89,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
     } finally {
       setActionLoading(null);
     }
-  }, [loadOrders, toast]);
+  }, [loadOrders, toast, isKo]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const totalOrders = orders.length;

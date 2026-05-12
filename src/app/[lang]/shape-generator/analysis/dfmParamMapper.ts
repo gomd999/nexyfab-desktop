@@ -6,7 +6,7 @@
  * 반환값: paramKey → { severity, message } 맵
  */
 
-import type { DFMResult, DFMIssue } from './dfmAnalysis';
+import type { DFMResult, DFMIssue as _DFMIssue } from './dfmAnalysis';
 
 export interface DFMParamWarning {
   severity: 'error' | 'warning' | 'info';

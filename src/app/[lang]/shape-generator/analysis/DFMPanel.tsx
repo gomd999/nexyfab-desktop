@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { DFMResult, ManufacturingProcess, DFMIssue } from './dfmAnalysis';
 import type { DFMExplanation, CostDelta } from './dfmExplainer';
+import { useSceneStore } from '../store/sceneStore';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── i18n dictionary ────────────────────────────────────────────────────── */
 
@@ -484,11 +486,19 @@ const FIX_SUGGESTIONS: Partial<Record<DFMIssue['type'], FixSuggestion>> = {
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 interface DFMPanelProps {
-  results: DFMResult[] | null;
+  /** N3/J5 — when omitted, panel reads useAnalysisStore.dfmResults directly. */
+  results?: DFMResult[] | null;
   onAnalyze: (processes: ManufacturingProcess[], options: { minWallThickness: number; minDraftAngle: number; maxAspectRatio: number }) => void;
   onClose: () => void;
   onHighlightIssue?: (issue: DFMIssue | null) => void;
   onApplyFix?: (issueType: DFMIssue['type'], suggestion: FixSuggestion) => void;
+  /**
+   * K1 — Optional bulk auto-draft fix. When provided AND results contain at
+   * least one `draft_angle` issue, a top-bar "Auto-Fix Draft" button appears
+   * next to Run Analysis. Clicking it appends a draft feature to the design
+   * tree at the recommended angle.
+   */
+  onAutoDraftFix?: () => void;
   /** Optional: jump to & highlight the most-related feature in the FeatureTree. */
   onJumpToFeature?: (issueType: DFMIssue['type']) => void;
   /** AI DFM Explainer — parent fetches (handles freemium gate); returns null if blocked. */
@@ -500,7 +510,10 @@ interface DFMPanelProps {
   processRecommendations?: Array<{ process: ManufacturingProcess; confidence: number; reasons: string[]; emoji: string }>;
 }
 
-export default function DFMPanel({ results, onAnalyze, onClose, onHighlightIssue, onApplyFix, onJumpToFeature, onExplainIssue, onPreviewCostDelta, isKo: _isKo, processRecommendations }: DFMPanelProps) {
+export default function DFMPanel({ results: propResults, onAnalyze, onClose, onHighlightIssue, onApplyFix, onAutoDraftFix, onJumpToFeature, onExplainIssue, onPreviewCostDelta, isKo: _isKo, processRecommendations }: DFMPanelProps) {
+  // N3/J5 fallback — read from store when caller didn't pass.
+  const storeResults = useAnalysisStore(s => s.dfmResults);
+  const results = propResults !== undefined ? propResults : storeResults;
   // `isKo` prop is accepted for backwards compat but lang is resolved from URL
   void _isKo;
   const pathname = usePathname();
@@ -511,6 +524,11 @@ export default function DFMPanel({ results, onAnalyze, onClose, onHighlightIssue
   const lang: Lang = langMap[seg] ?? 'en';
   const t = dict[lang];
   const [activeFixId, setActiveFixId] = useState<string | null>(null);
+  // B1: when an issue has targetFeatureId (set by future face→feature
+  // provenance work in pipelineManager), the existing 🌳 button highlights
+  // that feature in FeatureTree via sceneStore. Until provenance lands the
+  // field is undefined and we fall back to the legacy face-overlay path.
+  const setHighlightedFeatureId = useSceneStore(s => s.setHighlightedFeatureId);
   // AI explainer state — keyed by issue.id
   const [explanations, setExplanations] = useState<Record<string, DFMExplanation>>({});
   const [explainLoading, setExplainLoading] = useState<Record<string, boolean>>({});
@@ -711,6 +729,33 @@ export default function DFMPanel({ results, onAnalyze, onClose, onHighlightIssue
           >
             {t.runAnalysis}
           </button>
+
+          {/* B1 — DFM PDF download. Only visible when there's at least one
+              completed analysis result to report on. */}
+          {results && results.length > 0 && (
+            <PdfExportButton results={results} isKo={_isKo} />
+          )}
+
+          {/* K1 — Auto-Draft Fix bulk button. Only visible when current
+              results contain at least one draft_angle issue. Clicking it
+              appends a draft feature with the recommended angle in one go. */}
+          {onAutoDraftFix && (results ?? []).some(r => r.issues.some(i => i.type === 'draft_angle')) && (
+            <button
+              onClick={onAutoDraftFix}
+              style={{
+                width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 6,
+                border: '1px solid #d29922',
+                background: 'rgba(210, 153, 34, 0.16)',
+                color: '#d29922', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                transition: 'all 0.12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(210, 153, 34, 0.28)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(210, 153, 34, 0.16)'; }}
+              title="Apply 1.5° draft to all flagged faces"
+            >
+              📐 Auto-Fix Draft (1.5°)
+            </button>
+          )}
         </div>
 
         {/* ── Results ── */}
@@ -1049,9 +1094,14 @@ export default function DFMPanel({ results, onAnalyze, onClose, onHighlightIssue
                                           {issue.faceIndices.length} {t.facesAffected}
                                         </span>
                                         <div style={{ display: 'flex', gap: 4 }}>
-                                          {onJumpToFeature && (
+                                          {(onJumpToFeature || issue.targetFeatureId) && (
                                             <button
-                                              onClick={() => onJumpToFeature(issue.type)}
+                                              onClick={() => {
+                                                if (issue.targetFeatureId) {
+                                                  setHighlightedFeatureId(issue.targetFeatureId);
+                                                }
+                                                onJumpToFeature?.(issue.type);
+                                              }}
                                               title={t.jumpToFeature}
                                               style={{
                                                 padding: '2px 8px', borderRadius: 4, border: `1px solid ${C.border}`,
@@ -1125,5 +1175,91 @@ export default function DFMPanel({ results, onAnalyze, onClose, onHighlightIssue
         )}
       </div>
     </div>
+  );
+}
+
+// B1 — PDF export button. Posts the current results to /dfm-pdf and
+// triggers the file download. Self-contained: parent passes `results`
+// + locale; spinner state stays local to avoid plumbing.
+function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolean }) {
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+
+  const onClick = React.useCallback(async () => {
+    if (busy) return;
+    setBusy(true); setErr(null);
+    try {
+      const projectName = (typeof document !== 'undefined' && document.title) || 'NexyFab Project';
+      const res = await fetch('/api/nexyfab/shape-generator/dfm-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectName,
+          generatedAt: new Date().toISOString(),
+          results: results.map(r => ({
+            process: r.process,
+            score: r.score,
+            feasible: r.feasible,
+            estimatedDifficulty: r.estimatedDifficulty,
+            issues: r.issues.map(i => ({
+              process: i.process,
+              type: i.type,
+              severity: i.severity,
+              description: i.description,
+              suggestion: i.suggestion,
+            })),
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dfm-report-${Date.now()}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (e) {
+      setErr((e as Error).message);
+      void import('@/lib/client-error-capture').then(m => m.captureClientError(e, {
+        source: 'dfm-pdf',
+        tags: { action: 'export' },
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, results]);
+
+  return (
+    <>
+      <button
+        onClick={onClick}
+        disabled={busy}
+        style={{
+          width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 6,
+          border: '1px solid #1f6feb',
+          background: busy ? '#1f6feb88' : 'rgba(31,111,235,0.16)',
+          color: '#79c0ff', fontSize: 12, fontWeight: 700,
+          cursor: busy ? 'wait' : 'pointer',
+          transition: 'background 0.12s',
+        }}
+        title={isKo ? 'A4 PDF로 다운로드' : 'Download as A4 PDF'}
+      >
+        {busy ? '⏳ ...' : (isKo ? '📄 PDF 다운로드' : '📄 Download PDF')}
+      </button>
+      {err && (
+        <div style={{
+          marginTop: 4, padding: '4px 8px',
+          fontSize: 10, color: '#ffa198',
+          background: 'rgba(248,81,73,0.12)',
+          border: '1px solid #f85149', borderRadius: 4,
+        }}>
+          {err}
+        </div>
+      )}
+    </>
   );
 }

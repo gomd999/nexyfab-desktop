@@ -117,7 +117,7 @@ export default function AutoSaveIndicator({
   };
   const t = dict[langMap[seg] ?? 'en'];
 
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   // lastSavedAt이 있으면 1초 간격으로 now 업데이트해서 "N초 전" 갱신
   useEffect(() => {

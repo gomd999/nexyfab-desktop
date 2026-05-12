@@ -13,6 +13,7 @@ import {
     MOCK_COMMISSIONS,
     type Project, type ProjectStatus, type CommissionRecord,
 } from '@/lib/mockData';
+import { SHAPE_MAP } from '@/app/[lang]/shape-generator/shapes';
 
 /** Same-origin API: 쿠키 세션을 항상 전송 */
 function credFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -548,9 +549,11 @@ function DashboardPage() {
                 const parsed = JSON.parse(stored);
                 setUser(parsed);
 
-                // Demo / test accounts → inject mock data immediately
-                if (parsed.is_demo || parsed.email?.includes('demo-') ||
-                    ['test@nexysys.com', 'orgadmin@nexysys.com', 'customer@nexyfab.com'].includes(parsed.email)) {
+                // Demo accounts → inject mock data immediately. Trust only
+                // the explicit `is_demo` flag set at session creation; do not
+                // pattern-match emails (a real user with "demo-" in their
+                // address would otherwise leak into the demo UI).
+                if (parsed.is_demo === true) {
                     setProjects(MOCK_PROJECTS);
                     setContracts([
                         { id: 'c1', projectName: 'IoT 모듈 PCB 조립', factoryName: '선진정밀 (주)', contractAmount: 42_000_000, status: 'active', startDate: '2025-02-28', endDate: '2025-05-28' },
@@ -1091,6 +1094,14 @@ function DashboardPage() {
         plateBend: '🔨', gear: '⚙️', fanBlade: '🌀', sprocket: '🔗', pulley: '🎡',
         sphere: '🔮', cone: '🔺', torus: '🍩', wedge: '🔻', sweep: '🔀', loft: '🔄',
     };
+    const designCardIcon = (shapeId: string | undefined) => {
+        if (!shapeId) return '🧊';
+        const hit = SHAPE_ICONS_MAP[shapeId];
+        if (hit) return hit;
+        const cfg = SHAPE_MAP[shapeId];
+        if (cfg?.icon) return cfg.icon;
+        return '🧊';
+    };
     const MATERIAL_LABELS: Record<string, string> = {
         aluminum: '알루미늄', steel: '스틸', stainless: '스테인리스',
         titanium: '티타늄', abs: 'ABS', nylon: '나일론', pla: 'PLA',
@@ -1127,7 +1138,7 @@ function DashboardPage() {
                             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; (e.currentTarget as HTMLElement).style.borderColor = '#f0f0f0'; }}>
                             {/* Shape icon banner */}
                             <Link prefetch href={`/${userLang}/shape-generator?projectId=${d.id}`} style={{ textDecoration: 'none', display: 'block', background: 'linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%)', padding: '28px 0', textAlign: 'center', fontSize: '48px' }}>
-                                {SHAPE_ICONS_MAP[d.shapeId ?? ''] ?? '🧊'}
+                                {designCardIcon(d.shapeId)}
                             </Link>
                             <div style={{ padding: '14px 16px' }}>
                                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#111827', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1210,7 +1221,7 @@ function DashboardPage() {
                                             </div>
                                             <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                                                 {new Date(v.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                {v.shape_id && <span style={{ marginLeft: '6px' }}>{SHAPE_ICONS_MAP[v.shape_id] ?? ''} {v.shape_id}</span>}
+                                                {v.shape_id && <span style={{ marginLeft: '6px' }}>{designCardIcon(v.shape_id)} {v.shape_id}</span>}
                                             </div>
                                         </div>
                                         <button

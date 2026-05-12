@@ -24,11 +24,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [lang, setLang] = useState('en');
-
-  useEffect(() => {
-    setLang(detectErrorLang());
-  }, []);
+  const [lang] = useState(() => detectErrorLang());
 
   useEffect(() => {
     console.error('[GlobalError]', error);

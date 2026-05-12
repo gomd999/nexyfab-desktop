@@ -1,14 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Notification {
   id: string;
   type: string;
   title: string;
-  body: string | null;
-  read: number;
-  created_at: number;
+  /** Legacy DB column */
+  body?: string | null;
+  /** API-mapped copy of body */
+  message?: string;
+  link?: string | null;
+  read: number | boolean;
+  created_at?: number;
+  createdAt?: string;
 }
 
 const TYPE_ICON: Record<string, string> = {
@@ -28,9 +34,21 @@ function timeAgo(ts: number): string {
 }
 
 export default function PartnerNotificationBell({ session }: { session: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+
+  const isUnread = (n: Notification) =>
+    typeof n.read === 'boolean' ? !n.read : n.read === 0;
+
+  const previewText = (n: Notification) => (n.body ?? n.message ?? '').trim();
+
+  const createdMs = (n: Notification) => {
+    if (typeof n.created_at === 'number') return n.created_at;
+    if (n.createdAt) return new Date(n.createdAt).getTime();
+    return Date.now();
+  };
 
   const fetch_ = useCallback(async () => {
     if (!session || session === 'demo') return;
@@ -63,7 +81,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const unread = notifications.filter(n => n.read === 0).length;
+  const unread = notifications.filter(isUnread).length;
 
   const markAllRead = async () => {
     await fetch('/api/partner/notifications', {
@@ -71,7 +89,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
       body: JSON.stringify({ all: true }),
     }).catch(() => {});
-    setNotifications(prev => prev.map(n => ({ ...n, read: 1 })));
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const markOne = async (id: string) => {
@@ -80,7 +98,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
       body: JSON.stringify({ id }),
     }).catch(() => {});
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: 1 } : n));
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
   return (
@@ -133,29 +151,32 @@ export default function PartnerNotificationBell({ session }: { session: string }
             ) : notifications.map(n => (
               <div
                 key={n.id}
-                onClick={() => markOne(n.id)}
+                onClick={() => {
+                  markOne(n.id);
+                  if (n.link) router.push(n.link);
+                }}
                 style={{
                   display: 'flex', gap: 10, padding: '10px 14px',
                   borderBottom: '1px solid #f3f4f6',
-                  background: n.read === 0 ? '#eff6ff' : '#fff',
+                  background: isUnread(n) ? '#eff6ff' : '#fff',
                   cursor: 'pointer', transition: 'background 0.1s',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = n.read === 0 ? '#eff6ff' : '#fff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isUnread(n) ? '#eff6ff' : '#fff'; }}
               >
                 <span style={{ fontSize: 16, flexShrink: 0 }}>{TYPE_ICON[n.type] ?? '🔔'}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: n.read === 0 ? 700 : 400, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: isUnread(n) ? 700 : 400, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {n.title}
                   </p>
-                  {n.body && (
+                  {previewText(n) && (
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {n.body}
+                      {previewText(n)}
                     </p>
                   )}
-                  <span style={{ fontSize: 10, color: '#9ca3af' }}>{timeAgo(n.created_at)}</span>
+                  <span style={{ fontSize: 10, color: '#9ca3af' }}>{timeAgo(createdMs(n))}</span>
                 </div>
-                {n.read === 0 && (
+                {isUnread(n) && (
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: 6 }} />
                 )}
               </div>

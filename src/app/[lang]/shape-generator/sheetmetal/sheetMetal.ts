@@ -173,12 +173,12 @@ export function createSheetMetalBox(
     if (wallH > 0) {
       const wall = new THREE.BoxGeometry(sideWidth, wallH, thickness);
       // The wall starts at the top of the bend arc
-      const wallOffset = bendRadius + thickness;
-      const wallMat = new THREE.Matrix4();
+      const _wallOffset = bendRadius + thickness;
+      const _wallMat = new THREE.Matrix4();
 
       // Position: after the 90-degree bend, the wall goes upward
       // Bend arc ends at y = thickness + bendRadius, and offset outward by bendRadius + thickness
-      const outwardDist = side.axis.startsWith('z')
+      const _outwardDist = side.axis.startsWith('z')
         ? (side.tz < 0 ? -(bendRadius + thickness / 2) : (bendRadius + thickness / 2))
         : (side.tx < 0 ? -(bendRadius + thickness / 2) : (bendRadius + thickness / 2));
 
@@ -289,7 +289,7 @@ export function createBend(
   if (bendAxis === 'z') {
     // After bend, the second segment extends along the bend direction
     seg2.translate(0, arcEndY + thickness / 2, bendPosition + arcEndZ + (remainingLength / 2) * cosA);
-    const rotMat = new THREE.Matrix4().makeRotationX(-angleRad);
+    const _rotMat = new THREE.Matrix4().makeRotationX(-angleRad);
     seg2.applyMatrix4(
       new THREE.Matrix4().makeTranslation(0, arcEndY, bendPosition + arcEndZ),
     );
@@ -373,7 +373,7 @@ export function createFlange(
     const arcEndZ = bendRadius * Math.sin(angleRad);
     flangePlate.translate(0, arcEndY, arcEndZ + flangeLen / 2);
     // Rotate the flange to continue along the bend direction
-    const rotMat = new THREE.Matrix4().makeRotationX(-angleRad);
+    const _rotMat = new THREE.Matrix4().makeRotationX(-angleRad);
     // We keep the simple positioning — the flange extends from the arc end
     parts.push(flangePlate);
   }
@@ -448,23 +448,19 @@ export function createHem(
 
   let hemAngle: number;
   let hemRadius: number;
-  let hemLength: number;
 
   switch (type) {
     case 'closed':
       hemAngle = 180;
       hemRadius = bendRadius;
-      hemLength = bendRadius * 2 + thickness; // fold flat against sheet
       break;
     case 'open':
       hemAngle = 180;
       hemRadius = bendRadius + thickness; // leaves a gap
-      hemLength = bendRadius * 2 + thickness * 2;
       break;
     case 'teardrop':
       hemAngle = 180;
       hemRadius = bendRadius * 1.5; // larger radius for teardrop shape
-      hemLength = bendRadius * 3 + thickness;
       break;
   }
 

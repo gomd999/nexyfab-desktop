@@ -21,7 +21,15 @@ export interface EdgeSelectionInfo {
   partName?: string;                     // 어셈블리 내 파트 식별자 (Optional)
 }
 
-export type ElementSelectionInfo = FaceSelectionInfo | EdgeSelectionInfo;
+export interface MultiSelectionInfo {
+  type: 'multi';
+  faces: FaceSelectionInfo[];
+  totalArea: number;
+  totalTriangleCount: number;
+  allTriangleIndices: number[];
+}
+
+export type ElementSelectionInfo = FaceSelectionInfo | EdgeSelectionInfo | MultiSelectionInfo;
 
 // 법선 벡터 → 사람이 읽기 쉬운 라벨
 export function normalToLabel(n: [number, number, number], isKo = true): string {

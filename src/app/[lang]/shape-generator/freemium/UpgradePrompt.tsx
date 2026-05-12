@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { UserPlan } from '@/hooks/useAuth';
+import { useColorScheme, dialogPalette } from '@/hooks/useColorScheme';
 
 interface UpgradePromptProps {
   open: boolean;
@@ -14,6 +15,10 @@ interface UpgradePromptProps {
   requiredPlan?: UserPlan;
   lang?: string;
   onLogin?: () => void;
+  /** Funnel context — set when modal is opened by a specific gate so we can
+   *  classify upgrade clicks (e.g. paywall_upgrade_clicked from the 2nd-project
+   *  gate vs the photo-real gate). Optional; if absent, no event fires. */
+  funnelContext?: string;
 }
 
 type FeatureItem = { icon: string; plan: string; labels: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', string> };
@@ -88,10 +93,12 @@ const dict = {
 };
 
 export default function UpgradePrompt({
-  open, onClose, feature, featureKo, requiredPlan = 'pro', lang = 'ko', onLogin,
+  open, onClose, feature, featureKo, requiredPlan = 'pro', lang = 'ko', onLogin, funnelContext,
 }: UpgradePromptProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const scheme = useColorScheme();
+  const p = dialogPalette(scheme);
 
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang;
@@ -105,6 +112,22 @@ export default function UpgradePrompt({
 
   const handleUpgrade = async (plan: 'pro' | 'team') => {
     setCheckoutLoading(plan);
+    // Fire paywall_upgrade_clicked funnel event before redirect — fire-and-forget.
+    // Only when this prompt was opened with a funnelContext (caller decided
+    // it's a paywall surface, not just a feature-tease).
+    if (funnelContext) {
+      void fetch('/api/nexyfab/funnel-event', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'paywall_upgrade_clicked',
+          contextType: 'paywall',
+          contextId: funnelContext,
+          metadata: { plan },
+        }),
+      }).catch(() => { /* ignore — must not block checkout redirect */ });
+    }
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
@@ -132,13 +155,15 @@ export default function UpgradePrompt({
       aria-label={t.dialogLabel}
       style={{
         position: 'fixed', inset: 0, zIndex: 9500,
-        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+        background: p.overlay, backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }} onClick={onClose}>
       <div style={{
-        background: '#161b22', border: '1px solid #30363d',
+        background: p.bg, border: `1px solid ${p.border}`,
         borderRadius: 16, padding: '32px 28px', width: 440,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+        boxShadow: scheme === 'light'
+          ? '0 24px 64px rgba(15,23,42,0.18)'
+          : '0 24px 64px rgba(0,0,0,0.6)',
         fontFamily: 'system-ui, sans-serif',
         position: 'relative',
       }} onClick={e => e.stopPropagation()}>
@@ -146,10 +171,10 @@ export default function UpgradePrompt({
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>⚡</div>
-          <h2 style={{ margin: '0 0 6px', fontSize: 18, color: '#e6edf3', fontWeight: 800 }}>
+          <h2 style={{ margin: '0 0 6px', fontSize: 18, color: p.textPrimary, fontWeight: 800 }}>
             {t.heading(featureLabel)}
           </h2>
-          <p style={{ margin: 0, fontSize: 13, color: '#6e7681' }}>
+          <p style={{ margin: 0, fontSize: 13, color: p.textSecondary }}>
             {t.subhead}
           </p>
         </div>
@@ -163,10 +188,10 @@ export default function UpgradePrompt({
             <div key={item.labels.en} style={{
               display: 'flex', alignItems: 'center', gap: 7,
               padding: '8px 10px', borderRadius: 8,
-              background: '#0d1117', border: '1px solid #21262d',
+              background: p.inputBg, border: `1px solid ${p.inputBorder}`,
             }}>
               <span style={{ fontSize: 14 }}>{item.icon}</span>
-              <span style={{ fontSize: 11, color: '#8b949e' }}>
+              <span style={{ fontSize: 11, color: p.textSecondary }}>
                 {item.labels[langKey]}
               </span>
             </div>
@@ -186,8 +211,8 @@ export default function UpgradePrompt({
               onMouseLeave={() => setHoveredPlan(null)}
               style={{
                 flex: 1, padding: '14px 16px', borderRadius: 10,
-                border: `1px solid ${hoveredPlan === item.plan ? item.color : '#30363d'}`,
-                background: hoveredPlan === item.plan ? `${item.color}0d` : '#0d1117',
+                border: `1px solid ${hoveredPlan === item.plan ? item.color : p.border}`,
+                background: hoveredPlan === item.plan ? `${item.color}0d` : p.inputBg,
                 cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center',
                 opacity: checkoutLoading === item.plan ? 0.7 : 1,
               }}
@@ -195,10 +220,10 @@ export default function UpgradePrompt({
               <div style={{ fontSize: 12, fontWeight: 800, color: item.color, marginBottom: 4 }}>
                 {checkoutLoading === item.plan ? '...' : item.label}
               </div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#e6edf3' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: p.textPrimary }}>
                 {isKo ? item.price : isoLang === 'ja' ? item.priceJa : item.priceEn}
               </div>
-              <div style={{ fontSize: 10, color: '#6e7681' }}>
+              <div style={{ fontSize: 10, color: p.textSecondary }}>
                 {item.period}
               </div>
             </div>
@@ -222,8 +247,8 @@ export default function UpgradePrompt({
           {onLogin && (
             <button onClick={onLogin} style={{
               padding: '9px 0', borderRadius: 8,
-              border: '1px solid #30363d', background: 'transparent',
-              color: '#8b949e', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              border: `1px solid ${p.border}`, background: p.buttonSecondaryBg,
+              color: p.buttonSecondaryText, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             }}>
               {t.alreadyPro}
             </button>
@@ -235,7 +260,7 @@ export default function UpgradePrompt({
           aria-label={t.closeAria}
           style={{
             position: 'absolute', top: 12, right: 14,
-            background: 'none', border: 'none', color: '#6e7681',
+            background: 'none', border: 'none', color: p.textSecondary,
             fontSize: 18, cursor: 'pointer',
           }}>✕</button>
       </div>

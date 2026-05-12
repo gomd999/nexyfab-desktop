@@ -149,7 +149,7 @@ function zipStore(files: Array<{ name: string; data: Uint8Array }>): Uint8Array 
 // ─── HTML quote builder (lightweight, for bundle — not for printing) ──────────
 
 function buildQuoteHTML(data: RFQBundleData): string {
-  const { lang, estimates, metrics, materialId, quantity, currency, partName, flatPattern, dfmIssues, companyName, notes } = data;
+  const { lang, estimates, metrics, materialId, quantity, currency, partName, flatPattern: _flatPattern, dfmIssues, companyName, notes } = data;
   function tl(ko: string, en: string) { return lang === 'ko' ? ko : en; }
 
   const bestEstimate = estimates.reduce<CostEstimate | null>((best, e) => {

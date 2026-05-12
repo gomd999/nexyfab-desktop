@@ -35,10 +35,16 @@ export interface NexyFlowQuote {
   approvedBy?: string;
 }
 
+function windowNexyflowApiUrl(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const v = (window as Window & { __NEXYFLOW_API_URL?: unknown }).__NEXYFLOW_API_URL;
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
 function getBaseURL(): string {
   return (
     process.env.NEXT_PUBLIC_NEXYFLOW_API_URL ||
-    (typeof window !== 'undefined' && (window as any).__NEXYFLOW_API_URL) ||
+    windowNexyflowApiUrl() ||
     'https://nexyflow-api.railway.app'
   );
 }

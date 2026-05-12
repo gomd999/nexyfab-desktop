@@ -159,7 +159,7 @@ const DIM_EXT = 6;
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 
 /** Extract triangle edges from BufferGeometry, returning unique edge pairs */
-function extractEdges(geometry: THREE.BufferGeometry): [THREE.Vector3, THREE.Vector3][] {
+function _extractEdges(geometry: THREE.BufferGeometry): [THREE.Vector3, THREE.Vector3][] {
   const pos = geometry.getAttribute('position');
   if (!pos) return [];
   const idx = geometry.getIndex();
@@ -419,7 +419,7 @@ function TitleBlock({
 
   const R1 = h / 5; // row height
   const col1 = 55;  // label column width
-  const col2 = w / 2 - col1; // value column width (left half)
+  const _col2 = w / 2 - col1; // value column width (left half)
   const mid = w / 2;         // midpoint
 
   // General tolerance text
@@ -484,7 +484,7 @@ function TitleBlock({
 }
 
 /** ISO 128 first-angle / third-angle projection symbol */
-function ProjectionSymbol({ x, y, w, h, angle, tt }: {
+function ProjectionSymbol({ x, y, w: _w, h, angle, tt }: {
   x: number; y: number; w: number; h: number;
   angle: 'first' | 'third';
   tt: (typeof dict)[keyof typeof dict];

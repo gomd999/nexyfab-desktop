@@ -35,6 +35,8 @@ const CTX_I18N: Record<string, CL> = {
     tangent: '접선', coincident: '일치', undo: '실행 취소', clearAll: '전체 삭제',
     mate: '정렬(Mate)', mateCoincident: '면 일치', mateCoaxial: '동축', mateDistance: '거리',
     extrudeFace: '돌출 (Extrude)', filletEdge: '필렛 (Fillet)', askAI: 'AI 어시스턴트에게 묻기', isolate: '선택 격리 (Isolate)',
+    hidePart: '파트 숨기기', transparent: '반투명 표시', showAllParts: '모든 파트 표시', resetColors: '색상 초기화',
+    yellow: '노랑', orange: '주황', purple: '보라', white: '흰색',
   },
   en: {
     zoomFit: 'Zoom Fit', zoomSel: 'Zoom Selection', selectAll: 'Select All',
@@ -47,6 +49,8 @@ const CTX_I18N: Record<string, CL> = {
     tangent: 'Tangent', coincident: 'Coincident', undo: 'Undo', clearAll: 'Clear All',
     mate: 'Mate', mateCoincident: 'Coincident Face', mateCoaxial: 'Concentric / Coaxial', mateDistance: 'Distance',
     extrudeFace: 'Extrude Face', filletEdge: 'Fillet Edge', askAI: 'Ask AI Assistant', isolate: 'Isolate',
+    hidePart: 'Hide Part', transparent: 'Make Transparent', showAllParts: 'Show All Parts', resetColors: 'Reset Colors',
+    yellow: 'Yellow', orange: 'Orange', purple: 'Purple', white: 'White',
   },
   ja: {
     zoomFit: '全体表示', zoomSel: '選択を拡大', selectAll: 'すべて選択',
@@ -59,6 +63,8 @@ const CTX_I18N: Record<string, CL> = {
     tangent: '接線', coincident: '一致', undo: '元に戻す', clearAll: 'すべて削除',
     mate: '合致(Mate)', mateCoincident: '面の一致', mateCoaxial: '同軸', mateDistance: '距離',
     extrudeFace: '押し出し (Extrude)', filletEdge: 'フィレット (Fillet)', askAI: 'AIアシスタントに質問', isolate: '分離 (Isolate)',
+    hidePart: 'パーツ非表示', transparent: '半透明表示', showAllParts: 'すべて表示', resetColors: '色リセット',
+    yellow: '黄', orange: 'オレンジ', purple: '紫', white: '白',
   },
   cn: {
     zoomFit: '适应窗口', zoomSel: '缩放到选择', selectAll: '全部选择',
@@ -71,6 +77,8 @@ const CTX_I18N: Record<string, CL> = {
     tangent: '相切', coincident: '重合', undo: '撤销', clearAll: '全部清除',
     mate: '配合(Mate)', mateCoincident: '面重合', mateCoaxial: '同轴', mateDistance: '距离',
     extrudeFace: '拉伸 (Extrude)', filletEdge: '圆角 (Fillet)', askAI: '询问 AI 助手', isolate: '隔离 (Isolate)',
+    hidePart: '隐藏零件', transparent: '设为透明', showAllParts: '显示所有零件', resetColors: '重置颜色',
+    yellow: '黄色', orange: '橙色', purple: '紫色', white: '白色',
   },
   es: {
     zoomFit: 'Ajustar Vista', zoomSel: 'Zoom a Selección', selectAll: 'Seleccionar Todo',
@@ -83,6 +91,8 @@ const CTX_I18N: Record<string, CL> = {
     tangent: 'Tangente', coincident: 'Coincidente', undo: 'Deshacer', clearAll: 'Borrar Todo',
     mate: 'Ensamblaje (Mate)', mateCoincident: 'Caras Coincidentes', mateCoaxial: 'Coaxial', mateDistance: 'Distancia',
     extrudeFace: 'Extruir', filletEdge: 'Redondear (Fillet)', askAI: 'Preguntar a IA', isolate: 'Aislar',
+    hidePart: 'Ocultar pieza', transparent: 'Transparente', showAllParts: 'Mostrar todas', resetColors: 'Restablecer colores',
+    yellow: 'Amarillo', orange: 'Naranja', purple: 'Púrpura', white: 'Blanco',
   },
   ar: {
     zoomFit: 'ملاءمة العرض', zoomSel: 'تكبير التحديد', selectAll: 'تحديد الكل',
@@ -95,6 +105,8 @@ const CTX_I18N: Record<string, CL> = {
     tangent: 'مماس', coincident: 'متطابق', undo: 'تراجع', clearAll: 'مسح الكل',
     mate: 'محاذاة (Mate)', mateCoincident: 'تطابق الوجوه', mateCoaxial: 'متحد المحور', mateDistance: 'مسافة',
     extrudeFace: 'بثق (Extrude)', filletEdge: 'تدوير الحواف (Fillet)', askAI: 'اسأل الذكاء الاصطناعي', isolate: 'عزل',
+    hidePart: 'إخفاء الجزء', transparent: 'جعل شفاف', showAllParts: 'إظهار جميع الأجزاء', resetColors: 'إعادة تعيين الألوان',
+    yellow: 'أصفر', orange: 'برتقالي', purple: 'بنفسجي', white: 'أبيض',
   },
 };
 
@@ -117,7 +129,7 @@ export function getContextItemsEmpty(lang: string | boolean): ContextMenuItem[] 
 
 export function getContextItemsGeometry(
   lang: string | boolean,
-  opts?: { hasAssembly?: boolean; selectedType?: 'face' | 'edge' | 'body' | null },
+  opts?: { hasAssembly?: boolean; selectedType?: 'face' | 'edge' | 'body' | null; hasHighlightedPart?: boolean },
 ): ContextMenuItem[] {
   const l = typeof lang === 'boolean' ? (lang ? 'ko' : 'en') : lang;
   const items: ContextMenuItem[] = [];
@@ -163,6 +175,32 @@ export function getContextItemsGeometry(
       ],
     });
   }
+
+  if (opts?.hasHighlightedPart) {
+    items.push({
+      id: 'assembly-part-ops',
+      label: 'Part Actions',
+      icon: '⚙️',
+      separator: true,
+      children: [
+        { id: 'part-hide', label: cl(l, 'hidePart'), icon: '👁️‍🗨️' },
+        { id: 'part-transparent', label: cl(l, 'transparent'), icon: '🫥' },
+        { id: 'part-color', label: 'Assign Color', icon: '🎨', children: [
+          { id: 'part-color-yellow', label: cl(l, 'yellow'), icon: '🟡' },
+          { id: 'part-color-orange', label: cl(l, 'orange'), icon: '🟠' },
+          { id: 'part-color-purple', label: cl(l, 'purple'), icon: '🟣' },
+          { id: 'part-color-white', label: cl(l, 'white'), icon: '⚪' },
+        ]},
+      ]
+    });
+  }
+  
+  // Add global assembly view resets
+  if (opts?.hasAssembly) {
+    items.push({ id: 'assembly-show-all', label: cl(l, 'showAllParts'), icon: '👁️', separator: true });
+    items.push({ id: 'assembly-reset-colors', label: cl(l, 'resetColors'), icon: '🔄' });
+  }
+
   return items;
 }
 
@@ -198,21 +236,25 @@ function SubMenu({ items, x, y, onSelect, onClose }: { items: ContextMenuItem[];
   return (
     <div ref={ref} style={{
       position: 'fixed', left: x, top: y, zIndex: 10001,
-      background: '#21262d', border: '1px solid #30363d', borderRadius: 8, padding: 4,
-      boxShadow: '0 8px 24px rgba(0,0,0,0.4)', minWidth: 180,
-      animation: 'ctxFadeIn 0.12s ease-out',
+      background: 'rgba(13, 17, 23, 0.85)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 10, padding: 6,
+      boxShadow: '0 12px 32px rgba(0,0,0,0.5)', minWidth: 180,
+      animation: 'ctxFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
     }}>
       {items.map(item => (
         <button key={item.id} disabled={item.disabled}
           onClick={() => { if (!item.disabled) { onSelect(item.id); onClose(); } }}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-            padding: '7px 12px', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600,
-            background: 'transparent', color: item.disabled ? '#484f58' : '#c9d1d9',
-            cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.1s',
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+            padding: '8px 14px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
+            background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : '#e6edf3',
+            cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
           }}
-          onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = '#30363d'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          onMouseEnter={e => { if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = '#ffffff'; } }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#e6edf3'; }}
         >
           <span style={{ width: 18, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{item.icon || ''}</span>
           <span style={{ flex: 1 }}>{item.label}</span>
@@ -271,29 +313,33 @@ export default function ContextMenu({ x, y, visible, items, onSelect, onClose }:
     <>
       <div ref={ref} style={{
         position: 'fixed', left: posX, top: posY, zIndex: 10000,
-        background: '#21262d', border: '1px solid #30363d', borderRadius: 8, padding: 4,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.45)', minWidth: menuW,
-        animation: 'ctxFadeIn 0.12s ease-out',
+        background: 'rgba(13, 17, 23, 0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 10, padding: 6,
+        boxShadow: '0 12px 32px rgba(0,0,0,0.5)', minWidth: menuW,
+        animation: 'ctxFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>
         {items.map((item, idx) => (
           <React.Fragment key={item.id}>
             {item.separator && idx > 0 && (
-              <div style={{ height: 1, background: '#30363d', margin: '4px 8px' }} />
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 8px' }} />
             )}
             <button disabled={item.disabled}
               onClick={() => {
                 if (!item.disabled && !item.children) { onSelect(item.id); onClose(); }
               }}
               onMouseEnter={e => {
-                if (!item.disabled) e.currentTarget.style.background = '#30363d';
+                if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = '#ffffff'; }
                 handleItemHover(item, e);
               }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#e6edf3'; }}
               style={{
-                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                padding: '7px 12px', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                background: 'transparent', color: item.disabled ? '#484f58' : '#c9d1d9',
-                cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.1s',
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '8px 14px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : '#e6edf3',
+                cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
               }}
             >
               <span style={{ width: 18, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{item.icon || ''}</span>

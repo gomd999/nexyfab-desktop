@@ -14,6 +14,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { PREF_KEYS, prefGetString, prefSetString, prefRemove } from '@/lib/platform';
 import type { AutoSaveState } from './useAutoSave';
 import { useCloudProjectAccessStore } from './store/cloudProjectAccessStore';
+import { stashPendingIntent } from '@/lib/pending-intents';
 
 export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 const DEBOUNCE_MS = 10_000; // 10s
@@ -25,6 +26,9 @@ export interface UseCloudSaveFlowResult {
   cloudError: string | null;
   /** PATCH 409 `PROJECT_VERSION_CONFLICT` 직후 — UI에서 서버 최신본으로 리로드 유도 */
   versionConflictNeedsReload: boolean;
+  /** POST 403 free-plan project limit hit — UI shows upgrade prompt instead of generic error */
+  projectLimitReached: boolean;
+  clearProjectLimitReached: () => void;
   syncNow: (state: AutoSaveState, shapeId: string, materialId: string) => void;
   scheduleSync: (state: AutoSaveState, shapeId: string, materialId: string) => void;
   /** Adopt a server project id (e.g. dashboard ?projectId=) so PATCH targets the right row */
@@ -39,6 +43,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
   const [cloudSavedAt, setCloudSavedAt] = useState<number | null>(null);
   const [cloudError, setCloudError] = useState<string | null>(null);
   const [versionConflictNeedsReload, setVersionConflictNeedsReload] = useState(false);
+  const [projectLimitReached, setProjectLimitReached] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
   const pendingRef = useRef<{ state: AutoSaveState; shapeId: string; materialId: string } | null>(null);
@@ -165,6 +170,31 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
             sceneData,
           }),
         });
+        // Free plan project-count gate: surface a structured upgrade flag so
+        // the UI can pop the upgrade prompt instead of showing a generic
+        // "Cloud save failed" toast that the user can't act on.
+        if (res.status === 403) {
+          const errBody = await res.json().catch(() => ({} as { error?: string }));
+          if (typeof errBody.error === 'string' && errBody.error.toLowerCase().includes('free plan limit')) {
+            // Stash the in-flight save so we can replay it after the user
+            // upgrades and returns. Without this the scene would survive
+            // (autosave handles that), but the explicit save action is
+            // forgotten — the post-upgrade UX would be silent.
+            stashPendingIntent({
+              kind: 'cloud_save_project',
+              shapeId,
+              materialId,
+              sceneData,
+              stashedAt: Date.now(),
+            });
+            if (isMounted.current) {
+              setProjectLimitReached(true);
+              setCloudStatus('idle');
+              setCloudError(null);
+            }
+            return;
+          }
+        }
         if (!res.ok) throw new Error(`Server ${res.status}`);
         const data = await res.json() as {
           project?: { id: string; updatedAt: number; role?: 'owner' | 'editor' | 'viewer'; canEdit?: boolean };
@@ -257,12 +287,30 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     };
   }, []);
 
+  // Resume after upgrade — ShapeGeneratorInner dispatches this event when
+  // it detects a stashed pending intent and the user is no longer free.
+  // We flush the most recent pending payload immediately (skipping debounce).
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const onResume = () => {
+      if (!pendingRef.current) return;  // nothing in flight to flush
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      const { state, shapeId, materialId } = pendingRef.current;
+      pendingRef.current = null;
+      void doSync(state, shapeId, materialId);
+    };
+    window.addEventListener('nexyfab:resume-cloud-save', onResume);
+    return () => window.removeEventListener('nexyfab:resume-cloud-save', onResume);
+  }, [isLoggedIn, doSync]);
+
   return {
     cloudStatus,
     projectId,
     cloudSavedAt,
     cloudError,
     versionConflictNeedsReload,
+    projectLimitReached,
+    clearProjectLimitReached: () => setProjectLimitReached(false),
     syncNow,
     scheduleSync,
     adoptProjectId,

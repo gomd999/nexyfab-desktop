@@ -336,7 +336,7 @@ export async function parseBREP(buffer: ArrayBuffer): Promise<THREE.BufferGeomet
 // ─── DXF → 3D geometry (extrude 2D profile) ──────────────────────────────
 
 import { parseDXF } from './dxfParser';
-import type { DXFEntity, DXFParseResult } from './dxfParser';
+import type { DXFEntity as _DXFEntity, DXFParseResult as _DXFParseResult } from './dxfParser';
 
 export { parseDXF } from './dxfParser';
 export type { DXFEntity, DXFParseResult } from './dxfParser';
@@ -347,7 +347,7 @@ export type { DXFEntity, DXFParseResult } from './dxfParser';
  * @param extrudeDepth  Depth to extrude in mm (default 10)
  */
 export function parseDXFFile(text: string, extrudeDepth = 10): THREE.BufferGeometry {
-  const { entities, bounds } = parseDXF(text);
+  const { entities, bounds: _bounds } = parseDXF(text);
   if (entities.length === 0) {
     throw new Error('DXF file contains no supported entities');
   }

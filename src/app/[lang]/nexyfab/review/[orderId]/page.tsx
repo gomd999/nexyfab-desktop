@@ -1,0 +1,131 @@
+'use client';
+
+// B8 — Standalone review submission page (deep-linkable from email).
+//
+// The orders detail page already has an inline review form, but a
+// standalone URL lets us send "your part arrived, leave a review →"
+// links in shipping-complete emails. Lower friction than navigating
+// to the order detail page first.
+
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import ReviewForm from '@/components/nexyfab/ReviewForm';
+
+interface OrderInfo {
+  id: string;
+  partNameKo?: string;
+  partName: string;
+  manufacturerName: string;
+  status: string;
+  partnerEmail: string | null;
+}
+
+export default function StandaloneReviewPage() {
+  const params = useParams();
+  const router = useRouter();
+  const lang = (params?.lang as string) === 'kr' ? 'ko' : 'en';
+  const orderId = params?.orderId as string;
+  const [order, setOrder] = useState<OrderInfo | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/nexyfab/orders/${encodeURIComponent(orderId)}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as { order: OrderInfo };
+        if (!cancelled) setOrder(data.order);
+      } catch (e) {
+        if (!cancelled) setLoadErr((e as Error).message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [orderId]);
+
+  const t = lang === 'ko' ? {
+    title: '주문 리뷰',
+    loading: '주문 정보를 불러오는 중…',
+    notFound: '주문을 찾을 수 없습니다.',
+    notDelivered: '배송 완료 후에 리뷰를 작성할 수 있습니다.',
+    forOrder: '주문',
+    backToOrders: '← 주문 목록으로',
+  } : {
+    title: 'Order Review',
+    loading: 'Loading order info…',
+    notFound: 'Order not found.',
+    notDelivered: 'You can review after the order is delivered.',
+    forOrder: 'For order',
+    backToOrders: '← Back to orders',
+  };
+
+  if (loadErr) {
+    return (
+      <main style={pageStyle}>
+        <div style={{ color: '#f85149', fontSize: 14, padding: 24 }}>
+          {t.notFound} ({loadErr})
+        </div>
+      </main>
+    );
+  }
+  if (!order) {
+    return <main style={pageStyle}><div style={{ color: '#8b949e', padding: 24 }}>{t.loading}</div></main>;
+  }
+  if (order.status !== 'delivered') {
+    return (
+      <main style={pageStyle}>
+        <h1 style={titleStyle}>{t.title}</h1>
+        <div style={{ color: '#d29922', padding: 16, background: 'rgba(210,153,34,0.12)', borderRadius: 8, fontSize: 13 }}>
+          ⚠ {t.notDelivered}
+        </div>
+        <a href={`/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`} style={backLinkStyle}>{t.backToOrders}</a>
+      </main>
+    );
+  }
+  if (!order.partnerEmail) {
+    return (
+      <main style={pageStyle}>
+        <div style={{ color: '#f85149', padding: 16 }}>Partner email missing on this order — cannot submit review.</div>
+      </main>
+    );
+  }
+
+  return (
+    <main style={pageStyle}>
+      <h1 style={titleStyle}>{t.title}</h1>
+      <div style={{ marginBottom: 16, fontSize: 12, color: '#8b949e' }}>
+        {t.forOrder} <code style={{ background: '#161b22', padding: '2px 6px', borderRadius: 4, color: '#c9d1d9' }}>{order.id}</code>
+        {' · '}
+        <strong style={{ color: '#e6edf3' }}>{lang === 'ko' && order.partNameKo ? order.partNameKo : order.partName}</strong>
+        {' · '}
+        {order.manufacturerName}
+      </div>
+
+      <ReviewForm
+        lang={lang as 'ko' | 'en'}
+        contractId={order.id}
+        partnerEmail={order.partnerEmail}
+        onSubmitted={() => {
+          // Send back to orders list after a short delay so the success
+          // message has a chance to render.
+          setTimeout(() => router.push(`/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`), 1800);
+        }}
+      />
+
+      <a href={`/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`} style={backLinkStyle}>{t.backToOrders}</a>
+    </main>
+  );
+}
+
+const pageStyle: React.CSSProperties = {
+  maxWidth: 580, margin: '0 auto', padding: '40px 20px',
+  fontFamily: 'system-ui, sans-serif',
+  color: '#e6edf3',
+};
+const titleStyle: React.CSSProperties = {
+  fontSize: 24, fontWeight: 800, margin: '0 0 16px',
+};
+const backLinkStyle: React.CSSProperties = {
+  display: 'inline-block', marginTop: 24,
+  fontSize: 12, color: '#79c0ff', textDecoration: 'none',
+};

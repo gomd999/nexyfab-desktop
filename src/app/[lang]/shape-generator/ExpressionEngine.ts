@@ -365,3 +365,32 @@ export function findDependentExpressions(
   }
   return dependents;
 }
+
+/**
+ * "Break dependency" — replace any expression that references a missing
+ * variable with its current numeric value (literal). This converts a broken
+ * formula into a valid frozen value so the model keeps building. The user
+ * can edit the literal back to a formula later.
+ *
+ * Returns the keys that were converted so the caller can toast the count.
+ */
+export function freezeBrokenExpressions(
+  paramExpressions: Record<string, string>,
+  params: Record<string, number>,
+  availableVarNames: string[],
+): { paramExpressions: Record<string, string>; converted: string[] } {
+  const broken = findBrokenExpressions(paramExpressions, availableVarNames);
+  if (broken.length === 0) {
+    return { paramExpressions, converted: [] };
+  }
+  const next = { ...paramExpressions };
+  const converted: string[] = [];
+  for (const b of broken) {
+    const literal = params[b.key];
+    if (typeof literal === 'number' && Number.isFinite(literal)) {
+      next[b.key] = String(literal);
+      converted.push(b.key);
+    }
+  }
+  return { paramExpressions: next, converted };
+}

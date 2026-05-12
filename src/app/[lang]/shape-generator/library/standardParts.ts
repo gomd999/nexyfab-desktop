@@ -363,7 +363,7 @@ const ballBearing: StandardPart = {
     const outerGeo = new THREE.CylinderGeometry(ro, ro, w, 48, 1, true);
     // Inner ring
     const innerGeo = new THREE.CylinderGeometry(ri + (ro - ri) * 0.15, ri + (ro - ri) * 0.15, w, 48, 1, true);
-    const innerBoreGeo = new THREE.CylinderGeometry(ri, ri, w, 48, 1, true);
+    const _innerBoreGeo = new THREE.CylinderGeometry(ri, ri, w, 48, 1, true);
 
     // Balls
     const geos: THREE.BufferGeometry[] = [];

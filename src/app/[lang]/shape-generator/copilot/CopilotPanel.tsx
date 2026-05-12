@@ -90,7 +90,7 @@ function ConfBadge({ score }: { score: number }) {
 
 function HistoryItemRow({ item, t }: { item: HistoryItem; t: (typeof dict)[Lang] }) {
   const statusColor = item.status === 'applied' ? '#3fb950' : item.status === 'failed' ? '#f85149' : '#d29922';
-  const statusLabel = item.status === 'applied' ? t.applied : item.status === 'failed' ? t.failed : t.unknown;
+  const _statusLabel = item.status === 'applied' ? t.applied : item.status === 'failed' ? t.failed : t.unknown;
 
   return (
     <div style={{

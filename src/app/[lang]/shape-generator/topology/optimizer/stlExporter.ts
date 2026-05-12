@@ -1,22 +1,67 @@
 import * as THREE from 'three';
 import { downloadBlob } from '@/lib/platform';
 
+/** STL export configuration. Defaults preserve historical behavior. */
+export interface ExportSTLOptions {
+  unit?: 'mm' | 'cm' | 'm';
+  origin?: 'as-is' | 'centered' | 'feet-on-floor';
+}
+
+const UNIT_SCALE: Record<NonNullable<ExportSTLOptions['unit']>, number> = {
+  mm: 1, cm: 0.1, m: 0.001,
+};
+
+function applyExportTransform(
+  geometry: THREE.BufferGeometry,
+  opts: ExportSTLOptions,
+): THREE.BufferGeometry {
+  const scale = UNIT_SCALE[opts.unit ?? 'mm'];
+  const origin = opts.origin ?? 'as-is';
+  if (scale === 1 && origin === 'as-is') return geometry;
+  const out = geometry.clone();
+  if (origin !== 'as-is') {
+    out.computeBoundingBox();
+    const bb = out.boundingBox;
+    if (bb) {
+      const cx = (bb.min.x + bb.max.x) / 2;
+      const cy = (bb.min.y + bb.max.y) / 2;
+      if (origin === 'centered') {
+        const cz = (bb.min.z + bb.max.z) / 2;
+        out.translate(-cx, -cy, -cz);
+      } else if (origin === 'feet-on-floor') {
+        out.translate(-cx, -cy, -bb.min.z);
+      }
+    }
+  }
+  if (scale !== 1) out.scale(scale, scale, scale);
+  return out;
+}
+
 /**
  * Export a Three.js BufferGeometry as a binary STL file and trigger a download.
+ *
+ * `options` lets the caller pick the output unit (mm/cm/m) and origin
+ * convention (as-is, centered, feet-on-floor) so the user's slicer doesn't
+ * need to compensate. The internal scene is always mm; we apply the unit
+ * scale to a clone of the geometry so the live viewport isn't shifted.
  */
 export async function exportSTL(
   geometry: THREE.BufferGeometry,
-  filename: string = 'topology_result.stl'
+  filename: string = 'topology_result.stl',
+  options: ExportSTLOptions = {},
 ): Promise<void> {
   const posAttr = geometry.getAttribute('position');
   if (!posAttr) {
     throw new Error('Geometry has no position attribute');
   }
 
+  // Apply unit/origin transform to a clone — keeps live viewport unaffected.
+  const transformed = applyExportTransform(geometry, options);
+
   // Ensure we have a non-indexed geometry for triangle iteration
-  let geo = geometry;
-  if (geometry.index !== null) {
-    geo = geometry.toNonIndexed();
+  let geo = transformed;
+  if (transformed.index !== null) {
+    geo = transformed.toNonIndexed();
   }
 
   const positions = geo.getAttribute('position');
@@ -83,5 +128,15 @@ export async function exportSTL(
   }
 
   const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  await downloadBlob(filename, blob);
+  // Annotate filename with non-default options so users can tell variants
+  // apart in their Downloads folder.
+  const suffixParts: string[] = [];
+  if (options.unit && options.unit !== 'mm') suffixParts.push(options.unit);
+  if (options.origin && options.origin !== 'as-is') suffixParts.push(options.origin);
+  const finalName = suffixParts.length === 0
+    ? filename
+    : filename.replace(/\.stl$/i, `_${suffixParts.join('_')}.stl`);
+  await downloadBlob(finalName, blob);
+  // Free the cloned geometry if we created one.
+  if (transformed !== geometry) transformed.dispose();
 }

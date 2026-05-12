@@ -30,7 +30,8 @@
 
 import { useState, useCallback, useRef } from 'react';
 import * as THREE from 'three';
-import type { OptConfig, OptResult } from '../topology/optimizer/types';
+import type { SketchProfile, SketchConfig } from '../sketch/types';
+import type { OptConfig } from '../topology/optimizer/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,8 +43,8 @@ export interface GenDesignCommitResult {
 
 interface UseGenDesignIntegrationOptions {
   addSketchFeature: (
-    profile: { segments: any[]; closed: boolean },
-    config: any,
+    profile: SketchProfile,
+    config: SketchConfig,
     plane: 'xy' | 'xz' | 'yz',
     operation: 'add' | 'subtract',
     planeOffset?: number,
@@ -139,16 +140,20 @@ export function useGenDesignIntegration({
       // Encode the optimizer config into the sketch config field so it's
       // preserved in the feature tree history.
       const sketchConfig = {
+        mode: 'extrude' as const,
         depth,
+        revolveAngle: 360,
+        revolveAxis: 'y' as const,
+        segments: 32,
         genDesign: true,
         material: config?.material?.name ?? 'unknown',
         volfrac: config?.volfrac ?? 0.3,
         penal: config?.penal ?? 3,
         rmin: config?.rmin ?? 1.5,
         iterations: config?.maxIter ?? 100,
-      };
+      } as SketchConfig;
 
-      addSketchFeature(profile, sketchConfig, 'xy', 'add', planeOffset);
+      addSketchFeature(profile as unknown as SketchProfile, sketchConfig, 'xy', 'add', planeOffset);
 
       setLastCommittedGeo(targetGeo);
       setCommittedConfig(config ?? null);

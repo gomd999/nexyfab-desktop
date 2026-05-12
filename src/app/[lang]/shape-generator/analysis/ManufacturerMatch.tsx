@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { isKorean } from '@/lib/i18n/normalize';
+import PartnerMetricsBar from './PartnerMetricsBar';
 
 const UpgradePrompt = dynamic(() => import('../freemium/UpgradePrompt'), { ssr: false });
 
@@ -570,6 +571,38 @@ export default function ManufacturerMatch({
 
   const topScore = sorted[0]?.matchScore ?? 0;
 
+  // B3 — Multi-dim partner metrics. Batch-fetch for visible partners
+  // so each card can render a per-dimension breakdown (납기/품질/응답/소통)
+  // instead of a misleading single composite score.
+  const [partnerMetricsMap, setPartnerMetricsMap] = useState<Record<string, import('./PartnerMetricsBar').PartnerMetrics>>({});
+
+  useEffect(() => {
+    const emails = sorted
+      .slice(0, 10)
+      .map(m => m.partnerEmail)
+      .filter((e): e is string => !!e && e.includes('@'));
+    if (emails.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/nexyfab/partner/metrics-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails, windowDays: 90 }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { partners: Array<{ partnerEmail: string; metrics: import('./PartnerMetricsBar').PartnerMetrics }> };
+        const map: Record<string, import('./PartnerMetricsBar').PartnerMetrics> = {};
+        for (const p of data.partners) map[p.partnerEmail] = p.metrics;
+        if (!cancelled) setPartnerMetricsMap(map);
+      } catch { /* fail silent — cards just show 'measurement pending' */ }
+    })();
+    return () => { cancelled = true; };
+    // We intentionally only re-fetch when the email set materially changes;
+    // joining sorted.map(...) covers identity changes without thrashing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted.map(m => m.partnerEmail).filter(Boolean).sort().join(',')]);
+
   // ── Quote request ───────────────────────────────────────────────────────────
 
   const handleOpenQuote = useCallback((m: Manufacturer) => {
@@ -864,6 +897,8 @@ export default function ManufacturerMatch({
               manufacturer={m}
               matchScore={m.matchScore}
               scoreBreakdown={m.scoreBreakdown}
+              partnerMetrics={m.partnerEmail ? partnerMetricsMap[m.partnerEmail] ?? null : null}
+              lang={lang ?? 'ko'}
               isTopMatch={idx === 0 && m.matchScore >= 70 && m.matchScore === topScore}
               isKo={isKo}
               L={L}
@@ -884,6 +919,8 @@ interface ManufacturerCardProps {
   manufacturer: Manufacturer;
   matchScore: number;
   scoreBreakdown?: ScoreBreakdown;
+  partnerMetrics?: import('./PartnerMetricsBar').PartnerMetrics | null;
+  lang: string;
   isTopMatch: boolean;
   isKo: boolean;
   L: Lang;
@@ -892,7 +929,7 @@ interface ManufacturerCardProps {
   onRequestQuote: () => void;
 }
 
-function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, isTopMatch, isKo, L, t, onSelect, onRequestQuote }: ManufacturerCardProps) {
+function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partnerMetrics, lang, isTopMatch, isKo, L, t, onSelect, onRequestQuote }: ManufacturerCardProps) {
   const [hovered, setHovered] = useState(false);
   const price = PRICE_META[m.priceLevel];
   const flag = REGION_FLAGS[m.region] ?? '🌐';
@@ -984,6 +1021,15 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, isTopMa
         <p style={{ margin: 0, fontSize: 11, color: C.textMuted, lineHeight: 1.5 }}>
           {isKo ? m.descriptionKo : m.description}
         </p>
+
+        {/* B3 — Multi-dim operational metrics. Each axis stays separate
+             per the no-composite-score rule. Renders only when the partner
+             has a partnerEmail (i.e. is registered, not a synthetic listing). */}
+        {m.partnerEmail && (
+          <div style={{ marginTop: 6 }}>
+            <PartnerMetricsBar lang={lang} metrics={partnerMetrics ?? null} />
+          </div>
+        )}
 
         {/* Certs */}
         {m.certifications.length > 0 && (

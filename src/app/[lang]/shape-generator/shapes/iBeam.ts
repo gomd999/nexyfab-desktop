@@ -28,7 +28,7 @@ export const iBeamShape: ShapeConfig = {
     const hw  = tw / 2;          // half web thickness
     const hbf = BF / 2;          // half flange width
     const hH  = H / 2;           // half height
-    const webH = H / 2 - tf;     // half web height (distance from center to flange inner face)
+    const _webH = H / 2 - tf;     // half web height (distance from center to flange inner face)
 
     const shape = new THREE.Shape();
     // Start bottom-left of bottom flange, go clockwise

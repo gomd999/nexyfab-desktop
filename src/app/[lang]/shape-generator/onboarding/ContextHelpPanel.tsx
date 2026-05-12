@@ -294,6 +294,11 @@ export default function ContextHelpPanel({
   const [tipGridOneColumn, setTipGridOneColumn] = useState(false);
   const content = getContent(lang);
 
+  const close = useCallback(() => {
+    setExiting(true);
+    setTimeout(() => { setExiting(false); onClose(); }, 200);
+  }, [onClose]);
+
   // When context changes externally, switch to that tab
   useEffect(() => {
     if (visible) setActiveTab(context);
@@ -317,12 +322,7 @@ export default function ContextHelpPanel({
     };
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const close = useCallback(() => {
-    setExiting(true);
-    setTimeout(() => { setExiting(false); onClose(); }, 200);
-  }, [onClose]);
+  }, [visible, close]);
 
   if (!visible) return null;
 

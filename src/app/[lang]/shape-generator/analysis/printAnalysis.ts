@@ -190,7 +190,7 @@ export function analyzePrintability(
         overhangFaces.push(i);
         // Estimate support: project face area downward
         const centroid = new THREE.Vector3().add(v0).add(v1).add(v2).divideScalar(3);
-        const heightAbovePlate = centroid.dot(buildDir) - minProj;
+        const _heightAbovePlate = centroid.dot(buildDir) - minProj;
         totalSupportArea += area;
 
         if (overhangDeg > 70) {
@@ -208,7 +208,7 @@ export function analyzePrintability(
   const supportVolume = (totalSupportArea * avgHeight * 0.15) / 1000; // convert mm³ to cm³
 
   // Material usage: mesh volume (from bounding box estimate or geometry volume)
-  const size = bb.getSize(new THREE.Vector3());
+  const _size = bb.getSize(new THREE.Vector3());
   // Use divergence theorem for volume
   let meshVolume = 0;
   for (let i = 0; i < triCount; i++) {

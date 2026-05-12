@@ -333,10 +333,10 @@ export default function AnnotationPanel({
   gdtAnnotations,
   dimensionAnnotations,
   onAddGDT,
-  onUpdateGDT,
+  onUpdateGDT: _onUpdateGDT,
   onRemoveGDT,
   onAddDimension,
-  onUpdateDimension,
+  onUpdateDimension: _onUpdateDimension,
   onRemoveDimension,
   placementMode,
   onPlacementModeChange,
@@ -357,7 +357,7 @@ export default function AnnotationPanel({
   const [tolType, setTolType] = useState<ToleranceType>('bilateral');
   const [tolUpper, setTolUpper] = useState('0.05');
   const [tolLower, setTolLower] = useState('-0.05');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [_editingId, _setEditingId] = useState<string | null>(null);
   // FCF advanced mode — zone modifier + material conditions + up to 3 datum refs
   const [fcfAdvanced, setFcfAdvanced] = useState(false);
   const [zoneMod, setZoneMod] = useState<ZoneModifier | ''>('');
@@ -414,7 +414,7 @@ export default function AnnotationPanel({
     };
     onAddDimension(annotation);
     onPlacementModeChange('dimension');
-  }, [dimType, dimValue, tolType, tolUpper, tolLower, onAddDimension, onPlacementModeChange]);
+  }, [dimType, dimValue, tolUpper, tolLower, onAddDimension, onPlacementModeChange]);
 
   // ── Set bilateral tolerance shortcut ──
   const handleBilateralChange = useCallback((val: string) => {

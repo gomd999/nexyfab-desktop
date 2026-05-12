@@ -20,6 +20,12 @@ export interface AutoSaveState {
   renderMode?: 'standard' | 'photorealistic';
   /** AI 채팅 히스토리 (최대 60개) */
   chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  /** Assembly part display overrides */
+  assemblyOverrides?: {
+    hiddenParts?: string[];
+    transparentParts?: string[];
+    partColors?: Record<string, string>;
+  };
 }
 
 interface SaveSlotMeta {
@@ -31,6 +37,7 @@ interface SaveSlotMeta {
 
 const STORAGE_PREFIX = 'nexyfab-autosave-';
 const META_KEY = 'nexyfab-autosave-meta';
+const SESSION_FLAG_KEY = 'nexyfab-autosave-session-active';
 const MAX_SLOTS = 5;
 const DEBOUNCE_MS = 30_000; // 30 seconds
 const MAX_SAVE_BYTES = 4_500_000; // 4.5 MB guard
@@ -66,6 +73,13 @@ function pruneSlots(list: SaveSlotMeta[]): SaveSlotMeta[] {
 export function useAutoSave() {
   const [hasRecovery, setHasRecovery] = useState(false);
   const [recoveryData, setRecoveryData] = useState<AutoSaveState | null>(null);
+  /**
+   * True iff the previous session ended without a clean unmount — i.e. the
+   * tab was killed (browser crash, OS power loss, force-quit). The recovery
+   * UI uses this to label the banner differently from a normal "you have
+   * unsaved work" prompt.
+   */
+  const [recoveredFromCrash, setRecoveredFromCrash] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,22 +94,37 @@ export function useAutoSave() {
 
   // On mount, check for existing saves; clean up debounce timer on unmount
   useEffect(() => {
-    const meta = getMetaList();
-    if (meta.length === 0) return;
-    const sorted = [...meta].sort((a, b) => b.timestamp - a.timestamp);
-    const latestMeta = sorted[0];
+    // Detect crash: if SESSION_FLAG_KEY exists from a previous session, the
+    // tab died before our cleanup ran. The recovery banner is more urgent.
+    let crashed = false;
     try {
-      const raw = localStorage.getItem(latestMeta.key);
-      if (raw) {
-        const data = JSON.parse(raw) as AutoSaveState;
-        if (data.version === 1) {
-          setRecoveryData(data);
-          setHasRecovery(true);
-        }
-      }
+      crashed = localStorage.getItem(SESSION_FLAG_KEY) === '1';
+      // Mark this session as live; cleared by the unmount handler on clean
+      // exit. If the tab is killed, the flag persists into next load.
+      localStorage.setItem(SESSION_FLAG_KEY, '1');
     } catch {
-      // corrupted save — ignore
+      // localStorage unavailable (private mode etc.) — degrade silently
     }
+
+    const meta = getMetaList();
+    if (meta.length > 0) {
+      const sorted = [...meta].sort((a, b) => b.timestamp - a.timestamp);
+      const latestMeta = sorted[0];
+      try {
+        const raw = localStorage.getItem(latestMeta.key);
+        if (raw) {
+          const data = JSON.parse(raw) as AutoSaveState;
+          if (data.version === 1) {
+            setRecoveryData(data);
+            setHasRecovery(true);
+            if (crashed) setRecoveredFromCrash(true);
+          }
+        }
+      } catch {
+        // corrupted save — ignore
+      }
+    }
+
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
@@ -226,9 +255,39 @@ export function useAutoSave() {
     };
   }, []);
 
+  // Flush pending save synchronously when the tab is being hidden/closed.
+  // `pagehide` fires before unload across the bfcache and is the most
+  // reliable hook for "user is leaving" — beforeunload is unreliable on
+  // mobile. We also clear the session flag here so a clean exit doesn't
+  // false-positive as a crash on next load.
+  useEffect(() => {
+    const flush = () => {
+      try {
+        if (latestStateRef.current) {
+          // Synchronous save — any pending debounce gets superseded.
+          if (debounceTimer.current) clearTimeout(debounceTimer.current);
+          save(latestStateRef.current);
+        }
+      } catch {
+        // best-effort; never block tab close
+      }
+      try {
+        localStorage.removeItem(SESSION_FLAG_KEY);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('pagehide', flush);
+    // beforeunload fallback for browsers where pagehide doesn't fire (rare)
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('beforeunload', flush);
+    };
+  }, [save]);
+
   return {
     hasRecovery,
     recoveryData,
+    recoveredFromCrash,
     saveError,
     lastSavedAt,
     isSaving,

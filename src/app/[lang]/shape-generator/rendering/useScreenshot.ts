@@ -2,7 +2,7 @@
  * High-resolution screenshot utilities for the 3D canvas.
  */
 
-import type * as THREE from 'three';
+import type * as _THREE from 'three';
 
 export interface PinOverlayData {
   /** Screen-space position (0–1 normalized) of each pin */

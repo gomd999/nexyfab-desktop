@@ -8,6 +8,10 @@ import { extractParams, updateParam, type JscadParam } from './jscadParams';
 import type { ElementSelectionInfo, FaceSelectionInfo } from '../editing/selectionInfo';
 import { downloadBlob } from '@/lib/platform';
 
+function errorMessageFromUnknown(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 const dict = {
   ko: {
     tabShape: '⚙ AI 형상',
@@ -111,6 +115,18 @@ const dict = {
     apiRateLimit: '요청이 너무 잦습니다. 잠시 후 다시 시도하세요.',
     apiScadRequired: 'scad 코드가 비어 있습니다.',
     apiOutputTooLarge: '렌더 결과가 인라인 응답 한도를 초과했습니다. 모델을 단순화하거나 비동기 작업을 사용하세요.',
+    scadFromIntentBtn: '↓ 현재 형상으로 SCAD 채우기',
+    scadFromIntentBusy: '변환 중…',
+    scadFromIntentHint: '디자인 트리의 현재 형상을 결정론적 OpenSCAD 코드로 변환합니다.',
+    scadFromIntentNoShape: '현재 형상이 없습니다. 먼저 형상을 선택하세요.',
+    scadFromIntentEmpty: '서버가 빈 SCAD 응답을 반환했습니다.',
+    scadNlLabel: '✨ 자연어로 SCAD 생성',
+    scadNlPlaceholder: '예: M8 볼트 4개 들어가는 플랜지, PCD 70, 외경 100, 두께 12',
+    scadNlBtn: 'SCAD 생성',
+    scadNlBusy: '생성 중…',
+    scadNlEmpty: '프롬프트를 입력하세요.',
+    scadNlBudgetReached: '오늘 AI 사용 예산을 모두 썼어요. 24시간 후 자동 초기화됩니다.',
+    scadNlBudgetWarn: 'AI 일일 예산 사용량이 임계치에 근접했습니다',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -214,6 +230,18 @@ const dict = {
     apiRateLimit: 'Too many requests. Try again shortly.',
     apiScadRequired: 'scad source is empty.',
     apiOutputTooLarge: 'Rendered mesh exceeds inline response limit. Simplify the model or use async render.',
+    scadFromIntentBtn: '↓ Fill SCAD from current shape',
+    scadFromIntentBusy: 'Converting…',
+    scadFromIntentHint: 'Convert the current design-tree shape into deterministic OpenSCAD source.',
+    scadFromIntentNoShape: 'No current shape. Select a shape first.',
+    scadFromIntentEmpty: 'Server returned empty SCAD source.',
+    scadNlLabel: '✨ Generate SCAD from natural language',
+    scadNlPlaceholder: 'e.g. flange with 4 M8 bolt holes, PCD 70, OD 100, thickness 12',
+    scadNlBtn: 'Generate',
+    scadNlBusy: 'Generating…',
+    scadNlEmpty: 'Enter a prompt first.',
+    scadNlBudgetReached: 'Daily AI spend cap reached. Resets in 24h.',
+    scadNlBudgetWarn: 'Approaching daily AI budget limit',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -317,6 +345,18 @@ const dict = {
     apiRateLimit: 'リクエストが多すぎます。しばらくしてから再試行してください。',
     apiScadRequired: 'scad ソースが空です。',
     apiOutputTooLarge: 'インライン応答上限を超えるメッシュです。モデルを単純化するか非同期レンダーを使ってください。',
+    scadFromIntentBtn: '↓ 現在の形状から SCAD を生成',
+    scadFromIntentBusy: '変換中…',
+    scadFromIntentHint: 'デザインツリーの現在の形状を決定論的な OpenSCAD コードに変換します。',
+    scadFromIntentNoShape: '現在の形状がありません。まず形状を選択してください。',
+    scadFromIntentEmpty: 'サーバーが空の SCAD 応答を返しました。',
+    scadNlLabel: '✨ 自然言語から SCAD 生成',
+    scadNlPlaceholder: '例: M8 ボルト 4 本のフランジ、PCD 70、外径 100、厚さ 12',
+    scadNlBtn: '生成',
+    scadNlBusy: '生成中…',
+    scadNlEmpty: 'プロンプトを入力してください。',
+    scadNlBudgetReached: '本日のAI予算上限に達しました。24時間後にリセットされます。',
+    scadNlBudgetWarn: '本日のAI予算上限に近づいています',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -419,6 +459,18 @@ const dict = {
     apiRateLimit: '请求过于频繁，请稍后重试。',
     apiScadRequired: 'scad 源码为空。',
     apiOutputTooLarge: '渲染网格超过内联响应上限。请简化模型或使用异步渲染。',
+    scadFromIntentBtn: '↓ 用当前形状填充 SCAD',
+    scadFromIntentBusy: '转换中…',
+    scadFromIntentHint: '将设计树中的当前形状确定性地转换为 OpenSCAD 代码。',
+    scadFromIntentNoShape: '当前没有形状。请先选择形状。',
+    scadFromIntentEmpty: '服务器返回了空 SCAD 响应。',
+    scadNlLabel: '✨ 自然语言生成 SCAD',
+    scadNlPlaceholder: '例: 4 个 M8 螺栓孔的法兰，PCD 70，外径 100，厚度 12',
+    scadNlBtn: '生成',
+    scadNlBusy: '生成中…',
+    scadNlEmpty: '请先输入提示词。',
+    scadNlBudgetReached: '今日 AI 用量已达上限,24 小时后自动重置。',
+    scadNlBudgetWarn: '今日 AI 用量接近上限',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -522,6 +574,18 @@ const dict = {
     apiRateLimit: 'Demasiadas solicitudes. Intenta de nuevo en breve.',
     apiScadRequired: 'El código scad está vacío.',
     apiOutputTooLarge: 'La malla supera el límite de respuesta en línea. Simplifica el modelo o usa render asíncrono.',
+    scadFromIntentBtn: '↓ Rellenar SCAD desde la forma actual',
+    scadFromIntentBusy: 'Convirtiendo…',
+    scadFromIntentHint: 'Convierte la forma actual del árbol de diseño en código OpenSCAD determinista.',
+    scadFromIntentNoShape: 'No hay forma actual. Selecciona una forma primero.',
+    scadFromIntentEmpty: 'El servidor devolvió una respuesta SCAD vacía.',
+    scadNlLabel: '✨ Generar SCAD desde lenguaje natural',
+    scadNlPlaceholder: 'ej: brida con 4 agujeros M8, PCD 70, diámetro exterior 100, grosor 12',
+    scadNlBtn: 'Generar',
+    scadNlBusy: 'Generando…',
+    scadNlEmpty: 'Introduce un prompt primero.',
+    scadNlBudgetReached: 'Límite diario de IA alcanzado. Se restablece en 24 h.',
+    scadNlBudgetWarn: 'Acercándose al límite diario de IA',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -621,6 +685,18 @@ const dict = {
     scadImportHint: 'To load in the viewer, use workspace File → import STL.',
     scadStoredRemoteHint: 'Mesh is stored remotely — use Download STL or the signed URL.',
     scadError: 'OpenSCAD error',
+    scadFromIntentBtn: '↓ ملء SCAD من الشكل الحالي',
+    scadFromIntentBusy: 'جارٍ التحويل…',
+    scadFromIntentHint: 'حوّل الشكل الحالي في شجرة التصميم إلى مصدر OpenSCAD حتمي.',
+    scadFromIntentNoShape: 'لا يوجد شكل حالي. اختر شكلًا أولًا.',
+    scadFromIntentEmpty: 'أعاد الخادم استجابة SCAD فارغة.',
+    scadNlLabel: '✨ توليد SCAD من اللغة الطبيعية',
+    scadNlPlaceholder: 'مثال: شفة بأربعة فتحات M8، PCD 70، القطر الخارجي 100، السماكة 12',
+    scadNlBtn: 'توليد',
+    scadNlBusy: 'جارٍ التوليد…',
+    scadNlEmpty: 'أدخل المحفز أولًا.',
+    scadNlBudgetReached: 'تم الوصول إلى حد إنفاق الذكاء الاصطناعي اليومي. ستتم إعادة الضبط خلال 24 ساعة.',
+    scadNlBudgetWarn: 'تقترب من حد إنفاق الذكاء الاصطناعي اليومي',
     apiMonthlyLimit: 'تم بلوغ الحد الشهري لعرض OpenSCAD على الخادم. قم بترقية الخطة أو أعد المحاولة لاحقًا.',
     apiRateLimit: 'طلبات كثيرة جدًا. حاول بعد قليل.',
     apiScadRequired: 'مصدر scad فارغ.',
@@ -677,7 +753,7 @@ async function exportSTL(geo: THREE.BufferGeometry, filename = 'model.stl') {
   const view = new DataView(buf);
   let offset = 80;
   view.setUint32(offset, triCount, true); offset += 4;
-  const v = new THREE.Vector3();
+  const _v = new THREE.Vector3();
   const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
   const edge1 = new THREE.Vector3(), edge2 = new THREE.Vector3(), norm = new THREE.Vector3();
   for (let i = 0; i < triCount; i++) {
@@ -739,6 +815,29 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [scadJobStatus, setScadJobStatus] = useState('');
   const [scadResultB64, setScadResultB64] = useState<string | null>(null);
   const [scadArtifactUrl, setScadArtifactUrl] = useState<string | null>(null);
+  const [scadFromIntentBusy, setScadFromIntentBusy] = useState(false);
+  const [scadNlPrompt, setScadNlPrompt] = useState('');
+  const [scadNlBusy, setScadNlBusy] = useState(false);
+  const [scadNlSummary, setScadNlSummary] = useState<string | null>(null);
+  /** Per-user budget cool-down: epoch ms until input unlocks. Set on 402. */
+  const [scadNlBudgetLockUntil, setScadNlBudgetLockUntil] = useState<number | null>(null);
+  /** Approaching-budget advisory (server-flagged, ≥80%). Dismissable, session-once. */
+  const [scadNlBudgetAdvisory, setScadNlBudgetAdvisory] = useState<{ fraction: number; limitUsd: number | null } | null>(null);
+  const scadNlBudgetAdvisoryShownRef = useRef(false);
+  const [scadNlBudgetNow, setScadNlBudgetNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!scadNlBudgetLockUntil || scadNlBudgetLockUntil <= Date.now()) {
+      setScadNlBudgetLockUntil(null);
+      return;
+    }
+    const id = setInterval(() => {
+      const now = Date.now();
+      setScadNlBudgetNow(now);
+      if (scadNlBudgetLockUntil <= now) setScadNlBudgetLockUntil(null);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [scadNlBudgetLockUntil]);
 
   // Library state
   const [library, setLibrary] = useState<PromptLibraryEntry[]>([]);
@@ -793,9 +892,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
         setTriCount(result.triCount);
         setStatus('done');
         onGeometryReady(result.geometry, desc);
-      } catch (e: any) {
+      } catch (e: unknown) {
         setStatus('error');
-        setErrorMsg(e.message ?? t.errCompile);
+        setErrorMsg(errorMessageFromUnknown(e) || t.errCompile);
       }
     }, 0);
   }, [onGeometryReady, t]);
@@ -828,9 +927,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       compile(data.code, data.description || p);
       saveToHistory({ prompt: p, code: data.code, description: data.description, triCount: 0 });
       setHistory(loadHistory());
-    } catch (e: any) {
+    } catch (e: unknown) {
       setStatus('error');
-      setErrorMsg(e.message ?? t.errUnknown);
+      setErrorMsg(errorMessageFromUnknown(e) || t.errUnknown);
     }
   }, [prompt, callAI, compile, t]);
 
@@ -844,9 +943,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       setDescription(data.description || description);
       compile(data.code, data.description || description);
       setPrompt('');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setStatus('error');
-      setErrorMsg(e.message ?? t.errRefine);
+      setErrorMsg(errorMessageFromUnknown(e) || t.errRefine);
     }
   }, [prompt, code, description, callAI, compile, t]);
 
@@ -857,9 +956,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       const data = await callAI({ currentCode: code, errorMsg, mode: 'fix' }, 'fixing');
       setCode(data.code);
       compile(data.code, description);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setStatus('error');
-      setErrorMsg(e.message ?? t.errAutoFix);
+      setErrorMsg(errorMessageFromUnknown(e) || t.errAutoFix);
     }
   }, [code, errorMsg, description, callAI, compile, t]);
 
@@ -882,9 +981,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       setCode(data.code);
       setDescription(data.description || description);
       compile(data.code, data.description || description);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setStatus('error');
-      setErrorMsg(e.message ?? t.errFaceOp);
+      setErrorMsg(errorMessageFromUnknown(e) || t.errFaceOp);
     }
   }, [code, selectedElement, description, callAI, compile, t]);
 
@@ -905,9 +1004,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       setDescription(data.description || `${currentShape.shapeId} ${t.jscadConvertSuffix}`);
       setPrompt('');
       compile(data.code, data.description || '');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setStatus('error');
-      setErrorMsg(e.message ?? t.errConvert);
+      setErrorMsg(errorMessageFromUnknown(e) || t.errConvert);
     }
   }, [currentShape, compile, t]);
 
@@ -1005,8 +1104,8 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       if (!res.ok || data.error) throw new Error(data.error ?? t.errSaveFail);
       setSaveOpen(false);
       if (tab === 'library') loadLibrary(libScope);
-    } catch (e: any) {
-      setSaveErr(e.message ?? t.errSaveFail);
+    } catch (e: unknown) {
+      setSaveErr(errorMessageFromUnknown(e) || t.errSaveFail);
     } finally {
       setSaveBusy(false);
     }
@@ -1097,6 +1196,104 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       setScadBusy(false);
     }
   }, [scadSource, pollOpenScadJob, t]);
+
+  /**
+   * Take the current parametric shape (shapeId + params + features from the
+   * design tree) and convert it deterministically to OpenSCAD source. This
+   * fills the textarea so the user can review the SCAD before sending it to
+   * the renderer. No AI call — same input always yields the same output.
+   */
+  const generateScadFromCurrentShape = useCallback(async () => {
+    if (!currentShape?.shapeId) {
+      setScadErr(t.scadFromIntentNoShape);
+      return;
+    }
+    setScadFromIntentBusy(true);
+    setScadErr('');
+    try {
+      const res = await fetch('/api/nexyfab/scad-from-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shapeId: currentShape.shapeId,
+          params: currentShape.params,
+          features: currentShape.features,
+        }),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string; scad?: string }));
+      if (!res.ok) {
+        setScadErr(data.error ?? `Server ${res.status}`);
+        return;
+      }
+      if (typeof data.scad === 'string' && data.scad.length > 0) {
+        setScadSource(data.scad);
+      } else {
+        setScadErr(t.scadFromIntentEmpty);
+      }
+    } catch (e: unknown) {
+      setScadErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setScadFromIntentBusy(false);
+    }
+  }, [currentShape, t]);
+
+  /**
+   * Natural-language → AI emits JSON intent → deterministic SCAD source.
+   * AI never writes raw OpenSCAD code; the intent is hard-validated against
+   * the converter's whitelist before SCAD generation, so syntax errors are
+   * impossible.
+   */
+  const generateScadFromNlPrompt = useCallback(async () => {
+    const prompt = scadNlPrompt.trim();
+    if (!prompt) {
+      setScadErr(t.scadNlEmpty);
+      return;
+    }
+    setScadNlBusy(true);
+    setScadErr('');
+    setScadNlSummary(null);
+    try {
+      const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string; scad?: string; summary?: string; reason?: string; code?: string; resetAtMs?: number }));
+      if (!res.ok) {
+        // 402 COST_BUDGET → friendlier message + lock the input.
+        if (res.status === 402 && data.code === 'COST_BUDGET') {
+          let extra = '';
+          if (typeof data.resetAtMs === 'number' && data.resetAtMs > Date.now()) {
+            setScadNlBudgetLockUntil(data.resetAtMs);
+            const mins = Math.ceil((data.resetAtMs - Date.now()) / 60_000);
+            const hours = Math.floor(mins / 60);
+            const rem = mins % 60;
+            extra = hours > 0 ? ` (${hours}h ${rem}m)` : ` (${mins}m)`;
+          }
+          setScadErr(t.scadNlBudgetReached + extra);
+          return;
+        }
+        setScadErr(data.reason ?? data.error ?? `Server ${res.status}`);
+        return;
+      }
+      if (typeof data.scad === 'string' && data.scad.length > 0) {
+        setScadSource(data.scad);
+        if (typeof data.summary === 'string') setScadNlSummary(data.summary);
+        // Surface "approaching budget" advisory when server flagged it.
+        const warning = (data as { budgetWarning?: { fraction: number; limitUsd: number | null } }).budgetWarning;
+        if (warning && !scadNlBudgetAdvisoryShownRef.current) {
+          scadNlBudgetAdvisoryShownRef.current = true;
+          setScadNlBudgetAdvisory({ fraction: warning.fraction, limitUsd: warning.limitUsd });
+        }
+      } else {
+        setScadErr(t.scadFromIntentEmpty);
+      }
+    } catch (e: unknown) {
+      setScadErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setScadNlBusy(false);
+    }
+  }, [scadNlPrompt, t]);
 
   const downloadScadStl = useCallback(async () => {
     if (scadResultB64) {
@@ -1210,7 +1407,8 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               onChange={e => setPrompt(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !isWorkingOrScad) {
-                  hasCode && prompt.trim() ? refine() : generate();
+                  if (hasCode && prompt.trim()) refine();
+                  else generate();
                 }
               }}
               placeholder={hasCode ? t.placeholderRefine : t.placeholderGenerate}
@@ -1218,7 +1416,10 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               disabled={isWorkingOrScad}
             />
             <button
-              onClick={() => hasCode && prompt.trim() ? refine() : generate()}
+              onClick={() => {
+                if (hasCode && prompt.trim()) refine();
+                else generate();
+              }}
               disabled={isWorkingOrScad || !prompt.trim()}
               className={`px-3 py-2 disabled:opacity-40 text-white rounded text-xs font-medium whitespace-nowrap transition-colors ${
                 hasCode ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-500'
@@ -1450,6 +1651,67 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       {tab === 'openscad' && (
         <div className="flex flex-col gap-3 p-3 overflow-y-auto flex-1">
           <p className="text-[11px] text-gray-500 leading-snug">{t.scadTabNote}</p>
+          <div className="flex flex-col gap-1.5 bg-gray-900/40 border border-indigo-700/30 rounded p-2.5">
+            <label className="text-[11px] text-indigo-200/80 font-medium">{t.scadNlLabel}</label>
+            {scadNlBudgetLockUntil && scadNlBudgetLockUntil > scadNlBudgetNow && (() => {
+              const remainingMs = scadNlBudgetLockUntil - scadNlBudgetNow;
+              const mins = Math.ceil(remainingMs / 60_000);
+              const hours = Math.floor(mins / 60);
+              const label = hours > 0 ? `${hours}h ${mins % 60}m` : `${mins}m`;
+              return (
+                <div className="text-[11px] bg-red-950/40 border border-red-900/50 text-red-200 rounded px-2 py-1.5 flex items-center gap-2">
+                  <span aria-hidden>⏳</span>
+                  <span className="flex-1">{t.scadNlBudgetReached}</span>
+                  <span className="font-mono font-semibold">{label}</span>
+                </div>
+              );
+            })()}
+            {scadNlBudgetAdvisory && !scadNlBudgetLockUntil && (
+              <div className="text-[11px] bg-amber-950/40 border border-amber-700/50 text-amber-200 rounded px-2 py-1.5 flex items-center gap-2">
+                <span aria-hidden>⚠️</span>
+                <span className="flex-1">
+                  {t.scadNlBudgetWarn} ({Math.round(scadNlBudgetAdvisory.fraction * 100)}%
+                  {scadNlBudgetAdvisory.limitUsd != null && ` / $${scadNlBudgetAdvisory.limitUsd}`})
+                </span>
+                <button
+                  onClick={() => setScadNlBudgetAdvisory(null)}
+                  className="text-amber-400 hover:text-amber-200 px-1"
+                  aria-label="dismiss"
+                >✕</button>
+              </div>
+            )}
+            <textarea
+              value={scadNlPrompt}
+              onChange={e => setScadNlPrompt(e.target.value)}
+              spellCheck={false}
+              placeholder={t.scadNlPlaceholder}
+              rows={2}
+              disabled={scadNlBusy || scadBusy || (scadNlBudgetLockUntil !== null && scadNlBudgetLockUntil > scadNlBudgetNow)}
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 resize-y focus:outline-none focus:border-indigo-500/60 min-h-[44px]"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void generateScadFromNlPrompt()}
+                disabled={scadNlBusy || scadBusy || !scadNlPrompt.trim() || (scadNlBudgetLockUntil !== null && scadNlBudgetLockUntil > scadNlBudgetNow)}
+                className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded font-medium"
+              >
+                {scadNlBusy ? t.scadNlBusy : t.scadNlBtn}
+              </button>
+              {scadNlSummary && (
+                <span className="text-[11px] text-indigo-200/70 truncate">{scadNlSummary}</span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void generateScadFromCurrentShape()}
+            disabled={scadFromIntentBusy || scadBusy || !currentShape?.shapeId}
+            title={t.scadFromIntentHint}
+            className="text-xs px-3 py-2 bg-indigo-700/80 hover:bg-indigo-600 disabled:opacity-40 text-white rounded font-medium border border-indigo-500/40 self-start"
+          >
+            {scadFromIntentBusy ? t.scadFromIntentBusy : t.scadFromIntentBtn}
+          </button>
           <textarea
             value={scadSource}
             onChange={e => setScadSource(e.target.value)}

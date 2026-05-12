@@ -36,6 +36,8 @@ import type { UnitSystem } from './units';
 import { getMaterialPreset, type MaterialPreset } from './materials';
 import type { CollabUser } from './collab/CollabTypes';
 import CollabCursors from './collab/CollabCursors';
+import AwarenessCursors from './collab/AwarenessCursors';
+import type { PresenceState } from './collab/yjsDoc';
 import PrintAnalysisOverlay from './analysis/PrintAnalysisOverlay';
 import FEAOverlay from './analysis/FEAOverlay';
 import FEAConditionMarkers from './analysis/FEAConditionMarkers';
@@ -720,6 +722,9 @@ function FaceScene({
   const { editGeometry, faces, selectedFaceId, setSelectedFaceId, hoveredFaceId, setHoveredFaceId, pushPullFace, resetEdits: _resetEdits, hasEdits } = useFaceEditing(sourceGeometry);
   const [isDragging, setIsDragging] = useState(false);
   const [calloutDismissed, setCalloutDismissed] = useState(false);
+  const facePathname = usePathname();
+  const faceSeg = facePathname?.split('/').filter(Boolean)[0] ?? 'en';
+  const faceT: ShapePreviewI18n = dict[langMap[faceSeg] ?? 'en'];
   // Multi-selection (Shift/Ctrl + click adds to set)
   const [selectedFaceIds, setSelectedFaceIds] = useState<Set<number>>(new Set());
 
@@ -865,7 +870,7 @@ function FaceScene({
             backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           }}>
             <span style={{ color: '#58a6ff' }}>▣</span>
-            <span>{selectedFaceIds.size} faces</span>
+            <span>{faceT.facesSelected(selectedFaceIds.size)}</span>
             <button
               onClick={clearSelection}
               style={{
@@ -873,7 +878,7 @@ function FaceScene({
                 background: 'transparent', color: '#8b949e', fontSize: 10, fontWeight: 600, cursor: 'pointer',
               }}
             >
-              Clear
+              {faceT.clearSel}
             </button>
           </div>
         </Html>
@@ -988,6 +993,9 @@ interface AssemblyInstancePart {
   key: string;
   isHighlighted: boolean;
   isFaded: boolean;
+  isHidden?: boolean;
+  isTransparent?: boolean;
+  customColor?: string;
   pos: [number, number, number] | undefined;
   rot: [number, number, number] | undefined;
 }
@@ -1016,7 +1024,7 @@ function AssemblyInstancedGroup({
   selectionActive: boolean;
   isKinematicsMode: boolean;
   onStandardPartDrop?: (evt: StandardPartDropEvent) => void;
-  onElementSelect?: (info: import('./editing/selectionInfo').ElementSelectionInfo) => void;
+  onElementSelect?: (info: import('./editing/selectionInfo').ElementSelectionInfo, additive?: boolean) => void;
 }) {
   const { levels, skipped } = useLOD(geometry);
 
@@ -1028,38 +1036,81 @@ function AssemblyInstancedGroup({
     return levels[0];
   }, [isOrbiting, preferLowDetail, levels, skipped, geometry]);
 
+  const visibleParts = parts.filter(p => !p.isHidden);
+  const normalParts = visibleParts.filter(p => !p.isFaded && !p.isTransparent);
+  const fadedParts = visibleParts.filter(p => p.isFaded && !p.isTransparent);
+  const transparentParts = visibleParts.filter(p => p.isTransparent);
+  const hasAnyFaded = fadedParts.length > 0;
+  
+  const getPartColor = (p: AssemblyInstancePart) => p.customColor || p.part.color || PART_COLORS[p.index % PART_COLORS.length];
+
   return (
     <group>
       {displayMode === 'wireframe' ? (
-        <Instances geometry={activeGeo}>
-          <meshBasicMaterial wireframe color="#111" />
-          {parts.map(p => (
-            <Instance
-              key={p.key}
-              position={p.pos}
-              rotation={p.rot}
-              color={p.isHighlighted ? '#e3b341' : (p.part.color ?? PART_COLORS[p.index % PART_COLORS.length])}
-            />
-          ))}
-        </Instances>
+        <>
+          <Instances geometry={activeGeo}>
+            <meshBasicMaterial wireframe color="#111" />
+            {normalParts.map(p => (
+              <Instance key={p.key} position={p.pos} rotation={p.rot}
+                color={p.isHighlighted ? '#e3b341' : getPartColor(p)} />
+            ))}
+          </Instances>
+          {transparentParts.length > 0 && (
+            <Instances geometry={activeGeo}>
+              <meshBasicMaterial wireframe transparent opacity={0.4} color="#111" />
+              {transparentParts.map(p => (
+                <Instance key={p.key} position={p.pos} rotation={p.rot}
+                  color={getPartColor(p)} />
+              ))}
+            </Instances>
+          )}
+          {fadedParts.length > 0 && (
+            <Instances geometry={activeGeo}>
+              <meshBasicMaterial wireframe transparent opacity={0.12} />
+              {fadedParts.map(p => (
+                <Instance key={p.key} position={p.pos} rotation={p.rot}
+                  color={getPartColor(p)} />
+              ))}
+            </Instances>
+          )}
+        </>
       ) : (
-        <Instances geometry={activeGeo} castShadow receiveShadow>
-          <meshStandardMaterial roughness={0.35} metalness={0.4} side={THREE.DoubleSide} transparent opacity={0.7} />
-          {parts.map(p => (
-            <Instance
-              key={p.key}
-              position={p.pos}
-              rotation={p.rot}
-              color={p.isHighlighted ? '#e3b341' : (p.part.color ?? PART_COLORS[p.index % PART_COLORS.length])}
-            />
-          ))}
-        </Instances>
+        <>
+          <Instances geometry={activeGeo} castShadow receiveShadow>
+            <meshStandardMaterial roughness={0.35} metalness={0.4} side={THREE.DoubleSide} transparent opacity={hasAnyFaded ? 1.0 : 0.7} />
+            {normalParts.map(p => (
+              <Instance key={p.key} position={p.pos} rotation={p.rot}
+                color={p.isHighlighted ? '#e3b341' : getPartColor(p)} />
+            ))}
+          </Instances>
+          {transparentParts.length > 0 && (
+            <Instances geometry={activeGeo}>
+              <meshStandardMaterial roughness={0.35} metalness={0.4} side={THREE.DoubleSide} transparent opacity={0.4} depthWrite={false} />
+              {transparentParts.map(p => (
+                <Instance key={p.key} position={p.pos} rotation={p.rot}
+                  color={getPartColor(p)} />
+              ))}
+            </Instances>
+          )}
+          {fadedParts.length > 0 && (
+            <Instances geometry={activeGeo}>
+              <meshStandardMaterial roughness={0.6} metalness={0.1} side={THREE.DoubleSide} transparent opacity={0.12} depthWrite={false} />
+              {fadedParts.map(p => (
+                <Instance key={p.key} position={p.pos} rotation={p.rot}
+                  color={getPartColor(p)} />
+              ))}
+            </Instances>
+          )}
+        </>
       )}
-      {(selectionActive || isKinematicsMode || !!onStandardPartDrop) && parts.map(p => (
+      {(selectionActive || isKinematicsMode || !!onStandardPartDrop) && visibleParts.map(p => (
         <group key={`sel_${p.key}`} position={p.pos} rotation={p.rot}>
           <SelectionMeshR3F
             geometry={geometry}
-            onSelect={(info) => onElementSelect?.({ ...info, partName: p.key })}
+            onSelect={(info, additive) => {
+              if (info.type === 'multi') { onElementSelect?.(info, additive); return; }
+              onElementSelect?.({ ...info, partName: p.key }, additive);
+            }}
           />
         </group>
       ))}
@@ -1090,6 +1141,11 @@ interface ShapePreviewProps {
   showPerf?: boolean;
   materialId?: string;
   collabUsers?: CollabUser[];
+  /** Yjs awareness presences (CRDT path). When set + non-empty, supersedes
+   *  collabUsers for cursor rendering — same visual, different data source. */
+  awarenessPresences?: Map<number, PresenceState>;
+  /** Local Yjs client id, used to skip drawing your own cursor. */
+  awarenessLocalClientId?: number;
   showPrintAnalysis?: boolean;
   printAnalysis?: import('./analysis/printAnalysis').PrintAnalysisResult | null;
   printBuildDirection?: [number, number, number];
@@ -1157,13 +1213,17 @@ interface ShapePreviewProps {
   nurbsCPParams?: Record<string, number>;
   onNurbsCPParamChange?: (key: string, value: number) => void;
   /** Face/edge selection: called when user clicks a face on the main mesh */
-  onElementSelect?: (info: import('./editing/selectionInfo').ElementSelectionInfo) => void;
+  onElementSelect?: (info: import('./editing/selectionInfo').ElementSelectionInfo, additive?: boolean) => void;
   /** Whether face selection click mode is active */
   selectionActive?: boolean;
   /** Triangle indices of the currently selected face group (for highlight rendering) */
   highlightTriangles?: number[];
   /** Assembly Mates to visualize */
   assemblyMates?: import('./assembly/AssemblyMates').AssemblyMate[];
+  /** Assembly Part visibility states */
+  assemblyHiddenParts?: Set<string>;
+  assemblyTransparentParts?: Set<string>;
+  assemblyPartColors?: Record<string, string>;
   /** When true, empty 3D panel shows sketch-oriented copy (no duplicate "start sketch" CTA). */
   isSketchMode?: boolean;
   /** Face-edit mode: shown inside the canvas until the user picks a face (step-by-step help). */
@@ -1205,7 +1265,11 @@ const dict = {
         assemblyLoadBadgeWarn: '다수 파트', assemblyLoadTitleWarn: '파트 수가 많아 브라우저 부하가 커질 수 있습니다.',
         assemblyLoadBadgeHeavy: '대형', assemblyLoadTitleHeavy: '대형 어셈블리입니다. 성능·메모리 사용량이 크게 늘 수 있습니다.',
         assemblyLoadBadgeExtreme: '초대형', assemblyLoadTitleExtreme: '매우 많은 파트입니다. 저해상 LOD가 자동 적용됩니다.',
-        directEditNavHint: '핸들: 좌클 드래그 · 회전: 가운데 버튼 드래그 · 팬: 우클릭' },
+        directEditNavHint: '핸들: 좌클 드래그 · 회전: 가운데 버튼 드래그 · 팬: 우클릭',
+        editDragHint: '핸들을 클릭하여 드래그하세요', transformDragHint: '기즈모를 드래그하여 변환하세요', defaultNavHint: '드래그 · 우클릭 · 스크롤',
+        facesSelected: (n: number) => `면 ${n}개 선택`, clearSel: '선택 해제',
+        radialExtrude: '돌출', radialLine: '선', radialFillet: '필렛', radialCircle: '원', radialFinish: '완료', radialCancel: '취소', radialSketch: '스케치', radialRect: '사각형',
+        glContextLost: 'GPU 컨텍스트 손실 — 뷰포트 복구 중…', glContextRestart: '뷰포트 다시 로드' },
   en: { drop: 'Drop CAD file here', material: 'Material Preview', turntable: 'Turntable Animation',
         front: 'Front', right: 'Right', top: 'Top', fitAll: 'Fit All', fit: 'Fit',
         snapOn: 'SNAP ON', pickShape: 'Pick Shape', startSketch: 'Start Sketch', aiChat: 'AI Chat',
@@ -1220,7 +1284,11 @@ const dict = {
         assemblyLoadBadgeWarn: 'Many parts', assemblyLoadTitleWarn: 'Many parts may increase browser load and interaction latency.',
         assemblyLoadBadgeHeavy: 'Large asm', assemblyLoadTitleHeavy: 'Large assembly — expect higher GPU/memory use.',
         assemblyLoadBadgeExtreme: 'XL asm', assemblyLoadTitleExtreme: 'Very large assembly — lower-detail LOD is applied automatically.',
-        directEditNavHint: 'Handles: left-drag · Orbit: middle-drag · Pan: right-drag' },
+        directEditNavHint: 'Handles: left-drag · Orbit: middle-drag · Pan: right-drag',
+        editDragHint: 'Click + drag handles to edit', transformDragHint: 'Drag gizmo to transform', defaultNavHint: 'Drag · Right-click · Scroll',
+        facesSelected: (n: number) => `${n} face${n > 1 ? 's' : ''} selected`, clearSel: 'Clear',
+        radialExtrude: 'Extrude', radialLine: 'Line', radialFillet: 'Fillet', radialCircle: 'Circle', radialFinish: 'Finish', radialCancel: 'Cancel', radialSketch: 'Sketch', radialRect: 'Rect',
+        glContextLost: 'GPU context lost — restoring viewport…', glContextRestart: 'Reload viewport' },
   ja: { drop: 'CADファイルをここにドロップ', material: 'マテリアルプレビュー', turntable: 'ターンテーブルアニメ',
         front: '正面', right: '右', top: '上', fitAll: '全体表示', fit: '全体',
         snapOn: 'スナップON', pickShape: '形状選択', startSketch: 'スケッチ開始', aiChat: 'AIチャット',
@@ -1235,7 +1303,11 @@ const dict = {
         assemblyLoadBadgeWarn: '多パート', assemblyLoadTitleWarn: 'パート数が多く、ブラウザ負荷が高まることがあります。',
         assemblyLoadBadgeHeavy: '大型', assemblyLoadTitleHeavy: '大型アセンブリです。GPU/メモリ使用量が大きくなる場合があります。',
         assemblyLoadBadgeExtreme: '特大', assemblyLoadTitleExtreme: 'パート数が非常に多いです。低詳細LODを自動適用します。',
-        directEditNavHint: 'ハンドル:左ドラッグ・回転:ホイールドラッグ・パン:右ドラッグ' },
+        directEditNavHint: 'ハンドル:左ドラッグ・回転:ホイールドラッグ・パン:右ドラッグ',
+        editDragHint: 'ハンドルをドラッグして編集', transformDragHint: 'ギズモをドラッグして変換', defaultNavHint: 'ドラッグ・右クリック・スクロール',
+        facesSelected: (n: number) => `${n}面選択中`, clearSel: 'クリア',
+        radialExtrude: '押し出し', radialLine: '線', radialFillet: 'フィレット', radialCircle: '円', radialFinish: '完了', radialCancel: 'キャンセル', radialSketch: 'スケッチ', radialRect: '矩形',
+        glContextLost: 'GPUコンテキスト消失 — ビューポート復旧中…', glContextRestart: 'ビューポート再読み込み' },
   zh: { drop: '将 CAD 文件拖放到此处', material: '材质预览', turntable: '转盘动画',
         front: '正面', right: '右', top: '上', fitAll: '适应窗口', fit: '适应',
         snapOn: '捕捉 开', pickShape: '选择形状', startSketch: '开始草图', aiChat: 'AI 聊天',
@@ -1250,7 +1322,11 @@ const dict = {
         assemblyLoadBadgeWarn: '多零件', assemblyLoadTitleWarn: '零件较多时，浏览器负载可能升高。',
         assemblyLoadBadgeHeavy: '大型', assemblyLoadTitleHeavy: '大型装配体 — GPU/内存占用可能显著增加。',
         assemblyLoadBadgeExtreme: '超大', assemblyLoadTitleExtreme: '零件非常多 — 已自动使用较低细节 LOD。',
-        directEditNavHint: '手柄：左键拖动 · 旋转：滚轮拖动 · 平移：右键拖动' },
+        directEditNavHint: '手柄：左键拖动 · 旋转：滚轮拖动 · 平移：右键拖动',
+        editDragHint: '点击拖动手柄进行编辑', transformDragHint: '拖动辅助工具进行变换', defaultNavHint: '拖动 · 右键 · 滚轮',
+        facesSelected: (n: number) => `已选${n}个面`, clearSel: '清除',
+        radialExtrude: '拉伸', radialLine: '线', radialFillet: '圆角', radialCircle: '圆', radialFinish: '完成', radialCancel: '取消', radialSketch: '草图', radialRect: '矩形',
+        glContextLost: 'GPU 上下文丢失 — 正在恢复视口…', glContextRestart: '重新加载视口' },
   es: { drop: 'Suelte archivo CAD aquí', material: 'Vista Previa Material', turntable: 'Animación Giratoria',
         front: 'Frente', right: 'Derecha', top: 'Superior', fitAll: 'Ajustar Todo', fit: 'Ajustar',
         snapOn: 'AJUSTE ON', pickShape: 'Elegir Forma', startSketch: 'Iniciar Boceto', aiChat: 'Chat IA',
@@ -1265,7 +1341,11 @@ const dict = {
         assemblyLoadBadgeWarn: 'Muchas piezas', assemblyLoadTitleWarn: 'Muchas piezas pueden aumentar la carga del navegador.',
         assemblyLoadBadgeHeavy: 'Gran ens.', assemblyLoadTitleHeavy: 'Ensamblaje grande: mayor uso de GPU/memoria.',
         assemblyLoadBadgeExtreme: 'XL', assemblyLoadTitleExtreme: 'Ensamblaje muy grande — LOD bajo automático.',
-        directEditNavHint: 'Manijas: arrastre izq. · Órbita: botón central · Pan: derecho' },
+        directEditNavHint: 'Manijas: arrastre izq. · Órbita: botón central · Pan: derecho',
+        editDragHint: 'Clic + arrastrar manijas para editar', transformDragHint: 'Arrastrar gizmo para transformar', defaultNavHint: 'Arrastrar · Clic derecho · Desplazar',
+        facesSelected: (n: number) => `${n} cara${n > 1 ? 's' : ''} seleccionada${n > 1 ? 's' : ''}`, clearSel: 'Borrar',
+        radialExtrude: 'Extruir', radialLine: 'Línea', radialFillet: 'Redondeo', radialCircle: 'Círculo', radialFinish: 'Terminar', radialCancel: 'Cancelar', radialSketch: 'Boceto', radialRect: 'Rectángulo',
+        glContextLost: 'Contexto GPU perdido — restaurando viewport…', glContextRestart: 'Recargar viewport' },
   ar: { drop: 'أسقط ملف CAD هنا', material: 'معاينة المواد', turntable: 'رسوم متحركة دوارة',
         front: 'أمام', right: 'يمين', top: 'أعلى', fitAll: 'ملاءمة الكل', fit: 'ملاءمة',
         snapOn: 'الالتقاط مفعّل', pickShape: 'اختر شكلاً', startSketch: 'بدء الرسم', aiChat: 'دردشة AI',
@@ -1280,8 +1360,13 @@ const dict = {
         assemblyLoadBadgeWarn: 'قطع كثيرة', assemblyLoadTitleWarn: 'قد تزداد أعباء المتصفح مع عدد كبير من القطع.',
         assemblyLoadBadgeHeavy: 'كبير', assemblyLoadTitleHeavy: 'تجميع كبير — قد يرتفع استخدام GPU/الذاكرة.',
         assemblyLoadBadgeExtreme: 'ضخم', assemblyLoadTitleExtreme: 'عدد قطع كبير جداً — يتم تطبيق LOD أقل تلقائياً.',
-        directEditNavHint: 'المقابض: سحب يسار · المدار: زر العجلة · التحريك: يمين' },
+        directEditNavHint: 'المقابض: سحب يسار · المدار: زر العجلة · التحريك: يمين',
+        editDragHint: 'انقر واسحب المقابض للتحرير', transformDragHint: 'اسحب أداة التحويل', defaultNavHint: 'سحب · نقر يمين · تمرير',
+        facesSelected: (n: number) => `${n} وجه محدد`, clearSel: 'مسح',
+        radialExtrude: 'بثق', radialLine: 'خط', radialFillet: 'تقريب', radialCircle: 'دائرة', radialFinish: 'إنهاء', radialCancel: 'إلغاء', radialSketch: 'رسم', radialRect: 'مستطيل',
+        glContextLost: 'فقدان سياق GPU — جاري استعادة العرض…', glContextRestart: 'إعادة تحميل العرض' },
 };
+type ShapePreviewI18n = (typeof dict)[keyof typeof dict];
 const langMap: Record<string, keyof typeof dict> = {
   kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
 };
@@ -1291,7 +1376,7 @@ export default function ShapePreview({
   showDimensions = false, measureActive = false, measureMode = 'distance', sectionActive = false,
   sectionAxis = 'y', sectionOffset = 0.5, showPlanes = false, constructPlanes,
   transformMode = 'off', onTransformChange, snapGrid, unitSystem = 'mm',
-  showPerf = false, materialId, collabUsers,
+  showPerf = false, materialId, collabUsers, awarenessPresences, awarenessLocalClientId,
   showPrintAnalysis = false, printAnalysis = null,
   printBuildDirection = [0, 1, 0], printOverhangAngle = 45,
   renderMode = 'standard', renderSettings, onCaptureScreenshot: _onCaptureScreenshot,
@@ -1385,8 +1470,13 @@ export default function ShapePreview({
 
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
-  const t = dict[langMap[seg] ?? 'en'];
+  const t: ShapePreviewI18n = dict[langMap[seg] ?? 'en'];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // WebGL context-loss tracking. Browsers fire `webglcontextlost` when the GPU
+  // is reclaimed (tab backgrounded too long, GPU process crash, etc.). The
+  // canvas goes blank until `webglcontextrestored` fires. We catch both so we
+  // can show an explanatory banner instead of a silently dead viewport.
+  const [glContextLost, setGlContextLost] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('solid');
   const [fitKey, setFitKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1577,6 +1667,7 @@ export default function ShapePreview({
 
   const bottomY = useMemo(() => {
     if (allResults.length === 0) return 0;
+    // Re-use bounding boxes computed by stats below
     let minY = Infinity;
     for (const r of allResults) {
       r.geometry.computeBoundingBox();
@@ -1586,14 +1677,15 @@ export default function ShapePreview({
     return minY === Infinity ? 0 : minY;
   }, [allResults]);
 
-  // Combined stats
+  // Combined stats — reuses bounding boxes already computed by bottomY (same allResults dep)
   const stats = useMemo(() => {
     if (allResults.length === 0) return null;
     const totalVol = allResults.reduce((s, r) => s + r.volume_cm3, 0);
     const totalSA = allResults.reduce((s, r) => s + r.surface_area_cm2, 0);
     const combined = new THREE.Box3();
     for (const r of allResults) {
-      r.geometry.computeBoundingBox();
+      // boundingBox already computed in bottomY memo (same deps), so this is a no-op cache hit
+      if (!r.geometry.boundingBox) r.geometry.computeBoundingBox();
       if (r.geometry.boundingBox) combined.union(r.geometry.boundingBox);
     }
     const size = combined.getSize(new THREE.Vector3());
@@ -1669,7 +1761,7 @@ export default function ShapePreview({
                   else { onGeometryFitRequest?.(); setFitKey(k => k + 1); }
                   setRadialMenu(null); 
                 }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#e6edf3', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
-                  {isSketchMode ? '↗ Line' : '⏫ Extrude'}
+                  {isSketchMode ? `↗ ${t.radialLine}` : `⏫ ${t.radialExtrude}`}
                 </button>
               </div>
 
@@ -1680,7 +1772,7 @@ export default function ShapePreview({
                   else dispatchView('iso');
                   setRadialMenu(null); 
                 }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#e6edf3', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
-                  {isSketchMode ? '⭕ Circle' : '🔘 Fillet'}
+                  {isSketchMode ? `⭕ ${t.radialCircle}` : `🔘 ${t.radialFillet}`}
                 </button>
               </div>
 
@@ -1691,7 +1783,7 @@ export default function ShapePreview({
                   else setDisplayMode('wireframe');
                   setRadialMenu(null); 
                 }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#f85149', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
-                  {isSketchMode ? '✅ Finish' : '❌ Cancel'}
+                  {isSketchMode ? `✅ ${t.radialFinish}` : `❌ ${t.radialCancel}`}
                 </button>
               </div>
 
@@ -1702,7 +1794,7 @@ export default function ShapePreview({
                   else setDisplayMode('solid');
                   setRadialMenu(null); 
                 }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#3fb950', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
-                  {isSketchMode ? '▱ Rect' : '✏️ Sketch'}
+                  {isSketchMode ? `▱ ${t.radialRect}` : `✏️ ${t.radialSketch}`}
                 </button>
               </div>
             </div>
@@ -1782,6 +1874,7 @@ export default function ShapePreview({
                 key={view} type="button" disabled={viewChromeDisabled}
                 onClick={() => { if (!viewChromeDisabled) dispatchView(view); }}
                 title={viewChromeDisabled ? t.viewWhenNoModel : `${label} [${key}]`}
+                aria-label={label}
                 style={{
                   padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: '#ffffff',
                   fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
@@ -1797,6 +1890,7 @@ export default function ShapePreview({
               type="button" disabled={viewChromeDisabled}
               onClick={() => { if (!viewChromeDisabled) { onGeometryFitRequest?.(); setFitKey(k => k + 1); } }}
               title={viewChromeDisabled ? t.viewWhenNoModel : `${t.fitAll} [F]`}
+              aria-label={t.fitAll}
               style={{
                 padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: '#ffffff',
                 fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
@@ -1818,6 +1912,7 @@ export default function ShapePreview({
                 key={key} type="button" disabled={viewChromeDisabled}
                 onClick={() => { if (!viewChromeDisabled) setDisplayMode(key); }}
                 title={viewChromeDisabled ? t.viewWhenNoModel : label}
+                aria-label={label}
                 style={{
                   padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                   cursor: viewChromeDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
@@ -1862,6 +1957,7 @@ export default function ShapePreview({
               type="button" disabled={viewChromeDisabled}
               onClick={() => { if (!viewChromeDisabled) setPbrPanelOpen(v => !v); }}
               title={viewChromeDisabled ? t.viewWhenNoModel : t.material}
+              aria-label={t.material}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: pbrPanelOpen ? 'rgba(217,119,6,0.15)' : 'transparent',
@@ -1876,6 +1972,7 @@ export default function ShapePreview({
               type="button" disabled={viewChromeDisabled}
               onClick={() => { if (!viewChromeDisabled) setShowDims(d => !d); }}
               title={viewChromeDisabled ? t.viewWhenNoModel : t.dimensions}
+              aria-label={t.dimensions}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: showDims ? 'rgba(56,139,253,0.15)' : 'transparent',
@@ -1890,6 +1987,7 @@ export default function ShapePreview({
               type="button" disabled={viewChromeDisabled}
               onClick={() => { if (!viewChromeDisabled) setInternalAnimateMode(m => m === 'turntable' ? 'none' : 'turntable'); }}
               title={viewChromeDisabled ? t.viewWhenNoModel : t.turntable}
+              aria-label={t.turntable}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: effectiveAnimateMode === 'turntable' ? 'rgba(124,58,237,0.15)' : 'transparent',
@@ -1902,6 +2000,7 @@ export default function ShapePreview({
             >⟲</button>
             <button
               type="button" onClick={toggleFullscreen} title={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
+              aria-label={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
               style={{ padding: '4px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#ffffff', fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -2098,11 +2197,30 @@ export default function ShapePreview({
             </div>
           ) : (
             <>
-            <ErrorBoundary
-              onError={(error) => {
-                console.error('[ShapePreview] 3D Canvas error:', error.message, error.stack);
-              }}
-            >
+            <ErrorBoundary>
+            {glContextLost && (
+              <div style={{
+                position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+                zIndex: 50, background: 'rgba(252, 211, 77, 0.95)', color: '#1f1500',
+                padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span>⚠️ {t.glContextLost ?? 'GPU context lost — restoring viewport…'}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Force a remount by changing fitKey — Canvas will rebuild
+                    // its WebGL context on next render.
+                    setFitKey(k => k + 1);
+                    setGlContextLost(false);
+                  }}
+                  style={{
+                    padding: '2px 8px', fontSize: 11, fontWeight: 700, borderRadius: 4,
+                    border: '1px solid #1f1500', background: '#fde68a', cursor: 'pointer',
+                  }}
+                >{t.glContextRestart ?? 'Reload viewport'}</button>
+              </div>
+            )}
             <Canvas
               camera={{ position: [150, 120, 150], fov: 50, near: 0.05, far: 2_000_000 }}
               shadows
@@ -2110,6 +2228,22 @@ export default function ShapePreview({
               onCreated={({ gl, scene }) => {
                 gl.domElement.setAttribute('data-engine', NF_R3F_VIEWPORT_DATA_ENGINE);
                 canvasRef.current = gl.domElement;
+                // WebGL context-loss handling. preventDefault() on `lost` is
+                // mandatory — without it the browser will refuse to fire
+                // `restored` even when GPU resources come back.
+                const onLost = (ev: Event) => {
+                  ev.preventDefault();
+                  setGlContextLost(true);
+                  void import('@sentry/nextjs').then(s => {
+                    s.captureMessage?.('webgl_context_lost', {
+                      level: 'warning',
+                      tags: { source: 'ShapePreview', surface: 'canvas' },
+                    });
+                  }).catch(() => { /* SDK absent — banner still shows */ });
+                };
+                const onRestored = () => setGlContextLost(false);
+                gl.domElement.addEventListener('webglcontextlost', onLost);
+                gl.domElement.addEventListener('webglcontextrestored', onRestored);
                 onSceneReady?.(scene);
               }}
               style={{ width: '100%', height: '100%' }}
@@ -2269,28 +2403,42 @@ export default function ShapePreview({
                       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
 
                       const colorMap: Record<string, string> = {
-                        coincident: '#388bfd',
-                        concentric: '#3fb950',
-                        distance: '#d29922',
-                        angle: '#f85149',
-                        parallel: '#a371f7',
-                        perpendicular: '#f778ba',
-                        tangent: '#2ea043'
+                        coincident: '#388bfd', concentric: '#3fb950', distance: '#d29922',
+                        angle: '#f85149', parallel: '#a371f7', perpendicular: '#f778ba', tangent: '#2ea043'
                       };
+                      const iconMap: Record<string, string> = {
+                        coincident: '═', concentric: '⊙', distance: '↔', angle: '∡', parallel: '∥', perpendicular: '⊥', tangent: '⌒'
+                      };
+                      
+                      const color = colorMap[mate.type] || '#8b949e';
+                      const icon = iconMap[mate.type] || '🔗';
+                      const midPoint = new THREE.Vector3().addVectors(ptA, ptB).multiplyScalar(0.5);
 
                       return (
                         <group key={mate.id}>
                           <lineSegments geometry={lineGeo}>
-                            <lineDashedMaterial color={colorMap[mate.type] || '#8b949e'} dashSize={2} gapSize={1} linewidth={2} />
+                            <lineDashedMaterial color={color} dashSize={2} gapSize={1.5} linewidth={2} transparent opacity={0.6} />
                           </lineSegments>
                           <mesh position={ptA}>
-                            <sphereGeometry args={[0.8, 8, 8]} />
-                            <meshBasicMaterial color={colorMap[mate.type] || '#8b949e'} />
+                            <sphereGeometry args={[0.5, 8, 8]} />
+                            <meshBasicMaterial color={color} transparent opacity={0.8} />
                           </mesh>
                           <mesh position={ptB}>
-                            <sphereGeometry args={[0.8, 8, 8]} />
-                            <meshBasicMaterial color={colorMap[mate.type] || '#8b949e'} />
+                            <sphereGeometry args={[0.5, 8, 8]} />
+                            <meshBasicMaterial color={color} transparent opacity={0.8} />
                           </mesh>
+                          <Html position={midPoint} center style={{ pointerEvents: 'none' }}>
+                            <div style={{
+                              background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                              border: `1px solid ${color}88`, borderRadius: 12, padding: '2px 6px',
+                              color: '#fff', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap'
+                            }}>
+                              <span style={{ color }}>{icon}</span>
+                              <span style={{ textTransform: 'capitalize' }}>{mate.type}</span>
+                              {mate.value !== undefined && <span style={{ opacity: 0.7 }}>{mate.value}</span>}
+                            </div>
+                          </Html>
                         </group>
                       );
                     })}
@@ -2362,6 +2510,7 @@ export default function ShapePreview({
                         geometry={result.geometry}
                         result={draftResult}
                         minDraftDeg={draftMinDeg}
+                        pullDirection={draftResult.options?.pullDirection}
                       />
                     )}
                     {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
@@ -2432,11 +2581,18 @@ export default function ShapePreview({
                 )}
 
                 {/* Performance monitor */}
-                <PerfMonitor visible={showPerf} lang={lang} />
+                {showPerf && <PerfMonitor visible lang={lang} />}
 
-                {/* Collaboration cursors */}
-                {collabUsers && collabUsers.length > 0 && (
-                  <CollabCursors users={collabUsers} />
+                {/* Collaboration cursors — CRDT path takes precedence. */}
+                {awarenessPresences && awarenessPresences.size > 0 && awarenessLocalClientId !== undefined ? (
+                  <AwarenessCursors
+                    presences={awarenessPresences}
+                    localClientId={awarenessLocalClientId}
+                  />
+                ) : (
+                  collabUsers && collabUsers.length > 0 && (
+                    <CollabCursors users={collabUsers} />
+                  )
                 )}
               </Suspense>
               <group position={[0, bottomY - 2, 0]}>
@@ -2452,8 +2608,9 @@ export default function ShapePreview({
                   fadeStrength={3}
                   infiniteGrid
                 />
-                <axesHelper args={[100]} />
               </group>
+              {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid */}
+              <axesHelper args={[80]} position={[0, 0.5, 0]} />
               {/* Pin Comments (Figma-style, manufacturer ↔ designer) */}
               {pinComments && onAddPinComment && onResolvePinComment && onDeletePinComment && (
                 <PinComments
@@ -2526,16 +2683,16 @@ export default function ShapePreview({
               )}
               <span style={{ marginLeft: 'auto', color: '#484f58' }}>
                 {isEditing && (editMode === 'vertex' || editMode === 'edge')
-                  ? (t as { directEditNavHint: string }).directEditNavHint
+                  ? t.directEditNavHint
                   : isEditing
-                    ? 'Click + drag handles to edit'
+                    ? t.editDragHint
                     : isTransforming
-                      ? 'Drag gizmo to transform'
-                      : 'Drag · Right-click · Scroll'}
+                      ? t.transformDragHint
+                      : t.defaultNavHint}
               </span>
             </>
           ) : (
-            <span style={{ color: '#484f58' }}>Drag · Right-click · Scroll</span>
+            <span style={{ color: '#484f58' }}>{t.defaultNavHint}</span>
           )}
         </div>
       </div>

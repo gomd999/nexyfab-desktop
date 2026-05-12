@@ -24,7 +24,7 @@ function MeshModel({ meshVertices }: { meshVertices: string }) {
     if (!geo) {
       console.error('[ShareCanvas] Failed to decode mesh');
     }
-    setGeometry(geo);
+    queueMicrotask(() => setGeometry(geo));
     return () => {
       geo?.dispose();
     };
@@ -39,7 +39,7 @@ function MeshModel({ meshVertices }: { meshVertices: string }) {
   );
 }
 
-export default function ShareCanvas({ shapeId, meshVertices }: ShareCanvasProps) {
+export default function ShareCanvas({ shapeId: _shapeId, meshVertices }: ShareCanvasProps) {
   return (
     <Canvas
       camera={{ position: [120, 90, 120], fov: 42 }}

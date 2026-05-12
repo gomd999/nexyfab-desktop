@@ -26,8 +26,8 @@ interface MultiplayerContextType {
   cursors: Map<string, CursorData>;
   myId: string;
   updateMyCursor: (pos: THREE.Vector3, state?: CursorData['state']) => void;
-  broadcastAction: (actionType: string, payload: any) => void;
-  subscribeToAction: (actionType: string, callback: (payload: any) => void) => () => void;
+  broadcastAction: (actionType: string, payload: unknown) => void;
+  subscribeToAction: (actionType: string, callback: (payload: unknown) => void) => () => void;
 }
 
 const MultiplayerContext = createContext<MultiplayerContextType | null>(null);
@@ -36,12 +36,14 @@ const COLORS = ['#ff0055', '#0099ff', '#00cc44', '#ffaa00', '#9933ff'];
 
 export function MultiplayerProvider({ children, projectId }: { children: ReactNode, projectId: string }) {
   const [cursors, setCursors] = useState<Map<string, CursorData>>(new Map());
-  const myId = useRef(`user_${Math.random().toString(36).slice(2, 9)}`).current;
-  const myColor = useRef(COLORS[Math.floor(Math.random() * COLORS.length)]).current;
+  const [{ id: myId, color: myColor }] = useState(() => ({
+    id: `user_${Math.random().toString(36).slice(2, 9)}`,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+  }));
   const channelRef = useRef<BroadcastChannel | null>(null);
   
   // Custom event listeners for feature-level sync
-  const actionListeners = useRef<Map<string, Set<(payload: any) => void>>>(new Map());
+  const actionListeners = useRef<Map<string, Set<(payload: unknown) => void>>>(new Map());
 
   useEffect(() => {
     // Setup generic sync channel for this specific project
@@ -84,12 +86,12 @@ export function MultiplayerProvider({ children, projectId }: { children: ReactNo
     channelRef.current.postMessage({ type: 'CURSOR_UPDATE', data });
   };
 
-  const broadcastAction = (actionType: string, payload: any) => {
+  const broadcastAction = (actionType: string, payload: unknown) => {
     if (!channelRef.current) return;
     channelRef.current.postMessage({ type: 'ACTION', actionType, payload });
   };
 
-  const subscribeToAction = (actionType: string, callback: (payload: any) => void) => {
+  const subscribeToAction = (actionType: string, callback: (payload: unknown) => void) => {
     if (!actionListeners.current.has(actionType)) {
       actionListeners.current.set(actionType, new Set());
     }

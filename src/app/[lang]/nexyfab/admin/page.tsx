@@ -69,7 +69,9 @@ export default function AdminDashboard({ params }: { params: Promise<{ lang: str
   const loadStats = useCallback(async () => {
     if (!token) return;
     try {
-      const r = await fetch('/api/nexyfab/admin/stats', { headers: authHeaders });
+      const r = await fetch('/api/nexyfab/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (r.status === 403) { setError(isKo ? '관리자 권한이 필요합니다.' : 'Admin access required.'); return; }
       const d = await r.json() as AdminStats;
       setStats(d);
@@ -78,13 +80,15 @@ export default function AdminDashboard({ params }: { params: Promise<{ lang: str
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, isKo]);
 
   const loadApplications = useCallback(async (status = 'pending') => {
     if (!token) return;
     setAppLoading(true);
     try {
-      const r = await fetch(`/api/nexyfab/admin/applications?status=${status}`, { headers: authHeaders });
+      const r = await fetch(`/api/nexyfab/admin/applications?status=${status}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const d = await r.json() as { applications?: Application[] };
       setApps(d.applications ?? []);
     } finally {
@@ -298,9 +302,8 @@ export default function AdminDashboard({ params }: { params: Promise<{ lang: str
                           }}>✓ {isKo ? '승인' : 'Approve'}</button>
                           <button onClick={() => handleApplication(app.id, 'reject')} style={{
                             padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                            border: 'none', cursor: 'pointer', background: C.red + '22', color: C.red,
-                            border2: `1px solid ${C.red}55`,
-                          } as any}>✕ {isKo ? '거절' : 'Reject'}</button>
+                            border: `1px solid ${C.red}55`, cursor: 'pointer', background: C.red + '22', color: C.red,
+                          }}>✕ {isKo ? '거절' : 'Reject'}</button>
                         </div>
                       )}
                     </div>

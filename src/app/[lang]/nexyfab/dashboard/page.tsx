@@ -139,7 +139,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       setTimeout(() => setUpgradeToast(''), 5000);
       router.replace(`/${lang}/nexyfab/dashboard`);
     }
-  }, [searchParams]);
+  }, [searchParams, user, setUser, token, lang, router]);
   const [activeTab, setActiveTab] = useState<'projects' | 'files' | 'teams' | 'rfqs' | 'orders'>('projects');
   const [r2Files, setR2Files] = useState<R2File[]>([]);
   const [filesLoading, setFilesLoading] = useState(false);
@@ -1864,7 +1864,7 @@ interface ProjectCardProps {
   isDuplicating: boolean;
 }
 
-function ProjectCard({ project, lang, isKo, onOpen, onDelete, onDuplicate, onShare, isDuplicating }: ProjectCardProps) {
+function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate, onShare, isDuplicating }: ProjectCardProps) {
   const [hovered, setHovered] = useState(false);
 
   return (

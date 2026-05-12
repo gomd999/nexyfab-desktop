@@ -27,6 +27,26 @@ export async function exportToStepAsync(
   return exportToStep(geometry, partName);
 }
 
+/**
+ * Predicate the UI uses to decide whether STEP export will round-trip
+ * cleanly. Returns true when the geometry will export through one of the
+ * known-good paths:
+ *   - has an OCCT B-rep handle (real STEP from kernel) — best case
+ *   - is a THREE.BoxGeometry (AP214 NX-cube fast path) — exact round-trip
+ *
+ * Returns false for general meshes (cylinders, spheres, sweep results,
+ * custom CSG output). The current AP242 emitter for these is REJECTED by
+ * occt-import-js and most third-party CAD viewers (R2 finding 2026-05-08).
+ *
+ * UI should grey out the STEP export button + show a tooltip when this
+ * returns false; STL/GLB/OBJ remain available.
+ */
+export function canExportStepCleanly(geometry: THREE.BufferGeometry): boolean {
+  if (geometry.userData?.occtHandle) return true;
+  if (geometry instanceof THREE.BoxGeometry) return true;
+  return false;
+}
+
 export function exportToStep(
   geometry: THREE.BufferGeometry,
   partName = 'NexyFab_Part',

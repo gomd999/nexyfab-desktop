@@ -54,16 +54,20 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
   const [noteText, setNoteText] = useState('');
   const [selectedPin, setSelectedPin] = useState<string | null>(null);
 
-  useEffect(() => { setLang(detectLang()); }, []);
+  useEffect(() => {
+    queueMicrotask(() => setLang(detectLang()));
+  }, []);
 
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   // Load auth token from localStorage
   useEffect(() => {
-    try {
-      const t = localStorage.getItem('nf_access_token') || localStorage.getItem('token');
-      if (t) setAuthToken(t);
-    } catch { /* ignore */ }
+    queueMicrotask(() => {
+      try {
+        const t = localStorage.getItem('nf_access_token') || localStorage.getItem('token');
+        if (t) setAuthToken(t);
+      } catch { /* ignore */ }
+    });
   }, []);
 
   // Load annotations: server-side first, fallback to localStorage

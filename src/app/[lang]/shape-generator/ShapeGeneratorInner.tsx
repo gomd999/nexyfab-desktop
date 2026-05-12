@@ -29,7 +29,7 @@ import { mateGraphSummary, preflightAssemblyMates } from '@/lib/assemblyMatePref
 import { preflightSketchConstraints } from '@/lib/sketchConstraintPreflight';
 import { NF_R3F_VIEWPORT_DATA_ENGINE } from '@/lib/nexyfab/viewport';
 // Shape design imports
-import { SHAPES, type ShapeConfig, type ShapeResult, makeEdges, meshVolume, meshSurfaceArea, buildShapeResult } from './shapes';
+import { SHAPES, SHAPE_MAP, applySceneParamsToSetters, type ShapeConfig, type ShapeResult, makeEdges, meshVolume, meshSurfaceArea, buildShapeResult, normalizeShapeParams } from './shapes';
 import { shapeDict } from './shapeDict';
 import { applyFeaturePipeline, classifyFeatureError, getFeatureDefinition } from './features';
 import { reportError, reportInfo, reportWarning } from './lib/telemetry';
@@ -59,12 +59,13 @@ import { useInterferenceWorker } from './workers/useInterferenceWorker';
 import { useFeatureStack, type FeatureHistory } from './useFeatureStack';
 import { useShapeCart } from './useShapeCart';
 import { exportBomCSV, exportBomExcel, estimateWeight, type BomRow } from './io/bomExport';
+import { canExportStepCleanly } from './io/stepExporter';
 import { useHistory } from './useHistory';
 import { useToast } from './useToast';
 import ToastContainer from './ToastContainer';
 import SidebarResizer from './SidebarResizer';
 import type { OptimizeResult, ModifyResult, ChatMessage, ChatResult, SingleResult } from './ShapeChat';
-import { computeMassProperties } from './analysis/massProperties';
+import { computeMassProperties, combineAssemblyMassProperties } from './analysis/massProperties';
 import type { ElementSelectionInfo, FaceSelectionInfo } from './editing/selectionInfo';
 import type { FeatureType } from './features/types';
 const HoleWizardModal = dynamic(() => import('./features/HoleWizardModal'), { ssr: false });
@@ -74,8 +75,6 @@ const ShapeCart = dynamic(() => import('./ShapeCart'), { ssr: false });
 const DesignFunnelBar = dynamic(() => import('./DesignFunnelBar'), { ssr: false });
 const TimelineBar = dynamic(() => import('./TimelineBar'), { ssr: false });
 const ShapeGeneratorToolbar = dynamic(() => import('./ShapeGeneratorToolbar'), { ssr: false });
-const BodyPanel = dynamic(() => import('./panels/BodyPanel'), { ssr: false });
-import { SHAPE_MAP } from './shapes';
 import type { BomPartResult } from './ShapePreview';
 // Sketch imports
 import type { SketchProfile, SketchConfig, SketchConstraint, SketchDimension, SketchSegment } from './sketch/types';
@@ -99,13 +98,12 @@ import { useFreemiumGate } from './hooks/useFreemiumGate';
 import { useAnalysisState } from './hooks/useAnalysisState';
 import { useSketchState } from './hooks/useSketchState';
 import { useFreemium } from '@/hooks/useFreemium';
-import UpgradeModal from '@/components/nexyfab/UpgradeModal';
+import UpgradeModalsDock from './panels/UpgradeModalsDock';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
 const DesktopFirstRunWizard = dynamic(() => import('./onboarding/DesktopFirstRunWizard'), { ssr: false });
 import { useAssemblyState } from './hooks/useAssemblyState';
-const CSGPanel = dynamic(() => import('./editing/CSGPanel'), { ssr: false });
 import { applyCSG, makeToolGeometry } from './editing/CSGOperations';
 import type { CSGOperation, CSGToolParams } from './editing/CSGOperations';
 import { splitBodyBoth } from './features/splitBodyBoth';
@@ -117,12 +115,10 @@ import { MATERIALS } from './topology/optimizer/types';
 import { useTopologicalMap } from './topology/useTopologicalMap';
 import { decodeShareLink } from './io/shareLink';
 import { useSearchParams } from 'next/navigation';
-import ContextMenu, { getContextItemsEmpty, getContextItemsGeometry, getContextItemsSketch } from './ContextMenu';
+import { getContextItemsEmpty, getContextItemsGeometry, getContextItemsSketch } from './ContextMenu';
 import type { ContextMenuItem } from './ContextMenu';
 import SketchPalette from './sketch/SketchPalette';
 import { useSketchReferenceUnderlay } from './hooks/useSketchReferenceUnderlay';
-import SketchRadialMenu from './sketch/SketchRadialMenu';
-import { getSketchRadialMainItems, getSketchRadialInnerItems, getSketchRadialLinearItems } from './sketch/sketchRadialItems';
 // New module imports
 import type { PrintAnalysisOptions, OrientationOptimizationResult } from './analysis/printAnalysis';
 import type { ManufacturingProcess, DFMIssue } from './analysis/dfmAnalysis';
@@ -134,9 +130,6 @@ import ManufacturingReadyCard from './analysis/ManufacturingReadyCard';
 // Auto-save imports
 import { useAutoSave } from './useAutoSave';
 import type { AutoSaveState } from './useAutoSave';
-import RecoveryBanner from './RecoveryBanner';
-const ShortcutHelp = dynamic(() => import('./ShortcutHelp'), { ssr: false });
-import AutoSaveIndicator from './AutoSaveIndicator';
 const CommandPalette = dynamic(() => import('./CommandPalette'), { ssr: false });
 import type { Command } from './CommandPalette';
 import { buildPanelCommands } from './commandPaletteCommands';
@@ -144,62 +137,80 @@ import { buildWorkspaceCommands } from './commandWorkspaceCommands';
 import WorkspaceEmptyHint from './WorkspaceEmptyHint';
 import { MATERIAL_PRESETS } from './materials';
 import { useTheme } from './ThemeContext';
-import { evaluateExpression, findBrokenExpressions, type ExprVariable } from './ExpressionEngine';
-import ModelParametersPanel, { type ModelVar } from './ModelParametersPanel';
+import { evaluateExpression, findBrokenExpressions, freezeBrokenExpressions, type ExprVariable } from './ExpressionEngine';
+import { globalMacroRecorder } from './history/macroRecorder';
+import { analyzeChangeImpact } from './analysis/changeImpact';
+import ConfirmModal from '@/components/ConfirmModal';
+import { type ModelVar } from './ModelParametersPanel';
 import { buildExprGraph, propagateChanges } from './ExpressionGraph';
 import { usePlugins } from './plugins/usePlugins';
-const PluginManager = dynamic(() => import('./plugins/PluginManager'), { ssr: false });
 import TransformInputPanel from './TransformInputPanel';
 import { useCollab } from './collab/useCollab';
 import type { CollabChatMessage } from './collab/useCollab';
+import { useCollabFeatureTree } from './collab/useCollabFeatureTree';
+import AwarenessPresencePanel from './collab/AwarenessPresencePanel';
+
+/**
+ * CRDT bridge feature flag. Defaults OFF — when off, real-time collaboration
+ * uses the legacy SSE feature_sync path exactly as before. When set to '1',
+ * the Yjs CollabDoc takes over feature tree sync, which gives proper CRDT
+ * merge instead of last-write-wins. Per-deploy flag, not per-user, so we can
+ * roll out per environment.
+ */
+const CRDT_ENABLED = process.env.NEXT_PUBLIC_NEXYFAB_CRDT === '1';
 import CollabPresence from './collab/CollabPresence';
 import CollabReconnectBanner from './collab/CollabReconnectBanner';
 const CollabChat = dynamic(() => import('./collab/CollabChat'), { ssr: false });
-const FeatureDependencyGraph = dynamic(() => import('./panels/FeatureDependencyGraph'), { ssr: false });
-const NestingTool = dynamic(() => import('./manufacturing/NestingTool'), { ssr: false });
-const ThreadHoleCalloutPanel = dynamic(() => import('./annotations/ThreadHoleCalloutPanel'), { ssr: false });
 const DesignVariantsPanel = dynamic(() => import('./panels/DesignVariantsPanel'), { ssr: false });
 import { generateLinearSweep } from './panels/DesignVariantsPanel';
-const UserPartsPanel = dynamic(() => import('./library/UserPartsPanel'), { ssr: false });
 const CopilotPanel = dynamic(() => import('./copilot/CopilotPanel'), { ssr: false });
-const RfqPanel = dynamic(() => import('./io/RfqPanel'), { ssr: false });
 
-const SessionTimelapse = dynamic(() => import('./rendering/SessionTimelapse'), { ssr: false });
-const StockOptimizerPanel = dynamic(() => import('./manufacturing/StockOptimizerPanel'), { ssr: false });
+import PipelineProgressOverlay from './PipelineProgressOverlay';
+import HeaderOverlays from './panels/HeaderOverlays';
+import AsyncWorkIndicator from './panels/AsyncWorkIndicator';
+import TopBanners from './panels/TopBanners';
+import OnboardingDock from './panels/OnboardingDock';
+import Phase4PanelDock from './panels/Phase4PanelDock';
+import HelpCluster from './panels/HelpCluster';
+import ValidationResultsModal from './panels/ValidationResultsModal';
+import Modal4Dock from './panels/Modal4Dock';
+import StandardPartsLibrary from './panels/StandardPartsLibrary';
+import ThreadHoleCalloutDock from './panels/ThreadHoleCalloutDock';
+import SketchInputCluster from './panels/SketchInputCluster';
+import BodyCsgDock from './panels/BodyCsgDock';
+import ComposeIndicator from './panels/ComposeIndicator';
+import CanvasGizmoOverlays from './panels/CanvasGizmoOverlays';
+import StatusFooter from './panels/StatusFooter';
+import AuthModelPlacementDock from './panels/AuthModelPlacementDock';
+import SplitExportDock from './panels/SplitExportDock';
+import FloatingAnalysisDock from './panels/FloatingAnalysisDock';
+import { buildCol1RightInset, SCAD_AGENT_DOCK_INSET_PX } from './rightFloatStack';
+import ManufacturingPanelDock from './panels/ManufacturingPanelDock';
+import AdvancedAnalysisDock from './panels/AdvancedAnalysisDock';
+import VersionDiffDock from './panels/VersionDiffDock';
+import ScadAgentPanel from './panels/ScadAgentPanel';
+import MobileAgentNotice from './panels/MobileAgentNotice';
+import ScadModeToggle from './panels/ScadModeToggle';
+const ConfigurationTable = dynamic(() => import('./panels/ConfigurationTable'), { ssr: false });
+const DrcPanel = dynamic(() => import('./analysis/DrcPanel'), { ssr: false });
+const PlmConfigPanel = dynamic(() => import('./integrations/PlmConfigPanel'), { ssr: false });
+const SketchTextPanel = dynamic(() => import('./sketch/SketchTextPanel'), { ssr: false });
+const SmartFastenerPanel = dynamic(() => import('./assembly/SmartFastenerPanel'), { ssr: false });
 import type { AssemblyMate, MateType } from './assembly/AssemblyMates';
 import { generateMateId } from './assembly/AssemblyMates';
 import { useVersionHistory } from './history/useVersionHistory';
 import type { DesignVersion } from './history/useVersionHistory';
-const VersionPanel = dynamic(() => import('./history/VersionPanel'), { ssr: false });
-const VersionDiff3DViewer = dynamic(() => import('./history/VersionDiff3DViewer'), { ssr: false });
 import { useCommandHistory } from './history/useCommandHistory';
 import { commandHistory } from './history/CommandHistory';
-const HistoryPanel = dynamic(() => import('./history/HistoryPanel'), { ssr: false });
-const BranchCompare = dynamic(() => import('./history/BranchCompare'), { ssr: false });
 import { captureCanvasSnapshot } from './history/useCanvasSnapshot';
-const SheetMetalPanel = dynamic(() => import('./SheetMetalPanel'), { ssr: false });
 import RightPanel from './panels/RightPanel';
 import { mapDFMToParams, getBestDFMScore, getTopDFMIssues } from './analysis/dfmParamMapper';
 import { useProactiveAdvisor } from './useProactiveAdvisor';
 import { useCloudSaveFlow } from './useCloudSaveFlow';
 import { DEFAULT_RENDER_SETTINGS, type RenderSettings } from './rendering/RenderPanel';
 import { downloadScreenshot } from './rendering/useScreenshot';
-const ScreenshotShareModal = dynamic(() => import('./rendering/ScreenshotShareModal'), { ssr: false });
-const ARViewer = dynamic(() => import('./rendering/ARViewer'), { ssr: false });
 import { useTutorial } from './onboarding/useTutorial';
-const TutorialOverlay = dynamic(() => import('./onboarding/TutorialOverlay'), {
-  ssr: false,
-  loading: () => null });
-const WelcomeBanner = dynamic(() => import('./onboarding/WelcomeBanner'), {
-  ssr: false,
-  loading: () => null });
 const SketchContextTip = dynamic(() => import('./onboarding/SketchContextTip'), {
-  ssr: false,
-  loading: () => null });
-const SimpleModeOfferBanner = dynamic(() => import('./onboarding/SimpleModeOfferBanner'), {
-  ssr: false,
-  loading: () => null });
-const ContextHelpPanel = dynamic(() => import('./onboarding/ContextHelpPanel'), {
   ssr: false,
   loading: () => null });
 import { useContextHelp } from './onboarding/useContextHelp';
@@ -215,11 +226,8 @@ import type { GDTAnnotation, DimensionAnnotation } from './annotations/GDTTypes'
 const ShapePreview = dynamic(() => import('./ShapePreview'), { ssr: false });
 const MultiViewport = dynamic(() => import('./MultiViewport'), { ssr: false });
 import LeftPanel from './panels/LeftPanel';
-import TopoMapPanel from './panels/TopoMapPanel';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 const GenDesignViewer = dynamic(() => import('./topology/GenDesignViewer'), { ssr: false });
-import AuthModal from '@/components/nexyfab/AuthModal';
-import VerificationBanner from '@/components/nexyfab/VerificationBanner';
 import { useAuthStore } from '@/hooks/useAuth';
 import { userMeetsBmMatrixFeatureStage } from '@/lib/bm-matrix-stage-ui';
 import type { Stage } from '@/lib/stage-engine';
@@ -231,9 +239,7 @@ import { useDfmWarnings } from './hooks/useDfmWarnings';
 const UpgradePrompt = dynamic(() => import('./freemium/UpgradePrompt'), { ssr: false });
 const COTSPanel = dynamic(() => import('./cots/COTSPanel'), { ssr: false });
 const CAMSimPanel = dynamic(() => import('./analysis/CAMSimPanel'), { ssr: false });
-const MoldDesignPanel = dynamic(() => import('./analysis/MoldDesignPanel'), { ssr: false });
 import type { COTSPart } from './cots/cotsData';
-const ScriptPanel = dynamic(() => import('./ScriptPanel'), { ssr: false });
 import { usePinComments } from './comments/PinComments';
 const CommentsPanel = dynamic(() => import('./comments/CommentsPanel'), { ssr: false });
 import type { ActivityEvent } from './comments/CommentsPanel';
@@ -247,19 +253,12 @@ const ManufacturerMatch = dynamic(() => import('./analysis/ManufacturerMatch'), 
   ) });
 import type { Manufacturer } from './analysis/ManufacturerMatch';
 import { useCollabPolling } from '@/hooks/useCollabPolling';
-const GenerativeDesignPanel = dynamic(() => import('./analysis/GenerativeDesignPanel'), { ssr: false });
 const StatusBar = dynamic(() => import('./StatusBar'), { ssr: false });
 const BreadcrumbNav = dynamic(() => import('./BreadcrumbNav'), { ssr: false });
 import type { BreadcrumbItem } from './BreadcrumbNav';
 import SelectionFilterBar from './SelectionFilterBar';
 import type { SelectionFilter } from './SelectionFilterBar';
 import SelectionInfoBadge from './editing/SelectionInfoBadge';
-import InViewportGizmo from './InViewportGizmo';
-import DimensionLinesOverlay from './DimensionLinesOverlay';
-import DFMWarningBadges from './DFMWarningBadges';
-import { ThemeToggleButton } from './ThemeToggle';
-import BOMExportButton from './BOMExportButton';
-import ShortcutHintOverlay from './ShortcutHintOverlay';
 import AIAssistantSidebar from './analysis/AIAssistantSidebar';
 const IntakeWizard = dynamic(() => import('./intake/IntakeWizard'), { ssr: false });
 const ComposeResultPanel = dynamic(() => import('./intake/ComposeResultPanel'), { ssr: false });
@@ -271,19 +270,9 @@ const EmptyCanvasGuide = dynamic(() => import('./EmptyCanvasGuide'), { ssr: fals
 import FullscreenAutoHide from './FullscreenAutoHide';
 import { ErrorBoundary } from '@/components/nexyfab/ErrorBoundary';
 import { getToolCursor } from './hooks/useToolCursor';
-import type { TopologyResult } from './analysis/topologyOptimization';
-const ECADImportPanel = dynamic(() => import('./analysis/ECADImportPanel'), { ssr: false });
-const ThermalFEAPanel = dynamic(() => import('./analysis/ThermalFEAPanel'), { ssr: false });
-// Advanced analysis panels
-const MotionStudyPanel = dynamic(() => import('./analysis/MotionStudyPanel'), { ssr: false });
-const ModalAnalysisPanel = dynamic(() => import('./analysis/ModalAnalysisPanel'), { ssr: false });
+// Advanced analysis panels (still inline-mounted: ParametricSweep, AutoDrawing)
 const ParametricSweepPanel = dynamic(() => import('./analysis/ParametricSweepPanel'), { ssr: false });
-const ToleranceStackupPanel = dynamic(() => import('./analysis/ToleranceStackupPanel'), { ssr: false });
-const SurfaceQualityPanel = dynamic(() => import('./analysis/SurfaceQualityPanel'), { ssr: false });
 const AutoDrawingPanel = dynamic(() => import('./analysis/AutoDrawingPanel'), { ssr: false });
-const ManufacturingPipelinePanel = dynamic(() => import('./analysis/ManufacturingPipelinePanel'), { ssr: false });
-const ShapeVersionDiff = dynamic(() => import('./ShapeVersionDiff'), { ssr: false });
-const PartPlacementPanel = dynamic(() => import('./assembly/PartPlacementPanel'), { ssr: false });
 import type { PlacedPart } from './assembly/PartPlacementPanel';
 import { placedPartsToBomResults } from './assembly/PartPlacementPanel';
 import { bomPartWorldMatrixFromBom } from './assembly/bomPartWorldMatrix';
@@ -306,6 +295,17 @@ function clampDesignPreviewWidth(w: number): number {
   return Math.round(Math.min(maxW, Math.max(DESIGN_PREVIEW_MIN, w)));
 }
 
+/** First segment after `shape-generator` for bookmarkable sub-routes. */
+function shapeGeneratorRouteSegment(pathname: string | null): 'sketch' | 'analysis' | '3d-edit' | null {
+  if (!pathname) return null;
+  const parts = pathname.split('/').filter(Boolean);
+  const i = parts.indexOf('shape-generator');
+  if (i === -1) return null;
+  const next = parts[i + 1];
+  if (next === 'sketch' || next === 'analysis' || next === '3d-edit') return next;
+  return null;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ShapeGeneratorInner() {
@@ -316,6 +316,8 @@ export function ShapeGeneratorInner() {
   const shapeLabels = t as unknown as Record<string, string>;
   const gt = genDesignDict[lang] as unknown as Record<string, string>;
   const lt = LOCAL_LABELS[lang] ?? LOCAL_LABELS.en;
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const router = useRouter();
   const pathname = usePathname();
   const langSeg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -447,6 +449,8 @@ export function ShapeGeneratorInner() {
   }, []);
 
   const [showDesktopFirstRun, setShowDesktopFirstRun] = useState(false);
+  // Controls the STL export options dialog (unit/origin chooser).
+  const [stlExportDialogOpen, setStlExportDialogOpen] = useState(false);
   useEffect(() => {
     if (!isTauriApp()) return;
     if (!isDesktopFirstRunComplete()) setShowDesktopFirstRun(true);
@@ -512,6 +516,10 @@ export function ShapeGeneratorInner() {
   const captureRef = useRef<(() => string | null) | null>(null);
   const [cartAdded, setCartAdded] = useState(false);
   const [bomParts, setBomParts] = useState<BomPartResult[]>([]);
+  const [highlightedPartId, setHighlightedPartId] = useState<string | null>(null);
+  const [assemblyHiddenParts, setAssemblyHiddenParts] = useState<Set<string>>(new Set());
+  const [assemblyTransparentParts, setAssemblyTransparentParts] = useState<Set<string>>(new Set());
+  const [assemblyPartColors, setAssemblyPartColors] = useState<Record<string, string>>({});
   const [bomLabel, setBomLabel] = useState('');
   const materialId = useSceneStore(s => s.materialId);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
@@ -534,8 +542,12 @@ export function ShapeGeneratorInner() {
       snap.activeBodyId = activeBodyId;
       if (selectedBodyIds.length > 0) snap.selectedBodyIds = selectedBodyIds;
     }
+    if (assemblyHiddenParts.size > 0) snap.hiddenParts = Array.from(assemblyHiddenParts);
+    if (assemblyTransparentParts.size > 0) snap.transparentParts = Array.from(assemblyTransparentParts);
+    if (Object.keys(assemblyPartColors).length > 0) snap.partColors = { ...assemblyPartColors };
     return snap;
-  }, [placedParts, assemblyMates, bodies, activeBodyId, selectedBodyIds]);
+  }, [placedParts, assemblyMates, bodies, activeBodyId, selectedBodyIds, assemblyHiddenParts, assemblyTransparentParts, assemblyPartColors]);
+  
   const restoreAssemblySnapshot = useCallback((snap?: NfabAssemblySnapshotV1) => {
     if (!snap) {
       setPlacedParts([]);
@@ -543,10 +555,16 @@ export function ShapeGeneratorInner() {
       setBodies([]);
       setActiveBodyId(null);
       setSelectedBodyIds([]);
+      setAssemblyHiddenParts(new Set());
+      setAssemblyTransparentParts(new Set());
+      setAssemblyPartColors({});
       return;
     }
     setPlacedParts(snap.placedParts);
     setAssemblyMates(snap.mates);
+    setAssemblyHiddenParts(new Set(snap.hiddenParts ?? []));
+    setAssemblyTransparentParts(new Set(snap.transparentParts ?? []));
+    setAssemblyPartColors(snap.partColors ?? {});
     const rawBodies = snap.bodies ?? [];
     setBodies(rawBodies);
     if (rawBodies.length === 0) {
@@ -607,6 +625,15 @@ export function ShapeGeneratorInner() {
   const pinApplyRemoteReactRef = useRef<((id: string, emoji: string, userId: string) => void) | null>(null);
   const pinApplyRemoteReplyRef = useRef<((commentId: string, reply: unknown) => void) | null>(null);
 
+  // Forward ref so the useCollab callbacks can reach the CRDT bridge that's
+  // initialized AFTER useCollab. Populated in a useEffect once `crdtBridge` exists.
+  const crdtBridgeRef = useRef<{
+    applyRemoteUpdate: (b64: string) => boolean;
+    encodeUpdate: () => string;
+    doc: { applyAwarenessUpdate: (b64: string) => boolean };
+  } | null>(null);
+  const collabSendCrdtSyncResponseRef = useRef<((b64: string) => void) | null>(null);
+
   const {
     users: collabUsers, isConnected: collabConnected, demoMode: collabDemo,
     setDemoMode: setCollabDemo, sendCursor: collabSendCursor,
@@ -616,6 +643,9 @@ export function ShapeGeneratorInner() {
     sendCommentReply: collabSendCommentReply, sendTyping: collabSendTyping,
     sendChatMessage: collabSendChatMessage, typingUsers: collabTypingUsers,
     sendFeatureSync: collabSendFeatureSync,
+    sendCrdtUpdate: collabSendCrdtUpdate,
+    sendCrdtAwareness: collabSendCrdtAwareness,
+    sendCrdtSyncResponse: collabSendCrdtSyncResponse,
     userIdRef: collabUserIdRef, userColorRef: collabUserColorRef,
     reconnectState: collabReconnectState, reconnectCountdown: collabReconnectCountdown,
     manualReconnect: collabManualReconnect, roomId: collabRoomId } = useCollab({
@@ -623,6 +653,10 @@ export function ShapeGeneratorInner() {
       Object.entries(remoteParams).forEach(([k, v]) => setParam(k, v));
     }, [setParam]),
     onRemoteFeatureSync: useCallback((remoteHistory: unknown) => {
+      // When the CRDT bridge is active, feature tree sync is owned by Yjs
+      // (CollabDoc.featureTree). The legacy SSE feature_sync payload is then
+      // ignored to prevent double-application overwrites.
+      if (CRDT_ENABLED) return;
       if (!replaceHistory) return;
       lastSyncedHistoryRef.current = JSON.stringify(remoteHistory);
       const fh = remoteHistory as FeatureHistory | null | undefined;
@@ -661,6 +695,31 @@ export function ShapeGeneratorInner() {
       const r = reply as { author?: string; text?: string };
       collabAddToastRef.current?.('info', `💬 ${r.author ?? 'Remote'}: ${(r.text ?? '').slice(0, 40)}`);
     }, []),
+    // Apply incoming Yjs CRDT update from a peer.
+    onRemoteCrdtUpdate: useCallback((updateB64: string) => {
+      const bridge = crdtBridgeRef.current;
+      if (!bridge) return;
+      const L = LOCAL_LABELS[langRef.current] ?? LOCAL_LABELS.en;
+      // Empty string is the sentinel for `crdt_sync_request` — peer wants our state.
+      if (updateB64 === '') {
+        try {
+          collabSendCrdtSyncResponseRef.current?.(bridge.encodeUpdate());
+        } catch (e) {
+          console.warn('[crdt] sync response failed:', e);
+          collabAddToastRef.current?.('warning', L.crdtSyncReplyFailed);
+        }
+        return;
+      }
+      const ok = bridge.applyRemoteUpdate(updateB64);
+      if (!ok) collabAddToastRef.current?.('warning', L.crdtRemoteUpdateFailed);
+    }, []),
+    onRemoteAwarenessUpdate: useCallback((updateB64: string) => {
+      const bridge = crdtBridgeRef.current;
+      if (!bridge) return;
+      const L = LOCAL_LABELS[langRef.current] ?? LOCAL_LABELS.en;
+      const ok = bridge.doc.applyAwarenessUpdate(updateB64);
+      if (!ok) collabAddToastRef.current?.('warning', L.crdtAwarenessUpdateFailed);
+    }, []),
     onChatMessage: useCallback((msg: CollabChatMessage) => {
       setChatMessages(prev => [...prev, msg]);
       // @mention detection (authUserRef/collabUserIdRef resolved at call time via refs)
@@ -672,6 +731,174 @@ export function ShapeGeneratorInner() {
       }
     }, [lang]) });
 
+  // ── CRDT bridge (opt-in via NEXT_PUBLIC_NEXYFAB_CRDT=1) ──
+  // Always instantiate the bridge — construction is cheap and avoids hooks-
+  // count mismatches across renders. When CRDT_ENABLED is false the bridge
+  // is simply not wired to any transport, so no traffic flows.
+  const crdtBridge = useCollabFeatureTree();
+
+  // Populate the forward ref so useCollab callbacks (declared before this)
+  // can apply remote updates via the bridge.
+  useEffect(() => {
+    crdtBridgeRef.current = {
+      applyRemoteUpdate: crdtBridge.applyRemoteUpdate,
+      encodeUpdate: crdtBridge.encodeUpdate,
+      doc: crdtBridge.doc,
+    };
+    collabSendCrdtSyncResponseRef.current = collabSendCrdtSyncResponse;
+    return () => { crdtBridgeRef.current = null; };
+  }, [crdtBridge, collabSendCrdtSyncResponse]);
+
+  // Broadcast local CRDT doc updates to peers (only when CRDT is enabled).
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    return crdtBridge.doc.onLocalUpdate(b64 => {
+      collabSendCrdtUpdate(b64);
+    });
+  }, [crdtBridge, collabSendCrdtUpdate]);
+
+  // Broadcast local awareness updates (cursor / presence). Always wired —
+  // awareness is cheap and shows other users even when feature-tree CRDT is off.
+  useEffect(() => {
+    return crdtBridge.doc.onLocalAwarenessUpdate(b64 => {
+      collabSendCrdtAwareness(b64);
+    });
+  }, [crdtBridge, collabSendCrdtAwareness]);
+
+  // ── Awareness staleness GC — sweep peers idle >30s every 10s ──
+  // SSE is one-way, so a peer who closed their tab never tells us. We rely on
+  // their last `ts` (set by setLocalPresence) to detect abandonment.
+  useEffect(() => {
+    const STALE_AFTER_MS = 30_000;
+    const SWEEP_INTERVAL_MS = 10_000;
+    const t = setInterval(() => {
+      crdtBridge.doc.gcStaleAwareness(STALE_AFTER_MS);
+    }, SWEEP_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [crdtBridge]);
+
+  // ── Cursor publishing — throttled pointermove on the R3F canvas ──
+  // Converts viewport-local pointer coords to a flat XZ plane in mm (Y=0).
+  // 50ms throttle keeps awareness traffic bounded while still feeling live.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const CURSOR_THROTTLE_MS = 50;
+    /** Map normalized [-1..1] to mm scene scale. Tune to match typical zoom. */
+    const SCENE_SCALE_MM = 200;
+    let lastSent = 0;
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const publish = (clientX: number, clientY: number) => {
+      const canvas = document.querySelector(
+        `canvas[data-engine="${NF_R3F_VIEWPORT_DATA_ENGINE}"]`,
+      ) as HTMLCanvasElement | null;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      // NDC: x in [-1..1] left→right, y in [1..-1] top→bottom (we flip).
+      const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
+      // Approximate world position on z=0 plane. Real unprojection needs camera
+      // matrices; this approximation is fine for cursor markers on a known scale.
+      const x = ndcX * SCENE_SCALE_MM;
+      const z = ndcY * SCENE_SCALE_MM;
+      crdtBridge.doc.setLocalPresence({ cursor: { x, y: 0, z } });
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const now = Date.now();
+      if (now - lastSent >= CURSOR_THROTTLE_MS) {
+        lastSent = now;
+        publish(e.clientX, e.clientY);
+        if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+      } else if (!pendingTimer) {
+        // Trailing edge: ensure the last move emits even if user stops moving.
+        pendingTimer = setTimeout(() => {
+          pendingTimer = null;
+          lastSent = Date.now();
+          publish(e.clientX, e.clientY);
+        }, CURSOR_THROTTLE_MS - (now - lastSent));
+      }
+    };
+
+    document.addEventListener('pointermove', onMove);
+    return () => {
+      document.removeEventListener('pointermove', onMove);
+      if (pendingTimer) clearTimeout(pendingTimer);
+    };
+  }, [crdtBridge]);
+
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    // Push local feature-tree snapshot into the shared Yjs doc on every change.
+    // The CollabDoc detects per-key writes and emits Yjs binary updates that
+    // useCollab can ferry as `crdt_update` events to peers.
+    if (!featureHistory?.nodes?.length) return;
+    crdtBridge.pushLocalSnapshot(featureHistory, params, selectedId ?? null);
+  }, [crdtBridge, featureHistory, params, selectedId]);
+
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    if (!replaceHistory) return;
+    // Apply remote snapshots — when a peer's Yjs update arrives, the bridge
+    // surfaces a coalesced full snapshot. We adopt it via replaceHistory so
+    // useFeatureStack rerenders. setParams covers slider value sync.
+    return crdtBridge.onRemoteSnapshot(({ tree, order, params: remoteParams, selectedId: remoteSelected }) => {
+      try {
+        const nodes = order.map(id => tree[id]).filter(Boolean) as FeatureHistory['nodes'];
+        if (nodes.length && featureHistory?.rootId) {
+          replaceHistory(nodes, featureHistory.rootId, featureHistory.activeNodeId);
+        }
+        const targetShapeId = remoteSelected ?? selectedId;
+        const snapSd = targetShapeId ? SHAPE_MAP[targetShapeId] : undefined;
+        if (remoteSelected && remoteSelected !== selectedId) setSelectedId(remoteSelected);
+        if (remoteParams != null && typeof remoteParams === 'object' && Object.keys(remoteParams).length > 0) {
+          applySceneParamsToSetters(snapSd, remoteParams as Record<string, number>, {
+            setParams,
+            setParamExpressions,
+          });
+        }
+      } catch (err) {
+        reportError('unknown', err instanceof Error ? err : new Error(String(err)), { phase: 'crdt_remote_snapshot' });
+      }
+    });
+  }, [crdtBridge, replaceHistory, setParams, setParamExpressions, setSelectedId, featureHistory?.rootId, featureHistory?.activeNodeId, selectedId]);
+
+  // ── Yjs Awareness (presence: cursor + editingNodeId) ──
+  // Lives at the doc level (ephemeral, not persisted). Wired regardless of
+  // CRDT_ENABLED so the local presence state still exists; transport hooks
+  // gate broadcast on the flag, matching the snapshot path above.
+  const [awarenessPresences, setAwarenessPresences] = useState<Map<number, import('./collab/yjsDoc').PresenceState>>(
+    () => new Map(),
+  );
+
+  useEffect(() => {
+    return crdtBridge.doc.onPresenceChange(setAwarenessPresences);
+  }, [crdtBridge]);
+
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    // Seed local presence with stable identity so peers see who we are even
+    // before the first cursor moves.
+    const myName = authUserRef.current?.name ?? 'You';
+    const myColor = collabUserColorRef.current;
+    crdtBridge.doc.setLocalPresence({ name: myName, color: myColor });
+  }, [crdtBridge]);
+
+  // Track the actively-edited feature node so peers see "X is editing fillet".
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    const editingId = featureHistory?.editingNodeId ?? undefined;
+    crdtBridge.doc.setLocalPresence({ editingNodeId: editingId });
+  }, [crdtBridge, featureHistory?.editingNodeId]);
+
+  // Track which feature the user has currently selected (active node) so peers
+  // see "X is looking at this feature" even when not editing.
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    const selId = featureHistory?.activeNodeId ?? undefined;
+    crdtBridge.doc.setLocalPresence({ selectedFeatureId: selId });
+  }, [crdtBridge, featureHistory?.activeNodeId]);
+
   // ── Sketch mode ──
   const isSketchMode = useSceneStore(s => s.isSketchMode);
   const _setSketchMode = useSceneStore(s => s.setSketchMode);
@@ -680,7 +907,12 @@ export function ShapeGeneratorInner() {
   useCadWorkspaceInference();
 
   const urlWorkspaceOrTabAppliedRef = useRef(false);
+  const urlApplyPathGateRef = useRef<string | null>(null);
   useLayoutEffect(() => {
+    if (pathname !== urlApplyPathGateRef.current) {
+      urlApplyPathGateRef.current = pathname ?? null;
+      urlWorkspaceOrTabAppliedRef.current = false;
+    }
     if (isReadOnly) return;
     if (urlWorkspaceOrTabAppliedRef.current) return;
     const w = searchParams?.get('workspace');
@@ -693,6 +925,41 @@ export function ShapeGeneratorInner() {
         const n = qs.toString();
         router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
       }
+      return;
+    }
+    const routeSeg = shapeGeneratorRouteSegment(pathname);
+    if (routeSeg === 'sketch') {
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(true);
+      applyCadWorkspace('design', { isSketchMode: true });
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      const cur = searchParams?.toString() ?? '';
+      if (n !== cur) router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+      return;
+    }
+    if (routeSeg === 'analysis') {
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(false);
+      applyCadWorkspace('simulation', { isSketchMode: false });
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      const cur = searchParams?.toString() ?? '';
+      if (n !== cur) router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+      return;
+    }
+    if (routeSeg === '3d-edit') {
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(false);
+      setShowAssemblyPanel(false);
+      applyCadWorkspace('design', { isSketchMode: false });
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      const cur = searchParams?.toString() ?? '';
+      if (n !== cur) router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
       return;
     }
     if (searchParams?.get('entry') === 'sketch') {
@@ -736,6 +1003,17 @@ export function ShapeGeneratorInner() {
       router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
       return;
     }
+    if (searchParams?.get('entry') === '3d-edit') {
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(false);
+      setShowAssemblyPanel(false);
+      applyCadWorkspace('design', { isSketchMode: false });
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+      return;
+    }
     if (searchParams?.get('tab') === 'optimize') {
       urlWorkspaceOrTabAppliedRef.current = true;
       applyCadWorkspace('optimize', { isSketchMode });
@@ -743,7 +1021,38 @@ export function ShapeGeneratorInner() {
   }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel]);
 
   const sketchViewMode = useSceneStore(s => s.sketchViewMode);
+  const splitMode = useSceneStore(s => s.splitMode);
+  const setSplitMode = useSceneStore(s => s.setSplitMode);
   const setSketchViewMode = useSceneStore(s => s.setSketchViewMode);
+
+  // Track viewport mode (3d/sketch/drawing) so peers can see "X switched to
+  // sketch mode" without having to follow their cursor.
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    const mode: '3d' | 'sketch' | 'drawing' = isSketchMode
+      ? (sketchViewMode === 'drawing' ? 'drawing' : 'sketch')
+      : '3d';
+    crdtBridge.doc.setLocalPresence({ viewportMode: mode });
+  }, [crdtBridge, isSketchMode, sketchViewMode]);
+
+  // Track activity status — flip to 'idle' after 60s of no presence updates,
+  // back to 'active' when any update lands. Distinct from the 30s staleness
+  // GC which removes the peer entirely.
+  useEffect(() => {
+    if (!CRDT_ENABLED) return;
+    const IDLE_AFTER_MS = 60_000;
+    crdtBridge.doc.setLocalPresence({ activity: 'active' });
+    const id = setInterval(() => {
+      const local = crdtBridge.doc.getLocalPresence();
+      const stale = typeof local.ts === 'number' && Date.now() - local.ts >= IDLE_AFTER_MS;
+      if (stale && local.activity !== 'idle') {
+        crdtBridge.doc.setLocalPresence({ activity: 'idle' });
+      } else if (!stale && local.activity !== 'active') {
+        crdtBridge.doc.setLocalPresence({ activity: 'active' });
+      }
+    }, 15_000);
+    return () => clearInterval(id);
+  }, [crdtBridge]);
   const sketchPlane = useSceneStore(s => s.sketchPlane);
   const setSketchPlaneRaw = useSceneStore(s => s.setSketchPlane);
   const sketchProfile = useSceneStore(s => s.sketchProfile);
@@ -933,6 +1242,135 @@ export function ShapeGeneratorInner() {
     setProjectCameraToApply(null);
   }, []);
 
+  // SCAD agent → render → push geometry into the main viewport via the
+  // existing sketch-result slot. Errors surface through the standard
+  // toast system so the user sees what went wrong without diving into
+  // the agent panel.
+  const handleApplyAgentScad = useCallback(async (scad: string) => {
+    if (!scad.trim()) return;
+    try {
+      const { renderScadToGeometry } = await import('@/lib/ai/scad-agent/renderToGeometry');
+      const result = await renderScadToGeometry(scad);
+      const edgeGeo = makeEdges(result.geometry);
+      const vol = meshVolume(result.geometry) / 1000;
+      const sa = meshSurfaceArea(result.geometry) / 100;
+      result.geometry.computeBoundingBox();
+      const bb = result.geometry.boundingBox!;
+      const newSketchResult = {
+        geometry: result.geometry,
+        edgeGeometry: edgeGeo,
+        volume_cm3: vol,
+        surface_area_cm2: sa,
+        bbox: {
+          w: Math.round(bb.max.x - bb.min.x),
+          h: Math.round(bb.max.y - bb.min.y),
+          d: Math.round(bb.max.z - bb.min.z),
+        },
+      };
+      // A1 — wrap in commandHistory so Ctrl+Z reverts to prior canvas state.
+      // Capture prevSketchResult lazily inside execute() so an undo→redo
+      // chain doesn't lose intermediate user edits made before Ctrl+Z.
+      let prevSketchResult: typeof newSketchResult | null = null;
+      let prevIsSketchMode = isSketchMode;
+      let prevViewMode = viewMode;
+      commandHistory.execute({
+        id: `agent-apply-scad-${Date.now()}`,
+        label: 'Agent: apply SCAD',
+        labelKo: '에이전트: SCAD 적용',
+        execute: () => {
+          prevSketchResult = useSceneStore.getState().sketchResult as typeof newSketchResult | null;
+          prevIsSketchMode = isSketchMode;
+          prevViewMode = viewMode;
+          setSketchResult(newSketchResult);
+          setIsSketchMode(false);
+          setViewMode('workspace');
+        },
+        undo: () => {
+          setSketchResult(prevSketchResult);
+          setIsSketchMode(prevIsSketchMode);
+          setViewMode(prevViewMode);
+        },
+      });
+      addToast('success', `Agent: ${result.triangleCount.toLocaleString()} 삼각형 렌더링 완료`);
+    } catch (e) {
+      const err = e as Error;
+      addToast('error', `렌더 실패: ${err.message}`);
+      void import('@/lib/client-error-capture').then(m => m.captureClientError(err, {
+        source: 'scad-agent',
+        tags: { action: 'apply-agent-scad' },
+      }));
+    }
+  }, [isSketchMode, viewMode]);
+
+  /** W6 — Render an OCCT B-rep handle into the main viewport.
+   *  Pulls the tessellated mesh from the agent's brep-mesh API and
+   *  feeds it through the same setSketchResult pipeline as scad. */
+  const handleShowBrepHandle = useCallback(async (handle: string) => {
+    try {
+      const res = await fetch(`/api/nexyfab/scad-agent/brep-mesh?handle=${encodeURIComponent(handle)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json() as {
+        ok: boolean; vertices: number[]; triangles: number[];
+        bbox: { min: [number, number, number]; max: [number, number, number] } | null;
+      };
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } = await import('three');
+      const geo = new BufferGeometry();
+      geo.setAttribute('position', new Float32BufferAttribute(data.vertices, 3));
+      geo.setIndex(new Uint32BufferAttribute(data.triangles, 1));
+      geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      const edgeGeo = makeEdges(geo);
+      const vol = meshVolume(geo) / 1000;
+      const sa = meshSurfaceArea(geo) / 100;
+      const bb = geo.boundingBox!;
+      const newSketchResult = {
+        geometry: geo,
+        edgeGeometry: edgeGeo,
+        volume_cm3: vol,
+        surface_area_cm2: sa,
+        bbox: {
+          w: Math.round(bb.max.x - bb.min.x),
+          h: Math.round(bb.max.y - bb.min.y),
+          d: Math.round(bb.max.z - bb.min.z),
+        },
+      };
+      // A1 — same commandHistory wrapping as agent SCAD apply.
+      let prevSketchResult: typeof newSketchResult | null = null;
+      let prevIsSketchMode = isSketchMode;
+      let prevViewMode = viewMode;
+      commandHistory.execute({
+        id: `agent-show-brep-${handle}-${Date.now()}`,
+        label: `Agent: show ${handle}`,
+        labelKo: `에이전트: ${handle} 표시`,
+        execute: () => {
+          prevSketchResult = useSceneStore.getState().sketchResult as typeof newSketchResult | null;
+          prevIsSketchMode = isSketchMode;
+          prevViewMode = viewMode;
+          setSketchResult(newSketchResult);
+          setIsSketchMode(false);
+          setViewMode('workspace');
+        },
+        undo: () => {
+          setSketchResult(prevSketchResult);
+          setIsSketchMode(prevIsSketchMode);
+          setViewMode(prevViewMode);
+        },
+      });
+      addToast('success', `B-rep ${handle}: ${(data.triangles.length / 3).toLocaleString()} tris`);
+    } catch (e) {
+      const err = e as Error;
+      addToast('error', `B-rep 표시 실패: ${err.message}`);
+      void import('@/lib/client-error-capture').then(m => m.captureClientError(err, {
+        source: 'scad-agent',
+        tags: { action: 'show-brep-handle' },
+        extra: { handle },
+      }));
+    }
+  }, [isSketchMode, viewMode]);
+
   const handleGeometryFitRequest = useCallback(() => {
     setViewportGeometryFitSuppressed(false);
   }, []);
@@ -1070,22 +1508,41 @@ export function ShapeGeneratorInner() {
     else contextHelp.leaveContext();
   }, [isSketchMode, isPreviewMode]);
 
-  // Wrapped addFeature that also triggers feature context help
+  // Wrapped addFeature that also triggers feature context help.
+  // Round 26 Phase 3: route through commandHistory inline so Ctrl+Z reverses
+  // the add. We can't reuse handleAddFeatureCmd() (defined further below in
+  // this component) without a forward-reference TDZ — inlining a single
+  // commandHistory.execute is cheaper than a ref dance.
   const addFeatureWithContext = useCallback((type: FeatureType | 'moldTools') => {
     if (type === 'moldTools') {
       setShowMoldDesignPanel(true);
       return;
     }
-    addFeature(type as FeatureType);
+    const featType = type as FeatureType;
+    commandHistory.execute({
+      id: `add-feature-${featType}-${Date.now()}`,
+      label: `Add feature: ${featType}`,
+      labelKo: `피처 추가: ${featType}`,
+      execute: () => { addFeature(featType); },
+      undo: () => { undoLast(); },
+    });
     contextHelp.enterContext('feature');
-  }, [addFeature]);
+  }, [addFeature, undoLast]);
 
+  // addFeatureWithParams variant — same tracked treatment so dimension-driven
+  // adds (e.g. hole diameter from quick-input) are also undoable atomically.
   const addFeatureWithParamsAndContext = useCallback(
     (type: FeatureType, overrides: Record<string, number>) => {
-      addFeatureWithParams(type, overrides);
+      commandHistory.execute({
+        id: `add-feature-params-${type}-${Date.now()}`,
+        label: `Add feature: ${type}`,
+        labelKo: `피처 추가: ${type}`,
+        execute: () => { addFeatureWithParams(type, overrides); },
+        undo: () => { undoLast(); },
+      });
       contextHelp.enterContext('feature');
     },
-    [addFeatureWithParams],
+    [addFeatureWithParams, undoLast],
   );
 
   // ── Command History (Command Pattern undo/redo) ──
@@ -1099,6 +1556,7 @@ export function ShapeGeneratorInner() {
 
   // ── UI state ──
   const showAIAssistant = useUIStore(s => s.showAIAssistant);
+  const scadAuthoringMode = useUIStore(s => s.scadAuthoringMode);
   const setShowAIAssistant = useUIStore(s => s.setShowAIAssistant);
   const openAIAssistant = useUIStore(s => s.openAIAssistant);
   const showShortcuts = useUIStore(s => s.showShortcuts);
@@ -1191,7 +1649,7 @@ export function ShapeGeneratorInner() {
     showPrintAnalysis, setShowPrintAnalysis,
     showMassProps, setShowMassProps,
     showCenterOfMass, setShowCenterOfMass,
-    validationResult, setValidationResult,
+    validationResult: _validationResult, setValidationResult,
     showValidation, setShowValidation,
     gdtAnnotations, addGDTAnnotation, updateGDTAnnotation, removeGDTAnnotation,
     dimensionAnnotations, addDimensionAnnotation, removeDimensionAnnotation, updateDimensionAnnotation,
@@ -1247,10 +1705,24 @@ export function ShapeGeneratorInner() {
       lastBrokenSnapshotRef.current = snapshot;
       const first = broken[0];
       addToast('warning', lt.brokenExpression(first.key, first.expression, first.missing.join(', '), broken.length - 1));
+      // D4: auto-freeze broken expressions to their current numeric value so
+      // the model keeps building. The user retains the literal (visible in
+      // ExpressionInput) and can re-author a new formula at their leisure.
+      // Replaces the previous behaviour of leaving "Diameter = Hole1.D * 2"
+      // dangling forever after Hole1 was deleted.
+      const { paramExpressions: frozenExprs, converted } = freezeBrokenExpressions(
+        currentExprs,
+        currentParams,
+        availableNames,
+      );
+      if (converted.length > 0) {
+        useSceneStore.getState().setParamExpressions(frozenExprs);
+        addToast('info', lt.brokenExpressionFrozen(converted.length));
+      }
     } else if (!snapshot) {
       lastBrokenSnapshotRef.current = '';
     }
-  }, [features, modelVars, addToast, lang]);
+  }, [features, modelVars, addToast, lang, lt]);
 
   // 스케치 평면 전환 래퍼: 진행 중인 프로파일이 있으면 사용자에게 알림.
   // 평면을 바꿔도 기존 2D 좌표는 유지되지만 새 평면에 투영되므로 혼란을 방지.
@@ -1328,8 +1800,125 @@ export function ShapeGeneratorInner() {
     upgradeFeature, setUpgradeFeature,
     requirePro: _requirePro,
     requirePhotoReal,
-    checkCartLimit } = useFreemiumGate();
+    checkCartLimit,
+    triggerProjectLimitPrompt } = useFreemiumGate();
   useEffect(() => { authUserRef.current = authUser ?? null; }, [authUser]);
+
+  // ── Ctrl+\ split-screen toggle ──
+  // Cycle splitMode: off → side-notes → side-spec → off. Skip when an input
+  // is focused so the keystroke doesn't fight typing.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== '\\') return;
+      const tag = (document.activeElement?.tagName ?? '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) return;
+      e.preventDefault();
+      useSceneStore.getState().toggleSplitMode();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // ── Demo signup request — open auth modal in signup mode ──
+  // useNfabFileIO dispatches this when an unsigned user tries to cloud-save.
+  // We open the auth modal; the pending-intent stash is set in the hook,
+  // and the resume effect below picks it up after signup completes.
+  useEffect(() => {
+    const onRequest = () => {
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
+    };
+    window.addEventListener('nexyfab:request-signup', onRequest);
+    return () => window.removeEventListener('nexyfab:request-signup', onRequest);
+  }, [setAuthModalMode, setShowAuthModal]);
+
+  // ── Pending intent resume after upgrade or signup ──
+  // 결제 후 돌아온 사용자 OR 데모→가입 사용자: stash해둔 cloud-save 의도를 한 번만
+  // 자동 재시도. Round 28 부터 plan==='free' 도 허용 (서버가 FREE_PROJECT_LIMIT 으로
+  // 알아서 게이트하므로 — 한도 초과면 paywall이 또 뜸, 정상 플로우).
+  useEffect(() => {
+    if (!authUser?.id) return;
+    void import('@/lib/pending-intents').then(({ readPendingIntent, clearPendingIntent }) => {
+      const intent = readPendingIntent();
+      if (!intent) return;
+      // Round 31: route by kind so each Pro-gated surface resumes correctly.
+      // For non-cloud-save kinds we don't auto-execute (some are too
+      // destructive/visible), but we surface a "you can run this now" toast
+      // so the user knows their original click is still actionable.
+      if (intent.kind !== 'cloud_save_project') {
+        clearPendingIntent();
+        const messages: Record<string, string> = {
+          run_dfm_analysis:   lang === 'ko' ? 'DFM 분석을 다시 실행하실 수 있습니다.' : 'You can now run DFM analysis.',
+          run_fea_analysis:   lang === 'ko' ? 'FEA 해석을 다시 실행하실 수 있습니다.' : 'You can now run FEA analysis.',
+          export_format:      lang === 'ko' ? '내보내기를 다시 시도해주세요.' : 'You can now retry the export.',
+          request_quote:      lang === 'ko' ? '견적 요청을 다시 시도해주세요.' : 'You can now request a quote.',
+          create_share_link:  lang === 'ko' ? '보호된 공유 링크를 다시 생성하실 수 있습니다.' : 'You can now create the protected share link.',
+        };
+        const msg = messages[intent.kind];
+        if (msg) addToast?.('success', msg);
+        return;
+      }
+      clearPendingIntent();
+      addToast?.('info', lang === 'ko' ? '업그레이드 완료 — 진행 중이던 저장을 재시도합니다.' : 'Upgrade complete — resuming your pending save.');
+      // syncNow는 useCloudSaveFlow에서 export. 직접 호출은 불가능하므로
+      // autosave가 다음 사이클에 자연 발사되도록 dirty flag만 살짝 흔든다.
+      try {
+        const k = '__nexyfab_resume_save_done';
+        const w = window as unknown as Record<string, unknown>;
+        if (!w[k]) {
+          w[k] = true;
+          // Dispatch a custom event picked up by the autosave watcher in
+          // useSceneAutoSaveWatchers — flushes immediately without debounce.
+          window.dispatchEvent(new CustomEvent('nexyfab:resume-cloud-save'));
+        }
+      } catch { /* ignore */ }
+    });
+  }, [authUser?.id, authUser?.plan, addToast, lang]);
+
+  // ── Onboarding funnel: first_shape_created ──
+  // selectedId가 처음으로 truthy해지는 순간 기록. setSelectedId 호출 지점이
+  // 매우 분산돼 있어 effect 단일 watcher가 가장 robust한 wiring.
+  useEffect(() => {
+    if (!authUser?.id || !selectedId) return;
+    const key = `nexyfab.funnel.firstShapeCreated.${authUser.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch { return; }
+    void fetch('/api/nexyfab/funnel-event', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventType: 'first_shape_created',
+        contextType: 'shape',
+        contextId: selectedId,
+      }),
+    }).then(r => {
+      if (r.ok) try { localStorage.setItem(key, String(Date.now())); } catch { /* ignore */ }
+    }).catch(() => { /* swallow */ });
+  }, [authUser?.id, selectedId]);
+
+  // ── Onboarding funnel: shape_generator_first_open ──
+  // 로그인된 사용자가 처음 3D 툴 페이지에 들어왔을 때 한 번만 발사. localStorage
+  // 키로 dedupe — 서버측 unique-user 집계도 첫 이벤트만 카운트되므로 클라이언트
+  // 중복은 그래프 모양에는 영향 없지만 DB row 절약 차원.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const key = `nexyfab.funnel.shapeGenFirstOpen.${authUser.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch { /* localStorage unavailable — fall through */ }
+    void fetch('/api/nexyfab/funnel-event', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType: 'shape_generator_first_open' }),
+    }).then(r => {
+      if (r.ok) {
+        try { localStorage.setItem(key, String(Date.now())); } catch { /* ignore */ }
+      }
+    }).catch(() => { /* funnel write must not block UX */ });
+  }, [authUser?.id]);
 
   // ── CAM G-code freemium gate ──
   const { check: checkFreemium, isPro: isProPlan } = useFreemium();
@@ -1361,27 +1950,40 @@ export function ShapeGeneratorInner() {
   // ── Analysis modal panels (centralised in useUIStore for closeAllPanels / simpleMode) ──
   const showCOTSPanel        = useUIStore(s => s.showCOTSPanel);
   const setShowCOTSPanel     = useUIStore(s => s.setShowCOTSPanel);
-  const showCamUpgrade       = useUIStore(s => s.showCamUpgrade);
+  const _showCamUpgrade       = useUIStore(s => s.showCamUpgrade);
   const setShowCamUpgrade    = useUIStore(s => s.setShowCamUpgrade);
-  const showDFMFixUpgrade    = useUIStore(s => s.showDFMFixUpgrade);
+  const _showDFMFixUpgrade    = useUIStore(s => s.showDFMFixUpgrade);
   const setShowDFMFixUpgrade = useUIStore(s => s.setShowDFMFixUpgrade);
-  const showDFMInsightsUpgrade    = useUIStore(s => s.showDFMInsightsUpgrade);
+  const _showDFMInsightsUpgrade    = useUIStore(s => s.showDFMInsightsUpgrade);
   const setShowDFMInsightsUpgrade = useUIStore(s => s.setShowDFMInsightsUpgrade);
   const showProcessRouter         = useUIStore(s => s.showProcessRouter);
   const setShowProcessRouter      = useUIStore(s => s.setShowProcessRouter);
-  const showProcessRouterUpgrade    = useUIStore(s => s.showProcessRouterUpgrade);
+  const _showProcessRouterUpgrade    = useUIStore(s => s.showProcessRouterUpgrade);
   const setShowProcessRouterUpgrade = useUIStore(s => s.setShowProcessRouterUpgrade);
   const showAISupplierMatch         = useUIStore(s => s.showAISupplierMatch);
   const setShowAISupplierMatch      = useUIStore(s => s.setShowAISupplierMatch);
-  const showAISupplierMatchUpgrade    = useUIStore(s => s.showAISupplierMatchUpgrade);
+  const _showAISupplierMatchUpgrade    = useUIStore(s => s.showAISupplierMatchUpgrade);
   const setShowAISupplierMatchUpgrade = useUIStore(s => s.setShowAISupplierMatchUpgrade);
   const showCostCopilot             = useUIStore(s => s.showCostCopilot);
   const setShowCostCopilot          = useUIStore(s => s.setShowCostCopilot);
-  const showCostCopilotUpgrade      = useUIStore(s => s.showCostCopilotUpgrade);
+  const _showCostCopilotUpgrade      = useUIStore(s => s.showCostCopilotUpgrade);
   const setShowCostCopilotUpgrade   = useUIStore(s => s.setShowCostCopilotUpgrade);
   const showAIHistory               = useUIStore(s => s.showAIHistory);
   const setShowAIHistory            = useUIStore(s => s.setShowAIHistory);
   const showOpenScad                = useUIStore(s => s.showOpenScad);
+  // F5 — Configuration Table panel
+  const showConfigurationTable      = useUIStore(s => s.showConfigurationTable);
+  const setShowConfigurationTable   = useUIStore(s => s.setShowConfigurationTable);
+  // F7 / F9 / F1 — DRC, PLM, sketch text panels
+  const showDrcPanel                = useUIStore(s => s.showDrcPanel);
+  const setShowDrcPanel             = useUIStore(s => s.setShowDrcPanel);
+  const showPlmConfig               = useUIStore(s => s.showPlmConfig);
+  const setShowPlmConfig            = useUIStore(s => s.setShowPlmConfig);
+  const showSketchText              = useUIStore(s => s.showSketchText);
+  const setShowSketchText           = useUIStore(s => s.setShowSketchText);
+  // K6 — Smart Fastener panel
+  const showSmartFastener           = useUIStore(s => s.showSmartFastener);
+  const setShowSmartFastener        = useUIStore(s => s.setShowSmartFastener);
   const setShowOpenScad             = useUIStore(s => s.setShowOpenScad);
   // ── Face/edge selection ──
   const [selectedElement, setSelectedElement] = React.useState<ElementSelectionInfo | null>(null);
@@ -1422,11 +2024,33 @@ export function ShapeGeneratorInner() {
     setSelectedElement(null);
     setSelectionActive(false);
   }, []);
+
+  /** One primary viewport click-mode at a time — measure vs face selection conflict otherwise. */
+  const toggleMeasureMode = useCallback(() => {
+    setMeasureActive(prev => {
+      const next = !prev;
+      if (next) {
+        setSelectionActive(false);
+        setSelectedElement(null);
+      }
+      return next;
+    });
+  }, [setMeasureActive]);
+
+  const toggleFaceSelectionMode = useCallback(() => {
+    setSelectionActive(prev => {
+      if (prev) setSelectedElement(null);
+      const next = !prev;
+      if (next) setMeasureActive(false);
+      return next;
+    });
+  }, [setMeasureActive]);
   // ── AI pipeline chain: Process Router → Supplier Matcher pre-fill ──
+
   const [chainedSupplierProcess, setChainedSupplierProcess] = React.useState<string | undefined>(undefined);
-  const showCollabEditUpgrade    = useUIStore(s => s.showCollabEditUpgrade);
+  const _showCollabEditUpgrade    = useUIStore(s => s.showCollabEditUpgrade);
   const setShowCollabEditUpgrade = useUIStore(s => s.setShowCollabEditUpgrade);
-  const showExportOptimizeUpgrade    = useUIStore(s => s.showExportOptimizeUpgrade);
+  const _showExportOptimizeUpgrade    = useUIStore(s => s.showExportOptimizeUpgrade);
   const setShowExportOptimizeUpgrade = useUIStore(s => s.setShowExportOptimizeUpgrade);
 
   // Pro upsell: free users joining a real collab session get a one-time read-only notice.
@@ -1462,6 +2086,49 @@ export function ShapeGeneratorInner() {
   const setShowAutoDrawing   = useUIStore(s => s.setShowAutoDrawing);
   const showMfgPipeline      = useUIStore(s => s.showMfgPipeline);
   const setShowMfgPipeline   = useUIStore(s => s.setShowMfgPipeline);
+
+  const baseScadDockInsetPx = useMemo(
+    () =>
+      !isMobile && !simpleMode && scadAuthoringMode === 'agent'
+        ? SCAD_AGENT_DOCK_INSET_PX
+        : 0,
+    [isMobile, simpleMode, scadAuthoringMode],
+  );
+
+  const col1RightInset = useMemo(
+    () =>
+      buildCol1RightInset(baseScadDockInsetPx, [
+        { id: 'gen', active: showGenDesign },
+        { id: 'motion', active: showMotionStudy },
+        { id: 'modal', active: showModalAnalysis },
+        { id: 'tol', active: showToleranceStackup },
+        { id: 'surf', active: showSurfaceQuality },
+        { id: 'mfgpipe', active: showMfgPipeline },
+        { id: 'cam', active: !!(showCAMSimPanel && camSimResult) },
+        { id: 'mold', active: showMoldDesignPanel },
+        { id: 'rfq', active: showRfqPanel },
+        { id: 'sweep', active: showParametricSweep },
+        { id: 'draw', active: showAutoDrawing },
+        { id: 'copilot', active: showCopilot },
+      ]),
+    [
+      baseScadDockInsetPx,
+      showGenDesign,
+      showMotionStudy,
+      showModalAnalysis,
+      showToleranceStackup,
+      showSurfaceQuality,
+      showMfgPipeline,
+      showCAMSimPanel,
+      camSimResult,
+      showMoldDesignPanel,
+      showRfqPanel,
+      showParametricSweep,
+      showAutoDrawing,
+      showCopilot,
+    ],
+  );
+
   const showVersionDiff      = useUIStore(s => s.showVersionDiff);
   const setShowVersionDiff   = useUIStore(s => s.setShowVersionDiff);
   const [diffGeometries, _setDiffGeometries] = useState<{ a: BufferGeometry; b: BufferGeometry; labelA: string; labelB: string } | null>(null);
@@ -1514,7 +2181,7 @@ export function ShapeGeneratorInner() {
     handleGenerate } = useOptimizationState(addToast);
 
   // ═══ AUTO-SAVE & RECOVERY ═══
-  const { hasRecovery, recoveryData, saveError, lastSavedAt, isSaving, save: autoSave, scheduleSave, dismissRecovery } = useAutoSave();
+  const { hasRecovery, recoveryData, recoveredFromCrash, saveError, lastSavedAt, isSaving, save: autoSave, scheduleSave, dismissRecovery } = useAutoSave();
   const {
     cloudStatus,
     cloudSavedAt,
@@ -1522,10 +2189,21 @@ export function ShapeGeneratorInner() {
     versionConflictNeedsReload,
     reloadToFetchServerProject,
     projectId: cloudProjectId,
+    projectLimitReached,
+    clearProjectLimitReached,
     scheduleSync: scheduleCloudSync,
     syncNow: _syncCloudNow,
     adoptProjectId,
   } = useCloudSaveFlow(!!authUser);
+
+  // When server rejects new project creation due to free-plan limit, surface
+  // the upgrade prompt instead of letting it fall through as a generic error.
+  useEffect(() => {
+    if (projectLimitReached) {
+      triggerProjectLimitPrompt();
+      clearProjectLimitReached();
+    }
+  }, [projectLimitReached, triggerProjectLimitPrompt, clearProjectLimitReached]);
   const pdmPartNumber = usePdmProjectMetaStore(s => s.partNumber);
   const drawingTitlePartName = useMemo(() => {
     const shapeLabel =
@@ -1562,6 +2240,8 @@ export function ShapeGeneratorInner() {
   const showRecovery = useUIStore(s => s.showRecovery);
   const setShowRecovery = useUIStore(s => s.setShowRecovery);
   useEffect(() => { if (hasRecovery && recoveryData) setShowRecovery(true); }, [hasRecovery, recoveryData]);
+  // E2: visual diff modal for recovery — opt-in via "Compare" button.
+  const [showRecoveryCompare, setShowRecoveryCompare] = useState(false);
   // ── Memoised feature serialisations (shared across auto-save, version, designContext) ──
   const featuresToSerialize = useMemo(
     () => features.map(f => ({ type: f.type, params: { ...f.params }, enabled: f.enabled })),
@@ -1586,7 +2266,15 @@ export function ShapeGeneratorInner() {
     cadWorkspace,
     renderMode,
     chatHistory: chatHistory.length > 0 ? chatHistory : undefined,
-  }), [selectedId, params, featuresToSerialize, isSketchMode, sketchProfile, sketchConfig, activeTab, cadWorkspace, renderMode, chatHistory]);
+    assemblyOverrides:
+      assemblyHiddenParts.size > 0 || assemblyTransparentParts.size > 0 || Object.keys(assemblyPartColors).length > 0
+        ? {
+            hiddenParts: Array.from(assemblyHiddenParts),
+            transparentParts: Array.from(assemblyTransparentParts),
+            partColors: { ...assemblyPartColors },
+          }
+        : undefined,
+  }), [selectedId, params, featuresToSerialize, isSketchMode, sketchProfile, sketchConfig, activeTab, cadWorkspace, renderMode, chatHistory, assemblyHiddenParts, assemblyTransparentParts, assemblyPartColors]);
   useEffect(() => { if (saveError) addToast('warning', saveError); }, [saveError, addToast]);
   useEffect(() => { if (cloudError) addToast('warning', `☁ ${cloudError}`); }, [cloudError, addToast]);
 
@@ -1645,7 +2333,11 @@ export function ShapeGeneratorInner() {
     scheduleSave,
     autoSave,
     buildAutoSaveState,
-    markNfabDirty });
+    markNfabDirty,
+    assemblyHiddenParts,
+    assemblyTransparentParts,
+    assemblyPartColors,
+  });
 
   // Wire localStorage autosave → cloud sync (when logged in)
   useEffect(() => {
@@ -1673,11 +2365,11 @@ export function ShapeGeneratorInner() {
   useEffect(() => { if (viewMode !== 'workspace') return; const h = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener('beforeunload', h); return () => window.removeEventListener('beforeunload', h); }, [viewMode]);
   const handleRestoreRecovery = useCallback(() => {
     if (!recoveryData) return;
-    const sd = SHAPE_MAP[recoveryData.selectedId];
-    if (sd) {
-      setSelectedId(recoveryData.selectedId);
-      setParams(recoveryData.params);
-    }
+    setSelectedId(recoveryData.selectedId);
+    applySceneParamsToSetters(SHAPE_MAP[recoveryData.selectedId], recoveryData.params, {
+      setParams,
+      setParamExpressions,
+    });
     setIsSketchMode(recoveryData.isSketchMode);
     if (recoveryData.sketchProfile) setSketchProfile(recoveryData.sketchProfile as SketchProfile);
     if (recoveryData.sketchConfig) setSketchConfig(recoveryData.sketchConfig as SketchConfig);
@@ -1695,9 +2387,15 @@ export function ShapeGeneratorInner() {
     if (recoveryData.renderMode === 'standard' || recoveryData.renderMode === 'photorealistic') {
       useSceneStore.getState().setRenderMode(recoveryData.renderMode);
     }
+    if (recoveryData.assemblyOverrides) {
+      const o = recoveryData.assemblyOverrides;
+      setAssemblyHiddenParts(new Set(o.hiddenParts ?? []));
+      setAssemblyTransparentParts(new Set(o.transparentParts ?? []));
+      setAssemblyPartColors(o.partColors ?? {});
+    }
     setShowRecovery(false);
     setViewMode('workspace');
-  }, [recoveryData, clearAll, addFeature]);
+  }, [recoveryData, clearAll, addFeature, setParamExpressions, setParams, setSelectedId]);
   const handleDismissRecovery = useCallback(() => { setShowRecovery(false); dismissRecovery(); }, [dismissRecovery]);
 
   // ═══ SHARE LINK RESTORE ═══
@@ -1709,18 +2407,11 @@ export function ShapeGeneratorInner() {
     const shapeConfig = SHAPE_MAP[decoded.shape];
     if (shapeConfig) {
       setSelectedId(decoded.shape);
-      const merged: Record<string, number> = {};
-      shapeConfig.params.forEach((sp) => { merged[sp.key] = sp.default; });
-      Object.assign(merged, decoded.params);
-      // Clamp decoded params to valid ranges to prevent out-of-range or zero-size crashes
-      shapeConfig.params.forEach((sp) => {
-        if (typeof merged[sp.key] === 'number') {
-          merged[sp.key] = Math.max(sp.min, Math.min(sp.max, merged[sp.key]));
-        } else {
-          merged[sp.key] = sp.default;
-        }
+      const raw = (decoded.params ?? {}) as Record<string, number>;
+      applySceneParamsToSetters(shapeConfig, raw, {
+        setParams,
+        setParamExpressions,
       });
-      setParams(merged);
     }
     if (MATERIAL_PRESETS.some((m) => m.id === decoded.material)) {
       setMaterialId(decoded.material);
@@ -1775,7 +2466,23 @@ export function ShapeGeneratorInner() {
           // Legacy AutoSaveState JSON (localStorage-style)
           if (state.selectedId && typeof state.selectedId === 'string' && SHAPE_MAP[state.selectedId]) {
             setSelectedId(state.selectedId);
-            if (state.params) setParams(state.params as Record<string, number>);
+            const legacySd = SHAPE_MAP[state.selectedId];
+            if (legacySd) {
+              const rawParams = state.params;
+              const paramsOk =
+                rawParams != null &&
+                typeof rawParams === 'object' &&
+                !Array.isArray(rawParams) &&
+                !(rawParams instanceof Date);
+              applySceneParamsToSetters(
+                legacySd,
+                paramsOk ? (rawParams as Record<string, number>) : {},
+                { setParams, setParamExpressions },
+              );
+              if (rawParams != null && !paramsOk) {
+                addToast('warning', (LOCAL_LABELS[langRef.current] ?? LOCAL_LABELS.en).legacySceneParamsSkipped);
+              }
+            }
           }
           if (typeof state.isSketchMode === 'boolean') setIsSketchMode(state.isSketchMode);
           if (state.activeTab === 'design' || state.activeTab === 'optimize') setActiveTab(state.activeTab);
@@ -1873,13 +2580,16 @@ export function ShapeGeneratorInner() {
     addToast('success', lt.snapshotSaved);
   }, [selectedId, params, featuresToSerialize, captureCurrentThumbnail, saveVersion, addToast, lang]);
   const handleRestoreVersion = useCallback((version: DesignVersion) => {
-    const sd = SHAPE_MAP[version.shapeId];
-    if (sd) { setSelectedId(version.shapeId); setParams(version.params); const e: Record<string, string> = {}; Object.entries(version.params).forEach(([k, v]) => { e[k] = String(v); }); setParamExpressions(e); }
+    setSelectedId(version.shapeId);
+    applySceneParamsToSetters(SHAPE_MAP[version.shapeId], version.params, {
+      setParams,
+      setParamExpressions,
+    });
     clearAll();
     if (version.features.length > 0) { setTimeout(() => { version.features.forEach(f => addFeature(f.type as FeatureType)); }, 50); }
     setShowVersionPanel(false);
     addToast('success', lt.versionRestored);
-  }, [clearAll, addFeature, addToast, lang]);
+  }, [clearAll, addFeature, addToast, lang, setParamExpressions, setParams, setSelectedId]);
   const prevVersionShapeRef = useRef(selectedId);
   const prevVersionFeatLenRef = useRef(features.length);
   useEffect(() => {
@@ -1893,7 +2603,22 @@ export function ShapeGeneratorInner() {
 
   // ═══ BRANCH HANDLERS ═══
   const handleCreateBranch = useCallback((name: string) => { createBranch(name); addToast('success', lt.branchCreated(name)); }, [createBranch, addToast, lt]);
-  const handleSwitchBranch = useCallback((branchId: string) => { const latestVersion = switchBranch(branchId); if (latestVersion) { const sd = SHAPE_MAP[latestVersion.shapeId]; if (sd) { setSelectedId(latestVersion.shapeId); setParams(latestVersion.params); const e: Record<string, string> = {}; Object.entries(latestVersion.params).forEach(([k, v]) => { e[k] = String(v); }); setParamExpressions(e); } clearAll(); if (latestVersion.features.length > 0) { setTimeout(() => { latestVersion.features.forEach(f => addFeature(f.type as FeatureType)); }, 50); } } const branchName = branches.find(b => b.id === branchId)?.name || branchId; addToast('success', lt.branchSwitched(branchName)); }, [switchBranch, branches, clearAll, addFeature, addToast, lt]);
+  const handleSwitchBranch = useCallback((branchId: string) => {
+    const latestVersion = switchBranch(branchId);
+    if (latestVersion) {
+      setSelectedId(latestVersion.shapeId);
+      applySceneParamsToSetters(SHAPE_MAP[latestVersion.shapeId], latestVersion.params, {
+        setParams,
+        setParamExpressions,
+      });
+      clearAll();
+      if (latestVersion.features.length > 0) {
+        setTimeout(() => { latestVersion.features.forEach(f => addFeature(f.type as FeatureType)); }, 50);
+      }
+    }
+    const branchName = branches.find(b => b.id === branchId)?.name || branchId;
+    addToast('success', lt.branchSwitched(branchName));
+  }, [switchBranch, branches, clearAll, addFeature, addToast, lt, setParamExpressions, setParams, setSelectedId]);
   const handleDeleteBranch = useCallback((branchId: string) => { const branchName = branches.find(b => b.id === branchId)?.name || branchId; const ok = deleteBranch(branchId); if (ok) addToast('success', lt.branchDeleted(branchName)); }, [deleteBranch, branches, addToast, lt]);
   const handleMergeBranch = useCallback((sourceBranchId: string, targetBranchId: string) => { const merged = mergeBranch(sourceBranchId, targetBranchId); if (merged) { const srcName = branches.find(b => b.id === sourceBranchId)?.name || sourceBranchId; const tgtName = branches.find(b => b.id === targetBranchId)?.name || targetBranchId; addToast('success', lt.branchMerged(srcName, tgtName)); } }, [mergeBranch, branches, addToast, lt]);
 
@@ -1905,10 +2630,14 @@ export function ShapeGeneratorInner() {
     const shapeDef = SHAPE_MAP[shapeId];
     if (shapeDef) {
       setSelectedId(shapeId);
-      const p: Record<string, number> = {};
-      shapeDef.params.forEach((sp) => { p[sp.key] = sp.default; });
-      Object.entries(initParams).forEach(([k, v]) => { if (typeof v === 'number' && k in p) p[k] = v; });
-      setParams(p);
+      const { unknownKeys } = applySceneParamsToSetters(shapeDef, initParams, {
+        setParams,
+        setParamExpressions,
+      });
+      if (unknownKeys.length > 0) {
+        const detail = unknownKeys.slice(0, 12).join(', ') + (unknownKeys.length > 12 ? '…' : '');
+        addToast('warning', lt.ignoredUnknownParams(detail));
+      }
     }
     clearAll();
     setSelectedFeatureId(null);
@@ -1918,7 +2647,7 @@ export function ShapeGeneratorInner() {
     setShowAIAssistant(false);
     setPendingChatMsg(null);
     setViewMode('workspace');
-  }, [clearAll]);
+  }, [clearAll, addToast, lt, setParamExpressions, setParams, setSelectedId]);
 
   const _handleEnterBlankSketch = useCallback(() => {
     clearAll();
@@ -1952,14 +2681,34 @@ export function ShapeGeneratorInner() {
   const shape = useMemo(() => SHAPES.find(s => s.id === selectedId) ?? SHAPES[0], [selectedId]);
 
   const handleSelectShape = useCallback((s: ShapeConfig) => {
-    // Push current state to history before changing
-    history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
-    setSelectedId(s.id);
-    const p: Record<string, number> = {};
-    const e: Record<string, string> = {};
-    s.params.forEach(sp => { p[sp.key] = sp.default; e[sp.key] = String(sp.default); });
-    setParams(p);
-    setParamExpressions(e);
+    // Round 29 Phase 4: route shape changes through commandHistory so Ctrl+Z
+    // reverses them in one step. Legacy `history.push` is kept as a backup
+    // snapshot so non-tracked callers (e.g. older URL-restore paths) can
+    // still rollback via the coordinated undo, but the modern stack is the
+    // primary source of truth.
+    const prevSelectedId = selectedId;
+    const prevParams = { ...params };
+    const newP: Record<string, number> = {};
+    const newE: Record<string, string> = {};
+    s.params.forEach(sp => { newP[sp.key] = sp.default; newE[sp.key] = String(sp.default); });
+    commandHistory.execute({
+      id: `shape-change-${s.id}-${Date.now()}`,
+      label: `Shape → ${s.id}`,
+      labelKo: `형상 변경 → ${s.id}`,
+      execute: () => {
+        setSelectedId(s.id);
+        setParams(newP);
+        setParamExpressions(newE);
+      },
+      undo: () => {
+        setSelectedId(prevSelectedId);
+        setParams(prevParams);
+        const e: Record<string, string> = {};
+        Object.entries(prevParams).forEach(([k, v]) => { e[k] = String(v); });
+        setParamExpressions(e);
+      },
+    });
+    history.push({ selectedId: prevSelectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     setSketchResult(null);
@@ -1972,8 +2721,17 @@ export function ShapeGeneratorInner() {
   // ── LOD-during-drag: hide expensive edge overlay while a slider is held ──
   const [paramDragging, setParamDragging] = React.useState(false);
   const paramDragTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Snapshot of params at the *start* of a drag — used by handleParamCommit to
+  // build a single undo step that spans the whole drag rather than one per
+  // intermediate slider position. Cleared after each commit.
+  const paramDragBeforeRef = React.useRef<Record<string, number> | null>(null);
 
   const handleParamChange = useCallback((key: string, value: number) => {
+    // Capture pre-drag snapshot on the rising edge so the undo step can
+    // restore the state the user actually saw before the slider moved.
+    if (!paramDragging && !paramDragBeforeRef.current) {
+      paramDragBeforeRef.current = { ...params };
+    }
     setParam(key, value);
     setParamExpression(key, String(value));
     collabSendParamChange({ [key]: value });
@@ -1981,7 +2739,7 @@ export function ShapeGeneratorInner() {
     if (!paramDragging) setParamDragging(true);
     if (paramDragTimerRef.current) clearTimeout(paramDragTimerRef.current);
     paramDragTimerRef.current = setTimeout(() => setParamDragging(false), 200);
-  }, [setParam, setParamExpression, collabSendParamChange, paramDragging]);
+  }, [setParam, setParamExpression, collabSendParamChange, paramDragging, params]);
 
   const handleExpressionChange = useCallback((key: string, expr: string) => {
     setParamExpression(key, expr);
@@ -2000,20 +2758,70 @@ export function ShapeGeneratorInner() {
     }
   }, [params, modelVars, setParam, setParamExpression]);
 
-  // Push to history on significant param changes (debounced via blur/enter)
+  // Push to history on significant param changes (debounced via blur/enter).
+  // Records both the legacy snapshot stack (for compat) AND a commandHistory
+  // entry so the modern Ctrl+Z path reverses the drag in one step.
+  // Phase 1 of the unified-history migration: param drags are now first-class
+  // command entries instead of opaque snapshots.
   const handleParamCommit = useCallback(() => {
+    const before = paramDragBeforeRef.current;
+    paramDragBeforeRef.current = null;
+    if (before) {
+      const after = { ...params };
+      // Skip when nothing actually changed (e.g. user clicked a slider but
+      // released without moving) — saves an empty undo step.
+      const changed = Object.keys(after).some(k => after[k] !== before[k]);
+      if (changed) {
+        commandHistory.execute({
+          id: `param-drag-${Date.now()}`,
+          label: 'Edit parameters',
+          labelKo: '파라미터 수정',
+          // execute() is invoked once by .execute() itself with current state
+          // already applied, and again on redo — we need to re-apply `after`.
+          execute: () => {
+            setParams(after);
+            const e: Record<string, string> = {};
+            Object.entries(after).forEach(([k, v]) => { e[k] = String(v); });
+            setParamExpressions(e);
+          },
+          undo: () => {
+            setParams(before);
+            const e: Record<string, string> = {};
+            Object.entries(before).forEach(([k, v]) => { e[k] = String(v); });
+            setParamExpressions(e);
+          },
+        });
+      }
+    }
+    // Legacy snapshot — kept until all paths migrate.
     history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
     if (paramDragTimerRef.current) { clearTimeout(paramDragTimerRef.current); paramDragTimerRef.current = null; }
     setParamDragging(false);
-  }, [history, selectedId, params, features]);
+  }, [history, selectedId, params, features, setParams, setParamExpressions]);
 
   const handleShapeReset = useCallback(() => {
-    history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
-    const p: Record<string, number> = {};
-    const e: Record<string, string> = {};
-    shape.params.forEach(sp => { p[sp.key] = sp.default; e[sp.key] = String(sp.default); });
-    setParams(p);
-    setParamExpressions(e);
+    // Phase 5: track shape resets in commandHistory so Ctrl+Z restores the
+    // user's prior parameters in one step. Legacy push retained as backup.
+    const prevParams = { ...params };
+    const newP: Record<string, number> = {};
+    const newE: Record<string, string> = {};
+    shape.params.forEach(sp => { newP[sp.key] = sp.default; newE[sp.key] = String(sp.default); });
+    commandHistory.execute({
+      id: `shape-reset-${selectedId}-${Date.now()}`,
+      label: 'Reset parameters',
+      labelKo: '파라미터 초기화',
+      execute: () => {
+        setParams(newP);
+        setParamExpressions(newE);
+      },
+      undo: () => {
+        setParams(prevParams);
+        const e: Record<string, string> = {};
+        Object.entries(prevParams).forEach(([k, v]) => { e[k] = String(v); });
+        setParamExpressions(e);
+      },
+    });
+    history.push({ selectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     // Reset formula values to defaults for new shape
@@ -2048,19 +2856,49 @@ export function ShapeGeneratorInner() {
     setFormulaValues(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  // Coordinated undo/redo across the two history stacks.
+  //
+  // We have two independent histories that both track edits:
+  //   - `commandHistory` (Command pattern, src/.../history/CommandHistory.ts):
+  //     used by mate-to-placement, the tracked param-change panel, etc.
+  //   - `history` (legacy useHistory hook): plain shape+params snapshots
+  //     pushed by direct setSelectedId/setParams paths.
+  //
+  // Ctrl+Z used to drain only the legacy stack, which silently swallowed
+  // commandHistory entries. We now drain whichever stack actually has work
+  // pending — preferring commandHistory (it has finer-grained undo for
+  // recent operations). When commandHistory is empty we fall back to the
+  // legacy snapshot stack so older operations are still reversible.
+  //
+  // Long-term: migrate all mutations onto commandHistory and remove the
+  // legacy snapshot stack (tracked as a follow-up; not in this audit).
   const handleHistoryUndo = useCallback(() => {
+    if (cmdHistory.canUndo) {
+      cmdHistory.undo();
+      return;
+    }
     const snap = history.undo();
     if (!snap) return;
     setSelectedId(snap.selectedId);
-    setParams(snap.params);
-  }, [history]);
+    applySceneParamsToSetters(SHAPE_MAP[snap.selectedId], snap.params, {
+      setParams,
+      setParamExpressions,
+    });
+  }, [history, cmdHistory, setParams, setParamExpressions]);
 
   const handleHistoryRedo = useCallback(() => {
+    if (cmdHistory.canRedo) {
+      cmdHistory.redo();
+      return;
+    }
     const snap = history.redo();
     if (!snap) return;
     setSelectedId(snap.selectedId);
-    setParams(snap.params);
-  }, [history]);
+    applySceneParamsToSetters(SHAPE_MAP[snap.selectedId], snap.params, {
+      setParams,
+      setParamExpressions,
+    });
+  }, [history, cmdHistory, setParams, setParamExpressions]);
 
   // ─── Command-pattern wrappers (for tracked undo/redo via CommandHistory) ────
 
@@ -2112,7 +2950,11 @@ export function ShapeGeneratorInner() {
       } });
   }, [selectedId, params, features, history, clearAll]);
 
-  const _handleAddFeatureCmd = useCallback((type: FeatureType) => {
+  // Tracked feature add — drops the legacy `_` prefix and is now wired into
+  // every UI entry point that adds a feature (Round 26 Phase 2). Restoration
+  // / version-load paths still call addFeature() directly so they don't
+  // pollute the undo stack with state-restore noise.
+  const handleAddFeatureCmd = useCallback((type: FeatureType) => {
     const id = `add-feature-${type}-${Date.now()}`;
     commandHistory.execute({
       id,
@@ -2120,12 +2962,33 @@ export function ShapeGeneratorInner() {
       labelKo: `피처 추가: ${type}`,
       execute: () => { addFeature(type); },
       undo: () => { undoLast(); } });
+    // F4: emit a macro action for replay. No-op when not recording, so this
+    // adds zero overhead in the common case.
+    globalMacroRecorder.record({ kind: 'add-feature', featureType: type });
   }, [addFeature, undoLast]);
 
-  const _handleRemoveFeatureCmd = useCallback((featureId: string) => {
+  // F7 — DRC rule set state. Loaded from .drc.json or built inline.
+  const [drcRuleSet, setDrcRuleSet] = useState<import('./analysis/drcEngine').DrcRuleSet | null>(null);
+
+  // F6 — confirm-impact dialog state. Shown before destructive feature
+  // removal when analyzeChangeImpact reports `major`. Stores both the
+  // featureId being deleted and a summary message for the modal body.
+  const [removeConfirm, setRemoveConfirm] = useState<{
+    featureId: string;
+    summary: string;
+  } | null>(null);
+
+  /**
+   * Internal: actually run the remove command. Public handleRemoveFeatureCmd
+   * gates this with a confirm modal when impact analysis flags major impact.
+   */
+  const performRemoveFeature = useCallback((featureId: string) => {
     // Capture the node before removal so undo can restore it
     const snapshot = featureHistory?.nodes.find(n => n.id === featureId);
     const id = `remove-feature-${featureId}-${Date.now()}`;
+    // F4: emit macro action up-front so even a destructive sequence is
+    // replayable. Removal undo is handled separately by commandHistory.
+    globalMacroRecorder.record({ kind: 'remove-feature', featureId });
     commandHistory.execute({
       id,
       label: `Remove feature`,
@@ -2150,7 +3013,37 @@ export function ShapeGeneratorInner() {
         }, 0);
         addToast('success', lt.featureRestored);
       } });
-  }, [removeFeature, featureHistory, addFeature, updateFeatureParam, getOrderedNodes, addToast, lang]);
+  }, [removeFeature, featureHistory, addFeature, updateFeatureParam, getOrderedNodes, addToast, lt]);
+
+  // F6 — public wrapper. Runs analyzeChangeImpact and gates `major` impact
+  // through a confirm modal so the user sees the cascade (broken
+  // expressions / downstream features / affected mates) before committing.
+  const handleRemoveFeatureCmd = useCallback((featureId: string) => {
+    const impact = analyzeChangeImpact({
+      targetFeatureId: featureId,
+      features,
+      paramExpressions: useSceneStore.getState().paramExpressions,
+      assemblyMates,
+    });
+    if (impact.severity === 'major') {
+      const parts: string[] = [];
+      if (impact.summary.expressionCount > 0) {
+        parts.push(`${impact.summary.expressionCount} expression(s)`);
+      }
+      if (impact.summary.downstreamCount > 0) {
+        parts.push(`${impact.summary.downstreamCount} downstream feature(s)`);
+      }
+      if (impact.summary.mateCount > 0) {
+        parts.push(`${impact.summary.mateCount} mate(s)`);
+      }
+      setRemoveConfirm({
+        featureId,
+        summary: parts.join(', '),
+      });
+      return;
+    }
+    performRemoveFeature(featureId);
+  }, [features, assemblyMates, performRemoveFeature]);
 
   const handleMoveFeatureByIds = useCallback((fromId: string, toId: string) => {
     const ordered = getOrderedNodes().filter(n => n.type === 'feature' && n.featureType);
@@ -2246,9 +3139,20 @@ export function ShapeGeneratorInner() {
   // sketch body until the library shape / pipeline replaces it — otherwise the center
   // viewport falls back to `result` and the extrusion disappears from effective geometry.
   // While sketching, do NOT fall back to parametric `result` (avoids ghost shape).
-  const effectiveResult: ShapeResult | null = isSketchMode
+  const effectiveResultRaw: ShapeResult | null = isSketchMode
     ? sketchResult
     : (sketchResult ?? result);
+
+  // E1: transient-null guard for the viewport. When a feature is rebuilding
+  // (CSG running, pipeline mid-flight, undo replacing params), `result` can
+  // briefly evaluate to null before the new geometry is uploaded. Without
+  // this fallback the canvas blanks for 1-2 frames — the visual "flicker" the
+  // deepseek review flagged. Hold the last good result so the previous mesh
+  // stays visible until the new one is ready.
+  const lastGoodEffectiveResultRef = useRef<ShapeResult | null>(null);
+  if (effectiveResultRaw) lastGoodEffectiveResultRef.current = effectiveResultRaw;
+  const effectiveResult: ShapeResult | null =
+    effectiveResultRaw ?? lastGoodEffectiveResultRef.current;
 
   // ─── Topological Naming: rebuild stable face-ID map on every geometry rebuild ───
   const topoMap = useTopologicalMap();
@@ -2338,6 +3242,33 @@ export function ShapeGeneratorInner() {
     !multiView &&
     webglSupported;
 
+  // ── D2: preserve face/edge selection across undo/redo when topology
+  // matches. If the new geometry has a different triangle count than the
+  // previous render the selection was made on, indices are stale and we
+  // clear silently. Same triangle count → keep selection (it likely still
+  // points at the same logical face since most parametric edits preserve
+  // topology). Avoids the "wrong face highlighted after undo" bug that comes
+  // from face indices referencing a disposed geometry.
+  const lastTriCountRef = useRef<number>(-1);
+  useEffect(() => {
+    const pos = effectiveResult?.geometry?.attributes?.position;
+    const triCount = pos ? pos.count / 3 : 0;
+    const prevCount = lastTriCountRef.current;
+    lastTriCountRef.current = triCount;
+    if (prevCount < 0) return;            // first render — nothing to validate
+    if (prevCount === triCount) return;   // topology unchanged
+    if (!selectedElement) return;         // nothing to clear
+    const indices = selectedElement.type === 'face'
+      ? (selectedElement as FaceSelectionInfo).triangleIndices ?? []
+      : selectedElement.type === 'multi'
+      ? (selectedElement as import('./editing/selectionInfo').MultiSelectionInfo).allTriangleIndices ?? []
+      : [];
+    const allInBounds = indices.length > 0 && indices.every(i => i >= 0 && i < triCount);
+    if (!allInBounds) {
+      setSelectedElement(null);
+    }
+  }, [effectiveResult?.geometry, selectedElement]);
+
   // ── Geometry metrics for cost estimation ──
   const geometryMetrics = useMemo((): GeometryMetrics | null => {
     if (!effectiveResult) return null;
@@ -2359,7 +3290,9 @@ export function ShapeGeneratorInner() {
     getParams: () => params,
     getGeometry: () => effectiveResult?.geometry ?? null,
     setParam: (key, value) => setParam(key, value),
-    addFeature: (type) => addFeature(type as FeatureType),
+    // Plugin-driven feature additions go through the tracked variant so users
+    // can Ctrl+Z them just like manually-added features (Round 26 Phase 2).
+    addFeature: (type) => handleAddFeatureCmd(type as FeatureType),
     showToast: addToast });
 
   // ── Async boolean via Web Worker (for standalone boolean operations) ──
@@ -2521,29 +3454,32 @@ export function ShapeGeneratorInner() {
     // Exit sketch mode and show the parametric shape
     setIsSketchMode(false);
     setShowAIAssistant(false);
+    sidebarLayout.setRightCollapsed(true); // Automatically close the right sidebar for immediate 3D focus
     setSketchResult(null);
     setBomParts([]); setBomLabel('');
+    const mergeFrom =
+      shapeDef.formulaFields?.length && r.shapeId === selectedId
+        ? useSceneStore.getState().paramExpressions
+        : undefined;
     setSelectedId(r.shapeId);
-    const p: Record<string, number> = {};
-    shapeDef.params.forEach((sp) => { p[sp.key] = sp.default; });
-    Object.entries(r.params).forEach(([k, v]) => { if (typeof v === 'number' && k in p) p[k] = v; });
-    setParams(p);
+    const { unknownKeys } = applySceneParamsToSetters(
+      shapeDef,
+      r.params,
+      { setParams, setParamExpressions },
+      mergeFrom ? { mergeExpressionsFrom: mergeFrom } : undefined,
+    );
+    if (unknownKeys.length > 0) {
+      const detail = unknownKeys.slice(0, 12).join(', ') + (unknownKeys.length > 12 ? '…' : '');
+      addToast('warning', lt.ignoredUnknownParams(detail));
+    }
     clearAll(); setSelectedFeatureId(null);
     if (r.features?.length > 0) setTimeout(() => { r.features.forEach(f => addFeature(f.type)); }, 50);
-  }, [clearAll, addFeature, addToast, lang]);
+  }, [clearAll, addFeature, addToast, lang, sidebarLayout, lt, setParams, setParamExpressions, selectedId]);
 
   const generatePartResult = useCallback((shapeId: string, partParams: Record<string, number>, partFeatures?: Array<{ type: FeatureType; params: Record<string, number> }>): ShapeResult | null => {
     const shapeDef = SHAPE_MAP[shapeId];
     if (!shapeDef) return null;
-    const p: Record<string, number> = {};
-    shapeDef.params.forEach((sp) => { p[sp.key] = sp.default; });
-    Object.entries(partParams).forEach(([k, v]) => { if (typeof v === 'number' && k in p) p[k] = v; });
-    // Clamp params to valid min/max ranges to prevent zero-size or out-of-range crashes
-    shapeDef.params.forEach((sp) => {
-      if (p[sp.key] !== undefined) {
-        p[sp.key] = Math.max(sp.min, Math.min(sp.max, p[sp.key]));
-      }
-    });
+    const { params: p } = normalizeShapeParams(shapeDef, partParams);
     try {
       const baseResult = shapeDef.generate(p);
       // Apply features if provided
@@ -2578,33 +3514,44 @@ export function ShapeGeneratorInner() {
     setShowAIAssistant(false);
     setSketchResult(null);
     const bomResults: BomPartResult[] = [];
+    const unknownAgg: string[] = [];
     for (const part of parts) {
-      const sr = generatePartResult(part.shapeId, part.params, part.features);
-      if (sr) bomResults.push({ name: part.name, result: sr, position: part.position, rotation: part.rotation });
-    }
-    setBomParts(bomResults);
-    setBomLabel(productName || 'Assembly');
-    for (const part of parts) {
+      const shapeDef = SHAPE_MAP[part.shapeId];
+      if (shapeDef) {
+        const { unknownKeys } = normalizeShapeParams(shapeDef, part.params);
+        for (const k of unknownKeys) unknownAgg.push(`${part.name}: ${k}`);
+      }
       const sr = generatePartResult(part.shapeId, part.params, part.features);
       if (!sr) continue;
+      bomResults.push({ name: part.name, result: sr, position: part.position, rotation: part.rotation });
       const qty = part.quantity || 1;
       for (let q = 0; q < qty; q++) {
         addCartItem({ shapeId: part.shapeId, shapeName: qty > 1 ? `${part.name} #${q + 1}` : part.name, params: part.params, featureCount: part.features?.length || 0, thumbnail: null, volume_cm3: sr.volume_cm3, surface_area_cm2: sr.surface_area_cm2, bbox: sr.bbox });
       }
     }
+    setBomParts(bomResults);
+    setBomLabel(productName || 'Assembly');
+    if (unknownAgg.length > 0) {
+      const msg = unknownAgg.slice(0, 10).join('; ') + (unknownAgg.length > 10 ? '…' : '');
+      addToast('warning', lt.ignoredUnknownParams(msg));
+    }
     if (parts.length > 0) {
       const first = parts[0];
+      const firstSd = SHAPE_MAP[first.shapeId];
+      const mergeFrom =
+        firstSd?.formulaFields?.length && first.shapeId === selectedId
+          ? useSceneStore.getState().paramExpressions
+          : undefined;
       setSelectedId(first.shapeId);
-      const shapeDef = SHAPE_MAP[first.shapeId];
-      if (shapeDef) {
-        const p: Record<string, number> = {};
-        shapeDef.params.forEach((sp) => { p[sp.key] = sp.default; });
-        Object.entries(first.params).forEach(([k, v]) => { if (typeof v === 'number' && k in p) p[k] = v; });
-        setParams(p);
-      }
+      applySceneParamsToSetters(
+        firstSd,
+        first.params,
+        { setParams, setParamExpressions },
+        mergeFrom ? { mergeExpressionsFrom: mergeFrom } : undefined,
+      );
       clearAll(); setSelectedFeatureId(null);
     }
-  }, [generatePartResult, addCartItem, clearAll]);
+  }, [generatePartResult, addCartItem, clearAll, addToast, lt, setParams, setParamExpressions, selectedId]);
 
   const handleBomPreview = useCallback((parts: Array<{ name: string; shapeId: string; params: Record<string, number>; features?: Array<{ type: FeatureType; params: Record<string, number> }>; position?: [number, number, number]; rotation?: [number, number, number] }>, productName: string) => {
     // Exit sketch mode to show 3D assembly
@@ -2612,13 +3559,23 @@ export function ShapeGeneratorInner() {
     setShowAIAssistant(false);
     setSketchResult(null);
     const bomResults: BomPartResult[] = [];
+    const unknownAgg: string[] = [];
     for (const part of parts) {
+      const shapeDef = SHAPE_MAP[part.shapeId];
+      if (shapeDef) {
+        const { unknownKeys } = normalizeShapeParams(shapeDef, part.params);
+        for (const k of unknownKeys) unknownAgg.push(`${part.name}: ${k}`);
+      }
       const sr = generatePartResult(part.shapeId, part.params, part.features);
       if (sr) bomResults.push({ name: part.name, result: sr, position: part.position, rotation: part.rotation });
     }
     setBomParts(bomResults);
     setBomLabel(productName || 'Assembly');
-  }, [generatePartResult]);
+    if (unknownAgg.length > 0) {
+      const msg = unknownAgg.slice(0, 10).join('; ') + (unknownAgg.length > 10 ? '…' : '');
+      addToast('warning', lt.ignoredUnknownParams(msg));
+    }
+  }, [generatePartResult, addToast, lt]);
 
   const handleBatchQuote = useCallback(() => {
     if (cartItems.length === 0) return;
@@ -2761,8 +3718,6 @@ export function ShapeGeneratorInner() {
   const sketchGeneratedRef = useRef(false);
   const sketchProfileRef = useRef(sketchProfile);
   sketchProfileRef.current = sketchProfile;
-  const langRef = useRef(lang);
-  langRef.current = lang;
   const addToastRef = useRef(addToast);
   addToastRef.current = addToast;
   useEffect(() => {
@@ -3113,28 +4068,76 @@ export function ShapeGeneratorInner() {
   const handleChatApplyOptimize = useCallback((opt: OptimizeResult) => {
     setIsSketchMode(false);
     setShowAIAssistant(false);
-    setActiveTab('optimize');
-    if (opt.dimX) setDimX(opt.dimX);
-    if (opt.dimY) setDimY(opt.dimY);
-    if (opt.dimZ) setDimZ(opt.dimZ);
-    if (opt.materialKey) setMaterialKey(opt.materialKey);
-    if (opt.fixedFaces) setFixedFaces(opt.fixedFaces);
-    if (opt.loads) setLoads(opt.loads);
-    if (opt.volfrac) setVolfrac(opt.volfrac);
-    if (opt.resolution) setResolution(opt.resolution);
-  }, []);
+    // Phase 7: track AI-driven optimize parameter overrides as a single
+    // command. Captures the before-state of each touched setter so undo
+    // restores everything in one Ctrl+Z.
+    const prevTab = activeTab;
+    const prev = {
+      dimX, dimY, dimZ, materialKey, fixedFaces, loads, volfrac, resolution,
+    };
+    commandHistory.execute({
+      id: `chat-optimize-${Date.now()}`,
+      label: 'AI optimize',
+      labelKo: 'AI 최적화',
+      execute: () => {
+        setActiveTab('optimize');
+        if (opt.dimX) setDimX(opt.dimX);
+        if (opt.dimY) setDimY(opt.dimY);
+        if (opt.dimZ) setDimZ(opt.dimZ);
+        if (opt.materialKey) setMaterialKey(opt.materialKey);
+        if (opt.fixedFaces) setFixedFaces(opt.fixedFaces);
+        if (opt.loads) setLoads(opt.loads);
+        if (opt.volfrac) setVolfrac(opt.volfrac);
+        if (opt.resolution) setResolution(opt.resolution);
+      },
+      undo: () => {
+        setActiveTab(prevTab);
+        setDimX(prev.dimX);
+        setDimY(prev.dimY);
+        setDimZ(prev.dimZ);
+        setMaterialKey(prev.materialKey);
+        setFixedFaces(prev.fixedFaces);
+        setLoads(prev.loads);
+        setVolfrac(prev.volfrac);
+        setResolution(prev.resolution);
+      },
+    });
+  }, [activeTab, dimX, dimY, dimZ, materialKey, fixedFaces, loads, volfrac, resolution,
+      setActiveTab, setDimX, setDimY, setDimZ, setMaterialKey, setFixedFaces, setLoads, setVolfrac, setResolution]);
 
   const handleChatApplyModify = useCallback((mod: ModifyResult) => {
     setShowAIAssistant(false);
-    history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
-    for (const action of mod.actions) {
-      if (action.type === 'param' && action.key && action.value !== undefined) {
-        setParam(action.key, action.value);
-      } else if (action.type === 'feature' && action.featureType) {
-        addFeature(action.featureType);
-      }
-    }
-  }, [addFeature, history, selectedId, params, features, setParam]);
+    // Phase 6: wrap the entire AI-driven modify batch as a single command so
+    // the user can Ctrl+Z the whole change in one step. Without this each
+    // setParam/addFeature would land on the legacy stack independently and
+    // the undo toast would only reverse the last action.
+    const prevParams = { ...params };
+    const featuresAddedRef: number = mod.actions.filter(a => a.type === 'feature' && a.featureType).length;
+    commandHistory.execute({
+      id: `chat-modify-${Date.now()}`,
+      label: `AI modify (${mod.actions.length})`,
+      labelKo: `AI 수정 (${mod.actions.length}개)`,
+      execute: () => {
+        for (const action of mod.actions) {
+          if (action.type === 'param' && action.key && action.value !== undefined) {
+            setParam(action.key, action.value);
+          } else if (action.type === 'feature' && action.featureType) {
+            addFeature(action.featureType);
+          }
+        }
+      },
+      undo: () => {
+        // Reverse param changes by restoring the snapshot. Feature adds are
+        // popped via undoLast() the same number of times we appended.
+        setParams(prevParams);
+        const e: Record<string, string> = {};
+        Object.entries(prevParams).forEach(([k, v]) => { e[k] = String(v); });
+        setParamExpressions(e);
+        for (let i = 0; i < featuresAddedRef; i++) undoLast();
+      },
+    });
+    history.push({ selectedId, params: prevParams, featureIds: features.map(f => f.id) });
+  }, [addFeature, history, selectedId, params, features, setParam, setParams, setParamExpressions, undoLast]);
 
   /** Called after modify is auto-applied — show undo toast */
   const handleModifyAutoApplied = useCallback((actionCount: number) => {
@@ -3170,17 +4173,21 @@ export function ShapeGeneratorInner() {
   const handleCSGApply = useCallback((op: CSGOperation, toolParams: CSGToolParams) => {
     const base = effectiveResult;
     if (!base) return;
+    let toolGeo: BufferGeometry | null = null;
     try {
-      const toolGeo = makeToolGeometry(toolParams);
+      toolGeo = makeToolGeometry(toolParams);
       const resultGeo = applyCSG(base.geometry, toolGeo, op);
-      toolGeo.dispose();
       handleGeometryApply(resultGeo);
       setShowCSGPanel(false);
       addToast('success', lt.booleanApplied);
-    } catch {
-      addToast('error', lt.booleanFailed);
+    } catch (err) {
+      reportError('csg', err, { op, toolShape: toolParams.shape });
+      const detail = err instanceof Error ? err.message : String(err);
+      addToast('error', `${lt.booleanFailed}: ${detail}`);
+    } finally {
+      toolGeo?.dispose();
     }
-  }, [effectiveResult, handleGeometryApply, addToast, lang]);
+  }, [effectiveResult, handleGeometryApply, addToast, lt, setShowCSGPanel]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // MULTI-BODY OPERATIONS
@@ -3380,12 +4387,20 @@ export function ShapeGeneratorInner() {
 
   const handleAiPreview = useCallback((data: ChatResult) => {
     if (data.mode === 'single' && data.shapeId) {
+      const prevSd = SHAPE_MAP[data.shapeId];
+      if (prevSd) {
+        const { unknownKeys } = normalizeShapeParams(prevSd, data.params);
+        if (unknownKeys.length > 0) {
+          const detail = unknownKeys.slice(0, 10).join(', ') + (unknownKeys.length > 10 ? '…' : '');
+          addToast('warning', lt.ignoredUnknownParams(detail));
+        }
+      }
       const preview = generatePartResult(data.shapeId, data.params, data.features);
       if (preview) { setPreviewResult(preview); setIsPreviewMode(true); }
     } else if (data.mode === 'modify') {
       setIsPreviewMode(true);
     }
-  }, [generatePartResult]);
+  }, [generatePartResult, addToast, lt]);
 
   const handleCancelPreview = useCallback(() => {
     setPreviewResult(null);
@@ -3395,24 +4410,47 @@ export function ShapeGeneratorInner() {
   const handleTextToCAD = useCallback((shapeId: string, nlParams: Record<string, number>) => {
     const sc = SHAPES.find(s => s.id === shapeId);
     if (!sc) return;
-    // Select shape and apply parsed params, falling back to shape defaults
-    history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
-    setSelectedId(sc.id);
-    const p: Record<string, number> = {};
-    const e: Record<string, string> = {};
+    const validKeys = new Set(sc.params.map((sp) => sp.key));
+    const unknownKeys = Object.keys(nlParams).filter((k) => !validKeys.has(k));
+    if (unknownKeys.length > 0) {
+      const detail = unknownKeys.slice(0, 12).join(', ') + (unknownKeys.length > 12 ? '…' : '');
+      addToast('warning', lt.ignoredUnknownParams(detail));
+    }
+    // Phase 6: wrap shape-change + param-set in a single command so the
+    // user can undo the entire NL→CAD step.
+    const prevSelectedId = selectedId;
+    const prevParams = { ...params };
+    const newP: Record<string, number> = {};
+    const newE: Record<string, string> = {};
     sc.params.forEach(sp => {
       const val = nlParams[sp.key] ?? sp.default;
-      p[sp.key] = val;
-      e[sp.key] = String(val);
+      newP[sp.key] = val;
+      newE[sp.key] = String(val);
     });
-    setParams(p);
-    setParamExpressions(e);
+    commandHistory.execute({
+      id: `text-to-cad-${sc.id}-${Date.now()}`,
+      label: `NL → ${sc.id}`,
+      labelKo: `자연어 → ${sc.id}`,
+      execute: () => {
+        setSelectedId(sc.id);
+        setParams(newP);
+        setParamExpressions(newE);
+      },
+      undo: () => {
+        setSelectedId(prevSelectedId);
+        setParams(prevParams);
+        const e: Record<string, string> = {};
+        Object.entries(prevParams).forEach(([k, v]) => { e[k] = String(v); });
+        setParamExpressions(e);
+      },
+    });
+    history.push({ selectedId: prevSelectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     setSketchResult(null);
     setEditMode('none');
     addToast('success', lt.shapeFromText(sc.id));
-  }, [selectedId, params, features, history, setSelectedId, setParams, setParamExpressions, clearAll, setSelectedFeatureId, setSketchResult, setEditMode, addToast, lang]);
+  }, [selectedId, params, features, history, setSelectedId, setParams, setParamExpressions, clearAll, setSelectedFeatureId, setSketchResult, setEditMode, addToast, lt]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // CONTEXT MENU HANDLERS
@@ -3431,7 +4469,7 @@ export function ShapeGeneratorInner() {
       setCtxMenu(prev => ({ ...prev, visible: false }));
       return;
     }
-    const geomOpts = { hasAssembly: bomParts.length >= 2 };
+    const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
     setCtxMenu({ x: e.clientX, y: e.clientY, visible: true, items });
   }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length]);
@@ -3456,14 +4494,60 @@ export function ShapeGeneratorInner() {
         break;
       }
       case 'action-isolate': {
-        if (selectedElement?.partName) {
-          setPendingChatMsg(`Isolate part: ${selectedElement.partName}`);
+        const _elPartName = selectedElement && 'partName' in selectedElement ? selectedElement.partName : undefined;
+        if (_elPartName) {
+          setPendingChatMsg(`Isolate part: ${_elPartName}`);
           openAIAssistant('chat');
         }
         break;
       }
+      case 'part-hide': {
+        if (highlightedPartId) {
+          setAssemblyHiddenParts(prev => { const n = new Set(prev); n.add(highlightedPartId); return n; });
+        }
+        break;
+      }
+      case 'part-transparent': {
+        if (highlightedPartId) {
+          setAssemblyTransparentParts(prev => { const n = new Set(prev); n.add(highlightedPartId); return n; });
+        }
+        break;
+      }
+      case 'part-color-yellow':
+      case 'part-color-orange':
+      case 'part-color-purple':
+      case 'part-color-white': {
+        if (highlightedPartId) {
+          const colorMap: Record<string, string> = {
+            'part-color-yellow': '#e3b341',
+            'part-color-orange': '#d97706',
+            'part-color-purple': '#7c3aed',
+            'part-color-white': '#ffffff'
+          };
+          const color = colorMap[id];
+          setAssemblyPartColors(prev => ({ ...prev, [highlightedPartId]: color }));
+        }
+        break;
+      }
+      case 'assembly-show-all': {
+        setAssemblyHiddenParts(new Set());
+        setAssemblyTransparentParts(new Set());
+        break;
+      }
+      case 'assembly-reset-colors': {
+        setAssemblyPartColors({});
+        break;
+      }
       case 'zoom-fit': break; // handled by viewer
-      case 'sketch-here': setIsSketchMode(true); setSketchResult(null); setEditMode('none'); break;
+      case 'sketch-here': {
+        setIsSketchMode(true);
+        setSketchResult(null);
+        setEditMode('none');
+        setMeasureActive(false);
+        setSelectionActive(false);
+        setSelectedElement(null);
+        break;
+      }
       case 'finish-sketch': handleSketchGenerate(); break;
       case 'cancel-sketch': setIsSketchMode(false); break;
       case 'sketch-tool-line': setSketchTool('line'); break;
@@ -3475,8 +4559,8 @@ export function ShapeGeneratorInner() {
       case 'sketch-radial-dimension': setSketchPalDims(true); setSketchTool('dimension'); break;
       case 'sketch-insert-canvas': sketchRefInputRef.current?.click(); break;
       case 'sketch-toggle-slice': setSketchPalSlice(v => !v); break;
-      case 'measure': setMeasureActive(v => !v); break;
-      case 'delete': if (selectedFeatureId) removeFeature(selectedFeatureId); break;
+      case 'measure': toggleMeasureMode(); break;
+      case 'delete': if (selectedFeatureId) handleRemoveFeatureCmd(selectedFeatureId); break;
       case 'suppress': if (selectedFeatureId) toggleFeature(selectedFeatureId); break;
       case 'add-dimension': setShowDimensions(true); setSketchPalDims(true); break;
       case 'properties': if (selectedFeatureId) setShowPropertyManager(true); break;
@@ -3509,7 +4593,7 @@ export function ShapeGeneratorInner() {
         break;
       }
     }
-  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice]);
+  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode]);
 
   const handleExportDrawingPDF = useCallback(async () => {
     if (!effectiveResult) return;
@@ -3545,7 +4629,7 @@ export function ShapeGeneratorInner() {
       setCtxMenu(prev => ({ ...prev, visible: false }));
       return;
     }
-    const geomOpts = { hasAssembly: bomParts.length >= 2 };
+    const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
     setCtxMenu({ x, y, visible: true, items });
   }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length]);
@@ -3562,7 +4646,9 @@ export function ShapeGeneratorInner() {
     editMode, setEditMode,
     transformMode, setTransformMode,
     measureActive,
-    setMeasureActive, setShowDimensions,
+    setMeasureActive,
+    toggleMeasure: toggleMeasureMode,
+    setShowDimensions,
     handleHistoryUndo, handleHistoryRedo,
     sketchTool, setSketchTool,
     handleSaveNfab, handleSaveNfabCloud, handleLoadNfab,
@@ -3819,11 +4905,12 @@ export function ShapeGeneratorInner() {
       // Apply the base shape (first entry with prefix base_)
       const baseEntry = shapes.find(s => s.id.startsWith('base_'));
       if (baseEntry && SHAPE_MAP[baseEntry.shapeType]) {
+        const sceneSd = SHAPE_MAP[baseEntry.shapeType];
         setSelectedId(baseEntry.shapeType);
-        setParams(baseEntry.params);
-        const e2: Record<string, string> = {};
-        Object.entries(baseEntry.params).forEach(([k, v]) => { e2[k] = String(v); });
-        setParamExpressions(e2);
+        applySceneParamsToSetters(sceneSd, baseEntry.params, {
+          setParams,
+          setParamExpressions,
+        });
       }
       // Restore material
       if (baseEntry?.materialPreset) {
@@ -3836,7 +4923,7 @@ export function ShapeGeneratorInner() {
       addToast('error', lt.sceneLoadFailed);
     }
     e.target.value = '';
-  }, [clearAll, addToast, t, lang]);
+  }, [clearAll, addToast, t, lang, setParamExpressions, setParams, setSelectedId]);
 
   const handleExportGLB = useCallback(async () => {
     if (!sceneRef.current) {
@@ -4124,6 +5211,35 @@ export function ShapeGeneratorInner() {
     addToast('success', lt.autoFixApplied(lang === 'ko' ? suggestion.label.ko : suggestion.label.en));
   }, [setParam, addToast, lang, checkFreemium, setShowDFMFixUpgrade]);
 
+  /**
+   * K1 — Auto-Draft Fix.
+   * Bulk-resolves every draft_angle DFM issue at once by appending a `draft`
+   * feature with the recommended 1.5° angle. The existing per-issue Apply
+   * Fix path only edits a single param; this is the "fix all at once" flow
+   * that closes the DFM-detect → CAD-apply loop.
+   */
+  const handleAutoDraftFix = useCallback(() => {
+    const gate = checkFreemium('dfm_autofix');
+    if (!gate.allowed) {
+      setShowDFMFixUpgrade(true);
+      return;
+    }
+    const draftIssues = (dfmResults ?? [])
+      .flatMap(r => r.issues)
+      .filter(i => i.type === 'draft_angle');
+    if (draftIssues.length === 0) {
+      addToast('info', lang === 'ko' ? '구배 부족 영역이 없습니다.' : 'No draft-angle issues to fix.');
+      return;
+    }
+    addFeatureWithParams('draft', { angle: 1.5, direction: 0 });
+    addToast(
+      'success',
+      lang === 'ko'
+        ? `구배 1.5° 자동 적용 (영향: ${draftIssues.length}개 면)`
+        : `Applied 1.5° draft to ${draftIssues.length} face(s)`,
+    );
+  }, [dfmResults, addFeatureWithParams, addToast, lang, checkFreemium, setShowDFMFixUpgrade]);
+
   // ── AI DFM Explainer (Phase 1) ─────────────────────────────────────────
   const handleExplainDFMIssue = useCallback(async (issue: DFMIssue): Promise<DFMExplanation | null> => {
     const gate = checkFreemium('dfm_insights');
@@ -4243,6 +5359,32 @@ export function ShapeGeneratorInner() {
     const density = mat?.density ?? 2.7;
     return computeMassProperties(effectiveResult.geometry, density);
   }, [showMassProps, effectiveResult, materialId]);
+
+  // F2 — assembly-level CG. When the user has 2+ placed parts and the Mass
+  // Properties panel is open, fold each part's mass into a combined assembly
+  // CG (parallel-axis weighted). This is the marker the user actually wants
+  // for balance checks on robots/drones; the single-body CG above is for
+  // detail work on one part.
+  const assemblyCenterOfMass = useMemo<[number, number, number] | null>(() => {
+    if (!showMassProps || bomParts.length < 2) return null;
+    const inputs = bomParts.map(bp => {
+      const mat = MATERIAL_PRESETS.find(m => m.id === materialId);
+      const density = mat?.density ?? 2.7;
+      return {
+        name: bp.name,
+        geometry: bp.result.geometry,
+        density_g_cm3: density,
+        position: bp.position ?? ([0, 0, 0] as [number, number, number]),
+      };
+    });
+    try {
+      const combined = combineAssemblyMassProperties(inputs);
+      if (combined.mass_g <= 0) return null;
+      return combined.centerOfMass;
+    } catch {
+      return null;
+    }
+  }, [showMassProps, bomParts, materialId]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // ASSEMBLY HANDLERS
@@ -4837,8 +5979,12 @@ export function ShapeGeneratorInner() {
                     isSketchMode={isSketchMode}
                     result={viewportShapeResult}
                     bomParts={effectiveBomParts}
+                    highlightedPartId={highlightedPartId}
                     assemblyLabel={bomLabel || undefined}
                     assemblyMates={assemblyMates}
+                    assemblyHiddenParts={assemblyHiddenParts}
+                    assemblyTransparentParts={assemblyTransparentParts}
+                    assemblyPartColors={assemblyPartColors}
                     isKinematicsMode={assemblyMates.length > 0 || (placedParts?.length ?? 0) > 0}
                     onCapture={(cb) => {
                       captureRef.current = cb;
@@ -4882,6 +6028,8 @@ export function ShapeGeneratorInner() {
                       else if (cmd === 'fillet') { setEditMode('face'); }
                     }}
                     collabUsers={collabUsers}
+                    awarenessPresences={awarenessPresences}
+                    awarenessLocalClientId={crdtBridge.doc.doc.clientID}
                     showPrintAnalysis={showPrintAnalysis && !simpleMode}
                     printAnalysis={printAnalysis}
                     printBuildDirection={printBuildDir}
@@ -4908,7 +6056,7 @@ export function ShapeGeneratorInner() {
                     showDraftAnalysis={showDraftAnalysis && !simpleMode}
                     draftResult={draftResult}
                     draftMinDeg={draftMinDeg}
-                    showCenterOfMass={showCenterOfMass}
+                    showCenterOfMass={showCenterOfMass ?? assemblyCenterOfMass}
                     gdtAnnotations={gdtAnnotations.length > 0 ? gdtAnnotations : undefined}
                     dimensionAnnotations={dimensionAnnotations.length > 0 ? dimensionAnnotations : undefined}
                     onSceneReady={(scene) => { sceneRef.current = scene; }}
@@ -4963,18 +6111,57 @@ export function ShapeGeneratorInner() {
                       if (selectedFeatureId) updateFeatureParam(selectedFeatureId, key, value);
                     }}
                     selectionActive={selectionActive}
-                    onToggleSelection={() => {
-                      setSelectionActive(v => !v);
-                      if (selectionActive) setSelectedElement(null);
-                    }}
-                    onElementSelect={(info) => {
+                    onToggleSelection={toggleFaceSelectionMode}
+                    onElementSelect={(info, additive) => {
+                      // Shift+click: accumulate multi-face selection
+                      if (additive && info.type === 'face') {
+                        setSelectedElement(prev => {
+                          const newFace = info as import('./editing/selectionInfo').FaceSelectionInfo;
+                          const prevFaces: import('./editing/selectionInfo').FaceSelectionInfo[] =
+                            prev?.type === 'multi' ? prev.faces
+                            : prev?.type === 'face' ? [prev as import('./editing/selectionInfo').FaceSelectionInfo]
+                            : [];
+                          const merged = [...prevFaces, newFace];
+                          return {
+                            type: 'multi',
+                            faces: merged,
+                            totalArea: merged.reduce((s, f) => s + f.area, 0),
+                            totalTriangleCount: merged.reduce((s, f) => s + f.triangleCount, 0),
+                            allTriangleIndices: merged.flatMap(f => f.triangleIndices),
+                          };
+                        });
+                        return;
+                      }
                       if (mateFaceA && info.type === 'face') {
                         // Create mate!
                         const faceB = info as import('./editing/selectionInfo').FaceSelectionInfo;
                         if (mateFaceA.partName && faceB.partName && mateFaceA.partName !== faceB.partName) {
+                          // E4: pick the most likely mate type by analysing the
+                          // selected face normals + sizes. Cylindrical-looking
+                          // strips (small area / many tris) → concentric;
+                          // anti-parallel large flat → coincident; parallel
+                          // same-direction → coincident with a flip warning.
+                          const nA = mateFaceA.normal;
+                          const nB = faceB.normal;
+                          const dot = nA[0] * nB[0] + nA[1] * nB[1] + nA[2] * nB[2];
+                          const triA = mateFaceA.triangleCount;
+                          const triB = faceB.triangleCount;
+                          const stripA = triA > 12 && mateFaceA.area / triA < 30; // small tris, many of them
+                          const stripB = triB > 12 && faceB.area / triB < 30;
+                          let mateType: import('./assembly/AssemblyMates').MateType = 'coincident';
+                          let reasonLabel: string = lt.mateCoincident ?? 'Coincident';
+                          if (stripA && stripB) {
+                            mateType = 'concentric';
+                            reasonLabel = lt.mateConcentric ?? 'Concentric';
+                          } else if (dot > 0.95) {
+                            // Parallel same-direction — user probably wants coincident but
+                            // will need to flip one part. Surface this as a hint toast.
+                            mateType = 'coincident';
+                            addToast('info', lt.mateParallelHint ?? 'Faces are parallel (same direction) — you may need to flip one part.');
+                          }
                           const newMate: import('./assembly/AssemblyMates').AssemblyMate = {
                             id: generateMateId(),
-                            type: 'coincident',
+                            type: mateType,
                             partA: mateFaceA.partName,
                             partB: faceB.partName,
                             faceA: mateFaceA.triangleIndices[0],
@@ -4983,7 +6170,7 @@ export function ShapeGeneratorInner() {
                           };
                           setAssemblyMates(prev => [...prev, newMate]);
                           setShowAssemblyPanel(true);
-                          addToast('success', lt.mateAdded?.(lt.mateCoincident ?? 'Coincident', mateFaceA.partName, faceB.partName) ?? `Added Mate between ${mateFaceA.partName} and ${faceB.partName}`);
+                          addToast('success', lt.mateAdded?.(reasonLabel, mateFaceA.partName, faceB.partName) ?? `Added Mate between ${mateFaceA.partName} and ${faceB.partName}`);
                         } else {
                           addToast('error', 'Select faces on different parts to create a mate.');
                         }
@@ -4995,8 +6182,11 @@ export function ShapeGeneratorInner() {
                       }
                     }}
                     highlightTriangles={
-                      mateFaceA?.triangleIndices || (selectedElement?.type === 'face'
+                      mateFaceA?.triangleIndices ||
+                      (selectedElement?.type === 'face'
                         ? (selectedElement as import('./editing/selectionInfo').FaceSelectionInfo).triangleIndices
+                        : selectedElement?.type === 'multi'
+                        ? (selectedElement as import('./editing/selectionInfo').MultiSelectionInfo).allTriangleIndices
                         : undefined)
                     }
                     onFileImport={async (file) => {
@@ -5087,78 +6277,14 @@ export function ShapeGeneratorInner() {
         <DesktopFirstRunWizard lang={lang} onClose={() => setShowDesktopFirstRun(false)} />
       ) : null}
 
-      {/* ════ Drag & Drop Overlay ════ */}
-      {isDragOver && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(59,130,246,0.12)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '3px dashed #3b82f6', pointerEvents: 'none' }}>
-          <div style={{ textAlign: 'center', color: '#fff' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📂</div>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>{lt.dropFileHere}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>STEP · STL · OBJ · PLY · IGES · DXF · BREP</div>
-          </div>
-        </div>
-      )}
-
-      {/* ════ Import Loading Overlay ════ */}
-      {isImporting && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ textAlign: 'center', color: '#e6edf3' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #30363d', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{lt.loadingFile}</div>
-          </div>
-        </div>
-      )}
-      {/* ════ 소화면 전체화면 유도 프롬프트 (하단 슬라이드업) ════ */}
-      {showFullscreenPrompt && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9998,
-          padding: '14px 20px',
-          background: 'rgba(13,17,23,0.96)',
-          borderTop: '1px solid #30363d',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
-          animation: 'nf-slide-up 0.3s ease-out' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-          </svg>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#c9d1d9', marginBottom: 2 }}>
-              {lt.smallScreenDetected}
-            </div>
-            <div style={{ fontSize: 11, color: '#8b949e' }}>
-              {lt.smallScreenHint}
-            </div>
-          </div>
-          <button
-            onClick={() => dismissFullscreenPrompt(true)}
-            style={{
-              padding: '8px 18px', borderRadius: 8,
-              background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-              border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              flexShrink: 0 }}
-          >
-            {lt.goFullscreen}
-          </button>
-          <button
-            onClick={() => dismissFullscreenPrompt(false)}
-            style={{
-              padding: '8px 12px', borderRadius: 8,
-              background: 'transparent', border: '1px solid #30363d',
-              color: '#6e7681', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              flexShrink: 0 }}
-          >
-            {lt.noThanks}
-          </button>
-        </div>
-      )}
+      {/* ════ Header Overlays (drag-drop / import loading / fullscreen prompt) ════ */}
+      <HeaderOverlays
+        isDragOver={isDragOver}
+        isImporting={isImporting}
+        showFullscreenPrompt={showFullscreenPrompt}
+        dismissFullscreenPrompt={dismissFullscreenPrompt}
+        lt={lt}
+      />
 
       {/* ════════ TOP TOOLBAR ════════ */}
       <ShapeGeneratorToolbar
@@ -5322,10 +6448,7 @@ export function ShapeGeneratorInner() {
           onOpenScad={() => setShowOpenScad(true)}
           onIdeaDesign={() => setShowIntakeWizard(true)}
           selectionActive={selectionActive}
-          onToggleSelection={() => {
-            setSelectionActive(v => !v);
-            if (selectionActive) setSelectedElement(null);
-          }}
+          onToggleSelection={toggleFaceSelectionMode}
           theme={theme}
         />
       )}
@@ -5400,24 +6523,15 @@ export function ShapeGeneratorInner() {
       )}
 
       {/* compose 진행 인디케이터 */}
-      {composing && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div style={{
-            background: '#0f172a', padding: '28px 40px', borderRadius: 12,
-            border: '1px solid #334155', color: '#f1f5f9',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 32 }}>⚙️</div>
-            <div style={{ fontWeight: 600 }}>
-              {composeResult ? lt.composeRefining : lt.composeSearching}
-            </div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>{lt.composeSubtitle}</div>
-          </div>
-        </div>
-      )}
+      <ComposeIndicator
+        visible={composing}
+        refining={!!composeResult}
+        labels={{
+          composeSearching: lt.composeSearching,
+          composeRefining: lt.composeRefining,
+          composeSubtitle: lt.composeSubtitle,
+        }}
+      />
 
       {/* ════════ QUOTE WIZARD ════════ */}
       {showQuoteWizard && (
@@ -5436,101 +6550,46 @@ export function ShapeGeneratorInner() {
         />
       )}
 
-      {/* ════════ CSG BOOLEAN PANEL ════════ */}
-      {showCSGPanel && (
-        <CSGPanel
-          lang={lang}
-          onApply={handleCSGApply}
-          onClose={() => setShowCSGPanel(false)}
-        />
-      )}
+      {/* ════════ CSG + Body Manager dock ════════ */}
+      <BodyCsgDock
+        lang={lang}
+        showCSGPanel={showCSGPanel}
+        setShowCSGPanel={setShowCSGPanel}
+        onCSGApply={handleCSGApply}
+        showBodyPanel={showBodyPanel}
+        setShowBodyPanel={setShowBodyPanel}
+        bodies={bodies}
+        setBodies={setBodies}
+        activeBodyId={activeBodyId}
+        setActiveBodyId={setActiveBodyId}
+        selectedBodyIds={selectedBodyIds}
+        setSelectedBodyIds={setSelectedBodyIds}
+        setHighlightedPartId={setHighlightedPartId}
+        bodyGeosRef={bodyGeosRef}
+        onSplit={handleSplitBody}
+        onMerge={handleMergeBodies}
+      />
 
-      {/* ════════ BODY MANAGER PANEL ════════ */}
-      {showBodyPanel && (
-        <BodyPanel
-          lang={lang}
-          bodies={bodies}
-          activeBodyId={activeBodyId}
-          selectedBodyIds={selectedBodyIds}
-          onSetActive={id => setActiveBodyId(id)}
-          onToggleSelect={id => setSelectedBodyIds(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-          )}
-          onToggleVisible={id => setBodies(prev => prev.map(b => b.id === id ? { ...b, visible: !b.visible } : b))}
-          onRename={(id, name) => setBodies(prev => prev.map(b => b.id === id ? { ...b, name } : b))}
-          onDelete={id => {
-            bodyGeosRef.current.delete(id);
-            setBodies(prev => {
-              const next = prev.filter(b => b.id !== id);
-              if (activeBodyId === id) setActiveBodyId(next[0]?.id ?? null);
-              return next;
-            });
-            setSelectedBodyIds(prev => prev.filter(x => x !== id));
-          }}
-          onSplit={handleSplitBody}
-          onMerge={handleMergeBodies}
-          onClose={() => setShowBodyPanel(false)}
-        />
-      )}
-
-      {/* ════════ AI PREVIEW BANNER ════════ */}
-      {isPreviewMode && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '6px 20px',
-          background: 'linear-gradient(90deg, #1a2332 0%, #161b22 100%)',
-          borderBottom: '1px solid #1f6feb', flexShrink: 0 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'genSpin 2s linear infinite', boxShadow: '0 0 8px #f59e0b' }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>
-            {lt.aiPreviewMode}
-          </span>
-          <span style={{ fontSize: 11, color: '#8b949e' }}>
-            {lt.aiPreviewHint}
-          </span>
-          <div style={{ flex: 1 }} />
-          <button onClick={handleCancelPreview} style={{
-            padding: '3px 12px', borderRadius: 6, border: '1px solid #30363d', background: '#21262d',
-            color: '#f85149', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#3d1519'; e.currentTarget.style.borderColor = '#f85149'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.borderColor = '#30363d'; }}
-          >
-            {lt.cancelLabel} (Esc)
-          </button>
-        </div>
-      )}
-
-      {/* ════════ EMAIL VERIFICATION BANNER ════════ */}
-      <VerificationBanner lang={lang} />
-
-      {/* ════════ RECOVERY BANNER ════════ */}
-      {showRecovery && recoveryData && (
-        <RecoveryBanner timestamp={recoveryData.timestamp} lang={lang} onRestore={handleRestoreRecovery} onDismiss={handleDismissRecovery} />
-      )}
-
-      {/* ════════ READ-ONLY BANNER ════════ */}
-      {isReadOnly && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          padding: '6px 16px', background: 'rgba(245,158,11,0.12)',
-          borderBottom: '1px solid rgba(245,158,11,0.3)',
-          fontSize: 12, color: '#f59e0b', fontWeight: 600,
-          flexShrink: 0 }}>
-          {lt.viewerOnlyMode}
-        </div>
-      )}
-
-      {!isReadOnly && (
-        <SimpleModeOfferBanner
-          simpleMode={simpleMode}
-          onEnableSimpleMode={enableSimpleMode}
-          labels={{
-            title: lt.simpleModeOfferTitle,
-            desc: lt.simpleModeOfferDesc,
-            enable: lt.simpleModeOfferEnable,
-            dismiss: lt.simpleModeOfferDismiss,
-            regionLabel: lt.simpleModeOfferRegion,
-          }}
-        />
-      )}
+      {/* ════════ Top Banners (preview / verify / recovery / read-only / simple-mode offer) ════════ */}
+      <TopBanners
+        lang={lang}
+        isPreviewMode={isPreviewMode}
+        isReadOnly={isReadOnly}
+        onCancelPreview={handleCancelPreview}
+        showRecovery={showRecovery}
+        recoveryData={recoveryData}
+        recoveredFromCrash={recoveredFromCrash}
+        onRestoreRecovery={handleRestoreRecovery}
+        onDismissRecovery={handleDismissRecovery}
+        showRecoveryCompare={showRecoveryCompare}
+        setShowRecoveryCompare={setShowRecoveryCompare}
+        currentSelectedId={selectedId}
+        currentParams={params}
+        currentFeatures={features}
+        simpleMode={simpleMode}
+        onEnableSimpleMode={enableSimpleMode}
+        lt={lt}
+      />
 
 
 
@@ -5582,6 +6641,7 @@ export function ShapeGeneratorInner() {
           onSketchGenerate={handleSketchGenerate}
           sketchStep={sketchStep}
           onSketchStepChange={setSketchStep}
+          onOpenTextPanel={() => setShowSketchText(true)}
           onSetActiveProfile={handleSetActiveProfile}
           onAddHoleProfile={handleAddHoleProfile}
           onDeleteProfile={handleDeleteProfile}
@@ -5703,16 +6763,27 @@ export function ShapeGeneratorInner() {
           <CommandToolbar
             activeTab={activeTab} isSketchMode={isSketchMode} editMode={editMode}
             hasResult={!!effectiveResult}
-            onSketchMode={(on) => { setIsSketchMode(on); if (on && !isSketchMode) { setSketchResult(null); setEditMode('none'); } else if (!on) { setEditMode('none'); } }}
+            onSketchMode={(on) => {
+              setIsSketchMode(on);
+              if (on && !isSketchMode) {
+                setSketchResult(null);
+                setEditMode('none');
+                setMeasureActive(false);
+                setSelectionActive(false);
+                setSelectedElement(null);
+              } else if (!on) {
+                setEditMode('none');
+              }
+            }}
             onFinishSketch={handleSketchGenerate}
             onCancelSketch={() => setIsSketchMode(false)}
             onSketchTool={(tool) => setSketchTool((tool === 'rectangle' ? 'rect' : tool) as import('./sketch/types').SketchTool)}
             onEditMode={setEditMode} onAddFeature={addFeatureWithContext}
-            onSendToOptimizer={handleSendToOptimizer} onExportSTL={handleExportCurrentSTL}
+            onSendToOptimizer={handleSendToOptimizer} onExportSTL={() => setStlExportDialogOpen(true)}
             onToggleChat={() => { if (showAIAssistant) setShowAIAssistant(false); else openAIAssistant('chat'); }} showChat={showAIAssistant}
             isOptimizing={isOptimizing} onGenerate={handleGenerate}
             canGenerate={!!effectiveResult && fixedFaces.length > 0 && loads.length > 0} resultMesh={!!resultMesh}
-            measureActive={measureActive} onToggleMeasure={() => setMeasureActive(v => !v)}
+            measureActive={measureActive} onToggleMeasure={toggleMeasureMode}
             measureMode={measureMode} onSetMeasureMode={setMeasureMode}
             sectionActive={sectionActive} onToggleSection={() => setSectionActive(v => !v)}
             onTogglePlanes={() => setShowPlanes(!showPlanes)} showPlanes={showPlanes}
@@ -5724,6 +6795,7 @@ export function ShapeGeneratorInner() {
             onExportPLY={handleExportPLY}
             onExport3MF={handleExport3MF}
             onExportSTEP={handleExportSTEP}
+            stepExportSupported={!!effectiveResult?.geometry && canExportStepCleanly(effectiveResult.geometry)}
             onExportGLTF={handleExportGLTF}
             onExportDXF={handleExportDXF}
             onExportFlatPatternDXF={handleExportFlatPatternDXF}
@@ -6219,6 +7291,12 @@ export function ShapeGeneratorInner() {
                       flexDirection: 'column',
                     }}>
                       {renderWorkspaceShapePreview('main')}
+                      {/* Presence sidebar — hidden when alone in the room. */}
+                      <AwarenessPresencePanel
+                        presences={awarenessPresences}
+                        localClientId={crdtBridge.doc.doc.clientID}
+                        localName={authUserRef.current?.name}
+                      />
                     </div>
                   )}
                 </div>
@@ -6583,10 +7661,12 @@ export function ShapeGeneratorInner() {
                             info.area.toFixed(1),
                             info.normal.map((n: number) => n.toFixed(2)).join(', '),
                           )
-                        : lt.selectedEdgeMsg(
+                        : info.type === 'edge'
+                        ? lt.selectedEdgeMsg(
                             info.length?.toFixed(1) ?? '?',
                             info.position.map(p => p.toFixed(1)).join(', '),
-                          );
+                          )
+                        : `Multi-face selection (${info.faces.length} faces, ${info.totalArea.toFixed(1)} mm²)`;
                     const msg = actionHint ? `${baseMsg} ${actionHint}` : `${baseMsg} ${lt.useThisFaceAsBase}`;
                     setPendingChatMsg(msg);
                     openAIAssistant('chat');
@@ -6594,26 +7674,17 @@ export function ShapeGeneratorInner() {
                     setSelectionActive(false);
                   }}
                 />
-                {/* In-Viewport Dimension Gizmo */}
-                <InViewportGizmo
+                {/* Canvas gizmo overlays (gizmo + dimension lines + DFM badges) */}
+                <CanvasGizmoOverlays
+                  visible={!!effectiveResult && !isSketchMode}
+                  lang={lang}
                   shapeId={selectedId}
                   params={params}
                   paramDefs={selectedId ? (SHAPE_MAP[selectedId]?.params ?? []) : []}
                   labelDict={t as unknown as Record<string, string>}
                   onParamChange={_handleParamChangeCmd}
-                  visible={!!effectiveResult && !isSketchMode}
-                />
-                {/* Dimension Lines Overlay */}
-                <DimensionLinesOverlay
                   bbox={effectiveResult?.bbox ?? null}
-                  visible={!!effectiveResult && !isSketchMode}
-                  lang={lang}
-                />
-                {/* DFM Warning Badges */}
-                <DFMWarningBadges
-                  dfmResults={dfmResults as any}
-                  visible={!!effectiveResult && !isSketchMode}
-                  lang={lang}
+                  dfmResults={dfmResults}
                 />
                 {/* Manufacturing Ready Card */}
                 {showManufacturingCard && effectiveResult && (
@@ -6733,7 +7804,15 @@ export function ShapeGeneratorInner() {
                 if (f?.type === 'sketch') {
                   handleEditSketchFeature(id);
                 } else {
+                  // Double-click on a non-sketch feature in the timeline:
+                  // (1) select it so PropertyManager binds to the right feature,
+                  // (2) mark editing in feature-stack state (drives row highlight),
+                  // (3) pop the PropertyManager. Previously only step 2 happened —
+                  // the user had to click the parameter pencil icon separately,
+                  // which broke Fusion-style double-click-to-edit muscle memory.
+                  setSelectedFeatureId(id);
                   startEditing(id);
+                  setShowPropertyManager(true);
                 }
               }}
               onDeleteFeature={removeNode}
@@ -6813,6 +7892,7 @@ export function ShapeGeneratorInner() {
           onExportPrintReady={handleExportPrintReady}
           onDFMAnalyze={handleDFMAnalyze}
           onApplyDFMFix={handleApplyDFMFix}
+          onAutoDraftFix={handleAutoDraftFix}
           onJumpToDFMFeature={handleJumpToDFMFeature}
           onExplainDFMIssue={handleExplainDFMIssue}
           onPreviewDFMCostDelta={handlePreviewDFMCostDelta}
@@ -6885,47 +7965,26 @@ export function ShapeGeneratorInner() {
       <ShapeCart items={cartItems} onRemove={removeCartItem} onClear={clearCart} onBatchQuote={handleBatchQuote} t={shapeLabels} />
       {cartItems.length > 0 && <div style={{ height: 180 }} />}
 
-      {/* ═══ Validation Results Modal ═══ */}
-      {!simpleMode && showValidation && validationResult && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowValidation(false)}>
-          <div style={{ background: '#21262d', borderRadius: 14, padding: 24, maxWidth: 440, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', border: '1px solid #30363d' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#c9d1d9' }}>
-                {lt.geometryValidation}
-              </h3>
-              <button onClick={() => setShowValidation(false)} style={{ border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: '#8b949e' }}>✕</button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-              {[
-                [lt.manifold, validationResult.isManifold ? '✅' : '❌'],
-                [lt.closedMesh, validationResult.isClosed ? '✅' : '❌'],
-                [lt.consistentNormals, validationResult.hasConsistentNormals ? '✅' : '❌'],
-                [lt.openEdges, String(validationResult.openEdges)],
-                [lt.nonManifoldEdges, String(validationResult.nonManifoldEdges)],
-                [lt.degenerateTri, String(validationResult.degenerateTriangles)],
-                [lt.duplicateVertices, String(validationResult.duplicateVertices)],
-                [lt.totalTriangles, String(validationResult.totalTriangles)],
-                [lt.totalVertices, String(validationResult.totalVertices)],
-                [lt.volumeLabel, `${(validationResult.volume / 1000).toFixed(2)} cm³`],
-                [lt.surfaceAreaLabel, `${(validationResult.surfaceArea / 100).toFixed(2)} cm²`],
-              ].map(([label, val], i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: i % 2 === 0 ? '#161b22' : '#1b1f27', borderRadius: 6 }}>
-                  <span style={{ color: '#8b949e', fontWeight: 600 }}>{label}</span>
-                  <span style={{ fontWeight: 700, color: '#c9d1d9' }}>{val}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 12, padding: 10, background: '#0d1117', borderRadius: 8, fontSize: 11, border: '1px solid #30363d' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4, color: '#3fb950' }}>{lt.issuesLabel}</div>
-              {validationResult.issues.map((issue, i) => (
-                <div key={i} style={{ color: '#c9d1d9', marginBottom: 2 }}>• {issue}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ═══ Validation Results Modal — J5: result auto-resolves from store ═══ */}
+      <ValidationResultsModal
+        open={!simpleMode && showValidation}
+        onClose={() => setShowValidation(false)}
+        labels={{
+          geometryValidation: lt.geometryValidation,
+          manifold: lt.manifold,
+          closedMesh: lt.closedMesh,
+          consistentNormals: lt.consistentNormals,
+          openEdges: lt.openEdges,
+          nonManifoldEdges: lt.nonManifoldEdges,
+          degenerateTri: lt.degenerateTri,
+          duplicateVertices: lt.duplicateVertices,
+          totalTriangles: lt.totalTriangles,
+          totalVertices: lt.totalVertices,
+          volumeLabel: lt.volumeLabel,
+          surfaceAreaLabel: lt.surfaceAreaLabel,
+          issuesLabel: lt.issuesLabel,
+        }}
+      />
 
       {/* ═══ Hole Wizard Modal ═══ */}
       <HoleWizardModal
@@ -6938,146 +7997,64 @@ export function ShapeGeneratorInner() {
         }}
       />
 
-      {/* ═══ Standard Parts Library Panel ═══ */}
-      {showLibrary && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowLibrary(false)}>
-          <div style={{ background: '#21262d', borderRadius: 14, padding: 24, maxWidth: 600, width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', border: '1px solid #30363d' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#c9d1d9' }}>
-                {lt.standardPartsLibrary}
-              </h3>
-              <button onClick={() => setShowLibrary(false)} style={{ border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: '#8b949e' }}>✕</button>
-            </div>
-            {[
-              { key: 'fastener', label: lt.fastenersLabel, icon: '🔩' },
-              { key: 'structural', label: lt.structuralLabel, icon: '🏗️' },
-              { key: 'bearing', label: lt.bearingsLabel, icon: '⊚' },
-            ].map(cat => (
-              <div key={cat.key} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#8b949e', textTransform: 'uppercase', marginBottom: 8 }}>
-                  {cat.icon} {cat.label}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
-                  {[
-                    ...(cat.key === 'fastener' ? [
-                      { id: 'hexBolt', name: lt.hexBolt, icon: '🔩', std: 'ISO 4014' },
-                      { id: 'hexNut', name: lt.hexNut, icon: '⬡', std: 'ISO 4032' },
-                      { id: 'socketHeadCapScrew', name: lt.socketHeadCapScrew, icon: '🔧', std: 'ISO 4762' },
-                      { id: 'flatWasher', name: lt.flatWasher, icon: '⊙', std: 'ISO 7089' },
-                      { id: 'springWasher', name: lt.springWasher, icon: '◎', std: 'DIN 127' },
-                      { id: 'spurGear', name: 'Spur Gear', icon: '⚙', std: 'ISO 53' },
-                    ] : cat.key === 'structural' ? [
-                      { id: 'iBeam', name: lt.iBeam, icon: '🏗️', std: 'ISO 657' },
-                      { id: 'angleBracket', name: lt.angleBracket, icon: '📐', std: 'ISO 657' },
-                      { id: 'channelBeam', name: lt.channelBeam, icon: '⊏', std: 'ISO 657' },
-                    ] : [
-                      { id: 'ballBearing', name: lt.ballBearing, icon: '⊚', std: 'ISO 15' },
-                      { id: 'bushing', name: lt.bushing, icon: '◯', std: 'ISO 3547' },
-                    ]),
-                  ].map(part => (
-                    <button key={part.id} 
-                      draggable 
-                      onDragStart={e => e.dataTransfer.setData('application/vnd.nexyfab.standardpart', part.id)}
-                      onClick={() => { handleSelectStandardPart(part.id); setShowLibrary(false); }}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                        padding: '12px 8px', borderRadius: 10,
-                        border: selectedStandardPart === part.id ? '2px solid #388bfd' : '1px solid #30363d',
-                        background: selectedStandardPart === part.id ? '#388bfd22' : '#161b22',
-                        cursor: 'pointer', transition: 'all 0.12s' }}
-                      onMouseEnter={e => e.currentTarget.style.borderColor = '#58a6ff'}
-                      onMouseLeave={e => e.currentTarget.style.borderColor = selectedStandardPart === part.id ? '#388bfd' : '#30363d'}
-                    >
-                      <span style={{ fontSize: 24 }}>{part.icon}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textAlign: 'center' }}>{part.name}</span>
-                      <span style={{ fontSize: 9, color: '#8b949e' }}>{part.std}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Sketch radial marking menu ═══ */}
-      <input
-        ref={sketchRefInputRef}
-        type="file"
-        accept="image/*,.stl,.stp,.step,.dxf,model/stl,application/sla"
-        style={{ display: 'none' }}
-        aria-hidden
-        onChange={handleSketchRefFileChange}
-      />
-      <SketchRadialMenu
-        x={sketchRadial.x}
-        y={sketchRadial.y}
-        visible={sketchRadial.visible}
-        items={getSketchRadialMainItems(lang)}
-        innerItems={getSketchRadialInnerItems(lang)}
-        linearItems={getSketchRadialLinearItems(lang)}
-        onSelect={handleContextSelect}
-        onClose={handleContextClose}
+      {/* ═══ Standard Parts Library ═══ */}
+      <StandardPartsLibrary
+        open={showLibrary}
+        selectedStandardPart={selectedStandardPart}
+        onSelect={handleSelectStandardPart}
+        onClose={() => setShowLibrary(false)}
+        labels={{
+          standardPartsLibrary: lt.standardPartsLibrary,
+          fastenersLabel: lt.fastenersLabel,
+          structuralLabel: lt.structuralLabel,
+          bearingsLabel: lt.bearingsLabel,
+          hexBolt: lt.hexBolt,
+          hexNut: lt.hexNut,
+          socketHeadCapScrew: lt.socketHeadCapScrew,
+          flatWasher: lt.flatWasher,
+          springWasher: lt.springWasher,
+          iBeam: lt.iBeam,
+          angleBracket: lt.angleBracket,
+          channelBeam: lt.channelBeam,
+          ballBearing: lt.ballBearing,
+          bushing: lt.bushing,
+        }}
       />
 
-      {/* ═══ Context Menu ═══ */}
-      <ContextMenu x={ctxMenu.x} y={ctxMenu.y} visible={ctxMenu.visible}
-        items={ctxMenu.items} onSelect={handleContextSelect} onClose={handleContextClose} />
+      {/* ═══ Sketch input cluster (radial menu + context menu + file input) ═══ */}
+      <SketchInputCluster
+        lang={lang}
+        sketchRefInputRef={sketchRefInputRef}
+        onSketchRefFileChange={handleSketchRefFileChange}
+        sketchRadial={sketchRadial}
+        ctxMenu={ctxMenu}
+        onContextSelect={handleContextSelect}
+        onContextClose={handleContextClose}
+      />
 
 
 
-      {/* ═══ WebXR AR Viewer ═══ */}
-      {showARViewer && effectiveResult && (
-        <ARViewer
-          geometry={effectiveResult.geometry}
-          color="#8b9cf4"
-          lang={lang}
-          onClose={() => setShowARViewer(false)}
-        />
-      )}
-
-      {/* ═══ Screenshot Share Modal ═══ */}
-      {screenshotModal && (
-        <ScreenshotShareModal
-          canvas={screenshotModal.canvas}
-          shapeName={String(useSceneStore.getState().params.name ?? '')}
-          isKo={lang === 'ko'}
-          onClose={() => setScreenshotModal(null)}
-          onDownload={() => {
-            downloadScreenshot(screenshotModal.canvas, `nexyfab-render-${Date.now()}.png`, 2);
-            addToast('success', lt.screenshotSaved);
-          }}
-        />
-      )}
-
-      {/* ═══ Feature Dependency Graph ═══ */}
-      {showFeatureGraph && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 8000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowFeatureGraph(false)}>
-          <div style={{ width: 640, height: 480, borderRadius: 12, overflow: 'hidden', border: '1px solid #21262d', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
-            onClick={e => e.stopPropagation()}>
-            <FeatureDependencyGraph
-              nodes={getOrderedNodes()}
-              activeNodeId={featureHistory.activeNodeId}
-              onSelectNode={(id) => { rollbackTo(id); setShowFeatureGraph(false); }}
-              lang={lang}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Nesting Tool ═══ */}
-      {showNestingTool && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 8000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowNestingTool(false)}>
-          <div style={{ width: 800, height: 560, borderRadius: 12, overflow: 'hidden', border: '1px solid #21262d', boxShadow: '0 8px 40px rgba(0,0,0,0.6)', position: 'relative' }}
-            onClick={e => e.stopPropagation()}>
-            <NestingTool lang={lang} />
-          </div>
-        </div>
-      )}
+      {/* ═══ Modal4Dock — AR / Screenshot / FeatureGraph / Nesting ═══ */}
+      <Modal4Dock
+        lang={lang}
+        showARViewer={showARViewer}
+        setShowARViewer={setShowARViewer}
+        arGeometry={effectiveResult?.geometry ?? null}
+        screenshot={screenshotModal}
+        setScreenshot={setScreenshotModal}
+        shapeName={String(useSceneStore.getState().params.name ?? '')}
+        onScreenshotDownload={(canvas) => {
+          downloadScreenshot(canvas, `nexyfab-render-${Date.now()}.png`, 2);
+          addToast('success', lt.screenshotSaved);
+        }}
+        showFeatureGraph={showFeatureGraph}
+        setShowFeatureGraph={setShowFeatureGraph}
+        nodes={getOrderedNodes()}
+        activeNodeId={featureHistory.activeNodeId}
+        onSelectNode={(id) => rollbackTo(id)}
+        showNestingTool={showNestingTool}
+        setShowNestingTool={setShowNestingTool}
+      />
 
       {/* ═══ Design Variants Panel ═══ */}
       {showVariantsPanel && (
@@ -7100,7 +8077,10 @@ export function ShapeGeneratorInner() {
           }}
           onApplyVariant={(v) => {
             if (v.shapeId !== selectedId) setSelectedId(v.shapeId);
-            setParams({ ...v.params });
+            applySceneParamsToSetters(SHAPE_MAP[v.shapeId], v.params, {
+              setParams,
+              setParamExpressions,
+            });
             setActiveVariantId(v.id);
             addToast('info', lt.versionApplied(v.name));
           }}
@@ -7114,55 +8094,105 @@ export function ShapeGeneratorInner() {
       )}
 
       {/* ═══ Thread/Hole Callout Panel ═══ */}
-      {showThreadHolePanel && (
-        <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 340, zIndex: 8000, boxShadow: '-4px 0 24px rgba(0,0,0,0.5)', border: '1px solid #21262d' }}>
-          <ThreadHoleCalloutPanel
-            threadCallouts={threadCallouts}
-            holeCallouts={holeCallouts}
-            onAddThread={(t) => setThreadCallouts(prev => [...prev, { ...t, id: `${Date.now()}`, position: [0,0,0] }])}
-            onAddHole={(h) => setHoleCallouts(prev => [...prev, { ...h, id: `${Date.now()}`, position: [0,0,0] }])}
-            onDeleteThread={(id) => setThreadCallouts(prev => prev.filter(t => t.id !== id))}
-            onDeleteHole={(id) => setHoleCallouts(prev => prev.filter(h => h.id !== id))}
-            lang={lang}
-          />
-          <button onClick={() => setShowThreadHolePanel(false)}
-            style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: '#6e7681', fontSize: 16, cursor: 'pointer', zIndex: 1 }}>✕</button>
-        </div>
-      )}
+      <ThreadHoleCalloutDock
+        open={showThreadHolePanel}
+        lang={lang}
+        threadCallouts={threadCallouts}
+        holeCallouts={holeCallouts}
+        setThreadCallouts={setThreadCallouts}
+        setHoleCallouts={setHoleCallouts}
+        onClose={() => setShowThreadHolePanel(false)}
+      />
 
-      {/* ═══ User Parts Library (Phase 4) ═══ */}
-      {showUserPartsPanel && (
-        <UserPartsPanel
-          lang={lang}
-          onClose={() => setShowUserPartsPanel(false)}
-          currentShapeId={selectedId}
-          currentParams={params}
-          captureThumbnail={() => captureRef.current?.() ?? null}
-          onLoadPart={(part) => {
-            if (part.shapeId !== selectedId) setSelectedId(part.shapeId);
-            setParams({ ...part.params });
-            setShowUserPartsPanel(false);
-            addToast('success', lt.partLoaded(part.name));
-          }}
+      {/* ═══ F5 — Configuration Table (Excel-style multi-config) ═══ */}
+      {showConfigurationTable && (
+        <ConfigurationTable
+          configurations={configurations}
+          features={features}
+          activeConfigurationId={activeConfigurationId}
+          onSelect={handleConfigurationSelect}
+          onUpdate={(cfg) => setConfigurations(prev => prev.map(c => c.id === cfg.id ? cfg : c))}
+          onAdd={() => handleConfigurationAdd(`Config ${configurations.length + 1}`)}
+          onDelete={handleConfigurationDelete}
+          onRename={handleConfigurationRename}
+          lang={(['ko','en','ja','zh','es','ar'].includes(lang) ? lang : 'en') as 'ko'|'en'|'ja'|'zh'|'es'|'ar'}
+          onClose={() => setShowConfigurationTable(false)}
         />
       )}
 
-      {/* ═══ Session Timelapse (Phase 4) ═══ */}
-      {showSessionTimelapse && (
-        <SessionTimelapse
-          lang={lang}
-          captureFrame={() => captureRef.current?.() ?? null}
-          onClose={() => setShowSessionTimelapse(false)}
-        />
-      )}
+      {/* ═══ F7 — DRC custom rule panel ═══ */}
+      <DrcPanel
+        open={showDrcPanel}
+        geometry={effectiveResult?.geometry ?? null}
+        ruleSet={drcRuleSet}
+        onRuleSetChange={setDrcRuleSet}
+        lang={(['ko','en','ja','zh','es','ar'].includes(lang) ? lang : 'en') as 'ko'|'en'|'ja'|'zh'|'es'|'ar'}
+        onClose={() => setShowDrcPanel(false)}
+      />
 
-      {/* ═══ Stock Optimizer (Phase 4) ═══ */}
-      {showStockOptimizer && (
-        <StockOptimizerPanel
-          lang={lang}
-          onClose={() => setShowStockOptimizer(false)}
-        />
-      )}
+      {/* ═══ F9 — PLM/ERP connector config ═══ */}
+      <PlmConfigPanel
+        open={showPlmConfig}
+        projectName={selectedId || 'nexyfab-project'}
+        bomLines={bomParts.map(bp => ({
+          partNumber: bp.name,
+          description: bp.name,
+          quantity: 1,
+          mass_g: bp.result.volume_cm3 ? bp.result.volume_cm3 * 2.7 : undefined,
+          unit: 'EA',
+        }))}
+        lang={(['ko','en','ja','zh','es','ar'].includes(lang) ? lang : 'en') as 'ko'|'en'|'ja'|'zh'|'es'|'ar'}
+        onClose={() => setShowPlmConfig(false)}
+      />
+
+      {/* ═══ K6 — Smart Fastener panel ═══ */}
+      <SmartFastenerPanel
+        open={showSmartFastener}
+        rootPartName={selectedId || 'main'}
+        features={features}
+        lang={(['ko','en','ja','zh','es','ar'].includes(lang) ? lang : 'en') as 'ko'|'en'|'ja'|'zh'|'es'|'ar'}
+        onClose={() => setShowSmartFastener(false)}
+        onApply={(s, rows) => {
+          addToast(
+            'success',
+            lang === 'ko'
+              ? `${s.spec.name} 체결구 ${rows.length}개 BOM 추가됨`
+              : `Added ${rows.length} ${s.spec.name} fastener row(s) to BOM`,
+          );
+          // Real BOM integration is host-side — this surfaces the rows so a
+          // future PR can pipe them into bomParts or PLM (F9) directly.
+        }}
+      />
+
+      {/* ═══ F1 — Sketch text → engrave panel ═══ */}
+      <SketchTextPanel
+        open={showSketchText}
+        lang={(['ko','en','ja','zh','es','ar'].includes(lang) ? lang : 'en') as 'ko'|'en'|'ja'|'zh'|'es'|'ar'}
+        onApply={(profile) => {
+          // Replace the active sketch profile with the text outlines so the
+          // existing extrude pipeline can engrave / emboss the result.
+          setSketchProfile(profile);
+        }}
+        onClose={() => setShowSketchText(false)}
+      />
+
+      {/* ═══ Phase 4 panel cluster (UserParts / Timelapse / StockOptimizer) ═══ */}
+      <Phase4PanelDock
+        lang={lang}
+        showUserPartsPanel={showUserPartsPanel}
+        setShowUserPartsPanel={setShowUserPartsPanel}
+        selectedId={selectedId}
+        setSelectedId={setSelectedId}
+        params={params}
+        setParams={setParams}
+        setParamExpressions={setParamExpressions}
+        showSessionTimelapse={showSessionTimelapse}
+        setShowSessionTimelapse={setShowSessionTimelapse}
+        showStockOptimizer={showStockOptimizer}
+        setShowStockOptimizer={setShowStockOptimizer}
+        captureFrame={() => captureRef.current?.() ?? null}
+        onUserPartLoaded={(name) => addToast('success', lt.partLoaded(name))}
+      />
 
       {/* ═══ Collab Reconnect Banner (Phase 3 — offline/reconnect UX) ═══ */}
       <CollabReconnectBanner
@@ -7175,41 +8205,33 @@ export function ShapeGeneratorInner() {
       {/* ═══ Toast Notifications ═══ */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-      {/* ═══ Global async work indicator — shows when any worker is busy ═══ */}
-      {(pipelineWorkerLoading || dfmWorkerLoading || feaWorkerLoading || csgLoading) && (
-        <div style={{
-          position: 'fixed', bottom: 70, right: 20, zIndex: 9998,
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '8px 14px', borderRadius: 999,
-          background: 'rgba(22, 27, 34, 0.95)', backdropFilter: 'blur(8px)',
-          border: '1px solid #30363d', color: '#c9d1d9',
-          fontSize: 12, fontWeight: 600,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-          pointerEvents: 'none' }}>
-          <div style={{
-            width: 14, height: 14, borderRadius: '50%',
-            border: '2px solid #30363d', borderTopColor: '#8b9cf4',
-            animation: 'nf-spin 0.7s linear infinite' }} />
-          <span>
-            {feaWorkerLoading ? lt.feaRunning
-              : dfmWorkerLoading ? lt.dfmRunning
-              : csgLoading ? lt.csgRunning
-              : lt.rebuildingGeometry}
-          </span>
-        </div>
-      )}
+      {/* ═══ Global async work indicator (worker spinner + cancel) ═══ */}
+      <AsyncWorkIndicator
+        pipelineLoading={pipelineWorkerLoading}
+        dfmLoading={dfmWorkerLoading}
+        feaLoading={feaWorkerLoading}
+        csgLoading={csgLoading}
+        cancelPipeline={cancelPipeline}
+        cancelDfm={cancelDfm}
+        cancelFea={cancelFea}
+        cancelCsg={cancelCsg}
+        labels={{
+          feaRunning: lt.feaRunning,
+          dfmRunning: lt.dfmRunning,
+          csgRunning: lt.csgRunning,
+          rebuildingGeometry: lt.rebuildingGeometry,
+          cancelLabel: lt.cancelLabel,
+        }}
+      />
 
-      {/* ═══ Keyboard Shortcuts Help ═══ */}
-      <ShortcutHelp visible={showShortcuts} onClose={() => setShowShortcuts(false)} lang={lang} />
-
-      {/* ═══ Shortcut Hint Overlay (Alt long-hold) ═══ */}
-      <ShortcutHintOverlay hints={[
-        { targetId: 'btn-zoom-fit', keys: 'F' },
-        { targetId: 'btn-grid-toggle', keys: 'G' },
-        { targetId: 'btn-sketch-mode', keys: 'S' },
-        { targetId: 'btn-undo', keys: 'Ctrl+Z' },
-        { targetId: 'btn-redo', keys: 'Ctrl+Y' },
-      ]} />
+      {/* ═══ Help cluster (shortcuts help / hint overlay / context help) ═══ */}
+      <HelpCluster
+        lang={lang}
+        showShortcuts={showShortcuts}
+        setShowShortcuts={setShowShortcuts}
+        contextHelp={contextHelp}
+        onOpenShortcuts={() => useUIStore.getState().togglePanel('showShortcuts')}
+      />
 
       {/* ═══ Command Palette (Ctrl+K) ═══ */}
       <CommandPalette
@@ -7223,169 +8245,107 @@ export function ShapeGeneratorInner() {
         }}
       />
 
-      {/* ═══ Context-aware Help Panel (?, sketch/feature/render 진입 시) ═══ */}
-      <ContextHelpPanel
-        visible={contextHelp.visible}
-        context={contextHelp.context}
+      {/* ═══ Status footer (auto-save indicator + OCCT toggle) ═══ */}
+      <StatusFooter
+        visible={viewMode === 'workspace'}
         lang={lang}
-        onClose={contextHelp.hide}
-        onDismissForever={contextHelp.dismissForever}
-        onOpenShortcuts={() => useUIStore.getState().togglePanel('showShortcuts')}
+        isSaving={isSaving}
+        lastSavedAt={lastSavedAt}
+        saveError={saveError}
+        cloudStatus={cloudStatus}
+        cloudSavedAt={cloudSavedAt}
+        versionConflictNeedsReload={versionConflictNeedsReload}
+        onReloadForCloudConflict={reloadToFetchServerProject}
+        occtMode={occtMode}
+        occtInitPending={occtInitPending}
+        occtInitError={occtInitError}
+        setOcctMode={(v) => { void setOcctMode(v); }}
+        occtToggleTitle={lt.occtEngine}
       />
 
-      {/* ═══ Auto-save Indicator (상단 중앙 토스트 근처) ═══ */}
-      {viewMode === 'workspace' && (
-        <AutoSaveIndicator
-          isSaving={isSaving}
-          lastSavedAt={lastSavedAt}
-          saveError={saveError}
-          lang={lang}
-          cloudStatus={cloudStatus}
-          cloudSavedAt={cloudSavedAt}
-          versionConflictNeedsReload={versionConflictNeedsReload}
-          onReloadForCloudConflict={reloadToFetchServerProject}
-        />
-      )}
-
-      {/* ═══ OCCT Engine Toggle (experimental — #98 phase 2d) ═══ */}
-      {viewMode === 'workspace' && (
-        <button
-          type="button"
-          onClick={() => { void setOcctMode(!occtMode); }}
-          disabled={occtInitPending}
-          title={occtInitError ?? lt.occtEngine}
-          style={{
-            position: 'fixed',
-            bottom: 12,
-            right: 12,
-            zIndex: 50,
-            padding: '6px 10px',
-            fontSize: 11,
-            fontFamily: 'monospace',
-            borderRadius: 6,
-            border: `1px solid ${occtMode ? '#10b981' : '#4b5563'}`,
-            background: occtMode ? 'rgba(16,185,129,0.15)' : 'rgba(31,41,55,0.85)',
-            color: occtMode ? '#10b981' : '#9ca3af',
-            cursor: occtInitPending ? 'wait' : 'pointer',
-            opacity: occtInitPending ? 0.6 : 1 }}
-        >
-          OCCT: {occtInitPending ? '...' : occtMode ? 'ON' : 'OFF'}
-          {occtInitError ? ' ⚠' : ''}
-        </button>
-      )}
-
       {/* ═══ Tutorial Overlay ═══ */}
-      {tutorial.showTutorial && tutorial.step && (
-        <TutorialOverlay
-          visible={tutorial.showTutorial}
-          step={tutorial.step}
-          currentStep={tutorial.currentStep}
-          totalSteps={tutorial.totalSteps}
-          isFirstStep={tutorial.isFirstStep}
-          isLastStep={tutorial.isLastStep}
-          onNext={tutorial.nextStep}
-          onPrev={tutorial.prevStep}
-          onSkip={tutorial.skipTutorial}
+
+      {/* ═══ SCAD agent floating panel + mode toggle ═══ */}
+      {/* P3 — hide on mobile (panel is 420px wide) and in simpleMode (beginners */}
+      {/* shouldn't be exposed to a Pro coding agent before they grasp the basics). */}
+      {!isMobile && !simpleMode && scadAuthoringMode === 'agent' && (
+        <ScadAgentPanel
           lang={lang}
+          variant="floating"
+          onApplyScad={handleApplyAgentScad}
+          onShowBrepHandle={handleShowBrepHandle}
         />
       )}
-
-      {/* ═══ Welcome Banner (first-time visitors only) ═══ */}
-      {tutorial.showWelcomeBanner && (
-        <WelcomeBanner
-          lang={lang}
-          onStartTutorial={tutorial.startTutorial}
-          onDismiss={tutorial.completeTutorial}
-        />
+      {/* X3 — Mobile users get a one-time banner instead, since the agent
+           panel + toggle are both desktop-only. */}
+      {isMobile && !simpleMode && (
+        <MobileAgentNotice lang={lang} />
+      )}
+      {!isMobile && !simpleMode && (
+        <div style={{ position: 'fixed', top: 56, right: 16, zIndex: 700 }}>
+          <ScadModeToggle
+            lang={lang}
+            agentUnlocked={isProPlan}
+            onLockedAgentClick={() => {
+              setUpgradeFeature('AI Agent (OpenSCAD)');
+              setShowUpgradePrompt(true);
+            }}
+          />
+        </div>
       )}
 
-      {/* ═══ Version History Panel ═══ */}
-      <VersionPanel
-        visible={showVersionPanel}
+      {/* ═══ Version + history + diff dock ═══ */}
+      <VersionDiffDock
+        lang={lang}
+        theme={theme}
+        simpleMode={simpleMode}
+        showVersionPanel={showVersionPanel}
+        setShowVersionPanel={setShowVersionPanel}
         versions={versions}
-        onClose={() => setShowVersionPanel(false)}
         onSaveSnapshot={handleSaveVersionSnapshot}
         onRestore={handleRestoreVersion}
-        onDelete={deleteVersion}
-        onRename={renameVersion}
-        theme={theme}
-        lang={lang}
+        onDeleteVersion={deleteVersion}
+        onRenameVersion={renameVersion}
         branches={branches}
         activeBranch={activeBranch}
         onCreateBranch={handleCreateBranch}
         onSwitchBranch={handleSwitchBranch}
         onDeleteBranch={handleDeleteBranch}
-        onShowCompare={() => setShowBranchCompare(true)}
-        onShow3DDiff={(a, b) => setVersionDiffPair([a, b])}
+        setShowBranchCompare={setShowBranchCompare}
+        setVersionDiffPair={setVersionDiffPair}
+        showBranchCompare={showBranchCompare}
+        onCompareBranches={compareBranches}
+        onMergeBranch={handleMergeBranch}
+        showHistoryPanel={showHistoryPanel}
+        setShowHistoryPanel={setShowHistoryPanel}
+        versionDiffPair={versionDiffPair}
+        showVersionDiff={showVersionDiff}
+        setShowVersionDiff={setShowVersionDiff}
+        diffGeometries={diffGeometries}
       />
 
-      {/* ═══ Command History Panel ═══ */}
-      {showHistoryPanel && (
-        <HistoryPanel lang={lang} onClose={() => setShowHistoryPanel(false)} />
-      )}
-
-      {/* ═══ Branch Compare ═══ */}
-      <BranchCompare
-        visible={showBranchCompare && !simpleMode}
-        branches={branches}
-        activeBranch={activeBranch}
-        onCompare={compareBranches}
-        onMerge={handleMergeBranch}
-        onClose={() => setShowBranchCompare(false)}
-        theme={theme}
+      {/* ═══ Auth + Model + Part Placement + Plugin/Script dock ═══ */}
+      <AuthModelPlacementDock
         lang={lang}
+        isKo={lang === 'ko'}
+        simpleMode={simpleMode}
+        showPluginManager={showPluginManager}
+        setShowPluginManager={setShowPluginManager}
+        showScriptPanel={showScriptPanel}
+        setShowScriptPanel={setShowScriptPanel}
+        showAuthModal={showAuthModal}
+        setShowAuthModal={setShowAuthModal}
+        authModalMode={authModalMode}
+        showModelParams={showModelParams}
+        modelVars={modelVars}
+        setModelVars={setModelVars}
+        showPartPlacement={showPartPlacement}
+        placedParts={placedParts}
+        setPlacedParts={setPlacedParts}
+        selectedId={selectedId}
+        params={params}
+        setHighlightedPartId={setHighlightedPartId}
       />
-
-      {/* ═══ Version 3D Diff Viewer ═══ */}
-      {versionDiffPair && (
-        <VersionDiff3DViewer
-          versionA={versionDiffPair[0]}
-          versionB={versionDiffPair[1]}
-          lang={lang}
-          onClose={() => setVersionDiffPair(null)}
-        />
-      )}
-
-      {/* ═══ Plugin Manager ═══ */}
-      <PluginManager visible={showPluginManager && !simpleMode} onClose={() => setShowPluginManager(false)} isKo={lang === 'ko'} />
-
-      {/* ═══ NexyScript Panel ═══ */}
-      <ScriptPanel visible={showScriptPanel} onClose={() => setShowScriptPanel(false)} lang={lang} />
-
-      {/* ═══ Auth Modal ═══ */}
-      <AuthModal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        defaultMode={authModalMode}
-      />
-
-      {/* ═══ Model Parameters Panel ═══ */}
-      {showModelParams && (
-        <ModelParametersPanel
-          vars={modelVars}
-          onChange={setModelVars}
-          lang={lang}
-        />
-      )}
-
-      {/* ═══ Part Placement Panel ═══ */}
-      {showPartPlacement && (
-        <div style={{
-          position: 'fixed', top: 48, right: 320, zIndex: 900,
-          width: 300, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
-          background: 'rgba(22,27,34,0.97)', backdropFilter: 'blur(12px)',
-          border: '1px solid #30363d', borderRadius: 12,
-          padding: '12px 14px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          <PartPlacementPanel
-            parts={placedParts}
-            onChange={setPlacedParts}
-            isKo={lang === 'ko'}
-            currentShapeId={selectedId}
-            currentParams={params}
-          />
-        </div>
-      )}
 
       {/* ═══ Upgrade Prompt ═══ */}
       <UpgradePrompt
@@ -7394,39 +8354,56 @@ export function ShapeGeneratorInner() {
         lang={lang}
         onClose={() => setShowUpgradePrompt(false)}
         onLogin={() => { setShowUpgradePrompt(false); setAuthModalMode('signup'); setShowAuthModal(true); }}
+        // Funnel context: tag the upgrade-click as coming from the project-limit
+        // paywall when this prompt was opened by triggerProjectLimitPrompt.
+        // Detection key: feature label includes "프로젝트 추가" — the only place
+        // that string is set is the project-limit gate.
+        funnelContext={upgradeFeature.includes('프로젝트') ? 'project_limit' : undefined}
       />
 
-      {/* ═══ CAM G-code Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showCamUpgrade}
-        feature="cam_export"
-        lang={lang}
-        onClose={() => setShowCamUpgrade(false)}
+
+      {/* ═══ F6 — Change impact confirm before destructive feature removal ═══ */}
+      <ConfirmModal
+        open={removeConfirm !== null}
+        title={lang === 'ko' ? '피처 삭제 영향 확인' : 'Confirm feature deletion'}
+        message={
+          removeConfirm
+            ? (lang === 'ko'
+                ? `이 피처를 삭제하면 다음에 영향을 줍니다: ${removeConfirm.summary}. 진행하시겠습니까?`
+                : `Deleting this feature will affect: ${removeConfirm.summary}. Continue?`)
+            : ''
+        }
+        confirmLabel={lang === 'ko' ? '삭제' : 'Delete'}
+        cancelLabel={lang === 'ko' ? '취소' : 'Cancel'}
+        destructive
+        onConfirm={() => {
+          if (removeConfirm) performRemoveFeature(removeConfirm.featureId);
+          setRemoveConfirm(null);
+        }}
+        onCancel={() => setRemoveConfirm(null)}
       />
 
-      {/* ═══ DFM Auto-Fix Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showDFMFixUpgrade}
-        feature="dfm_autofix"
+      {/* ═══ Onboarding dock (tutorial / welcome / first-time tour) ═══ */}
+      <OnboardingDock
         lang={lang}
-        onClose={() => setShowDFMFixUpgrade(false)}
+        tutorial={tutorial}
+        userId={authUser?.id ?? null}
+        onOpenChat={() => openAIAssistant('chat')}
       />
 
-      {/* ═══ AI DFM Insights Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showDFMInsightsUpgrade}
-        feature="dfm_insights"
+      {/* ═══ Split-screen + STL Export dock ═══ */}
+      <SplitExportDock
         lang={lang}
-        onClose={() => setShowDFMInsightsUpgrade(false)}
+        splitMode={splitMode}
+        setSplitMode={setSplitMode}
+        userId={authUser?.id ?? null}
+        stlExportDialogOpen={stlExportDialogOpen}
+        setStlExportDialogOpen={setStlExportDialogOpen}
+        onExportSTL={(choice) => { void handleExportCurrentSTL(choice); }}
       />
 
-      {/* ═══ AI Process Router Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showProcessRouterUpgrade}
-        feature="process_router"
-        lang={lang}
-        onClose={() => setShowProcessRouterUpgrade(false)}
-      />
+      {/* ═══ Upgrade Modals (all 8 paywall dialogs) — see panels/UpgradeModalsDock.tsx ═══ */}
+      <UpgradeModalsDock lang={lang} />
 
       {/* ═══ AI Process Router Panel ═══ */}
       {showProcessRouter && (
@@ -7456,14 +8433,6 @@ export function ShapeGeneratorInner() {
         />
       )}
 
-      {/* ═══ AI Supplier Match Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showAISupplierMatchUpgrade}
-        feature="ai_supplier_match"
-        lang={lang}
-        onClose={() => setShowAISupplierMatchUpgrade(false)}
-      />
-
       {/* ═══ AI Supplier Match Panel ═══ */}
       {showAISupplierMatch && (
         <AISupplierPanel
@@ -7482,14 +8451,6 @@ export function ShapeGeneratorInner() {
           }}
         />
       )}
-
-      {/* ═══ Design-for-Cost Copilot Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showCostCopilotUpgrade}
-        feature="cost_copilot"
-        lang={lang}
-        onClose={() => setShowCostCopilotUpgrade(false)}
-      />
 
       {/* ═══ Design-for-Cost Copilot Panel ═══ */}
       {showCostCopilot && (
@@ -7580,22 +8541,6 @@ export function ShapeGeneratorInner() {
           </div>
         </div>
       )}
-
-      {/* ═══ Collaboration Read-Only Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showCollabEditUpgrade}
-        feature="collaboration_edit"
-        lang={lang}
-        onClose={() => setShowCollabEditUpgrade(false)}
-      />
-
-      {/* ═══ Pre-Export Optimization Upgrade Modal ═══ */}
-      <UpgradeModal
-        open={showExportOptimizeUpgrade}
-        feature="export_optimize"
-        lang={lang}
-        onClose={() => setShowExportOptimizeUpgrade(false)}
-      />
 
       {/* ═══ Manufacturer Match Modal ═══ */}
       {showManufacturerMatch && (
@@ -7758,137 +8703,67 @@ export function ShapeGeneratorInner() {
         </div>
       )}
 
-      {/* ═══ Generative Design Panel (SIMP Topology Optimization) ═══ */}
-      {showGenDesign && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
-          <GenerativeDesignPanel
-            geometry={effectiveResult?.geometry ?? null}
-            lang={lang}
-            onResult={(geo, _result: TopologyResult) => {
-              setGenDesignResult(geo);
-              setShowGenOverlay(true);
-              addToast('success', lt.optimalStructureDone);
-            }}
-            onClose={() => setShowGenDesign(false)}
-          />
-        </div>
-      )}
+      {/* ═══ Advanced analysis dock (Gen Design / Thermal FEA / ECAD PCB) ═══ */}
+      <AdvancedAnalysisDock
+        lang={lang}
+        dockInsetBase={baseScadDockInsetPx}
+        dockInsetGen={col1RightInset('gen')}
+        effectiveResultGeometry={effectiveResult?.geometry ?? null}
+        showGenDesign={showGenDesign}
+        setShowGenDesign={setShowGenDesign}
+        setGenDesignResult={setGenDesignResult}
+        setShowGenOverlay={setShowGenOverlay}
+        genDesignResult={genDesignResult}
+        showGenOverlay={showGenOverlay}
+        toastOptimalStructureDone={lt.optimalStructureDone}
+        showThermalPanel={showThermalPanel}
+        setShowThermalPanel={setShowThermalPanel}
+        setThermalOverlayGeo={setThermalOverlayGeo}
+        setShowThermalOverlay={setShowThermalOverlay}
+        thermalOverlayGeo={thermalOverlayGeo}
+        showThermalOverlay={showThermalOverlay}
+        toastThermalFeaDone={lt.thermalFeaDone}
+        toastPcbHeatMappingDone={lt.pcbHeatMappingDone}
+        showECADPanel={showECADPanel}
+        setShowECADPanel={setShowECADPanel}
+        addToast={addToast}
+        showOriginalLabel={lt.showOriginal}
+        showPcbHeatMapLabel={lt.showPcbHeatMap}
+        showOptimizedLabel={lt.showOptimized}
+      />
 
-      {/* ═══ Thermal FEA Panel ═══ */}
-      {showThermalPanel && (
-        <div style={{ position: 'fixed', top: 60, right: showECADPanel ? 620 : 310, zIndex: 500 }}>
-          <ThermalFEAPanel
-            geometry={effectiveResult?.geometry ?? null}
-            lang={lang}
-            onResult={(coloredGeo, _res) => {
-              setThermalOverlayGeo(coloredGeo);
-              setShowThermalOverlay(true);
-              addToast('success', lt.thermalFeaDone);
-            }}
-            onClose={() => setShowThermalPanel(false)}
-          />
-        </div>
-      )}
-
-      {/* ═══ ECAD PCB Thermal Mapping Panel ═══ */}
-      {showECADPanel && (
-        <div style={{ position: 'fixed', top: 60, right: 310, zIndex: 500 }}>
-          <ECADImportPanel
-            geometry={effectiveResult?.geometry ?? null}
-            lang={lang}
-            onThermalResult={(geo) => {
-              setThermalOverlayGeo(geo);
-              setShowThermalOverlay(true);
-              setShowECADPanel(false);
-              addToast('success', lt.pcbHeatMappingDone);
-            }}
-            onClose={() => setShowECADPanel(false)}
-          />
-        </div>
-      )}
-
-      {/* ═══ PCB Thermal overlay toggle button ═══ */}
-      {thermalOverlayGeo && !showECADPanel && (
-        <div style={{ position: 'fixed', bottom: 110, right: 16, zIndex: 500 }}>
-          <button
-            onClick={() => setShowThermalOverlay(prev => !prev)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 6,
-              border: '1px solid #f59e0b',
-              background: showThermalOverlay ? '#f59e0b' : '#161b22',
-              color: showThermalOverlay ? '#000' : '#f59e0b',
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: 'pointer' }}
-          >
-            {showThermalOverlay
-              ? lt.showOriginal
-              : lt.showPcbHeatMap}
-          </button>
-        </div>
-      )}
-
-      {/* ═══ Gen Design overlay toggle button ═══ */}
-      {genDesignResult && !showGenDesign && (
-        <div style={{ position: 'fixed', bottom: 80, right: 16, zIndex: 500 }}>
-          <button
-            onClick={() => setShowGenOverlay(prev => !prev)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 6,
-              border: '1px solid #388bfd',
-              background: showGenOverlay ? '#388bfd' : '#161b22',
-              color: showGenOverlay ? '#fff' : '#388bfd',
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: 'pointer' }}
-          >
-            {showGenOverlay
-              ? lt.showOriginal
-              : lt.showOptimized}
-          </button>
-        </div>
-      )}
-
-      {/* ═══ Topological ID Map Panel ═══ */}
-      {topoMap.map.generation > 0 && (
-        <TopoMapPanel
-          topoMap={topoMap}
-          lang={lang}
-        />
-      )}
-
-      {/* ═══ Motion Study Panel ═══ */}
-      {showMotionStudy && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
-          <MotionStudyPanel
-            lang={lang}
-            partIds={features.map(f => f.id)}
-            onFrameUpdate={(transforms) => setMotionPartTransforms({ ...transforms })}
-            onClose={() => { setShowMotionStudy(false); setMotionPartTransforms(null); }}
-          />
-        </div>
-      )}
-
-      {/* ═══ Modal Analysis Panel ═══ */}
-      {showModalAnalysis && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
-          <ModalAnalysisPanel
-            lang={lang}
-            geometry={effectiveResult?.geometry ?? null}
-            dimensions={{ x: params.width ?? 100, y: params.height ?? 100, z: params.depth ?? 100 }}
-            onResult={() => {
-              addToast('success', lt.modalAnalysisDone);
-            }}
-            onClose={() => setShowModalAnalysis(false)}
-          />
-        </div>
-      )}
+      {/* ═══ Floating analysis dock (Topological / Motion / Modal / Tolerance / Surface / MfgPipeline) ═══ */}
+      <FloatingAnalysisDock
+        lang={lang}
+        dockInsetForPanel={(id) => col1RightInset(id)}
+        effectiveResultGeometry={effectiveResult?.geometry ?? null}
+        partIds={features.map(f => f.id)}
+        paramsForModal={{ x: params.width ?? 100, y: params.height ?? 100, z: params.depth ?? 100 }}
+        topoMap={topoMap}
+        toastModalDone={lt.modalAnalysisDone}
+        toastSurfaceDone={lt.surfaceAnalysisDone}
+        toastQuoteRequested={lt.quoteRequested}
+        addToast={addToast}
+        showMfgPipeline={showMfgPipeline}
+        mfgVolumeCm3={effectiveResult ? meshVolume(effectiveResult.geometry) * 1e-3 : 0}
+        mfgSurfaceAreaCm2={effectiveResult ? meshSurfaceArea(effectiveResult.geometry) * 1e-2 : 0}
+        mfgMaterial={materialId}
+        mfgComplexity={features.length > 5 ? 0.8 : features.length > 2 ? 0.5 : 0.3}
+        showMotionStudy={showMotionStudy}
+        setShowMotionStudy={setShowMotionStudy}
+        setMotionPartTransforms={setMotionPartTransforms}
+        showModalAnalysis={showModalAnalysis}
+        setShowModalAnalysis={setShowModalAnalysis}
+        showToleranceStackup={showToleranceStackup}
+        setShowToleranceStackup={setShowToleranceStackup}
+        showSurfaceQuality={showSurfaceQuality}
+        setShowSurfaceQuality={setShowSurfaceQuality}
+        setShowMfgPipeline={setShowMfgPipeline}
+      />
 
       {/* ═══ Parametric Sweep Panel ═══ */}
       {showParametricSweep && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
+        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('sweep'), zIndex: 500 }}>
           <ParametricSweepPanel
             lang={lang}
             currentParams={params}
@@ -7924,75 +8799,44 @@ export function ShapeGeneratorInner() {
         </div>
       )}
 
-      {/* ═══ Tolerance Stack-up Panel ═══ */}
-      {showToleranceStackup && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
-          <ToleranceStackupPanel
-            lang={lang}
-            onClose={() => setShowToleranceStackup(false)}
-          />
-        </div>
-      )}
-
-      {/* ═══ Surface Quality Panel ═══ */}
-      {showSurfaceQuality && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
-          <SurfaceQualityPanel
-            lang={lang}
-            geometry={effectiveResult?.geometry ?? null}
-            onResult={() => {
-              addToast('success', lt.surfaceAnalysisDone);
-            }}
-            onClose={() => setShowSurfaceQuality(false)}
-          />
-        </div>
-      )}
 
       {/* ═══ Auto Drawing Panel ═══ */}
       {showAutoDrawing && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
+        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('draw'), zIndex: 500 }}>
           <AutoDrawingPanel
             lang={lang}
             geometry={effectiveResult?.geometry ?? null}
             partName={selectedId || 'Part'}
             material={materialId}
             onClose={() => setShowAutoDrawing(false)}
+            // G8 — feed BOM parts so the panel can render an exploded view
+            // with auto-numbered balloons. We compute each part's centre
+            // from its bbox + position offset.
+            explodedParts={bomParts.length >= 2 ? bomParts.map(bp => {
+              bp.result.geometry.computeBoundingBox();
+              const bb = bp.result.geometry.boundingBox;
+              const localCx = bb ? (bb.min.x + bb.max.x) / 2 : 0;
+              const localCy = bb ? (bb.min.y + bb.max.y) / 2 : 0;
+              const localCz = bb ? (bb.min.z + bb.max.z) / 2 : 0;
+              const offset = bp.position ?? [0, 0, 0];
+              return {
+                id: bp.name,
+                name: bp.name,
+                worldCenter: [
+                  localCx + offset[0],
+                  localCy + offset[1],
+                  localCz + offset[2],
+                ] as [number, number, number],
+              };
+            }) : undefined}
           />
         </div>
       )}
 
-      {/* ═══ Manufacturing Pipeline Panel ═══ */}
-      {showMfgPipeline && effectiveResult && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 500 }}>
-          <ManufacturingPipelinePanel
-            lang={lang}
-            volumeCm3={meshVolume(effectiveResult.geometry) * 1e-3}
-            surfaceAreaCm2={meshSurfaceArea(effectiveResult.geometry) * 1e-2}
-            material={materialId}
-            complexity={features.length > 5 ? 0.8 : features.length > 2 ? 0.5 : 0.3}
-            onGetQuote={(mfgId) => {
-              addToast('info', lt.quoteRequested(mfgId));
-            }}
-            onClose={() => setShowMfgPipeline(false)}
-          />
-        </div>
-      )}
-
-      {/* ═══ Shape Version Diff ═══ */}
-      {showVersionDiff && diffGeometries && (
-        <ShapeVersionDiff
-          lang={lang}
-          geometryA={diffGeometries.a}
-          geometryB={diffGeometries.b}
-          labelA={diffGeometries.labelA}
-          labelB={diffGeometries.labelB}
-          onClose={() => setShowVersionDiff(false)}
-        />
-      )}
 
       {/* ═══ Copilot Panel ═══ */}
       {showCopilot && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 600 }}>
+        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('copilot'), zIndex: 600 }}>
           <CopilotPanel
             lang={lang}
             dispatcher={{
@@ -8013,113 +8857,53 @@ export function ShapeGeneratorInner() {
         </div>
       )}
 
-      {/* ═══ CAM Simulation Panel ═══ */}
-      {showCAMSimPanel && camSimResult && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 600 }}>
-          <CAMSimPanel
-            lang={lang}
-            result={camSimResult.result}
-            operation={camSimResult.operation}
-            onClose={() => setShowCAMSimPanel(false)}
-          />
-        </div>
-      )}
-
-      {/* ═══ Mold Design Panel ═══ */}
-      {showMoldDesignPanel && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 600 }}>
-          <MoldDesignPanel
-            lang={lang}
-            geometry={effectiveResult?.geometry ?? null}
-            onClose={() => setShowMoldDesignPanel(false)}
-            onGenerateCavity={(margin) => {
-              if (!effectiveResult?.geometry.boundingBox) return;
-              const bb = effectiveResult.geometry.boundingBox;
-              const w = bb.max.x - bb.min.x + margin * 2;
-              const h = bb.max.y - bb.min.y + margin * 2;
-              const d = bb.max.z - bb.min.z + margin * 2;
-              addFeatureWithParamsAndContext('sketchExtrude', { width: w, height: h, depth: d });
-            }}
-            onShowDraftAnalysis={(minAngle) => {
-              handleDraftAnalyze([0, 0, 1], minAngle);
-              setShowDraftAnalysis(true);
-            }}
-            onSplitBody={() => {
-              addFeatureWithParamsAndContext('splitBody', { plane: 0, keepSide: 0, offset: 0 });
-            }}
-            onOpenStandardParts={() => {
-              useUIStore.getState().togglePanel('showLibrary');
-            }}
-            onExportPackage={handleExportSTEP}
-          />
-        </div>
-      )}
-
-      {/* ═══ RFQ Panel ═══ */}
-      {showRfqPanel && (
-        <div style={{ position: 'fixed', top: 60, right: 16, zIndex: 600 }}>
-          <RfqPanel
-            lang={lang}
-            geometry={effectiveResult?.geometry ?? null}
-            partLabel={selectedId ?? 'NexyFab_Part'}
-            materialKey={materialId}
-            volume_cm3={effectiveResult ? meshVolume(effectiveResult.geometry) / 1000 : 0}
-            onClose={() => setShowRfqPanel(false)}
-          />
-        </div>
-      )}
-
-      {/* ═══ Sheet Metal Panel ═══ */}
-      {!simpleMode && showSheetMetalPanel && (
-        <SheetMetalPanel
-          lang={lang}
-          onBend={handleSmBend}
-          onFlange={handleSmFlange}
-          onFlatPattern={handleSmFlatPattern}
-          onClose={() => setShowSheetMetalPanel(false)}
-          geometry={effectiveResult?.geometry ?? null}
-          theme={theme}
-        />
-      )}
+      {/* ═══ Manufacturing panel dock (CAM / Mold / RFQ / Sheet Metal) ═══ */}
+      <ManufacturingPanelDock
+        lang={lang}
+        dockInsetForPanel={(id) => col1RightInset(id)}
+        simpleMode={simpleMode}
+        theme={theme}
+        effectiveResultGeometry={effectiveResult?.geometry ?? null}
+        effectiveResultBoundingBox={effectiveResult?.geometry.boundingBox ?? null}
+        showCAMSimPanel={showCAMSimPanel}
+        setShowCAMSimPanel={setShowCAMSimPanel}
+        camSimResult={camSimResult}
+        showMoldDesignPanel={showMoldDesignPanel}
+        setShowMoldDesignPanel={setShowMoldDesignPanel}
+        onGenerateCavity={(margin) => {
+          if (!effectiveResult?.geometry.boundingBox) return;
+          const bb = effectiveResult.geometry.boundingBox;
+          const w = bb.max.x - bb.min.x + margin * 2;
+          const h = bb.max.y - bb.min.y + margin * 2;
+          const d = bb.max.z - bb.min.z + margin * 2;
+          addFeatureWithParamsAndContext('sketchExtrude', { width: w, height: h, depth: d });
+        }}
+        onShowDraftAnalysis={(minAngle) => {
+          handleDraftAnalyze([0, 0, 1], minAngle);
+          setShowDraftAnalysis(true);
+        }}
+        onMoldSplitBody={() => {
+          addFeatureWithParamsAndContext('splitBody', { plane: 0, keepSide: 0, offset: 0 });
+        }}
+        onOpenStandardParts={() => useUIStore.getState().togglePanel('showLibrary')}
+        onExportSTEP={handleExportSTEP}
+        showRfqPanel={showRfqPanel}
+        setShowRfqPanel={setShowRfqPanel}
+        selectedId={selectedId}
+        materialId={materialId}
+        rfqVolumeCm3={effectiveResult ? meshVolume(effectiveResult.geometry) / 1000 : 0}
+        showSheetMetalPanel={showSheetMetalPanel}
+        setShowSheetMetalPanel={setShowSheetMetalPanel}
+        onSmBend={handleSmBend}
+        onSmFlange={handleSmFlange}
+        onSmFlatPattern={handleSmFlatPattern}
+      />
       {/* WebWorker Progress Bar Overlay */}
-      {pipelineWorkerLoading && (
-        <div style={{
-          position: 'absolute',
-          bottom: 20,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(22, 27, 34, 0.85)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid #30363d',
-          borderRadius: 8,
-          padding: '12px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 8,
-          zIndex: 9999,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          minWidth: 250,
-          animation: 'fade-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9' }}>
-              {pipelineProgressLabel || 'Calculating...'}
-            </span>
-            <span style={{ fontSize: 11, color: '#388bfd', fontWeight: 700 }}>
-              {pipelineProgress}%
-            </span>
-          </div>
-          <div style={{ width: '100%', height: 6, background: '#0d1117', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{
-              width: `${pipelineProgress}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #388bfd, #58a6ff)',
-              transition: 'width 0.1s linear',
-            }} />
-          </div>
-        </div>
-      )}
+      <PipelineProgressOverlay
+        loading={pipelineWorkerLoading}
+        progress={pipelineProgress}
+        label={pipelineProgressLabel}
+      />
 
       <style precedence="default" href="sg-page-1">{`
         @keyframes genSpin { to { transform: rotate(360deg); } }

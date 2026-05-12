@@ -157,8 +157,8 @@ function report(
   err: unknown,
   context?: Record<string, unknown>,
 ): void {
-  const message = err instanceof Error ? err.message : String(err);
-  const stack = err instanceof Error ? err.stack : undefined;
+  const message = scrubPii(err instanceof Error ? err.message : String(err));
+  const stack = err instanceof Error ? scrubPii(err.stack ?? '') : undefined;
   enqueue({
     id: nextId(),
     ts: Date.now(),
@@ -166,11 +166,54 @@ function report(
     source,
     message,
     stack,
-    context,
+    context: context ? scrubContext(context) : undefined,
     url: typeof window !== 'undefined' ? window.location.pathname : undefined,
     sessionId: SESSION_ID,
   });
 }
+
+// ─── PII scrubbing (Q9) ────────────────────────────────────────────────────
+//
+// Mirrors `lib/error-capture.ts` rules so client-side telemetry has the
+// same redaction guarantees as server-side. Cheap regex pass — runs on
+// every error path so it must stay O(n).
+const PII_SCRUB_KEYS = [
+  'authorization', 'cookie', 'token', 'password', 'secret',
+  'apikey', 'api_key', 'sessionid', 'session_id', 'jwt',
+  'email', 'phone',
+];
+
+function scrubPii(s: string): string {
+  if (!s) return s;
+  let out = s;
+  // JWT
+  out = out.replace(/\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[REDACTED_JWT]');
+  // Email
+  out = out.replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, '[REDACTED_EMAIL]');
+  // Bearer token
+  out = out.replace(/\bBearer\s+[A-Za-z0-9._-]{16,}/gi, 'Bearer [REDACTED]');
+  // Windows-style local path with username (C:\Users\foo\... → C:\Users\[USER]\...)
+  out = out.replace(/([A-Z]:\\Users\\)([^\\]+)/gi, '$1[USER]');
+  // Unix home path (/home/foo/... → /home/[USER]/...)
+  out = out.replace(/(\/(?:home|Users)\/)([^/\s]+)/g, '$1[USER]');
+  return out;
+}
+
+function scrubContext(ctx: Record<string, unknown>, depth = 0): Record<string, unknown> {
+  if (depth > 4) return { _truncated: true };
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(ctx)) {
+    const lk = k.toLowerCase();
+    if (PII_SCRUB_KEYS.some(s => lk.includes(s))) { out[k] = '[REDACTED]'; continue; }
+    if (typeof v === 'string') out[k] = scrubPii(v);
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      out[k] = scrubContext(v as Record<string, unknown>, depth + 1);
+    } else out[k] = v;
+  }
+  return out;
+}
+
+export const _testing = { scrubPii, scrubContext };
 
 function enqueue(ev: TelemetryEvent): void {
   if (shouldDedupe(ev)) return;

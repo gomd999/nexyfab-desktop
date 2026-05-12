@@ -64,10 +64,10 @@ export const threadInit: PluginInitFn = (ctx) => {
       helixGeo.computeVertexNormals();
       shaftGeo.computeVertexNormals();
 
-      const helixPos  = helixGeo.attributes.position.array as Float32Array;
-      const helixNorm = helixGeo.attributes.normal.array  as Float32Array;
-      const shaftPos  = shaftGeo.attributes.position.array as Float32Array;
-      const shaftNorm = shaftGeo.attributes.normal.array   as Float32Array;
+      const _helixPos  = helixGeo.attributes.position.array as Float32Array;
+      const _helixNorm = helixGeo.attributes.normal.array  as Float32Array;
+      const _shaftPos  = shaftGeo.attributes.position.array as Float32Array;
+      const _shaftNorm = shaftGeo.attributes.normal.array   as Float32Array;
 
       // Convert indexed geometries to non-indexed so positions are directly addressable
       const helixNI = helixGeo.index  ? helixGeo.toNonIndexed()  : helixGeo;

@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSceneStore } from './store/sceneStore';
-import { SHAPES } from './shapes';
+import { SHAPES, SHAPE_MAP, applySceneParamsToSetters } from './shapes';
 import { MATERIAL_PRESETS } from './materials';
 import { useFeatureStack } from './useFeatureStack';
 import type { FeatureType } from './features/types';
@@ -167,6 +167,7 @@ function buildExecutor(
   setSelectedId: (id: string) => void,
   setParams: (p: Record<string, number>) => void,
   setMaterialId: (id: string) => void,
+  setParamExpressions: (e: Record<string, string>) => void,
   addFeatureFn: (type: FeatureType, params: Record<string, number>) => void,
   logFn: (entry: LogEntry) => void,
   t: typeof dict.en,
@@ -180,8 +181,24 @@ function buildExecutor(
           return;
         }
         setSelectedId(id);
-        if (Object.keys(params).length > 0) setParams(params);
-        logFn({ type: 'info', msg: t.shapeApplied(id) });
+        const sd = SHAPE_MAP[id];
+        const keys = Object.keys(params);
+        if (keys.length > 0) {
+          const { unknownKeys } = applySceneParamsToSetters(sd, params, {
+            setParams,
+            setParamExpressions,
+          });
+          if (unknownKeys.length > 0) {
+            logFn({
+              type: 'info',
+              msg: `${t.shapeApplied(id)} — ignored: ${unknownKeys.slice(0, 8).join(', ')}${unknownKeys.length > 8 ? '…' : ''}`,
+            });
+          } else {
+            logFn({ type: 'info', msg: t.shapeApplied(id) });
+          }
+        } else {
+          logFn({ type: 'info', msg: t.shapeApplied(id) });
+        }
       },
       setMaterial(id: string) {
         const found = MATERIAL_PRESETS.find(m => m.id === id);
@@ -213,9 +230,10 @@ function buildExecutor(
         code,
       );
       fn(api.shape, api.setMaterial, api.addFeature, api.log);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Runtime error messages are shown verbatim (not translated)
-      logFn({ type: 'error', msg: t.execError(err?.message ?? String(err)) });
+      const msg = err instanceof Error ? err.message : String(err);
+      logFn({ type: 'error', msg: t.execError(msg) });
     }
   };
 }
@@ -237,6 +255,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
   const setSelectedId = useSceneStore(s => s.setSelectedId);
   const setParams = useSceneStore(s => s.setParams);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
+  const setParamExpressions = useSceneStore(s => s.setParamExpressions);
   const { addFeature } = useFeatureStack();
 
   const appendLog = useCallback((entry: LogEntry) => {
@@ -245,9 +264,9 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
 
   const handleRun = useCallback(() => {
     setLogs([]);
-    const executor = buildExecutor(setSelectedId, setParams, setMaterialId, addFeature, appendLog, t);
+    const executor = buildExecutor(setSelectedId, setParams, setMaterialId, setParamExpressions, addFeature, appendLog, t);
     executor(code);
-  }, [code, setSelectedId, setParams, setMaterialId, addFeature, appendLog, t]);
+  }, [code, setSelectedId, setParams, setMaterialId, setParamExpressions, addFeature, appendLog, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {

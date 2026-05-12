@@ -51,7 +51,9 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
+  useEffect(() => {
+    queueMicrotask(() => { void fetchNotifications(); });
+  }, [fetchNotifications]);
 
   // 30초 폴링
   useEffect(() => {

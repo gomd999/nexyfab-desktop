@@ -6,6 +6,14 @@ import type { FeatureType } from './features/types';
 import { FEATURE_DEFS, getFeatureDefinition, classifyFeatureError } from './features';
 import type { FeatureHistory, HistoryNode } from './useFeatureStack';
 import FeatureParams from './FeatureParams';
+import { useSceneStore } from './store/sceneStore';
+
+type FeatureTreeCtxMenuItem = {
+  label: string;
+  action: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+};
 
 // ─── i18n dict ────────────────────────────────────────────────────────────────
 // Keep feature type names ('Extrude', 'Fillet', 'Chamfer', etc.) in English — canonical.
@@ -40,6 +48,7 @@ const dict = {
     baseShape: '기본 형상',
     rollbackBeforeThis: '부모 단계까지만 활성 (이 피처 제외)',
     copyError: '오류 복사',
+    retryFeature: '재실행',
     treeFilterPlaceholder: '이름·타입 검색…',
     treeNoMatch: '일치하는 항목이 없습니다',
   },
@@ -73,6 +82,7 @@ const dict = {
     baseShape: 'Base shape',
     rollbackBeforeThis: 'Activate only up to parent (exclude this feature)',
     copyError: 'Copy error',
+    retryFeature: 'Retry',
     treeFilterPlaceholder: 'Filter by name or type…',
     treeNoMatch: 'No matching features',
   },
@@ -106,6 +116,7 @@ const dict = {
     baseShape: 'ベース形状',
     rollbackBeforeThis: '親まで有効化（このフィーチャーを除外）',
     copyError: 'エラーをコピー',
+    retryFeature: '再実行',
     treeFilterPlaceholder: '名前・タイプで検索…',
     treeNoMatch: '該当なし',
   },
@@ -139,6 +150,7 @@ const dict = {
     baseShape: '基础形状',
     rollbackBeforeThis: '仅启用到父步骤（排除此项）',
     copyError: '复制错误',
+    retryFeature: '重新执行',
     treeFilterPlaceholder: '按名称或类型筛选…',
     treeNoMatch: '无匹配项',
   },
@@ -172,6 +184,7 @@ const dict = {
     baseShape: 'Forma base',
     rollbackBeforeThis: 'Activar solo hasta el padre (excluir esta operación)',
     copyError: 'Copiar error',
+    retryFeature: 'Reintentar',
     treeFilterPlaceholder: 'Filtrar por nombre o tipo…',
     treeNoMatch: 'Sin coincidencias',
   },
@@ -205,6 +218,7 @@ const dict = {
     baseShape: 'الشكل الأساسي',
     rollbackBeforeThis: 'تفعيل حتى الأب فقط (استبعاد هذه العملية)',
     copyError: 'نسخ الخطأ',
+    retryFeature: 'إعادة التشغيل',
     treeFilterPlaceholder: 'تصفية بالاسم أو النوع…',
     treeNoMatch: 'لا توجد نتائج',
   },
@@ -215,6 +229,16 @@ function pickDiagnosticHint(diag: { hintKo: string; hintEn: string }, langKey: k
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
+
+/** Per-node peer selection markers — drives the "Bob is here" colored dot. */
+export interface PeerSelectionMarker {
+  /** Display name (or fallback). */
+  name: string;
+  /** Hex / hsl color used for the dot AND the row highlight. */
+  color: string;
+  /** True when peer is actively editing this node (✎), false = just viewing (👁). */
+  editing?: boolean;
+}
 
 interface FeatureTreeProps {
   history: FeatureHistory;
@@ -232,6 +256,8 @@ interface FeatureTreeProps {
   onSelectFeature?: (id: string) => void;
   /** When filtering, expand ancestor rows so matches stay visible. */
   onEnsureExpanded?: (nodeIds: string[]) => void;
+  /** Map node id → list of peers currently selecting / editing it. */
+  peerSelectionsById?: Record<string, PeerSelectionMarker[]>;
   t: Record<string, string>;
 }
 
@@ -279,6 +305,7 @@ export default function FeatureTree({
   onMoveFeature,
   onSelectFeature,
   onEnsureExpanded,
+  peerSelectionsById,
   t,
 }: FeatureTreeProps) {
   const pathname = usePathname();
@@ -291,6 +318,15 @@ export default function FeatureTree({
   const [showAddMenu, setShowAddMenu] = useState(false);
   // #wf11: disable Add Feature when any feature has an error
   const hasFeatureError = history.nodes.some(n => n.error && n.enabled);
+  // Cross-panel highlight (e.g. DFM warning click → highlight responsible
+  // feature). Auto-clears after 4 seconds so the glow doesn't persist forever.
+  const highlightedFeatureId = useSceneStore(s => s.highlightedFeatureId);
+  const setHighlightedFeatureId = useSceneStore(s => s.setHighlightedFeatureId);
+  useEffect(() => {
+    if (!highlightedFeatureId) return;
+    const t = setTimeout(() => setHighlightedFeatureId(null), 4000);
+    return () => clearTimeout(t);
+  }, [highlightedFeatureId, setHighlightedFeatureId]);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -375,8 +411,8 @@ export default function FeatureTree({
 
   // Close context menu on outside click
   const handleTreeClick = useCallback(() => {
-    if (contextMenu) setContextMenu(null);
-  }, [contextMenu]);
+    setContextMenu(c => (c ? null : c));
+  }, [setContextMenu]);
 
   // ── Context menu handler ──
 
@@ -384,7 +420,7 @@ export default function FeatureTree({
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, nodeId });
-  }, []);
+  }, [setContextMenu]);
 
   // ── Drag and drop ──
 
@@ -426,6 +462,9 @@ export default function FeatureTree({
     const hasChildren = node.children.length > 0;
     const suppressed = !isActive;
 
+    // Peers viewing/editing this node — drives colored dots on the row.
+    const peerMarkers = peerSelectionsById?.[node.id] ?? [];
+
     const def = node.featureType ? getFeatureDefinition(node.featureType) : null;
 
     // Node container style
@@ -438,13 +477,18 @@ export default function FeatureTree({
 
     // Row style — use longhand only (no `border` / `borderLeft` shorthand) so React
     // does not warn about mixing shorthand with borderLeftWidth/Style/Color.
-    const edgeColor = isEditing
-      ? C.borderEditing
-      : node.error
-        ? C.danger
-        : isDragTarget
-          ? C.accent
-          : 'transparent';
+    // Cross-panel highlight beats other states (drag/edit) since it's a
+    // transient attention cue triggered by another panel.
+    const isCrossHighlight = node.id === highlightedFeatureId;
+    const edgeColor = isCrossHighlight
+      ? C.danger
+      : isEditing
+        ? C.borderEditing
+        : node.error
+          ? C.danger
+          : isDragTarget
+            ? C.accent
+            : 'transparent';
     const rowStyle: React.CSSProperties = {
       display: 'flex',
       alignItems: 'center',
@@ -453,7 +497,7 @@ export default function FeatureTree({
       borderRadius: 6,
       cursor: 'pointer',
       position: 'relative',
-      transition: 'background 0.12s, opacity 0.12s',
+      transition: 'background 0.12s, opacity 0.12s, box-shadow 0.18s',
       background: node.error ? C.dangerBg : isEditing ? C.bgEditing : isActiveNode ? C.activeBg : isDragTarget ? C.bgNodeHover : C.bgNode,
       opacity: suppressed ? 0.35 : node.enabled ? 1 : 0.45,
       borderTopWidth: 1,
@@ -467,7 +511,8 @@ export default function FeatureTree({
       borderBottomColor: edgeColor,
       borderLeftWidth: 3,
       borderLeftStyle: 'solid',
-      borderLeftColor: node.error ? C.danger : isActiveNode ? C.active : isEditing ? C.borderEditing : 'transparent',
+      borderLeftColor: isCrossHighlight ? C.danger : node.error ? C.danger : isActiveNode ? C.active : isEditing ? C.borderEditing : 'transparent',
+      boxShadow: isCrossHighlight ? `0 0 0 2px ${C.danger}55` : undefined,
     };
 
     return (
@@ -566,6 +611,33 @@ export default function FeatureTree({
           }}>
             {node.type === 'baseShape' ? tt.baseShape : node.label}
           </span>
+
+          {/* Peer markers — colored dots showing other users selecting/editing this node. */}
+          {peerMarkers.length > 0 && (
+            <span
+              style={{ display: 'inline-flex', gap: 2, alignItems: 'center', flexShrink: 0 }}
+              title={peerMarkers.map(p => `${p.name}${p.editing ? ' (editing)' : ' (viewing)'}`).join(', ')}
+            >
+              {peerMarkers.slice(0, 4).map((p, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: p.editing ? 8 : 6,
+                    height: p.editing ? 8 : 6,
+                    borderRadius: '50%',
+                    background: p.color,
+                    border: p.editing ? '1.5px solid #fff' : 'none',
+                    boxShadow: p.editing ? `0 0 4px ${p.color}` : undefined,
+                  }}
+                />
+              ))}
+              {peerMarkers.length > 4 && (
+                <span style={{ fontSize: 9, color: C.textMuted, marginLeft: 2 }}>
+                  +{peerMarkers.length - 4}
+                </span>
+              )}
+            </span>
+          )}
 
           {/* Sketch plane badge */}
           {node.featureType === 'sketchExtrude' && node.sketchData && (
@@ -767,6 +839,25 @@ export default function FeatureTree({
                 💡 {pickDiagnosticHint(diag, (langMap[seg] ?? 'en') as keyof typeof dict)}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {/* Retry — toggle off→on to force pipeline re-run */}
+                {node.enabled && (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleEnabled(node.id);
+                      setTimeout(() => onToggleEnabled(node.id), 30);
+                      setExpandedErrorId(null);
+                    }}
+                    style={{
+                      padding: '4px 10px', borderRadius: 4, border: `1px solid #3fb950`,
+                      background: 'rgba(63,185,80,0.1)', color: '#3fb950',
+                      fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    ↺ {tt.retryFeature}
+                  </button>
+                )}
                 {!isRoot && node.parentId != null && (
                   <button
                     type="button"
@@ -1090,13 +1181,14 @@ export default function FeatureTree({
           {(() => {
             const ctxNode = nodes.find(n => n.id === contextMenu.nodeId);
             const isSketchNode = ctxNode?.type === 'sketch';
-            return [
+            const items: FeatureTreeCtxMenuItem[] = [
               ...(isSketchNode && onEditSketch ? [{ label: t.editingSketch || tt.editingSketch, action: () => { onEditSketch(contextMenu.nodeId); setContextMenu(null); }, disabled: false }] : []),
               { label: t.editFeature || tt.editFeature, action: () => { onStartEditing(contextMenu.nodeId); setContextMenu(null); }, disabled: contextMenu.nodeId === rootId || isSketchNode },
               { label: t.rollbackHere || tt.rollbackHere, action: () => { onRollbackTo(contextMenu.nodeId); setContextMenu(null); } },
               { label: t.suppressFeature || tt.suppressFeature, action: () => { onToggleEnabled(contextMenu.nodeId); setContextMenu(null); }, disabled: contextMenu.nodeId === rootId },
               { label: t.deleteFeature || tt.deleteFeature, action: () => { onRemoveNode(contextMenu.nodeId); setContextMenu(null); }, disabled: contextMenu.nodeId === rootId, danger: true },
             ];
+            return items;
           })().map((item, i) => (
             <button
               key={i}
@@ -1111,7 +1203,7 @@ export default function FeatureTree({
                 cursor: item.disabled ? 'default' : 'pointer',
                 fontSize: 12,
                 fontWeight: 500,
-                color: item.disabled ? C.textDim : (item as any).danger ? C.danger : C.text,
+                color: item.disabled ? C.textDim : item.danger ? C.danger : C.text,
                 textAlign: 'left',
                 opacity: item.disabled ? 0.4 : 1,
                 transition: 'background 0.1s',
@@ -1129,7 +1221,6 @@ export default function FeatureTree({
       {tooltip && (() => {
         const node = nodes.find(n => n.id === tooltip.nodeId);
         if (!node || Object.keys(node.params).length === 0) return null;
-        const def = node.featureType ? getFeatureDefinition(node.featureType) : null;
         return (
           <div
             onMouseEnter={() => { if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current); }}
@@ -1151,7 +1242,7 @@ export default function FeatureTree({
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>{node.icon}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#e6edf3' }}>
-                {(def as any)?.label ?? (node.type === 'baseShape' ? tt.baseShape : node.label) ?? node.id}
+                {(node.type === 'baseShape' ? tt.baseShape : node.label) ?? node.id}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

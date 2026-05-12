@@ -213,7 +213,7 @@ export default function DesignFunnelBar({
   lang, hasGeometry, dfmChecked, dfmClean, dfmIssueCount,
   rfqDone,
   onGoToDFM, onGoToQuote, onProcessRouter, onAISupplierMatch, onCostCopilot, onAIHistory, onOpenScad, onIdeaDesign,
-  selectionActive = false, onToggleSelection,
+  selectionActive: _selectionActive = false, onToggleSelection: _onToggleSelection,
   theme,
   sketchMode = false,
   statusGuide,

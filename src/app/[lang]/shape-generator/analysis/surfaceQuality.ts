@@ -31,7 +31,7 @@ export interface SurfaceQualityStats {
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
 /** Build adjacency: for every vertex, collect the face indices it belongs to */
-function buildVertexFaceAdjacency(
+function _buildVertexFaceAdjacency(
   index: THREE.BufferAttribute | null,
   posCount: number,
   faceCount: number,
@@ -49,7 +49,7 @@ function buildVertexFaceAdjacency(
 }
 
 /** Build adjacency: for every vertex, collect its 1-ring neighbor vertex indices */
-function buildVertexNeighbors(
+function _buildVertexNeighbors(
   index: THREE.BufferAttribute | null,
   posCount: number,
   faceCount: number,
@@ -67,7 +67,7 @@ function buildVertexNeighbors(
 }
 
 /** Compute face normals and cache them */
-function computeFaceNormals(
+function _computeFaceNormals(
   pos: THREE.BufferAttribute,
   index: THREE.BufferAttribute | null,
   faceCount: number,

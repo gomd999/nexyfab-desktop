@@ -70,6 +70,31 @@ export default function NexyfabPricingPage({ params }: { params: Promise<{ lang:
                 descKo: '"비용 20% 줄여줘" 같은 자연어로 설계·재료·공정 변경 제안을 받습니다.',
                 descEn: 'Ask "cut cost by 20%" in plain language — get design / material / process changes.',
               },
+              // L3 — surface new Z + Σ capabilities
+              {
+                icon: '⌖', accent: '#7ee787',
+                titleKo: 'PMI / MBD (Y14.41)', titleEn: 'PMI / MBD (Y14.41)',
+                descKo: 'GD&T 풀 스펙 + 데이텀 타겟 + 표면조도 + STEP AP242 export.',
+                descEn: 'Full GD&T + datum targets + surface finish + STEP AP242 export.',
+              },
+              {
+                icon: '📚', accent: '#79c0ff',
+                titleKo: '엔지니어링 카탈로그 RAG', titleEn: 'Engineering Catalog RAG',
+                descKo: '베어링·시일·재료·끼워맞춤·볼트 가이드를 LLM이 인용하여 적용.',
+                descEn: 'Bearings, seals, materials, fits, bolts — RAG-cited and applied.',
+              },
+              {
+                icon: '🧰', accent: '#f0b34c',
+                titleKo: '표준 라이브러리 (DIN/JIS/ASME)', titleEn: 'Standards Library (DIN/JIS/ASME)',
+                descKo: 'DIN 625 베어링, DIN 6885 키, ASME 패스너, 드릴 사이즈 lookup.',
+                descEn: 'DIN 625 bearings, DIN 6885 keys, ASME fasteners, drill size lookup.',
+              },
+              {
+                icon: '💨', accent: '#56d4dd',
+                titleKo: '시뮬레이션 6종 (Pro+)', titleEn: 'Simulation Suite (Pro+)',
+                descKo: 'CFD · MBD · 5축 CAM · 사출 충전 · 광학 · 열 — Pro 월 20회, Team 100회.',
+                descEn: 'CFD · MBD · 5-axis CAM · mold fill · optics · thermal — Pro 20/mo, Team 100/mo.',
+              },
             ].map((f) => (
               <div key={f.titleEn} style={{
                 background: '#161b22', border: `1px solid ${f.accent}33`,

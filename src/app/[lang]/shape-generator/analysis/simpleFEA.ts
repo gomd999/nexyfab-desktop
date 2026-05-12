@@ -43,7 +43,7 @@ export interface FEAOptions {
 
 const GRID_RES = 10; // 10x10x10 voxel grid
 
-interface VoxelGrid {
+interface _VoxelGrid {
   occupied: boolean[];
   stressValues: Float32Array;
   displacementValues: Float32Array;
@@ -95,7 +95,7 @@ function runBeamTheoryFallback(
   const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
   const pos = nonIndexed.attributes.position;
   const vertCount = pos.count;
-  const triCount = Math.floor(vertCount / 3);
+  const _triCount = Math.floor(vertCount / 3);
 
   // Compute bounding box
   geometry.computeBoundingBox();

@@ -1,17 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { richText } from '@/lib/richText';
 import type { homeDict } from './homeDict';
+import { useSwipe } from '@/hooks/useSwipe';
 
-export default function Home({ dict, langCode }: { dict: (typeof homeDict)['ko']; langCode: string }) {
+interface SiteStats {
+  factoryCount: string;
+  factoryQualifier: string;
+}
+
+export default function Home({ dict, langCode, siteStats }: {
+  dict: (typeof homeDict)[keyof typeof homeDict];
+  langCode: string;
+  siteStats?: SiteStats;
+}) {
   const router = useRouter();
   const validLangs = ['kr', 'en', 'ja', 'cn', 'es', 'ar'];
   const lang = validLangs.includes(langCode) ? langCode : 'en';
   const t = dict;
 const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
+  const FEAT_TABS: Array<'design' | 'analysis' | 'mfg'> = ['design', 'analysis', 'mfg'];
+  const featSwipe = useSwipe(useCallback((dir) => {
+    const idx = FEAT_TABS.indexOf(featTab);
+    if (dir === 'left' && idx < FEAT_TABS.length - 1) setFeatTab(FEAT_TABS[idx + 1]);
+    if (dir === 'right' && idx > 0) setFeatTab(FEAT_TABS[idx - 1]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featTab]));
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   React.useEffect(() => {
@@ -273,7 +290,10 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
           {/* Social Proof Badges */}
           <div className="reveal" style={{ display: 'flex', justifyContent: 'center', gap: '40px', flexWrap: 'wrap', marginBottom: '48px', paddingTop: '20px' }}>
             {[
-              { num: t.socialStat1, label: t.socialStat1Label },
+              // Prefer the admin-set factoryCount over the dict's hardcoded
+              // "300,000+" so the marketing number stays defensible — see
+              // memory: feedback_landing_no_mock.md.
+              { num: siteStats?.factoryCount ?? t.socialStat1, label: t.socialStat1Label },
               { num: t.socialStat2, label: t.socialStat2Label },
               { num: t.socialStat3, label: t.socialStat3Label },
             ].map((s, i) => (
@@ -350,8 +370,8 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
             ))}
           </div>
 
-          {/* Tab Content — 2 cards per tab */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }} className="reveal">
+          {/* Tab Content — 2 cards per tab; horizontal swipe cycles tabs on mobile */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }} className="reveal" {...featSwipe}>
             {featTab === 'design' && <>
               <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: '28px', marginBottom: '12px' }}>🧊</div>

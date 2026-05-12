@@ -9,7 +9,7 @@ const dict = {
         title: '개인정보 처리방침',
         desc1: 'Nexyfab는 이용자의 개인정보를 소중히 보호하며,',
         desc2: '관련 법령을 준수하여 안전하게 관리합니다.',
-        effective: '시행일: 2026년 1월 1일',
+        effective: '시행일: 2026년 5월 7일',
         toc: '목차',
         tocItems: [
             '수집하는 개인정보 항목',
@@ -56,7 +56,7 @@ const dict = {
         s4List: [
             '고객 → 매칭된 파트너 (프로젝트 진행 목적, 이용자 사전 동의)',
             '파트너 → 해당 프로젝트 고객 (협업 목적, 이용자 사전 동의)',
-            '결제 처리: Stripe Inc. (결제 처리 목적으로만, 카드 정보는 당사 미보유)',
+            '결제 처리: Stripe Inc. / Toss Payments / Airwallex (결제 처리 목적으로만, 카드 정보는 당사 미보유)',
             '이용자의 별도 동의가 있는 경우',
             '법령에 근거가 있는 경우 (수사기관 요청 등)',
         ],
@@ -64,8 +64,9 @@ const dict = {
         s5Title: '5. 개인정보 처리 위탁',
         s5Desc: '회사는 원활한 서비스 제공을 위하여 다음 업체에 개인정보 처리를 위탁합니다. 위탁계약 시 개인정보가 안전하게 관리되도록 감독합니다.',
         s5Table: [
-            { company: 'Stripe, Inc.', purpose: '결제 처리 및 청구', location: '미국' },
+            { company: 'Stripe, Inc.', purpose: '결제 처리 및 청구 (글로벌)', location: '미국' },
             { company: 'Toss Payments', purpose: '한국 내 결제 처리', location: '대한민국' },
+            { company: 'Airwallex (HK) Ltd.', purpose: '국가 기반 다중 통화 결제 처리 및 구독 관리', location: '홍콩 / 호주' },
             { company: 'Cloudflare, Inc.', purpose: '파일 스토리지(R2), CDN, DNS', location: '미국' },
             { company: 'Railway Corp.', purpose: '서비스 인프라 호스팅', location: '미국' },
         ],
@@ -95,7 +96,7 @@ const dict = {
         title: 'Privacy Policy',
         desc1: 'Nexyfab protects user\'s personal information and',
         desc2: 'manages it safely in compliance with relevant laws.',
-        effective: 'Effective Date: January 1, 2026',
+        effective: 'Effective Date: May 7, 2026',
         toc: 'Contents',
         tocItems: [
             'Personal Information Collected',
@@ -142,7 +143,7 @@ const dict = {
         s4List: [
             'Customer → Matched Partner (for project, with user consent)',
             'Partner → Relevant Customer (for collaboration, with user consent)',
-            'Payment processing: Stripe Inc. (payment purpose only; card data not retained by us)',
+            'Payment processing: Stripe Inc. / Toss Payments / Airwallex (payment purpose only; card data not retained by us)',
             'When the user separately consents',
             'When required by law (e.g. law enforcement)',
         ],
@@ -150,8 +151,9 @@ const dict = {
         s5Title: '5. Entrustment of Personal Information Processing',
         s5Desc: 'The Company entrusts personal information processing to the following vendors. We supervise to ensure data security per applicable law.',
         s5Table: [
-            { company: 'Stripe, Inc.', purpose: 'Payment processing & billing', location: 'United States' },
+            { company: 'Stripe, Inc.', purpose: 'Payment processing & billing (global)', location: 'United States' },
             { company: 'Toss Payments', purpose: 'Korea payment processing', location: 'South Korea' },
+            { company: 'Airwallex (HK) Ltd.', purpose: 'Multi-currency payment processing & subscription management', location: 'Hong Kong / Australia' },
             { company: 'Cloudflare, Inc.', purpose: 'File storage (R2), CDN, DNS', location: 'United States' },
             { company: 'Railway Corp.', purpose: 'Service infrastructure hosting', location: 'United States' },
         ],

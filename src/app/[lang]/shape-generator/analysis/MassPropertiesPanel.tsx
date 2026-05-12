@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { MassProperties } from './massProperties';
-import { MATERIAL_PRESETS, type MaterialPreset } from '../materials';
+import { MATERIAL_PRESETS, type MaterialPreset as _MaterialPreset } from '../materials';
 import type { UnitSystem } from '../units';
 import { convertToDisplay } from '../units';
 

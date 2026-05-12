@@ -8,12 +8,12 @@
 
 import type {
   IntakeSpec,
-  SizeClass,
-  QuantityTier,
-  BudgetPriority,
-  SpecialReq,
+  SizeClass as _SizeClass,
+  QuantityTier as _QuantityTier,
+  BudgetPriority as _BudgetPriority,
+  SpecialReq as _SpecialReq,
   Environment,
-  LoadType,
+  LoadType as _LoadType,
 } from '../intake/intakeSpec';
 import { sizeClassToDims, quantityTierToCount } from '../intake/intakeSpec';
 import { PARTS_CATALOG, type PartTemplate } from './parts';
@@ -127,7 +127,7 @@ export function scoreParts(spec: IntakeSpec): ScoredOption<PartTemplate>[] {
 export function scoreMethods(spec: IntakeSpec): ScoredOption<ManufacturingMethod>[] {
   const dims = spec.approxDimensions || sizeClassToDims(spec.sizeClass);
   const maxDim = Math.max(dims.w, dims.h, dims.d);
-  const qtyCount = quantityTierToCount(spec.quantity);
+  const _qtyCount = quantityTierToCount(spec.quantity);
 
   const results: ScoredOption<ManufacturingMethod>[] = METHODS.map((m) => {
     let score = 50;

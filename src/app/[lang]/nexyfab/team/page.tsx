@@ -189,7 +189,7 @@ function TeamDashboardInner({ params }: { params: Promise<{ lang: string }> }) {
     } finally { setLoadingTeams(false); }
   }, [token]);
 
-  useEffect(() => { if (user && token) fetchTeams(); }, [user, token]);
+  useEffect(() => { if (user && token) void fetchTeams(); }, [user, token, fetchTeams]);
 
   // ── Fetch members ─────────────────────────────────────────────────────────
 
@@ -255,7 +255,7 @@ function TeamDashboardInner({ params }: { params: Promise<{ lang: string }> }) {
       fetchActivity(selectedTeam.id),
       fetchTeamBoms(selectedTeam.id),
     ]).finally(() => setLoadingContent(false));
-  }, [selectedTeam?.id, token]);
+  }, [selectedTeam, token, fetchMembers, fetchTeamProjects, fetchActivity, fetchTeamBoms]);
 
   // ── Create team ─────────────────────────────────────────────────────────────
 

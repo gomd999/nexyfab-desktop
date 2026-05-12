@@ -27,6 +27,9 @@ import { moldToolsFeature } from './moldTools';
 import { weldmentFeature } from './weldment';
 import { nurbsSurfaceFeature } from './nurbsSurface';
 import { sketchFeature } from './sketch';
+import { helixFeature } from './helix';
+import { variableShellFeature } from './variableShell';
+import { ribFeature } from './rib';
 
 // ─── Registry ────────────────────────────────────────────────────────────────
 
@@ -56,6 +59,9 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   moldToolsFeature,
   weldmentFeature,
   nurbsSurfaceFeature,
+  helixFeature,
+  variableShellFeature,
+  ribFeature,
 ];
 
 export const FEATURE_MAP: Record<MapBackedFeatureType, FeatureDefinition> =

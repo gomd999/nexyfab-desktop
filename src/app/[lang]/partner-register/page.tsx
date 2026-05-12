@@ -213,9 +213,14 @@ export default function PartnerRegisterPage() {
     const form = e.currentTarget;
     try {
       // reCAPTCHA v3
-      const token = await new Promise<string>((resolve) => {
-        (window as any).grecaptcha.ready(() => {
-          (window as any).grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'submit' }).then(resolve);
+      const token = await new Promise<string>((resolve, reject) => {
+        const g = window.grecaptcha;
+        if (!g) {
+          reject(new Error('reCAPTCHA unavailable'));
+          return;
+        }
+        g.ready(() => {
+          void g.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'submit' }).then(resolve).catch(reject);
         });
       });
       formData.append('g-recaptcha-response', token);

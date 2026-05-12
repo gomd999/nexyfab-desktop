@@ -8,8 +8,10 @@ import CookieBanner from '@/components/CookieBanner';
 import ToastProvider from '@/components/ToastProvider';
 import NavigationProgress from '@/components/NavigationProgress';
 import PlanRefresher from '@/components/PlanRefresher';
+import UtmListener from '@/components/UtmListener';
 import NexyfabSessionHydrator from '@/components/nexyfab/NexyfabSessionHydrator';
 import ConsentScripts from '@/components/ConsentScripts';
+import { PaidBetaBanner } from '@/components/PaidBetaBanner';
 import Script from 'next/script';
 import { getAdminSettings } from '@/lib/adminSettings';
 
@@ -28,6 +30,17 @@ export async function generateMetadata(
     const { lang } = await params;
     return buildMetadata(lang, 'home');
 }
+
+// Mobile viewport meta — without this iOS Safari renders the page at 980px
+// CSS width which makes the entire site look like a desktop screenshot
+// shrunk into a phone. Round 32 mobile pass.
+export const viewport: import('next').Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    // Allow user pinch-zoom (a11y); we don't lock max-scale.
+    minimumScale: 1,
+    themeColor: '#0f172a',
+};
 
 export async function generateStaticParams() {
     return [{ lang: 'kr' }, { lang: 'en' }, { lang: 'ja' }, { lang: 'cn' }, { lang: 'es' }, { lang: 'ar' }];
@@ -69,10 +82,12 @@ export default async function LangLayout({
                 )}
                 <NavigationProgress />
                 <PlanRefresher />
+                <UtmListener />
                 <NexyfabSessionHydrator />
                 <ToastProvider>
                 <LangSetter />
                 <Header />
+                <PaidBetaBanner lang={validLang} />
                 <JsonLd lang={validLang} />
                 {children}
                 <Footer />

@@ -16,14 +16,10 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
   const inviteToken = searchParams.get('token') ?? '';
 
   type Status = 'idle' | 'joining' | 'success' | 'error' | 'expired' | 'invalid';
-  const [status, setStatus] = useState<Status>('idle');
-  const [teamId, setTeamId] = useState('');
+  const [status, setStatus] = useState<Status>(() => (inviteToken ? 'idle' : 'invalid'));
+  const [_teamId, setTeamId] = useState('');
   const [role, setRole] = useState('');
   const [showAuth, setShowAuth] = useState(false);
-
-  useEffect(() => {
-    if (!inviteToken) setStatus('invalid');
-  }, [inviteToken]);
 
   const handleJoin = useCallback(async () => {
     if (!token || !inviteToken) return;
@@ -58,7 +54,7 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
   // Auto-join once user is logged in
   useEffect(() => {
     if (user && token && inviteToken && status === 'idle') {
-      void handleJoin();
+      queueMicrotask(() => { void handleJoin(); });
     }
   }, [user, token, inviteToken, status, handleJoin]);
 

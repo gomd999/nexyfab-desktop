@@ -43,14 +43,16 @@ export default function DashboardPage() {
 
   // Load from local storage to simulate cloud projects
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('nexyfab_projects');
-      if (saved) {
-        setProjects(JSON.parse(saved));
+    queueMicrotask(() => {
+      try {
+        const saved = localStorage.getItem('nexyfab_projects');
+        if (saved) {
+          setProjects(JSON.parse(saved));
+        }
+      } catch (_e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
-    }
+    });
   }, []);
 
   const t = lang === 'ko' ? {

@@ -52,7 +52,9 @@ export default function PartnerNotificationBell({ session }: { session: string }
     } catch { /* silent */ }
   }, [session]);
 
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+  useEffect(() => {
+    queueMicrotask(() => { void fetchNotifications(); });
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const id = setInterval(fetchNotifications, 30_000);

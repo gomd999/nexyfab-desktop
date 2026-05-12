@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { DraftAnalysisResult, PullAxis } from './draftAnalysis';
 import { PULL_AXES } from './draftAnalysis';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
@@ -181,17 +182,27 @@ const dict: Record<Lang, {
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 interface DraftAnalysisPanelProps {
-  result: DraftAnalysisResult | null;
+  /**
+   * M4 — J5 migration: when omitted, the panel reads
+   * useAnalysisStore.draftResult directly. Existing callers can keep passing
+   * `result` for backward compatibility.
+   */
+  result?: DraftAnalysisResult | null;
   onAnalyze: (pullDirection: [number, number, number], minDraftDeg: number) => void;
   onClose: () => void;
   isKo: boolean;
 }
 
 export default function DraftAnalysisPanel({
-  result,
+  result: propResult,
   onAnalyze,
   onClose,
 }: DraftAnalysisPanelProps) {
+  // J5/M4 fallback — read from store when caller didn't pass.
+  // Aliased as `result` so the rest of the component body (which references
+  // `result` everywhere) keeps working unchanged.
+  const storeResult = useAnalysisStore(s => s.draftResult);
+  const result = propResult ?? storeResult;
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, Lang> = {

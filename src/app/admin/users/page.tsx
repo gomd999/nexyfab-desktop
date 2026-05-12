@@ -71,7 +71,7 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function daysSince(ts: number) {
+function _daysSince(ts: number) {
   return Math.floor((Date.now() - ts) / 86_400_000);
 }
 

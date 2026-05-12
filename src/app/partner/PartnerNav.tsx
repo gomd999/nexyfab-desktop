@@ -35,18 +35,20 @@ export default function PartnerNav() {
   const [info, setInfo] = useState<PartnerInfo>({ email: '', company: '' });
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('partnerInfo');
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<PartnerInfo>;
-        setInfo({
-          email: parsed.email ?? '',
-          company: parsed.company ?? '',
-        });
+    queueMicrotask(() => {
+      try {
+        const raw = localStorage.getItem('partnerInfo');
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<PartnerInfo>;
+          setInfo({
+            email: parsed.email ?? '',
+            company: parsed.company ?? '',
+          });
+        }
+      } catch {
+        // ignore parse errors
       }
-    } catch {
-      // ignore parse errors
-    }
+    });
   }, []);
 
   const logout = useCallback(() => {

@@ -9,6 +9,10 @@ interface DraftAnalysisOverlayProps {
   result: DraftAnalysisResult;
   /** Faces below this angle (deg) are considered "insufficient draft". */
   minDraftDeg: number;
+  /** Mold pull direction (unit vector). When set, renders an arrow + plane
+   *  indicator so the user can see at a glance which direction the mold
+   *  half opens — without it the red/amber/green colour-map is ambiguous. */
+  pullDirection?: [number, number, number];
 }
 
 const COLOR_UNDERCUT = new THREE.Color(0.97, 0.32, 0.29);  // red
@@ -20,6 +24,7 @@ export default function DraftAnalysisOverlay({
   geometry,
   result,
   minDraftDeg,
+  pullDirection,
 }: DraftAnalysisOverlayProps) {
   const coloredGeometry = useMemo(() => {
     const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry.clone();
@@ -55,16 +60,41 @@ export default function DraftAnalysisOverlay({
     return geo;
   }, [geometry, result, minDraftDeg]);
 
+  // Pull-direction indicator: an arrow above the part pointing along the
+  // mold-opening direction. Length scales with the part's bounding box so the
+  // arrow stays visible across part scales.
+  const pullArrowProps = useMemo(() => {
+    if (!pullDirection) return null;
+    geometry.computeBoundingBox();
+    const bb = geometry.boundingBox;
+    if (!bb) return null;
+    const size = bb.getSize(new THREE.Vector3());
+    const span = Math.max(size.x, size.y, size.z, 10);
+    const dir = new THREE.Vector3(pullDirection[0], pullDirection[1], pullDirection[2]).normalize();
+    // Anchor the arrow above the part along the pull axis so it doesn't clip
+    // through the geometry. Origin = bbox centre + 0.6×span along the dir.
+    const center = bb.getCenter(new THREE.Vector3());
+    const origin = center.clone().add(dir.clone().multiplyScalar(span * 0.6));
+    return { dir, origin, length: span * 0.5, color: 0xffd700 };
+  }, [geometry, pullDirection]);
+
   return (
-    <mesh geometry={coloredGeometry}>
-      <meshStandardMaterial
-        vertexColors
-        roughness={0.6}
-        metalness={0.05}
-        side={THREE.DoubleSide}
-        transparent
-        opacity={0.92}
-      />
-    </mesh>
+    <>
+      <mesh geometry={coloredGeometry}>
+        <meshStandardMaterial
+          vertexColors
+          roughness={0.6}
+          metalness={0.05}
+          side={THREE.DoubleSide}
+          transparent
+          opacity={0.92}
+        />
+      </mesh>
+      {pullArrowProps && (
+        <arrowHelper
+          args={[pullArrowProps.dir, pullArrowProps.origin, pullArrowProps.length, pullArrowProps.color, pullArrowProps.length * 0.2, pullArrowProps.length * 0.12]}
+        />
+      )}
+    </>
   );
 }

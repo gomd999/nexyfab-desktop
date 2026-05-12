@@ -404,6 +404,9 @@ export default function PartnerDashboardPage() {
   const [quoteTarget, setQuoteTarget] = useState<DashboardData['pendingRfqs'][0] | null>(null);
   const [progressTarget, setProgressTarget] = useState<DashboardData['activeContracts'][0] | null>(null);
   const [milestoneTarget, setMilestoneTarget] = useState<DashboardData['activeContracts'][0] | null>(null);
+  const [trustDims, setTrustDims] = useState<
+    { id: string; labelKo: string; displayKo: string; sampleSize: number }[] | null
+  >(null);
 
   const loadDashboard = useCallback(async (sess: string) => {
     if (sess === 'demo') { setData(DEMO_DATA); setLoading(false); return; }
@@ -443,6 +446,24 @@ export default function PartnerDashboardPage() {
       setSettlementsLoading(false);
     }
   }, [session]);
+
+  useEffect(() => {
+    if (!data?.partner.email) return;
+    let cancelled = false;
+    setTrustDims(null);
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/nexyfab/partner-trust-aggregates?email=${encodeURIComponent(data.partner.email)}&windowDays=90`,
+        );
+        const j = (await res.json()) as { dimensions?: { id: string; labelKo: string; displayKo: string; sampleSize: number }[] };
+        if (!cancelled) setTrustDims(Array.isArray(j.dimensions) ? j.dimensions : []);
+      } catch {
+        if (!cancelled) setTrustDims([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [data?.partner.email]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   if (loading || !data) {
@@ -496,6 +517,29 @@ export default function PartnerDashboardPage() {
                 <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
               </div>
             ))}
+          </div>
+
+          {/* Phase 7-5 — 차원별 신뢰 (no single credit score) */}
+          <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+            <p className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">차원별 신뢰 지표 (Phase 7-5)</p>
+            {trustDims === null ? (
+              <p className="text-xs text-indigo-700/80">불러오는 중...</p>
+            ) : (
+              <ul className="space-y-2">
+                {trustDims.map(d => (
+                  <li key={d.id} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 text-sm">
+                    <span className="font-semibold text-indigo-950 shrink-0 w-32">{d.labelKo}</span>
+                    <span className="text-indigo-900 flex-1">{d.displayKo}</span>
+                    {d.sampleSize > 0 && (
+                      <span className="text-[11px] text-indigo-600/90 shrink-0">n={d.sampleSize}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-[10px] text-indigo-800/70 mt-2 leading-relaxed">
+              단일 신용점수로 요약하지 않습니다. 납기·품질·응답·소통·공정 적합도는 각각 독립적으로 개선할 수 있습니다.
+            </p>
           </div>
 
           {/* Urgent deadline alerts */}

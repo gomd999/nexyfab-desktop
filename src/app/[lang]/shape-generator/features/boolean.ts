@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
+import { reportWarning } from '../lib/telemetry';
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 
@@ -259,8 +260,13 @@ export const booleanFeature: FeatureDefinition = {
         if (err instanceof OcctNotReadyError) {
           // Shouldn't happen — we just checked isOcctReady. But be defensive.
         }
-         
-        console.warn('[boolean] OCCT path failed, falling back to three-bvh-csg:', err);
+        // Report as warning (not error) since the legacy fallback path keeps
+        // the user productive. Telemetry lets us track OCCT regression rates.
+        reportWarning('csg', err, {
+          phase: 'occt_to_legacy_fallback',
+          op: type,
+          toolShape: Math.round(params.toolShape),
+        });
         // Fall through to legacy path.
       }
     }

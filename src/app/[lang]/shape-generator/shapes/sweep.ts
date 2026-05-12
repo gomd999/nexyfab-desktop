@@ -7,7 +7,7 @@ import { type ShapeConfig, type ShapeResult, makeEdges, meshVolume, meshSurfaceA
  * (helix, sine wave, or arc).
  */
 
-function makeCircleShape(radius: number): THREE.Shape {
+function _makeCircleShape(radius: number): THREE.Shape {
   const shape = new THREE.Shape();
   const segments = 24;
   for (let i = 0; i <= segments; i++) {

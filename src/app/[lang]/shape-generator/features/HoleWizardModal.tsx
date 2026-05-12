@@ -4,10 +4,13 @@ import { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   HOLE_STANDARD_SERIES,
+  HOLE_DEPTH_PRESETS,
   holeParamsFromStandard,
+  depthFromPreset,
   type HoleStandardSeries,
   type HoleStandardSpec,
   type HoleKind,
+  type HoleDepthPreset,
 } from './holeStandards';
 
 interface Props {
@@ -37,9 +40,15 @@ const dict = {
     kindThrough: '관통 (Clearance)',
     kindTap: 'Tap (Threaded)',
     kindCounterbore: 'Counterbore',
+    kindSpotface: 'Spotface',
     kindCountersink: 'Countersink',
     depth: '깊이',
     throughAllNote: '깊이 999 = 관통 (bounding box 전체)',
+    depthPreset: '빠른 깊이',
+    depthThroughAll: '관통',
+    depth1xD: '1×D',
+    depth1_5xD: '1.5×D',
+    depth2xD: '2×D',
     resolved: '적용될 치수',
     holeDia: 'Hole 지름',
     cboreDia: 'Counterbore Ø',
@@ -59,9 +68,15 @@ const dict = {
     kindThrough: 'Through (Clearance)',
     kindTap: 'Tap (Threaded)',
     kindCounterbore: 'Counterbore',
+    kindSpotface: 'Spotface',
     kindCountersink: 'Countersink',
     depth: 'Depth',
     throughAllNote: 'Depth 999 = through-all (full bounding box)',
+    depthPreset: 'Quick depth',
+    depthThroughAll: 'Through-all',
+    depth1xD: '1×D',
+    depth1_5xD: '1.5×D',
+    depth2xD: '2×D',
     resolved: 'Resolved Dimensions',
     holeDia: 'Hole diameter',
     cboreDia: 'Counterbore Ø',
@@ -81,9 +96,15 @@ const dict = {
     kindThrough: '貫通 (Clearance)',
     kindTap: 'Tap (Threaded)',
     kindCounterbore: 'Counterbore',
+    kindSpotface: 'Spotface',
     kindCountersink: 'Countersink',
     depth: '深さ',
     throughAllNote: '深さ 999 = 貫通 (bounding box 全体)',
+    depthPreset: 'クイック深さ',
+    depthThroughAll: '貫通',
+    depth1xD: '1×D',
+    depth1_5xD: '1.5×D',
+    depth2xD: '2×D',
     resolved: '適用される寸法',
     holeDia: 'Hole 直径',
     cboreDia: 'Counterbore Ø',
@@ -103,9 +124,15 @@ const dict = {
     kindThrough: '通孔 (Clearance)',
     kindTap: 'Tap (Threaded)',
     kindCounterbore: 'Counterbore',
+    kindSpotface: 'Spotface',
     kindCountersink: 'Countersink',
     depth: '深度',
     throughAllNote: '深度 999 = 通孔 (完整 bounding box)',
+    depthPreset: '快速深度',
+    depthThroughAll: '通孔',
+    depth1xD: '1×D',
+    depth1_5xD: '1.5×D',
+    depth2xD: '2×D',
     resolved: '应用的尺寸',
     holeDia: 'Hole 直径',
     cboreDia: 'Counterbore Ø',
@@ -125,9 +152,15 @@ const dict = {
     kindThrough: 'Pasante (Clearance)',
     kindTap: 'Tap (Threaded)',
     kindCounterbore: 'Counterbore',
+    kindSpotface: 'Spotface',
     kindCountersink: 'Countersink',
     depth: 'Profundidad',
     throughAllNote: 'Profundidad 999 = pasante total (bounding box completo)',
+    depthPreset: 'Profundidad rápida',
+    depthThroughAll: 'Pasante',
+    depth1xD: '1×D',
+    depth1_5xD: '1.5×D',
+    depth2xD: '2×D',
     resolved: 'Dimensiones Resueltas',
     holeDia: 'Diámetro del Hole',
     cboreDia: 'Counterbore Ø',
@@ -147,9 +180,15 @@ const dict = {
     kindThrough: 'نافذ (Clearance)',
     kindTap: 'Tap (Threaded)',
     kindCounterbore: 'Counterbore',
+    kindSpotface: 'Spotface',
     kindCountersink: 'Countersink',
     depth: 'العمق',
     throughAllNote: 'العمق 999 = نافذ كامل (bounding box كامل)',
+    depthPreset: 'عمق سريع',
+    depthThroughAll: 'نافذ',
+    depth1xD: '1×D',
+    depth1_5xD: '1.5×D',
+    depth2xD: '2×D',
     resolved: 'الأبعاد المطبقة',
     holeDia: 'قطر Hole',
     cboreDia: 'Counterbore Ø',
@@ -196,7 +235,15 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
     through: t.kindThrough,
     tap: t.kindTap,
     counterbore: t.kindCounterbore,
+    spotface: t.kindSpotface,
     countersink: t.kindCountersink,
+  };
+
+  const depthLabels: Record<HoleDepthPreset['labelKey'], string> = {
+    depthThroughAll: t.depthThroughAll,
+    depth1xD: t.depth1xD,
+    depth1_5xD: t.depth1_5xD,
+    depth2xD: t.depth2xD,
   };
 
   return (
@@ -279,8 +326,8 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
           <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>
             {t.holeType}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
-            {(['through', 'tap', 'counterbore', 'countersink'] as HoleKind[]).map(k => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+            {(['through', 'tap', 'counterbore', 'spotface', 'countersink'] as HoleKind[]).map(k => (
               <button
                 key={k}
                 onClick={() => setKind(k)}
@@ -321,9 +368,37 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
             />
           </label>
         </div>
-        <div style={{ fontSize: 11, color: '#6b7280', marginTop: -6, marginBottom: 10 }}>
+        <div style={{ fontSize: 11, color: '#6b7280', marginTop: -6, marginBottom: 6 }}>
           {t.throughAllNote}
         </div>
+
+        {/* Depth preset chips — engineers commonly drill blind holes at 1×D /
+            1.5×D / 2×D rather than typing arbitrary numbers. */}
+        {preview && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>{t.depthPreset}</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {HOLE_DEPTH_PRESETS.map(p => {
+                const value = depthFromPreset(p, preview.diameter);
+                const active = value === depth;
+                return (
+                  <button
+                    key={p.labelKey}
+                    onClick={() => setDepth(value)}
+                    style={{
+                      flex: 1, padding: '5px 6px',
+                      background: active ? '#0ea5e9' : '#374151',
+                      color: '#f3f4f6', border: 'none', borderRadius: 4,
+                      cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                    }}
+                  >
+                    {depthLabels[p.labelKey]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Preview */}
         {spec && preview && (

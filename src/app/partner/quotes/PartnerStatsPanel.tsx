@@ -60,7 +60,7 @@ function ProcessBar({ process, count, max }: { process: string; count: number; m
   );
 }
 
-function MonthRow({ month, total, accepted, avgAmount }: { month: string; total: number; accepted: number; avgAmount: number }) {
+function MonthRow({ month, total, accepted, avgAmount: _avgAmount }: { month: string; total: number; accepted: number; avgAmount: number }) {
   const rate = total > 0 ? Math.round((accepted / total) * 100) : 0;
   const color = rate >= 60 ? C.green : rate >= 30 ? C.yellow : C.red;
   return (

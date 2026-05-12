@@ -1,13 +1,7 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { WorkspaceLoading } from './WorkspaceLoading';
-
-const ShapeGeneratorApp = dynamic(() => import('./ShapeGeneratorApp'), {
-  ssr: false,
-  loading: () => <WorkspaceLoading variant="page" />,
-});
+import ShapeGeneratorClientPage from './ShapeGeneratorClientPage';
 
 export default function ShapeGeneratorPage() {
-  return <ShapeGeneratorApp />;
+  return <ShapeGeneratorClientPage />;
 }

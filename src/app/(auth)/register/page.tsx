@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { authBaseUrl } from '@/lib/auth-base-url';
 
-const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:4000';
+const AUTH_BASE = authBaseUrl();
 
 type Lang = 'en' | 'ko' | 'ja' | 'zh' | 'es' | 'ar';
 

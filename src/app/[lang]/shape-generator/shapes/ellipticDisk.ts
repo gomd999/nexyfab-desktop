@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type ShapeConfig, type ShapeResult, makeEdges, meshVolume, meshSurfaceArea } from './index';
+import { type ShapeConfig, type ShapeResult, makeEdges, meshVolume as _meshVolume, meshSurfaceArea as _meshSurfaceArea } from './index';
 
 export const ellipticDiskShape: ShapeConfig = {
   id: 'ellipticDisk',

@@ -33,7 +33,7 @@ const EMPTY_ENTRY = (): InputEntry => ({
   actualCost: null,
 });
 
-function won(n: number | null | undefined): string {
+function _won(n: number | null | undefined): string {
   if (n == null || n === 0) return '—';
   return n.toLocaleString('ko-KR') + '원';
 }

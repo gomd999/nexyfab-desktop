@@ -19,6 +19,7 @@ import {
 } from '../io/nfabFormat';
 import { usePdmProjectMetaStore } from '../store/pdmProjectMetaStore';
 import { useCloudProjectAccessStore } from '../store/cloudProjectAccessStore';
+import { SHAPE_MAP, computeSceneParamApply } from '../shapes';
 import { useProjectsStore } from '@/hooks/useProjects';
 import type { FeatureHistory, HistoryNode } from '../useFeatureStack';
 import type { Toast } from '../useToast';
@@ -197,7 +198,31 @@ export function useNfabFileIO(deps: Deps) {
       return;
     }
     if (!useAuthStore.getState().user) {
-      addToast('warning', lang === 'ko' ? '클라우드 저장은 로그인이 필요합니다' : 'Cloud save requires login');
+      // Demo→signed-in flow: stash the in-flight save and pop the auth modal
+      // via a custom event so the user gets one-click signup → resume.
+      // The existing Round 23 pending-intent listener flushes the save once
+      // authUser?.id is set after signup completes.
+      if (typeof window !== 'undefined') {
+        const sceneSnapshot = useSceneStore.getState();
+        void import('@/lib/pending-intents').then(({ stashPendingIntent }) => {
+          stashPendingIntent({
+            kind: 'cloud_save_project',
+            shapeId: sceneSnapshot.selectedId ?? null,
+            materialId: sceneSnapshot.materialId ?? null,
+            sceneData: null,  // useCloudSaveFlow rebuilds from current state on resume
+            stashedAt: Date.now(),
+          });
+        }).catch(() => { /* ignore — fallback toast still fires */ });
+        window.dispatchEvent(new CustomEvent('nexyfab:request-signup', {
+          detail: { source: 'cloud-save' },
+        }));
+      }
+      addToast(
+        'info',
+        lang === 'ko'
+          ? '저장하려면 가입이 필요합니다 — 가입하시면 작업이 자동으로 저장됩니다'
+          : 'Sign up to save — your work will be saved automatically',
+      );
       return;
     }
     const input = buildSerializeInput();
@@ -322,10 +347,22 @@ export function useNfabFileIO(deps: Deps) {
   /** Apply parsed .nfab payload — shared by disk open, recent file, and dashboard cloud open */
   const applyLoadedNfabProject = useCallback(
     (project: NfabProjectV1) => {
+      const sid = project.scene.selectedId;
+      const rawParams = (project.scene.params ?? {}) as Record<string, number>;
+      const sd = SHAPE_MAP[sid];
+      let nextParams = rawParams;
+      let nextExpr: Record<string, string> = { ...(project.scene.paramExpressions ?? {}) };
+      if (sd) {
+        const applied = computeSceneParamApply(sd, rawParams, {
+          mergeExpressionsFrom: project.scene.paramExpressions ?? {},
+        });
+        nextParams = applied.params;
+        nextExpr = applied.paramExpressions;
+      }
       useSceneStore.setState({
-        selectedId: project.scene.selectedId,
-        params: project.scene.params,
-        paramExpressions: project.scene.paramExpressions,
+        selectedId: sid,
+        params: nextParams,
+        paramExpressions: nextExpr,
         materialId: project.scene.materialId,
         color: project.scene.color,
         isSketchMode: project.scene.isSketchMode,

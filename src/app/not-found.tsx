@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const i18n: Record<string, { title: string; desc: string; home: string; inquiry: string }> = {
   ko: { title: '페이지를 찾을 수 없습니다', desc: '요청하신 페이지가 존재하지 않거나 이동되었습니다.', home: '홈으로 이동', inquiry: '프로젝트 문의' },
@@ -26,11 +26,7 @@ function detectLang(): { lang: string; code: string } {
 }
 
 export default function NotFound() {
-  const [{ lang, code }, setDetected] = useState({ lang: 'en', code: 'en' });
-
-  useEffect(() => {
-    setDetected(detectLang());
-  }, []);
+  const [{ lang, code }] = useState(() => detectLang());
 
   const t = i18n[lang] || i18n.en;
 

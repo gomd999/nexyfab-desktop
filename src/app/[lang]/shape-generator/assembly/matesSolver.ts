@@ -413,7 +413,7 @@ function applySliderConstraint(bodies: AssemblyBody[], mate: Mate): number {
  * Gear: Enforces a rotation ratio between two axes.
  * This is a kinematic constraint coupling two 1-DOF motions.
  */
-function applyGearConstraint(bodies: AssemblyBody[], mate: Mate): number {
+function applyGearConstraint(_bodies: AssemblyBody[], _mate: Mate): number {
   // Note: Gear constraints require tracking absolute rotation history over iterations.
   // In a static GS solver, we approximate by enforcing relative angular displacement.
   // We'll leave the residual as 0 for this simplified static pass unless we add dynamic step integration.

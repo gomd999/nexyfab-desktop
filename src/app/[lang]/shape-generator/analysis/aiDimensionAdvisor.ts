@@ -32,7 +32,7 @@ export interface AdviceResult {
 
 // ── Rule-based material recommendation ───────────────────────────────────────
 
-const MATERIAL_LABELS: Record<string, string> = {
+const _MATERIAL_LABELS: Record<string, string> = {
   aluminum: 'Aluminum (Al6061)',
   steel: 'Carbon Steel (S45C)',
   stainless: 'Stainless Steel (SUS304)',

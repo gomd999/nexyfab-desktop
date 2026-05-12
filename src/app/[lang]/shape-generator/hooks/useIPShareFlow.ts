@@ -12,7 +12,7 @@ export function useIPShareFlow(
   effectiveResult: ShapeResult | null,
   authUser: AuthUser | null,
   lang: string,
-  addToast: AddToast,
+  _addToast: AddToast,
 ) {
   const {
     createShareLink,

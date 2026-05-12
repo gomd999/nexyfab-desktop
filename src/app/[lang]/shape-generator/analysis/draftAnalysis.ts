@@ -42,6 +42,9 @@ export interface DraftAnalysisResult {
   minAngle: number;
   /** Maximum draft angle (deg). */
   maxAngle: number;
+  /** Echo of the input options — lets the overlay render a pull-direction
+   *  arrow without the caller needing to thread the same axis through twice. */
+  options: DraftAnalysisOptions;
 }
 
 // ─── Axis helpers ────────────────────────────────────────────────────────────
@@ -134,5 +137,6 @@ export function analyzeDraft(
     },
     minAngle: isFinite(minAngle) ? minAngle : 0,
     maxAngle: isFinite(maxAngle) ? maxAngle : 0,
+    options,
   };
 }

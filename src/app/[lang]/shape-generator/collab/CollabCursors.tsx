@@ -2,13 +2,14 @@
 
 import { useMemo } from 'react';
 import { Html } from '@react-three/drei';
-import * as THREE from 'three';
+import { useNowMs } from './useNowMs';
+import * as _THREE from 'three';
 import type { CollabUser } from './CollabTypes';
 
 // ─── Cursor mesh for a single remote user ────────────────────────────────────
 
-function UserCursor({ user }: { user: CollabUser }) {
-  const stale = Date.now() - user.lastSeen > 10_000;
+function UserCursor({ user, now }: { user: CollabUser; now: number }) {
+  const stale = now - user.lastSeen > 10_000;
   const opacity = stale ? 0.25 : 1;
 
   const pos = user.cursor;
@@ -61,6 +62,7 @@ function UserCursor({ user }: { user: CollabUser }) {
 // ─── CollabCursors: renders all remote users' 3D cursors ─────────────────────
 
 export default function CollabCursors({ users }: { users: CollabUser[] }) {
+  const now = useNowMs(500);
   const remoteUsers = useMemo(
     () => users.filter(u => u.cursor),
     [users],
@@ -71,7 +73,7 @@ export default function CollabCursors({ users }: { users: CollabUser[] }) {
   return (
     <group>
       {remoteUsers.map(u => (
-        <UserCursor key={u.id} user={u} />
+        <UserCursor key={u.id} user={u} now={now} />
       ))}
     </group>
   );

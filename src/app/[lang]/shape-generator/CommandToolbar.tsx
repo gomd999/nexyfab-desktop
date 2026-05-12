@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSceneStore } from './store/sceneStore';
+import { useSceneStore as _useSceneStore } from './store/sceneStore';
 import { getRecentImportFiles } from '@/lib/platform';
 import { usePathname } from 'next/navigation';
 import type { FeatureType } from './features/types';
@@ -189,6 +189,7 @@ const dict = {
     export3MF: '3MF 내보내기 (3D 프린터)',
     exportingSTEP: 'STEP 변환 중...',
     exportSTEP: 'STEP 내보내기',
+    exportSTEPUnsupportedTip: '이 형상은 STEP으로 내보내면 외부 CAD 뷰어에서 깨질 수 있습니다. STL 또는 GLB를 사용하세요.',
     exportingGLTF: 'GLTF 변환 중...',
     exportGLTFLabel: 'GLTF (GLB) 내보내기',
     exportSceneGLB: '씬 GLB 내보내기',
@@ -412,6 +413,7 @@ const dict = {
     export3MF: 'Export 3MF (3D print)',
     exportingSTEP: 'Exporting STEP...',
     exportSTEP: 'Export STEP',
+    exportSTEPUnsupportedTip: 'This shape may not re-open in third-party CAD viewers as STEP. Use STL or GLB instead.',
     exportingGLTF: 'Exporting GLTF...',
     exportGLTFLabel: 'Export GLTF (GLB)',
     exportSceneGLB: 'Export Scene GLB',
@@ -635,6 +637,7 @@ const dict = {
     export3MF: '3MF エクスポート (3D プリンタ)',
     exportingSTEP: 'STEP 変換中...',
     exportSTEP: 'STEP エクスポート',
+    exportSTEPUnsupportedTip: 'この形状はSTEPで書き出すと外部CADビューアで開けない場合があります。STLまたはGLBを使用してください。',
     exportingGLTF: 'GLTF 変換中...',
     exportGLTFLabel: 'GLTF (GLB) エクスポート',
     exportSceneGLB: 'シーン GLB エクスポート',
@@ -858,6 +861,7 @@ const dict = {
     export3MF: '导出 3MF (3D 打印)',
     exportingSTEP: 'STEP 转换中...',
     exportSTEP: '导出 STEP',
+    exportSTEPUnsupportedTip: '此形状导出 STEP 后可能无法在第三方 CAD 查看器中正确打开。请使用 STL 或 GLB。',
     exportingGLTF: 'GLTF 转换中...',
     exportGLTFLabel: '导出 GLTF (GLB)',
     exportSceneGLB: '导出场景 GLB',
@@ -1081,6 +1085,7 @@ const dict = {
     export3MF: 'Exportar 3MF (impresión 3D)',
     exportingSTEP: 'Exportando STEP...',
     exportSTEP: 'Exportar STEP',
+    exportSTEPUnsupportedTip: 'Esta forma puede no abrirse correctamente en visores CAD de terceros como STEP. Use STL o GLB.',
     exportingGLTF: 'Exportando GLTF...',
     exportGLTFLabel: 'Exportar GLTF (GLB)',
     exportSceneGLB: 'Exportar escena GLB',
@@ -1304,6 +1309,7 @@ const dict = {
     export3MF: 'تصدير 3MF (طباعة 3D)',
     exportingSTEP: 'جاري تصدير STEP...',
     exportSTEP: 'تصدير STEP',
+    exportSTEPUnsupportedTip: 'قد لا يفتح هذا الشكل بشكل صحيح في عارضات CAD الخارجية كملف STEP. استخدم STL أو GLB بدلاً منه.',
     exportingGLTF: 'جاري تصدير GLTF...',
     exportGLTFLabel: 'تصدير GLTF (GLB)',
     exportSceneGLB: 'تصدير المشهد GLB',
@@ -1435,6 +1441,13 @@ interface CommandToolbarProps {
   onExportPLY?: () => void;
   onExport3MF?: () => void;
   onExportSTEP?: () => void;
+  /**
+   * R2 — when false, the STEP export button is greyed out with a tooltip.
+   * Set by `canExportStepCleanly(effectiveResult.geometry)` to prevent
+   * customers from exporting tessellated AP242 files that won't re-import
+   * cleanly into third-party CAD viewers.
+   */
+  stepExportSupported?: boolean;
   onExportGLTF?: () => void;
   onExportDXF?: () => void;
   onExportFlatPatternDXF?: () => void;
@@ -1512,7 +1525,7 @@ const C_DARK = {
   dropBg: '#21262d',
 };
 
-const C_LIGHT_RIBBON = {
+const _C_LIGHT_RIBBON = {
   bg: '#f6f8fa',
   tabBar: '#ffffff',
   border: '#d0d7de',
@@ -1562,8 +1575,8 @@ const S = {
     flexWrap: 'wrap' as const,
     alignItems: 'flex-start',
     alignContent: 'flex-start',
-    gap: '4px 2px',
-    rowGap: 4,
+    gap: '6px 4px',
+    rowGap: 6,
     padding: '6px 6px 4px',
     background: C_DARK.bg,
     overflowX: 'visible' as const,
@@ -1639,16 +1652,31 @@ function ToolButton({ tool, openSub, onOpenSub, onClose }: {
       <button
         data-tour={tool.dataTour}
         style={btnStyle}
-        onClick={() => { if (tool.disabled) return; hasSub ? handleOpen() : (tool.action(), onClose()); }}
-        onMouseEnter={e => { if (!tool.active && !tool.disabled) (e.currentTarget.style.background = tcx.hover); }}
-        onMouseLeave={e => { if (!tool.active) (e.currentTarget.style.background = 'transparent'); }}
+        onClick={() => {
+          if (tool.disabled) return;
+          if (hasSub) handleOpen();
+          else {
+            tool.action();
+            onClose();
+          }
+        }}
+        onMouseEnter={e => {
+          if (!tool.active && !tool.disabled) {
+            e.currentTarget.style.background = tcx.hover;
+          }
+        }}
+        onMouseLeave={e => {
+          if (!tool.active) {
+            e.currentTarget.style.background = 'transparent';
+          }
+        }}
         title={tool.title ?? tool.label}
       >
         <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
           <span style={S.toolIcon}>{tool.icon}</span>
           {tool.badge != null && tool.badge > 0 && (
             <span style={{
-              position: 'absolute', top: -5, right: -7,
+              position: 'absolute', top: -1, right: -2,
               minWidth: 14, height: 14, borderRadius: 7,
               background: '#f85149', color: '#fff',
               fontSize: 9, fontWeight: 800, lineHeight: '14px',
@@ -1731,7 +1759,7 @@ function RibbonGrouped({
             paddingRight: 4,
           }}
         >
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 2 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 5 }}>
             {tools.map((tool) => (
               <ToolButton key={tool.id} tool={tool} openSub={openSub} onOpenSub={toggleSub} onClose={closeSub} />
             ))}
@@ -1759,18 +1787,19 @@ function RibbonGrouped({
 
 export default function CommandToolbar(props: CommandToolbarProps) {
   const {
-    activeTab, isSketchMode, editMode, hasResult,
-    onSketchMode, onEditMode, onAddFeature,
+    activeTab, isSketchMode, editMode: _editMode, hasResult,
+    onSketchMode, onEditMode: _onEditMode, onAddFeature,
     onSendToOptimizer, onExportSTL, onToggleChat, onUndo,
     showChat, isOptimizing, onGenerate, canGenerate, resultMesh,
     measureActive, onToggleMeasure, measureMode, onSetMeasureMode, sectionActive, onToggleSection,
     onTogglePlanes, showPlanes,
     onImportFile, onSketchInsertReference, onAddFeatureWithParams, fileImportMenuHint,
     onExportOBJ, onExportPLY, onExport3MF, onExportSTEP, onExportGLTF,
+    stepExportSupported = true,
     onExportDXF, onExportFlatPatternDXF, dxfProjection, onDxfProjectionChange,
     onSaveScene, onLoadScene, onExportGLB,
     onExportRhino, onExportGrasshopper, lockedFormats = [],
-    onMeshProcess, onAnalysis, onStandardParts,
+    onMeshProcess, onAnalysis, onStandardParts: _onStandardParts,
     onSheetMetal, onExtraction,
     onSketchTool, onConstraint, onSmartDimension,
     onExtrudeCut, onHoleWizard,
@@ -1802,7 +1831,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
   };
   const tt = dict[langMap[seg] ?? 'en'];
 
-  const tcx = C_DARK;
+  const _tcx = C_DARK;
   const shellWrapper = S.wrapper;
   const shellTop = S.topRow;
   const shellStrip = S.strip;
@@ -2284,11 +2313,16 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>🖨️</span>
                 <span>{tt.export3MF}</span>
               </button>
-              <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'STEP') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'STEP'} onClick={() => { onExportSTEP?.(); closeSub(); }}
+              <button
+                style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'STEP' || !stepExportSupported) ? 0.4 : 1 }}
+                disabled={!hasResult || exportingFormat === 'STEP' || !stepExportSupported}
+                title={!stepExportSupported ? tt.exportSTEPUnsupportedTip : undefined}
+                onClick={() => { onExportSTEP?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'STEP' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
                 <span>{exportingFormat === 'STEP' ? tt.exportingSTEP : tt.exportSTEP}</span>
+                {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#374151', color: '#9ca3af', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
                 {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: '#fff', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'GLTF') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'GLTF'} onClick={() => { onExportGLTF?.(); closeSub(); }}

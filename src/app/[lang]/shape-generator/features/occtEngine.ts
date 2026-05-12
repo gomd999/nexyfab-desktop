@@ -131,11 +131,16 @@ export function resetShapeRegistry(): void {
 }
 
 export async function exportOcctStep(handle: string | undefined | null): Promise<string | null> {
-  const shape = getShape(handle) as any;
-  if (!shape) return null;
-  if (typeof shape.blobSTEP !== 'function') return null;
-  
-  const blob = shape.blobSTEP() as Blob;
+  const shape = getShape(handle);
+  if (
+    shape === null
+    || typeof shape !== 'object'
+    || !('blobSTEP' in shape)
+    || typeof (shape as { blobSTEP?: unknown }).blobSTEP !== 'function'
+  ) {
+    return null;
+  }
+  const blob = (shape as { blobSTEP: () => Blob }).blobSTEP();
   return await blob.text();
 }
 
@@ -282,6 +287,13 @@ interface FilletChamferShape extends MeshedShape {
   translate: (v: [number, number, number]) => FilletChamferShape;
 }
 
+/** B-rep shape supporting shell + boolean cut (open-face trimming). */
+interface ShellableShape extends MeshedShape {
+  shell: (thickness: number) => ShellableShape;
+  cut: (other: unknown) => ShellableShape;
+  translate: (v: [number, number, number]) => ShellableShape;
+}
+
 function meshToBufferGeometry(
   mesh: { vertices: number[]; triangles: number[]; normals: number[] },
 ): BufferGeometry {
@@ -355,9 +367,9 @@ export function occtShellBox(
   hostHandle?: string | null,
 ): OcctBooleanResult {
   const rc = requireReplicad();
-  const chained = getShape(hostHandle) as any;
-  const source: any = chained ?? (() => {
-    const base = (rc.makeBaseBox as any)(hostBox.w, hostBox.h, hostBox.d);
+  const chained = getShape(hostHandle) as ShellableShape | null;
+  const source: ShellableShape = chained ?? (() => {
+    const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as ShellableShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
 
@@ -368,7 +380,7 @@ export function occtShellBox(
   
   if (openFace > 0) {
     const cutHeight = thickness * 4;
-    const cutBox = (rc.makeBaseBox as any)(hostBox.w * 3, cutHeight, hostBox.d * 3);
+    const cutBox = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w * 3, cutHeight, hostBox.d * 3) as ShellableShape;
     
     // hostBox.cy is the center.
     // bounding box max Y is hostBox.cy + hostBox.h / 2

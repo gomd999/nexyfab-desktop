@@ -3,17 +3,17 @@
 import React, { useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import {
-  SUPPLIERS, REGION_OPTIONS, MATERIAL_PROCESS_MAP, matchSuppliers,
-  type Supplier, type ProcessType,
+  SUPPLIERS as _SUPPLIERS, REGION_OPTIONS, MATERIAL_PROCESS_MAP, matchSuppliers,
+  type Supplier, type ProcessType as SupplierProcessType,
 } from './supplierData';
-import { PROCESS_ICONS, getProcessName } from './CostEstimator';
+import { PROCESS_ICONS, getProcessName, type ProcessType } from './CostEstimator';
 
 interface SupplierPanelProps {
   materialId: string;
   lang: string;
   onClose: () => void;
   /** Pre-select the process that got the best quote */
-  defaultProcess?: ProcessType;
+  defaultProcess?: SupplierProcessType;
 }
 
 const C = {
@@ -109,8 +109,8 @@ function SupplierCard({ s, lang, tt }: { s: Supplier; lang: string; tt: typeof d
             {isKo ? s.nameKo : s.name}
           </div>
           <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>
-            {s.regionLabel} · {s.processes.map(p => PROCESS_ICONS[p as keyof typeof PROCESS_ICONS] ?? '⚙').join(' ')}
-            {' '}{s.processes.map(p => getProcessName(p as any, lang).split('/')[0]).join(', ')}
+            {s.regionLabel} · {s.processes.map(p => PROCESS_ICONS[p as ProcessType] ?? '⚙').join(' ')}
+            {' '}{s.processes.map(p => getProcessName(p as ProcessType, lang).split('/')[0]).join(', ')}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -239,7 +239,7 @@ export default function SupplierPanel({ materialId, lang, onClose, defaultProces
               color: selectedProcess === p ? C.accentBright : C.dim,
               cursor: 'pointer',
             }}>
-              {PROCESS_ICONS[p as keyof typeof PROCESS_ICONS] ?? '⚙'} {getProcessName(p as any, resolvedLang).split('/')[0]}
+              {PROCESS_ICONS[p] ?? '⚙'} {getProcessName(p, resolvedLang).split('/')[0]}
             </button>
           ))}
         </div>

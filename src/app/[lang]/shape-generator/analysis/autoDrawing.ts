@@ -382,13 +382,27 @@ export function generateAutoKeyDimensions(
 
   const dimLines: DrawingLine[] = [];
   const dimTexts: DrawingText[] = [];
-  const dimOffset = 10;
+
+  // Scale-aware sizing: small parts (<20mm projected) had labels nearly as
+  // large as the part itself, while >500mm parts had labels lost in noise.
+  // 4% of the longest projected edge keeps the text legible across scales.
+  const projW = Math.max(1, x1 - x0);
+  const projH = Math.max(1, y1 - y0);
+  const span = Math.max(projW, projH);
+  const fontSize = Math.min(6, Math.max(2.2, span * 0.04));
+  // Offset extension lines proportional to span so labels don't crash into
+  // the geometry on tiny parts and don't float halfway across the page on
+  // large parts.
+  const dimOffset = Math.min(20, Math.max(6, span * 0.08));
+  const aw = Math.max(0.8, fontSize * 0.5);
   const tolStr = tolerance ? ` ${tolerance.linear}` : '';
 
-  // Real model dimensions (in mm)
+  // Real model dimensions (in mm). Note: width/height/depth in WORLD space —
+  // their meaning in the 2D drawing depends on projection (front view: realW,
+  // realH dimensioned; depth orthogonal). We rely on top + right views to
+  // capture depth so we no longer emit a redundant "D:" note here.
   const realW = Math.abs(bb.max.x - bb.min.x);
   const realH = Math.abs(bb.max.y - bb.min.y);
-  const realD = Math.abs(bb.max.z - bb.min.z);
 
   // Width dimension (horizontal, below the part)
   dimLines.push(
@@ -396,8 +410,6 @@ export function generateAutoKeyDimensions(
     { x1: x0, y1: y0 - 1, x2: x0, y2: y0 - dimOffset - 2, type: 'dimension' },
     { x1: x1, y1: y0 - 1, x2: x1, y2: y0 - dimOffset - 2, type: 'dimension' },
   );
-  // Arrowheads (tiny ticks)
-  const aw = 1.5;
   dimLines.push(
     { x1: x0, y1: y0 - dimOffset, x2: x0 + aw, y2: y0 - dimOffset + aw / 2, type: 'dimension' },
     { x1: x0, y1: y0 - dimOffset, x2: x0 + aw, y2: y0 - dimOffset - aw / 2, type: 'dimension' },
@@ -406,14 +418,16 @@ export function generateAutoKeyDimensions(
   );
   dimTexts.push({
     x: (x0 + x1) / 2,
-    y: y0 - dimOffset - 1.5,
+    y: y0 - dimOffset - fontSize * 0.5,
     text: `${realW.toFixed(1)}${tolStr}`,
-    fontSize: 3,
+    fontSize,
     anchor: 'middle',
     style: 'dimension',
   });
 
-  // Height dimension (vertical, to the right)
+  // Height dimension (vertical, to the right). Use 'middle' anchor for the
+  // rotated text — 'start' caused tall parts to clip the right paper margin
+  // because the text rotated outward from its baseline.
   dimLines.push(
     { x1: x1 + dimOffset, y1: y0, x2: x1 + dimOffset, y2: y1, type: 'dimension' },
     { x1: x1 + 1, y1: y0, x2: x1 + dimOffset + 2, y2: y0, type: 'dimension' },
@@ -426,26 +440,14 @@ export function generateAutoKeyDimensions(
     { x1: x1 + dimOffset, y1: y1, x2: x1 + dimOffset + aw / 2, y2: y1 - aw, type: 'dimension' },
   );
   dimTexts.push({
-    x: x1 + dimOffset + 2,
+    x: x1 + dimOffset + fontSize * 0.6,
     y: (y0 + y1) / 2,
     text: `${realH.toFixed(1)}${tolStr}`,
-    fontSize: 3,
-    anchor: 'start',
+    fontSize,
+    anchor: 'middle',
     style: 'dimension',
     rotate: -90,
   });
-
-  // Depth (shown in front / right views)
-  if ((projection === 'front' || projection === 'right') && realD > 0.5) {
-    dimTexts.push({
-      x: x0,
-      y: y1 + dimOffset,
-      text: `D: ${realD.toFixed(1)}${tolStr}`,
-      fontSize: 2.5,
-      anchor: 'start',
-      style: 'note',
-    });
-  }
 
   return { lines: dimLines, texts: dimTexts };
 }

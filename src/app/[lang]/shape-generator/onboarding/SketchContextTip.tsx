@@ -6,7 +6,7 @@
  * Auto-hides after 20 seconds.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 const langMap: Record<string, string> = {
@@ -110,6 +110,15 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copy = L[resolvedLang] ?? L.en;
 
+  const dismiss = useCallback((permanent: boolean) => {
+    setExiting(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (permanent) {
+      try { localStorage.setItem(LS_KEY, '1'); } catch { /* ignore */ }
+    }
+    setTimeout(() => { setShown(false); setExiting(false); }, 280);
+  }, []);
+
   // Show once per browser session (localStorage flag for "don't show again")
   useEffect(() => {
     if (!visible || recoveryVisible) {
@@ -132,16 +141,7 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
     if (!shown) return;
     timerRef.current = setTimeout(() => dismiss(false), 20000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [shown]);  
-
-  function dismiss(permanent: boolean) {
-    setExiting(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (permanent) {
-      try { localStorage.setItem(LS_KEY, '1'); } catch {}
-    }
-    setTimeout(() => { setShown(false); setExiting(false); }, 280);
-  }
+  }, [shown, dismiss]);
 
   if (!shown) return null;
 

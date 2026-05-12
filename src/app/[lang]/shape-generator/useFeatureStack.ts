@@ -53,7 +53,7 @@ export interface HistoryNode {
   label: string;
   icon: string;
   featureType?: FeatureType;
-  params: Record<string, any>;
+  params: Record<string, number>;
   enabled: boolean;
   /** Optional JS-like expression that controls enabled state.
    *  Variables: param names from this node (e.g. "width > 50 && height < 100").
@@ -224,7 +224,7 @@ export function useFeatureStack() {
     type: HistoryNodeType,
     label?: string,
     icon?: string,
-    params?: Record<string, any>,
+    params?: Record<string, number>,
     featureType?: FeatureType,
   ): string => {
     const id = genId();
@@ -396,7 +396,7 @@ export function useFeatureStack() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Ordered list of enabled feature nodes, mapped to FeatureInstance shape */
-  const features = useMemo((): (HistoryNode & { type: FeatureType })[] => {
+  const _features = useMemo((): (HistoryNode & { type: FeatureType })[] => {
     const ordered = getOrderedNodes();
     return ordered
       .filter(n => n.type === 'feature' && n.featureType && activeNodeSet.has(n.id) && n.enabled)
@@ -426,7 +426,7 @@ export function useFeatureStack() {
   const addFeature = useCallback((type: FeatureType) => {
     const def = getFeatureDefinition(type);
     if (!def) return;
-    const params: Record<string, any> = {};
+    const params: Record<string, number> = {};
     def.params.forEach(p => {
       params[p.key] = p.default;
     });
@@ -437,11 +437,11 @@ export function useFeatureStack() {
    *  wizards like Hole Wizard that pre-compute standard-spec values. */
   const addFeatureWithParams = useCallback((
     type: FeatureType,
-    overrides: Record<string, any>,
+    overrides: Record<string, number>,
   ) => {
     const def = getFeatureDefinition(type);
     if (!def) return;
-    const params: Record<string, any> = {};
+    const params: Record<string, number> = {};
     def.params.forEach(p => {
       params[p.key] = p.default;
     });
@@ -499,7 +499,7 @@ export function useFeatureStack() {
     removeNode(id);
   }, [removeNode]);
 
-  const updateFeatureParam = useCallback((id: string, key: string, value: any) => {
+  const updateFeatureParam = useCallback((id: string, key: string, value: number) => {
     setNodeMap(prev => {
       const node = prev.get(id);
       if (!node) return prev;
@@ -678,7 +678,7 @@ export function useFeatureStack() {
 // ─── Evaluate enabledExpr for a node ──────────────────────────────────────────
 // Returns true (enabled) if expr is empty/undefined, otherwise evaluates it.
 
-export function evaluateEnabledExpr(expr: string | undefined, params: Record<string, any>): boolean {
+export function evaluateEnabledExpr(expr: string | undefined, params: Record<string, number>): boolean {
   if (!expr || !expr.trim()) return true;
   try {
     const keys = Object.keys(params);

@@ -7,6 +7,7 @@ import type {
   SketchConstraint, SketchDimension, ConstraintType,
 } from './types';
 import { sampleNurbsSegment } from './nurbs';
+import { CONSTRAINT_ICON, getConstraintsForEntity, solveConstraints } from './constraintSolver';
 
 type SketchLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
 
@@ -229,6 +230,20 @@ const SKETCH_MSG = {
     ar: 'رمادي متقطع = ملفات أخرى (انقر المخطط للتبديل أو التبويبات). أزرق = النشط.',
   },
 } as const;
+
+/** Resolve SKETCH_MSG entry: some keys are plain strings, some are `(n) => string`. */
+function resolveSketchMsg(
+  key: keyof typeof SKETCH_MSG,
+  lang: string,
+  numArg?: number,
+): string {
+  const m = SKETCH_MSG[key] as Record<string, string | ((n: number) => string)>;
+  const raw = m[lang] ?? m.en;
+  if (typeof raw === 'function') {
+    return raw(numArg ?? 0);
+  }
+  return raw;
+}
 
 /** When outer profile is already closed, appending another closed loop in the same segment list
  *  draws a spurious bridge between loops. Send the new loop to a separate hole profile instead. */
@@ -862,10 +877,7 @@ function SketchCanvas({
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
   const t = dict[langMap[pathSeg] ?? 'en'];
-  const L = (key: keyof typeof SKETCH_MSG): any => {
-    const m = SKETCH_MSG[key] as any;
-    return m[lang] ?? m.en;
-  };
+  const L = useCallback((key: keyof typeof SKETCH_MSG, numArg?: number) => resolveSketchMsg(key, lang, numArg), [lang]);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Track actual rendered SVG size (may differ from props when CSS width/height: 100% is applied)
@@ -879,7 +891,7 @@ function SketchCanvas({
     });
     ro.observe(svg);
     return () => ro.disconnect();
-  }, []);
+  }, [width, height]);
 
   // Ctrl+Z undo
   useEffect(() => {
@@ -1565,9 +1577,9 @@ function SketchCanvas({
     otherProfiles, otherProfileSketchIndices, onSelectSketchProfileIndex,
     circleRadius, rectWidth, rectHeight, polygonSides,
     ellipseRx, ellipseRy, slotRadius, filletRadius,
-    hoverSegIdx, onAddConstraint, onAddDimension, selectedConstraintType,
-    splinePoints, showToast, lang, pendingDim,
-    lineConstructionFlag,
+    hoverSegIdx, onAddConstraint, selectedConstraintType,
+    showToast, pendingDim,
+    lineConstructionFlag, L, t,
   ]);
 
   // Double-click to close / finalize spline
@@ -1606,7 +1618,7 @@ function SketchCanvas({
     // Point drag
     if (isDraggingPointRef.current && dragPoint) {
       const raw = screenToMm(e.clientX, e.clientY);
-      const newSegments = profile.segments.map((seg, si) => {
+      const draggedSegments = profile.segments.map((seg, si) => {
         if (si !== dragPoint.segIdx) return seg;
         return {
           ...seg,
@@ -1615,7 +1627,32 @@ function SketchCanvas({
           ),
         };
       });
-      onProfileChange({ ...profile, segments: newSegments });
+      // E3: dynamic drag — when constraints exist, run a short solver pass so
+      // the drag respects horizontal/vertical/perpendicular/etc. instead of
+      // hard-locking the point. Mirrors Fusion 360's behaviour of "the line
+      // stays horizontal but you can still slide it left/right." If the
+      // solver fails (over-defined, residual blow-up), fall back to raw drag
+      // so the user is never stuck.
+      let solvedSegments = draggedSegments;
+      if (constraints.length > 0 || dimensions.length > 0) {
+        try {
+          const result = solveConstraints(draggedSegments, constraints, dimensions, 20, 1e-3);
+          const status = result.solveResult?.status;
+          if (status === 'ok' || status === 'under-defined') {
+            solvedSegments = draggedSegments.map(seg => ({
+              ...seg,
+              points: seg.points.map(p => {
+                if (!p.id) return p;
+                const solved = result.points.get(p.id);
+                return solved ? { ...p, x: solved.x, y: solved.y } : p;
+              }),
+            }));
+          }
+        } catch {
+          // Solver threw — keep raw drag.
+        }
+      }
+      onProfileChange({ ...profile, segments: solvedSegments });
       return;
     }
     const { pt: snapped, type: sType } = smartSnap(e.clientX, e.clientY);
@@ -1628,7 +1665,7 @@ function SketchCanvas({
       const nearest = findNearestSegment(profile.segments, snapped, 10 / zoom);
       setHoverSegIdx(nearest ? nearest.index : -1);
     }
-  }, [isPanning, smartSnap, zoom, activeTool, profile.segments, dragPoint, screenToMm, profile, onProfileChange]);
+  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, screenToMm, profile, onProfileChange, constraints, dimensions]);
 
   // Middle-click or right-click pan; left-click in select mode starts point drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1725,9 +1762,9 @@ function SketchCanvas({
         segments: [...profile.segments, ...newSegs],
         closed: profile.closed,
       });
-      showToast(L('toolSwitchSaved')(newSegs.length));
+      showToast(L('toolSwitchSaved', newSegs.length));
     } else if (hadTemp > 0 || hadSpline > 0) {
-      showToast(L('discarded')(hadTemp + hadSpline));
+      showToast(L('discarded', hadTemp + hadSpline));
     }
 
     setTempPoints([]);
@@ -1891,7 +1928,7 @@ function SketchCanvas({
           closed: false, // 삭제 후엔 닫힌 상태 해제
         });
         setSelectedSegIdx(-1);
-        showToast(L('deleted')(1));
+        showToast(L('deleted', 1));
         return;
       }
     };
@@ -2436,6 +2473,69 @@ function SketchCanvas({
     }
   }
 
+  // ── D5: Constraint badges near hovered/selected segment ───────────────────
+  // Renders compact icons (H, ⊥, ∥, =, ⊕, …) above the segment midpoint so
+  // the user can see at a glance which constraints are holding the entity.
+  // Mirrors the Fusion 360 / SolidWorks symbology so muscle memory transfers.
+  // Selected segment takes priority over hover so badges don't flicker as
+  // the cursor moves.
+  const constraintBadges: React.ReactNode = useMemo(() => {
+    if (!constraints || constraints.length === 0) return null;
+    if (activeTool !== 'select') return null;
+    const focusIdx = selectedSegIdx >= 0 ? selectedSegIdx : hoverSegIdx;
+    if (focusIdx < 0 || focusIdx >= profile.segments.length) return null;
+    const seg = profile.segments[focusIdx];
+    if (!seg.id) return null;
+    const found = getConstraintsForEntity(seg.id, constraints);
+    if (found.length === 0) return null;
+    // Midpoint per segment type — line midpoint, arc apex (mid sample), other
+    // shapes use centroid of points[0..1].
+    let mx = 0, my = 0;
+    if (seg.type === 'line' && seg.points.length >= 2) {
+      mx = (seg.points[0].x + seg.points[1].x) / 2;
+      my = (seg.points[0].y + seg.points[1].y) / 2;
+    } else if (seg.type === 'arc' && seg.points.length === 3) {
+      mx = seg.points[2].x;
+      my = seg.points[2].y;
+    } else if (seg.points.length > 0) {
+      mx = seg.points[0].x;
+      my = seg.points[0].y;
+    }
+    const size = 14 / zoom;
+    const gap = 4 / zoom;
+    const yOffset = 16 / zoom;
+    return (
+      <g pointerEvents="none">
+        {found.map((c, i) => {
+          const cx = mx + (i - (found.length - 1) / 2) * (size + gap);
+          const cy = -my - yOffset;
+          return (
+            <g key={c.id}>
+              <rect
+                x={cx - size / 2} y={cy - size / 2}
+                width={size} height={size} rx={3 / zoom}
+                fill={c.satisfied ? 'rgba(63,185,80,0.18)' : 'rgba(248,81,73,0.18)'}
+                stroke={c.satisfied ? '#3fb950' : '#f85149'}
+                strokeWidth={1 / zoom}
+              />
+              <text
+                x={cx} y={cy}
+                fontSize={size * 0.7}
+                fontFamily="ui-monospace, monospace"
+                fontWeight={700}
+                fill={c.satisfied ? '#3fb950' : '#f85149'}
+                textAnchor="middle"
+                dominantBaseline="central"
+              >
+                {CONSTRAINT_ICON[c.type] ?? '·'}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  }, [constraints, activeTool, selectedSegIdx, hoverSegIdx, profile.segments, zoom]);
+
   // Trim hover highlight
   let trimHighlight: React.ReactNode = null;
   if (activeTool === 'trim' && hoverSegIdx >= 0 && hoverSegIdx < profile.segments.length) {
@@ -2744,6 +2844,9 @@ function SketchCanvas({
 
         {/* Selection highlight */}
         {selectionHighlight}
+
+        {/* D5: constraint badges (H/⊥/∥/=/…) near hovered or selected segment */}
+        {constraintBadges}
 
         {/* Self-intersection X markers */}
         {intersectionMarkers}

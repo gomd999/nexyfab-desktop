@@ -61,7 +61,7 @@ export default function AdminJobsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
-      const d = await res.json();
+      const _d = await res.json();
       setTriggerMsg({ text: `${label} 완료`, ok: res.ok });
       await load();
     } catch {

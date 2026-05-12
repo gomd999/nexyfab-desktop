@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const dict = {
@@ -32,6 +33,11 @@ const dict = {
     errMessage: '내용은 10자 이상이어야 합니다.',
     required: '*',
     altContact: '이메일로도 연락 가능합니다:',
+    supportBeta:
+      '유료 베타 기간 동안 기술 지원은 평일 오전 10시 ~ 오후 6시(KST)에 집중적으로 이루어집니다. 아래 폼으로 접수하신 문의(nf_support_tickets)는 순차적으로 답변드립니다.',
+    slaBeta:
+      '베타 서비스 특성상 긴급 점검 시 이용이 일시 중단될 수 있으며, 보상 범위는 이용약관의 유료 베타 특약(제10조, 표시된 경우) 및 책임 제한 조항을 따릅니다.',
+    termsBetaLink: '유료 베타 특약(이용약관) 보기',
   },
   en: {
     title: 'Contact Us',
@@ -61,6 +67,11 @@ const dict = {
     errMessage: 'Message must be at least 10 characters.',
     required: '*',
     altContact: 'You can also reach us at:',
+    supportBeta:
+      'During the paid beta, technical support is staffed on weekdays 10:00–18:00 (KST). Tickets submitted via this form (nf_support_tickets) are answered in order.',
+    slaBeta:
+      'The beta may be briefly unavailable during emergency maintenance; any compensation scope follows the paid-beta addendum in the Terms of Use (Article 10, when shown) and the limitation-of-liability terms.',
+    termsBetaLink: 'View paid-beta terms (Terms of Use)',
   },
   ja: {
     title: 'お問い合わせ',
@@ -90,6 +101,11 @@ const dict = {
     errMessage: '内容は10文字以上でご入力ください。',
     required: '*',
     altContact: 'メールでもご連絡いただけます：',
+    supportBeta:
+      '有償ベータ期間中の技術サポートは、平日10:00〜18:00（KST）を中心に対応します。このフォームからのお問い合わせ（チケット）は順次返信いたします。',
+    slaBeta:
+      '緊急メンテナンス等で一時的に利用できない場合があります。補償範囲は利用規約の有償ベータ特約（第10条、掲示がある場合）および責任制限に従います。',
+    termsBetaLink: '利用規約（ベータ条項）を見る',
   },
   zh: {
     title: '联系我们',
@@ -119,6 +135,11 @@ const dict = {
     errMessage: '内容至少需要10个字符。',
     required: '*',
     altContact: '您也可以通过邮箱联系我们：',
+    supportBeta:
+      '付费测试期间，技术支持主要在工作日 10:00–18:00（KST）处理。通过本表单提交的工单将按顺序回复。',
+    slaBeta:
+      '测试期可能因紧急维护短暂中断服务；补偿范围以《服务条款》中的付费测试特别约定（第十条，如已展示）及责任限制条款为准。',
+    termsBetaLink: '查看服务条款（测试条款）',
   },
   es: {
     title: 'Contacto',
@@ -148,6 +169,11 @@ const dict = {
     errMessage: 'El mensaje debe tener al menos 10 caracteres.',
     required: '*',
     altContact: 'También puedes escribirnos a:',
+    supportBeta:
+      'During the paid beta, technical support is staffed on weekdays 10:00–18:00 (KST). Tickets submitted via this form are answered in order.',
+    slaBeta:
+      'The beta may be briefly unavailable during emergency maintenance; compensation follows the Terms of Use paid-beta addendum (Article 10, when shown) and limitation-of-liability terms.',
+    termsBetaLink: 'View Terms of Use (beta)',
   },
   ar: {
     title: 'تواصل معنا',
@@ -177,6 +203,11 @@ const dict = {
     errMessage: 'يجب أن تحتوي الرسالة على 10 أحرف على الأقل.',
     required: '*',
     altContact: 'يمكنك أيضاً مراسلتنا على:',
+    supportBeta:
+      'During the paid beta, technical support is staffed on weekdays 10:00–18:00 (KST). Tickets submitted via this form are answered in order.',
+    slaBeta:
+      'The beta may be briefly unavailable during emergency maintenance; compensation follows the Terms of Use paid-beta addendum (Article 10, when shown) and limitation-of-liability terms.',
+    termsBetaLink: 'View Terms of Use (beta)',
   },
 };
 
@@ -249,6 +280,29 @@ export default function ContactPage() {
       <h1 style={{ fontSize: 36, fontWeight: 700, marginBottom: 8 }}>{t.title}</h1>
       <p style={{ color: '#666', fontSize: 16, marginBottom: 6 }}>{t.sub}</p>
       <p style={{ color: '#888', fontSize: 14, marginBottom: 32 }}>{t.desc}</p>
+
+      {process.env.NEXT_PUBLIC_PAID_BETA === '1' && (
+        <div
+          style={{
+            marginBottom: 28,
+            padding: '16px 18px',
+            borderRadius: 12,
+            background: '#fff7ed',
+            border: '1px solid #fdba74',
+            fontSize: 14,
+            lineHeight: 1.65,
+            color: '#444',
+          }}
+        >
+          <p style={{ margin: '0 0 10px' }}>{t.supportBeta}</p>
+          <p style={{ margin: 0 }}>{t.slaBeta}</p>
+          <p style={{ margin: '12px 0 0' }}>
+            <Link href={`/${langCode}/terms-of-use/`} prefetch={false} style={{ color: '#0b5cff', fontWeight: 600 }}>
+              {t.termsBetaLink} →
+            </Link>
+          </p>
+        </div>
+      )}
 
       {done ? (
         <div style={{

@@ -64,7 +64,7 @@ function won(n: number) {
 }
 
 // ── Skeleton shimmer cards ─────────────────────────────────────────────────────
-function SkeletonCard() {
+function _SkeletonCard() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 animate-pulse">
       <div className="flex items-center gap-2 mb-3">
@@ -133,7 +133,7 @@ function MilestoneBar({ milestones }: { milestones?: Milestones }) {
 
 export default function PartnerProjectsPage() {
   const router = useRouter();
-  const [partner, setPartner] = useState<Partner | null>(null);
+  const [_partner, setPartner] = useState<Partner | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState('');
@@ -150,13 +150,15 @@ export default function PartnerProjectsPage() {
     if (!session) { router.replace('/partner/login'); return; }
 
     if (session === 'demo') {
-      setPartner({ partnerId: 'demo-partner-001', email: 'demo-partner@nexyfab.com', company: 'Demo 제조사' });
-      setContracts([
-        { id: 'demo-c1', projectName: 'IoT 모듈 PCB 조립', factoryName: '선진정밀 (주)', contractAmount: 42000000, status: 'in_progress', contractDate: new Date(Date.now() - 30 * 86400000).toISOString(), deadline: new Date(Date.now() + 14 * 86400000).toISOString(), milestones: { total: 5, completed: 3 } },
-        { id: 'demo-c2', projectName: '의료기기 케이스 시제품', factoryName: '대한정밀 (주)', contractAmount: 8500000, status: 'quality_check', contractDate: new Date(Date.now() - 20 * 86400000).toISOString(), deadline: new Date(Date.now() + 3 * 86400000).toISOString(), milestones: { total: 4, completed: 3 } },
-        { id: 'demo-c3', projectName: 'EV 배터리 케이스 외주 제조', factoryName: '한국제조 (주)', contractAmount: 28000000, status: 'completed', contractDate: new Date(Date.now() - 90 * 86400000).toISOString(), milestones: { total: 5, completed: 5 } },
-      ]);
-      setLoading(false);
+      queueMicrotask(() => {
+        setPartner({ partnerId: 'demo-partner-001', email: 'demo-partner@nexyfab.com', company: 'Demo 제조사' });
+        setContracts([
+          { id: 'demo-c1', projectName: 'IoT 모듈 PCB 조립', factoryName: '선진정밀 (주)', contractAmount: 42000000, status: 'in_progress', contractDate: new Date(Date.now() - 30 * 86400000).toISOString(), deadline: new Date(Date.now() + 14 * 86400000).toISOString(), milestones: { total: 5, completed: 3 } },
+          { id: 'demo-c2', projectName: '의료기기 케이스 시제품', factoryName: '대한정밀 (주)', contractAmount: 8500000, status: 'quality_check', contractDate: new Date(Date.now() - 20 * 86400000).toISOString(), deadline: new Date(Date.now() + 3 * 86400000).toISOString(), milestones: { total: 4, completed: 3 } },
+          { id: 'demo-c3', projectName: 'EV 배터리 케이스 외주 제조', factoryName: '한국제조 (주)', contractAmount: 28000000, status: 'completed', contractDate: new Date(Date.now() - 90 * 86400000).toISOString(), milestones: { total: 5, completed: 5 } },
+        ]);
+        setLoading(false);
+      });
       return;
     }
 

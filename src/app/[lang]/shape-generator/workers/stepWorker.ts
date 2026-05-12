@@ -55,6 +55,11 @@ export interface StepWorkerOutput {
   error?: string;
 }
 
+/** App `tsconfig` types `self` as `Window`; workers use the transfer list overload. */
+function postStepResultToMain(message: StepWorkerOutput, transfer: Transferable[]): void {
+  (self as unknown as { postMessage: (m: StepWorkerOutput, t?: Transferable[]) => void }).postMessage(message, transfer);
+}
+
 interface OcctMesh {
   name?: string;
   index?: { array: Uint32Array | number[] };
@@ -71,7 +76,12 @@ interface OcctResult {
 }
 
 // ─── DFM & Stats logic ────────────────────────────────────────────────────────
-function generateDfmSuggestions(stats: Omit<StepAnalysisStats | StepPartStats, 'parts' | 'id' | 'name' | 'dfmSuggestions'>): string[] {
+type DfmStatsInput = Pick<
+  StepAnalysisStats,
+  'faceCount' | 'edgeCount' | 'shellCount' | 'volume_cm3' | 'surfaceArea_cm2' | 'bbox' | 'isSolid' | 'isManifold'
+>;
+
+function generateDfmSuggestions(stats: DfmStatsInput): string[] {
   const suggestions: string[] = [];
 
   if (!stats.isSolid) {
@@ -189,7 +199,7 @@ function extractPartStats(mesh: OcctMesh, index: number): StepPartStats {
     shellCount: 1,
   };
 
-  const dfmSuggestions = generateDfmSuggestions(partStats as any);
+  const dfmSuggestions = generateDfmSuggestions(partStats);
 
   return { ...partStats, dfmSuggestions };
 }
@@ -341,10 +351,11 @@ self.addEventListener('message', async (e: MessageEvent<StepWorkerInput>) => {
         partsGeometry
       };
 
-      (self as any).postMessage(outMsg, transferables);
+      postStepResultToMain(outMsg, transferables);
 
-    } catch (err: any) {
-      self.postMessage({ type: 'STEP_RESULT', error: err.message || String(err) } as StepWorkerOutput);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      self.postMessage({ type: 'STEP_RESULT', error: message } as StepWorkerOutput);
     }
   }
 });

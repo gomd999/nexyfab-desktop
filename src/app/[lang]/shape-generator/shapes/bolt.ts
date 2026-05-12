@@ -30,7 +30,7 @@ function hexPrism(acrossFlats: number, height: number): THREE.BufferGeometry {
 }
 
 /** 나사산 시각화 (얕은 삼각형 홈 나선) */
-function threadGeometry(
+function _threadGeometry(
   radius: number,
   length: number,
   pitch: number,
@@ -41,7 +41,7 @@ function threadGeometry(
   const stepsPerTurn = 32;
   const totalSteps = turns * stepsPerTurn;
   const positions: number[] = [];
-  const threadDepth = pitch * 0.1;
+  const _threadDepth = pitch * 0.1;
 
   for (let i = 0; i <= totalSteps; i++) {
     const t = i / totalSteps;
@@ -113,7 +113,7 @@ function mergeGeos(geos: THREE.BufferGeometry[]): THREE.BufferGeometry {
     nonIndexed.computeVertexNormals();
     const pos = nonIndexed.getAttribute('position');
     const nor = nonIndexed.getAttribute('normal');
-    const triCount = pos.count / 3;
+    const _triCount = pos.count / 3;
 
     for (let i = 0; i < pos.count; i++) {
       positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));

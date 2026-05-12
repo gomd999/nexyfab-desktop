@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, use } from 'react';
+import { useState, useEffect, useCallback as _useCallback, useRef, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
@@ -87,7 +87,7 @@ const NEXT_STATUS: Record<string, { status: string; label: string } | null> = {
 };
 
 const MODEL_EXTS = ['stl', 'step', 'stp', 'obj', '3ds', 'iges', 'igs'];
-const DOCUMENT_EXTS = ['pdf', 'dwg', 'dxf'];
+const _DOCUMENT_EXTS = ['pdf', 'dwg', 'dxf'];
 
 function won(n: number) { return n?.toLocaleString('ko-KR') + '원'; }
 

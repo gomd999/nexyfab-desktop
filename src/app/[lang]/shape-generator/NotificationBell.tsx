@@ -69,7 +69,7 @@ export default function NotificationBell({ lang }: { lang: string }) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
   const t = dict[langMap[seg] ?? 'en'];
-  const isKo = lang === 'ko';
+  const _isKo = lang === 'ko';
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);

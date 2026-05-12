@@ -8,6 +8,9 @@ import { isKorean } from '@/lib/i18n/normalize';
 import { useAuthStore } from '@/hooks/useAuth';
 import DemoBadge from '@/components/nexyfab/DemoBadge';
 import RfqCadFilesPanel from '@/components/nexyfab/RfqCadFilesPanel';
+import QuoteComparisonView from './QuoteComparisonView';
+import ThreadView from '@/components/nexyfab/ThreadView';
+import ConciergeProgressCard from '@/components/nexyfab/ConciergeProgressCard';
 
 const QuoteNegotiatorPanel = dynamic(() => import('./QuoteNegotiatorPanel'), { ssr: false });
 
@@ -636,6 +639,26 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               </div>
             )}
 
+            {/* OP4 — Concierge model explainer for first-time users. Shown
+                only when no preferred factory is set, since the marketplace
+                flow already implies a chosen partner. */}
+            {!formState.preferredFactoryId && !submitSuccess && (
+              <div style={{
+                padding: '12px 14px', borderRadius: 8, marginBottom: 16,
+                background: '#388bfd10', border: '1px dashed #388bfd60', color: C.accent,
+                fontSize: 12, lineHeight: 1.55,
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                  {isKo ? '📞 NexyFab 컨시어지 매칭' : '📞 NexyFab concierge matching'}
+                </div>
+                <div style={{ color: C.textDim }}>
+                  {isKo
+                    ? '제출 후 운영팀이 적합한 제조사를 직접 컨택합니다. 진행 상황은 RFQ 상세 페이지에서 회사명 블러 + 상태 칩으로 실시간 확인할 수 있습니다.'
+                    : 'After submission, our team contacts suitable factories on your behalf. You can track progress in real-time on the RFQ detail page (company names masked until quote arrives).'}
+                </div>
+              </div>
+            )}
+
             {formState.preferredFactoryId && (
               <div style={{
                 padding: '10px 14px', borderRadius: 8, marginBottom: 16,
@@ -658,10 +681,18 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
 
             {submitSuccess && (
               <div style={{
-                padding: '10px 14px', borderRadius: 8, marginBottom: 16,
-                background: '#3fb95020', border: '1px solid #3fb95040', color: C.green, fontSize: 13,
+                padding: '12px 16px', borderRadius: 8, marginBottom: 16,
+                background: '#3fb95015', border: '1px solid #3fb95040', color: C.green, fontSize: 13,
+                lineHeight: 1.55,
               }}>
-                {isKo ? '견적 요청이 제출됐습니다.' : 'RFQ submitted successfully.'}
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                  {isKo ? '✓ 견적 요청이 제출됐습니다.' : '✓ RFQ submitted successfully.'}
+                </div>
+                <div style={{ color: C.textDim, fontSize: 12 }}>
+                  {isKo
+                    ? '운영팀이 적합한 제조사를 직접 컨택하기 시작합니다. 진행 상황은 RFQ 상세 페이지에서 실시간으로 확인할 수 있어요. (보통 영업일 기준 1-2일 내 첫 응답)'
+                    : 'Our team will reach out to suitable manufacturers directly. Track progress on the RFQ detail page (typically 1-2 business days for the first response).'}
+                </div>
               </div>
             )}
             {formErrors._submit && (
@@ -993,6 +1024,10 @@ function QuoteAcceptSection({
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // B6 — Capture orderId returned from accept so we can deep-link the
+  // user to track their order. The PATCH endpoint creates nf_orders
+  // automatically; previously the UI just said "accepted" with no link.
+  const [orderIdFromAccept, setOrderIdFromAccept] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/nexyfab/rfq/${rfqId}/quotes`, { credentials: 'include' })
@@ -1014,9 +1049,14 @@ function QuoteAcceptSection({
         body: JSON.stringify({ quoteId, action }),
       });
       if (!r.ok) throw new Error();
+      const data = await r.json().catch(() => ({} as Record<string, unknown>));
       if (action === 'accept') {
         const q = quotes.find(x => x.id === quoteId);
         if (q) onAccepted(q.estimatedAmount, q.factoryName);
+        // B6 — surface the auto-created order id so the user can jump to tracking.
+        if (typeof (data as { orderId?: unknown }).orderId === 'string') {
+          setOrderIdFromAccept((data as { orderId: string }).orderId);
+        }
         setDone(true);
       } else {
         setQuotes(prev => prev.filter(q => q.id !== quoteId));
@@ -1030,10 +1070,29 @@ function QuoteAcceptSection({
 
   if (done) {
     return (
-      <div style={{ background: `${C.green}12`, border: `1px solid ${C.green}30`, borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.green }}>
+      <div style={{ background: `${C.green}12`, border: `1px solid ${C.green}30`, borderRadius: 8, padding: '14px 18px', textAlign: 'center' }}>
+        <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: C.green }}>
           ✅ {isKo ? '견적을 수락했습니다. 제조사에 알림을 보냈습니다.' : 'Quote accepted. Manufacturer notified.'}
         </p>
+        {orderIdFromAccept && (
+          <>
+            <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMuted }}>
+              {isKo ? '주문이 자동 생성되었습니다' : 'Order auto-created'} ·{' '}
+              <code style={{ background: '#161b22', padding: '2px 6px', borderRadius: 4, color: C.text }}>{orderIdFromAccept}</code>
+            </p>
+            <a
+              href={`/${isKo ? 'kr' : 'en'}/nexyfab/orders/${orderIdFromAccept}`}
+              style={{
+                display: 'inline-block',
+                padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                borderRadius: 7, textDecoration: 'none',
+                background: C.green, color: '#fff',
+              }}
+            >
+              {isKo ? '주문 진행 상황 보기 →' : 'View order progress →'}
+            </a>
+          </>
+        )}
       </div>
     );
   }
@@ -1049,6 +1108,16 @@ function QuoteAcceptSection({
         <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>
           {isKo ? '견적이 없습니다.' : 'No quotes available.'}
         </p>
+      )}
+
+      {/* B5 — Side-by-side comparison shown when 2+ quotes are available. */}
+      {!loading && quotes.length >= 2 && (
+        <QuoteComparisonView
+          lang={isKo ? 'ko' : 'en'}
+          quotes={quotes}
+          acting={actingId}
+          onAction={(id, action) => void handleAction(id, action)}
+        />
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1159,16 +1228,29 @@ function EmptyState({
           ? '형상 생성기에서 형상을 설계한 뒤 견적을 요청하세요.'
           : 'Design a shape in the shape generator and submit an RFQ.'}
       </p>
-      <button
-        onClick={() => router.push(`/${lang}/shape-generator`)}
-        style={{
-          padding: '10px 26px', borderRadius: 8, border: 'none',
-          background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-          color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-        }}
-      >
-        {isKo ? '형상 생성기로 이동' : 'Go to Shape Generator'}
-      </button>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => router.push(`/${lang}/shape-generator`)}
+          style={{
+            padding: '10px 26px', borderRadius: 8, border: 'none',
+            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+            color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          {isKo ? '형상 생성기로 이동' : 'Go to Shape Generator'}
+        </button>
+        {/* G3 — Empty-state guide link */}
+        <button
+          onClick={() => router.push(`/${lang}/help#send-rfq`)}
+          style={{
+            padding: '10px 22px', borderRadius: 8,
+            border: '1px solid #30363d', background: 'transparent',
+            color: '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          {isKo ? '📖 처음이세요? 가이드' : '📖 New here? Guide'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1318,6 +1400,27 @@ function RFQCard({ rfq, isKo, expanded, onToggle, onCompare, onCancel, isCancell
               rfqId={rfq.rfqId}
               isKo={isKo}
               onAccepted={(amount, factoryName) => onAccept(rfq.rfqId, amount, factoryName)}
+            />
+          )}
+
+          {/* M1 — Thread for buyer↔partner messaging on this RFQ. Shows only
+               once a partner is assigned (preferred or via accepted quote). */}
+          {(rfq.status === 'quoted' || rfq.status === 'accepted' || rfq.status === 'assigned') && (
+            <ThreadView
+              lang={isKo ? 'ko' : 'en'}
+              threadKind="rfq"
+              threadId={rfq.rfqId}
+              asRole="buyer"
+            />
+          )}
+
+          {/* Q3 — Concierge progress (visible until the RFQ is closed-out,
+               i.e. accepted or rejected). Gives the buyer signal that ops
+               is reaching out to the recommended directory factories. */}
+          {rfq.status !== 'rejected' && (
+            <ConciergeProgressCard
+              lang={isKo ? 'ko' : 'en'}
+              rfqId={rfq.rfqId}
             />
           )}
 

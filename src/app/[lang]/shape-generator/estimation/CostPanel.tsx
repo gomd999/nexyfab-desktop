@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback as _useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   estimateCosts,
@@ -9,9 +9,9 @@ import {
   PROCESS_ICONS,
   type GeometryMetrics,
   type CostEstimate,
-  type ProcessType,
+  type ProcessType as _ProcessType,
   type CostCurrency,
-  type CostEstimationContext,
+  type CostEstimationContext as _CostEstimationContext,
 } from './CostEstimator';
 import type { FlatPatternResult } from '../features/sheetMetal';
 import type { DFMIssueSummary } from './rfqBundler';

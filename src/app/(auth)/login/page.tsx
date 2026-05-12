@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { authBaseUrl, nexysysBaseUrl } from '@/lib/auth-base-url';
 
-const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:4000';
+const AUTH_BASE = authBaseUrl();
 
 type Lang = 'en' | 'ko' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -237,7 +238,7 @@ export default function LoginPage() {
 
             window.dispatchEvent(new Event('storage'));
             router.push('/account');
-        } catch (err: any) {
+        } catch (err: unknown) {
             // If network error (server not running), try client-side test account fallback
             if (err instanceof TypeError && err.message.includes('fetch')) {
                 const testAccount = TEST_ACCOUNTS[email.toLowerCase()];
@@ -248,7 +249,7 @@ export default function LoginPage() {
                     return;
                 }
             }
-            setError(err.message || t.failed);
+            setError(err instanceof Error ? err.message : t.failed);
         } finally {
             setLoading(false);
         }
@@ -349,7 +350,7 @@ export default function LoginPage() {
 
                 <div style={{ textAlign: 'center', marginTop: '16px' }}>
                     <a
-                        href={`${process.env.NEXT_PUBLIC_NEXYSYS_URL || 'http://localhost:5173'}/forgot-password`}
+                        href={`${nexysysBaseUrl()}/forgot-password`}
                         style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none', fontWeight: '500' }}
                     >
                         {t.forgot}

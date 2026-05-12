@@ -35,7 +35,7 @@ function CursorMesh({ position, color, name, state }: { position: THREE.Vector3,
   const groupRef = useRef<THREE.Group>(null);
   const targetPos = useRef(new THREE.Vector3().copy(position));
 
-  useFrame((state, delta) => {
+  useFrame((_state, _delta) => {
     if (groupRef.current) {
       // Smooth interpolation (lerp) to the network position to avoid stuttering
       targetPos.current.copy(position);

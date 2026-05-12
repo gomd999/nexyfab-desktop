@@ -319,7 +319,7 @@ export default function FactoriesPage() {
     if (!hasSearched && !search && !field && !region) return;
     setPage(1);
     void fetchFactories(1);
-  }, [fetchFactories, hasSearched]);
+  }, [fetchFactories, hasSearched, search, field, region]);
 
   const switchCountry = (c: 'ko' | 'cn') => {
     setCountry(c);

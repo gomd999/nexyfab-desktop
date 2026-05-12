@@ -228,8 +228,9 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
       setMode('qa');
       // 마지막 질문(notes) 으로 — 사용자가 1-2번 다음만 누르면 완료
       setIdx(Math.max(0, QUESTIONS.length - 2));
-    } catch (e: any) {
-      setParseError(t.networkError(e?.message ?? String(e)));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setParseError(t.networkError(msg));
     } finally {
       setParsing(false);
     }
@@ -245,7 +246,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
   const isLast = safeIdx >= activeQuestions.length - 1;
   const progress = Math.round(((safeIdx + 1) / activeQuestions.length) * 100);
 
-  const current = (spec as any)[q.field];
+  const current = spec[q.field];
 
   const canProceed = React.useMemo(() => {
     if (q.optional) return true;
@@ -256,7 +257,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
     return true;
   }, [q, current]);
 
-  const update = (field: string, value: any) => {
+  const update = (field: keyof IntakeSpec, value: IntakeSpec[keyof IntakeSpec]) => {
     setSpec((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -487,7 +488,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => update(q.field, opt.value)}
+                    onClick={() => update(q.field, opt.value as IntakeSpec[keyof IntakeSpec])}
                     style={{
                       textAlign: 'left',
                       padding: '14px 16px',
@@ -520,16 +521,24 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
           {q.type === 'multi' && q.options && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
               {q.options.map((opt) => {
-                const arr = Array.isArray(current) ? current : [];
+                const arr = Array.isArray(current) ? (current as readonly string[]) : [];
                 const selected = arr.includes(opt.value);
                 return (
                   <button
                     key={opt.value}
                     onClick={() => {
                       const next = selected
-                        ? arr.filter((v: any) => v !== opt.value)
+                        ? arr.filter((v) => v !== opt.value)
                         : [...arr, opt.value];
-                      update(q.field, next);
+                      setSpec((prev) => {
+                        if (q.field === 'environment') {
+                          return { ...prev, environment: next as IntakeSpec['environment'] };
+                        }
+                        if (q.field === 'specialReqs') {
+                          return { ...prev, specialReqs: next as IntakeSpec['specialReqs'] };
+                        }
+                        return prev;
+                      });
                     }}
                     style={{
                       textAlign: 'left',
@@ -588,12 +597,17 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <input
                       type="number"
-                      value={current?.[axis] ?? ''}
+                      value={spec.approxDimensions?.[axis] ?? ''}
                       placeholder="—"
                       onChange={(e) => {
                         const v = e.target.value === '' ? undefined : Number(e.target.value);
-                        const prev = current ?? {};
-                        update(q.field, { ...prev, [axis]: v });
+                        setSpec((prev) => ({
+                          ...prev,
+                          approxDimensions: {
+                            ...prev.approxDimensions,
+                            [axis]: v,
+                          } as NonNullable<IntakeSpec['approxDimensions']>,
+                        }));
                       }}
                       style={{
                         flex: 1,
@@ -615,8 +629,8 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
 
           {q.type === 'text' && (
             <textarea
-              value={current ?? ''}
-              onChange={(e) => update(q.field, e.target.value)}
+              value={spec.notes ?? ''}
+              onChange={(e) => update('notes', e.target.value)}
               placeholder={t.textPlaceholder}
               rows={5}
               style={{

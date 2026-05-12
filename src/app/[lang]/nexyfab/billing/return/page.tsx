@@ -12,6 +12,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { isKorean } from '@/lib/i18n/normalize';
+import { useAuthStore } from '@/hooks/useAuth';
 
 const dict = {
   ko: {
@@ -45,6 +46,7 @@ function BillingReturnInner() {
   const searchParams = useSearchParams();
   const { lang }     = useParams<{ lang: string }>();
   const t = dict[isKorean(lang) ? 'ko' : 'en'];
+  const refreshPlan = useAuthStore(s => s.refreshPlan);
 
   const [status, setStatus]   = useState<'processing' | 'success' | 'fail'>('processing');
   const [message, setMessage] = useState('');
@@ -90,6 +92,19 @@ function BillingReturnInner() {
         const data = await res.json() as { error?: string };
         if (!res.ok) throw new Error(data.error ?? t.completeError);
         setStatus('success');
+        // Refresh plan from server so the entire app sees the new tier on
+        // the very next render — without this, gates like "프로젝트 추가"
+        // still show the paywall until full reload. The webhook may race the
+        // checkout-complete API; we refresh once now and re-poll briefly.
+        void refreshPlan();
+        // Quick poll: if webhook hasn't landed yet by the first refresh,
+        // retry every 1.5s up to 3 times. Lightweight — no UX impact.
+        let polls = 0;
+        const id = setInterval(() => {
+          polls += 1;
+          void refreshPlan();
+          if (polls >= 3) clearInterval(id);
+        }, 1500);
         setTimeout(() => router.push(`/${lang}/nexyfab/settings/billing?checkout=success`), 2000);
       } catch (e) {
         setStatus('fail');

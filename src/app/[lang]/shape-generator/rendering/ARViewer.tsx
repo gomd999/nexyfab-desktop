@@ -27,7 +27,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
   const [arState, setArState] = useState<ARState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const sessionRef = useRef<XRSession | null>(null);
-  const rafIdRef = useRef<number>(0);
+  const _rafIdRef = useRef<number>(0);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);

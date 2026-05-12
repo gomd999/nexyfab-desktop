@@ -101,7 +101,6 @@ export function computeStackup(dims: ToleranceDimension[]): StackupResult {
   let wcPlus = 0;
   let wcMinus = 0;
   let rssSqPlus = 0;
-  let rssSqMinus = 0;
   let maxContrib = 0;
   let criticalId = dims[0].id;
 
@@ -117,7 +116,6 @@ export function computeStackup(dims: ToleranceDimension[]): StackupResult {
     // RSS uses half-range of each dimension
     const halfRange = (d.tolerancePlus - d.toleranceMinus) / 2;
     rssSqPlus += halfRange * halfRange;
-    rssSqMinus += halfRange * halfRange;
 
     // Track largest contributor
     const contrib = halfRange;

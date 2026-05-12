@@ -8,20 +8,32 @@ interface RecoveryBannerProps {
   lang: string;
   onRestore: () => void;
   onDismiss: () => void;
+  /** Optional: open a 3D side-by-side diff between saved and current state.
+   *  Lets the user verify what changed before committing to restore. */
+  onCompare?: () => void;
+  /** When true the banner uses a stronger label — "previous session ended
+   *  unexpectedly" — to nudge the user to restore rather than dismiss. */
+  fromCrash?: boolean;
 }
 
 const dict = {
-  ko: { recovered: '미저장 작업 복구됨', restore: '복원', dismiss: '무시',
+  ko: { recovered: '미저장 작업 복구됨', crashRecovered: '비정상 종료된 작업 복구',
+        restore: '복원', dismiss: '무시', compare: '비교',
         just: '방금 전', d: '일 전', h: '시간 전', m: '분 전' },
-  en: { recovered: 'Unsaved work recovered', restore: 'Restore', dismiss: 'Dismiss',
+  en: { recovered: 'Unsaved work recovered', crashRecovered: 'Recovered after unexpected exit',
+        restore: 'Restore', dismiss: 'Dismiss', compare: 'Compare',
         just: 'just now', d: ' day ago', h: ' hour ago', m: ' minute ago' },
-  ja: { recovered: '未保存の作業を復元しました', restore: '復元', dismiss: '閉じる',
+  ja: { recovered: '未保存の作業を復元しました', crashRecovered: '異常終了後の復元',
+        restore: '復元', dismiss: '閉じる', compare: '比較',
         just: 'たった今', d: '日前', h: '時間前', m: '分前' },
-  zh: { recovered: '已恢复未保存的工作', restore: '恢复', dismiss: '忽略',
+  zh: { recovered: '已恢复未保存的工作', crashRecovered: '异常退出后恢复',
+        restore: '恢复', dismiss: '忽略', compare: '比较',
         just: '刚刚', d: '天前', h: '小时前', m: '分钟前' },
-  es: { recovered: 'Trabajo sin guardar recuperado', restore: 'Restaurar', dismiss: 'Descartar',
+  es: { recovered: 'Trabajo sin guardar recuperado', crashRecovered: 'Recuperado tras cierre inesperado',
+        restore: 'Restaurar', dismiss: 'Descartar', compare: 'Comparar',
         just: 'ahora mismo', d: ' día atrás', h: ' hora atrás', m: ' min atrás' },
-  ar: { recovered: 'تم استرداد العمل غير المحفوظ', restore: 'استعادة', dismiss: 'تجاهل',
+  ar: { recovered: 'تم استرداد العمل غير المحفوظ', crashRecovered: 'استرداد بعد إغلاق غير متوقع',
+        restore: 'استعادة', dismiss: 'تجاهل', compare: 'مقارنة',
         just: 'الآن', d: ' يوم مضى', h: ' ساعة مضت', m: ' دقيقة مضت' },
 };
 const langMap: Record<string, keyof typeof dict> = {
@@ -41,7 +53,7 @@ function formatTimeAgo(ts: number, tt: typeof dict[keyof typeof dict], isEn: boo
   return tt.just;
 }
 
-export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss }: RecoveryBannerProps) {
+export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, onCompare, fromCrash }: RecoveryBannerProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
   const key = langMap[seg] ?? 'en';
@@ -99,11 +111,34 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss }
 
       {/* Message */}
       <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', whiteSpace: 'nowrap' }}>
-        {t.recovered}
+        {fromCrash ? t.crashRecovered : t.recovered}
       </span>
       <span style={{ fontSize: 11, color: '#8b949e', whiteSpace: 'nowrap' }}>
         {timeAgo}
       </span>
+
+      {/* Compare button (optional) — opens 3D diff viewer */}
+      {onCompare && (
+        <button
+          onClick={onCompare}
+          style={{
+            padding: '3px 10px',
+            borderRadius: 5,
+            border: '1px solid #58a6ff',
+            background: 'rgba(88, 166, 255, 0.12)',
+            color: '#58a6ff',
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(88, 166, 255, 0.24)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(88, 166, 255, 0.12)'; }}
+        >
+          {t.compare}
+        </button>
+      )}
 
       {/* Restore button */}
       <button

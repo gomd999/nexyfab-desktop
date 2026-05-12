@@ -105,7 +105,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
     } finally {
       setDeletingId(null);
     }
-  }, [pendingDelete, toast]);
+  }, [pendingDelete, toast, isKo]);
 
   // ── Archive / Unarchive ────────────────────────────────────────────────────
   const toggleArchive = useCallback(async (project: NexyfabProject) => {
@@ -117,6 +117,19 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ archived: archiving }),
       });
+      // Free plan limit reached on unarchive — surface as actionable upgrade
+      // toast instead of generic failure (Round 28 ergonomics).
+      if (r.status === 403) {
+        const errBody = await r.json().catch(() => ({} as { code?: string; error?: string }));
+        if (errBody.code === 'FREE_PROJECT_LIMIT') {
+          toast.warning(
+            isKo
+              ? '활성 프로젝트가 1개 한도를 채웠습니다. 복원하려면 Pro로 업그레이드하거나 다른 프로젝트를 보관하세요.'
+              : 'You already have 1 active project. Upgrade to Pro or archive another to restore this one.',
+          );
+          return;
+        }
+      }
       if (!r.ok) throw new Error('Failed');
       setProjects(prev => prev.filter(p => p.id !== project.id));
       setTotal(t => Math.max(0, t - 1));
@@ -130,7 +143,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
     } finally {
       setArchivingId(null);
     }
-  }, [toast]);
+  }, [toast, isKo]);
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const allMaterials = Array.from(new Set(projects.map(p => p.materialId).filter((m): m is string => !!m)));

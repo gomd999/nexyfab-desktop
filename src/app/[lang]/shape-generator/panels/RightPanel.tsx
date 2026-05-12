@@ -8,7 +8,7 @@ import { useSceneStore } from '../store/sceneStore';
 import { useResponsive } from '../responsive/useResponsive';
 import { useTheme } from '../ThemeContext';
 import ShapeChat from '../ShapeChat';
-import AIAssistantSidebar from '../analysis/AIAssistantSidebar';
+
 import type { ShapeResult } from '../shapes';
 import type { DesignContext, OptimizeResult, ModifyResult, ChatResult } from '../ShapeChat';
 import type { AssemblyMate } from '../assembly/AssemblyMates';
@@ -89,6 +89,8 @@ export interface RightPanelProps {
     options: { minWallThickness: number; minDraftAngle: number; maxAspectRatio: number },
   ) => void;
   onApplyDFMFix?: (issueType: string, suggestion: { paramKey: string; value: number; label: { ko: string; en: string } }) => void;
+  /** K1 — bulk auto-draft fix button in DFM panel. */
+  onAutoDraftFix?: () => void;
   onJumpToDFMFeature?: (issueType: string) => void;
   /** AI DFM Explainer — fetches LLM explanation (null if freemium-blocked). */
   onExplainDFMIssue?: (issue: DFMIssue) => Promise<DFMExplanation | null>;
@@ -163,24 +165,24 @@ export interface RightPanelProps {
 
 function RightPanel({
   lang, t,
-  effectiveResult, geometryMetrics, massProperties, feaTotalFaces, unitSystem,
+  effectiveResult: _effectiveResult, geometryMetrics, massProperties, feaTotalFaces, unitSystem,
   assemblyMates, interferenceResults, interferenceLoading, assemblyPartNames, interferenceCheckPartCount, assemblyPlacedParts, assemblySolverBomParts,
-  designContext, pendingChatMsg, isPreviewMode, isSketchMode,
+  designContext: _designContext, pendingChatMsg: _pendingChatMsg, isPreviewMode: _isPreviewMode, isSketchMode: _isSketchMode,
   onPrintAnalyze, printOptimization, onOptimizeOrientation, onApplyOptimalOrientation, onExportPrintReady,
-  onDFMAnalyze, onApplyDFMFix, onJumpToDFMFeature, onExplainDFMIssue, onPreviewDFMCostDelta, processRecommendations, onDraftAnalyze, onFEARunAnalysis,
+  onDFMAnalyze, onApplyDFMFix, onAutoDraftFix, onJumpToDFMFeature, onExplainDFMIssue, onPreviewDFMCostDelta, processRecommendations, onDraftAnalyze, onFEARunAnalysis,
   onAddGDT, onUpdateGDT, onRemoveGDT, onAddDimension, onUpdateDimension, onRemoveDimension,
-  onApplyDimension,
+  onApplyDimension: _onApplyDimension,
   onAddMate, onRemoveMate, onUpdateMate, onDetectInterference, onCancelInterference, onApplyMatesToPlacement, assemblySolverResyncNonce,
   onGetQuote,
   onApplyArray,
-  onChatApplySingle, onChatApplyBom, onBomPreview, onChatApplySketch,
-  onChatApplyOptimize, onChatApplyModify, onModifyAutoApplied, onAiPreview, onCancelPreview,
-  onTextToCAD,
-  chatHistory, onChatHistoryChange,
-  layoutWidth, collapsed, overlay, side, onToggleCollapse, onResize,
+  onChatApplySingle: _onChatApplySingle, onChatApplyBom: _onChatApplyBom, onBomPreview: _onBomPreview, onChatApplySketch: _onChatApplySketch,
+  onChatApplyOptimize: _onChatApplyOptimize, onChatApplyModify: _onChatApplyModify, onModifyAutoApplied: _onModifyAutoApplied, onAiPreview: _onAiPreview, onCancelPreview: _onCancelPreview,
+  onTextToCAD: _onTextToCAD,
+  chatHistory: _chatHistory, onChatHistoryChange: _onChatHistoryChange,
+  layoutWidth: _layoutWidth, collapsed: _collapsed, overlay: _overlay, side: _side, onToggleCollapse: _onToggleCollapse, onResize: _onResize,
 }: RightPanelProps) {
-  const { theme } = useTheme();
-  const { isMobile, isTablet } = useResponsive();
+  const { theme: _theme } = useTheme();
+  const { isMobile, isTablet: _isTablet } = useResponsive();
 
   // ── UIStore: show flags ──
   const showPrintAnalysis = useUIStore(s => s.showPrintAnalysis);
@@ -204,8 +206,8 @@ function RightPanel({
   const [showSupplierPanel, setShowSupplierPanel] = React.useState(false);
   const showArrayPanel = useUIStore(s => s.showArrayPanel);
   const setShowArrayPanel = useUIStore(s => s.setShowArrayPanel);
-  const showAIAssistant = useUIStore(s => s.showAIAssistant);
-  const activeTab = useUIStore(s => s.activeTab);
+  const _showAIAssistant = useUIStore(s => s.showAIAssistant);
+  const _activeTab = useUIStore(s => s.activeTab);
 
   // ── AnalysisStore: analysis data ──
   const printAnalysis = useAnalysisStore(s => s.printAnalysis);
@@ -213,7 +215,6 @@ function RightPanel({
   const dfmResults = useAnalysisStore(s => s.dfmResults);
   const setDfmResults = useAnalysisStore(s => s.setDfmResults);
   const setDfmHighlightedIssue = useAnalysisStore(s => s.setDfmHighlightedIssue);
-  const draftResult = useAnalysisStore(s => s.draftResult);
   const setDraftResult = useAnalysisStore(s => s.setDraftResult);
   const feaResult = useAnalysisStore(s => s.feaResult);
   const setFeaResult = useAnalysisStore(s => s.setFeaResult);
@@ -230,7 +231,7 @@ function RightPanel({
 
   // ── SceneStore: dimension advisor needs selectedId, params, materialId ──
   const selectedId = useSceneStore(s => s.selectedId);
-  const params = useSceneStore(s => s.params);
+  const _params = useSceneStore(s => s.params);
   const materialId = useSceneStore(s => s.materialId);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
   const explodeFactor = useSceneStore(s => s.explodeFactor);
@@ -259,6 +260,7 @@ function RightPanel({
           results={dfmResults}
           onAnalyze={onDFMAnalyze}
           onApplyFix={onApplyDFMFix}
+          onAutoDraftFix={onAutoDraftFix}
           onJumpToFeature={onJumpToDFMFeature}
           onExplainIssue={onExplainDFMIssue}
           onPreviewCostDelta={onPreviewDFMCostDelta}
@@ -269,10 +271,9 @@ function RightPanel({
         />
       )}
 
-      {/* ══════ RIGHT — Draft Analysis Panel ══════ */}
+      {/* ══════ RIGHT — Draft Analysis Panel — M4: result auto-resolves from store ══════ */}
       {showDraftAnalysis && (
         <DraftAnalysisPanelDynamic
-          result={draftResult}
           onAnalyze={onDraftAnalyze}
           onClose={() => { setShowDraftAnalysis(false); setDraftResult(null); }}
           isKo={lang === 'ko'}

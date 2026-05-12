@@ -103,7 +103,7 @@ export function placedPartWorldMatrix(p: PlacedPart): THREE.Matrix4 {
 }
 
 function faceTriangleIndices(geometry: THREE.BufferGeometry, faceIndex: number): [number, number, number] {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const _posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
   const index = geometry.index;
   if (index) {
     return [

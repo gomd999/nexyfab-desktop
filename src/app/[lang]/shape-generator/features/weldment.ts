@@ -2,6 +2,68 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
 
+// ─── Structural frame builder (E5) ───────────────────────────────────────────
+// generateStructuralFrame sweeps `section` along each line segment and
+// merges the resulting members into a single BufferGeometry. Members are
+// "butt-trimmed" implicitly — the path endpoints define exactly where the
+// extrusion stops, so two segments meeting at a node will not overlap as
+// long as the caller provides intersecting endpoints.
+//
+// MITER cut (angle-bisector trimming so members appear flush at corners) is
+// a follow-up: it requires CSG against an angled half-space at each shared
+// node. Today the frame builder produces straight butt joints which is
+// acceptable for round tube / square tube but visually crude for I-beam
+// where webs would benefit from notching. Track in features/weldment-miter.
+
+export interface FrameSegment {
+  start: [number, number, number];
+  end: [number, number, number];
+}
+
+export interface FrameOptions {
+  sectionType: number;
+  size: number;
+  thickness: number;
+}
+
+export function generateStructuralFrame(
+  segments: FrameSegment[],
+  options: FrameOptions,
+): THREE.BufferGeometry {
+  const { sectionType, size, thickness } = options;
+  const safeThickness = Math.min(thickness, size * 0.4);
+  const shape = makeSectionShape(sectionType, size, safeThickness);
+
+  const memberGeos: THREE.BufferGeometry[] = [];
+  for (const seg of segments) {
+    const a = new THREE.Vector3(seg.start[0], seg.start[1], seg.start[2]);
+    const b = new THREE.Vector3(seg.end[0], seg.end[1], seg.end[2]);
+    if (a.distanceTo(b) < 1e-3) continue; // skip degenerate
+    const path = new THREE.LineCurve3(a, b);
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      steps: 2,
+      bevelEnabled: false,
+      extrudePath: path,
+    });
+    geo.computeVertexNormals();
+    memberGeos.push(geo);
+  }
+
+  if (memberGeos.length === 0) return new THREE.BufferGeometry();
+  if (memberGeos.length === 1) return memberGeos[0];
+  try {
+    const merged = mergeGeometries(memberGeos);
+    if (merged) {
+      // Free temporary per-member buffers — the merged result owns its own copy.
+      for (const g of memberGeos) g.dispose();
+      return merged;
+    }
+  } catch {
+    /* fall through to first member as last resort */
+  }
+  return memberGeos[0];
+}
+
 function makeSectionShape(sectionType: number, size: number, thickness: number): THREE.Shape {
   const shape = new THREE.Shape();
   const s = size / 2;

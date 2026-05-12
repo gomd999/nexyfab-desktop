@@ -7,6 +7,7 @@ import { downloadBlob } from '@/lib/platform';
 //   - SVG string (headless / CI — layout mirrors AutoDrawingPanel preview)
 
 import type { DrawingResult, DrawingLine, DrawingText, ViewResult } from './autoDrawing';
+import type { jsPDF } from 'jspdf';
 
 /** PDF/DXF/SVG 미리보기 공통 — 표제란 리비전 필드 접두사(CAD 관례, ASCII). */
 export const DRAWING_TITLE_REVISION_LABEL = 'Rev';
@@ -159,7 +160,7 @@ function pdfStrokeFor(type: DrawingLine['type']): { w: number; dash: number[]; r
 /** Flip Y from our Y-up view space to jsPDF's Y-down page space. */
 function flipY(y: number, viewHeight: number): number { return viewHeight - y; }
 
-async function createDrawingJsPdf(drawing: DrawingResult) {
+async function createDrawingJsPdf(drawing: DrawingResult): Promise<jsPDF> {
   const { default: JsPDF } = await import('jspdf');
   const isLandscape = drawing.paperWidth > drawing.paperHeight;
   const doc = new JsPDF({
@@ -202,7 +203,7 @@ export async function exportDrawingPDF(drawing: DrawingResult, fileName: string)
   doc.save(`${safeName}.pdf`);
 }
 
-function drawViewPDF(doc: any, view: ViewResult): void {
+function drawViewPDF(doc: jsPDF, view: ViewResult): void {
   const ox = view.position.x;
   const oy = view.position.y;
 
@@ -241,7 +242,7 @@ function drawViewPDF(doc: any, view: ViewResult): void {
   }
 }
 
-function drawTitleBlockPDF(doc: any, drawing: DrawingResult): void {
+function drawTitleBlockPDF(doc: jsPDF, drawing: DrawingResult): void {
   const W = 100, H = 25;
   const x = drawing.paperWidth - W - 5;
   const y = drawing.paperHeight - H - 5;

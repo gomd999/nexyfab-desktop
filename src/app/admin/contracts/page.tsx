@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useToast, type ToastType } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/formatDate';
 
-function downloadContractsCSV(data: any[], toast?: (type: ToastType, message: string) => void) {
+function downloadContractsCSV(data: Contract[], toast?: (type: ToastType, message: string) => void) {
   if (data.length === 0) { toast?.('warning', '내보낼 데이터가 없습니다.'); return; }
   const headers = ['계약ID', '날짜', '프로젝트명', '파트너사', '계약금액', '신규우대', '수수료율(%)', '우대할인', '총수수료', '플랜공제', '최종수수료', '상태', '완료일'];
   const rows = data.map(c => [
@@ -209,7 +209,7 @@ export default function ContractsAdminPage() {
       .then(r => r.json())
       .then(d => setMessages(d.messages || []))
       .catch(() => {});
-  }, [detailContract?.id]);
+  }, [detailContract]);
 
   // 메시지 15초 폴링
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function ContractsAdminPage() {
         .catch(() => {});
     }, 15000);
     return () => clearInterval(timerId);
-  }, [detailContract?.id]);
+  }, [detailContract]);
 
   async function sendMessage() {
     if (!detailContract || !msgInput.trim()) return;

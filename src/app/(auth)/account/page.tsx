@@ -5,9 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
+import { authBaseUrl, nexysysBaseUrl } from '@/lib/auth-base-url';
 
-const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:4000';
-const NEXYSYS_URL = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'http://localhost:5173';
+const AUTH_BASE = authBaseUrl();
+const NEXYSYS_URL = nexysysBaseUrl();
 
 const PLAN_LABELS: Record<string, { label: string; color: string }> = {
   free: { label: 'Free', color: '#6b7280' },

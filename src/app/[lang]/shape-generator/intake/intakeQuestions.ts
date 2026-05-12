@@ -1,7 +1,7 @@
 /**
  * intakeQuestions.ts — Q&A Wizard 질문 트리
  */
-import type { Category, FunctionType, Environment, LoadType, SizeClass, QuantityTier, BudgetPriority, SpecialReq } from './intakeSpec';
+import type { IntakeSpec } from './intakeSpec';
 
 export interface QuestionOption<V = string> {
   value: V;
@@ -15,10 +15,10 @@ export interface Question {
   title: string;
   subtitle?: string;
   type: 'single' | 'multi' | 'dimensions' | 'text';
-  field: string;                        // IntakeSpec의 필드 이름
-  options?: QuestionOption[];           // single/multi
+  field: keyof IntakeSpec;
+  options?: QuestionOption[];
   optional?: boolean;
-  skipIf?: (spec: any) => boolean;     // 이전 답변에 따라 건너뛰기
+  skipIf?: (spec: IntakeSpec) => boolean;
 }
 
 export const QUESTIONS: Question[] = [

@@ -4,12 +4,83 @@ import { buildBinaryStl } from './stlEncode';
 
 export { buildBinaryStl } from './stlEncode';
 
+/**
+ * Options that control how the STL is written. The default mirrors the
+ * historical export (mm + as-is geometry) so existing call sites get the
+ * same output without changes.
+ */
+export interface ExportSTLOptions {
+  /** Output unit. Geometry is always stored in mm internally; we scale to
+   *  the requested unit so a slicer that defaults to mm/cm/m gets sane
+   *  numbers without manual override. */
+  unit?: 'mm' | 'cm' | 'm';
+  /** Origin handling. 'as-is' keeps the geometry's local frame; 'centered'
+   *  recenters the bounding box origin to (0,0,0); 'feet-on-floor' centers
+   *  X/Y and floors Z to 0 (typical for 3D-print orientation). */
+  origin?: 'as-is' | 'centered' | 'feet-on-floor';
+}
+
+const UNIT_SCALE: Record<NonNullable<ExportSTLOptions['unit']>, number> = {
+  mm: 1,
+  cm: 0.1,
+  m: 0.001,
+};
+
+/**
+ * Apply unit scale + origin transform to a clone of the input geometry,
+ * leaving the original untouched. Returning a clone matters: the source
+ * geometry is also bound to the live three.js scene and mutating it
+ * would visually shift the user's model.
+ */
+function prepareForExport(
+  geometry: THREE.BufferGeometry,
+  opts: ExportSTLOptions,
+): THREE.BufferGeometry {
+  const scale = UNIT_SCALE[opts.unit ?? 'mm'];
+  const origin = opts.origin ?? 'as-is';
+  if (scale === 1 && origin === 'as-is') return geometry;
+
+  const out = geometry.clone();
+  if (origin !== 'as-is') {
+    out.computeBoundingBox();
+    const bb = out.boundingBox;
+    if (bb) {
+      const cx = (bb.min.x + bb.max.x) / 2;
+      const cy = (bb.min.y + bb.max.y) / 2;
+      if (origin === 'centered') {
+        const cz = (bb.min.z + bb.max.z) / 2;
+        out.translate(-cx, -cy, -cz);
+      } else if (origin === 'feet-on-floor') {
+        out.translate(-cx, -cy, -bb.min.z);
+      }
+    }
+  }
+  if (scale !== 1) out.scale(scale, scale, scale);
+  return out;
+}
+
 // ─── STL Export (Binary) ────────────────────────────────────────────────────
 
-export async function exportSTL(geometry: THREE.BufferGeometry, filename = 'model'): Promise<void> {
-  const buffer = buildBinaryStl(geometry);
+export async function exportSTL(
+  geometry: THREE.BufferGeometry,
+  filename = 'model',
+  options: ExportSTLOptions = {},
+): Promise<void> {
+  const prepared = prepareForExport(geometry, options);
+  const buffer = buildBinaryStl(prepared);
   const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  await downloadBlob(`${filename}.stl`, blob);
+  // Annotate the filename with non-default options so the user can tell
+  // an mm-vs-m export apart in their Downloads folder. e.g.
+  //   model.stl              (defaults)
+  //   model_cm.stl           (cm units, as-is origin)
+  //   model_m_centered.stl   (m units, centered origin)
+  const suffixParts: string[] = [];
+  if (options.unit && options.unit !== 'mm') suffixParts.push(options.unit);
+  if (options.origin && options.origin !== 'as-is') suffixParts.push(options.origin);
+  const suffix = suffixParts.length > 0 ? `_${suffixParts.join('_')}` : '';
+  await downloadBlob(`${filename}${suffix}.stl`, blob);
+  // Free the cloned geometry's GPU/CPU buffers if we created one.
+  if (prepared !== geometry) prepared.dispose();
 }
 
 // ─── OBJ Export ─────────────────────────────────────────────────────────────

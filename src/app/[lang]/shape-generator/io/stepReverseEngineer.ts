@@ -25,7 +25,7 @@
 
 import * as THREE from 'three';
 import type { TopologicalMap, StableFace } from '../topology/TopologicalNaming';
-import { findFacesByTag } from '../topology/TopologicalNaming';
+import { findFacesByTag as _findFacesByTag } from '../topology/TopologicalNaming';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -235,7 +235,6 @@ function detectHoles(
   }
 
   // Each small lateral group → a candidate hole
-  let holeIdx = 1;
   for (const group of smallLateralGroups.slice(0, 8)) { // limit to 8 holes
     const totalArea = group.reduce((s, f) => s + f.signature.area, 0);
     // Rough radius estimate: A = 2πrh → r = A / (2π * h)
@@ -254,7 +253,6 @@ function detectHoles(
       faceIds: group.map(f => f.stableId),
       confidence: 0.55,
     });
-    holeIdx++;
   }
 
   return features;

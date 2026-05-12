@@ -33,6 +33,7 @@ const dict = {
   ja: {
     placeholder: 'コマンドを検索… (Ctrl+K)',
     noResults: '一致するコマンドがありません',
+    askAiPrefix: 'AIに依頼: ',
     catShape: '形状',
     catFeature: 'フィーチャ',
     catView: '表示',
@@ -44,6 +45,7 @@ const dict = {
   zh: {
     placeholder: '搜索命令… (Ctrl+K)',
     noResults: '没有匹配的命令',
+    askAiPrefix: '向 AI 提问: ',
     catShape: '形状',
     catFeature: '特征',
     catView: '视图',
@@ -55,6 +57,7 @@ const dict = {
   es: {
     placeholder: 'Buscar comandos… (Ctrl+K)',
     noResults: 'Sin resultados',
+    askAiPrefix: 'Preguntar a la IA: ',
     catShape: 'Forma',
     catFeature: 'Operación',
     catView: 'Vista',
@@ -66,6 +69,7 @@ const dict = {
   ar: {
     placeholder: 'بحث الأوامر… (Ctrl+K)',
     noResults: 'لا توجد نتائج',
+    askAiPrefix: 'اسأل الذكاء الاصطناعي: ',
     catShape: 'شكل',
     catFeature: 'ميزة',
     catView: 'عرض',
@@ -140,8 +144,8 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
     if (onAskAI) {
       results.unshift({
         id: 'ask-ai-dynamic',
-        label: `${(tt as any).askAiPrefix || 'Ask AI: '} "${query}"`,
-        labelKo: `${(tt as any).askAiPrefix || 'AI에게 요청: '} "${query}"`,
+        label: `${tt.askAiPrefix} "${query}"`,
+        labelKo: `${dict.ko.askAiPrefix} "${query}"`,
         icon: '🤖',
         category: tt.catAi || 'AI',
         action: () => onAskAI(query),

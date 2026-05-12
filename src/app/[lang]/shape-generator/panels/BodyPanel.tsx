@@ -28,6 +28,7 @@ interface BodyPanelProps {
   onSplit: (bodyId: string, plane: number, offset: number) => void;
   onMerge: (bodyIds: string[]) => void;
   onClose: () => void;
+  onHighlightPart?: (name: string | null) => void;
 }
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
@@ -176,6 +177,7 @@ export default function BodyPanel({
   onSplit,
   onMerge,
   onClose,
+  onHighlightPart,
 }: BodyPanelProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -266,6 +268,8 @@ export default function BodyPanel({
             <div
               key={body.id}
               onClick={() => onSetActive(body.id)}
+              onMouseEnter={() => onHighlightPart?.(body.name)}
+              onMouseLeave={() => onHighlightPart?.(null)}
               style={{
                 display: 'flex',
                 alignItems: 'center',

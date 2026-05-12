@@ -53,7 +53,7 @@ function SkeletonRow() {
 
 export default function AdminEmailLogsPage() {
   const [jobs, setJobs] = useState<EmailJob[]>([]);
-  const [summary, setSummary] = useState<Record<string, number>>({});
+  const [_summary, setSummary] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');

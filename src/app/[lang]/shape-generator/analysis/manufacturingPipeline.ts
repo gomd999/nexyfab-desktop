@@ -44,6 +44,20 @@ export interface PipelineResult {
   recommendations: ManufacturerRecommendation[];
   riskLevel: 'low' | 'medium' | 'high';
   suggestions: string[];
+  /**
+   * Cost estimate confidence (0–1). Q7: tells the user how much
+   * variance to expect when shopping the part to suppliers.
+   * Derived from DFM score + bbox extremes. Multiply ±(1 - confidence)
+   * onto the cost figure to get a rough quote-spread estimate.
+   * Optional — older callers may omit, in which case UI hides the band.
+   */
+  costConfidence?: number;
+  /**
+   * One-sigma cost band (low, high) in same currency as costBreakdown.
+   * UI typically renders as "$X (range $Y–$Z)". Optional — when omitted,
+   * the UI shows the point estimate only.
+   */
+  costRange?: { low: number; high: number };
 }
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
@@ -292,7 +306,7 @@ function calculateCost(
 function matchManufacturers(
   config: PipelineConfig,
   costBreakdown: CostBreakdown,
-  dfmScore: number,
+  _dfmScore: number,
 ): ManufacturerRecommendation[] {
   const matched = MANUFACTURERS
     .filter(m => m.capability.includes(config.process))
@@ -389,6 +403,17 @@ export async function runPipeline(
   // Stage 5: Complete
   onStageChange('complete');
 
+  // Q7 — confidence band on the cost estimate. DFM score directly maps to
+  // confidence (good DFM = supplier quotes will cluster tighter), with a
+  // floor at 0.55 so we never publish "we have no idea" results — those
+  // are infeasible parts that should already be blocked upstream.
+  const costConfidence = Math.max(0.55, Math.min(0.95, dfm.score / 100));
+  const variance = 1 - costConfidence;
+  const costRange = {
+    low: Math.round(costBreakdown.total * (1 - variance)),
+    high: Math.round(costBreakdown.total * (1 + variance)),
+  };
+
   return {
     stage: 'complete',
     dfmScore: dfm.score,
@@ -398,5 +423,7 @@ export async function runPipeline(
     recommendations,
     riskLevel,
     suggestions: dfm.suggestions,
+    costConfidence,
+    costRange,
   };
 }

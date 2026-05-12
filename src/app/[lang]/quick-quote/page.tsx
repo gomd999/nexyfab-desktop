@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { analytics } from '@/lib/analytics';
+import AutoQuoteCard from './AutoQuoteCard';
 
 // ModelViewer는 client-side only (three.js)
 const ModelViewer = dynamic(() => import('@/app/components/ModelViewer'), { ssr: false });
@@ -551,6 +552,34 @@ function QuickQuotePageInner() {
     const [cartItems, setCartItems] = useState<CartItemLocal[]>([]);
     const [isCartMode, setIsCartMode] = useState(false);
 
+    const validateFile = useCallback((file: File): boolean => {
+        if (fileMode === 'step') {
+            const allowed = ['.step', '.stp', '.stl', '.obj', '.blend'];
+            const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+            if (!allowed.includes(ext)) { setError(t.fileTypeError); return false; }
+            if (file.size > 50 * 1024 * 1024) { setError(t.fileSizeError); return false; }
+        } else {
+            const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowed.includes(file.type)) { setError(t.fileTypeError); return false; }
+            if (file.size > 10 * 1024 * 1024) { setError(t.fileSizeError); return false; }
+        }
+        return true;
+    }, [fileMode, t]);
+
+    const handleFileSelect = useCallback((files: FileList | File[]) => {
+        setError('');
+        setDimRequired(false);
+        setDimFieldError({ w: false, h: false, d: false });
+        const valid: File[] = [];
+        for (const file of Array.from(files)) {
+            if (validateFile(file)) valid.push(file);
+        }
+        if (valid.length > 0) setSelectedFiles(prev => {
+            const names = new Set(prev.map(f => f.name));
+            return [...prev, ...valid.filter(f => !names.has(f.name))];
+        });
+    }, [validateFile]);
+
     useEffect(() => {
         const from = searchParams.get('from');
         if (from === 'shape-generator') {
@@ -566,7 +595,26 @@ function QuickQuotePageInner() {
                 setDimD(bd.toFixed(0));
                 setStep(3);
             }
-        } else if (from === 'shape-cart') {
+        }
+
+        // B2 — SCAD agent → quote bridge. The agent stashed STEP under
+        // a token; pull it down and feed through the same handler the
+        // file-picker uses. One-shot: the endpoint deletes the entry on
+        // read, so navigating back to the URL won't re-fetch.
+        const stepToken = searchParams.get('stepToken');
+        if (stepToken) {
+            (async () => {
+                try {
+                    const res = await fetch(`/api/nexyfab/scad-agent/export-to-quote?token=${encodeURIComponent(stepToken)}`);
+                    if (!res.ok) return;
+                    const blob = await res.blob();
+                    const file = new File([blob], 'agent-export.step', { type: 'application/step' });
+                    handleFileSelect([file]);
+                } catch { /* fail silent — user can drag the file manually */ }
+            })();
+        }
+
+        if (from === 'shape-cart') {
             // Load cart from localStorage
             try {
                 const raw = localStorage.getItem('nexyfab_shape_cart');
@@ -588,7 +636,7 @@ function QuickQuotePageInner() {
                 }
             } catch { /* ignore */ }
         }
-    }, [searchParams]);
+    }, [searchParams, handleFileSelect]);
 
     // ── 기능 1: 다재료 비교 테이블 ──
     const [showCompareTable, setShowCompareTable] = useState(false);
@@ -647,7 +695,7 @@ function QuickQuotePageInner() {
                 })
                 .catch(() => {});
         }
-    }, [step]);
+    }, [step, chartData]);
 
     // AI 추천 재질/공정 반영
     useEffect(() => {
@@ -663,35 +711,6 @@ function QuickQuotePageInner() {
         }
     }, [aiAnalysis]);
 
-    // ── 파일 검증 ──
-    const validateFile = (file: File): boolean => {
-        if (fileMode === 'step') {
-            const allowed = ['.step', '.stp', '.stl', '.obj', '.blend'];
-            const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
-            if (!allowed.includes(ext)) { setError(t.fileTypeError); return false; }
-            if (file.size > 50 * 1024 * 1024) { setError(t.fileSizeError); return false; }
-        } else {
-            const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!allowed.includes(file.type)) { setError(t.fileTypeError); return false; }
-            if (file.size > 10 * 1024 * 1024) { setError(t.fileSizeError); return false; }
-        }
-        return true;
-    };
-
-    const handleFileSelect = (files: FileList | File[]) => {
-        setError('');
-        setDimRequired(false);
-        setDimFieldError({ w: false, h: false, d: false });
-        const valid: File[] = [];
-        for (const file of Array.from(files)) {
-            if (validateFile(file)) valid.push(file);
-        }
-        if (valid.length > 0) setSelectedFiles(prev => {
-            const names = new Set(prev.map(f => f.name));
-            return [...prev, ...valid.filter(f => !names.has(f.name))];
-        });
-    };
-
     const removeFile = (name: string) => {
         setSelectedFiles(prev => prev.filter(f => f.name !== name));
         setDimRequired(false);
@@ -702,7 +721,7 @@ function QuickQuotePageInner() {
         e.preventDefault();
         setIsDragging(false);
         if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files);
-    }, [fileMode]);
+    }, [handleFileSelect]);
 
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
     const handleDragLeave = () => setIsDragging(false);
@@ -1309,6 +1328,14 @@ ${aiReport ? `
                 {/* ── Step 3: 재료/공정 선택 ── */}
                 {step === 3 && geometry && (
                     <>
+                        {/* B4 — Auto-quote card (instant AI estimate before manual picker) */}
+                        <AutoQuoteCard
+                            lang={lang === 'kr' ? 'ko' : 'en'}
+                            geometry={geometry}
+                            quantity={quantity}
+                            onApply={(p, m) => { setProcess(p); setMaterial(m); }}
+                        />
+
                         {/* 분석 결과 요약 */}
                         <div style={card}>
                             <h2 style={{ margin: '0 0 16px', fontWeight: 800, fontSize: '18px', color: '#111827' }}>
@@ -1835,7 +1862,7 @@ ${aiReport ? `
                             const padL = 60; const padR = 16; const padT = 16; const padB = 36;
                             const plotW = svgW - padL - padR;
                             const plotH = svgH - padT - padB;
-                            const n = Math.max(aluData.length, copData.length);
+                            const _n = Math.max(aluData.length, copData.length);
 
                             // X좌표: 등간격
                             const xPos = (i: number, len: number) => padL + (i / Math.max(len - 1, 1)) * plotW;

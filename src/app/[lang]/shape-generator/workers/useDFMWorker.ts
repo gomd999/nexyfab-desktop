@@ -109,7 +109,7 @@ export function useDFMWorker() {
           const timeoutId = setTimeout(() => {
             pendingRef.current = null;
             setLoading(false);
-            reject(new Error('FEA analysis timed out (30s)'));
+            reject(new Error('DFM analysis timed out (30s)'));
           }, 30_000);
 
           pendingRef.current = {

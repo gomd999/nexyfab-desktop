@@ -8,6 +8,12 @@ const trackedGeometries = new Set<THREE.BufferGeometry | THREE.EdgesGeometry>();
 // Additional active sets registered by local components
 const localActiveSets = new Set<Set<THREE.BufferGeometry | THREE.EdgesGeometry>>();
 
+/** three-mesh-bvh augments BufferGeometry at runtime (see `trackGeometry`). */
+type BufferGeometryWithBVH = THREE.BufferGeometry & {
+  computeBoundsTree?: () => void;
+  boundsTree?: unknown;
+};
+
 /**
  * Registers a geometry to be managed by the Garbage Collector.
  * Also automatically computes the BVH bounds tree to accelerate raycasting.
@@ -17,11 +23,11 @@ export function trackGeometry(geo: THREE.BufferGeometry | THREE.EdgesGeometry | 
     trackedGeometries.add(geo);
     // Automatically compute BVH for solid geometries (skip EdgesGeometry as it's not a mesh)
     if (!(geo instanceof THREE.EdgesGeometry)) {
-      const gAny = geo as any;
-      if (gAny.computeBoundsTree && !gAny.boundsTree) {
+      const g = geo as BufferGeometryWithBVH;
+      if (typeof g.computeBoundsTree === 'function' && g.boundsTree == null) {
         // Small delay or synchronous? Synchronous is usually fine, but for very large 
         // models it might block. We'll do it synchronously since it's during loading/parsing.
-        gAny.computeBoundsTree();
+        g.computeBoundsTree();
       }
     }
   }

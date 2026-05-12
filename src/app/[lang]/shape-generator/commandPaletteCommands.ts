@@ -43,6 +43,11 @@ export function buildPanelCommands(togglePanel: TogglePanel): Command[] {
     mk('toggle-sweep',        'showParametricSweep',  'Parametric Sweep',      '파라메트릭 스윕',    'Analysis', '📈'),
     mk('toggle-drawing',      'showAutoDrawing',      'Auto 2D Drawing',       '자동 도면',         'Analysis', '📑'),
     mk('toggle-mfgpipe',      'showMfgPipeline',      'Manufacturing Pipeline','제조 파이프라인',    'Analysis', '🏭'),
+    mk('toggle-config-table', 'showConfigurationTable', 'Configuration Table', '구성 테이블',       'Analysis', '📊'),
+    mk('toggle-drc',          'showDrcPanel',           'DRC (Design Rules)',  '설계 규칙 검사',     'Analysis', '✅'),
+    mk('toggle-plm',          'showPlmConfig',          'PLM / ERP Connector', 'PLM/ERP 연동',      'Analysis', '🔗'),
+    mk('toggle-sketch-text',  'showSketchText',         'Sketch Text',         '스케치 텍스트',     'Features', '🅰️'),
+    mk('toggle-smart-fastener', 'showSmartFastener',    'Smart Fastener',      '스마트 체결구',     'Features', '🔩'),
 
     // Features / Tools
     mk('toggle-hole',       'showHoleWizard',      'Hole Wizard',       '홀 마법사',       'Features', '🕳️'),

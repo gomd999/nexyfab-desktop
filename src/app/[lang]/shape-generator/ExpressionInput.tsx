@@ -74,7 +74,7 @@ export default function ExpressionInput({
   onCommit,
   min,
   max,
-  step,
+  step: _step,
   unit,
   unitSystem,
   expressionLabel = 'Expression',
@@ -112,11 +112,11 @@ export default function ExpressionInput({
       const result = evaluateExpression(trimmed, variables);
       setError(null);
       setEvalResult(result);
-    } catch (e: any) {
-      setError(e.message || t.invalid);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : t.invalid);
       setEvalResult(null);
     }
-  }, [localExpr, variables]);
+  }, [localExpr, variables, t]);
 
   // Build suggestions: parameter variable names + built-in function names
   const getSuggestions = useCallback((): string[] => {
@@ -228,6 +228,25 @@ export default function ExpressionInput({
   const borderColor = error ? '#f85149' : hasExpr ? '#6366f1' : '#30363d';
   const paramVars = variables.filter(v => !BUILT_IN_FUNCTION_NAMES.includes(v.name));
 
+  // Hover hint showing the value in the OTHER unit system. Engineers often
+  // think in both systems (e.g. "is 25mm about an inch?"); a tooltip shortcut
+  // saves a context switch. Only relevant when a plain numeric value is in
+  // the input — expressions and empty inputs skip this.
+  const altUnitTooltip = (() => {
+    if (!unitSystem || hasExpr || error) return null;
+    const trimmed = localExpr.trim();
+    if (!trimmed) return null;
+    const n = parseFloat(trimmed);
+    if (!Number.isFinite(n)) return null;
+    if (unitSystem === 'mm') {
+      const inches = n / 25.4;
+      return `${n} mm ≈ ${inches.toFixed(3)} in`;
+    } else {
+      const mm = n * 25.4;
+      return `${n} in ≈ ${mm.toFixed(2)} mm`;
+    }
+  })();
+
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -293,7 +312,7 @@ export default function ExpressionInput({
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
           onClick={e => { cursorPosRef.current = (e.target as HTMLInputElement).selectionStart ?? localExpr.length; }}
-          title={error || (evalResult !== null && hasExpr ? `= ${evalResult}` : undefined)}
+          title={error || (evalResult !== null && hasExpr ? `= ${evalResult}` : altUnitTooltip ?? undefined)}
           style={{
             width: 72, padding: '3px 6px', borderRadius: 6,
             border: `1px solid ${borderColor}`, fontSize: 12, fontWeight: 700,

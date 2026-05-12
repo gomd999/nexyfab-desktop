@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminSettings } from '@/lib/adminSettings';
+import { authBaseUrl } from '@/lib/auth-base-url';
 
-const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:4000';
+const AUTH_BASE = authBaseUrl();
 
 export default function AdminLinkPage() {
     const [email, setEmail] = useState('');
@@ -74,8 +75,11 @@ export default function AdminLinkPage() {
             localStorage.setItem('currentUser', JSON.stringify(data.user));
             setIsAuthorized(true);
             setMessage(null);
-        } catch (err: any) {
-            setMessage({ type: 'error', text: err.message || '로그인에 실패했습니다.' });
+        } catch (err: unknown) {
+            setMessage({
+                type: 'error',
+                text: err instanceof Error ? err.message : '로그인에 실패했습니다.',
+            });
         }
     };
 
@@ -101,7 +105,7 @@ export default function AdminLinkPage() {
             } else {
                 setMessage({ type: 'error', text: data.error || '저장에 실패했습니다.' });
             }
-        } catch (error) {
+        } catch (_error) {
             setMessage({ type: 'error', text: '서버 오류가 발생했습니다.' });
         } finally {
             setIsSaving(false);

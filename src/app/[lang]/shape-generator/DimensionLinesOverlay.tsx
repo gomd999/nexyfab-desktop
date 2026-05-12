@@ -26,13 +26,15 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
   ];
 
   return (
-    <div style={{
-      position: 'absolute',
-      inset: 0,
-      pointerEvents: 'none',
-      zIndex: 40,
-    }}>
-      {/* Bottom — Width (X) */}
+    <>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 40,
+        animation: 'dimLinesIn 0.3s ease-out forwards',
+      }}>
+        {/* Bottom — Width (X) */}
       <div style={{
         position: 'absolute',
         bottom: 48,
@@ -44,12 +46,14 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
       }}>
         <div style={{ width: 32, height: 1, background: dims[0].color, opacity: 0.6 }} />
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          background: 'rgba(13,17,23,0.85)',
-          backdropFilter: 'blur(8px)',
-          border: `1px solid ${dims[0].color}40`,
-          borderRadius: 6,
-          padding: '3px 8px',
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'linear-gradient(135deg, rgba(30, 35, 45, 0.7) 0%, rgba(13, 17, 23, 0.8) 100%)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${dims[0].color}50`,
+          borderRadius: 8,
+          padding: '4px 10px',
+          boxShadow: `0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset`,
         }}>
           <span style={{ fontSize: 9, color: dims[0].color, fontWeight: 700, letterSpacing: '0.03em' }}>
             {dims[0].label}
@@ -75,12 +79,14 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
       }}>
         <div style={{ width: 1, height: 32, background: dims[1].color, opacity: 0.6 }} />
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          background: 'rgba(13,17,23,0.85)',
-          backdropFilter: 'blur(8px)',
-          border: `1px solid ${dims[1].color}40`,
-          borderRadius: 6,
-          padding: '3px 8px',
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'linear-gradient(135deg, rgba(30, 35, 45, 0.7) 0%, rgba(13, 17, 23, 0.8) 100%)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${dims[1].color}50`,
+          borderRadius: 8,
+          padding: '4px 10px',
+          boxShadow: `0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset`,
         }}>
           <span style={{ fontSize: 9, color: dims[1].color, fontWeight: 700, letterSpacing: '0.03em' }}>
             {dims[1].label}
@@ -105,12 +111,14 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
       }}>
         <div style={{ width: 24, height: 1, background: dims[2].color, opacity: 0.6 }} />
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          background: 'rgba(13,17,23,0.85)',
-          backdropFilter: 'blur(8px)',
-          border: `1px solid ${dims[2].color}40`,
-          borderRadius: 6,
-          padding: '3px 8px',
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'linear-gradient(135deg, rgba(30, 35, 45, 0.7) 0%, rgba(13, 17, 23, 0.8) 100%)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${dims[2].color}50`,
+          borderRadius: 8,
+          padding: '4px 10px',
+          boxShadow: `0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset`,
         }}>
           <span style={{ fontSize: 9, color: dims[2].color, fontWeight: 700, letterSpacing: '0.03em' }}>
             {dims[2].label}
@@ -122,6 +130,15 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
         </div>
         <div style={{ width: 24, height: 1, background: dims[2].color, opacity: 0.6 }} />
       </div>
-    </div>
+
+      </div>
+
+      <style>{`
+        @keyframes dimLinesIn {
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </>
   );
 }

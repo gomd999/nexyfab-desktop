@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import type { ElementSelectionInfo, FaceSelectionInfo } from './selectionInfo';
+import type { ElementSelectionInfo, FaceSelectionInfo, MultiSelectionInfo, EdgeSelectionInfo } from './selectionInfo';
 
 interface Props {
   info: ElementSelectionInfo | null;
@@ -16,6 +16,7 @@ function fmt(n: number, decimals = 1) {
 const dict = {
   ko: {
     faceSelect: '면 선택',
+    multiSelect: '다중 면 선택',
     edgeSelect: '엣지 선택',
     direction: '방향',
     area: '면적',
@@ -34,6 +35,7 @@ const dict = {
   },
   en: {
     faceSelect: 'Face Selection',
+    multiSelect: 'Multi-Face Selection',
     edgeSelect: 'Edge Selection',
     direction: 'Direction',
     area: 'Area',
@@ -52,6 +54,7 @@ const dict = {
   },
   ja: {
     faceSelect: '面選択',
+    multiSelect: '複数面選択',
     edgeSelect: 'エッジ選択',
     direction: '方向',
     area: '面積',
@@ -70,6 +73,7 @@ const dict = {
   },
   zh: {
     faceSelect: '选择面',
+    multiSelect: '多面选择',
     edgeSelect: '选择边',
     direction: '方向',
     area: '面积',
@@ -88,6 +92,7 @@ const dict = {
   },
   es: {
     faceSelect: 'Selección de Cara',
+    multiSelect: 'Selección Múltiple de Caras',
     edgeSelect: 'Selección de Arista',
     direction: 'Dirección',
     area: 'Área',
@@ -106,6 +111,7 @@ const dict = {
   },
   ar: {
     faceSelect: 'تحديد الوجه',
+    multiSelect: 'تحديد وجوه متعددة',
     edgeSelect: 'تحديد الحافة',
     direction: 'الاتجاه',
     area: 'المساحة',
@@ -141,11 +147,56 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
 
   if (!info) return null;
 
+  if (info.type === 'multi') {
+    const multi = info as MultiSelectionInfo;
+    return (
+      <div style={{
+        position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+        zIndex: 200, minWidth: 260, maxWidth: 340,
+        background: 'rgba(15,20,35,0.97)', border: '1px solid rgba(99,102,241,0.5)',
+        borderRadius: 12, boxShadow: '0 4px 32px rgba(0,0,0,0.6)',
+        padding: '12px 14px', color: '#e5e7eb', fontSize: 12,
+        backdropFilter: 'blur(12px)', pointerEvents: 'auto',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 6px #a78bfa', display: 'inline-block' }} />
+            <span style={{ fontWeight: 700, color: '#ede9fe', fontSize: 13 }}>
+              {t.multiSelect} ({multi.faces.length})
+            </span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '2px 4px' }}>✕</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+          <Row label={t.area} value={`${fmt(multi.totalArea)} mm²`} accent />
+          <Row label={t.triangles} value={`${multi.totalTriangleCount}${t.trianglesUnit}`} />
+          {multi.faces.map((f, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, opacity: 0.75 }}>
+              <span style={{ color: '#6b7280', flexShrink: 0 }}>#{i + 1}</span>
+              <span style={{ color: '#c4b5fd', fontFamily: 'monospace', textAlign: 'right' }}>
+                {f.normalLabel} · {fmt(f.area)} mm²
+              </span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {FACE_ACTIONS.map(a => (
+            <button key={a.label} onClick={() => onSendToChat(info, a.hint)}
+              style={{ padding: '4px 10px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 20, color: '#c7d2fe', fontSize: 11, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.28)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.12)')}
+            >{a.label}</button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const isFace = info.type === 'face';
   const face = info as FaceSelectionInfo;
 
   const dynamicActions = [...FACE_ACTIONS];
-  if (info.partName) {
+  if ('partName' in info && info.partName) {
     dynamicActions.unshift({ label: t.createMate ?? 'Create Mate', hint: 'mate_start' });
   }
 
@@ -201,7 +252,7 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
           </>
         ) : (
           <>
-            <Row label={t.estLength} value={`${fmt((info as any).length)} mm`} />
+            <Row label={t.estLength} value={`${fmt((info as EdgeSelectionInfo).length)} mm`} />
             <Row label={t.position} value={`(${fmt(info.position[0])}, ${fmt(info.position[1])}, ${fmt(info.position[2])}) mm`} />
           </>
         )}

@@ -97,7 +97,7 @@ function vertexClusterSimplify(
   // ---------- Pass 2: rebuild triangles, skip degenerate ones ----------
 
   const outPositions: number[] = [];
-  const hasNormals = !!src.attributes.normal;
+  const _hasNormals = !!src.attributes.normal;
 
   for (let t = 0; t < triCount; t++) {
     const i0 = t * 3;

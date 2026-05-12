@@ -160,7 +160,7 @@ export function getElementDofs(
   ez: number,
   nx: number,
   ny: number,
-  nz: number
+  _nz: number
 ): number[] {
   const nxn = nx + 1;
   const nyn = ny + 1;
@@ -679,9 +679,9 @@ export function getLoadVector(
   nx: number,
   ny: number,
   nz: number,
-  dimX: number,
-  dimY: number,
-  dimZ: number
+  _dimX: number,
+  _dimY: number,
+  _dimZ: number
 ): Float64Array {
   const nNodes = (nx + 1) * (ny + 1) * (nz + 1);
   const ndof = nNodes * 3;

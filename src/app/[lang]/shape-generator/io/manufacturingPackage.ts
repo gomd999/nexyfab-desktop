@@ -15,6 +15,8 @@ export interface ManufacturingSidecarMeta {
   unitSystem: 'mm' | 'inch';
   materialKey?: string;
   generatedAt: string;
+  /** Set when a ZIP bundle includes a BOM CSV companion file. */
+  hasBom?: boolean;
 }
 
 export function triangleCount(geometry: THREE.BufferGeometry): number {
@@ -27,7 +29,7 @@ function buildManifest(
   geometry: THREE.BufferGeometry,
   baseFilename: string,
   meta: ManufacturingSidecarMeta,
-  options: { zipArchiveName: string | null },
+  options: { zipArchiveName: string | null; hasBom?: boolean },
 ): Record<string, unknown> {
   const tri = Math.round(triangleCount(geometry));
   const lenUnit = meta.unitSystem === 'inch' ? 'in' : 'mm';
@@ -93,7 +95,7 @@ function buildManifest(
       ],
     };
     manifest.delivery = delivery;
-    if ((options as { hasBom?: boolean }).hasBom) {
+    if (options.hasBom) {
       delivery.contains.push(`${baseFilename}-BOM.csv`);
     }
   }
@@ -141,7 +143,7 @@ function buildReadme(
       `  • ${base}-manufacturing.json — structured metadata`,
       `  • ${base}-MANUFACTURING.txt — this summary`,
     );
-    if ((meta as any).hasBom) {
+    if (meta.hasBom) {
       lines.push(`  • ${base}-BOM.csv — Assembly Bill of Materials`);
     }
     lines.push('');
@@ -180,9 +182,9 @@ export async function exportManufacturingZipBundle(
   const lenUnit = meta.unitSystem === 'inch' ? 'in' : 'mm';
 
   const zipName = `${baseFilename}-manufacturing-bundle.zip`;
-  const manifest = buildManifest(geometry, baseFilename, meta, { zipArchiveName: zipName, hasBom: !!bomRows } as any);
+  const manifest = buildManifest(geometry, baseFilename, meta, { zipArchiveName: zipName, hasBom: !!bomRows });
   const json = JSON.stringify(manifest, null, 2);
-  const readme = buildReadme({ ...meta, hasBom: !!bomRows } as any, tri, baseFilename, lenUnit, true);
+  const readme = buildReadme({ ...meta, hasBom: !!bomRows }, tri, baseFilename, lenUnit, true);
 
   const filesToZip: Record<string, Uint8Array> = {
     [`${baseFilename}.step`]: strToU8(stepText),

@@ -32,7 +32,7 @@ export default async function ThirdPartyNoticesPage({
   const pkgs = notices.packages as { name: string; license: string; url: string }[];
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 text-gray-100">
+    <main className="mx-auto min-h-screen max-w-3xl bg-gray-950 px-4 py-12 text-gray-100">
       <h1 className="text-2xl font-semibold text-white mb-2">{title}</h1>
       <p className="text-sm text-gray-400 mb-8">{notices.notice}</p>
       <table className="w-full text-sm border-collapse">

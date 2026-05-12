@@ -14,7 +14,7 @@
  *
  * Note: path-traced / custom pipelines may ignore `material.clippingPlanes`; verify section cuts in the standard shaded viewport.
  */
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ShapeResult } from './shapes';
@@ -58,8 +58,9 @@ export default function SectionPlane({
 }: SectionPlaneProps) {
   const { gl, scene } = useThree();
 
-  // ── 1. Enable renderer local clipping ──────────────────────────────────────
+  // ── 1. Enable renderer local clipping (Three.js imperative API) ─────────────
   useEffect(() => {
+    /* eslint-disable react-hooks/immutability -- mutating R3F-owned renderer/scene for clipping */
     gl.localClippingEnabled = true;
     return () => {
       gl.localClippingEnabled = false;
@@ -71,6 +72,7 @@ export default function SectionPlane({
         }
       });
     };
+    /* eslint-enable react-hooks/immutability */
   }, [gl, scene]);
 
   const bounds = useMemo(
@@ -118,7 +120,15 @@ export default function SectionPlane({
   }, [enabled, clipPlane, scene]);
 
   // ── 4. Cap plane geometry (semi-transparent fill + border) ─────────────────
+  const prevBorderGeoRef = useRef<THREE.BufferGeometry | null>(null);
+
   const capData = useMemo(() => {
+    // Dispose previous border geometry
+    if (prevBorderGeoRef.current) {
+      prevBorderGeoRef.current.dispose();
+      prevBorderGeoRef.current = null;
+    }
+
     if (!enabled || !bounds || !clipPlane) return null;
     const bb = bounds;
     const size = bb.getSize(new THREE.Vector3());
@@ -152,6 +162,7 @@ export default function SectionPlane({
       new THREE.Vector3(-hw, -hw, 0),
     ];
     const borderGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    prevBorderGeoRef.current = borderGeo;
 
     return { position, rotation, borderGeo, extent };
   }, [enabled, bounds, clipPlane, axis, offset]);

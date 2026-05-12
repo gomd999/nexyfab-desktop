@@ -23,12 +23,14 @@ export interface RenderModeProps {
 function ToneMapper({ exposure }: { exposure: number }) {
   const { gl } = useThree();
   useEffect(() => {
+    /* eslint-disable react-hooks/immutability -- imperative Three.js renderer state */
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = exposure;
     return () => {
       gl.toneMapping = THREE.NoToneMapping;
       gl.toneMappingExposure = 1;
     };
+    /* eslint-enable react-hooks/immutability */
   }, [gl, exposure]);
   return null;
 }
@@ -39,6 +41,7 @@ function CustomHdriEnv({ url, showBackground }: { url: string; showBackground: b
   const { scene, gl } = useThree();
 
   useEffect(() => {
+    /* eslint-disable react-hooks/immutability -- imperative Three.js scene / PMREM setup */
     texture.mapping = THREE.EquirectangularReflectionMapping;
     const pmremGenerator = new THREE.PMREMGenerator(gl);
     pmremGenerator.compileEquirectangularShader();
@@ -51,6 +54,7 @@ function CustomHdriEnv({ url, showBackground }: { url: string; showBackground: b
       envMap.dispose();
       pmremGenerator.dispose();
     };
+    /* eslint-enable react-hooks/immutability */
   }, [texture, scene, gl, showBackground]);
 
   return null;
@@ -74,7 +78,7 @@ export default function RenderMode({
         </Suspense>
       ) : (
         <Environment
-          preset={environment as any}
+          preset={environment}
           background={showBackground}
           environmentIntensity={1.2}
         >

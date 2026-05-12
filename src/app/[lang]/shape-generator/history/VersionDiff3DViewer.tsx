@@ -81,7 +81,7 @@ export default function VersionDiff3DViewer({
   onClose,
 }: VersionDiff3DViewerProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, _setError] = useState<string | null>(null);
 
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang;

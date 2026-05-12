@@ -20,12 +20,54 @@ function randomOffset(range: number): number {
   return (Math.random() - 0.5) * range;
 }
 
+/**
+ * Generate IDs using the Web Crypto API so they cannot be guessed by an
+ * attacker watching `Math.random()` state. crypto.randomUUID has been
+ * available in browsers and Node since 2021/2022.
+ */
+function cryptoRandomHex(byteLen: number): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(byteLen);
+    crypto.getRandomValues(bytes);
+    let out = '';
+    for (const b of bytes) out += b.toString(16).padStart(2, '0');
+    return out;
+  }
+  // Fallback: should not be reached in modern runtimes. Keep behaviour safe-ish.
+  return Math.random().toString(36).slice(2, 2 + byteLen * 2);
+}
+
 function generateUserId(): string {
-  return `u-${Math.random().toString(36).slice(2, 9)}`;
+  return `u-${cryptoRandomHex(4)}`;
 }
 
 function generateRoomId(): string {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  // 16 hex chars = 64 bits — practically unguessable while still URL-friendly.
+  return cryptoRandomHex(8);
+}
+
+const ADHOC_ROOM_RE = /^[A-Za-z0-9_-]{8,128}$/;
+const PROJECT_ID_RE = /^[A-Za-z0-9_-]{4,128}$/;
+
+/**
+ * Resolve initial roomId in priority order:
+ *   1. URL `?roomId=…` query param — explicit cross-tab/browser join.
+ *   2. `?projectId=…` query param → `project:{id}` (server enforces membership).
+ *   3. Auto-generated random hex.
+ *
+ * Server-side validation (api/collab) re-checks both formats so a malformed
+ * client-supplied value still gets rejected.
+ */
+function resolveInitialRoomId(): string {
+  if (typeof window === 'undefined') return generateRoomId();
+  try {
+    const sp = new URL(window.location.href).searchParams;
+    const explicit = sp.get('roomId');
+    if (explicit && ADHOC_ROOM_RE.test(explicit)) return explicit;
+    const projectId = sp.get('projectId');
+    if (projectId && PROJECT_ID_RE.test(projectId)) return `project:${projectId}`;
+  } catch { /* malformed URL — fall through */ }
+  return generateRoomId();
 }
 
 // ─── Mode type ───────────────────────────────────────────────────────────────
@@ -53,6 +95,10 @@ export interface CollabCallbacks {
   onRemoteCommentReply?: (commentId: string, reply: unknown) => void;
   onChatMessage?: (msg: CollabChatMessage) => void;
   onRemoteFeatureSync?: (history: unknown) => void;
+  /** Yjs CRDT update bytes (base64) from a peer — apply via CollabDoc.applyRemoteUpdate. */
+  onRemoteCrdtUpdate?: (updateB64: string) => void;
+  /** Yjs awareness update bytes (base64) from a peer — apply via CollabDoc.applyAwarenessUpdate. */
+  onRemoteAwarenessUpdate?: (updateB64: string) => void;
 }
 
 export function useCollab(callbacks: CollabCallbacks = {}) {
@@ -60,7 +106,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({}); // userId → name
   const [isConnected, setIsConnected] = useState(false);
   const [mode, setModeState] = useState<CollabMode>('off');
-  const [roomId, setRoomIdState] = useState<string>(() => generateRoomId());
+  const [roomId, setRoomIdState] = useState<string>(() => resolveInitialRoomId());
   const callbacksRef = useRef(callbacks);
   useEffect(() => { callbacksRef.current = callbacks; });
 
@@ -76,10 +122,12 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
   const sseReconnectEnabledRef = useRef(false);
   const [reconnectState, setReconnectState] = useState<'idle' | 'connecting' | 'connected' | 'retrying' | 'failed'>('idle');
   const [reconnectCountdown, setReconnectCountdown] = useState(0);
-  const userIdRef = useRef<string>(generateUserId());
-  const userColorRef = useRef<string>(
-    USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)],
-  );
+  const [{ id: collabUserId, color: collabUserColor }] = useState(() => ({
+    id: generateUserId(),
+    color: USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)],
+  }));
+  const userIdRef = useRef(collabUserId);
+  const userColorRef = useRef(collabUserColor);
 
   // Throttle/debounce refs
   const cursorThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,6 +207,19 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
       callbacksRef.current.onChatMessage?.(p);
     } else if (type === 'feature_sync') {
       callbacksRef.current.onRemoteFeatureSync?.(payload);
+    } else if (type === 'crdt_update') {
+      const p = payload as { update?: string };
+      if (typeof p.update === 'string') callbacksRef.current.onRemoteCrdtUpdate?.(p.update);
+    } else if (type === 'crdt_sync_response') {
+      // Same payload shape as crdt_update — a peer sent us their full state.
+      const p = payload as { update?: string };
+      if (typeof p.update === 'string') callbacksRef.current.onRemoteCrdtUpdate?.(p.update);
+    } else if (type === 'crdt_sync_request') {
+      // Peer wants our state — reply via the broadcast channel below.
+      callbacksRef.current.onRemoteCrdtUpdate?.(''); // sentinel to trigger reply
+    } else if (type === 'crdt_awareness') {
+      const p = payload as { update?: string };
+      if (typeof p.update === 'string') callbacksRef.current.onRemoteAwarenessUpdate?.(p.update);
     } else if (type === 'typing_start') {
       const p = payload as { name: string };
       setTypingUsers(prev => ({ ...prev, [userId]: p.name ?? userId }));
@@ -196,7 +257,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
     }, 2000 + Math.random() * 1000);
   }, []);
 
-  const stopDemo = useCallback(() => {
+  const _stopDemo = useCallback(() => {
     if (demoTimerRef.current) {
       clearInterval(demoTimerRef.current);
       demoTimerRef.current = null;
@@ -234,7 +295,6 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
     sseReconnectTimerRef.current = setTimeout(() => {
       clearInterval(tickTimer);
       if (!sseReconnectEnabledRef.current) return;
-      // Call startRealtime again via ref below (declared next)
       startRealtimeRef.current?.(targetRoomId);
     }, delay);
   }, []);
@@ -265,7 +325,8 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
       };
 
       const eventTypes: CollabEventType[] = [
-        'cursor_move', 'param_change', 'shape_change', 'user_join', 'user_leave', 'feature_sync'
+        'cursor_move', 'param_change', 'shape_change', 'user_join', 'user_leave', 'feature_sync',
+        'crdt_update', 'crdt_sync_request', 'crdt_sync_response', 'crdt_awareness',
       ];
 
       for (const et of eventTypes) {
@@ -295,7 +356,6 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
       };
       sse.onerror = () => {
         setIsConnected(false);
-        // EventSource auto-closes on fatal error. Try manual reconnect.
         if (sse.readyState === EventSource.CLOSED) {
           if (sseRef.current === sse) sseRef.current = null;
           scheduleReconnect(targetRoomId);
@@ -307,8 +367,11 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
     [applyEvent, scheduleReconnect],
   );
 
-  // Keep ref in sync for scheduleReconnect callback cycle
-  useEffect(() => { startRealtimeRef.current = startRealtime; }, [startRealtime]);
+  // Ref holds latest startRealtime for the reconnect timer (breaks scheduleReconnect ↔ startRealtime cycle).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability -- intentional ref sync for async backoff callback
+    startRealtimeRef.current = startRealtime;
+  }, [startRealtime]);
 
   const manualReconnect = useCallback((targetRoomId?: string) => {
     sseReconnectAttemptsRef.current = 0;
@@ -316,7 +379,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
     startRealtime(targetRoomId ?? roomId);
   }, [startRealtime, roomId]);
 
-  const stopRealtime = useCallback(() => {
+  const _stopRealtime = useCallback(() => {
     sseReconnectEnabledRef.current = false;
     if (sseReconnectTimerRef.current) {
       clearTimeout(sseReconnectTimerRef.current);
@@ -454,6 +517,33 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
     [mode, postEvent],
   );
 
+  /** Broadcast a Yjs CRDT update (base64-encoded binary) to peers. */
+  const sendCrdtUpdate = useCallback(
+    (updateB64: string) => {
+      if (mode !== 'realtime' || !updateB64) return;
+      postEvent('crdt_update', { update: updateB64 });
+    },
+    [mode, postEvent],
+  );
+
+  /** Broadcast a Yjs awareness update (cursor / presence). */
+  const sendCrdtAwareness = useCallback(
+    (updateB64: string) => {
+      if (mode !== 'realtime' || !updateB64) return;
+      postEvent('crdt_awareness', { update: updateB64 });
+    },
+    [mode, postEvent],
+  );
+
+  /** Reply to a peer's sync_request with our full state. */
+  const sendCrdtSyncResponse = useCallback(
+    (updateB64: string) => {
+      if (mode !== 'realtime' || !updateB64) return;
+      postEvent('crdt_sync_response', { update: updateB64 });
+    },
+    [mode, postEvent],
+  );
+
   const sendCommentResolve = useCallback(
     (id: string) => {
       if (mode !== 'realtime') return;
@@ -531,7 +621,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
       ws.onclose = () => { setIsConnected(false); wsRef.current = null; };
       ws.onmessage = (event) => {
         try {
-          const msg: CollabMessage = JSON.parse(event.data);
+          const msg = JSON.parse(event.data) as CollabMessage;
           if (msg.type === 'cursor') {
             setUsers(prev => {
               const idx = prev.findIndex(u => u.id === msg.userId);
@@ -582,6 +672,9 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
     sendTyping,
     sendChatMessage,
     sendFeatureSync,
+    sendCrdtUpdate,
+    sendCrdtAwareness,
+    sendCrdtSyncResponse,
     userIdRef,
     userColorRef,
     connect,

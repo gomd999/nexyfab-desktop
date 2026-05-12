@@ -496,7 +496,7 @@ export default function AISupplierPanel({
     } finally {
       setRfqSubmittingIdx(null);
     }
-  }, [partName, quantity, isKo, lang, onRfqSubmitted, tt]);
+  }, [partName, quantity, isKo, onRfqSubmitted, tt]);
 
   return (
     <div style={{

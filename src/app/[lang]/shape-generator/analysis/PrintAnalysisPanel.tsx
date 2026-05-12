@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { PrintAnalysisResult, PrintAnalysisOptions, OrientationOptimizationResult, PrintProcess } from './printAnalysis';
+import { useAnalysisStore } from '../store/analysisStore';
 
 const dict = {
   ko: {
@@ -343,7 +344,8 @@ const C = {
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 interface PrintAnalysisPanelProps {
-  analysis: PrintAnalysisResult | null;
+  /** N2/J5 — when omitted, panel reads useAnalysisStore.printAnalysis directly. */
+  analysis?: PrintAnalysisResult | null;
   onAnalyze: (options: PrintAnalysisOptions) => void;
   onClose: () => void;
   isKo: boolean;
@@ -362,7 +364,7 @@ interface PrintAnalysisPanelProps {
 type BuildDirPreset = 'y-up' | 'z-up' | 'custom';
 
 export default function PrintAnalysisPanel({
-  analysis,
+  analysis: propAnalysis,
   onAnalyze,
   onClose,
   optimization,
@@ -370,6 +372,9 @@ export default function PrintAnalysisPanel({
   onApplyOptimalOrientation,
   onExportPrintReady,
 }: PrintAnalysisPanelProps) {
+  // N2/J5 fallback — read from store when caller didn't pass.
+  const storeAnalysis = useAnalysisStore(s => s.printAnalysis);
+  const analysis = propAnalysis !== undefined ? propAnalysis : storeAnalysis;
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {

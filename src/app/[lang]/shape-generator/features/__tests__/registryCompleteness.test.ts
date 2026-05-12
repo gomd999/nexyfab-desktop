@@ -30,6 +30,9 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'moldTools',
     'weldment',
     'nurbsSurface',
+    'helix',
+    'variableShell',
+    'rib',
   ];
   return all.filter((t): t is MapBackedFeatureType => t !== 'sketchExtrude');
 }

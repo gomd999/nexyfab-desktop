@@ -6,7 +6,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { token } = await params;
+  const { token: _token } = await params;
   return {
     title: 'NexyFab — 공유된 3D 모델',
     description: '설계자가 공유한 3D 모델을 확인하세요.',

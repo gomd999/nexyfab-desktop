@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo as _useMemo } from 'react';
 import { PREF_KEYS, prefGetJson, prefSetJson } from '@/lib/platform';
 import { useResponsive } from '../responsive/useResponsive';
-const OVERLAY_BREAKPOINT = 1600;
+const _OVERLAY_BREAKPOINT = 1600;
 
 export const RAIL_WIDTH = 44;
 const DEFAULT_LEFT = 240;
@@ -77,11 +77,13 @@ export interface SidebarLayout {
   toggleRightCollapsed: () => void;
   toggleSwapSides: () => void;
   cycleOverlayPref: () => void;
+  setLeftCollapsed: (collapsed: boolean) => void;
+  setRightCollapsed: (collapsed: boolean) => void;
 }
 
 export function useSidebarLayout(): SidebarLayout {
   const [prefs, setPrefs] = useState<SidebarPrefs>(() => load());
-  const { width, isDesktop } = useResponsive();
+  const { width: _width, isDesktop: _isDesktop } = useResponsive();
 
   useEffect(() => {
     try {
@@ -112,6 +114,12 @@ export function useSidebarLayout(): SidebarLayout {
   const toggleSwapSides = useCallback(() => {
     setPrefs(p => ({ ...p, swapSides: !p.swapSides }));
   }, []);
+  const setLeftCollapsed = useCallback((c: boolean) => {
+    setPrefs(p => ({ ...p, leftCollapsed: c }));
+  }, []);
+  const setRightCollapsed = useCallback((c: boolean) => {
+    setPrefs(p => ({ ...p, rightCollapsed: c }));
+  }, []);
   const cycleOverlayPref = useCallback(() => {
     setPrefs(p => {
       const next: OverlayPref =
@@ -136,5 +144,7 @@ export function useSidebarLayout(): SidebarLayout {
     toggleRightCollapsed,
     toggleSwapSides,
     cycleOverlayPref,
+    setLeftCollapsed,
+    setRightCollapsed,
   };
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type ShapeConfig, type ShapeResult, makeEdges, meshVolume, meshSurfaceArea } from './index';
+import { type ShapeConfig, type ShapeResult, makeEdges, meshVolume as _meshVolume, meshSurfaceArea } from './index';
 
 /**
  * Involute spur gear generator.
@@ -46,7 +46,7 @@ export const gearShape: ShapeConfig = {
     const toothAngle = (2 * Math.PI) / teeth;
     // Tooth thickness angle at pitch circle ≈ half the tooth pitch
     const pitchT = Math.sqrt((pitchR / baseR) ** 2 - 1);
-    const halfToothAngle = toothAngle / 4 + Math.tan(pressureAngle) - pressureAngle;
+    const _halfToothAngle = toothAngle / 4 + Math.tan(pressureAngle) - pressureAngle;
     // Angular offset so that involute starts centered on tooth
     const invAlpha = pitchT - Math.atan(pitchT);
     const offsetAngle = toothAngle / 4 - invAlpha;
@@ -93,7 +93,7 @@ export const gearShape: ShapeConfig = {
       leftPoints.reverse();
 
       // ── Start at dedendum circle between previous tooth and this one ──
-      const gapStartAngle = baseAngle - toothAngle / 2 + offsetAngle;
+      const _gapStartAngle = baseAngle - toothAngle / 2 + offsetAngle;
       // Dedendum arc from previous gap to right involute start
       if (tooth === 0) {
         const startR = dedendumR;

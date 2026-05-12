@@ -189,8 +189,8 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
         partsGeo: workerResult.parts,
       };
       setResult(res);
-    } catch (err: any) {
-      setError(err.message || 'Analysis failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Analysis failed');
     } finally {
       setIsUploading(false);
     }

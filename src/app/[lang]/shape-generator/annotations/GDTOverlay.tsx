@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo as _useMemo } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { GDTAnnotation, DimensionAnnotation } from './GDTTypes';

@@ -840,3 +840,41 @@ export function solveConstraints(
     },
   };
 }
+
+// ─── D5: Visual feedback helpers ─────────────────────────────────────────────
+
+/**
+ * Compact icon glyph per constraint type. Renders inline next to a hovered or
+ * selected entity in SketchCanvas so the user can see at a glance which
+ * constraints are "holding" the entity. Matches the symbology Fusion 360 /
+ * SolidWorks use so the muscle memory transfers.
+ */
+export const CONSTRAINT_ICON: Record<import('./types').ConstraintType, string> = {
+  horizontal:    'H',
+  vertical:      'V',
+  perpendicular: '⊥', // ⊥
+  parallel:      '∥', // ∥
+  tangent:       '⌬', // ⌬ (loose, but no Unicode tangent symbol exists)
+  coincident:    '⊕', // ⊕
+  concentric:    '◎', // ◎
+  equal:         '=',
+  symmetric:     '≍', // ≍
+  midpoint:      'M',
+  angle:         '∠', // ∠
+  distance:      '↔', // ↔
+  fixed:         '🔒', // 🔒
+};
+
+/**
+ * Return constraints whose entityIds include the given segment/point id.
+ * Used by SketchCanvas to render constraint badges near the hovered or
+ * selected entity. Cheap O(constraints × entityIds) — sketches rarely have
+ * more than a few hundred constraints.
+ */
+export function getConstraintsForEntity(
+  entityId: string,
+  constraints: import('./types').SketchConstraint[],
+): import('./types').SketchConstraint[] {
+  if (!entityId) return [];
+  return constraints.filter(c => c.entityIds.includes(entityId));
+}

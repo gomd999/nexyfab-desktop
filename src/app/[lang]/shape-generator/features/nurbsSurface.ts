@@ -123,7 +123,7 @@ function buildFallbackSurface(params: Record<string, number>): THREE.BufferGeome
 async function buildOcctNurbs(params: Record<string, number>): Promise<THREE.BufferGeometry | null> {
   try {
     await ensureOcctReady();
-    const replicad = await import('replicad') as any;
+    const replicad = (await import('replicad')) as typeof import('replicad');
 
     const uCount = Math.max(3, Math.round(params.uCount ?? 5));
     const vCount = Math.max(3, Math.round(params.vCount ?? 5));
@@ -132,7 +132,7 @@ async function buildOcctNurbs(params: Record<string, number>): Promise<THREE.Buf
     const cpGrid = buildCpGrid(params, uCount, vCount);
 
     // Build wire profiles (one per U slice) then loft through them
-    const profiles: any[] = [];
+    const profiles: ReturnType<typeof replicad.drawPointsInterpolation>[] = [];
 
     for (let i = 0; i < uCount; i++) {
       // Points along this profile (varying v)
@@ -142,12 +142,15 @@ async function buildOcctNurbs(params: Record<string, number>): Promise<THREE.Buf
       }
 
       // drawPointsInterpolation creates a smooth spline wire through points
-      const wire = replicad.drawPointsInterpolation(pts.map(([x, y, z]) => [x, z, y]));
+      const wire = replicad.drawPointsInterpolation(pts.map(([x, , z]): [number, number] => [x, z]));
       profiles.push(wire);
     }
 
     // Loft through the profiles to create the surface solid
-    const solid = replicad.loft(profiles, { startCap: true, endCap: true });
+    const solid = replicad.loft(
+      profiles as unknown as Parameters<typeof replicad.loft>[0],
+      { startCap: true, endCap: true } as Parameters<typeof replicad.loft>[1],
+    );
 
     // Tessellate
     const mesh = solid.mesh({ tolerance: 0.3, angularTolerance: 5 });

@@ -119,13 +119,15 @@ export default function PartnerPortfolioPage() {
     if (!session) { router.replace('/partner/login'); return; }
 
     if (session === 'demo') {
-      setPartner({ partnerId: 'demo-partner-001', email: 'demo-partner@nexyfab.com', company: 'Demo 제조사' });
-      setCompleted([
-        { id: 'demo-p1', projectName: 'EV 배터리 케이스 외주 제조', factoryName: '한국제조 (주)', contractAmount: 28000000, status: 'completed', completedAt: new Date(Date.now() - 10 * 86400000).toISOString(), contractDate: new Date(Date.now() - 90 * 86400000).toISOString() },
-        { id: 'demo-p2', projectName: '항공우주 브라켓 가공', factoryName: '선진정밀 (주)', contractAmount: 55000000, status: 'completed', completedAt: new Date(Date.now() - 60 * 86400000).toISOString(), contractDate: new Date(Date.now() - 150 * 86400000).toISOString() },
-        { id: 'demo-p3', projectName: '의료 임플란트 티타늄 가공', factoryName: '메디컬파츠', contractAmount: 12000000, status: 'completed', completedAt: new Date(Date.now() - 120 * 86400000).toISOString(), contractDate: new Date(Date.now() - 180 * 86400000).toISOString() },
-      ]);
-      setLoading(false);
+      queueMicrotask(() => {
+        setPartner({ partnerId: 'demo-partner-001', email: 'demo-partner@nexyfab.com', company: 'Demo 제조사' });
+        setCompleted([
+          { id: 'demo-p1', projectName: 'EV 배터리 케이스 외주 제조', factoryName: '한국제조 (주)', contractAmount: 28000000, status: 'completed', completedAt: new Date(Date.now() - 10 * 86400000).toISOString(), contractDate: new Date(Date.now() - 90 * 86400000).toISOString() },
+          { id: 'demo-p2', projectName: '항공우주 브라켓 가공', factoryName: '선진정밀 (주)', contractAmount: 55000000, status: 'completed', completedAt: new Date(Date.now() - 60 * 86400000).toISOString(), contractDate: new Date(Date.now() - 150 * 86400000).toISOString() },
+          { id: 'demo-p3', projectName: '의료 임플란트 티타늄 가공', factoryName: '메디컬파츠', contractAmount: 12000000, status: 'completed', completedAt: new Date(Date.now() - 120 * 86400000).toISOString(), contractDate: new Date(Date.now() - 180 * 86400000).toISOString() },
+        ]);
+        setLoading(false);
+      });
       return;
     }
 

@@ -38,7 +38,10 @@ export type FeatureType =
   | 'thread'
   | 'moldTools'
   | 'weldment'
-  | 'nurbsSurface';
+  | 'nurbsSurface'
+  | 'helix'
+  | 'variableShell'
+  | 'rib';
 
 /** Types dispatched through `FEATURE_MAP` / registry (not the inline sketchExtrude path). */
 export type MapBackedFeatureType = Exclude<FeatureType, 'sketchExtrude'>;

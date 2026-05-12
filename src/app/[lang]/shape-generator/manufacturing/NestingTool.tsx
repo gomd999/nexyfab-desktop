@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import type * as THREE from 'three';
+import type * as _THREE from 'three';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -356,7 +356,7 @@ export default function NestingTool({ parts: initialParts, lang }: NestingToolPr
               overflow: 'hidden',
               borderRadius: 4,
             }}>
-              {placed.map((p, idx) => (
+              {placed.map((p, _idx) => (
                 <div
                   key={`${p.partId}-${p.instance}`}
                   title={`${p.label} ${p.w}×${p.h}mm${p.rotated ? ' (rotated)' : ''}`}
@@ -408,17 +408,17 @@ export default function NestingTool({ parts: initialParts, lang }: NestingToolPr
             padding: '20px 24px', width: 280, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 14 }}>{t.editPart}</div>
-            {[
-              { key: 'label', label: t.name, type: 'text' },
-              { key: 'width', label: t.width, type: 'number' },
-              { key: 'height', label: t.height, type: 'number' },
-              { key: 'quantity', label: t.quantity, type: 'number' },
-            ].map(({ key, label, type }) => (
+            {([
+              { key: 'label' as const, label: t.name, type: 'text' as const },
+              { key: 'width' as const, label: t.width, type: 'number' as const },
+              { key: 'height' as const, label: t.height, type: 'number' as const },
+              { key: 'quantity' as const, label: t.quantity, type: 'number' as const },
+            ] as const).map(({ key, label, type }) => (
               <div key={key} style={{ marginBottom: 10 }}>
                 <label style={{ fontSize: 11, color: '#8b949e', display: 'block', marginBottom: 4 }}>{label}</label>
                 <input
                   type={type}
-                  value={(editingPart as any)[key]}
+                  value={key === 'label' ? editingPart.label : String(editingPart[key])}
                   min={type === 'number' ? 1 : undefined}
                   onChange={e => setEditingPart(prev => prev ? { ...prev, [key]: type === 'number' ? Number(e.target.value) : e.target.value } : null)}
                   style={{

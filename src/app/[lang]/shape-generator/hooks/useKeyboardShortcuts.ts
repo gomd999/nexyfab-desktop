@@ -21,6 +21,8 @@ export interface KeyboardShortcutDeps {
   setTransformMode: (v: TransformMode) => void;
   measureActive: boolean;
   setMeasureActive: (fn: (prev: boolean) => boolean) => void;
+  /** When set, toggles measure + clears face-selection (avoids click conflicts). */
+  toggleMeasure?: () => void;
   setShowDimensions: (fn: (prev: boolean) => boolean) => void;
   handleHistoryUndo: () => void;
   handleHistoryRedo: () => void;
@@ -59,6 +61,7 @@ export function useKeyboardShortcuts({
   setTransformMode,
   measureActive,
   setMeasureActive,
+  toggleMeasure,
   setShowDimensions,
   handleHistoryUndo,
   handleHistoryRedo,
@@ -258,7 +261,11 @@ export function useKeyboardShortcuts({
 
       // Mode toggles
       if (k === ck('sketch')  && !e.ctrlKey) { setIsSketchMode(!isSketchMode); return; }
-      if (k === ck('measure'))                { setMeasureActive(v => !v); return; }
+      if (k === ck('measure')) {
+        if (toggleMeasure) toggleMeasure();
+        else setMeasureActive(v => !v);
+        return;
+      }
       if (k === ck('dims'))                   { setShowDimensions(d => !d); return; }
       if (k === ck('perf'))                   { useUIStore.getState().togglePanel('showPerf'); return; }
 
@@ -283,7 +290,7 @@ export function useKeyboardShortcuts({
     showAIAssistant, setShowAIAssistant,
     editMode, setEditMode,
     transformMode, setTransformMode,
-    measureActive, setMeasureActive, setShowDimensions,
+    measureActive, setMeasureActive, toggleMeasure, setShowDimensions,
     handleHistoryUndo, handleHistoryRedo,
     sketchTool, setSketchTool,
     handleSaveNfab, handleSaveNfabCloud, handleLoadNfab,

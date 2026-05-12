@@ -282,14 +282,14 @@ function DiffRow({ diff, isKo }: { diff: SpecDiff; isKo: boolean }) {
       padding: '7px 10px', background: C.card, borderRadius: 7,
       border: `1px solid ${diff.impact === 'high' ? C.red + '44' : C.border}`,
     }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: C.textDim }}>{isKo ? diff.fieldKo : (diff as any).field ?? diff.fieldKo}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: C.textDim }}>{isKo ? diff.fieldKo : diff.field}</span>
       <span style={{ fontSize: 11, color: C.textMuted, textDecoration: 'line-through' }}>{diff.prev}</span>
       <span style={{ fontSize: 11, color: C.text }}>{diff.next}</span>
       <span style={{
         fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 8, textAlign: 'center',
         background: `${color}20`, color,
       }}>
-        {isKo ? diff.impactKo : (diff as any).impact}
+        {isKo ? diff.impactKo : diff.impact}
       </span>
     </div>
   );

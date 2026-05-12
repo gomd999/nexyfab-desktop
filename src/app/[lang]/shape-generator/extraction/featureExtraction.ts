@@ -888,7 +888,7 @@ function extractBoundaryProfile(
 ): THREE.Vector2[] {
   // Collect edges; boundary edges appear only once
   const edgeCounts = new Map<string, { a: THREE.Vector3; b: THREE.Vector3 }>();
-  const regionSet = new Set(regionIndices);
+  const _regionSet = new Set(regionIndices);
 
   for (const fi of regionIndices) {
     const f = faces[fi];
@@ -985,7 +985,7 @@ function buildExtrusionGeometry(
   extGeo.applyQuaternion(q);
 
   // Also rotate the profile plane: shape is on XY, needs to match the face normal plane
-  const profileQ = new THREE.Quaternion().setFromUnitVectors(
+  const _profileQ = new THREE.Quaternion().setFromUnitVectors(
     new THREE.Vector3(0, 0, 1),
     normal.clone().normalize(),
   );

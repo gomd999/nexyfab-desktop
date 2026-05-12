@@ -131,7 +131,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
         }),
       });
 
-      let rfqData: any = {};
+      let rfqData: { rfqId?: string } = {};
       try { rfqData = await rfqRes.json(); } catch { /* ignore */ }
 
       // ── 현재 사용자 정보 ──────────────────────────────────────────────────
@@ -224,6 +224,9 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
     setUpgradeFeature,
     setShowUpgradePrompt,
     shareToken,
+    router,
+    langSeg,
+    quantity,
   ]);
 
   return {

@@ -217,7 +217,7 @@ function QuickQuoteModal({
   );
 }
 
-function downloadCSV(data: any[], filename: string, toast?: (type: ToastType, message: string) => void) {
+function downloadCSV(data: Inquiry[], filename: string, toast?: (type: ToastType, message: string) => void) {
   if (data.length === 0) { toast?.('warning', '내보낼 데이터가 없습니다.'); return; }
   const headers = ['날짜', '상태', '이름', '회사', '이메일', '전화', '요청분야', '범위', '예산', '내용'];
   const rows = data.map(inq => [
@@ -265,7 +265,6 @@ interface Inquiry {
   budget_range?: string;
   message?: string;
   contractId?: string; // 이미 계약이 생성된 경우
-  [key: string]: any;
 }
 
 const STATUS_LABELS: Record<Status, string> = {

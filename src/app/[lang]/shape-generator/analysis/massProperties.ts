@@ -176,3 +176,127 @@ function emptyResult(): MassProperties {
     gyrationRadius: { rx: 0, ry: 0, rz: 0 },
   };
 }
+
+// ─── Assembly mass properties (F2) ───────────────────────────────────────────
+
+export interface AssemblyBodyInput {
+  /** Display name (BOM line). */
+  name: string;
+  geometry: THREE.BufferGeometry;
+  density_g_cm3: number;
+  /** World-space position offset applied to the body's local CG. */
+  position?: [number, number, number];
+}
+
+export interface AssemblyMassProperties extends MassProperties {
+  /** Per-body breakdown so a UI panel can show contributions. */
+  parts: Array<{
+    name: string;
+    mass_g: number;
+    /** World-space CG (after applying position offset). */
+    centerOfMass: [number, number, number];
+    /** Mass fraction of total assembly. */
+    fraction: number;
+  }>;
+}
+
+/**
+ * Combine multiple body mass-property results into a single assembly result.
+ *
+ * Math:
+ *  - Total mass    = Σ m_i
+ *  - Assembly CG   = (Σ m_i · r_i) / Σ m_i, where r_i is each body's CG in
+ *                    world coordinates (local CG + position offset).
+ *  - Inertia tensor about assembly CG uses the parallel-axis theorem:
+ *      I_xx_total = Σ ( I_xx_i + m_i · (dy² + dz²) )
+ *    where (dx, dy, dz) is the body CG offset from the assembly CG.
+ *
+ * Skips: full off-diagonal inertia tensor (Ixy/Ixz/Iyz). The diagonal
+ * approximation is enough for "balance check" use cases (drone CG, robot
+ * arm reach). Off-diagonal terms matter for spinning bodies — track as a
+ * follow-up if customers ask.
+ */
+export function combineAssemblyMassProperties(
+  bodies: AssemblyBodyInput[],
+): AssemblyMassProperties {
+  if (bodies.length === 0) {
+    return { ...emptyResult(), parts: [] };
+  }
+
+  // 1) Per-body local mass props.
+  const perBody = bodies.map(b => {
+    const props = computeMassProperties(b.geometry, b.density_g_cm3);
+    const offset = b.position ?? [0, 0, 0];
+    const worldCg: [number, number, number] = [
+      props.centerOfMass[0] + offset[0],
+      props.centerOfMass[1] + offset[1],
+      props.centerOfMass[2] + offset[2],
+    ];
+    return { input: b, props, worldCg, offset };
+  });
+
+  // 2) Total mass + weighted CG.
+  let totalMass = 0;
+  let cgX = 0, cgY = 0, cgZ = 0;
+  let totalVolume = 0;
+  let totalArea = 0;
+  for (const { props, worldCg } of perBody) {
+    totalMass += props.mass_g;
+    totalVolume += props.volume_cm3;
+    totalArea += props.surfaceArea_cm2;
+    cgX += props.mass_g * worldCg[0];
+    cgY += props.mass_g * worldCg[1];
+    cgZ += props.mass_g * worldCg[2];
+  }
+  if (totalMass > 0) {
+    cgX /= totalMass; cgY /= totalMass; cgZ /= totalMass;
+  }
+
+  // 3) Combined inertia (parallel-axis to assembly CG).
+  let Ixx = 0, Iyy = 0, Izz = 0;
+  for (const { props, worldCg } of perBody) {
+    const dx = worldCg[0] - cgX;
+    const dy = worldCg[1] - cgY;
+    const dz = worldCg[2] - cgZ;
+    const m = props.mass_g;
+    Ixx += props.momentsOfInertia.Ixx + m * (dy * dy + dz * dz);
+    Iyy += props.momentsOfInertia.Iyy + m * (dx * dx + dz * dz);
+    Izz += props.momentsOfInertia.Izz + m * (dx * dx + dy * dy);
+  }
+
+  // 4) Assembly bounding box (union).
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (const { props, offset } of perBody) {
+    minX = Math.min(minX, props.boundingBox.min[0] + offset[0]);
+    minY = Math.min(minY, props.boundingBox.min[1] + offset[1]);
+    minZ = Math.min(minZ, props.boundingBox.min[2] + offset[2]);
+    maxX = Math.max(maxX, props.boundingBox.max[0] + offset[0]);
+    maxY = Math.max(maxY, props.boundingBox.max[1] + offset[1]);
+    maxZ = Math.max(maxZ, props.boundingBox.max[2] + offset[2]);
+  }
+
+  return {
+    volume_cm3: totalVolume,
+    surfaceArea_cm2: totalArea,
+    mass_g: totalMass,
+    centerOfMass: [cgX, cgY, cgZ],
+    boundingBox: {
+      min: [minX, minY, minZ],
+      max: [maxX, maxY, maxZ],
+      size: [maxX - minX, maxY - minY, maxZ - minZ],
+    },
+    momentsOfInertia: { Ixx, Iyy, Izz },
+    gyrationRadius: {
+      rx: totalMass > 0 ? Math.sqrt(Ixx / totalMass) : 0,
+      ry: totalMass > 0 ? Math.sqrt(Iyy / totalMass) : 0,
+      rz: totalMass > 0 ? Math.sqrt(Izz / totalMass) : 0,
+    },
+    parts: perBody.map(({ input, props, worldCg }) => ({
+      name: input.name,
+      mass_g: props.mass_g,
+      centerOfMass: worldCg,
+      fraction: totalMass > 0 ? props.mass_g / totalMass : 0,
+    })),
+  };
+}

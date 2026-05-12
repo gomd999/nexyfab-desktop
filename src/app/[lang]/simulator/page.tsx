@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback as _useCallback, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { simDict } from './simulatorDict';
 import { useToast } from '@/components/ToastProvider';
@@ -34,7 +34,7 @@ const INDUSTRY_SPECIAL_PRESETS: Record<string, {
     name: string; yield_rate?: number; traceability_cost_per_unit?: number;
     validation_cost?: number; ppap_cost?: number;
     special_certifications: string[]; certification_costs: Record<string, number>;
-    special_fields?: Record<string, any>;
+    special_fields?: Record<string, string[]>;
 }> = {
     semiconductor: { name: '반도체 패키징', yield_rate: 0.92, special_certifications: ['AEC-Q100', 'IATF-16949'], certification_costs: { 'AEC-Q100': 45000000, 'IATF-16949': 30000000 }, special_fields: { package_type: ['QFN', 'BGA', 'LGA', 'DIP'] } },
     medical_device: { name: '의료기기', traceability_cost_per_unit: 500, validation_cost: 50000000, special_certifications: ['FDA-510k', 'CE-MDR', 'ISO-13485', 'KFDA'], certification_costs: { 'FDA-510k': 80000000, 'CE-MDR': 60000000, 'ISO-13485': 25000000, 'KFDA': 20000000 }, special_fields: { device_class: ['Class I', 'Class II', 'Class III'], sterilization_method: ['EO', 'Gamma', 'Autoclave', 'None'] } },
@@ -963,7 +963,126 @@ const db = {
     ]
 };
 
+type SimulatorDb = typeof db;
+type IndustryExampleKey = keyof SimulatorDb['industry_examples'];
+type BomComponent = SimulatorDb['industry_examples'][IndustryExampleKey][number];
+type DestinationKey = keyof SimulatorDb['destinations'];
+type ToolingIndustryKey = keyof SimulatorDb['tooling_costs'];
+type CertificationKey = keyof SimulatorDb['certifications'];
+
+const DEFAULT_INDUSTRY_TRAITS: { overhead: number; precision: string; risk: string } = {
+    overhead: 0.15,
+    precision: 'medium',
+    risk: 'low',
+};
+
+function isIndustryExampleKey(val: string): val is IndustryExampleKey {
+    return Object.prototype.hasOwnProperty.call(db.industry_examples, val);
+}
+
 type AssyHub = 'KR' | 'CN' | 'VN' | 'IN' | 'MX' | 'TH';
+
+type SimulationFullState = {
+    projectTitle?: string;
+    assy?: AssyHub;
+    dest?: string;
+    industry?: string;
+    useDrawback?: boolean;
+    volumeStr?: string;
+    customComponents?: BomComponent[];
+    bomOrigins?: Record<string, 'KR' | 'CN'>;
+    selectedCerts?: string[];
+    profitMargin?: number;
+    isStressMode?: boolean;
+    qcLevel?: 'basic' | 'premium';
+    freightMode?: 'sea' | 'air' | 'custom';
+    includeTooling?: boolean;
+    incoterm?: 'EXW' | 'FOB' | 'DDP';
+    ftaThreshold?: number;
+    overrideDiscounts?: boolean;
+    manualBomDiscount?: number;
+    manualLaborDiscount?: number;
+    manualShipDiscount?: number;
+    customInland?: number | null;
+    customShip?: number | null;
+    customTax?: number | null;
+    mParts?: number | null;
+    mLabor?: number | null;
+    mScrap?: number | null;
+    mFixed?: number | null;
+    mUtil?: number | null;
+    mOverhead?: number | null;
+    customMfgDays?: number | null;
+    customQcDays?: number | null;
+    customLtDays?: number | null;
+    customBaseFreight?: number | null;
+    customWeightRate?: number | null;
+    rvc?: number;
+};
+
+type MatchedInsight = {
+    title: string;
+    bullets: string[];
+    costScore: number;
+    riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+    riskScore: number;
+    suggestions: { icon: string; title: string; detail: string; impact: string; color: string }[];
+    originDetail: string;
+    bomRatio: number;
+    vaddRatio: number;
+    shipRatio: number;
+    taxRatio: number;
+};
+
+type PdfDisplayScenario = {
+    id: string;
+    name: string;
+    assy: AssyHub;
+    dest: string;
+    volume: number;
+    mfg: number;
+    partsCost: number;
+    vadd: number;
+    ship: number;
+    duty: number;
+    fixedCost?: number;
+    inlandCost?: number;
+    lt: number;
+    landedCost: number;
+    finalPrice: number;
+    rvc: number;
+    isCurrent: boolean;
+    fullState?: SimulationFullState;
+};
+
+type SimDictLocale = (typeof simDict)[keyof typeof simDict];
+
+type SimulationInputs = {
+    assy?: AssyHub;
+    dest?: string;
+    industry?: string;
+    volumeStr?: string;
+    customComponents?: BomComponent[];
+    bomOrigins?: Record<string, 'KR' | 'CN'>;
+    selectedCerts?: string[];
+    profitMargin?: number;
+    activeRisks?: string[];
+    specialIndustry?: string;
+    selectedSpecialCerts?: string[];
+};
+
+type SimulationResults = {
+    landedCost: number;
+    finalPrice: number;
+    mfg: number;
+    partsCost: number;
+    vadd: number;
+    finalShip: number;
+    finalDuty: number;
+    rvc: number;
+    totalLT: number;
+    carbonKg: number;
+};
 
 type Scenario = {
     id: string;
@@ -984,7 +1103,7 @@ type Scenario = {
     finalPrice: number;
     inlandCost?: number;
     fixedCost?: number;
-    fullState?: any;
+    fullState?: SimulationFullState;
 };
 
 function SimulatorPageInner() {
@@ -993,11 +1112,11 @@ function SimulatorPageInner() {
     const validLangs = ['kr', 'en', 'ja', 'cn', 'es', 'ar'];
     const lang = validLangs.includes(langCode) ? langCode : 'en';
     const langMap: Record<string, keyof typeof simDict> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
-    const t = simDict[langMap[lang]];
+    const t: SimDictLocale = simDict[langMap[lang]];
     const { toast } = useToast();
     // Mobile 감지 및 PC 모드
     const [mobilePrompt, setMobilePrompt] = useState(false);
-    const [isPcMode, setIsPcMode] = useState(false);
+    const [_isPcMode, setIsPcMode] = useState(false);
 
     useEffect(() => {
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
@@ -1035,9 +1154,12 @@ function SimulatorPageInner() {
     const [projectTitle, setProjectTitle] = useState('New Project Simulation');
 
     // Dynamic Component State
-    const [customComponents, setCustomComponents] = useState([...(db as any).industry_examples.electronics]);
+    const [customComponents, setCustomComponents] = useState<BomComponent[]>([...db.industry_examples.electronics]);
     const [bomOrigins, setBomOrigins] = useState<Record<string, 'KR' | 'CN'>>(
-        (db as any).industry_examples.electronics.reduce((acc: any, c: any) => ({ ...acc, [c.id]: c.origin as 'KR' | 'CN' }), {})
+        db.industry_examples.electronics.reduce<Record<string, 'KR' | 'CN'>>(
+            (acc, c) => ({ ...acc, [c.id]: c.origin as 'KR' | 'CN' }),
+            {},
+        )
     );
 
     // New Component Form
@@ -1217,7 +1339,7 @@ function SimulatorPageInner() {
 
     const [profitMargin, setProfitMargin] = useState(0.15); // 15% 기인
     const [selectedCerts, setSelectedCerts] = useState<string[]>([]);
-    const [matchedInsight, setMatchedInsight] = useState<any>(null);
+    const [matchedInsight, setMatchedInsight] = useState<MatchedInsight | null>(null);
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [exportSelections, setExportSelections] = useState<string[]>(['current']); // 'current' or scenario IDs
@@ -1233,7 +1355,7 @@ function SimulatorPageInner() {
     const [savedShareUrl, setSavedShareUrl] = useState('');
     const [shareCodeInput, setShareCodeInput] = useState('');
     const [loadBanner, setLoadBanner] = useState('');
-    const [recentSims, setRecentSims] = useState<Array<{ name: string; shareCode: string; savedAt: string; inputs: any; results: any }>>([]);
+    const [recentSims, setRecentSims] = useState<Array<{ name: string; shareCode: string; savedAt: string; inputs: SimulationInputs; results: SimulationResults }>>([]);
     const [showRecentList, setShowRecentList] = useState(false);
 
     // ─── 산업 특화 state ──────────────────────────────────────
@@ -1354,12 +1476,12 @@ function SimulatorPageInner() {
 
         let totalWeight = 0;
         customComponents.forEach(c => {
-            const ori = bomOrigins[c.id] || (c as any).origin;
+            const ori = bomOrigins[c.id] || c.origin;
             const discountedPrice = (c.price * stressFactor * riskMaterialFactor) * (1 - bomDiscount);
-            const w = (c as any).weight || 0.1; // Default to 100g if missing
+            const w = c.weight || 0.1; // Default to 100g if missing
             partsCost += discountedPrice;
             totalWeight += w;
-            energySum += (c as any).energy || 1.0;
+            energySum += c.energy || 1.0;
             if (ori !== assy) {
                 // 부품 물류 (인바운드) - 무게 기반 산출 (kg당 3000원 수준 가산)
                 interShip += (w * 3500) * (1 - shipDiscount) * stressFactor;
@@ -1369,12 +1491,14 @@ function SimulatorPageInner() {
 
         const drawback = (useDrawback && assy !== dest) ? interDuty * 0.95 : 0;
 
-        const loc = (db.locations as any)[assy] ?? db.locations.KR;
+        const loc = db.locations[assy] ?? db.locations.KR;
         // 현실적인 제조 원가 비율을 위해 단위당 조립 공수를 0.5시간 수준으로 조정 (리스크 인건비 반영)
         const labor = (0.5 * loc.labor) * (1 - laborDiscount) * riskLaborFactor;
 
         // 산업별 특성 추출
-        const industryTraits = (db.tooling_costs as any)[industry] || { overhead: 0.15, precision: 'medium', risk: 'low' };
+        const industryTraits = industry in db.tooling_costs
+            ? db.tooling_costs[industry as ToolingIndustryKey]
+            : DEFAULT_INDUSTRY_TRAITS;
 
         // 유틸리티 및 오버헤드 (현실적인 배치당 소요량으로 조정)
         const elecCost = 5 * loc.elec;
@@ -1384,7 +1508,7 @@ function SimulatorPageInner() {
 
         const overheadRate = (industryTraits.overhead || 0.15) * stressFactor;
         const baseMFGBeforeQC = partsCost + labor + utilityTotal;
-        const overhead = baseMFGBeforeQC * overheadRate;
+        const _overhead = baseMFGBeforeQC * overheadRate;
 
         // QC 및 불량 원가 (Scrap) - 정밀도(Precision)에 따른 가중치 적용
         const precisionMultipliers: Record<string, number> = {
@@ -1413,8 +1537,9 @@ function SimulatorPageInner() {
         const isOriginMatch = rvc >= ftaThreshold;
         const finalOrigin = isOriginMatch ? assy : 'CN';
 
-        const destData = (db.destinations as any)[dest];
-        const industryRate = (destData?.duty as any)[industry] || 0.0;
+        const destData = db.destinations[dest as DestinationKey] ?? db.destinations.US;
+        const dutyTable = destData.duty;
+        const industryRate = (dutyTable[industry as keyof typeof dutyTable] as number | undefined) ?? 0.0;
         const baseRate = destData?.duty[finalOrigin] ?? 0.1;
         const finalRate = baseRate + industryRate;
         const finalDuty = mfg * finalRate;
@@ -1439,9 +1564,12 @@ function SimulatorPageInner() {
         const vatAmount = vatableAmount * vatRate;
 
         // 인증 및 금형(Tooling) 비용
-        const certTotal = selectedCerts.reduce((acc, c) => acc + (db.certifications as any)[c].cost, 0);
-        const toolingData = (db.tooling_costs as any)[industry];
-        const toolingTotal = includeTooling ? (toolingData.mold + toolingData.jig) : 0;
+        const certTotal = selectedCerts.reduce((acc, c) => {
+            const row = c in db.certifications ? db.certifications[c as CertificationKey] : undefined;
+            return acc + (row?.cost ?? 0);
+        }, 0);
+        const toolingData = industry in db.tooling_costs ? db.tooling_costs[industry as ToolingIndustryKey] : undefined;
+        const toolingTotal = includeTooling && toolingData ? (toolingData.mold + toolingData.jig) : 0;
 
         const amortizedFixedCost = (certTotal + toolingTotal) / volume;
         const fFixed = mFixed ?? amortizedFixedCost;
@@ -1600,18 +1728,18 @@ function SimulatorPageInner() {
 
         // Sheet 3: Current BOM Breakdown
         const currentComponentsReport = customComponents.map(c => {
-            const ori = bomOrigins[c.id] || (c as any).origin;
+            const ori = bomOrigins[c.id] || c.origin;
             const dutyRate = (ori !== assy) ? 0.08 : 0;
             return {
                 "Component ID": c.id,
                 "Name": c.name,
-                "HS Code": (c as any).hs || "N/A",
+                "HS Code": c.hs || "N/A",
                 "Origin": ori,
                 "Unit Price (Raw)": c.price,
                 "Duty Rate": (dutyRate * 100).toFixed(1) + "%",
                 "Landed Unit Cost": Math.round(c.price * (1 + dutyRate)),
-                "Weight (kg)": (c as any).weight || 0,
-                "Energy (kWh)": (c as any).energy || 0
+                "Weight (kg)": c.weight || 0,
+                "Energy (kWh)": c.energy || 0
             };
         });
 
@@ -1662,7 +1790,7 @@ function SimulatorPageInner() {
         const includeComparison = exportSelections.includes('comparison');
 
         // Display data construction
-        const displayScenarios: any[] = [];
+        const displayScenarios: PdfDisplayScenario[] = [];
         if (includeCurrent) {
             displayScenarios.push({
                 id: 'current',
@@ -1693,7 +1821,7 @@ function SimulatorPageInner() {
             });
         });
 
-        let compScenarios: any[] = [];
+        let compScenarios: Scenario[] = [];
         if (includeComparison) {
             // 비교 분석 대상: 명시적으로 선택된 저장된 시나리오가 있다면 그것들을, 없다면 전체 저장된 시나리오를 사용. ("Current" 제외)
             const savedToCompare = targetScenarios.length > 0 ? targetScenarios : scenarios;
@@ -1765,7 +1893,7 @@ function SimulatorPageInner() {
 
                         <div class="divider"></div>
 
-                        ${displayScenarios.map((s: any) => {
+                        ${displayScenarios.map((s) => {
             const total = s.landedCost || 1;
             const pBom = Math.round(((s.mfg - s.vadd) / total) * 100);
             const pVadd = Math.round((s.vadd / total) * 100);
@@ -1960,7 +2088,7 @@ function SimulatorPageInner() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${comps.map((c: any) => `
+                                        ${comps.map((c) => `
                                             <tr>
                                                 <td style="padding: 12px 15px; font-size: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${c.name}</td>
                                                 <td style="padding: 12px 15px; font-size: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${origins[c.id] || c.origin}</td>
@@ -2068,9 +2196,9 @@ function SimulatorPageInner() {
         setOverrideDiscounts(false); // Reset to auto when selecting a new volume
     };
     const loadTemplate = (val: string) => {
-        const examples = (db as any).industry_examples[val] || (db as any).industry_examples.electronics;
+        const examples = (isIndustryExampleKey(val) ? db.industry_examples[val] : null) ?? db.industry_examples.electronics;
         setCustomComponents([...examples]);
-        setBomOrigins(examples.reduce((acc: any, c: any) => ({ ...acc, [c.id]: c.origin }), {}));
+        setBomOrigins(examples.reduce<Record<string, 'KR' | 'CN'>>((acc, c) => ({ ...acc, [c.id]: c.origin as 'KR' | 'CN' }), {}));
     };
 
     const handleIndustryChange = (val: string) => {
@@ -2084,7 +2212,7 @@ function SimulatorPageInner() {
         }
 
         // Only auto-load template if it's a known industry key and BOM is empty
-        if (customComponents.length === 0 && val !== 'none' && (db as any).industry_examples[val]) {
+        if (customComponents.length === 0 && val !== 'none' && isIndustryExampleKey(val)) {
             loadTemplate(val);
         }
     };
@@ -2114,7 +2242,7 @@ function SimulatorPageInner() {
         setAiPanelState('hidden');
     };
 
-    const updateCustomComponent = (id: string, field: string, value: any) => {
+    const updateCustomComponent = (id: string, field: string, value: string | number) => {
         setCustomComponents(customComponents.map(c => c.id === id ? { ...c, [field]: value } : c));
         setAiPanelState('hidden');
     };
@@ -2126,39 +2254,39 @@ function SimulatorPageInner() {
         }
         const st = s.fullState;
         if (st.projectTitle) setProjectTitle(st.projectTitle);
-        setAssy(st.assy);
-        setDest(st.dest);
-        setIndustry(st.industry);
-        setUseDrawback(st.useDrawback);
-        setVolumeStr(st.volumeStr);
-        setCustomComponents(st.customComponents);
-        setBomOrigins(st.bomOrigins);
-        setSelectedCerts(st.selectedCerts);
-        setProfitMargin(st.profitMargin);
-        setIsStressMode(st.isStressMode);
-        setQcLevel(st.qcLevel);
-        setFreightMode(st.freightMode);
-        setIncludeTooling(st.includeTooling);
-        setIncoterm(st.incoterm);
-        setFtaThreshold(st.ftaThreshold);
-        setOverrideDiscounts(st.overrideDiscounts);
-        setManualBomDiscount(st.manualBomDiscount);
-        setManualLaborDiscount(st.manualLaborDiscount);
-        setManualShipDiscount(st.manualShipDiscount);
-        setCustomInland(st.customInland);
-        setCustomShip(st.customShip);
-        setCustomTax(st.customTax);
-        setMParts(st.mParts);
-        setMLabor(st.mLabor);
-        setMScrap(st.mScrap);
-        setMFixed(st.mFixed);
-        setMUtil(st.mUtil);
-        setMOverhead(st.mOverhead);
-        setCustomMfgDays(st.customMfgDays);
-        setCustomQcDays(st.customQcDays);
-        setCustomLtDays(st.customLtDays);
-        setCustomBaseFreight(st.customBaseFreight);
-        setCustomWeightRate(st.customWeightRate);
+        if (st.assy) setAssy(st.assy);
+        if (st.dest) setDest(st.dest);
+        if (st.industry) setIndustry(st.industry);
+        if (st.useDrawback !== undefined) setUseDrawback(st.useDrawback);
+        if (st.volumeStr) setVolumeStr(st.volumeStr);
+        if (st.customComponents) setCustomComponents(st.customComponents);
+        if (st.bomOrigins) setBomOrigins(st.bomOrigins);
+        if (st.selectedCerts) setSelectedCerts(st.selectedCerts);
+        if (st.profitMargin !== undefined) setProfitMargin(st.profitMargin);
+        if (st.isStressMode !== undefined) setIsStressMode(st.isStressMode);
+        if (st.qcLevel) setQcLevel(st.qcLevel);
+        if (st.freightMode) setFreightMode(st.freightMode);
+        if (st.includeTooling !== undefined) setIncludeTooling(st.includeTooling);
+        if (st.incoterm) setIncoterm(st.incoterm);
+        if (st.ftaThreshold !== undefined) setFtaThreshold(st.ftaThreshold);
+        if (st.overrideDiscounts !== undefined) setOverrideDiscounts(st.overrideDiscounts);
+        if (st.manualBomDiscount !== undefined) setManualBomDiscount(st.manualBomDiscount);
+        if (st.manualLaborDiscount !== undefined) setManualLaborDiscount(st.manualLaborDiscount);
+        if (st.manualShipDiscount !== undefined) setManualShipDiscount(st.manualShipDiscount);
+        if (st.customInland !== undefined) setCustomInland(st.customInland);
+        if (st.customShip !== undefined) setCustomShip(st.customShip);
+        if (st.customTax !== undefined) setCustomTax(st.customTax);
+        if (st.mParts !== undefined) setMParts(st.mParts);
+        if (st.mLabor !== undefined) setMLabor(st.mLabor);
+        if (st.mScrap !== undefined) setMScrap(st.mScrap);
+        if (st.mFixed !== undefined) setMFixed(st.mFixed);
+        if (st.mUtil !== undefined) setMUtil(st.mUtil);
+        if (st.mOverhead !== undefined) setMOverhead(st.mOverhead);
+        if (st.customMfgDays !== undefined) setCustomMfgDays(st.customMfgDays);
+        if (st.customQcDays !== undefined) setCustomQcDays(st.customQcDays);
+        if (st.customLtDays !== undefined) setCustomLtDays(st.customLtDays);
+        if (st.customBaseFreight !== undefined) setCustomBaseFreight(st.customBaseFreight);
+        if (st.customWeightRate !== undefined) setCustomWeightRate(st.customWeightRate);
 
         setActiveTab(0); // {t.costStructure} 탭으로 이동
         setAiPanelState('hidden'); // AI 패널 초기화 (새 데이터로 분석 필요하므로)
@@ -2207,7 +2335,7 @@ function SimulatorPageInner() {
         setScenarios(prev => prev.filter(s => s.id !== id));
     };
 
-    const moveScenario = (id: string, direction: 'up' | 'down') => {
+    const _moveScenario = (id: string, direction: 'up' | 'down') => {
         setScenarios(prev => {
             const index = prev.findIndex(s => s.id === id);
             if (index === -1) return prev;
@@ -2287,7 +2415,7 @@ function SimulatorPageInner() {
         } catch { toast('error', '불러오기 실패'); }
     };
 
-    const handleLoadRecent = (sim: { name: string; inputs: any }) => {
+    const handleLoadRecent = (sim: { name: string; inputs: SimulationInputs }) => {
         const st = sim.inputs;
         if (st.assy) setAssy(st.assy);
         if (st.dest) setDest(st.dest);
@@ -2426,18 +2554,18 @@ function SimulatorPageInner() {
                 vaddRatio,
                 shipRatio,
                 taxRatio,
-            } as any);
+            });
             setAiPanelState('done');
         }, 900);
     };
 
-    const bestScenarioId = useMemo(() => {
+    const _bestScenarioId = useMemo(() => {
         if (scenarios.length === 0) return null;
         return [...scenarios].sort((a, b) => a.landedCost - b.landedCost)[0].id;
     }, [scenarios]);
 
     // Visualization Helpers
-    const maxLandedCost = useMemo(() => {
+    const _maxLandedCost = useMemo(() => {
         const allCosts = [simData.landedCost, ...scenarios.map(s => s.landedCost)];
         return Math.max(...allCosts) * 1.1;
     }, [simData.landedCost, scenarios]);
@@ -2639,7 +2767,7 @@ function SimulatorPageInner() {
                             {/* 생산지 선택 그리드 */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
                                 {(['KR','CN','VN','IN','MX','TH'] as AssyHub[]).map(hub => {
-                                    const loc = (db.locations as any)[hub];
+                                    const loc = db.locations[hub];
                                     const isActive = assy === hub;
                                     return (
                                         <button
@@ -2664,7 +2792,7 @@ function SimulatorPageInner() {
                             </div>
                             {/* 선택된 생산지 태그 표시 */}
                             {(() => {
-                                const loc = (db.locations as any)[assy];
+                                const loc = db.locations[assy];
                                 if (!loc?.strengths) return null;
                                 return (
                                     <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -2850,24 +2978,27 @@ function SimulatorPageInner() {
 
                             {/* Industry Trait Badges */}
                             <div style={{ display: 'flex', gap: '4px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                {(db.tooling_costs as any)[industry] && industry !== 'none' && (
+                                {(() => {
+                                    const toolingRow = industry in db.tooling_costs ? db.tooling_costs[industry as ToolingIndustryKey] : undefined;
+                                    return toolingRow && industry !== 'none' && (
                                     <>
                                         <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 700, color: '#64748b' }}>
-                                            정밀도: {(db.tooling_costs as any)[industry].precision.toUpperCase()}
+                                            정밀도: {toolingRow.precision.toUpperCase()}
                                         </span>
                                         <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 700, color: '#64748b' }}>
-                                            오버헤드: {Math.round((db.tooling_costs as any)[industry].overhead * 100)}%
+                                            오버헤드: {Math.round(toolingRow.overhead * 100)}%
                                         </span>
                                         <span style={{
                                             fontSize: '0.65rem', padding: '2px 6px',
-                                            background: (db.tooling_costs as any)[industry].risk === 'high' || (db.tooling_costs as any)[industry].risk === 'ultra_high' ? '#fff1f2' : '#f0fdf4',
+                                            background: toolingRow.risk === 'high' || toolingRow.risk === 'ultra_high' ? '#fff1f2' : '#f0fdf4',
                                             borderRadius: '4px', fontWeight: 700,
-                                            color: (db.tooling_costs as any)[industry].risk === 'high' || (db.tooling_costs as any)[industry].risk === 'ultra_high' ? '#e11d48' : '#166534'
+                                            color: toolingRow.risk === 'high' || toolingRow.risk === 'ultra_high' ? '#e11d48' : '#166534'
                                         }}>
-                                            리스크: {(db.tooling_costs as any)[industry].risk.toUpperCase()}
+                                            리스크: {toolingRow.risk.toUpperCase()}
                                         </span>
                                     </>
-                                )}
+                                    );
+                                })()}
                             </div>
 
                             {/* Industry Representative Items */}
@@ -2926,7 +3057,7 @@ function SimulatorPageInner() {
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                         <input type="number" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder="단가 (₩)" value={newComp.price || ''} onChange={e => setNewComp({ ...newComp, price: parseInt(e.target.value) || 0 })} />
-                                        <input type="number" step="0.01" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder="무게 (kg)" value={(newComp as any).weight || ''} onChange={e => setNewComp({ ...newComp, weight: parseFloat(e.target.value) || 0 })} />
+                                        <input type="number" step="0.01" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder="무게 (kg)" value={newComp.weight || ''} onChange={e => setNewComp({ ...newComp, weight: parseFloat(e.target.value) || 0 })} />
                                     </div>
 
                                     <div style={{ position: 'relative' }}>
@@ -3038,7 +3169,7 @@ function SimulatorPageInner() {
                                                         <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#94a3b8', gap: '4px', flexWrap: 'wrap' }}>
                                                             HS: <input value={c.hs} onChange={(e) => updateCustomComponent(c.id, 'hs', e.target.value)} style={{ width: '45px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />
                                                             | ₩<input type="number" value={c.price} onChange={(e) => updateCustomComponent(c.id, 'price', parseInt(e.target.value) || 0)} style={{ width: '60px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />
-                                                            | <input type="number" step="0.01" value={(c as any).weight || 0.1} onChange={(e) => updateCustomComponent(c.id, 'weight', parseFloat(e.target.value) || 0)} style={{ width: '40px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />kg
+                                                            | <input type="number" step="0.01" value={c.weight || 0.1} onChange={(e) => updateCustomComponent(c.id, 'weight', parseFloat(e.target.value) || 0)} style={{ width: '40px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />kg
                                                             <button onClick={() => setEditingCompId(null)} style={{ border: 'none', background: '#3b82f6', color: 'white', borderRadius: '4px', padding: '2px 6px', fontSize: '0.6rem', cursor: 'pointer', marginLeft: 'auto' }}>완료</button>
                                                         </div>
                                                     </>
@@ -3051,13 +3182,13 @@ function SimulatorPageInner() {
                                                             </button>
                                                         </div>
                                                         <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#94a3b8', gap: '4px' }}>
-                                                            HS: {c.hs} | ₩{c.price.toLocaleString()} | {(c as any).weight || 0.1}kg
+                                                            HS: {c.hs} | ₩{c.price.toLocaleString()} | {c.weight || 0.1}kg
                                                         </div>
                                                     </>
                                                 )}
                                             </div>
                                         </div>
-                                        <select className="sim-select" style={{ width: 75, padding: '0.2rem', fontSize: '0.8rem' }} value={bomOrigins[c.id] || (c as any).origin || 'CN'} onChange={(e) => handleBomChange(c.id, e.target.value as 'KR' | 'CN')}>
+                                        <select className="sim-select" style={{ width: 75, padding: '0.2rem', fontSize: '0.8rem' }} value={bomOrigins[c.id] || c.origin || 'CN'} onChange={(e) => handleBomChange(c.id, e.target.value as 'KR' | 'CN')}>
                                             <option value="CN">CN</option>
                                             <option value="KR">KR</option>
                                         </select>
@@ -3364,7 +3495,7 @@ function SimulatorPageInner() {
                                         {/* Real-time KPI & Composition Chart */}
                                         <div className="glass-card">
                                             <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '2rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <i className="fas fa-chart-pie" style={{ color: '#3b82f6' }}></i> {(t as any)?.costStructure || '원가 분석'} (Composition: {incoterm})
+                                                <i className="fas fa-chart-pie" style={{ color: '#3b82f6' }}></i> {t.costStructure} (Composition: {incoterm})
                                             </h3>
 
                                             {/* Stacked Bar Chart for Cost Composition */}
@@ -3374,7 +3505,7 @@ function SimulatorPageInner() {
                                                 const vAssy = simData.vadd;
                                                 const vFixed = simData.amortizedFixedCost;
                                                 const vLog = incoterm === 'EXW' ? 0 : incoterm === 'FOB' ? simData.inlandCost : (simData.inlandCost + simData.actualShip);
-                                                const vTax = incoterm === 'DDP' ? simData.actualTax : 0;
+                                                const _vTax = incoterm === 'DDP' ? simData.actualTax : 0;
 
                                                 const pBOM = Math.round((vMat / (currentBase || 1)) * 100);
                                                 const pVA = Math.round((vAssy / (currentBase || 1)) * 100);
@@ -3415,27 +3546,27 @@ function SimulatorPageInner() {
                                                         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
                                                             {pBOM > 0 && (
                                                                 <div className="chart-legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
-                                                                    <span style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '2px' }} /> {(t as any)?.bomCost || '자재비'} <span style={{ color: '#3b82f6' }}>{pBOM}%</span>
+                                                                    <span style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '2px' }} /> {t.bomCost} <span style={{ color: '#3b82f6' }}>{pBOM}%</span>
                                                                 </div>
                                                             )}
                                                             {pVA > 0 && (
                                                                 <div className="chart-legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
-                                                                    <span style={{ width: 10, height: 10, background: '#60a5fa', borderRadius: '2px' }} /> {(t as any)?.procCost || '가공비'} <span style={{ color: '#60a5fa' }}>{pVA}%</span>
+                                                                    <span style={{ width: 10, height: 10, background: '#60a5fa', borderRadius: '2px' }} /> {t.procCost} <span style={{ color: '#60a5fa' }}>{pVA}%</span>
                                                                 </div>
                                                             )}
                                                             {pFix > 0 && (
                                                                 <div className="chart-legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
-                                                                    <span style={{ width: 10, height: 10, background: '#94a3b8', borderRadius: '2px' }} /> {(t as any)?.fixedCost || '고정비'} <span style={{ color: '#94a3b8' }}>{pFix}%</span>
+                                                                    <span style={{ width: 10, height: 10, background: '#94a3b8', borderRadius: '2px' }} /> {t.fixedCost} <span style={{ color: '#94a3b8' }}>{pFix}%</span>
                                                                 </div>
                                                             )}
                                                             {pShip > 0 && (
                                                                 <div className="chart-legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
-                                                                    <span style={{ width: 10, height: 10, background: '#fbbf24', borderRadius: '2px' }} /> {(t as any)?.logisticsCost || '물류비'} <span style={{ color: '#f59e0b' }}>{pShip}%</span>
+                                                                    <span style={{ width: 10, height: 10, background: '#fbbf24', borderRadius: '2px' }} /> {t.logisticsCost} <span style={{ color: '#f59e0b' }}>{pShip}%</span>
                                                                 </div>
                                                             )}
                                                             {pTax > 0 && (
                                                                 <div className="chart-legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
-                                                                    <span style={{ width: 10, height: 10, background: '#f87171', borderRadius: '2px' }} /> {(t as any)?.taxCost || '세금/관세'} <span style={{ color: '#ef4444' }}>{pTax}%</span>
+                                                                    <span style={{ width: 10, height: 10, background: '#f87171', borderRadius: '2px' }} /> {t.taxCost} <span style={{ color: '#ef4444' }}>{pTax}%</span>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -3452,7 +3583,7 @@ function SimulatorPageInner() {
                                                         </div>
                                                         <select
                                                             value={incoterm}
-                                                            onChange={(e) => setIncoterm(e.target.value as any)}
+                                                            onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FOB' | 'DDP')}
                                                             style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', cursor: 'pointer', outline: 'none' }}
                                                         >
                                                             <option value="EXW">EXW (공장 인도)</option>
@@ -3939,7 +4070,7 @@ function SimulatorPageInner() {
                                                             <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>원가 구조 분석 중...</span>
                                                         </div>
                                                     ) : (() => {
-                                                        const ins = matchedInsight as any;
+                                                        const ins: MatchedInsight | null = matchedInsight;
                                                         if (!ins) return null;
                                                         const scoreColor = ins.costScore >= 75 ? '#34d399' : ins.costScore >= 50 ? '#fbbf24' : '#f87171';
                                                         const riskColor = ins.riskLevel === 'HIGH' ? '#f87171' : ins.riskLevel === 'MEDIUM' ? '#fbbf24' : '#34d399';
@@ -3991,14 +4122,14 @@ function SimulatorPageInner() {
                                                                 {/* 최적화 제언 */}
                                                                 <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 800, marginBottom: '10px', letterSpacing: '0.08em' }}>OPTIMIZATION INSIGHTS ({ins.suggestions?.length})</div>
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                                    {ins.suggestions?.map((s: any, i: number) => (
-                                                                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: '12px', alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '12px', border: `1px solid ${s.color}25` }}>
-                                                                            <div style={{ fontSize: '1.2rem', textAlign: 'center' }}>{s.icon}</div>
+                                                                    {ins.suggestions?.map((sug, i: number) => (
+                                                                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: '12px', alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '12px', border: `1px solid ${sug.color}25` }}>
+                                                                            <div style={{ fontSize: '1.2rem', textAlign: 'center' }}>{sug.icon}</div>
                                                                             <div>
-                                                                                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: s.color, marginBottom: '3px' }}>{s.title}</div>
-                                                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', lineHeight: 1.5 }}>{s.detail}</div>
+                                                                                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: sug.color, marginBottom: '3px' }}>{sug.title}</div>
+                                                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', lineHeight: 1.5 }}>{sug.detail}</div>
                                                                             </div>
-                                                                            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: s.color, background: `${s.color}15`, padding: '4px 8px', borderRadius: '6px', whiteSpace: 'nowrap', textAlign: 'right' }}>{s.impact}</div>
+                                                                            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: sug.color, background: `${sug.color}15`, padding: '4px 8px', borderRadius: '6px', whiteSpace: 'nowrap', textAlign: 'right' }}>{sug.impact}</div>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -4074,7 +4205,7 @@ function SimulatorPageInner() {
                                                         { key: 'shippingCost',  label: '물류비 변동', min: -50,  max: 100, step: 1, unit: '%', desc: '현재 운임 대비' },
                                                     ] as { key: keyof typeof sensitivity; label: string; min: number; max: number; step: number; unit: string; desc: string }[]).map(item => {
                                                         const val = sensitivity[item.key];
-                                                        const pct = ((val - item.min) / (item.max - item.min)) * 100;
+                                                        const _pct = ((val - item.min) / (item.max - item.min)) * 100;
                                                         const isZero = val === 0;
                                                         const isPositive = val > 0;
                                                         return (
@@ -4301,7 +4432,7 @@ function SimulatorPageInner() {
                                         const largeArc = angle > Math.PI ? 1 : 0;
                                         return { ...s, d: `M${DN/2},${DN/2} L${x1},${y1} A${DR},${DR} 0 ${largeArc} 1 ${x2},${y2} Z` };
                                     });
-                                    const actualPct = (totalScope / (totalScope * (1 / (1 - reductionTarget * progressPct)))) * 100;
+                                    const _actualPct = (totalScope / (totalScope * (1 / (1 - reductionTarget * progressPct)))) * 100;
                                     return (
                                         <div className="glass-card" style={{ background: 'white', marginBottom: '1.5rem' }}>
                                             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
@@ -4573,7 +4704,7 @@ function SimulatorPageInner() {
                                             </div>
                                         ) : (
                                             scenarios.length > 0 && (() => {
-                                                const maxCost = Math.max(...scenarios.map(s => s.landedCost)) * 1.05;
+                                                const _maxCost = Math.max(...scenarios.map(s => s.landedCost)) * 1.05;
                                                 const minCost = Math.min(...scenarios.map(s => s.landedCost));
                                                 const minLt = Math.min(...scenarios.map(s => s.lt));
 
@@ -4674,7 +4805,7 @@ function SimulatorPageInner() {
                                                                     const rank = rankMap[s.id];
                                                                     const isBest = rank === 1;
                                                                     const diffFromBest = s.landedCost - minCost;
-                                                                    const rvc = s.fullState?.rvc || 0;
+                                                                    const _rvc = s.fullState?.rvc || 0;
 
                                                                     return (
                                                                         <div

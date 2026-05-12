@@ -7,6 +7,33 @@ import type { FeatureType } from './features/types';
 import type { SketchProfile, SketchConfig } from './sketch/types';
 import type { Face } from './topology/optimizer/types';
 
+/** Minimal typings for Web Speech API (vendor-prefixed constructor on `window`). */
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+interface SpeechRecognitionResultLike {
+  readonly length: number;
+  [index: number]: SpeechRecognitionAlternativeLike;
+}
+interface SpeechRecognitionEventLike {
+  readonly results: ArrayLike<SpeechRecognitionResultLike>;
+}
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((this: SpeechRecognitionLike, ev: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+interface WindowWithSpeechRecognition extends Window {
+  SpeechRecognition?: SpeechRecognitionCtor;
+  webkitSpeechRecognition?: SpeechRecognitionCtor;
+}
+
 /* ─── i18n dictionary ────────────────────────────────────────────────────── */
 
 const dict = {
@@ -15,6 +42,7 @@ const dict = {
     toastRateLimit: 'Rate limit exceeded / 요청 한도 초과',
     toastServerError: 'Server error / 서버 오류',
     toastAuthRequired: 'Authentication required / 인증 필요',
+    toastBudgetReached: '오늘 AI 사용 예산을 모두 썼어요. 24시간 후 자동 초기화됩니다.',
     errAiConnect: 'AI 연결 실패',
     errNetwork: '네트워크 연결을 확인해주세요',
     errParse: 'AI 응답 파싱 오류',
@@ -84,6 +112,7 @@ const dict = {
     toastRateLimit: 'Rate limit exceeded',
     toastServerError: 'Server error',
     toastAuthRequired: 'Authentication required',
+    toastBudgetReached: 'Daily AI spend cap reached. Resets in 24h.',
     errAiConnect: 'Error connecting to AI',
     errNetwork: 'Check your network connection',
     errParse: 'AI response parse error',
@@ -153,6 +182,7 @@ const dict = {
     toastRateLimit: 'レート制限超過',
     toastServerError: 'サーバーエラー',
     toastAuthRequired: '認証が必要です',
+    toastBudgetReached: '本日のAI予算上限に達しました。24時間後にリセットされます。',
     errAiConnect: 'AI接続失敗',
     errNetwork: 'ネットワーク接続を確認してください',
     errParse: 'AI応答の解析エラー',
@@ -222,6 +252,7 @@ const dict = {
     toastRateLimit: '请求频率超限',
     toastServerError: '服务器错误',
     toastAuthRequired: '需要身份验证',
+    toastBudgetReached: '今日 AI 用量已达上限,24 小时后自动重置。',
     errAiConnect: 'AI连接失败',
     errNetwork: '请检查网络连接',
     errParse: 'AI响应解析错误',
@@ -291,6 +322,7 @@ const dict = {
     toastRateLimit: 'Límite de solicitudes excedido',
     toastServerError: 'Error del servidor',
     toastAuthRequired: 'Autenticación requerida',
+    toastBudgetReached: 'Límite diario de IA alcanzado. Se restablece en 24 h.',
     errAiConnect: 'Error al conectar con IA',
     errNetwork: 'Verifica tu conexión de red',
     errParse: 'Error al analizar respuesta de IA',
@@ -360,6 +392,7 @@ const dict = {
     toastRateLimit: 'تم تجاوز حد الطلبات',
     toastServerError: 'خطأ في الخادم',
     toastAuthRequired: 'المصادقة مطلوبة',
+    toastBudgetReached: 'تم الوصول إلى حد إنفاق الذكاء الاصطناعي اليومي. ستتم إعادة الضبط خلال 24 ساعة.',
     errAiConnect: 'فشل الاتصال بالذكاء الاصطناعي',
     errNetwork: 'تحقق من اتصال الشبكة',
     errParse: 'خطأ في تحليل استجابة الذكاء الاصطناعي',
@@ -608,6 +641,25 @@ export default function ShapeChat({
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages ?? []);
   const [loading, setLoading] = useState(false);
+  /** When the last 402 told us when budget resets. UI shows countdown + locks input. */
+  const [budgetLockUntil, setBudgetLockUntil] = useState<number | null>(null);
+  const [budgetLockNow, setBudgetLockNow] = useState<number>(() => Date.now());
+
+  // Tick every 30s while a budget lock is active so the countdown UI updates.
+  useEffect(() => {
+    if (!budgetLockUntil || budgetLockUntil <= Date.now()) {
+      setBudgetLockUntil(null);
+      return;
+    }
+    const id = setInterval(() => {
+      const now = Date.now();
+      setBudgetLockNow(now);
+      if (budgetLockUntil <= now) {
+        setBudgetLockUntil(null);
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [budgetLockUntil]);
   const onMessagesChangeRef = useRef(onMessagesChange);
   useEffect(() => { onMessagesChangeRef.current = onMessagesChange; }, [onMessagesChange]);
 
@@ -632,12 +684,14 @@ export default function ShapeChat({
   const [expanded, setExpanded] = useState(false);
   const [bomResult, setBomResult] = useState<BomResult | null>(null);
   const [isListening, setIsListening] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const [lastMode, setLastMode] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<ChatResult | null>(null);
   const [lastShapeId, setLastShapeId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** Yellow advisory ribbon when the server flagged us approaching budget. Dismissable. */
+  const [budgetAdvisory, setBudgetAdvisory] = useState<{ fraction: number; limitUsd: number | null } | null>(null);
+  const budgetAdvisoryShownRef = useRef(false);
   const [lastFailedText, setLastFailedText] = useState<string | null>(null);
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -735,6 +789,25 @@ export default function ShapeChat({
       });
 
       if (!res.ok) {
+        // 402 = COST_BUDGET (per-user daily cap from /lib/ai/userBudget). Surface
+        // the friendly explanation instead of bubbling up a raw HTTP error,
+        // AND lock the composer until the rolling window frees headroom.
+        if (res.status === 402) {
+          let extra = '';
+          try {
+            const body = await res.clone().json() as { resetAtMs?: number };
+            if (typeof body.resetAtMs === 'number' && body.resetAtMs > Date.now()) {
+              setBudgetLockUntil(body.resetAtMs);
+              const mins = Math.ceil((body.resetAtMs - Date.now()) / 60_000);
+              const hours = Math.floor(mins / 60);
+              const rem = mins % 60;
+              extra = hours > 0
+                ? ` (${hours}h ${rem}m)`
+                : ` (${mins}m)`;
+            }
+          } catch { /* ignore parse failure */ }
+          throw new Error(tr.toastBudgetReached + extra);
+        }
         const statusMsg = res.status === 429 ? tr.toastRateLimit
           : res.status >= 500 ? tr.toastServerError
           : res.status === 401 ? tr.toastAuthRequired
@@ -768,6 +841,14 @@ export default function ShapeChat({
       };
       updateMessages(prev => [...prev, assistantMsg]);
       setLastMode(data.mode);
+
+      // Surface "approaching budget" advisory once per session — server adds
+      // this when usage crosses the warn fraction (default 80%).
+      const warning = (data as { _budgetWarning?: { fraction: number; limitUsd: number | null } })._budgetWarning;
+      if (warning && !budgetAdvisoryShownRef.current) {
+        budgetAdvisoryShownRef.current = true;
+        setBudgetAdvisory({ fraction: warning.fraction, limitUsd: warning.limitUsd });
+      }
 
       // Track last shape for multi-turn context banner
       if (data.mode === 'single' && (data as SingleResult).shapeId) {
@@ -808,7 +889,7 @@ export default function ShapeChat({
     } finally {
       setLoading(false);
     }
-  }, [onApplySingle, onApplySketch, onApplyOptimize, onApplyModify, onModifyAutoApplied, onBomPreview, designContext, readStream, parseResult, toast, tr, updateMessages]);
+  }, [onApplyModify, onModifyAutoApplied, onBomPreview, onPreview, designContext, readStream, parseResult, toast, tr, updateMessages]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -845,7 +926,7 @@ export default function ShapeChat({
       return copy;
     });
     sendMessage(text, messages.slice(0, -1));
-  }, [lastFailedText, messages, sendMessage]);
+  }, [lastFailedText, messages, sendMessage, updateMessages]);
 
   // ── Preview Apply / Cancel ──
   const handleApplyPreview = useCallback(() => {
@@ -1019,6 +1100,28 @@ export default function ShapeChat({
                   ✕ {t.aiPreviewCancel || tr.aiPreviewCancel}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Approaching-budget advisory — yellow, dismissable, shown once per session. */}
+          {budgetAdvisory && (
+            <div style={{
+              margin: '4px 0', padding: '8px 14px', borderRadius: 12,
+              background: '#3d2c0f', border: '1px solid #b08020',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+            }}>
+              <span style={{ fontSize: 12, color: '#fcd34d' }}>
+                ⚠️ AI 일일 예산 {Math.round(budgetAdvisory.fraction * 100)}%
+                {budgetAdvisory.limitUsd != null && ` / $${budgetAdvisory.limitUsd}`} 도달 — 곧 잠금됩니다
+              </span>
+              <button
+                onClick={() => setBudgetAdvisory(null)}
+                style={{
+                  background: 'none', border: 'none', color: '#9ca3af',
+                  cursor: 'pointer', fontSize: 14, padding: '0 4px',
+                }}
+                aria-label="dismiss"
+              >✕</button>
             </div>
           )}
 
@@ -1239,6 +1342,28 @@ export default function ShapeChat({
           </div>
         )}
 
+        {/* Budget cool-down banner — shown only when locked. */}
+        {budgetLockUntil && budgetLockUntil > budgetLockNow && (() => {
+          const remainingMs = budgetLockUntil - budgetLockNow;
+          const mins = Math.ceil(remainingMs / 60_000);
+          const hours = Math.floor(mins / 60);
+          const rem = mins % 60;
+          const label = hours > 0 ? `${hours}h ${rem}m` : `${mins}m`;
+          return (
+            <div
+              role="status"
+              style={{
+                marginBottom: 6, padding: '8px 12px', borderRadius: 8,
+                background: '#3d1519', border: '1px solid #f8514944',
+                color: '#fda4af', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8,
+              }}
+            >
+              <span aria-hidden>⏳</span>
+              <span style={{ flex: 1 }}>{tr.toastBudgetReached}</span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{label}</span>
+            </div>
+          );
+        })()}
         {/* Input row */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>🤖</span>
@@ -1248,7 +1373,8 @@ export default function ShapeChat({
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? tr.voiceListening : activeTab === 'optimize'
+            placeholder={budgetLockUntil && budgetLockUntil > budgetLockNow ? tr.toastBudgetReached
+              : isListening ? tr.voiceListening : activeTab === 'optimize'
               ? (t.chatPlaceholderOpt || tr.phFallbackOpt)
               : isBlank
                 ? tr.phPlaceholderDesc
@@ -1256,7 +1382,7 @@ export default function ShapeChat({
                   ? tr.phPlaceholderModify
                   : (t.chatPlaceholder || tr.phFallbackDesign)
             }
-            disabled={loading}
+            disabled={loading || (budgetLockUntil !== null && budgetLockUntil > budgetLockNow)}
             style={{
               flex: 1, padding: '11px 16px', borderRadius: 12,
               border: '2px solid #30363d', fontSize: 14, outline: 'none',
@@ -1271,9 +1397,8 @@ export default function ShapeChat({
           <button
             title={isListening ? tr.micStop : tr.micStart}
             onClick={() => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const w = window as any;
-              const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+              const w = window as WindowWithSpeechRecognition;
+              const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
               if (!SR) { alert(tr.micUnsupported); return; }
               if (isListening) {
                 recognitionRef.current?.stop();
@@ -1284,10 +1409,10 @@ export default function ShapeChat({
               rec.lang = tr.voiceLang;
               rec.interimResults = true;
               rec.continuous = false;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              rec.onresult = (e: any) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join('');
+              rec.onresult = (e: SpeechRecognitionEventLike) => {
+                const transcript = Array.from(e.results)
+                  .map((r) => r[0]?.transcript ?? '')
+                  .join('');
                 setInput(transcript);
               };
               rec.onend = () => setIsListening(false);

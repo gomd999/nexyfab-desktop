@@ -599,8 +599,8 @@ export default function PartnerProfilePage() {
       }
     };
     el.addEventListener('change', handler);
-    return () => el.removeEventListener('change', handler);
-  }, []);
+    return () =>     el.removeEventListener('change', handler);
+  }, [toast]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();

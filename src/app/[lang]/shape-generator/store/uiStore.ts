@@ -5,6 +5,85 @@ import { cacheClear } from '../features/pipelineCache'
 import { useSceneStore } from './sceneStore'
 import type { CadWorkspaceId } from '../cadWorkspace/cadWorkspaceIds'
 
+// ─── Panel exclusivity groups ────────────────────────────────────────────────
+// Why: Previously each panel was a flat boolean. Opening one analysis panel
+// did not auto-close another, and tab switches required manually listing every
+// panel to reset (see the long `state.show* = false` blocks in setActiveTab /
+// enableSimpleMode / closeAllPanels). New panels were repeatedly missed from
+// those lists, causing two analysis panels to sometimes overlay each other.
+//
+// Now: panels declared in `analysisPanelKeys` are mutually exclusive — opening
+// one auto-closes the others. The dedicated helpers below replace the manual
+// reset blocks, so adding a new panel only requires updating this list.
+
+const analysisPanelKeys = [
+  'showFEA',
+  'showDFM',
+  'showDraftAnalysis',
+  'showHoleWizard',
+  'showMassProps',
+  'showAnnotationPanel',
+  'showValidation',
+  'showPrintAnalysis',
+  'showSheetMetalPanel',
+  'showCostPanel',
+  'showArrayPanel',
+  'showPluginManager',
+  'showBranchCompare',
+  'showCOTSPanel',
+  'showProcessRouter',
+  'showAISupplierMatch',
+  'showCostCopilot',
+  'showAIHistory',
+  'showOpenScad',
+  'showGenDesign',
+  'showECADPanel',
+  'showThermalPanel',
+  'showMotionStudy',
+  'showModalAnalysis',
+  'showParametricSweep',
+  'showToleranceStackup',
+  'showSurfaceQuality',
+  'showAutoDrawing',
+  'showMfgPipeline',
+  'showVersionDiff',
+] as const
+type AnalysisPanelKey = (typeof analysisPanelKeys)[number]
+
+// Modal/upgrade dialogs — these stack on top of panels and have their own
+// open/close lifecycle (one-shot CTA dialogs), so they keep individual setters
+// rather than going through the exclusive-panel helper. Listed here for
+// documentation only:
+//   showCamUpgrade, showDFMFixUpgrade, showDFMInsightsUpgrade,
+//   showProcessRouterUpgrade, showAISupplierMatchUpgrade,
+//   showCostCopilotUpgrade, showCollabEditUpgrade, showExportOptimizeUpgrade
+
+// Independent toggles (orthogonal to analysis panels):
+//  - showAIAssistant, showShortcuts, showCommandPalette, showPlanes, showPerf,
+//    multiView, showVersionPanel, showHistoryPanel, showAssemblyPanel,
+//    showLibrary, showScriptPanel, showRecovery
+// These are NOT in either list above and remain independent.
+
+/**
+ * Open `key` in the analysis-panel group, auto-closing all peers. When `v` is
+ * `false`, only `key` is cleared (peers untouched). Use this from setShow*
+ * setters; do NOT mutate the boolean directly when it belongs to the group,
+ * or you reintroduce the multi-open bug.
+ */
+function setExclusivePanel(
+  state: Record<AnalysisPanelKey, boolean>,
+  key: AnalysisPanelKey,
+  v: boolean,
+): void {
+  if (v) {
+    for (const k of analysisPanelKeys) {
+      state[k] = k === key
+    }
+  } else {
+    state[key] = false
+  }
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 type ViewMode = 'gallery' | 'workspace'
@@ -44,6 +123,21 @@ interface UIState {
   showScriptPanel: boolean
   showBranchCompare: boolean
   showRecovery: boolean
+  // F5 — Configuration Table panel (Excel-style multi-config view).
+  showConfigurationTable: boolean
+  // F7 — DRC custom rule panel.
+  showDrcPanel: boolean
+  // F9 — PLM/ERP connector config panel.
+  showPlmConfig: boolean
+  // F1 — Sketch text panel.
+  showSketchText: boolean
+  // K6 — Smart fastener panel (auto bolt+washer+nut detection).
+  showSmartFastener: boolean
+  // A7 — SCAD authoring mode: 'quick' = deterministic JSON-intent path (current
+  // shape-chat UX, low cost), 'agent' = free-form OpenSCAD coding agent
+  // (multi-turn render-fix loop, Pro feature). Default 'quick' so free users
+  // never accidentally burn agent budget.
+  scadAuthoringMode: 'quick' | 'agent'
   // ── Analysis modal panels (migrated from page.tsx local state) ──
   showCOTSPanel: boolean
   showCamUpgrade: boolean
@@ -109,6 +203,11 @@ type PanelKey =
   | 'showScriptPanel'
   | 'showBranchCompare'
   | 'showRecovery'
+  | 'showConfigurationTable'
+  | 'showDrcPanel'
+  | 'showPlmConfig'
+  | 'showSketchText'
+  | 'showSmartFastener'
   | 'showCOTSPanel'
   | 'showCamUpgrade'
   | 'showDFMFixUpgrade'
@@ -175,6 +274,12 @@ interface UIActions {
   setShowScriptPanel: (v: boolean) => void
   setShowBranchCompare: (v: boolean) => void
   setShowRecovery: (v: boolean) => void
+  setShowConfigurationTable: (v: boolean) => void
+  setShowDrcPanel: (v: boolean) => void
+  setShowPlmConfig: (v: boolean) => void
+  setShowSketchText: (v: boolean) => void
+  setShowSmartFastener: (v: boolean) => void
+  setScadAuthoringMode: (m: 'quick' | 'agent') => void
   setShowCOTSPanel: (v: boolean) => void
   setShowCamUpgrade: (v: boolean) => void
   setShowDFMFixUpgrade: (v: boolean) => void
@@ -249,6 +354,12 @@ export const useUIStore = create<UIStore>()(
     showScriptPanel: false,
     showBranchCompare: false,
     showRecovery: false,
+    showConfigurationTable: false,
+    showDrcPanel: false,
+    showPlmConfig: false,
+    showSketchText: false,
+    showSmartFastener: false,
+    scadAuthoringMode: 'quick',
     showCOTSPanel: false,
     showCamUpgrade: false,
     showDFMFixUpgrade: false,
@@ -293,14 +404,7 @@ export const useUIStore = create<UIStore>()(
       set((state) => {
         state.activeTab = tab
         state.cadWorkspace = tab
-        state.showGenDesign = false
-        state.showMotionStudy = false
-        state.showFEA = false
-        state.showThermalPanel = false
-        state.showModalAnalysis = false
-        state.showMfgPipeline = false
-        state.showAutoDrawing = false
-        state.showECADPanel = false
+        for (const k of analysisPanelKeys) state[k] = false
       })
       useSceneStore.getState().setRenderMode('standard')
     },
@@ -309,14 +413,7 @@ export const useUIStore = create<UIStore>()(
       set((state) => {
         state.activeTab = tab
         state.cadWorkspace = tab
-        state.showGenDesign = false
-        state.showMotionStudy = false
-        state.showFEA = false
-        state.showThermalPanel = false
-        state.showModalAnalysis = false
-        state.showMfgPipeline = false
-        state.showAutoDrawing = false
-        state.showECADPanel = false
+        for (const k of analysisPanelKeys) state[k] = false
       }),
 
     setSimpleMode: (v) =>
@@ -328,37 +425,16 @@ export const useUIStore = create<UIStore>()(
       set((state) => {
         state.simpleMode = true
         state.cadWorkspace = 'design'
-        // 고급 패널 전부 닫기
-        state.showFEA = false
-        state.showDFM = false
-        state.showDraftAnalysis = false
-        state.showHoleWizard = false
-        state.showMassProps = false
-        state.showAnnotationPanel = false
-        state.showValidation = false
-        state.showPrintAnalysis = false
-        state.showSheetMetalPanel = false
-        state.showArrayPanel = false
+        // Close all advanced analysis panels (mutual-exclusion group).
+        for (const k of analysisPanelKeys) state[k] = false
+        // Plus a few independent toggles that should hide in simple mode.
         state.showAIAssistant = false
-        state.showPluginManager = false
-        state.showBranchCompare = false
         state.showPlanes = false
         state.showPerf = false
         state.multiView = false
         state.showVersionPanel = false
         state.showHistoryPanel = false
         state.showAssemblyPanel = false
-        state.showGenDesign = false
-        state.showECADPanel = false
-        state.showThermalPanel = false
-        state.showMotionStudy = false
-        state.showModalAnalysis = false
-        state.showParametricSweep = false
-        state.showToleranceStackup = false
-        state.showSurfaceQuality = false
-        state.showAutoDrawing = false
-        state.showMfgPipeline = false
-        state.showVersionDiff = false
       })
       useSceneStore.getState().setRenderMode('standard')
     },
@@ -424,111 +500,61 @@ export const useUIStore = create<UIStore>()(
         state.showAssemblyPanel = v
       }),
 
-    setShowFEA: (v) =>
-      set((state) => {
-        state.showFEA = v
-      }),
+    // ─── Analysis-panel setters (mutual-exclusion enforced) ──────────────────
+    // Setting any one of these to `true` auto-closes the others in the group.
+    // This replaces the bug-prone pattern where every caller had to remember
+    // to close peer panels manually.
+    setShowFEA: (v) => set((state) => { setExclusivePanel(state, 'showFEA', v) }),
+    setShowDFM: (v) => set((state) => { setExclusivePanel(state, 'showDFM', v) }),
+    setShowDraftAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showDraftAnalysis', v) }),
+    setShowHoleWizard: (v) => set((state) => { setExclusivePanel(state, 'showHoleWizard', v) }),
+    setShowMassProps: (v) => set((state) => { setExclusivePanel(state, 'showMassProps', v) }),
+    setShowAnnotationPanel: (v) => set((state) => { setExclusivePanel(state, 'showAnnotationPanel', v) }),
+    setShowValidation: (v) => set((state) => { setExclusivePanel(state, 'showValidation', v) }),
+    setShowPrintAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showPrintAnalysis', v) }),
+    setShowSheetMetalPanel: (v) => set((state) => { setExclusivePanel(state, 'showSheetMetalPanel', v) }),
+    setShowArrayPanel: (v) => set((state) => { setExclusivePanel(state, 'showArrayPanel', v) }),
+    setShowPluginManager: (v) => set((state) => { setExclusivePanel(state, 'showPluginManager', v) }),
+    setShowBranchCompare: (v) => set((state) => { setExclusivePanel(state, 'showBranchCompare', v) }),
+    setShowCOTSPanel: (v) => set((state) => { setExclusivePanel(state, 'showCOTSPanel', v) }),
+    setShowProcessRouter: (v) => set((state) => { setExclusivePanel(state, 'showProcessRouter', v) }),
+    setShowAISupplierMatch: (v) => set((state) => { setExclusivePanel(state, 'showAISupplierMatch', v) }),
+    setShowCostCopilot: (v) => set((state) => { setExclusivePanel(state, 'showCostCopilot', v) }),
+    setShowAIHistory: (v) => set((state) => { setExclusivePanel(state, 'showAIHistory', v) }),
+    setShowOpenScad: (v) => set((state) => { setExclusivePanel(state, 'showOpenScad', v) }),
+    setShowGenDesign: (v) => set((state) => { setExclusivePanel(state, 'showGenDesign', v) }),
+    setShowECADPanel: (v) => set((state) => { setExclusivePanel(state, 'showECADPanel', v) }),
+    setShowThermalPanel: (v) => set((state) => { setExclusivePanel(state, 'showThermalPanel', v) }),
+    setShowMotionStudy: (v) => set((state) => { setExclusivePanel(state, 'showMotionStudy', v) }),
+    setShowModalAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showModalAnalysis', v) }),
+    setShowParametricSweep: (v) => set((state) => { setExclusivePanel(state, 'showParametricSweep', v) }),
+    setShowToleranceStackup: (v) => set((state) => { setExclusivePanel(state, 'showToleranceStackup', v) }),
+    setShowSurfaceQuality: (v) => set((state) => { setExclusivePanel(state, 'showSurfaceQuality', v) }),
+    setShowAutoDrawing: (v) => set((state) => { setExclusivePanel(state, 'showAutoDrawing', v) }),
+    setShowMfgPipeline: (v) => set((state) => { setExclusivePanel(state, 'showMfgPipeline', v) }),
+    setShowVersionDiff: (v) => set((state) => { setExclusivePanel(state, 'showVersionDiff', v) }),
 
-    setShowDFM: (v) =>
-      set((state) => {
-        state.showDFM = v
-      }),
+    // ─── Independent toggles (orthogonal to analysis panels) ─────────────────
+    setShowLibrary: (v) => set((state) => { state.showLibrary = v }),
+    setShowCostPanel: (v) => set((state) => { state.showCostPanel = v }),
+    setShowScriptPanel: (v) => set((state) => { state.showScriptPanel = v }),
+    setShowRecovery: (v) => set((state) => { state.showRecovery = v }),
+    setShowConfigurationTable: (v) => set((state) => { state.showConfigurationTable = v }),
+    setShowDrcPanel: (v) => set((state) => { state.showDrcPanel = v }),
+    setShowPlmConfig: (v) => set((state) => { state.showPlmConfig = v }),
+    setShowSketchText: (v) => set((state) => { state.showSketchText = v }),
+    setShowSmartFastener: (v) => set((state) => { state.showSmartFastener = v }),
+    setScadAuthoringMode: (m) => set((state) => { state.scadAuthoringMode = m }),
 
-    setShowDraftAnalysis: (v) =>
-      set((state) => {
-        state.showDraftAnalysis = v
-      }),
-
-    setShowHoleWizard: (v) =>
-      set((state) => {
-        state.showHoleWizard = v
-      }),
-
-    setShowMassProps: (v) =>
-      set((state) => {
-        state.showMassProps = v
-      }),
-
-    setShowAnnotationPanel: (v) =>
-      set((state) => {
-        state.showAnnotationPanel = v
-      }),
-
-    setShowValidation: (v) =>
-      set((state) => {
-        state.showValidation = v
-      }),
-
-    setShowLibrary: (v) =>
-      set((state) => {
-        state.showLibrary = v
-      }),
-
-    setShowPrintAnalysis: (v) =>
-      set((state) => {
-        state.showPrintAnalysis = v
-      }),
-
-    setShowSheetMetalPanel: (v) =>
-      set((state) => {
-        state.showSheetMetalPanel = v
-      }),
-
-    setShowCostPanel: (v) =>
-      set((state) => {
-        state.showCostPanel = v
-      }),
-
-    setShowArrayPanel: (v) =>
-      set((state) => {
-        state.showArrayPanel = v
-      }),
-
-    setShowPluginManager: (v) =>
-      set((state) => {
-        state.showPluginManager = v
-      }),
-
-    setShowScriptPanel: (v) =>
-      set((state) => {
-        state.showScriptPanel = v
-      }),
-
-    setShowBranchCompare: (v) =>
-      set((state) => {
-        state.showBranchCompare = v
-      }),
-
-    setShowRecovery: (v) =>
-      set((state) => {
-        state.showRecovery = v
-      }),
-
-    setShowCOTSPanel: (v) => set((state) => { state.showCOTSPanel = v }),
+    // ─── Modal/upgrade dialogs (overlay on top of panels) ────────────────────
     setShowCamUpgrade: (v) => set((state) => { state.showCamUpgrade = v }),
     setShowDFMFixUpgrade: (v) => set((state) => { state.showDFMFixUpgrade = v }),
     setShowDFMInsightsUpgrade: (v) => set((state) => { state.showDFMInsightsUpgrade = v }),
-    setShowProcessRouter: (v) => set((state) => { state.showProcessRouter = v }),
     setShowProcessRouterUpgrade: (v) => set((state) => { state.showProcessRouterUpgrade = v }),
-    setShowAISupplierMatch: (v) => set((state) => { state.showAISupplierMatch = v }),
     setShowAISupplierMatchUpgrade: (v) => set((state) => { state.showAISupplierMatchUpgrade = v }),
-    setShowCostCopilot: (v) => set((state) => { state.showCostCopilot = v }),
     setShowCostCopilotUpgrade: (v) => set((state) => { state.showCostCopilotUpgrade = v }),
-    setShowAIHistory: (v) => set((state) => { state.showAIHistory = v }),
-    setShowOpenScad: (v) => set((state) => { state.showOpenScad = v }),
     setShowCollabEditUpgrade: (v) => set((state) => { state.showCollabEditUpgrade = v }),
     setShowExportOptimizeUpgrade: (v) => set((state) => { state.showExportOptimizeUpgrade = v }),
-    setShowGenDesign: (v) => set((state) => { state.showGenDesign = v }),
-    setShowECADPanel: (v) => set((state) => { state.showECADPanel = v }),
-    setShowThermalPanel: (v) => set((state) => { state.showThermalPanel = v }),
-    setShowMotionStudy: (v) => set((state) => { state.showMotionStudy = v }),
-    setShowModalAnalysis: (v) => set((state) => { state.showModalAnalysis = v }),
-    setShowParametricSweep: (v) => set((state) => { state.showParametricSweep = v }),
-    setShowToleranceStackup: (v) => set((state) => { state.showToleranceStackup = v }),
-    setShowSurfaceQuality: (v) => set((state) => { state.showSurfaceQuality = v }),
-    setShowAutoDrawing: (v) => set((state) => { state.showAutoDrawing = v }),
-    setShowMfgPipeline: (v) => set((state) => { state.showMfgPipeline = v }),
-    setShowVersionDiff: (v) => set((state) => { state.showVersionDiff = v }),
 
     setAnnotationPlacementMode: (mode) =>
       set((state) => {
@@ -593,6 +619,9 @@ export const useUIStore = create<UIStore>()(
 
     closeAllPanels: () =>
       set((state) => {
+        // Analysis panels (mutual-exclusion group)
+        for (const k of analysisPanelKeys) state[k] = false
+        // Independent toggles
         state.showAIAssistant = false
         state.showShortcuts = false
         state.showCommandPalette = false
@@ -602,39 +631,12 @@ export const useUIStore = create<UIStore>()(
         state.showVersionPanel = false
         state.showHistoryPanel = false
         state.showAssemblyPanel = false
-        state.showFEA = false
-        state.showDFM = false
-        state.showDraftAnalysis = false
-        state.showHoleWizard = false
-        state.showMassProps = false
-        state.showAnnotationPanel = false
-        state.showValidation = false
         state.showLibrary = false
-        state.showPrintAnalysis = false
-        state.showSheetMetalPanel = false
         state.showCostPanel = false
-        state.showArrayPanel = false
-        state.showPluginManager = false
         state.showScriptPanel = false
-        state.showBranchCompare = false
         state.showRecovery = false
-        state.showCOTSPanel = false
+        // Pending upgrade modals
         state.showCamUpgrade = false
-        state.showProcessRouter = false
-        state.showAISupplierMatch = false
-        state.showCostCopilot = false
-        state.showAIHistory = false
-        state.showGenDesign = false
-        state.showECADPanel = false
-        state.showThermalPanel = false
-        state.showMotionStudy = false
-        state.showModalAnalysis = false
-        state.showParametricSweep = false
-        state.showToleranceStackup = false
-        state.showSurfaceQuality = false
-        state.showAutoDrawing = false
-        state.showMfgPipeline = false
-        state.showVersionDiff = false
       }),
   }))
 )

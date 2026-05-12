@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { billingT } from './billingDict';
+import SimQuotaWidget from './SimQuotaWidget';
 
 const CheckoutModal = dynamic(
   () => import('@/components/billing/CheckoutModal'),
@@ -247,7 +249,7 @@ function BillingSettingsContent() {
   const [orgData, setOrgData] = useState<{ id: string; name: string } | null>(null);
   const [orgMembers, setOrgMembers] = useState<{ user_id: string; email: string; name: string; role: string; joined_at: number }[]>([]);
   const [orgInvites, setOrgInvites] = useState<{ id: string; email: string; role: string; expires_at: number }[]>([]);
-  const [orgLoading, setOrgLoading] = useState(false);
+  const [_orgLoading, _setOrgLoading] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', businessNumber: '' });
   const [orgCreating, setOrgCreating] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -496,6 +498,42 @@ function BillingSettingsContent() {
           ))}
         </div>
 
+        {/* ── Status banner (past_due / cancel_pending) ──────────────────── */}
+        {/* Multilingual labels — kept inline because the rest of this page
+             still uses Korean strings; pulling a full dict is the next round.
+             For now, Korean stays default but English mirrors it on /en/. */}
+        {(() => {
+          const t = billingT(lang);
+          return (
+            <>
+              {portal?.subscription?.status === 'past_due' && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-red-900">{t.pastDueTitle}</p>
+                    <p className="text-xs text-red-700 mt-1">{t.pastDueBody}</p>
+                    <button
+                      onClick={() => setTab('payment-methods')}
+                      className="mt-2 text-xs font-bold text-red-700 hover:text-red-800 underline"
+                    >
+                      {t.pastDueCta}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {portal?.subscription?.status === 'cancel_pending' && portal.subscription.current_period_end && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+                  <span className="text-xl">📅</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-amber-900">{t.cancelTitle}</p>
+                    <p className="text-xs text-amber-700 mt-1">{t.cancelBody(formatDate(portal.subscription.current_period_end))}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
+
         {/* ── Overview ──────────────────────────────────────────────────── */}
         {tab === 'overview' && (
           <>
@@ -507,13 +545,20 @@ function BillingSettingsContent() {
                     <span className={`text-sm font-bold px-3 py-1 rounded-full ${PLAN_COLORS[portal.plan]}`}>
                       {PLAN_LABELS[portal.plan]}
                     </span>
-                    {portal.subscription && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        portal.subscription.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {portal.subscription.status === 'active' ? '활성' : portal.subscription.status}
-                      </span>
-                    )}
+                    {portal.subscription && (() => {
+                      const s = portal.subscription.status;
+                      const tt = billingT(lang);
+                      const map: Record<string, { label: string; tone: string }> = {
+                        active:         { label: tt.statusActive,        tone: 'bg-green-100 text-green-700' },
+                        past_due:       { label: tt.statusPastDue,       tone: 'bg-red-100 text-red-700' },
+                        cancel_pending: { label: tt.statusCancelPending, tone: 'bg-amber-100 text-amber-700' },
+                        cancelled:      { label: tt.statusCancelled,     tone: 'bg-gray-100 text-gray-600' },
+                      };
+                      const item = map[s] ?? { label: s, tone: 'bg-amber-100 text-amber-700' };
+                      return (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${item.tone}`}>{item.label}</span>
+                      );
+                    })()}
                     {taxCfg && taxCfg.rate > 0 && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                         {taxCfg.nameLocal} {Math.round(taxCfg.rate * 100)}% {taxCfg.included ? '포함' : '별도'}
@@ -575,6 +620,9 @@ function BillingSettingsContent() {
                 )}
               </SectionCard>
             )}
+
+            {/* L4 — Sim quota widget (Σ series). Self-fetches /sim-quota. */}
+            <SimQuotaWidget lang="ko" />
 
             {/* Recent invoices preview */}
             <SectionCard title="최근 청구">

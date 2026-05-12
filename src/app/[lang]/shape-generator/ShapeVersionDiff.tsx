@@ -446,7 +446,7 @@ export default function ShapeVersionDiff({
   const lA = labelA ?? t(resolvedLang, 'before');
   const lB = labelB ?? t(resolvedLang, 'after');
 
-  const { mA, mB, changedCount, volumePct, summaryText } = useMemo(() => {
+  const { mA, mB, changedCount: _changedCount, volumePct, summaryText } = useMemo(() => {
     const mA = computeBBoxMetrics(geometryA);
     const mB = computeBBoxMetrics(geometryB);
 

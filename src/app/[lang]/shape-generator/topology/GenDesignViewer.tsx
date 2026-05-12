@@ -26,7 +26,7 @@ type DisplayMode = 'solid' | 'wireframe';
 
 const FACE_LIST: Face[] = ['+x', '-x', '+y', '-y', '+z', '-z'];
 
-const MATERIAL_COLORS: Record<string, string> = {
+const _MATERIAL_COLORS: Record<string, string> = {
   aluminum: '#b0b8c8',
   steel: '#8a929e',
   titanium: '#a0a8b4',
@@ -252,6 +252,7 @@ function CursorSetter({ selectionMode }: { selectionMode: string }) {
   const { gl } = useThree();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability -- canvas cursor via DOM API
     gl.domElement.style.cursor = selectionMode !== 'none' ? 'pointer' : 'grab';
   }, [selectionMode, gl]);
 

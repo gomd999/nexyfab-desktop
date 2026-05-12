@@ -214,7 +214,7 @@ export default function FeatureDependencyGraph({
             const y1 = parent.y + NODE_H;
             const x2 = gn.x + NODE_W / 2;
             const y2 = gn.y;
-            const mx = (x1 + x2) / 2;
+            const _mx = (x1 + x2) / 2;
             const my = (y1 + y2) / 2;
             return (
               <g key={`edge-${gn.id}`}>

@@ -190,6 +190,14 @@ function DimensionLine({ p1, p2, label, color = '#fbbf24' }: {
     return new THREE.Line(lineGeo, mat);
   }, [lineGeo, color]);
 
+  // Cleanup GPU resources on unmount or when lineObj changes
+  useEffect(() => {
+    return () => {
+      lineObj.geometry?.dispose();
+      (lineObj.material as THREE.Material)?.dispose();
+    };
+  }, [lineObj]);
+
   return (
     <group>
       <primitive object={lineObj} />
@@ -480,7 +488,7 @@ export default function MeasureTool({
         {active && promptText && (
           <div style={{
             position: 'absolute',
-            bottom: 56,
+            bottom: 104,
             left: '50%',
             transform: 'translateX(-50%)',
             pointerEvents: 'none',

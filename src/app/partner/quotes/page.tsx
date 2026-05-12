@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/components/ToastProvider';
@@ -18,6 +19,7 @@ const PartnerStatsPanel = dynamic(() => import('./PartnerStatsPanel'), { ssr: fa
 const PartnerAIPrefsPanel = dynamic(() => import('./PartnerAIPrefsPanel'), { ssr: false });
 const PartnerOrdersPanel = dynamic(() => import('./PartnerOrdersPanel'), { ssr: false });
 import PartnerNotificationBell from './PartnerNotificationBell';
+import PartnerProBadge from '@/components/nexyfab/PartnerProBadge';
 import { loadLocalAiPrefs, type AiPrefs } from './PartnerAIPrefsPanel';
 
 interface Partner {
@@ -92,6 +94,7 @@ export default function PartnerQuotesPage() {
   const [loading, setLoading]     = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [activeTab, setActiveTab] = useState<QuoteTab>('all');
+  const [invitationsCount, setInvitationsCount] = useState<number | null>(null);
 
   // 응답/수정 모달
   const [respondTarget, setRespondTarget] = useState<Quote | null>(null);
@@ -229,6 +232,28 @@ export default function PartnerQuotesPage() {
       .catch(() => router.replace('/partner/login'));
   }, [router, fetchQuotes]);
 
+  // Concierge invitation count — separate fetch since it joins concierge_status,
+  // not nf_quotes. Light call, refresh on focus so newly-pushed invites appear.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const session = getSession();
+      if (!session || session === 'demo') return;
+      try {
+        const res = await fetch('/api/partner/invitations', {
+          headers: { Authorization: `Bearer ${session}` },
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { invitations?: unknown[] };
+        if (!cancelled) setInvitationsCount(Array.isArray(data.invitations) ? data.invitations.length : 0);
+      } catch { /* silent */ }
+    };
+    void load();
+    const onFocus = () => void load();
+    window.addEventListener('focus', onFocus);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
+  }, []);
+
   async function runAutoQuote(isRush: boolean) {
     if (!respondTarget) return;
     if (getSession() === 'demo') {
@@ -364,6 +389,7 @@ export default function PartnerQuotesPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <PartnerNotificationBell session={getSession()} />
+              <PartnerProBadge session={getSession()} />
             {/* AI 도구 버튼 그룹 — 데스크톱: 인라인, 모바일: 드롭다운 */}
             <div className="relative shrink-0">
               {/* 모바일: 드롭다운 토글 버튼 */}
@@ -479,6 +505,32 @@ export default function PartnerQuotesPage() {
             </div>
             </div>
           </div>
+
+          {/* Concierge invitations banner — appears above tabs when ops has
+              recommended this partner for a fresh RFQ that they haven't quoted. */}
+          {invitationsCount !== null && invitationsCount > 0 && (
+            <Link
+              href="/partner/invitations"
+              className="block mb-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 hover:border-blue-400 transition group"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">📥</div>
+                  <div>
+                    <div className="text-sm font-bold text-blue-900">
+                      들어온 견적 요청 {invitationsCount}건
+                    </div>
+                    <div className="text-xs text-blue-700 mt-0.5">
+                      NexyFab 운영팀이 귀사를 추천한 RFQ입니다 — 견적을 작성해 주세요
+                    </div>
+                  </div>
+                </div>
+                <div className="text-blue-600 font-bold text-sm group-hover:translate-x-1 transition">
+                  →
+                </div>
+              </div>
+            </Link>
+          )}
 
           {/* Tab bar */}
           {quotes.length > 0 && (

@@ -40,7 +40,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
   const t = lt[lang as keyof typeof lt] ?? lt.en;
   const [margin, setMargin] = useState(20);
   const [draftAngle, setDraftAngle] = useState(1.5);
-  const [loading, setLoading] = useState(false);
+  const [loading, _setLoading] = useState(false);
 
   return (
     <div style={{

@@ -9,7 +9,7 @@
  *   5. Empty geometry is detected and rejected
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi as _vi, beforeEach } from 'vitest';
 import * as THREE from 'three';
 import { runPipeline, type FeatureMap } from '../features/pipelineManager';
 import type { FeatureDefinition, FeatureInstance } from '../features/types';

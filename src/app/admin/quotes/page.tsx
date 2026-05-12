@@ -136,22 +136,6 @@ export default function QuotesAdminPage() {
     if (localStorage.getItem(TOKEN_KEY) === '1') setAuthed(true);
   }, []);
 
-  useEffect(() => {
-    if (authed) {
-      fetchQuotes();
-      fetchInquiries();
-      fetchApprovedPartners();
-    }
-  }, [authed]);
-
-  async function fetchApprovedPartners() {
-    try {
-      const res = await fetch('/api/partners');
-      const data = await res.json();
-      setApprovedPartners((data.partners || []).filter((p: ApprovedPartner) => p.partnerStatus === 'approved'));
-    } catch { /* silent */ }
-  }
-
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch('/api/admin/auth', {
@@ -201,6 +185,22 @@ export default function QuotesAdminPage() {
       // silent
     }
   }, []);
+
+  const fetchApprovedPartners = useCallback(async () => {
+    try {
+      const res = await fetch('/api/partners');
+      const data = await res.json();
+      setApprovedPartners((data.partners || []).filter((p: ApprovedPartner) => p.partnerStatus === 'approved'));
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    if (authed) {
+      void fetchQuotes();
+      void fetchInquiries();
+      void fetchApprovedPartners();
+    }
+  }, [authed, fetchQuotes, fetchInquiries, fetchApprovedPartners]);
 
   // ─── 상태 변경 ───────────────────────────────────────────────────────────
 
@@ -336,8 +336,8 @@ export default function QuotesAdminPage() {
       toast('success', `계약이 생성되었습니다. 계약 ID: ${contractData.contract?.id || ''} / 최종 수수료: ${contractData.contract?.finalCharge?.toLocaleString('ko-KR') || 0}원`);
       setCompareProject(null);
       fetchQuotes();
-    } catch (e: any) {
-      toast('error', e?.message || '처리 중 오류가 발생했습니다.');
+    } catch (e: unknown) {
+      toast('error', e instanceof Error ? e.message : '처리 중 오류가 발생했습니다.');
     } finally {
       setSelectingQuote(null);
     }

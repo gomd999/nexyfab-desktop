@@ -29,6 +29,21 @@ interface SceneState {
   explodeFactor: number
   /** Command toolbar chrome: dark (default) or high-contrast light ribbon. */
   ribbonTheme: 'dark' | 'lightRibbon'
+  /**
+   * Round 33: split-screen layout for power users (planner/engineer dual
+   * view). 'off' = single 3D viewport (default); 'side-notes' = scratch-pad
+   * notes panel pinned to the left; 'side-spec' = sketch/spec view alongside
+   * the 3D viewport. Persisted so the user's preferred layout sticks across
+   * sessions; toggled via Ctrl+\\ keyboard shortcut.
+   */
+  splitMode: 'off' | 'side-notes' | 'side-spec'
+  /**
+   * Cross-panel highlight cursor. Set when a downstream view (DFM warning,
+   * Mass Props, etc.) wants to draw the user's eye to a specific feature in
+   * the design tree. FeatureTree reads this and renders a glow on the
+   * matching row. Cleared by the consumer (or by selecting another feature).
+   */
+  highlightedFeatureId: string | null
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -55,6 +70,9 @@ interface SceneActions {
   setRenderSettings: (settings: RenderSettings | null) => void
   setExplodeFactor: (factor: number) => void
   setRibbonTheme: (theme: 'dark' | 'lightRibbon') => void
+  setSplitMode: (mode: 'off' | 'side-notes' | 'side-spec') => void
+  toggleSplitMode: () => void
+  setHighlightedFeatureId: (id: string | null) => void
 }
 
 type SceneStore = SceneState & SceneActions
@@ -95,6 +113,8 @@ export const useSceneStore = create<SceneStore>()(
       renderSettings: null,
       explodeFactor: 0,
       ribbonTheme: 'lightRibbon' as const,
+      splitMode: 'off' as const,
+      highlightedFeatureId: null,
 
       // Actions
       setSelectedId: (id) =>
@@ -201,6 +221,29 @@ export const useSceneStore = create<SceneStore>()(
         set((state) => {
           state.ribbonTheme = theme
         }),
+
+      setSplitMode: (mode) =>
+        set((state) => {
+          state.splitMode = mode
+        }),
+
+      // Cycles off → side-notes → side-spec → off, used by the Ctrl+\ shortcut.
+      // Keeping the cycle inside the store so the keybinding handler can stay
+      // a one-liner.
+      toggleSplitMode: () =>
+        set((state) => {
+          const next: Record<typeof state.splitMode, typeof state.splitMode> = {
+            'off': 'side-notes',
+            'side-notes': 'side-spec',
+            'side-spec': 'off',
+          };
+          state.splitMode = next[state.splitMode];
+        }),
+
+      setHighlightedFeatureId: (id) =>
+        set((state) => {
+          state.highlightedFeatureId = id
+        }),
     })),
     {
       name: 'nexyfab-scene',
@@ -210,7 +253,22 @@ export const useSceneStore = create<SceneStore>()(
         materialId: state.materialId,
         color: state.color,
         renderMode: state.renderMode,
-        renderSettings: state.renderSettings,
+        // Strip volatile blob: URLs from customHdri before persisting — those
+        // are tied to the document lifetime and become 404s after reload,
+        // which crashes RGBELoader. The rest of renderSettings (preset,
+        // exposure, shadow intensity) survives normally.
+        renderSettings: state.renderSettings
+          ? {
+              ...state.renderSettings,
+              customHdriUrl: state.renderSettings.customHdriUrl?.startsWith('blob:')
+                ? undefined
+                : state.renderSettings.customHdriUrl,
+              customHdriName: state.renderSettings.customHdriUrl?.startsWith('blob:')
+                ? undefined
+                : state.renderSettings.customHdriName,
+            }
+          : null,
+        splitMode: state.splitMode,
       }),
     }
   )

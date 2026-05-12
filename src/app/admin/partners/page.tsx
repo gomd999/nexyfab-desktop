@@ -31,7 +31,6 @@ interface Partner {
   partnerStatus: PartnerStatus;
   adminNote?: string;
   reviewedAt?: string;
-  [key: string]: any;
 }
 
 interface ReviewSummary {
@@ -51,6 +50,13 @@ interface PartnerKPI {
   totalRevenue: number;
 }
 
+interface TrustAggRow {
+  id: string;
+  labelKo: string;
+  displayKo: string;
+  sampleSize: number;
+}
+
 const STATUS_LABELS: Record<PartnerStatus, string> = {
   pending: '검토대기',
   approved: '승인',
@@ -65,7 +71,7 @@ const STATUS_COLORS: Record<PartnerStatus, string> = {
   contacted: 'bg-blue-100 text-blue-700 border-blue-300',
 };
 
-function StarDisplay({ value }: { value: number }) {
+function _StarDisplay({ value }: { value: number }) {
   return (
     <span className="inline-flex gap-0.5">
       {[1, 2, 3, 4, 5].map(i => (
@@ -89,6 +95,26 @@ export default function PartnersPage() {
   const [codeMsg, setCodeMsg] = useState<Record<string, string>>({});
   const [reviewSummaries, setReviewSummaries] = useState<Record<string, ReviewSummary>>({});
   const [kpiMap, setKpiMap] = useState<Record<string, PartnerKPI>>({});
+  const [trustModal, setTrustModal] = useState<{ email: string; label: string } | null>(null);
+  const [trustRows, setTrustRows] = useState<TrustAggRow[] | null>(null);
+  const [trustLoading, setTrustLoading] = useState(false);
+
+  const openTrustModal = useCallback(async (email: string, label: string) => {
+    setTrustModal({ email, label });
+    setTrustRows(null);
+    setTrustLoading(true);
+    try {
+      const res = await fetch(
+        `/api/nexyfab/partner-trust-aggregates?email=${encodeURIComponent(email)}&windowDays=90`,
+      );
+      const j = (await res.json()) as { dimensions?: TrustAggRow[] };
+      setTrustRows(Array.isArray(j.dimensions) ? j.dimensions : []);
+    } catch {
+      setTrustRows([]);
+    } finally {
+      setTrustLoading(false);
+    }
+  }, []);
 
   const fetchPartners = useCallback(async () => {
     setLoading(true);
@@ -318,29 +344,38 @@ export default function PartnersPage() {
                     ))}
                     {/* 액세스 코드 발송 — 승인된 파트너에게만 */}
                     {partner.partnerStatus === 'approved' && partner.email && (
-                      <button
-                        onClick={async () => {
-                          setSendingCode(partner.id);
-                          setCodeMsg(prev => ({ ...prev, [partner.id]: '' }));
-                          try {
-                            const result = await sendAccessCode(partner.id, partner.email!, partner.company || partner.name || '');
-                            if (result.ok) {
-                              const msg = result.devCode
-                                ? `코드를 발송했습니다. [개발] 코드: ${result.devCode}`
-                                : '코드를 발송했습니다.';
-                              setCodeMsg(prev => ({ ...prev, [partner.id]: msg }));
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void openTrustModal(partner.email!, partner.company || partner.name || partner.email!)}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
+                        >
+                          차원별 신뢰 (7-5)
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setSendingCode(partner.id);
+                            setCodeMsg(prev => ({ ...prev, [partner.id]: '' }));
+                            try {
+                              const result = await sendAccessCode(partner.id, partner.email!, partner.company || partner.name || '');
+                              if (result.ok) {
+                                const msg = result.devCode
+                                  ? `코드를 발송했습니다. [개발] 코드: ${result.devCode}`
+                                  : '코드를 발송했습니다.';
+                                setCodeMsg(prev => ({ ...prev, [partner.id]: msg }));
+                              }
+                            } catch {
+                              setCodeMsg(prev => ({ ...prev, [partner.id]: '발송에 실패했습니다.' }));
+                            } finally {
+                              setSendingCode(null);
                             }
-                          } catch {
-                            setCodeMsg(prev => ({ ...prev, [partner.id]: '발송에 실패했습니다.' }));
-                          } finally {
-                            setSendingCode(null);
-                          }
-                        }}
-                        disabled={sendingCode === partner.id}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        {sendingCode === partner.id ? '발송 중...' : '액세스 코드 발송'}
-                      </button>
+                          }}
+                          disabled={sendingCode === partner.id}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          {sendingCode === partner.id ? '발송 중...' : '액세스 코드 발송'}
+                        </button>
+                      </>
                     )}
                   </div>
                   {codeMsg[partner.id] && (
@@ -361,6 +396,56 @@ export default function PartnersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {trustModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => { setTrustModal(null); setTrustRows(null); }}
+          onKeyDown={e => { if (e.key === 'Escape') { setTrustModal(null); setTrustRows(null); } }}
+          role="presentation"
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-gray-100 p-5"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trust-modal-title"
+          >
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <h2 id="trust-modal-title" className="text-base font-bold text-gray-900">차원별 신뢰 (Phase 7-5)</h2>
+                <p className="text-xs text-gray-500 mt-0.5 truncate">{trustModal.label}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5 font-mono truncate">{trustModal.email}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setTrustModal(null); setTrustRows(null); }}
+                className="shrink-0 px-2 py-1 text-xs font-semibold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+              >
+                닫기
+              </button>
+            </div>
+            <p className="text-[11px] text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1.5 mb-3">
+              단일 신용점수 없음 — 축별로만 표시합니다.
+            </p>
+            {trustLoading || trustRows === null ? (
+              <p className="text-sm text-gray-400 py-6 text-center">불러오는 중...</p>
+            ) : trustRows.length === 0 ? (
+              <p className="text-sm text-gray-400 py-6 text-center">집계 데이터가 없습니다.</p>
+            ) : (
+              <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {trustRows.map(row => (
+                  <li key={row.id} className="border border-gray-100 rounded-xl px-3 py-2">
+                    <p className="text-xs font-bold text-gray-700">{row.labelKo}</p>
+                    <p className="text-sm text-gray-900 mt-0.5">{row.displayKo}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">샘플 {row.sampleSize}건</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -11,9 +11,11 @@ import {
   solveAssembly,
   calculateDOF,
   type AssemblyState,
-  type Mate,
+  type Mate as _Mate,
   type MateType,
 } from './matesSolver';
+import { useMateWorker } from '../workers/useMateWorker';
+import { reportError } from '../lib/telemetry';
 
 // ─── i18n labels ──────────────────────────────────────────────────────────────
 
@@ -186,35 +188,59 @@ export default function AssemblyMatesPanel({
 
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
   const [solving, setSolving] = useState(false);
+  const { performSolve } = useMateWorker();
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleSolve = useCallback(async () => {
     setSolving(true);
-    // Yield to allow the UI to repaint with "Solving..." before the
-    // synchronous solver blocks the thread.
-    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    try {
+      // Off-thread solve. Falls back to sync solveAssembly inside the hook
+      // when Worker isn't available. Avoids blocking the UI on 50+ part
+      // assemblies.
+      const result = await performSolve(assemblyState);
+      setSolveResult(result);
 
-    const result = solveAssembly(assemblyState);
-    setSolveResult(result);
-
-    // Push updated positions/rotations back to the parent
-    const updated: AssemblyState = {
-      ...assemblyState,
-      bodies: assemblyState.bodies.map((b, i) => ({
-        ...b,
-        position: result.bodies[i].position,
-        rotation: result.bodies[i].rotation,
-      })),
-      // Mark conflicting mates so the list can highlight them
-      mates: assemblyState.mates.map(m => ({
-        ...m,
-        conflict: result.conflicts.includes(m.id),
-      })),
-    };
-    onAssemblyUpdate(updated);
-    setSolving(false);
-  }, [assemblyState, onAssemblyUpdate]);
+      // Push updated positions/rotations back to the parent
+      const updated: AssemblyState = {
+        ...assemblyState,
+        bodies: assemblyState.bodies.map((b, i) => ({
+          ...b,
+          position: result.bodies[i].position,
+          rotation: result.bodies[i].rotation,
+        })),
+        // Mark conflicting mates so the list can highlight them
+        mates: assemblyState.mates.map(m => ({
+          ...m,
+          conflict: result.conflicts.includes(m.id),
+        })),
+      };
+      onAssemblyUpdate(updated);
+    } catch (err) {
+      // Worker failure / superseded — fall back to sync as a last resort.
+      // 'superseded' is benign; only telemetry-report real failures.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg !== 'superseded') {
+        reportError('feature_pipeline', err, { phase: 'mate_solve' });
+        const result = solveAssembly(assemblyState);
+        setSolveResult(result);
+        onAssemblyUpdate({
+          ...assemblyState,
+          bodies: assemblyState.bodies.map((b, i) => ({
+            ...b,
+            position: result.bodies[i].position,
+            rotation: result.bodies[i].rotation,
+          })),
+          mates: assemblyState.mates.map(m => ({
+            ...m,
+            conflict: result.conflicts.includes(m.id),
+          })),
+        });
+      }
+    } finally {
+      setSolving(false);
+    }
+  }, [assemblyState, onAssemblyUpdate, performSolve]);
 
   const toggleMate = useCallback((id: string) => {
     onAssemblyUpdate({

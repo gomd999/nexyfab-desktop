@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FeatureDefinition } from './types';
 import {
   type SheetMetalMaterial,
-  SHEET_METAL_MATERIALS,
+  SHEET_METAL_MATERIALS as _SHEET_METAL_MATERIALS,
   DEFAULT_MATERIAL,
   getKFactor,
   bendAllowance as tableBendAllowance,

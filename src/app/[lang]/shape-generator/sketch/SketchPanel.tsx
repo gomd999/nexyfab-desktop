@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect as _useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type {
   SketchProfile, SketchConfig, SketchTool, ExtrudeMode,
@@ -423,6 +423,9 @@ interface SketchPanelProps {
   /** 2-phase sketch UX: 'draw' shows tools only, 'setup3d' shows extrude/generate */
   sketchStep?: 'draw' | 'setup3d';
   onSketchStepChange?: (step: 'draw' | 'setup3d') => void;
+  /** F1 — open the sketch text panel (for engraving / embossing). When omitted
+   *  the entry button is hidden. */
+  onOpenTextPanel?: () => void;
 }
 
 // ─── Styles (dark theme) ────────────────────────────────────────────────────
@@ -524,7 +527,7 @@ const constraintBtnBase: React.CSSProperties = {
   transition: 'all 0.15s',
 };
 
-const constraintBtnActive: React.CSSProperties = {
+const _constraintBtnActive: React.CSSProperties = {
   ...constraintBtnBase,
   border: '1px solid #388bfd',
   background: '#0d1117',
@@ -597,9 +600,10 @@ export default function SketchPanel({
   onSolveConstraints,
   constraintStatus,
   constraintDiagnostic,
-  isKo = false,
+  isKo: _isKo = false,
   sketchStep = 'draw',
   onSketchStepChange,
+  onOpenTextPanel,
 }: SketchPanelProps) {
 
   // ── i18n: resolve locale from URL segment ──
@@ -747,6 +751,21 @@ export default function SketchPanel({
               {/* Divider */}
               <div style={{ width: 1, background: '#30363d', margin: '2px 1px', flexShrink: 0 }} />
               {interactTools.map(renderTool)}
+              {/* F1 — sketch text entry. Opens a dialog that converts a string
+                  to a closed sketch loop (extrude → engrave / emboss). */}
+              {onOpenTextPanel && (
+                <>
+                  <div style={{ width: 1, background: '#30363d', margin: '2px 1px', flexShrink: 0 }} />
+                  <button
+                    onClick={onOpenTextPanel}
+                    title="Sketch Text (engrave / emboss)"
+                    aria-label="Sketch text"
+                    style={{ ...toolBtnBase, position: 'relative' }}
+                  >
+                    🅰️
+                  </button>
+                </>
+              )}
             </div>
 
             {/* ① Active tool hint */}

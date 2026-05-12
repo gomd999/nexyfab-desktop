@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import type { FEAResult, FEABoundaryCondition, FEAMaterial } from './simpleFEA';
 import type { FEADisplayMode } from './FEAOverlay';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── i18n dictionary ────────────────────────────────────────────────────── */
 
@@ -341,34 +342,52 @@ const FEA_MATERIAL_PRESETS: { id: string; labelKey: 'matAluminum' | 'matSteel' |
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 interface FEAPanelProps {
-  result: FEAResult | null;
-  conditions: FEABoundaryCondition[];
-  onConditionsChange: (conds: FEABoundaryCondition[]) => void;
+  /** N1/J5 — props are optional. When omitted, FEAPanel reads from
+   *  useAnalysisStore directly (result/conditions/displayMode/scale all
+   *  live there). Setters fall back to the store actions. */
+  result?: FEAResult | null;
+  conditions?: FEABoundaryCondition[];
+  onConditionsChange?: (conds: FEABoundaryCondition[]) => void;
   onRunAnalysis: (material: FEAMaterial) => void;
   onClose: () => void;
-  displayMode: FEADisplayMode;
-  onDisplayModeChange: (mode: FEADisplayMode) => void;
-  deformationScale: number;
-  onDeformationScaleChange: (scale: number) => void;
+  displayMode?: FEADisplayMode;
+  onDisplayModeChange?: (mode: FEADisplayMode) => void;
+  deformationScale?: number;
+  onDeformationScaleChange?: (scale: number) => void;
   materialId?: string;
   isKo: boolean;
   totalFaces: number;
 }
 
 export default function FEAPanel({
-  result,
-  conditions,
+  result: propResult,
+  conditions: propConditions,
   onConditionsChange,
   onRunAnalysis,
   onClose,
-  displayMode,
+  displayMode: propDisplayMode,
   onDisplayModeChange,
-  deformationScale,
+  deformationScale: propDeformationScale,
   onDeformationScaleChange,
   materialId,
-  isKo,
+  isKo: _isKo,
   totalFaces,
 }: FEAPanelProps) {
+  // J5/N1 fallback — read from store when caller didn't pass.
+  const storeResult = useAnalysisStore(s => s.feaResult);
+  const storeConditions = useAnalysisStore(s => s.feaConditions);
+  const storeDisplayMode = useAnalysisStore(s => s.feaDisplayMode);
+  const storeDeformationScale = useAnalysisStore(s => s.feaDeformationScale);
+  const storeSetConditions = useAnalysisStore(s => s.setFeaConditions);
+  const storeSetDisplayMode = useAnalysisStore(s => s.setFeaDisplayMode);
+  const storeSetDeformationScale = useAnalysisStore(s => s.setFeaDeformationScale);
+  const result = propResult !== undefined ? propResult : storeResult;
+  const conditions = propConditions ?? storeConditions;
+  const displayMode = propDisplayMode ?? storeDisplayMode;
+  const deformationScale = propDeformationScale ?? storeDeformationScale;
+  const handleConditionsChange = onConditionsChange ?? storeSetConditions;
+  const handleDisplayModeChange = onDisplayModeChange ?? storeSetDisplayMode;
+  const handleDeformationScaleChange = onDeformationScaleChange ?? storeSetDeformationScale;
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, Lang> = {
@@ -403,13 +422,13 @@ export default function FEAPanel({
       faceIndices: indices,
       value: type === 'force' ? [0, -1000, 0] : type === 'pressure' ? [0, -100, 0] : undefined,
     };
-    onConditionsChange([...conditions, newCond]);
-  }, [conditions, onConditionsChange, totalFaces]);
+    handleConditionsChange([...conditions, newCond]);
+  }, [conditions, handleConditionsChange, totalFaces]);
 
   const handleRemoveCondition = useCallback((idx: number) => {
     const next = conditions.filter((_, i) => i !== idx);
-    onConditionsChange(next);
-  }, [conditions, onConditionsChange]);
+    handleConditionsChange(next);
+  }, [conditions, handleConditionsChange]);
 
   const handleUpdateConditionValue = useCallback((idx: number, axis: 0 | 1 | 2, val: number) => {
     const next = conditions.map((c, i) => {
@@ -418,8 +437,8 @@ export default function FEAPanel({
       newVal[axis] = val;
       return { ...c, value: newVal };
     });
-    onConditionsChange(next);
-  }, [conditions, onConditionsChange]);
+    handleConditionsChange(next);
+  }, [conditions, handleConditionsChange]);
 
   const handleRun = useCallback(async () => {
     setIsRunning(true);
@@ -738,7 +757,7 @@ export default function FEAPanel({
                 ]).map(opt => (
                   <button
                     key={opt.key}
-                    onClick={() => onDisplayModeChange(opt.key)}
+                    onClick={() => handleDisplayModeChange(opt.key)}
                     style={{
                       flex: 1, padding: '5px 6px', borderRadius: 4,
                       border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
@@ -768,7 +787,7 @@ export default function FEAPanel({
                   type="range"
                   min={1} max={500} step={1}
                   value={deformationScale}
-                  onChange={e => onDeformationScaleChange(Number(e.target.value))}
+                  onChange={e => handleDeformationScaleChange(Number(e.target.value))}
                   style={{ width: '100%', accentColor: C.accent }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#484f58' }}>

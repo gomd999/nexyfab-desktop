@@ -155,8 +155,13 @@ export default function RfqPanel({
       if (projectId) {
         const saved = localStorage.getItem('nexyfab_projects');
         if (saved) {
-          const projects = JSON.parse(saved);
-          const idx = projects.findIndex((p: any) => p.id === projectId);
+          interface StoredProject {
+            id: string;
+            status?: string;
+            updatedAt?: number;
+          }
+          const projects = JSON.parse(saved) as StoredProject[];
+          const idx = projects.findIndex((p) => p.id === projectId);
           if (idx >= 0) {
             projects[idx].status = 'ordered';
             projects[idx].updatedAt = Date.now();

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback as _useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   type ThreadCallout, type HoleCallout, type ThreadStandard, type ThreadType,
-  type HoleType, METRIC_COARSE_PITCHES, formatThreadCallout, formatHoleCallout,
+  type HoleType, type ThreadFit, METRIC_COARSE_PITCHES, formatThreadCallout, formatHoleCallout,
 } from './GDTTypes';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -220,14 +220,14 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
   const [diameter, setDiameter] = useState(8);
   const [pitch, setPitch] = useState(METRIC_COARSE_PITCHES[8]);
   const [depth, setDepth] = useState<number | undefined>(undefined);
-  const [fit, setFit] = useState<string>('6H');
+  const [fit, setFit] = useState<ThreadFit>('6H');
 
   const handleDiameterChange = (d: number) => {
     setDiameter(d);
     if (standard === 'metric') setPitch(METRIC_COARSE_PITCHES[d] ?? 1.0);
   };
 
-  const preview = formatThreadCallout({ standard, type, nominalDiameter: diameter, pitch, depth, fit: fit as any });
+  const preview = formatThreadCallout({ standard, type, nominalDiameter: diameter, pitch, depth, fit });
 
   return (
     <div style={{ padding: '12px 14px', borderBottom: '1px solid #21262d' }}>
@@ -285,7 +285,7 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
       {/* Fit */}
       <div style={{ marginBottom: 12 }}>
         <label style={{ fontSize: 10, color: '#8b949e', display: 'block', marginBottom: 3 }}>{tt.fit}</label>
-        <select value={fit} onChange={e => setFit(e.target.value)} style={selectStyle}>
+        <select value={fit} onChange={e => setFit(e.target.value as ThreadFit)} style={selectStyle}>
           {['6H', '7H', '5H', '6g', '5g6g', '4h', '6e', '6f'].map(f => <option key={f} value={f}>{f}</option>)}
         </select>
       </div>
@@ -296,7 +296,7 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
       </div>
 
       <button
-        onClick={() => onAdd({ standard, type, nominalDiameter: diameter, pitch, depth, fit: fit as any, label: preview })}
+        onClick={() => onAdd({ standard, type, nominalDiameter: diameter, pitch, depth, fit, label: preview })}
         style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 'none', background: '#388bfd', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
       >
         {tt.add}

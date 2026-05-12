@@ -69,7 +69,16 @@ export const HOLE_STANDARD_SERIES: Record<HoleStandardSeries, HoleStandardSpec[]
   ANSI: ANSI_IMPERIAL,
 };
 
-export type HoleKind = 'through' | 'tap' | 'counterbore' | 'countersink';
+export type HoleKind = 'through' | 'tap' | 'counterbore' | 'countersink' | 'spotface';
+
+/**
+ * Spotface depth heuristic — a spotface is a shallow facing operation to give
+ * a flat seat for a fastener head, typically 0.5-1.5mm rather than the full
+ * counterbore depth. We approximate as 30% of the spec's counterbore depth.
+ */
+function spotfaceDepth(spec: HoleStandardSpec): number {
+  return Math.max(0.5, +(spec.counterboreDepth * 0.3).toFixed(2));
+}
 
 /**
  * Map a (standard, kind) choice to the raw `hole` feature params. The caller
@@ -77,7 +86,7 @@ export type HoleKind = 'through' | 'tap' | 'counterbore' | 'countersink';
  *
  * `holeType` encoding (matches features/hole.ts):
  *   0 = through / tap (plain cylinder)
- *   1 = counterbore
+ *   1 = counterbore (and spotface — shallow counterbore variant)
  *   2 = countersink
  */
 export function holeParamsFromStandard(
@@ -107,6 +116,16 @@ export function holeParamsFromStandard(
         counterboreDepth: spec.counterboreDepth,
         countersinkAngle: spec.countersinkAngle,
       };
+    case 'spotface':
+      // Same outer dia as counterbore, but shallower — used to flatten a
+      // casting/forging surface so the fastener head seats square.
+      return {
+        holeType: 1,
+        diameter: spec.clearance,
+        counterboreDia: spec.counterboreDia,
+        counterboreDepth: spotfaceDepth(spec),
+        countersinkAngle: spec.countersinkAngle,
+      };
     case 'countersink':
       return {
         holeType: 2,
@@ -125,4 +144,33 @@ export function holeParamsFromStandard(
         countersinkAngle: spec.countersinkAngle,
       };
   }
+}
+
+/**
+ * Standard depth presets for blind holes. Engineers commonly choose
+ * 1×D, 1.5×D, 2×D as conventional depths rather than typing arbitrary numbers.
+ * 999 is the "through-all" sentinel (matches features/hole.ts depth==999).
+ */
+export interface HoleDepthPreset {
+  /** i18n label key in HoleWizardModal dict (depthThroughAll, depth1xD, etc.). */
+  labelKey: 'depthThroughAll' | 'depth1xD' | 'depth1_5xD' | 'depth2xD';
+  /** Multiplier applied to the resolved diameter. Use Infinity sentinel for through-all. */
+  multiplier: number;
+}
+
+export const HOLE_DEPTH_PRESETS: HoleDepthPreset[] = [
+  { labelKey: 'depthThroughAll', multiplier: Infinity },
+  { labelKey: 'depth1xD',  multiplier: 1.0 },
+  { labelKey: 'depth1_5xD', multiplier: 1.5 },
+  { labelKey: 'depth2xD',  multiplier: 2.0 },
+];
+
+/**
+ * Resolve a preset to a numeric depth value. Infinity → 999 sentinel (the
+ * through-all marker for the hole feature). Otherwise: ceil(diameter × mult)
+ * so the hole goes a bit deeper than the bare arithmetic.
+ */
+export function depthFromPreset(preset: HoleDepthPreset, diameter: number): number {
+  if (!Number.isFinite(preset.multiplier)) return 999;
+  return Math.max(1, Math.ceil(diameter * preset.multiplier));
 }

@@ -15,6 +15,9 @@ interface Deps {
   placedParts?: ReadonlyArray<unknown>;
   assemblyMates?: ReadonlyArray<unknown>;
   bodies?: ReadonlyArray<unknown>;
+  assemblyHiddenParts?: Set<string>;
+  assemblyTransparentParts?: Set<string>;
+  assemblyPartColors?: Record<string, string>;
   explodeFactor?: number;
   sketchViewMode?: string;
   ribbonTheme?: string;
@@ -69,12 +72,15 @@ export function useSceneAutoSaveWatchers({
   autoSave,
   buildAutoSaveState,
   markNfabDirty,
+  assemblyHiddenParts,
+  assemblyTransparentParts,
+  assemblyPartColors,
 }: Deps) {
   // Debounced scheduled save
   useEffect(() => {
     if (viewMode !== 'workspace') return;
     scheduleSave(buildAutoSaveState());
-  }, [selectedId, params, features, isSketchMode, placedParts, assemblyMates, bodies, explodeFactor, sketchViewMode, ribbonTheme, sectionActive, sectionAxis, sectionOffset, sketchPalSlice, sketchSlicePlaneMm, multiView, viewportCameraPersisted, configurationsSig, cadWorkspace, renderMode, viewMode, scheduleSave, buildAutoSaveState]);
+  }, [selectedId, params, features, isSketchMode, placedParts, assemblyMates, bodies, explodeFactor, sketchViewMode, ribbonTheme, sectionActive, sectionAxis, sectionOffset, sketchPalSlice, sketchSlicePlaneMm, multiView, viewportCameraPersisted, configurationsSig, cadWorkspace, renderMode, viewMode, scheduleSave, buildAutoSaveState, assemblyHiddenParts, assemblyTransparentParts, assemblyPartColors]);
 
   // Immediate save on shape / feature-count transitions
   const prevSelectedIdRef = useRef(selectedId);
@@ -100,5 +106,5 @@ export function useSceneAutoSaveWatchers({
   useEffect(() => {
     if (viewMode !== 'workspace') return;
     markNfabDirty();
-  }, [selectedId, params, features, isSketchMode, sketchProfile, sketchConfig, placedParts, assemblyMates, bodies, explodeFactor, sketchViewMode, ribbonTheme, sectionActive, sectionAxis, sectionOffset, sketchPalSlice, sketchSlicePlaneMm, multiView, viewportCameraPersisted, configurationsSig, cadWorkspace, renderMode, viewMode, markNfabDirty]);
+  }, [selectedId, params, features, isSketchMode, sketchProfile, sketchConfig, placedParts, assemblyMates, bodies, explodeFactor, sketchViewMode, ribbonTheme, sectionActive, sectionAxis, sectionOffset, sketchPalSlice, sketchSlicePlaneMm, multiView, viewportCameraPersisted, configurationsSig, cadWorkspace, renderMode, viewMode, markNfabDirty, assemblyHiddenParts, assemblyTransparentParts, assemblyPartColors]);
 }

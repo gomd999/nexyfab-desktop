@@ -240,7 +240,7 @@ interface Props {
 type Layer = 'part' | 'method' | 'material';
 
 export default function ComposeResultPanel({
-  spec,
+  spec: _spec,
   result,
   onApply,
   onClose,
@@ -255,7 +255,7 @@ export default function ComposeResultPanel({
   const handleSwap = async (layer: Layer, id: string) => {
     setSwapping(layer);
     try {
-      const force: any = {
+      const force: { partId?: string; methodId?: string; materialId?: string } = {
         partId: result.partId,
         methodId: result.methodId,
         materialId: result.materialId,
@@ -638,7 +638,7 @@ export default function ComposeResultPanel({
 
 // ──────────────────────────
 function LayerCard({
-  layer,
+  layer: _layer,
   title,
   icon,
   currentId,

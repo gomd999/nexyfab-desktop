@@ -4,7 +4,10 @@ import * as THREE from 'three';
 
 interface Props {
   sourceGeometry: THREE.BufferGeometry;
+  /** Single group or multiple groups (multi-select). All rendered with same color. */
   triangleIndices: number[];
+  /** Additional index groups for multi-select highlight (rendered in accent color). */
+  additionalGroups?: number[][];
   color?: string;
   opacity?: number;
 }
@@ -16,11 +19,18 @@ interface Props {
 export default function FaceHighlightMesh({
   sourceGeometry,
   triangleIndices,
+  additionalGroups,
   color = '#22d3ee',
   opacity = 0.35,
 }: Props) {
+  const allIndices = useMemo(() => {
+    if (!additionalGroups?.length) return triangleIndices;
+    return [...triangleIndices, ...additionalGroups.flat()];
+  }, [triangleIndices, additionalGroups]);
+
   const highlightGeo = useMemo(() => {
-    if (!triangleIndices.length) return null;
+    if (!allIndices.length) return null;
+    const triangleIndices = allIndices;
     const srcPos = sourceGeometry.attributes.position;
     const triCount = triangleIndices.length;
     const positions = new Float32Array(triCount * 9);
@@ -39,7 +49,7 @@ export default function FaceHighlightMesh({
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.computeVertexNormals();
     return geo;
-  }, [sourceGeometry, triangleIndices]);
+  }, [sourceGeometry, allIndices]);
 
   if (!highlightGeo) return null;
 

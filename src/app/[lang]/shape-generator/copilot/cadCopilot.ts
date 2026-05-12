@@ -24,6 +24,8 @@
  * feature pipeline (addFeature / addSketchFeature / setParam).
  */
 
+import type { SketchProfile, SketchConfig } from '../sketch/types';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type CopilotCommandType =
@@ -316,7 +318,13 @@ export async function parseCommand(
 
 export interface FeatureDispatcher {
   addFeature: (type: string, params?: Record<string, unknown>) => void;
-  addSketchFeature: (profile: any, config: any, plane: 'xy' | 'xz' | 'yz', op: 'add' | 'subtract') => void;
+  addSketchFeature: (
+    profile: SketchProfile,
+    config: SketchConfig,
+    plane: 'xy' | 'xz' | 'yz',
+    op: 'add' | 'subtract',
+    planeOffset?: number,
+  ) => void;
   setParam: (key: string, value: number) => void;
 }
 
@@ -339,23 +347,28 @@ export function dispatchCopilotCommand(
       const { radius, depth } = cmd.params as { radius: number; depth: number; face: string };
       const r = radius ?? 4;
       const d = depth ?? r * 2;
-      dispatcher.addSketchFeature(
-        {
-          segments: Array.from({ length: 32 }, (_, i) => {
-            const a1 = (2 * Math.PI * i) / 32;
-            const a2 = (2 * Math.PI * (i + 1)) / 32;
-            return {
-              type: 'line',
-              from: { x: r * Math.cos(a1), y: r * Math.sin(a1) },
-              to: { x: r * Math.cos(a2), y: r * Math.sin(a2) },
-            };
-          }),
-          closed: true,
-        },
-        { depth: d },
-        'xy',
-        'subtract',
-      );
+      const holeProfile: SketchProfile = {
+        segments: Array.from({ length: 32 }, (_, i) => {
+          const a1 = (2 * Math.PI * i) / 32;
+          const a2 = (2 * Math.PI * (i + 1)) / 32;
+          return {
+            type: 'line' as const,
+            points: [
+              { x: r * Math.cos(a1), y: r * Math.sin(a1) },
+              { x: r * Math.cos(a2), y: r * Math.sin(a2) },
+            ],
+          };
+        }),
+        closed: true,
+      };
+      const holeConfig: SketchConfig = {
+        mode: 'extrude',
+        depth: d,
+        revolveAngle: 360,
+        revolveAxis: 'y',
+        segments: 32,
+      };
+      dispatcher.addSketchFeature(holeProfile, holeConfig, 'xy', 'subtract');
       return true;
     }
     case 'addFillet':

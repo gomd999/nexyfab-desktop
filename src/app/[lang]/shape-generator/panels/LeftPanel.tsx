@@ -277,6 +277,8 @@ interface LeftPanelProps {
   onSketchGenerate: () => void;
   sketchStep?: 'draw' | 'setup3d';
   onSketchStepChange?: (step: 'draw' | 'setup3d') => void;
+  /** F1 — passes through to SketchPanel.onOpenTextPanel; opens the text dialog. */
+  onOpenTextPanel?: () => void;
   onSetActiveProfile: (idx: number) => void;
   onAddHoleProfile: () => void;
   onDeleteProfile: (idx: number) => void;
@@ -495,6 +497,7 @@ function LeftPanel({
   onSketchGenerate,
   sketchStep,
   onSketchStepChange,
+  onOpenTextPanel,
   onSetActiveProfile,
   onAddHoleProfile,
   onDeleteProfile,
@@ -1029,7 +1032,7 @@ function LeftPanel({
                   <>
                     {/* 2D / 3D / Drawing mode toggle */}
                     <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                      {([['2d', '2D'], ['3d', '3D'], ['drawing', (t as any).drawingView || '2D Drawing']] as const).map(([mode, label]) => (
+                      {([['2d', '2D'], ['3d', '3D'], ['drawing', t['drawingView'] ?? '2D Drawing']] as const).map(([mode, label]) => (
                         <button key={mode} onClick={() => onSketchViewModeChange(mode)}
                           style={{
                             flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
@@ -1064,7 +1067,7 @@ function LeftPanel({
                           onLoad={onLoadSketchFromHistory}
                           onDelete={onDeleteSketchHistoryEntry}
                           onClose={() => onToggleSketchHistory()}
-                          t={t as any}
+                          t={t}
                         />
                       )}
                       <div data-tour="sketch-toolbox" style={{ display: 'contents' }}>
@@ -1076,7 +1079,7 @@ function LeftPanel({
                         canGenerate={sketchProfiles[0]?.closed && sketchProfiles[0]?.segments.length >= 3}
                         sketchStep={sketchStep}
                         onSketchStepChange={onSketchStepChange}
-                        t={t as any}
+                        t={t}
                         multiSketch={{ profiles: sketchProfiles, activeProfileIndex: activeProfileIdx }}
                         onSetActiveProfile={onSetActiveProfile}
                         onAddHoleProfile={onAddHoleProfile}
@@ -1104,6 +1107,7 @@ function LeftPanel({
                         onSolveConstraints={onSolveConstraints}
                         constraintStatus={constraintStatus}
                         constraintDiagnostic={constraintDiagnostic}
+                        onOpenTextPanel={onOpenTextPanel}
                         isKo={lang === 'ko'}
                       />
                       </div>{/* /sketch-toolbox */}
@@ -1542,7 +1546,7 @@ function LeftPanel({
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.background = '#21262d'; }}
                 >
                   <span style={{ fontSize: 13 }}>📋</span>
-                  {(t as any).exportBom || 'Export BOM'}
+                  {t['exportBom'] ?? 'Export BOM'}
                   <span style={{ marginLeft: 'auto', fontSize: 9, color: '#6e7681' }}>{showBomExportMenu ? '▲' : '▼'}</span>
                 </button>
                 {showBomExportMenu && (

@@ -246,7 +246,7 @@ export default function PartnerOrdersPage() {
       setSelected({ ...selected, status: next });
       // Reload events to pick up the auto-recorded status_change row
       openOrder({ ...selected, status: next });
-    } catch (err) {
+    } catch (_err) {
       alert('상태 변경에 실패했습니다.');
     } finally {
       setAdvancing(false);

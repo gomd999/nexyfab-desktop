@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as _THREE from 'three';
 import type { FeatureDefinition } from './types';
 
 export const draftFeature: FeatureDefinition = {

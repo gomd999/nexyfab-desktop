@@ -27,7 +27,7 @@ export default function ModelViewer({ meshDataBase64, metadata }: ModelViewerPro
       if (data.indices) geo.setIndex(data.indices);
       else geo.computeVertexNormals();
       geo.computeBoundingBox();
-      setGeometry(geo);
+      queueMicrotask(() => setGeometry(geo));
     } catch (e) {
       console.error('Failed to decode mesh', e);
     }

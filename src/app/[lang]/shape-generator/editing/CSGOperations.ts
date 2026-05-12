@@ -61,7 +61,18 @@ export function makeToolGeometry(params: CSGToolParams): THREE.BufferGeometry {
 
 // ─── applyCSG ─────────────────────────────────────────────────────────────────
 // Performs a boolean operation between baseGeo and toolGeo using three-bvh-csg.
-// Returns the resulting BufferGeometry.
+// Throws on failure (empty result, evaluator exception) so callers can surface
+// the error to the user via toast + telemetry. Previously this swallowed errors
+// and silently returned the base geometry, which made CSG failures invisible.
+
+export class CSGEmptyResultError extends Error {
+  readonly op: CSGOperation;
+  constructor(op: CSGOperation) {
+    super(`CSG ${op}: empty result — 도구와 본체가 교차하지 않거나 일치합니다`);
+    this.name = 'CSGEmptyResultError';
+    this.op = op;
+  }
+}
 
 export function applyCSG(
   baseGeo: THREE.BufferGeometry,
@@ -93,20 +104,19 @@ export function applyCSG(
       break;
   }
 
-  let resultGeo: THREE.BufferGeometry;
   try {
     const result = evaluator.evaluate(baseBrush, toolBrush, csgOp);
+    const pos = result.geometry?.attributes?.position;
+    if (!pos || pos.count === 0) {
+      result.geometry?.dispose();
+      throw new CSGEmptyResultError(op);
+    }
     // Clone the geometry so we own it independently of the result mesh
-    resultGeo = result.geometry.clone();
+    const resultGeo = result.geometry.clone();
     // Dispose the result mesh geometry to avoid leaks
     result.geometry.dispose();
-  } catch (err) {
-    console.error('[CSGOperations] applyCSG failed:', err);
-    // Fall back to the original base geometry on error
-    resultGeo = baseGeo.clone();
+    return resultGeo;
   } finally {
     material.dispose();
   }
-
-  return resultGeo;
 }

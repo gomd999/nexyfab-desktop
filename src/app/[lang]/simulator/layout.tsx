@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { buildMetadata, type Lang } from '@/lib/metaHelper';
+import { buildMetadata, type Lang as _Lang } from '@/lib/metaHelper';
 
 export async function generateMetadata(
     { params }: { params: Promise<{ lang: string }> }

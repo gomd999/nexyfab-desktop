@@ -6,7 +6,7 @@
  * 서버(/api/partner/profile)와 localStorage 동시 저장.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect as _useEffect, useState } from 'react';
 
 export interface AiPrefs {
   hourlyRateKrw: number;

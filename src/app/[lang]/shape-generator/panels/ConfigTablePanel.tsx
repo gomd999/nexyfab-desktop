@@ -288,7 +288,7 @@ export default function ConfigTablePanel({ params, onApply, onClose, lang }: Con
   const errMsgs = { interp: t.errInterp, generic: t.errGeneric };
   const [rows, setRows] = useState<Row[]>(() => resolveRows(initRows(), errMsgs));
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const [_focusedCell, _setFocusedCell] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Re-evaluate whenever rows content changes

@@ -3,14 +3,20 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { SHAPES, type ShapeConfig, type ShapeResult } from './shapes';
+import { SHAPES, type ShapeConfig, type ShapeResult, buildShapeResult } from './shapes';
 import { COTS_PARTS, type COTSPart } from './cots/cotsData';
+import { getShapeCategory, getCategoryLabel, type ShapeCategory } from './shapes/categories';
+import { getShapeUsageHint } from './shapes/usageHints';
 
 // ─── i18n dict (6 languages) ───────────────────────────────────────────────
 const dict = {
   ko: {
     subtitle: '파라메트릭 형상 설계 · AI 채팅 · 위상 최적화',
     chatPlaceholder: 'AI에게 설계를 요청하세요... (예: "기어 만들어줘")',
+    searchPlaceholder: '형상 검색 (예: 박스, 기어, 베어링)…',
+    emptyResultsTitle: '결과가 없습니다',
+    emptyResultsHint: '검색어 또는 카테고리를 변경해보세요.',
+    emptyResultsClear: '필터 초기화',
     blankSketch: '빈 캔버스로 스케치 시작',
     partsLabel: (n: number) => `${n} 개 부품`,
     shapesLabel: (n: number) => `${n} 개 형상`,
@@ -38,10 +44,15 @@ const dict = {
       '기어 부품 만들어줘', 'L-브래킷 100x50x30', '선풍기 조립체 BOM',
       '별 모양 스케치', '경량화 최적화해줘',
     ],
+    cotsPreviewUnavailable: '3D 미리보기를 만들 수 없습니다. 「설계 열기」로 확인해 보세요.',
   },
   en: {
     subtitle: 'Parametric Shape Design · AI Chat · Topology Optimization',
     chatPlaceholder: 'Ask AI to design... (e.g., "Create a gear")',
+    searchPlaceholder: 'Search shapes (e.g., box, gear, bearing)…',
+    emptyResultsTitle: 'No shapes match',
+    emptyResultsHint: 'Try a different search term or category.',
+    emptyResultsClear: 'Clear filters',
     blankSketch: 'Start from Blank Sketch',
     partsLabel: (n: number) => `${n} parts`,
     shapesLabel: (n: number) => `${n} shapes`,
@@ -69,10 +80,15 @@ const dict = {
       'Create a gear part', 'L-bracket 100x50x30', 'Fan assembly BOM',
       'Star shape sketch', 'Optimize for lightweight',
     ],
+    cotsPreviewUnavailable: 'Could not build a 3D preview. Use Open Designer to verify.',
   },
   ja: {
     subtitle: 'パラメトリック形状設計 · AIチャット · 位相最適化',
     chatPlaceholder: 'AIに設計を依頼... (例:「歯車を作って」)',
+    searchPlaceholder: '形状を検索 (例: ボックス, ギア, ベアリング)…',
+    emptyResultsTitle: '結果がありません',
+    emptyResultsHint: '検索ワードまたはカテゴリを変えてみてください。',
+    emptyResultsClear: 'フィルターをクリア',
     blankSketch: '空白スケッチから開始',
     partsLabel: (n: number) => `${n} 個の部品`,
     shapesLabel: (n: number) => `${n} 個の形状`,
@@ -100,10 +116,15 @@ const dict = {
       '歯車部品を作って', 'Lブラケット 100x50x30', '扇風機アセンブリBOM',
       '星形スケッチ', '軽量化最適化',
     ],
+    cotsPreviewUnavailable: '3Dプレビューを生成できません。「設計を開く」で確認してください。',
   },
   zh: {
     subtitle: '参数化形状设计 · AI 聊天 · 拓扑优化',
     chatPlaceholder: '向 AI 请求设计... (例如:"做个齿轮")',
+    searchPlaceholder: '搜索形状 (例如: 立方体, 齿轮, 轴承)…',
+    emptyResultsTitle: '没有匹配结果',
+    emptyResultsHint: '尝试更改搜索词或类别。',
+    emptyResultsClear: '清除筛选',
     blankSketch: '从空白草图开始',
     partsLabel: (n: number) => `${n} 个零件`,
     shapesLabel: (n: number) => `${n} 个形状`,
@@ -131,10 +152,15 @@ const dict = {
       '做一个齿轮零件', 'L型支架 100x50x30', '风扇组件 BOM',
       '星形草图', '轻量化优化',
     ],
+    cotsPreviewUnavailable: '无法生成 3D 预览。请通过「打开设计器」查看。',
   },
   es: {
     subtitle: 'Diseño paramétrico de formas · Chat IA · Optimización topológica',
     chatPlaceholder: 'Pide a la IA que diseñe... (ej: "Crea un engranaje")',
+    searchPlaceholder: 'Buscar formas (ej: caja, engranaje, rodamiento)…',
+    emptyResultsTitle: 'Sin resultados',
+    emptyResultsHint: 'Pruebe otro término de búsqueda o categoría.',
+    emptyResultsClear: 'Limpiar filtros',
     blankSketch: 'Empezar desde boceto en blanco',
     partsLabel: (n: number) => `${n} piezas`,
     shapesLabel: (n: number) => `${n} formas`,
@@ -162,10 +188,15 @@ const dict = {
       'Crea un engranaje', 'Soporte L 100x50x30', 'BOM de ensamble de ventilador',
       'Boceto en forma de estrella', 'Optimizar para aligerar',
     ],
+    cotsPreviewUnavailable: 'No se pudo generar la vista 3D. Use Abrir diseñador para comprobarlo.',
   },
   ar: {
     subtitle: 'تصميم الأشكال البارامترية · دردشة AI · تحسين الطوبولوجيا',
     chatPlaceholder: 'اطلب من الذكاء الاصطناعي التصميم... (مثال: "أنشئ ترسًا")',
+    searchPlaceholder: 'البحث عن أشكال (مثال: صندوق, ترس, محمل)…',
+    emptyResultsTitle: 'لا توجد نتائج',
+    emptyResultsHint: 'جرّب كلمة بحث أو فئة مختلفة.',
+    emptyResultsClear: 'مسح الفلاتر',
     blankSketch: 'ابدأ من رسم فارغ',
     partsLabel: (n: number) => `${n} قطعة`,
     shapesLabel: (n: number) => `${n} شكل`,
@@ -193,6 +224,7 @@ const dict = {
       'أنشئ ترسًا', 'حامل L 100x50x30', 'قائمة مواد لتجميع مروحة',
       'رسم على شكل نجمة', 'حسّن من أجل الوزن الخفيف',
     ],
+    cotsPreviewUnavailable: 'تعذّر إنشاء معاينة ثلاثية الأبعاد. افتح المصمم للتحقق.',
   },
 } as const;
 
@@ -221,10 +253,14 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
   ar: { basic: 'أشكال أساسية', mechanical: 'أجزاء ميكانيكية', all: 'الكل', cots: 'مكونات COTS' },
 };
 
-// COTS category → real shape id mapping (must exist in SHAPE_MAP)
+// COTS category → SHAPE_MAP id (catalog bolts match ISO 4762 socket head cap screw)
 const COTS_SHAPE_MAP: Record<string, string> = {
-  bolt: 'cylinder', nut: 'cylinder', washer: 'cylinder', bearing: 'torus',
-  collar: 'cylinder', clip: 'cylinder',
+  bolt: 'std:socketHeadCapScrew',
+  nut: 'std:hexNut',
+  washer: 'std:flatWasher',
+  bearing: 'std:ballBearing',
+  collar: 'std:flatWasher',
+  clip: 'std:flatWasher',
 };
 const COTS_ICONS: Record<string, string> = {
   bolt: '🔩', nut: '🔧', washer: '⭕', bearing: '🎯', collar: '🔘', clip: '📎',
@@ -254,17 +290,33 @@ function cotsParamsToShapeParams(part: COTSPart): Record<string, number> {
   const p = part.params;
   switch (part.category) {
     case 'bolt':
-      return { radius: (p.headDia ?? 10) / 2, height: (p.length ?? 20) + (p.headH ?? 5) };
+      return { diameter: p.M ?? 8, length: p.length ?? 20 };
     case 'nut':
-      return { radius: (p.width ?? 10) / 2, height: p.height ?? 5 };
+      return { diameter: p.M ?? 10, height: p.height ?? 8 };
     case 'washer':
-      return { radius: (p.outerDia ?? 12) / 2, height: p.thickness ?? 1.5 };
-    case 'bearing':
-      return { R: ((p.OD ?? 22) + (p.bore ?? 8)) / 4, r: ((p.OD ?? 22) - (p.bore ?? 8)) / 4 };
+      return {
+        innerDiameter: p.innerDia ?? (p.M ?? 5) + 0.3,
+        outerDiameter: p.outerDia ?? 12,
+        thickness: p.thickness ?? 1,
+      };
+    case 'bearing': {
+      const inner = p.bore ?? 8;
+      const outer = p.OD ?? 22;
+      const width = p.width ?? p.height ?? 7;
+      return { innerDiameter: inner, outerDiameter: outer, width, ballCount: 8 };
+    }
     case 'collar':
-      return { radius: (p.OD ?? 20) / 2, height: p.width ?? 10 };
+      return {
+        innerDiameter: p.bore ?? 8,
+        outerDiameter: p.OD ?? 18,
+        thickness: p.width ?? 10,
+      };
     case 'clip':
-      return { radius: (p.d ?? 10) / 2, height: (p.thickness ?? 1) * 4 };
+      return {
+        innerDiameter: p.d1 ?? (p.d ?? 10) * 0.94,
+        outerDiameter: (p.d ?? 10) + (p.b ?? 2) * 4,
+        thickness: p.thickness ?? 1,
+      };
     default:
       return {};
   }
@@ -384,6 +436,8 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>(SHAPES[0].id);
   const [filter, setFilter] = useState<'all' | 'basic' | 'mechanical' | 'cots'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<ShapeCategory | 'all'>('all');
   const [selectedCots, setSelectedCots] = useState<COTSPart | null>(null);
   const [cotsBomCart, setCotsBomCart] = useState<Array<{ part: COTSPart; qty: number }>>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -454,13 +508,26 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
   }, []);
 
   const filteredShapes = useMemo(() => {
-    if (filter === 'all') return SHAPES;
-    if (filter === 'basic') return SHAPES.filter(s => s.tier === 1);
-    if (filter === 'cots') return [];
-    return SHAPES.filter(s => s.tier === 2);
-  }, [filter]);
+    let pool: ShapeConfig[];
+    if (filter === 'all') pool = SHAPES;
+    else if (filter === 'basic') pool = SHAPES.filter(s => s.tier === 1);
+    else if (filter === 'cots') return [];
+    else pool = SHAPES.filter(s => s.tier === 2);
+    if (categoryFilter !== 'all') {
+      pool = pool.filter(s => getShapeCategory(s.id) === categoryFilter);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return pool;
+    return pool.filter(s => s.id.toLowerCase().includes(q));
+  }, [filter, searchQuery, categoryFilter]);
 
   const filteredCots = useMemo(() => COTS_PARTS, []);
+
+  const cotsPreviewResult = useMemo(() => {
+    if (!selectedCots) return null;
+    const sid = COTS_SHAPE_MAP[selectedCots.category] ?? 'std:socketHeadCapScrew';
+    return buildShapeResult(sid, cotsParamsToShapeParams(selectedCots));
+  }, [selectedCots]);
 
   const handleChatSubmit = useCallback(() => {
     if (!chatInput.trim()) return;
@@ -568,6 +635,51 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
         {/* ── LEFT: Shape card grid ── */}
         <div style={{ width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
+          {/* Search box — drops the user from a full grid scan to a single
+              substring match. Stays on the same line as the filter chips on
+              wide screens; wraps on narrow. */}
+          <div style={{ marginBottom: 10 }}>
+            <input
+              type="text"
+              placeholder={tt.searchPlaceholder ?? 'Search shapes…'}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '7px 12px', borderRadius: 10,
+                background: 'rgba(15,12,41,0.6)',
+                border: '1px solid rgba(102,126,234,0.25)',
+                color: '#e6edf3', fontSize: 13,
+                outline: 'none',
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#667eea'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'rgba(102,126,234,0.25)'; }}
+            />
+          </div>
+
+          {/* Category chips — primitive / standard / structural / manufacturing.
+              Independent of the basic/mechanical/cots tabs above; either works
+              alone or combined. */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+            {(['all', 'primitive', 'standard', 'structural', 'manufacturing'] as const).map(c => (
+              <button
+                key={c}
+                onClick={() => setCategoryFilter(c)}
+                style={{
+                  padding: '4px 10px', borderRadius: 8, border: 'none',
+                  background: categoryFilter === c
+                    ? 'rgba(102,126,234,0.35)'
+                    : 'rgba(255,255,255,0.04)',
+                  color: categoryFilter === c ? '#a5b4fc' : '#94a3b8',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+              >
+                {c === 'all' ? (lang === 'ko' ? '전체' : 'All') : getCategoryLabel(c, lang)}
+              </button>
+            ))}
+          </div>
+
           {/* Filter tabs */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
             {(['all', 'basic', 'mechanical', 'cots'] as const).map(f => (
@@ -602,7 +714,33 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
           </div>
 
           {/* Cards grid — shapes */}
-          {filter !== 'cots' && (
+          {filter !== 'cots' && filteredShapes.length === 0 && (
+            <div style={{
+              padding: '40px 20px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.02)', borderRadius: 12,
+              border: '1px dashed rgba(255,255,255,0.08)',
+              color: '#94a3b8',
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#cbd5e1', marginBottom: 4 }}>
+                {tt.emptyResultsTitle ?? 'No shapes match'}
+              </div>
+              <div style={{ fontSize: 12, marginBottom: 14 }}>
+                {tt.emptyResultsHint ?? 'Try a different search term or category.'}
+              </div>
+              <button
+                onClick={() => { setSearchQuery(''); setCategoryFilter('all'); setFilter('all'); }}
+                style={{
+                  padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(102,126,234,0.4)',
+                  background: 'rgba(102,126,234,0.15)', color: '#a5b4fc',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                {tt.emptyResultsClear ?? 'Clear filters'}
+              </button>
+            </div>
+          )}
+          {filter !== 'cots' && filteredShapes.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8, overflowY: 'auto', flex: 1, paddingRight: 4 }}>
               {filteredShapes.map(s => {
                 const isActive = s.id === selectedId;
@@ -614,15 +752,37 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     onClick={() => handleSelectShape(s)}
                     onMouseEnter={() => setHoveredId(s.id)}
                     onMouseLeave={() => setHoveredId(null)}
+                    title={getShapeUsageHint(s.id, lang)}
                     style={{
                       background: isActive ? 'rgba(102,126,234,0.15)' : isHovered ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
                       border: isActive ? '2px solid #667eea' : '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 10, padding: 10, cursor: 'pointer',
                       transition: 'all 0.2s', transform: isHovered ? 'translateY(-2px)' : 'none',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                      position: 'relative', overflow: 'hidden',
                     }}
                   >
-                    <span style={{ fontSize: 24 }}>{SHAPE_ICONS[s.id] || s.icon}</span>
+                    {/* Category-tinted top strip — quick visual cue without
+                        the cost of real 3D thumbnail render. Real thumbnails
+                        from a worker-rendered offscreen canvas are a future
+                        enhancement (see Round 37 backlog). */}
+                    {(() => {
+                      const cat = getShapeCategory(s.id);
+                      const tint: Record<string, string> = {
+                        primitive:     '#3b82f6',
+                        standard:      '#10b981',
+                        structural:    '#f97316',
+                        manufacturing: '#a78bfa',
+                      };
+                      return (
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+                          background: tint[cat] ?? '#475569',
+                          opacity: isActive ? 1 : 0.6,
+                        }} />
+                      );
+                    })()}
+                    <span style={{ fontSize: 28 }}>{SHAPE_ICONS[s.id] || s.icon}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#a5b4fc' : '#e2e8f0', textAlign: 'center' }}>
                       {t[`shapeName_${s.id}`] ?? s.id}
                     </span>
@@ -705,6 +865,22 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   </div>
                 </div>
 
+                <div style={{
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 16, overflow: 'hidden', height: 280, flexShrink: 0, position: 'relative',
+                }}>
+                  {cotsPreviewResult ? (
+                    <ShapePreview result={cotsPreviewResult} />
+                  ) : (
+                    <div style={{
+                      height: '100%', minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '20px', textAlign: 'center', fontSize: 13, color: '#94a3b8', lineHeight: 1.5,
+                    }}>
+                      {tt.cotsPreviewUnavailable}
+                    </div>
+                  )}
+                </div>
+
                 {/* Params table */}
                 <div style={{
                   background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
@@ -762,7 +938,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     🛒 {tt.addToBom}
                   </button>
                   <button
-                    onClick={() => onEnterWorkspace(COTS_SHAPE_MAP[selectedCots.category] ?? 'cylinder', cotsParamsToShapeParams(selectedCots))}
+                    onClick={() => onEnterWorkspace(COTS_SHAPE_MAP[selectedCots.category] ?? 'std:socketHeadCapScrew', cotsParamsToShapeParams(selectedCots))}
                     style={{
                       flex: 1, padding: '12px 0', borderRadius: 12,
                       border: '1px solid rgba(251,191,36,0.3)',

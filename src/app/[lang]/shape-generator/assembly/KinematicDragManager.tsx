@@ -20,7 +20,7 @@ interface Props {
  */
 export default function KinematicDragManager({
   enabled,
-  bomParts,
+  bomParts: _bomParts,
   assemblyState,
   onSolverUpdate,
   onDragStateChange,

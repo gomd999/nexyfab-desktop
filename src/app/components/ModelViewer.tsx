@@ -5,7 +5,7 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { OBJLoader as _OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +23,15 @@ interface ModelViewerProps {
   url: string;
   filename: string;
   onClose: () => void;
+}
+
+/** Minimal mesh shape returned by occt-import-js `ReadStepFile` (package has loose typings). */
+interface OcctStepMesh {
+  attributes?: {
+    position?: { array: ArrayLike<number> };
+    normal?: { array: ArrayLike<number> };
+  };
+  index?: { array: ArrayLike<number> };
 }
 
 // ─── Camera util ──────────────────────────────────────────────────────────────
@@ -78,7 +87,7 @@ function STEPModel({
       const combined = new THREE.Box3();
       let verts = 0, tris = 0;
 
-      for (const mesh of result.meshes as any[]) {
+      for (const mesh of result.meshes as OcctStepMesh[]) {
         if (!mesh.attributes?.position?.array || !mesh.index?.array) continue;
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(mesh.attributes.position.array), 3));
@@ -218,7 +227,7 @@ function SceneContent({ url, ext, displayMode, fitKey, onLoad, onError }: {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export default function ModelViewer({ url, filename, onClose }: ModelViewerProps) {
+export default function ModelViewer({ url, filename, onClose: _onClose }: ModelViewerProps) {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
   const [displayMode, setDisplayMode] = useState<DisplayMode>('solid');
   const [loading, setLoading] = useState(true);

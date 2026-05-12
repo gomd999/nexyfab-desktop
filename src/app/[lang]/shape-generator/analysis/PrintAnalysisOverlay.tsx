@@ -7,7 +7,7 @@ import type { PrintAnalysisResult } from './printAnalysis';
 /* ─── Color helpers ──────────────────────────────────────────────────────── */
 
 /** Map overhang angle to color: green (safe) → yellow (moderate) → red (needs support) */
-function overhangToColor(angleDeg: number, threshold: number): THREE.Color {
+function overhangToColor(angleDeg: number, _threshold: number): THREE.Color {
   if (angleDeg <= 0) return new THREE.Color(0.15, 0.75, 0.3); // green – safe
   const t = Math.min(angleDeg / 90, 1);
   if (t < 0.33) {

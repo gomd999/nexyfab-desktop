@@ -59,12 +59,7 @@ export async function exportDrawingPDF(
 
   /* 4 ─ Try jsPDF (dynamic import — may need `npm install jspdf`) */
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const jsPDFModule = await import('jspdf' as any);
-    // Support both ESM default and CommonJS .default
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const JsPDF: any = (jsPDFModule as any).default ?? (jsPDFModule as any).jsPDF ?? jsPDFModule;
-
+    const { default: JsPDF } = await import('jspdf');
     const doc = new JsPDF({
       orientation,
       unit: 'pt',

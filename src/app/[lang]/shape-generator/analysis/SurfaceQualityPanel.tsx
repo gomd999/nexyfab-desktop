@@ -186,7 +186,7 @@ export default function SurfaceQualityPanel({
   const [pullDir, setPullDir] = useState<[number, number, number]>([0, 1, 0]);
   const [minAngle, setMinAngle] = useState(3);
   const [stats, setStats] = useState<SurfaceQualityStats | null>(null);
-  const [curvData, setCurvData] = useState<CurvatureData | null>(null);
+  const [_curvData, setCurvData] = useState<CurvatureData | null>(null);
 
   const modes: CurvatureMode[] = [
     'gaussian', 'mean', 'max_principal', 'min_principal', 'zebra', 'draft',

@@ -6,6 +6,9 @@ import { useAuthStore } from '@/hooks/useAuth';
 import AuthModal from '@/components/nexyfab/AuthModal';
 import NexyfabNav from '@/components/nexyfab/NexyfabNav';
 import OrderTimeline from './OrderTimeline';
+import ThreadView from '@/components/nexyfab/ThreadView';
+import DisputeButton from '@/components/nexyfab/DisputeButton';
+import OrderMilestoneFeed from '@/components/nexyfab/OrderMilestoneFeed';
 import { formatDate, formatDday } from '@/lib/formatDate';
 import { isKorean } from '@/lib/i18n/normalize';
 
@@ -240,7 +243,7 @@ function OrderSkeleton() {
 
 // ─── OrderDetailDrawer ────────────────────────────────────────────────────────
 
-type DrawerTab = 'milestones' | 'qc' | 'shipment' | 'review' | 'timeline' | 'defects';
+type DrawerTab = 'milestones' | 'qc' | 'shipment' | 'review' | 'timeline' | 'defects' | 'messages';
 
 // ── 불량·RMA 상태 라벨 (Phase 7-5d) ─────────────────────────────────────────
 type DefectStatus = 'reported' | 'under_review' | 'approved' | 'rejected' | 'resolved' | 'disputed';
@@ -535,6 +538,7 @@ function OrderDetailDrawer({
   const tabs: { id: DrawerTab; label: string }[] = [
     { id: 'timeline', label: isKo ? '진행 타임라인' : 'Timeline' },
     { id: 'milestones', label: isKo ? '마일스톤' : 'Milestones' },
+    { id: 'messages', label: isKo ? '💬 대화' : '💬 Messages' },
     { id: 'qc', label: isKo ? 'QC 체크리스트' : 'QC Checklist' },
     { id: 'shipment', label: isKo ? '배송 추적' : 'Shipment' },
     { id: 'review', label: canReview ? (isKo ? '⭐ 리뷰 작성' : '⭐ Review') : (isKo ? '리뷰' : 'Review') },
@@ -698,6 +702,15 @@ function OrderDetailDrawer({
                     {isKo ? '추가' : 'Add'}
                   </button>
                 </div>
+              )}
+
+              {/* M4 — Partner-uploaded progress feed (photos/notes per step). */}
+              {!isDemo && (
+                <OrderMilestoneFeed
+                  lang={isKo ? 'ko' : 'en'}
+                  orderId={order.id}
+                  isPartner={false}
+                />
               )}
             </div>
           )}
@@ -901,6 +914,33 @@ function OrderDetailDrawer({
                   {isKo ? '배송 완료 후 리뷰를 작성할 수 있습니다.' : 'You can review after delivery is complete.'}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── MESSAGES (M1) — buyer↔partner thread ── */}
+          {!loading && tab === 'messages' && !isDemo && (
+            <ThreadView
+              lang={isKo ? 'ko' : 'en'}
+              threadKind="order"
+              threadId={order.id}
+              asRole="buyer"
+            />
+          )}
+
+          {/* ── DISPUTE (B) — buyer-side escrow dispute trigger.
+              Shown on the milestones tab (default), only after production
+              has started and before delivery is confirmed. ── */}
+          {!loading && tab === 'milestones' && !isDemo &&
+           order.status !== 'placed' && order.status !== 'delivered' && (
+            <DisputeButton
+              lang={isKo ? 'ko' : 'en'}
+              orderId={order.id}
+              onDisputed={() => { /* drawer just closes; status reflected on next fetch */ }}
+            />
+          )}
+          {!loading && tab === 'messages' && isDemo && (
+            <div style={{ color: '#484f58', fontSize: 12, padding: '20px 0' }}>
+              {isKo ? '데모 주문에서는 메시지를 사용할 수 없습니다.' : 'Messages are not available in demo orders.'}
             </div>
           )}
 
@@ -1467,16 +1507,30 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               <p style={{ color: '#6e7681', marginBottom: 16 }}>
                 {isKo ? '아직 주문 내역이 없습니다.' : 'No orders yet.'}
               </p>
-              <a
-                href={`/${lang}/nexyfab/marketplace`}
-                style={{
-                  display: 'inline-block', padding: '9px 22px',
-                  borderRadius: 8, background: '#388bfd', color: '#fff',
-                  fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                }}
-              >
-                {isKo ? '제조사 찾기' : 'Find Manufacturers'}
-              </a>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a
+                  href={`/${lang}/nexyfab/marketplace`}
+                  style={{
+                    display: 'inline-block', padding: '9px 22px',
+                    borderRadius: 8, background: '#388bfd', color: '#fff',
+                    fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  }}
+                >
+                  {isKo ? '제조사 찾기' : 'Find Manufacturers'}
+                </a>
+                {/* G3 — Empty-state guide link */}
+                <a
+                  href={`/${lang}/help#track-order`}
+                  style={{
+                    display: 'inline-block', padding: '9px 18px',
+                    borderRadius: 8, border: '1px solid #30363d',
+                    background: 'transparent', color: '#9ca3af',
+                    fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  {isKo ? '📖 주문 가이드' : '📖 Order guide'}
+                </a>
+              </div>
             </div>
           )}
 
@@ -1592,7 +1646,7 @@ function OrderCard({
   const [refundMsg, setRefundMsg] = useState('');
 
   const isPaid = order.payment_status === 'paid' || order.paymentStatus === 'paid';
-  const canRefund = isPaid && order.status === 'placed' && !isDemo && !order.refund_requested_at;
+  const canRefund = isPaid && ['placed', 'production'].includes(order.status) && !isDemo && !order.refund_requested_at;
   const refundRequested = !!order.refund_requested_at;
 
   async function submitRefundRequest(e: React.MouseEvent) {

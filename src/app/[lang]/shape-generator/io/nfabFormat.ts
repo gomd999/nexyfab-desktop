@@ -6,6 +6,12 @@
  * Designed so reopening the file reproduces the design exactly.
  *
  * Schema is versioned. Migrations go in `migrate()` below as the format evolves.
+ *
+ * Version history:
+ *   v1 (initial)  — tree, scene, assembly, manufacturing, meta, configurations
+ *   v2 (2026-05-07) — adds optional aiHistory + scadIntents for traceability
+ *                     of AI-driven shape generation. Backward-compat: v1 files
+ *                     auto-migrate (new fields default to empty).
  */
 
 import type { HistoryNode, FeatureHistory } from '../useFeatureStack';
@@ -16,9 +22,28 @@ import type { BodyEntry } from '../panels/BodyPanel';
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
 
-export const NFAB_FORMAT_VERSION = 1 as const;
+export const NFAB_FORMAT_VERSION = 2 as const;
 export const NFAB_MIME = 'application/x-nexyfab-project+json';
 export const NFAB_EXTENSION = '.nfab';
+
+export type NfabFileVersion = 1 | 2;
+
+/** AI conversation entry persisted in v2 — lets users replay how a part was designed. */
+export interface NfabAiHistoryEntry {
+  /** ISO timestamp */
+  ts: number;
+  /** User's natural-language prompt */
+  prompt: string;
+  /** AI provider that served the request (deepseek/anthropic/openai/local) */
+  provider?: string;
+  /** Resulting JSON intent that was passed to the deterministic SCAD converter */
+  intent?: unknown;
+  /** Brief one-line summary the AI provided */
+  summary?: string;
+}
+
+/** Maps a feature-tree node id → the SCAD intent that produced its base shape. */
+export type NfabScadIntentMap = Record<string, unknown>;
 
 /** Persisted viewport section + sketch slice palette (no THREE objects) */
 export interface NfabStudioViewV1 {
@@ -38,7 +63,8 @@ export interface NfabStudioViewV1 {
 export interface NfabProjectV1 {
   /** Schema discriminator — always 'nfab' so we can detect foreign JSON */
   magic: 'nfab';
-  version: 1;
+  /** Format version. v1 (legacy) or v2 (current). New writes are v2. */
+  version: NfabFileVersion;
   createdAt: number;
   updatedAt: number;
   /** Free-form name shown in project lists */
@@ -89,6 +115,12 @@ export interface NfabProjectV1 {
   configurations?: NfabConfigurationV1[];
   /** Last-selected variant id, or null = working master matches `scene` */
   activeConfigurationId?: string | null;
+
+  // ─── v2 additions (optional; absent on legacy v1 files) ────────────────────
+  /** AI prompts and resulting intents that contributed to this design. */
+  aiHistory?: NfabAiHistoryEntry[];
+  /** Per-feature-node SCAD intents — lets the server regenerate STL deterministically. */
+  scadIntents?: NfabScadIntentMap;
 }
 
 /** All state needed to reproduce the manufacturing workflow without re-clicking. */
@@ -139,6 +171,9 @@ export interface NfabAssemblySnapshotV1 {
   bodies?: BodyEntry[];
   activeBodyId?: string | null;
   selectedBodyIds?: string[];
+  hiddenParts?: string[];
+  transparentParts?: string[];
+  partColors?: Record<string, string>;
 }
 
 // ─── Serialize ──────────────────────────────────────────────────────────────
@@ -147,6 +182,8 @@ export interface SerializeInput {
   name: string;
   history: FeatureHistory;
   scene: NfabProjectV1['scene'];
+  aiHistory?: NfabAiHistoryEntry[];
+  scadIntents?: NfabScadIntentMap;
   assembly?: NfabAssemblySnapshotV1;
   manufacturing?: NfabManufacturing;
   thumbnail?: string;
@@ -185,6 +222,9 @@ export function serializeProject(input: SerializeInput): NfabProjectV1 {
           activeConfigurationId: input.activeConfigurationId ?? null,
         }
       : {}),
+    // v2 fields — only emit when populated to keep file size minimal.
+    ...(input.aiHistory && input.aiHistory.length > 0 ? { aiHistory: input.aiHistory } : {}),
+    ...(input.scadIntents && Object.keys(input.scadIntents).length > 0 ? { scadIntents: input.scadIntents } : {}),
   };
 }
 
@@ -229,21 +269,48 @@ function migrate(raw: unknown): NfabProjectV1 {
 
   const version = typeof obj.version === 'number' ? obj.version : 0;
 
-  // Future versions chain through migrations here:
-  //   if (version === 1) return raw as NfabProjectV1;
-  //   if (version === 2) return migrateV2toV1(raw);
-  if (version === NFAB_FORMAT_VERSION) {
-    validateV1(obj);
-    return normalizeProjectV1(obj);
+  // Migration chain. Each step takes the previous version's object and returns
+  // the next version. `migrateV1ToV2` adds empty optional fields and bumps
+  // `version`. New writes always use `NFAB_FORMAT_VERSION` (currently 2).
+  let current = obj;
+  if (version === 1) {
+    current = migrateV1ToV2(current);
+  } else if (version > NFAB_FORMAT_VERSION) {
+    // Forward-compat: file is from a newer build. Tell the user to upgrade
+    // instead of failing with a cryptic "unsupported version" message —
+    // this is the most common cause of silent file-loss in the wild.
+    throw new NfabParseError(
+      `This .nfab file was created by a newer version of NexyFab (v${version}). ` +
+      `Please update NexyFab to open it. Current build supports up to v${NFAB_FORMAT_VERSION}.`,
+      raw,
+    );
+  } else if (version < 1) {
+    throw new NfabParseError(
+      `Invalid .nfab version: ${version}. Expected a positive integer.`,
+      raw,
+    );
+  } else if (version !== NFAB_FORMAT_VERSION) {
+    throw new NfabParseError(
+      `Unsupported .nfab version: ${version} (this build understands v1, v${NFAB_FORMAT_VERSION})`,
+      raw,
+    );
   }
 
-  throw new NfabParseError(
-    `Unsupported .nfab version: ${version} (this build understands v${NFAB_FORMAT_VERSION})`,
-    raw,
-  );
+  validateProject(current);
+  return normalizeProjectV1(current);
 }
 
-function validateV1(obj: Record<string, unknown>) {
+function migrateV1ToV2(v1: Record<string, unknown>): Record<string, unknown> {
+  // v1→v2: add empty aiHistory + scadIntents. Existing fields untouched.
+  return {
+    ...v1,
+    version: 2,
+    aiHistory: Array.isArray(v1.aiHistory) ? v1.aiHistory : [],
+    scadIntents: v1.scadIntents && typeof v1.scadIntents === 'object' ? v1.scadIntents : {},
+  };
+}
+
+function validateProject(obj: Record<string, unknown>) {
   const tree = obj.tree as Record<string, unknown> | undefined;
   if (!tree || !Array.isArray(tree.nodes) || typeof tree.rootId !== 'string') {
     throw new NfabParseError('Project tree missing or malformed', obj);
@@ -254,6 +321,13 @@ function validateV1(obj: Record<string, unknown>) {
   }
   if (obj.assembly !== undefined && (typeof obj.assembly !== 'object' || obj.assembly === null)) {
     throw new NfabParseError('Project assembly malformed', obj);
+  }
+  // v2 fields are optional; if present, they must be the right shape.
+  if (obj.aiHistory !== undefined && !Array.isArray(obj.aiHistory)) {
+    throw new NfabParseError('aiHistory must be an array', obj);
+  }
+  if (obj.scadIntents !== undefined && (typeof obj.scadIntents !== 'object' || obj.scadIntents === null || Array.isArray(obj.scadIntents))) {
+    throw new NfabParseError('scadIntents must be an object', obj);
   }
 }
 
@@ -352,12 +426,34 @@ export function normalizeAssemblySnapshot(raw: unknown): NfabAssemblySnapshotV1 
       if (typeof id === 'string') selectedBodyIds.push(id);
     }
   }
+  const hiddenParts: string[] = [];
+  if (Array.isArray(a.hiddenParts)) {
+    for (const id of a.hiddenParts) {
+      if (typeof id === 'string') hiddenParts.push(id);
+    }
+  }
+  const transparentParts: string[] = [];
+  if (Array.isArray(a.transparentParts)) {
+    for (const id of a.transparentParts) {
+      if (typeof id === 'string') transparentParts.push(id);
+    }
+  }
+  const partColors: Record<string, string> = {};
+  if (a.partColors && typeof a.partColors === 'object') {
+    for (const [k, v] of Object.entries(a.partColors as Record<string, unknown>)) {
+      if (typeof v === 'string') partColors[k] = v;
+    }
+  }
+
   const out: NfabAssemblySnapshotV1 = { placedParts, mates };
   if (bodies.length > 0) {
     out.bodies = bodies;
     if (activeBodyId !== undefined) out.activeBodyId = activeBodyId;
     if (selectedBodyIds.length > 0) out.selectedBodyIds = selectedBodyIds;
   }
+  if (hiddenParts.length > 0) out.hiddenParts = hiddenParts;
+  if (transparentParts.length > 0) out.transparentParts = transparentParts;
+  if (Object.keys(partColors).length > 0) out.partColors = partColors;
   return out;
 }
 

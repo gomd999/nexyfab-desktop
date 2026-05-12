@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type { MeshComment } from './PinComments';
-import { TYPE_COLOR, TYPE_LABEL } from './PinComments';
+import { TYPE_COLOR, TYPE_LABEL as _TYPE_LABEL } from './PinComments';
 
 // ─── i18n dict ───────────────────────────────────────────────────────────────
 
@@ -14,8 +14,8 @@ const dict = {
     pinComments: '핀 코멘트',
     comments: '코멘트',
     activity: '활동 내역',
-    openIssue: (n: number) => '미해결 이슈',
-    approval: (n: number) => '승인 대기',
+    openIssue: (_n: number) => '미해결 이슈',
+    approval: (_n: number) => '승인 대기',
     clickToPlacePin: '📌 클릭해서 핀 배치',
     addPin: '+ 핀 추가',
     clickHint: '3D 모델을 클릭해 핀을 배치하세요. Esc로 취소.',

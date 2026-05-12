@@ -13,7 +13,10 @@ export interface ImportExportState {
   importedFilename: string;
   setImportedFilename: React.Dispatch<React.SetStateAction<string>>;
   handleImportFile: () => void;
-  handleExportCurrentSTL: () => Promise<void>;
+  handleExportCurrentSTL: (options?: {
+    unit?: 'mm' | 'cm' | 'm';
+    origin?: 'as-is' | 'centered' | 'feet-on-floor';
+  }) => Promise<void>;
   handleExportOBJ: () => Promise<void>;
   handleExportPLY: () => Promise<void>;
   handleExport3MF: () => Promise<void>;
@@ -85,7 +88,12 @@ export function useImportExport(
     })();
   }, [addToast, setSketchResult, setBomParts, setBomLabel, setIsSketchMode]);
 
-  const handleExportCurrentSTL = useCallback(async () => {
+  const handleExportCurrentSTL = useCallback(async (
+    // Optional STL export configuration. Caller (CommandToolbar / right-click
+    // panel) can pop a small options dialog and forward the choice; default
+    // params keep historical behavior for code paths that don't surface UI yet.
+    options?: { unit?: 'mm' | 'cm' | 'm'; origin?: 'as-is' | 'centered' | 'feet-on-floor' },
+  ) => {
     const geo = activeTab === 'optimize' ? resultMesh : getEffectiveGeometry();
     if (!geo) return;
     // Validate geometry has actual content before export
@@ -95,10 +103,16 @@ export function useImportExport(
       return;
     }
     const { exportSTL } = await import('../topology/optimizer/stlExporter');
-    await exportSTL(geo, activeTab === 'optimize' ? 'generative-design' : 'shape-design');
+    await exportSTL(
+      geo,
+      `${activeTab === 'optimize' ? 'generative-design' : 'shape-design'}.stl`,
+      options ?? {},
+    );
     reportInfo('mesh_export', 'stl_export', {
       format: 'stl',
       source: activeTab === 'optimize' ? 'generative-design' : 'shape-design',
+      unit: options?.unit ?? 'mm',
+      origin: options?.origin ?? 'as-is',
     });
     addToast('success', 'STL exported successfully');
   }, [activeTab, resultMesh, getEffectiveGeometry, addToast]);

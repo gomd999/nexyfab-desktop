@@ -132,6 +132,13 @@ function runLoopSync(
       }
       next.computeVertexNormals();
       stampGeoId(next);
+      // B1 (face provenance): tag the output with the feature that produced
+      // it. DFM analyzer reads `userData.lastFeatureId` to set
+      // DFMIssue.targetFeatureId, which lets the user click an issue and have
+      // FeatureTree highlight the responsible feature row. Coarse — every
+      // issue points to the most-recent feature — but always correct since
+      // the pipeline is sequential.
+      next.userData = { ...next.userData, lastFeatureId: f.id };
       cachePut(key, next);
       geo = next;
     } catch (e) {
@@ -209,6 +216,8 @@ async function runLoopAsync(
       }
       next.computeVertexNormals();
       stampGeoId(next);
+      // B1 (face provenance) — see sync loop for rationale.
+      next.userData = { ...next.userData, lastFeatureId: f.id };
       cachePut(key, next);
       geo = next;
     } catch (e) {

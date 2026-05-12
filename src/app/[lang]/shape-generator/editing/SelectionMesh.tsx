@@ -2,12 +2,12 @@
 import { useRef, useCallback } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { FaceSelectionInfo, EdgeSelectionInfo, ElementSelectionInfo } from './selectionInfo';
+import type { FaceSelectionInfo, EdgeSelectionInfo as _EdgeSelectionInfo, ElementSelectionInfo } from './selectionInfo';
 import { normalToLabel } from './selectionInfo';
 
 interface Props {
   geometry: THREE.BufferGeometry;
-  onSelect: (info: ElementSelectionInfo) => void;
+  onSelect: (info: ElementSelectionInfo, additive?: boolean) => void;
   onPointerDown?: (e: ThreeEvent<PointerEvent>, info: ElementSelectionInfo) => void;
   onPointerMove?: (e: ThreeEvent<PointerEvent>, info: ElementSelectionInfo) => void;
   onPointerUp?: (e: ThreeEvent<PointerEvent>, info: ElementSelectionInfo) => void;
@@ -94,7 +94,6 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
 
     // Find coplanar group
     const groups = getGroups();
-    const clickedTriIdx = Math.floor(e.faceIndex! / 1);
     let matchedGroup = groups.find(g => g.normal.dot(worldNormal) > 0.98);
     if (!matchedGroup && groups.length > 0) {
       // Fallback: find closest normal
@@ -115,7 +114,7 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
       triangleIndices: matchedGroup ? matchedGroup.triangleIndices : [],
     };
 
-    onSelect(info);
+    onSelect(info, e.shiftKey);
   }, [getGroups, onSelect]);
 
   const handlePointerEvent = useCallback((e: ThreeEvent<PointerEvent>, handler?: (e: ThreeEvent<PointerEvent>, info: FaceSelectionInfo) => void) => {

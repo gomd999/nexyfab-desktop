@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { analytics } from '@/lib/analytics';
 import { useToast } from '@/components/ToastProvider';
 import { richText } from '@/lib/richText';
+import PartnerPreviewCard from '@/components/nexyfab/PartnerPreviewCard';
 
 const dict = {
   ko: {
@@ -325,9 +326,14 @@ function ProjectInquiryPageInner() {
     const form = e.currentTarget;
     try {
       // reCAPTCHA v3
-      const token = await new Promise<string>((resolve) => {
-        (window as any).grecaptcha.ready(() => {
-          (window as any).grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'submit' }).then(resolve);
+      const token = await new Promise<string>((resolve, reject) => {
+        const g = window.grecaptcha;
+        if (!g) {
+          reject(new Error('reCAPTCHA unavailable'));
+          return;
+        }
+        g.ready(() => {
+          void g.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'submit' }).then(resolve).catch(reject);
         });
       });
       formData.append('g-recaptcha-response', token);
@@ -387,6 +393,13 @@ function ProjectInquiryPageInner() {
               <span>🏭</span>
               <span>{simBanner}</span>
               <button onClick={() => setSimBanner('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>&times;</button>
+            </div>
+          )}
+
+          {/* M2 — Partner profile preview when arriving from /factories?factoryId=… */}
+          {searchParams.get('factoryId') && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <PartnerPreviewCard lang="ko" partnerEmail={searchParams.get('factoryId')!} />
             </div>
           )}
 

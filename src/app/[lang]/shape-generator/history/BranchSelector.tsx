@@ -62,7 +62,7 @@ export default function BranchSelector({
   onSwitchBranch,
   onDeleteBranch,
   theme,
-  lang,
+  lang: _lang,
 }: BranchSelectorProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Ensure geometry is non-indexed and return a deep clone. */
-function toNonIndexed(geo: THREE.BufferGeometry): THREE.BufferGeometry {
+function _toNonIndexed(geo: THREE.BufferGeometry): THREE.BufferGeometry {
   const g = geo.index ? geo.toNonIndexed() : geo.clone();
   return g;
 }
@@ -179,9 +179,9 @@ export function fillHoles(
   const oldIndices = Array.from(idx.array);
   for (const loop of loops) {
     // Compute centroid
-    const cx = loop.reduce((s, v) => s + pos.getX(v), 0) / loop.length;
-    const cy = loop.reduce((s, v) => s + pos.getY(v), 0) / loop.length;
-    const cz = loop.reduce((s, v) => s + pos.getZ(v), 0) / loop.length;
+    const _cx = loop.reduce((s, v) => s + pos.getX(v), 0) / loop.length;
+    const _cy = loop.reduce((s, v) => s + pos.getY(v), 0) / loop.length;
+    const _cz = loop.reduce((s, v) => s + pos.getZ(v), 0) / loop.length;
 
     // Use fan from first vertex for simplicity (avoids adding new vertices)
     const pivot = loop[0];

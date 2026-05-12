@@ -77,7 +77,7 @@ function generateHexagonPoints(radius: number, count: number): THREE.Vector2[] {
 
   for (let i = 0; i < count; i++) {
     const targetDist = i * stepDist;
-    const accumulated = 0;
+    const _accumulated = 0;
 
     // Find which edge this point falls on
     edgeIdx = 0;
@@ -197,8 +197,8 @@ export const loftShape: ShapeConfig = {
 
     // Top cap (triangle fan at last layer)
     const topCenterIdx = vertices.length / 3;
-    const topCosT = Math.cos(twistAngle);
-    const topSinT = Math.sin(twistAngle);
+    const _topCosT = Math.cos(twistAngle);
+    const _topSinT = Math.sin(twistAngle);
     vertices.push(0, height / 2, 0); // center point (twist doesn't affect center)
     const topLayerStart = layers * n;
     for (let i = 0; i < n; i++) {

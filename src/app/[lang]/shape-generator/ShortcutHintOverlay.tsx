@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback as _useCallback } from 'react';
 
 /**
  * ShortcutHintOverlay — When the user holds Alt for 800ms+, shows

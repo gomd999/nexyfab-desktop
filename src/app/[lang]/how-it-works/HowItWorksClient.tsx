@@ -652,7 +652,7 @@ export default function HowItWorksPage() {
                         {
                             icon: '🔍',
                             title: '키워드 검색으로 파트너 탐색',
-                            desc: '제품 키워드를 입력하면 30만 한·중 공장 DB에서 관련 제조사를 바로 검색합니다. 검색은 무료이며 몇 초 안에 결과를 확인할 수 있습니다.',
+                            desc: '제품 키워드를 입력하면 한·중 공장 DB에서 관련 제조사를 바로 검색합니다. 검색은 무료이며 몇 초 안에 결과를 확인할 수 있습니다.',
                             ctaLabel: '키워드 검색',
                             ctaHref: '/[lang]/',
                             customContent: <EmbeddedSearch langCode={langCode} />,

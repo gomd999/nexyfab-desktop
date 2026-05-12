@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useNowMs } from './useNowMs';
 import type { CollabUser } from './CollabTypes';
 import type { CollabMode } from './useCollab';
 
@@ -30,6 +31,7 @@ export default function CollabPresence({
   onSetMode,
   labels = {},
 }: CollabPresenceProps) {
+  const now = useNowMs(500);
   const t = {
     collabLive: labels.collabLive ?? 'Live',
     collabDemo: labels.collabDemo ?? 'Demo',
@@ -139,7 +141,7 @@ export default function CollabPresence({
 
         {/* Avatar circles */}
         {users.map(u => (
-          <AvatarCircle key={u.id} user={u} />
+          <AvatarCircle key={u.id} user={u} now={now} />
         ))}
       </div>
 
@@ -185,9 +187,9 @@ export default function CollabPresence({
 
 // ─── AvatarCircle ─────────────────────────────────────────────────────────────
 
-function AvatarCircle({ user }: { user: CollabUser }) {
+function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
   const [hover, setHover] = useState(false);
-  const stale = Date.now() - user.lastSeen > 10_000;
+  const stale = now - user.lastSeen > 10_000;
 
   return (
     <div

@@ -58,6 +58,11 @@ const dict = {
         a9i4: '구독은 마이 계정 > 청구 메뉴에서 언제든지 취소할 수 있으며, 취소 시 현재 결제 주기 종료 후 서비스가 무료 플랜으로 전환됩니다.',
         a9i5: '구독 결제일로부터 7일 이내에 서비스를 이용하지 않은 경우, 이메일(support@nexyfab.com)을 통해 전액 환불을 요청할 수 있습니다. 이후에는 환불이 제공되지 않습니다.',
         a9i6: '회사는 30일 사전 통보 후 구독 요금을 변경할 수 있습니다. 기존 구독자에게는 다음 갱신 시부터 변경 요금이 적용됩니다.',
+        aBetaTitle: '제10조 (유료 베타 프로그램) (검토용 샘플)',
+        aBetaStamp: '※ 본 조항은 법무 검토 전 참고용 샘플입니다. 대외적으로 법적 효력을 확정하기 전까지는 내부·고객 안내용으로만 사용하세요.',
+        aBetai1: '본 서비스는 정식 출시 전의 "유료 베타" 버전으로 제공될 수 있으며, 회사는 성능 개선 및 오류 수정을 위해 사전 고지 없이 인터페이스나 기능 일부를 변경할 수 있습니다.',
+        aBetai2: '베타 기간 중 생성된 데이터는 정식 서비스 전환 시 이관되는 것을 원칙으로 하나, 불가피한 기술적 사유로 처리 방식을 변경해야 하는 경우 사용자에게 최소 7일 전에 공지합니다.',
+        aBetai3: '긴급 점검 등으로 서비스 이용이 일시 중단될 수 있으며, 그에 따른 보상 범위는 별도로 고지된 유료 베타 특약이 있는 경우 그에 따르고, 없는 경우 제6조(책임의 제한)를 따릅니다.',
     },
     en: {
         kicker: 'Nexyfab · Terms of Use',
@@ -113,6 +118,11 @@ const dict = {
         a9i4: 'Subscriptions can be cancelled at any time via My Account > Billing. Upon cancellation, service continues until the end of the current billing period, then reverts to the Free plan.',
         a9i5: 'If the service has not been used within 7 days of the subscription payment date, a full refund may be requested via email (support@nexyfab.com). Refunds are not available thereafter.',
         a9i6: 'The Company may change subscription pricing with 30 days prior notice. For existing subscribers, the new pricing applies from the next renewal date.',
+        aBetaTitle: 'Article 10 (Paid Beta Program) (Draft sample)',
+        aBetaStamp: 'This article is a draft for legal review only. Do not treat it as final or binding until counsel approves.',
+        aBetai1: 'The Service may be offered as a paid pre-release “beta” version; the Company may change parts of the interface or features without prior notice for performance improvements and bug fixes.',
+        aBetai2: 'Data created during the beta is intended to be migrated when the Service moves to general availability; if a technical change is unavoidable, the Company will notify users at least 7 days in advance.',
+        aBetai3: 'Emergency maintenance may cause temporary unavailability; any compensation scope follows a separately posted paid-beta addendum if provided, otherwise Article 6 (Limitation of Liability).',
     },
     ja: {
         kicker: 'Nexyfab · 利用規約',
@@ -168,6 +178,11 @@ const dict = {
         a9i4: 'サブスクリプションはマイアカウント＞請求メニューからいつでも解約できます。解約後は現在の請求期間終了後、無料プランに移行します。',
         a9i5: 'サブスクリプション決済日から7日以内にサービスを利用していない場合、メール（support@nexyfab.com）にて全額返金を申請できます。それ以降は返金対応いたしかねます。',
         a9i6: '会社は30日前に事前通知した上でサブスクリプション料金を変更することができます。既存の契約者には次回更新時から変更後の料金が適用されます。',
+        aBetaTitle: '第10条（有償ベータプログラム）（草案・要法務確認）',
+        aBetaStamp: '※ 本条文は法務審査前の参考草案です。確定までは対外的な法的効力を主張しないでください。',
+        aBetai1: '本サービスは正式リリース前の「有償ベータ」として提供される場合があり、会社は性能改善および不具合修正のため、事前通知なくインターフェースまたは機能の一部を変更することがあります。',
+        aBetai2: 'ベータ期間中に作成されたデータは本番移行時に移行することを原則としますが、やむを得ない技術的理由により変更が必要な場合、少なくとも7日前にユーザーへ通知します。',
+        aBetai3: '緊急メンテナンス等により一時的に利用できない場合があり、その補償範囲は別途掲示された有償ベータ特約がある場合はそれに従い、ない場合は第6条（責任の制限）に従います。',
     },
     zh: {
         kicker: 'Nexyfab · 服务条款',
@@ -223,6 +238,11 @@ const dict = {
         a9i4: '订阅可随时通过"我的账户 > 账单"取消。取消后，服务将在当前计费周期结束后转换为免费计划。',
         a9i5: '若订阅付款日起7天内未使用服务，可通过电子邮件（support@nexyfab.com）申请全额退款。此后将不提供退款。',
         a9i6: '公司可在提前30天通知后变更订阅价格。对于现有订阅用户，新价格将从下次续订时起适用。',
+        aBetaTitle: '第十条（付费测试计划）（草案·须法务审核）',
+        aBetaStamp: '※ 本条为法务定稿前的参考草案，在正式生效前请勿对外主张为最终条款。',
+        aBetai1: '本服务可能以正式发布前的“付费测试（beta）”形式提供；公司为改进性能与修复错误，可在未经事先通知的情况下变更部分界面或功能。',
+        aBetai2: '测试期间产生的数据在转为正式服务时原则上予以迁移；如因不可避免的技术原因需变更处理方式，公司将至少提前7日通知用户。',
+        aBetai3: '因紧急维护等原因可能导致服务暂时中断；补偿范围如另有付费测试特别约定则从其约定，否则适用第六条（责任限制）。',
     }
 };
 
@@ -308,6 +328,18 @@ export default function TermsOfUsePage() {
                         <li>{t.a7i2}</li>
                     </ul>
                 </div>
+
+                {process.env.NEXT_PUBLIC_PAID_BETA === '1' && (
+                    <div style={{ borderLeft: '4px solid #f0883e', paddingLeft: '16px', background: '#fff8f0', padding: '16px 16px 16px 20px', borderRadius: '8px' }}>
+                        <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '8px', color: '#111' }}>{t.aBetaTitle}</h2>
+                        <p style={{ fontSize: '13px', color: '#9a3412', marginBottom: '12px', fontWeight: 600 }}>{t.aBetaStamp}</p>
+                        <ul style={{ paddingLeft: '20px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <li>{t.aBetai1}</li>
+                            <li>{t.aBetai2}</li>
+                            <li>{t.aBetai3}</li>
+                        </ul>
+                    </div>
+                )}
 
                 <div>
                     <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '12px', color: '#111' }}>{t.a9Title}</h2>

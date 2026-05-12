@@ -267,7 +267,7 @@ interface HeatmapTabProps {
   card: string;
 }
 
-function HeatmapTab({ result, sweepParams, note, best, muted, text, border, card }: HeatmapTabProps) {
+function HeatmapTab({ result, sweepParams, note, best, muted, text: _text, border, card: _card }: HeatmapTabProps) {
   if (sweepParams.length !== 2) {
     return (
       <div style={{ color: muted, fontSize: 11, padding: '12px 0', textAlign: 'center' }}>
@@ -429,7 +429,7 @@ interface ParetoTabProps {
   objective: string;
 }
 
-function ParetoTab({ result, result2, sweepParams, primary, secondary, dominant, dominated, best, muted, text, border, card, objective }: ParetoTabProps) {
+function ParetoTab({ result, result2, sweepParams: _sweepParams, primary, secondary, dominant, dominated, best, muted, text: _text, border, card: _card, objective }: ParetoTabProps) {
   const xs = result.values;
   const ys = result2 ? result2.values : result.values.map((_, i) => i / result.values.length);
 
@@ -665,7 +665,7 @@ export default function ParametricSweepPanel({
         setProgress(null);
       }
     });
-  }, [sweepParams, objective, running]);
+  }, [sweepParams, objective, running, onEvaluate]);
 
   const sortedIndices = useMemo(() => {
     if (!result) return [];

@@ -4,7 +4,7 @@
  * Validates LRU behaviour, clone-on-hit, and key stability.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach as _beforeEach } from 'vitest';
 import * as THREE from 'three';
 import { cacheGet, cachePut, cacheDelete, featureCacheKey, stampGeoId, getGeoId } from '../features/pipelineCache';
 import type { FeatureInstance } from '../features/types';

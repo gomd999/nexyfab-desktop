@@ -26,7 +26,7 @@ export default function PathTracer({ enabled, bounces = 6, onProgress }: PathTra
     }
 
     const pt = new WebGLPathTracer(gl);
-    pt.setBVHWorker?.({} as any); // optional BVH worker
+    // Sync `setScene` below does not require `setBVHWorker` (only `setSceneAsync` does).
     pt.bounces = bounces;
     pt.filterGlossyFactor = 0.5;
     pt.multipleImportanceSampling = true;

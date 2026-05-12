@@ -269,7 +269,7 @@ export default function TopoPanel({
       {selectedFaceIndex != null && (() => {
         const face = Object.values(map.faces).find(f => f.faceIndex === selectedFaceIndex);
         if (!face) return null;
-        const tagColor = TAG_COLORS[face.tag ?? ''] ?? '#8b949e';
+        const _tagColor = TAG_COLORS[face.tag ?? ''] ?? '#8b949e';
         return (
           <div style={{
             padding: '8px 12px',

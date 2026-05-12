@@ -23,6 +23,8 @@ type RefundDict = {
   s4List: string[];
   s5Title: string;
   s5Desc: string;
+  s6Title: string;
+  s6List: string[];
   termsLink: string;
 };
 
@@ -47,6 +49,7 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     s3List: [
       '결제 완료된 제조 주문에 대해서는 주문 상세 화면에서 환불 요청을 접수할 수 있습니다.',
       '접수 후 영업일 기준 1~3일 내 검토되며, 주문 상태·진행 단계에 따라 환불 가능 여부 및 금액이 달라질 수 있습니다.',
+      '제작(생산)이 본격적으로 시작되기 전에는 원칙적으로 전액 환불이 가능하나, 제조 파트너의 생산이 착수된 이후에는 맞춤 제작의 특성상 단순 변심에 의한 취소가 제한될 수 있습니다. 결제 전 견적·주문 내용을 반드시 확인해 주세요.',
       '고객과 제조 파트너 간 별도 계약으로 진행되는 금액·분쟁은 당사자 간 협의를 우선합니다.',
     ],
     s4Title: '4. 매칭·프로젝트 수수료',
@@ -56,6 +59,11 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     ],
     s5Title: '5. 문의',
     s5Desc: '환불·취소와 관련하여 아래 이메일로 문의해 주시면 영업일 기준으로 답변드립니다.',
+    s6Title: '6. 견적 유효기간 (RFQ 견적)',
+    s6List: [
+      '플랫폼에서 발행된 견적은 발행일로부터 7일간 유효한 것을 원칙으로 합니다(개별 견적서에 다른 기간이 명시된 경우 그에 따릅니다).',
+      '만료 후에는 새 RFQ를 제출해야 하며, 원자재·환율 등에 따라 견적 금액이 달라질 수 있습니다.',
+    ],
     termsLink: '이용약관 전문 보기',
   },
   en: {
@@ -78,6 +86,7 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     s3List: [
       'For eligible paid orders, you may submit a refund request from the order detail page.',
       'We typically review within 1–3 business days; eligibility and amount depend on order status and progress.',
+      'In principle, a full refund may be available before manufacturing has substantially started; after the partner begins production, cancellations for simple change of mind may be restricted due to custom work. Please review quotes and order details before paying.',
       'Amounts or disputes governed by a direct contract between you and a manufacturer are primarily resolved between the parties.',
     ],
     s4Title: '4. Matching and project fees',
@@ -87,6 +96,11 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     ],
     s5Title: '5. Contact',
     s5Desc: 'For refund or cancellation questions, email us and we will respond on business days.',
+    s6Title: '6. Quote validity (RFQ quotes)',
+    s6List: [
+      'Unless a different validity period is stated on a specific quote, quotes are generally valid for 7 days from the issue date.',
+      'After expiry, please submit a new RFQ; amounts may change due to materials, FX, and other factors.',
+    ],
     termsLink: 'View Terms of Use',
   },
   ja: {
@@ -108,6 +122,8 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     s3List: [
       '対象の有料注文は注文詳細から返金申請が可能です。',
       '営業日1〜3日程度で審査し、注文状態により可否・金額が変わります。',
+      '製造が本格的に開始される前は全額返金が原則可能ですが、パートナーが生産に着手した後はオーダーメイドの性質上、単なる都合によるキャンセルが制限される場合があります。支払い前に見積もり・注文内容を必ずご確認ください。',
+      '顧客と製造パートナー間の別契約に基づく金額・紛争は、当事者間の協議を優先します。',
     ],
     s4Title: '4. マッチング・プロジェクト手数料',
     s4List: [
@@ -115,6 +131,11 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     ],
     s5Title: '5. お問い合わせ',
     s5Desc: '返金・キャンセルに関するご質問はメールでお問い合わせください。',
+    s6Title: '6. 見積もりの有効期限（RFQ）',
+    s6List: [
+      '個別に有効期間が記載されていない限り、見積もりは発行日から7日間有効とします。',
+      '期限後は新規RFQが必要となり、材料・為替等により金額が変動する場合があります。',
+    ],
     termsLink: '利用規約を見る',
   },
   zh: {
@@ -136,6 +157,8 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     s3List: [
       '符合条件的已付款订单可在订单详情页提交退款申请。',
       '通常在 1–3 个工作日内审核，是否退款及金额取决于订单状态与进度。',
+      '在制造尚未实质开始前，原则上可全额退款；在合作制造商开始生产后，因定制性质，单纯反悔类取消可能受限。请在付款前务必确认报价与订单内容。',
+      '若金额或争议受您与制造商之间的直接合同约束，原则上由双方先行协商解决。',
     ],
     s4Title: '4. 匹配与项目费用',
     s4List: [
@@ -143,6 +166,11 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     ],
     s5Title: '5. 联系方式',
     s5Desc: '退款与取消相关问题请发邮件咨询，我们将在工作日回复。',
+    s6Title: '6. 报价有效期（RFQ）',
+    s6List: [
+      '除非具体报价单另有载明，报价原则上自出具之日起 7 日内有效。',
+      '过期后需重新提交 RFQ；因原材料、汇率等因素，金额可能变化。',
+    ],
     termsLink: '查看服务条款',
   },
 };
@@ -181,6 +209,7 @@ export default function RefundPolicyPage() {
         {section(t.s2Title, t.s2List)}
         {section(t.s3Title, t.s3List)}
         {section(t.s4Title, t.s4List)}
+        {section(t.s6Title, t.s6List)}
 
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '12px', color: '#111' }}>{t.s5Title}</h2>

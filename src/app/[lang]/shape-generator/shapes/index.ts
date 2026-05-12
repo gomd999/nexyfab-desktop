@@ -124,6 +124,27 @@ import { latheProfileShape } from './latheProfile';
 
 import { STANDARD_PARTS } from '../library/standardParts';
 
+/**
+ * Wrap a ShapeConfig so every call to generate() registers its output geometry
+ * with the GC tracker. Without this, callers that bypass buildShapeResult
+ * (GalleryView, standardPartPlacement, ShapeGeneratorInner direct calls, AI
+ * preview) leak BufferGeometry instances on every regeneration.
+ */
+function withGeometryTracking(cfg: ShapeConfig): ShapeConfig {
+  const original = cfg.generate;
+  return {
+    ...cfg,
+    generate: (p, formulas) => {
+      const res = original(p, formulas);
+      if (res) {
+        if (res.geometry) trackGeometry(res.geometry);
+        if (res.edgeGeometry) trackGeometry(res.edgeGeometry);
+      }
+      return res;
+    },
+  };
+}
+
 export const SHAPES: ShapeConfig[] = [
   boxShape,
   cylinderShape,
@@ -161,9 +182,88 @@ export const SHAPES: ShapeConfig[] = [
     params: sp.params,
     generate: sp.generate
   }))
-];
+].map(withGeometryTracking);
 
 export const SHAPE_MAP = Object.fromEntries(SHAPES.map(s => [s.id, s]));
+
+// ─── Merge + clamp incoming params (unknown keys reported for UI warnings) ───
+
+export function normalizeShapeParams(
+  shapeDef: ShapeConfig,
+  partParams: Record<string, number>,
+): { params: Record<string, number>; unknownKeys: string[] } {
+  const p: Record<string, number> = {};
+  shapeDef.params.forEach((sp) => { p[sp.key] = sp.default; });
+  const valid = new Set(shapeDef.params.map((sp) => sp.key));
+  const unknownKeys: string[] = [];
+  Object.entries(partParams).forEach(([k, v]) => {
+    if (typeof v !== 'number' || !Number.isFinite(v)) return;
+    if (valid.has(k)) p[k] = v;
+    else unknownKeys.push(k);
+  });
+  shapeDef.params.forEach((sp) => {
+    if (p[sp.key] !== undefined) {
+      p[sp.key] = Math.max(sp.min, Math.min(sp.max, p[sp.key]));
+    }
+  });
+  return { params: p, unknownKeys };
+}
+
+/** Batch-update scene params + slider expressions without drifting the two. */
+export interface SceneParamSetters {
+  setParams: (params: Record<string, number>) => void;
+  setParamExpressions: (exprs: Record<string, string>) => void;
+}
+
+export interface ComputeSceneParamApplyOptions {
+  /** Start from these expressions, then set literals for each applied numeric param (e.g. loaded .nfab). */
+  mergeExpressionsFrom?: Record<string, string>;
+}
+
+/**
+ * Pure: merged numeric params + matching expression literals.
+ * Unknown shape defs keep only finite numeric entries and sync expression strings for those keys.
+ */
+export function computeSceneParamApply(
+  shapeDef: ShapeConfig | undefined,
+  raw: Record<string, number>,
+  options?: ComputeSceneParamApplyOptions,
+): { params: Record<string, number>; paramExpressions: Record<string, string>; unknownKeys: string[] } {
+  const safeRaw =
+    raw != null && typeof raw === 'object' && !Array.isArray(raw)
+      ? (raw as Record<string, number>)
+      : {};
+  const base = options?.mergeExpressionsFrom;
+  if (shapeDef) {
+    const { params, unknownKeys } = normalizeShapeParams(shapeDef, safeRaw);
+    const paramExpressions: Record<string, string> = base ? { ...base } : {};
+    Object.entries(params).forEach(([k, v]) => {
+      paramExpressions[k] = String(v);
+    });
+    return { params, paramExpressions, unknownKeys };
+  }
+  const copy: Record<string, number> = {};
+  Object.entries(safeRaw).forEach(([k, v]) => {
+    if (typeof v === 'number' && Number.isFinite(v)) copy[k] = v;
+  });
+  const paramExpressions: Record<string, string> = base ? { ...base } : {};
+  Object.entries(copy).forEach(([k, v]) => {
+    paramExpressions[k] = String(v);
+  });
+  return { params: copy, paramExpressions, unknownKeys: [] };
+}
+
+export function applySceneParamsToSetters(
+  shapeDef: ShapeConfig | undefined,
+  raw: Record<string, number>,
+  setters: SceneParamSetters,
+  options?: ComputeSceneParamApplyOptions,
+): { params: Record<string, number>; unknownKeys: string[] } {
+  const { params, paramExpressions, unknownKeys } = computeSceneParamApply(shapeDef, raw, options);
+  setters.setParams(params);
+  setters.setParamExpressions(paramExpressions);
+  return { params, unknownKeys };
+}
 
 // ─── Standalone utility: generate shape result from shapeId + params ──────────
 
@@ -174,12 +274,7 @@ export function buildShapeResult(
 ): ShapeResult | null {
   const shapeDef = SHAPE_MAP[shapeId];
   if (!shapeDef) return null;
-  const p: Record<string, number> = {};
-  shapeDef.params.forEach(sp => { p[sp.key] = sp.default; });
-  Object.entries(partParams).forEach(([k, v]) => { if (typeof v === 'number' && k in p) p[k] = v; });
-  shapeDef.params.forEach(sp => {
-    if (p[sp.key] !== undefined) p[sp.key] = Math.max(sp.min, Math.min(sp.max, p[sp.key]));
-  });
+  const { params: p } = normalizeShapeParams(shapeDef, partParams);
   try {
     const res = shapeDef.generate(p, formulas);
     if (res) {

@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Grid, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SketchProfile, SketchPoint, SketchTool } from './types';
@@ -186,7 +187,7 @@ function Crosshair({
   profile: SketchProfile;
   onCursorChange: (pt: SketchPoint | null) => void;
 }) {
-  const { camera, raycaster, pointer, size } = useThree();
+  const { camera, raycaster, pointer, size: _size } = useThree();
   const [cursorPt, setCursorPt] = useState<SketchPoint | null>(null);
   const [snapTarget, setSnapTarget] = useState<SketchPoint | null>(null);
   const planeObj = useMemo(() => {
@@ -339,7 +340,7 @@ function ClickPlane({
   activeTool: SketchTool;
   cursorPt: SketchPoint | null;
 }) {
-  const handleClick = useCallback((e: any) => {
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     if (activeTool === 'select' || profile.closed) return;
     e.stopPropagation();
 
@@ -440,7 +441,7 @@ function CameraPresetController({
   onDone: () => void;
 }) {
   const { camera, invalidate } = useThree();
-  const controlsRef = useRef<any>(null);
+  const _controlsRef = useRef<any>(null);
 
   useEffect(() => {
     if (!preset) return;
@@ -743,7 +744,7 @@ function ExtrudeDepthHandle({
 }) {
   const { camera, gl } = useThree();
   const isDragging = useRef(false);
-  const dragStartY = useRef(0);
+  const _dragStartY = useRef(0);
   const dragStartDepth = useRef(depth);
   const _raycaster = useRef(new THREE.Raycaster());
   const _hit = useRef(new THREE.Vector3());

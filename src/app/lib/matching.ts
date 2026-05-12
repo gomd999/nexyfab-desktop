@@ -19,6 +19,25 @@ export interface MatchScore {
   breakdown: ScoreBreakdown;
 }
 
+/** Minimal inquiry fields used by `matchPartners`. */
+export interface MatchInquiry {
+  request_field?: string;
+  budget_range?: string;
+}
+
+/** Partner row shape expected from admin / DB (subset). */
+export interface MatchPartner {
+  id: string;
+  partnerStatus?: string;
+  match_field?: string;
+  amount?: string;
+  avgRating?: number;
+  completedCount?: number;
+  email?: string;
+  company?: string;
+  name?: string;
+}
+
 /**
  * 금액 문자열을 만원 단위 숫자로 파싱 (다통화 지원)
  * 예) "5000만원" → 5000, "1억원" → 10000, "$500,000" → 약 5000만원
@@ -138,7 +157,7 @@ export function checkBudgetMatch(
  * @param inquiry  문의 객체 (request_field, budget_range 등)
  * @param partners 파트너 목록 (partnerStatus, match_field, amount, avgRating, completedCount 등)
  */
-export function matchPartners(inquiry: any, partners: any[]): MatchScore[] {
+export function matchPartners(inquiry: MatchInquiry, partners: MatchPartner[]): MatchScore[] {
   return partners
     .filter((p) => p.partnerStatus === 'approved')
     .map((p) => {
@@ -167,7 +186,7 @@ export function matchPartners(inquiry: any, partners: any[]): MatchScore[] {
       }
 
       // 2. 예산 범위 매칭 (30점)
-      if (checkBudgetMatch(inquiry.budget_range, p.amount)) {
+      if (checkBudgetMatch(inquiry.budget_range ?? '', p.amount ?? '')) {
         score += 30;
         breakdown.budget = 30;
         reasons.push('예산 범위 적합');

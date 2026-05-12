@@ -29,6 +29,7 @@ interface Props {
   isKo: boolean;
   currentShapeId: string;
   currentParams: Record<string, number>;
+  onHighlightPart?: (name: string | null) => void;
 }
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
@@ -179,7 +180,7 @@ const SHAPE_ICONS: Record<string, string> = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function PartPlacementPanel({ parts, onChange, isKo, currentShapeId, currentParams }: Props) {
+export default function PartPlacementPanel({ parts, onChange, isKo, currentShapeId, currentParams, onHighlightPart }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
@@ -299,8 +300,11 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
             return (
               <div key={part.id} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 7, overflow: 'hidden' }}>
                 {/* Part row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer' }}
-                  onClick={() => setExpandedId(expanded ? null : part.id)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onClick={() => setExpandedId(expanded ? null : part.id)}
+                  onMouseEnter={() => onHighlightPart?.(part.name)}
+                  onMouseLeave={() => onHighlightPart?.(null)}
+                >
                   <span style={{ fontSize: 14 }}>{SHAPE_ICONS[part.shapeId] || '◻'}</span>
                   <input
                     value={part.name}
@@ -423,8 +427,8 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                 </thead>
                 <tbody>
                   {parts.map((p, i) => {
-                    let vol = 0, bbox = { w: 0, h: 0, d: 0 };
-                    try { const r = buildShapeResult(p.shapeId, p.params); if (r) { vol = r.volume_cm3; bbox = r.bbox; } } catch {}
+                    let vol = 0, _bbox = { w: 0, h: 0, d: 0 };
+                    try { const r = buildShapeResult(p.shapeId, p.params); if (r) { vol = r.volume_cm3; _bbox = r.bbox; } } catch {}
                     const mass = vol * 7.85 * p.qty;
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid #21262d' }}>
