@@ -7,6 +7,7 @@ import type { DraftAnalysisResult } from '../analysis/draftAnalysis'
 import type { PrintAnalysisResult } from '../analysis/printAnalysis'
 import type { ValidationResult } from '../analysis/geometryValidation'
 import type { GDTAnnotation, DimensionAnnotation } from '../annotations/GDTTypes'
+import type { DrawingResult } from '../analysis/autoDrawing'
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ interface AnalysisState {
   gdtAnnotations: GDTAnnotation[]
   dimensionAnnotations: DimensionAnnotation[]
   showCenterOfMass: [number, number, number] | null
+  autoDrawingResult: DrawingResult | null
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -46,6 +48,7 @@ interface AnalysisActions {
   setGdtAnnotations: (annotations: GDTAnnotation[]) => void
   setDimensionAnnotations: (annotations: DimensionAnnotation[]) => void
   setShowCenterOfMass: (pos: [number, number, number] | null) => void
+  setAutoDrawingResult: (result: DrawingResult | null) => void
   clearAnalysis: () => void
   addGDTAnnotation: (a: GDTAnnotation) => void
   updateGDTAnnotation: (id: string, update: Partial<GDTAnnotation>) => void
@@ -76,6 +79,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
     gdtAnnotations: [],
     dimensionAnnotations: [],
     showCenterOfMass: null,
+    autoDrawingResult: null,
 
     // Actions
     setFeaResult: (result) =>
@@ -153,6 +157,11 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.showCenterOfMass = pos
       }),
 
+    setAutoDrawingResult: (result) =>
+      set((state) => {
+        state.autoDrawingResult = result
+      }),
+
     clearAnalysis: () =>
       set((state) => {
         state.feaResult = null
@@ -165,6 +174,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.gdtAnnotations = []
         state.dimensionAnnotations = []
         state.feaConditions = []
+        state.autoDrawingResult = null
       }),
 
     addGDTAnnotation: (a) =>

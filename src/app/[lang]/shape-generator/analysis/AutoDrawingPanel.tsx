@@ -20,6 +20,7 @@ import { reportInfo } from '../lib/telemetry';
 import { autoExplodedDrawing } from '../assembly/autoExplodedDrawing';
 import AutoExplodedSVG from '../assembly/AutoExplodedSVG';
 import { buildDetailView, buildSectionView } from './drawingViewExtras';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
@@ -211,6 +212,13 @@ interface AutoDrawingPanelProps {
     name: string;
     worldCenter: [number, number, number];
   }>;
+  /**
+   * J5 migration: when omitted, the panel reads
+   * `useAnalysisStore.autoDrawingResult` directly so previously generated
+   * drawings survive a panel close/reopen. Pass `result` explicitly to
+   * preview a different drawing without writing it to the store.
+   */
+  result?: DrawingResult | null;
 }
 
 /* ─── View checkboxes ────────────────────────────────────────────────────── */
@@ -248,6 +256,7 @@ export default function AutoDrawingPanel({
   material,
   onClose,
   explodedParts,
+  result: propResult,
 }: AutoDrawingPanelProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
@@ -276,8 +285,12 @@ export default function AutoDrawingPanel({
   const [angularTol, setAngularTol] = useState("±0°30'");
   const [raValue, setRaValue] = useState(3.2);
 
-  // Drawing result
-  const [drawing, setDrawing] = useState<DrawingResult | null>(null);
+  // J5 — drawing lives in analysisStore so a close/reopen keeps the last
+  // generated preview. Caller may still pass `result` explicitly to override.
+  const storeResult = useAnalysisStore(s => s.autoDrawingResult);
+  const setStoreResult = useAnalysisStore(s => s.setAutoDrawingResult);
+  const drawing = propResult ?? storeResult;
+  const setDrawing = setStoreResult;
   /** `computeDrawingGeometryFingerprint` at last successful Generate — mismatch ⇒ stale preview */
   const [fpAtLastGenerate, setFpAtLastGenerate] = useState<string | null>(null);
 
