@@ -135,9 +135,29 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   }
 
   // ── HMAC fallback (legacy HS256) ─────────────────────────────────────────
-  // TODO D+30: add console.warn deprecation notice
-  // TODO D+60: remove this branch and redirect /api/auth/login → auth.nexysys.com
+  // Legacy HS256 tokens predate the NexySys SSO rollout. We keep accepting
+  // them so existing sessions don't get logged out, but every accepted token
+  // is now sampled into the logs so we can watch traffic taper to zero.
+  //
+  // Removal plan (target 2026-07-11): once daily sampled-warn count is 0 for
+  // a full week, delete this branch and have /api/auth/login redirect to
+  // auth.nexysys.com.
   const payload: JWTPayload | null = await verifyJWT(token);
   if (!payload) return null;
+  warnLegacyHs256(payload.sub);
   return enrichAuthUser({ userId: payload.sub, email: payload.email, plan: payload.plan });
+}
+
+// Sampled deprecation warning. Logging every legacy token would flood stdout
+// (every authenticated request hits this on the fallback path), so we keep
+// one warn per unique userId per process — enough to see who's still on the
+// legacy issuer without drowning the log stream.
+const _legacyHs256SeenUsers = new Set<string>();
+function warnLegacyHs256(userId: string): void {
+  if (_legacyHs256SeenUsers.has(userId)) return;
+  _legacyHs256SeenUsers.add(userId);
+  console.warn(
+    `[auth-middleware] legacy HS256 token accepted for user=${userId}; ` +
+    `this issuer is scheduled for removal — migrate to auth.nexysys.com SSO.`,
+  );
 }
