@@ -4,6 +4,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { useUIStore } from './store/uiStore';
+import { useSelectionStore } from './store/selectionStore';
 import { useSceneStore } from './store/sceneStore';
 // Responsive layout imports
 import { useResponsive } from './responsive/useResponsive';
@@ -1986,9 +1987,14 @@ export function ShapeGeneratorInner() {
   const showSmartFastener           = useUIStore(s => s.showSmartFastener);
   const setShowSmartFastener        = useUIStore(s => s.setShowSmartFastener);
   const setShowOpenScad             = useUIStore(s => s.setShowOpenScad);
-  // ── Face/edge selection ──
-  const [selectedElement, setSelectedElement] = React.useState<ElementSelectionInfo | null>(null);
-  const [mateFaceA, setMateFaceA] = React.useState<FaceSelectionInfo | null>(null);
+  // ── Face/edge selection — Step 1 of MainWorkspace decomposition.
+  // Backing store is useSelectionStore so future canvas extractions don't
+  // have to thread these as props. Locals alias the store fields so the
+  // 40+ existing read/write sites compile unchanged.
+  const selectedElement   = useSelectionStore(s => s.selectedElement);
+  const setSelectedElement = useSelectionStore(s => s.setSelectedElement);
+  const mateFaceA          = useSelectionStore(s => s.mateFaceA);
+  const setMateFaceA       = useSelectionStore(s => s.setMateFaceA);
   const [selectionActive, setSelectionActive] = React.useState(false);
   // ── Idea-to-Design Intake Wizard (L1→L5 composition) ──
   const [showIntakeWizard, setShowIntakeWizard] = React.useState(false);
