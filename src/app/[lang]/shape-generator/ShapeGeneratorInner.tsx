@@ -174,6 +174,7 @@ import Phase4PanelDock from './panels/Phase4PanelDock';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
+import IPShareConfirmModal from './panels/IPShareConfirmModal';
 import StandardPartsLibrary from './panels/StandardPartsLibrary';
 import ThreadHoleCalloutDock from './panels/ThreadHoleCalloutDock';
 import SketchInputCluster from './panels/SketchInputCluster';
@@ -8674,33 +8675,19 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ IP Share Confirm ═══ */}
       {showShareConfirm && shareUrl && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9000,
-          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(4px)' }} onClick={() => setShowShareConfirm(false)}>
-          <div style={{
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 14,
-            padding: '28px 24px', width: 360, boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
-            <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#e6edf3' }}>
-              🔒 {lt.ipProtectedShare}
-            </p>
-            <p style={{ margin: '0 0 16px', fontSize: 11, color: '#6e7681' }}>
-              {lt.ipShareInfo}
-            </p>
-            <div style={{
-              background: '#0d1117', border: '1px solid #21262d', borderRadius: 8,
-              padding: '10px 12px', fontSize: 11, color: '#58a6ff', wordBreak: 'break-all',
-              marginBottom: 12, fontFamily: 'monospace' }}>{shareUrl}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={async () => { await copyShareUrl(); addToast('success', lt.linkCopied); }} style={{
-                flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                background: '#388bfd', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>📋 {lt.copyLabel}</button>
-              <button onClick={() => { setShowShareConfirm(false); resetShare(); }} style={{
-                flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', fontSize: 12, cursor: 'pointer' }}>{lt.closeLabel}</button>
-            </div>
-          </div>
-        </div>
+        <IPShareConfirmModal
+          shareUrl={shareUrl}
+          onCopy={copyShareUrl}
+          onClose={() => setShowShareConfirm(false)}
+          onReset={resetShare}
+          onCopied={() => addToast('success', lt.linkCopied)}
+          labels={{
+            ipProtectedShare: lt.ipProtectedShare,
+            ipShareInfo: lt.ipShareInfo,
+            copyLabel: lt.copyLabel,
+            closeLabel: lt.closeLabel,
+          }}
+        />
       )}
 
       {/* ═══ Advanced analysis dock (Gen Design / Thermal FEA / ECAD PCB) ═══ */}
