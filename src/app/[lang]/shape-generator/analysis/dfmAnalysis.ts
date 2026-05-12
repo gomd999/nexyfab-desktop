@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getFaceFeatureId } from '../features/faceProvenance';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
@@ -975,12 +976,12 @@ export function analyzeDFM(
     '3d_printing': analyze3DPrinting,
   };
 
-  // B1 — face provenance: pipelineManager tags each output geometry with the
-  // most-recently-applied feature id. Surface that id on every DFMIssue so
-  // FeatureTree can highlight the responsible feature when the user clicks
-  // an issue. Coarse — every issue points to the same (last) feature — but
-  // a deterministic improvement over today's `undefined` field.
-  const lastFeatureId = (geometry.userData?.lastFeatureId as string | undefined) ?? undefined;
+  // B1 — face provenance: read provenance through the helper so the eventual
+  // deep-impl (per-triangle BufferAttribute) lands here without changing this
+  // file. Today the helper still returns the coarse `lastFeatureId`; when
+  // deep B1 ships, `getFaceFeatureId(geometry, issue.triangleIndices[0])`
+  // will distinguish issues per face.
+  const lastFeatureId = getFaceFeatureId(geometry, 0) ?? undefined;
 
   return processes.map(process => {
     const analyze = analyzerMap[process];
