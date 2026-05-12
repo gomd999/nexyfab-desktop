@@ -1,6 +1,6 @@
 # NexyFab 3D 툴 / CAD 스위트
 
-> Last updated: 2026-05-06
+> Last updated: 2026-05-12
 > Scope: 브라우저 기반 파라메트릭 CAD + FEA + DFM + 토폴로지 최적화 통합 모듈
 
 ---
@@ -9,11 +9,12 @@
 
 | 경로 | 역할 |
 |------|------|
-| `/[lang]/shape-generator/page.tsx` | 메인 3D 에디터 (스케치 → 3D 모드 토글, 341KB 모놀리식) |
-| `/[lang]/shape-generator/sketch/` | 서버 리다이렉트 → `/shape-generator?entry=sketch` (스케치 모드·design 워크스페이스) |
+| `/[lang]/shape-generator/page.tsx` | 메인 3D 에디터 (스케치 ↔ 3D 토글; `ShapeGeneratorInner` 동적 청크) |
+| `/[lang]/shape-generator/sketch/` | 클라이언트 페이지 — URL 유지, `ShapeGeneratorInner`가 경로로 스케치·design 적용 (`?entry=sketch` 호환) |
+| `/[lang]/shape-generator/3d-edit/` | 클라이언트 페이지 — URL 유지, design·3D(비스케치)·조립 패널 닫힘 (`?entry=3d-edit`) |
 | `/[lang]/shape-generator/assembly/` | 리다이렉트 → `?entry=assembly` (design + 조립 패널) |
 | `/[lang]/shape-generator/topology/` | 리다이렉트 → `?entry=topology` (`generative` 워크스페이스) |
-| `/[lang]/shape-generator/analysis/` | 리다이렉트 → `?entry=analysis` (`simulation` 워크스페이스 — FEA 계열) |
+| `/[lang]/shape-generator/analysis/` | 클라이언트 페이지 — URL 유지, `simulation` 워크스페이스 (`?entry=analysis` 호환) |
 | `/[lang]/shape-generator/openscad/` | 폴더명 유지 — 런타임은 **JSCAD** (`OpenScadPanel` → `jscadRunner`). OpenSCAD(.scad) CLI는 [JSCAD_OPENSCAD_BRIDGE.md](./strategy/JSCAD_OPENSCAD_BRIDGE.md) |
 
 ---
@@ -30,7 +31,8 @@
 | `POST /api/nexyfab/openscad-render` | **OpenSCAD CLI** `.scad` → STL (동기/비동기); `GET .../openscad-render/job/[id]` 폴링. 다중 인스턴스 시 `REDIS_URL`로 큐 공유, 큰 메시는 `S3_BUCKET` 설정 시 `artifactUrl`, 샌드박스는 `OPENSCAD_USE_DOCKER=1` |
 | `POST /api/nexyfab/brep/step-import` | **STEP** 서버 임포트(동기/비동기); `input.inlineBase64` 또는 `input.objectKey`, `GET …/brep/step-import/job/[id]`. OCCT는 `BREP_WORKER_URL` 워커(`…/tessellate`). 다중 인스턴스는 `REDIS_URL` + 키 `nf:brep:*` |
 | (클라이언트) | STEP 선택 시 API 우선 → 실패 시 브라우저 WASM. 비활성: `NEXT_PUBLIC_SERVER_STEP_IMPORT=0` |
-| `POST /api/nexyfab/analyze-step` | 분석 스텝 디스패치 (FEA / Modal / Thermal / Print) |
+| `POST /api/sim/{kind}` | 시뮬레이션 잡 큐(CFD·MBD·CAM·mold_fill·optics·thermal); `GET /api/sim/{kind}/job/{id}` 폴링. 프로덕션은 `dockerSolverAdapter` 로드맵 주석 참고 |
+| (클라이언트) | **FEA·모달·열 등 주요 CAE**는 `workers/feaWorker.ts` 등 **브라우저 Web Worker** 경로가 기본 |
 
 ### 2.2 협업·공유
 | 엔드포인트 | 동작 |
@@ -148,8 +150,8 @@
 
 ## 9. 알려진 이슈 / 기술 부채
 
-- **shape-generator/page.tsx 모놀리식 (341KB)** — 성능 위해 모듈 분리 필요
-- **서버사이드 B-Rep API 부재** — 모든 기하 작업 클라이언트 전용 (Phase 4 미래 작업)
+- **`ShapeGeneratorInner` 대형 단일 모듈** — `ShapeGeneratorApp`에서 동적 import로 **별도 청크**이나, 탭·워크스페이스별 코드 스플릿은 미완 (`current-status.md` §5.1·§7 참고)
+- **서버사이드 B-Rep API 부재** — 파이프라인·편집 기하는 클라이언트 중심; STEP 서버 임포트는 `brep/step-import` + 선택적 `BREP_WORKER_URL` (Phase 4 미래 작업)
 - **다국어 UI 문자열** — analysis 패널 일부 영어 고정, i18n 미적용
 
 ---
@@ -158,7 +160,44 @@
 
 상세 상태·수용 기준: [`docs/strategy/3D_SEQUENTIAL_IMPLEMENTATION.md`](./strategy/3D_SEQUENTIAL_IMPLEMENTATION.md)
 
-1. 모놀리식 shape-generator 분리 (sketch / 3d-edit / analysis 라우트)
+1. shape-generator **라우트·URL** 분리(sketch / 3d-edit / analysis) ✅ — **번들·탭 단위 lazy**는 후속
 2. 서버 사이드 B-Rep 솔버 도입 (OpenCascade.js WASM 또는 자체 백엔드)
 3. CAM 툴패스 시뮬레이션 (G-code 미리보기)
 4. 어셈블리 제약 솔버 강화 (mate, contact, hinge)
+
+---
+
+## 11. 배포 점검 (환경 변수·링크)
+
+### 11.1 서버 / 인프라
+
+| 변수 | 용도 |
+|------|------|
+| `REDIS_URL` | BREP STEP 비동기 잡 큐·OpenSCAD 큐 등 다중 인스턴스 공유 |
+| `BREP_WORKER_URL` | STEP 임포트 후 OCCT 워커(`…/tessellate` 등) — 미설정 시 인프로세스 경로 |
+| `BREP_MAX_QUEUE_DEPTH` | STEP 큐 깊이 상한(숫자) |
+| `BREP_WORKER_TIMEOUT_MS` | 워커 호출 타임아웃 |
+| `S3_BUCKET` + 스토리지 키 | 대용량 STEP·아티팩트 업로드 시(관련 코드 경로) |
+| `OPENSCAD_BIN` / `OPENSCADPATH` / `OPENSCAD_USE_DOCKER` | `.scad` 서버 렌더 (`/api/health/openscad`로 점검 가능) |
+
+### 11.2 클라이언트·기능 플래그 (`NEXT_PUBLIC_*`)
+
+| 변수 | 용도 |
+|------|------|
+| `NEXT_PUBLIC_SERVER_STEP_IMPORT` | `0`이면 브라우저 WASM STEP만 사용 |
+| `NEXT_PUBLIC_NEXYFAB_CRDT` | `1`일 때만 피처 트리 Yjs CRDT |
+| `NEXT_PUBLIC_NEXYFLOW_API_URL` | NexyFlow 견적 API 베이스 URL |
+| `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_STATIC_PREFIX` | OCCT 등 WASM 자산 URL 접두사 |
+| `NEXT_PUBLIC_SITE_URL` | 데스크톱/공유 링크 기본 호스트 |
+
+### 11.3 링크·라우트 정합
+
+- 공개 앱 경로는 **`/{lang}/shape-generator`** (`lang` = `kr`, `en`, `ja`, `cn`, `es`, `ar`) 및 **`/sketch`**, **`/3d-edit`**, **`/analysis`** 서브경로. **`/nexyfab/shape-generator` 라우트는 없음** — 이메일·마케팅 CTA는 `/{lang}/shape-generator` 형태를 사용.
+- 한국어 콘텐츠 이메일도 URL 첫 세그먼트는 **`kr`** (`ko` 아님). 트랜잭션 메일 로케일은 **`nexyfabEmailLocaleFromLanguageTag`** → **`nexyfabAppLangPathFromEmailLocale`** (`ko` → `kr`, `zh` → `cn`, 등).
+
+### 11.4 CI·수동
+
+| 항목 | 명령 / 위치 |
+|------|-------------|
+| 전체 CI | `npm run ci:check` |
+| OCCT 번인(느림) | `RUN_OCCT_FEASIBILITY=1` 시 일부 테스트 활성 |

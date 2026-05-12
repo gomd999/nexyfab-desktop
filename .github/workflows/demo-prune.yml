@@ -1,0 +1,22 @@
+name: Demo Session Prune
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # UTC 03:00 = KST 12:00
+  workflow_dispatch:
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call demo-session-prune endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is not set"
+            exit 1
+          fi
+          curl -fsS --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://nexyfab.com/api/cron/demo-session-prune

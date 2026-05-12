@@ -1,0 +1,38 @@
+# 병렬 통합 스모크 — typecheck · route-security · STEP OCCT 라운드트립을 동시에 실행한 뒤 합산 판정.
+# CAD_COMMERCIAL_COMPLETION_ROADMAP Phase A 권장(짧은 주기 신호)과 정합.
+#
+# 트리거: 매주 월요일 06:00 UTC, 수동 workflow_dispatch.
+# PR/push 본편: ci.yml `test` 잡이 동일 스크립트를 먼저 실행(병렬 스모크 → verify).
+# 본 워크플로는 주간·수동 건강도·포크에서 ci 없을 때 보조용.
+
+name: Integration smoke (parallel)
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: integration-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parallel-smoke:
+    name: verify-integration-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: ESLint (errors only)
+        run: npm run lint:ci
+      - name: Parallel integration smoke
+        run: npm run verify:integration-smoke
+        env:
+          JWT_SECRET: ci-integration-smoke-secret-at-least-32-chars-long
+          NODE_ENV: test

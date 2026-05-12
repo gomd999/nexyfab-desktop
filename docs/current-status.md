@@ -1,6 +1,6 @@
 # NexyFab 현재 현황 (Status Snapshot)
 
-> Last updated: 2026-04-23
+> Last updated: 2026-05-12
 > Scope: Phase 진척도 + 라이브 기능 + 기술 부채 + GTM 단계
 
 ---
@@ -64,7 +64,7 @@
 ## 2. 라이브 기능 매트릭스
 
 ### 2.1 3D / CAD
-- ✅ 파라메트릭 CAD (16종 형상)
+- ✅ 파라메트릭 CAD (내장 형상 + 표준 부품 `std:*` 등 다수)
 - ✅ 스케치 → 3D 변환
 - ✅ FEA (선형 응력)
 - ✅ 모달 분석 (고유 진동수)
@@ -75,6 +75,7 @@
 - ✅ 어셈블리 (다중 파트)
 - ✅ 핀 코멘트 협업
 - ✅ IP 보호 공유 링크
+- ⚙️ **피처 트리 + 파라미터 Yjs CRDT** (`ShapeGeneratorInner` ↔ `useCollabFeatureTree`): 배포/로컬에서 **`NEXT_PUBLIC_NEXYFAB_CRDT=1`** 일 때만 활성화됩니다. 미설정 시 기본 꺼짐이며, 코멘트·커서 등 다른 협업 채널과는 별개입니다.
 
 ### 2.2 고객 (Buyer)
 - ✅ 이메일·OAuth·SSO 가입
@@ -159,16 +160,21 @@
 ## 5. 기술 부채 / 알려진 이슈
 
 ### 5.1 코드
-- **shape-generator/page.tsx (341KB 모놀리식)** — 성능 이슈, 모듈 분리 필요
+- **TS `no-explicit-any` 정리 (진행):** 배치 D·E(이전). **F-1:** `api/__tests__/route-security.test.ts` (`NextRequest` 기반 `makeReq`). **F-2:** `partner/settlement-pdf/route.ts`, `partner/orders/route.ts`, `contracts/[id]/pdf/route.ts`, `components/billing/CheckoutModal.tsx`. **F-3:** `features/occtEngine.ts` (STEP export·`ShellableShape`), `workers/stepWorker.ts` (`DfmStatsInput`·`postStepResultToMain`·`unknown` catch), `io/manufacturingPackage.ts` (`ManufacturingSidecarMeta.hasBom` + manifest 옵션). **F-4:** `panels/LeftPanel`·`CanvasGizmoOverlays`·`OnboardingDock`, `DFMWarningBadges`(`DFMResult[]`·`dfmAnalysis` 타입 정렬), `intake/IntakeWizard`·`intakeQuestions`. **F-5:** `intake/ComposeResultPanel`, 패널 도크(`ManufacturingPanelDock`·`FloatingAnalysisDock`·`SplitExportDock`·`VersionDiffDock`·`HelpCluster`), `hooks/useManufacturingFlow`·`useGenDesignIntegration`, `ExpressionInput`·`ScriptPanel`·`StepUploader`, `SketchCanvas`/`Sketch3DCanvas`, `RenderMode`, `SelectionInfoBadge`, `CommandPalette`, `io/RfqPanel` 등. **F-6:** `estimation/SupplierPanel`·`annotations/ThreadHoleCalloutPanel`(`ThreadFit`)·`copilot/cadCopilot`(`SketchProfile`/`SketchConfig`·원형 홀 세그먼트)·`analysis/drawingExport`(`jsPDF`)·`features/nurbsSurface`(`replicad` 타입·`Point2D`·`loft` 캐스트). **F-7:** `useGeometryGC`(`BufferGeometryWithBVH`)·`nexyflowQuoteAPI`(window URL)·`ChangeDetectorPanel`·`PathTracer`·`pdfExport`·`ModelViewer`·`NestingTool`·admin/`login`/`adminlink` `catch (unknown)`. **F-8:** `admin/contracts`·`inquiries` CSV·인덱스 시그니처, `[lang]/nexyfab/admin` 거절 버튼 스타일(`border`), `HomeClient`/랜딩 `dict` 타입, `src/types/browser-globals.d.ts`(reCAPTCHA·Tauri), reCAPTCHA 4페이지·`useAuth`, `lib/storage`(S3Client 타입)·`lib/matching`(`MatchInquiry`/`MatchPartner`)·`api/search`·`api/reviews` POST·`api/files/[contractId]`·admin `db.execute` 캐스트, `analytics` `gtag`/`fbq`, `scad-intent-from-nl`, `serverSolver` 동적 import, `textToSketch`(`Font.generateShapes`), 테스트(`sanitize`·`plan-guard`·`intentToScad`).
+- **다음 배치:** `src` 기준 명시적 `any` 잔여는 주석 문구 외 없음 — 신규 코드는 `unknown`/좁히기 유지. vendor·스크립트·`scripts/`는 필요 시 별도 점검.
+- **shape-generator 모놀리식:** `ShapeGeneratorInner`는 `ShapeGeneratorApp`에서 **동적 import(별도 번들 청크)**. **라우트:** `/shape-generator/sketch`, `/shape-generator/3d-edit`, `/shape-generator/analysis`는 각각 `ShapeGeneratorClientPage`로 진입·URL 유지; `ShapeGeneratorInner`가 pathname·`?entry=`로 워크스페이스 동기화. 진짜 코드 스플릿(탭별 lazy)은 후속.
+- **이메일·3D CTA URL:** `welcomeHtml`·`rfqConfirmationHtml`·`rfqNotificationHtml`이 **`/nexyfab/shape-generator`** 또는 **`/ko/…`** 같이 라우트와 어긋나던 부분을 **`/{kr|en}/shape-generator`**, **`/{kr|en}/nexyfab/rfq/…`** 로 정합 (`nexyfab-email.ts`의 `nexyfabEmailLangPath`). 배포 점검 표는 `docs/3d-tools.md` §11.
+- **이메일 로케일:** `NexyfabEmailContentLocale`(ko·en·ja·cn·es·ar) + `nexyfabEmailLocaleFromLanguageTag` / `nexyfabAppLangPathFromEmailLocale` — 환영·RFQ 확인·인증·드립 D+1/D+7 제목·본문(한·영·일·중, es/ar는 영문 본문+해당 `[lang]` 링크), 가입 `language`에 `es`·`ar` 허용, RFQ는 `nf_users.language` 우선.
 - **서버사이드 B-Rep API 부재** — 모든 기하 작업 클라이언트 (Phase 4 미래)
 - **admin 대시보드 부분 구현** — 이메일 템플릿, RFQ 매칭 미리보기만 있음 (공급사 온보딩 UX 미완)
 
 ### 5.2 데이터
-- admin 집계 쿼리에 `JOIN nf_sessions WHERE is_demo = false` 추가 필요 (데모 데이터 노이즈 제거)
-- `dfm-check` POST 라우트 데모 세션 미지원 (현재 RFQ + funnel-event 만)
+- **데모 KPI 노이즈:** 다수 admin API는 `user_id <> 'demo-user'` 패턴으로 격리됨. `GET /api/admin/stage-overview`도 동일 기준으로 Stage 분포·24h 퍼널·DFM 집계에서 sentinel 제외 (2026-05-11).
+- **세션 단위 추가 필터**가 필요하면 `nf_sessions.is_demo` 조인으로 코호트별 시리즈를 나눌 수 있음 — 미적용.
+- **`dfm-check`:** 비로그인 데모는 `ensureDemoSession` + `nf_dfm_check.session_id` 로 영속화됨 (`/api/nexyfab/dfm-check`).
 
 ### 5.3 비즈니스
-- **Phase 7-5 (공급사 신용·평점)** 차단 — Phase 8 마켓플레이스 스케일까지 저우선
+- **Phase 7-5 (공급사 신뢰·평가):** §6.4와 같이 **차원별** 지표(납기·품질·응답·소통·공정 적합도)로 진행. **스키마 메타 API:** `GET /api/nexyfab/partner-trust-dimensions`. **집계 API:** `GET /api/nexyfab/partner-trust-aggregates?email=&windowDays=` — `nf_partner_metric_events` + `nf_reviews` 보조 평균, 파트너 대시보드·관리자 파트너 목록(모달)에 표시. DB 전용 `nf_partner_*` 테이블·바이어 RFQ 카드 심화는 후속.
 - **Phase 8 (마켓플레이스 자체 발견)** 미시작 — 현재 영업 주도 매칭
 
 ---
@@ -206,12 +212,12 @@
 ## 7. 다음 우선순위 (Recommended Next)
 
 ### 즉시 (1-2주)
-1. **Phase 7-5 시작** — 공급사 신용·평점 (납기 준수율, 불량률, NPS)
-2. **admin 집계 쿼리 데모 제외** — `JOIN nf_sessions WHERE is_demo = false`
-3. **dfm-check 데모 세션 지원** — POST 라우트 확장
+1. **Phase 7-5 확장** — `partner-trust-dimensions` + **`partner-trust-aggregates`** 집계·파트너 대시보드·admin 파트너 UI 반영 완료. 후속: 주문/리뷰 이벤트 백필 강화, 바이어 RFQ 카드·파트너 포털 타 화면 확산, `nf_partner_*` 영속 스키마(선택).
+2. **admin·BM 운영 보강** — `docs/bm-cron-runbook.md`에 데모 격리(Stage 아웃박스·롤링 분기·stale 스캔) 명시; `stage-worker`가 `demo-user` 이벤트를 알림 없이 소진, `rolling-quarterly-metrics`·`evaluateStaleUsers`에서 `demo-user` 제외. Stage 워커·집계는 `stage-overview`/admin KPI와 동일 sentinel 기준.
 
 ### 단기 (1개월)
-4. **shape-generator 모놀리식 분리** — sketch / 3d-edit / analysis 3개 라우트
+3. **BM Phase 3 롤링 문서 유지** — 2026-05-12 롤링: `docs/strategy/stage-e-business-account-policy.md`(§4 배치·데모), `bm-logging-coverage.md`(Stage/7-5 행·앵커), `bm-ui-screen-map.md`(ID 20). 이후 갭은 동일 PR 규칙으로 유지.
+4. **shape-generator 모놀리식 분리** — sketch / 3d-edit / analysis **3개 라우트(진입·URL·워크스페이스 초기화)** 반영; 번들 단위 탭 분리는 후속
 5. **admin 공급사 온보딩 UX 완성** — 인증 검증, 프로필 승인 워크플로우
 6. **데모 → 가입 전환 분석 대시보드** — `nf_sessions.claimed_at` 기반
 
@@ -226,4 +232,4 @@
 
 작업 중인 활성 태스크: **없음** (Phase D-5 완료로 데모 모드 시리즈 마감)
 
-다음 결정 필요: Phase 7-5 (공급사 신용·평점) 착수 vs. admin 집계 쿼리 데모 제외 패치 우선.
+다음 결정 필요: **Phase 7-5 (공급사 신용·평점)** 착수 시점 vs. shape-generator 분해 등 단기 기술부채.

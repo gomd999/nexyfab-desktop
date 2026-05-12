@@ -1,0 +1,220 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 0.1.0)'
+        required: true
+
+env:
+  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: windows-x86_64
+            artifact_pattern: '*.msi'
+            artifact_name: win-x64
+          - platform: macos-latest
+            target: darwin-aarch64
+            args: '--target aarch64-apple-darwin'
+            artifact_pattern: '*.dmg'
+            artifact_name: mac-aarch64
+          - platform: macos-13
+            target: darwin-x86_64
+            args: '--target x86_64-apple-darwin'
+            artifact_pattern: '*.dmg'
+            artifact_name: mac-x64
+          - platform: ubuntu-22.04
+            target: linux-x86_64
+            artifact_pattern: '*.AppImage'
+            artifact_name: linux-x64
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || matrix.platform == 'macos-13' && 'x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI: 'true'
+        with:
+          args: ${{ matrix.args || '' }}
+
+      - name: Find built artifact
+        id: artifact
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            FILE=$(find src-tauri/target -name "*.msi" | grep -v ".msi.zip" | head -1)
+          elif [[ "${{ matrix.platform }}" == macos* ]]; then
+            FILE=$(find src-tauri/target -name "*.dmg" | head -1)
+          else
+            FILE=$(find src-tauri/target -name "*.AppImage" | grep -v ".tar.gz" | head -1)
+          fi
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "filename=$(basename $FILE)" >> $GITHUB_OUTPUT
+          # Signature file (Tauri updater)
+          SIG_FILE="${FILE}.sig"
+          if [ -f "$SIG_FILE" ]; then
+            echo "sig_file=$SIG_FILE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        shell: bash
+        run: |
+          # Resolve version from tag (v0.1.0 → 0.1.0) or manual input
+          if [ -n "${{ github.ref_name }}" ] && [[ "${{ github.ref_name }}" == v* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="v${{ github.event.inputs.version }}"
+          fi
+          VERSION="${VERSION#v}"
+
+          aws s3 cp "${{ steps.artifact.outputs.file }}" \
+            "s3://$R2_BUCKET/releases/$VERSION/${{ steps.artifact.outputs.filename }}" \
+            --endpoint-url "$R2_ENDPOINT"
+
+          # Upload .sig file alongside the artifact (required by Tauri updater)
+          if [ -n "${{ steps.artifact.outputs.sig_file }}" ]; then
+            aws s3 cp "${{ steps.artifact.outputs.sig_file }}" \
+              "s3://$R2_BUCKET/releases/$VERSION/${{ steps.artifact.outputs.filename }}.sig" \
+              --endpoint-url "$R2_ENDPOINT"
+          fi
+
+      - name: Upload .sig file as artifact
+        if: steps.artifact.outputs.sig_file
+        uses: actions/upload-artifact@v4
+        with:
+          name: sig-${{ matrix.artifact_name }}
+          path: ${{ steps.artifact.outputs.sig_file }}
+          retention-days: 7
+
+  register-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all .sig artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: sigs/
+          pattern: sig-*
+          merge-multiple: false
+
+      - name: Extract signatures + release notes
+        id: meta
+        shell: bash
+        run: |
+          # Resolve version
+          if [ -n "${{ github.ref_name }}" ] && [[ "${{ github.ref_name }}" == v* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="v${{ github.event.inputs.version }}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Read .sig contents (first file found per platform)
+          read_sig() {
+            local pattern="$1"
+            local file
+            file=$(find sigs/ -name "$pattern" 2>/dev/null | head -1)
+            if [ -n "$file" ] && [ -f "$file" ]; then
+              # Escape newlines/quotes for JSON embedding
+              node -e "console.log(JSON.stringify(require('fs').readFileSync('$file','utf8')))"
+            else
+              echo '""'
+            fi
+          }
+
+          SIG_WIN=$(read_sig "*.msi.sig")
+          SIG_MAC_ARM=$(read_sig "*aarch64.dmg.sig")
+          SIG_MAC_X64=$(read_sig "*x64.dmg.sig")
+          SIG_LINUX=$(read_sig "*.AppImage.sig")
+
+          echo "sig_win=$SIG_WIN" >> $GITHUB_OUTPUT
+          echo "sig_mac_arm=$SIG_MAC_ARM" >> $GITHUB_OUTPUT
+          echo "sig_mac_x64=$SIG_MAC_X64" >> $GITHUB_OUTPUT
+          echo "sig_linux=$SIG_LINUX" >> $GITHUB_OUTPUT
+
+          # Release notes: prefer CHANGELOG.md section for this version, else tag message, else default
+          NOTES_FILE="$(mktemp)"
+          if [ -f CHANGELOG.md ]; then
+            awk -v v="$VERSION" '
+              $0 ~ "^##[[:space:]]*\\[?v?"v"\\]?" { capture=1; next }
+              capture && /^##[[:space:]]/ { exit }
+              capture { print }
+            ' CHANGELOG.md > "$NOTES_FILE"
+          fi
+          if [ ! -s "$NOTES_FILE" ] && [ -n "${{ github.ref_name }}" ]; then
+            git tag -l --format='%(contents)' "${{ github.ref_name }}" > "$NOTES_FILE" 2>/dev/null || true
+          fi
+          if [ ! -s "$NOTES_FILE" ]; then
+            printf "## NexyFab %s\n\n- 새 릴리즈" "$VERSION" > "$NOTES_FILE"
+          fi
+          NOTES_JSON=$(node -e "console.log(JSON.stringify(require('fs').readFileSync('$NOTES_FILE','utf8')))")
+          echo "notes=$NOTES_JSON" >> $GITHUB_OUTPUT
+
+      - name: Register release in DB
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+        shell: bash
+        run: |
+          # Build JSON body — signatures already JSON-escaped (quoted strings)
+          BODY=$(cat <<EOF
+          {
+            "version": "${{ steps.meta.outputs.version }}",
+            "notes": ${{ steps.meta.outputs.notes }},
+            "is_latest": true,
+            "sig_win_x64": ${{ steps.meta.outputs.sig_win }},
+            "sig_mac_aarch64": ${{ steps.meta.outputs.sig_mac_arm }},
+            "sig_mac_x64": ${{ steps.meta.outputs.sig_mac_x64 }},
+            "sig_linux_x64": ${{ steps.meta.outputs.sig_linux }}
+          }
+          EOF
+          )
+
+          echo "$BODY" | head -c 400
+
+          curl -fsS -X POST "$APP_URL/api/admin/releases" \
+            -H "Content-Type: application/json" \
+            -H "x-admin-secret: $ADMIN_SECRET" \
+            -d "$BODY"

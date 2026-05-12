@@ -1,0 +1,47 @@
+name: Build Test (PR)
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: ESLint (errors only)
+        run: npm run lint:ci
+
+      - name: Milestone gates (M0–M7 + security)
+        run: npm run verify
+
+      - name: STEP OCCT import smoke
+        run: npm run test:step-roundtrip
+        timeout-minutes: 15
+
+      - name: Install Rust (Tauri crate tests)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache (src-tauri)
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Tauri I/O unit tests
+        run: npm run test:tauri-unit
+        timeout-minutes: 25

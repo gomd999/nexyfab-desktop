@@ -1,0 +1,27 @@
+# 만료된 nf_project_invites 행 삭제. DB 경로는 저장소 Secrets에 `NEXYFAB_DB_PATH` 로 설정 후 수동 실행.
+# 주기 실행은 DB가 있는 러너/시크릿이 있을 때만 켜세요(포크 기본 비활성).
+name: Prune expired project invites
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: DELETE expired invites
+        env:
+          NEXYFAB_DB_PATH: ${{ secrets.NEXYFAB_DB_PATH }}
+        run: |
+          if [ -z "${NEXYFAB_DB_PATH:-}" ]; then
+            echo "::notice::Skip prune: set repository secret NEXYFAB_DB_PATH to your SQLite DB file."
+            exit 0
+          fi
+          node scripts/prune-expired-invites.mjs

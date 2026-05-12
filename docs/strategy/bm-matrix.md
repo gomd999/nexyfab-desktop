@@ -394,6 +394,8 @@ CREATE TABLE nf_bundle_orders (
 
 Phase 1 빌드 중 수시로 확인:
 
+> **2026-05-11:** 운영 크론 순서·Stage 워커 트리거는 [bm-cron-runbook.md](../bm-cron-runbook.md) 참고. 아래 항목은 DB·배포별로 분기 점검.
+
 - [ ] 모든 ENUM 컬럼이 lookup 테이블 FK를 가진다 (문자열 자유 입력 0건)
 - [ ] `nf_stage_event`는 UPDATE 권한이 revoked (append-only)
 - [ ] `evaluateStage`가 항상 `MAX(current, computed)` 규칙으로 등급 계산
@@ -406,6 +408,9 @@ Phase 1 빌드 중 수시로 확인:
 
 ## 6. 관련 문서
 
+- **Stage E 법인·조직 조건(운영 경계):** [stage-e-business-account-policy.md](./stage-e-business-account-policy.md)
+- **§4.4 로깅 커버리지(코드 스냅샷):** [bm-logging-coverage.md](./bm-logging-coverage.md)
+- **§1.2 기능 번호 ↔ 화면 매핑(롤링):** [bm-ui-screen-map.md](./bm-ui-screen-map.md)
 - **코드·UI ↔ 본 문서 갭 목록(롤링):** [BM_MATRIX_CODE_GAP.md](./BM_MATRIX_CODE_GAP.md)
 - 기능 42개 원본: `docs/strategy/feature-inventory-2026-04.md` (작성 예정)
 - Phase 7-4a 멀티통화·컴플라이언스 구현: `docs/database-migration.md` v58-v60
