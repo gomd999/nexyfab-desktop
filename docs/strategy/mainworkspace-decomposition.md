@@ -239,3 +239,39 @@ panels.
 
 This is the *focused dedicated session* the prior memory entry referenced.
 A is ~2-3 hours; B is the multi-week reduction. Both are unblocked.
+
+### 2026-05-13 ApproachA evaluation
+
+Investigated Approach A in detail and found it has lower value than the
+description above suggested. The renderWorkspaceShapePreview function is
+essentially `<ShapePreview {...props} />` — the JSX wraps no logic of its
+own, just builds the prop bag. Moving the JSX into a new file would
+mean either:
+  - re-using ShapePreview's existing props interface (in which case the
+    new file is a 5-line wrapper around an already-extracted component);
+    or
+  - duplicating ~80 prop type declarations into a new interface (200+
+    lines of mechanical noise).
+
+Neither produces lasting structural reduction. The real coupling lives
+in the *prop construction* inside Inner.tsx (the 200 lines that compute
+viewportShapeResult, effectiveBomParts, the inline arrow handlers, etc.),
+not in the JSX block itself. Approach B addresses that; Approach A does
+not.
+
+Recommendation revised: **skip Approach A**. The 5 callback hooks
+landed in steps 5.1-5.5 already extracted the meaningful inline logic
+(~200 lines of arrow function bodies). The remaining JSX block is
+inert prop wiring that doesn't benefit from being in its own file.
+
+When time comes to do Approach B (canvas reads `useAssemblyState` /
+`useViewportState` / `useSketchState` / stores directly), start by
+*adding* those hook reads inside Inner.tsx alongside the prop wiring,
+delete the prop wiring once the hooks are confirmed equivalent, *then*
+extract the trimmed canvas region as its own component. By that point
+the prop interface is small enough that the file boundary actually
+reduces coupling.
+
+For now, treat MW step 5 as **structurally complete via steps 5.1-5.5**.
+The bare ShapePreview prop block stays in Inner.tsx until Approach B
+work begins.
