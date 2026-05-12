@@ -8,6 +8,7 @@ import type { PrintAnalysisResult } from '../analysis/printAnalysis'
 import type { ValidationResult } from '../analysis/geometryValidation'
 import type { GDTAnnotation, DimensionAnnotation } from '../annotations/GDTTypes'
 import type { DrawingResult } from '../analysis/autoDrawing'
+import type { SweepResult, SensitivityEntry } from '../analysis/parametricSweep'
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,9 @@ interface AnalysisState {
   dimensionAnnotations: DimensionAnnotation[]
   showCenterOfMass: [number, number, number] | null
   autoDrawingResult: DrawingResult | null
+  sweepResult: SweepResult | null
+  sweepResult2: SweepResult | null
+  sweepSensitivity: SensitivityEntry[]
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -49,6 +53,9 @@ interface AnalysisActions {
   setDimensionAnnotations: (annotations: DimensionAnnotation[]) => void
   setShowCenterOfMass: (pos: [number, number, number] | null) => void
   setAutoDrawingResult: (result: DrawingResult | null) => void
+  setSweepResult: (result: SweepResult | null) => void
+  setSweepResult2: (result: SweepResult | null) => void
+  setSweepSensitivity: (entries: SensitivityEntry[]) => void
   clearAnalysis: () => void
   addGDTAnnotation: (a: GDTAnnotation) => void
   updateGDTAnnotation: (id: string, update: Partial<GDTAnnotation>) => void
@@ -80,6 +87,9 @@ export const useAnalysisStore = create<AnalysisStore>()(
     dimensionAnnotations: [],
     showCenterOfMass: null,
     autoDrawingResult: null,
+    sweepResult: null,
+    sweepResult2: null,
+    sweepSensitivity: [],
 
     // Actions
     setFeaResult: (result) =>
@@ -162,6 +172,21 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.autoDrawingResult = result
       }),
 
+    setSweepResult: (result) =>
+      set((state) => {
+        state.sweepResult = result
+      }),
+
+    setSweepResult2: (result) =>
+      set((state) => {
+        state.sweepResult2 = result
+      }),
+
+    setSweepSensitivity: (entries) =>
+      set((state) => {
+        state.sweepSensitivity = entries
+      }),
+
     clearAnalysis: () =>
       set((state) => {
         state.feaResult = null
@@ -175,6 +200,9 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.dimensionAnnotations = []
         state.feaConditions = []
         state.autoDrawingResult = null
+        state.sweepResult = null
+        state.sweepResult2 = null
+        state.sweepSensitivity = []
       }),
 
     addGDTAnnotation: (a) =>

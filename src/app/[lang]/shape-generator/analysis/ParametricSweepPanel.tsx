@@ -9,6 +9,7 @@ import {
   type SweepResult,
   type SensitivityEntry,
 } from './parametricSweep';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ── i18n ──────────────────────────────────────────────────────────────────── */
 
@@ -216,6 +217,16 @@ interface Props {
   onApplyBest: (params: Record<string, number>) => void;
   onClose: () => void;
   onEvaluate?: (params: Record<string, number>, objective: SweepObjective) => number;
+  /**
+   * J5 migration: when omitted the panel reads sweep state from
+   * `useAnalysisStore` so closing and reopening preserves the last sweep
+   * (a full sweep can take minutes — we don't want users to lose it on a
+   * panel close). Pass `result` / `sensitivity` explicitly to preview an
+   * external sweep without writing it to the store.
+   */
+  result?: SweepResult | null;
+  result2?: SweepResult | null;
+  sensitivity?: SensitivityEntry[];
 }
 
 /* ── Theme ─────────────────────────────────────────────────────────────────── */
@@ -563,6 +574,9 @@ export default function ParametricSweepPanel({
   onApplyBest,
   onClose,
   onEvaluate,
+  result: propResult,
+  result2: propResult2,
+  sensitivity: propSensitivity,
 }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
@@ -579,11 +593,18 @@ export default function ParametricSweepPanel({
   // Running state
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  // Results
-  const [result, setResult] = useState<SweepResult | null>(null);
-  const [sensitivity, setSensitivity] = useState<SensitivityEntry[]>([]);
-  // Secondary results (for Pareto)
-  const [result2, setResult2] = useState<SweepResult | null>(null);
+  // Results — J5: live in analysisStore so a panel close/reopen preserves
+  // the last sweep. propResult/propSensitivity/propResult2 override the
+  // store reads when the caller wants to drive the panel externally.
+  const storeResult = useAnalysisStore(s => s.sweepResult);
+  const storeResult2 = useAnalysisStore(s => s.sweepResult2);
+  const storeSensitivity = useAnalysisStore(s => s.sweepSensitivity);
+  const setResult = useAnalysisStore(s => s.setSweepResult);
+  const setResult2 = useAnalysisStore(s => s.setSweepResult2);
+  const setSensitivity = useAnalysisStore(s => s.setSweepSensitivity);
+  const result = propResult ?? storeResult;
+  const result2 = propResult2 ?? storeResult2;
+  const sensitivity = propSensitivity ?? storeSensitivity;
   // Results tab
   const [tab, setTab] = useState<'table' | 'sensitivity' | 'heatmap' | 'pareto'>('table');
   // Sort
