@@ -6,6 +6,9 @@ import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffe
 import { useUIStore } from './store/uiStore';
 import { useSelectionStore } from './store/selectionStore';
 import { useCanvasSelectionHandlers } from './hooks/useCanvasSelectionHandlers';
+import { useCanvasFileImport } from './hooks/useCanvasFileImport';
+import { useRadialCommand } from './hooks/useRadialCommand';
+import { useNurbsCpEdit } from './hooks/useNurbsCpEdit';
 import { useSceneStore } from './store/sceneStore';
 // Responsive layout imports
 import { useResponsive } from './responsive/useResponsive';
@@ -5879,11 +5882,10 @@ export function ShapeGeneratorInner() {
     return combined.length > 0 ? combined : undefined;
   }, [bodyBomParts, bomParts, placedParts]);
 
-  // MW step 5.1 — selection + mate-pairing callback cluster extracted to
-  // useCanvasSelectionHandlers so the future MainWorkspace component can
-  // reuse it directly and so the inline callback no longer re-creates on
-  // every render of the canvas region. MUST live above the mobile-gate
-  // early return so React hook order stays stable across remounts.
+  // MW step 5.1-5.4 — callback clusters extracted to hooks/ so the future
+  // MainWorkspace component reads them directly without prop-drilling.
+  // All hook calls MUST live above the mobile-gate early return so React
+  // hook order stays stable across remounts.
   const { onElementSelect: canvasOnElementSelect, highlightTriangles: canvasHighlightTriangles } =
     useCanvasSelectionHandlers({
       generateMateId,
@@ -5897,6 +5899,28 @@ export function ShapeGeneratorInner() {
       onUnpairedFace: () => addToast('error', 'Select faces on different parts to create a mate.'),
       onParallelHint: () => addToast('info', lt.mateParallelHint ?? 'Faces are parallel (same direction) — you may need to flip one part.'),
     });
+
+  const { onFileImport: canvasOnFileImport } = useCanvasFileImport({
+    setImportedGeometry,
+    setSketchResult,
+    setBomParts,
+    setBomLabel,
+    setIsSketchMode,
+    addToast,
+    labels: { importedFile: lt.importedFile, importFailedFile: lt.importFailedFile },
+  });
+
+  const { onRadialCommand: canvasOnRadialCommand } = useRadialCommand({
+    isSketchMode,
+    setIsSketchMode,
+    setSketchResult,
+    setEditMode,
+    setSketchTool,
+    handleSketchGenerate,
+  });
+
+  const { nurbsCPEdit: canvasNurbsCPEdit, nurbsCPParams: canvasNurbsCPParams, onNurbsCPParamChange: canvasOnNurbsCPParamChange } =
+    useNurbsCpEdit({ selectedFeatureId, features, updateFeatureParam });
 
   // ══════════════════════════════════════════════════════════════════════════
   // RENDER — MOBILE GATE (phone users → dedicated landing)
@@ -6041,19 +6065,7 @@ export function ShapeGeneratorInner() {
                     showPerf={showPerf}
                     materialId={materialId}
                     onMaterialDrop={setMaterialId}
-                    onRadialCommand={(cmd) => {
-                      if (cmd === 'sketch_start') { setIsSketchMode(true); setSketchResult(null); setEditMode('none'); }
-                      else if (cmd === 'sketch_finish') { handleSketchGenerate(); }
-                      else if (cmd === 'cancel') { setIsSketchMode(false); setEditMode('none'); }
-                      else if (cmd === 'extrude') {
-                        if (isSketchMode) handleSketchGenerate();
-                        else { setIsSketchMode(true); setSketchResult(null); setEditMode('none'); }
-                      }
-                      else if (cmd === 'sketch_line') { setIsSketchMode(true); setSketchTool('line'); }
-                      else if (cmd === 'sketch_rect') { setIsSketchMode(true); setSketchTool('rect'); }
-                      else if (cmd === 'sketch_circle') { setIsSketchMode(true); setSketchTool('circle'); }
-                      else if (cmd === 'fillet') { setEditMode('face'); }
-                    }}
+                    onRadialCommand={canvasOnRadialCommand}
                     collabUsers={collabUsers}
                     awarenessPresences={awarenessPresences}
                     awarenessLocalClientId={crdtBridge.doc.doc.clientID}
@@ -6126,63 +6138,14 @@ export function ShapeGeneratorInner() {
                     snapEnabled={snapEnabled}
                     ghostResult={isPreviewMode ? previewResult : null}
                     motionPartTransforms={motionPartTransforms}
-                    nurbsCPEdit={(() => {
-                      const sel = selectedFeatureId ? features.find(f => f.id === selectedFeatureId) : null;
-                      return !!(sel && sel.type === 'nurbsSurface' && sel.enabled);
-                    })()}
-                    nurbsCPParams={(() => {
-                      const sel = selectedFeatureId ? features.find(f => f.id === selectedFeatureId) : null;
-                      return sel?.type === 'nurbsSurface' ? sel.params : undefined;
-                    })()}
-                    onNurbsCPParamChange={(key, value) => {
-                      if (selectedFeatureId) updateFeatureParam(selectedFeatureId, key, value);
-                    }}
+                    nurbsCPEdit={canvasNurbsCPEdit}
+                    nurbsCPParams={canvasNurbsCPParams}
+                    onNurbsCPParamChange={canvasOnNurbsCPParamChange}
                     selectionActive={selectionActive}
                     onToggleSelection={toggleFaceSelectionMode}
                     onElementSelect={canvasOnElementSelect}
                     highlightTriangles={canvasHighlightTriangles}
-                    onFileImport={async (file) => {
-                      try {
-                        const { prepareImportedShapeFromFile, pushRecentImportFile } = await import('./io/importMeshPipeline');
-                        const prepared = await prepareImportedShapeFromFile(file);
-                        const ext = prepared.filename.split('.').pop()?.toLowerCase() ?? '';
-                        setImportedGeometry(prepared.geometry);
-                        setSketchResult({
-                          geometry: prepared.geometry,
-                          edgeGeometry: prepared.edgeGeometry,
-                          volume_cm3: prepared.volume_cm3,
-                          surface_area_cm2: prepared.surface_area_cm2,
-                          bbox: prepared.bbox,
-                        });
-                        
-                        if (prepared.parts && prepared.parts.length > 1) {
-                          const { makeEdges, meshVolume, meshSurfaceArea } = await import('./shapes');
-                          const bomResults = prepared.parts.map(p => {
-                            const pGeo = p.geometry;
-                            const pEdge = makeEdges(pGeo);
-                            pGeo.computeBoundingBox();
-                            const pBb = pGeo.boundingBox;
-                            const pSize = pBb ? new Vector3() : null;
-                            if (pBb && pSize) pBb.getSize(pSize);
-                            const pBbox = pSize ? { w: Math.round(pSize.x), h: Math.round(pSize.y), d: Math.round(pSize.z) } : { w: 0, h: 0, d: 0 };
-                            return {
-                              name: p.name,
-                              result: { geometry: pGeo, edgeGeometry: pEdge, volume_cm3: meshVolume(pGeo) / 1000, surface_area_cm2: meshSurfaceArea(pGeo) / 100, bbox: pBbox }
-                            };
-                          });
-                          setBomParts(bomResults);
-                          setBomLabel(prepared.filename);
-                        } else {
-                          setBomParts([]); setBomLabel('');
-                        }
-                        
-                        setIsSketchMode(false);
-                        pushRecentImportFile(prepared.filename, ext, file.size);
-                        addToast('success', lt.importedFile(prepared.filename));
-                      } catch (err) {
-                        addToast('error', lt.importFailedFile(err instanceof Error ? err.message : String(err)));
-                      }
-                    }}
+                    onFileImport={canvasOnFileImport}
                     blockAutomaticGeometryFit={viewportGeometryFitSuppressed}
                     projectCameraToApply={projectCameraToApply}
                     onProjectCameraApplied={handleProjectCameraApplied}
