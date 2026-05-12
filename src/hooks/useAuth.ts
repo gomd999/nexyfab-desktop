@@ -9,7 +9,7 @@ import { parseUserStageColumn, type Stage } from '@/lib/userStage';
 
 /** Tauri 데스크톱 여부에 따라 API base URL 반환 */
 function apiBase(): string {
-  if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+  if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
     return 'https://nexyfab.com';
   }
   return '';
@@ -81,10 +81,19 @@ export const useAuthStore = create<AuthStore>()(
       signup: async (email, password, name) => {
         set({ isLoading: true, error: null });
         try {
+          // Pull first-touch UTM record (if any) so the signup_complete
+          // funnel event can be attributed to the originating ad/campaign.
+          // Lazy import keeps this out of the critical path when no UTM exists.
+          let utm: Record<string, unknown> | undefined;
+          try {
+            const mod = await import('@/lib/utm-tracker');
+            const rec = mod.getUtm();
+            if (rec) utm = rec as Record<string, unknown>;
+          } catch { /* ignore — UTM is opportunistic */ }
           const res = await fetch(`${apiBase()}/api/auth/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name }),
+            body: JSON.stringify({ email, password, name, utm }),
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({ error: 'Signup failed' }));

@@ -30,9 +30,11 @@ export default function OnboardingChecklist({
   const [visitedMarketplace, setVisitedMarketplace] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setVisitedMarketplace(!!localStorage.getItem('nf_visited_marketplace'));
-    }
+    queueMicrotask(() => {
+      if (typeof window !== 'undefined') {
+        setVisitedMarketplace(!!localStorage.getItem('nf_visited_marketplace'));
+      }
+    });
   }, []);
 
   const items: ChecklistItem[] = [

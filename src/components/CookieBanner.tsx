@@ -53,12 +53,14 @@ export default function CookieBanner({ lang: langProp }: { lang?: string }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) setVisible(true);
-    } catch {
-      setVisible(true);
-    }
+    queueMicrotask(() => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) setVisible(true);
+      } catch {
+        setVisible(true);
+      }
+    });
   }, []);
 
   const handleConsent = (type: 'all' | 'essential') => {

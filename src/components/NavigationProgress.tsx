@@ -11,9 +11,11 @@ export default function NavigationProgress() {
 
   useEffect(() => {
     if (pathname !== prevPath.current) {
-      // Route changed — animate to 100%
-      setProgress(90);
-      setVisible(true);
+      // Route changed — animate to 100% (defer to avoid sync setState in effect)
+      queueMicrotask(() => {
+        setProgress(90);
+        setVisible(true);
+      });
       const t = setTimeout(() => {
         setProgress(100);
         setTimeout(() => {

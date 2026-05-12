@@ -50,14 +50,15 @@ export default function LanguageSelector() {
 
     // Keep ref in sync with state for timeout closures
     useEffect(() => {
-        isHoveredRef.current = isHovered;
-        if (isHovered) {
-            setIsVisible(true);
-            if (hideTimeout.current) clearTimeout(hideTimeout.current);
-        } else {
-            resetHideTimeout();
-        }
-     
+        queueMicrotask(() => {
+            isHoveredRef.current = isHovered;
+            if (isHovered) {
+                setIsVisible(true);
+                if (hideTimeout.current) clearTimeout(hideTimeout.current);
+            } else {
+                resetHideTimeout();
+            }
+        });
     }, [isHovered]);
 
     useEffect(() => {

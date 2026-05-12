@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
 export interface StreamNotification {
   id: string;
@@ -18,34 +18,42 @@ export function useNotificationStream(
 ) {
   const esRef = useRef<EventSource | null>(null);
   const onNotifRef = useRef(onNotification);
-  onNotifRef.current = onNotification;
-
-  const connect = useCallback(() => {
-    if (esRef.current) esRef.current.close();
-    const es = new EventSource('/api/notifications/stream');
-    esRef.current = es;
-
-    es.addEventListener('notification', (e) => {
-      try {
-        const data = JSON.parse(e.data) as StreamNotification;
-        onNotifRef.current(data);
-      } catch { /* ignore */ }
-    });
-
-    es.onerror = () => {
-      es.close();
-      esRef.current = null;
-      // Reconnect after 10s on error
-      if (enabled) setTimeout(connect, 10_000);
-    };
-  }, [enabled]);
+  
+  useEffect(() => {
+    onNotifRef.current = onNotification;
+  }, [onNotification]);
 
   useEffect(() => {
     if (!enabled) return;
+    
+    let isSubscribed = true;
+
+    const connect = () => {
+      if (!isSubscribed) return;
+      if (esRef.current) esRef.current.close();
+      const es = new EventSource('/api/notifications/stream');
+      esRef.current = es;
+
+      es.addEventListener('notification', (e) => {
+        try {
+          const data = JSON.parse(e.data) as StreamNotification;
+          onNotifRef.current(data);
+        } catch { /* ignore */ }
+      });
+
+      es.onerror = () => {
+        es.close();
+        esRef.current = null;
+        if (enabled && isSubscribed) setTimeout(connect, 10_000);
+      };
+    };
+
     connect();
+
     return () => {
+      isSubscribed = false;
       esRef.current?.close();
       esRef.current = null;
     };
-  }, [enabled, connect]);
+  }, [enabled]);
 }

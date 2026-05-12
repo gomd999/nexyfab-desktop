@@ -26,6 +26,18 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
     console.error('[ErrorBoundary]', error.message, info.componentStack);
     this.props.onError?.(error, info);
+    // Default Sentry forward — runs even when no onError prop is provided so
+    // unhandled subtree crashes always reach the Issues feed. Lazy-import to
+    // keep the ErrorBoundary fallback path on the critical render path while
+    // still benefiting from instrumentation-client.ts's PII scrub.
+    void import('@sentry/nextjs')
+      .then(sentry => {
+        sentry.captureException?.(error, {
+          tags: { source: 'ErrorBoundary' },
+          extra: { componentStack: info.componentStack },
+        });
+      })
+      .catch(() => { /* SDK unavailable — fallback already logged above */ });
   }
 
   render(): React.ReactNode {

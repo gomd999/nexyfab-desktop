@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef as _useRef, useState } from 'react';
 import DfmScoreBadge from './DfmScoreBadge';
 
-interface ModelMeta {
+interface _ModelMeta {
   name?: string;
   material?: string;
   bbox?: { w: number; h: number; d: number };
@@ -48,16 +48,21 @@ export default function RfqModelViewer({
   // Auto-fetch model info from API
   useEffect(() => {
     if (!autoFetch || !rfqId || initialShareToken) return;
-    setLoading(true);
+    let isSubscribed = true;
     fetch(`/api/nexyfab/rfq/${rfqId}/model`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
+        if (!isSubscribed) return;
         if (data?.shareToken) setShareToken(data.shareToken);
         if (data?.dfmScore != null) setDfmScore(data.dfmScore);
         if (data?.dfmProcess) setDfmProcess(data.dfmProcess);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isSubscribed) setLoading(false);
+      });
+      
+    return () => { isSubscribed = false; };
   }, [autoFetch, rfqId, initialShareToken]);
 
   const height = variant === 'expanded' ? 320 : 200;

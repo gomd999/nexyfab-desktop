@@ -7,7 +7,7 @@ interface Props {
   lang?: string;
 }
 
-export default function VerificationBanner({ lang = 'ko' }: Props) {
+export default function VerificationBanner({ lang: _lang = 'ko' }: Props) {
   const { user, setUser } = useAuthStore();
   const [digits, setDigits] = useState<string[]>(Array(6).fill(''));
   const [sending, setSending] = useState(false);

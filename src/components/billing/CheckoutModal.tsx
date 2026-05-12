@@ -49,12 +49,31 @@ interface CheckoutModalProps {
   onClose:          () => void;
 }
 
-// ── Declare globals loaded via CDN ────────────────────────────────────────────
+/** Subset of Airwallex.js Drop-in used by this modal (loaded from CDN) */
+type AirwallexEnv = 'demo' | 'prod';
+
+interface AirwallexDropInElement {
+  mount(el: HTMLElement): void;
+  unmount?: () => void;
+  on(
+    event: 'success' | 'error',
+    handler: (ev: {
+      detail?: { paymentIntent?: { id?: string }; error?: { message?: string } };
+    }) => void,
+  ): void;
+}
+
+interface AirwallexSDK {
+  init(opts: { env: AirwallexEnv; origin: string }): Promise<void>;
+  createElement(
+    type: 'dropIn',
+    opts: Record<string, unknown>,
+  ): AirwallexDropInElement;
+}
 
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Airwallex: any;
+    Airwallex?: AirwallexSDK;
   }
 }
 
@@ -118,8 +137,7 @@ export default function CheckoutModal({
   useEffect(() => {
     if (step !== 'ready' || isToss || !params?.intentId || !params.clientSecret) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let dropInElement: any = null;
+    let dropInElement: AirwallexDropInElement | null = null;
 
     void (async () => {
       try {

@@ -72,7 +72,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
     if (!token) return;
 
     // Initial fetch to populate existing notifications
-    fetchNotifications();
+    queueMicrotask(() => { void fetchNotifications(); });
 
     const connect = () => {
       if (esRef.current) esRef.current.close();

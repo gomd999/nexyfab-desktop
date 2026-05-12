@@ -93,7 +93,9 @@ export default function Header() {
         return () => window.removeEventListener('storage', load);
     }, []);
 
-    useEffect(() => { setIsMobileOpen(false); }, [pathname]);
+    useEffect(() => {
+        queueMicrotask(() => setIsMobileOpen(false));
+    }, [pathname]);
     // ─────────────────────────────────────────────────────────────────────────
 
     if (pathname?.includes('/shape-generator')) return null;
@@ -108,7 +110,7 @@ export default function Header() {
     const isActive = (href: string) => pathname?.includes(href.replace(/\/$/, '')) ?? false;
     const isRtl = lang === 'ar';
 
-    const nexysysUrl = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com';
+    const _nexysysUrl = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com';
 
     const navItems = [
         { href: `/${lang}/shape-generator/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },

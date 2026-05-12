@@ -2,7 +2,7 @@ import type { Lang } from '@/lib/metaHelper';
 
 const BASE_URL = 'https://nexyfab.com';
 
-const SEARCH_PLACEHOLDERS: Record<Lang, string> = {
+const _SEARCH_PLACEHOLDERS: Record<Lang, string> = {
     kr: '배터리 자동화 설비',
     en: 'Battery Automation',
     ja: 'バッテリー自動化設備',

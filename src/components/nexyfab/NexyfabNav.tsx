@@ -25,6 +25,8 @@ const NAV_ITEMS: { icon: string; labelKo: string; labelEn: string; href: string;
   { icon: '👥', labelKo: '팀 협업', labelEn: 'Team', href: '/nexyfab/team', planBadge: 'team' },
   { icon: '💳', labelKo: '결제 & 구독', labelEn: 'Billing', href: '/nexyfab/billing' },
   { icon: '🔧', labelKo: '설정', labelEn: 'Settings', href: '/nexyfab/settings' },
+  // G1 — surfaced from primary nav so first-time users have an obvious door.
+  { icon: '📖', labelKo: '사용 가이드', labelEn: 'Guide', href: '/help' },
 ];
 
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
