@@ -12,6 +12,11 @@ export const dynamic = 'force-dynamic';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@nexyfab.com';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nexyfab.com';
 
+/** Non-blocking PATCH side effects (email queue, lookups): log failures instead of swallowing. */
+function logContractPatchSideEffect(label: string, err: unknown): void {
+  console.error(`[api/contracts PATCH][${label}]`, err);
+}
+
 interface ContractRow {
   id: string; project_name: string; status: string;
   partner_email: string | null; factory_name: string | null;
@@ -128,7 +133,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (status === 'completed') {
     const existingSettlement = await db.queryOne<{ id: string }>(
       'SELECT id FROM nf_settlements WHERE contract_id = ?', id,
-    ).catch(() => null);
+    ).catch((err) => {
+      logContractPatchSideEffect('settlement_lookup', err);
+      return null;
+    });
 
     if (!existingSettlement) {
       await db.execute(
@@ -165,7 +173,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 <p>파트너사의 서비스 품질 향상을 위해 짧은 평가를 부탁드립니다.</p>
 <p><a href="${reviewLink}" style="display:inline-block;padding:10px 24px;background:#1a56db;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">파트너 평가하기</a></p>
 <p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-      }).catch(() => {});
+      }).catch((err) => logContractPatchSideEffect('completed_customer_review_email', err));
 
       createNotification(
         `customer:${customerEmail}`,
@@ -182,7 +190,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       subject: `[NexyFab] 계약 완료 처리됨 - ${updated!.project_name}`,
       html: `<h2 style="color:#1a56db">계약이 완료 처리되었습니다</h2>
 <p>계약 ID: ${id} / 프로젝트: ${updated!.project_name} / 최종 수수료: ${(updated!.final_charge ?? 0).toLocaleString('ko-KR')}원</p>`,
-    }).catch(() => {});
+    }).catch((err) => logContractPatchSideEffect('completed_admin_email', err));
 
     logAudit({ userId: 'admin', action: 'contract.completed', resourceId: id });
   }
@@ -200,14 +208,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           to: partnerEmail,
           subject: `[NexyFab] 계약이 확정되었습니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 계약이 확정되었습니다.</p><p>고객사 담당자와 일정을 조율하여 작업을 준비해 주세요.</p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('contracted_partner_email', err));
       }
       if (customerEmail) {
         await enqueueJob('send_email', {
           to: customerEmail,
           subject: `[NexyFab] 파트너 계약이 확정되었습니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 파트너 계약이 확정되었습니다.</p><p>담당 파트너사가 곧 작업을 시작합니다.</p><p><a href="${portalLink}" style="color:#1a56db">포털에서 진행상황 확인하기</a></p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('contracted_customer_email', err));
       }
     }
 
@@ -217,7 +225,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           to: customerEmail,
           subject: `[NexyFab] 제조가 시작되었습니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 제조 작업이 시작되었습니다.</p><p><a href="${portalLink}" style="color:#1a56db">포털에서 진행상황 확인하기</a></p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('in_progress_customer_email', err));
       }
     }
 
@@ -227,7 +235,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           to: customerEmail,
           subject: `[NexyFab] 품질 검사 중입니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 제조가 완료되어 품질 검사를 진행 중입니다.</p><p>검사 완료 후 납품 일정을 안내드리겠습니다.</p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('quality_check_customer_email', err));
       }
     }
 
@@ -237,7 +245,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           to: customerEmail,
           subject: `[NexyFab] 납품이 완료되었습니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 납품이 완료되었습니다.</p><p>제품을 수령하신 후 이상이 있으면 고객센터로 연락해 주세요.</p><p><a href="${portalLink}" style="color:#1a56db">포털에서 확인하기</a></p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('delivered_customer_email', err));
       }
     }
 
@@ -247,14 +255,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           to: customerEmail,
           subject: `[NexyFab] 계약이 취소되었습니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 계약이 취소 처리되었습니다.</p><p>문의 사항은 고객센터로 연락해 주세요.</p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('cancelled_customer_email', err));
       }
       if (partnerEmail) {
         await enqueueJob('send_email', {
           to: partnerEmail,
           subject: `[NexyFab] 계약이 취소되었습니다 - ${projectName}`,
           html: `<p>안녕하세요,</p><p>프로젝트 <strong>${projectName}</strong>의 계약이 취소 처리되었습니다.</p><p style="color:#6b7280;font-size:12px">— NexyFab 팀</p>`,
-        }).catch(() => {});
+        }).catch((err) => logContractPatchSideEffect('cancelled_partner_email', err));
       }
     }
   }
@@ -265,7 +273,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       to: ADMIN_EMAIL,
       subject: `[NexyFab] 파트너 완료 확인 요청 - ${existing.project_name}`,
       html: `<p>계약 <strong>${id}</strong> (${existing.project_name})에 대해 파트너가 완료 확인을 요청했습니다.</p>`,
-    }).catch(() => {});
+    }).catch((err) => logContractPatchSideEffect('completion_request_admin_email', err));
     createNotification('admin', 'completion_request', '완료 확인 요청',
       `"${existing.project_name}" 계약의 완료 확인을 요청받았습니다.`, { contractId: id });
   }

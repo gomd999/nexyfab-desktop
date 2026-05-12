@@ -74,7 +74,7 @@ async function fetchHistorical(fn: string, apiKey: string): Promise<PricePoint[]
 }
 
 // ─── 폴백 더미 데이터 생성 (API 실패 시) ────────────────────────────────────
-function generateFallbackData(baseValue: number, months: number = 12): PricePoint[] {
+function _generateFallbackData(baseValue: number, months: number = 12): PricePoint[] {
     const now = new Date();
     const points: PricePoint[] = [];
     for (let i = months - 1; i >= 0; i--) {

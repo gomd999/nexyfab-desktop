@@ -32,18 +32,17 @@ export async function POST(req: NextRequest) {
   await db.execute('DELETE FROM nf_team_invites WHERE token = ?', token);
 
   // Notify team owner
-  const { createNotification } = await import('@/lib/notify');
+  const { createNotification } = await import('@/app/lib/notify');
   const teamRow = await db.queryOne<{ owner_id: string; name: string }>(
     'SELECT owner_id, name FROM nf_teams WHERE id = ?', invite.team_id,
   );
   if (teamRow) {
-    await createNotification({
-      userId: teamRow.owner_id,
-      type: 'team.member_joined',
-      title: `새 팀원이 합류했습니다`,
-      body: `${authUser.email}님이 ${teamRow.name} 팀에 참여했습니다.`,
-      link: `/nexyfab/team`,
-    });
+    await createNotification(
+      teamRow.owner_id,
+      'team.member_joined',
+      `새 팀원이 합류했습니다`,
+      `${authUser.email}님이 ${teamRow.name} 팀에 참여했습니다.`,
+    );
   }
 
   return NextResponse.json({ ok: true, teamId: invite.team_id, role: invite.role });

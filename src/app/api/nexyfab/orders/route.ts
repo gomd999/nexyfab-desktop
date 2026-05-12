@@ -172,6 +172,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     rfqId?: string;
+    quoteId?: string;       // v83 — direct linkage so escrow can find contract.commission_rate
     userId?: string;
     partName: string;
     manufacturerName: string;
@@ -231,15 +232,18 @@ export async function POST(req: NextRequest) {
   const estimatedDeliveryAt = now + leadDays * DAY;
 
   const db = getDbAdapter();
+  // Lazy-add v83 column so deploys without the migration applied still work.
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
   await db.execute(
     `INSERT INTO nf_orders
-      (id, rfq_id, user_id, part_name, manufacturer_name, quantity,
+      (id, rfq_id, quote_id, user_id, part_name, manufacturer_name, quantity,
        total_price_krw, total_price, currency, buyer_country,
        hs_code, incoterm, ship_from_country, ship_to_country,
        status, steps, created_at, estimated_delivery_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     body.rfqId ?? null,
+    body.quoteId ?? null,
     userId,
     body.partName,
     body.manufacturerName,

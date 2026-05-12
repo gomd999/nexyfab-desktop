@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { type RFQEntry, rowToRfq } from '../rfq-types';
+import { type RFQEntry as _RFQEntry, rowToRfq } from '../rfq-types';
 import { checkOrigin } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     `INSERT INTO nf_rfqs
        (id, user_id, user_email, shape_id, shape_name, material_id, quantity,
         volume_cm3, surface_area_cm2, bbox, dfm_results, cost_estimates, note,
+        analysis_summary,
         status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
     newId,
     authUser.userId,
     original.user_email ?? null,
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
     original.dfm_results ?? null,
     original.cost_estimates ?? null,
     original.note ?? null,
+    original.analysis_summary ?? null,
     now,
     now,
   );

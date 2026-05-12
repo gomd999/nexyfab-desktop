@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   // Allowlist to prevent SQL injection — only known product slugs are accepted
   const ALLOWED_PRODUCTS = new Set(['nexyfab', 'nexyflow', 'nexywise']);
   const safeProduct = product && ALLOWED_PRODUCTS.has(product) ? product : undefined;
-  const productFilter = safeProduct ? 'AND product = ?' : '';
+  const _productFilter = safeProduct ? 'AND product = ?' : '';
 
   const pf = safeProduct ? ' AND product = ?' : '';
 

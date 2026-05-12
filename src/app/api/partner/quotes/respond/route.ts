@@ -3,7 +3,14 @@ import { createNotification } from '@/app/lib/notify';
 import { checkOrigin } from '@/lib/csrf';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { enqueueJob } from '@/lib/job-queue';
-import { quoteReceivedHtml } from '@/lib/nexyfab-email';
+import {
+  quoteReceivedHtml,
+  quoteReceivedEmailSubject,
+  quoteReceivedInAppTitle,
+  quoteReceivedInAppBody,
+  nexyfabEmailLocaleFromLanguageTag,
+  nexyfabAppLangPathFromEmailLocale,
+} from '@/lib/nexyfab-email';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { logAudit } from '@/lib/audit';
@@ -98,18 +105,18 @@ export async function POST(req: NextRequest) {
         inquiryId,
       );
       if (rfqUser?.email) {
-        const lang = rfqUser.language?.startsWith('ko') ? 'ko' : 'en';
+        const locale = nexyfabEmailLocaleFromLanguageTag(rfqUser.language);
+        const langPath = nexyfabAppLangPathFromEmailLocale(locale);
+        const factoryLabel = partner.company || partner.email || (locale === 'ko' ? '제조사' : 'Manufacturer');
         await enqueueJob('send_email', {
           to: rfqUser.email,
-          subject: lang === 'ko'
-            ? `[NexyFab] 견적이 도착했습니다 — ${quote.project_name}`
-            : `[NexyFab] You received a quote — ${quote.project_name}`,
+          subject: quoteReceivedEmailSubject(locale, quote.project_name),
           html: quoteReceivedHtml({
             userName: rfqUser.name || rfqUser.email,
-            lang,
+            lang: rfqUser.language ?? undefined,
             rfqId: inquiryId,
             shapeName: quote.project_name,
-            factoryName: partner.company || partner.email,
+            factoryName: factoryLabel,
             estimatedAmount: amount,
             validUntil: undefined,
           }),
@@ -121,11 +128,9 @@ export async function POST(req: NextRequest) {
           notifId,
           rfqUser.user_id,
           'rfq.quoted',
-          lang === 'ko' ? `견적 도착: ${quote.project_name}` : `Quote received: ${quote.project_name}`,
-          lang === 'ko'
-            ? `${partner.company || '제조사'}에서 견적을 제출했습니다.`
-            : `${partner.company || 'A manufacturer'} submitted a quote.`,
-          `/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/rfq`,
+          quoteReceivedInAppTitle(locale, quote.project_name),
+          quoteReceivedInAppBody(locale, factoryLabel),
+          `/${langPath}/nexyfab/rfq/${inquiryId}`,
           now,
         );
       }

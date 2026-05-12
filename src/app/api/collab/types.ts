@@ -14,7 +14,17 @@ export type CollabEventType =
   | 'chat_message'
   | 'typing_start'
   | 'typing_stop'
-  | 'feature_sync';
+  | 'feature_sync'
+  // ─── CRDT (Yjs) transport ──────────────────────────────────────────────────
+  // `crdt_update`: a binary Y.Doc update from one client; relayed to all peers.
+  // `crdt_sync_request`: a freshly-joined client asking for a state snapshot.
+  // `crdt_sync_response`: a peer's reply with their full encoded state.
+  // `crdt_awareness`: ephemeral presence (cursor / selection / identity).
+  // Payloads are { update: base64 } so they survive JSON transport.
+  | 'crdt_update'
+  | 'crdt_sync_request'
+  | 'crdt_sync_response'
+  | 'crdt_awareness';
 
 export interface CollabEvent {
   type: CollabEventType;

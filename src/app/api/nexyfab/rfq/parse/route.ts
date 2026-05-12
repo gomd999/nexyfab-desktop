@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { rateLimit } from '@/lib/rate-limit';
+import { chatCompletion, AiNotConfiguredError, type ChatMessage } from '@/lib/ai';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,42 +109,32 @@ export async function POST(req: NextRequest) {
   if (!text) return NextResponse.json({ error: 'text는 필수입니다.' }, { status: 400 });
   if (text.length > 2000) return NextResponse.json({ error: '텍스트가 너무 깁니다. (최대 2000자)' }, { status: 400 });
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  const baseUrl = process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
+  const messages: ChatMessage[] = [
+    { role: 'system', content: buildSystemPrompt() },
+    { role: 'user', content: text },
+  ];
 
-  // LLM 없으면 정규식 fallback
-  if (!apiKey) {
+  let raw = '{}';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: 512,
+      temperature: 0.1,
+      timeoutMs: 12_000,
+      task: 'rfq-parse',
+    });
+    raw = result.text || '{}';
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) {
+      const parsed = regexParse(text);
+      return NextResponse.json({ parsed, confidence: 40, rawText: text, fallback: true });
+    }
+    console.error('[rfq/parse] AI provider error, falling back to regex:', e);
     const parsed = regexParse(text);
-    return NextResponse.json({ parsed, confidence: 40, rawText: text, fallback: true });
+    return NextResponse.json({ parsed, confidence: 35, rawText: text, fallback: true });
   }
 
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: buildSystemPrompt() },
-          { role: 'user', content: text },
-        ],
-        temperature: 0.1,
-        max_tokens: 512,
-        response_format: { type: 'json_object' },
-      }),
-      signal: AbortSignal.timeout(12000),
-    });
-
-    if (!response.ok) throw new Error(`LLM API error: ${response.status}`);
-
-    const data = await response.json() as {
-      choices: Array<{ message: { content: string } }>;
-    };
-
-    const raw = data.choices?.[0]?.message?.content ?? '{}';
     const llmResult = JSON.parse(raw) as ParsedRFQ & { confidence?: number };
 
     // 유효성 검증

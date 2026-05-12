@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail, rfqNotificationHtml } from '@/lib/nexyfab-email';
+import { sendEmail, rfqNotificationHtml, nexyfabAdminEmailLocale, rfqNotificationEmailSubject } from '@/lib/nexyfab-email';
 import { checkOrigin } from '@/lib/csrf';
 import { rateLimit } from '@/lib/rate-limit';
 import { getDbAdapter } from '@/lib/db-adapter';
@@ -66,20 +66,27 @@ export async function POST(
     ? `<p style="background:#161b22;border-left:3px solid #388bfd;padding:12px 16px;border-radius:4px;color:#e6edf3;font-size:13px;margin:16px 0;">${escapeHtml(body.message)}</p>`
     : '';
 
-  // Build notification HTML by injecting custom message after the header paragraph
-  const baseHtml = rfqNotificationHtml(rfqEmailData);
-  const htmlWithMessage = customMessage
-    ? baseHtml.replace(
-        '새로운 RFQ가 접수되었습니다. 아래 상세 내용을 확인하고 견적을 보내주세요.',
-        `새로운 RFQ가 접수되었습니다. 아래 상세 내용을 확인하고 견적을 보내주세요.${customMessage}`,
-      )
-    : baseHtml;
+  const adminLocale = nexyfabAdminEmailLocale();
+  const rfqPrefix = rfq.rfqId.slice(0, 8);
+  const baseSubject = rfqNotificationEmailSubject(adminLocale, 'new_rfq', {
+    shapeName: rfq.shapeName,
+    rfqIdPrefix: rfqPrefix,
+  });
+  const mailSubject = `${baseSubject} → ${manufacturerName}`;
 
-  // Fire-and-forget
+  const html = rfqNotificationHtml(
+    rfqEmailData,
+    adminLocale,
+    'new_rfq',
+    customMessage
+      ? { afterIntroHtml: customMessage }
+      : undefined,
+  );
+
   sendEmail(
     manufacturerEmail,
-    `[NexyFab] 견적 요청 — ${rfq.shapeName} → ${manufacturerName} (RFQ #${rfq.rfqId.slice(0, 8).toUpperCase()})`,
-    htmlWithMessage,
+    mailSubject,
+    html,
   ).catch(err => console.error('[manufacturer-contact] email failed:', err));
 
   return NextResponse.json({ sent: true, manufacturerId });

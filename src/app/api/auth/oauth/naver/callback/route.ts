@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const stateParam = req.nextUrl.searchParams.get('state') ?? '';
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
-  const redirectUri = `${siteUrl}/api/auth/oauth/naver/callback`;
+  const _redirectUri = `${siteUrl}/api/auth/oauth/naver/callback`;
 
   // Parse state: format is `<token>:<lang>`
   const [returnedState, rawLang] = stateParam.split(':');

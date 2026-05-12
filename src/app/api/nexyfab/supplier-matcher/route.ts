@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -170,23 +171,6 @@ export async function POST(req: NextRequest) {
   };
   const historyProjectId = body.projectId;
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
-
-  if (!apiKey) {
-    recordUsageEvent(planCheck.userId, 'ai_supplier_match');
-    const ranked = ruleBasedRank(trimmedBody);
-    recordAIHistory({
-      userId: planCheck.userId,
-      feature: 'ai_supplier_match',
-      title: historyTitle,
-      payload: { ranked },
-      context: historyContext,
-      projectId: historyProjectId,
-    });
-    return NextResponse.json({ ranked });
-  }
-
   const systemPrompt =
     'You are a manufacturing sourcing expert. Given a list of supplier candidates and the buyer context ' +
     '(material, process, quantity, geometry size, use-case, priority), pick the top 3 and justify each. ' +
@@ -195,29 +179,53 @@ export async function POST(req: NextRequest) {
     'Respond with JSON: { "ranked": [ { "id", "rank", "score", "reasoning", "reasoningKo", "strengths", "strengthsKo", "concerns", "concernsKo", "rfqTalkingPoints", "rfqTalkingPointsKo" }, ... ] }. ' +
     'Each bullet under 100 chars. Do NOT wrap JSON in markdown code blocks.';
 
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: JSON.stringify({ ...trimmedBody, requestedLanguage: body.lang ?? 'en' }) },
+  ];
+
+  let content = '';
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({ ...trimmedBody, requestedLanguage: body.lang ?? 'en' }) },
-        ],
-        temperature: 0.2,
-        max_tokens: 2048,
-      }),
-      signal: AbortSignal.timeout(20000),
+    const result = await chatCompletion({
+      messages,
+      maxTokens: 2048,
+      temperature: 0.2,
+      timeoutMs: 20_000,
+      task: 'supplier-matcher',
     });
+    content = result.text;
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'ai_supplier_match');
+      const ranked = ruleBasedRank(trimmedBody);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'ai_supplier_match',
+        title: historyTitle,
+        payload: { ranked },
+        context: historyContext,
+        projectId: historyProjectId,
+      });
+      return NextResponse.json({ ranked });
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[supplier-matcher] AI provider failed, using rule-based fallback:', detail);
+    recordUsageEvent(planCheck.userId, 'ai_supplier_match');
+    const fallback = ruleBasedRank(trimmedBody);
+    recordAIHistory({
+      userId: planCheck.userId,
+      feature: 'ai_supplier_match',
+      title: historyTitle,
+      payload: { ranked: fallback },
+      context: historyContext,
+      projectId: historyProjectId,
+    });
+    return NextResponse.json({ ranked: fallback });
+  }
 
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
+  try {
     const parsed = JSON.parse(stripMarkdownJson(content)) as { ranked?: Partial<RankedSupplier>[] };
 
     if (!Array.isArray(parsed.ranked) || parsed.ranked.length === 0) throw new Error('Invalid LLM response shape');
@@ -253,7 +261,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ranked });
   } catch (err) {
-    console.warn('[supplier-matcher] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[supplier-matcher] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'ai_supplier_match');
     const fallback = ruleBasedRank(trimmedBody);
     recordAIHistory({

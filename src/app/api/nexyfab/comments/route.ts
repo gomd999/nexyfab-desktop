@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { getAuthUser } from '@/lib/auth-middleware';
-import { type MeshComment, rowToComment } from './comments-types';
+import { type MeshComment as _MeshComment, rowToComment } from './comments-types';
 
 // ─── GET /api/nexyfab/comments?projectId=xxx ─────────────────────────────────
 

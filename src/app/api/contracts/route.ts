@@ -70,18 +70,12 @@ export async function POST(req: NextRequest) {
     : null;
   const isFirstContract = customerEmail ? (existingRow?.cnt ?? 0) === 0 : false;
 
-  function getBaseRate(amount: number): number {
-    if (amount <= 20_000_000)  return 7;
-    if (amount <= 50_000_000)  return 6;
-    if (amount <= 100_000_000) return 5.5;
-    if (amount <= 200_000_000) return 5;
-    if (amount <= 500_000_000) return 4.5;
-    return 4;
-  }
-
-  const baseRate = getBaseRate(contractAmount);
+  // Commission rate now centralized in src/lib/commission.ts so escrow,
+  // settlements, and contracts agree on what was actually charged.
+  const { getCommissionRatePct, COMMISSION_PCT_FLOOR } = await import('@/lib/commission');
+  const baseRate = getCommissionRatePct(contractAmount, plan ?? 'standard');
   const discountRate = isFirstContract ? 1 : 0;
-  const rate = Math.max(3, baseRate - discountRate);
+  const rate = Math.max(COMMISSION_PCT_FLOOR, baseRate - discountRate);
   const firstContractDiscount = isFirstContract ? Math.round(contractAmount * discountRate / 100) : 0;
 
   const MIN_FEE: Record<string, number> = { standard: 500_000, premium: 1_000_000 };

@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
             'rfq_assigned',
             '새 견적 요청이 배정되었습니다',
             `RFQ ${rfqId.slice(0, 8).toUpperCase()} — ${rfq.shape_name || '부품'} 견적이 귀사에 배정되었습니다.`,
-            { quoteId: rfqId },
+            { rfqId },
           );
         }
       }
@@ -180,6 +180,7 @@ export async function POST(req: NextRequest) {
         'rfq_bulk_matched',
         '자동 매칭 완료',
         `RFQ "${rfq.shape_name || rfqId}"이(가) "${factory?.name || best.company}"에 자동 배정되었습니다. (점수: ${best.score})`,
+        { rfqId },
       );
 
       logAudit({

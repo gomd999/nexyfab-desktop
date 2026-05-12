@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NextRequest } from 'next/server';
 
 // ─── Module-level mocks (hoisted before any import that uses them) ────────────
 
@@ -50,7 +51,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { checkOrigin } from '@/lib/csrf';
 import { GET as authAccountGET, DELETE as authAccountDELETE } from '../auth/account/route';
-import { GET as adminUsersGET, PATCH as adminUsersPATCH, DELETE as adminUsersDELETE } from '../admin/users/route';
+import { GET as adminUsersGET, PATCH as _adminUsersPATCH, DELETE as adminUsersDELETE } from '../admin/users/route';
 import { POST as userApiKeysPOST, GET as userApiKeysGET } from '../user/api-keys/route';
 import { GET as healthLiveGET } from '../health/live/route';
 
@@ -58,19 +59,26 @@ const mockGetAuthUser = getAuthUser as ReturnType<typeof vi.fn>;
 const mockVerifyAdmin = verifyAdmin as ReturnType<typeof vi.fn>;
 const mockCheckOrigin = checkOrigin as ReturnType<typeof vi.fn>;
 
-// ─── Helper: build a minimal NextRequest-compatible object ───────────────────
+// ─── Helper: minimal NextRequest for route handler tests ─────────────────────
 
 function makeReq(
   url = 'http://localhost/api/test',
   opts: RequestInit & { cookies?: Record<string, string> } = {},
-): Request & { cookies: { get: (name: string) => { value: string } | undefined }; nextUrl: URL } {
-  const { cookies = {}, ...fetchOpts } = opts;
-  const req = new Request(url, fetchOpts);
-  (req as any).cookies = {
-    get: (name: string) => (name in cookies ? { value: cookies[name] } : undefined),
-  };
-  (req as any).nextUrl = new URL(url);
-  return req as any;
+): NextRequest {
+  const { cookies = {}, headers: hdrInit, signal, ...rest } = opts;
+  const headers = new Headers(hdrInit as HeadersInit | undefined);
+  const pairs = Object.entries(cookies);
+  if (pairs.length > 0) {
+    headers.set(
+      'Cookie',
+      pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('; '),
+    );
+  }
+  return new NextRequest(url, {
+    ...rest,
+    headers,
+    ...(signal != null ? { signal } : {}),
+  });
 }
 
 /** Build a free-tier AuthUser stub */
@@ -99,7 +107,7 @@ describe('GET /api/auth/account — authentication boundary', () => {
 
   it('returns 401 when no token is provided', async () => {
     mockGetAuthUser.mockResolvedValue(null);
-    const res = await authAccountGET(makeReq('http://localhost/api/auth/account') as any);
+    const res = await authAccountGET(makeReq('http://localhost/api/auth/account'));
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBeTruthy();
@@ -110,7 +118,7 @@ describe('GET /api/auth/account — authentication boundary', () => {
     const res = await authAccountGET(
       makeReq('http://localhost/api/auth/account', {
         headers: { Authorization: 'Bearer invalid.token.here' },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -118,7 +126,7 @@ describe('GET /api/auth/account — authentication boundary', () => {
   it('returns 404 when authenticated but user not in DB', async () => {
     mockGetAuthUser.mockResolvedValue(freeUser());
     // DB mock already returns null for queryOne
-    const res = await authAccountGET(makeReq('http://localhost/api/auth/account') as any);
+    const res = await authAccountGET(makeReq('http://localhost/api/auth/account'));
     expect(res.status).toBe(404);
   });
 });
@@ -129,7 +137,7 @@ describe('DELETE /api/auth/account — authentication boundary', () => {
   it('returns 401 when not authenticated', async () => {
     mockGetAuthUser.mockResolvedValue(null);
     const res = await authAccountDELETE(
-      makeReq('http://localhost/api/auth/account', { method: 'DELETE' }) as any,
+      makeReq('http://localhost/api/auth/account', { method: 'DELETE' }),
     );
     expect(res.status).toBe(401);
   });
@@ -142,7 +150,7 @@ describe('DELETE /api/auth/account — authentication boundary', () => {
         method: 'DELETE',
         body: JSON.stringify({ password: 'pw', confirm: 'wrong phrase' }),
         headers: { 'Content-Type': 'application/json' },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -157,13 +165,13 @@ describe('GET /api/admin/users — admin authorisation boundary', () => {
 
   it('returns 401 when called without admin credentials', async () => {
     mockVerifyAdmin.mockResolvedValue(false);
-    const res = await adminUsersGET(makeReq('http://localhost/api/admin/users') as any);
+    const res = await adminUsersGET(makeReq('http://localhost/api/admin/users'));
     expect(res.status).toBe(401);
   });
 
   it('passes through when admin credentials are valid', async () => {
     mockVerifyAdmin.mockResolvedValue(true);
-    const res = await adminUsersGET(makeReq('http://localhost/api/admin/users') as any);
+    const res = await adminUsersGET(makeReq('http://localhost/api/admin/users'));
     // DB returns empty list → 200 with { users: [], total: 0 } or similar
     expect(res.status).toBe(200);
   });
@@ -180,7 +188,7 @@ describe('PATCH /api/admin/users — admin authorisation boundary', () => {
         method: 'PATCH',
         body: JSON.stringify({ userId: 'u1', plan: 'pro' }),
         headers: { 'Content-Type': 'application/json' },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -196,7 +204,7 @@ describe('DELETE /api/admin/users — admin authorisation boundary', () => {
         method: 'DELETE',
         body: JSON.stringify({ userId: 'u1' }),
         headers: { 'Content-Type': 'application/json' },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -223,7 +231,7 @@ describe('POST /api/user/api-keys — CSRF protection', () => {
           'Content-Type': 'application/json',
           Origin: 'https://evil.com',
         },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(403);
   });
@@ -236,7 +244,7 @@ describe('POST /api/user/api-keys — CSRF protection', () => {
         method: 'POST',
         body: JSON.stringify({ name: 'My Key', scopes: [] }),
         headers: { 'Content-Type': 'application/json' },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -260,7 +268,7 @@ describe('POST /api/user/api-keys — plan guard', () => {
         method: 'POST',
         body: JSON.stringify({ name: 'My Key', scopes: [] }),
         headers: { 'Content-Type': 'application/json' },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(403);
   });
@@ -279,7 +287,7 @@ describe('POST /api/user/api-keys — plan guard', () => {
         method: 'POST',
         body: JSON.stringify({ name: 'My Key', scopes: ['read:rfq'] }),
         headers: { 'Content-Type': 'application/json' },
-      }) as any,
+      }),
     );
     // 200 or 201 — key created
     expect(res.status).toBeLessThan(300);
@@ -295,7 +303,7 @@ describe('GET /api/user/api-keys — authentication', () => {
 
   it('returns 401 without a token', async () => {
     mockGetAuthUser.mockResolvedValue(null);
-    const res = await userApiKeysGET(makeReq('http://localhost/api/user/api-keys') as any);
+    const res = await userApiKeysGET(makeReq('http://localhost/api/user/api-keys'));
     expect(res.status).toBe(401);
   });
 
@@ -305,7 +313,7 @@ describe('GET /api/user/api-keys — authentication', () => {
     const mockDb = getDbAdapter as ReturnType<typeof vi.fn>;
     mockDb.mockReturnValue({ queryAll: vi.fn().mockResolvedValue([]) });
 
-    const res = await userApiKeysGET(makeReq('http://localhost/api/user/api-keys') as any);
+    const res = await userApiKeysGET(makeReq('http://localhost/api/user/api-keys'));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.keys)).toBe(true);

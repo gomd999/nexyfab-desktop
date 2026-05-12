@@ -92,21 +92,34 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: any;
+  let body: unknown;
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: '요청 데이터가 올바르지 않습니다.' }, { status: 400 });
   }
-
-  const { contractId, partnerEmail, rating, categories, comment } = body;
-  const reviewerEmail = authUser.email;
-
-  if (!contractId || !partnerEmail || !rating) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: '요청 데이터가 올바르지 않습니다.' }, { status: 400 });
+  }
+  const b = body as Record<string, unknown>;
+  if (typeof b.contractId !== 'string' || !b.contractId.trim()) {
     return NextResponse.json({ error: 'contractId, partnerEmail, rating은 필수입니다.' }, { status: 400 });
   }
-  if (rating < 1 || rating > 5) {
+  if (typeof b.rating !== 'number' || !Number.isFinite(b.rating)) {
+    return NextResponse.json({ error: 'contractId, partnerEmail, rating은 필수입니다.' }, { status: 400 });
+  }
+  if (b.rating < 1 || b.rating > 5) {
     return NextResponse.json({ error: '평점은 1~5 사이여야 합니다.' }, { status: 400 });
   }
 
+  const contractId = b.contractId.trim();
+  const rating = b.rating;
+  let partnerEmail = typeof b.partnerEmail === 'string' ? b.partnerEmail : '';
+  const categories =
+    b.categories && typeof b.categories === 'object' && !Array.isArray(b.categories)
+      ? (b.categories as { deadline?: number; quality?: number; communication?: number })
+      : undefined;
+  const comment = b.comment;
+
+  const reviewerEmail = authUser.email;
   // Verify contract/order exists
   const db = getDbAdapter();
   const contractRow = await db.queryOne<{ status: string }>(
@@ -125,14 +138,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '납품 완료된 주문에만 리뷰를 작성할 수 있습니다.' }, { status: 403 });
     }
     // partnerEmail을 주문에서 자동 추출
-    if (!partnerEmail) {
-      body.partnerEmail = orderRow.partner_email ?? orderRow.manufacturer_name;
+    if (!partnerEmail.trim()) {
+      partnerEmail = orderRow.partner_email ?? orderRow.manufacturer_name ?? '';
     }
   } else if (contractRow.status !== 'completed') {
     return NextResponse.json({ error: '완료된 계약에만 리뷰를 작성할 수 있습니다.' }, { status: 403 });
   }
 
-
+  if (!partnerEmail.trim()) {
+    return NextResponse.json({ error: 'contractId, partnerEmail, rating은 필수입니다.' }, { status: 400 });
+  }
   // Duplicate check
   const duplicate = await db.queryOne<{ id: string }>(
     'SELECT id FROM nf_reviews WHERE contract_id = ?', contractId,
@@ -143,7 +158,7 @@ export async function POST(req: NextRequest) {
 
   const id = `REV-${Date.now()}`;
   const now = new Date().toISOString();
-  const safeComment = comment ? sanitizeText(comment, 1000) : '';
+  const safeComment = comment != null ? sanitizeText(String(comment), 1000) : '';
   const partnerEmailNorm = normPartnerEmail(partnerEmail);
 
   await db.execute(
@@ -168,7 +183,7 @@ export async function POST(req: NextRequest) {
   };
 
   // 제조사 평점 업데이트 (fire-and-forget)
-  const finalPartnerEmail = normPartnerEmail(body.partnerEmail ?? partnerEmail);
+  const finalPartnerEmail = normPartnerEmail(partnerEmail);
   if (finalPartnerEmail) {
     db.queryAll<{ rating: number }>(
       `SELECT rating FROM nf_reviews

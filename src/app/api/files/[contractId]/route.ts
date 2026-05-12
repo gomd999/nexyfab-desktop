@@ -41,7 +41,7 @@ export async function GET(
     return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
   }
 
-  let attachments: any[] = [];
+  let attachments: unknown[] = [];
   try { attachments = JSON.parse(row.attachments || '[]'); } catch { /* empty */ }
 
   return NextResponse.json({ attachments });

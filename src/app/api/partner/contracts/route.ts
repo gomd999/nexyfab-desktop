@@ -115,7 +115,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  const nowMs = Date.now();
+  const _nowMs = Date.now();
 
   // Build dynamic UPDATE
   const setClauses: string[] = ['updated_at = ?'];

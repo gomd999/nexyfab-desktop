@@ -23,7 +23,7 @@ import {
 } from '@/lib/airwallex-client';
 import {
   ensureAwCustomer,
-  generateCycleInvoice,
+  generateCycleInvoice as _generateCycleInvoice,
   recordBillingAnalytics,
   type Product,
   type Plan,
@@ -296,10 +296,29 @@ async function activateSubscription(
     period, periodStart, periodEnd, now, now,
   );
 
+  // Read prior plan first so we can fire upgrade_completed exactly once
+  // on the free→paid transition (renewals or tier-equal updates skip).
+  const priorRow = await db.queryOne<{ plan: string }>(
+    'SELECT plan FROM nf_users WHERE id = ?', userId,
+  ).catch(() => null);
+
   // Update user plan (and org plan if applicable)
   await db.execute("UPDATE nf_users SET plan = ? WHERE id = ?", plan, userId);
   if (orgId) {
     await db.execute("UPDATE nf_orgs SET plan = ? WHERE id = ?", plan, orgId);
+  }
+
+  // Funnel: free→paid transition. Fire-and-forget; we're already past the
+  // money-touching writes so logging failure must not roll back the plan.
+  if (priorRow && priorRow.plan !== plan && (priorRow.plan === 'free' || !priorRow.plan)) {
+    void import('@/lib/funnel-logger').then(({ logFunnelEvent }) =>
+      logFunnelEvent(userId, {
+        eventType: 'upgrade_completed',
+        contextType: 'subscription',
+        contextId: subId,
+        metadata: { fromPlan: priorRow.plan, toPlan: plan, product, period, source: 'checkout-direct' },
+      }),
+    ).catch(() => { /* swallow */ });
   }
 
   // Mark pending invoice as paid

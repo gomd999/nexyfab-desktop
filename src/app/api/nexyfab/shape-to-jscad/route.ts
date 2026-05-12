@@ -6,45 +6,17 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
 
 export const dynamic = 'force-dynamic';
 
-const SYSTEM_PROMPT = `You are a CAD code converter for NexyFab. Convert parametric shape data into clean @jscad/modeling JavaScript code.
-
-Rules:
-1. All dimensions are in mm
-2. Declare ALL dimensions as named consts at the top (for slider editing)
-3. Use booleans.subtract for holes/cutouts, booleans.union for additions
-4. Return ONE function called main() that returns ONE solid
-5. Include comments for clarity
-
-Available API:
-const { primitives, booleans, transforms, expansions, extrusions } = jscad;
-primitives.cuboid({ size: [w, h, d] })
-primitives.cylinder({ radius: r, height: h, segments: 64 })
-primitives.sphere({ radius: r, segments: 32 })
-booleans.subtract(base, ...tools)
-booleans.union(...solids)
-transforms.translate([x,y,z], solid)
-transforms.rotate([rx,ry,rz], solid)
-expansions.expand({ delta: r, segments: 16 }, solid)
-extrusions.extrudeLinear({ height: h }, profile2D)
-primitives.circle({ radius: r })
-primitives.rectangle({ size: [w,h] })
-
-RESPONSE (JSON only):
-{ "code": "...", "description": "한국어 설명" }`;
 
 export async function POST(req: NextRequest) {
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
   const { shapeId, params, features, bbox } = await req.json().catch(() => ({}));
-
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (!deepseekKey) {
-    return NextResponse.json({ error: 'AI key not configured' }, { status: 500 });
-  }
 
   const featureList = Array.isArray(features) && features.length > 0
     ? `\nApplied features: ${features.map((f: { type: string; params: Record<string, number> }) => `${f.type}(${JSON.stringify(f.params)})`).join(', ')}`
@@ -58,29 +30,32 @@ Parameters: ${JSON.stringify(params ?? {})}${bboxNote}${featureList}
 
 Generate accurate JSCAD code that recreates this geometry with the exact same dimensions.`;
 
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${deepseekKey}`,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      max_tokens: 4000,
-      temperature: 0.05,
-    }),
-  });
+  const promptDef = getPrompt('shape-to-jscad');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: promptDef.template },
+    { role: 'user', content: userMessage },
+  ];
 
-  if (!res.ok) {
+  let raw = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: promptDef.defaults.maxTokens,
+      temperature: promptDef.defaults.temperature,
+      timeoutMs: promptDef.defaults.timeoutMs,
+      task: promptDef.id,
+    });
+    raw = result.text;
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) {
+      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.error('shape-to-jscad AI provider error:', detail);
     return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
   }
-
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content ?? '';
 
   try {
     let jsonStr = raw.replace(/```json?\s*/g, '').replace(/```/g, '');

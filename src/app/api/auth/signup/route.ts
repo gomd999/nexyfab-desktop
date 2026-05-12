@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail, welcomeHtml } from '@/lib/nexyfab-email';
+import { sendEmail, welcomeHtml, welcomeEmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { signJWT } from '@/lib/jwt';
 import { rateLimit } from '@/lib/rate-limit';
@@ -14,7 +14,7 @@ import { parseUserStageColumn } from '@/lib/stage-engine';
 import { getTrustedClientIp } from '@/lib/client-ip';
 
 const AUTH_URL = process.env.NEXYSYS_AUTH_URL || '';
-const ALLOWED_LANGS = new Set(['ko', 'en', 'ja', 'zh']);
+const ALLOWED_LANGS = new Set(['ko', 'en', 'ja', 'zh', 'es', 'ar']);
 
 export async function POST(req: NextRequest) {
   // CSRF origin check
@@ -28,7 +28,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 
-  const body = await req.json() as { email?: string; password?: string; name?: string; language?: string; country?: string; timezone?: string; company?: string };
+  const body = await req.json() as {
+    email?: string; password?: string; name?: string; language?: string;
+    country?: string; timezone?: string; company?: string;
+    utm?: { source?: string; medium?: string; campaign?: string; term?: string; content?: string };
+  };
 
   if (!AUTH_URL) {
     const signupSchema = z.object({
@@ -175,10 +179,11 @@ export async function POST(req: NextRequest) {
     };
 
     // Welcome email (fire-and-forget)
+    const emailLocale = nexyfabEmailLocaleFromLanguageTag(userLang);
     sendEmail(
       email,
-      '[NexyFab] 가입을 환영합니다! 🎉',
-      welcomeHtml(displayName, 'ko'),
+      welcomeEmailSubject(emailLocale),
+      welcomeHtml(displayName, emailLocale),
     ).catch(err => console.error('[signup] welcome email failed:', err));
 
     const response = NextResponse.json({ user }, { status: 201 });
@@ -189,6 +194,22 @@ export async function POST(req: NextRequest) {
     // 데모 모드에서 진입한 사용자: nf_dfm_check / nf_rfqs / nf_funnel_event
     // 의 임시 데이터를 갓 만든 user_id 로 일괄 이관 (단일 트랜잭션).
     await tryClaimDemoOnAuth(req, response, id);
+    // Onboarding funnel: 가입 성공이 깔때기의 첫 단계. 광고 source 추적용
+    // utm_* 메타데이터는 클라이언트가 가지고 있으므로 metadata로 보내준다.
+    void import('@/lib/funnel-logger').then(({ logFunnelEvent }) =>
+      logFunnelEvent(id, {
+        eventType: 'signup_complete',
+        contextType: 'auth',
+        metadata: {
+          method: 'password',
+          lang: userLang,
+          country: userCountry,
+          ...(typeof body.company === 'string' ? { hasCompany: true } : {}),
+          // First-touch attribution: ad source that brought this user in.
+          ...(body.utm && typeof body.utm === 'object' ? { utm: body.utm } : {}),
+        },
+      }),
+    ).catch(() => { /* funnel write must never break signup */ });
     return response;
   }
 
@@ -203,10 +224,15 @@ export async function POST(req: NextRequest) {
     if (upstream.status === 200 || upstream.status === 201) {
       const { email, name } = body as { email?: string; name?: string };
       if (email) {
+        const rawLang =
+          typeof (body as { language?: string }).language === 'string'
+            ? (body as { language?: string }).language
+            : (req.headers.get('accept-language') ?? 'en');
+        const emailLocale = nexyfabEmailLocaleFromLanguageTag(rawLang);
         sendEmail(
           email,
-          '[NexyFab] 가입을 환영합니다! 🎉',
-          welcomeHtml(name || email.split('@')[0], 'ko'),
+          welcomeEmailSubject(emailLocale),
+          welcomeHtml(name || email.split('@')[0], emailLocale),
         ).catch(err => console.error('[signup] upstream welcome email failed:', err));
       }
     }

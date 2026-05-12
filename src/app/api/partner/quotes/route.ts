@@ -4,7 +4,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { checkOrigin } from '@/lib/csrf';
-import { sendEmail, quoteReceivedHtml } from '@/lib/nexyfab-email';
+import { sendEmail, quoteReceivedHtml, quoteReceivedEmailSubject, nexyfabEmailLocaleFromLanguageTag, nexyfabAppLangPathFromEmailLocale } from '@/lib/nexyfab-email';
 import { captureFxQuote, serializeFxQuote } from '@/lib/money';
 import type { CurrencyCode } from '@/lib/country-pricing';
 import { isIncoterm, isValidHsCode, normalizeHsCode } from '@/lib/shipping';
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
     nowIso,
   );
 
-  // 어드민 알림
+  // 어드민 알림 (in-app + email)
   createNotification(
     'admin',
     'quote_responded',
@@ -190,6 +190,17 @@ export async function POST(req: NextRequest) {
     `${partner.company || partner.email}이(가) "${rfq.shape_name || rfqId}"에 견적을 제출했습니다. (${amount.toLocaleString('ko-KR')}원)`,
     { quoteId: id },
   );
+  try {
+    const adminEmail = process.env.NEXYFAB_ADMIN_EMAIL;
+    if (adminEmail) {
+      const { esc } = await import('@/lib/html-escape');
+      void sendEmail(
+        adminEmail,
+        `[NexyFab Ops] 새 견적 제출 — ${rfq.shape_name || rfqId}`,
+        `<p><b>${esc(partner.company || partner.email)}</b> 이(가) <code>${esc(rfqId)}</code> 에 견적 제출.<br/>금액: ${esc(amount.toLocaleString('ko-KR'))}원, 납기: ${esc(String(estimatedDays ?? '-'))}일</p><p><a href="https://nexyfab.com/admin/concierge">→ Concierge 콘솔</a></p>`,
+      );
+    }
+  } catch { /* non-blocking */ }
 
   // RFQ 상태를 'quoted'로 업데이트
   await db.execute(
@@ -197,23 +208,69 @@ export async function POST(req: NextRequest) {
     now, rfqId,
   );
 
+  // Grant Pro tooling for the duration of the deal — partners need to view
+  // the buyer's STEP/STL and run DFM/cost checks while the quote is live.
+  // Idempotent extension: subsequent quote submissions only push the window
+  // out, never shrink it.
+  //
+  // Abuse guards: only grant grace if (a) operator-driven concierge entry
+  // exists for this partner's factory on this RFQ — prevents random partners
+  // spamming junk quotes for free Pro — and (b) the quote amount is in a
+  // sane range (filters obvious penny-quote farming).
+  try {
+    const MIN_QUOTE_KRW = 10_000;
+    const MAX_QUOTE_KRW = 100_000_000_000;
+    const amountSane = amount >= MIN_QUOTE_KRW && amount <= MAX_QUOTE_KRW;
+    let conciergeOk = false;
+    if (amountSane) {
+      const conciergeRow = await db.queryOne<{ id: string }>(
+        `SELECT cs.id FROM nf_concierge_status cs
+           JOIN nf_factories f ON f.id = cs.factory_id
+          WHERE cs.rfq_id = ?
+            AND (LOWER(TRIM(f.partner_email)) = ? OR LOWER(TRIM(f.contact_email)) = ?)
+            AND cs.status IN ('recommended', 'contacted', 'responded', 'quote_drafting')
+          LIMIT 1`,
+        rfqId, normPartnerEmail(partner.email), normPartnerEmail(partner.email),
+      ).catch(() => null);
+      conciergeOk = !!conciergeRow;
+    }
+    if (conciergeOk) {
+      const { extendPartnerProGrace } = await import('@/lib/partner-pro-grace');
+      await extendPartnerProGrace(partner.userId, 'quote_submitted', now);
+    }
+  } catch { /* non-blocking */ }
+
   // 고객에게 견적 도착 이메일 알림 (fire-and-forget)
-  const rfqRow = await db.queryOne<{ user_email: string | null; shape_name: string }>(
-    'SELECT user_email, shape_name FROM nf_rfqs WHERE id = ?', rfqId,
+  const rfqRow = await db.queryOne<{
+    user_email: string | null;
+    shape_name: string;
+    user_id: string | null;
+    language: string | null;
+  }>(
+    `SELECT r.user_email, r.shape_name, r.user_id, u.language
+     FROM nf_rfqs r
+     LEFT JOIN nf_users u ON r.user_id = u.id
+     WHERE r.id = ?`,
+    rfqId,
   ).catch(() => null);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nexyfab.com';
   if (rfqRow?.user_email) {
+    const locale = nexyfabEmailLocaleFromLanguageTag(rfqRow.language);
+    const langPath = nexyfabAppLangPathFromEmailLocale(locale);
+    const shape = rfqRow.shape_name || rfqId;
     sendEmail(
       rfqRow.user_email,
-      `[NexyFab] 견적이 도착했습니다 — ${rfqRow.shape_name || rfqId}`,
+      quoteReceivedEmailSubject(locale, shape),
       quoteReceivedHtml({
         userName: rfqRow.user_email.split('@')[0],
+        lang: rfqRow.language ?? undefined,
         rfqId,
-        shapeName: rfqRow.shape_name || rfqId,
+        shapeName: shape,
         factoryName: partner.company || partner.email,
         estimatedAmount: amount,
+        currency,
         validUntil: validUntil ?? undefined,
-        rfqPageUrl: `${baseUrl}/ko/nexyfab/rfq`,
+        rfqPageUrl: `${baseUrl}/${langPath}/nexyfab/rfq/${rfqId}`,
       }),
     ).catch(err => console.error('[partner/quotes] quote notification email failed:', err));
   }

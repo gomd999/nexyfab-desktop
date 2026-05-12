@@ -20,11 +20,16 @@ import { getDemoSession, DEMO_USER_ID } from '@/lib/demo-session';
 export const dynamic = 'force-dynamic';
 
 // 클라이언트에서 직접 쏠 수 있는 이벤트만 노출.
-// 서버에서만 발생해야 하는 이벤트(rfq_submitted 등)는 의도적으로 제외.
+// 서버에서만 발생해야 하는 이벤트(rfq_submitted, signup_complete, upgrade_completed)는 의도적으로 제외.
 const CLIENT_ALLOWED: ReadonlySet<FunnelEventType> = new Set<FunnelEventType>([
   'match_view',
   'match_partner_select',
   'bundle_create_intent',
+  // 온보딩 단계 — 클라이언트가 알 수 있고 서버 사이드 확정 불필요한 것들.
+  'shape_generator_first_open',
+  'first_shape_created',
+  'paywall_shown',
+  'paywall_upgrade_clicked',
 ]);
 
 const MAX_METADATA_BYTES = 2_000;

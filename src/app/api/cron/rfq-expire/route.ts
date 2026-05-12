@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
         'rfq_expired',
         '견적 요청이 만료되었습니다',
         `${row.shape_name || '부품'} 견적 요청(${row.id.slice(0, 8).toUpperCase()})이 14일이 지나 자동 만료 처리되었습니다.`,
-        { quoteId: row.id },
+        { rfqId: row.id },
       );
 
       expired++;

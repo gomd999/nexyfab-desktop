@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
-import { sendNotificationEmail } from '@/app/lib/mailer';
+import { sendNotificationEmail as _sendNotificationEmail } from '@/app/lib/mailer';
 
 export const dynamic = 'force-dynamic';
 

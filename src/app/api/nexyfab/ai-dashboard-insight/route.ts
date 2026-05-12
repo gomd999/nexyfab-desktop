@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { chatCompletion, AiNotConfiguredError, type ChatMessage } from '@/lib/ai';
 
 export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
@@ -7,9 +8,6 @@ export async function POST(req: NextRequest) {
 
   const { summary, lang = 'ko' } = await req.json();
   if (!summary) return NextResponse.json({ insight: '' });
-
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return NextResponse.json({ insight: '' });
 
   const isKo = lang === 'ko';
   const systemPrompt = isKo
@@ -20,23 +18,24 @@ export async function POST(req: NextRequest) {
     ? `활성 프로젝트: ${summary.activeProjects}개, 대기 RFQ: ${summary.pendingRfqs}건, 진행 주문: ${summary.activeOrders}건, 이번달 지출: ₩${summary.monthlySpend?.toLocaleString() || 0}`
     : `Active projects: ${summary.activeProjects}, Pending RFQs: ${summary.pendingRfqs}, Active orders: ${summary.activeOrders}, Monthly spend: ₩${summary.monthlySpend?.toLocaleString() || 0}`;
 
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userContent },
+  ];
+
   try {
-    const baseUrl = process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }],
-        max_tokens: 80,
-        temperature: 0.3,
-      }),
-      signal: AbortSignal.timeout(10000),
+    const result = await chatCompletion({
+      messages,
+      maxTokens: 80,
+      temperature: 0.3,
+      timeoutMs: 10_000,
+      task: 'ai-dashboard-insight',
     });
-    const data = await res.json();
-    const insight = data.choices?.[0]?.message?.content?.trim() || '';
-    return NextResponse.json({ insight });
-  } catch {
+    return NextResponse.json({ insight: result.text.trim() });
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) {
+      return NextResponse.json({ insight: '' });
+    }
     return NextResponse.json({ insight: '' });
   }
 }

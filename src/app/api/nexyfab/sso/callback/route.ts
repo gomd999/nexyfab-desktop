@@ -17,7 +17,7 @@ interface SSOCallbackResult {
 
 // ─── Demo fallback ────────────────────────────────────────────────────────────
 
-const DEMO_RESULT: SSOCallbackResult = {
+const _DEMO_RESULT: SSOCallbackResult = {
   user: {
     id: 'sso-demo',
     email: 'demo@company.com',

@@ -10,7 +10,7 @@ import { checkOrigin } from '@/lib/csrf';
 import {
   confirmPayment,
   issueBillingKey,
-  chargeWithBillingKey,
+  chargeWithBillingKey as _chargeWithBillingKey,
   verifyTossWebhook,
 } from '@/lib/toss-client';
 import { recordBillingAnalytics } from '@/lib/billing-engine';
@@ -147,11 +147,30 @@ export async function PUT(req: NextRequest) {
     // ── Manufacturing order (nf_orders) — toss_order_id matches ──────────────
     // tossOrderId format: NF-{orderIdStripped}-{timestamp}
     if (orderId.startsWith('NF-')) {
-      await db.execute(
+      const updateResult = await db.execute(
         `UPDATE nf_orders SET payment_status = 'paid', status = 'production', updated_at = ?
          WHERE toss_order_id = ? AND payment_status IN ('pending', 'processing')`,
         now, orderId,
-      ).catch(() => {});
+      ).catch(() => null);
+
+      // V7: when the webhook arrives before (or instead of) the user-mediated
+      // PATCH /payment, we still need to auto-create escrow + send receipt.
+      // Idempotent helpers — calling these after the PATCH already did the
+      // work is a no-op (escrow row already exists).
+      if (updateResult) {
+        const orderRow = await db.queryOne<{ id: string; user_id: string }>(
+          'SELECT id, user_id FROM nf_orders WHERE toss_order_id = ?', orderId,
+        ).catch(() => null);
+        if (orderRow) {
+          try {
+            const { createEscrowForOrder, markEscrowReceived } = await import('@/lib/escrow-helpers');
+            const result = await createEscrowForOrder(db, orderRow.id);
+            if (result) await markEscrowReceived(db, orderRow.id);
+          } catch (err) {
+            console.warn('[toss webhook] escrow auto-create failed:', err);
+          }
+        }
+      }
     }
   }
 

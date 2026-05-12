@@ -16,6 +16,17 @@ import { getDbAdapter } from '@/lib/db-adapter';
 
 export const dynamic = 'force-dynamic';
 
+/** Row shape passed to `buildHtml` after DB → view mapping */
+interface SettlementContractRow {
+  id: string;
+  projectName: string;
+  contractAmount: number;
+  commissionRate: number;
+  grossCommission: number;
+  planDeduction: number;
+  finalCharge: number;
+}
+
 // ─── 금액 포맷 ────────────────────────────────────────────────────────────
 
 function won(n: number): string {
@@ -28,12 +39,12 @@ function buildHtml(params: {
   partnerEmail: string;
   company: string;
   month: string;
-  contracts: any[];
+  contracts: SettlementContractRow[];
   issuedAt: string;
 }): string {
   const { partnerEmail, company, month, contracts, issuedAt } = params;
 
-  const rows = contracts.map((c: any) => {
+  const rows = contracts.map((c) => {
     const amount: number = c.contractAmount ?? 0;
     const rate: number = c.commissionRate ?? 0;
     const gross: number = c.grossCommission ?? Math.round(amount * rate / 100);
@@ -53,10 +64,10 @@ function buildHtml(params: {
   }).join('');
 
   // 합계 계산
-  const totalAmount = contracts.reduce((s: number, c: any) => s + (c.contractAmount ?? 0), 0);
-  const totalGross = contracts.reduce((s: number, c: any) => s + (c.grossCommission ?? 0), 0);
-  const totalDeduction = contracts.reduce((s: number, c: any) => s + (c.planDeduction ?? 0), 0);
-  const totalFinal = contracts.reduce((s: number, c: any) => s + (c.finalCharge ?? 0), 0);
+  const totalAmount = contracts.reduce((s, c) => s + (c.contractAmount ?? 0), 0);
+  const totalGross = contracts.reduce((s, c) => s + (c.grossCommission ?? 0), 0);
+  const totalDeduction = contracts.reduce((s, c) => s + (c.planDeduction ?? 0), 0);
+  const totalFinal = contracts.reduce((s, c) => s + (c.finalCharge ?? 0), 0);
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -373,7 +384,7 @@ export async function GET(req: NextRequest) {
     normPartnerEmail(partnerEmail), month,
   );
 
-  const filtered = rawContracts.map(c => ({
+  const filtered: SettlementContractRow[] = rawContracts.map(c => ({
     id: c.id,
     projectName: c.project_name,
     contractAmount: c.contract_amount ?? 0,

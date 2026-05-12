@@ -4,7 +4,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
-import { deliverWebhook } from '@/lib/webhook-delivery';
+import { deliverWebhook as _deliverWebhook } from '@/lib/webhook-delivery';
 import type { WebhookEvent } from '@/lib/webhook-delivery';
 
 export const dynamic = 'force-dynamic';

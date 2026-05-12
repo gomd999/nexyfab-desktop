@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
-import type { WebhookEvent } from '@/lib/webhook-delivery';
+import type { WebhookEvent as _WebhookEvent } from '@/lib/webhook-delivery';
 
 export const dynamic = 'force-dynamic';
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
-import { logAudit } from '@/lib/audit';
+import { logAudit as _logAudit } from '@/lib/audit';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
   const cutoff = Date.now() - auditDays * 86_400_000;
 
-  const userId = req.nextUrl.searchParams.get('userId');
+  const _userId = req.nextUrl.searchParams.get('userId');
   const action = req.nextUrl.searchParams.get('action');
   const page = Math.max(1, parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10));
   const limit = Math.min(500, Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') ?? '100', 10)));

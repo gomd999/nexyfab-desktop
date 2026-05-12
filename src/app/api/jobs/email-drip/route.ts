@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
-import { dripD1Html, dripD7Html } from '@/lib/nexyfab-email';
+import { dripD1Html, dripD7Html, dripD1EmailSubject, dripD7EmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { buildUnsubscribeUrl } from '@/lib/unsubscribe';
 
 export const dynamic = 'force-dynamic';
@@ -94,17 +94,15 @@ export async function POST(req: NextRequest) {
   let d7Sent = 0;
 
   for (const user of d1Users) {
-    const lang = user.language?.startsWith('ko') ? 'ko' : 'en';
+    const locale = nexyfabEmailLocaleFromLanguageTag(user.language);
     const name = user.name || user.email.split('@')[0];
-    const subject = lang === 'ko'
-      ? '[NexyFab] 오늘 꼭 써보세요 — 핵심 기능 3가지'
-      : '[NexyFab] 3 Features to Try Today';
+    const subject = dripD1EmailSubject(locale);
 
     try {
       await enqueueJob('send_email', {
         to: user.email,
         subject,
-        html: dripD1Html(name, lang, buildUnsubscribeUrl(user.email)),
+        html: dripD1Html(name, locale, buildUnsubscribeUrl(user.email)),
       });
       await db.execute(
         `INSERT OR IGNORE INTO nf_email_drip_log (id, user_id, drip_type, sent_at) VALUES (?, ?, 'd1', ?)`,
@@ -117,17 +115,15 @@ export async function POST(req: NextRequest) {
   }
 
   for (const user of d7Users) {
-    const lang = user.language?.startsWith('ko') ? 'ko' : 'en';
+    const locale = nexyfabEmailLocaleFromLanguageTag(user.language);
     const name = user.name || user.email.split('@')[0];
-    const subject = lang === 'ko'
-      ? '[NexyFab] Pro로 업그레이드하고 더 많이 만드세요'
-      : '[NexyFab] Upgrade to Pro and build more';
+    const subject = dripD7EmailSubject(locale);
 
     try {
       await enqueueJob('send_email', {
         to: user.email,
         subject,
-        html: dripD7Html(name, lang, buildUnsubscribeUrl(user.email)),
+        html: dripD7Html(name, locale, buildUnsubscribeUrl(user.email)),
       });
       await db.execute(
         `INSERT OR IGNORE INTO nf_email_drip_log (id, user_id, drip_type, sent_at) VALUES (?, ?, 'd7', ?)`,

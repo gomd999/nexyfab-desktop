@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
     'rfq_assigned',
     '새 견적 요청이 배정되었습니다',
     `RFQ ${rfqId.slice(0, 8).toUpperCase()} — ${rfq.shape_name || '부품'} 견적이 귀사에 배정되었습니다.`,
-    { quoteId: rfqId },
+    { rfqId },
   );
 
   // ── 8. Audit log ──────────────────────────────────────────────────────────────

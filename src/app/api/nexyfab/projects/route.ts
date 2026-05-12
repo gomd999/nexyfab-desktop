@@ -143,5 +143,25 @@ export async function POST(req: NextRequest) {
   logAudit({ userId: authUser.userId, action: 'project.create', resourceId: project.id, ip });
   recordUsage({ userId: authUser.userId, product: 'nexyfab', metric: 'project_create', metadata: JSON.stringify({ projectId: project.id }) }).catch(() => {});
 
+  // Onboarding funnel: 첫 프로젝트 저장은 깔때기 핵심 단계.
+  // first_save 이벤트는 이 user 의 첫 project_create 일 때만 발사 — 두 번째
+  // 프로젝트는 paywall에서 막히거나 Pro 결제 후라 funnel 의미가 다르다.
+  void (async () => {
+    try {
+      const c = await db.queryOne<{ c: number }>(
+        'SELECT COUNT(*) as c FROM nf_projects WHERE user_id = ?',
+        authUser.userId,
+      );
+      if (Number(c?.c ?? 0) === 1) {
+        const { logFunnelEvent } = await import('@/lib/funnel-logger');
+        await logFunnelEvent(authUser.userId, {
+          eventType: 'first_save',
+          contextType: 'project',
+          contextId: project.id,
+        });
+      }
+    } catch { /* swallow */ }
+  })();
+
   return NextResponse.json({ project }, { status: 201 });
 }

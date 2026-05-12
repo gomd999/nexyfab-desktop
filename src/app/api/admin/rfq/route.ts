@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
+import { sendEmail as _sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
 import { enqueueJob } from '@/lib/job-queue';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
       'quote_received',
       '새 견적 요청 배정',
       `${rfq.shape_name || rfq.id} (${rfq.material_id || '소재 미정'}, ${rfq.quantity}개) RFQ가 배정되었습니다.`,
+      { rfqId: rfq.id },
     );
   }
 

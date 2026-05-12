@@ -6,8 +6,21 @@ import { normPartnerEmail } from '@/lib/partner-factory-access';
 
 export const dynamic = 'force-dynamic';
 
+/** Contract row fields used by `applyTemplate` (subset of nf_contracts SELECT) */
+interface ContractPdfTemplateRow {
+  project_name: string;
+  customer_contact: string | null;
+  factory_name: string | null;
+  partner_email: string | null;
+  contract_amount: number | null;
+  created_at: string;
+  deadline: string | null;
+  contract_date?: string | null;
+  warranty_period?: string | null;
+}
+
 /** {{변수}} → 실제 값으로 치환 */
-function applyTemplate(template: string, contract: any): string {
+function applyTemplate(template: string, contract: ContractPdfTemplateRow): string {
   const vars: Record<string, string> = {
     projectName: contract.project_name || '',
     clientName: contract.customer_contact ? (() => {

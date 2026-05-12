@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { validateQuoteInput, QuoteValidationError } from '@/lib/quote-validation';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 
 // ─── 재질 고정 데이터 (밀도, 가공성 — 가격은 실시간 API에서 주입) ───────────────
 
@@ -141,10 +142,6 @@ export async function POST(req: NextRequest) {
         const alternatives: Array<{ material: string; process: string; saving_pct: number; reason: string }> = [];
 
         try {
-            const deepseekKey = process.env.DEEPSEEK_API_KEY;
-            if (!deepseekKey) throw new Error('DEEPSEEK_API_KEY not configured');
-            const deepseekBase = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
-
             const prompt = `당신은 제조업 원가 및 DFM(Design for Manufacturability) 전문가입니다.
 다음 부품 정보를 분석하고 JSON으로만 답하세요.
 
@@ -182,35 +179,33 @@ JSON 형식으로만 답하고 다른 설명은 하지 마세요:
   "summary": "한 줄 종합 의견"
 }`;
 
-            const dsRes = await fetch(`${deepseekBase}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${deepseekKey}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [{ role: 'user', content: prompt }],
-                    max_tokens: 1024,
-                    temperature: 0.3,
-                }),
+            const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
+            const result = await chatCompletion({
+                messages,
+                maxTokens: 1024,
+                temperature: 0.3,
+                timeoutMs: 30_000,
+                task: 'quick-quote-estimate',
             });
-
-            if (dsRes.ok) {
-                const dsData = await dsRes.json();
-                const content = dsData.choices?.[0]?.message?.content || '';
-                const jsonMatch = content.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    aiReport = JSON.parse(jsonMatch[0]);
-                    if (aiReport?.alternatives) {
-                        for (const alt of aiReport.alternatives as Array<{ material: string; process: string; saving_pct: number; reason: string }>) {
-                            alternatives.push(alt);
-                        }
+            const content = result.text || '';
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                aiReport = JSON.parse(jsonMatch[0]);
+                if (aiReport?.alternatives) {
+                    for (const alt of aiReport.alternatives as Array<{ material: string; process: string; saving_pct: number; reason: string }>) {
+                        alternatives.push(alt);
                     }
                 }
             }
         } catch (dsErr) {
-            console.error('DeepSeek error:', dsErr);
+            if (dsErr instanceof AiNotConfiguredError) {
+                console.warn('quick-quote: AI provider not configured, using rule-based fallback');
+            } else {
+                const detail = dsErr instanceof AiProviderError
+                    ? `${dsErr.provider}${dsErr.status ? ` (${dsErr.status})` : ''}: ${dsErr.message}`
+                    : (dsErr instanceof Error ? dsErr.message : String(dsErr));
+                console.error('quick-quote AI error:', detail);
+            }
             // fallback: 기본 대안 제안
             if (material !== 'aluminum_6061' && processId !== 'cnc') {
                 alternatives.push({ material: 'aluminum_6061', process: 'cnc', saving_pct: 15, reason: '알루미늄 6061은 강도 대비 경량화와 가공성이 우수합니다.' });

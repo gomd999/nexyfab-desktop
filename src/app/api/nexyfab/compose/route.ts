@@ -8,12 +8,15 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { getPrompt } from '@/lib/ai/prompts';
 import type { IntakeSpec } from '@/app/[lang]/shape-generator/intake/intakeSpec';
 import {
   buildCandidates,
   scoreParts,
   scoreMethods,
   scoreMaterials,
+  type CandidateBundle,
 } from '@/app/[lang]/shape-generator/library/scoring';
 import { PARTS_BY_ID, renderPart } from '@/app/[lang]/shape-generator/library/parts';
 import { METHODS_BY_ID } from '@/app/[lang]/shape-generator/library/methods';
@@ -23,39 +26,8 @@ import { sizeClassToDims, quantityTierToCount } from '@/app/[lang]/shape-generat
 
 export const dynamic = 'force-dynamic';
 
-const SYSTEM_PROMPT = `You are a manufacturing design agent for NexyFab.
 
-Your task: Given (a) a user's IntakeSpec, (b) pre-scored candidate bundles of (Part + Method + Material), select the best combination and return:
- - The chosen part template ID (from candidates) OR "freeform-custom" if none fit
- - Parameter values for the part (mm / deg / count)
- - Refined JSCAD code that implements the design
- - Manufacturing method ID and Material ID
- - Korean design rationale (설계 근거) in 2-4 concise bullet points
-
-Rules:
-1. PREFER candidates — only use "freeform-custom" if the top bundle score < 55 AND no candidate part matches user intent.
-2. When using "freeform-custom", partId MUST equal "freeform-custom". Method/Material MUST still come from the candidates list.
-3. Parameter values must respect each parameter's min/max bounds and IntakeSpec size class.
-4. If user provided approxDimensions, use them to derive part parameters (use approxDimensions as primary size hints).
-5. Start the JSCAD code from the chosen part's snippet with {{placeholders}} replaced by real numbers.
-   For freeform-custom, write bespoke JSCAD that captures the user's specific geometry.
-6. All code must be valid @jscad/modeling JS. Import destructure at top:
-   const { primitives, booleans, transforms } = jscad;
-   Export: module.exports = { main };
-7. Keep rationale concise — a developer should understand *why* these choices in 10 seconds.
-
-Return JSON only (no markdown, no prose outside JSON):
-{
-  "partId": "bracket-l",
-  "methodId": "cnc-mill-3ax",
-  "materialId": "al-6061",
-  "params": { "width": 80, "height": 60, "depth": 50, ... },
-  "code": "const { primitives, booleans, transforms } = jscad;\\n...\\nconst main = () => {...};\\nmodule.exports = { main };",
-  "rationale": ["선택 근거 1", "선택 근거 2", ...],
-  "freeform": false
-}`;
-
-function safeParseJson(raw: string): any {
+function safeParseJson(raw: string): unknown {
   let s = raw.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
   const first = s.indexOf('{');
   const last = s.lastIndexOf('}');
@@ -67,19 +39,19 @@ export async function POST(req: NextRequest) {
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
-  let body: any = {};
+  let body: Record<string, unknown> = {};
   try {
-    body = await req.json();
+    body = (await req.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const spec: IntakeSpec | undefined = body.spec;
+  const spec = body.spec as IntakeSpec | undefined;
   if (!spec || !spec.category) {
     return NextResponse.json({ error: 'IntakeSpec required' }, { status: 400 });
   }
   // 사용자가 특정 layer 를 강제로 고정한 경우 (Result Panel 의 swap 액션)
-  const force: { partId?: string; methodId?: string; materialId?: string } = body.force ?? {};
+  const force = (body.force ?? {}) as { partId?: string; methodId?: string; materialId?: string };
 
   // 1) 스코어링 엔진으로 후보 생성
   const allBundles = buildCandidates(spec, 30);
@@ -121,11 +93,6 @@ export async function POST(req: NextRequest) {
   Material: ${mat.id} — ${mat.nameKo} | ${mat.description}`;
   }).join('\n\n');
 
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (!deepseekKey) {
-    return NextResponse.json({ error: 'AI key not configured' }, { status: 500 });
-  }
-
   // 3) 선택된 후보의 파트 스니펫 전부 제공 (LLM 이 코드 합성용으로 사용)
   const snippetBlock = bundles
     .slice(0, 3)
@@ -145,42 +112,45 @@ ${snippetBlock}
 
 Pick the best bundle (don't have to be #1 if another fits user's specific needs better), fill params, generate JSCAD code, and return the JSON.`;
 
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${deepseekKey}`,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      max_tokens: 3500,
-      temperature: 0.2,
-    }),
-  });
+  const promptDef = getPrompt('compose');
+  const messages: ChatMessage[] = [
+    { role: 'system', content: promptDef.template },
+    { role: 'user', content: userMessage },
+  ];
 
-  if (!res.ok) {
-    return NextResponse.json({ error: 'AI request failed', status: res.status }, { status: 502 });
+  let raw = '';
+  try {
+    const result = await chatCompletion({
+      messages,
+      maxTokens: promptDef.defaults.maxTokens,
+      temperature: promptDef.defaults.temperature,
+      timeoutMs: promptDef.defaults.timeoutMs,
+      task: promptDef.id,
+    });
+    raw = result.text;
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) {
+      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.error('compose AI provider error:', detail);
+    return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
   }
 
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content ?? '';
-
-  let parsed: any;
+  let parsed: Record<string, unknown>;
   try {
-    parsed = safeParseJson(raw);
+    parsed = safeParseJson(raw) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 });
   }
 
   // 4) LLM 결과 검증 + 폴백
   const isFreeform = parsed.partId === 'freeform-custom' || parsed.freeform === true;
-  const chosenPart = isFreeform ? null : PARTS_BY_ID[parsed.partId];
-  const chosenMethod = METHODS_BY_ID[parsed.methodId];
-  const chosenMaterial = MATERIALS_BY_ID[parsed.materialId];
+  const chosenPart = isFreeform ? null : PARTS_BY_ID[String(parsed.partId)];
+  const chosenMethod = METHODS_BY_ID[String(parsed.methodId)];
+  const chosenMaterial = MATERIALS_BY_ID[String(parsed.materialId)];
 
   if ((!chosenPart && !isFreeform) || !chosenMethod || !chosenMaterial) {
     // LLM 이 존재하지 않는 id 를 반환한 경우 → 상위 bundle 로 폴백
@@ -200,18 +170,19 @@ Pick the best bundle (don't have to be #1 if another fits user's specific needs 
 
   // 5) 파라미터 bound check + 누락시 default
   const safeParams: Record<string, number> = {};
+  const paramsRec = parsed.params as Record<string, unknown> | undefined;
   if (chosenPart) {
     for (const prm of chosenPart.parameters) {
-      const v = Number(parsed.params?.[prm.name]);
+      const v = Number(paramsRec?.[prm.name]);
       if (Number.isFinite(v)) {
         safeParams[prm.name] = Math.max(prm.min, Math.min(prm.max, v));
       } else {
         safeParams[prm.name] = prm.default;
       }
     }
-  } else if (isFreeform && parsed.params && typeof parsed.params === 'object') {
+  } else if (isFreeform && paramsRec) {
     // freeform: LLM 파라미터를 그대로 수용 (숫자만)
-    for (const [k, v] of Object.entries(parsed.params)) {
+    for (const [k, v] of Object.entries(paramsRec)) {
       if (Number.isFinite(Number(v))) safeParams[k] = Number(v);
     }
   }
@@ -255,7 +226,7 @@ Pick the best bundle (don't have to be #1 if another fits user's specific needs 
     params: safeParams,
     code,
     freeform: isFreeform,
-    rationale: Array.isArray(parsed.rationale) ? parsed.rationale : [],
+    rationale: Array.isArray(parsed.rationale) ? (parsed.rationale as unknown[]) : [],
     estimate: {
       toleranceMm: chosenMethod.toleranceMm,
       leadTimeDays: chosenMethod.leadTimeDays,
@@ -303,7 +274,7 @@ module.exports = { main };
 `;
 }
 
-function summarizeBundle(b: any) {
+function summarizeBundle(b: CandidateBundle) {
   return {
     partId: b.part.item.id,
     methodId: b.method.item.id,

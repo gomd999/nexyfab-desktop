@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { matchPartners } from '@/app/lib/matching';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { chatCompletion, AiNotConfiguredError, type ChatMessage } from '@/lib/ai';
 
 function maskEmail(email: string): string {
   if (!email) return '';
@@ -122,11 +123,8 @@ export async function GET(req: NextRequest) {
   // 5. matchPartners 호출 (키워드 기반 1차 스코어링)
   const matches = matchPartners(inquiryForMatch, enrichedPartners);
 
-  // 6. LLM 시맨틱 리랭킹 (DeepSeek, fire-and-try)
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  const baseUrl = process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
-
-  if (apiKey && matches.length > 1) {
+  // 6. LLM 시맨틱 리랭킹 (fire-and-try)
+  if (matches.length > 1) {
     try {
       const candidateList = matches.slice(0, 8).map((m, i) => ({
         rank: i + 1,
@@ -154,50 +152,53 @@ Return ONLY a JSON array of objects in new rank order:
 
 Do not include partners not in the list. Raw JSON only, no markdown.`;
 
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [{ role: 'user', content: prompt }],
+      const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
+
+      let raw = '';
+      try {
+        const result = await chatCompletion({
+          messages,
+          maxTokens: 512,
           temperature: 0.2,
-          max_tokens: 512,
-          response_format: { type: 'json_object' },
-        }),
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (res.ok) {
-        const data = await res.json() as { choices: Array<{ message: { content: string } }> };
-        const raw = data.choices?.[0]?.message?.content ?? '';
-        // LLM sometimes returns object wrapper — extract array
-        const jsonData = JSON.parse(raw);
-        const parsed: Array<{ id: string; semanticScore: number; reason: string }> = Array.isArray(jsonData)
-          ? jsonData
-          : (jsonData.rankings ?? jsonData.result ?? []);
-
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const scoreMap = new Map(parsed.map(p => [p.id, { score: p.semanticScore, reason: p.reason }]));
-          const reranked = matches.map(m => {
-            const llm = scoreMap.get(m.partnerId);
-            return {
-              ...m,
-              score: llm ? Math.round(m.score * 0.4 + llm.score * 0.6) : m.score,
-              reasons: llm?.reason ? [llm.reason, ...m.reasons] : m.reasons,
-              llmRanked: !!llm,
-            };
-          }).sort((a, b) => b.score - a.score);
-
-          return NextResponse.json({
-            matches: reranked,
-            llmRanked: true,
-            inquiry: {
-              id: inquiryForMatch.id,
-              request_field: inquiryForMatch.request_field,
-              budget_range: inquiryForMatch.budget_range,
-            },
-          });
+          timeoutMs: 8000,
+          task: 'match-rerank',
+        });
+        raw = result.text;
+      } catch (e) {
+        if (e instanceof AiNotConfiguredError) {
+          // No AI configured — fall through to keyword-only result.
+          throw e;
         }
+        throw e;
+      }
+
+      // LLM sometimes returns object wrapper — extract array
+      const jsonData = JSON.parse(raw);
+      const parsed: Array<{ id: string; semanticScore: number; reason: string }> = Array.isArray(jsonData)
+        ? jsonData
+        : (jsonData.rankings ?? jsonData.result ?? []);
+
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const scoreMap = new Map(parsed.map(p => [p.id, { score: p.semanticScore, reason: p.reason }]));
+        const reranked = matches.map(m => {
+          const llm = scoreMap.get(m.partnerId);
+          return {
+            ...m,
+            score: llm ? Math.round(m.score * 0.4 + llm.score * 0.6) : m.score,
+            reasons: llm?.reason ? [llm.reason, ...m.reasons] : m.reasons,
+            llmRanked: !!llm,
+          };
+        }).sort((a, b) => b.score - a.score);
+
+        return NextResponse.json({
+          matches: reranked,
+          llmRanked: true,
+          inquiry: {
+            id: inquiryForMatch.id,
+            request_field: inquiryForMatch.request_field,
+            budget_range: inquiryForMatch.budget_range,
+          },
+        });
       }
     } catch {
       // LLM 실패해도 keyword 매칭 결과로 응답

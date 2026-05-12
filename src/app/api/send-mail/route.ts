@@ -151,11 +151,11 @@ export async function POST(req: NextRequest) {
 
     // 3. Data Processing
     const type = data.action || 'unknown';
-    const lang = (data.lang === 'kr' || data.lang === 'ko') ? 'ko' : (data.lang || 'en');
+    const _lang = (data.lang === 'kr' || data.lang === 'ko') ? 'ko' : (data.lang || 'en');
     let name = data.name || '';
     const company = data.company || '';
-    const email = data.email || '';
-    const phone = data.phone || '';
+    const _email = data.email || '';
+    const _phone = data.phone || '';
 
     if (!name && company) {
         name = company.split('(')[0].trim();

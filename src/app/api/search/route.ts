@@ -6,10 +6,37 @@ import path from 'path';
 // Note: Ensure the 'data/factories.db' exists in the project root
 const DB_PATH = path.join(process.cwd(), 'data', 'factories.db');
 
+/** Subset of `factories` columns used for text scoring (SQLite row is loose). */
+interface FactorySearchRow {
+  name?: string | null;
+  name_en?: string | null;
+  name_cn?: string | null;
+  product?: string | null;
+  product_en?: string | null;
+  product_ja?: string | null;
+  product_cn?: string | null;
+  industry?: string | null;
+  industry_en?: string | null;
+  industry_ja?: string | null;
+  industry_cn?: string | null;
+  category?: string | null;
+  category_en?: string | null;
+  category_ja?: string | null;
+  category_cn?: string | null;
+}
+
+type FactoryResultRow = FactorySearchRow & {
+  id?: unknown;
+  country?: string;
+  search_text?: string;
+  score?: number;
+  [key: string]: unknown;
+};
+
 /**
  * Score calculation logic ported from search.php
  */
-function getScore(item: any, query: string, keywords: string[]) {
+function getScore(item: FactorySearchRow, query: string, keywords: string[]) {
     let score = 0;
     
     // Core searchable fields
@@ -96,7 +123,7 @@ export async function GET(req: NextRequest) {
         const keywords = query.split(/\s+/).filter(kw => kw.length > 0);
 
         const performSearch = (country: 'KO' | 'CN') => {
-            const results: any[] = [];
+            const results: FactoryResultRow[] = [];
             
             // Attempt 1: Strict AND search (All keywords present)
             const andConditions = keywords.map(() => "search_text LIKE ?").join(' AND ');
@@ -105,11 +132,12 @@ export async function GET(req: NextRequest) {
             const stmtAnd = db.prepare(`SELECT * FROM factories WHERE country = ? AND (${andConditions}) LIMIT 200`);
             const rowsAnd = stmtAnd.all(country, ...andParams);
             
-            rowsAnd.forEach((row: any) => {
-                const score = getScore(row, query, keywords);
+            rowsAnd.forEach((row) => {
+                const r = row as FactoryResultRow;
+                const score = getScore(r, query, keywords);
                 if (score > 0) {
-                    row.score = score;
-                    results.push(row);
+                    r.score = score;
+                    results.push(r);
                 }
             });
 
@@ -122,17 +150,18 @@ export async function GET(req: NextRequest) {
                 const stmtOr = db.prepare(`SELECT * FROM factories WHERE country = ? AND (${orConditions}) AND NOT (${andConditions}) LIMIT 100`);
                 const rowsOr = stmtOr.all(country, ...orParams, ...andParams);
                 
-                rowsOr.forEach((row: any) => {
-                    const score = getScore(row, query, keywords);
+                rowsOr.forEach((row) => {
+                    const r = row as FactoryResultRow;
+                    const score = getScore(r, query, keywords);
                     if (score > 0) {
-                        row.score = score;
-                        results.push(row);
+                        r.score = score;
+                        results.push(r);
                     }
                 });
             }
 
             // Sort and Cleanup
-            results.sort((a, b) => b.score - a.score);
+            results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
             return results.slice(0, 40).map(item => {
                 const { score, search_text, id, ...rest } = item;
                 return rest;

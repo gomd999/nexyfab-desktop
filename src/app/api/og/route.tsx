@@ -1,8 +1,13 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { PAGE_META, type Lang, type PageKey } from '@/lib/metaHelper';
 
 export const runtime = 'edge';
 
+// Hard-coded tags for popular landing pages — fall back to PAGE_META.title /
+// description for the long tail (privacy, refund, etc.). This keeps top-of-
+// funnel pages tightly branded while still producing a usable OG image for
+// every PageKey rather than 404-ing.
 const PAGE_LABELS: Record<string, Record<string, string>> = {
   home: { kr: 'AI 3D 모델링 & 제조 파트너 매칭', en: 'AI 3D Modeling & Manufacturing Matching', ja: 'AI 3Dモデリング & 製造マッチング', cn: 'AI 3D建模 & 制造匹配', es: 'Modelado 3D IA & Manufactura', ar: 'نمذجة ثلاثية الأبعاد والتصنيع' },
   'shape-generator': { kr: '3D Shape Generator', en: '3D Shape Generator', ja: '3D Shape Generator', cn: '3D Shape Generator', es: '3D Shape Generator', ar: '3D Shape Generator' },
@@ -27,13 +32,32 @@ const SUBTITLES: Record<string, Record<string, string>> = {
   'project-inquiry': { kr: 'AI가 최적의 제조 파트너를 매칭해드립니다', en: 'AI matches you with the optimal manufacturer', ja: 'AIが最適な製造パートナーをマッチング', cn: 'AI为您匹配最优制造合作伙伴', es: 'IA conecta con el fabricante ideal', ar: 'يطابقك AI مع المصنّع الأمثل' },
 };
 
+const VALID_LANGS: Lang[] = ['kr', 'en', 'ja', 'cn', 'es', 'ar'];
+
+function fallbackFromPageMeta(page: string, lang: string): { title: string; subtitle: string } {
+  // PAGE_META keys mirror PageKey. We trust caller-supplied page after the
+  // VALID_PAGES check below, so cast is safe.
+  const m = PAGE_META[page as PageKey]?.[lang as Lang];
+  if (!m) return { title: 'Nexyfab', subtitle: 'AI 3D modeling & manufacturing matching' };
+  // Drop the " | Brand" suffix that buildMetadata appends — it bloats the
+  // headline width unnecessarily on the OG card.
+  const title = m.title.split(' | ')[0] ?? m.title;
+  const subtitle = m.description.length > 140
+    ? m.description.slice(0, 137) + '…'
+    : m.description;
+  return { title, subtitle };
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const page = searchParams.get('page') || 'home';
-  const lang = searchParams.get('lang') || 'en';
+  const pageRaw = searchParams.get('page') ?? 'home';
+  const langRaw = searchParams.get('lang') ?? 'en';
+  const page = pageRaw in PAGE_META ? pageRaw : 'home';
+  const lang = VALID_LANGS.includes(langRaw as Lang) ? langRaw : 'en';
 
-  const title = PAGE_LABELS[page]?.[lang] || PAGE_LABELS[page]?.['en'] || 'Nexyfab';
-  const subtitle = SUBTITLES[page]?.[lang] || SUBTITLES[page]?.['en'] || '';
+  const fallback = fallbackFromPageMeta(page, lang);
+  const title = PAGE_LABELS[page]?.[lang] ?? PAGE_LABELS[page]?.['en'] ?? fallback.title;
+  const subtitle = SUBTITLES[page]?.[lang] ?? SUBTITLES[page]?.['en'] ?? fallback.subtitle;
   const isRtl = lang === 'ar';
 
   return new ImageResponse(
@@ -155,7 +179,7 @@ export async function GET(req: NextRequest) {
             fontSize: '14px', color: '#484f58', fontFamily: 'system-ui',
             display: 'flex',
           }}>
-            300,000+ manufacturers
+            AI · CAD · Quote · Match
           </div>
         </div>
       </div>
@@ -163,6 +187,12 @@ export async function GET(req: NextRequest) {
     {
       width: 1200,
       height: 630,
+      headers: {
+        // Cache the rendered PNG aggressively — content only changes when
+        // PAGE_META is edited, which is a deploy-time event. Stale-while-
+        // revalidate keeps social previews instant even if the cache lags.
+        'cache-control': 'public, max-age=86400, s-maxage=2592000, stale-while-revalidate=2592000',
+      },
     }
   );
 }

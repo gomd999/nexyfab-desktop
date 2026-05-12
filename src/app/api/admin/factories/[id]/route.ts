@@ -52,8 +52,7 @@ export async function PATCH(
 
   values.push(id);
   const sql = `UPDATE nf_factories SET ${setClauses.join(', ')} WHERE id = ?`;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (db.execute as (sql: string, ...p: any[]) => Promise<{ changes: number }>)(sql, ...values);
+  await (db.execute as (sql: string, ...p: unknown[]) => Promise<{ changes: number }>)(sql, ...values);
 
   const row = await db.queryOne<Record<string, unknown>>('SELECT * FROM nf_factories WHERE id = ?', id);
   if (row) {

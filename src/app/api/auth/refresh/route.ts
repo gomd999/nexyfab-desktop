@@ -38,6 +38,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired refresh token' }, { status: 401 });
     }
 
+    // Surface billing status to the client so the app can show a "card declined"
+    // or "subscription cancelling" banner on the next render. Read the most
+    // recent active-or-pending subscription row; absence is fine (free user).
+    const subRow = await db.queryOne<{ status: string; current_period_end: number }>(
+      `SELECT status, current_period_end FROM nf_aw_subscriptions
+        WHERE user_id = ?
+          AND status IN ('active', 'past_due', 'cancel_pending')
+        ORDER BY updated_at DESC LIMIT 1`,
+      row.user_id,
+    ).catch(() => null);
+    const billingStatus: 'active' | 'past_due' | 'cancel_pending' | null =
+      subRow?.status === 'past_due' ? 'past_due'
+      : subRow?.status === 'cancel_pending' ? 'cancel_pending'
+      : subRow?.status === 'active' ? 'active'
+      : null;
+
     // Token rotation: 기존 토큰 폐기 후 새 토큰 발급 (atomic transaction)
     const newRawToken = randomBytes(40).toString('hex');
     const newTokenHash = createHash('sha256').update(newRawToken).digest('hex');
@@ -73,6 +89,8 @@ export async function POST(req: NextRequest) {
       expiresIn: 15 * 60,
       plan: row.plan,
       nexyfabStage: parseUserStageColumn(row.stage),
+      billingStatus,
+      ...(subRow?.current_period_end ? { periodEndMs: subRow.current_period_end } : {}),
     });
 
     const rc = refreshTokenCookie(newRawToken);

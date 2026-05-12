@@ -1,3 +1,8 @@
+import {
+  parseStoredAnalysisSummary,
+  type RfqAnalysisSummaryStored,
+} from '@/lib/rfq-analysis-summary';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface RFQEntry {
@@ -22,6 +27,8 @@ export interface RFQEntry {
     leadTime: string;
     confidence: string;
   }>;
+  /** Client-submitted FEA/modal/thermal hints; not server-verified. */
+  analysisSummary?: RfqAnalysisSummaryStored;
   note?: string;
   deadline?: string;
   preferredFactoryId?: string;
@@ -51,6 +58,7 @@ export function rowToRfq(row: Record<string, unknown>): RFQEntry {
     bbox: row.bbox ? JSON.parse(row.bbox as string) : { w: 0, h: 0, d: 0 },
     dfmResults: row.dfm_results ? JSON.parse(row.dfm_results as string) : undefined,
     costEstimates: row.cost_estimates ? JSON.parse(row.cost_estimates as string) : undefined,
+    analysisSummary: parseStoredAnalysisSummary(row.analysis_summary as string | null | undefined),
     note: (row.note as string) || undefined,
     deadline: (row.deadline as string) || undefined,
     preferredFactoryId: (row.preferred_factory_id as string) || undefined,

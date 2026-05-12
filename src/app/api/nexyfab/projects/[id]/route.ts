@@ -7,7 +7,7 @@ import { assertReleasedSceneEditAllowed } from '@/lib/nfProjectReleasedGuard';
 import { assertIfMatchUpdatedAt } from '@/lib/nfProjectConcurrency';
 import type { NexyfabProject } from '../projects-types';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
-import { ensureProjectMembersTable, resolveProjectAccess, type NfProjectAccess } from '@/lib/nfProjectAccess';
+import { ensureProjectMembersTable as _ensureProjectMembersTable, resolveProjectAccess, type NfProjectAccess } from '@/lib/nfProjectAccess';
 
 type ProjectAccess = NfProjectAccess;
 
@@ -149,6 +149,29 @@ export async function PATCH(
         { error: 'Only the project owner can archive or unarchive.', code: 'PROJECT_OWNER_ONLY' },
         { status: 403 },
       );
+    }
+    // Free plan: a user can have only 1 active (unarchived) project. Block
+    // unarchive when at the limit so the user can't sneak around the Pro
+    // gate by archiving project A and unarchiving project B back-to-back.
+    if (body.archived === false) {
+      const userRow = await db.queryOne<{ plan: string }>(
+        'SELECT plan FROM nf_users WHERE id = ?', authUser.userId,
+      ).catch(() => null);
+      if (userRow?.plan === 'free' || !userRow?.plan) {
+        const countRow = await db.queryOne<{ c: number }>(
+          'SELECT COUNT(*) as c FROM nf_projects WHERE user_id = ? AND archived_at IS NULL',
+          authUser.userId,
+        );
+        if (Number(countRow?.c ?? 0) >= 1) {
+          return NextResponse.json(
+            {
+              error: 'Free plan limit reached (1 active project). Upgrade to Pro to restore additional projects.',
+              code: 'FREE_PROJECT_LIMIT',
+            },
+            { status: 403 },
+          );
+        }
+      }
     }
     const result = await db.execute(
       'UPDATE nf_projects SET archived_at = ?, updated_at = ? WHERE id = ?',

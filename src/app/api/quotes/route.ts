@@ -6,7 +6,14 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { enqueueJob } from '@/lib/job-queue';
-import { quoteReceivedHtml } from '@/lib/nexyfab-email';
+import {
+  quoteReceivedHtml,
+  quoteReceivedEmailSubject,
+  quoteReceivedInAppTitle,
+  quoteReceivedInAppBody,
+  nexyfabEmailLocaleFromLanguageTag,
+  nexyfabAppLangPathFromEmailLocale,
+} from '@/lib/nexyfab-email';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 
 export const dynamic = 'force-dynamic';
@@ -171,18 +178,18 @@ export async function POST(req: NextRequest) {
         inquiryId,
       );
       if (rfqUser?.email) {
-        const lang = rfqUser.language?.startsWith('ko') ? 'ko' : 'en';
+        const locale = nexyfabEmailLocaleFromLanguageTag(rfqUser.language);
+        const langPath = nexyfabAppLangPathFromEmailLocale(locale);
+        const factoryLabel = factoryName ?? (locale === 'ko' ? '제조사' : 'Manufacturer');
         await enqueueJob('send_email', {
           to: rfqUser.email,
-          subject: lang === 'ko'
-            ? `[NexyFab] 견적이 도착했습니다 — ${projectName}`
-            : `[NexyFab] You received a quote — ${projectName}`,
+          subject: quoteReceivedEmailSubject(locale, projectName),
           html: quoteReceivedHtml({
             userName: rfqUser.name || rfqUser.email,
-            lang,
+            lang: rfqUser.language ?? undefined,
             rfqId: inquiryId,
             shapeName: projectName,
-            factoryName: factoryName ?? '제조사',
+            factoryName: factoryLabel,
             estimatedAmount: Number(estimatedAmount),
             validUntil: validUntil ?? undefined,
           }),
@@ -195,11 +202,9 @@ export async function POST(req: NextRequest) {
           notifId,
           rfqUser.user_id,
           'rfq.quoted',
-          lang === 'ko' ? `견적 도착: ${projectName}` : `Quote received: ${projectName}`,
-          lang === 'ko'
-            ? `${factoryName ?? '제조사'}에서 견적을 제출했습니다.`
-            : `${factoryName ?? 'A manufacturer'} submitted a quote.`,
-          `/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/rfq`,
+          quoteReceivedInAppTitle(locale, projectName),
+          quoteReceivedInAppBody(locale, factoryLabel),
+          `/${langPath}/nexyfab/rfq/${inquiryId}`,
           Date.now(),
         );
       }
@@ -260,6 +265,98 @@ export async function PATCH(req: NextRequest) {
         `"${quote.projectName}" 프로젝트의 견적이 채택되었습니다. 계약이 생성됩니다.`,
         { quoteId: id },
       );
+      // Notify admin (in-app + email) — operator should know the deal
+      // moved to contract stage so they can monitor escrow + delivery.
+      createNotification(
+        'admin',
+        'quote_accepted',
+        '견적 수락 — 계약 생성',
+        `"${quote.projectName}" 견적이 수락되었습니다. 파트너: ${quote.partnerEmail}, 금액: ${quote.estimatedAmount?.toLocaleString('ko-KR') ?? '-'}원`,
+        { quoteId: id },
+      );
+      try {
+        const { sendEmail } = await import('@/lib/email');
+        const { esc } = await import('@/lib/html-escape');
+        const adminEmail = process.env.NEXYFAB_ADMIN_EMAIL;
+        if (adminEmail) {
+          void sendEmail({
+            to: adminEmail,
+            subject: `[NexyFab Ops] 견적 수락 — ${quote.projectName}`,
+            html: `<p>고객이 <b>${esc(quote.projectName)}</b> 견적을 수락했습니다.<br/>파트너: ${esc(quote.partnerEmail)}<br/>금액: ${esc(quote.estimatedAmount?.toLocaleString('ko-KR') ?? '-')}원</p><p>다음: 결제 → 에스크로 → 양산</p><p><a href="https://nexyfab.com/admin/concierge">→ Concierge 콘솔</a></p>`,
+          });
+        }
+      } catch { /* non-blocking */ }
+      // Extend Pro grace through the delivery window — partner needs the
+      // tools to drive the build (DFM iteration, revisions, sim).
+      try {
+        const partnerUser = await db.queryOne<{ id: string }>(
+          'SELECT id FROM nf_users WHERE LOWER(TRIM(email)) = ?',
+          normPartnerEmail(quote.partnerEmail),
+        );
+        if (partnerUser) {
+          const { extendPartnerProGrace } = await import('@/lib/partner-pro-grace');
+          await extendPartnerProGrace(partnerUser.id, 'rfq_accepted', Date.now());
+        }
+      } catch { /* non-blocking */ }
+
+      // Auto-create the contract row so the buyer doesn't have to make a
+      // second click after acceptance. Without this, the deal stalls at
+      // "accepted" with no contract → no payment → no escrow.
+      try {
+        const existingContract = await db.queryOne<{ id: string }>(
+          `SELECT id FROM nf_contracts WHERE quote_id = ? LIMIT 1`,
+          id,
+        ).catch(() => null);
+        if (!existingContract) {
+          const { getCommissionRatePct, COMMISSION_PCT_FLOOR } = await import('@/lib/commission');
+          const contractAmount = quote.estimatedAmount ?? 0;
+          // Look up buyer to check first-contract discount + plan tier.
+          const buyer = await db.queryOne<{ user_id: string; user_email: string | null }>(
+            `SELECT user_id, user_email FROM nf_rfqs WHERE id = ?`,
+            quote.inquiryId,
+          ).catch(() => null);
+          const buyerEmail = buyer?.user_email ?? null;
+          const buyerPlan = await db.queryOne<{ plan: string }>(
+            `SELECT plan FROM nf_users WHERE id = ?`,
+            buyer?.user_id ?? '',
+          ).catch(() => null);
+          const plan = buyerPlan?.plan ?? 'standard';
+          const isFirstContract = buyerEmail
+            ? ((await db.queryOne<{ cnt: number }>(
+                `SELECT COUNT(*) as cnt FROM nf_contracts WHERE customer_email = ? AND status != 'cancelled'`,
+                buyerEmail,
+              ).catch(() => null))?.cnt ?? 0) === 0
+            : false;
+          const baseRate = getCommissionRatePct(contractAmount, plan);
+          const rate = Math.max(COMMISSION_PCT_FLOOR, baseRate - (isFirstContract ? 1 : 0));
+          const gross = Math.round(contractAmount * rate / 100);
+          const MIN_FEE: Record<string, number> = { standard: 500_000, premium: 1_000_000, pro: 500_000, team: 800_000, enterprise: 1_000_000 };
+          const deduction = MIN_FEE[plan] ?? 500_000;
+          const finalCharge = Math.max(0, gross - deduction);
+          const ctrId = `CTR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          const nowIso = new Date().toISOString();
+          await db.execute(
+            `INSERT INTO nf_contracts
+              (id, project_name, status, partner_email, factory_name,
+               contract_amount, commission_rate, base_commission_rate,
+               gross_commission, plan_deduction, final_charge,
+               is_first_contract, first_contract_discount,
+               customer_email, quote_id, plan, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            ctrId, quote.projectName, 'contracted',
+            normPartnerEmail(quote.partnerEmail), quote.factoryName ?? null,
+            contractAmount, rate, baseRate,
+            gross, deduction, finalCharge,
+            isFirstContract ? 1 : 0, isFirstContract ? Math.round(contractAmount * 1 / 100) : 0,
+            buyerEmail, id, plan, nowIso,
+          );
+        }
+      } catch (err) {
+        console.warn('[quotes PATCH] contract auto-create failed:', err);
+        // Non-blocking: the quote still flips to accepted even if contract
+        // creation hits a race or transient DB error. Operator can retry
+        // via /admin/contracts.
+      }
     } else if (status === 'rejected') {
       createNotification(
         `partner:${normPartnerEmail(quote.partnerEmail)}`,

@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 
 interface SupplierBrief {
   id?: string;
@@ -143,8 +144,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'supplier, material, process, quantity are required' }, { status: 400 });
   }
 
-  const apiKey = globalThis.process?.env?.DEEPSEEK_API_KEY;
-  const baseUrl = globalThis.process?.env?.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1';
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const historyTitle = `${body.supplier.nameKo ?? body.supplier.name ?? 'Supplier'} — ${body.partName ?? 'Part'} × ${body.quantity}`;
@@ -156,20 +155,6 @@ export async function POST(req: NextRequest) {
     quantity: body.quantity,
     tone: body.tone,
   };
-
-  if (!apiKey) {
-    recordUsageEvent(planCheck.userId, 'rfq_writer');
-    const fallback = ruleBasedDraft(body);
-    recordAIHistory({
-      userId: planCheck.userId,
-      feature: 'rfq_writer',
-      title: historyTitle,
-      payload: fallback,
-      context: historyContext,
-      projectId: body.projectId,
-    });
-    return NextResponse.json(fallback);
-  }
 
   const tone = body.tone ?? 'formal';
   const systemPrompt =
@@ -184,39 +169,66 @@ export async function POST(req: NextRequest) {
     `"attachmentsChecklist": string[], "attachmentsChecklistKo": string[] }. ` +
     'Body length under 1200 characters. asks/checklist 4-6 items each. Do NOT wrap in markdown.';
 
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: JSON.stringify({
+      supplier: body.supplier,
+      partName: body.partName,
+      material: body.material,
+      process: body.process,
+      quantity: body.quantity,
+      volume_cm3: body.volume_cm3,
+      bbox: body.bbox,
+      tolerance: body.tolerance,
+      surfaceFinish: body.surfaceFinish,
+      certificationsRequired: body.certificationsRequired,
+      talkingPoints: body.talkingPoints,
+      requestedLanguage: body.lang ?? 'en',
+    }) },
+  ];
+
+  let content = '';
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify({
-            supplier: body.supplier,
-            partName: body.partName,
-            material: body.material,
-            process: body.process,
-            quantity: body.quantity,
-            volume_cm3: body.volume_cm3,
-            bbox: body.bbox,
-            tolerance: body.tolerance,
-            surfaceFinish: body.surfaceFinish,
-            certificationsRequired: body.certificationsRequired,
-            talkingPoints: body.talkingPoints,
-            requestedLanguage: body.lang ?? 'en',
-          }) },
-        ],
-        temperature: 0.5,
-        max_tokens: 1800,
-      }),
-      signal: AbortSignal.timeout(20000),
+    const result = await chatCompletion({
+      messages,
+      maxTokens: 1800,
+      temperature: 0.5,
+      timeoutMs: 20_000,
+      task: 'rfq-writer',
     });
+    content = result.text;
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) {
+      recordUsageEvent(planCheck.userId, 'rfq_writer');
+      const fallback = ruleBasedDraft(body);
+      recordAIHistory({
+        userId: planCheck.userId,
+        feature: 'rfq_writer',
+        title: historyTitle,
+        payload: fallback,
+        context: historyContext,
+        projectId: body.projectId,
+      });
+      return NextResponse.json(fallback);
+    }
+    const detail = e instanceof AiProviderError
+      ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
+      : (e instanceof Error ? e.message : String(e));
+    console.warn('[rfq-writer] AI provider failed, using rule-based fallback:', detail);
+    recordUsageEvent(planCheck.userId, 'rfq_writer');
+    const fallback = ruleBasedDraft(body);
+    recordAIHistory({
+      userId: planCheck.userId,
+      feature: 'rfq_writer',
+      title: historyTitle,
+      payload: fallback,
+      context: historyContext,
+      projectId: body.projectId,
+    });
+    return NextResponse.json(fallback);
+  }
 
-    if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content ?? '';
+  try {
     const parsed = JSON.parse(stripMarkdownJson(content)) as Partial<RfqDraft>;
 
     if (!parsed.subject || !parsed.body) throw new Error('Invalid LLM response shape');
@@ -245,7 +257,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(draft);
   } catch (err) {
-    console.warn('[rfq-writer] DeepSeek API call failed, using rule-based fallback:', err);
+    console.warn('[rfq-writer] AI response parse failed, using rule-based fallback:', err);
     recordUsageEvent(planCheck.userId, 'rfq_writer');
     const fallback = ruleBasedDraft(body);
     recordAIHistory({

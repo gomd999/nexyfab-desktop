@@ -15,10 +15,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { COMMISSION_PCT_DEFAULT } from '@/lib/commission';
 
 export const dynamic = 'force-dynamic';
 
-const COMMISSION_RATE = 0.05; // 5% platform fee
+// Fallback only for legacy contracts missing commission_rate; the actual
+// rate per contract is read from nf_contracts.commission_rate so it
+// matches what was contractually agreed.
+const FALLBACK_COMMISSION_RATE = COMMISSION_PCT_DEFAULT / 100;
 
 export interface SettlementItem {
   contractId: string;
@@ -54,11 +58,15 @@ export async function GET(req: NextRequest) {
 
   type ContractRow = {
     id: string; project_name: string; customer_email: string | null;
-    contract_amount: number | null; completed_at: string | null; updated_at: string | null;
+    contract_amount: number | null; commission_rate: number | null;
+    gross_commission: number | null;
+    completed_at: string | null; updated_at: string | null;
   };
 
   const rows = await db.queryAll<ContractRow>(
-    `SELECT id, project_name, customer_email, contract_amount, completed_at, updated_at
+    `SELECT id, project_name, customer_email, contract_amount,
+            commission_rate, gross_commission,
+            completed_at, updated_at
      FROM nf_contracts
      WHERE ${conditions.join(' AND ')}
      ORDER BY COALESCE(completed_at, updated_at) DESC
@@ -68,7 +76,13 @@ export async function GET(req: NextRequest) {
 
   const settlements: SettlementItem[] = rows.map(r => {
     const amount = r.contract_amount ?? 0;
-    const commission = Math.round(amount * COMMISSION_RATE);
+    // Prefer the per-contract gross_commission stored at contract time;
+    // fall back to commission_rate × amount; final fallback to default.
+    const commission = r.gross_commission != null
+      ? r.gross_commission
+      : r.commission_rate != null
+        ? Math.round(amount * r.commission_rate / 100)
+        : Math.round(amount * FALLBACK_COMMISSION_RATE);
     const net = amount - commission;
     const completedAt = r.completed_at ?? r.updated_at ?? new Date().toISOString();
     return {

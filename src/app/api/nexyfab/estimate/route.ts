@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
-import { getAuthUser } from '@/lib/auth-middleware';
+import { getAuthUser as _getAuthUser } from '@/lib/auth-middleware';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import fs from 'fs';
 import path from 'path';

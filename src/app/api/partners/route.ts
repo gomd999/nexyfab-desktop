@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendNotificationEmail } from '@/app/lib/mailer';
+import { sendNotificationEmail as _sendNotificationEmail } from '@/app/lib/mailer';
 import { createNotification } from '@/app/lib/notify';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { checkOrigin } from '@/lib/csrf';

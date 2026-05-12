@@ -85,6 +85,16 @@ export async function GET(req: NextRequest) {
     if (v.ok) processCapability = v.data;
   } catch { /* ignore */ }
 
+  // Pro grace status — surfaced so the partner dashboard can show
+  // "Pro tools active until <date>" without a separate fetch.
+  const userRow = await db.queryOne<{ plan: string; pro_grace_until: number | null }>(
+    'SELECT plan, pro_grace_until FROM nf_users WHERE id = ?',
+    partner.userId,
+  ).catch(() => null);
+  const proGraceUntil = userRow?.pro_grace_until ?? null;
+  const storedPlan = userRow?.plan ?? 'free';
+  const graceActive = !!(proGraceUntil && proGraceUntil > Date.now() && storedPlan === 'free');
+
   return NextResponse.json({
     profile: {
       partnerId: partner.partnerId,
@@ -108,6 +118,9 @@ export async function GET(req: NextRequest) {
       avatarUrl: factory?.avatar_url || null,
       priceBook,
       processCapability,
+      plan: graceActive ? 'pro' : storedPlan,
+      proGraceUntil,
+      proGraceActive: graceActive,
     },
   });
 }

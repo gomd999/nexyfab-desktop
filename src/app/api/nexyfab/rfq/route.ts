@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { onRfqCreated } from '@/lib/nexyflow-triggers';
 import { z } from 'zod';
-import { sendEmail, rfqConfirmationHtml, rfqNotificationHtml, partnerRfqNotificationHtml } from '@/lib/nexyfab-email';
+import { sendEmail, rfqConfirmationHtml, rfqConfirmationEmailSubject, rfqNotificationHtml, partnerRfqNotificationHtml, nexyfabEmailLocaleFromLanguageTag, nexyfabAdminEmailLocale, rfqNotificationEmailSubject } from '@/lib/nexyfab-email';
 import { createNotification } from '@/app/lib/notify';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkPlan } from '@/lib/plan-guard';
@@ -15,6 +15,7 @@ import { logFunnelEvent } from '@/lib/funnel-logger';
 import { getDemoSession, DEMO_USER_ID } from '@/lib/demo-session';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { serializeRfqAnalysisSummary } from '@/lib/rfq-analysis-summary';
 
 // 데모 RFQ 일일 한도 — IP 별. 본 계정의 50/일 과 별개.
 const DEMO_DAILY_LIMIT_PER_IP = 5;
@@ -80,6 +81,21 @@ export async function POST(req: NextRequest) {
   }
 
   const rawBody = await req.json() as Record<string, unknown>;
+
+  const hasAnalysisSummaryProp = Object.prototype.hasOwnProperty.call(rawBody, 'analysisSummary');
+  let resolvedAnalysisSummaryJson: string | null = null;
+  if (hasAnalysisSummaryProp && rawBody.analysisSummary != null) {
+    resolvedAnalysisSummaryJson = serializeRfqAnalysisSummary(rawBody.analysisSummary);
+    if (!resolvedAnalysisSummaryJson) {
+      return NextResponse.json(
+        {
+          error: 'analysisSummary가 유효하지 않거나 크기 한도를 초과했습니다.',
+          code: 'INVALID_ANALYSIS_SUMMARY',
+        },
+        { status: 400 },
+      );
+    }
+  }
 
   const parsed = rfqSchema.safeParse(rawBody);
   if (!parsed.success) {
@@ -158,8 +174,8 @@ export async function POST(req: NextRequest) {
        (id, user_id, user_email, shape_id, shape_name, material_id, quantity,
         volume_cm3, surface_area_cm2, bbox, dfm_results, cost_estimates, note,
         deadline, preferred_factory_id, shape_share_token, dfm_score, dfm_process,
-        dfm_check_id, status, created_at, updated_at, session_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        dfm_check_id, analysis_summary, status, created_at, updated_at, session_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
     rfqId,
     userId,
     userEmail ?? null,
@@ -179,6 +195,7 @@ export async function POST(req: NextRequest) {
     body.dfmScore ?? null,
     body.dfmProcess ?? null,
     resolvedDfmCheckId,
+    resolvedAnalysisSummaryJson,
     now,
     now,
     isDemo ? demoSession!.id : null,
@@ -239,6 +256,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let rfqEmailLocale = nexyfabEmailLocaleFromLanguageTag(req.headers.get('accept-language'));
+  if (!isDemo) {
+    const ul = await db
+      .queryOne<{ language: string | null }>('SELECT language FROM nf_users WHERE id = ? LIMIT 1', userId)
+      .catch(() => null);
+    if (ul?.language) rfqEmailLocale = nexyfabEmailLocaleFromLanguageTag(ul.language);
+  }
+
   // ─── Email notifications (fire-and-forget) ───────────────────────────────
   const adminEmail = process.env.NEXYFAB_ADMIN_EMAIL || 'admin@nexyfab.com';
   const rfqEmailData = {
@@ -257,29 +282,46 @@ export async function POST(req: NextRequest) {
   if (userEmailHeader) {
     sendEmail(
       userEmailHeader,
-      '[NexyFab] 견적 요청이 접수되었습니다',
+      rfqConfirmationEmailSubject(rfqEmailLocale),
       rfqConfirmationHtml(
         { ...rfqEmailData, userEmail: userEmailHeader, userName: userNameHeader || undefined },
-        'ko'
+        rfqEmailLocale,
       ),
     ).catch(err => console.error('[rfq] confirmation email failed:', err));
   }
 
+  const adminLocale = nexyfabAdminEmailLocale();
   sendEmail(
     adminEmail,
-    `[NexyFab] 새 RFQ #${rfqId.slice(0, 8).toUpperCase()} — ${body.shapeName}`,
-    rfqNotificationHtml({ ...rfqEmailData, userEmail: userEmailHeader || undefined }),
+    rfqNotificationEmailSubject(adminLocale, 'new_rfq', {
+      shapeName: body.shapeName,
+      rfqIdPrefix: rfqId.slice(0, 8),
+    }),
+    rfqNotificationHtml(
+      { ...rfqEmailData, userEmail: userEmailHeader || undefined },
+      adminLocale,
+      'new_rfq',
+    ),
   ).catch(err => console.error('[rfq] admin notification email failed:', err));
   // ────────────────────────────────────────────────────────────────────────────
 
   // ─── 파트너 신규 RFQ 이메일/인앱 알림 (fire-and-forget) ────────────────────
+  // M3: when preferredFactoryId is set, send only to that single factory
+  // (direct quote request, no auction). Otherwise broadcast to all active
+  // factories matching the process keyword (existing behavior).
   {
     const processKeyword = body.dfmProcess ?? '';
     const processPattern = processKeyword ? `%"${processKeyword}"%` : '%';
-    db.queryAll<{ contact_email: string | null; partner_email: string | null; name: string }>(
-      `SELECT contact_email, partner_email, name FROM nf_factories WHERE status = 'active' AND processes LIKE ?`,
-      processPattern,
-    ).then(factories => {
+    const factoriesPromise = body.preferredFactoryId
+      ? db.queryAll<{ contact_email: string | null; partner_email: string | null; name: string }>(
+          `SELECT contact_email, partner_email, name FROM nf_factories WHERE id = ? AND status = 'active' LIMIT 1`,
+          body.preferredFactoryId,
+        )
+      : db.queryAll<{ contact_email: string | null; partner_email: string | null; name: string }>(
+          `SELECT contact_email, partner_email, name FROM nf_factories WHERE status = 'active' AND processes LIKE ?`,
+          processPattern,
+        );
+    factoriesPromise.then(factories => {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nexyfab.com';
       factories.forEach(f => {
         const rawEmail = f.contact_email || f.partner_email;
@@ -304,7 +346,7 @@ export async function POST(req: NextRequest) {
           'new_rfq',
           '새 견적 요청',
           `"${body.shapeName || rfqId.slice(0, 8)}" — 수량 ${body.quantity}개 RFQ가 접수됐습니다.`,
-          { quoteId: rfqId },
+          { rfqId },
         );
       });
     }).catch(() => {});

@@ -13,6 +13,9 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_PARTNER_STATUSES = ['production', 'qc', 'shipped', 'delivered'] as const;
 type PartnerStatus = typeof ALLOWED_PARTNER_STATUSES[number];
 
+/** One timeline step in `nf_orders.steps` JSON */
+type OrderStep = Record<string, unknown>;
+
 interface OrderRow {
   id: string;
   rfq_id: string | null;
@@ -135,8 +138,15 @@ export async function PATCH(req: NextRequest) {
     production: 1, qc: 2, shipped: 3, delivered: 4,
   };
   const stepIdx = STATUS_STEP[body.status] ?? -1;
-  let steps: any[] = [];
-  try { steps = JSON.parse(order.steps); } catch { steps = []; }
+  let steps: OrderStep[] = [];
+  try {
+    const parsed: unknown = JSON.parse(order.steps);
+    steps = Array.isArray(parsed)
+      ? parsed.filter((x): x is OrderStep => x !== null && typeof x === 'object')
+      : [];
+  } catch {
+    steps = [];
+  }
   if (stepIdx >= 0 && steps[stepIdx]) {
     steps[stepIdx] = { ...steps[stepIdx], completedAt: now, estimatedAt: undefined };
   }

@@ -18,6 +18,9 @@ const STAGES = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 const CHURN_WINDOW_MS = 7 * 24 * 3600 * 1000;
 const RECENT_EVENT_WINDOW_MS = 24 * 3600 * 1000;
 
+/** 데모 모드 sentinel — 집계에서 제외해 운영 KPI 노이즈를 줄인다 (`nf_sessions` 가입 이관 전제). */
+const DEMO_USER_ID = 'demo-user';
+
 export async function GET(req: NextRequest) {
   if (!(await verifyAdmin(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -28,7 +31,8 @@ export async function GET(req: NextRequest) {
 
   // ─── 1) Stage별 유저 분포 ────────────────────────────────────────
   const distRows = await db.queryAll<{ stage: string; n: number }>(
-    `SELECT stage, COUNT(*) AS n FROM nf_users GROUP BY stage`,
+    `SELECT stage, COUNT(*) AS n FROM nf_users WHERE id <> ? GROUP BY stage`,
+    DEMO_USER_ID,
   );
   const distMap = new Map(distRows.map(r => [r.stage, Number(r.n) || 0]));
   const distribution = STAGES.map(s => ({ stage: s, users: distMap.get(s) ?? 0 }));
@@ -40,10 +44,11 @@ export async function GET(req: NextRequest) {
   }>(
     `SELECT id, user_id, from_stage, to_stage, trigger_type, occurred_at, processed_at
        FROM nf_stage_event
-      WHERE occurred_at >= ?
+      WHERE occurred_at >= ? AND user_id <> ?
       ORDER BY occurred_at DESC
       LIMIT 100`,
     now - RECENT_EVENT_WINDOW_MS,
+    DEMO_USER_ID,
   );
 
   // ─── 3) 락인 이탈(churn) 후보: Stage C+ 인데 7일 무활동 ────────
@@ -54,10 +59,12 @@ export async function GET(req: NextRequest) {
   }>(
     `SELECT id, email, name, stage, cumulative_order_krw, last_order_at
        FROM nf_users
-      WHERE stage IN ('C','D','E','F')
+      WHERE id <> ?
+        AND stage IN ('C','D','E','F')
         AND (last_order_at IS NULL OR last_order_at < ?)
       ORDER BY cumulative_order_krw DESC
       LIMIT 50`,
+    DEMO_USER_ID,
     now - CHURN_WINDOW_MS,
   );
 
@@ -68,15 +75,17 @@ export async function GET(req: NextRequest) {
   }>(
     `SELECT id, user_id, from_stage, to_stage, retry_count, last_error, occurred_at
        FROM nf_stage_event
-      WHERE processed_at IS NULL AND retry_count >= 5
+      WHERE processed_at IS NULL AND retry_count >= 5 AND user_id <> ?
       ORDER BY occurred_at DESC
       LIMIT 30`,
+    DEMO_USER_ID,
   );
 
   // ─── 5) 처리 대기 (in-flight) ────────────────────────────────────
   const pendingRow = await db.queryOne<{ n: number }>(
     `SELECT COUNT(*) AS n FROM nf_stage_event
-      WHERE processed_at IS NULL AND retry_count < 5`,
+      WHERE processed_at IS NULL AND retry_count < 5 AND user_id <> ?`,
+    DEMO_USER_ID,
   );
 
   // ─── 6) 최근 DFM 검증 활동 (Phase B-1 진입 신호) ───────────────────
@@ -88,17 +97,20 @@ export async function GET(req: NextRequest) {
   }>(
     `SELECT id, user_id, file_id, issues, warnings, created_at
        FROM nf_dfm_check
-      WHERE created_at >= ?
+      WHERE created_at >= ? AND (user_id IS NULL OR user_id <> ?)
       ORDER BY created_at DESC
       LIMIT 30`,
     now - RECENT_EVENT_WINDOW_MS,
+    DEMO_USER_ID,
   ).catch(() => []);
 
   const dfmAggRow = await db.queryOne<{ n: number; with_issues: number }>(
     `SELECT COUNT(*) AS n,
             SUM(CASE WHEN issues > 0 THEN 1 ELSE 0 END) AS with_issues
-       FROM nf_dfm_check WHERE created_at >= ?`,
+       FROM nf_dfm_check
+      WHERE created_at >= ? AND (user_id IS NULL OR user_id <> ?)`,
     now - RECENT_EVENT_WINDOW_MS,
+    DEMO_USER_ID,
   ).catch(() => null);
 
   // ─── 7) Funnel Insights ────────────────────────────────────────────
@@ -109,10 +121,11 @@ export async function GET(req: NextRequest) {
   const funnelByType = await db.queryAll<{ event_type: string; n: number }>(
     `SELECT event_type, COUNT(*) AS n
        FROM nf_funnel_event
-      WHERE created_at >= ?
+      WHERE created_at >= ? AND user_id <> ?
       GROUP BY event_type
       ORDER BY n DESC`,
     now - RECENT_EVENT_WINDOW_MS,
+    DEMO_USER_ID,
   ).catch(() => []);
 
   // dfm_pass_to_match 한 유저들 중 stage가 C 이상인 비율 (전환율).
@@ -122,9 +135,11 @@ export async function GET(req: NextRequest) {
     `SELECT COUNT(DISTINCT fe.user_id) AS intent_users,
             SUM(CASE WHEN u.stage IN ('C','D','E','F') THEN 1 ELSE 0 END) AS converted
        FROM (SELECT DISTINCT user_id FROM nf_funnel_event
-              WHERE event_type = 'dfm_pass_to_match' AND created_at >= ?) fe
-       JOIN nf_users u ON u.id = fe.user_id`,
+              WHERE event_type = 'dfm_pass_to_match' AND created_at >= ? AND user_id <> ?) fe
+       JOIN nf_users u ON u.id = fe.user_id AND u.id <> ?`,
     now - FUNNEL_CONV_WINDOW_MS,
+    DEMO_USER_ID,
+    DEMO_USER_ID,
   ).catch(() => null);
 
   return NextResponse.json({
