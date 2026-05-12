@@ -9,6 +9,7 @@ import {
   applyModeShapeColor,
   type ModalResult,
 } from './modalAnalysis';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
@@ -179,6 +180,8 @@ interface ModalAnalysisPanelProps {
   dimensions: { x: number; y: number; z: number };
   onResult: (geo: THREE.BufferGeometry) => void;
   onClose: () => void;
+  /** J5 — when omitted reads useAnalysisStore.modalResult. */
+  result?: ModalResult | null;
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
@@ -189,6 +192,7 @@ export default function ModalAnalysisPanel({
   dimensions,
   onResult,
   onClose,
+  result: propResult,
 }: ModalAnalysisPanelProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
@@ -202,7 +206,11 @@ export default function ModalAnalysisPanel({
   const [gridSize, setGridSize] = useState(6);
   const [fixedFaces, setFixedFaces] = useState<string[]>(['bottom']);
   const [progress, setProgress] = useState(-1);
-  const [result, setResult] = useState<ModalResult | null>(null);
+  // J5 — modal eigenvalue result persists across panel close/reopen.
+  const storeResult = useAnalysisStore(s => s.modalResult);
+  const setStoreResult = useAnalysisStore(s => s.setModalResult);
+  const result = propResult ?? storeResult;
+  const setResult = setStoreResult;
   const [selectedMode, setSelectedMode] = useState(0);
 
   const isRunning = progress >= 0 && progress < 100;

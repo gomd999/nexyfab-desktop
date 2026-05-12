@@ -9,6 +9,7 @@ import {
   type CostBreakdown,
   type ManufacturerRecommendation,
 } from './manufacturingPipeline';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── i18n ──────────────────────────────────────────────────────────────── */
 
@@ -142,6 +143,8 @@ interface ManufacturingPipelinePanelProps {
   complexity: number;
   onGetQuote: (manufacturerId: string) => void;
   onClose: () => void;
+  /** J5 — when omitted reads useAnalysisStore.pipelineResult. */
+  result?: PipelineResult | null;
 }
 
 export default function ManufacturingPipelinePanel({
@@ -152,13 +155,18 @@ export default function ManufacturingPipelinePanel({
   complexity,
   onGetQuote,
   onClose,
+  result: propResult,
 }: ManufacturingPipelinePanelProps) {
   const [process, setProcess] = useState('cnc');
   const [quantity, setQuantity] = useState(10);
   const [urgency, setUrgency] = useState<'standard' | 'rush' | 'prototype'>('standard');
   const [qualityLevel, setQualityLevel] = useState<'standard' | 'precision' | 'aerospace'>('standard');
   const [currentStage, setCurrentStage] = useState<PipelineStage | null>(null);
-  const [result, setResult] = useState<PipelineResult | null>(null);
+  // J5 — pipeline run can take many seconds; persist across panel close/reopen.
+  const storeResult = useAnalysisStore(s => s.pipelineResult);
+  const setStoreResult = useAnalysisStore(s => s.setPipelineResult);
+  const result = propResult ?? storeResult;
+  const setResult = setStoreResult;
   const [running, setRunning] = useState(false);
 
   const handleRun = useCallback(async () => {

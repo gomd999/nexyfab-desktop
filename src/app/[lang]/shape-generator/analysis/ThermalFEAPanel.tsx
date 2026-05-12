@@ -3,12 +3,15 @@ import React, { useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import { runThermalFEA, applyThermalColormap, THERMAL_MATERIALS, type ThermalBoundary, type ThermalResult } from './thermalFEA';
+import { useAnalysisStore } from '../store/analysisStore';
 
 interface Props {
   geometry: THREE.BufferGeometry | null;
   lang: string;
   onResult: (coloredGeo: THREE.BufferGeometry, result: ThermalResult) => void;
   onClose: () => void;
+  /** J5 — when omitted reads useAnalysisStore.thermalResult. */
+  result?: ThermalResult | null;
 }
 
 /* ─── i18n ───────────────────────────────────────────────────────────────── */
@@ -140,7 +143,7 @@ const C = { bg: '#0d1117', card: '#161b22', border: '#30363d', text: '#c9d1d9', 
 
 type BoundaryEdit = ThermalBoundary & { id: string };
 
-export default function ThermalFEAPanel({ geometry, lang, onResult, onClose }: Props) {
+export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, result: propResult }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
@@ -157,7 +160,11 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose }: P
     { id: 'b2', type: 'fixed_temp', faceIndex: 1, value: 25 },
   ]);
   const [isRunning, setIsRunning] = useState(false);
-  const [result, setResult] = useState<ThermalResult | null>(null);
+  // J5 — thermal FEA result persists across panel close/reopen.
+  const storeResult = useAnalysisStore(s => s.thermalResult);
+  const setStoreResult = useAnalysisStore(s => s.setThermalResult);
+  const result = propResult ?? storeResult;
+  const setResult = setStoreResult;
 
   const addBoundary = () => {
     setBoundaries(prev => [...prev, { id: `b${Date.now()}`, type: 'heat_source', faceIndex: 0, value: 100 }]);

@@ -9,6 +9,10 @@ import type { ValidationResult } from '../analysis/geometryValidation'
 import type { GDTAnnotation, DimensionAnnotation } from '../annotations/GDTTypes'
 import type { DrawingResult } from '../analysis/autoDrawing'
 import type { SweepResult, SensitivityEntry } from '../analysis/parametricSweep'
+import type { ModalResult } from '../analysis/modalAnalysis'
+import type { ThermalResult } from '../analysis/thermalFEA'
+import type { StackupResult, MonteCarloResult } from '../analysis/toleranceStackup'
+import type { PipelineResult } from '../analysis/manufacturingPipeline'
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -32,6 +36,11 @@ interface AnalysisState {
   sweepResult: SweepResult | null
   sweepResult2: SweepResult | null
   sweepSensitivity: SensitivityEntry[]
+  modalResult: ModalResult | null
+  thermalResult: ThermalResult | null
+  toleranceStackResult: StackupResult | null
+  toleranceMcResult: MonteCarloResult | null
+  pipelineResult: PipelineResult | null
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -56,6 +65,11 @@ interface AnalysisActions {
   setSweepResult: (result: SweepResult | null) => void
   setSweepResult2: (result: SweepResult | null) => void
   setSweepSensitivity: (entries: SensitivityEntry[]) => void
+  setModalResult: (result: ModalResult | null) => void
+  setThermalResult: (result: ThermalResult | null) => void
+  setToleranceStackResult: (result: StackupResult | null) => void
+  setToleranceMcResult: (result: MonteCarloResult | null) => void
+  setPipelineResult: (result: PipelineResult | null) => void
   clearAnalysis: () => void
   addGDTAnnotation: (a: GDTAnnotation) => void
   updateGDTAnnotation: (id: string, update: Partial<GDTAnnotation>) => void
@@ -90,6 +104,11 @@ export const useAnalysisStore = create<AnalysisStore>()(
     sweepResult: null,
     sweepResult2: null,
     sweepSensitivity: [],
+    modalResult: null,
+    thermalResult: null,
+    toleranceStackResult: null,
+    toleranceMcResult: null,
+    pipelineResult: null,
 
     // Actions
     setFeaResult: (result) =>
@@ -187,6 +206,31 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.sweepSensitivity = entries
       }),
 
+    setModalResult: (result) =>
+      set((state) => {
+        state.modalResult = result
+      }),
+
+    setThermalResult: (result) =>
+      set((state) => {
+        state.thermalResult = result
+      }),
+
+    setToleranceStackResult: (result) =>
+      set((state) => {
+        state.toleranceStackResult = result
+      }),
+
+    setToleranceMcResult: (result) =>
+      set((state) => {
+        state.toleranceMcResult = result
+      }),
+
+    setPipelineResult: (result) =>
+      set((state) => {
+        state.pipelineResult = result
+      }),
+
     clearAnalysis: () =>
       set((state) => {
         state.feaResult = null
@@ -203,6 +247,11 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.sweepResult = null
         state.sweepResult2 = null
         state.sweepSensitivity = []
+        state.modalResult = null
+        state.thermalResult = null
+        state.toleranceStackResult = null
+        state.toleranceMcResult = null
+        state.pipelineResult = null
       }),
 
     addGDTAnnotation: (a) =>

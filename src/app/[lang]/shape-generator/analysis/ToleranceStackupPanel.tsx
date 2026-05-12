@@ -9,6 +9,7 @@ import {
   type StackupResult,
   type MonteCarloResult,
 } from './toleranceStackup';
+import { useAnalysisStore } from '../store/analysisStore';
 
 /* ─── i18n ────────────────────────────────────────────────────────────────── */
 
@@ -259,6 +260,9 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
 interface Props {
   lang?: string;
   onClose: () => void;
+  /** J5 — when omitted reads useAnalysisStore.toleranceStackResult / toleranceMcResult. */
+  stackResult?: StackupResult | null;
+  mcResult?: MonteCarloResult | null;
 }
 
 let _idCounter = 0;
@@ -280,15 +284,24 @@ function defaultDim(): ToleranceDimension {
 
 type Mode = 'worstCase' | 'rss' | 'monteCarlo';
 
-export default function ToleranceStackupPanel({ onClose }: Props) {
+export default function ToleranceStackupPanel({
+  onClose,
+  stackResult: propStackResult,
+  mcResult: propMcResult,
+}: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const t = dict[langMap[seg] ?? 'en'];
 
   const [dims, setDims] = useState<ToleranceDimension[]>([defaultDim()]);
   const [mode, setMode] = useState<Mode>('worstCase');
-  const [stackResult, setStackResult] = useState<StackupResult | null>(null);
-  const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
+  // J5 — both stack and Monte-Carlo results persist across panel close/reopen.
+  const storeStackResult = useAnalysisStore(s => s.toleranceStackResult);
+  const storeMcResult = useAnalysisStore(s => s.toleranceMcResult);
+  const setStackResult = useAnalysisStore(s => s.setToleranceStackResult);
+  const setMcResult = useAnalysisStore(s => s.setToleranceMcResult);
+  const stackResult = propStackResult ?? storeStackResult;
+  const mcResult = propMcResult ?? storeMcResult;
 
   /* ── Dimension CRUD ─ */
   const addDim = useCallback(() => {
