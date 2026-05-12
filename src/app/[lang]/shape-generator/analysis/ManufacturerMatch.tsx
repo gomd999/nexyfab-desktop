@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { isKorean } from '@/lib/i18n/normalize';
 import PartnerMetricsBar from './PartnerMetricsBar';
+import { submitRfqOrder } from './rfqSubmitter';
 
 const UpgradePrompt = dynamic(() => import('../freemium/UpgradePrompt'), { ssr: false });
 
@@ -612,32 +613,26 @@ export default function ManufacturerMatch({
   const handleSubmitQuote = useCallback(async () => {
     if (!quoteState) return;
     setQuoteState(s => s ? { ...s, submitting: true, error: undefined } : s);
-    try {
-      const mfr = quoteState.manufacturer;
-      const totalPriceKRW = estimateOrderTotalKRW(
-        volume_cm3,
-        materialId,
-        mfr.priceLevel,
-        quoteState.quantity,
-      );
-      const res = await fetch('/api/nexyfab/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          partName: partName ?? 'Custom Part',
-          manufacturerName: isKo ? mfr.nameKo : mfr.name,
-          quantity: quoteState.quantity,
-          totalPriceKRW,
-          estimatedLeadDays: mfr.minLeadTime,
-        }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setQuoteState(s => s ? { ...s, submitting: false, orderId: data.order?.id ?? 'new' } : s);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setQuoteState(s => s ? { ...s, submitting: false, error: msg } : s);
-    }
+    const mfr = quoteState.manufacturer;
+    const totalPriceKRW = estimateOrderTotalKRW(
+      volume_cm3,
+      materialId,
+      mfr.priceLevel,
+      quoteState.quantity,
+    );
+    const r = await submitRfqOrder({
+      partName,
+      manufacturerName: isKo ? mfr.nameKo : mfr.name,
+      quantity: quoteState.quantity,
+      totalPriceKRW,
+      estimatedLeadDays: mfr.minLeadTime,
+    });
+    setQuoteState(s => {
+      if (!s) return s;
+      return r.ok
+        ? { ...s, submitting: false, orderId: r.orderId }
+        : { ...s, submitting: false, error: r.message };
+    });
   }, [quoteState, partName, materialId, volume_cm3, isKo]);
 
   // ── Render ──────────────────────────────────────────────────────────────────

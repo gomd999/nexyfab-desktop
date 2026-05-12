@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { matchSuppliers, type SupplierMatchResult } from './supplierMatcher';
 import type { RfqSupplierBrief } from './rfqWriter';
+import { submitRfqOrder } from './rfqSubmitter';
 
 // ─── i18n dict (6 languages) ───────────────────────────────────────────────
 const dict = {
@@ -471,31 +472,23 @@ export default function AISupplierPanel({
   const handleRequestQuote = useCallback(async (idx: number, row: SupplierMatchResult) => {
     setRfqSubmittingIdx(idx);
     setRfqResultByIdx(prev => { const n = { ...prev }; delete n[idx]; return n; });
-    try {
-      const res = await fetch('/api/nexyfab/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          partName: partName ?? 'Custom Part',
-          manufacturerName: isKo ? row.manufacturer.nameKo : row.manufacturer.name,
-          quantity,
-          estimatedLeadDays: row.manufacturer.minLeadTime,
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json() as { order?: { id?: string } };
-      const orderId = data.order?.id ?? 'new';
-      setRfqResultByIdx(prev => ({ ...prev, [idx]: {
-        ok: true,
-        message: tt.quoteRequested,
-      }}));
-      onRfqSubmitted?.(isKo ? row.manufacturer.nameKo : row.manufacturer.name, quantity, orderId);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setRfqResultByIdx(prev => ({ ...prev, [idx]: { ok: false, message: msg }}));
-    } finally {
-      setRfqSubmittingIdx(null);
+    const mfrName = isKo ? row.manufacturer.nameKo : row.manufacturer.name;
+    const r = await submitRfqOrder({
+      partName,
+      manufacturerName: mfrName,
+      quantity,
+      estimatedLeadDays: row.manufacturer.minLeadTime,
+    });
+    setRfqResultByIdx(prev => ({
+      ...prev,
+      [idx]: r.ok
+        ? { ok: true, message: tt.quoteRequested }
+        : { ok: false, message: r.message ?? 'failed' },
+    }));
+    if (r.ok && r.orderId) {
+      onRfqSubmitted?.(mfrName, quantity, r.orderId);
     }
+    setRfqSubmittingIdx(null);
   }, [partName, quantity, isKo, onRfqSubmitted, tt]);
 
   return (
@@ -884,27 +877,20 @@ export default function AISupplierPanel({
           onClose={() => setRfqWriterFor(null)}
           onRequirePro={onRequirePro}
           onSendDraft={async (subject, bodyText) => {
-            try {
-              const res = await fetch('/api/nexyfab/orders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  partName: partName ?? 'Custom Part',
-                  manufacturerName: rfqWriterFor.nameKo ?? rfqWriterFor.name ?? 'Supplier',
-                  quantity,
-                  estimatedLeadDays: rfqWriterFor.minLeadTime,
-                  rfqSubject: subject,
-                  rfqBody: bodyText,
-                }),
-              });
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              const data = await res.json() as { order?: { id?: string } };
-              const orderId = data.order?.id ?? 'new';
-              onRfqSubmitted?.(rfqWriterFor.nameKo ?? rfqWriterFor.name ?? 'Supplier', quantity, orderId);
+            const mfrName = rfqWriterFor.nameKo ?? rfqWriterFor.name ?? 'Supplier';
+            const r = await submitRfqOrder({
+              partName,
+              manufacturerName: mfrName,
+              quantity,
+              estimatedLeadDays: rfqWriterFor.minLeadTime,
+              rfqSubject: subject,
+              rfqBody: bodyText,
+            });
+            if (r.ok && r.orderId) {
+              onRfqSubmitted?.(mfrName, quantity, r.orderId);
               return { ok: true, message: tt.rfqSent };
-            } catch (e) {
-              return { ok: false, message: e instanceof Error ? e.message : String(e) };
             }
+            return { ok: false, message: r.message ?? 'failed' };
           }}
         />
       )}
