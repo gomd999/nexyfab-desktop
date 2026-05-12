@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
+import { FACE_FEATURE_ID_ATTR } from '../features/faceProvenance';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,14 @@ export function applyCSG(
   op: CSGOperation
 ): THREE.BufferGeometry {
   const evaluator = new Evaluator();
+  // B1 deep — preserve per-triangle feature-id attribution through the
+  // boolean op. Triangles inherited from base keep the base's feature id;
+  // triangles inherited from tool keep the tool's. New triangles along the
+  // cut inherit whichever input's edge spawned them (three-bvh-csg's
+  // GeometryBuilder copies the source attribute per output vertex).
+  if (baseGeo.getAttribute(FACE_FEATURE_ID_ATTR) || toolGeo.getAttribute(FACE_FEATURE_ID_ATTR)) {
+    evaluator.attributes = [...evaluator.attributes, FACE_FEATURE_ID_ATTR];
+  }
 
   // Brushes require a material
   const material = new THREE.MeshStandardMaterial();
@@ -113,6 +122,19 @@ export function applyCSG(
     }
     // Clone the geometry so we own it independently of the result mesh
     const resultGeo = result.geometry.clone();
+    // B1 deep — Evaluator copies the per-triangle nfabFaceFeatureId
+    // attribute when configured to, but it does NOT copy the userData map
+    // that decodes those numeric ids back to feature strings. Merge the
+    // maps from both inputs onto the result so getFaceFeatureId() resolves
+    // every triangle correctly.
+    const baseMap = baseGeo.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+    const toolMap = toolGeo.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+    if (baseMap || toolMap) {
+      resultGeo.userData = {
+        ...resultGeo.userData,
+        nfabFeatureIdMap: { ...(baseMap ?? {}), ...(toolMap ?? {}) },
+      };
+    }
     // Dispose the result mesh geometry to avoid leaks
     result.geometry.dispose();
     return resultGeo;

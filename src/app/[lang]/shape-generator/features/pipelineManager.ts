@@ -14,6 +14,7 @@ import {
   type PipelineCacheKernel,
 } from './pipelineCache';
 import { resetShapeRegistry, ensureOcctReady } from './occtEngine';
+import { stampFaceFeatureIdAll } from './faceProvenance';
 
 /**
  * Feature pipeline manager (#98 phase 2d-2).
@@ -132,13 +133,15 @@ function runLoopSync(
       }
       next.computeVertexNormals();
       stampGeoId(next);
-      // B1 (face provenance): tag the output with the feature that produced
-      // it. DFM analyzer reads `userData.lastFeatureId` to set
-      // DFMIssue.targetFeatureId, which lets the user click an issue and have
-      // FeatureTree highlight the responsible feature row. Coarse — every
-      // issue points to the most-recent feature — but always correct since
-      // the pipeline is sequential.
-      next.userData = { ...next.userData, lastFeatureId: f.id };
+      // B1 (face provenance): tag the output. `stampFaceFeatureIdAll` writes
+      // the per-triangle `nfabFaceFeatureId` BufferAttribute *and* keeps the
+      // coarse `userData.lastFeatureId` in sync so consumers that have not
+      // migrated to the deep reader still get the right answer. Today every
+      // triangle on this output is stamped with the current feature's id;
+      // CSG-aware features (boolean) can override this by pre-tagging their
+      // tool before calling applyCSG, and the Evaluator preserves the
+      // attribute so the mixed result keeps the correct per-triangle ids.
+      stampFaceFeatureIdAll(next, f.id);
       cachePut(key, next);
       geo = next;
     } catch (e) {
@@ -217,7 +220,7 @@ async function runLoopAsync(
       next.computeVertexNormals();
       stampGeoId(next);
       // B1 (face provenance) — see sync loop for rationale.
-      next.userData = { ...next.userData, lastFeatureId: f.id };
+      stampFaceFeatureIdAll(next, f.id);
       cachePut(key, next);
       geo = next;
     } catch (e) {

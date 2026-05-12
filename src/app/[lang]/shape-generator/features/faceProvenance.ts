@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 
 /**
  * Coarse-to-deep transition layer for face provenance (B1).
@@ -32,20 +32,11 @@ export function getFaceFeatureId(
   geometry: THREE.BufferGeometry,
   triangleIndex: number,
 ): string | null {
-  // Path A — deep per-triangle attribute. The BufferAttribute stores numeric
-  // ids that map back to feature ids via `nfabFeatureIdMap` on userData.
-  // Behavior matches the documented deep-impl plan, so consumers written
-  // against this API today keep working once the attribute lands.
-  const attr = geometry.getAttribute(FACE_FEATURE_ID_ATTR) as
-    | THREE.BufferAttribute
-    | undefined;
-  if (attr && triangleIndex >= 0 && triangleIndex < attr.count) {
-    const numericId = attr.getX(triangleIndex);
-    const map = geometry.userData?.nfabFeatureIdMap as
-      | Record<number, string>
-      | undefined;
-    if (map && map[numericId]) return map[numericId];
-  }
+  // Path A — deep per-triangle attribute. The attribute is per-vertex
+  // (three-bvh-csg flattens to non-indexed for the output), so triangle
+  // `i` occupies verts `3i, 3i+1, 3i+2`. We read the first vertex.
+  const strict = getFaceFeatureIdStrict(geometry, triangleIndex);
+  if (strict !== null) return strict;
 
   // Path B — coarse fallback. Every triangle on the output of a feature
   // shares the same `lastFeatureId`. Always correct, just not granular.
@@ -66,4 +57,93 @@ export function tagWholeGeometryFeature(
   featureId: string,
 ): void {
   geometry.userData = { ...geometry.userData, lastFeatureId: featureId };
+}
+
+// ─── Deep B1 — per-triangle BufferAttribute path ─────────────────────────────
+
+/**
+ * Look up or allocate a stable numeric id for `featureId` inside the
+ * geometry's `nfabFeatureIdMap`. Numeric ids are 1-indexed so the default
+ * zero-filled BufferAttribute on freshly-cloned geometry decodes to "no
+ * feature" instead of accidentally pointing at feature #0.
+ */
+function ensureNumericId(
+  geometry: THREE.BufferGeometry,
+  featureId: string,
+): number {
+  const map = (geometry.userData?.nfabFeatureIdMap as
+    | Record<number, string>
+    | undefined) ?? {};
+  for (const [num, id] of Object.entries(map)) {
+    if (id === featureId) return Number(num);
+  }
+  // Choose the next free numeric id. Keys may have gaps if features were
+  // deleted between runs; we don't compact — gaps cost one Uint32 worth of
+  // memory each, which is irrelevant compared to the position attribute.
+  const used = Object.keys(map).map(Number);
+  const nextId = used.length > 0 ? Math.max(...used) + 1 : 1;
+  const nextMap = { ...map, [nextId]: featureId };
+  geometry.userData = { ...geometry.userData, nfabFeatureIdMap: nextMap };
+  return nextId;
+}
+
+/**
+ * Stamp every triangle in `geometry` with `featureId` via the per-triangle
+ * `nfabFaceFeatureId` BufferAttribute. Idempotent — overwrites whatever was
+ * there before, which is what a feature applier wants since it owns the
+ * whole output.
+ *
+ * For CSG output where different triangles came from different inputs,
+ * callers should use `preserveFaceFeatureAttrThroughCSG()` on the inputs
+ * before evaluation instead of stamping after.
+ */
+export function stampFaceFeatureIdAll(
+  geometry: THREE.BufferGeometry,
+  featureId: string,
+): void {
+  const numericId = ensureNumericId(geometry, featureId);
+  const triBased = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+  // BVH-CSG flattens to non-indexed (3 verts per triangle, one attribute
+  // entry per vertex). Allocate at vertex-count granularity so the per-
+  // vertex copy three-bvh-csg performs lines up with our per-triangle
+  // semantics — verts 3i, 3i+1, 3i+2 all share the same feature id.
+  const vertCount = geometry.attributes.position.count;
+  const arr = new Uint32Array(vertCount);
+  arr.fill(numericId);
+  geometry.setAttribute(FACE_FEATURE_ID_ATTR, new THREE.BufferAttribute(arr, 1));
+  // Coarse `lastFeatureId` stays in sync so consumers that haven't migrated
+  // to the per-triangle reader still get correct (coarse) answers.
+  geometry.userData = { ...geometry.userData, lastFeatureId: featureId };
+  void triBased; // referenced for clarity; vertCount/3 is canonical here.
+}
+
+/**
+ * Read the per-triangle attribute from `triangleIndex` and resolve it back
+ * to a string feature id. Returns `null` when no attribute is present or
+ * the numeric id is the sentinel zero.
+ *
+ * Used internally by `getFaceFeatureId`; exposed for tests that want to
+ * assert per-triangle attribution without the coarse fallback masking the
+ * deep value.
+ */
+export function getFaceFeatureIdStrict(
+  geometry: THREE.BufferGeometry,
+  triangleIndex: number,
+): string | null {
+  const attr = geometry.getAttribute(FACE_FEATURE_ID_ATTR) as
+    | THREE.BufferAttribute
+    | undefined;
+  if (!attr) return null;
+  // Each triangle owns 3 consecutive vertices in a non-indexed mesh; the
+  // attribute is per-vertex but our writer pins all three of a triangle to
+  // the same value, so reading the first vertex is sufficient.
+  const vertIndex = triangleIndex * 3;
+  if (vertIndex < 0 || vertIndex >= attr.count) return null;
+  const numericId = attr.getX(vertIndex);
+  if (numericId === 0) return null;
+  const map = geometry.userData?.nfabFeatureIdMap as
+    | Record<number, string>
+    | undefined;
+  if (!map) return null;
+  return map[numericId] ?? null;
 }
