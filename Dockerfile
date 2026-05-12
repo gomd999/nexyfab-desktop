@@ -25,6 +25,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# OpenSCAD CLI + BOSL2 library for the deterministic intent→SCAD pipeline
+# (intentToScad emits BOSL2 calls for gear/threadedRod/roundedBox/screw).
+# `git` is needed for the BOSL2 clone step only; pruned in the same RUN to
+# keep the image lean.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openscad git ca-certificates fonts-dejavu-core \
+ && git clone --depth 1 https://github.com/BelfrySCAD/BOSL2.git /opt/openscad-libs/BOSL2 \
+ && apt-get purge -y --auto-remove git \
+ && rm -rf /var/lib/apt/lists/*
+ENV OPENSCAD_BIN=/usr/bin/openscad
+ENV OPENSCADPATH=/opt/openscad-libs
+
 # Copy only what's needed
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./

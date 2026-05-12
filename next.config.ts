@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
   output: isTauri ? 'export' : 'standalone',
   trailingSlash: true,
   serverExternalPackages: ['better-sqlite3'],
+  // Stamp the build with a short commit SHA so sentry-forward.ts can tag
+  // every event with the exact deployed version. Railway sets
+  // RAILWAY_GIT_COMMIT_SHA at build time; falls back to a manual override
+  // or 'dev' in local builds.
+  env: {
+    NEXT_PUBLIC_RELEASE:
+      (process.env.RAILWAY_GIT_COMMIT_SHA ?? '').slice(0, 8) ||
+      process.env.NEXT_PUBLIC_RELEASE ||
+      'dev',
+  },
   async redirects() {
     return [
       {

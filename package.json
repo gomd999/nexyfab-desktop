@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-    "prebuild": "node -e \"const fs=require('fs');fs.copyFileSync('node_modules/occt-import-js/dist/occt-import-js.wasm','public/occt-import-js.wasm');console.log('✓ occt-import-js.wasm copied to public/')\"",
+    "prebuild": "node -e \"const fs=require('fs');fs.copyFileSync('node_modules/occt-import-js/dist/occt-import-js.wasm','public/occt-import-js.wasm');console.log('✓ occt-import-js.wasm copied to public/');fs.mkdirSync('public/fonts',{recursive:true});fs.copyFileSync('node_modules/three/examples/fonts/helvetiker_regular.typeface.json','public/fonts/helvetiker.json');console.log('✓ helvetiker.json copied to public/fonts/')\"",
     "build": "next build --webpack",
     "postbuild": "node scripts/sync-standalone-static.mjs",
     "start": "next start",
@@ -48,6 +48,9 @@
     "verify:full": "cross-env VERIFY_TAURI=1 VERIFY_E2E=1 VERIFY_STEP_ROUNDTRIP=1 node scripts/verify-milestones.mjs",
     "verify:seq": "node scripts/verify-commercial-sequence.mjs",
     "verify:integration-smoke": "node scripts/verify-integration-smoke.mjs",
+    "validate:scad-agent": "tsx scripts/validate-scad-agent.ts",
+    "check:openscad-deploy": "node scripts/check-openscad-deploy.mjs",
+    "build:solvespace-wasm": "bash scripts/build-solvespace-wasm.sh",
     "ci:replicate-build": "cross-env CSP_OMIT_UPGRADE_INSECURE=1 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe JWT_SECRET=ci-test-secret-at-least-32-chars npm run build",
     "security:smoke": "node scripts/security-smoke.mjs",
     "test:tauri-unit": "cargo test --manifest-path src-tauri/Cargo.toml -- --test-threads=1",
