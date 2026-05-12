@@ -9,6 +9,7 @@ import { useCanvasSelectionHandlers } from './hooks/useCanvasSelectionHandlers';
 import { useCanvasFileImport } from './hooks/useCanvasFileImport';
 import { useRadialCommand } from './hooks/useRadialCommand';
 import { useNurbsCpEdit } from './hooks/useNurbsCpEdit';
+import { useCanvasPinCommentHandlers } from './hooks/useCanvasPinCommentHandlers';
 import { useSceneStore } from './store/sceneStore';
 // Responsive layout imports
 import { useResponsive } from './responsive/useResponsive';
@@ -5922,6 +5923,18 @@ export function ShapeGeneratorInner() {
   const { nurbsCPEdit: canvasNurbsCPEdit, nurbsCPParams: canvasNurbsCPParams, onNurbsCPParamChange: canvasOnNurbsCPParamChange } =
     useNurbsCpEdit({ selectedFeatureId, features, updateFeatureParam });
 
+  const canvasPinComments = useCanvasPinCommentHandlers({
+    authUserName: authUser?.name,
+    collabUserColorRef,
+    collabUserIdRef,
+    addComment,
+    resolveComment,
+    deleteComment,
+    reactToComment,
+    addReply,
+    addActivity,
+  });
+
   // ══════════════════════════════════════════════════════════════════════════
   // RENDER — MOBILE GATE (phone users → dedicated landing)
   // ══════════════════════════════════════════════════════════════════════════
@@ -6116,11 +6129,11 @@ export function ShapeGeneratorInner() {
                     pinComments={comments}
                     isPlacingComment={isPlacingComment}
                     focusedPinCommentId={focusedCommentId}
-                    onAddPinComment={(pos, text, type) => addComment(pos, text, authUser?.name ?? 'Guest', type ?? 'comment', collabUserColorRef.current)}
-                    onResolvePinComment={(id) => { resolveComment(id); addActivity({ type: 'comment_resolve', actor: authUser?.name ?? 'You' }); }}
-                    onDeletePinComment={(id) => { deleteComment(id); addActivity({ type: 'comment_delete', actor: authUser?.name ?? 'You' }); }}
-                    onReactPinComment={(id, emoji) => reactToComment(id, emoji, collabUserIdRef.current)}
-                    onReplyPinComment={(id, text) => addReply(id, text, authUser?.name ?? `User-${collabUserIdRef.current.slice(-4)}`, collabUserColorRef.current)}
+                    onAddPinComment={canvasPinComments.onAddPinComment}
+                    onResolvePinComment={canvasPinComments.onResolvePinComment}
+                    onDeletePinComment={canvasPinComments.onDeletePinComment}
+                    onReactPinComment={canvasPinComments.onReactPinComment}
+                    onReplyPinComment={canvasPinComments.onReplyPinComment}
                     pinCommentRoomUsers={collabUsers.map(u => ({ id: u.id, name: u.name, color: u.color }))}
                     pinCommentCurrentUserId={collabUserIdRef.current}
                     onFaceSketch={(_faceId) => {
