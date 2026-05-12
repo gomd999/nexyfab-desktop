@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtShellBox, hostBoxFromGeometry } from './occtEngine';
+import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -40,7 +41,7 @@ export const shellFeature: FeatureDefinition = {
       ],
     },
   ],
-  apply(geometry, params) {
+  apply(geometry, params, ctx) {
     const thickness = params.wallThickness;
     const openFace = Math.round(params.openFace);
     const engine = Math.round(params.engine ?? 0);
@@ -90,8 +91,17 @@ export const shellFeature: FeatureDefinition = {
       idx.needsUpdate = true;
     }
 
+    // B1 deep — stamp the inner offset (it's a clone of geometry but
+    // represents the shell-interior contribution) and the open-face cut
+    // box (if used) so triangles inherited from them resolve back to
+    // this shell feature instead of the upstream geometry.
+    if (ctx?.featureId) {
+      stampFaceFeatureIdAll(inner, ctx.featureId, { avoidIdsFrom: geometry });
+    }
     const evaluator = new Evaluator();
+    configureEvaluatorForProvenance(evaluator, geometry, inner);
     let result = evaluator.evaluate(makeBrush(geometry), makeBrush(inner), SUBTRACTION);
+    propagateFeatureIdMap(result.geometry, geometry, inner);
 
     // Cut open face if requested
     if (openFace > 0) {
@@ -109,7 +119,13 @@ export const shellFeature: FeatureDefinition = {
         cutBox.translate(center.x, bb.min.y, center.z);
       }
 
+      if (ctx?.featureId) {
+        stampFaceFeatureIdAll(cutBox, ctx.featureId, { avoidIdsFrom: result.geometry });
+      }
+      configureEvaluatorForProvenance(evaluator, result.geometry, cutBox);
+      const prev = result.geometry;
       result = evaluator.evaluate(result, makeBrush(cutBox), SUBTRACTION);
+      propagateFeatureIdMap(result.geometry, prev, cutBox);
     }
 
     return result.geometry;

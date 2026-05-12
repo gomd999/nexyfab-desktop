@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -46,7 +47,7 @@ export const holeFeature: FeatureDefinition = {
       ],
     },
   ],
-  apply(geometry, params) {
+  apply(geometry, params, ctx) {
     const holeType = Math.round(params.holeType);
     const r = params.diameter / 2;
     const posX = params.posX;
@@ -99,34 +100,54 @@ export const holeFeature: FeatureDefinition = {
     const evaluator = new Evaluator();
     const brushA = makeBrush(geometry);
 
-    // Main hole cylinder — centered on geometry's actual Y center
+    // Main hole cylinder — centered on geometry's actual Y center.
+    // B1 deep: tag the tool with this feature's id so the bore wall in the
+    // result resolves back to "this hole" via getFaceFeatureId, not the
+    // most-recently-touched feature.
     const holeCyl = new THREE.CylinderGeometry(r, r, actualDepth, 32);
     holeCyl.translate(posX, centerY, posZ);
+    if (ctx?.featureId) {
+      stampFaceFeatureIdAll(holeCyl, ctx.featureId, { avoidIdsFrom: geometry });
+    }
+    configureEvaluatorForProvenance(evaluator, geometry, holeCyl);
     const brushB = makeBrush(holeCyl);
     let result = evaluator.evaluate(brushA, brushB, SUBTRACTION);
+    propagateFeatureIdMap(result.geometry, geometry, holeCyl);
 
-    // Counterbore: subtract a wider, shallower cylinder at the top face
+    // Counterbore: subtract a wider, shallower cylinder at the top face.
+    // Tool reuses this feature's id (lookup hit on the map) so a numeric
+    // collision can't happen even across the chained subtractions.
     if (holeType === 1) {
       const cbR = params.counterboreDia / 2;
       const cbDepth = params.counterboreDepth;
       const cbCyl = new THREE.CylinderGeometry(cbR, cbR, cbDepth, 32);
-      // Use the already-computed topY from the input geometry (not stale reference)
       cbCyl.translate(posX, topY - cbDepth / 2, posZ);
+      if (ctx?.featureId) {
+        stampFaceFeatureIdAll(cbCyl, ctx.featureId, { avoidIdsFrom: result.geometry });
+      }
+      configureEvaluatorForProvenance(evaluator, result.geometry, cbCyl);
       const brushCB = makeBrush(cbCyl);
+      const prev = result.geometry;
       result = evaluator.evaluate(result, brushCB, SUBTRACTION);
+      propagateFeatureIdMap(result.geometry, prev, cbCyl);
     }
 
-    // Countersink: subtract a cone at the top face
+    // Countersink: subtract a cone at the top face.
     if (holeType === 2) {
       const csHalfAngle = ((params.countersinkAngle) * Math.PI) / 360;
       const csR = r * 2;
       const csDepth = csR / Math.tan(csHalfAngle);
       const cone = new THREE.ConeGeometry(csR, csDepth, 32);
-      // Use the already-computed topY from the input geometry
       cone.rotateX(Math.PI);
       cone.translate(posX, topY, posZ);
+      if (ctx?.featureId) {
+        stampFaceFeatureIdAll(cone, ctx.featureId, { avoidIdsFrom: result.geometry });
+      }
+      configureEvaluatorForProvenance(evaluator, result.geometry, cone);
       const brushCS = makeBrush(cone);
+      const prev = result.geometry;
       result = evaluator.evaluate(result, brushCS, SUBTRACTION);
+      propagateFeatureIdMap(result.geometry, prev, cone);
     }
 
     return result.geometry;

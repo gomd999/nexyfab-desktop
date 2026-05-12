@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtChamferBox, hostBoxFromGeometry } from './occtEngine';
+import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -26,7 +27,7 @@ export const chamferFeature: FeatureDefinition = {
       ],
     },
   ],
-  apply(geometry, params) {
+  apply(geometry, params, ctx) {
     const dist = params.distance;
     const engine = Math.round(params.engine ?? 0);
 
@@ -67,8 +68,18 @@ export const chamferFeature: FeatureDefinition = {
     // Intersect the expanded version with the original geometry.
     // The expanded shape extends outward at flat faces but rounds/chamfers at
     // sharp edges, so intersecting trims those edges off the original.
+    //
+    // B1 deep — tag the expanded (cloned) geometry with this chamfer's id
+    // so triangles that came in from it (i.e. the chamfered edge faces)
+    // resolve back to this feature. Untouched original-face triangles keep
+    // their upstream provenance through the geometry brush.
+    if (ctx?.featureId) {
+      stampFaceFeatureIdAll(expanded, ctx.featureId, { avoidIdsFrom: geometry });
+    }
     const evaluator = new Evaluator();
+    configureEvaluatorForProvenance(evaluator, expanded, geometry);
     const result = evaluator.evaluate(makeBrush(expanded), makeBrush(geometry), INTERSECTION);
+    propagateFeatureIdMap(result.geometry, expanded, geometry);
     return result.geometry;
   },
 };

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtFilletBox, hostBoxFromGeometry } from './occtEngine';
+import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -27,7 +28,7 @@ export const filletFeature: FeatureDefinition = {
       ],
     },
   ],
-  apply(geometry, params) {
+  apply(geometry, params, ctx) {
     const radius = params.radius;
     const segments = Math.round(params.segments);
     const engine = Math.round(params.engine ?? 0);
@@ -59,7 +60,15 @@ export const filletFeature: FeatureDefinition = {
     // Intersect the original geometry with multiple intermediate offset
     // geometries. Each intermediate is expanded along vertex normals by an
     // amount following a cosine curve, producing a smooth rounded edge profile.
+    //
+    // B1 deep — every intermediate is a clone of the *original* geometry
+    // so it inherits the same upstream feature ids on every triangle. We
+    // then restamp each intermediate with this fillet's id, so any triangle
+    // that ends up in the result via the intermediate (i.e. the rounded
+    // edges) resolves back to the fillet feature. Untouched triangles from
+    // the original keep their upstream provenance.
     let resultBrush = makeBrush(geometry.clone());
+    let runningGeo = resultBrush.geometry;
 
     for (let s = 1; s <= segments; s++) {
       const t = s / (segments + 1);
@@ -78,7 +87,13 @@ export const filletFeature: FeatureDefinition = {
       }
       iPos.needsUpdate = true;
 
+      if (ctx?.featureId) {
+        stampFaceFeatureIdAll(intermediate, ctx.featureId, { avoidIdsFrom: runningGeo });
+      }
+      configureEvaluatorForProvenance(evaluator, runningGeo, intermediate);
       resultBrush = evaluator.evaluate(resultBrush, makeBrush(intermediate), INTERSECTION);
+      propagateFeatureIdMap(resultBrush.geometry, runningGeo, intermediate);
+      runningGeo = resultBrush.geometry;
     }
 
     return resultBrush.geometry;

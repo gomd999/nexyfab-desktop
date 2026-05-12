@@ -162,3 +162,52 @@ export function getFaceFeatureIdStrict(
   if (!map) return null;
   return map[numericId] ?? null;
 }
+
+/**
+ * Merge `nfabFeatureIdMap`s from `sources` onto `target`. three-bvh-csg's
+ * Evaluator preserves the per-vertex attribute values when configured but
+ * does *not* carry the numeric → string id map across — that's userData
+ * and userData lives on the geometry's own object. Every CSG callsite has
+ * to do this manual merge so downstream `getFaceFeatureId` lookups still
+ * resolve.
+ *
+ * Idempotent. Later sources override earlier on key collision; collisions
+ * are benign when both sides map the same numeric id to the same feature
+ * id (e.g. multiple tools tagged with the same feature). Genuine drift —
+ * two sources mapping the same numeric id to different features — is
+ * prevented by passing `avoidIdsFrom` when stamping tools.
+ */
+export function propagateFeatureIdMap(
+  target: THREE.BufferGeometry,
+  ...sources: THREE.BufferGeometry[]
+): void {
+  const merged: Record<number, string> = {};
+  for (const s of sources) {
+    const m = s.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+    if (m) Object.assign(merged, m);
+  }
+  if (Object.keys(merged).length > 0) {
+    target.userData = { ...target.userData, nfabFeatureIdMap: merged };
+  }
+}
+
+/**
+ * Configure a three-bvh-csg Evaluator to preserve the `nfabFaceFeatureId`
+ * attribute when at least one of the supplied input geometries carries it.
+ * Mutates the evaluator in place; safe to call repeatedly (idempotent on
+ * the attributes array).
+ *
+ * Use together with `stampFaceFeatureIdAll` on tools and
+ * `propagateFeatureIdMap` on the result to keep the per-triangle id round-
+ * trip intact across a boolean op.
+ */
+export function configureEvaluatorForProvenance(
+  evaluator: { attributes: string[] },
+  ...inputs: THREE.BufferGeometry[]
+): void {
+  const anyHasAttr = inputs.some(g => !!g.getAttribute(FACE_FEATURE_ID_ATTR));
+  if (!anyHasAttr) return;
+  if (!evaluator.attributes.includes(FACE_FEATURE_ID_ATTR)) {
+    evaluator.attributes = [...evaluator.attributes, FACE_FEATURE_ID_ATTR];
+  }
+}

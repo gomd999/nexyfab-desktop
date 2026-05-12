@@ -115,6 +115,44 @@ describe('faceProvenance — CSG preserves the attribute', () => {
   });
 });
 
+async function runFeatureWithBase(
+  featureFile: 'boolean' | 'hole' | 'fillet' | 'chamfer' | 'shell',
+  params: Record<string, number>,
+  baseFeatureId = 'base-feature',
+  thisFeatureId = 'this-feature',
+  opts: { indexed?: boolean } = {},
+): Promise<{ result: THREE.BufferGeometry; seenBase: boolean; seenThis: boolean }> {
+  const mod = await import(`../features/${featureFile}`);
+  // boolean.ts exports `booleanFeature`; the others export `<name>Feature`.
+  const featureDef = (mod[`${featureFile}Feature`] ?? mod.booleanFeature) as {
+    apply: (
+      g: THREE.BufferGeometry,
+      p: Record<string, number>,
+      ctx?: { featureId: string },
+    ) => THREE.BufferGeometry;
+  };
+  // chamfer / shell / fillet require indexed geometry (manifold guard).
+  const base = opts.indexed
+    ? (() => {
+        const g = new THREE.BoxGeometry(40, 40, 40);
+        g.computeVertexNormals();
+        return g;
+      })()
+    : box(40, 40, 40);
+  stampFaceFeatureIdAll(base, baseFeatureId);
+  const result = featureDef.apply(base, params, { featureId: thisFeatureId });
+  const triCount = result.attributes.position.count / 3;
+  let seenBase = false;
+  let seenThis = false;
+  for (let i = 0; i < triCount; i++) {
+    const id = getFaceFeatureId(result, i);
+    if (id === baseFeatureId) seenBase = true;
+    if (id === thisFeatureId) seenThis = true;
+    if (seenBase && seenThis) break;
+  }
+  return { result, seenBase, seenThis };
+}
+
 describe('faceProvenance — boolean feature applier produces mixed output', () => {
   it('boolean.apply with ctx tags its tool, output carries both feature ids', async () => {
     // Importing dynamically to avoid pulling the full feature map at module
@@ -152,5 +190,72 @@ describe('faceProvenance — boolean feature applier produces mixed output', () 
     }
     expect(seenBase).toBe(true);
     expect(seenCut).toBe(true);
+  });
+});
+
+describe('faceProvenance — hole/fillet/chamfer/shell appliers produce mixed output', () => {
+  it('hole.apply tags its bore with this feature, walls stay base', async () => {
+    const { seenBase, seenThis } = await runFeatureWithBase('hole', {
+      holeType: 0,
+      diameter: 10,
+      posX: 0, posZ: 0,
+      depth: 999,
+      counterboreDia: 18,
+      counterboreDepth: 5,
+      countersinkAngle: 90,
+      engine: 0,
+    });
+    expect(seenBase).toBe(true);
+    expect(seenThis).toBe(true);
+  });
+
+  it('chamfer.apply preserves provenance attribute and map through INTERSECT', async () => {
+    const { result } = await runFeatureWithBase('chamfer', {
+      distance: 3,
+      engine: 0,
+    }, 'base-feature', 'this-feature', { indexed: true });
+    // Note: a default BoxGeometry has per-face vertex normals (no sharing),
+    // so the chamfer's outward expansion just produces a slightly larger
+    // box; INTERSECT(bigger, original) ≡ original. The result therefore
+    // carries only base-feature triangles. The B1 contract we're asserting
+    // here is the *plumbing*: the attribute survived, and the map is set
+    // so future inputs with shared vertices (where the chamfer actually
+    // chamfers) will resolve correctly.
+    expect(result.getAttribute(FACE_FEATURE_ID_ATTR)).toBeDefined();
+    const map = result.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+    expect(map).toBeDefined();
+    expect(Object.values(map ?? {})).toContain('this-feature');
+  });
+
+  it('shell.apply tags its inner subtraction with this feature', async () => {
+    const { seenThis } = await runFeatureWithBase('shell', {
+      wallThickness: 3,
+      openFace: 0,
+      engine: 0,
+    }, 'base-feature', 'this-feature', { indexed: true });
+    // Shell uses geometry.clone() + index winding flip; for a default
+    // BoxGeometry the inverted-winding inner brush still subtracts the
+    // inner volume from the base. Triangles from the inner half-space end
+    // up tagged with shell's feature id.
+    expect(seenThis).toBe(true);
+  });
+
+  it('fillet.apply preserves provenance attribute and map through INTERSECT', async () => {
+    const { result } = await runFeatureWithBase('fillet', {
+      radius: 3,
+      segments: 2,
+      engine: 0,
+    }, 'base-feature', 'fillet-feature', { indexed: true });
+    // Same plumbing-only assertion as chamfer — BoxGeometry's per-face
+    // normals defeat the fillet's vertex-normal-offset algorithm, so the
+    // intersection chain reduces to the input. The B1 wiring (attribute
+    // preserved through INTERSECT, map merged) is what we verify here;
+    // the real fillet shape only appears on indexed manifolds with shared
+    // vertices (e.g. user-edited models), at which point the per-triangle
+    // tagging will be effective.
+    expect(result.getAttribute(FACE_FEATURE_ID_ATTR)).toBeDefined();
+    const map = result.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+    expect(map).toBeDefined();
+    expect(Object.values(map ?? {})).toContain('fillet-feature');
   });
 });
