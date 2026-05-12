@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { exportToStep } from '../io/stepExporter';
+import { exportToStep, exportToStepAsync } from '../io/stepExporter';
 import { importStepFile } from '../io/stepImporter';
 import { computeSignature } from './geometrySignature';
 
@@ -40,10 +40,12 @@ interface RoundTripDelta {
   bboxDeltaMax: number;
 }
 
-async function roundTrip(geometry: THREE.BufferGeometry): Promise<RoundTripDelta> {
+async function roundTrip(geometry: THREE.BufferGeometry, useBridge = false): Promise<RoundTripDelta> {
   const before = computeSignature(geometry);
 
-  const stepText = exportToStep(geometry, 'roundtrip_part');
+  const stepText = useBridge
+    ? await exportToStepAsync(geometry, 'roundtrip_part')
+    : exportToStep(geometry, 'roundtrip_part');
   const buf = stringToArrayBuffer(stepText);
   const reimported = await importStepFile(buf);
   const after = computeSignature(reimported.geometry);
@@ -114,12 +116,42 @@ describeMaybe('STEP round-trip accuracy (Q2)', () => {
   // arbitrary meshes or (b) emit a STEP profile occt-import-js accepts,
   // customers should be told STEP export is **B-rep-from-OCCT path only**
   // (i.e. shapes that came in via STEP and didn't lose their occtHandle).
-  it.skip('tessellated cylinder round-trips with bounded drift — BLOCKED on AP242 importer', async () => {
+  // ─── Route A bridge: arbitrary mesh → OCCT B-rep → STEP ─────────────────
+  // exportToStepAsync now pipes non-occtHandle meshes through
+  // replicad.importSTL → OCCT, so cylinders / spheres / CSG output should
+  // round-trip cleanly. The legacy `exportToStep` path stays skipped — it's
+  // the broken AP242 emitter the R2 entry called out.
+  it.skip('tessellated cylinder round-trips with bounded drift — BLOCKED on AP242 importer (legacy path)', async () => {
     const cyl = new THREE.CylinderGeometry(15, 15, 50, 32);
     cyl.computeVertexNormals();
     const delta = await roundTrip(cyl);
     expect(delta.volumeDriftPct).toBeLessThan(1.0);
   }, 90_000);
+
+  it('cylinder round-trips via Route A bridge with bounded volume drift', async () => {
+    const cyl = new THREE.CylinderGeometry(15, 15, 50, 32);
+    cyl.computeVertexNormals();
+    const delta = await roundTrip(cyl, /* useBridge */ true);
+    console.log(
+      `[STEP RT viaBridge] cylinder  vol drift ${delta.volumeDriftPct.toFixed(3)}%  ` +
+      `area drift ${delta.surfaceDriftPct.toFixed(3)}%  bbox Δ ${delta.bboxDeltaMax.toFixed(4)}mm`,
+    );
+    // Tessellation re-mesh adds noise (typically a few percent), so the
+    // bound is wider than the box AP214 path — this just asserts the round
+    // trip *completed* without the AP242-importer rejection.
+    expect(delta.volumeDriftPct).toBeLessThan(10);
+  }, 120_000);
+
+  it('sphere round-trips via Route A bridge', async () => {
+    const sph = new THREE.SphereGeometry(20, 24, 24);
+    sph.computeVertexNormals();
+    const delta = await roundTrip(sph, /* useBridge */ true);
+    console.log(
+      `[STEP RT viaBridge] sphere  vol drift ${delta.volumeDriftPct.toFixed(3)}%  ` +
+      `bbox Δ ${delta.bboxDeltaMax.toFixed(4)}mm`,
+    );
+    expect(delta.volumeDriftPct).toBeLessThan(15);
+  }, 120_000);
 
   // ─── Stability: same geometry exported twice → identical bytes ──────────
   it('exporter is deterministic — same geometry → identical STEP text', () => {
