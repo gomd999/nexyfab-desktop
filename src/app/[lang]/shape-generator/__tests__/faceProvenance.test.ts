@@ -114,3 +114,43 @@ describe('faceProvenance — CSG preserves the attribute', () => {
     expect(result.getAttribute(FACE_FEATURE_ID_ATTR)).toBeUndefined();
   });
 });
+
+describe('faceProvenance — boolean feature applier produces mixed output', () => {
+  it('boolean.apply with ctx tags its tool, output carries both feature ids', async () => {
+    // Importing dynamically to avoid pulling the full feature map at module
+    // top — boolean.ts has side-effecty dependencies (telemetry, OCCT) that
+    // don't matter for this test.
+    const { booleanFeature: booleanDef } = await import('../features/boolean');
+
+    const base = box(30, 30, 30);
+    stampFaceFeatureIdAll(base, 'base-feature');
+
+    const params: Record<string, number> = {
+      operation: 1,    // subtract
+      toolShape: 1,    // cylinder
+      toolWidth: 16,   // dia
+      toolHeight: 50,
+      toolDepth: 16,
+      posX: 0, posY: 0, posZ: 0,
+      rotX: 0, rotY: 0, rotZ: 0,
+      engine: 0,       // force mesh CSG path, not OCCT
+    };
+    const result = booleanDef.apply(base, params, { featureId: 'cut-feature' });
+    const attr = result.getAttribute(FACE_FEATURE_ID_ATTR);
+    expect(attr).toBeDefined();
+
+    // After a cut, result should contain triangles from BOTH features —
+    // walls inherited from base, bore wall inherited from the cylinder tool.
+    const triCount = result.attributes.position.count / 3;
+    let seenBase = false;
+    let seenCut = false;
+    for (let i = 0; i < triCount; i++) {
+      const id = getFaceFeatureId(result, i);
+      if (id === 'base-feature') seenBase = true;
+      if (id === 'cut-feature') seenCut = true;
+      if (seenBase && seenCut) break;
+    }
+    expect(seenBase).toBe(true);
+    expect(seenCut).toBe(true);
+  });
+});

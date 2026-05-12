@@ -66,10 +66,18 @@ export function tagWholeGeometryFeature(
  * geometry's `nfabFeatureIdMap`. Numeric ids are 1-indexed so the default
  * zero-filled BufferAttribute on freshly-cloned geometry decodes to "no
  * feature" instead of accidentally pointing at feature #0.
+ *
+ * When `avoidIdsFrom` is provided (e.g. the boolean feature passes the base
+ * geometry's map when stamping its tool), the allocated id is guaranteed to
+ * not collide with any id in that map. This matters because after CSG the
+ * two geometries' maps are merged on the output, so both inputs must
+ * occupy non-overlapping numeric ranges or the resolution table flattens
+ * one of them.
  */
 function ensureNumericId(
   geometry: THREE.BufferGeometry,
   featureId: string,
+  avoidIdsFrom?: Record<number, string>,
 ): number {
   const map = (geometry.userData?.nfabFeatureIdMap as
     | Record<number, string>
@@ -80,7 +88,10 @@ function ensureNumericId(
   // Choose the next free numeric id. Keys may have gaps if features were
   // deleted between runs; we don't compact — gaps cost one Uint32 worth of
   // memory each, which is irrelevant compared to the position attribute.
-  const used = Object.keys(map).map(Number);
+  const used = [
+    ...Object.keys(map).map(Number),
+    ...(avoidIdsFrom ? Object.keys(avoidIdsFrom).map(Number) : []),
+  ];
   const nextId = used.length > 0 ? Math.max(...used) + 1 : 1;
   const nextMap = { ...map, [nextId]: featureId };
   geometry.userData = { ...geometry.userData, nfabFeatureIdMap: nextMap };
@@ -100,8 +111,12 @@ function ensureNumericId(
 export function stampFaceFeatureIdAll(
   geometry: THREE.BufferGeometry,
   featureId: string,
+  opts?: { avoidIdsFrom?: THREE.BufferGeometry },
 ): void {
-  const numericId = ensureNumericId(geometry, featureId);
+  const peerMap = opts?.avoidIdsFrom?.userData?.nfabFeatureIdMap as
+    | Record<number, string>
+    | undefined;
+  const numericId = ensureNumericId(geometry, featureId, peerMap);
   const triBased = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
   // BVH-CSG flattens to non-indexed (3 verts per triangle, one attribute
   // entry per vertex). Allocate at vertex-count granularity so the per-

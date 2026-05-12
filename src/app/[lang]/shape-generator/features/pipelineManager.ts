@@ -118,7 +118,7 @@ function runLoopSync(
     if (!def) continue;
     try {
       const prev = geo.clone();
-      const next = def.apply(geo, f.params);
+      const next = def.apply(geo, f.params, { featureId: f.id });
       if (!next || !next.attributes.position || next.attributes.position.count === 0) {
         cacheDelete(key);
         const emptyMsg = 'Feature produced empty geometry';
@@ -203,7 +203,7 @@ async function runLoopAsync(
     
     try {
       const prev = geo.clone();
-      const next = def.apply(geo, f.params);
+      const next = def.apply(geo, f.params, { featureId: f.id });
       if (!next || !next.attributes.position || next.attributes.position.count === 0) {
         cacheDelete(key);
         const emptyMsg = 'Feature produced empty geometry';

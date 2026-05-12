@@ -46,6 +46,20 @@ export type FeatureType =
 /** Types dispatched through `FEATURE_MAP` / registry (not the inline sketchExtrude path). */
 export type MapBackedFeatureType = Exclude<FeatureType, 'sketchExtrude'>;
 
+/**
+ * Optional runtime context the pipelineManager passes to `apply()` so the
+ * feature can tag its own contribution (B1 deep face provenance follow-up).
+ * Features that don't care about provenance can ignore the parameter — the
+ * pipelineManager's coarse stamp will cover them.
+ */
+export interface FeatureApplyContext {
+  /** The FeatureInstance.id of the feature currently being applied. CSG-
+   *  aware features should `stampFaceFeatureIdAll(tool, ctx.featureId)`
+   *  before calling `applyCSG()` so output triangles from the tool keep
+   *  this feature's id while base-inherited triangles keep theirs. */
+  featureId: string;
+}
+
 export interface FeatureDefinition {
   type: FeatureType;
   icon: string;
@@ -53,11 +67,13 @@ export interface FeatureDefinition {
   apply: (
     geometry: THREE.BufferGeometry,
     params: Record<string, number>,
+    ctx?: FeatureApplyContext,
   ) => THREE.BufferGeometry;
   /** Optional async override for OCCT-backed features */
   applyAsync?: (
     geometry: THREE.BufferGeometry,
     params: Record<string, number>,
+    ctx?: FeatureApplyContext,
   ) => Promise<THREE.BufferGeometry>;
 }
 

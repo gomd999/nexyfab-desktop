@@ -3,6 +3,7 @@ import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
 import { reportWarning } from '../lib/telemetry';
+import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 
@@ -84,6 +85,12 @@ export function applyBooleanSync(
   geoB: THREE.BufferGeometry,
 ): THREE.BufferGeometry {
   const evaluator = new Evaluator();
+  // B1 deep follow-up — preserve per-triangle feature id when either input
+  // carries the attribute. Same wiring as CSGOperations.applyCSG; keeps
+  // boolean output's mixed provenance intact.
+  if (geoA.getAttribute(FACE_FEATURE_ID_ATTR) || geoB.getAttribute(FACE_FEATURE_ID_ATTR)) {
+    evaluator.attributes = [...evaluator.attributes, FACE_FEATURE_ID_ATTR];
+  }
   const brushA = makeBrush(geoA);
   const brushB = makeBrush(geoB);
   const result: Brush = evaluator.evaluate(brushA, brushB, getCSGOperation(type));
@@ -93,6 +100,17 @@ export function applyBooleanSync(
     result.geometry.attributes.position.count === 0
   ) {
     throw new Error(`Boolean ${type}: empty result — 도구와 본체가 교차하지 않거나 일치합니다`);
+  }
+  // Merge nfabFeatureIdMap from both inputs onto the result, matching the
+  // contract in CSGOperations.applyCSG so getFaceFeatureId() resolves
+  // numeric ids back to feature strings on the output.
+  const baseMap = geoA.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+  const toolMap = geoB.userData?.nfabFeatureIdMap as Record<number, string> | undefined;
+  if (baseMap || toolMap) {
+    result.geometry.userData = {
+      ...result.geometry.userData,
+      nfabFeatureIdMap: { ...(baseMap ?? {}), ...(toolMap ?? {}) },
+    };
   }
   return result.geometry;
 }
@@ -219,7 +237,7 @@ export const booleanFeature: FeatureDefinition = {
       ],
     },
   ],
-  apply(geometry, params) {
+  apply(geometry, params, ctx) {
     const operation = Math.round(params.operation);
     const type = operationCodeToType(operation);
     const engine = Math.round(params.engine ?? 0);
@@ -272,6 +290,16 @@ export const booleanFeature: FeatureDefinition = {
     }
 
     const toolGeo = buildToolGeometry(params);
+    // B1 deep follow-up — tag the tool with the current feature's id so
+    // that after applyCSG (which preserves nfabFaceFeatureId through the
+    // boolean op) the output carries mixed provenance: base triangles
+    // keep their upstream id, new triangles from the tool carry this
+    // boolean feature's id. We pass `avoidIdsFrom: geometry` so the
+    // tool's numeric ids don't collide with base's — both maps coexist
+    // in the merged result, and collision would erase one of them.
+    if (ctx?.featureId) {
+      stampFaceFeatureIdAll(toolGeo, ctx.featureId, { avoidIdsFrom: geometry });
+    }
     return applyBooleanSync(type, geometry, toolGeo);
   },
 };
