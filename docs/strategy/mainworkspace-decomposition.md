@@ -153,3 +153,31 @@ Do not extract `MainWorkspace` yet. The first prerequisite is the
 `SelectionContext` store carve in step 1. Until that's done, any extraction
 attempt walks straight into the 60-prop trap that made the prior aborted
 attempts fail.
+
+## 2026-05-13 status update
+
+After landing step 1 (selectionStore) the audit revealed that steps 2-4 are
+*effectively already done* — just via custom hooks instead of Zustand stores:
+
+- **Step 2 — Assembly**: `hooks/useAssemblyState.ts` already owns bodies,
+  placedParts, assemblyMates, partPlacement state, and synchronizes them
+  through Yjs CRDT. Moving this to a vanilla Zustand store would *break*
+  CRDT collaboration — leave it as-is.
+- **Step 3 — Viewport**: `useViewportState()` already owns sectionActive,
+  sectionAxis, transformMode, snapEnabled, snapSize, unitSystem.
+  `useSceneStore` owns the camera-related fields. No work needed.
+- **Step 4 — Sketch**: `hooks/useSketchState.ts` already owns sketch tools,
+  entities, action-menu visibility. `useSceneStore.isSketchMode` owns the
+  mode flag. Constraint-solver internal state stays where it is.
+
+This means step 5 (extract `MainWorkspace` as a thin component) is unblocked
+as soon as we want to take it — the hook scaffolding it depends on already
+exists. The remaining hard part is just figuring out the right component
+boundary inside the 6240–7600 JSX block, which is judgement work rather than
+state-architecture work.
+
+Sequencing flips: instead of "4 prep steps + 1 extraction", the work is now
+"1 extraction step" plus minor cleanups (e.g. `bomParts` is still local
+useState but it's a pure derivation of `placedParts` and can be a `useMemo`).
+The 1-week estimate from the prior memory entry can probably come down to
+2-3 dedicated days once the boundary is chosen.

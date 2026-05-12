@@ -144,6 +144,43 @@ export async function exportOcctStep(handle: string | undefined | null): Promise
   return await blob.text();
 }
 
+/**
+ * Route A bridge: convert an arbitrary THREE.BufferGeometry into an OCCT
+ * shape via replicad's STL importer, register the shape, and return its
+ * handle. The handle can be fed straight into `exportOcctStep()` to emit
+ * STEP that round-trips through occt-import-js.
+ *
+ * Cost: an STL serialize + an OCCT BRep import per call. Acceptable for
+ * "export" flows (user-initiated); cache the handle on `userData.occtHandle`
+ * if the same geometry will be re-exported.
+ *
+ * Returns null when WASM init failed or the importer rejected the mesh
+ * (non-manifold, degenerate, etc). Callers should fall back to the legacy
+ * tessellated AP242 emitter only behind a feature flag — production should
+ * grey out the STEP button instead, see canExportStepCleanly().
+ */
+export async function meshToOcctShapeHandle(
+  geometry: import('three').BufferGeometry,
+): Promise<string | null> {
+  try {
+    await ensureOcctReady();
+    const replicad = replicadMod as unknown as {
+      importSTL?: (blob: Blob) => Promise<unknown>;
+    } | null;
+    if (!replicad?.importSTL) return null;
+
+    const { buildBinaryStl } = await import('../io/stlEncode');
+    const stlBuf = buildBinaryStl(geometry);
+    const blob = new Blob([stlBuf], { type: 'application/octet-stream' });
+    const shape = await replicad.importSTL(blob);
+    if (!shape) return null;
+    return registerShape(shape);
+  } catch (err) {
+    console.warn('[occtEngine] meshToOcctShapeHandle failed:', err);
+    return null;
+  }
+}
+
 interface ReplicadLike {
   makeBaseBox: (x: number, y: number, z: number) => unknown;
   makeCylinder: (r: number, h: number, location?: [number, number, number], direction?: [number, number, number]) => unknown;

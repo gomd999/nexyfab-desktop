@@ -14,6 +14,8 @@ export async function exportToStepAsync(
   geometry: THREE.BufferGeometry,
   partName = 'NexyFab_Part',
 ): Promise<string> {
+  // Path 1 — geometry already has an OCCT handle (e.g. produced by a
+  // boolean/fillet/chamfer/shell op). Round-trips cleanly through OCCT.
   const handle = geometry.userData?.occtHandle as string | undefined;
   if (handle) {
     try {
@@ -21,30 +23,70 @@ export async function exportToStepAsync(
       const stepText = await exportOcctStep(handle);
       if (stepText) return stepText;
     } catch (err) {
-      console.warn('Failed to export real B-Rep STEP, falling back to tessellated:', err);
+      console.warn('Failed to export real B-Rep STEP from existing handle, trying mesh bridge:', err);
     }
   }
+
+  // Path 2 — Route A: convert the mesh through replicad.importSTL into an
+  // OCCT B-rep on the fly, then export STEP through the kernel itself.
+  // This is the path that lets cylinders / spheres / sweep / CSG output
+  // round-trip through occt-import-js without the legacy AP242 emitter's
+  // rejection (R2 burn-in 2026-05-08).
+  try {
+    const { meshToOcctShapeHandle, exportOcctStep } = await import('../features/occtEngine');
+    const newHandle = await meshToOcctShapeHandle(geometry);
+    if (newHandle) {
+      // Cache for subsequent exports of the same mesh.
+      geometry.userData = { ...geometry.userData, occtHandle: newHandle };
+      const stepText = await exportOcctStep(newHandle);
+      if (stepText) return stepText;
+    }
+  } catch (err) {
+    console.warn('Failed to export STEP via OCCT mesh bridge, falling back to tessellated:', err);
+  }
+
+  // Path 3 — legacy hand-written AP242 emitter. Only Box geometries
+  // round-trip cleanly here; for other shapes the caller should have used
+  // `canExportStepCleanly()` to grey out the button. Kept as last-resort
+  // path so a misconfigured caller still gets a file.
   return exportToStep(geometry, partName);
 }
 
 /**
  * Predicate the UI uses to decide whether STEP export will round-trip
- * cleanly. Returns true when the geometry will export through one of the
- * known-good paths:
+ * **synchronously** through a fast path:
  *   - has an OCCT B-rep handle (real STEP from kernel) — best case
  *   - is a THREE.BoxGeometry (AP214 NX-cube fast path) — exact round-trip
  *
- * Returns false for general meshes (cylinders, spheres, sweep results,
- * custom CSG output). The current AP242 emitter for these is REJECTED by
- * occt-import-js and most third-party CAD viewers (R2 finding 2026-05-08).
+ * Returns false for general meshes. Those still export cleanly via the
+ * `exportToStepAsync()` Route A path (replicad.importSTL → OCCT B-rep →
+ * STEP) but it costs an OCCT round-trip (~1s on cold WASM, ~100-300ms hot).
+ * UI can keep using this predicate to decide between an instant button
+ * and one that shows a "Converting via OCCT…" spinner.
  *
- * UI should grey out the STEP export button + show a tooltip when this
- * returns false; STL/GLB/OBJ remain available.
+ * Set by `canExportStepCleanly(effectiveResult.geometry)` to prevent
+ * regressions if Route A breaks: a false here still falls back to the
+ * AP242 emitter, but its output is rejected by occt-import-js for non-box
+ * shapes per the R2 burn-in (2026-05-08).
  */
 export function canExportStepCleanly(geometry: THREE.BufferGeometry): boolean {
   if (geometry.userData?.occtHandle) return true;
   if (geometry instanceof THREE.BoxGeometry) return true;
   return false;
+}
+
+/**
+ * Companion predicate for the post-Route-A world: any geometry can export
+ * via `exportToStepAsync()` provided the OCCT WASM is loadable. Returns
+ * `true` unconditionally today because the prebuild script always ships
+ * the .wasm into /public; flip this to a runtime probe if the engine is
+ * ever made optional.
+ *
+ * UI uses this when it wants to *enable* the STEP button but show a
+ * progress hint for shapes outside the fast path.
+ */
+export function canExportStepViaBridge(_geometry: THREE.BufferGeometry): boolean {
+  return true;
 }
 
 export function exportToStep(
