@@ -5,6 +5,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { useUIStore } from './store/uiStore';
 import { useSelectionStore } from './store/selectionStore';
+import { useCanvasSelectionHandlers } from './hooks/useCanvasSelectionHandlers';
 import { useSceneStore } from './store/sceneStore';
 // Responsive layout imports
 import { useResponsive } from './responsive/useResponsive';
@@ -5878,6 +5879,25 @@ export function ShapeGeneratorInner() {
     return combined.length > 0 ? combined : undefined;
   }, [bodyBomParts, bomParts, placedParts]);
 
+  // MW step 5.1 — selection + mate-pairing callback cluster extracted to
+  // useCanvasSelectionHandlers so the future MainWorkspace component can
+  // reuse it directly and so the inline callback no longer re-creates on
+  // every render of the canvas region. MUST live above the mobile-gate
+  // early return so React hook order stays stable across remounts.
+  const { onElementSelect: canvasOnElementSelect, highlightTriangles: canvasHighlightTriangles } =
+    useCanvasSelectionHandlers({
+      generateMateId,
+      setSelectionActive,
+      labels: { mateCoincident: lt.mateCoincident, mateConcentric: lt.mateConcentric },
+      onMateCreated: (mate, partA, partB, mateLabel) => {
+        setAssemblyMates(prev => [...prev, mate]);
+        setShowAssemblyPanel(true);
+        addToast('success', lt.mateAdded?.(mateLabel, partA, partB) ?? `Added Mate between ${partA} and ${partB}`);
+      },
+      onUnpairedFace: () => addToast('error', 'Select faces on different parts to create a mate.'),
+      onParallelHint: () => addToast('info', lt.mateParallelHint ?? 'Faces are parallel (same direction) — you may need to flip one part.'),
+    });
+
   // ══════════════════════════════════════════════════════════════════════════
   // RENDER — MOBILE GATE (phone users → dedicated landing)
   // ══════════════════════════════════════════════════════════════════════════
@@ -6119,83 +6139,8 @@ export function ShapeGeneratorInner() {
                     }}
                     selectionActive={selectionActive}
                     onToggleSelection={toggleFaceSelectionMode}
-                    onElementSelect={(info, additive) => {
-                      // Shift+click: accumulate multi-face selection
-                      if (additive && info.type === 'face') {
-                        setSelectedElement(prev => {
-                          const newFace = info as import('./editing/selectionInfo').FaceSelectionInfo;
-                          const prevFaces: import('./editing/selectionInfo').FaceSelectionInfo[] =
-                            prev?.type === 'multi' ? prev.faces
-                            : prev?.type === 'face' ? [prev as import('./editing/selectionInfo').FaceSelectionInfo]
-                            : [];
-                          const merged = [...prevFaces, newFace];
-                          return {
-                            type: 'multi',
-                            faces: merged,
-                            totalArea: merged.reduce((s, f) => s + f.area, 0),
-                            totalTriangleCount: merged.reduce((s, f) => s + f.triangleCount, 0),
-                            allTriangleIndices: merged.flatMap(f => f.triangleIndices),
-                          };
-                        });
-                        return;
-                      }
-                      if (mateFaceA && info.type === 'face') {
-                        // Create mate!
-                        const faceB = info as import('./editing/selectionInfo').FaceSelectionInfo;
-                        if (mateFaceA.partName && faceB.partName && mateFaceA.partName !== faceB.partName) {
-                          // E4: pick the most likely mate type by analysing the
-                          // selected face normals + sizes. Cylindrical-looking
-                          // strips (small area / many tris) → concentric;
-                          // anti-parallel large flat → coincident; parallel
-                          // same-direction → coincident with a flip warning.
-                          const nA = mateFaceA.normal;
-                          const nB = faceB.normal;
-                          const dot = nA[0] * nB[0] + nA[1] * nB[1] + nA[2] * nB[2];
-                          const triA = mateFaceA.triangleCount;
-                          const triB = faceB.triangleCount;
-                          const stripA = triA > 12 && mateFaceA.area / triA < 30; // small tris, many of them
-                          const stripB = triB > 12 && faceB.area / triB < 30;
-                          let mateType: import('./assembly/AssemblyMates').MateType = 'coincident';
-                          let reasonLabel: string = lt.mateCoincident ?? 'Coincident';
-                          if (stripA && stripB) {
-                            mateType = 'concentric';
-                            reasonLabel = lt.mateConcentric ?? 'Concentric';
-                          } else if (dot > 0.95) {
-                            // Parallel same-direction — user probably wants coincident but
-                            // will need to flip one part. Surface this as a hint toast.
-                            mateType = 'coincident';
-                            addToast('info', lt.mateParallelHint ?? 'Faces are parallel (same direction) — you may need to flip one part.');
-                          }
-                          const newMate: import('./assembly/AssemblyMates').AssemblyMate = {
-                            id: generateMateId(),
-                            type: mateType,
-                            partA: mateFaceA.partName,
-                            partB: faceB.partName,
-                            faceA: mateFaceA.triangleIndices[0],
-                            faceB: faceB.triangleIndices[0],
-                            locked: false,
-                          };
-                          setAssemblyMates(prev => [...prev, newMate]);
-                          setShowAssemblyPanel(true);
-                          addToast('success', lt.mateAdded?.(reasonLabel, mateFaceA.partName, faceB.partName) ?? `Added Mate between ${mateFaceA.partName} and ${faceB.partName}`);
-                        } else {
-                          addToast('error', 'Select faces on different parts to create a mate.');
-                        }
-                        setMateFaceA(null);
-                        setSelectedElement(null);
-                        setSelectionActive(false);
-                      } else {
-                        setSelectedElement(info);
-                      }
-                    }}
-                    highlightTriangles={
-                      mateFaceA?.triangleIndices ||
-                      (selectedElement?.type === 'face'
-                        ? (selectedElement as import('./editing/selectionInfo').FaceSelectionInfo).triangleIndices
-                        : selectedElement?.type === 'multi'
-                        ? (selectedElement as import('./editing/selectionInfo').MultiSelectionInfo).allTriangleIndices
-                        : undefined)
-                    }
+                    onElementSelect={canvasOnElementSelect}
+                    highlightTriangles={canvasHighlightTriangles}
                     onFileImport={async (file) => {
                       try {
                         const { prepareImportedShapeFromFile, pushRecentImportFile } = await import('./io/importMeshPipeline');
