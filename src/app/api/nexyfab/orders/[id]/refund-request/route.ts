@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
-import { sendEmail } from '@/lib/nexyfab-email';
+import { sendEmail, getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { esc } from '@/lib/html-escape';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -72,7 +72,7 @@ export async function POST(
   );
 
   // Notify admin
-  const adminEmail = process.env.ADMIN_EMAIL ?? 'nexyfab@nexysys.com';
+  const adminEmail = getNexyfabAdminEmail();
   sendEmail(
     adminEmail,
     `[NexyFab] 환불 요청: ${orderId}`,

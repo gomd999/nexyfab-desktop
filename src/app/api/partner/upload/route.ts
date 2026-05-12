@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import path from 'path';
 import { rateLimit } from '@/app/lib/rateLimit';
 import { logError } from '@/app/lib/errorLog';
+import { getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { validateUploadedFile, sanitizeFileName, UPLOAD_CONFIGS } from '@/lib/file-validation';
 import { getStorage } from '@/lib/storage';
 import { getDbAdapter } from '@/lib/db-adapter';
@@ -278,7 +279,7 @@ export async function POST(req: NextRequest) {
         // Notify admin
         const { sendEmail } = await import('@/lib/nexyfab-email');
         sendEmail(
-          process.env.NEXYFAB_ADMIN_EMAIL ?? 'nexyfab@nexysys.com',
+          getNexyfabAdminEmail(),
           '[NexyFab] ⚠️ Infected partner upload detected',
           `<p>Virus scan flagged a partner-uploaded file.</p><p>Contract: ${_scanContractId}</p><p>Positives: ${result.positives}/${result.total}</p><p>Report: ${result.permalink ?? 'N/A'}</p><p>File deleted from storage.</p>`,
         ).catch(() => {});

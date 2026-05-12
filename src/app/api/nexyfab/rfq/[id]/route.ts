@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail, rfqNotificationHtml, nexyfabAdminEmailLocale, rfqNotificationEmailSubject } from '@/lib/nexyfab-email';
+import { sendEmail, rfqNotificationHtml, nexyfabAdminEmailLocale, rfqNotificationEmailSubject, getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
@@ -93,7 +93,7 @@ export async function PATCH(
 
   // ─── Status-change email notifications (fire-and-forget) ─────────────────
   if (body.status && body.status !== previousStatus) {
-    const adminEmail = process.env.NEXYFAB_ADMIN_EMAIL || 'nexyfab@nexysys.com';
+    const adminEmail = getNexyfabAdminEmail();
     const rfqEmailData = {
       rfqId: entry.rfqId,
       shapeName: entry.shapeName,

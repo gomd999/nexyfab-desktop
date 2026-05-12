@@ -104,7 +104,29 @@ function getTransporter() {
   });
 }
 
-const FROM_EMAIL = '"NexyFab" <nexyfab@nexysys.com>';
+/** Default plain address used when no env override is set. Keep in sync with
+ *  the marketing/legal pages that show this address to users. */
+const DEFAULT_NEXYFAB_EMAIL = 'nexyfab@nexysys.com';
+
+const FROM_EMAIL = `"NexyFab" <${DEFAULT_NEXYFAB_EMAIL}>`;
+
+/**
+ * Canonical plain address NexyFab sends mail *from*. Prefers explicit overrides
+ * (NEXYFAB_FROM_EMAIL → SMTP_USER) and falls back to the marketing default.
+ * Use this anywhere you need a bare `from:` address (no display-name wrapper).
+ */
+export function getNexyfabFromEmail(): string {
+  return process.env.NEXYFAB_FROM_EMAIL || process.env.SMTP_USER || DEFAULT_NEXYFAB_EMAIL;
+}
+
+/**
+ * Canonical plain address ops/admin notifications are *delivered to*. Some
+ * call sites historically used ADMIN_EMAIL, others NEXYFAB_ADMIN_EMAIL — both
+ * are honored here, with NEXYFAB_ADMIN_EMAIL taking precedence.
+ */
+export function getNexyfabAdminEmail(): string {
+  return process.env.NEXYFAB_ADMIN_EMAIL || process.env.ADMIN_EMAIL || DEFAULT_NEXYFAB_EMAIL;
+}
 
 // ─── Core send function (fire-and-forget) ────────────────────────────────────
 

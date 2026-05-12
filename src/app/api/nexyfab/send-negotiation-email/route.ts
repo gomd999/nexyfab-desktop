@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { getNexyfabFromEmail } from '@/lib/nexyfab-email';
 
 interface SendBody {
   to: string;          // 수신자 이메일
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '유효하지 않은 이메일 주소입니다.' }, { status: 400 });
   }
 
-  const fromEmail = process.env.NEXYFAB_FROM_EMAIL ?? process.env.SMTP_USER ?? 'nexyfab@nexysys.com';
+  const fromEmail = getNexyfabFromEmail();
   const fromName = body.fromName ?? 'NexyFab Procurement';
 
   const transporter = buildTransporter();

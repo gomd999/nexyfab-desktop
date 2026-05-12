@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { validateUploadedFile, sanitizeFileName } from '@/lib/file-validation';
 import { getStorage } from '@/lib/storage';
 import { getAuthUser } from '@/lib/auth-middleware';
@@ -298,7 +299,7 @@ async function processOneFile(
           // Notify admin (fire-and-forget)
           const { sendEmail } = await import('@/lib/nexyfab-email');
           sendEmail(
-            process.env.NEXYFAB_ADMIN_EMAIL ?? 'nexyfab@nexysys.com',
+            getNexyfabAdminEmail(),
             '[NexyFab] ⚠️ Infected file detected',
             `<p>Virus scan flagged a file during quick-quote upload.</p><p>Positives: ${result.positives}/${result.total}</p><p>Report: ${result.permalink ?? 'N/A'}</p><p>File has been deleted from storage.</p>`,
           ).catch(() => {});
