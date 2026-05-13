@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 
 const SUPPORT = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SUPPORT_EMAIL
   ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL
-  : 'support@nexyfab.com';
+  : 'nexyfab@nexysys.com';
 
 type RefundDict = {
   kicker: string;

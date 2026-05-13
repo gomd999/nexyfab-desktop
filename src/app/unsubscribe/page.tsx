@@ -63,7 +63,7 @@ function UnsubscribePage() {
             수신거부 링크가 만료되었거나 올바르지 않습니다.<br />
             이메일에서 링크를 다시 클릭하거나 고객 지원에 문의해 주세요.
           </p>
-          <a href="mailto:support@nexyfab.com" style={{
+          <a href="mailto:nexyfab@nexysys.com" style={{
             display: 'inline-block', padding: '12px 28px',
             background: '#111', color: '#fff', borderRadius: '8px',
             textDecoration: 'none', fontSize: '14px', fontWeight: 700,

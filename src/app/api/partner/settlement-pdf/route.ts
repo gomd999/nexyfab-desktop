@@ -316,7 +316,7 @@ function buildHtml(params: {
   <div class="footer">
     <div class="footer-note">
       본 내역서는 NexyFab 플랫폼에서 자동 생성되었습니다.<br />
-      문의: support@nexyfab.com<br />
+      문의: nexyfab@nexysys.com<br />
       NexyFab은 제조 파트너 매칭 서비스를 제공합니다.
     </div>
     <div class="stamp-area">

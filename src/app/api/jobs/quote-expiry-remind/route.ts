@@ -91,7 +91,7 @@ function quoteExpiryHtml(opts: {
         </td></tr>
         <!-- footer -->
         <tr><td style="padding:14px 28px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af">
-          이 메일은 NexyFab 자동 알림 시스템에서 발송되었습니다. 문의: support@nexyfab.com
+          이 메일은 NexyFab 자동 알림 시스템에서 발송되었습니다. 문의: nexyfab@nexysys.com
         </td></tr>
       </table>
     </td></tr>

@@ -120,7 +120,7 @@ export default function Footer() {
 
     const nexysysBase = (process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com').replace(/\/$/, '');
     const nexysysLegalHref = process.env.NEXT_PUBLIC_NEXYSYS_LEGAL_URL || `${nexysysBase}/kr/`;
-    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@nexyfab.com';
+    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'nexyfab@nexysys.com';
 
     return (
         <footer id="Nexyfab-footer" className="hat-footer reveal" style={{ width: '100%', marginLeft: 0, marginRight: 0, boxSizing: 'border-box' }}>

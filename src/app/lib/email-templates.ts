@@ -37,7 +37,7 @@ function layout(content: string, title: string): string {
   <div class="container">
     ${content}
     <div class="footer">
-      <p>NexyFab · <a href="https://nexyfab.com" style="color:#64748b">nexyfab.com</a> · 문의: <a href="mailto:support@nexyfab.com" style="color:#64748b">support@nexyfab.com</a></p>
+      <p>NexyFab · <a href="https://nexyfab.com" style="color:#64748b">nexyfab.com</a> · 문의: <a href="mailto:nexyfab@nexysys.com" style="color:#64748b">nexyfab@nexysys.com</a></p>
       <p style="margin-top:4px">이 이메일은 자동 발송되었습니다. 회신하지 마세요.</p>
     </div>
   </div>
@@ -57,7 +57,7 @@ export function planUpgradeEmail(opts: { name: string; plan: 'Pro' | 'Team' }): 
       <p>NexyFab <span class="badge badge-success">${opts.plan}</span> 플랜 구독이 성공적으로 완료되었습니다.</p>
       <p>이제 모든 ${opts.plan} 기능을 이용하실 수 있습니다.</p>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nexyfab.com'}/en/nexyfab/dashboard" class="cta">대시보드 바로가기</a>
-      <p style="margin-top:24px; color:#64748b; font-size:13px">문의사항이 있으시면 support@nexyfab.com으로 연락해 주세요.</p>
+      <p style="margin-top:24px; color:#64748b; font-size:13px">문의사항이 있으시면 nexyfab@nexysys.com으로 연락해 주세요.</p>
     </div>
   `, subject);
   return { subject, html };

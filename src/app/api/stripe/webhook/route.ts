@@ -257,7 +257,7 @@ async function handleStripeEvent(
   </p>
   <hr style="margin:24px 0;border:none;border-top:1px solid #eee"/>
   <p style="font-size:12px;color:#aaa">
-    Questions? <a href="mailto:support@nexyfab.com" style="color:#0056ff">support@nexyfab.com</a>
+    Questions? <a href="mailto:nexyfab@nexysys.com" style="color:#0056ff">nexyfab@nexysys.com</a>
   </p>
 </div>
           `.trim(),
