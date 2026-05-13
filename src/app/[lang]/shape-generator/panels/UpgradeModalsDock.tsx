@@ -1,81 +1,45 @@
 'use client';
 
-// Centralized mount point for all UpgradeModal dialogs.
+// Centralized mount point for the upgrade modal.
 //
-// Why this file exists: ShapeGeneratorInner.tsx had 8 near-identical UpgradeModal
-// JSX blocks scattered across 200 lines, each pulling its own show*/setShow* pair
-// from uiStore. Each new paywall feature added another duplicated block.
+// History: ShapeGeneratorInner.tsx originally had 8 near-identical
+// UpgradeModal JSX blocks, each driven by its own boolean state. We
+// already collapsed those into one component that mapped 8 booleans
+// to 8 mounted modal instances. **Item 2 of the usability cleanup**
+// goes one further: a single `upgradeGateFeature` field in uiStore
+// drives a single rendered modal. The 8 legacy booleans stay as
+// back-compat aliases (their setters mirror to upgradeGateFeature),
+// so every call site keeps working unchanged while this dock renders
+// exactly one modal.
 //
-// Now: each modal is one row in MODAL_DEFS, and Inner.tsx mounts a single
-// <UpgradeModalsDock />. Adding a new upgrade gate = one line here + the
-// matching uiStore boolean. No JSX touched in Inner.
+// Adding a new gate now means: add a string to the FreemiumFeature
+// union and call `openUpgradeGate('new_feature')`. No new state, no
+// new JSX, no new setter.
 
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { useUIStore } from '../store/uiStore';
-import type { FreemiumFeature } from '@/hooks/useFreemium';
 
 const UpgradeModal = dynamic(() => import('@/components/nexyfab/UpgradeModal'), {
   ssr: false,
 });
-
-interface ModalDef {
-  /** uiStore key for the open flag. */
-  showKey:
-    | 'showCamUpgrade'
-    | 'showDFMFixUpgrade'
-    | 'showDFMInsightsUpgrade'
-    | 'showProcessRouterUpgrade'
-    | 'showAISupplierMatchUpgrade'
-    | 'showCostCopilotUpgrade'
-    | 'showCollabEditUpgrade'
-    | 'showExportOptimizeUpgrade';
-  /** uiStore setter for the open flag. */
-  setterKey:
-    | 'setShowCamUpgrade'
-    | 'setShowDFMFixUpgrade'
-    | 'setShowDFMInsightsUpgrade'
-    | 'setShowProcessRouterUpgrade'
-    | 'setShowAISupplierMatchUpgrade'
-    | 'setShowCostCopilotUpgrade'
-    | 'setShowCollabEditUpgrade'
-    | 'setShowExportOptimizeUpgrade';
-  /** Feature key passed to UpgradeModal — drives the copy/CTA inside the modal. */
-  feature: FreemiumFeature;
-}
-
-const MODAL_DEFS: readonly ModalDef[] = [
-  { showKey: 'showCamUpgrade',                setterKey: 'setShowCamUpgrade',                feature: 'cam_export' },
-  { showKey: 'showDFMFixUpgrade',             setterKey: 'setShowDFMFixUpgrade',             feature: 'dfm_autofix' },
-  { showKey: 'showDFMInsightsUpgrade',        setterKey: 'setShowDFMInsightsUpgrade',        feature: 'dfm_insights' },
-  { showKey: 'showProcessRouterUpgrade',      setterKey: 'setShowProcessRouterUpgrade',      feature: 'process_router' },
-  { showKey: 'showAISupplierMatchUpgrade',    setterKey: 'setShowAISupplierMatchUpgrade',    feature: 'ai_supplier_match' },
-  { showKey: 'showCostCopilotUpgrade',        setterKey: 'setShowCostCopilotUpgrade',        feature: 'cost_copilot' },
-  { showKey: 'showCollabEditUpgrade',         setterKey: 'setShowCollabEditUpgrade',         feature: 'collaboration_edit' },
-  { showKey: 'showExportOptimizeUpgrade',     setterKey: 'setShowExportOptimizeUpgrade',     feature: 'export_optimize' },
-];
 
 interface UpgradeModalsDockProps {
   lang: string;
 }
 
 export default function UpgradeModalsDock({ lang }: UpgradeModalsDockProps) {
-  const ui = useUIStore();
+  const feature = useUIStore(s => s.upgradeGateFeature);
+  const closeGate = useUIStore(s => s.closeUpgradeGate);
   return (
-    <>
-      {MODAL_DEFS.map(({ showKey, setterKey, feature }) => {
-        const open = ui[showKey] as boolean;
-        const setter = ui[setterKey] as (v: boolean) => void;
-        return (
-          <UpgradeModal
-            key={feature}
-            open={open}
-            feature={feature}
-            lang={lang}
-            onClose={() => setter(false)}
-          />
-        );
-      })}
-    </>
+    <UpgradeModal
+      open={feature !== null}
+      // When feature is null we still render the modal closed; the
+      // `feature` prop is required even though it's invisible at that
+      // moment. Pass a stable placeholder so React doesn't tear it down.
+      feature={feature ?? 'cam_export'}
+      lang={lang}
+      onClose={closeGate}
+    />
   );
 }

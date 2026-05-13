@@ -140,6 +140,16 @@ interface UIState {
   scadAuthoringMode: 'quick' | 'agent'
   // ── Analysis modal panels (migrated from page.tsx local state) ──
   showCOTSPanel: boolean
+  // ── Unified upgrade gate ──
+  // Item 2 of usability cleanup. Replaces 8 separate `show*Upgrade` booleans
+  // that all rendered the same UpgradeModal — only the `feature` prop
+  // differed. Storing the active feature key here means UpgradeModalsDock
+  // mounts a single modal, debugging answers one question ("which gate is
+  // open?"), and adding a new gate is `openUpgradeGate('new_feature')` with
+  // zero state plumbing. The legacy `show*Upgrade` booleans below are
+  // back-compat aliases — their setters route through openUpgradeGate so
+  // every call site keeps working unchanged.
+  upgradeGateFeature: import('@/hooks/useFreemium').FreemiumFeature | null
   showCamUpgrade: boolean
   showDFMFixUpgrade: boolean
   showDFMInsightsUpgrade: boolean
@@ -281,6 +291,9 @@ interface UIActions {
   setShowSmartFastener: (v: boolean) => void
   setScadAuthoringMode: (m: 'quick' | 'agent') => void
   setShowCOTSPanel: (v: boolean) => void
+  // Unified upgrade gate actions (Item 2).
+  openUpgradeGate: (feature: import('@/hooks/useFreemium').FreemiumFeature) => void
+  closeUpgradeGate: () => void
   setShowCamUpgrade: (v: boolean) => void
   setShowDFMFixUpgrade: (v: boolean) => void
   setShowDFMInsightsUpgrade: (v: boolean) => void
@@ -361,6 +374,7 @@ export const useUIStore = create<UIStore>()(
     showSmartFastener: false,
     scadAuthoringMode: 'quick',
     showCOTSPanel: false,
+    upgradeGateFeature: null,
     showCamUpgrade: false,
     showDFMFixUpgrade: false,
     showDFMInsightsUpgrade: false,
@@ -547,14 +561,76 @@ export const useUIStore = create<UIStore>()(
     setScadAuthoringMode: (m) => set((state) => { state.scadAuthoringMode = m }),
 
     // ─── Modal/upgrade dialogs (overlay on top of panels) ────────────────────
-    setShowCamUpgrade: (v) => set((state) => { state.showCamUpgrade = v }),
-    setShowDFMFixUpgrade: (v) => set((state) => { state.showDFMFixUpgrade = v }),
-    setShowDFMInsightsUpgrade: (v) => set((state) => { state.showDFMInsightsUpgrade = v }),
-    setShowProcessRouterUpgrade: (v) => set((state) => { state.showProcessRouterUpgrade = v }),
-    setShowAISupplierMatchUpgrade: (v) => set((state) => { state.showAISupplierMatchUpgrade = v }),
-    setShowCostCopilotUpgrade: (v) => set((state) => { state.showCostCopilotUpgrade = v }),
-    setShowCollabEditUpgrade: (v) => set((state) => { state.showCollabEditUpgrade = v }),
-    setShowExportOptimizeUpgrade: (v) => set((state) => { state.showExportOptimizeUpgrade = v }),
+    // ─── Unified upgrade gate (Item 2) ───────────────────────────────────────
+    // openUpgradeGate is the canonical entry point — new code should call
+    // this. The legacy setShow*Upgrade setters route through it so the 30+
+    // existing call sites work unchanged while UpgradeModalsDock reads from
+    // upgradeGateFeature for the single rendered modal.
+    openUpgradeGate: (feature) => set((state) => {
+      state.upgradeGateFeature = feature;
+      // Keep the matching back-compat boolean true too, so any code still
+      // reading the old boolean (e.g. tests, debug overlays) sees the gate
+      // is open. The reverse mapping is small and explicit.
+      switch (feature) {
+        case 'cam_export':           state.showCamUpgrade = true; break;
+        case 'dfm_autofix':          state.showDFMFixUpgrade = true; break;
+        case 'dfm_insights':         state.showDFMInsightsUpgrade = true; break;
+        case 'process_router':       state.showProcessRouterUpgrade = true; break;
+        case 'ai_supplier_match':    state.showAISupplierMatchUpgrade = true; break;
+        case 'cost_copilot':         state.showCostCopilotUpgrade = true; break;
+        case 'collaboration_edit':   state.showCollabEditUpgrade = true; break;
+        case 'export_optimize':      state.showExportOptimizeUpgrade = true; break;
+      }
+    }),
+    closeUpgradeGate: () => set((state) => {
+      state.upgradeGateFeature = null;
+      // Mirror the close across all back-compat booleans so a stale `true`
+      // doesn't keep a modal mounted after the user dismissed.
+      state.showCamUpgrade = false;
+      state.showDFMFixUpgrade = false;
+      state.showDFMInsightsUpgrade = false;
+      state.showProcessRouterUpgrade = false;
+      state.showAISupplierMatchUpgrade = false;
+      state.showCostCopilotUpgrade = false;
+      state.showCollabEditUpgrade = false;
+      state.showExportOptimizeUpgrade = false;
+    }),
+
+    // Legacy setters — keep working but funnel through openUpgradeGate so
+    // upgradeGateFeature stays in sync. Code that called these with `false`
+    // (i.e. closing) hits closeUpgradeGate to clear the unified field.
+    setShowCamUpgrade: (v) => set((state) => {
+      state.showCamUpgrade = v;
+      state.upgradeGateFeature = v ? 'cam_export' : (state.upgradeGateFeature === 'cam_export' ? null : state.upgradeGateFeature);
+    }),
+    setShowDFMFixUpgrade: (v) => set((state) => {
+      state.showDFMFixUpgrade = v;
+      state.upgradeGateFeature = v ? 'dfm_autofix' : (state.upgradeGateFeature === 'dfm_autofix' ? null : state.upgradeGateFeature);
+    }),
+    setShowDFMInsightsUpgrade: (v) => set((state) => {
+      state.showDFMInsightsUpgrade = v;
+      state.upgradeGateFeature = v ? 'dfm_insights' : (state.upgradeGateFeature === 'dfm_insights' ? null : state.upgradeGateFeature);
+    }),
+    setShowProcessRouterUpgrade: (v) => set((state) => {
+      state.showProcessRouterUpgrade = v;
+      state.upgradeGateFeature = v ? 'process_router' : (state.upgradeGateFeature === 'process_router' ? null : state.upgradeGateFeature);
+    }),
+    setShowAISupplierMatchUpgrade: (v) => set((state) => {
+      state.showAISupplierMatchUpgrade = v;
+      state.upgradeGateFeature = v ? 'ai_supplier_match' : (state.upgradeGateFeature === 'ai_supplier_match' ? null : state.upgradeGateFeature);
+    }),
+    setShowCostCopilotUpgrade: (v) => set((state) => {
+      state.showCostCopilotUpgrade = v;
+      state.upgradeGateFeature = v ? 'cost_copilot' : (state.upgradeGateFeature === 'cost_copilot' ? null : state.upgradeGateFeature);
+    }),
+    setShowCollabEditUpgrade: (v) => set((state) => {
+      state.showCollabEditUpgrade = v;
+      state.upgradeGateFeature = v ? 'collaboration_edit' : (state.upgradeGateFeature === 'collaboration_edit' ? null : state.upgradeGateFeature);
+    }),
+    setShowExportOptimizeUpgrade: (v) => set((state) => {
+      state.showExportOptimizeUpgrade = v;
+      state.upgradeGateFeature = v ? 'export_optimize' : (state.upgradeGateFeature === 'export_optimize' ? null : state.upgradeGateFeature);
+    }),
 
     setAnnotationPlacementMode: (mode) =>
       set((state) => {
