@@ -48,6 +48,9 @@ interface TopBannersProps {
   // Simple-mode offer
   simpleMode: boolean;
   onEnableSimpleMode: () => void;
+  /** Item 5 — 3-preset role picker. If omitted, banner falls back to the
+   *  binary basic/dismiss path via onEnableSimpleMode. */
+  onApplyPreset?: (preset: 'basic' | 'designer' | 'engineer') => void;
 
   // i18n
   lt: {
@@ -60,6 +63,11 @@ interface TopBannersProps {
     simpleModeOfferEnable: string;
     simpleModeOfferDismiss: string;
     simpleModeOfferRegion: string;
+    presetPickTitle: string;
+    presetPickDesc: string;
+    presetBasic: string;
+    presetDesigner: string;
+    presetEngineer: string;
   };
 }
 
@@ -80,6 +88,7 @@ export default function TopBanners({
   currentFeatures,
   simpleMode,
   onEnableSimpleMode,
+  onApplyPreset,
   lt,
 }: TopBannersProps) {
   return (
@@ -157,12 +166,18 @@ export default function TopBanners({
         <SimpleModeOfferBanner
           simpleMode={simpleMode}
           onEnableSimpleMode={onEnableSimpleMode}
+          onApplyPreset={onApplyPreset}
           labels={{
             title: lt.simpleModeOfferTitle,
             desc: lt.simpleModeOfferDesc,
             enable: lt.simpleModeOfferEnable,
             dismiss: lt.simpleModeOfferDismiss,
             regionLabel: lt.simpleModeOfferRegion,
+            presetPickTitle: lt.presetPickTitle,
+            presetPickDesc: lt.presetPickDesc,
+            presetBasic: lt.presetBasic,
+            presetDesigner: lt.presetDesigner,
+            presetEngineer: lt.presetEngineer,
           }}
         />
       )}

@@ -411,6 +411,7 @@ export function ShapeGeneratorInner() {
   const setTabletLeftOpen = useUIStore(s => s.setTabletLeftOpen);
   const simpleMode = useUIStore(s => s.simpleMode);
   const enableSimpleMode = useUIStore(s => s.enableSimpleMode);
+  const applyUserPreset = useUIStore(s => s.applyUserPreset);
   const disableSimpleMode = useUIStore(s => s.disableSimpleMode);
   // (showQuoteWizard / showCSGPanel / rfqDone moved to useShapeGeneratorUI at top of component)
 
@@ -6532,6 +6533,7 @@ export function ShapeGeneratorInner() {
         currentFeatures={features}
         simpleMode={simpleMode}
         onEnableSimpleMode={enableSimpleMode}
+        onApplyPreset={applyUserPreset}
         lt={lt}
       />
 

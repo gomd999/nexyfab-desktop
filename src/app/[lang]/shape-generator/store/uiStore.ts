@@ -96,7 +96,25 @@ interface UIState {
   activeTab: ActiveTab
   /** Fusion-style ribbon workspace (Design / Render / Generative / …). */
   cadWorkspace: CadWorkspaceId
-  simpleMode: boolean   // 간편 모드: 초보자용, 고급 패널 숨김
+  simpleMode: boolean   // 간편 모드: 초보자용, 고급 패널 숨김 (back-compat shim, = userPreset === 'basic')
+  /**
+   * Item 5 of the usability cleanup — replaces the binary simpleMode with a
+   * 3-level role preset. Each preset closes / hides a different subset of
+   * panels so the canvas density matches the user's role:
+   *
+   *   - 'basic'    : sketch + basic 3D only. No analysis surfaces. Same as
+   *                  the old `simpleMode === true`. Aimed at first-time
+   *                  visitors and quick-quote flows.
+   *   - 'designer' : sketch + 3D + drawing + library + cost panel. Hides
+   *                  validation analyses (FEA / Thermal / Modal / etc.).
+   *                  Aimed at industrial designers and quick prototyping.
+   *   - 'engineer' : all panels available. Same as the old simpleMode-off
+   *                  default. Aimed at engineering validation.
+   *
+   * `simpleMode` stays in state and is kept in sync so existing call sites
+   * (40+ `simpleMode &&` checks across Inner.tsx and panels) keep working.
+   */
+  userPreset: 'basic' | 'designer' | 'engineer'
   showAIAssistant: boolean  // 통합 AI 사이드바 (chat + advisor + suggestions)
   aiAssistantTab: AIAssistantTab
   showShortcuts: boolean
@@ -252,8 +270,10 @@ interface UIActions {
   /** Design/Optimize tab + clear ribbon tool panels; does not change scene renderMode (.nfab hydrate). */
   hydrateMainTabFromProject: (tab: ActiveTab) => void
   setSimpleMode: (v: boolean) => void
-  /** 간편 모드 진입: 고급 패널 전부 닫고 simpleMode=true */
+  /** 간편 모드 진입: 고급 패널 전부 닫고 simpleMode=true (= applyUserPreset('basic')) */
   enableSimpleMode: () => void
+  /** Item 5 — set the role preset and apply the matching panel visibility. */
+  applyUserPreset: (preset: 'basic' | 'designer' | 'engineer') => void
   /** 전문가 모드 복귀: simpleMode=false */
   disableSimpleMode: () => void
   setShowAIAssistant: (v: boolean) => void
@@ -341,6 +361,7 @@ export const useUIStore = create<UIStore>()(
     activeTab: 'design',
     cadWorkspace: 'design',
     simpleMode: false,
+    userPreset: 'engineer' as const,
     showAIAssistant: false,
     aiAssistantTab: 'chat',
     showShortcuts: false,
@@ -438,6 +459,7 @@ export const useUIStore = create<UIStore>()(
     enableSimpleMode: () => {
       set((state) => {
         state.simpleMode = true
+        state.userPreset = 'basic'
         state.cadWorkspace = 'design'
         // Close all advanced analysis panels (mutual-exclusion group).
         for (const k of analysisPanelKeys) state[k] = false
@@ -457,6 +479,62 @@ export const useUIStore = create<UIStore>()(
       set((state) => {
         state.simpleMode = false
       }),
+
+    /**
+     * Item 5 — apply a role preset. 'basic' = old simpleMode (everything
+     * advanced hidden). 'designer' = keep prototyping panels (cost,
+     * library, autoDrawing) but hide validation analyses. 'engineer' =
+     * everything available, same as the default unfiltered state.
+     *
+     * `simpleMode` is updated to match so existing `simpleMode &&` checks
+     * across Inner.tsx keep behaving correctly.
+     */
+    applyUserPreset: (preset) => {
+      // Designer-preset visibility list — analyses to hide. Anything not
+      // in this set stays at its current value (i.e. we don't *force* a
+      // panel open, just close the ones a designer rarely needs).
+      const designerHides: AnalysisPanelKey[] = [
+        'showFEA',
+        'showThermalPanel',
+        'showModalAnalysis',
+        'showParametricSweep',
+        'showToleranceStackup',
+        'showSurfaceQuality',
+        'showGenDesign',
+        'showECADPanel',
+        'showMotionStudy',
+        'showBranchCompare',
+        'showVersionDiff',
+      ];
+
+      set((state) => {
+        state.userPreset = preset;
+        state.simpleMode = preset === 'basic';
+        if (preset === 'basic') {
+          // Same as enableSimpleMode — close everything advanced.
+          for (const k of analysisPanelKeys) state[k] = false;
+          state.showAIAssistant = false;
+          state.showPlanes = false;
+          state.showPerf = false;
+          state.multiView = false;
+          state.showVersionPanel = false;
+          state.showHistoryPanel = false;
+          state.showAssemblyPanel = false;
+          state.cadWorkspace = 'design';
+        } else if (preset === 'designer') {
+          // Hide validation analyses but keep prototyping panels open if
+          // the user had them open. Don't slam the perf/dev panels closed
+          // either — designers may want a quick performance check.
+          for (const k of designerHides) state[k] = false;
+          state.showPerf = false;
+        }
+        // 'engineer' = no forced closes; whatever is open stays open.
+      });
+
+      if (preset === 'basic') {
+        useSceneStore.getState().setRenderMode('standard');
+      }
+    },
 
     setShowAIAssistant: (v) =>
       set((state) => {
