@@ -9,47 +9,71 @@ import { analytics } from '@/lib/analytics';
 const dict = {
   ko: {
     share: '공유', copied: '복사됨!', copy: '복사', copyDone: '✓ 복사됨',
-    editLink: '편집 링크', viewOnlyLink: '뷰어 전용 링크',
+    editLink: '편집 링크', viewOnlyLink: '뷰어 전용 링크', collabLink: '실시간 협업 링크',
     editHint: '이 링크를 열면 동일한 형상, 파라미터, 재료가 복원됩니다.',
     viewHint: '편집 기능 없이 3D 뷰어만 열립니다. 팀원이나 고객과 공유하세요.',
+    collabHint: '이 링크를 받은 사람과 같은 캔버스에서 동시 작업합니다 (Yjs CRDT 자동 동기화).',
     titleShare: '디자인 링크 공유',
   },
   en: {
     share: 'Share', copied: 'Copied!', copy: 'Copy', copyDone: '✓ Copied',
-    editLink: 'Edit Link', viewOnlyLink: 'View-Only Link',
+    editLink: 'Edit Link', viewOnlyLink: 'View-Only Link', collabLink: 'Live Collab Link',
     editHint: 'Opening this link restores the exact shape, parameters, and material.',
     viewHint: 'Opens 3D viewer only — no editing. Share with teammates or clients.',
+    collabHint: 'Everyone with this link works on the same canvas in real time (Yjs CRDT auto-sync).',
     titleShare: 'Share design link',
   },
   ja: {
     share: '共有', copied: 'コピー済み!', copy: 'コピー', copyDone: '✓ コピー済み',
-    editLink: '編集リンク', viewOnlyLink: 'ビューア専用リンク',
+    editLink: '編集リンク', viewOnlyLink: 'ビューア専用リンク', collabLink: 'リアルタイム共同編集リンク',
     editHint: 'このリンクを開くと、同じ形状・パラメータ・素材が復元されます。',
     viewHint: '3Dビューアのみ開きます。編集はできません。チームや顧客と共有してください。',
+    collabHint: 'このリンクを共有した人と同じキャンバスで同時編集します (Yjs CRDT 自動同期)。',
     titleShare: 'デザインリンクを共有',
   },
   zh: {
     share: '分享', copied: '已复制!', copy: '复制', copyDone: '✓ 已复制',
-    editLink: '编辑链接', viewOnlyLink: '仅查看链接',
+    editLink: '编辑链接', viewOnlyLink: '仅查看链接', collabLink: '实时协作链接',
     editHint: '打开此链接将恢复相同的形状、参数和材料。',
     viewHint: '仅打开3D查看器 — 不可编辑。与团队或客户共享。',
+    collabHint: '收到此链接的人在同一画布上实时协作 (Yjs CRDT 自动同步)。',
     titleShare: '分享设计链接',
   },
   es: {
     share: 'Compartir', copied: '¡Copiado!', copy: 'Copiar', copyDone: '✓ Copiado',
-    editLink: 'Enlace de edición', viewOnlyLink: 'Enlace solo de vista',
+    editLink: 'Enlace de edición', viewOnlyLink: 'Enlace solo de vista', collabLink: 'Enlace de colaboración en vivo',
     editHint: 'Abrir este enlace restaura la forma, parámetros y material exactos.',
     viewHint: 'Abre solo el visor 3D — sin edición. Comparte con tu equipo o clientes.',
+    collabHint: 'Quien tenga este enlace edita el mismo lienzo en tiempo real (sincronización Yjs CRDT).',
     titleShare: 'Compartir enlace del diseño',
   },
   ar: {
     share: 'مشاركة', copied: 'تم النسخ!', copy: 'نسخ', copyDone: '✓ تم النسخ',
-    editLink: 'رابط التحرير', viewOnlyLink: 'رابط العرض فقط',
+    editLink: 'رابط التحرير', viewOnlyLink: 'رابط العرض فقط', collabLink: 'رابط التعاون المباشر',
     editHint: 'فتح هذا الرابط يستعيد نفس الشكل والمعلمات والمادة.',
     viewHint: 'يفتح عارض ثلاثي الأبعاد فقط — بدون تحرير. شاركه مع الفريق أو العملاء.',
+    collabHint: 'يتعاون كل من لديه هذا الرابط على نفس اللوحة في الوقت الفعلي (مزامنة Yjs CRDT).',
     titleShare: 'مشاركة رابط التصميم',
   },
 } as const;
+
+/**
+ * Generate a stable, URL-safe room ID for live collaboration. The Yjs
+ * WebsocketProvider in hooks/useAssemblyState.ts picks up `?room=...` from
+ * the URL and any client joining the same room sees the same CRDT state.
+ *
+ * 9 hex chars (~36 bits of entropy) is enough to avoid practical
+ * collisions across simultaneous rooms while keeping the URL short.
+ */
+function generateCollabRoomId(): string {
+  const bytes = new Uint8Array(5);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 5; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').slice(0, 9);
+}
 
 // ─── Theme constants (match CommandToolbar) ──────────────────────────────────
 const C = {
@@ -85,12 +109,19 @@ export default function ShareButton({
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [copiedView, setCopiedView] = useState(false);
+  const [copiedCollab, setCopiedCollab] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [viewOnlyUrl, setViewOnlyUrl] = useState('');
+  const [collabUrl, setCollabUrl] = useState('');
+  // Collab room id is generated lazily once per ShareButton mount so the
+  // same Share popover always offers a stable room URL — pressing copy
+  // multiple times shouldn't rotate the link out from under invitees.
+  const collabRoomIdRef = useRef<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timerViewRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerCollabRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevAutoOpenKeyRef = useRef(autoOpenKey);
 
   const pathname = usePathname();
@@ -110,6 +141,18 @@ export default function ShareButton({
     return base + '&readonly=1';
   }
 
+  /**
+   * Build a collab link. Appends `?room=<roomId>` so useAssemblyState's
+   * Yjs WebsocketProvider auto-joins the room. The roomId is generated
+   * once on first request and cached on `collabRoomIdRef` so re-copying
+   * the link doesn't rotate the room out from under invitees.
+   */
+  function buildCollabUrl() {
+    if (!collabRoomIdRef.current) collabRoomIdRef.current = generateCollabRoomId();
+    const base = encodeShareLink(shape, params, material, color, lang);
+    return `${base}&room=${collabRoomIdRef.current}`;
+  }
+
   // Close popover on outside click
   useEffect(() => {
     if (!popoverOpen) return;
@@ -127,6 +170,7 @@ export default function ShareButton({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (timerViewRef.current) clearTimeout(timerViewRef.current);
+      if (timerCollabRef.current) clearTimeout(timerCollabRef.current);
     };
   }, []);
 
@@ -167,11 +211,23 @@ export default function ShareButton({
     timerViewRef.current = setTimeout(() => setCopiedView(false), 2000);
   }
 
+  async function handleCopyCollab() {
+    const link = collabUrl || buildCollabUrl();
+    try {
+      await copyToClipboard(link);
+    } catch { /* ignore */ }
+    setCopiedCollab(true);
+    if (timerCollabRef.current) clearTimeout(timerCollabRef.current);
+    timerCollabRef.current = setTimeout(() => setCopiedCollab(false), 2000);
+  }
+
   function handleButtonClick() {
     const url = buildUrl();
     const viewUrl = buildViewOnlyUrl();
+    const collab = buildCollabUrl();
     setShareUrl(url);
     setViewOnlyUrl(viewUrl);
+    setCollabUrl(collab);
     setPopoverOpen(v => !v);
     if (!popoverOpen) {
       handleCopy(url);
@@ -301,6 +357,26 @@ export default function ShareButton({
             </div>
             <div style={{ fontSize: 10, color: C.textDim, marginTop: 4 }}>
               {t.viewHint}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ borderTop: `1px solid ${C.border}` }} />
+
+          {/* ── Collab Link — Item 4 of usability cleanup. Yjs picks up the
+                 `?room=` URL param and joins the same CRDT room automatically. */}
+          <div>
+            <div style={sectionLabelStyle}>
+              👥 {t.collabLink}
+            </div>
+            <div style={urlRowStyle}>
+              <span style={{ ...urlTextStyle, color: '#7fa9ff' }}>{collabUrl}</span>
+              <button style={copyBtnStyle(copiedCollab)} onClick={handleCopyCollab}>
+                {copiedCollab ? t.copyDone : t.copy}
+              </button>
+            </div>
+            <div style={{ fontSize: 10, color: C.textDim, marginTop: 4 }}>
+              {t.collabHint}
             </div>
           </div>
         </div>
