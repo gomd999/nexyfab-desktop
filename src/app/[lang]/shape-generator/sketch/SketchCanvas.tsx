@@ -8,6 +8,7 @@ import type {
 } from './types';
 import { sampleNurbsSegment } from './nurbs';
 import { CONSTRAINT_ICON, getConstraintsForEntity, solveConstraints } from './constraintSolver';
+import { cleanupProfile } from './profileCleanup';
 
 type SketchLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
 
@@ -28,6 +29,9 @@ const dict = {
     hideGrid: '그리드 숨기기', showGrid: '그리드 표시',
     snapOff: '스냅 끄기', snapOn: '스냅 켜기',
     fitToView: '화면에 맞추기',
+    cleanupTitle: '프로파일 정리 (중복·중첩 제거)',
+    cleanupNoop: '정리할 항목이 없습니다',
+    cleanupDone: (n: number, d: number, m: number) => `정리 완료: ${n}개 → ${d}개 중복, ${m}개 중첩 제거`,
     setDimension: '치수 설정 (mm)',
     ok: '확인 ↵',
     points: '점',
@@ -52,6 +56,9 @@ const dict = {
     hideGrid: 'Hide grid', showGrid: 'Show grid',
     snapOff: 'Snap off', snapOn: 'Snap on',
     fitToView: 'Fit to view',
+    cleanupTitle: 'Clean profile (remove duplicates & overlaps)',
+    cleanupNoop: 'Nothing to clean up',
+    cleanupDone: (n: number, d: number, m: number) => `Cleaned: ${n} segments → ${d} duplicates, ${m} overlaps removed`,
     setDimension: 'Set Dimension (mm)',
     ok: 'OK ↵',
     points: 'pt',
@@ -76,6 +83,9 @@ const dict = {
     hideGrid: 'グリッドを隠す', showGrid: 'グリッドを表示',
     snapOff: 'スナップ オフ', snapOn: 'スナップ オン',
     fitToView: 'ビューに合わせる',
+    cleanupTitle: 'プロファイル整理 (重複・重なりを削除)',
+    cleanupNoop: '整理する項目がありません',
+    cleanupDone: (n: number, d: number, m: number) => `整理完了: ${n}個 → 重複${d}, 重なり${m}を削除`,
     setDimension: '寸法設定 (mm)',
     ok: 'OK ↵',
     points: '点',
@@ -100,6 +110,9 @@ const dict = {
     hideGrid: '隐藏网格', showGrid: '显示网格',
     snapOff: '关闭捕捉', snapOn: '开启捕捉',
     fitToView: '适合视图',
+    cleanupTitle: '整理轮廓 (去除重复·重叠)',
+    cleanupNoop: '无需整理',
+    cleanupDone: (n: number, d: number, m: number) => `整理完成: ${n}个 → 删除重复${d}, 重叠${m}`,
     setDimension: '设置尺寸 (mm)',
     ok: '确定 ↵',
     points: '点',
@@ -124,6 +137,9 @@ const dict = {
     hideGrid: 'Ocultar cuadrícula', showGrid: 'Mostrar cuadrícula',
     snapOff: 'Sin ajuste', snapOn: 'Con ajuste',
     fitToView: 'Ajustar vista',
+    cleanupTitle: 'Limpiar perfil (quitar duplicados y solapes)',
+    cleanupNoop: 'Nada que limpiar',
+    cleanupDone: (n: number, d: number, m: number) => `Limpiado: ${n} → ${d} duplicados, ${m} solapes`,
     setDimension: 'Fijar cota (mm)',
     ok: 'OK ↵',
     points: 'pt',
@@ -148,6 +164,9 @@ const dict = {
     hideGrid: 'إخفاء الشبكة', showGrid: 'إظهار الشبكة',
     snapOff: 'إيقاف المحاذاة', snapOn: 'تشغيل المحاذاة',
     fitToView: 'ملاءمة للعرض',
+    cleanupTitle: 'تنظيف الملف الشخصي (إزالة التكرارات والتراكبات)',
+    cleanupNoop: 'لا شيء لتنظيفه',
+    cleanupDone: (n: number, d: number, m: number) => `تم التنظيف: ${n} → ${d} مكررة, ${m} متراكبة`,
     setDimension: 'تعيين القياس (mm)',
     ok: 'موافق ↵',
     points: 'نقطة',
@@ -972,7 +991,7 @@ function SketchCanvas({
 
   // ── Smart snap state ──────────────────────────────────────────────────────
   const isShiftHeld = useRef(false);
-  type SnapType = 'none' | 'grid' | 'endpoint' | 'angle';
+  type SnapType = 'none' | 'grid' | 'endpoint' | 'angle' | 'ortho-h' | 'ortho-v';
   const [snapType, setSnapType] = useState<SnapType>('none');
   const [snapTarget, setSnapTarget] = useState<SketchPoint | null>(null);
 
@@ -1046,6 +1065,32 @@ function SketchCanvas({
         const snappedX = snap(lastPt.x + len * Math.cos(snapAngle), 5, 8, zoom);
         const snappedY = snap(lastPt.y + len * Math.sin(snapAngle), 5, 8, zoom);
         return { pt: { x: snappedX, y: snappedY }, type: 'angle' };
+      }
+    }
+
+    // 2b. Soft ortho hint — when drawing the next point and the cursor is
+    //     within ~3° of horizontal or vertical from the last point, snap
+    //     exactly. Same intent as Shift-snap but without holding shift —
+    //     matches Fusion/AutoCAD ortho behavior. Skipped when the user is
+    //     explicitly off-axis (Shift held) or no snap reference exists.
+    if (!isShiftHeld.current && lastPt && snapEnabled) {
+      const dx = raw.x - lastPt.x;
+      const dy = raw.y - lastPt.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      // Only kick in once the cursor has moved away from lastPt; otherwise
+      // every micro-jitter at the start of a stroke flips the snap.
+      if (len > 1.5) {
+        const absSinX = Math.abs(dy) / len; // 0 when horizontal
+        const absSinY = Math.abs(dx) / len; // 0 when vertical
+        // 3° ≈ 0.052 sin. Picking 0.06 gives a comfortable capture window
+        // without trapping diagonal strokes that just happen to start near
+        // an axis.
+        if (absSinX < 0.06) {
+          return { pt: { x: snap(raw.x, 5, 8, zoom), y: lastPt.y }, type: 'ortho-h' };
+        }
+        if (absSinY < 0.06) {
+          return { pt: { x: lastPt.x, y: snap(raw.y, 5, 8, zoom) }, type: 'ortho-v' };
+        }
       }
     }
 
@@ -2170,6 +2215,28 @@ function SketchCanvas({
     }
   }
 
+  // ── Ortho guide line (no-shift horizontal/vertical) ────────────────────────
+  // When smartSnap captures the cursor onto a horizontal or vertical axis
+  // through the last point, draw a faint dashed extension line so the user
+  // sees *why* the cursor locked. Mirrors Fusion's ortho cyan hint.
+  let orthoGuideLine: React.ReactNode = null;
+  if ((snapType === 'ortho-h' || snapType === 'ortho-v') && drawingRefPt) {
+    const ext = Math.max(viewBoxW, viewBoxH);
+    if (snapType === 'ortho-h') {
+      orthoGuideLine = (
+        <line x1={drawingRefPt.x - ext} y1={-drawingRefPt.y} x2={drawingRefPt.x + ext} y2={-drawingRefPt.y}
+          stroke="#56d364" strokeWidth={0.5 / zoom}
+          strokeDasharray={`${3 / zoom} ${3 / zoom}`} opacity={0.55} />
+      );
+    } else {
+      orthoGuideLine = (
+        <line x1={drawingRefPt.x} y1={-(drawingRefPt.y - ext)} x2={drawingRefPt.x} y2={-(drawingRefPt.y + ext)}
+          stroke="#56d364" strokeWidth={0.5 / zoom}
+          strokeDasharray={`${3 / zoom} ${3 / zoom}`} opacity={0.55} />
+      );
+    }
+  }
+
   // ── Snap indicator ─────────────────────────────────────────────────────────
   let snapIndicator: React.ReactNode = null;
   if (snapTarget && snapType !== 'grid') {
@@ -2838,6 +2905,7 @@ function SketchCanvas({
 
         {/* Angle snap axis guide line */}
         {angleAxisLine}
+        {orthoGuideLine}
 
         {/* Trim hover highlight (behind main path) */}
         {trimHighlight}
@@ -3178,6 +3246,29 @@ function SketchCanvas({
             transition: 'all 0.15s',
           }}
         >⊡</button>
+        {/* Profile cleanup — removes duplicate / overlapping line segments. */}
+        <button
+          onClick={() => {
+            const { profile: cleaned, summary } = cleanupProfile(profile);
+            const removed = summary.duplicatesRemoved + summary.overlapsCollapsed;
+            if (removed === 0) {
+              showToast(t.cleanupNoop);
+              return;
+            }
+            onProfileChange(cleaned);
+            showToast(t.cleanupDone(summary.segmentsBefore, summary.duplicatesRemoved, summary.overlapsCollapsed));
+          }}
+          title={t.cleanupTitle}
+          disabled={profile.segments.length === 0}
+          style={{
+            width: 28, height: 28, borderRadius: 5, border: 'none',
+            cursor: profile.segments.length === 0 ? 'not-allowed' : 'pointer',
+            background: 'rgba(255,255,255,0.06)',
+            color: profile.segments.length === 0 ? '#30363d' : '#8b949e',
+            fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.15s',
+          }}
+        >🧹</button>
       </div>
       )}
 
