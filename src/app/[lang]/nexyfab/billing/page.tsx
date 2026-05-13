@@ -136,7 +136,11 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
       if (data.url) {
         window.location.href = data.url;
       } else if (data.mock) {
-        toast.info(isKo ? '결제 시스템을 준비 중입니다. 곧 오픈됩니다!' : 'Payment system coming soon!');
+        // Self-serve card checkout is gated behind PSP credentials. Until they
+        // land, route customers to sales rather than dangle a "coming soon" UX.
+        toast.info(isKo
+          ? '엔터프라이즈 결제는 nexyfab@nexysys.com 으로 문의해주세요.'
+          : 'For enterprise billing, contact nexyfab@nexysys.com.');
       }
     } catch {
       toast.error(isKo ? '네트워크 오류가 발생했습니다.' : 'Network error.');
