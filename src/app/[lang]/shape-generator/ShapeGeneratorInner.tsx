@@ -181,6 +181,7 @@ import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
 import IPShareConfirmModal from './panels/IPShareConfirmModal';
+import MobileSendToDesktop from './panels/MobileSendToDesktop';
 import StandardPartsLibrary from './panels/StandardPartsLibrary';
 import ThreadHoleCalloutDock from './panels/ThreadHoleCalloutDock';
 import SketchInputCluster from './panels/SketchInputCluster';
@@ -5961,6 +5962,21 @@ export function ShapeGeneratorInner() {
         <p style={{ fontSize: 14, color: '#8b949e', textAlign: 'center', lineHeight: 1.7, margin: '0 0 32px', maxWidth: 280 }}>
           {lt.mobileHint}
         </p>
+
+        {/* Item 1 of usability action plan — give mobile users a path to
+            get the in-flight page URL onto a desktop (QR / copy / email). */}
+        <MobileSendToDesktop
+          labels={{
+            title: lt.mobileSendToDesktopTitle,
+            body: lt.mobileSendToDesktopBody,
+            qrAlt: lt.mobileQrAlt,
+            copyUrl: lt.mobileCopyUrl,
+            copyUrlDone: lt.mobileCopyUrlDone,
+            emailSelf: lt.mobileEmailSelf,
+            emailSubject: lt.mobileEmailSubject,
+            emailBody: lt.mobileEmailBody,
+          }}
+        />
 
         <div
           role="region"
