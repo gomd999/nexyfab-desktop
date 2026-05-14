@@ -870,7 +870,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
         sessionStorage.removeItem('nexyfab:pendingJscadSource');
         setTimeout(() => compile(pendingCode, pendingSrc ?? t.ideaSourceShort), 100);
       }
-    } catch {}
+    } catch (err) { console.error('[OpenScadPanel] caught', err); }
     return () => { prevGeoRef.current?.dispose(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

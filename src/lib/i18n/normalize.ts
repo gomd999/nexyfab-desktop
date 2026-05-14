@@ -50,6 +50,13 @@ export function isKorean(lang: string | undefined | null): boolean {
   return lang === 'kr' || lang === 'ko' || lang.toLowerCase().startsWith('ko');
 }
 
+// Preferred gate for Chinese UI branches. Accepts 'cn' (route), 'zh' (iso), or
+// legacy 'zh_CN'/'zh-CN'/'zh-Hans' variants.
+export function isChinese(lang: string | undefined | null): boolean {
+  if (!lang) return false;
+  return lang === 'cn' || lang === 'zh' || lang.toLowerCase().startsWith('zh');
+}
+
 // Direction for RTL languages. Used by layout/<html dir=...>.
 export function langDir(lang: string | undefined | null): 'ltr' | 'rtl' {
   return toRouteLang(lang) === 'ar' ? 'rtl' : 'ltr';

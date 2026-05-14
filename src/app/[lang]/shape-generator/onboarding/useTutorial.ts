@@ -33,7 +33,7 @@ export function useTutorial() {
     setShowTutorial(false);
     setShowWelcomeBanner(false);
     setCurrentStep(0);
-    try { localStorage.setItem(TUTORIAL_KEY, 'true'); } catch {}
+    try { localStorage.setItem(TUTORIAL_KEY, 'true'); } catch (err) { console.error('[useTutorial] caught', err); }
   }, []);
 
   const startTutorial = useCallback(() => {
@@ -68,14 +68,14 @@ export function useTutorial() {
     setActiveSteps(TUTORIAL_STEPS);
     setCurrentStep(0);
     setShowTutorial(true);
-    try { localStorage.removeItem(TUTORIAL_KEY); } catch {}
+    try { localStorage.removeItem(TUTORIAL_KEY); } catch (err) { console.error('[useTutorial] caught', err); }
   }, []);
 
   const restartSketchTutorial = useCallback(() => {
     setActiveSteps(SKETCH_TUTORIAL_STEPS);
     setCurrentStep(0);
     setShowTutorial(true);
-    try { localStorage.removeItem(SKETCH_TUTORIAL_KEY); } catch {}
+    try { localStorage.removeItem(SKETCH_TUTORIAL_KEY); } catch (err) { console.error('[useTutorial] caught', err); }
   }, []);
 
   return {

@@ -111,7 +111,7 @@ export const useAuthStore = create<AuthStore>()(
 
       logout: () => {
         set({ user: null, token: null, error: null });
-        try { localStorage.removeItem('nexyfab-auth'); } catch {}
+        try { localStorage.removeItem('nexyfab-auth'); } catch (err) { console.error('[useAuth] caught', err); }
       },
 
       setUser: (user, token) => set({ user, token }),

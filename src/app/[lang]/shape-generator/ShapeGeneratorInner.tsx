@@ -6430,7 +6430,7 @@ export function ShapeGeneratorInner() {
             try {
               sessionStorage.setItem('nexyfab:pendingJscadCode', code);
               sessionStorage.setItem('nexyfab:pendingJscadSource', lt.ideaDesignSource(label));
-            } catch {}
+            } catch (err) { console.error('[ShapeGeneratorInner] caught', err); }
 
             // funnel 합류: 추천 재료 → 시각화/FEA preset 으로 주입
             const presetId = composeResult ? mapToPresetId(composeResult.materialId) : undefined;

@@ -159,7 +159,7 @@ function detectLang(): Lang {
             const u = JSON.parse(stored);
             if (u.language && loginDict[u.language as Lang]) return u.language as Lang;
         }
-    } catch {}
+    } catch (err) { console.error('[page] caught', err); }
     const saved = localStorage.getItem('app_language');
     if (saved && loginDict[saved as Lang]) return saved as Lang;
     const fabLang = localStorage.getItem('nexyfab_language');

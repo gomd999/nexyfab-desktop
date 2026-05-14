@@ -209,7 +209,19 @@ export default function LanguageSelector() {
                                             : 'var(--lang-menu-bg, #fff)',
                                         transition: 'background 0.2s',
                                     }}
-                                    onClick={() => setIsOpen(false)}
+                                    onClick={() => {
+                                        // Persist the lang choice so pages outside the
+                                        // [lang] route tree (e.g. /dashboard, /login) can
+                                        // still render in the chosen language.
+                                        //   - cookie: Header (SSR-safe via document.cookie on hydrate)
+                                        //   - localStorage: (auth)/dashboard already reads `nf_lang` here
+                                        // Both must be set or the dashboard body and the header drift apart.
+                                        try {
+                                            document.cookie = `nf_lang=${lang.code}; Path=/; Max-Age=31536000; SameSite=Lax`;
+                                            localStorage.setItem('nf_lang', lang.code);
+                                        } catch { /* ignore */ }
+                                        setIsOpen(false);
+                                    }}
                                     onMouseEnter={(e) => {
                                         if (!isCurrent) e.currentTarget.style.background = 'var(--lang-item-hover-bg, #f9f9f9)';
                                     }}

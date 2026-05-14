@@ -153,7 +153,7 @@ function detectLang(): Lang {
         }
         const saved = localStorage.getItem('app_language');
         if (saved && dict[saved as Lang]) return saved as Lang;
-    } catch {}
+    } catch (err) { console.error('[page] caught', err); }
     return 'ko';
 }
 

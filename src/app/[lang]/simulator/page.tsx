@@ -2376,7 +2376,7 @@ function SimulatorPageInner() {
                 const newEntry = { name: saveSimName, shareCode: data.shareCode, savedAt: new Date().toISOString(), inputs, results };
                 const updated = [newEntry, ...recentSims].slice(0, 5);
                 setRecentSims(updated);
-                try { localStorage.setItem('nexyfab_recent_sims', JSON.stringify(updated)); } catch { }
+                try { localStorage.setItem('nexyfab_recent_sims', JSON.stringify(updated)); } catch (err) { console.error('[page] caught', err); }
             }
         } catch (e) {
             console.error(e);

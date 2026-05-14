@@ -196,7 +196,7 @@ function getUserLang(): string {
             const u = JSON.parse(stored);
             if (u.language && ['kr', 'en', 'ja', 'cn', 'es', 'ar'].includes(u.language)) return u.language;
         }
-    } catch {}
+    } catch (err) { console.error('[page] caught', err); }
     const saved = localStorage.getItem('nf_lang');
     if (saved && ['kr', 'en', 'ja', 'cn', 'es', 'ar'].includes(saved)) return saved;
     return 'kr';

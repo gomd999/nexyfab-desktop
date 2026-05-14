@@ -428,7 +428,7 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                 <tbody>
                   {parts.map((p, i) => {
                     let vol = 0, _bbox = { w: 0, h: 0, d: 0 };
-                    try { const r = buildShapeResult(p.shapeId, p.params); if (r) { vol = r.volume_cm3; _bbox = r.bbox; } } catch {}
+                    try { const r = buildShapeResult(p.shapeId, p.params); if (r) { vol = r.volume_cm3; _bbox = r.bbox; } } catch (err) { console.error('[PartPlacementPanel] caught', err); }
                     const mass = vol * 7.85 * p.qty;
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid #21262d' }}>
@@ -447,7 +447,7 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                       try {
                         const r = buildShapeResult(p.shapeId, p.params);
                         if (r) { totalVol += r.volume_cm3 * p.qty; totalMass += r.volume_cm3 * 7.85 * p.qty; }
-                      } catch {}
+                      } catch (err) { console.error('[PartPlacementPanel] caught', err); }
                     });
                     return (
                       <tr style={{ borderTop: '1px solid #388bfd44', fontWeight: 700 }}>

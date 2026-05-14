@@ -145,13 +145,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ kind
   ).catch((): MessageRow[] => []);
 
   // Mark-as-read for the recipient: messages I didn't send and don't yet have read_at.
+  // Single set-based UPDATE — was N UPDATEs in a loop, which spikes latency
+  // and lock contention when a thread has hundreds of unread messages.
   const recipientType = isBuyer ? 'buyer' : 'partner';
   const otherSenderType = isBuyer ? 'partner' : 'buyer';
   const now = Date.now();
-  for (const r of rows) {
-    if (r.sender_type === otherSenderType && r.read_at === null) {
-      await db.execute('UPDATE nf_thread_messages SET read_at = ? WHERE id = ?', now, r.id).catch(() => {});
-      r.read_at = now;
+  const hasUnread = rows.some(r => r.sender_type === otherSenderType && r.read_at === null);
+  if (hasUnread) {
+    await db.execute(
+      `UPDATE nf_thread_messages
+          SET read_at = ?
+        WHERE thread_kind = ? AND thread_id = ? AND sender_type = ? AND read_at IS NULL`,
+      now, kind, id, otherSenderType,
+    ).catch(() => {});
+    for (const r of rows) {
+      if (r.sender_type === otherSenderType && r.read_at === null) r.read_at = now;
     }
   }
   void recipientType;

@@ -36,15 +36,15 @@ export function saveToHistory(item: Omit<JscadHistoryItem, 'id' | 'createdAt'>):
   const next = [entry, ...deduped].slice(0, MAX);
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {}
+  } catch (err) { console.error('[jscadHistory] caught', err); }
   return entry;
 }
 
 export function deleteFromHistory(id: string) {
   const history = loadHistory().filter(h => h.id !== id);
-  try { localStorage.setItem(KEY, JSON.stringify(history)); } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(history)); } catch (err) { console.error('[jscadHistory] caught', err); }
 }
 
 export function clearHistory() {
-  try { localStorage.removeItem(KEY); } catch {}
+  try { localStorage.removeItem(KEY); } catch (err) { console.error('[jscadHistory] caught', err); }
 }

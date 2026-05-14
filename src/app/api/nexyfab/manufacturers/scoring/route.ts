@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const candidates = rows
     .map(row => {
       let processes: string[] = [];
-      try { processes = JSON.parse(row.processes ?? '[]'); } catch {}
+      try { processes = JSON.parse(row.processes ?? '[]'); } catch (err) { console.error('[route] caught', err); }
       return { ...row, parsedProcesses: processes };
     })
     .filter(row => {

@@ -130,7 +130,7 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
     }
     try {
       if (localStorage.getItem(LS_KEY)) return; // permanently dismissed
-    } catch {}
+    } catch (err) { console.error('[SketchContextTip] caught', err); }
     // Delay so empty-state canvas copy is readable before the guide appears (reduces stacked onboarding).
     const t = setTimeout(() => { setStepIdx(0); setShown(true); }, 2400);
     return () => clearTimeout(t);

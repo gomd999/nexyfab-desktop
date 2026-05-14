@@ -3,10 +3,13 @@
 import { useState, useEffect, useCallback as _useCallback, useRef, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import dynamicImport from 'next/dynamic';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
-import ModelViewer from '../../../components/ModelViewer';
+
+// ModelViewer pulls in Three.js + OCCT — load only when actually rendered.
+const ModelViewer = dynamicImport(() => import('../../../components/ModelViewer'), { ssr: false });
 
 interface Partner {
   partnerId: string;

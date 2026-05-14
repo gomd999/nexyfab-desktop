@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate, formatDday } from '@/lib/formatDate';
-import RfqModelViewer from '@/components/nexyfab/RfqModelViewer';
 import RfqCadFilesPanel from '@/components/nexyfab/RfqCadFilesPanel';
 import DfmScoreBadge from '@/components/nexyfab/DfmScoreBadge';
+
+// RfqModelViewer pulls in Three.js + OCCT — load only when actually rendered.
+const RfqModelViewer = dynamic(() => import('@/components/nexyfab/RfqModelViewer'), { ssr: false });
 
 const RfqResponderPanel = dynamic(() => import('./RfqResponderPanel'), { ssr: false });
 const OrderPriorityPanel = dynamic(() => import('./OrderPriorityPanel'), { ssr: false });
