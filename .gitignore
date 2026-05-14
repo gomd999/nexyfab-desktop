@@ -95,3 +95,9 @@ Helpalltech*
 *.db
 *.zip
 out2/data/factories.json
+
+# ESLint output dump (regeneratable)
+/errors.json
+
+# Mock/demo validation reports
+/validation-reports/
