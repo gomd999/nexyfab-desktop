@@ -11,7 +11,7 @@ import {
 
 const C = {
   bg: 'var(--nx-panel)',
-  card: '#1c2128',
+  card: 'var(--nx-panel-2)',
   border: 'var(--nx-border)',
   text: 'var(--nx-text)',
   dim: 'var(--nx-text-2)',
@@ -97,7 +97,7 @@ export default function ToleranceStackPanel({ initialEntries, lang = 'ko', onCha
           <input type="number" step="0.001" value={e.lower} onChange={(ev) => update(e.id, { lower: Math.max(0, Number(ev.target.value)) })} style={input} />
           <button
             onClick={() => update(e.id, { direction: e.direction === 'add' ? 'subtract' : 'add' })}
-            style={{ ...input, cursor: 'pointer', background: e.direction === 'add' ? '#1f2937' : '#3f1f1f', textAlign: 'center' }}
+            style={{ ...input, cursor: 'pointer', background: e.direction === 'add' ? 'var(--nx-panel)' : '#3f1f1f', textAlign: 'center' }}
           >
             {e.direction === 'add' ? T.addSub.add : T.addSub.sub}
           </button>

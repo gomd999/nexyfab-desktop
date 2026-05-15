@@ -69,7 +69,7 @@ export default function AssemblyBrowser({
           style={{
             fontSize: 14,
             fontWeight: 800,
-            color: '#374151',
+            color: 'var(--nx-border-strong)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -110,7 +110,7 @@ export default function AssemblyBrowser({
           {expanded ? '▼' : '▶'}
         </span>
         <span style={{ fontSize: 14 }}>📦</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-border-strong)', flex: 1 }}>
           {assemblyName}
         </span>
         <span
@@ -174,7 +174,7 @@ export default function AssemblyBrowser({
                       flex: 1,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: isSelected ? 'var(--nx-accent)' : '#374151',
+                      color: isSelected ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',

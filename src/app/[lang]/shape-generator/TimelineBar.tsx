@@ -341,7 +341,7 @@ export default function TimelineBar({
                 cursor: 'pointer', transition: 'background 0.1s',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               ✏️ Edit Feature
@@ -356,7 +356,7 @@ export default function TimelineBar({
                 cursor: 'pointer', transition: 'background 0.1s',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               {features.find(f => f.id === contextMenu.id)?.enabled ? '👁️ Suppress' : '👁️‍🗨️ Unsuppress'}

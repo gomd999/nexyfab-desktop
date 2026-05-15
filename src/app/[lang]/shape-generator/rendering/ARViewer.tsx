@@ -205,7 +205,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 900,
-      background: arState === 'active' ? 'transparent' : 'rgba(13,17,23,0.95)',
+      background: arState === 'active' ? 'transparent' : 'var(--nx-glass-strong)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'system-ui, sans-serif',
     }}>
@@ -290,7 +290,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
           style={{
             position: 'absolute', top: 16, right: 16, zIndex: 910,
             padding: '8px 20px', borderRadius: 8, border: 'none',
-            background: 'rgba(13,17,23,0.85)', color: 'var(--nx-text)',
+            background: 'var(--nx-glass-strong)', color: 'var(--nx-text)',
             fontSize: 13, fontWeight: 700, cursor: 'pointer',
             backdropFilter: 'blur(4px)',
           }}

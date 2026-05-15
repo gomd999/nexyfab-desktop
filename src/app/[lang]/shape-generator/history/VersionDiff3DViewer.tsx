@@ -312,7 +312,7 @@ export default function VersionDiff3DViewer({
             <div style={{
               position: 'absolute', bottom: 12, left: 12,
               display: 'flex', gap: 10, fontSize: 11,
-              background: 'rgba(0,0,0,0.6)', padding: '5px 10px',
+              background: 'var(--nx-glass-input)', padding: '5px 10px',
               borderRadius: 6, pointerEvents: 'none',
             }}>
               <span style={{ color: '#5aa8ff' }}>■ {t.oldLabel}</span>

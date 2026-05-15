@@ -187,7 +187,7 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
               <label key={o.v} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 10px', borderRadius: 6,
-                background: unit === o.v ? '#1f2937' : 'transparent',
+                background: unit === o.v ? 'var(--nx-panel)' : 'transparent',
                 border: `1px solid ${unit === o.v ? 'var(--nx-accent)' : 'var(--nx-panel-2)'}`,
                 cursor: 'pointer', fontSize: 13,
               }}>
@@ -213,7 +213,7 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
               <label key={o.v} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 10px', borderRadius: 6,
-                background: origin === o.v ? '#1f2937' : 'transparent',
+                background: origin === o.v ? 'var(--nx-panel)' : 'transparent',
                 border: `1px solid ${origin === o.v ? 'var(--nx-accent)' : 'var(--nx-panel-2)'}`,
                 cursor: 'pointer', fontSize: 13,
               }}>

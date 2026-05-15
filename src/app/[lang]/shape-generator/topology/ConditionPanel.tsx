@@ -61,7 +61,7 @@ const cardStyle: React.CSSProperties = {
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
-  color: '#374151',
+  color: 'var(--nx-border-strong)',
   marginBottom: 10,
 };
 
@@ -91,7 +91,7 @@ export default function ConditionPanel({
           {([['dimX', dimX, t.width || 'Width (X)'], ['dimY', dimY, t.height || 'Height (Y)'], ['dimZ', dimZ, t.depth || 'Depth (Z)']] as const).map(([key, val, label]) => (
             <div key={key}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{label}</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-border-strong)' }}>{label}</label>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{val} mm</span>
               </div>
               <input
@@ -127,7 +127,7 @@ export default function ConditionPanel({
             border: '1px solid #e5e7eb',
             fontSize: 12,
             fontWeight: 600,
-            color: '#374151',
+            color: 'var(--nx-border-strong)',
             background: '#f9fafb',
             cursor: 'pointer',
             outline: 'none',
@@ -140,11 +140,11 @@ export default function ConditionPanel({
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           <div style={{ background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
             <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>E (GPa)</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{(MATERIALS[materialKey].E / 1e9).toFixed(1)}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-bg)' }}>{(MATERIALS[materialKey].E / 1e9).toFixed(1)}</div>
           </div>
           <div style={{ background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
             <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>{t.density || 'Density'} (kg/m3)</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{MATERIALS[materialKey].density}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-bg)' }}>{MATERIALS[materialKey].density}</div>
           </div>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function ConditionPanel({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
               {(['X', 'Y', 'Z'] as const).map((axis, idx) => (
                 <div key={axis}>
-                  <label style={{ fontSize: 10, fontWeight: 600, color: '#374151', marginBottom: 2, display: 'block' }}>F{axis}</label>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-border-strong)', marginBottom: 2, display: 'block' }}>F{axis}</label>
                   <input
                     type="number"
                     value={activeLoadForce[idx]}
@@ -229,7 +229,7 @@ export default function ConditionPanel({
                       border: '1px solid #e5e7eb',
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#374151',
+                      color: 'var(--nx-border-strong)',
                       background: '#f9fafb',
                       outline: 'none',
                       boxSizing: 'border-box',
@@ -342,7 +342,7 @@ export default function ConditionPanel({
           {/* Volume fraction */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.volumeFraction || 'Volume Fraction'}</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-border-strong)' }}>{t.volumeFraction || 'Volume Fraction'}</label>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{Math.round(volfrac * 100)}%</span>
             </div>
             <input
@@ -363,7 +363,7 @@ export default function ConditionPanel({
 
           {/* Resolution */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>{t.resolution || 'Resolution'}</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-border-strong)', marginBottom: 4, display: 'block' }}>{t.resolution || 'Resolution'}</label>
             <div style={{ display: 'flex', gap: 4 }}>
               {(['low', 'medium', 'high'] as const).map(r => (
                 <button
@@ -396,7 +396,7 @@ export default function ConditionPanel({
           {/* Penalty */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.penalty || 'Penalty (p)'}</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-border-strong)' }}>{t.penalty || 'Penalty (p)'}</label>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{penal}</span>
             </div>
             <input
@@ -418,7 +418,7 @@ export default function ConditionPanel({
           {/* Filter radius */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.filterRadius || 'Filter Radius'}</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-border-strong)' }}>{t.filterRadius || 'Filter Radius'}</label>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{rmin.toFixed(1)}</span>
             </div>
             <input
@@ -440,7 +440,7 @@ export default function ConditionPanel({
           {/* Max iterations */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.maxIterations || 'Max Iterations'}</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-border-strong)' }}>{t.maxIterations || 'Max Iterations'}</label>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{maxIter}</span>
             </div>
             <input

@@ -127,7 +127,7 @@ const REACTION_EMOJIS = ['👍', '❤️', '🔥', '✅', '⚠️', '❓'];
 // ─── Popup styles ─────────────────────────────────────────────────────────────
 
 const popupStyle: React.CSSProperties = {
-  background: '#1c2128',
+  background: 'var(--nx-panel-2)',
   border: '1px solid var(--nx-border)',
   borderRadius: 8,
   padding: '10px 12px',
@@ -241,7 +241,7 @@ function MentionTextarea({
       {mentionOpen && filteredUsers.length > 0 && (
         <div style={{
           position: 'absolute', bottom: '100%', left: 0, zIndex: 999,
-          background: '#1c2128', border: '1px solid var(--nx-accent)66', borderRadius: 6,
+          background: 'var(--nx-panel-2)', border: '1px solid var(--nx-accent)66', borderRadius: 6,
           boxShadow: '0 4px 12px rgba(0,0,0,0.5)', overflow: 'hidden', minWidth: 140,
         }}>
           {filteredUsers.map(u => (

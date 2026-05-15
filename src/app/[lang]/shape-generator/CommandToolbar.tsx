@@ -2322,7 +2322,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'STEP' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
                 <span>{exportingFormat === 'STEP' ? tt.exportingSTEP : tt.exportSTEP}</span>
-                {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#374151', color: 'var(--nx-text-2)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
+                {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-border-strong)', color: 'var(--nx-text-2)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
                 {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'GLTF') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'GLTF'} onClick={() => { onExportGLTF?.(); closeSub(); }}

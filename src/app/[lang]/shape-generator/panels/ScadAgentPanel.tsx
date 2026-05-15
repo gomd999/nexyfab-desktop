@@ -528,7 +528,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
       {error && (
         <div style={{
           padding: '8px 12px',
-          background: error.kind === 'wedge' ? '#3d1519' : error.kind === 'budget' ? '#3d2c19' : '#1f2937',
+          background: error.kind === 'wedge' ? '#3d1519' : error.kind === 'budget' ? '#3d2c19' : 'var(--nx-panel)',
           color: error.kind === 'wedge' ? 'var(--nx-error)' : error.kind === 'budget' ? 'var(--nx-warn)' : 'var(--nx-text-2)',
           fontSize: 11, borderTop: '1px solid var(--nx-panel-2)',
           display: 'flex', gap: 8, alignItems: 'center',

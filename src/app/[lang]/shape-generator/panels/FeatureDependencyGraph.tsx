@@ -294,7 +294,7 @@ export default function FeatureDependencyGraph({
                 {isHovered && gn.error && (
                   <foreignObject x={NODE_W + 4} y={0} width={160} height={60}>
                     <div style={{
-                      background: '#1c2128', border: '1px solid var(--nx-error)44', borderRadius: 6,
+                      background: 'var(--nx-panel-2)', border: '1px solid var(--nx-error)44', borderRadius: 6,
                       padding: '5px 8px', fontSize: 10, color: 'var(--nx-error)', lineHeight: 1.4,
                       fontFamily: 'system-ui, sans-serif',
                     }}>

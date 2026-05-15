@@ -308,7 +308,7 @@ const openBtnStyle: React.CSSProperties = {
 };
 const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0,
-  background: 'rgba(0,0,0,0.6)',
+  background: 'var(--nx-glass-input)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   zIndex: 1000,
 };

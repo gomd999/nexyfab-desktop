@@ -256,7 +256,7 @@ export default function ExpressionInput({
             title={expressionLabel}
             style={{
               fontSize: 9, fontWeight: 800, fontStyle: 'italic',
-              color: '#a78bfa', background: 'var(--nx-accent)22',
+              color: 'var(--nx-accent-2)', background: 'var(--nx-accent)22',
               borderRadius: 3, padding: '1px 4px', lineHeight: 1.3,
               userSelect: 'none', flexShrink: 0,
             }}
@@ -327,7 +327,7 @@ export default function ExpressionInput({
 
       {/* Evaluated result preview */}
       {hasExpr && evalResult !== null && !error && (
-        <div style={{ fontSize: 10, color: '#a78bfa', textAlign: 'right', paddingRight: 26, fontFamily: 'monospace' }}>
+        <div style={{ fontSize: 10, color: 'var(--nx-accent-2)', textAlign: 'right', paddingRight: 26, fontFamily: 'monospace' }}>
           = {Math.round(evalResult * 1000) / 1000}{unit ? ` ${unit}` : ''}
         </div>
       )}

@@ -28,7 +28,7 @@ export default function IPShareConfirmModal({
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 9000,
-        background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--nx-glass-input)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         backdropFilter: 'blur(4px)',
       }}
       onClick={onClose}

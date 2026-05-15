@@ -277,7 +277,7 @@ const USE_CASES: UseCase[] = ['general', 'lightweight', 'high_strength', 'aesthe
 
 const C = {
   bg: 'var(--nx-panel)',
-  panel: '#1c2128',
+  panel: 'var(--nx-panel-2)',
   card: 'var(--nx-panel-2)',
   border: 'var(--nx-border)',
   accent: 'var(--nx-accent)',

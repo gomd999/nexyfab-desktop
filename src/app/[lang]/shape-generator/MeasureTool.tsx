@@ -442,8 +442,8 @@ export default function MeasureTool({
         if (entry.mode === 'angle' && pts.length === 3) {
           return (
             <group key={entry.id}>
-              <DimensionLine p1={pts[0]} p2={pts[1]} label="" color="#a78bfa" />
-              <DimensionLine p1={pts[1]} p2={pts[2]} label={entry.label} color="#a78bfa" />
+              <DimensionLine p1={pts[0]} p2={pts[1]} label="" color="var(--nx-accent-2)" />
+              <DimensionLine p1={pts[1]} p2={pts[2]} label={entry.label} color="var(--nx-accent-2)" />
             </group>
           );
         }
@@ -589,7 +589,7 @@ function MeasureEntryRow({
   const [copied, setCopied] = useState(false);
 
   const modeIcon = entry.mode === 'distance' ? '↔' : entry.mode === 'angle' ? '∠' : 'R';
-  const modeColor = entry.mode === 'distance' ? '#fbbf24' : entry.mode === 'angle' ? '#a78bfa' : '#34d399';
+  const modeColor = entry.mode === 'distance' ? '#fbbf24' : entry.mode === 'angle' ? 'var(--nx-accent-2)' : '#34d399';
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(entry.label).then(() => {

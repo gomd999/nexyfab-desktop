@@ -106,7 +106,7 @@ export default function DimensionOverlay({
                     if (e.key === 'Enter') { e.currentTarget.blur(); }
                     if (e.key === 'Escape') { setEditingDim(null); }
                   }}
-                  style={{ width: 60, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--nx-accent)', background: '#1c2128', color: 'var(--nx-text)', fontSize: 11, outline: 'none' }}
+                  style={{ width: 60, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--nx-accent)', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 11, outline: 'none' }}
                 />
               ) : (
                 <div

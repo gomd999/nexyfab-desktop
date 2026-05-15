@@ -748,7 +748,7 @@ export default function PrintAnalysisPanel({
                     <div key={idx} style={{
                       display: 'flex', alignItems: 'center', gap: 6,
                       padding: '4px 8px', borderRadius: 4,
-                      background: isBest ? '#1f2937' : 'transparent',
+                      background: isBest ? 'var(--nx-panel)' : 'transparent',
                       border: `1px solid ${isBest ? C.accent : 'transparent'}`,
                     }}>
                       <span style={{ fontSize: 9, color: C.textDim, width: 14, fontFamily: 'monospace' }}>

@@ -182,7 +182,7 @@ export default function PlmConfigPanel({
               disabled={!baseUrl || !token || bomLines.length === 0 || status.kind !== 'idle'}
               style={{
                 flex: 1, padding: '8px 12px', borderRadius: 6, border: 'none',
-                background: (baseUrl && token && bomLines.length > 0 && status.kind === 'idle') ? C.green : '#374151',
+                background: (baseUrl && token && bomLines.length > 0 && status.kind === 'idle') ? C.green : 'var(--nx-border-strong)',
                 color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
                 cursor: !baseUrl || !token || bomLines.length === 0 || status.kind !== 'idle' ? 'not-allowed' : 'pointer',
               }}

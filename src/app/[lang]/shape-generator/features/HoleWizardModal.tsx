@@ -257,7 +257,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#1f2937', color: '#f3f4f6', borderRadius: 10,
+          background: 'var(--nx-panel)', color: '#f3f4f6', borderRadius: 10,
           padding: 20, width: 520, maxHeight: '85vh', overflowY: 'auto',
           border: '1px solid #374151',
         }}
@@ -287,7 +287,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
                 onClick={() => { setSeries(s); setSpecIndex(0); }}
                 style={{
                   flex: 1, padding: '8px 10px',
-                  background: series === s ? '#2563eb' : '#374151',
+                  background: series === s ? '#2563eb' : 'var(--nx-border-strong)',
                   color: '#f3f4f6', border: 'none', borderRadius: 6,
                   cursor: 'pointer', fontSize: 13, fontWeight: 500,
                 }}
@@ -310,7 +310,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
                 onClick={() => setSpecIndex(i)}
                 style={{
                   padding: '6px 4px',
-                  background: i === specIndex ? '#059669' : '#374151',
+                  background: i === specIndex ? '#059669' : 'var(--nx-border-strong)',
                   color: '#f3f4f6', border: 'none', borderRadius: 4,
                   cursor: 'pointer', fontSize: 12, fontWeight: 500,
                 }}
@@ -333,7 +333,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
                 onClick={() => setKind(k)}
                 style={{
                   padding: '8px 6px',
-                  background: kind === k ? '#7c3aed' : '#374151',
+                  background: kind === k ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
                   color: '#f3f4f6', border: 'none', borderRadius: 4,
                   cursor: 'pointer', fontSize: 12, fontWeight: 500,
                 }}
@@ -350,21 +350,21 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
             X (mm)
             <input
               type="number" value={posX} onChange={e => setPosX(Number(e.target.value))} step={1}
-              style={{ width: '100%', padding: '6px 8px', background: '#111827', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
+              style={{ width: '100%', padding: '6px 8px', background: 'var(--nx-bg)', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
             />
           </label>
           <label style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
             Z (mm)
             <input
               type="number" value={posZ} onChange={e => setPosZ(Number(e.target.value))} step={1}
-              style={{ width: '100%', padding: '6px 8px', background: '#111827', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
+              style={{ width: '100%', padding: '6px 8px', background: 'var(--nx-bg)', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
             />
           </label>
           <label style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
             {t.depth} (mm)
             <input
               type="number" value={depth} onChange={e => setDepth(Number(e.target.value))} step={1} min={1}
-              style={{ width: '100%', padding: '6px 8px', background: '#111827', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
+              style={{ width: '100%', padding: '6px 8px', background: 'var(--nx-bg)', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
             />
           </label>
         </div>
@@ -387,7 +387,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
                     onClick={() => setDepth(value)}
                     style={{
                       flex: 1, padding: '5px 6px',
-                      background: active ? '#0ea5e9' : '#374151',
+                      background: active ? '#0ea5e9' : 'var(--nx-border-strong)',
                       color: '#f3f4f6', border: 'none', borderRadius: 4,
                       cursor: 'pointer', fontSize: 11, fontWeight: 500,
                     }}
@@ -403,7 +403,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
         {/* Preview */}
         {spec && preview && (
           <div style={{
-            background: '#111827', border: '1px solid #374151', borderRadius: 6,
+            background: 'var(--nx-bg)', border: '1px solid #374151', borderRadius: 6,
             padding: 10, fontSize: 12, fontFamily: 'monospace', color: '#d1d5db',
             marginBottom: 14,
           }}>
@@ -431,7 +431,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button
             onClick={onClose}
-            style={{ padding: '8px 14px', background: '#374151', color: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
+            style={{ padding: '8px 14px', background: 'var(--nx-border-strong)', color: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
           >
             {t.cancel}
           </button>

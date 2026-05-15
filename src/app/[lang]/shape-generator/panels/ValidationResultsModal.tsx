@@ -65,7 +65,7 @@ export default function ValidationResultsModal({
     <div
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+        position: 'fixed', inset: 0, background: 'var(--nx-glass-input)',
         zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >

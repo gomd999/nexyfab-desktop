@@ -2048,7 +2048,7 @@ function SketchCanvas({
     if (x % gridStep50 !== 0) {
       gridLines.push(
         <line key={`vx${x}`} x1={x} y1={vbY} x2={x} y2={vbY + viewBoxH}
-          stroke="#2a2a4a" strokeWidth={0.5 / zoom} />
+          stroke="var(--nx-grid-line)" strokeWidth={0.5 / zoom} />
       );
     }
   }
@@ -2056,20 +2056,20 @@ function SketchCanvas({
     if (y % gridStep50 !== 0) {
       gridLines.push(
         <line key={`hy${y}`} x1={vbX} y1={y} x2={vbX + viewBoxW} y2={y}
-          stroke="#2a2a4a" strokeWidth={0.5 / zoom} />
+          stroke="var(--nx-grid-line)" strokeWidth={0.5 / zoom} />
       );
     }
   }
   for (let x = startX; x <= endX; x += gridStep50) {
     gridLines.push(
       <line key={`Vx${x}`} x1={x} y1={vbY} x2={x} y2={vbY + viewBoxH}
-        stroke="#3a3a5a" strokeWidth={1 / zoom} />
+        stroke="var(--nx-grid-line-strong)" strokeWidth={1 / zoom} />
     );
   }
   for (let y = startY; y <= endY; y += gridStep50) {
     gridLines.push(
       <line key={`Hy${y}`} x1={vbX} y1={y} x2={vbX + viewBoxW} y2={y}
-        stroke="#3a3a5a" strokeWidth={1 / zoom} />
+        stroke="var(--nx-grid-line-strong)" strokeWidth={1 / zoom} />
     );
   }
 
@@ -2182,7 +2182,7 @@ function SketchCanvas({
       liveDimension = (
         <g>
           <rect x={midX - boxW / 2} y={midY - boxH - 2 / zoom} width={boxW} height={boxH}
-            rx={2 / zoom} fill="#1c2128" stroke="var(--nx-accent)" strokeWidth={0.5 / zoom} opacity={0.92} />
+            rx={2 / zoom} fill="var(--nx-panel-2)" stroke="var(--nx-accent)" strokeWidth={0.5 / zoom} opacity={0.92} />
           <text x={midX} y={midY - 4 / zoom}
             fill="var(--nx-accent-2)" fontSize={8 / zoom} fontFamily="monospace" fontWeight="700"
             textAnchor="middle">
@@ -3119,7 +3119,7 @@ function SketchCanvas({
       {/* Cursor coordinate overlay */}
       <div style={{
         position: 'absolute', bottom: 8, left: 8, zIndex: 10,
-        background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)',
+        background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)',
         padding: '3px 10px', borderRadius: 6, pointerEvents: 'none',
         fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
         display: 'flex', gap: 6, alignItems: 'center',
@@ -3160,7 +3160,7 @@ function SketchCanvas({
           <div style={{
             position: 'absolute', left: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 8,
             padding: '6px 10px', borderRadius: 8,
-            background: 'rgba(13,17,23,0.85)', border: `1px solid ${meta.color}55`,
+            background: 'var(--nx-glass-strong)', border: `1px solid ${meta.color}55`,
             color: meta.color, fontSize: 12, fontWeight: 600,
             fontFamily: 'system-ui, sans-serif', pointerEvents: 'none',
             backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
@@ -3195,7 +3195,7 @@ function SketchCanvas({
         <div style={{
           position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
           padding: '8px 16px', borderRadius: 8,
-          background: 'rgba(13,17,23,0.95)', border: '1px solid var(--nx-accent)88',
+          background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-accent)88',
           color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
           fontFamily: 'system-ui, sans-serif', pointerEvents: 'none',
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
@@ -3216,7 +3216,7 @@ function SketchCanvas({
           title={gridVisible ? t.hideGrid : t.showGrid}
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
-            background: gridVisible ? 'rgba(56,139,253,0.18)' : 'rgba(255,255,255,0.06)',
+            background: gridVisible ? 'rgba(56,139,253,0.18)' : 'var(--nx-glass-soft)',
             color: gridVisible ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
@@ -3228,7 +3228,7 @@ function SketchCanvas({
           title={snapEnabled ? t.snapOff : t.snapOn}
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
-            background: snapEnabled ? 'rgba(56,139,253,0.18)' : 'rgba(255,255,255,0.06)',
+            background: snapEnabled ? 'rgba(56,139,253,0.18)' : 'var(--nx-glass-soft)',
             color: snapEnabled ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
@@ -3240,7 +3240,7 @@ function SketchCanvas({
           title={t.fitToView}
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.06)',
+            background: 'var(--nx-glass-soft)',
             color: 'var(--nx-text-2)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
@@ -3263,7 +3263,7 @@ function SketchCanvas({
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none',
             cursor: profile.segments.length === 0 ? 'not-allowed' : 'pointer',
-            background: 'rgba(255,255,255,0.06)',
+            background: 'var(--nx-glass-soft)',
             color: profile.segments.length === 0 ? 'var(--nx-border)' : 'var(--nx-text-2)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',

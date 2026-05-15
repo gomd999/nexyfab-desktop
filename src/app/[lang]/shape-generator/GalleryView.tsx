@@ -560,7 +560,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
       <div style={{ maxWidth: 700, width: '100%', margin: '24px auto 0', padding: '0 20px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)',
+          background: 'var(--nx-glass-soft)', backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16,
           padding: '6px 8px 6px 18px', transition: 'all 0.2s',
         }}>
@@ -582,7 +582,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
             disabled={!chatInput.trim()}
             style={{
               padding: '8px 20px', borderRadius: 12, border: 'none',
-              background: chatInput.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'rgba(255,255,255,0.08)',
+              background: chatInput.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'var(--nx-glass-soft)',
               color: 'var(--nx-text)', fontWeight: 700, fontSize: 13, cursor: chatInput.trim() ? 'pointer' : 'default',
               transition: 'all 0.2s', opacity: chatInput.trim() ? 1 : 0.5,
             }}
@@ -599,11 +599,11 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
               onClick={() => { setChatInput(prompt); chatInputRef.current?.focus(); }}
               style={{
                 padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.1)',
                 color: '#94a3b8', cursor: 'pointer', transition: 'all 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(102,126,234,0.2)'; e.currentTarget.style.color = '#a5b4fc'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-glass-soft)'; e.currentTarget.style.color = '#94a3b8'; }}
             >
               {prompt}
             </button>
@@ -669,7 +669,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   padding: '4px 10px', borderRadius: 8, border: 'none',
                   background: categoryFilter === c
                     ? 'rgba(102,126,234,0.35)'
-                    : 'rgba(255,255,255,0.04)',
+                    : 'var(--nx-glass-soft)',
                   color: categoryFilter === c ? '#a5b4fc' : '#94a3b8',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
                   transition: 'background 0.15s',
@@ -690,7 +690,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   padding: '6px 14px', borderRadius: 10, border: 'none',
                   background: filter === f
                     ? (f === 'cots' ? 'rgba(251,191,36,0.2)' : 'rgba(102,126,234,0.25)')
-                    : 'rgba(255,255,255,0.05)',
+                    : 'var(--nx-glass-soft)',
                   color: filter === f ? (f === 'cots' ? '#fbbf24' : '#a5b4fc') : '#64748b',
                   fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
                   position: 'relative', display: 'flex', alignItems: 'center', gap: 4,
@@ -717,7 +717,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
           {filter !== 'cots' && filteredShapes.length === 0 && (
             <div style={{
               padding: '40px 20px', textAlign: 'center',
-              background: 'rgba(255,255,255,0.02)', borderRadius: 12,
+              background: 'var(--nx-glass-soft)', borderRadius: 12,
               border: '1px dashed rgba(255,255,255,0.08)',
               color: '#94a3b8',
             }}>
@@ -754,7 +754,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     onMouseLeave={() => setHoveredId(null)}
                     title={getShapeUsageHint(s.id, lang)}
                     style={{
-                      background: isActive ? 'rgba(102,126,234,0.15)' : isHovered ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+                      background: isActive ? 'rgba(102,126,234,0.15)' : isHovered ? 'var(--nx-glass-soft)' : 'var(--nx-glass-soft)',
                       border: isActive ? '2px solid #667eea' : '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 10, padding: 10, cursor: 'pointer',
                       transition: 'all 0.2s', transform: isHovered ? 'translateY(-2px)' : 'none',
@@ -772,7 +772,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                         primitive:     '#3b82f6',
                         standard:      '#10b981',
                         structural:    '#f97316',
-                        manufacturing: '#a78bfa',
+                        manufacturing: 'var(--nx-accent-2)',
                       };
                       return (
                         <div style={{
@@ -810,7 +810,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     key={part.id}
                     onClick={() => setSelectedCots(part)}
                     style={{
-                      background: isActive ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.03)',
+                      background: isActive ? 'rgba(251,191,36,0.12)' : 'var(--nx-glass-soft)',
                       border: isActive ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
                       transition: 'all 0.15s',
@@ -866,7 +866,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 </div>
 
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 16, overflow: 'hidden', height: 280, flexShrink: 0, position: 'relative',
                 }}>
                   {cotsPreviewResult ? (
@@ -883,7 +883,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
                 {/* Params table */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 14, padding: '14px 18px', flexShrink: 0,
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
@@ -905,7 +905,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
                 {/* Suppliers */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 14, padding: '14px 18px', flexShrink: 0,
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
@@ -973,7 +973,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
             <>
               {/* 3D Preview card */}
               <div style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 16, overflow: 'hidden', height: 340, flexShrink: 0,
               }}>
                 <ShapePreview result={liveResult} />
@@ -981,7 +981,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
               {/* Parameter panel */}
               <div style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 16, padding: 18, flex: 1, overflowY: 'auto', minHeight: 0,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
@@ -1095,7 +1095,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 {cotsBomCart.map(({ part, qty }) => (
                   <div key={part.id} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 12px',
+                    background: 'var(--nx-glass-soft)', borderRadius: 8, padding: '8px 12px',
                   }}>
                     <span style={{ fontSize: 18, flexShrink: 0 }}>{COTS_ICONS[part.category] ?? '⚙️'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>

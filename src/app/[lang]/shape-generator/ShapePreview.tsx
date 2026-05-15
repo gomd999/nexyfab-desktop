@@ -805,7 +805,7 @@ function FaceScene({
             maxWidth: 300,
             padding: '8px 10px',
             borderRadius: 8,
-            background: 'rgba(13,17,23,0.95)',
+            background: 'var(--nx-glass-strong)',
             border: '1px solid rgba(34,197,94,0.65)',
             color: 'var(--nx-text)',
             fontSize: 11,
@@ -1863,7 +1863,7 @@ export default function ShapePreview({
 
         {/* Fusion 360-style Top Right ViewCube */}
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'rgba(13,17,23,0.85)', padding: 4, borderRadius: 8, border: '1px solid var(--nx-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'var(--nx-glass-strong)', padding: 4, borderRadius: 8, border: '1px solid var(--nx-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
             {([
               { label: t.top, key: '7', view: 'top' },
               { label: t.front, key: '5', view: 'front' },
@@ -1905,7 +1905,7 @@ export default function ShapePreview({
         </div>
 
         {/* Fusion 360-style Bottom Center Navigation Bar */}
-        <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,17,23,0.85)', padding: '4px 6px', borderRadius: 12, border: '1px solid var(--nx-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', flexWrap: 'nowrap' }}>
+        <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'var(--nx-glass-strong)', padding: '4px 6px', borderRadius: 12, border: '1px solid var(--nx-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', flexWrap: 'nowrap' }}>
           <div style={{ display: 'flex', gap: 2, flexWrap: 'nowrap' }}>
             {MODES.map(({ key, label, icon }) => (
               <button
@@ -1922,7 +1922,7 @@ export default function ShapePreview({
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}
-                onMouseEnter={e => { if (displayMode !== key) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
+                onMouseEnter={e => { if (displayMode !== key) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                 onMouseLeave={e => { if (displayMode !== key) { e.currentTarget.style.background = 'transparent'; } }}
               >
                 <span style={{ fontSize: 12 }}>{icon}</span>
@@ -1946,7 +1946,7 @@ export default function ShapePreview({
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}
-                onMouseEnter={e => { if (!selectionActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
+                onMouseEnter={e => { if (!selectionActive) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                 onMouseLeave={e => { if (!selectionActive) { e.currentTarget.style.background = 'transparent'; } }}
               >
                 <span style={{ fontSize: 12 }}>🖱</span>
@@ -1965,7 +1965,7 @@ export default function ShapePreview({
                 color: pbrPanelOpen ? 'var(--nx-warn)' : '#ffffff', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'transparent'; }}
             >🎨</button>
             <button
@@ -1980,7 +1980,7 @@ export default function ShapePreview({
                 color: showDims ? 'var(--nx-accent-2)' : '#ffffff', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'transparent'; }}
             >📏</button>
             <button
@@ -1990,19 +1990,19 @@ export default function ShapePreview({
               aria-label={t.turntable}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
-                background: effectiveAnimateMode === 'turntable' ? 'rgba(124,58,237,0.15)' : 'transparent',
-                borderColor: effectiveAnimateMode === 'turntable' ? 'rgba(124,58,237,0.3)' : 'transparent',
-                color: effectiveAnimateMode === 'turntable' ? '#a78bfa' : '#ffffff', fontSize: 14, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                background: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-soft)' : 'transparent',
+                borderColor: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-line)' : 'transparent',
+                color: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-2)' : '#ffffff', fontSize: 14, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'transparent'; }}
             >⟲</button>
             <button
               type="button" onClick={toggleFullscreen} title={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
               aria-label={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
               style={{ padding: '4px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#ffffff', fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               {isFullscreen ? '⊡' : '⛶'}
@@ -2073,11 +2073,11 @@ export default function ShapePreview({
             <div style={{
               position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
               zIndex: 20, display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(13,17,23,0.85)', borderRadius: 10,
+              background: 'var(--nx-glass-strong)', borderRadius: 10,
               border: '1px solid var(--nx-border)', padding: '4px 10px',
               backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', flexWrap: 'nowrap'
             }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                 {lang === 'ko' ? '스케치 평면' : 'Sketch Plane'}
               </span>
               <div style={{ width: 1, height: 14, background: 'var(--nx-border)' }} />
@@ -2085,12 +2085,12 @@ export default function ShapePreview({
                 {(['xy', 'xz', 'yz'] as const).map(p => (
                   <button key={p} onClick={() => onSketchPlaneChange(p)} style={{
                     padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    border: sketchPlane === p ? '1px solid rgba(124,58,237,0.4)' : '1px solid transparent',
-                    background: sketchPlane === p ? 'rgba(124,58,237,0.2)' : 'transparent',
-                    color: sketchPlane === p ? '#a78bfa' : '#ffffff',
+                    border: sketchPlane === p ? '1px solid var(--nx-accent-line)' : '1px solid transparent',
+                    background: sketchPlane === p ? 'var(--nx-accent-soft)' : 'transparent',
+                    color: sketchPlane === p ? 'var(--nx-accent)' : 'var(--nx-text)',
                     transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
                   }}
-                  onMouseEnter={e => { if (sketchPlane !== p) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
+                  onMouseEnter={e => { if (sketchPlane !== p) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                   onMouseLeave={e => { if (sketchPlane !== p) { e.currentTarget.style.background = 'transparent'; } }}
                   >
                     {p.toUpperCase()}
@@ -2429,7 +2429,7 @@ export default function ShapePreview({
                           </mesh>
                           <Html position={midPoint} center style={{ pointerEvents: 'none' }}>
                             <div style={{
-                              background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                              background: 'var(--nx-glass-strong)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                               border: `1px solid ${color}88`, borderRadius: 12, padding: '2px 6px',
                               color: 'var(--nx-text)', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                               boxShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap'

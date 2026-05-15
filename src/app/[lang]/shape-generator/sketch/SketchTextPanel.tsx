@@ -160,7 +160,7 @@ export default function SketchTextPanel({
               onClick={onClose}
               style={{
                 padding: '8px 14px', borderRadius: 6, border: 'none',
-                background: '#374151', color: C.text, fontSize: 13, cursor: 'pointer',
+                background: 'var(--nx-border-strong)', color: C.text, fontSize: 13, cursor: 'pointer',
               }}
             >{t.cancel}</button>
             <button
@@ -168,7 +168,7 @@ export default function SketchTextPanel({
               disabled={!fontState.font}
               style={{
                 padding: '8px 14px', borderRadius: 6, border: 'none',
-                background: fontState.font ? C.accent : '#374151',
+                background: fontState.font ? C.accent : 'var(--nx-border-strong)',
                 color: 'var(--nx-text)', fontSize: 13, fontWeight: 700,
                 cursor: fontState.font ? 'pointer' : 'not-allowed',
               }}

@@ -207,7 +207,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 9998,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'var(--nx-glass-input)',
           backdropFilter: 'blur(4px)',
         }}
       />
@@ -261,7 +261,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
           />
           <kbd style={{
             fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 700,
-            background: 'rgba(255,255,255,0.06)',
+            background: 'var(--nx-glass-soft)',
             border: '1px solid rgba(255,255,255,0.08)',
             padding: '2px 6px', borderRadius: 4,
             fontFamily: 'monospace',
@@ -334,7 +334,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                           width: 28, height: 28, borderRadius: 6,
                           background: isSel 
                             ? (isAi ? 'linear-gradient(135deg, rgba(168,85,247,0.4) 0%, rgba(59,130,246,0.4) 100%)' : 'rgba(88,166,255,0.2)') 
-                            : 'rgba(255,255,255,0.04)',
+                            : 'var(--nx-glass-soft)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 14, flexShrink: 0,
                           transition: 'background 0.08s',
@@ -345,7 +345,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                       {cmd.shortcut && (
                         <kbd style={{
                           fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 600,
-                          background: 'rgba(255,255,255,0.04)',
+                          background: 'var(--nx-glass-soft)',
                           border: '1px solid rgba(255,255,255,0.06)',
                           padding: '2px 6px', borderRadius: 3,
                           fontFamily: 'monospace',

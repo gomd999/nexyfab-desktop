@@ -289,7 +289,7 @@ export function ViewCubeOverlay() {
     width: CUBE_SIZE,
     height: CUBE_SIZE,
     background: hovered === id ? 'rgba(88, 166, 255, 0.9)' : 'rgba(22, 27, 34, 0.75)',
-    border: `1.5px solid ${hovered === id ? 'var(--nx-accent-2)' : 'rgba(255,255,255,0.15)'}`,
+    border: `1.5px solid ${hovered === id ? 'var(--nx-accent-2)' : 'var(--nx-border)'}`,
     boxShadow: hovered === id 
       ? '0 0 16px rgba(88, 166, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2)' 
       : 'inset 0 0 8px rgba(255,255,255,0.05)',
@@ -403,7 +403,7 @@ export function ViewCubeOverlay() {
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(22, 27, 34, 0.8)';
             e.currentTarget.style.color = 'var(--nx-text)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+            e.currentTarget.style.borderColor = 'var(--nx-border)';
             e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
           }}
         >

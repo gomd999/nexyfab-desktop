@@ -133,7 +133,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         left: 0,
         right: 0,
         height: 2,
-        background: 'rgba(255,255,255,0.05)',
+        background: 'var(--nx-glass-soft)',
       }}>
         <div style={{
           height: '100%',

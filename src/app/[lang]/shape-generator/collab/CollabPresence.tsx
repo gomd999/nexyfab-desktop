@@ -152,7 +152,7 @@ export default function CollabPresence({
             display: 'flex',
             alignItems: 'center',
             gap: 4,
-            background: 'rgba(13,17,23,0.85)',
+            background: 'var(--nx-glass-strong)',
             border: '1px solid var(--nx-border)',
             borderRadius: 8,
             padding: '2px 8px',

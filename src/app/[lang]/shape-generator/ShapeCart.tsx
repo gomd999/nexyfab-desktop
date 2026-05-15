@@ -90,7 +90,7 @@ export default function ShapeCart({ items, onRemove, onClear, onBatchQuote, t }:
                 style={{
                   position: 'absolute', top: 4, right: 4,
                   width: 20, height: 20, borderRadius: '50%',
-                  border: 'none', background: 'rgba(0,0,0,0.6)', color: 'var(--nx-text-2)',
+                  border: 'none', background: 'var(--nx-glass-input)', color: 'var(--nx-text-2)',
                   fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   lineHeight: 1, transition: 'color 0.12s',
                 }}

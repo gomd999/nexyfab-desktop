@@ -663,7 +663,7 @@ export default function SketchPanel({
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '5px 8px', marginBottom: 6,
             borderRadius: 6,
-            background: isClosed ? 'rgba(63,185,80,0.07)' : segCount > 0 ? 'rgba(210,153,34,0.07)' : 'rgba(255,255,255,0.03)',
+            background: isClosed ? 'rgba(63,185,80,0.07)' : segCount > 0 ? 'rgba(210,153,34,0.07)' : 'var(--nx-glass-soft)',
             border: `1px solid ${isClosed ? 'var(--nx-ok)33' : segCount > 0 ? 'var(--nx-warn)33' : 'var(--nx-panel-2)'}`,
           }}>
             <span style={{

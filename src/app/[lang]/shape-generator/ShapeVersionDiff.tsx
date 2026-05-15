@@ -508,7 +508,7 @@ export default function ShapeVersionDiff({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 14px',
-          background: '#1c2128',
+          background: 'var(--nx-panel-2)',
           borderBottom: '1px solid var(--nx-border)',
           flexShrink: 0,
         }}

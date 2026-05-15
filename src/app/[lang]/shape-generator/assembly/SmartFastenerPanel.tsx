@@ -135,7 +135,7 @@ export default function SmartFastenerPanel({
             disabled={allHoles.length < 2}
             style={{
               flex: 1, padding: '8px 12px', borderRadius: 6, border: 'none',
-              background: allHoles.length >= 2 ? C.accent : '#374151',
+              background: allHoles.length >= 2 ? C.accent : 'var(--nx-border-strong)',
               color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
               cursor: allHoles.length >= 2 ? 'pointer' : 'not-allowed',
             }}

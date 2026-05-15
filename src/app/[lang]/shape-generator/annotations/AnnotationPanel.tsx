@@ -226,7 +226,7 @@ const GDT_SYMBOL_NAMES_LOCALIZED: Record<Lang, Record<string, string>> = {
 
 const C = {
   bg: 'var(--nx-panel)',
-  card: '#1c2128',
+  card: 'var(--nx-panel-2)',
   border: 'var(--nx-border)',
   accent: 'var(--nx-accent)',
   text: 'var(--nx-text)',

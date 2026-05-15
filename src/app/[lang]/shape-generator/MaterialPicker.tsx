@@ -123,7 +123,7 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
                 transition: 'all 0.15s ease',
                 background: active
                   ? 'rgba(56,139,253,0.12)'
-                  : 'rgba(255,255,255,0.02)',
+                  : 'var(--nx-glass-soft)',
                 border: active
                   ? '1.5px solid rgba(56,139,253,0.6)'
                   : '1px solid rgba(255,255,255,0.06)',
@@ -138,7 +138,7 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
                 background: isMetal
                   ? `linear-gradient(135deg, ${mat.color} 0%, ${mat.color}aa 60%, #fff8 100%)`
                   : mat.color,
-                border: `1.5px solid ${active ? 'var(--nx-accent)' : 'rgba(255,255,255,0.1)'}`,
+                border: `1.5px solid ${active ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                 boxShadow: isMetal ? `inset 0 1px 3px rgba(255,255,255,0.3)` : 'none',
                 opacity: mat.transparent && mat.opacity ? 0.5 + mat.opacity * 0.5 : 1,
               }} />

@@ -411,7 +411,7 @@ export default function MaterialPropertiesPanel({
           // Metals tint reflections with the base color; dielectrics reflect white
           const highlightColor = metal > 0.5 ? baseColor : '#ffffff';
           // Darker rim for metallic look
-          const rimDark = metal > 0.3 ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)';
+          const rimDark = metal > 0.3 ? 'var(--nx-glass-input)' : 'rgba(0,0,0,0.35)';
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
               <div style={{

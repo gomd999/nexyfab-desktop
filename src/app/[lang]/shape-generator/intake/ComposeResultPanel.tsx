@@ -572,7 +572,7 @@ export default function ComposeResultPanel({
                           fontSize: 11,
                           padding: '2px 8px',
                           borderRadius: 4,
-                          background: 'rgba(255,255,255,0.05)',
+                          background: 'var(--nx-glass-soft)',
                         }}
                       >
                         {b.totalScore}{t.score}

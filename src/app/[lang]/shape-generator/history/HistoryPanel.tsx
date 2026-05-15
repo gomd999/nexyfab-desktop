@@ -48,7 +48,7 @@ const C = {
   textDim: 'var(--nx-text-2)',
   accent: 'var(--nx-accent)',
   hover: 'var(--nx-panel-2)',
-  past: '#1c2128',
+  past: 'var(--nx-panel-2)',
   future: 'var(--nx-bg)',
   currentBg: '#1f3158',
 };

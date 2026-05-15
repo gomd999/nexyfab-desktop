@@ -148,7 +148,7 @@ const dict = {
 // ─── Shelf / FFDH bin-pack algorithm ─────────────────────────────────────────
 
 const PART_COLORS = [
-  'var(--nx-accent)', 'var(--nx-ok)', '#e3b341', 'var(--nx-error)', '#a78bfa',
+  'var(--nx-accent)', 'var(--nx-ok)', '#e3b341', 'var(--nx-error)', 'var(--nx-accent-2)',
   '#22d3ee', '#fb7185', '#34d399', '#fbbf24', '#c084fc',
 ];
 
@@ -400,11 +400,11 @@ export default function NestingTool({ parts: initialParts, lang }: NestingToolPr
       {/* Part editor modal */}
       {editingPart && (
         <div style={{
-          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)',
+          position: 'absolute', inset: 0, background: 'var(--nx-glass-input)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
         }} onClick={() => setEditingPart(null)}>
           <div style={{
-            background: '#1c2128', border: '1px solid var(--nx-border)', borderRadius: 10,
+            background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 10,
             padding: '20px 24px', width: 280, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 14 }}>{t.editPart}</div>

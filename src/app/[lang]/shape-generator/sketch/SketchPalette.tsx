@@ -297,7 +297,7 @@ export default function SketchPalette({
         width: 260,
         maxWidth: 'calc(100% - 24px)',
         zIndex: 35,
-        background: 'rgba(13, 17, 23, 0.65)',
+        background: 'var(--nx-glass)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -335,13 +335,13 @@ export default function SketchPalette({
                 fontSize: 10,
                 fontWeight: 600,
                 border: sketchLineStyle === mode ? '1px solid var(--nx-accent)' : '1px solid rgba(255,255,255,0.08)',
-                background: sketchLineStyle === mode ? 'rgba(56, 139, 253, 0.15)' : 'rgba(255,255,255,0.03)',
+                background: sketchLineStyle === mode ? 'rgba(56, 139, 253, 0.15)' : 'var(--nx-glass-soft)',
                 color: sketchLineStyle === mode ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
-              onMouseEnter={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-              onMouseLeave={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseEnter={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
+              onMouseLeave={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
             >
               {mode === 'normal' ? tt.lineNormal : mode === 'construction' ? tt.lineConstruction : tt.lineCenterline}
             </button>
@@ -356,15 +356,15 @@ export default function SketchPalette({
             padding: '8px 10px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(255, 255, 255, 0.05)',
+            background: 'var(--nx-glass-soft)',
             color: '#ffffff',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
         >
           {tt.lookAt}
         </button>
@@ -416,15 +416,15 @@ export default function SketchPalette({
             padding: '7px 10px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(255, 255, 255, 0.03)',
+            background: 'var(--nx-glass-soft)',
             color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
             transition: 'background 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
         >
           {tt.insertRef}
         </button>
@@ -436,7 +436,7 @@ export default function SketchPalette({
             padding: '7px 10px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: hasReferenceImage ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+            background: hasReferenceImage ? 'var(--nx-glass-soft)' : 'var(--nx-glass-soft)',
             color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
@@ -445,7 +445,7 @@ export default function SketchPalette({
             transition: 'background 0.15s ease',
           }}
           onMouseEnter={e => { if (hasReferenceImage) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'; }}
-          onMouseLeave={e => { if (hasReferenceImage) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+          onMouseLeave={e => { if (hasReferenceImage) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
         >
           {tt.clearRef}
         </button>
@@ -477,7 +477,7 @@ export default function SketchPalette({
               padding: '6px 0',
               borderRadius: 6,
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(255, 255, 255, 0.03)',
+              background: 'var(--nx-glass-soft)',
               color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 600,
@@ -485,8 +485,8 @@ export default function SketchPalette({
               opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4,
               transition: 'background 0.15s ease',
             }}
-            onMouseEnter={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
-            onMouseLeave={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; }}
+            onMouseEnter={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
+            onMouseLeave={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
           >
             {Math.round(p * 100)}%
           </button>
@@ -515,7 +515,7 @@ export default function SketchPalette({
             value={referenceOffsetX}
             onChange={e => onReferenceOffsetChange(Number(e.target.value), referenceOffsetY)}
             disabled={!hasReferenceImage || referenceLocked}
-            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--nx-text)' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'var(--nx-glass-input)', color: 'var(--nx-text)' }}
           />
         </label>
         <label style={{ fontSize: 11, color: 'var(--nx-text)' }}>
@@ -526,7 +526,7 @@ export default function SketchPalette({
             value={referenceOffsetY}
             onChange={e => onReferenceOffsetChange(referenceOffsetX, Number(e.target.value))}
             disabled={!hasReferenceImage || referenceLocked}
-            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--nx-text)' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'var(--nx-glass-input)', color: 'var(--nx-text)' }}
           />
         </label>
       </div>
@@ -540,15 +540,15 @@ export default function SketchPalette({
           padding: '8px 10px',
           borderRadius: 8,
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(255, 255, 255, 0.03)',
+          background: 'var(--nx-glass-soft)',
           color: '#ffffff',
           fontSize: 12,
           fontWeight: 600,
           cursor: 'pointer',
           transition: 'background 0.15s ease',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
       >
         {tt.sketch3d}
       </button>
@@ -585,15 +585,15 @@ export default function SketchPalette({
             padding: '10px 14px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.12)',
-            background: 'rgba(255, 255, 255, 0.05)',
+            background: 'var(--nx-glass-soft)',
             color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
             transition: 'background 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
         >
           {tt.exit}
         </button>

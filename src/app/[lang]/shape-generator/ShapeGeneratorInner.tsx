@@ -4744,7 +4744,7 @@ export function ShapeGeneratorInner() {
           const colorMap: Record<string, string> = {
             'part-color-yellow': '#e3b341',
             'part-color-orange': '#d97706',
-            'part-color-purple': '#7c3aed',
+            'part-color-purple': 'var(--nx-accent)',
             'part-color-white': '#ffffff'
           };
           const color = colorMap[id];
@@ -5926,7 +5926,7 @@ export function ShapeGeneratorInner() {
       return { icon: '▶', text: 'Ready. Click Generate in toolbar to start optimization.', color: 'var(--nx-accent)' };
     }
     if (activeTab === 'design' && measureActive) return { icon: '📏', text: lt.measureToolActive, color: '#f97316' };
-    if (isSketchMode && !sketchResult) return { icon: '✏️', text: 'Draw a closed profile. Click first point to close.', color: '#7c3aed' };
+    if (isSketchMode && !sketchResult) return { icon: '✏️', text: 'Draw a closed profile. Click first point to close.', color: 'var(--nx-accent)' };
     if (editMode === 'vertex') return { icon: '⬡', text: lt.vertexEditPointerHint, color: '#22c55e' };
     if (editMode === 'edge') return { icon: '╱', text: `${lt.edgeEditHint} — ${lt.edgeEditPointerHint}`, color: '#22c55e' };
     if (editMode === 'face') return { icon: '▣', text: lt.faceEditHint, color: '#22c55e' };
@@ -7687,7 +7687,7 @@ export function ShapeGeneratorInner() {
                     position: 'absolute', bottom: 8, left: 0, right: 0, zIndex: 20,
                     display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
                     <div style={{
-                      background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)',
+                      background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)',
                       padding: '3px 12px', borderRadius: 6,
                       fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
                       display: 'flex', gap: 8, alignItems: 'center', color: 'var(--nx-border-strong)' }}>
@@ -8701,7 +8701,7 @@ export function ShapeGeneratorInner() {
       {showManufacturerMatch && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 8000,
-          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--nx-glass-input)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           backdropFilter: 'blur(4px)' }} onClick={() => setShowManufacturerMatch(false)}>
           <div style={{ width: 560, maxHeight: '85vh', overflow: 'auto', borderRadius: 14 }}
             onClick={e => e.stopPropagation()}>

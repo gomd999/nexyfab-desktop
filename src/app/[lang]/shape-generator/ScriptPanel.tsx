@@ -295,7 +295,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
       style={{
         position: 'fixed', inset: 0, zIndex: 9000,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+        background: 'var(--nx-glass-input)', backdropFilter: 'blur(4px)',
       }}
     >
       <div style={{
@@ -312,7 +312,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               fontSize: 11, fontWeight: 800, fontStyle: 'italic',
-              color: '#a78bfa', background: 'var(--nx-accent)22',
+              color: 'var(--nx-accent-2)', background: 'var(--nx-accent)22',
               borderRadius: 4, padding: '2px 6px', letterSpacing: 0.5,
             }}>
               NS

@@ -236,7 +236,7 @@ function SubMenu({ items, x, y, onSelect, onClose }: { items: ContextMenuItem[];
   return (
     <div ref={ref} style={{
       position: 'fixed', left: x, top: y, zIndex: 10001,
-      background: 'rgba(13, 17, 23, 0.85)',
+      background: 'var(--nx-glass-strong)',
       backdropFilter: 'blur(16px)',
       WebkitBackdropFilter: 'blur(16px)',
       border: '1px solid rgba(255,255,255,0.1)',
@@ -313,7 +313,7 @@ export default function ContextMenu({ x, y, visible, items, onSelect, onClose }:
     <>
       <div ref={ref} style={{
         position: 'fixed', left: posX, top: posY, zIndex: 10000,
-        background: 'rgba(13, 17, 23, 0.85)',
+        background: 'var(--nx-glass-strong)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         border: '1px solid rgba(255,255,255,0.1)',
@@ -324,7 +324,7 @@ export default function ContextMenu({ x, y, visible, items, onSelect, onClose }:
         {items.map((item, idx) => (
           <React.Fragment key={item.id}>
             {item.separator && idx > 0 && (
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 8px' }} />
+              <div style={{ height: 1, background: 'var(--nx-glass-soft)', margin: '6px 8px' }} />
             )}
             <button disabled={item.disabled}
               onClick={() => {

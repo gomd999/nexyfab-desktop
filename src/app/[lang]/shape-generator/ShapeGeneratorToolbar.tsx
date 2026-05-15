@@ -464,7 +464,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
 
   return (
     <div className="sg-topbar sg-autohide" data-shell-v2-hide="top-toolbar" style={{
-      background: 'rgba(13, 17, 23, 0.85)',
+      background: 'var(--nx-glass-strong)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
@@ -489,7 +489,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       <a href={`/${langSeg}/`} style={{ color: 'var(--nx-text)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', textDecoration: 'none', marginLeft: 4 }}>
         <span style={{ color: 'var(--nx-accent-2)' }}>Nexy</span>Fab
       </a>
-      {!isMobile && <div style={{ width: 1, height: 24, background: 'rgba(255, 255, 255, 0.1)', marginLeft: 8, marginRight: 4 }} />}
+      {!isMobile && <div style={{ width: 1, height: 24, background: 'var(--nx-border)', marginLeft: 8, marginRight: 4 }} />}
 
       {/* ⌘K command palette hint — opens via Ctrl+K */}
       {!isMobile && (
@@ -501,12 +501,12 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 32, height: 32, padding: 0, borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)', background: 'var(--nx-glass-soft)',
             color: 'var(--nx-text)', fontSize: 14, fontWeight: 600,
             cursor: 'pointer', transition: 'all 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
           >
           🔍
         </button>
@@ -771,13 +771,13 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       <button onClick={toggleTheme} style={{
         width: 32, height: 32, padding: 0, borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.08)',
-        background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(255,241,200,0.15)',
+        background: mode === 'dark' ? 'var(--nx-glass-soft)' : 'rgba(255,241,200,0.15)',
         color: mode === 'dark' ? 'var(--nx-text)' : '#fbbf24',
         fontSize: 15, cursor: 'pointer', transition: 'all 0.2s ease',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.background = mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(255,241,200,0.15)'; }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)'; e.currentTarget.style.background = 'var(--nx-border)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.background = mode === 'dark' ? 'var(--nx-glass-soft)' : 'rgba(255,241,200,0.15)'; }}
       title={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
         {mode === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
       </button>

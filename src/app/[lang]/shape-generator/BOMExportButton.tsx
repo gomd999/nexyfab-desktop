@@ -58,7 +58,7 @@ export default function BOMExportButton({ parts, disabled, lang }: BOMExportButt
         padding: '5px 10px',
         borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.03)',
+        background: 'var(--nx-glass-soft)',
         color: disabled || !parts.length ? 'var(--nx-border-strong)' : 'var(--nx-accent-2)',
         fontSize: 11,
         fontWeight: 600,
@@ -73,8 +73,8 @@ export default function BOMExportButton({ parts, disabled, lang }: BOMExportButt
         }
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+        e.currentTarget.style.background = 'var(--nx-glass-soft)';
+        e.currentTarget.style.borderColor = 'var(--nx-glass-soft)';
       }}
     >
       <span style={{ fontSize: 13 }}>📋</span>

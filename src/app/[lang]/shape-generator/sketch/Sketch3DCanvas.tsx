@@ -542,7 +542,7 @@ function DimensionAnnotations({ profile, plane }: { profile: SketchProfile; plan
         <Html key={i} position={ann.midPos} center style={{ pointerEvents: 'none' }}>
           <div style={{
             color: '#93c5fd', fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
-            background: 'rgba(13,17,23,0.85)', padding: '1px 5px', borderRadius: 3,
+            background: 'var(--nx-glass-strong)', padding: '1px 5px', borderRadius: 3,
             border: '1px solid rgba(59,130,246,0.3)', whiteSpace: 'nowrap',
           }}>
             {ann.length.toFixed(1)}mm
@@ -594,18 +594,18 @@ function ProfileBoundingBox({ profile, plane }: { profile: SketchProfile; plane:
   return (
     <group>
       <lineSegments geometry={bbGeo}>
-        <lineDashedMaterial color="#374151" dashSize={4} gapSize={3} linewidth={1} />
+        <lineDashedMaterial color="var(--nx-border-strong)" dashSize={4} gapSize={3} linewidth={1} />
       </lineSegments>
       {w > 1 && (
         <Html position={wPos} center style={{ pointerEvents: 'none' }}>
-          <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'rgba(13,17,23,0.85)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)' }}>
+          <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)' }}>
             W: {w.toFixed(1)}mm
           </div>
         </Html>
       )}
       {h > 1 && (
         <Html position={hPos} center style={{ pointerEvents: 'none' }}>
-          <div style={{ color: '#22c55e', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'rgba(13,17,23,0.85)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(34,197,94,0.3)' }}>
+          <div style={{ color: '#22c55e', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(34,197,94,0.3)' }}>
             H: {h.toFixed(1)}mm
           </div>
         </Html>
@@ -663,7 +663,7 @@ function InfoHUD({
             title={`${v.label} view${v.plane ? ` → ${PLANE_LABELS[v.plane]}` : ''}`}
             style={{
               padding: '4px 9px', borderRadius: 6, border: '1px solid var(--nx-border)',
-              background: detectedPlane === v.plane ? 'rgba(56,139,253,0.2)' : 'rgba(13,17,23,0.9)',
+              background: detectedPlane === v.plane ? 'rgba(56,139,253,0.2)' : 'var(--nx-glass-strong)',
               color: detectedPlane === v.plane ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'monospace',
               outline: 'none', transition: 'all 0.12s',
@@ -683,7 +683,7 @@ function InfoHUD({
             style={{
               padding: '3px 8px', borderRadius: 5, cursor: 'pointer',
               border: `1px solid ${plane === p ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
-              background: plane === p ? 'rgba(56,139,253,0.15)' : 'rgba(13,17,23,0.9)',
+              background: plane === p ? 'rgba(56,139,253,0.15)' : 'var(--nx-glass-strong)',
               color: plane === p ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
               fontSize: 10, fontWeight: 700, fontFamily: 'monospace', outline: 'none',
             }}
@@ -706,18 +706,18 @@ function InfoHUD({
 
       {/* Shortcuts */}
       <div style={{
-        background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)',
+        background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)',
         padding: '3px 10px', borderRadius: 6,
         fontSize: 9, fontWeight: 600, color: 'var(--nx-border-strong)', fontFamily: 'monospace',
         display: 'flex', gap: 8, pointerEvents: 'none',
       }}>
-        <span style={{ color: canUndo ? 'var(--nx-warn)' : '#374151' }}>Ctrl+Z</span>
+        <span style={{ color: canUndo ? 'var(--nx-warn)' : 'var(--nx-border-strong)' }}>Ctrl+Z</span>
         <span>[T]op [F]ront [R]ight [I]so</span>
       </div>
 
       {/* Cursor coordinate display */}
       {cursorPt && (
-        <div style={{ background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)', padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: 'var(--nx-border-strong)', fontFamily: 'monospace', display: 'flex', gap: 6, pointerEvents: 'none' }}>
+        <div style={{ background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)', padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: 'var(--nx-border-strong)', fontFamily: 'monospace', display: 'flex', gap: 6, pointerEvents: 'none' }}>
           <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.x.toFixed(1)}</span>
           <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.y.toFixed(1)}</span>
           {/* Z is always 0 on the sketch plane */}
@@ -960,7 +960,7 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
           args={[400, 400]}
           position={gridProps.position}
           rotation={gridProps.rotation}
-          cellSize={5} cellThickness={0.3} cellColor="#1c2128"
+          cellSize={5} cellThickness={0.3} cellColor="var(--nx-panel-2)"
           sectionSize={25} sectionThickness={0.6} sectionColor="var(--nx-border)"
           fadeDistance={300} fadeStrength={3} infiniteGrid
         />

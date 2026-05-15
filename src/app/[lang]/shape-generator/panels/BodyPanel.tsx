@@ -220,7 +220,7 @@ export default function BodyPanel({
     muted: 'var(--nx-text-2)',
     active: '#1f6feb',
     activeBorder: 'var(--nx-accent)',
-    rowHover: '#1c2128',
+    rowHover: 'var(--nx-panel-2)',
     checked: 'var(--nx-accent)',
     danger: 'var(--nx-error)',
     success: '#2ea043',
@@ -276,7 +276,7 @@ export default function BodyPanel({
                 gap: 8,
                 padding: '6px 12px',
                 cursor: 'pointer',
-                background: isActive ? '#1c2128' : 'transparent',
+                background: isActive ? 'var(--nx-panel-2)' : 'transparent',
                 borderLeft: isActive ? `2px solid ${C.activeBorder}` : '2px solid transparent',
                 transition: 'background 0.1s',
               }}

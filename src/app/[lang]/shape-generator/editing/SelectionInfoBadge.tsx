@@ -160,7 +160,7 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 6px #a78bfa', display: 'inline-block' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--nx-accent-2)', boxShadow: '0 0 6px #a78bfa', display: 'inline-block' }} />
             <span style={{ fontWeight: 700, color: '#ede9fe', fontSize: 13 }}>
               {t.multiSelect} ({multi.faces.length})
             </span>

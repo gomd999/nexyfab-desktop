@@ -26,7 +26,7 @@ export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: Welc
       dir={isRtl ? 'rtl' : 'ltr'}
       style={{
         position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 8000, background: 'linear-gradient(135deg, #1c2128, var(--nx-panel))',
+        zIndex: 8000, background: 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-panel))',
         border: '1px solid var(--nx-accent)55', borderRadius: 14,
         padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
         boxShadow: '0 8px 40px rgba(56,139,253,0.18)',

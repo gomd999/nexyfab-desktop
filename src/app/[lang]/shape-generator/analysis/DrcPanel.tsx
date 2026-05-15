@@ -138,7 +138,7 @@ export default function DrcPanel({
             disabled={!geometry || !ruleSet}
             style={{
               flex: 1, padding: '6px 10px', borderRadius: 4, border: 'none',
-              background: (geometry && ruleSet) ? C.green : '#374151',
+              background: (geometry && ruleSet) ? C.green : 'var(--nx-border-strong)',
               color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
               cursor: (geometry && ruleSet) ? 'pointer' : 'not-allowed',
             }}
@@ -176,7 +176,7 @@ export default function DrcPanel({
                 key={`${v.ruleId}-${i}`}
                 style={{
                   padding: '6px 10px', borderRadius: 4,
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--nx-glass-soft)',
                   border: `1px solid ${SEVERITY_COLORS[v.severity]}55`,
                   borderLeftWidth: 3,
                   borderLeftColor: SEVERITY_COLORS[v.severity],

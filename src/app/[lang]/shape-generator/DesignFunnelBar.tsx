@@ -494,7 +494,7 @@ export default function DesignFunnelBar({
                       fontSize: 11, fontWeight: 500, cursor: 'pointer',
                       textAlign: 'left', transition: 'background 0.15s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <span style={{ color: theme.textMuted, width: 14 }}>📜</span> {tt.aiHistory}

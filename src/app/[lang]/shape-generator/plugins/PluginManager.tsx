@@ -92,7 +92,7 @@ export default function PluginManager({ visible, onClose, isKo }: PluginManagerP
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100,
+        position: 'fixed', inset: 0, background: 'var(--nx-glass-input)', zIndex: 1100,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
       onClick={onClose}

@@ -39,7 +39,7 @@ export default function InstanceArray({ geometry, material, matrices, visible }:
         zIndexRange={[10, 20]}
       >
         <div style={{
-          background: 'rgba(13,17,23,0.85)',
+          background: 'var(--nx-glass-strong)',
           border: '1px solid var(--nx-border)',
           borderRadius: '6px',
           padding: '3px 10px',

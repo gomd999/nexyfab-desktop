@@ -439,6 +439,10 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
   --nx-hover: #232a35;
   --nx-border: #262d38;
   --nx-border-strong: #323a47;
+  --nx-glass: rgba(13, 17, 23, 0.65);
+  --nx-glass-strong: rgba(13, 17, 23, 0.85);
+  --nx-glass-soft: rgba(255, 255, 255, 0.05);
+  --nx-glass-input: rgba(0, 0, 0, 0.2);
   --nx-text: #d8dee5;
   --nx-text-2: #8a93a3;
   --nx-text-3: #5b6373;
@@ -469,6 +473,10 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
   --nx-hover: #e3e8ee;
   --nx-border: #d8dde3;
   --nx-border-strong: #b9c0c9;
+  --nx-glass: rgba(255, 255, 255, 0.75);
+  --nx-glass-strong: rgba(255, 255, 255, 0.92);
+  --nx-glass-soft: rgba(0, 0, 0, 0.04);
+  --nx-glass-input: rgba(255, 255, 255, 0.6);
   --nx-text: #1a1f26;
   --nx-text-2: #4c5663;
   --nx-text-3: #7d8693;

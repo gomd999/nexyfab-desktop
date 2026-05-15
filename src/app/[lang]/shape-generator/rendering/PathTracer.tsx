@@ -81,7 +81,7 @@ export function PathTracerHUD({ samples, max, isKo }: { samples: number; max: nu
   return (
     <div style={{
       position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
-      background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-border)',
+      background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-border)',
       borderRadius: 8, padding: '5px 14px', color: 'var(--nx-text)', fontSize: 11,
       fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 8,
       backdropFilter: 'blur(4px)', zIndex: 300, pointerEvents: 'none', whiteSpace: 'nowrap',

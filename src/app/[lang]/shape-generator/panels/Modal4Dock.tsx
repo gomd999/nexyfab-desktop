@@ -73,7 +73,7 @@ export default function Modal4Dock({
           onClick={() => setShowFeatureGraph(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 8000,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'var(--nx-glass-input)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -101,7 +101,7 @@ export default function Modal4Dock({
           onClick={() => setShowNestingTool(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 8000,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'var(--nx-glass-input)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >

@@ -454,7 +454,7 @@ export default function ConfigTablePanel({ params, onApply, onClose, lang }: Con
       {/* Backdrop */}
       <div
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 8999 }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--nx-glass-input)', zIndex: 8999 }}
       />
 
       {/* Panel */}

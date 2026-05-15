@@ -90,7 +90,7 @@ interface COTSPanelProps {
 
 const C = {
   bg: 'var(--nx-panel)',
-  panel: '#1c2128',
+  panel: 'var(--nx-panel-2)',
   card: 'var(--nx-panel-2)',
   cardHover: 'var(--nx-border)',
   border: 'var(--nx-border)',

@@ -198,7 +198,7 @@ function SingleViewport({
           position={[0, bottomY - 2, 0]}
           cellSize={gridCellSize}
           cellThickness={0.4}
-          cellColor="#1c2128"
+          cellColor="var(--nx-panel-2)"
           sectionSize={50}
           sectionThickness={0.8}
           sectionColor="var(--nx-border)"

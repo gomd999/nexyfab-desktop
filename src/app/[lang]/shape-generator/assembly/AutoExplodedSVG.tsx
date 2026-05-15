@@ -21,9 +21,9 @@ interface Props {
 
 const COLOR = {
   bg: '#ffffff',
-  ink: '#111827',
+  ink: 'var(--nx-bg)',
   accent: '#1f6feb',
-  leader: '#374151',
+  leader: 'var(--nx-border-strong)',
   partDot: 'var(--nx-text-2)',
 };
 

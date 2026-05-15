@@ -101,7 +101,7 @@ export default function BottomSheet({ visible, onClose, title, height: initialHe
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 900,
-          background: 'rgba(0,0,0,0.4)',
+          background: 'var(--nx-glass-input)',
           transition: 'opacity 0.2s',
         }}
       />

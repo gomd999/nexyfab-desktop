@@ -203,7 +203,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
   const subtitle = isPreviewMode ? (
     <span style={{ color: 'var(--nx-warn)' }}>{tt.previewActive}</span>
   ) : isSketchMode ? (
-    <span style={{ color: '#a78bfa' }}>{tt.sketchMode}</span>
+    <span style={{ color: 'var(--nx-accent-2)' }}>{tt.sketchMode}</span>
   ) : effectiveResult ? (
     <span>{(t as Record<string, string>)[`shapeName_${selectedId ?? ''}`] || selectedId} · {featuresEnabledCount} {tt.features}</span>
   ) : (
@@ -216,11 +216,11 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
   const chrome = {
     panel: 'rgba(13, 17, 23, 0.75)', // Glassmorphism base
     headerBg: 'transparent',
-    border: 'rgba(255, 255, 255, 0.1)',
+    border: 'var(--nx-border)',
     text: '#ffffff',
     textMuted: 'var(--nx-text-2)',
-    tabBar: 'rgba(0, 0, 0, 0.2)',
-    tabActiveBg: 'rgba(255, 255, 255, 0.05)',
+    tabBar: 'var(--nx-glass-input)',
+    tabActiveBg: 'var(--nx-glass-soft)',
     tabInactive: 'var(--nx-text-2)',
     accent: 'var(--nx-accent-2)',
     previewBg: 'rgba(88, 166, 255, 0.05)',
@@ -363,17 +363,17 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
           type="button"
           style={{
             border: `1px solid rgba(255,255,255,0.1)`,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'var(--nx-glass-soft)',
             cursor: 'pointer', fontSize: 14, color: 'var(--nx-text-2)',
             width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s ease',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.background = 'var(--nx-border)';
             e.currentTarget.style.color = '#ffffff';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            e.currentTarget.style.background = 'var(--nx-glass-soft)';
             e.currentTarget.style.color = 'var(--nx-text-2)';
           }}
         >✕</button>
@@ -398,7 +398,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: `1px solid rgba(255,255,255,0.1)`, background: 'rgba(0,0,0,0.2)', padding: '0 8px' }}>
+      <div style={{ display: 'flex', borderBottom: `1px solid rgba(255,255,255,0.1)`, background: 'var(--nx-glass-input)', padding: '0 8px' }}>
         {(['chat', 'advisor', 'suggestions'] as AIAssistantTab[]).map(tab => {
           const isActive = aiAssistantTab === tab;
           return (
