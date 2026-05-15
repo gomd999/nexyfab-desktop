@@ -34,6 +34,20 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState('view.iso');
 
+  const langSeg = lang === 'ko' ? 'kr' : lang;
+  const project = projectId ? `?project=${projectId}` : '';
+
+  // Cross-mode tab navigation — clicking File/Solid/Assembly/Inspect/Render/
+  // View from inside Drawing jumps to the relevant route (or back to modeler).
+  const handleTabChange = (id: string) => {
+    setActiveTab(id);
+    if (id === 'render') router.push(`/${langSeg}/shape-generator/render${project}`);
+    else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
+      router.push(`/${langSeg}/shape-generator${project}`);
+    else if (id === 'assembly')
+      router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
+  };
+
   const sheets: SheetTreeNode[] = [
     { id: 'sheet1', lbl: 'Sheet 1 · A3', kind: 'sheet' },
     { id: 'view.top', lbl: 'Top', kind: 'view', meta: '1:2' },
@@ -67,7 +81,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         }}
         ribbon={{
           activeTab,
-          onTabChange: setActiveTab,
+          onTabChange: handleTabChange,
           onTool: id => setActiveTool(id),
           isActive: id => activeTool === id,
         }}

@@ -60,6 +60,20 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
   const gate = useFreemiumGate();
   const [activeTab, setActiveTab] = useState('render');
   const [activeTool, setActiveTool] = useState<string | null>(null);
+
+  const langSeg = lang === 'ko' ? 'kr' : lang;
+  const project = projectId ? `?project=${projectId}` : '';
+
+  // Cross-mode tab navigation — clicking File/Solid/Assembly/Drawing/Inspect/
+  // View from inside Render jumps to the relevant route (or back to modeler).
+  const handleTabChange = (id: string) => {
+    setActiveTab(id);
+    if (id === 'drawing') router.push(`/${langSeg}/shape-generator/drawing${project}`);
+    else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
+      router.push(`/${langSeg}/shape-generator${project}`);
+    else if (id === 'assembly')
+      router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
+  };
   const [matFilter, setMatFilter] = useState<MaterialSwatch['group'] | 'all'>('all');
   const [selectedMaterial, setSelectedMaterial] = useState('aluminum');
   const [hdri, setHdri] = useState('studio');
@@ -93,7 +107,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         }}
         ribbon={{
           activeTab,
-          onTabChange: setActiveTab,
+          onTabChange: handleTabChange,
           onTool: id => setActiveTool(id),
           isActive: id => activeTool === id,
         }}

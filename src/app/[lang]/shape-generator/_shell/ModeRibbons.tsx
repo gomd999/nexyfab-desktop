@@ -341,22 +341,35 @@ export const MODE_DEFAULT_TABS: Record<ShellMode, RibbonTabDef[]> = {
     { id: 'view', label: 'View' },
   ],
   sketch: [{ id: 'sketch', label: 'Sketch', mode: true }],
+  // Assembly / Drawing / Render share the same top tabs as Modeling so users
+  // can cross-navigate from any route — click "Solid" from inside Drawing to
+  // pop back to the modeler, click "Render" from inside Drawing to jump to
+  // the render route, etc. The active tab is highlighted by the parent.
   assembly: [
     { id: 'file', label: 'File' },
-    { id: 'assembly', label: 'Assembly', mode: true },
+    { id: 'solid', label: 'Solid' },
+    { id: 'assembly', label: 'Assembly' },
+    { id: 'drawing', label: 'Drawing' },
     { id: 'inspect', label: 'Inspect' },
+    { id: 'render', label: 'Render' },
     { id: 'view', label: 'View' },
   ],
   drawing: [
     { id: 'file', label: 'File' },
-    { id: 'drawing', label: 'Drawing', mode: true },
-    { id: 'annotate', label: 'Annotate' },
-    { id: 'output', label: 'Output' },
+    { id: 'solid', label: 'Solid' },
+    { id: 'assembly', label: 'Assembly' },
+    { id: 'drawing', label: 'Drawing' },
+    { id: 'inspect', label: 'Inspect' },
+    { id: 'render', label: 'Render' },
+    { id: 'view', label: 'View' },
   ],
   render: [
     { id: 'file', label: 'File' },
-    { id: 'render', label: 'Render', mode: true },
-    { id: 'materials', label: 'Materials' },
-    { id: 'camera', label: 'Camera' },
+    { id: 'solid', label: 'Solid' },
+    { id: 'assembly', label: 'Assembly' },
+    { id: 'drawing', label: 'Drawing' },
+    { id: 'inspect', label: 'Inspect' },
+    { id: 'render', label: 'Render' },
+    { id: 'view', label: 'View' },
   ],
 };
