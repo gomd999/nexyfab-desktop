@@ -37,6 +37,8 @@ import { AssemblyLeftPane } from './sidebars/AssemblyLeftPane';
 import { AssemblyRightPane } from './sidebars/AssemblyRightPane';
 import { BottomDrawer } from './BottomDrawer';
 import { MotionStudyPanel } from './MotionStudyPanel';
+import { OnboardingTutorial } from './OnboardingTutorial';
+import { useAnalysisStore } from '../store/analysisStore';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -449,6 +451,7 @@ export function ModelerShell() {
             onClose={() => setFileMenuOpen(false)}
             items={fileMenuItems}
           />
+          <OnboardingTutorial isKo={isKo} />
         </Suspense>
       }
       bottomDrawer={
@@ -495,21 +498,21 @@ export function ModelerShell() {
 // panels fully functional with their original prop wiring while exposing
 // them through the new Inspector → ANALYZE → drawer flow.
 function DrawerContent({ tab, isKo }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; isKo: boolean }) {
-  // FEA + Cost get richer custom drawers; DFM + Variants share a plain
-  // launcher card.
+  // FEA + Cost + DFM render rich inline summaries reading analysisStore;
+  // Variants stays as a simple launcher card.
+  if (tab === 'dfm') return <DfmDrawerContent isKo={isKo} />;
   if (tab === 'fea') return <FeaDrawerContent isKo={isKo} />;
   if (tab === 'cost') return <CostDrawerContent isKo={isKo} />;
-  const plainTab = tab as 'dfm' | 'variants';
-  const titles: Record<'dfm' | 'variants', { en: string; ko: string }> = {
-    dfm: { en: 'Design for Manufacturing', ko: '제조성 분석 (DFM)' },
+  // Only `variants` reaches this path; dfm/fea/cost intercepted above.
+  const plainTab = 'variants' as const;
+  void tab;
+  const titles: Record<'variants', { en: string; ko: string }> = {
     variants: { en: 'Design Variants', ko: '설계 변형' },
   };
-  const descs: Record<'dfm' | 'variants', { en: string; ko: string }> = {
-    dfm: { en: 'Undercut, draft, thin-wall, sharp-corner, and tolerance checks for the active manufacturing process.', ko: '활성 제조공정 기준 언더컷 / 드래프트 / 박벽 / 모서리 / 공차 검사.' },
+  const descs: Record<'variants', { en: string; ko: string }> = {
     variants: { en: 'Explore size, material, and feature alternatives side-by-side.', ko: '크기 / 재료 / 피처 대안을 나란히 탐색.' },
   };
-  const event: Record<'dfm' | 'variants', string> = {
-    dfm: 'nexyfab:open-dfm',
+  const event: Record<'variants', string> = {
     variants: 'nexyfab:open-variants',
   };
   const t = titles[plainTab];
@@ -642,6 +645,64 @@ function CostDrawerContent({ isKo }: { isKo: boolean }) {
         }}
       >
         {isKo ? `${qty}개 단가 계산 →` : `Estimate × ${qty} →`}
+      </button>
+    </div>
+  );
+}
+
+// DFM drawer reads analysisStore.dfmResults for inline summary.
+function DfmDrawerContent({ isKo }: { isKo: boolean }) {
+  const dfmResults = useAnalysisStore(s => s.dfmResults);
+  const launch = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:open-dfm'));
+    }
+  };
+  // Flatten per-process results into the combined issue list.
+  const issues = (dfmResults ?? []).flatMap(r => r.issues);
+  const errors = issues.filter(r => r.severity === 'error').length;
+  const warnings = issues.filter(r => r.severity === 'warning').length;
+  const infos = issues.filter(r => r.severity === 'info').length;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: 'var(--nx-text)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{isKo ? '제조성 분석 (DFM)' : 'Design for Manufacturing'}</div>
+        <div style={{ display: 'flex', gap: 6, fontSize: 10 }}>
+          <span style={{ color: 'var(--nx-error, #f85149)' }}>● {errors}</span>
+          <span style={{ color: 'var(--nx-warn, #ffa800)' }}>● {warnings}</span>
+          <span style={{ color: 'var(--nx-text-3)' }}>● {infos}</span>
+        </div>
+      </div>
+      {issues.length === 0 ? (
+        <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
+          {isKo ? '아직 분석을 실행하지 않았습니다.' : 'No analysis run yet.'}
+        </div>
+      ) : (
+        <div style={{ maxHeight: 140, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {issues.slice(0, 8).map((r, i) => (
+            <div key={i} style={{
+              padding: '4px 8px', borderRadius: 3,
+              background: 'var(--nx-panel-2)', fontSize: 11,
+              borderLeft: `2px solid ${
+                r.severity === 'error' ? 'var(--nx-error, #f85149)'
+                : r.severity === 'warning' ? 'var(--nx-warn, #ffa800)'
+                : 'var(--nx-accent)'}`,
+            }}>
+              <span style={{ fontWeight: 600 }}>{r.type}</span>
+              <span style={{ color: 'var(--nx-text-2)', marginLeft: 6 }}>{r.description}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button
+        onClick={launch}
+        style={{
+          height: 32, padding: '0 16px', border: 0, borderRadius: 4,
+          background: 'var(--nx-accent)', color: '#fff', fontSize: 12,
+          fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
+        }}
+      >
+        {isKo ? '전체 패널 열기 →' : 'Open full panel →'}
       </button>
     </div>
   );

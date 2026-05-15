@@ -26,11 +26,13 @@ export interface TreeProps {
   nodes: TreeNode[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Optional hover callback — fires with null when the cursor leaves. */
+  onHover?: (id: string | null) => void;
   /** Optional indent step in pixels. Default 14. */
   indentPx?: number;
 }
 
-export function Tree({ nodes, selectedId, onSelect, indentPx = 14 }: TreeProps) {
+export function Tree({ nodes, selectedId, onSelect, onHover, indentPx = 14 }: TreeProps) {
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>(() => {
     const out: Record<string, boolean> = {};
     const visit = (n: TreeNode) => {
@@ -70,9 +72,11 @@ export function Tree({ nodes, selectedId, onSelect, indentPx = 14 }: TreeProps) 
           }}
           onMouseEnter={e => {
             if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'var(--nx-hover)';
+            onHover?.(n.id);
           }}
           onMouseLeave={e => {
             if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+            onHover?.(null);
           }}
         >
           {isSelected && (

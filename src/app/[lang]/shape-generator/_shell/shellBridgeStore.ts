@@ -102,6 +102,9 @@ export interface ShellBridgeState {
   // render. Heavy domain types stay in sceneStore; this is presentation only.
   featureItems: ShellFeatureItem[];
   selectedFeatureId: string | null;
+  /** Tree row currently being hovered — Inner reads this to apply viewport
+   *  outline / glow so users get instant feedback before clicking. */
+  hoveredFeatureId: string | null;
   // Assembly browser snapshot — same pattern as featureItems but for
   // assembly mode (parts list with mate counts + mass).
   assemblyItems: ShellAssemblyItem[];
@@ -122,6 +125,7 @@ export interface ShellBridgeState {
   setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof' | 'sketchEntities' | 'sketchConstraints' | 'sketchDimensions' | 'sketchSolveMs'>>) => void;
   setSelection: (s: Partial<Pick<ShellBridgeState, 'selectionKind' | 'selectionLabel' | 'selectionCount'>>) => void;
   setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
+  setHoveredFeatureId: (id: string | null) => void;
   setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
   setSketchSnapshot: (s: {
     entities: ShellSketchEntity[];
@@ -156,6 +160,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   selectionCount: 0,
   featureItems: [],
   selectedFeatureId: null,
+  hoveredFeatureId: null,
   assemblyItems: [],
   selectedAssemblyId: null,
   sketchEntityList: [],
@@ -171,6 +176,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setSketchSolver: (s) => set(s),
   setSelection: (s) => set(s),
   setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
+  setHoveredFeatureId: (id) => set({ hoveredFeatureId: id }),
   setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
   setSketchSnapshot: (s) => set({
     sketchEntityList: s.entities,

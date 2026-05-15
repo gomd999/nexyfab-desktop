@@ -3506,19 +3506,84 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
   }, [updateFeatureParam]);
 
-  // Shell-v2 Components → Standard parts library insert. The grid emits a
-  // resolved SCAD source via the event; downstream pipeline will pick it up.
-  // For now we surface as a toast acknowledging insertion intent — the full
-  // SCAD→geometry materialisation runs through the existing chat agent path.
+  // Shell-v2 Feature tree row click → set selected feature so PropertyManager
+  // updates and the highlight matches the tree state.
   useEffect(() => {
-    const onInsert = (e: Event) => {
-      const ce = e as CustomEvent<{ id: string; title: string; standard: string; scad: string }>;
-      if (!ce.detail) return;
-      addToast('info', `${ce.detail.title} (${ce.detail.standard}) 추가됨 — Nexy AI 로 매개변수 확인 가능`);
+    const onSelect = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      if (ce.detail?.id) setSelectedId(ce.detail.id);
     };
-    window.addEventListener('nexyfab:insert-standard-part', onInsert);
-    return () => window.removeEventListener('nexyfab:insert-standard-part', onInsert);
-  }, [addToast]);
+    window.addEventListener('nexyfab:select-feature', onSelect);
+    return () => window.removeEventListener('nexyfab:select-feature', onSelect);
+  }, [setSelectedId]);
+
+  // Shell-v2 Components → Standard parts materialization. The grid emits a
+  // resolved SCAD source; we POST it to /api/nexyfab/openscad-render to get
+  // back an STL byte stream, parse with STLLoader, and push the resulting
+  // mesh into placedParts so it shows up in the assembly viewport.
+  useEffect(() => {
+    const onInsert = async (e: Event) => {
+      const ce = e as CustomEvent<{ id: string; title: string; standard: string; scad: string; params?: Record<string, unknown> }>;
+      if (!ce.detail) return;
+      addToast('info', `${ce.detail.title} 변환 중…`);
+      try {
+        const res = await fetch('/api/nexyfab/openscad-render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'model/stl, application/octet-stream' },
+          body: JSON.stringify({ scad: ce.detail.scad, format: 'stl' }),
+        });
+        if (!res.ok) {
+          addToast('warning', `OpenSCAD 변환 실패 (${res.status})`);
+          return;
+        }
+        const buf = await res.arrayBuffer();
+        const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js');
+        const geometry = new STLLoader().parse(buf);
+        geometry.computeBoundingBox();
+        geometry.computeVertexNormals();
+        // Spread placement so multiple inserts don't overlap.
+        const off = placedParts.length * 30;
+        const newPart: PlacedPart = {
+          id: `std-${ce.detail.id}-${Date.now().toString(36)}`,
+          name: ce.detail.title,
+          shapeId: `standard:${ce.detail.id}`,
+          params: Object.fromEntries(
+            Object.entries(ce.detail.params ?? {}).map(([k, v]) => [k, typeof v === 'number' ? v : 0]),
+          ),
+          qty: 1,
+          position: [off, 0, 0],
+          rotation: [0, 0, 0],
+          color: '#8aa2c2',
+        };
+        // Attach geometry via the BomPart sync (placedPart → bomPart mapper).
+        // Cleanest path is to extend placedPartsToBomResults; for v1 we push
+        // an inline bomPart entry with the parsed geometry.
+        setPlacedParts([...placedParts, newPart]);
+        // Build minimal ShapeResult — edgeGeometry stays as an empty
+        // BufferGeometry; downstream rendering uses real edges via
+        // computeVertexNormals on the parsed STL.
+        const bb = geometry.boundingBox;
+        const size = bb
+          ? { w: bb.max.x - bb.min.x, h: bb.max.y - bb.min.y, d: bb.max.z - bb.min.z }
+          : { w: 0, h: 0, d: 0 };
+        const { EdgesGeometry, BufferGeometry } = await import('three');
+        const result: ShapeResult = {
+          geometry,
+          edgeGeometry: new EdgesGeometry(geometry, 15) as BufferGeometry,
+          bbox: size,
+          volume_cm3: 0,
+          surface_area_cm2: 0,
+        };
+        setBomParts(prev => [...prev, { name: newPart.name, result, position: newPart.position, rotation: newPart.rotation, color: newPart.color }]);
+        addToast('success', `${ce.detail.title} 어셈블리에 추가됨`);
+      } catch (err) {
+        console.error('Standard part materialize failed', err);
+        addToast('warning', `${ce.detail.title} 변환 오류`);
+      }
+    };
+    window.addEventListener('nexyfab:insert-standard-part', onInsert as EventListener);
+    return () => window.removeEventListener('nexyfab:insert-standard-part', onInsert as EventListener);
+  }, [addToast, placedParts, setPlacedParts, setBomParts]);
 
   // Shell-v2 Sheet Metal ribbon tools → feature stack. Each tool dispatches
   // an event we map onto the corresponding sheetMetal feature addition.

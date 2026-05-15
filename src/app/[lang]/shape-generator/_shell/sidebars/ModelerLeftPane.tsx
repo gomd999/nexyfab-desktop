@@ -50,6 +50,7 @@ function featureToTreeNode(item: ShellFeatureItem): TreeNode {
 export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps) {
   const features = useShellBridge(s => s.featureItems);
   const selectedFeatureId = useShellBridge(s => s.selectedFeatureId);
+  const setHoveredFeatureId = useShellBridge(s => s.setHoveredFeatureId);
   const [activeTab, setActiveTab] = useState<'features' | 'bodies' | 'components'>('features');
   const [filter, setFilter] = useState('');
 
@@ -99,7 +100,13 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
           <Tree
             nodes={treeNodes}
             selectedId={selectedFeatureId}
-            onSelect={id => onSelectFeature?.(id)}
+            onSelect={id => {
+              onSelectFeature?.(id);
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('nexyfab:select-feature', { detail: { id } }));
+              }
+            }}
+            onHover={setHoveredFeatureId}
           />
         )
       )}

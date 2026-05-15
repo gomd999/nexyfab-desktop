@@ -16,6 +16,7 @@ import { useFreemiumGate } from '../hooks/useFreemiumGate';
 import { readGeometry } from './geometryBridge';
 import { DrawingLeftPane } from './sidebars/DrawingLeftPane';
 import { DrawingRightPane } from './sidebars/DrawingRightPane';
+import { generateAutoDimensions } from './autoDimension';
 
 interface DrawingFrameProps {
   lang: string;
@@ -476,17 +477,62 @@ function OrthoSvgReal({
   view,
   edges,
   bbox,
+  autoDim = true,
 }: {
   view: 'top' | 'front' | 'right' | 'iso';
   edges: THREE.EdgesGeometry;
   bbox: THREE.Box3;
+  autoDim?: boolean;
 }) {
   const W = 100, H = 60;
   const d = useMemo(() => projectEdgesToSvg(edges, bbox, view, W, H), [edges, bbox, view]);
+  const dims = useMemo(
+    () => autoDim ? generateAutoDimensions(edges, bbox, view, W, H) : [],
+    [edges, bbox, view, autoDim],
+  );
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="90%" height="90%" preserveAspectRatio="xMidYMid meet">
       <path d={d} fill="none" stroke="#222" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" />
+      {dims.map((dim, i) => (
+        <DimensionOverlay key={i} dim={dim} />
+      ))}
     </svg>
+  );
+}
+
+function DimensionOverlay({ dim }: { dim: ReturnType<typeof generateAutoDimensions>[number] }) {
+  const stroke = '#2d6cdf';
+  if (dim.kind === 'diameter' || dim.kind === 'radius') {
+    return (
+      <g>
+        <circle cx={dim.x} cy={dim.y} r={dim.length / 2} fill="none" stroke={stroke} strokeWidth="0.25" strokeDasharray="0.6 0.4" />
+        <text x={dim.x} y={dim.y - dim.length / 2 - 1} fontSize="2.5" textAnchor="middle" fill={stroke}>
+          {dim.label ?? `${dim.value.toFixed(2)}`}
+        </text>
+      </g>
+    );
+  }
+  if (dim.kind === 'horizontal') {
+    return (
+      <g>
+        <line x1={dim.x - dim.length / 2} y1={dim.y} x2={dim.x + dim.length / 2} y2={dim.y} stroke={stroke} strokeWidth="0.25" />
+        <line x1={dim.x - dim.length / 2} y1={dim.y - 1.5} x2={dim.x - dim.length / 2} y2={dim.y + 1.5} stroke={stroke} strokeWidth="0.25" />
+        <line x1={dim.x + dim.length / 2} y1={dim.y - 1.5} x2={dim.x + dim.length / 2} y2={dim.y + 1.5} stroke={stroke} strokeWidth="0.25" />
+        <text x={dim.x} y={dim.y - 1.2} fontSize="2.5" textAnchor="middle" fill={stroke}>
+          {dim.value.toFixed(2)}
+        </text>
+      </g>
+    );
+  }
+  return (
+    <g>
+      <line x1={dim.x} y1={dim.y - dim.length / 2} x2={dim.x} y2={dim.y + dim.length / 2} stroke={stroke} strokeWidth="0.25" />
+      <line x1={dim.x - 1.5} y1={dim.y - dim.length / 2} x2={dim.x + 1.5} y2={dim.y - dim.length / 2} stroke={stroke} strokeWidth="0.25" />
+      <line x1={dim.x - 1.5} y1={dim.y + dim.length / 2} x2={dim.x + 1.5} y2={dim.y + dim.length / 2} stroke={stroke} strokeWidth="0.25" />
+      <text x={dim.x - 1.5} y={dim.y} fontSize="2.5" textAnchor="end" fill={stroke}>
+        {dim.value.toFixed(2)}
+      </text>
+    </g>
   );
 }
 

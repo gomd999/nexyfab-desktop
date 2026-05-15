@@ -64,28 +64,84 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
     const assistantId = `a-${Date.now()}`;
     setMessages(prev => [...prev, userMsg, { id: assistantId, role: 'assistant', content: '', loading: true }]);
     try {
-      // Hit the existing scad-agent endpoint. If it isn't reachable in the
-      // current environment we degrade to an offline echo so the UI stays
-      // responsive — production hits the real model.
+      // Streaming-first: ask the endpoint for an SSE/NDJSON stream. Falls
+      // back to full-JSON mode if the server doesn't advertise text/event-
+      // stream. Token-level rendering means the panel feels native-AI even
+      // when the underlying model is slow.
       const res = await fetch('/api/nexyfab/scad-agent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode: 'chat' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream, application/json',
+        },
+        body: JSON.stringify({ prompt, mode: 'chat', stream: true }),
       });
-      const data = await res.json().catch(() => null) as {
-        text?: string;
-        diagnostics?: Message['diagnostics'];
-        intent?: Record<string, unknown>;
-        pattern?: { id: string; title: string };
-      } | null;
-      setMessages(prev => prev.map(m => m.id === assistantId ? {
-        ...m,
-        loading: false,
-        content: data?.text ?? (isKo ? '응답을 받을 수 없습니다 — 오프라인 모드' : 'No response — offline mode'),
-        diagnostics: data?.diagnostics,
-        intent: data?.intent,
-        pattern: data?.pattern,
-      } : m));
+
+      const contentType = res.headers.get('content-type') ?? '';
+      const isStream = contentType.includes('event-stream') || contentType.includes('ndjson') || contentType.includes('text/plain');
+
+      if (isStream && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let acc = '';
+        let final: { diagnostics?: Message['diagnostics']; intent?: Record<string, unknown>; pattern?: { id: string; title: string } } = {};
+        // Mark first chunk arrival → stop the typing-indicator.
+        let firstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse event-stream frames (event:/data:) OR newline-delimited JSON.
+          let frame: string | undefined;
+          while ((frame = consumeFrame(buffer)) !== undefined) {
+            buffer = buffer.slice(frame.length);
+            const payload = parseFrame(frame);
+            if (!payload) continue;
+            if (typeof payload.delta === 'string') {
+              acc += payload.delta;
+              if (firstChunk) firstChunk = false;
+              setMessages(prev => prev.map(m => m.id === assistantId
+                ? { ...m, loading: false, content: acc }
+                : m));
+            }
+            if (payload.diagnostics) final.diagnostics = payload.diagnostics as Message['diagnostics'];
+            if (payload.intent) final.intent = payload.intent as Record<string, unknown>;
+            if (payload.pattern) final.pattern = payload.pattern as { id: string; title: string };
+          }
+        }
+        // Flush any partially-buffered frame.
+        if (buffer.trim()) {
+          const payload = parseFrame(buffer);
+          if (payload?.delta) acc += payload.delta;
+        }
+        setMessages(prev => prev.map(m => m.id === assistantId ? {
+          ...m,
+          loading: false,
+          content: acc || (isKo ? '응답 없음' : 'Empty response'),
+          diagnostics: final.diagnostics,
+          intent: final.intent,
+          pattern: final.pattern,
+        } : m));
+      } else {
+        // Non-stream fallback — full JSON.
+        const data = await res.json().catch(() => null) as {
+          text?: string;
+          diagnostics?: Message['diagnostics'];
+          intent?: Record<string, unknown>;
+          pattern?: { id: string; title: string };
+        } | null;
+        setMessages(prev => prev.map(m => m.id === assistantId ? {
+          ...m,
+          loading: false,
+          content: data?.text ?? (isKo ? '응답을 받을 수 없습니다 — 오프라인 모드' : 'No response — offline mode'),
+          diagnostics: data?.diagnostics,
+          intent: data?.intent,
+          pattern: data?.pattern,
+        } : m));
+      }
     } catch {
       setMessages(prev => prev.map(m => m.id === assistantId ? {
         ...m,
@@ -98,6 +154,36 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
       setBusy(false);
     }
   };
+
+  // Parse one frame from the stream buffer — supports SSE "data: {...}\n\n",
+  // raw NDJSON "{...}\n", and plain text deltas. Returns the consumed prefix.
+  function consumeFrame(buf: string): string | undefined {
+    // SSE: terminated by blank line.
+    const sseEnd = buf.indexOf('\n\n');
+    if (sseEnd !== -1) return buf.slice(0, sseEnd + 2);
+    // NDJSON / plain: terminated by single newline.
+    const nlEnd = buf.indexOf('\n');
+    if (nlEnd !== -1) return buf.slice(0, nlEnd + 1);
+    return undefined;
+  }
+
+  function parseFrame(frame: string): { delta?: string; diagnostics?: unknown; intent?: unknown; pattern?: unknown } | null {
+    const trimmed = frame.trim();
+    if (!trimmed) return null;
+    // SSE "data: ..." prefix.
+    const dataLine = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+    if (dataLine === '[DONE]') return null;
+    if (dataLine.startsWith('{')) {
+      try {
+        const obj = JSON.parse(dataLine);
+        return obj;
+      } catch {
+        return { delta: dataLine };
+      }
+    }
+    // Plain text — treat as delta.
+    return { delta: dataLine + ' ' };
+  }
 
   const apply = (msg: Message) => {
     if (typeof window === 'undefined') return;
