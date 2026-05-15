@@ -193,6 +193,25 @@ function TexturedMeshMaterial({
   );
 }
 
+// Reads the resolved `--nx-bg` CSS variable from <html> so the Three.js scene
+// background follows the theme toggle. R3F's <color attach="background" args>
+// goes through THREE.Color which doesn't understand CSS var() strings.
+function SceneBg() {
+  const [hex, setHex] = useState<string>('#0c0f14');
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const read = () => {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--nx-bg').trim();
+      if (v) setHex(v);
+    };
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    return () => mo.disconnect();
+  }, []);
+  return <color attach="background" args={[hex]} />;
+}
+
 // Single shape mesh
 function ShapeMesh({ result, displayMode, color, position, rotation, partIndex = 0, material, override }: {
   result: ShapeResult; displayMode: DisplayMode; color: string;
@@ -2254,7 +2273,7 @@ export default function ShapePreview({
                   <GizmoViewport axisColors={['#ff3b30', '#34c759', '#007aff']} labelColor="white" hideNegativeAxes />
                 </GizmoHelper>
               )}
-              <color attach="background" args={['var(--nx-bg)']} />
+              <SceneBg />
               {renderMode === 'photorealistic' && renderSettings ? (
                 <Suspense fallback={null}>
                   <RenderMode
