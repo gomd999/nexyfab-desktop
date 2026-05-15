@@ -121,7 +121,7 @@ const btnPrimary: React.CSSProperties = {
   fontSize: 11, fontWeight: 700,
   borderRadius: 6,
   border: '1px solid #1f6feb',
-  background: '#1f6feb',
+  background: 'var(--nx-accent)',
   color: 'var(--nx-text)',
   cursor: 'pointer',
 };

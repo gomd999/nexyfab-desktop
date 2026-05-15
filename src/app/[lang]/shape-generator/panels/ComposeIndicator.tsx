@@ -33,7 +33,7 @@ export default function ComposeIndicator({
       <div
         style={{
           background: 'var(--nx-bg)', padding: '28px 40px', borderRadius: 12,
-          border: '1px solid #334155', color: '#f1f5f9',
+          border: '1px solid #334155', color: 'var(--nx-panel-2)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
         }}
       >
@@ -41,7 +41,7 @@ export default function ComposeIndicator({
         <div style={{ fontWeight: 600 }}>
           {refining ? labels.composeRefining : labels.composeSearching}
         </div>
-        <div style={{ fontSize: 12, color: '#94a3b8' }}>{labels.composeSubtitle}</div>
+        <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>{labels.composeSubtitle}</div>
       </div>
     </div>
   );

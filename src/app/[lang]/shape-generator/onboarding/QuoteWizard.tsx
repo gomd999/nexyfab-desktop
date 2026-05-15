@@ -530,7 +530,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
-            <div style={{ color: '#f0f6fc', fontWeight: 700, fontSize: 18 }}>
+            <div style={{ color: 'var(--nx-text)', fontWeight: 700, fontSize: 18 }}>
               {t.title}
             </div>
             <div style={{ color: 'var(--nx-text-2)', fontSize: 13, marginTop: 2 }}>
@@ -549,18 +549,18 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
             <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: n < 3 ? 1 : 'none' }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
-                background: step > n ? '#238636' : step === n ? '#1f6feb' : 'var(--nx-panel-2)',
-                border: `2px solid ${step > n ? '#238636' : step === n ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                background: step > n ? 'var(--nx-ok)' : step === n ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                border: `2px solid ${step > n ? 'var(--nx-ok)' : step === n ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: step >= n ? 'var(--nx-text)' : 'var(--nx-text-2)', fontSize: 12, fontWeight: 700,
                 flexShrink: 0, transition: 'all 0.2s',
               }}>
                 {step > n ? '✓' : n}
               </div>
-              <span style={{ color: step === n ? '#f0f6fc' : 'var(--nx-text-2)', fontSize: 12, fontWeight: step === n ? 600 : 400, whiteSpace: 'nowrap' }}>
+              <span style={{ color: step === n ? 'var(--nx-text)' : 'var(--nx-text-2)', fontSize: 12, fontWeight: step === n ? 600 : 400, whiteSpace: 'nowrap' }}>
                 {stepLabel(n)}
               </span>
-              {n < 3 && <div style={{ flex: 1, height: 1, background: step > n ? '#238636' : 'var(--nx-border)', transition: 'background 0.2s' }} />}
+              {n < 3 && <div style={{ flex: 1, height: 1, background: step > n ? 'var(--nx-ok)' : 'var(--nx-border)', transition: 'background 0.2s' }} />}
             </div>
           ))}
         </div>
@@ -587,7 +587,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                     }}
                   >
                     <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
-                    <div style={{ color: '#f0f6fc', fontWeight: 600, fontSize: 14 }}>{t[c.labelKey]}</div>
+                    <div style={{ color: 'var(--nx-text)', fontWeight: 600, fontSize: 14 }}>{t[c.labelKey]}</div>
                     <div style={{ color: 'var(--nx-text-2)', fontSize: 11, marginTop: 2 }}>{t[c.descKey]}</div>
                   </button>
                 ))}
@@ -597,7 +597,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                   onClick={() => category && setStep(2)}
                   disabled={!category}
                   style={{
-                    background: category ? '#1f6feb' : 'var(--nx-panel-2)',
+                    background: category ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
                     border: 'none', borderRadius: 8, padding: '10px 24px',
                     color: category ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 600, fontSize: 14,
                     cursor: category ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
@@ -654,7 +654,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                 <div key={label} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <label style={{ color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600 }}>{label}</label>
-                    <span style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 700 }}>{val} mm</span>
+                    <span style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 700 }}>{val} mm</span>
                   </div>
                   <input
                     type="range" min={1} max={500} value={val}
@@ -671,7 +671,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
               <div style={{ marginBottom: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <label style={{ color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600 }}>{t.labelQty}</label>
-                  <span style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 700 }}>{qty} {t.unitPcs}</span>
+                  <span style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 700 }}>{qty} {t.unitPcs}</span>
                 </div>
                 <input
                   type="range" min={1} max={10000} value={qty}
@@ -694,7 +694,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                 <button
                   onClick={() => setStep(3)}
                   style={{
-                    background: '#1f6feb', border: 'none', borderRadius: 8,
+                    background: 'var(--nx-accent)', border: 'none', borderRadius: 8,
                     padding: '10px 24px', color: 'var(--nx-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   }}
                 >{t.btnNext}</button>
@@ -729,7 +729,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                   ].map(({ label, value }) => (
                     <div key={label}>
                       <div style={{ color: 'var(--nx-text-3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-                      <div style={{ color: '#f0f6fc', fontSize: 14, fontWeight: 600, marginTop: 2 }}>{value}</div>
+                      <div style={{ color: 'var(--nx-text)', fontSize: 14, fontWeight: 600, marginTop: 2 }}>{value}</div>
                     </div>
                   ))}
                 </div>
@@ -765,7 +765,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                         border: `1px solid ${i === 0 ? '#2ea043' : 'var(--nx-border)'}`,
                       }}>
                         <div>
-                          <div style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 600 }}>
+                          <div style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 600 }}>
                             {est.process}
                             {i === 0 && <span style={{ marginLeft: 6, color: '#2ea043', fontSize: 10 }}>
                               {t.best}
@@ -776,7 +776,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ color: '#f0f6fc', fontWeight: 700, fontSize: 14 }}>
+                          <div style={{ color: 'var(--nx-text)', fontWeight: 700, fontSize: 14 }}>
                             ₩{est.unitCost.toLocaleString()}
                           </div>
                           <div style={{ color: 'var(--nx-text-2)', fontSize: 11 }}>

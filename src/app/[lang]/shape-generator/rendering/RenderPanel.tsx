@@ -240,7 +240,7 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
         {onHighResCapture && (
           <button onClick={onHighResCapture}
             style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--nx-ok)', background: 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-bg))', color: 'var(--nx-ok)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#238636'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-ok)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-bg))'; e.currentTarget.style.color = 'var(--nx-ok)'; }}
           >
             <span>🖼️</span>{t.hiRes}

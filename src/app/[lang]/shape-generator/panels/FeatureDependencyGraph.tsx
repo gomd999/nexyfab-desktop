@@ -235,7 +235,7 @@ export default function FeatureDependencyGraph({
             const isActive = gn.id === activeNodeId;
             const isHovered = gn.id === hoveredId;
             const hasError = !!gn.error;
-            const borderColor = hasError ? 'var(--nx-error)' : isActive ? 'var(--nx-accent)' : isHovered ? '#8b9cf4' : 'var(--nx-border)';
+            const borderColor = hasError ? 'var(--nx-error)' : isActive ? 'var(--nx-accent)' : isHovered ? 'var(--nx-accent-2)' : 'var(--nx-border)';
             const bg = isActive ? 'var(--nx-accent)18' : hasError ? 'var(--nx-error)18' : 'var(--nx-panel)';
 
             return (

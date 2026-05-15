@@ -114,11 +114,11 @@ export default function SimpleModeOfferBanner({
         {labels.presetPickDesc}
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button type="button" style={presetBtn('basic', labels.presetBasic, '#238636')}
+        <button type="button" style={presetBtn('basic', labels.presetBasic, 'var(--nx-ok)')}
           onClick={() => choose('basic')}>
           {labels.presetBasic}
         </button>
-        <button type="button" style={presetBtn('designer', labels.presetDesigner, '#1f6feb')}
+        <button type="button" style={presetBtn('designer', labels.presetDesigner, 'var(--nx-accent)')}
           onClick={() => choose('designer')}>
           {labels.presetDesigner}
         </button>

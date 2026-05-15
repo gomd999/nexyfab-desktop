@@ -449,12 +449,12 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
               onClick={handleRun}
               style={{
                 padding: '5px 18px', borderRadius: 6, border: '1px solid #238636',
-                background: '#238636', color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                background: 'var(--nx-ok)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 0 0 0 #238636',
                 transition: 'background 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#2ea043'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#238636'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-ok)'; }}
             >
               ▶ {t.run}
             </button>

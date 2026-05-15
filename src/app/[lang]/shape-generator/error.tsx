@@ -68,7 +68,7 @@ export default function ShapeGeneratorError({
       <button
         onClick={reset}
         style={{
-          padding: '10px 24px', background: '#8b9cf4', color: 'var(--nx-text)',
+          padding: '10px 24px', background: 'var(--nx-accent-2)', color: 'var(--nx-text)',
           border: 'none', borderRadius: '8px', cursor: 'pointer',
           fontWeight: 600, fontSize: '14px',
         }}

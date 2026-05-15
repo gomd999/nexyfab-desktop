@@ -91,7 +91,7 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
       value: metrics.qualityAvg,
       formatted: metrics.qualityAvg != null ? `${metrics.qualityAvg.toFixed(1)}/5` : t.none,
       pct: metrics.qualityAvg != null ? metrics.qualityAvg / 5 : null,
-      color: '#1f6feb',
+      color: 'var(--nx-accent)',
     },
     {
       key: 'response',

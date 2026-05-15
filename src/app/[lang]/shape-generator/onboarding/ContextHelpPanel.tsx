@@ -359,7 +359,7 @@ export default function ContextHelpPanel({
           padding: '16px 20px 0',
         }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f0f6fc', letterSpacing: -0.35, lineHeight: 1.25, wordBreak: 'keep-all' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--nx-text)', letterSpacing: -0.35, lineHeight: 1.25, wordBreak: 'keep-all' }}>
               {current.title}
             </div>
             <div style={{ fontSize: 13, color: 'var(--nx-text-2)', marginTop: 4, lineHeight: 1.45, wordBreak: 'keep-all' }}>

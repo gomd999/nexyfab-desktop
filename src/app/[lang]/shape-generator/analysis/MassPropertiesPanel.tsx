@@ -287,7 +287,7 @@ export default function MassPropertiesPanel({
             {t.title}
           </div>
         </div>
-        <button onClick={handleCopy} style={{ ...btnStyle, background: copied ? '#238636' : C.row, color: copied ? 'var(--nx-text)' : C.text }}>
+        <button onClick={handleCopy} style={{ ...btnStyle, background: copied ? 'var(--nx-ok)' : C.row, color: copied ? 'var(--nx-text)' : C.text }}>
           {copied ? t.copied : t.copy}
         </button>
         <button

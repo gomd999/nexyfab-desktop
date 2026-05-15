@@ -642,10 +642,10 @@ const openBtnStyle: React.CSSProperties = {
 
 function Card({ tone, body }: { tone: 'success' | 'error' | 'warning' | 'info' | 'default'; body: React.ReactNode }) {
   const palette = {
-    success: { bg: 'rgba(35,134,54,0.12)', border: '#238636', text: 'var(--nx-ok)' },
+    success: { bg: 'rgba(35,134,54,0.12)', border: 'var(--nx-ok)', text: 'var(--nx-ok)' },
     error:   { bg: 'rgba(248,81,73,0.12)', border: 'var(--nx-error)', text: '#ffa198' },
     warning: { bg: 'rgba(210,153,34,0.12)', border: 'var(--nx-warn)', text: '#f0b34c' },
-    info:    { bg: 'rgba(31,111,235,0.12)', border: '#1f6feb', text: 'var(--nx-accent-2)' },
+    info:    { bg: 'rgba(31,111,235,0.12)', border: 'var(--nx-accent)', text: 'var(--nx-accent-2)' },
     default: { bg: 'var(--nx-panel)', border: 'var(--nx-border)', text: 'var(--nx-text)' },
   }[tone];
   return (
@@ -669,10 +669,10 @@ function Card({ tone, body }: { tone: 'success' | 'error' | 'warning' | 'info' |
 
 function Pill({ text, tone }: { text: string; tone: 'success' | 'error' | 'warning' | 'info' }) {
   const palette = {
-    success: { bg: '#238636', fg: 'var(--nx-text)' },
+    success: { bg: 'var(--nx-ok)', fg: 'var(--nx-text)' },
     error:   { bg: 'var(--nx-error)', fg: 'var(--nx-text)' },
     warning: { bg: 'var(--nx-warn)', fg: '#000' },
-    info:    { bg: '#1f6feb', fg: 'var(--nx-text)' },
+    info:    { bg: 'var(--nx-accent)', fg: 'var(--nx-text)' },
   }[tone];
   return (
     <span style={{

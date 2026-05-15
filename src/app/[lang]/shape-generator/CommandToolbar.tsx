@@ -1526,11 +1526,11 @@ const C_DARK = {
 };
 
 const _C_LIGHT_RIBBON = {
-  bg: '#f6f8fa',
+  bg: 'var(--nx-panel-2)',
   tabBar: 'var(--nx-text)',
   border: '#d0d7de',
   accent: '#0969da',
-  text: '#24292f',
+  text: 'var(--nx-text)',
   textDim: '#57606a',
   hover: '#eaeef2',
   dropBg: 'var(--nx-text)',
@@ -2323,14 +2323,14 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'STEP' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
                 <span>{exportingFormat === 'STEP' ? tt.exportingSTEP : tt.exportSTEP}</span>
                 {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-border-strong)', color: 'var(--nx-text-2)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
-                {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+                {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'GLTF') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'GLTF'} onClick={() => { onExportGLTF?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'GLTF' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
                 <span>{exportingFormat === 'GLTF' ? tt.exportingGLTF : tt.exportGLTFLabel}</span>
-                {lockedFormats.includes('gltf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+                {lockedFormats.includes('gltf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: hasResult ? 1 : 0.4 }} disabled={!hasResult} onClick={() => { if (hasResult) { onExportGLB?.(); closeSub(); } }}
                 onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}
@@ -2437,7 +2437,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'DXF' ? <span className="__nf_exporting">⟳</span> : '📐'}</span>
                   <span>{exportingFormat === 'DXF' ? tt.exportingDXF : tt.exportDXF}</span>
-                  {lockedFormats.includes('dxf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+                  {lockedFormats.includes('dxf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
                 </button>
                 <button style={S.dropItem} onClick={() => { onExportFlatPatternDXF?.(); closeSub(); }}
                   onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
@@ -2493,7 +2493,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
               onClick={() => onFinishSketch?.()}
               style={{
                 padding: '6px 12px',
-                backgroundColor: '#238636',
+                backgroundColor: 'var(--nx-ok)',
                 color: 'var(--nx-text)',
                 border: '1px solid rgba(240,246,252,0.1)',
                 borderRadius: 6,

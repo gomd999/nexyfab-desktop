@@ -2076,7 +2076,7 @@ function SketchCanvas({
   // Axes
   const axes = (
     <>
-      <line x1={vbX} y1={0} x2={vbX + viewBoxW} y2={0} stroke="#ef4444" strokeWidth={1.5 / zoom} opacity={0.6} />
+      <line x1={vbX} y1={0} x2={vbX + viewBoxW} y2={0} stroke="var(--nx-error)" strokeWidth={1.5 / zoom} opacity={0.6} />
       <line x1={0} y1={vbY} x2={0} y2={vbY + viewBoxH} stroke="#22c55e" strokeWidth={1.5 / zoom} opacity={0.6} />
     </>
   );
@@ -2676,7 +2676,7 @@ function SketchCanvas({
           key={`${c.id}-link`}
           x1={positions[0].x} y1={-positions[0].y}
           x2={positions[1].x} y2={-positions[1].y}
-          stroke={c.satisfied ? '#238636' : '#da3633'}
+          stroke={c.satisfied ? 'var(--nx-ok)' : '#da3633'}
           strokeWidth={0.4 / zoom}
           strokeDasharray={`${2 / zoom},${2 / zoom}`}
           opacity={0.35}
@@ -2709,7 +2709,7 @@ function SketchCanvas({
             x={mx - 6 / zoom} y={-my - dy}
             width={12 / zoom} height={12 / zoom}
             rx={2 / zoom}
-            fill={c.satisfied ? '#238636' : '#da3633'}
+            fill={c.satisfied ? 'var(--nx-ok)' : '#da3633'}
             stroke={c.satisfied ? '#2ea043' : 'var(--nx-error)'}
             strokeWidth={0.3 / zoom}
             opacity={0.92}
@@ -3124,7 +3124,7 @@ function SketchCanvas({
         fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
         display: 'flex', gap: 6, alignItems: 'center',
       }}>
-        <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.x.toFixed(1)}</span>
+        <span style={{ color: 'var(--nx-error)' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.x.toFixed(1)}</span>
         <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.y.toFixed(1)}</span>
         <span style={{ color: 'var(--nx-border-strong)' }}>mm</span>
         {snapType !== 'none' && snapType !== 'grid' && (

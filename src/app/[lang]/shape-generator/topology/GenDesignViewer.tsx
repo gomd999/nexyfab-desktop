@@ -65,8 +65,8 @@ function FacePlane({ face, dimX, dimY, dimZ, isFixed, isLoad, selectionMode, onC
 
   let color = '#888888';
   let opacity = 0.3;
-  if (isFixed) { color = '#ef4444'; opacity = 0.6; }
-  if (isLoad) { color = '#3b82f6'; opacity = 0.6; }
+  if (isFixed) { color = 'var(--nx-error)'; opacity = 0.6; }
+  if (isLoad) { color = 'var(--nx-accent)'; opacity = 0.6; }
   if (hovered && selectionMode !== 'none') {
     opacity = Math.min(opacity + 0.25, 0.85);
   }
@@ -152,7 +152,7 @@ function PulsingBox({ dimX, dimY, dimZ }: { dimX: number; dimY: number; dimZ: nu
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[dimX, dimY, dimZ]} />
-      <meshStandardMaterial color="#8b5cf6" transparent opacity={0.15} depthWrite={false} />
+      <meshStandardMaterial color="var(--nx-accent-2)" transparent opacity={0.15} depthWrite={false} />
     </mesh>
   );
 }
@@ -464,7 +464,7 @@ export default function GenDesignViewer({
               <ResultMeshComponent geometry={resultMesh} materialColor="#b0b8c8" />
             ) : (
               <mesh geometry={resultMesh}>
-                <meshBasicMaterial color="#8b5cf6" wireframe />
+                <meshBasicMaterial color="var(--nx-accent-2)" wireframe />
               </mesh>
             )}
             <BoxWireframe dimX={dimX} dimY={dimY} dimZ={dimZ} opacity={0.15} />

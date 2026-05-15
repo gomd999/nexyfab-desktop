@@ -605,7 +605,7 @@ const SHAPE_ICONS: Record<string, string> = {
 const MODE_BADGES: Record<string, { icon: string; label: string; color: string; bg: string }> = {
   single: { icon: '🧊', label: 'Part', color: 'var(--nx-accent-2)', bg: 'var(--nx-panel-2)' },
   bom: { icon: '📋', label: 'BOM', color: '#39d2e0', bg: '#0d2a2e' },
-  sketch: { icon: '✏️', label: 'Sketch', color: '#bc8cff', bg: '#1e1533' },
+  sketch: { icon: '✏️', label: 'Sketch', color: 'var(--nx-accent-2)', bg: '#1e1533' },
   optimize: { icon: '🔬', label: 'Optimize', color: 'var(--nx-ok)', bg: '#0d2818' },
   modify: { icon: '🔧', label: 'Modify', color: 'var(--nx-warn)', bg: '#2a1f0a' },
 };
@@ -1095,7 +1095,7 @@ export default function ShapeChat({
                 <button onClick={handleCancelPreview} style={{
                   padding: '9px 20px', borderRadius: 10,
                   border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
-                  color: '#ef4444', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  color: 'var(--nx-error)', fontWeight: 700, fontSize: 13, cursor: 'pointer',
                 }}>
                   ✕ {t.aiPreviewCancel || tr.aiPreviewCancel}
                 </button>
@@ -1280,7 +1280,7 @@ export default function ShapeChat({
                   <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
                   <span style={{ color: 'var(--nx-warn)' }}>{tr.tryAddHole}</span>
                   <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
-                  <span style={{ color: '#bc8cff' }}>{tr.tryHalfSize}</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{tr.tryHalfSize}</span>
                   <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
                   <span style={{ color: 'var(--nx-ok)' }}>{tr.tryShell}</span>
                 </>
@@ -1288,7 +1288,7 @@ export default function ShapeChat({
                 <>
                   <span style={{ color: 'var(--nx-accent-2)' }}>{tr.tryBracket}</span>
                   <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
-                  <span style={{ color: '#bc8cff' }}>{tr.tryStarSketch}</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{tr.tryStarSketch}</span>
                   <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
                   <span style={{ color: '#39d2e0' }}>{tr.tryFanAssembly}</span>
                   <span style={{ color: 'var(--nx-border-strong)' }}>·</span>

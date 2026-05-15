@@ -196,7 +196,7 @@ function Row({ label, checked, onChange, disabled }: RowProps) {
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         fontSize: 12,
-        color: '#24292f',
+        color: 'var(--nx-text)',
         userSelect: 'none',
       }}
     >

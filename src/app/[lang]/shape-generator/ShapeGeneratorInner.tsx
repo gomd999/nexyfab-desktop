@@ -430,7 +430,7 @@ export function ShapeGeneratorInner() {
     onlineCount } = useAssemblyState();
   /** 메이트→배치 적용 후 Solver 탭 `solveAssembly` 상태를 `placedParts`와 다시 맞출 때 증가 (M3 B1). */
   const [assemblySolverResyncNonce, setAssemblySolverResyncNonce] = useState(0);
-  const BODY_COLORS = ['#8b9cf4', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b'];
+  const BODY_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b'];
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW MODE: gallery vs workspace
   // ══════════════════════════════════════════════════════════════════════════
@@ -4599,7 +4599,7 @@ export function ShapeGeneratorInner() {
         <line x1={padX} y1={padY} x2={padX} y2={h - padY} stroke="var(--nx-border)" strokeWidth={1} />
         <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="var(--nx-border)" strokeWidth={1} />
         <text x={w / 2} y={h - 1} textAnchor="middle" fill="var(--nx-border-strong)" fontSize={8}>Iteration</text>
-        <polyline points={points} fill="none" stroke="#8b5cf6" strokeWidth={1.5} />
+        <polyline points={points} fill="none" stroke="var(--nx-accent-2)" strokeWidth={1.5} />
       </svg>
     );
   }, [optResult]);
@@ -5094,7 +5094,7 @@ export function ShapeGeneratorInner() {
         rotation: [0, 0, 0] as [number, number, number],
         scale: [1, 1, 1] as [number, number, number],
         materialPreset: materialId,
-        color: '#8b9cf4' }));
+        color: 'var(--nx-accent-2)' }));
       // Include the base shape as the first entry
       serializableShapes.unshift({
         id: `base_${selectedId}`,
@@ -5104,7 +5104,7 @@ export function ShapeGeneratorInner() {
         rotation: [0, 0, 0],
         scale: [1, 1, 1],
         materialPreset: materialId,
-        color: '#8b9cf4' });
+        color: 'var(--nx-accent-2)' });
       const state = serializeScene(serializableShapes, undefined);
       await exportSceneAsJSON(state, 'nexyfab-scene');
       addToast('success', t.sceneSaved ?? 'Scene saved');
@@ -5918,7 +5918,7 @@ export function ShapeGeneratorInner() {
 
   const statusGuide = useMemo(() => {
     if (activeTab === 'optimize') {
-      if (isOptimizing) return { icon: '⏳', text: `Iteration ${progress?.iteration ?? 0}/${progress?.maxIteration ?? '—'}...`, color: '#8b5cf6' };
+      if (isOptimizing) return { icon: '⏳', text: `Iteration ${progress?.iteration ?? 0}/${progress?.maxIteration ?? '—'}...`, color: 'var(--nx-accent-2)' };
       if (optResult) return { icon: '✅', text: 'Optimization complete. Export STL or send to quote.', color: '#16a34a' };
       if (!effectiveResult) return { icon: '🧊', text: lt.goDesignTabFirst, color: 'var(--nx-warn)' };
       if (fixedFaces.length === 0) return { icon: '📌', text: 'Click a face in the viewer to set fixed boundary.', color: 'var(--nx-warn)' };
@@ -6159,7 +6159,7 @@ export function ShapeGeneratorInner() {
         padding: '32px 20px 40px' }}>
         {/* Logo */}
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 32, alignSelf: 'flex-start' }}>
-          <span style={{ color: '#8b9cf4' }}>Nexy</span>Fab
+          <span style={{ color: 'var(--nx-accent-2)' }}>Nexy</span>Fab
         </div>
 
         {/* Hero icon */}
@@ -7147,7 +7147,7 @@ export function ShapeGeneratorInner() {
                     style={{
                       padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                       border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                      background: showCSGPanel ? '#8b5cf6' : 'var(--nx-panel-2)',
+                      background: showCSGPanel ? 'var(--nx-accent-2)' : 'var(--nx-panel-2)',
                       color: showCSGPanel ? 'var(--nx-text)' : 'var(--nx-text)',
                       display: 'flex', alignItems: 'center', gap: 3, height: 18 }}
                   >
@@ -7692,9 +7692,9 @@ export function ShapeGeneratorInner() {
                       fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
                       display: 'flex', gap: 8, alignItems: 'center', color: 'var(--nx-border-strong)' }}>
                       <span style={{ color: 'var(--nx-text-3)' }}>Center:</span>
-                      <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.w / 2).toFixed(1)}</span>
+                      <span style={{ color: 'var(--nx-error)' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.w / 2).toFixed(1)}</span>
                       <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.h / 2).toFixed(1)}</span>
-                      <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.d / 2).toFixed(1)}</span>
+                      <span style={{ color: 'var(--nx-accent)' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.d / 2).toFixed(1)}</span>
                       <span>mm</span>
                     </div>
                   </div>
@@ -7927,8 +7927,8 @@ export function ShapeGeneratorInner() {
                 borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(10px)',
               }}>
-                <div style={{ padding: '8px 12px', background: '#f6f8fa', borderBottom: '1px solid #d0d7de', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#24292f' }}>Edit {editingNode.label || editingDef.type}</span>
+                <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderBottom: '1px solid #d0d7de', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>Edit {editingNode.label || editingDef.type}</span>
                   <button onClick={() => finishEditing?.()} style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 14 }}>✕</button>
                 </div>
                 <div style={{ padding: '12px', maxHeight: '60vh', overflowY: 'auto' }} className="nf-scroll">
@@ -7939,8 +7939,8 @@ export function ShapeGeneratorInner() {
                     onParamChange={(id, key, value) => updateFeatureParam(id, key, value)}
                   />
                 </div>
-                <div style={{ padding: '8px 12px', background: '#f6f8fa', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #d0d7de', background: 'var(--nx-text)', color: '#24292f', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
+                <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #d0d7de', background: 'var(--nx-text)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
                 </div>
               </div>
             );

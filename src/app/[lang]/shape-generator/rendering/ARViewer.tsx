@@ -22,7 +22,7 @@ interface ARViewerProps {
 
 type ARState = 'idle' | 'checking' | 'unsupported' | 'starting' | 'active' | 'error';
 
-export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 'ko' }: ARViewerProps) {
+export default function ARViewer({ geometry, color = 'var(--nx-accent-2)', onClose, lang = 'ko' }: ARViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [arState, setArState] = useState<ARState>('idle');
   const [errorMsg, setErrorMsg] = useState('');

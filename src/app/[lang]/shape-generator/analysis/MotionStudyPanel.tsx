@@ -467,7 +467,7 @@ export default function MotionStudyPanel({
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--nx-text-2)', cursor: 'pointer' }}>
-            <input type="checkbox" checked={loop} onChange={e => setLoop(e.target.checked)} style={{ accentColor: '#8b5cf6' }} />
+            <input type="checkbox" checked={loop} onChange={e => setLoop(e.target.checked)} style={{ accentColor: 'var(--nx-accent-2)' }} />
             {t.loop}
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--nx-text-2)', cursor: 'pointer' }}>
@@ -500,7 +500,7 @@ export default function MotionStudyPanel({
                   const f = frames[idx];
                   if (f && onFrameUpdate) onFrameUpdate(f.transforms);
                 }}
-                style={{ flex: 1, accentColor: '#8b5cf6', height: 3 }}
+                style={{ flex: 1, accentColor: 'var(--nx-accent-2)', height: 3 }}
               />
               <span style={{ fontSize: 9, color: 'var(--nx-text-3)', fontFamily: 'monospace', minWidth: 30 }}>{playIdx}/{frames.length - 1}</span>
             </div>

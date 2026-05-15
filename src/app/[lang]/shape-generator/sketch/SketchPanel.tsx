@@ -1198,7 +1198,7 @@ export default function SketchPanel({
                 <div key={c.id} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '3px 6px', borderRadius: 5, background: 'var(--nx-panel)',
-                  border: `1px solid ${c.satisfied ? '#238636' : '#da3633'}`,
+                  border: `1px solid ${c.satisfied ? 'var(--nx-ok)' : '#da3633'}`,
                 }}>
                   <span style={{ fontSize: 10, color: c.satisfied ? 'var(--nx-ok)' : 'var(--nx-error)', fontWeight: 600 }}>
                     {c.satisfied ? '✓' : '✗'} {({ horizontal: i18n.cHorizontal, vertical: i18n.cVertical, perpendicular: i18n.cPerpendicular, parallel: i18n.cParallel, tangent: i18n.cTangent, coincident: i18n.cCoincident, equal: i18n.cEqual, symmetric: i18n.cSymmetric, midpoint: i18n.cMidpoint, angle: i18n.cAngle, fixed: i18n.cFixed } as Record<string, string>)[c.type] ?? c.type}

@@ -231,7 +231,7 @@ const langMap: Record<string, Lang> = {
 const C = {
   bg: 'var(--nx-bg)', surface: 'var(--nx-panel)', card: 'var(--nx-panel-2)', border: 'var(--nx-border)',
   text: 'var(--nx-text)', textDim: 'var(--nx-text-2)', textMuted: 'var(--nx-text-3)',
-  accent: 'var(--nx-accent)', green: 'var(--nx-ok)', yellow: 'var(--nx-warn)', red: 'var(--nx-error)', purple: '#8b5cf6',
+  accent: 'var(--nx-accent)', green: 'var(--nx-ok)', yellow: 'var(--nx-warn)', red: 'var(--nx-error)', purple: 'var(--nx-accent-2)',
 };
 
 const IMPACT_COLOR = { high: C.red, medium: C.yellow, low: C.green };

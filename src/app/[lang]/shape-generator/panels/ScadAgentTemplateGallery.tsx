@@ -273,7 +273,7 @@ export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalle
               onClick={() => { onPick(isKo ? tpl.prompt_ko : tpl.prompt_en); setOpen(false); }}
               style={cardStyle}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#1f6feb';
+                e.currentTarget.style.borderColor = 'var(--nx-accent)';
                 e.currentTarget.style.background = '#0d2547';
               }}
               onMouseLeave={(e) => {

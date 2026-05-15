@@ -307,7 +307,7 @@ function DimensionLine({ x1, y1, x2, y2, value, unitSystem, side }: {
   const ap = DIM_ARROW * 0.4;
 
   return (
-    <g className="dim-line" stroke="#2563eb" strokeWidth={0.5} fill="none">
+    <g className="dim-line" stroke="var(--nx-accent)" strokeWidth={0.5} fill="none">
       {/* Extension lines */}
       <line x1={ext1Start[0]} y1={ext1Start[1]} x2={ext1End[0]} y2={ext1End[1]} strokeDasharray="1.5,1" />
       <line x1={ext2Start[0]} y1={ext2Start[1]} x2={ext2End[0]} y2={ext2End[1]} strokeDasharray="1.5,1" />
@@ -316,11 +316,11 @@ function DimensionLine({ x1, y1, x2, y2, value, unitSystem, side }: {
       {/* Arrows */}
       <polygon
         points={`${x1},${y1} ${x1 + ax - ay * (ap / DIM_ARROW)},${y1 + ay + ax * (ap / DIM_ARROW)} ${x1 + ax + ay * (ap / DIM_ARROW)},${y1 + ay - ax * (ap / DIM_ARROW)}`}
-        fill="#2563eb" stroke="none"
+        fill="var(--nx-accent)" stroke="none"
       />
       <polygon
         points={`${x2},${y2} ${x2 - ax - ay * (ap / DIM_ARROW)},${y2 - ay + ax * (ap / DIM_ARROW)} ${x2 - ax + ay * (ap / DIM_ARROW)},${y2 - ay - ax * (ap / DIM_ARROW)}`}
-        fill="#2563eb" stroke="none"
+        fill="var(--nx-accent)" stroke="none"
       />
       {/* Label */}
       <text
@@ -328,7 +328,7 @@ function DimensionLine({ x1, y1, x2, y2, value, unitSystem, side }: {
         textAnchor={textAnchor}
         dominantBaseline="central"
         transform={textRotate ? `rotate(${textRotate},${textX},${textY})` : undefined}
-        fill="#2563eb" stroke="none" fontSize={7} fontFamily="monospace" fontWeight={600}
+        fill="var(--nx-accent)" stroke="none" fontSize={7} fontFamily="monospace" fontWeight={600}
       >
         {label}
       </text>

@@ -9,7 +9,7 @@ export default function ShapeGeneratorLoading() {
         borderTopColor: '#0b5cff', borderRadius: '50%',
         animation: 'nf-spin 0.7s linear infinite',
       }} />
-      <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>Loading 3D workspace...</p>
+      <p style={{ color: 'var(--nx-text-2)', fontSize: '14px', fontWeight: 500 }}>Loading 3D workspace...</p>
     </div>
   );
 }

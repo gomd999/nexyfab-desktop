@@ -83,7 +83,7 @@ export function WorkspaceLoading({ variant = 'page' }: { variant?: WorkspaceLoad
           animation: 'nf-wl-spin-page 0.7s linear infinite',
         }}
       />
-      <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>Loading 3D workspace...</p>
+      <p style={{ color: 'var(--nx-text-2)', fontSize: '14px', fontWeight: 500 }}>Loading 3D workspace...</p>
       <style>{`@keyframes nf-wl-spin-page { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

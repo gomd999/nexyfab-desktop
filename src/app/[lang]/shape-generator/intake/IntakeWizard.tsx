@@ -326,7 +326,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
               gap: 10,
             }}
           >
-            <div style={{ fontSize: 13, color: '#94a3b8', flexShrink: 0 }}>
+            <div style={{ fontSize: 13, color: 'var(--nx-text-2)', flexShrink: 0 }}>
               {t.header} {mode === 'qa' && `· ${safeIdx + 1} / ${activeQuestions.length}`}
             </div>
 
@@ -341,7 +341,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                   borderRadius: 4,
                   border: 'none',
                   background: mode === 'qa' ? '#22d3ee' : 'transparent',
-                  color: mode === 'qa' ? 'var(--nx-bg)' : '#94a3b8',
+                  color: mode === 'qa' ? 'var(--nx-bg)' : 'var(--nx-text-2)',
                   cursor: 'pointer',
                 }}
               >
@@ -356,7 +356,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                   borderRadius: 4,
                   border: 'none',
                   background: mode === 'text' ? '#22d3ee' : 'transparent',
-                  color: mode === 'text' ? 'var(--nx-bg)' : '#94a3b8',
+                  color: mode === 'text' ? 'var(--nx-bg)' : 'var(--nx-text-2)',
                   cursor: 'pointer',
                 }}
               >
@@ -369,7 +369,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#94a3b8',
+                color: 'var(--nx-text-2)',
                 fontSize: 20,
                 cursor: 'pointer',
                 padding: 4,
@@ -406,10 +406,10 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
         <div style={{ flex: 1, overflow: 'auto', padding: '24px 24px 16px' }}>
           {mode === 'text' ? (
             <div>
-              <h2 style={{ fontSize: 22, fontWeight: 600, color: '#f1f5f9', margin: '0 0 8px' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--nx-panel-2)', margin: '0 0 8px' }}>
                 {t.freeTextTitle}
               </h2>
-              <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>
+              <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 16px' }}>
                 {t.freeTextSub}
               </p>
               <textarea
@@ -423,7 +423,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                   borderRadius: 10,
                   border: '1px solid #334155',
                   background: 'var(--nx-border-strong)',
-                  color: '#f1f5f9',
+                  color: 'var(--nx-panel-2)',
                   fontSize: 14,
                   outline: 'none',
                   resize: 'vertical',
@@ -454,7 +454,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                       borderRadius: 12,
                       border: '1px solid #334155',
                       background: 'transparent',
-                      color: '#94a3b8',
+                      color: 'var(--nx-text-2)',
                       fontSize: 11,
                       cursor: 'pointer',
                     }}
@@ -470,7 +470,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
             style={{
               fontSize: 22,
               fontWeight: 600,
-              color: '#f1f5f9',
+              color: 'var(--nx-panel-2)',
               margin: '0 0 8px',
               lineHeight: 1.4,
             }}
@@ -478,7 +478,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
             {q.title}
           </h2>
           {q.subtitle && (
-            <p style={{ fontSize: 14, color: '#94a3b8', margin: '0 0 20px' }}>{q.subtitle}</p>
+            <p style={{ fontSize: 14, color: 'var(--nx-text-2)', margin: '0 0 20px' }}>{q.subtitle}</p>
           )}
 
           {q.type === 'single' && q.options && (
@@ -495,7 +495,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                       borderRadius: 10,
                       border: selected ? '2px solid #22d3ee' : '1px solid #334155',
                       background: selected ? 'rgba(34,211,238,0.1)' : 'var(--nx-border-strong)',
-                      color: '#f1f5f9',
+                      color: 'var(--nx-panel-2)',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       display: 'flex',
@@ -507,7 +507,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{opt.label}</div>
                       {opt.description && (
-                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                        <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginTop: 3 }}>
                           {opt.description}
                         </div>
                       )}
@@ -546,7 +546,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                       borderRadius: 8,
                       border: selected ? '2px solid #22d3ee' : '1px solid #334155',
                       background: selected ? 'rgba(34,211,238,0.1)' : 'var(--nx-border-strong)',
-                      color: '#f1f5f9',
+                      color: 'var(--nx-panel-2)',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -587,7 +587,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                     style={{
                       display: 'block',
                       fontSize: 12,
-                      color: '#94a3b8',
+                      color: 'var(--nx-text-2)',
                       marginBottom: 6,
                       textTransform: 'uppercase',
                     }}
@@ -615,12 +615,12 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                         borderRadius: 8,
                         border: '1px solid #334155',
                         background: 'var(--nx-border-strong)',
-                        color: '#f1f5f9',
+                        color: 'var(--nx-panel-2)',
                         fontSize: 15,
                         outline: 'none',
                       }}
                     />
-                    <span style={{ marginLeft: 6, fontSize: 12, color: '#64748b' }}>mm</span>
+                    <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--nx-text-3)' }}>mm</span>
                   </div>
                 </div>
               ))}
@@ -639,7 +639,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                 borderRadius: 8,
                 border: '1px solid #334155',
                 background: 'var(--nx-border-strong)',
-                color: '#f1f5f9',
+                color: 'var(--nx-panel-2)',
                 fontSize: 14,
                 outline: 'none',
                 resize: 'vertical',
@@ -664,7 +664,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
         >
           {mode === 'text' ? (
             <>
-              <div style={{ fontSize: 12, color: '#64748b' }}>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
                 {t.footerHint}
               </div>
               <button
@@ -717,7 +717,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                       borderRadius: 8,
                       border: 'none',
                       background: 'transparent',
-                      color: '#94a3b8',
+                      color: 'var(--nx-text-2)',
                       cursor: 'pointer',
                       fontSize: 13,
                     }}

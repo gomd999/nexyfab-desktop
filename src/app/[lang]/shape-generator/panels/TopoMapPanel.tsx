@@ -42,7 +42,7 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
             borderRadius: 7,
             border: open ? '1px solid #bc8cff' : '1px solid var(--nx-border)',
             background: open ? 'rgba(188,140,255,0.15)' : 'var(--nx-panel)',
-            color: open ? '#bc8cff' : 'var(--nx-text-3)',
+            color: open ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
             fontSize: 11, fontWeight: 700,
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 5,
@@ -50,12 +50,12 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
             boxShadow: open ? '0 0 12px rgba(188,140,255,0.25)' : 'none',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.borderColor = '#bc8cff';
-            e.currentTarget.style.color = '#bc8cff';
+            e.currentTarget.style.borderColor = 'var(--nx-accent-2)';
+            e.currentTarget.style.color = 'var(--nx-accent-2)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = open ? '#bc8cff' : 'var(--nx-border)';
-            e.currentTarget.style.color = open ? '#bc8cff' : 'var(--nx-text-3)';
+            e.currentTarget.style.borderColor = open ? 'var(--nx-accent-2)' : 'var(--nx-border)';
+            e.currentTarget.style.color = open ? 'var(--nx-accent-2)' : 'var(--nx-text-3)';
           }}
         >
           <span>🏷️</span>
@@ -63,7 +63,7 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
           <span style={{
             fontSize: 9, fontWeight: 800,
             background: 'rgba(188,140,255,0.2)',
-            color: '#bc8cff',
+            color: 'var(--nx-accent-2)',
             borderRadius: 8,
             padding: '0 5px',
             border: '1px solid rgba(188,140,255,0.3)',

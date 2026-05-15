@@ -22,7 +22,7 @@ export const BRANCH_COLORS = [
   'var(--nx-accent-2)', // blue  (main)
   'var(--nx-ok)', // green
   'var(--nx-warn)', // orange
-  '#bc8cff', // purple
+  'var(--nx-accent-2)', // purple
   'var(--nx-error)', // red
   'var(--nx-accent-2)', // light blue
   '#e3b341', // yellow

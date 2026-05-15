@@ -579,7 +579,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       {(!isMobile || showAdvanced) && (
         <button onClick={() => setRenderMode(renderMode === 'standard' ? 'photorealistic' : 'standard')} style={{
           width: 30, height: 28, padding: 0, borderRadius: 4, border: 'none',
-          background: renderMode === 'photorealistic' ? '#8b5cf6' : theme.cardBg,
+          background: renderMode === 'photorealistic' ? 'var(--nx-accent-2)' : theme.cardBg,
           color: renderMode === 'photorealistic' ? 'var(--nx-text)' : theme.textMuted,
           fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
         }} title={`${tt.renderMode}: ${tt.render}`}>
@@ -632,7 +632,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           onClick={() => setShowCommentsPanel(!showCommentsPanel)}
           style={{
             width: 30, height: 28, padding: 0, borderRadius: 4, border: 'none',
-            background: showCommentsPanel ? 'var(--nx-accent)' : (isPlacingComment ? '#8b5cf6' : theme.cardBg),
+            background: showCommentsPanel ? 'var(--nx-accent)' : (isPlacingComment ? 'var(--nx-accent-2)' : theme.cardBg),
             color: showCommentsPanel || isPlacingComment ? 'var(--nx-text)' : theme.textMuted,
             fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
             position: 'relative',
@@ -945,7 +945,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         title={!planLimits.ipShareLink ? tt.ipProLocked : `${tt.ipShareHint}: ${tt.ipShare}`}
       >
         {isCreatingShare ? '...' : '🔒'}
-        {!planLimits.ipShareLink && <span style={{ position: 'absolute', top: -6, right: -6, fontSize: 8, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 3px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
+        {!planLimits.ipShareLink && <span style={{ position: 'absolute', top: -6, right: -6, fontSize: 8, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 3px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
       </button>
 
       {/* ── Layout controls ── */}

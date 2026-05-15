@@ -1547,7 +1547,7 @@ function LeftPanel({
                 >
                   <span style={{ fontSize: 13 }}>📋</span>
                   {t['exportBom'] ?? 'Export BOM'}
-                  <span style={{ marginLeft: 'auto', fontSize: 9, color: '#6e7681' }}>{showBomExportMenu ? '▲' : '▼'}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--nx-text-3)' }}>{showBomExportMenu ? '▲' : '▼'}</span>
                 </button>
                 {showBomExportMenu && (
                   // #7: Escape to close + role=menu for keyboard nav

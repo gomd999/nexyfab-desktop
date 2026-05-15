@@ -142,11 +142,11 @@ export default function SessionTimelapse({ lang, captureFrame, onClose }: Sessio
 
       <div style={{ padding: 10, borderBottom: '1px solid var(--nx-border)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={() => setRecording(v => !v)}
-          style={{ background: recording ? '#da3633' : '#238636', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+          style={{ background: recording ? '#da3633' : 'var(--nx-ok)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
           {recording ? `⏹ ${t.stop}` : `⏺ ${t.start}`}
         </button>
         <button onClick={() => addFrame('manual')}
-          style={{ background: '#1f6feb', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+          style={{ background: 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
           📸 {t.capture}
         </button>
         <span style={{ fontSize: 11, color: 'var(--nx-text-2)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -178,7 +178,7 @@ export default function SessionTimelapse({ lang, captureFrame, onClose }: Sessio
 
             <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
               <button onClick={() => setPlaying(v => !v)} disabled={frames.length < 2}
-                style={{ background: playing ? '#da3633' : '#1f6feb', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12, opacity: frames.length < 2 ? 0.5 : 1 }}>
+                style={{ background: playing ? '#da3633' : 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12, opacity: frames.length < 2 ? 0.5 : 1 }}>
                 {playing ? `⏸ ${t.pause}` : `▶ ${t.play}`}
               </button>
               <button onClick={handleExport}

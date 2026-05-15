@@ -482,7 +482,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
               />
             ) : (
               <div style={{
-                background: lightChrome ? '#f6f8fa' : 'var(--nx-panel)',
+                background: lightChrome ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
                 border: `1px solid ${chrome.border}`,
                 borderRadius: 10,
                 padding: '16px 20px', color: chrome.textMuted, fontSize: 12, textAlign: 'center',

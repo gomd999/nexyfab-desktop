@@ -135,7 +135,7 @@ function SceneCleanup() {
 }
 
 // Colors for multi-part assembly
-const PART_COLORS = ['#8b9cf4', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
+const PART_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
 
 /** Stable empty list so CameraFitter deps do not change every render. */
 const EMPTY_SHAPE_RESULTS: ShapeResult[] = [];
@@ -656,7 +656,7 @@ function EditScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="#8b9cf4" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
 
       {editMode === 'vertex' && (
         <VertexHandles
@@ -775,7 +775,7 @@ function FaceScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="#8b9cf4" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
       <FaceHandles
         geometry={editGeometry}
         faces={faces}
@@ -963,7 +963,7 @@ function TransformScene({
 
   return (
     <group>
-      <ShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" />
+      <ShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" />
       <mesh ref={meshRef} geometry={result.geometry} visible={false} />
       <TransformControls
         ref={transformRef}
@@ -2272,7 +2272,7 @@ export default function ShapePreview({
                 </Suspense>
               ) : (
                 <>
-                  <hemisphereLight args={['var(--nx-text)', '#f3f4f6', 0.8]} />
+                  <hemisphereLight args={['var(--nx-text)', 'var(--nx-panel-2)', 0.8]} />
                   <ambientLight intensity={0.4} />
                   <directionalLight position={[20, 30, 15]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} />
                   <directionalLight position={[-15, 10, -10]} intensity={0.6} color="#eef2ff" />
@@ -2462,7 +2462,7 @@ export default function ShapePreview({
                   <TurntableGroup active={effectiveAnimateMode === 'turntable'}>
                   <MotionMeshWrapper transforms={effectiveMotionTransforms}>
                   <>
-                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && selectionActive && onElementSelect && <SelectionMeshR3F geometry={result.geometry} onSelect={onElementSelect} />}
                     {result && highlightTriangles && highlightTriangles.length > 0 && <FaceHighlightMesh sourceGeometry={result.geometry} triangleIndices={highlightTriangles} />}
                     {ghostResult && (
@@ -2478,7 +2478,7 @@ export default function ShapePreview({
                         buildDirection={printBuildDirection as [number, number, number]}
                       />
                     )}
-                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showFEA && feaResult && (
                       <FEAOverlay
                         geometry={result.geometry}
@@ -2487,7 +2487,7 @@ export default function ShapePreview({
                         deformationScale={feaDeformationScale}
                       />
                     )}
-                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* FEA boundary-condition markers — visible during setup */}
                     {result && showFEA && feaConditions && feaConditions.length > 0 && (
                       <FEAConditionMarkers
@@ -2504,7 +2504,7 @@ export default function ShapePreview({
                         highlightedIssue={dfmHighlightedIssue}
                       />
                     )}
-                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showDraftAnalysis && draftResult && (
                       <DraftAnalysisOverlay
                         geometry={result.geometry}
@@ -2513,11 +2513,11 @@ export default function ShapePreview({
                         pullDirection={draftResult.options?.pullDirection}
                       />
                     )}
-                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* Instance Array overlay */}
                     {result && showArray && arrayPattern && (() => {
                       const matrices = buildInstanceMatrices(arrayPattern);
-                      const mat = new THREE.MeshStandardMaterial({ color: '#8b9cf4', roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
+                      const mat = new THREE.MeshStandardMaterial({ color: 'var(--nx-accent-2)', roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
                       return <InstanceArray geometry={result.geometry} material={mat} matrices={matrices} visible={true} />;
                     })()}
                     <OrbitControls makeDefault enableDamping dampingFactor={0.07} minDistance={1} maxDistance={5000} onStart={handleOrbitStart} onEnd={handleOrbitEnd} mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN }} touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }} />
@@ -2666,7 +2666,7 @@ export default function ShapePreview({
               {isAssembly && (
                 <>
                   <span style={{ color: 'var(--nx-border)' }}>│</span>
-                  <span style={{ color: '#8b9cf4' }}>{bomParts!.length} parts</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{bomParts!.length} parts</span>
                 </>
               )}
               {isEditing && (

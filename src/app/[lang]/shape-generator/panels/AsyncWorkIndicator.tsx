@@ -63,7 +63,7 @@ export default function AsyncWorkIndicator({
     }}>
       <div style={{
         width: 14, height: 14, borderRadius: '50%',
-        border: '2px solid var(--nx-border)', borderTopColor: '#8b9cf4',
+        border: '2px solid var(--nx-border)', borderTopColor: 'var(--nx-accent-2)',
         animation: 'nf-spin 0.7s linear infinite',
       }} />
       <span>{message}</span>

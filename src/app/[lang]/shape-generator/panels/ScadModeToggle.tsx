@@ -45,7 +45,7 @@ function ScadModePill({
         borderRadius: 999,
         border: '1px solid',
         borderColor: active ? 'var(--nx-accent)' : 'var(--nx-border)',
-        background: active ? '#1f6feb' : 'transparent',
+        background: active ? 'var(--nx-accent)' : 'transparent',
         color: active ? 'var(--nx-text)' : (locked ? 'var(--nx-text-3)' : 'var(--nx-text-2)'),
         cursor: locked ? 'not-allowed' : 'pointer',
         transition: 'all 0.15s',

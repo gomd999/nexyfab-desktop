@@ -251,7 +251,7 @@ export default function EdgeContextPanel({
   const applyBtnStyle: React.CSSProperties = {
     width: '100%',
     padding: '6px 0',
-    backgroundColor: '#1f6feb',
+    backgroundColor: 'var(--nx-accent)',
     border: 'none',
     borderRadius: 6,
     color: 'var(--nx-text)',

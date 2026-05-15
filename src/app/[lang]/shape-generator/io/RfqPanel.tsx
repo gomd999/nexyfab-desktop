@@ -367,7 +367,7 @@ export default function RfqPanel({
           style={{
             width: '100%', padding: '11px 0', borderRadius: 10, border: '1px solid #238636',
             background: geometry && !submitting
-              ? '#238636'
+              ? 'var(--nx-ok)'
               : 'var(--nx-panel-2)',
             color: geometry && !submitting ? 'var(--nx-text)' : 'var(--nx-border-strong)',
             fontWeight: 800, fontSize: 13, cursor: geometry && !submitting ? 'pointer' : 'default',

@@ -156,7 +156,7 @@ const C = {
   border:   'var(--nx-border)',
   text:     'var(--nx-text)',
   muted:    'var(--nx-text-2)',
-  accent:   '#1f6feb',
+  accent:   'var(--nx-accent)',
   accentHv: 'var(--nx-accent)',
   danger:   'var(--nx-error)',
   success:  'var(--nx-ok)',

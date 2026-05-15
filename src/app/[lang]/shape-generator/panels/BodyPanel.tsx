@@ -218,7 +218,7 @@ export default function BodyPanel({
     border: 'var(--nx-border)',
     text: 'var(--nx-text)',
     muted: 'var(--nx-text-2)',
-    active: '#1f6feb',
+    active: 'var(--nx-accent)',
     activeBorder: 'var(--nx-accent)',
     rowHover: 'var(--nx-panel-2)',
     checked: 'var(--nx-accent)',
@@ -319,7 +319,7 @@ export default function BodyPanel({
                   </span>
                 )}
                 {body.mergedFrom && (
-                  <span style={{ fontSize: 9, background: '#2d333b', color: '#8b9cf4', borderRadius: 3, padding: '1px 4px' }}>
+                  <span style={{ fontSize: 9, background: '#2d333b', color: 'var(--nx-accent-2)', borderRadius: 3, padding: '1px 4px' }}>
                     {t.merged}
                   </span>
                 )}
@@ -333,7 +333,7 @@ export default function BodyPanel({
               <button
                 onClick={e => { e.stopPropagation(); onToggleVisible(body.id); }}
                 title={t.toggleVisible}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: body.visible ? '#8b9cf4' : C.muted, fontSize: 12, lineHeight: 1, flexShrink: 0 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: body.visible ? 'var(--nx-accent-2)' : C.muted, fontSize: 12, lineHeight: 1, flexShrink: 0 }}
               >
                 {body.visible ? '👁' : '◌'}
               </button>

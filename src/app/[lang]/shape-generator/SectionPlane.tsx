@@ -176,7 +176,7 @@ export default function SectionPlane({
       <mesh userData={{ isSectionCap: true }}>
         <planeGeometry args={[extent, extent]} />
         <meshBasicMaterial
-          color="#ef4444"
+          color="var(--nx-error)"
           opacity={0.12}
           transparent
           side={THREE.DoubleSide}
@@ -185,7 +185,7 @@ export default function SectionPlane({
       </mesh>
 
       <lineSegments geometry={borderGeo} userData={{ isSectionCap: true }}>
-        <lineBasicMaterial color="#ef4444" opacity={0.7} transparent />
+        <lineBasicMaterial color="var(--nx-error)" opacity={0.7} transparent />
       </lineSegments>
 
       <mesh position={[0, extent / 2 + 2, 0]} userData={{ isSectionCap: true }}>

@@ -7,7 +7,7 @@ import type { AssemblyMate } from '../assembly/AssemblyMates';
 import type { InterferenceResult } from '../assembly/InterferenceDetection';
 
 export const BODY_COLORS = [
-  '#8b9cf4', '#f4a28b', '#8bf4b0', '#f4e08b',
+  'var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b',
   '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b',
 ];
 

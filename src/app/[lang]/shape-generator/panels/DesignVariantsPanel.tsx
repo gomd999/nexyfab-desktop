@@ -220,7 +220,7 @@ export default function DesignVariantsPanel({
         <button
           onClick={handleSaveCurrent}
           style={{
-            background: '#238636', color: 'var(--nx-text)', border: 'none', borderRadius: 4,
+            background: 'var(--nx-ok)', color: 'var(--nx-text)', border: 'none', borderRadius: 4,
             padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
             whiteSpace: 'nowrap',
           }}
@@ -256,7 +256,7 @@ export default function DesignVariantsPanel({
                 placeholder={t.sweepCount}
                 style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)', fontSize: 12 }} />
               <button onClick={handleSweep}
-                style={{ background: '#1f6feb', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+                style={{ background: 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
                 {t.sweepGo}
               </button>
             </div>
@@ -319,7 +319,7 @@ export default function DesignVariantsPanel({
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => onApplyVariant(v)} disabled={isActive}
                     style={{
-                      background: isActive ? 'var(--nx-border)' : '#1f6feb', color: 'var(--nx-text)', border: 'none',
+                      background: isActive ? 'var(--nx-border)' : 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none',
                       borderRadius: 4, padding: '4px 10px', cursor: isActive ? 'default' : 'pointer', fontSize: 11,
                       opacity: isActive ? 0.6 : 1,
                     }}>

@@ -90,7 +90,7 @@ export default function AssemblyBrowser({
           gap: 6,
           padding: '6px 8px',
           borderRadius: 8,
-          background: '#f9fafb',
+          background: 'var(--nx-panel)',
           border: '1px solid #e5e7eb',
           cursor: 'pointer',
           marginBottom: expanded ? 6 : 0,

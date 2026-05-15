@@ -17,7 +17,7 @@ export default function DragDropOverlay({ isDragOver, dropFileHereText }: DragDr
       <div style={{ textAlign: 'center', color: 'var(--nx-text)' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📂</div>
         <div style={{ fontSize: 18, fontWeight: 800 }}>{dropFileHereText}</div>
-        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>STEP · STL · OBJ · PLY · IGES · DXF · BREP</div>
+        <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginTop: 6 }}>STEP · STL · OBJ · PLY · IGES · DXF · BREP</div>
       </div>
     </div>
   );

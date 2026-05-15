@@ -50,7 +50,7 @@ export default function Modal4Dock({
       {showARViewer && arGeometry && (
         <ARViewer
           geometry={arGeometry}
-          color="#8b9cf4"
+          color="var(--nx-accent-2)"
           lang={lang}
           onClose={() => setShowARViewer(false)}
         />

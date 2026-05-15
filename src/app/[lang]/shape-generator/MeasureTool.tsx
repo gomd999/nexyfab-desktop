@@ -380,7 +380,7 @@ export default function MeasureTool({
     return msgs[wip.length] ?? '';
   }, [active, mode, wip, t]);
 
-  const POINT_COLORS = ['#ef4444', '#3b82f6', 'var(--nx-ok)'];
+  const POINT_COLORS = ['var(--nx-error)', 'var(--nx-accent)', 'var(--nx-ok)'];
 
   if (!active && entries.length === 0) return null;
 

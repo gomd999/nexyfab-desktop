@@ -85,7 +85,7 @@ export default function ScadAgentCheckpointTimeline({ lang, checkpoints, onRever
                 fontSize: 10, fontWeight: 600,
                 fontFamily: 'monospace',
                 borderRadius: 12,
-                border: `1px solid ${isLatest ? '#238636' : 'var(--nx-border)'}`,
+                border: `1px solid ${isLatest ? 'var(--nx-ok)' : 'var(--nx-border)'}`,
                 background: isLatest ? '#0d3819' : 'transparent',
                 color: isLatest ? 'var(--nx-ok)' : 'var(--nx-text)',
                 cursor: isLatest ? 'default' : 'pointer',
@@ -94,8 +94,8 @@ export default function ScadAgentCheckpointTimeline({ lang, checkpoints, onRever
                 transition: 'all 0.15s',
               }}
               onMouseEnter={!isLatest ? e => {
-                e.currentTarget.style.background = '#1f6feb';
-                e.currentTarget.style.borderColor = '#1f6feb';
+                e.currentTarget.style.background = 'var(--nx-accent)';
+                e.currentTarget.style.borderColor = 'var(--nx-accent)';
                 e.currentTarget.style.color = 'var(--nx-text)';
               } : undefined}
               onMouseLeave={!isLatest ? e => {

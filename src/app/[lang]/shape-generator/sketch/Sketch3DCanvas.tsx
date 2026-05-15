@@ -111,9 +111,9 @@ function AxisArrow({ dir, color, label }: { dir: [number, number, number]; color
 function AxisSystem() {
   return (
     <group>
-      <AxisArrow dir={[1, 0, 0]} color="#ef4444" label="X" />
+      <AxisArrow dir={[1, 0, 0]} color="var(--nx-error)" label="X" />
       <AxisArrow dir={[0, 1, 0]} color="#22c55e" label="Y" />
-      <AxisArrow dir={[0, 0, 1]} color="#3b82f6" label="Z" />
+      <AxisArrow dir={[0, 0, 1]} color="var(--nx-accent)" label="Z" />
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[1.5, 12, 12]} />
         <meshBasicMaterial color="var(--nx-text)" />
@@ -294,7 +294,7 @@ function Crosshair({
       {cursorPt && (
         <Html position={to3D({ x: cursorPt.x + 6, y: cursorPt.y + 6 }, plane)} style={{ pointerEvents: 'none' }}>
           <div style={{
-            color: snapTarget ? 'var(--nx-ok)' : '#a5b4fc',
+            color: snapTarget ? 'var(--nx-ok)' : 'var(--nx-accent-2)',
             fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
             background: 'rgba(0,0,0,0.8)', padding: '2px 6px', borderRadius: 3,
             border: snapTarget ? '1px solid #22c55e' : '1px solid rgba(99,102,241,0.4)',
@@ -494,7 +494,7 @@ function PointMarkers({ profile, plane }: { profile: SketchProfile; plane: 'xy' 
           <group key={i}>
             <mesh position={pos3d}>
               <sphereGeometry args={[1.5, 8, 8]} />
-              <meshBasicMaterial color={i === 0 ? '#ef4444' : 'var(--nx-warn)'} />
+              <meshBasicMaterial color={i === 0 ? 'var(--nx-error)' : 'var(--nx-warn)'} />
             </mesh>
             <Html position={[pos3d.x, pos3d.y + 4, pos3d.z]} style={{ pointerEvents: 'none' }}>
               <div style={{
@@ -598,7 +598,7 @@ function ProfileBoundingBox({ profile, plane }: { profile: SketchProfile; plane:
       </lineSegments>
       {w > 1 && (
         <Html position={wPos} center style={{ pointerEvents: 'none' }}>
-          <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)' }}>
+          <div style={{ color: 'var(--nx-error)', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)' }}>
             W: {w.toFixed(1)}mm
           </div>
         </Html>
@@ -698,7 +698,7 @@ function InfoHUD({
         <div style={{
           background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)',
           padding: '3px 10px', borderRadius: 6,
-          fontSize: 9, fontWeight: 700, fontFamily: 'monospace', color: '#a5b4fc',
+          fontSize: 9, fontWeight: 700, fontFamily: 'monospace', color: 'var(--nx-accent-2)',
         }}>
           👁 Facing {PLANE_LABELS[detectedPlane]} — auto-switching
         </div>
@@ -718,10 +718,10 @@ function InfoHUD({
       {/* Cursor coordinate display */}
       {cursorPt && (
         <div style={{ background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)', padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: 'var(--nx-border-strong)', fontFamily: 'monospace', display: 'flex', gap: 6, pointerEvents: 'none' }}>
-          <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.x.toFixed(1)}</span>
+          <span style={{ color: 'var(--nx-error)' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.x.toFixed(1)}</span>
           <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.y.toFixed(1)}</span>
           {/* Z is always 0 on the sketch plane */}
-          <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>0.0</span>
+          <span style={{ color: 'var(--nx-accent)' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>0.0</span>
           <span style={{ color: 'var(--nx-border-strong)' }}>mm</span>
         </div>
       )}

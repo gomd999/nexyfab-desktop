@@ -82,7 +82,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           disabled={!geometry || loading}
           style={{
             width: '100%', padding: '8px', borderRadius: 6,
-            background: '#238636', color: 'var(--nx-text)', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--nx-ok)', color: 'var(--nx-text)', border: '1px solid rgba(255,255,255,0.1)',
             fontWeight: 600, cursor: (!geometry || loading) ? 'not-allowed' : 'pointer',
             opacity: (!geometry || loading) ? 0.6 : 1, marginBottom: 24
           }}
@@ -119,7 +119,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           <button
             onClick={onSplitBody}
             style={{
-              padding: '8px', borderRadius: 6, background: '#1f6feb', color: 'var(--nx-text)',
+              padding: '8px', borderRadius: 6, background: 'var(--nx-accent)', color: 'var(--nx-text)',
               border: 'none', fontWeight: 600, cursor: 'pointer'
             }}
           >

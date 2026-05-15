@@ -315,7 +315,7 @@ export default function StepReversePanel({
                               background: 'rgba(188,140,255,0.1)',
                               border: '1px solid rgba(188,140,255,0.2)',
                               borderRadius: 6, padding: '2px 7px',
-                              fontSize: 10, fontWeight: 600, color: '#bc8cff',
+                              fontSize: 10, fontWeight: 600, color: 'var(--nx-accent-2)',
                             }}>
                               {t[k as keyof typeof t] ?? k}: <strong>{typeof v === 'number' ? v.toFixed(1) : v}</strong>
                             </div>

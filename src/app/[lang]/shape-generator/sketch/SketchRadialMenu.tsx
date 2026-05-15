@@ -137,7 +137,7 @@ export default function SketchRadialMenu({
               borderRadius: '50%',
               border: '1px solid #bfbfbf',
               background: '#f0f3f6',
-              color: '#24292f',
+              color: 'var(--nx-text)',
               fontSize: 12,
               cursor: 'pointer',
               display: 'flex',
@@ -149,7 +149,7 @@ export default function SketchRadialMenu({
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'scale(1.06)';
-              e.currentTarget.style.background = '#e2e8f0';
+              e.currentTarget.style.background = 'var(--nx-text)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'scale(1)';
@@ -180,7 +180,7 @@ export default function SketchRadialMenu({
               borderRadius: '50%',
               border: '1px solid #d0d7de',
               background: 'var(--nx-text)',
-              color: '#24292f',
+              color: 'var(--nx-text)',
               fontSize: 14,
               cursor: 'pointer',
               display: 'flex',
@@ -192,7 +192,7 @@ export default function SketchRadialMenu({
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'scale(1.06)';
-              e.currentTarget.style.background = '#f6f8fa';
+              e.currentTarget.style.background = 'var(--nx-panel-2)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'scale(1)';
@@ -240,7 +240,7 @@ export default function SketchRadialMenu({
                 background: 'transparent',
                 cursor: 'pointer',
                 fontSize: 12,
-                color: '#24292f',
+                color: 'var(--nx-text)',
                 textAlign: 'left',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#f0f3f6'; }}

@@ -57,7 +57,7 @@ const TAG_COLORS: Record<string, string> = {
   top:    'var(--nx-ok)',
   bottom: 'var(--nx-error)',
   front:  'var(--nx-accent)',
-  back:   '#bc8cff',
+  back:   'var(--nx-accent-2)',
   left:   'var(--nx-warn)',
   right:  'var(--nx-accent-2)',
 };

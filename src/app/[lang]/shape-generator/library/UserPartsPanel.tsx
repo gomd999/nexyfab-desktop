@@ -180,7 +180,7 @@ export default function UserPartsPanel({
         <input type="text" value={newTags} onChange={e => setNewTags(e.target.value)} placeholder={t.tags}
           style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '5px 8px', color: 'var(--nx-text)', marginBottom: 6 }} />
         <button onClick={handleSave}
-          style={{ width: '100%', background: '#238636', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '6px', cursor: 'pointer', fontWeight: 600 }}>
+          style={{ width: '100%', background: 'var(--nx-ok)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '6px', cursor: 'pointer', fontWeight: 600 }}>
           💾 {t.save}
         </button>
       </div>
@@ -219,7 +219,7 @@ export default function UserPartsPanel({
                 )}
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => onLoadPart(p)}
-                    style={{ background: '#1f6feb', color: 'var(--nx-text)', border: 'none', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
+                    style={{ background: 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
                     ↻ {t.load}
                   </button>
                   <button onClick={() => { setEditingId(p.id); setEditingName(p.name); }}

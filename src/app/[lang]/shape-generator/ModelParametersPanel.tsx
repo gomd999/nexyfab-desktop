@@ -166,7 +166,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
           onClick={addVar}
           style={{
             padding: '3px 10px', borderRadius: 5, border: 'none',
-            background: '#1f6feb', color: 'var(--nx-text)', fontWeight: 700,
+            background: 'var(--nx-accent)', color: 'var(--nx-text)', fontWeight: 700,
             fontSize: 11, cursor: 'pointer',
           }}
         >

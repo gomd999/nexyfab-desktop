@@ -571,7 +571,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
                 background: 'transparent', color: 'var(--nx-accent-2)',
                 cursor: 'pointer', whiteSpace: 'nowrap',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#1f6feb'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
             >
               {opt}
@@ -636,7 +636,7 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
             padding: '4px 8px',
             borderRadius: 6,
             background: ok ? 'rgba(35, 134, 54, 0.12)' : 'rgba(248, 81, 73, 0.12)',
-            border: `1px solid ${ok ? '#238636' : 'var(--nx-error)'}`,
+            border: `1px solid ${ok ? 'var(--nx-ok)' : 'var(--nx-error)'}`,
             color: ok ? 'var(--nx-ok)' : '#ffa198',
             fontSize: 11, fontFamily: 'monospace',
             cursor: hasPreview ? 'pointer' : 'default',
@@ -697,7 +697,7 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
       <div style={{
         alignSelf: 'flex-end',
         padding: '6px 10px',
-        background: '#1f6feb',
+        background: 'var(--nx-accent)',
         color: 'var(--nx-text)',
         borderRadius: 10,
         fontSize: 12,
@@ -748,7 +748,7 @@ function colorizeDiff(body: string): React.ReactNode {
 const btnPrimary: React.CSSProperties = {
   padding: '6px 12px', fontSize: 11, fontWeight: 700,
   borderRadius: 6, border: '1px solid #1f6feb',
-  background: '#1f6feb', color: 'var(--nx-text)', cursor: 'pointer',
+  background: 'var(--nx-accent)', color: 'var(--nx-text)', cursor: 'pointer',
 };
 const btnDanger: React.CSSProperties = {
   padding: '6px 12px', fontSize: 11, fontWeight: 700,

@@ -9,7 +9,7 @@ import type { BomPartResult } from './ShapePreview';
 import SectionPlane from './SectionPlane';
 import { computeAssemblyWorldBounds } from './assembly/assemblyWorldBounds';
 
-const PART_COLORS = ['#8b9cf4', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
+const PART_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
 
 function ViewportMesh({
   result,
@@ -54,7 +54,7 @@ function ViewportMesh({
   return (
     <group>
       <mesh geometry={result.geometry} castShadow receiveShadow>
-        <meshStandardMaterial color="#8b9cf4" roughness={0.35} metalness={0.4} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="var(--nx-accent-2)" roughness={0.35} metalness={0.4} side={THREE.DoubleSide} />
       </mesh>
       {result.edgeGeometry && (
         <lineSegments geometry={result.edgeGeometry}>

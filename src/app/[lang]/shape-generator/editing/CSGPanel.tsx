@@ -236,7 +236,7 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
   const opButtonStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
     padding: '7px 0',
-    background: active ? '#1f6feb' : 'var(--nx-panel-2)',
+    background: active ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
     border: active ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
     borderRadius: 6,
     color: active ? 'var(--nx-text)' : 'var(--nx-text-2)',

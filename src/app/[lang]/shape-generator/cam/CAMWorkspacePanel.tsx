@@ -26,8 +26,8 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
       background: 'var(--nx-text)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
       border: '1px solid #d0d7de', zIndex: 150, display: 'flex', flexDirection: 'column'
     }}>
-      <div style={{ padding: '16px', borderBottom: '1px solid #d0d7de', background: '#f6f8fa', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#24292f' }}>CAM Workspace (Beta)</h3>
+      <div style={{ padding: '16px', borderBottom: '1px solid #d0d7de', background: 'var(--nx-panel-2)', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>CAM Workspace (Beta)</h3>
         {onClose && <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16 }}>×</button>}
       </div>
 
@@ -45,7 +45,7 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
                 flex: '1 1 45%', padding: '8px', borderRadius: 6,
                 border: activeTool === tool ? '2px solid #0969da' : '1px solid #d0d7de',
                 background: activeTool === tool ? '#ddf4ff' : 'var(--nx-text)',
-                color: activeTool === tool ? '#0969da' : '#24292f',
+                color: activeTool === tool ? '#0969da' : 'var(--nx-text)',
                 fontWeight: 600, fontSize: 12, cursor: 'pointer'
               }}
             >
@@ -54,8 +54,8 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
           ))}
         </div>
 
-        <div style={{ background: '#f6f8fa', padding: 12, borderRadius: 6, marginTop: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: '#24292f' }}>Tool Configuration</div>
+        <div style={{ background: 'var(--nx-panel-2)', padding: 12, borderRadius: 6, marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--nx-text)' }}>Tool Configuration</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
             <span>End Mill Dia:</span> <span>6.0 mm</span>
           </div>

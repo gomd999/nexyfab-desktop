@@ -291,7 +291,7 @@ export default function SheetMetalPanel({
 
   const buttonStyle: React.CSSProperties = {
     width: '100%', padding: '8px 0', borderRadius: 6, border: 'none',
-    background: '#238636', color: 'var(--nx-text)', fontWeight: 700, fontSize: 12,
+    background: 'var(--nx-ok)', color: 'var(--nx-text)', fontWeight: 700, fontSize: 12,
     cursor: 'pointer', transition: 'background 0.15s',
   };
 

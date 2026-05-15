@@ -128,7 +128,7 @@ export default function ConditionPanel({
             fontSize: 12,
             fontWeight: 600,
             color: 'var(--nx-border-strong)',
-            background: '#f9fafb',
+            background: 'var(--nx-panel)',
             cursor: 'pointer',
             outline: 'none',
           }}
@@ -138,11 +138,11 @@ export default function ConditionPanel({
           ))}
         </select>
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          <div style={{ background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
+          <div style={{ background: 'var(--nx-panel)', borderRadius: 8, padding: '6px 8px' }}>
             <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>E (GPa)</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-bg)' }}>{(MATERIALS[materialKey].E / 1e9).toFixed(1)}</div>
           </div>
-          <div style={{ background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
+          <div style={{ background: 'var(--nx-panel)', borderRadius: 8, padding: '6px 8px' }}>
             <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>{t.density || 'Density'} (kg/m3)</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-bg)' }}>{MATERIALS[materialKey].density}</div>
           </div>
@@ -194,7 +194,7 @@ export default function ConditionPanel({
             background: selectionMode === 'fixed' ? '#fef2f2' : '#eff6ff',
             border: `1px solid ${selectionMode === 'fixed' ? '#fecaca' : '#bfdbfe'}`,
             fontSize: 11,
-            color: selectionMode === 'fixed' ? '#991b1b' : '#1e40af',
+            color: selectionMode === 'fixed' ? '#991b1b' : 'var(--nx-accent)',
             marginBottom: 10,
             fontWeight: 500,
           }}>
@@ -230,7 +230,7 @@ export default function ConditionPanel({
                       fontSize: 12,
                       fontWeight: 600,
                       color: 'var(--nx-border-strong)',
-                      background: '#f9fafb',
+                      background: 'var(--nx-panel)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -259,7 +259,7 @@ export default function ConditionPanel({
                 marginBottom: 4,
               }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: '#991b1b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--nx-error)', display: 'inline-block' }} />
                   {FACE_LABELS[face]}
                 </span>
                 <button
@@ -300,8 +300,8 @@ export default function ConditionPanel({
                 marginBottom: 4,
               }}>
                 <div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#1e40af', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--nx-accent)', display: 'inline-block' }} />
                     {FACE_LABELS[load.face]}
                   </span>
                   <span style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>
@@ -316,7 +316,7 @@ export default function ConditionPanel({
                     background: 'none',
                     cursor: isOptimizing ? 'not-allowed' : 'pointer',
                     fontSize: 14,
-                    color: '#1e40af',
+                    color: 'var(--nx-accent)',
                     lineHeight: 1,
                     padding: '0 2px',
                   }}
