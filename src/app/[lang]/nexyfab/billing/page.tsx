@@ -87,6 +87,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanId>('free');
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
+  const [betaStatus, setBetaStatus] = useState<{ enabled: boolean; allowed: boolean; contact: string } | null>(null);
   const toast = useToast();
 
   // ── Fetch current plan ─────────────────────────────────────────────────────
@@ -94,6 +95,14 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
     fetch('/api/billing/portal', { credentials: 'same-origin' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.plan) setCurrentPlan(d.plan as PlanId); })
+      .catch(() => {});
+  }, []);
+
+  // ── Closed-beta payment gate: hide/show banner + block denied attempts ────
+  useEffect(() => {
+    fetch('/api/billing/beta-status', { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setBetaStatus(d as { enabled: boolean; allowed: boolean; contact: string }); })
       .catch(() => {});
   }, []);
 
@@ -112,42 +121,51 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
   }, [isKo, toast]);
 
   // ── Upgrade handler ────────────────────────────────────────────────────────
+  // Routes through Dodo Payments (MoR). KRW or any currency — Dodo handles
+  // conversion and tax. UI label keeps KRW pricing; final charge is shown on
+  // the Dodo hosted checkout page in the user's actual currency.
   const handleUpgrade = useCallback(async (planId: PlanId) => {
     if (planId === 'free' || planId === currentPlan) return;
     setLoadingPlan(planId);
     try {
-      const r = await fetch('/api/billing/checkout', {
+      // Server uses 'annual'; UI uses 'yearly'. Translate on the wire.
+      const apiCycle = cycle === 'yearly' ? 'annual' : 'monthly';
+      const r = await fetch('/api/billing/dodo/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, billingCycle: cycle, lang }),
+        body: JSON.stringify({ plan: planId, cycle: apiCycle }),
       });
       const data = await r.json() as {
-        ok?: boolean;
         url?: string;
-        mock?: boolean;
+        subscriptionId?: string;
         error?: string;
+        message?: string;
+        contact?: string;
       };
 
-      if (!data.ok || data.error) {
-        toast.error(data.error ?? (isKo ? '오류가 발생했습니다.' : 'An error occurred.'));
+      if (r.status === 403 && data.error === 'billing_beta_only') {
+        toast.error(isKo
+          ? '현재 베타 사용자에게만 결제가 허용됩니다.'
+          : 'Payment is currently restricted to pre-approved beta users.');
         return;
       }
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else if (data.mock) {
-        // Self-serve card checkout is gated behind PSP credentials. Until they
-        // land, route customers to sales rather than dangle a "coming soon" UX.
-        toast.info(isKo
-          ? '엔터프라이즈 결제는 nexyfab@nexysys.com 으로 문의해주세요.'
-          : 'For enterprise billing, contact nexyfab@nexysys.com.');
+      if (r.status === 503 && data.error === 'dodo_product_not_configured') {
+        toast.error(isKo
+          ? '결제 상품이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.'
+          : 'Payment product is not yet configured. Please try again later.');
+        return;
       }
+      if (!r.ok || !data.url) {
+        toast.error(data.message ?? data.error ?? (isKo ? '결제 페이지를 열 수 없습니다.' : 'Could not open checkout.'));
+        return;
+      }
+      window.location.href = data.url;
     } catch {
       toast.error(isKo ? '네트워크 오류가 발생했습니다.' : 'Network error.');
     } finally {
       setLoadingPlan(null);
     }
-  }, [cycle, currentPlan, isKo, lang, toast]);
+  }, [cycle, currentPlan, isKo, toast]);
 
   function fmtKRW(n: number | null) {
     if (n === null || n === 0) return isKo ? '무료' : 'Free';
@@ -183,6 +201,37 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
       </div>
 
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px' }}>
+        {/* ── Closed-beta banner ── */}
+        {/* Only renders when payment is restricted to a pre-approved allowlist
+            and the current user is not on it. */}
+        {betaStatus?.enabled && !betaStatus.allowed && (
+          <div style={{
+            border: '1px solid #d4a017', background: '#3a2d0c', borderRadius: 10,
+            padding: '14px 18px', marginBottom: 32, display: 'flex', gap: 12, alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: 18, color: '#d4a017', lineHeight: 1 }}>⚠</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f0c14b', marginBottom: 4 }}>
+                {isKo ? '현재 베타 서비스' : 'Closed beta'}
+              </div>
+              <div style={{ fontSize: 13, color: '#e0c97a', lineHeight: 1.5 }}>
+                {isKo
+                  ? '결제는 사전 승인된 사용자만 가능합니다.'
+                  : 'Payment is open to pre-approved users only.'}
+              </div>
+              <div style={{ fontSize: 12, color: '#c9b06e', marginTop: 6 }}>
+                {isKo ? '사전 신청: ' : 'Request access: '}
+                <a
+                  href={`mailto:${betaStatus.contact}`}
+                  style={{ color: '#f0c14b', textDecoration: 'underline' }}
+                >
+                  {betaStatus.contact}
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Title ── */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: '#e6edf3', margin: '0 0 12px' }}>
