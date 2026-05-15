@@ -7,25 +7,23 @@ import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { ThemeProvider } from './ThemeContext';
 import { WorkspaceLoading } from './WorkspaceLoading';
-// Shell-v2 (Phase 1) — gated by `?shell=v2`. See plans/shimmering-singing-sun.md
-import { ShellPreview } from './_shell';
+// Shell-v2 chrome wraps ShapeGeneratorInner by default. Inner's legacy
+// top toolbar + StatusBar are hidden via globals.css `body.sg-shell-v2`.
+import { ModelerShell, ShellPreview } from './_shell';
 
 const ShapeGeneratorInner = dynamic(
   () => import('./ShapeGeneratorInner').then((m) => ({ default: m.ShapeGeneratorInner })),
   { ssr: false, loading: () => <WorkspaceLoading variant="app" /> },
 );
 
-// The 3D modeler is always the real ShapeGeneratorInner. The shell-v2 chrome
-// preview is kept behind `?dev-shell=v2` (NOT `?shell=v2`) so it's only
-// reachable by direct dev links — accidental users land on the real modeler.
-// Phase 6 will wire ShapeGeneratorInner into <Shell> for real; until then,
-// ShellPreview is mock data and should not be promoted.
+// Default → ModelerShell (new chrome around the real Inner).
+// `?classic=1`     → bare ShapeGeneratorInner (legacy entry, link-only).
+// `?dev-shell=v2`  → ShellPreview with mock data (dev visual sandbox).
 function ShellGate() {
   const sp = useSearchParams();
-  if (sp?.get('dev-shell') === 'v2') {
-    return <ShellPreview />;
-  }
-  return <ShapeGeneratorInner />;
+  if (sp?.get('classic') === '1') return <ShapeGeneratorInner />;
+  if (sp?.get('dev-shell') === 'v2') return <ShellPreview />;
+  return <ModelerShell />;
 }
 
 export default function ShapeGeneratorApp() {

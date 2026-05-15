@@ -187,7 +187,7 @@ export default function StatusBar({
   const optPct = progress ? Math.round((progress.iteration / progress.maxIteration) * 100) : 0;
 
   return (
-    <div style={S.root(isRtl)}>
+    <div style={S.root(isRtl)} data-shell-v2-hide="status-bar">
       {/* Mode indicator */}
       <div style={S.modeWrap(isSketchMode)}>
         <span style={S.modeDot(isSketchMode, editMode !== 'none')} />

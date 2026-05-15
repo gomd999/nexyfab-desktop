@@ -404,10 +404,20 @@ body.sg-fs-hide::before {
    ──────────────────────────────────────────────────────────────────────────── */
 
 /* When shell-v2 is mounted, opt-out points for legacy chrome.
-   Add `data-shell-v2-hide` to any element that should disappear when the new
-   shell takes over (e.g. the legacy `.sg-topbar`). Inert until a future PR
-   wires `ShapeGeneratorInner` into <Shell> and marks its own toolbar opt-out. */
+   Hides legacy ShapeGeneratorInner top toolbars and status bar so the new
+   Shell's TitleBar / Ribbon / StatusBar render on top without duplication.
+   Inner's panels (Feature tree, viewport canvas, Inspector) remain visible. */
 body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
+body.sg-shell-v2 .sg-topbar { display: none !important; }
+body.sg-shell-v2 .sg-autohide { display: none !important; }
+/* Inner's outer container hard-codes height: 100dvh, which overflows when
+   nested inside Shell's flex viewport slot. Override so Inner fills the
+   slot's available space instead. */
+body.sg-shell-v2 [data-testid="shape-generator-workspace"] {
+  height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 auto;
+}
 
 :root,
 [data-theme="dark"] {

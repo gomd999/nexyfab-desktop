@@ -16,3 +16,4 @@ export { ShellPreview } from './ShellPreview';
 export { HubFrame } from './HubFrame';
 export { DrawingFrame } from './DrawingFrame';
 export { RenderFrame } from './RenderFrame';
+export { ModelerShell } from './ModelerShell';
