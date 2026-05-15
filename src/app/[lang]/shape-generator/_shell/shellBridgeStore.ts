@@ -22,6 +22,8 @@ export interface ShellFeatureItem {
   muted?: boolean;
   /** Optional meta column (e.g. "12 mm", "R 2.0"). */
   meta?: string;
+  /** Numeric params keyed by name — drives the Inspector PARAMETERS section. */
+  params?: Record<string, number>;
   /** Children for sketch profile / sub-features. */
   children?: ShellFeatureItem[];
 }
@@ -35,6 +37,27 @@ export interface ShellAssemblyItem {
   massG?: number;
   /** External / library / referenced. */
   kind?: 'part' | 'subassembly' | 'reference';
+}
+
+export interface ShellSketchEntity {
+  id: string;
+  type: string;
+  label: string;
+  meta?: string;
+  construction?: boolean;
+}
+
+export interface ShellSketchConstraint {
+  id: string;
+  type: string;
+  label?: string;
+}
+
+export interface ShellSketchDimension {
+  id: string;
+  name: string;
+  value: number;
+  unit?: string;
 }
 
 export interface ShellBridgeState {
@@ -83,6 +106,11 @@ export interface ShellBridgeState {
   // assembly mode (parts list with mate counts + mass).
   assemblyItems: ShellAssemblyItem[];
   selectedAssemblyId: string | null;
+  // Sketch snapshot — published from sketch store so SketchLeftPane shows
+  // real entities/constraints/dimensions instead of placeholders.
+  sketchEntityList: ShellSketchEntity[];
+  sketchConstraintList: ShellSketchConstraint[];
+  sketchDimensionList: ShellSketchDimension[];
 
   // Writers
   setMode: (s: Partial<Pick<ShellBridgeState, 'isSketchMode' | 'assemblyOpen' | 'editMode'>>) => void;
@@ -95,6 +123,11 @@ export interface ShellBridgeState {
   setSelection: (s: Partial<Pick<ShellBridgeState, 'selectionKind' | 'selectionLabel' | 'selectionCount'>>) => void;
   setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
   setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
+  setSketchSnapshot: (s: {
+    entities: ShellSketchEntity[];
+    constraints: ShellSketchConstraint[];
+    dimensions: ShellSketchDimension[];
+  }) => void;
 }
 
 export const useShellBridge = create<ShellBridgeState>((set) => ({
@@ -125,6 +158,9 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   selectedFeatureId: null,
   assemblyItems: [],
   selectedAssemblyId: null,
+  sketchEntityList: [],
+  sketchConstraintList: [],
+  sketchDimensionList: [],
 
   setMode: (s) => set(s),
   setUnits: (u) => set({ unitSystem: u }),
@@ -136,4 +172,9 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setSelection: (s) => set(s),
   setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
   setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
+  setSketchSnapshot: (s) => set({
+    sketchEntityList: s.entities,
+    sketchConstraintList: s.constraints,
+    sketchDimensionList: s.dimensions,
+  }),
 }));

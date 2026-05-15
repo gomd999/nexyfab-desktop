@@ -18,6 +18,17 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
   const dimensions = useShellBridge(s => s.sketchDimensions);
   const solverOk = useShellBridge(s => s.sketchSolverOk);
   const dof = useShellBridge(s => s.sketchDof);
+  const entityList = useShellBridge(s => s.sketchEntityList);
+  const constraintList = useShellBridge(s => s.sketchConstraintList);
+  const dimensionList = useShellBridge(s => s.sketchDimensionList);
+  // Group constraints by type → "Coincident · 6" rows like the mockup.
+  const groupedConstraints = Array.from(
+    constraintList.reduce((map, c) => {
+      const key = c.type;
+      map.set(key, (map.get(key) ?? 0) + 1);
+      return map;
+    }, new Map<string, number>()),
+  ).map(([type, count]) => ({ type, count }));
 
   return (
     <SidePanel
@@ -43,29 +54,63 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
       </div>
 
       <PropSection title={isKo ? `엔티티 (${entities})` : `Entities (${entities})`}>
-        {/* Placeholder rows — real entity list populated when sketch store
-            exposes a list snapshot. Until then we show count summaries. */}
-        <PropItemRow bullet="■" label={isKo ? '외부 사각형' : 'Outer rectangle'} meta={isKo ? '4 라인 · 닫힘' : '4 lines · closed'} />
-        <PropItemRow bullet="✏" label={isKo ? '노치 라인' : 'Notch lines'} meta="4 lines" />
-        <PropItemRow bullet="○" label="∅6.5 hole" meta="4× pattern" />
-        <PropItemRow bullet="┊" label={isKo ? '중심선' : 'Centerline'} meta={isKo ? '구성선' : 'construction'} />
+        {entityList.length === 0 ? (
+          <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
+            {isKo ? '엔티티 없음 — 라인 / 사각형 / 원으로 시작' : 'No entities — draw a line / rect / circle to start'}
+          </div>
+        ) : (
+          entityList.map(seg => (
+            <PropItemRow
+              key={seg.id}
+              bullet={seg.type === 'circle' ? '○' : seg.type === 'rect' ? '■' : seg.type === 'arc' ? '⌒' : seg.construction ? '┊' : '✏'}
+              label={seg.label}
+              meta={seg.meta}
+            />
+          ))
+        )}
       </PropSection>
 
       <PropSection title={isKo ? `구속조건 (${constraints})` : `Constraints (${constraints})`}>
-        <PropItemRow bullet="↗" label="Coincident" meta="· 6" />
-        <PropItemRow bullet="—" label="Horizontal" meta="· 4" />
-        <PropItemRow bullet="|" label="Vertical" meta="· 2" />
-        <PropItemRow bullet="⇆" label="Symmetric" meta="· 2" />
+        {groupedConstraints.length === 0 ? (
+          <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
+            {isKo ? '구속조건 없음' : 'No constraints'}
+          </div>
+        ) : (
+          groupedConstraints.map(g => (
+            <PropItemRow key={g.type} bullet={CONSTRAINT_GLYPH[g.type] ?? '◦'} label={g.type} meta={`· ${g.count}`} />
+          ))
+        )}
       </PropSection>
 
       <PropSection title={isKo ? `치수 (${dimensions})` : `Dimensions (${dimensions})`}>
-        <PropItemRow bullet="↔" label="80.00 — width" meta="d1" />
-        <PropItemRow bullet="↕" label="50.00 — height" meta="d2" />
-        <PropItemRow bullet="↔" label="24.00 — notch" meta="d3" />
-        <PropItemRow bullet="∅" label="∅6.5 — holes" meta="d4" />
-        <PropItemRow bullet="↔" label="15.00 — hole pos X" meta="d5" />
-        <PropItemRow bullet="↕" label="12.00 — hole pos Y" meta="d6" />
+        {dimensionList.length === 0 ? (
+          <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
+            {isKo ? '치수 없음' : 'No dimensions'}
+          </div>
+        ) : (
+          dimensionList.map(d => (
+            <PropItemRow
+              key={d.id}
+              bullet="↔"
+              label={`${d.value.toFixed(2)}${d.unit ? ` ${d.unit}` : ''}`}
+              meta={d.name}
+            />
+          ))
+        )}
       </PropSection>
     </SidePanel>
   );
 }
+
+const CONSTRAINT_GLYPH: Record<string, string> = {
+  coincident: '↗',
+  horizontal: '—',
+  vertical: '|',
+  perpendicular: '⊥',
+  parallel: '∥',
+  tangent: '◜',
+  concentric: '◎',
+  equal: '≡',
+  symmetric: '⇆',
+  fix: '◇',
+};

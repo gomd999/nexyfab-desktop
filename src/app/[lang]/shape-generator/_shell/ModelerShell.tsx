@@ -472,25 +472,69 @@ export function ModelerShell() {
   );
 }
 
-// ─── Drawer content — minimal scaffold; real DFM/FEA/Cost/Variants panels
-//      will be loaded via dynamic import as a follow-up so they stay outside
-//      the modeler's main bundle.
+// ─── Drawer content — launcher cards for DFM/FEA/Cost/Variants. Clicking a
+// card sets the corresponding uiStore flag via custom event so Inner's
+// existing ErrorBoundary-wrapped modal opens. This keeps the analytical
+// panels fully functional with their original prop wiring while exposing
+// them through the new Inspector → ANALYZE → drawer flow.
 function DrawerContent({ tab, isKo }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; isKo: boolean }) {
-  const labels: Record<typeof tab, { en: string; ko: string }> = {
-    dfm: { en: 'Design for Manufacturing — undercut / draft / thin-wall checks', ko: '제조성 분석 — 언더컷 / 드래프트 / 박벽 검사' },
-    fea: { en: 'Finite Element Analysis — static stress under chosen load', ko: '유한요소해석 — 정적 응력 분포' },
-    cost: { en: 'Cost estimate — material + machining + finishing', ko: '비용 예상 — 재료 + 가공 + 후처리' },
-    variants: { en: 'Design variants — explore size / material / feature alternatives', ko: '설계 변형 — 크기 / 재료 / 피처 대안 탐색' },
+  const titles: Record<typeof tab, { en: string; ko: string }> = {
+    dfm: { en: 'Design for Manufacturing', ko: '제조성 분석 (DFM)' },
+    fea: { en: 'Finite Element Analysis', ko: '유한요소해석 (FEA)' },
+    cost: { en: 'Cost Copilot', ko: '비용 코파일럿' },
+    variants: { en: 'Design Variants', ko: '설계 변형' },
   };
-  const l = labels[tab];
+  const descs: Record<typeof tab, { en: string; ko: string }> = {
+    dfm: { en: 'Undercut, draft, thin-wall, sharp-corner, and tolerance checks for the active manufacturing process.', ko: '활성 제조공정 기준 언더컷 / 드래프트 / 박벽 / 모서리 / 공차 검사.' },
+    fea: { en: 'Static stress under chosen load case. Real-time visualisation overlays the mesh.', ko: '정적 응력 분석. 실시간 시각화 오버레이가 메시 위에 표시됩니다.' },
+    cost: { en: 'Material + machining + finishing cost, refined by process and quantity.', ko: '재료 + 가공 + 후처리 비용, 공정/수량 별 정교화.' },
+    variants: { en: 'Explore size, material, and feature alternatives side-by-side.', ko: '크기 / 재료 / 피처 대안을 나란히 탐색.' },
+  };
+  const event: Record<typeof tab, string> = {
+    dfm: 'nexyfab:open-dfm',
+    fea: 'nexyfab:open-fea',
+    cost: 'nexyfab:open-cost',
+    variants: 'nexyfab:open-variants',
+  };
+  const t = titles[tab];
+  const d = descs[tab];
   return (
-    <div style={{ fontSize: 12, color: 'var(--nx-text)' }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>{isKo ? l.ko : l.en}</div>
-      <p style={{ color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, color: 'var(--nx-text)' }}>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{isKo ? t.ko : t.en}</div>
+        <div style={{ color: 'var(--nx-text-2)', lineHeight: 1.5, fontSize: 11 }}>{isKo ? d.ko : d.en}</div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          style={{
+            height: 32, padding: '0 16px', border: 0, borderRadius: 4,
+            background: 'var(--nx-accent)', color: '#fff', fontSize: 12,
+            fontWeight: 600, cursor: 'pointer',
+          }}
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent(event[tab]));
+            }
+          }}
+        >
+          {isKo ? '실행 →' : 'Run →'}
+        </button>
+        <button
+          style={{
+            height: 32, padding: '0 12px',
+            border: '1px solid var(--nx-border)', borderRadius: 4,
+            background: 'transparent', color: 'var(--nx-text-2)',
+            fontSize: 11, cursor: 'pointer',
+          }}
+        >
+          {isKo ? '설정' : 'Settings'}
+        </button>
+      </div>
+      <div style={{ marginTop: 8, padding: 10, background: 'var(--nx-panel-2)', borderRadius: 4, fontSize: 10, color: 'var(--nx-text-3)' }}>
         {isKo
-          ? '기존 패널 컴포넌트는 후속 단계에서 dynamic import 로 이 자리에 마운트됩니다.'
-          : 'Existing panel components will be mounted here via dynamic import in the next phase.'}
-      </p>
+          ? '실행하면 전체 패널이 모달로 열리고 결과 오버레이가 뷰포트에 표시됩니다.'
+          : 'Click Run to launch the full panel as a modal with viewport overlay.'}
+      </div>
     </div>
   );
 }

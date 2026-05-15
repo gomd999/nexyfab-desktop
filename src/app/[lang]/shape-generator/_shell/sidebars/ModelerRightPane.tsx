@@ -22,6 +22,11 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
   const selectionCount = useShellBridge(s => s.selectionCount);
   const volume = useShellBridge(s => s.volume);
   const triangleCount = useShellBridge(s => s.triangleCount);
+  const featureItems = useShellBridge(s => s.featureItems);
+  const selectedFeatureId = useShellBridge(s => s.selectedFeatureId);
+  const selectedFeature = selectedFeatureId
+    ? featureItems.find(f => f.id === selectedFeatureId)
+    : null;
 
   return (
     <SidePanel
@@ -41,6 +46,9 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
           selectionCount={selectionCount}
           volume={volume}
           triangleCount={triangleCount}
+          featureId={selectedFeature?.id ?? null}
+          featureType={selectedFeature?.type ?? null}
+          featureParams={selectedFeature?.params ?? null}
         />
       )}
       {activeTab === 'ai' && <AiTab isKo={isKo} />}
@@ -53,12 +61,16 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
 
 function InspectorTab({
   isKo, selectedLabel, selectionCount, volume, triangleCount,
+  featureId, featureType, featureParams,
 }: {
   isKo: boolean;
   selectedLabel: string | null;
   selectionCount: number;
   volume: number | null;
   triangleCount: number;
+  featureId: string | null;
+  featureType: string | null;
+  featureParams: Record<string, number> | null;
 }) {
   // Empty state when nothing selected.
   if (!selectedLabel) {
@@ -151,16 +163,29 @@ function InspectorTab({
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '파라미터' : 'Parameters'}>
-        <PropRow label="d12 (r)">
-          <PropNumber value={2.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label="d13 (overflow)">
-          <PropNumber value={0.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <div style={{ fontSize: 10, color: 'var(--nx-accent)', padding: '4px 0' }}>
-          ⊳ {isKo ? '연결됨' : 'Linked to'} <span className="mono">global.cornerRad</span>
-        </div>
+      <PropSection title={isKo ? `파라미터${featureType ? ` · ${featureType}` : ''}` : `Parameters${featureType ? ` · ${featureType}` : ''}`}>
+        {featureId && featureParams && Object.keys(featureParams).length > 0 ? (
+          Object.entries(featureParams).map(([key, value]) => (
+            <PropRow key={key} label={key}>
+              <PropNumber
+                value={value}
+                onChange={(v) => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('nexyfab:update-feature-param', {
+                      detail: { id: featureId, key, value: v },
+                    }));
+                  }
+                }}
+                suffix={paramSuffix(key)}
+                step={paramStep(key)}
+              />
+            </PropRow>
+          ))
+        ) : (
+          <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
+            {isKo ? '편집 가능한 파라미터 없음' : 'No editable parameters'}
+          </div>
+        )}
       </PropSection>
 
       <PropSection title={isKo ? '분석' : 'Analyze'} defaultExpanded>
@@ -187,6 +212,24 @@ function InspectorTab({
       </div>
     </>
   );
+}
+
+// Heuristic suffix per common param name. Most CAD params are mm.
+function paramSuffix(key: string): string | undefined {
+  const k = key.toLowerCase();
+  if (k.includes('angle') || k.includes('rotation') || k.endsWith('deg')) return '°';
+  if (k.includes('count') || k.includes('teeth') || k.includes('flutes') || k.includes('segment')) return '';
+  if (k.includes('ratio') || k.includes('factor') || k.includes('roughness') || k.includes('metalness')) return '';
+  return 'mm';
+}
+
+// Sensible step per param so sliders feel right.
+function paramStep(key: string): number {
+  const k = key.toLowerCase();
+  if (k.includes('count') || k.includes('teeth') || k.includes('flutes')) return 1;
+  if (k.includes('angle') || k.includes('rotation') || k.endsWith('deg')) return 1;
+  if (k.includes('ratio') || k.includes('factor') || k.includes('roughness') || k.includes('metalness')) return 0.01;
+  return 0.5;
 }
 
 function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; drawer: 'dfm' | 'fea' | 'cost' | 'variants' }) {

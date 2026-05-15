@@ -3129,6 +3129,7 @@ export function ShapeGeneratorInner() {
   const bridgeStats = useShellBridge(s => s.setStats);
   const bridgeCloud = useShellBridge(s => s.setCloud);
   const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
+  const bridgeAssemblyItems = useShellBridge(s => s.setAssemblyItems);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
@@ -3165,6 +3166,7 @@ export function ShapeGeneratorInner() {
   // "Fully constrained · DOF 0" pill, plus a floating SolverInfoChip reads
   // entities/constraints/dimensions/solveMs for the engineer-mode readout.
   const bridgeSketchSolver = useShellBridge(s => s.setSketchSolver);
+  const bridgeSketchSnapshot = useShellBridge(s => s.setSketchSnapshot);
   useEffect(() => {
     if (!isSketchMode) {
       bridgeSketchSolver({
@@ -3175,6 +3177,7 @@ export function ShapeGeneratorInner() {
         sketchDimensions: 0,
         sketchSolveMs: null,
       });
+      bridgeSketchSnapshot({ entities: [], constraints: [], dimensions: [] });
       return;
     }
     const ok = constraintStatus === 'ok';
@@ -3187,6 +3190,31 @@ export function ShapeGeneratorInner() {
       sketchDimensions: sketchDimensions?.length ?? 0,
       sketchSolveMs: typeof constraintDiagnostic?.residual === 'number' ? constraintDiagnostic.residual : null,
     });
+    // Publish real sketch entity / constraint / dimension lists so the
+    // SketchLeftPane renders actual content instead of mockup placeholders.
+    bridgeSketchSnapshot({
+      entities: (sketchProfile?.segments ?? []).map((seg, i) => ({
+        id: seg.id ?? `seg${i}`,
+        type: seg.type,
+        label: `${seg.type[0].toUpperCase()}${seg.type.slice(1)} ${i + 1}`,
+        meta: seg.construction ? 'construction' : `${seg.points.length} pts`,
+        construction: seg.construction === true,
+      })),
+      constraints: (sketchConstraints ?? []).map((c, i) => ({
+        id: (c as { id?: string }).id ?? `c${i}`,
+        type: (c as { type?: string }).type ?? 'unknown',
+        label: (c as { type?: string }).type ?? undefined,
+      })),
+      dimensions: (sketchDimensions ?? []).map((d, i) => {
+        const dim = d as { id?: string; name?: string; value?: number; unit?: string };
+        return {
+          id: dim.id ?? `d${i + 1}`,
+          name: dim.name ?? `d${i + 1}`,
+          value: dim.value ?? 0,
+          unit: dim.unit ?? 'mm',
+        };
+      }),
+    });
   }, [
     isSketchMode,
     constraintStatus,
@@ -3196,6 +3224,7 @@ export function ShapeGeneratorInner() {
     sketchConstraints,
     sketchDimensions,
     bridgeSketchSolver,
+    bridgeSketchSnapshot,
   ]);
 
   // Selection bridge — drives Shell's floating "{feature} · {n} edges" bubble.
@@ -3441,10 +3470,61 @@ export function ShapeGeneratorInner() {
         type: f.type,
         muted: f.enabled === false,
         meta: undefined,
+        params: { ...f.params },
       })),
       selectedId ?? null,
     );
-  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, cloudProjectId]);
+    // Publish assembly parts snapshot — drives the v3 AssemblyLeftPane tree
+    // and AssemblyRightPane BOM table. Density ~2.7 g/cm³ proxy for mass
+    // when actual material is unavailable, refined downstream as needed.
+    bridgeAssemblyItems(
+      (bomParts ?? []).map((p, i) => ({
+        id: p.name || `part-${i}`,
+        label: p.name || `Part ${i + 1}`,
+        count: 1,
+        massG: typeof p.result?.volume_cm3 === 'number'
+          ? p.result.volume_cm3 * 2.7
+          : undefined,
+        kind: 'part' as const,
+      })),
+      selectedId ?? null,
+    );
+  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, bridgeAssemblyItems, bomParts, cloudProjectId]);
+
+  // Shell-v2 Inspector → Inner bridge for parameter edits. Listener decoupled
+  // from the visual chrome so the new sidebar can edit live params without
+  // a hard import of Inner state.
+  useEffect(() => {
+    const onUpdate = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string; key: string; value: number }>;
+      const { id, key, value } = ce.detail ?? {};
+      if (id && typeof key === 'string' && Number.isFinite(value)) {
+        updateFeatureParam(id, key, value);
+      }
+    };
+    window.addEventListener('nexyfab:update-feature-param', onUpdate);
+    return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
+  }, [updateFeatureParam]);
+
+  // Shell-v2 BottomDrawer "Run →" buttons → existing uiStore-driven panels.
+  // Inner's modal mounts (DFMPanel, FEAPanel, CostCopilotPanel, etc.) listen
+  // to the same uiStore flags, so flipping them here opens the real panels.
+  useEffect(() => {
+    const onDfm = () => setShowDFM(true);
+    const onFea = () => setShowFEA(true);
+    const onCost = () => setShowCostPanel(true);
+    const onVariants = () => setShowVariantsPanel(true);
+    window.addEventListener('nexyfab:open-dfm', onDfm);
+    window.addEventListener('nexyfab:open-fea', onFea);
+    window.addEventListener('nexyfab:open-cost', onCost);
+    window.addEventListener('nexyfab:open-variants', onVariants);
+    return () => {
+      window.removeEventListener('nexyfab:open-dfm', onDfm);
+      window.removeEventListener('nexyfab:open-fea', onFea);
+      window.removeEventListener('nexyfab:open-cost', onCost);
+      window.removeEventListener('nexyfab:open-variants', onVariants);
+    };
+  }, [setShowDFM, setShowFEA, setShowCostPanel, setShowVariantsPanel]);
 
   /** Sketch palette “slice guide” ↔ 3D section plane (X) when solid geometry exists. */
   useEffect(() => {
