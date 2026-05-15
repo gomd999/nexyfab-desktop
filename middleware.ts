@@ -260,7 +260,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── Webhook bypass — webhooks use signature verification, not rate limiting ──
-  if (pathname === '/api/billing/webhook' || pathname === '/api/stripe/webhook') {
+  if (
+    pathname === '/api/billing/webhook' ||
+    pathname === '/api/stripe/webhook' ||
+    pathname === '/api/webhooks/dodo'
+  ) {
     return NextResponse.next();
   }
 
