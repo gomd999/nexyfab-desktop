@@ -24,6 +24,8 @@ export interface ShellProps {
   left?: ReactNode;
   right?: ReactNode;
   viewport: ReactNode;
+  /** Optional bottom drawer (DFM/FEA/Cost/Variants). Renders below viewport. */
+  bottomDrawer?: ReactNode;
   statusBar?: StatusBarProps;
   leftWidth?: number;
   rightWidth?: number;
@@ -36,6 +38,7 @@ export function Shell({
   left,
   right,
   viewport,
+  bottomDrawer,
   statusBar,
   leftWidth = 280,
   rightWidth = 320,
@@ -92,7 +95,13 @@ export function Shell({
             {left}
           </aside>
         )}
-        <div className="nx-viewport">{viewport}</div>
+        <div
+          className="nx-viewport"
+          style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minWidth: 0, minHeight: 0 }}
+        >
+          <div style={{ flex: '1 1 auto', position: 'relative', minHeight: 0 }}>{viewport}</div>
+          {bottomDrawer}
+        </div>
         {right && (
           <aside className="nx-panel right" style={{ width: rightWidth, flex: `0 0 ${rightWidth}px` }}>
             {right}

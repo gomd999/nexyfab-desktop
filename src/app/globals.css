@@ -418,6 +418,106 @@ body[data-mobile="1"] .nx-tool { min-width: 44px; min-height: 44px; }
 body[data-mobile="1"] .nx-tool .lbl { display: none; }
 body[data-mobile="1"] .nx-ribbon-tabs button { padding: 8px 12px; font-size: 13px; }
 body[data-mobile="1"] .nx-readout { font-size: 10px; }
+
+/* ── Sidebar v3 (mockup-matching) ──────────────────────────────────────────
+   Used by _shell/sidebars/* components. Light/dark consistency hinges on the
+   --nx-* tokens above; any new color here MUST use a token, never a hex. */
+.nx-panel { font-size: 12px; }
+.nx-panel-tabs .t:hover { background: var(--nx-hover); color: var(--nx-text); }
+.nx-tree-row:hover { background: var(--nx-hover); }
+/* Visibility-toggle eye visible when row hovered or selected. */
+.nx-panel .nx-tree-vis,
+.nx-panel:hover .nx-tree-vis { opacity: 1; }
+
+/* Footer pill — used for Sketch solver chip "Fully constrained · DOF 0". */
+.nx-panel-footer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  color: var(--nx-text);
+  background: var(--nx-accent-soft);
+  border: 1px solid var(--nx-accent-line);
+}
+.nx-panel-footer-pill.warn {
+  background: rgba(255, 168, 0, 0.13);
+  border-color: rgba(255, 168, 0, 0.45);
+  color: var(--nx-warn, #ffa800);
+}
+.nx-panel-footer-pill.error {
+  background: rgba(248, 81, 73, 0.13);
+  border-color: rgba(248, 81, 73, 0.45);
+  color: var(--nx-error, #f85149);
+}
+
+/* Filter input + add button used in left-pane footer. */
+.nx-panel .nx-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  background: var(--nx-panel-2);
+  border: 1px solid var(--nx-border);
+  border-radius: 3px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--nx-text-3);
+  flex: 1;
+}
+.nx-panel .nx-icon-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--nx-border);
+  background: var(--nx-panel-2);
+  color: var(--nx-text-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nx-panel .nx-icon-btn:hover {
+  background: var(--nx-hover);
+  color: var(--nx-text);
+}
+
+/* Bottom drawer — slides up from below viewport, holds DFM/FEA/Cost/Variants. */
+.nx-bottom-drawer {
+  flex: 0 0 auto;
+  background: var(--nx-panel);
+  border-top: 1px solid var(--nx-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 50vh;
+  transition: height 0.18s ease;
+}
+.nx-bottom-drawer-handle {
+  height: 24px;
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: var(--nx-panel-2);
+  border-bottom: 1px solid var(--nx-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nx-text-2);
+  cursor: pointer;
+  gap: 6px;
+  user-select: none;
+}
+.nx-bottom-drawer-handle:hover {
+  background: var(--nx-hover);
+  color: var(--nx-text);
+}
+.nx-bottom-drawer-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 10px;
+}
 /* Inner's outer container hard-codes height: 100dvh, which overflows when
    nested inside Shell's flex viewport slot. Override so Inner fills the
    slot's available space instead. */

@@ -29,6 +29,13 @@ import { SelectionBubble } from './SelectionBubble';
 import { SolverInfoChip } from './SolverInfoChip';
 import { FileMenu, type FileMenuItem } from './FileMenu';
 import type { ShellMode } from './ModeRibbons';
+import { ModelerLeftPane } from './sidebars/ModelerLeftPane';
+import { ModelerRightPane } from './sidebars/ModelerRightPane';
+import { SketchLeftPane } from './sidebars/SketchLeftPane';
+import { SketchRightPane } from './sidebars/SketchRightPane';
+import { AssemblyLeftPane } from './sidebars/AssemblyLeftPane';
+import { AssemblyRightPane } from './sidebars/AssemblyRightPane';
+import { BottomDrawer } from './BottomDrawer';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -93,6 +100,21 @@ export function ModelerShell() {
   const isKo = lang === 'ko';
   const langSeg = lang === 'ko' ? 'kr' : lang;
   const isMobile = useIsMobile();
+  // Bottom drawer — surfaces DFM/FEA/Cost/Variants via custom event from
+  // ModelerRightPane Inspector ANALYZE rows.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'dfm' | 'fea' | 'cost' | 'variants'>('dfm');
+  useEffect(() => {
+    const onAnalyzeOpen = (e: Event) => {
+      const ce = e as CustomEvent<{ drawer: 'dfm' | 'fea' | 'cost' | 'variants' }>;
+      if (ce.detail?.drawer) {
+        setDrawerTab(ce.detail.drawer);
+        setDrawerOpen(true);
+      }
+    };
+    window.addEventListener('nexyfab:analyze-open', onAnalyzeOpen);
+    return () => window.removeEventListener('nexyfab:analyze-open', onAnalyzeOpen);
+  }, []);
   // Toggle a body attribute so shell-v2 CSS can scale hit targets and
   // collapse rails on touch-primary devices.
   useEffect(() => {
@@ -390,8 +412,18 @@ export function ModelerShell() {
         },
         isActive: id => tool === id,
       }}
-      leftWidth={0}
-      rightWidth={0}
+      leftWidth={280}
+      rightWidth={320}
+      left={
+        mode === 'sketch' ? <SketchLeftPane isKo={isKo} />
+        : mode === 'assembly' ? <AssemblyLeftPane isKo={isKo} />
+        : <ModelerLeftPane isKo={isKo} />
+      }
+      right={
+        mode === 'sketch' ? <SketchRightPane isKo={isKo} />
+        : mode === 'assembly' ? <AssemblyRightPane isKo={isKo} />
+        : <ModelerRightPane isKo={isKo} />
+      }
       viewport={
         <Suspense fallback={<WorkspaceLoading variant="app" />}>
           <ShapeGeneratorInner />
@@ -404,6 +436,22 @@ export function ModelerShell() {
             items={fileMenuItems}
           />
         </Suspense>
+      }
+      bottomDrawer={
+        <BottomDrawer
+          open={drawerOpen}
+          activeTab={drawerTab}
+          tabs={[
+            { id: 'dfm', label: isKo ? 'DFM' : 'DFM' },
+            { id: 'fea', label: isKo ? 'FEA' : 'FEA' },
+            { id: 'cost', label: isKo ? '비용' : 'Cost' },
+            { id: 'variants', label: isKo ? '변형' : 'Variants' },
+          ]}
+          onTabChange={(id) => setDrawerTab(id as typeof drawerTab)}
+          onClose={() => setDrawerOpen(false)}
+        >
+          <DrawerContent tab={drawerTab} isKo={isKo} />
+        </BottomDrawer>
       }
       statusBar={{
         left: [
@@ -421,5 +469,28 @@ export function ModelerShell() {
         pills: statusPills,
       }}
     />
+  );
+}
+
+// ─── Drawer content — minimal scaffold; real DFM/FEA/Cost/Variants panels
+//      will be loaded via dynamic import as a follow-up so they stay outside
+//      the modeler's main bundle.
+function DrawerContent({ tab, isKo }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; isKo: boolean }) {
+  const labels: Record<typeof tab, { en: string; ko: string }> = {
+    dfm: { en: 'Design for Manufacturing — undercut / draft / thin-wall checks', ko: '제조성 분석 — 언더컷 / 드래프트 / 박벽 검사' },
+    fea: { en: 'Finite Element Analysis — static stress under chosen load', ko: '유한요소해석 — 정적 응력 분포' },
+    cost: { en: 'Cost estimate — material + machining + finishing', ko: '비용 예상 — 재료 + 가공 + 후처리' },
+    variants: { en: 'Design variants — explore size / material / feature alternatives', ko: '설계 변형 — 크기 / 재료 / 피처 대안 탐색' },
+  };
+  const l = labels[tab];
+  return (
+    <div style={{ fontSize: 12, color: 'var(--nx-text)' }}>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>{isKo ? l.ko : l.en}</div>
+      <p style={{ color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
+        {isKo
+          ? '기존 패널 컴포넌트는 후속 단계에서 dynamic import 로 이 자리에 마운트됩니다.'
+          : 'Existing panel components will be mounted here via dynamic import in the next phase.'}
+      </p>
+    </div>
   );
 }

@@ -14,6 +14,8 @@ import { I } from './Icons';
 import { useShellBridge } from './shellBridgeStore';
 import { useFreemiumGate } from '../hooks/useFreemiumGate';
 import { readGeometry } from './geometryBridge';
+import { DrawingLeftPane } from './sidebars/DrawingLeftPane';
+import { DrawingRightPane } from './sidebars/DrawingRightPane';
 
 interface DrawingFrameProps {
   lang: string;
@@ -224,8 +226,18 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         }}
         leftWidth={240}
         rightWidth={300}
-        left={<DrawingTreePane nodes={sheetTreeNodes} selectedId={selectedView} onSelect={setSelectedView} isKo={isKo} />}
-        right={<DrawingPropsPane isKo={isKo} selectedView={selectedView} />}
+        left={<DrawingLeftPane
+          isKo={isKo}
+          sheets={sheets}
+          activeSheet={activeSheet}
+          onSelectSheet={setActiveSheet}
+          onAddSheet={addSheet}
+        />}
+        right={<DrawingRightPane
+          isKo={isKo}
+          onExportPdf={onExportPDF}
+          onExportDxf={onExportDXF}
+        />}
         viewport={
           <>
             <SheetTabs

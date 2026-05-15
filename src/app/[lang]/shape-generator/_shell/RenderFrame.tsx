@@ -11,6 +11,7 @@ import { Shell } from './Shell';
 import { I, type IconName } from './Icons';
 import { useFreemiumGate } from '../hooks/useFreemiumGate';
 import { PbrSpherePreview } from './PbrSpherePreview';
+import { RenderRightPane } from './sidebars/RenderRightPane';
 
 interface RenderFrameProps {
   lang: string;
@@ -124,20 +125,21 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
           />
         }
         right={
-          <RenderPropsPane
+          <RenderRightPane
             isKo={isKo}
+            material={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.lbl ?? selectedMaterial}
+            color={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.color ?? '#888'}
             roughness={roughness}
-            setRoughness={setRoughness}
             metalness={metalness}
-            setMetalness={setMetalness}
             exposure={exposure}
-            setExposure={setExposure}
             hdri={hdri}
-            setHdri={setHdri}
-            hdriRot={hdriRot}
-            setHdriRot={setHdriRot}
             lens={lens}
+            setRoughness={setRoughness}
+            setMetalness={setMetalness}
+            setExposure={setExposure}
+            setHdri={setHdri}
             setLens={setLens}
+            onRenderFinal={onRenderFinal}
           />
         }
         viewport={

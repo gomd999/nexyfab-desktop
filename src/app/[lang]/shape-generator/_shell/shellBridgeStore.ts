@@ -13,6 +13,30 @@ export type ShellEditMode = 'modeling' | 'sketch' | 'assembly';
 export type ShellUnitSystem = 'mm' | 'inch';
 export type ShellCloudStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
 
+export interface ShellFeatureItem {
+  id: string;
+  label: string;
+  /** Feature type — extrude / cut / fillet / chamfer / shell / pattern / etc. */
+  type: string;
+  /** Suppressed or hidden — shown muted in the tree. */
+  muted?: boolean;
+  /** Optional meta column (e.g. "12 mm", "R 2.0"). */
+  meta?: string;
+  /** Children for sketch profile / sub-features. */
+  children?: ShellFeatureItem[];
+}
+
+export interface ShellAssemblyItem {
+  id: string;
+  label: string;
+  /** Quantity instances. */
+  count: number;
+  /** Mass (g) if known. */
+  massG?: number;
+  /** External / library / referenced. */
+  kind?: 'part' | 'subassembly' | 'reference';
+}
+
 export interface ShellBridgeState {
   // Mode
   isSketchMode: boolean;
@@ -51,6 +75,15 @@ export interface ShellBridgeState {
   selectionLabel: string | null;
   selectionCount: number;
 
+  // Feature tree snapshot — Inner publishes a flat list for the sidebar to
+  // render. Heavy domain types stay in sceneStore; this is presentation only.
+  featureItems: ShellFeatureItem[];
+  selectedFeatureId: string | null;
+  // Assembly browser snapshot — same pattern as featureItems but for
+  // assembly mode (parts list with mate counts + mass).
+  assemblyItems: ShellAssemblyItem[];
+  selectedAssemblyId: string | null;
+
   // Writers
   setMode: (s: Partial<Pick<ShellBridgeState, 'isSketchMode' | 'assemblyOpen' | 'editMode'>>) => void;
   setUnits: (u: ShellUnitSystem) => void;
@@ -60,6 +93,8 @@ export interface ShellBridgeState {
   setCloud: (s: Partial<Pick<ShellBridgeState, 'cloudStatus' | 'cloudSavedAt' | 'autosaveSavedAt'>>) => void;
   setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof' | 'sketchEntities' | 'sketchConstraints' | 'sketchDimensions' | 'sketchSolveMs'>>) => void;
   setSelection: (s: Partial<Pick<ShellBridgeState, 'selectionKind' | 'selectionLabel' | 'selectionCount'>>) => void;
+  setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
+  setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
 }
 
 export const useShellBridge = create<ShellBridgeState>((set) => ({
@@ -86,6 +121,10 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   selectionKind: null,
   selectionLabel: null,
   selectionCount: 0,
+  featureItems: [],
+  selectedFeatureId: null,
+  assemblyItems: [],
+  selectedAssemblyId: null,
 
   setMode: (s) => set(s),
   setUnits: (u) => set({ unitSystem: u }),
@@ -95,4 +134,6 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setCloud: (s) => set(s),
   setSketchSolver: (s) => set(s),
   setSelection: (s) => set(s),
+  setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
+  setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
 }));

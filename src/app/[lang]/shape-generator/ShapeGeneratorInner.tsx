@@ -3128,6 +3128,7 @@ export function ShapeGeneratorInner() {
   const bridgeUnits = useShellBridge(s => s.setUnits);
   const bridgeStats = useShellBridge(s => s.setStats);
   const bridgeCloud = useShellBridge(s => s.setCloud);
+  const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
@@ -3432,7 +3433,18 @@ export function ShapeGeneratorInner() {
         writeGeometry(cloudProjectId ?? 'local', effectiveResult.geometry, selectedId ?? null);
       });
     }
-  }, [features, effectiveResult, selectedId, bridgeStats, cloudProjectId]);
+    // Publish the feature tree snapshot for the shell-v2 sidebar.
+    bridgeFeatureItems(
+      (features ?? []).map(f => ({
+        id: f.id,
+        label: f.type,
+        type: f.type,
+        muted: f.enabled === false,
+        meta: undefined,
+      })),
+      selectedId ?? null,
+    );
+  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, cloudProjectId]);
 
   /** Sketch palette “slice guide” ↔ 3D section plane (X) when solid geometry exists. */
   useEffect(() => {

@@ -700,7 +700,9 @@ function LeftPanel({
 
   if (collapsed) {
     return (
-      <div style={{
+      <div
+        data-shell-v2-hide
+        style={{
         width: RAIL_WIDTH, flexShrink: 0, background: theme.panelBg,
         [borderKey]: `1px solid ${theme.border}`,
         display: hiddenOnDevice ? 'none' : 'flex',
@@ -727,7 +729,9 @@ function LeftPanel({
   }
 
   return (
-    <div style={{
+    <div
+      data-shell-v2-hide
+      style={{
       width: effectiveWidth,
       flexShrink: 0,
       background: theme.panelBg,
