@@ -421,10 +421,10 @@ body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
   --nx-text: #d8dee5;
   --nx-text-2: #8a93a3;
   --nx-text-3: #5b6373;
-  --nx-accent: #22e0c8;
-  --nx-accent-2: #5eead4;
-  --nx-accent-soft: rgba(34, 224, 200, 0.13);
-  --nx-accent-line: rgba(34, 224, 200, 0.45);
+  --nx-accent: #4f8bff;
+  --nx-accent-2: #7aa9ff;
+  --nx-accent-soft: rgba(79, 139, 255, 0.13);
+  --nx-accent-line: rgba(79, 139, 255, 0.45);
   --nx-select: #ff9b3d;
   --nx-select-soft: rgba(255, 155, 61, 0.18);
   --nx-sketch: #4ea0ff;
@@ -451,10 +451,10 @@ body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
   --nx-text: #1a1f26;
   --nx-text-2: #4c5663;
   --nx-text-3: #7d8693;
-  --nx-accent: #0a958a;
-  --nx-accent-2: #15b3a4;
-  --nx-accent-soft: rgba(10, 149, 138, 0.10);
-  --nx-accent-line: rgba(10, 149, 138, 0.4);
+  --nx-accent: #1d6fef;
+  --nx-accent-2: #3b82f6;
+  --nx-accent-soft: rgba(29, 111, 239, 0.10);
+  --nx-accent-line: rgba(29, 111, 239, 0.4);
   --nx-select: #e26a00;
   --nx-select-soft: rgba(226, 106, 0, 0.13);
   --nx-sketch: #2b6cb0;
@@ -493,8 +493,8 @@ body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
 /* Title bar */
 .nx-title { height: 36px; flex: 0 0 36px; display: flex; align-items: center; background: var(--nx-panel); border-bottom: 1px solid var(--nx-border); padding: 0 10px; gap: 12px; font-size: 12px; }
 .nx-title .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: 0.01em; color: var(--nx-text); padding-right: 12px; border-right: 1px solid var(--nx-border); }
-.nx-title .brand .logo { width: 18px; height: 18px; border-radius: 4px; background: linear-gradient(135deg, var(--nx-accent), #0a8074); position: relative; }
-.nx-title .brand .logo::after { content: ""; position: absolute; inset: 4px; border: 1.5px solid #0a1518; border-radius: 2px; }
+.nx-title .brand .logo { width: 18px; height: 18px; border-radius: 4px; background: linear-gradient(135deg, var(--nx-accent), #1a3a8a); position: relative; }
+.nx-title .brand .logo::after { content: ""; position: absolute; inset: 4px; border: 1.5px solid #0a0f1a; border-radius: 2px; }
 .nx-title .quick { display: flex; align-items: center; gap: 2px; }
 .nx-title .quick button { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; background: transparent; border: 0; color: var(--nx-text-2); cursor: pointer; }
 .nx-title .quick button:hover { background: var(--nx-hover); color: var(--nx-text); }
@@ -511,7 +511,7 @@ body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
 .nx-title .av:first-child { margin-left: 0; }
 .nx-pillbtn { height: 24px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--nx-border-strong); background: var(--nx-panel-2); color: var(--nx-text); font-size: 11px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .nx-pillbtn:hover { background: var(--nx-hover); }
-.nx-pillbtn.primary { background: var(--nx-accent); color: #062320; border-color: transparent; font-weight: 600; }
+.nx-pillbtn.primary { background: var(--nx-accent); color: #ffffff; border-color: transparent; font-weight: 600; }
 .nx-pillbtn.primary:hover { filter: brightness(1.06); }
 
 /* Ribbon */

@@ -5,7 +5,7 @@
 // Reads existing useAuthStore / useProjectsStore data — no new fetch logic.
 // "New Design" and project cards route into /shape-generator (the real 3D modeler).
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
 import { useProjectsStore } from '@/hooks/useProjects';
@@ -38,7 +38,7 @@ interface QuickStart {
 export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { projects, isLoading } = useProjectsStore();
+  const { projects, isLoading, saveProject } = useProjectsStore();
   const { mode: themeMode, toggleTheme } = useTheme();
   const plan = user?.plan ?? 'free';
 
@@ -99,12 +99,67 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   const userName = user?.name ?? user?.email ?? (isKo ? '게스트' : 'Guest');
   const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Free';
 
+  // Guest quota: 1 free project per device. Stored separately from autosave
+  // so we keep an integer count even if the user clears autosave slots.
+  // On signup, the migration effect (see below) clears this so the user
+  // re-enters as a fresh Free-plan account with their guest project carried over.
+  const GUEST_QUOTA_KEY = 'nexyfab.guest.projectCount';
+  const GUEST_MIGRATED_KEY = 'nexyfab.guest.migrated';
+  const AUTOSAVE_META_KEY = 'nexyfab-autosave-meta';
+
+  // ── Guest → signed-in migration ────────────────────────────────────────────
+  // When a guest authenticates, lift their most-recent localStorage autosave
+  // slot into a real project under the new account so they can re-open it
+  // from any device. Best-effort: silent on failure (autosave stays as
+  // recovery fallback). Runs once per device per migration cycle.
+  useEffect(() => {
+    if (!user) return;
+    if (typeof window === 'undefined') return;
+    try {
+      if (localStorage.getItem(GUEST_MIGRATED_KEY) === '1') return;
+      const guestCount = parseInt(localStorage.getItem(GUEST_QUOTA_KEY) ?? '0', 10) || 0;
+      if (guestCount < 1) return;
+      const metaRaw = localStorage.getItem(AUTOSAVE_META_KEY);
+      if (!metaRaw) return;
+      const meta = JSON.parse(metaRaw) as Array<{ key: string; timestamp: number; selectedId: string }>;
+      if (!Array.isArray(meta) || meta.length === 0) return;
+      const newest = [...meta].sort((a, b) => b.timestamp - a.timestamp)[0];
+      const sceneRaw = localStorage.getItem(newest.key);
+      if (!sceneRaw) return;
+      const name = `${newest.selectedId || 'guest'} (${isKo ? '게스트 작업' : 'from guest mode'})`;
+      saveProject({ name, shapeId: newest.selectedId || undefined, sceneData: sceneRaw }).then(p => {
+        if (p) {
+          localStorage.setItem(GUEST_MIGRATED_KEY, '1');
+          localStorage.removeItem(GUEST_QUOTA_KEY);
+        }
+      });
+    } catch {
+      // localStorage blocked or malformed — silent fall-through.
+    }
+  }, [user, saveProject, isKo]);
+
   const handleNewDesign = () => {
-    if (!user) {
+    if (user) {
+      router.push(`/${lang}/shape-generator`);
+      return;
+    }
+    // Guest path: allow up to 1 project; force auth modal beyond that.
+    let count = 0;
+    try {
+      count = parseInt(localStorage.getItem(GUEST_QUOTA_KEY) ?? '0', 10) || 0;
+    } catch {
+      // localStorage blocked — treat as fresh guest and let through.
+    }
+    if (count >= 1) {
       onShowAuth?.();
       return;
     }
-    router.push(`/${lang}/shape-generator`);
+    try {
+      localStorage.setItem(GUEST_QUOTA_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    router.push(`/${lang}/shape-generator?guest=1`);
   };
 
   return (
@@ -138,7 +193,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               width: 22,
               height: 22,
               borderRadius: 5,
-              background: 'linear-gradient(135deg, var(--nx-accent), #0a8074)',
+              background: 'linear-gradient(135deg, var(--nx-accent), #1a3a8a)',
               position: 'relative',
             }}
           >
@@ -273,7 +328,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               height: 24,
               borderRadius: '50%',
               background: 'var(--nx-accent)',
-              color: '#062320',
+              color: '#ffffff',
               fontWeight: 600,
               fontSize: 11,
               display: 'inline-flex',
@@ -374,7 +429,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 width: 240,
                 height: 240,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(34,224,200,0.20), transparent 70%)',
+                background: 'radial-gradient(circle, rgba(79,139,255,0.22), transparent 70%)',
                 pointerEvents: 'none',
               }}
             />

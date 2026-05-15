@@ -105,7 +105,9 @@ export default function Header() {
     }, [pathname]);
     // ─────────────────────────────────────────────────────────────────────────
 
+    // Hide marketing header on full-screen app surfaces (modeler + Hub).
     if (pathname?.includes('/shape-generator')) return null;
+    if (pathname?.includes('/nexyfab/hub')) return null;
 
     const parts = pathname?.split('/').filter(Boolean) || [];
     const isAdmin = parts[0] === 'adminlink';
@@ -134,7 +136,9 @@ export default function Header() {
     const _nexysysUrl = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com';
 
     const navItems = [
-        { href: `/${lang}/shape-generator/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },
+        // Routes through the Hub (project list / start screen). The Hub then
+        // launches the real /shape-generator modeler via "New Design".
+        { href: `/${lang}/nexyfab/hub/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
         { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
         { href: `/${lang}/download/`, label: t.download, icon: <IconDownload />, external: false, highlight: false as const },
