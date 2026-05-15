@@ -1497,6 +1497,16 @@ export default function ShapePreview({
   // can show an explanatory banner instead of a silently dead viewport.
   const [glContextLost, setGlContextLost] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('solid');
+  // Shell-v2 ViewportChips dispatches `nexyfab:display-mode` — listen so
+  // the chips can drive the local viewport state.
+  useEffect(() => {
+    const onMode = (e: Event) => {
+      const m = (e as CustomEvent<{ mode?: DisplayMode }>).detail?.mode;
+      if (m === 'solid' || m === 'edges' || m === 'wireframe') setDisplayMode(m);
+    };
+    window.addEventListener('nexyfab:display-mode', onMode);
+    return () => window.removeEventListener('nexyfab:display-mode', onMode);
+  }, []);
   const [fitKey, setFitKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [internalAnimateMode, setInternalAnimateMode] = useState<'none' | 'turntable'>('none');
@@ -1545,6 +1555,16 @@ export default function ShapePreview({
   const dispatchView = useCallback((view: string) => {
     window.dispatchEvent(new CustomEvent('nexyfab:view', { detail: view }));
   }, []);
+
+  // Shell-v2 View ribbon tab → camera preset bridge.
+  useEffect(() => {
+    const onPreset = (e: Event) => {
+      const p = (e as CustomEvent<{ preset?: string }>).detail?.preset;
+      if (p) dispatchView(p);
+    };
+    window.addEventListener('nexyfab:camera-preset', onPreset);
+    return () => window.removeEventListener('nexyfab:camera-preset', onPreset);
+  }, [dispatchView]);
 
   // PBR material override state
   const [pbrPanelOpen, setPbrPanelOpen] = useState(false);

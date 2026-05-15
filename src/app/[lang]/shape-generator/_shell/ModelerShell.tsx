@@ -18,12 +18,15 @@ import { WorkspaceLoading } from '../WorkspaceLoading';
 import { useLang } from '../hooks/useLang';
 import { useTheme } from '../ThemeContext';
 import { useAuthStore } from '@/hooks/useAuth';
+import { useCollabPolling } from '@/hooks/useCollabPolling';
+import { useSearchParams } from 'next/navigation';
 import { Shell } from './Shell';
 import { I } from './Icons';
 import { useShellBridge } from './shellBridgeStore';
 import { ViewportChips } from './ViewportChips';
 import { SelectionBubble } from './SelectionBubble';
 import { SolverInfoChip } from './SolverInfoChip';
+import { FileMenu, type FileMenuItem } from './FileMenu';
 import type { ShellMode } from './ModeRibbons';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
@@ -84,23 +87,100 @@ export function ModelerShell() {
   const [activeTab, setActiveTab] = useState('solid');
   const [mode, setMode] = useState<ShellMode>('modeling');
   const [tool, setTool] = useState<string | null>(null);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
 
   const isKo = lang === 'ko';
   const langSeg = lang === 'ko' ? 'kr' : lang;
 
-  // Avatars: current user only for now (collab broadcast → multiple in a
-  // follow-up). Falls back to a "?" guest avatar if not signed in.
+  const fileMenuItems: FileMenuItem[] = [
+    {
+      id: 'new',
+      label: isKo ? '새 디자인' : 'New Design',
+      shortcut: '⌘N',
+      onClick: () => router.push(`/${langSeg}/nexyfab/hub`),
+    },
+    {
+      id: 'open',
+      label: isKo ? '열기…' : 'Open…',
+      shortcut: '⌘O',
+      onClick: () => router.push(`/${langSeg}/nexyfab/projects`),
+    },
+    {
+      id: 'save',
+      label: isKo ? '저장' : 'Save',
+      shortcut: '⌘S',
+      onClick: () => dispatchKey({ key: 's', code: 'KeyS', ctrl: true, meta: true }),
+    },
+    {
+      id: 'saveas',
+      label: isKo ? '다른 이름으로 저장' : 'Save As…',
+      shortcut: '⇧⌘S',
+      onClick: () => dispatchKey({ key: 's', code: 'KeyS', ctrl: true, meta: true, shift: true }),
+    },
+    { id: 'div1', label: '', divider: true },
+    {
+      id: 'import',
+      label: isKo ? 'STEP/IGES 가져오기…' : 'Import STEP/IGES…',
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:file-import'));
+        }
+      },
+    },
+    {
+      id: 'export-stl',
+      label: isKo ? 'STL 내보내기' : 'Export STL',
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'stl' } }));
+        }
+      },
+    },
+    {
+      id: 'export-step',
+      label: isKo ? 'STEP 내보내기' : 'Export STEP',
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'step' } }));
+        }
+      },
+    },
+    { id: 'div2', label: '', divider: true },
+    {
+      id: 'projects',
+      label: isKo ? '프로젝트 목록' : 'All Projects',
+      onClick: () => router.push(`/${langSeg}/nexyfab/projects`),
+    },
+    {
+      id: 'hub',
+      label: isKo ? '허브로' : 'Back to Hub',
+      onClick: () => router.push(`/${langSeg}/nexyfab/hub`),
+    },
+  ];
+
+  // Avatars: current user + any remote collab sessions polling on the
+  // same project. Deterministic chip color from email hash.
   const userInitials = (user?.name ?? user?.email ?? '?').slice(0, 2).toUpperCase();
   const userColor = (() => {
-    // Deterministic color from email hash so the same user is always the
-    // same color, but different users distinct.
     const seed = user?.email ?? 'guest';
     let h = 0;
     for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
     const palette = ['#22e0c8', '#5e9eff', '#ff9b3d', '#a87bff', '#ffd24d', '#ff6b9b'];
     return palette[Math.abs(h) % palette.length];
   })();
-  const avatars = user ? [{ initials: userInitials, color: userColor }] : [];
+  const sp = useSearchParams();
+  const projectId = sp?.get('project') ?? null;
+  const { sessions, mySessionId } = useCollabPolling(projectId, Boolean(user && projectId));
+  const remoteAvatars = sessions
+    .filter(s => s.sessionId !== mySessionId)
+    .slice(0, 3)
+    .map(s => ({
+      initials: (s.userName || '?').slice(0, 2).toUpperCase(),
+      color: s.color || '#5e9eff',
+    }));
+  const avatars = user
+    ? [{ initials: userInitials, color: userColor }, ...remoteAvatars]
+    : [];
 
   // Pull live status from Inner via the bridge store.
   const bridgeEditMode = useShellBridge(s => s.editMode);
@@ -201,7 +281,7 @@ export function ModelerShell() {
         avatars,
         canUndo: true,
         canRedo: true,
-        onNew: () => router.push(`/${langSeg}/nexyfab/hub`),
+        onNew: () => setFileMenuOpen(v => !v),
         onOpen: () => router.push(`/${langSeg}/nexyfab/projects`),
         onSave: () => {
           // Inner runs autosave on a 30s debounce + saves on Ctrl+S.
@@ -234,8 +314,7 @@ export function ModelerShell() {
         activeTab,
         onTabChange: id => {
           setActiveTab(id);
-          // Drawing / Render tabs route to their standalone surfaces. Other
-          // tabs keep the user in the modeler and just swap ribbon visuals.
+          // Drawing / Render tabs route to their standalone surfaces.
           if (id === 'drawing') {
             router.push(`/${langSeg}/shape-generator/drawing`);
             return;
@@ -250,6 +329,22 @@ export function ModelerShell() {
             // become reachable. Routed through the same window event Inner
             // listens for, so we don't depend on imports of Inner state.
             dispatchTool('asm.insert');
+            return;
+          }
+          // N10: Inspect → enter measure mode (most common Inspect first action).
+          if (id === 'inspect') {
+            dispatchTool('measure');
+            setMode('modeling');
+            return;
+          }
+          // N11: View → cycle through camera presets via custom event.
+          // ShapePreview listens for `nexyfab:camera-preset` and dispatches its
+          // own dispatchView() for top/front/right/iso/fit.
+          if (id === 'view') {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('nexyfab:camera-preset', { detail: { preset: 'iso' } }));
+            }
+            setMode('modeling');
             return;
           }
           setMode('modeling');
@@ -268,6 +363,11 @@ export function ModelerShell() {
           <ViewportChips isKo={isKo} />
           <SelectionBubble isKo={isKo} />
           <SolverInfoChip isKo={isKo} />
+          <FileMenu
+            open={fileMenuOpen}
+            onClose={() => setFileMenuOpen(false)}
+            items={fileMenuItems}
+          />
         </Suspense>
       }
       statusBar={{

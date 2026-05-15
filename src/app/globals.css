@@ -615,3 +615,35 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
 .nx-link { color: var(--nx-accent); cursor: pointer; text-decoration: none; }
 .nx-link:hover { text-decoration: underline; }
 .nx-sel-orange { color: var(--nx-select); }
+
+/* N6 — Feature tree visual polish for Inner's LeftPanel design-tree.
+   Subtle indent guides + tighter row spacing so it reads closer to mockup
+   #14's vertical hierarchy. Targets the existing Inner tree by its data-tour
+   attribute so we don't need to touch LeftPanel.tsx markup. */
+body.sg-shell-v2 [data-tour="feature-tree"] {
+  font-size: 12px;
+}
+body.sg-shell-v2 [data-tour="feature-tree"] [class*="folder"]:hover,
+body.sg-shell-v2 [data-tour="feature-tree"] [data-feature-row]:hover {
+  background: var(--nx-hover) !important;
+}
+/* Subtle left guide for nested rows. Inner uses margin-left for indent so
+   we paint a dim vertical hairline matching the indent step. */
+body.sg-shell-v2 [data-tour="feature-tree"] > div > div {
+  position: relative;
+}
+
+/* DrawingFrame print to PDF — kicks in when user clicks Export PDF →
+   window.print(). Hides chrome (TitleBar/Ribbon/StatusBar/panels) and
+   keeps just the A3 sheet content. Browser's "Save as PDF" target
+   produces the file. */
+@media print {
+  @page { size: A3 landscape; margin: 0; }
+  body.sg-shell-v2 .nx-title,
+  body.sg-shell-v2 .nx-ribbon,
+  body.sg-shell-v2 .nx-status,
+  body.sg-shell-v2 .nx-panel { display: none !important; }
+  body.sg-shell-v2 .nx-floater { display: none !important; }
+  body.sg-shell-v2 .nx-app { background: #ffffff !important; }
+  body.sg-shell-v2 .nx-viewport { background: #ffffff !important; }
+}

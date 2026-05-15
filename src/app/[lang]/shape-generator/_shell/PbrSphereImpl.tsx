@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
+import { useShellBridge } from './shellBridgeStore';
 
 type EnvPreset = 'studio' | 'workshop' | 'overcast' | 'warehouse';
 const HDRI_TO_DREI: Record<EnvPreset, 'studio' | 'lobby' | 'sunset' | 'warehouse'> = {
@@ -18,6 +19,31 @@ interface Props {
   metalness: number;
   exposure: number;
   hdri: string;
+}
+
+// Picks a primitive geometry from the modeler's selectedId so the render
+// route shows something resembling the user's part. Real geometry sharing
+// (Inner's effectiveResult) needs persistent state across routes; a follow-up.
+function PartGeometry() {
+  const selected = useShellBridge(s => s.selectedLabel) ?? '';
+  const id = selected.toLowerCase();
+  if (id.includes('box') || id.includes('block') || id.includes('rect')) {
+    return <boxGeometry args={[1.4, 1.0, 1.0]} />;
+  }
+  if (id.includes('cyl') || id.includes('rod') || id.includes('shaft')) {
+    return <cylinderGeometry args={[0.6, 0.6, 1.6, 64]} />;
+  }
+  if (id.includes('cone')) {
+    return <coneGeometry args={[0.8, 1.6, 64]} />;
+  }
+  if (id.includes('torus') || id.includes('ring')) {
+    return <torusGeometry args={[0.7, 0.25, 32, 96]} />;
+  }
+  if (id.includes('gear')) {
+    return <torusGeometry args={[0.8, 0.18, 16, 12]} />;
+  }
+  // Default fallback: sphere (mat-ball preview).
+  return <sphereGeometry args={[1, 96, 96]} />;
 }
 
 // drei's <Environment preset> downloads HDRI .hdr files from a CDN
@@ -56,7 +82,7 @@ export function PbrSphereImpl({ color, roughness, metalness, exposure, hdri }: P
         <PresetEnvironment preset={preset} />
       </Suspense>
       <mesh>
-        <sphereGeometry args={[1, 96, 96]} />
+        <PartGeometry />
         <meshStandardMaterial
           color={meshColor}
           roughness={roughness}

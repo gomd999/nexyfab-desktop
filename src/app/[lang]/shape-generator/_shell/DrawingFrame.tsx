@@ -33,6 +33,14 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   const [activeTab, setActiveTab] = useState('drawing');
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState('view.iso');
+  // Multi-sheet pagination — defaults to 1, user can add more via +button.
+  const [sheetIds, setSheetIds] = useState<string[]>(['sheet1']);
+  const [activeSheet, setActiveSheet] = useState('sheet1');
+  const addSheet = () => {
+    const id = `sheet${sheetIds.length + 1}`;
+    setSheetIds(prev => [...prev, id]);
+    setActiveSheet(id);
+  };
 
   const langSeg = lang === 'ko' ? 'kr' : lang;
   const project = projectId ? `?project=${projectId}` : '';
@@ -59,8 +67,13 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
 
   const onExportPDF = () => {
     gate.requirePro('share', () => {
-      // Phase 6 will wire actual PDF generation via useScreenshot
-      alert(isKo ? '도면 PDF 생성 (Phase 6에서 연결 예정)' : 'Drawing PDF export (wired in Phase 6)');
+      // window.print() lets the browser turn the current sheet into a PDF
+      // via "Save as PDF" target. CSS @page rule sizes the page to A3.
+      // Real DWG/PDF export with vector primitives is a follow-up that
+      // needs a server-side render or jsPDF + SVG serialization.
+      if (typeof window !== 'undefined') {
+        window.print();
+      }
     });
   };
 
@@ -90,12 +103,21 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         left={<DrawingTreePane nodes={sheets} selectedId={selectedView} onSelect={setSelectedView} isKo={isKo} />}
         right={<DrawingPropsPane isKo={isKo} selectedView={selectedView} />}
         viewport={
-          <DrawingCanvas
-            isKo={isKo}
-            onBackToModeling={() =>
-              router.push(`/${lang}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
-            }
-          />
+          <>
+            <SheetTabs
+              sheets={sheetIds}
+              activeSheet={activeSheet}
+              onSelect={setActiveSheet}
+              onAdd={addSheet}
+              isKo={isKo}
+            />
+            <DrawingCanvas
+              isKo={isKo}
+              onBackToModeling={() =>
+                router.push(`/${lang}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
+              }
+            />
+          </>
         }
         statusBar={{
           left: [
@@ -161,6 +183,127 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         </div>
       )}
     </>
+  );
+}
+
+// Pagination tabs across the top of the drawing canvas — mockup #17 shows
+// "Sheet 1-A3 / Sheet 2 / Sheet 3 / +". Active tab + add button.
+function SheetTabs({
+  sheets,
+  activeSheet,
+  onSelect,
+  onAdd,
+  isKo,
+}: {
+  sheets: string[];
+  activeSheet: string;
+  onSelect: (id: string) => void;
+  onAdd: () => void;
+  isKo: boolean;
+}) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 8,
+        left: 12,
+        right: 12,
+        height: 28,
+        display: 'flex',
+        gap: 2,
+        zIndex: 5,
+        pointerEvents: 'auto',
+      }}
+    >
+      {sheets.map((id, idx) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onSelect(id)}
+          className={`nx-pillbtn${activeSheet === id ? ' primary' : ''}`}
+          style={{ height: 22, padding: '0 12px', fontSize: 10 }}
+        >
+          {isKo ? `시트 ${idx + 1}` : `Sheet ${idx + 1}`}
+          {idx === 0 && (
+            <span className="mono" style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>
+              A3
+            </span>
+          )}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onAdd}
+        className="nx-pillbtn"
+        style={{ height: 22, padding: '0 8px', fontSize: 10 }}
+        title={isKo ? '시트 추가' : 'Add sheet'}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+// Picks a primitive SVG silhouette based on selectedId so each ortho view
+// roughly matches the user's part type. Full geometry-driven projection is
+// a follow-up (requires sharing Inner.effectiveResult across routes).
+function OrthoSvg({
+  view,
+  selectedLabel,
+}: {
+  view: 'top' | 'front' | 'right' | 'iso';
+  selectedLabel: string | null;
+}) {
+  const id = (selectedLabel ?? '').toLowerCase();
+  const isCyl = /(cyl|rod|shaft|hole)/.test(id);
+  const isSphere = /(sphere|ball)/.test(id);
+  const isCone = /cone/.test(id);
+  const isTorus = /(torus|ring)/.test(id);
+  // Default: box.
+  const stroke = '#444';
+  const fill = '#dcd8cc';
+  return (
+    <svg viewBox="0 0 100 60" width="70%" height="70%">
+      {isCyl ? (
+        view === 'top' ? (
+          <circle cx={50} cy={30} r={20} fill={fill} stroke={stroke} strokeWidth="0.6" />
+        ) : (
+          <rect x={32} y={10} width={36} height={40} fill={fill} stroke={stroke} strokeWidth="0.6" rx={1} />
+        )
+      ) : isSphere ? (
+        <circle cx={50} cy={30} r={22} fill={fill} stroke={stroke} strokeWidth="0.6" />
+      ) : isCone ? (
+        view === 'top' ? (
+          <circle cx={50} cy={30} r={20} fill={fill} stroke={stroke} strokeWidth="0.6" />
+        ) : (
+          <polygon points="50,8 70,52 30,52" fill={fill} stroke={stroke} strokeWidth="0.6" />
+        )
+      ) : isTorus ? (
+        view === 'top' ? (
+          <g fill="none" stroke={stroke} strokeWidth="0.6">
+            <circle cx={50} cy={30} r={22} fill={fill} />
+            <circle cx={50} cy={30} r={10} fill="#f7f5ef" />
+          </g>
+        ) : (
+          <ellipse cx={50} cy={30} rx={26} ry={6} fill={fill} stroke={stroke} strokeWidth="0.6" />
+        )
+      ) : view === 'iso' ? (
+        // 3/4 box iso projection
+        <g fill={fill} stroke={stroke} strokeWidth="0.6">
+          <polygon points="20,32 50,18 80,32 50,46" fill="#c4bfa9" />
+          <polygon points="20,32 50,46 50,52 20,38" />
+          <polygon points="80,32 50,46 50,52 80,38" />
+        </g>
+      ) : (
+        <g fill={fill} stroke={stroke} strokeWidth="0.6">
+          <rect x={20} y={15} width={60} height={30} />
+          <circle cx={32} cy={22} r={1.4} fill={stroke} />
+          <circle cx={68} cy={22} r={1.4} fill={stroke} />
+          <circle cx={32} cy={38} r={1.4} fill={stroke} />
+          <circle cx={68} cy={38} r={1.4} fill={stroke} />
+        </g>
+      )}
+    </svg>
   );
 }
 
@@ -339,14 +482,9 @@ function DrawingCanvas({
             gap: 12,
           }}
         >
-          {[
-            isKo ? '평면' : 'Top',
-            isKo ? '아이소' : 'Isometric',
-            isKo ? '정면' : 'Front',
-            isKo ? '우측' : 'Right',
-          ].map(label => (
+          {(['top', 'iso', 'front', 'right'] as const).map(view => (
             <div
-              key={label}
+              key={view}
               style={{
                 border: '1px dashed #aaa',
                 position: 'relative',
@@ -367,15 +505,12 @@ function DrawingCanvas({
                   textTransform: 'uppercase',
                 }}
               >
-                {label}
+                {view === 'top' ? (isKo ? '평면' : 'Top') :
+                 view === 'iso' ? (isKo ? '아이소' : 'Isometric') :
+                 view === 'front' ? (isKo ? '정면' : 'Front') :
+                 (isKo ? '우측' : 'Right')}
               </span>
-              <svg viewBox="0 0 100 60" width="60%" height="60%">
-                <rect x="20" y="15" width="60" height="30" fill="#dcd8cc" stroke="#666" strokeWidth="0.5" />
-                <rect x="20" y="15" width="60" height="6" fill="#c4bfa9" stroke="#666" strokeWidth="0.5" />
-                <circle cx="30" cy="18" r="1.4" fill="#666" />
-                <circle cx="50" cy="18" r="1.4" fill="#666" />
-                <circle cx="70" cy="18" r="1.4" fill="#666" />
-              </svg>
+              <OrthoSvg view={view} selectedLabel={selectedLabel} />
             </div>
           ))}
         </div>

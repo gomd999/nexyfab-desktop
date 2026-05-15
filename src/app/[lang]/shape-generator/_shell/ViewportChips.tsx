@@ -13,12 +13,17 @@ interface ViewportChipsProps {
   isKo: boolean;
 }
 
+type DisplayMode = 'solid' | 'edges' | 'wireframe';
+
+function dispatchDisplayMode(mode: DisplayMode) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('nexyfab:display-mode', { detail: { mode } }));
+}
+
 export function ViewportChips({ isKo }: ViewportChipsProps) {
   const editMode = useShellBridge(s => s.editMode);
-  // Local visual toggles — wired later to Inner viewport state.
-  const [shaded, setShaded] = useState(true);
-  const [wireframe, setWireframe] = useState(false);
-  const [edges, setEdges] = useState(true);
+  // Local visual state (mirrors what we dispatch to ShapePreview).
+  const [activeMode, setActiveMode] = useState<DisplayMode>('solid');
   const [section, setSection] = useState(false);
 
   // Hide in sketch mode — these are 3D viewport chips.
@@ -55,9 +60,18 @@ export function ViewportChips({ isKo }: ViewportChipsProps) {
         pointerEvents: 'auto',
       }}
     >
-      {chip('shaded', isKo ? '음영' : 'Shaded', shaded, () => setShaded(v => !v))}
-      {chip('wire', isKo ? '와이어' : 'Wireframe', wireframe, () => setWireframe(v => !v))}
-      {chip('edges', isKo ? '모서리' : 'Edges', edges, () => setEdges(v => !v))}
+      {chip('shaded', isKo ? '음영' : 'Shaded', activeMode === 'solid', () => {
+        setActiveMode('solid');
+        dispatchDisplayMode('solid');
+      })}
+      {chip('wire', isKo ? '와이어' : 'Wireframe', activeMode === 'wireframe', () => {
+        setActiveMode('wireframe');
+        dispatchDisplayMode('wireframe');
+      })}
+      {chip('edges', isKo ? '모서리' : 'Edges', activeMode === 'edges', () => {
+        setActiveMode('edges');
+        dispatchDisplayMode('edges');
+      })}
       {chip('section', isKo ? '단면' : 'Section', section, () => {
         setSection(v => !v);
         window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'section' } }));
