@@ -20,7 +20,7 @@ interface TransformInputPanelProps {
 
 interface XYZ { x: number; y: number; z: number }
 
-const LABEL_COLORS = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' } as const;
+const LABEL_COLORS = { x: '#ef4444', y: 'var(--nx-ok)', z: '#3b82f6' } as const;
 
 const inputStyle: React.CSSProperties = {
   background: 'var(--nx-bg)',

@@ -1527,13 +1527,13 @@ const C_DARK = {
 
 const _C_LIGHT_RIBBON = {
   bg: '#f6f8fa',
-  tabBar: '#ffffff',
+  tabBar: 'var(--nx-text)',
   border: '#d0d7de',
   accent: '#0969da',
   text: '#24292f',
   textDim: '#57606a',
   hover: '#eaeef2',
-  dropBg: '#ffffff',
+  dropBg: 'var(--nx-text)',
 };
 
 const S = {
@@ -2494,7 +2494,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
               style={{
                 padding: '6px 12px',
                 backgroundColor: '#238636',
-                color: '#ffffff',
+                color: 'var(--nx-text)',
                 border: '1px solid rgba(240,246,252,0.1)',
                 borderRadius: 6,
                 fontSize: 12,

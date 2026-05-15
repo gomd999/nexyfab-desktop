@@ -33,7 +33,7 @@ const C = {
   accent: 'var(--nx-accent)',
   green: 'var(--nx-ok)',
   red: 'var(--nx-error)',
-  white: '#ffffff',
+  white: 'var(--nx-text)',
 };
 
 /* ─── i18n ───────────────────────────────────────────────────────────────── */
@@ -613,7 +613,7 @@ export default function AutoDrawingPanel({
                   lineHeight: 1.3,
                   cursor: 'pointer',
                   border: active ? '1px solid var(--nx-accent-2)' : '1px solid var(--nx-border)',
-                  background: active ? 'rgba(56,139,253,0.15)' : 'var(--nx-bg)',
+                  background: active ? 'var(--nx-accent-soft)' : 'var(--nx-bg)',
                   color: active ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                   transition: 'all 0.1s',
                 }}

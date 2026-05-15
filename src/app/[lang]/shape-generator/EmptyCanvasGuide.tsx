@@ -93,8 +93,8 @@ export default function EmptyCanvasGuide({
               transition: 'all 0.15s',
               minWidth: 88, minHeight: 52,
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.borderColor = 'var(--nx-accent)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.08)'; e.currentTarget.style.borderColor = 'rgba(56,139,253,0.3)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent-soft)'; e.currentTarget.style.borderColor = 'var(--nx-accent)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.08)'; e.currentTarget.style.borderColor = 'var(--nx-accent-line)'; }}
           >
             <span style={{ fontSize: 22 }}>✏️</span>
             {t(lang, 'sketch')}

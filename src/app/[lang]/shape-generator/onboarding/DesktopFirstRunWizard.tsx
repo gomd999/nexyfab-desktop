@@ -54,7 +54,7 @@ function legalUrl(lang: Lang, page: 'terms' | 'privacy'): string {
 /** Light, high-contrast panel on top of the dark workspace. */
 const V = {
   overlay: 'rgba(15, 23, 42, 0.42)',
-  panelBg: '#ffffff',
+  panelBg: 'var(--nx-text)',
   panelBorder: '#d0d7de',
   panelShadow: '0 16px 48px rgba(31, 35, 40, 0.22), 0 0 0 1px rgba(31, 35, 40, 0.06)',
   title: '#1f2328',
@@ -68,7 +68,7 @@ const V = {
   wellBg: '#f6f8fa',
   wellBorder: '#d0d7de',
   primary: '#0969da',
-  onPrimary: '#ffffff',
+  onPrimary: 'var(--nx-text)',
   outlineBorder: '#d0d7de',
   outlineBg: '#f6f8fa',
   outlineText: '#24292f',

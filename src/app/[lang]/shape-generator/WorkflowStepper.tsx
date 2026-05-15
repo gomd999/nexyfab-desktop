@@ -55,13 +55,13 @@ export default function WorkflowStepper({
         const isFuture = activeStep < stepNum;
 
         const circleColor = isDone
-          ? '#22c55e'
+          ? 'var(--nx-ok)'
           : isActive
           ? 'var(--nx-accent)'
           : 'var(--nx-border-strong)';
 
         const textColor = isDone
-          ? '#22c55e'
+          ? 'var(--nx-ok)'
           : isActive
           ? 'var(--nx-text)'
           : 'var(--nx-border-strong)';
@@ -72,7 +72,7 @@ export default function WorkflowStepper({
               <div style={{
                 flex: 1,
                 height: 1,
-                background: isDone ? '#22c55e' : 'var(--nx-border)',
+                background: isDone ? 'var(--nx-ok)' : 'var(--nx-border)',
                 minWidth: 16,
                 maxWidth: 48,
                 transition: 'background 0.2s',

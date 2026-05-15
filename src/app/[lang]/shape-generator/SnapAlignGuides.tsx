@@ -34,7 +34,7 @@ export default function SnapAlignGuides() {
   if (linesRef.current === null) {
     linesRef.current = {
       x: makeAxisLine('#f87171'), // red = X
-      y: makeAxisLine('#4ade80'), // green = Y
+      y: makeAxisLine('var(--nx-ok)'), // green = Y
       z: makeAxisLine('#60a5fa'), // blue = Z
     };
   }

@@ -254,7 +254,7 @@ export default function EdgeContextPanel({
     backgroundColor: '#1f6feb',
     border: 'none',
     borderRadius: 6,
-    color: '#ffffff',
+    color: 'var(--nx-text)',
     fontWeight: 600,
     fontSize: 12,
     cursor: 'pointer',
@@ -388,7 +388,7 @@ export default function EdgeContextPanel({
                       ...segmentBtnBase,
                       backgroundColor: filletSegments === seg ? '#6e40c9' : 'var(--nx-panel)',
                       borderColor: filletSegments === seg ? '#7948d0' : 'var(--nx-border)',
-                      color: filletSegments === seg ? '#ffffff' : 'var(--nx-text-2)',
+                      color: filletSegments === seg ? 'var(--nx-text)' : 'var(--nx-text-2)',
                     }}
                   >
                     {seg}

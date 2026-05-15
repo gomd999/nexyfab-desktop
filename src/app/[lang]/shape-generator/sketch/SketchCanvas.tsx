@@ -3125,10 +3125,10 @@ function SketchCanvas({
         display: 'flex', gap: 6, alignItems: 'center',
       }}>
         <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.x.toFixed(1)}</span>
-        <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.y.toFixed(1)}</span>
+        <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.y.toFixed(1)}</span>
         <span style={{ color: 'var(--nx-border-strong)' }}>mm</span>
         {snapType !== 'none' && snapType !== 'grid' && (
-          <span style={{ color: snapType === 'endpoint' ? '#22c55e' : 'var(--nx-warn)', marginLeft: 4, fontSize: 9 }}>
+          <span style={{ color: snapType === 'endpoint' ? 'var(--nx-ok)' : 'var(--nx-warn)', marginLeft: 4, fontSize: 9 }}>
             ● {snapType}
           </span>
         )}

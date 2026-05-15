@@ -152,7 +152,7 @@ export default function TopoPanel({
           style={{
             padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
             border: tagFilter === null ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
-            background: tagFilter === null ? 'rgba(56,139,253,0.15)' : 'var(--nx-panel)',
+            background: tagFilter === null ? 'var(--nx-accent-soft)' : 'var(--nx-panel)',
             color: tagFilter === null ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
             cursor: 'pointer',
           }}

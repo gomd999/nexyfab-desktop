@@ -217,7 +217,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
     panel: 'rgba(13, 17, 23, 0.75)', // Glassmorphism base
     headerBg: 'transparent',
     border: 'var(--nx-border)',
-    text: '#ffffff',
+    text: 'var(--nx-text)',
     textMuted: 'var(--nx-text-2)',
     tabBar: 'var(--nx-glass-input)',
     tabActiveBg: 'var(--nx-glass-soft)',
@@ -370,7 +370,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
           }}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'var(--nx-border)';
-            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.color = 'var(--nx-text)';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'var(--nx-glass-soft)';
@@ -412,7 +412,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
                 background: isActive ? 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)' : 'transparent',
                 border: 'none',
                 borderBottom: `2px solid ${isActive ? 'var(--nx-accent-2)' : 'transparent'}`,
-                color: isActive ? '#ffffff' : 'var(--nx-text-2)',
+                color: isActive ? 'var(--nx-text)' : 'var(--nx-text-2)',
                 fontSize: 12,
                 fontWeight: isActive ? 700 : 600,
                 cursor: 'pointer',

@@ -209,7 +209,7 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, res
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
           {(Object.entries(THERMAL_MATERIALS) as [keyof typeof THERMAL_MATERIALS, typeof THERMAL_MATERIALS[keyof typeof THERMAL_MATERIALS]][]).map(([id, m]) => (
             <button key={id} onClick={() => setMaterialId(id)}
-              style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${materialId === id ? C.accent : C.border}`, background: materialId === id ? 'rgba(56,139,253,0.15)' : 'transparent', color: materialId === id ? C.accent : C.muted, fontSize: 10, cursor: 'pointer', fontWeight: materialId === id ? 700 : 400 }}>
+              style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${materialId === id ? C.accent : C.border}`, background: materialId === id ? 'var(--nx-accent-soft)' : 'transparent', color: materialId === id ? C.accent : C.muted, fontSize: 10, cursor: 'pointer', fontWeight: materialId === id ? 700 : 400 }}>
               {isKo ? m.nameKo : m.name}
             </button>
           ))}

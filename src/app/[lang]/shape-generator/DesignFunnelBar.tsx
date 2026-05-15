@@ -380,7 +380,7 @@ export default function DesignFunnelBar({
               display: 'flex', alignItems: 'center', gap: 5,
               padding: '2px 8px', height: 20,
               borderRadius: 4, border: '1px solid var(--nx-accent)',
-              background: aiMenuOpen ? 'rgba(56, 139, 253, 0.15)' : 'transparent',
+              background: aiMenuOpen ? 'var(--nx-accent-soft)' : 'transparent',
               color: 'var(--nx-accent-2)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer',
               whiteSpace: 'nowrap', transition: 'all 0.15s'

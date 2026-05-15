@@ -14,7 +14,7 @@ const COLOR_HOVERED_EDGE    = new THREE.Color('#22d3ee');
 const COLOR_SELECTED_EDGE   = new THREE.Color('var(--nx-warn)');
 const COLOR_DEFAULT_HANDLE  = new THREE.Color('var(--nx-text-2)');
 const COLOR_HOVERED_HANDLE  = new THREE.Color('#22d3ee');
-const COLOR_DRAGGING_HANDLE = new THREE.Color('#22c55e');
+const COLOR_DRAGGING_HANDLE = new THREE.Color('var(--nx-ok)');
 const COLOR_SELECTED_HANDLE = new THREE.Color('var(--nx-warn)');
 
 const _dummy = new THREE.Object3D();

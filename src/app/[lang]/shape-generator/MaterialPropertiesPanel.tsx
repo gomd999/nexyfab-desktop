@@ -409,7 +409,7 @@ export default function MaterialPropertiesPanel({
           const highlightSize = 35 + rough * 50; // 35% (sharp) → 85% (diffuse)
           const highlightAlpha = 0.45 + (1 - rough) * 0.5 + metal * 0.2;
           // Metals tint reflections with the base color; dielectrics reflect white
-          const highlightColor = metal > 0.5 ? baseColor : '#ffffff';
+          const highlightColor = metal > 0.5 ? baseColor : 'var(--nx-text)';
           // Darker rim for metallic look
           const rimDark = metal > 0.3 ? 'var(--nx-glass-input)' : 'rgba(0,0,0,0.35)';
           return (
@@ -478,7 +478,7 @@ export default function MaterialPropertiesPanel({
                     padding: '4px 7px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', gap: 3,
                     border: envPreset === id ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
-                    background: envPreset === id ? 'rgba(56,139,253,0.15)' : 'var(--nx-panel-2)',
+                    background: envPreset === id ? 'var(--nx-accent-soft)' : 'var(--nx-panel-2)',
                     color: envPreset === id ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                   }} title={tt[labelKey]}>
                     <span style={{ fontSize: 11 }}>{icon}</span>

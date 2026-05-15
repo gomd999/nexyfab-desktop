@@ -253,7 +253,7 @@ function SubMenu({ items, x, y, onSelect, onClose }: { items: ContextMenuItem[];
             background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : 'var(--nx-text)',
             cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
           }}
-          onMouseEnter={e => { if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = '#ffffff'; } }}
+          onMouseEnter={e => { if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = 'var(--nx-text)'; } }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
         >
           <span style={{ width: 18, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{item.icon || ''}</span>
@@ -331,7 +331,7 @@ export default function ContextMenu({ x, y, visible, items, onSelect, onClose }:
                 if (!item.disabled && !item.children) { onSelect(item.id); onClose(); }
               }}
               onMouseEnter={e => {
-                if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = '#ffffff'; }
+                if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = 'var(--nx-text)'; }
                 handleItemHover(item, e);
               }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}

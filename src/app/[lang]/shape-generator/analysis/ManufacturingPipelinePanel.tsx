@@ -324,7 +324,7 @@ export default function ManufacturingPipelinePanel({
           {m.certifications.map(c => (
             <span key={c} style={{
               fontSize: 9, padding: '2px 6px', borderRadius: 4,
-              background: 'rgba(56,139,253,0.15)', color: C.accent, border: `1px solid rgba(56,139,253,0.3)`,
+              background: 'var(--nx-accent-soft)', color: C.accent, border: `1px solid rgba(56,139,253,0.3)`,
             }}>{c}</span>
           ))}
         </div>
@@ -351,7 +351,7 @@ export default function ManufacturingPipelinePanel({
       <label style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer',
         padding: '3px 8px', borderRadius: 4,
-        background: active ? 'rgba(56,139,253,0.15)' : 'transparent',
+        background: active ? 'var(--nx-accent-soft)' : 'transparent',
         border: `1px solid ${active ? C.accent : C.border}`,
         color: active ? C.accent : C.textDim,
       }}>

@@ -161,7 +161,7 @@ function DimensionRow({
           onPointerUp={handleDragPointerUp}
           style={{
             fontSize: 13, fontFamily: 'monospace', fontWeight: 700,
-            color: '#ffffff', cursor: locked ? 'default' : 'ew-resize',
+            color: 'var(--nx-text)', cursor: locked ? 'default' : 'ew-resize',
             padding: '2px 6px', borderRadius: 4,
             background: dragStart ? `${axisColor}22` : 'transparent',
             border: `1px solid ${dragStart ? axisColor : 'transparent'}`,
@@ -275,7 +275,7 @@ export default function InViewportGizmo({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>📐</span>
           {!collapsed && (
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', letterSpacing: '0.02em' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--nx-text)', letterSpacing: '0.02em' }}>
               {tt.title}
             </span>
           )}

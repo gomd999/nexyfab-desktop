@@ -394,7 +394,7 @@ function HeatmapTab({ result, sweepParams, note, best, muted, text: _text, borde
                 width={cellW}
                 height={cellH}
                 fill={heatColor(t)}
-                stroke={isBest ? '#ffffff' : border}
+                stroke={isBest ? 'var(--nx-text)' : border}
                 strokeWidth={isBest ? 2 : 0.5}
                 opacity={0.88}
               >
@@ -540,7 +540,7 @@ function ParetoTab({ result, result2, sweepParams: _sweepParams, primary, second
               cy={cy}
               r={isBest ? 6 : 3}
               fill={isOptimal ? '#f0a030' : '#555'}
-              stroke={isBest ? '#ffffff' : 'none'}
+              stroke={isBest ? 'var(--nx-text)' : 'none'}
               strokeWidth={isBest ? 1.5 : 0}
               opacity={0.85}
             >

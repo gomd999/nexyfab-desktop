@@ -73,7 +73,7 @@ export function dataURLToCanvas(
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject(new Error('Canvas 2D context unavailable')); return; }
       // White background (PDF expects opaque content)
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = 'var(--nx-text)';
       ctx.fillRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
       resolve(canvas);

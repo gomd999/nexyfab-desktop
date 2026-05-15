@@ -454,7 +454,7 @@ export default function AnnotationPanel({
         {placementMode !== 'none' && (
           <div style={{
             padding: '6px 10px', borderRadius: 5, marginBottom: 8,
-            background: 'rgba(56,139,253,0.15)', border: '1px solid rgba(56,139,253,0.3)',
+            background: 'var(--nx-accent-soft)', border: '1px solid rgba(56,139,253,0.3)',
             color: C.accent, fontSize: 11, fontWeight: 600, textAlign: 'center',
           }}>
             {placementMode === 'gdt' ? t.placeGdt : t.placeDim}
@@ -502,11 +502,11 @@ export default function AnnotationPanel({
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                         padding: '4px 8px', border: 'none', borderRadius: 3, cursor: 'pointer',
-                        background: sym === selectedSymbol ? 'rgba(56,139,253,0.2)' : 'transparent',
+                        background: sym === selectedSymbol ? 'var(--nx-accent-soft)' : 'transparent',
                         color: C.text, fontSize: 11, textAlign: 'left',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background = C.hover; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = sym === selectedSymbol ? 'rgba(56,139,253,0.2)' : 'transparent'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = sym === selectedSymbol ? 'var(--nx-accent-soft)' : 'transparent'; }}
                     >
                       <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{GDT_SYMBOLS[sym]}</span>
                       <span>{GDT_SYMBOL_NAMES_LOCALIZED[lang][sym]}</span>
@@ -671,7 +671,7 @@ export default function AnnotationPanel({
               }}
               style={{
                 ...btnBase, flex: 1, fontSize: 10, padding: '3px 2px',
-                background: tolType === tt ? 'rgba(56,139,253,0.15)' : 'transparent',
+                background: tolType === tt ? 'var(--nx-accent-soft)' : 'transparent',
                 color: tolType === tt ? C.accent : C.dim,
                 border: `1px solid ${tolType === tt ? C.accent : C.border}`,
               }}

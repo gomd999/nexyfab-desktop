@@ -7,7 +7,7 @@ import { cpKey, buildCpGrid } from '../features/nurbsSurface';
 
 const COLOR_DEFAULT = new THREE.Color('#f472b6');
 const COLOR_HOVERED = new THREE.Color('#fbbf24');
-const COLOR_DRAGGING = new THREE.Color('#22c55e');
+const COLOR_DRAGGING = new THREE.Color('var(--nx-ok)');
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();

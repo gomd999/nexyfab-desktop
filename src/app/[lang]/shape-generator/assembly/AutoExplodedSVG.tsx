@@ -20,7 +20,7 @@ interface Props {
 }
 
 const COLOR = {
-  bg: '#ffffff',
+  bg: 'var(--nx-text)',
   ink: 'var(--nx-bg)',
   accent: '#1f6feb',
   leader: 'var(--nx-border-strong)',

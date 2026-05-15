@@ -299,7 +299,7 @@ export function ViewCubeOverlay() {
     fontSize: 10,
     fontWeight: 800,
     fontFamily: '"Inter", system-ui, sans-serif',
-    color: hovered === id ? '#ffffff' : 'var(--nx-text-2)',
+    color: hovered === id ? 'var(--nx-text)' : 'var(--nx-text-2)',
     cursor: 'pointer',
     userSelect: 'none',
     transform,

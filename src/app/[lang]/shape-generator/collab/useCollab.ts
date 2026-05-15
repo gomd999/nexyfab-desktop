@@ -13,7 +13,7 @@ const DEMO_USERS: Omit<CollabUser, 'lastSeen'>[] = [
 
 const USER_COLORS = [
   '#f97316', '#22d3ee', 'var(--nx-accent-2)', '#34d399', '#f43f5e',
-  '#facc15', '#60a5fa', '#fb7185', '#4ade80', '#c084fc',
+  '#facc15', '#60a5fa', '#fb7185', 'var(--nx-ok)', '#c084fc',
 ];
 
 function randomOffset(range: number): number {

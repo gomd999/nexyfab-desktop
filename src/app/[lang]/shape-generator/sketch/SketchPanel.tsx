@@ -861,7 +861,7 @@ export default function SketchPanel({
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 8px', borderRadius: 5,
                 border: selectedConstraintType === ct.type ? '1px solid var(--nx-accent)' : '1px solid transparent',
-                background: selectedConstraintType === ct.type ? 'rgba(56,139,253,0.15)' : 'transparent',
+                background: selectedConstraintType === ct.type ? 'var(--nx-accent-soft)' : 'transparent',
                 color: selectedConstraintType === ct.type ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                 fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 transition: 'all 0.1s',

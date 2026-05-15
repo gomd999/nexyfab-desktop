@@ -70,8 +70,8 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
       const scene = new THREE.Scene();
       sceneRef.current = scene;
 
-      scene.add(new THREE.HemisphereLight('#ffffff', '#444444', 1.2));
-      const dirLight = new THREE.DirectionalLight('#ffffff', 0.8);
+      scene.add(new THREE.HemisphereLight('var(--nx-text)', '#444444', 1.2));
+      const dirLight = new THREE.DirectionalLight('var(--nx-text)', 0.8);
       dirLight.position.set(0, 8, 4);
       scene.add(dirLight);
 

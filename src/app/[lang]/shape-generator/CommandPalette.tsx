@@ -252,7 +252,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
               flex: 1,
               border: 'none',
               background: 'transparent',
-              color: '#ffffff',
+              color: 'var(--nx-text)',
               fontSize: 15,
               fontWeight: 500,
               outline: 'none',
@@ -318,7 +318,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                           background: isSel 
                             ? (isAi ? 'rgba(168, 85, 247, 0.15)' : 'rgba(88,166,255,0.12)') 
                             : 'transparent',
-                          color: isSel ? '#ffffff' : 'var(--nx-text)',
+                          color: isSel ? 'var(--nx-text)' : 'var(--nx-text)',
                           cursor: 'pointer',
                           fontSize: 13,
                           fontWeight: isSel ? 600 : 500,

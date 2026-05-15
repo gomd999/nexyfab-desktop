@@ -23,7 +23,7 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
   return (
     <div style={{
       position: 'absolute', top: 60, right: 20, width: 340,
-      background: '#ffffff', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+      background: 'var(--nx-text)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
       border: '1px solid #d0d7de', zIndex: 150, display: 'flex', flexDirection: 'column'
     }}>
       <div style={{ padding: '16px', borderBottom: '1px solid #d0d7de', background: '#f6f8fa', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -44,7 +44,7 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
               style={{
                 flex: '1 1 45%', padding: '8px', borderRadius: 6,
                 border: activeTool === tool ? '2px solid #0969da' : '1px solid #d0d7de',
-                background: activeTool === tool ? '#ddf4ff' : '#ffffff',
+                background: activeTool === tool ? '#ddf4ff' : 'var(--nx-text)',
                 color: activeTool === tool ? '#0969da' : '#24292f',
                 fontWeight: 600, fontSize: 12, cursor: 'pointer'
               }}

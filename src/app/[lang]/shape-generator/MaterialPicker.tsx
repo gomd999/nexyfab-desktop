@@ -87,7 +87,7 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
                 lineHeight: 1.2,
                 cursor: 'pointer',
                 border: active ? '1px solid var(--nx-accent-2)' : '1px solid var(--nx-border)',
-                background: active ? 'rgba(56,139,253,0.15)' : 'var(--nx-bg)',
+                background: active ? 'var(--nx-accent-soft)' : 'var(--nx-bg)',
                 color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
                 transition: 'all 0.1s',
               }}

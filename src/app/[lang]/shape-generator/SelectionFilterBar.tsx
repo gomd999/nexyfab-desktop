@@ -55,7 +55,7 @@ export default function SelectionFilterBar({ activeFilters, onToggle, lang }: Se
               display: 'flex', alignItems: 'center', gap: 3,
               padding: '2px 8px', borderRadius: 4,
               border: active ? '1px solid var(--nx-accent)' : '1px solid transparent',
-              background: active ? 'rgba(56,139,253,0.15)' : 'transparent',
+              background: active ? 'var(--nx-accent-soft)' : 'transparent',
               color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
               fontSize: 10, fontWeight: 700, cursor: 'pointer',
               fontFamily: 'system-ui, sans-serif',

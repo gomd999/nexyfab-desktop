@@ -115,7 +115,7 @@ export default function CollabPresence({
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: connected ? '#22c55e' : 'var(--nx-text-3)',
+              background: connected ? 'var(--nx-ok)' : 'var(--nx-text-3)',
               boxShadow: connected ? '0 0 4px #22c55e' : 'none',
               transition: 'background 0.3s, box-shadow 0.3s',
             }}
@@ -171,7 +171,7 @@ export default function CollabPresence({
               fontSize: 10,
               background: 'none',
               border: 'none',
-              color: copied ? '#22c55e' : 'var(--nx-text-2)',
+              color: copied ? 'var(--nx-ok)' : 'var(--nx-text-2)',
               cursor: 'pointer',
               padding: '0 2px',
               transition: 'color 0.2s',

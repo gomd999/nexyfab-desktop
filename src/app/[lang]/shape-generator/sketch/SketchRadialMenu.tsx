@@ -179,7 +179,7 @@ export default function SketchRadialMenu({
               height: BTN_R * 2,
               borderRadius: '50%',
               border: '1px solid #d0d7de',
-              background: '#ffffff',
+              background: 'var(--nx-text)',
               color: '#24292f',
               fontSize: 14,
               cursor: 'pointer',
@@ -196,7 +196,7 @@ export default function SketchRadialMenu({
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.background = '#ffffff';
+              e.currentTarget.style.background = 'var(--nx-text)';
             }}
           >
             <span style={{ lineHeight: 1 }}>{item.icon}</span>

@@ -600,7 +600,7 @@ function DrawingSvgCard({ meta }: { meta?: ToolResultMeta }): React.ReactElement
             style={{
               marginTop: 6,
               padding: 4,
-              background: '#ffffff',
+              background: 'var(--nx-text)',
               borderRadius: 4,
               maxHeight: 240,
               overflow: 'auto',

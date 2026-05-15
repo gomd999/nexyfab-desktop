@@ -4745,7 +4745,7 @@ export function ShapeGeneratorInner() {
             'part-color-yellow': '#e3b341',
             'part-color-orange': '#d97706',
             'part-color-purple': 'var(--nx-accent)',
-            'part-color-white': '#ffffff'
+            'part-color-white': 'var(--nx-text)'
           };
           const color = colorMap[id];
           setAssemblyPartColors(prev => ({ ...prev, [highlightedPartId]: color }));
@@ -5927,9 +5927,9 @@ export function ShapeGeneratorInner() {
     }
     if (activeTab === 'design' && measureActive) return { icon: '📏', text: lt.measureToolActive, color: '#f97316' };
     if (isSketchMode && !sketchResult) return { icon: '✏️', text: 'Draw a closed profile. Click first point to close.', color: 'var(--nx-accent)' };
-    if (editMode === 'vertex') return { icon: '⬡', text: lt.vertexEditPointerHint, color: '#22c55e' };
-    if (editMode === 'edge') return { icon: '╱', text: `${lt.edgeEditHint} — ${lt.edgeEditPointerHint}`, color: '#22c55e' };
-    if (editMode === 'face') return { icon: '▣', text: lt.faceEditHint, color: '#22c55e' };
+    if (editMode === 'vertex') return { icon: '⬡', text: lt.vertexEditPointerHint, color: 'var(--nx-ok)' };
+    if (editMode === 'edge') return { icon: '╱', text: `${lt.edgeEditHint} — ${lt.edgeEditPointerHint}`, color: 'var(--nx-ok)' };
+    if (editMode === 'face') return { icon: '▣', text: lt.faceEditHint, color: 'var(--nx-ok)' };
     if (activeTab === 'design' && selectedFeatureId) {
       const feat = features.find(f => f.id === selectedFeatureId);
       if (feat) return { icon: '🎯', text: `${lt.featureSelectedPrefix} ${feat.type}`, color: 'var(--nx-accent-2)' };
@@ -7121,7 +7121,7 @@ export function ShapeGeneratorInner() {
                   <span style={{ color: 'var(--nx-text-2)', fontSize: 9, fontWeight: 700 }}>{lt.directEdit}</span>
                   {([
                     ['face', '▣', lt.faceEditMode, 'var(--nx-accent)'],
-                    ['vertex', '⬡', lt.vertexEditMode, '#22c55e'],
+                    ['vertex', '⬡', lt.vertexEditMode, 'var(--nx-ok)'],
                     ['edge', '╱', lt.edgeEditMode, 'var(--nx-warn)'],
                   ] as const).map(([mode, icon, label, activeColor]) => (
                     <button
@@ -7672,8 +7672,8 @@ export function ShapeGeneratorInner() {
                 <div style={{
                   position: 'absolute', top: 8, right: 8, zIndex: 30,
                   padding: '2px 8px', borderRadius: 4,
-                  background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)',
-                  color: '#22c55e', fontSize: 10, fontWeight: 700,
+                  background: 'rgba(94, 234, 212, 0.15)', border: '1px solid rgba(94, 234, 212, 0.45)',
+                  color: 'var(--nx-ok)', fontSize: 10, fontWeight: 700,
                   fontFamily: 'monospace', letterSpacing: '0.08em',
                   pointerEvents: 'none' }}>
                   LIVE
@@ -7693,7 +7693,7 @@ export function ShapeGeneratorInner() {
                       display: 'flex', gap: 8, alignItems: 'center', color: 'var(--nx-border-strong)' }}>
                       <span style={{ color: 'var(--nx-text-3)' }}>Center:</span>
                       <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.w / 2).toFixed(1)}</span>
-                      <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.h / 2).toFixed(1)}</span>
+                      <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.h / 2).toFixed(1)}</span>
                       <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.d / 2).toFixed(1)}</span>
                       <span>mm</span>
                     </div>
@@ -7940,7 +7940,7 @@ export function ShapeGeneratorInner() {
                   />
                 </div>
                 <div style={{ padding: '8px 12px', background: '#f6f8fa', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #d0d7de', background: '#ffffff', color: '#24292f', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
+                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #d0d7de', background: 'var(--nx-text)', color: '#24292f', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
                 </div>
               </div>
             );

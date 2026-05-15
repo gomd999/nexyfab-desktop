@@ -116,7 +116,7 @@ function AxisSystem() {
       <AxisArrow dir={[0, 0, 1]} color="#3b82f6" label="Z" />
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[1.5, 12, 12]} />
-        <meshBasicMaterial color="#ffffff" />
+        <meshBasicMaterial color="var(--nx-text)" />
       </mesh>
       <Html position={[-6, -6, 0]} style={{ pointerEvents: 'none' }}>
         <div style={{ color: 'var(--nx-text-2)', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>
@@ -294,7 +294,7 @@ function Crosshair({
       {cursorPt && (
         <Html position={to3D({ x: cursorPt.x + 6, y: cursorPt.y + 6 }, plane)} style={{ pointerEvents: 'none' }}>
           <div style={{
-            color: snapTarget ? '#4ade80' : '#a5b4fc',
+            color: snapTarget ? 'var(--nx-ok)' : '#a5b4fc',
             fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
             background: 'rgba(0,0,0,0.8)', padding: '2px 6px', borderRadius: 3,
             border: snapTarget ? '1px solid #22c55e' : '1px solid rgba(99,102,241,0.4)',
@@ -476,7 +476,7 @@ function ProfileLines({ profile, plane }: { profile: SketchProfile; plane: 'xy' 
   if (points.length === 0) return null;
   return (
     <lineSegments geometry={geo}>
-      <lineBasicMaterial color={profile.closed ? '#22c55e' : 'var(--nx-warn)'} linewidth={2} />
+      <lineBasicMaterial color={profile.closed ? 'var(--nx-ok)' : 'var(--nx-warn)'} linewidth={2} />
     </lineSegments>
   );
 }
@@ -605,7 +605,7 @@ function ProfileBoundingBox({ profile, plane }: { profile: SketchProfile; plane:
       )}
       {h > 1 && (
         <Html position={hPos} center style={{ pointerEvents: 'none' }}>
-          <div style={{ color: '#22c55e', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(34,197,94,0.3)' }}>
+          <div style={{ color: 'var(--nx-ok)', fontSize: 11, fontWeight: 800, fontFamily: 'monospace', background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(34,197,94,0.3)' }}>
             H: {h.toFixed(1)}mm
           </div>
         </Html>
@@ -663,7 +663,7 @@ function InfoHUD({
             title={`${v.label} view${v.plane ? ` → ${PLANE_LABELS[v.plane]}` : ''}`}
             style={{
               padding: '4px 9px', borderRadius: 6, border: '1px solid var(--nx-border)',
-              background: detectedPlane === v.plane ? 'rgba(56,139,253,0.2)' : 'var(--nx-glass-strong)',
+              background: detectedPlane === v.plane ? 'var(--nx-accent-soft)' : 'var(--nx-glass-strong)',
               color: detectedPlane === v.plane ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'monospace',
               outline: 'none', transition: 'all 0.12s',
@@ -683,7 +683,7 @@ function InfoHUD({
             style={{
               padding: '3px 8px', borderRadius: 5, cursor: 'pointer',
               border: `1px solid ${plane === p ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
-              background: plane === p ? 'rgba(56,139,253,0.15)' : 'var(--nx-glass-strong)',
+              background: plane === p ? 'var(--nx-accent-soft)' : 'var(--nx-glass-strong)',
               color: plane === p ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
               fontSize: 10, fontWeight: 700, fontFamily: 'monospace', outline: 'none',
             }}
@@ -719,7 +719,7 @@ function InfoHUD({
       {cursorPt && (
         <div style={{ background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)', padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: 'var(--nx-border-strong)', fontFamily: 'monospace', display: 'flex', gap: 6, pointerEvents: 'none' }}>
           <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.x.toFixed(1)}</span>
-          <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.y.toFixed(1)}</span>
+          <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.y.toFixed(1)}</span>
           {/* Z is always 0 on the sketch plane */}
           <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>0.0</span>
           <span style={{ color: 'var(--nx-border-strong)' }}>mm</span>

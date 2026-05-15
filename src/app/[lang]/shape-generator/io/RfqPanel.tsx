@@ -369,7 +369,7 @@ export default function RfqPanel({
             background: geometry && !submitting
               ? '#238636'
               : 'var(--nx-panel-2)',
-            color: geometry && !submitting ? '#ffffff' : 'var(--nx-border-strong)',
+            color: geometry && !submitting ? 'var(--nx-text)' : 'var(--nx-border-strong)',
             fontWeight: 800, fontSize: 13, cursor: geometry && !submitting ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'all 0.15s',

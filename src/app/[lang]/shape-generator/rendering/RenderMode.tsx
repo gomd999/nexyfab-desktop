@@ -82,10 +82,10 @@ export default function RenderMode({
           background={showBackground}
           environmentIntensity={1.2}
         >
-          <Lightformer form="rect" intensity={2} position={[0, 4, -3]} scale={[10, 2, 1]} color="#ffffff" />
+          <Lightformer form="rect" intensity={2} position={[0, 4, -3]} scale={[10, 2, 1]} color="var(--nx-text)" />
           <Lightformer form="rect" intensity={0.8} position={[-5, 2, 0]} rotation-y={Math.PI / 2} scale={[6, 3, 1]} color="#c8d8ff" />
           <Lightformer form="circle" intensity={0.5} position={[5, 3, 2]} scale={[3, 3, 1]} color="#ffe8d0" />
-          <Lightformer form="rect" intensity={1.5} position={[0, 2, 5]} scale={[8, 2, 1]} color="#ffffff" />
+          <Lightformer form="rect" intensity={1.5} position={[0, 2, 5]} scale={[8, 2, 1]} color="var(--nx-text)" />
         </Environment>
       )}
 

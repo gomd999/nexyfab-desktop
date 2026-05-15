@@ -827,7 +827,7 @@ function FaceScene({
             marginBottom: 4,
           }}
           >
-            <div style={{ fontWeight: 800, color: '#4ade80', fontSize: 11, lineHeight: 1.3 }}>
+            <div style={{ fontWeight: 800, color: 'var(--nx-ok)', fontSize: 11, lineHeight: 1.3 }}>
               ▣ {calloutTitle}
             </div>
             <button
@@ -1826,9 +1826,9 @@ export default function ShapePreview({
 
         {/* Fusion 360-style Top Left Info */}
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ color: '#ffffff', fontSize: 13, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+          <span style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {isEditing ? (
-              <><span style={{ color: '#22c55e' }}>● </span>{t.editMode}: {editMode}</>
+              <><span style={{ color: 'var(--nx-ok)' }}>● </span>{t.editMode}: {editMode}</>
             ) : isAssembly ? (
               <>{assemblyLabel || t.assemblyShort}{' '}
                 <span data-testid="assembly-bom-count" style={{ color: 'var(--nx-accent-2)', fontSize: 11 }}>({bomParts!.length})</span>
@@ -1846,7 +1846,7 @@ export default function ShapePreview({
                 borderRadius: 6,
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#ffffff',
+                color: 'var(--nx-text)',
                 background: assemblyLoadChrome.color,
                 border: '1px solid rgba(0,0,0,0.12)',
                 cursor: 'help',
@@ -1876,12 +1876,12 @@ export default function ShapePreview({
                 title={viewChromeDisabled ? t.viewWhenNoModel : `${label} [${key}]`}
                 aria-label={label}
                 style={{
-                  padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: '#ffffff',
+                  padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: 'var(--nx-text)',
                   fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                   opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}
-                onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffffff'; }}
+                onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'var(--nx-accent-soft)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
               >
                 {label}
               </button>
@@ -1892,12 +1892,12 @@ export default function ShapePreview({
               title={viewChromeDisabled ? t.viewWhenNoModel : `${t.fitAll} [F]`}
               aria-label={t.fitAll}
               style={{
-                padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: '#ffffff',
+                padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: 'var(--nx-text)',
                 fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', gridColumn: 'span 2', whiteSpace: 'nowrap',
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffffff'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'var(--nx-accent-soft)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
             >
               {t.fit}
             </button>
@@ -1916,8 +1916,8 @@ export default function ShapePreview({
                 style={{
                   padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                   cursor: viewChromeDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
-                  background: displayMode === key ? 'rgba(56,139,253,0.15)' : 'transparent',
-                  color: displayMode === key ? 'var(--nx-accent-2)' : '#ffffff',
+                  background: displayMode === key ? 'var(--nx-accent-soft)' : 'transparent',
+                  color: displayMode === key ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                   border: displayMode === key ? '1px solid rgba(56,139,253,0.3)' : '1px solid transparent',
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
@@ -1940,9 +1940,9 @@ export default function ShapePreview({
                 style={{
                   padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                   cursor: viewChromeDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
-                  background: selectionActive ? 'rgba(34,197,94,0.15)' : 'transparent',
-                  color: selectionActive ? '#4ade80' : '#ffffff',
-                  border: selectionActive ? '1px solid rgba(34,197,94,0.3)' : '1px solid transparent',
+                  background: selectionActive ? 'rgba(94, 234, 212, 0.15)' : 'transparent',
+                  color: selectionActive ? 'var(--nx-ok)' : 'var(--nx-text)',
+                  border: selectionActive ? '1px solid rgba(94, 234, 212, 0.45)' : '1px solid transparent',
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}
@@ -1962,7 +1962,7 @@ export default function ShapePreview({
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: pbrPanelOpen ? 'rgba(217,119,6,0.15)' : 'transparent',
                 borderColor: pbrPanelOpen ? 'rgba(217,119,6,0.3)' : 'transparent',
-                color: pbrPanelOpen ? 'var(--nx-warn)' : '#ffffff', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                color: pbrPanelOpen ? 'var(--nx-warn)' : 'var(--nx-text)', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
               onMouseEnter={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
@@ -1975,9 +1975,9 @@ export default function ShapePreview({
               aria-label={t.dimensions}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
-                background: showDims ? 'rgba(56,139,253,0.15)' : 'transparent',
-                borderColor: showDims ? 'rgba(56,139,253,0.3)' : 'transparent',
-                color: showDims ? 'var(--nx-accent-2)' : '#ffffff', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                background: showDims ? 'var(--nx-accent-soft)' : 'transparent',
+                borderColor: showDims ? 'var(--nx-accent-line)' : 'transparent',
+                color: showDims ? 'var(--nx-accent-2)' : 'var(--nx-text)', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
               onMouseEnter={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
@@ -1992,7 +1992,7 @@ export default function ShapePreview({
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-soft)' : 'transparent',
                 borderColor: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-line)' : 'transparent',
-                color: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-2)' : '#ffffff', fontSize: 14, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                color: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-2)' : 'var(--nx-text)', fontSize: 14, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
               onMouseEnter={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
@@ -2001,7 +2001,7 @@ export default function ShapePreview({
             <button
               type="button" onClick={toggleFullscreen} title={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
               aria-label={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
-              style={{ padding: '4px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#ffffff', fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
+              style={{ padding: '4px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--nx-text)', fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
@@ -2272,11 +2272,11 @@ export default function ShapePreview({
                 </Suspense>
               ) : (
                 <>
-                  <hemisphereLight args={['#ffffff', '#f3f4f6', 0.8]} />
+                  <hemisphereLight args={['var(--nx-text)', '#f3f4f6', 0.8]} />
                   <ambientLight intensity={0.4} />
                   <directionalLight position={[20, 30, 15]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} />
                   <directionalLight position={[-15, 10, -10]} intensity={0.6} color="#eef2ff" />
-                  <pointLight position={[0, 50, 0]} intensity={0.3} color="#ffffff" />
+                  <pointLight position={[0, 50, 0]} intensity={0.3} color="var(--nx-text)" />
                 </>
               )}
               <Suspense fallback={null}>
@@ -2672,7 +2672,7 @@ export default function ShapePreview({
               {isEditing && (
                 <>
                   <span style={{ color: 'var(--nx-border)' }}>│</span>
-                  <span style={{ color: '#22c55e' }}>Editing: {editMode}</span>
+                  <span style={{ color: 'var(--nx-ok)' }}>Editing: {editMode}</span>
                 </>
               )}
               {isTransforming && (

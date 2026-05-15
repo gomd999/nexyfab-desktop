@@ -8,9 +8,9 @@ import { snapVector3 } from './snap';
 
 const MAX_HANDLES = 1000;
 
-const COLOR_DEFAULT = new THREE.Color('#ffffff');
+const COLOR_DEFAULT = new THREE.Color('var(--nx-text)');
 const COLOR_HOVERED = new THREE.Color('#fbbf24');
-const COLOR_DRAGGING = new THREE.Color('#22c55e');
+const COLOR_DRAGGING = new THREE.Color('var(--nx-ok)');
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -34,7 +34,7 @@ export default function VertexHandles({
   onVertexMove,
   onDragStart,
   onDragEnd,
-  color = '#ffffff',
+  color = 'var(--nx-text)',
   size = 1.5,
   snapGrid,
 }: VertexHandlesProps) {

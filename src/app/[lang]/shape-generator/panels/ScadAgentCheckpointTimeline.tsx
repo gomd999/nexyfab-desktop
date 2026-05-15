@@ -96,7 +96,7 @@ export default function ScadAgentCheckpointTimeline({ lang, checkpoints, onRever
               onMouseEnter={!isLatest ? e => {
                 e.currentTarget.style.background = '#1f6feb';
                 e.currentTarget.style.borderColor = '#1f6feb';
-                e.currentTarget.style.color = '#ffffff';
+                e.currentTarget.style.color = 'var(--nx-text)';
               } : undefined}
               onMouseLeave={!isLatest ? e => {
                 e.currentTarget.style.background = 'transparent';

@@ -473,7 +473,7 @@ export default function ModalAnalysisPanel({
                       onClick={() => handleModeSelect(i)}
                       style={{
                         cursor: 'pointer',
-                        background: i === selectedMode ? 'rgba(56,139,253,0.15)' : 'transparent',
+                        background: i === selectedMode ? 'var(--nx-accent-soft)' : 'transparent',
                         borderBottom: `1px solid ${C.border}`,
                       }}
                     >

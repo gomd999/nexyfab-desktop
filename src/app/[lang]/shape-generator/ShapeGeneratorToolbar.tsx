@@ -520,7 +520,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             data-tour={tab === 'optimize' ? 'optimize-tab' : undefined}
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer',
-              background: 'transparent', color: active ? '#ffffff' : 'var(--nx-text-2)',
+              background: 'transparent', color: active ? 'var(--nx-text)' : 'var(--nx-text-2)',
               fontWeight: 600, fontSize: 13, transition: 'all 0.2s',
               borderBottom: active ? '2px solid var(--nx-accent-2)' : '2px solid transparent',
               marginBottom: -1,
@@ -1010,7 +1010,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         title={isFullscreen ? tt.exitFullscreen : tt.fullscreen}
         style={{
           width: 30, height: 28, padding: 0, borderRadius: 6, border: `1px solid ${isFullscreen ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
-          background: isFullscreen ? 'rgba(56,139,253,0.15)' : 'transparent',
+          background: isFullscreen ? 'var(--nx-accent-soft)' : 'transparent',
           color: isFullscreen ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
           fontSize: 11, fontWeight: 700, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',

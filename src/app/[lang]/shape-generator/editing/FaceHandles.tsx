@@ -14,7 +14,7 @@ const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 const COLOR_HOVERED = '#fbbf24';
 const COLOR_SELECTED = 'var(--nx-accent)';
-const COLOR_ARROW = '#22c55e';
+const COLOR_ARROW = 'var(--nx-ok)';
 
 // ---------------------------------------------------------------------------
 // Props
