@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { SidePanel, Tree, type TreeNode } from './';
 import { useShellBridge, type ShellFeatureItem } from '../shellBridgeStore';
 import { I } from '../Icons';
+import { StandardPartsGrid } from './StandardPartsGrid';
 
 export interface ModelerLeftPaneProps {
   isKo: boolean;
@@ -105,9 +106,7 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
       {activeTab === 'bodies' && (
         <EmptyHint isKo={isKo} message={isKo ? '바디 보기 — 모든 솔리드 / 서피스 / 메시 보디' : 'Bodies view — solids, surfaces, meshes'} />
       )}
-      {activeTab === 'components' && (
-        <EmptyHint isKo={isKo} message={isKo ? '컴포넌트 보기 — 어셈블리 모드로 전환' : 'Components view — switch to assembly mode'} />
-      )}
+      {activeTab === 'components' && <StandardPartsGrid isKo={isKo} />}
     </SidePanel>
   );
 }

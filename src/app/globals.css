@@ -483,6 +483,12 @@ body[data-mobile="1"] .nx-readout { font-size: 10px; }
   color: var(--nx-text);
 }
 
+/* AI chat typing indicator */
+@keyframes nx-blink {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
 /* Bottom drawer — slides up from below viewport, holds DFM/FEA/Cost/Variants. */
 .nx-bottom-drawer {
   flex: 0 0 auto;

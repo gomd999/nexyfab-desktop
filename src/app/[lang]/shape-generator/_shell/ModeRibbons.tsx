@@ -8,7 +8,7 @@
 import { Grp, Ribbon, Tool, type RibbonTabDef } from './Ribbon';
 import type { IconName } from './Icons';
 
-export type ShellMode = 'modeling' | 'sketch' | 'assembly' | 'drawing' | 'render';
+export type ShellMode = 'modeling' | 'sketch' | 'assembly' | 'drawing' | 'render' | 'sheetmetal';
 
 // Generic tool-button descriptor used by each ribbon definition.
 export interface RibbonAction {
@@ -298,12 +298,56 @@ const RENDER_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
   },
 ];
 
+// ── Sheet Metal ─────────────────────────────────────────────────────────────
+const SHEET_METAL_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
+  {
+    title: 'Bend',
+    rows: [
+      [
+        { id: 'sm.edge-flange', lbl: 'Edge Flange', ico: 'extrude', hasCaret: true },
+        { id: 'sm.miter-flange', lbl: 'Miter Flange', ico: 'chamfer' },
+        { id: 'sm.bend', lbl: 'Bend', ico: 'fillet' },
+        { id: 'sm.unbend', lbl: 'Unbend', ico: 'mirror' },
+      ],
+    ],
+  },
+  {
+    title: 'Form',
+    rows: [
+      [
+        { id: 'sm.tab', lbl: 'Tab', ico: 'rect' },
+        { id: 'sm.cut', lbl: 'Cut', ico: 'combine' },
+        { id: 'sm.hem', lbl: 'Hem', ico: 'fillet' },
+      ],
+    ],
+  },
+  {
+    title: 'Modify',
+    rows: [
+      [
+        { id: 'sm.corner-relief', lbl: 'Corner relief', ico: 'chamfer' },
+        { id: 'sm.bend-relief', lbl: 'Bend relief', ico: 'shell' },
+      ],
+    ],
+  },
+  {
+    title: 'Flat Pattern',
+    rows: [
+      [
+        { id: 'sm.flatten', lbl: 'Flatten', ico: 'plane' },
+        { id: 'sm.export-dxf', lbl: 'Export DXF', ico: 'share' },
+      ],
+    ],
+  },
+];
+
 const GROUPS_BY_MODE: Record<ShellMode, { title: string; rows: RibbonAction[][] }[]> = {
   modeling: SOLID_GROUPS,
   sketch: SKETCH_GROUPS,
   assembly: ASSEMBLY_GROUPS,
   drawing: DRAWING_GROUPS,
   render: RENDER_GROUPS,
+  sheetmetal: SHEET_METAL_GROUPS,
 };
 
 // Per-tab filtering for sketch mode — splits the SKETCH_GROUPS into three
@@ -400,6 +444,14 @@ export const MODE_DEFAULT_TABS: Record<ShellMode, RibbonTabDef[]> = {
     { id: 'drawing', label: 'Drawing' },
     { id: 'inspect', label: 'Inspect' },
     { id: 'render', label: 'Render' },
+    { id: 'view', label: 'View' },
+  ],
+  sheetmetal: [
+    { id: 'file', label: 'File' },
+    { id: 'sheetmetal', label: 'Sheet Metal', mode: true },
+    { id: 'solid', label: 'Solid' },
+    { id: 'drawing', label: 'Drawing' },
+    { id: 'inspect', label: 'Inspect' },
     { id: 'view', label: 'View' },
   ],
 };

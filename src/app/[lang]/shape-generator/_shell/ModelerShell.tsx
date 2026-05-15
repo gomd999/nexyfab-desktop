@@ -36,6 +36,7 @@ import { SketchRightPane } from './sidebars/SketchRightPane';
 import { AssemblyLeftPane } from './sidebars/AssemblyLeftPane';
 import { AssemblyRightPane } from './sidebars/AssemblyRightPane';
 import { BottomDrawer } from './BottomDrawer';
+import { MotionStudyPanel } from './MotionStudyPanel';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -103,10 +104,10 @@ export function ModelerShell() {
   // Bottom drawer — surfaces DFM/FEA/Cost/Variants via custom event from
   // ModelerRightPane Inspector ANALYZE rows.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<'dfm' | 'fea' | 'cost' | 'variants'>('dfm');
+  const [drawerTab, setDrawerTab] = useState<'dfm' | 'fea' | 'cost' | 'variants' | 'motion'>('dfm');
   useEffect(() => {
     const onAnalyzeOpen = (e: Event) => {
-      const ce = e as CustomEvent<{ drawer: 'dfm' | 'fea' | 'cost' | 'variants' }>;
+      const ce = e as CustomEvent<{ drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' }>;
       if (ce.detail?.drawer) {
         setDrawerTab(ce.detail.drawer);
         setDrawerOpen(true);
@@ -371,6 +372,11 @@ export function ModelerShell() {
             setMode('sketch');
             return;
           }
+          // Sheet Metal mode entry.
+          if (id === 'sheetmetal') {
+            setMode('sheetmetal');
+            return;
+          }
           // Drawing / Render tabs route to their standalone surfaces.
           if (id === 'drawing') {
             router.push(`/${langSeg}/shape-generator/drawing`);
@@ -408,6 +414,14 @@ export function ModelerShell() {
         },
         onTool: id => {
           setTool(id);
+          // Sheet Metal tools go through their own channel so Inner can
+          // resolve them with sheet-specific parameters (thickness, K-factor).
+          if (id.startsWith('sm.')) {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('nexyfab:sheet-metal-tool', { detail: { tool: id } }));
+            }
+            return;
+          }
           dispatchTool(id);
         },
         isActive: id => tool === id,
@@ -446,11 +460,14 @@ export function ModelerShell() {
             { id: 'fea', label: isKo ? 'FEA' : 'FEA' },
             { id: 'cost', label: isKo ? '비용' : 'Cost' },
             { id: 'variants', label: isKo ? '변형' : 'Variants' },
+            { id: 'motion', label: isKo ? '모션' : 'Motion' },
           ]}
           onTabChange={(id) => setDrawerTab(id as typeof drawerTab)}
           onClose={() => setDrawerOpen(false)}
         >
-          <DrawerContent tab={drawerTab} isKo={isKo} />
+          {drawerTab === 'motion'
+            ? <MotionStudyPanel isKo={isKo} />
+            : <DrawerContent tab={drawerTab} isKo={isKo} />}
         </BottomDrawer>
       }
       statusBar={{
@@ -478,26 +495,25 @@ export function ModelerShell() {
 // panels fully functional with their original prop wiring while exposing
 // them through the new Inspector → ANALYZE → drawer flow.
 function DrawerContent({ tab, isKo }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'; isKo: boolean }) {
-  const titles: Record<typeof tab, { en: string; ko: string }> = {
+  // FEA + Cost get richer custom drawers; DFM + Variants share a plain
+  // launcher card.
+  if (tab === 'fea') return <FeaDrawerContent isKo={isKo} />;
+  if (tab === 'cost') return <CostDrawerContent isKo={isKo} />;
+  const plainTab = tab as 'dfm' | 'variants';
+  const titles: Record<'dfm' | 'variants', { en: string; ko: string }> = {
     dfm: { en: 'Design for Manufacturing', ko: '제조성 분석 (DFM)' },
-    fea: { en: 'Finite Element Analysis', ko: '유한요소해석 (FEA)' },
-    cost: { en: 'Cost Copilot', ko: '비용 코파일럿' },
     variants: { en: 'Design Variants', ko: '설계 변형' },
   };
-  const descs: Record<typeof tab, { en: string; ko: string }> = {
+  const descs: Record<'dfm' | 'variants', { en: string; ko: string }> = {
     dfm: { en: 'Undercut, draft, thin-wall, sharp-corner, and tolerance checks for the active manufacturing process.', ko: '활성 제조공정 기준 언더컷 / 드래프트 / 박벽 / 모서리 / 공차 검사.' },
-    fea: { en: 'Static stress under chosen load case. Real-time visualisation overlays the mesh.', ko: '정적 응력 분석. 실시간 시각화 오버레이가 메시 위에 표시됩니다.' },
-    cost: { en: 'Material + machining + finishing cost, refined by process and quantity.', ko: '재료 + 가공 + 후처리 비용, 공정/수량 별 정교화.' },
     variants: { en: 'Explore size, material, and feature alternatives side-by-side.', ko: '크기 / 재료 / 피처 대안을 나란히 탐색.' },
   };
-  const event: Record<typeof tab, string> = {
+  const event: Record<'dfm' | 'variants', string> = {
     dfm: 'nexyfab:open-dfm',
-    fea: 'nexyfab:open-fea',
-    cost: 'nexyfab:open-cost',
     variants: 'nexyfab:open-variants',
   };
-  const t = titles[tab];
-  const d = descs[tab];
+  const t = titles[plainTab];
+  const d = descs[plainTab];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, color: 'var(--nx-text)' }}>
       <div>
@@ -513,7 +529,7 @@ function DrawerContent({ tab, isKo }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'
           }}
           onClick={() => {
             if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent(event[tab]));
+              window.dispatchEvent(new CustomEvent(event[plainTab]));
             }
           }}
         >
@@ -535,6 +551,98 @@ function DrawerContent({ tab, isKo }: { tab: 'dfm' | 'fea' | 'cost' | 'variants'
           ? '실행하면 전체 패널이 모달로 열리고 결과 오버레이가 뷰포트에 표시됩니다.'
           : 'Click Run to launch the full panel as a modal with viewport overlay.'}
       </div>
+    </div>
+  );
+}
+
+// FEA drawer adds a solver-mode picker on top of the launcher card.
+function FeaDrawerContent({ isKo }: { isKo: boolean }) {
+  const [solverMode, setSolverMode] = useState<'linear' | 'nonlinear' | 'modal'>('linear');
+  const launch = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:open-fea', { detail: { solverMode } }));
+    }
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: 'var(--nx-text)' }}>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{isKo ? '유한요소해석' : 'Finite Element Analysis'}</div>
+        <div style={{ color: 'var(--nx-text-2)', fontSize: 11, marginTop: 4 }}>
+          {isKo ? '솔버 모드를 선택하고 실행하세요.' : 'Pick a solver mode and run.'}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {(['linear', 'nonlinear', 'modal'] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => setSolverMode(m)}
+            style={{
+              flex: 1, height: 26, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: `1px solid ${solverMode === m ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+              background: solverMode === m ? 'var(--nx-accent-soft)' : 'transparent',
+              color: solverMode === m ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
+              borderRadius: 3,
+            }}
+          >
+            {m === 'linear' ? (isKo ? '선형' : 'Linear') : m === 'nonlinear' ? (isKo ? '비선형' : 'Nonlinear') : (isKo ? '모달' : 'Modal')}
+          </button>
+        ))}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--nx-text-3)', lineHeight: 1.5 }}>
+        {solverMode === 'linear' && (isKo ? '작은 변형 · 정적 응력 — Hookean 재료.' : 'Small deformation · static stress — Hookean material.')}
+        {solverMode === 'nonlinear' && (isKo ? '대변형 · 하이퍼탄성 (Mooney-Rivlin), Newton-Raphson 반복.' : 'Large deformation · hyperelastic (Mooney-Rivlin), Newton-Raphson loop.')}
+        {solverMode === 'modal' && (isKo ? '고유주파수 · 진동 모드, inverse iteration.' : 'Natural frequency · vibration modes, inverse iteration.')}
+      </div>
+      <button
+        onClick={launch}
+        style={{
+          height: 32, padding: '0 16px', border: 0, borderRadius: 4,
+          background: 'var(--nx-accent)', color: '#fff', fontSize: 12,
+          fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
+        }}
+      >
+        {isKo ? '실행 →' : 'Run →'}
+      </button>
+    </div>
+  );
+}
+
+// Cost drawer with currency + qty.
+function CostDrawerContent({ isKo }: { isKo: boolean }) {
+  const [qty, setQty] = useState(1);
+  const launch = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:open-cost', { detail: { qty } }));
+    }
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: 'var(--nx-text)' }}>
+      <div style={{ fontWeight: 700, fontSize: 14 }}>{isKo ? '비용 코파일럿' : 'Cost Copilot'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', gap: 6, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{isKo ? '수량' : 'Quantity'}</span>
+        <input
+          type="number"
+          min={1}
+          max={100000}
+          value={qty}
+          onChange={e => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+          style={{
+            height: 24, padding: '0 6px', borderRadius: 3,
+            border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+            color: 'var(--nx-text)', fontSize: 12, fontFamily: 'ui-monospace, monospace',
+          }}
+        />
+      </div>
+      <button
+        onClick={launch}
+        style={{
+          height: 32, padding: '0 16px', border: 0, borderRadius: 4,
+          background: 'var(--nx-accent)', color: '#fff', fontSize: 12,
+          fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
+        }}
+      >
+        {isKo ? `${qty}개 단가 계산 →` : `Estimate × ${qty} →`}
+      </button>
     </div>
   );
 }

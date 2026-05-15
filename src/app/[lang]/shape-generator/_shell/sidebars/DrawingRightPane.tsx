@@ -5,6 +5,7 @@
 
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck, PropItemRow } from './';
 import { I } from '../Icons';
+import { ToleranceStackSection } from './ToleranceStackSection';
 
 export interface DrawingRightPaneProps {
   isKo: boolean;
@@ -76,6 +77,8 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
           <FcfBox sym="⫳" tol="0.05" datums={['A']} note={isKo ? '평면도: 기준면' : 'Flatness: base face'} />
         </div>
       </PropSection>
+
+      <ToleranceStackSection isKo={isKo} />
 
       <PropSection title={isKo ? '제목 블록' : 'Title Block'}>
         <PropRow label={isKo ? '제작자' : 'Drawn by'}>

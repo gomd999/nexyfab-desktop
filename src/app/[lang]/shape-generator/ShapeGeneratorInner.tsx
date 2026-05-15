@@ -3506,6 +3506,159 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
   }, [updateFeatureParam]);
 
+  // Shell-v2 Components → Standard parts library insert. The grid emits a
+  // resolved SCAD source via the event; downstream pipeline will pick it up.
+  // For now we surface as a toast acknowledging insertion intent — the full
+  // SCAD→geometry materialisation runs through the existing chat agent path.
+  useEffect(() => {
+    const onInsert = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string; title: string; standard: string; scad: string }>;
+      if (!ce.detail) return;
+      addToast('info', `${ce.detail.title} (${ce.detail.standard}) 추가됨 — Nexy AI 로 매개변수 확인 가능`);
+    };
+    window.addEventListener('nexyfab:insert-standard-part', onInsert);
+    return () => window.removeEventListener('nexyfab:insert-standard-part', onInsert);
+  }, [addToast]);
+
+  // Shell-v2 Sheet Metal ribbon tools → feature stack. Each tool dispatches
+  // an event we map onto the corresponding sheetMetal feature addition.
+  useEffect(() => {
+    const onSheetMetalTool = (e: Event) => {
+      const ce = e as CustomEvent<{ tool: string }>;
+      const tool = ce.detail?.tool;
+      if (!tool) return;
+      const baseParams = { thickness: 1.5, material: 0 };
+      switch (tool) {
+        case 'sm.edge-flange':
+        case 'sm.miter-flange':
+          addFeatureWithParams('flange', { ...baseParams, height: 10, angle: 90, radius: 1.5, edgeIndex: 0 });
+          addToast('info', 'Edge flange 추가됨');
+          break;
+        case 'sm.bend':
+          addFeatureWithParams('bend', { ...baseParams, angle: 90, radius: 1.5, position: 0.5, direction: 0 });
+          addToast('info', 'Bend 추가됨');
+          break;
+        case 'sm.flatten':
+          // FlatPatternPanel is already mounted via the Inspector flow.
+          // Dispatch the existing tool route so it opens consistently.
+          window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'flat-pattern' } }));
+          addToast('info', 'Flat pattern 열기');
+          break;
+        case 'sm.export-dxf':
+          addToast('info', 'Flat pattern DXF — Flatten 후 다운로드 가능');
+          break;
+        default:
+          addToast('info', `${tool} — 추후 구현`);
+      }
+    };
+    window.addEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
+    return () => window.removeEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
+  }, [addFeatureWithParams, addToast]);
+
+  // Shell-v2 Assembly mate hookup → run v3 solver on every mate change.
+  // Builds a v3 Mate spec from each AssemblyMate, seeds the current placed
+  // parts as frames, runs solveMates, and writes the converged frames back.
+  // First placed part is treated as fixed so the assembly has an anchor.
+  useEffect(() => {
+    if (assemblyMates.length === 0 || placedParts.length === 0) return;
+    const partIds = placedParts.map(p => p.id);
+    // Build a seed frame from current placedParts. Skip three.js for the
+    // euler→quaternion conversion so we avoid pulling the full lib into
+    // this code path. XYZ-extrinsic order matches THREE.Euler default.
+    const eulerToQuat = (xDeg: number, yDeg: number, zDeg: number): [number, number, number, number] => {
+      const x = (xDeg * Math.PI) / 360, y = (yDeg * Math.PI) / 360, z = (zDeg * Math.PI) / 360;
+      const cx = Math.cos(x), sx = Math.sin(x);
+      const cy = Math.cos(y), sy = Math.sin(y);
+      const cz = Math.cos(z), sz = Math.sin(z);
+      return [
+        cx * cy * cz + sx * sy * sz, // w
+        sx * cy * cz - cx * sy * sz, // x
+        cx * sy * cz + sx * cy * sz, // y
+        cx * cy * sz - sx * sy * cz, // z
+      ];
+    };
+    const quatToEuler = (q: [number, number, number, number]): [number, number, number] => {
+      const [w, x, y, z] = q;
+      const sinrCosp = 2 * (w * x + y * z);
+      const cosrCosp = 1 - 2 * (x * x + y * y);
+      const xx = Math.atan2(sinrCosp, cosrCosp);
+      const sinp = 2 * (w * y - z * x);
+      const yy = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+      const sinyCosp = 2 * (w * z + x * y);
+      const cosyCosp = 1 - 2 * (y * y + z * z);
+      const zz = Math.atan2(sinyCosp, cosyCosp);
+      return [(xx * 180) / Math.PI, (yy * 180) / Math.PI, (zz * 180) / Math.PI];
+    };
+    const seed: Record<string, { position: [number, number, number]; rotation: [number, number, number, number] }> = {};
+    for (const p of placedParts) {
+      seed[p.id] = {
+        position: [...p.position] as [number, number, number],
+        rotation: eulerToQuat(p.rotation[0], p.rotation[1], p.rotation[2]),
+      };
+    }
+    // Translate mates → v3 Mate format. Without face data we synthesise a
+    // canonical axis (Z) at the part origin — accurate for symmetric parts,
+    // approximate otherwise. The solver still converges to a useful pose.
+    type V3Mate =
+      | { kind: 'concentric'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] } }
+      | { kind: 'coincident'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] } }
+      | { kind: 'distance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; distMm: number }
+      | { kind: 'parallel'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] } }
+      | { kind: 'angle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; deg: number };
+    const mates: V3Mate[] = [];
+    for (const m of assemblyMates) {
+      if (!partIds.includes(m.partA) || !partIds.includes(m.partB)) continue;
+      switch (m.type) {
+        case 'coincident':
+          mates.push({ kind: 'coincident', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] } });
+          break;
+        case 'concentric':
+          mates.push({ kind: 'concentric', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] } });
+          break;
+        case 'distance':
+          mates.push({ kind: 'distance', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] }, distMm: m.value ?? 0 });
+          break;
+        case 'parallel':
+          mates.push({ kind: 'parallel', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] } });
+          break;
+        case 'angle':
+          mates.push({ kind: 'angle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, deg: m.value ?? 0 });
+          break;
+        default:
+          break;
+      }
+    }
+    if (mates.length === 0) return;
+    let cancelled = false;
+    void import('@/lib/nexyfab/assemblyMateSolver').then(({ solveMates }) => {
+      if (cancelled) return;
+      const result = solveMates(seed, mates, { fixedPartIds: [placedParts[0].id] });
+      // Write converged frames back to placedParts as euler degrees.
+      const updated = placedParts.map(p => {
+        const f = result.frames[p.id];
+        if (!f) return p;
+        return {
+          ...p,
+          position: f.position,
+          rotation: quatToEuler(f.rotation),
+        };
+      });
+      // Only commit if anything actually changed to avoid feedback loops.
+      const changed = updated.some((p, i) => {
+        const o = placedParts[i];
+        return Math.abs(p.position[0] - o.position[0]) > 1e-3
+          || Math.abs(p.position[1] - o.position[1]) > 1e-3
+          || Math.abs(p.position[2] - o.position[2]) > 1e-3;
+      });
+      if (changed) setPlacedParts(updated);
+      if (!result.converged && result.residual > 0.1) {
+        addToast('warning', `Mate solver did not converge (residual ${result.residual.toFixed(2)} mm)`);
+      }
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assemblyMates]);
+
   // Shell-v2 BottomDrawer "Run →" buttons → existing uiStore-driven panels.
   // Inner's modal mounts (DFMPanel, FEAPanel, CostCopilotPanel, etc.) listen
   // to the same uiStore flags, so flipping them here opens the real panels.

@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, PropItemRow } from './';
 import { I } from '../Icons';
 import { useShellBridge } from '../shellBridgeStore';
+import { AiChatPanel } from './AiChatPanel';
 
 export interface ModelerRightPaneProps {
   isKo: boolean;
@@ -190,14 +191,20 @@ function InspectorTab({
 
       <PropSection title={isKo ? '분석' : 'Analyze'} defaultExpanded>
         <AnalyzeRow label={isKo ? 'DFM 검사' : 'DFM check'} meta={isKo ? '경고 2개' : '2 warns'} drawer="dfm" />
-        <AnalyzeRow label={isKo ? 'FEA · 정적' : 'FEA — static'} meta={isKo ? '실행' : 'run'} drawer="fea" />
+        <AnalyzeRow label={isKo ? 'FEA · 정적/비선형/모달' : 'FEA — linear/nonlinear/modal'} meta={isKo ? '실행' : 'run'} drawer="fea" />
         <AnalyzeRow label={isKo ? '비용 예상' : 'Cost estimate'} meta={volume ? `≈ ${(volume * 0.003).toFixed(2)} g` : ''} drawer="cost" />
         <AnalyzeRow label={isKo ? '설계 변형' : 'Design variants'} meta={isKo ? '3개' : '3'} drawer="variants" />
+        <AnalyzeRow label={isKo ? '모션 스터디' : 'Motion study'} meta={isKo ? '시뮬' : 'sim'} drawer="motion" />
         <PropRow label={isKo ? '삼각형' : 'Triangles'}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {Math.round(triangleCount).toLocaleString()}
           </span>
         </PropRow>
+      </PropSection>
+
+      {/* CAM section — exposes the post-processor library */}
+      <PropSection title={isKo ? 'CAM' : 'CAM'} defaultExpanded={false}>
+        <CamSection isKo={isKo} />
       </PropSection>
 
       {/* Cancel / Apply CTA mirroring mockup. Both no-op until wired. */}
@@ -232,7 +239,58 @@ function paramStep(key: string): number {
   return 0.5;
 }
 
-function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; drawer: 'dfm' | 'fea' | 'cost' | 'variants' }) {
+function CamSection({ isKo }: { isKo: boolean }) {
+  const [dialect, setDialect] = useState<'fanuc' | 'mach3' | 'haas' | 'linuxcnc' | 'siemens'>('fanuc');
+  const [machine, setMachine] = useState('haas-vf2');
+  const onExport = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:cam-export', {
+        detail: { dialect, machine },
+      }));
+    }
+  };
+  return (
+    <>
+      <PropRow label={isKo ? '컨트롤러' : 'Controller'}>
+        <PropSelect
+          value={dialect}
+          onChange={(v) => setDialect(v as typeof dialect)}
+          options={[
+            { value: 'fanuc', label: 'Fanuc' },
+            { value: 'mach3', label: 'Mach3' },
+            { value: 'haas', label: 'Haas' },
+            { value: 'linuxcnc', label: 'LinuxCNC' },
+            { value: 'siemens', label: 'Sinumerik' },
+          ]}
+        />
+      </PropRow>
+      <PropRow label={isKo ? '머신' : 'Machine'}>
+        <PropSelect
+          value={machine}
+          onChange={(v) => setMachine(v as string)}
+          options={[
+            { value: 'haas-vf2', label: 'Haas VF-2' },
+            { value: 'tormach-pcnc-440', label: 'Tormach PCNC 440' },
+            { value: 'shopbot-prsalpha', label: 'ShopBot PRSα' },
+            { value: 'sherline-5400', label: 'Sherline 5400' },
+            { value: 'custom-3018', label: 'Custom 3018' },
+          ]}
+        />
+      </PropRow>
+      <button
+        onClick={onExport}
+        style={{
+          marginTop: 6, width: '100%', height: 26, border: 0, borderRadius: 4,
+          background: 'var(--nx-accent)', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        {isKo ? 'G-code 내보내기' : 'Export G-code'}
+      </button>
+    </>
+  );
+}
+
+function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' }) {
   return (
     <div
       onClick={() => {
@@ -257,26 +315,11 @@ function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; dra
 }
 
 // ─── AI tab ────────────────────────────────────────────────────────────────
+// Inline embedded chat instead of a launcher card — matches Cursor /
+// Copilot patterns. Falls back to the modal when the network call fails.
 
 function AiTab({ isKo }: { isKo: boolean }) {
-  return (
-    <div style={{ padding: '16px 12px', fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.6 }}>
-      <div style={{ fontWeight: 600, color: 'var(--nx-text)', marginBottom: 8 }}>Nexy AI</div>
-      <p>{isKo
-        ? '자연어로 모델 변경, DFM 검토, 토폴로지 제안을 요청할 수 있습니다.'
-        : 'Ask in natural language to edit your model, run DFM checks, or get topology suggestions.'}</p>
-      <button
-        style={{ ...btnStyle('primary'), marginTop: 12, width: '100%' }}
-        onClick={() => {
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('nexyfab:open-ai-assistant'));
-          }
-        }}
-      >
-        {isKo ? 'AI 어시스턴트 열기' : 'Open AI Assistant'}
-      </button>
-    </div>
-  );
+  return <AiChatPanel isKo={isKo} />;
 }
 
 // ─── Comments tab ──────────────────────────────────────────────────────────
