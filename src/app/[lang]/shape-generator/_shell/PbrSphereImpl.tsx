@@ -1,11 +1,16 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
+import dynamic from 'next/dynamic';
 import { useShellBridge } from './shellBridgeStore';
 import { readGeometry } from './geometryBridge';
+
+// Path-traced final render — loaded only on demand to keep the live PBR
+// preview lightweight.
+const PathTracer = dynamic(() => import('../rendering/PathTracer'), { ssr: false });
 
 type EnvPreset = 'studio' | 'workshop' | 'overcast' | 'warehouse';
 const PRESET_TINTS: Record<EnvPreset, { key: string; fill: string; rim: string }> = {
@@ -108,6 +113,16 @@ export function PbrSphereImpl({ color, roughness, metalness, exposure, hdri, pro
     return readGeometry(projectId ?? 'local');
   }, [projectId]);
 
+  // Path-traced final render mode — toggled by `nexyfab:start-path-trace`.
+  const [pathTracing, setPathTracing] = useState(false);
+  const [ptSamples, setPtSamples] = useState(0);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onStart = () => { setPathTracing(true); setPtSamples(0); };
+    window.addEventListener('nexyfab:start-path-trace', onStart);
+    return () => window.removeEventListener('nexyfab:start-path-trace', onStart);
+  }, []);
+
   return (
     <Canvas
       camera={{ position: [0, 0, 3.2], fov: 38 }}
@@ -142,6 +157,21 @@ export function PbrSphereImpl({ color, roughness, metalness, exposure, hdri, pro
         </mesh>
       )}
       <OrbitControls enablePan={false} minDistance={2} maxDistance={6} />
+      {pathTracing && (
+        <PathTracer
+          enabled
+          bounces={6}
+          onProgress={(samples) => {
+            setPtSamples(samples);
+            if (samples >= 256) {
+              setPathTracing(false);
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('nexyfab:path-trace-done', { detail: { samples } }));
+              }
+            }
+          }}
+        />
+      )}
     </Canvas>
   );
 }

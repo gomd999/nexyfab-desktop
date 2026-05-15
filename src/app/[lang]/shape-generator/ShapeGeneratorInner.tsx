@@ -3506,6 +3506,22 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
   }, [updateFeatureParam]);
 
+  // Shell-v2 Sketch dimension inline edit → patch sketchDimensions by id.
+  // SketchLeftPane's DimensionEditableRow dispatches this event on commit.
+  useEffect(() => {
+    const onDim = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string; name: string; value: number }>;
+      if (!ce.detail) return;
+      const { id, value } = ce.detail;
+      setSketchDimensions((sketchDimensions ?? []).map(d => {
+        const dim = d as { id?: string; value?: number };
+        return dim.id === id ? { ...d, value } : d;
+      }));
+    };
+    window.addEventListener('nexyfab:update-sketch-dimension', onDim);
+    return () => window.removeEventListener('nexyfab:update-sketch-dimension', onDim);
+  }, [sketchDimensions, setSketchDimensions]);
+
   // Shell-v2 Feature tree row click → set selected feature so PropertyManager
   // updates and the highlight matches the tree state.
   useEffect(() => {

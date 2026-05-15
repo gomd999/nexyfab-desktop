@@ -86,10 +86,16 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
 
   const visibleMats = MATERIAL_LIBRARY.filter(m => matFilter === 'all' || m.group === matFilter);
 
+  // Path-traced final render — dispatches `nexyfab:start-path-trace` which
+  // PbrSphereImpl listens for to enable the existing PathTracer node + take
+  // a high-res screenshot when samples reach the target.
   const onRenderFinal = () => {
     gate.requirePhotoReal(() => {
-      // Real wiring in Phase 6 via useScreenshot
-      alert(isKo ? '4K 256 spp 렌더 시작 (Phase 6에서 연결 예정)' : 'Final 4K · 256 spp render (wired in Phase 6)');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nexyfab:start-path-trace', {
+          detail: { resolution: '4k', targetSamples: 256, format: 'png16' },
+        }));
+      }
     });
   };
 

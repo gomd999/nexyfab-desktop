@@ -38,7 +38,9 @@ import { AssemblyRightPane } from './sidebars/AssemblyRightPane';
 import { BottomDrawer } from './BottomDrawer';
 import { MotionStudyPanel } from './MotionStudyPanel';
 import { OnboardingTutorial } from './OnboardingTutorial';
+import { VersionTreePanel } from './VersionTreePanel';
 import { useAnalysisStore } from '../store/analysisStore';
+import { useTouchGestures } from './useTouchGestures';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -103,13 +105,16 @@ export function ModelerShell() {
   const isKo = lang === 'ko';
   const langSeg = lang === 'ko' ? 'kr' : lang;
   const isMobile = useIsMobile();
+  // Touch gestures (pinch/pan/orbit/long-press) — enabled only on touch-
+  // primary devices to avoid double-firing with the desktop mouse path.
+  useTouchGestures({ enabled: isMobile });
   // Bottom drawer — surfaces DFM/FEA/Cost/Variants via custom event from
   // ModelerRightPane Inspector ANALYZE rows.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<'dfm' | 'fea' | 'cost' | 'variants' | 'motion'>('dfm');
+  const [drawerTab, setDrawerTab] = useState<'dfm' | 'fea' | 'cost' | 'variants' | 'motion' | 'versions'>('dfm');
   useEffect(() => {
     const onAnalyzeOpen = (e: Event) => {
-      const ce = e as CustomEvent<{ drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' }>;
+      const ce = e as CustomEvent<{ drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' | 'versions' }>;
       if (ce.detail?.drawer) {
         setDrawerTab(ce.detail.drawer);
         setDrawerOpen(true);
@@ -464,13 +469,16 @@ export function ModelerShell() {
             { id: 'cost', label: isKo ? '비용' : 'Cost' },
             { id: 'variants', label: isKo ? '변형' : 'Variants' },
             { id: 'motion', label: isKo ? '모션' : 'Motion' },
+            { id: 'versions', label: isKo ? '버전' : 'Versions' },
           ]}
           onTabChange={(id) => setDrawerTab(id as typeof drawerTab)}
           onClose={() => setDrawerOpen(false)}
         >
           {drawerTab === 'motion'
             ? <MotionStudyPanel isKo={isKo} />
-            : <DrawerContent tab={drawerTab} isKo={isKo} />}
+            : drawerTab === 'versions'
+              ? <VersionTreePanel isKo={isKo} />
+              : <DrawerContent tab={drawerTab as 'dfm' | 'fea' | 'cost' | 'variants'} isKo={isKo} />}
         </BottomDrawer>
       }
       statusBar={{

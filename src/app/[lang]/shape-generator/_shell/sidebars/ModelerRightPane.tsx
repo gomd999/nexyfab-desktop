@@ -10,6 +10,7 @@ import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, Pro
 import { I } from '../Icons';
 import { useShellBridge } from '../shellBridgeStore';
 import { AiChatPanel } from './AiChatPanel';
+import { CommentsPanel } from './CommentsPanel';
 
 export interface ModelerRightPaneProps {
   isKo: boolean;
@@ -325,26 +326,7 @@ function AiTab({ isKo }: { isKo: boolean }) {
 // ─── Comments tab ──────────────────────────────────────────────────────────
 
 function CommentsTab({ isKo }: { isKo: boolean }) {
-  return (
-    <div style={{ padding: '16px 12px', fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.6 }}>
-      <div style={{ fontWeight: 600, color: 'var(--nx-text)', marginBottom: 8 }}>
-        {isKo ? '핀 코멘트' : 'Pin Comments'}
-      </div>
-      <p>{isKo
-        ? '뷰포트의 특정 위치에 핀을 꽂아 협업자와 의견을 남길 수 있습니다.'
-        : 'Drop pins on the model to discuss design changes with collaborators.'}</p>
-      <button
-        style={{ ...btnStyle('ghost'), marginTop: 12, width: '100%' }}
-        onClick={() => {
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('nexyfab:open-comments'));
-          }
-        }}
-      >
-        {isKo ? '코멘트 보기' : 'View comments'}
-      </button>
-    </div>
-  );
+  return <CommentsPanel isKo={isKo} />;
 }
 
 // ─── Shared button style ───────────────────────────────────────────────────

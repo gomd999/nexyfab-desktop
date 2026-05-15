@@ -298,6 +298,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
             fontSize: 12, outline: 'none',
           }}
         />
+        <VoiceButton isKo={isKo} onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={busy} />
         <button
           type="submit"
           disabled={busy || !input.trim()}
@@ -312,6 +313,88 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         </button>
       </form>
     </div>
+  );
+}
+
+// ─── Voice input ─────────────────────────────────────────────────────────
+// Web Speech API microphone capture → transcript → injected into the input.
+// Locale follows the i18n setting so Korean speech is recognized as Korean.
+// Silently hides on browsers without SpeechRecognition support.
+
+interface SpeechRecognitionEvent extends Event {
+  results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
+}
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  stop(): void;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onerror: ((e: Event) => void) | null;
+  onend: (() => void) | null;
+}
+
+function VoiceButton({ isKo, onTranscript, disabled }: {
+  isKo: boolean;
+  onTranscript: (text: string) => void;
+  disabled: boolean;
+}) {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const supported = typeof window !== 'undefined' && (
+    'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
+  );
+
+  if (!supported) return null;
+
+  const start = () => {
+    if (listening || disabled) return;
+    const W = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const r = new Ctor();
+    r.lang = isKo ? 'ko-KR' : 'en-US';
+    r.continuous = false;
+    r.interimResults = false;
+    r.onresult = (e) => {
+      const transcript = Array.from(e.results)
+        .filter(x => x.isFinal)
+        .map(x => x[0].transcript)
+        .join(' ')
+        .trim();
+      if (transcript) onTranscript(transcript);
+    };
+    r.onerror = () => setListening(false);
+    r.onend = () => setListening(false);
+    recRef.current = r;
+    setListening(true);
+    try { r.start(); } catch { setListening(false); }
+  };
+  const stop = () => {
+    try { recRef.current?.stop(); } catch { /* ignore */ }
+    setListening(false);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={listening ? stop : start}
+      disabled={disabled}
+      aria-label={isKo ? '음성 입력' : 'Voice input'}
+      title={isKo ? '음성 입력' : 'Voice input'}
+      style={{
+        padding: '0 10px', height: 28, border: 0, borderRadius: 4,
+        background: listening ? 'var(--nx-error, #f85149)' : 'var(--nx-panel-2)',
+        color: listening ? '#fff' : 'var(--nx-text-2)',
+        fontSize: 12, cursor: disabled ? 'not-allowed' : 'pointer',
+      }}
+    >
+      {listening ? '⏺' : '🎤'}
+    </button>
   );
 }
 

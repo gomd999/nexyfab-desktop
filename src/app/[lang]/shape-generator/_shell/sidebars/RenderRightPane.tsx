@@ -6,6 +6,7 @@
 
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck } from './';
 import { I } from '../Icons';
+import { CustomMaterialUpload } from './CustomMaterialUpload';
 
 export interface RenderRightPaneProps {
   isKo: boolean;
@@ -58,6 +59,10 @@ export function RenderRightPane({
         <PropRow label={isKo ? '범프맵' : 'Bump map'}>
           <span style={{ fontSize: 11, color: 'var(--nx-accent)', cursor: 'pointer' }}>brushed_x.exr ↗</span>
         </PropRow>
+      </PropSection>
+
+      <PropSection title={isKo ? '커스텀 텍스처' : 'Custom textures'} defaultExpanded={false}>
+        <CustomMaterialUpload isKo={isKo} />
       </PropSection>
 
       <PropSection title={isKo ? '환경' : 'Environment'}>
