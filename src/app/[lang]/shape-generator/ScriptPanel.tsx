@@ -361,7 +361,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
         {showHelp && (
           <pre style={{
             margin: 0, padding: '10px 16px',
-            fontSize: 11, color: 'var(--nx-border-strong)', background: '#010409',
+            fontSize: 11, color: 'var(--nx-border-strong)', background: 'var(--nx-bg)',
             borderBottom: '1px solid var(--nx-panel-2)', fontFamily: 'ui-monospace, monospace',
             whiteSpace: 'pre-wrap', lineHeight: 1.6,
           }}>
@@ -381,7 +381,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
             style={{
               width: '100%', height: '100%', minHeight: 220,
               padding: '12px 16px 12px 48px',
-              background: '#010409', border: 'none', outline: 'none',
+              background: 'var(--nx-bg)', border: 'none', outline: 'none',
               color: 'var(--nx-text)', fontSize: 12.5, fontFamily: 'ui-monospace, "Cascadia Code", Consolas, monospace',
               lineHeight: 1.65, resize: 'none',
               boxSizing: 'border-box',
@@ -403,7 +403,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
         {/* Console output */}
         <div style={{
           borderTop: '1px solid var(--nx-panel-2)',
-          background: '#010409',
+          background: 'var(--nx-bg)',
           maxHeight: 120, overflowY: 'auto',
           padding: logs.length === 0 ? '6px 16px' : '6px 0',
         }}>

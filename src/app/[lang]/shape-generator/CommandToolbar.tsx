@@ -1516,7 +1516,7 @@ interface CommandToolbarProps {
 
 const C_DARK = {
   bg: 'var(--nx-panel)',
-  tabBar: '#1b1f27',
+  tabBar: 'var(--nx-panel)',
   border: 'var(--nx-border)',
   accent: 'var(--nx-accent)',
   text: 'var(--nx-text)',

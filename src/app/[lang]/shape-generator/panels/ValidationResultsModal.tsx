@@ -97,7 +97,7 @@ export default function ValidationResultsModal({
               style={{
                 display: 'flex', justifyContent: 'space-between',
                 padding: '4px 8px',
-                background: i % 2 === 0 ? 'var(--nx-panel)' : '#1b1f27',
+                background: i % 2 === 0 ? 'var(--nx-panel)' : 'var(--nx-panel)',
                 borderRadius: 6,
               }}
             >

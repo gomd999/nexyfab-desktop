@@ -252,7 +252,7 @@ const headerStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   padding: '10px 12px',
   borderBottom: `1px solid ${C.border}`,
-  background: '#1b1f27',
+  background: 'var(--nx-panel)',
 };
 
 const scrollStyle: React.CSSProperties = {

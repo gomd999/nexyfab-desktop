@@ -936,7 +936,7 @@ export default function SketchPanel({
                 </button>
                 <button
                   onClick={() => { onDeleteProfile?.(multiSketch.activeProfileIndex); setConfirmDeleteProfileIdx(null); }}
-                  style={{ flex: 1, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--nx-error)', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}
                 >
                   {i18n.confirmDelete}
                 </button>
@@ -1213,7 +1213,7 @@ export default function SketchPanel({
                       </button>
                       <button
                         onClick={() => { onRemoveConstraint?.(c.id); setConfirmRemoveConstraintId(null); }}
-                        style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
+                        style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-error)', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
                       >
                         {i18n.del}
                       </button>
@@ -1285,7 +1285,7 @@ export default function SketchPanel({
                     </button>
                     <button
                       onClick={() => { onRemoveDimension?.(d.id); setConfirmRemoveDimensionId(null); }}
-                      style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
+                      style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-error)', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
                     >
                       {i18n.del}
                     </button>
@@ -1327,7 +1327,7 @@ export default function SketchPanel({
             {i18n.setup3d}
           </button>
           {!canGenerate && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, padding: '6px 8px', borderRadius: 6, background: '#1c2233', border: '1px solid var(--nx-border)', marginTop: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, padding: '6px 8px', borderRadius: 6, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', marginTop: 5 }}>
               <span style={{ fontSize: 12, flexShrink: 0, marginTop: 1 }}>ℹ️</span>
               <p style={{ fontSize: 11, color: 'var(--nx-text-2)', margin: 0, lineHeight: 1.4 }}>
                 {i18n.unlockHint}
@@ -1508,7 +1508,7 @@ export default function SketchPanel({
               </button>
               <button
                 onClick={() => { onClear(); setConfirmClear(false); }}
-                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--nx-error)', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
               >
                 {i18n.clearAll}
               </button>

@@ -180,7 +180,7 @@ const headerStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   padding: '12px 16px',
   borderBottom: `1px solid ${C.border}`,
-  background: '#1b1f27',
+  background: 'var(--nx-panel)',
   flexShrink: 0,
 };
 
@@ -203,7 +203,7 @@ const tabRowStyle: React.CSSProperties = {
   padding: '8px 12px',
   flexWrap: 'wrap',
   borderBottom: `1px solid ${C.border}`,
-  background: '#1b1f27',
+  background: 'var(--nx-panel)',
   flexShrink: 0,
 };
 
@@ -228,7 +228,7 @@ const footerStyle: React.CSSProperties = {
   borderTop: `1px solid ${C.border}`,
   fontSize: 11,
   color: C.dim,
-  background: '#1b1f27',
+  background: 'var(--nx-panel)',
   flexShrink: 0,
 };
 

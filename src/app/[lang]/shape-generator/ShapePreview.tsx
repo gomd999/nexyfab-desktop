@@ -2155,7 +2155,7 @@ export default function ShapePreview({
                     border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
                     color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent)'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel-2)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                 >
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2178,7 +2178,7 @@ export default function ShapePreview({
                       border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
                       color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-ok)'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-ok)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel-2)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                   >
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-ok)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2199,7 +2199,7 @@ export default function ShapePreview({
                     border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
                     color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent-2)'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent-2)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel-2)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                 >
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent-2)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
