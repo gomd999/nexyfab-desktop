@@ -11,8 +11,6 @@ import VerificationBanner from '@/components/nexyfab/VerificationBanner';
 import OnboardingChecklist from '@/components/nexyfab/OnboardingChecklist';
 import { useToast } from '@/components/ToastProvider';
 import { formatDateTime } from '@/lib/formatDate';
-// Shell-v2 Hub (Phase 2) — gated by ?shell=v2
-import { HubFrame } from '@/app/[lang]/shape-generator/_shell';
 
 // ─── Client-side 5-min cache ──────────────────────────────────────────────────
 interface CachedActivity { id: string; type: 'rfq_submitted' | 'quote_received' | 'order_milestone' | 'contract_signed' | 'project_created'; message: string; createdAt: number }
@@ -2096,34 +2094,10 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
   );
 }
 
-// Routes to either the legacy 2,100-line operational dashboard or the new
-// shell-v2 Hub IA based on the `?shell=v2` query flag. The legacy view stays
-// available because it owns RFQ / Orders / Teams / Files management — those
-// live as separate pages in subsequent phases and are not part of the Hub.
-function HubGate({ params }: { params: Promise<{ lang: string }> }) {
-  const sp = useSearchParams();
-  const { lang } = use(params);
-  const [showAuth, setShowAuth] = useState(false);
-
-  if (sp?.get('shell') === 'v2') {
-    return (
-      <>
-        <HubFrame lang={lang} isKo={isKorean(lang)} onShowAuth={() => setShowAuth(true)} />
-        <AuthModal
-          open={showAuth}
-          onClose={() => setShowAuth(false)}
-          lang={lang}
-        />
-      </>
-    );
-  }
-  return <NexyfabDashboardInner params={params} />;
-}
-
 export default function NexyfabDashboard({ params }: { params: Promise<{ lang: string }> }) {
   return (
     <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0d1117' }} />}>
-      <HubGate params={params} />
+      <NexyfabDashboardInner params={params} />
     </Suspense>
   );
 }

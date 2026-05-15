@@ -15,12 +15,14 @@ const ShapeGeneratorInner = dynamic(
   { ssr: false, loading: () => <WorkspaceLoading variant="app" /> },
 );
 
-// Routes to either the legacy ShapeGeneratorInner monolith or the new shell-v2
-// preview based on the `?shell=v2` query flag. useSearchParams must be inside
-// the Suspense boundary on the parent.
+// The 3D modeler is always the real ShapeGeneratorInner. The shell-v2 chrome
+// preview is kept behind `?dev-shell=v2` (NOT `?shell=v2`) so it's only
+// reachable by direct dev links — accidental users land on the real modeler.
+// Phase 6 will wire ShapeGeneratorInner into <Shell> for real; until then,
+// ShellPreview is mock data and should not be promoted.
 function ShellGate() {
   const sp = useSearchParams();
-  if (sp?.get('shell') === 'v2') {
+  if (sp?.get('dev-shell') === 'v2') {
     return <ShellPreview />;
   }
   return <ShapeGeneratorInner />;

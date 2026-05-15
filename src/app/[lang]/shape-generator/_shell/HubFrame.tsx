@@ -1,14 +1,15 @@
 'use client';
 
-// Hub view (Phase 2) — shell-v2 styled landing screen for /[lang]/nexyfab/dashboard?shell=v2
+// Hub view (Phase 2) — shell-v2 styled landing screen for /[lang]/nexyfab/hub.
 // Renders sidebar + main grid using shape-generator design tokens.
 // Reads existing useAuthStore / useProjectsStore data — no new fetch logic.
-// The legacy dashboard remains untouched at the same route without the flag.
+// "New Design" and project cards route into /shape-generator (the real 3D modeler).
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
 import { useProjectsStore } from '@/hooks/useProjects';
+import { useTheme } from '../ThemeContext';
 import { I, type IconName } from './Icons';
 
 interface HubFrameProps {
@@ -38,6 +39,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   const router = useRouter();
   const { user } = useAuthStore();
   const { projects, isLoading } = useProjectsStore();
+  const { mode: themeMode, toggleTheme } = useTheme();
   const plan = user?.plan ?? 'free';
 
   const navItems: NavItem[] = [
@@ -56,7 +58,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       lblKo: '새 파트',
       sub: 'Solid · parametric',
       subKo: '솔리드 · 파라메트릭',
-      href: `/${lang}/shape-generator?shell=v2`,
+      href: `/${lang}/shape-generator`,
     },
     {
       ico: 'combine',
@@ -64,7 +66,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       lblKo: '새 어셈블리',
       sub: 'Mate components',
       subKo: '부품 결합',
-      href: `/${lang}/shape-generator?shell=v2&mode=assembly`,
+      href: `/${lang}/shape-generator?mode=assembly`,
     },
     {
       ico: 'doc',
@@ -72,7 +74,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       lblKo: '새 도면',
       sub: 'From a part or assembly',
       subKo: '파트 또는 어셈블리에서',
-      href: `/${lang}/shape-generator?shell=v2&mode=drawing`,
+      href: `/${lang}/shape-generator/drawing`,
     },
     {
       ico: 'sketch',
@@ -80,7 +82,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       lblKo: '스케치에서',
       sub: 'Import DXF / SVG',
       subKo: 'DXF / SVG 가져오기',
-      href: `/${lang}/shape-generator?shell=v2&import=sketch`,
+      href: `/${lang}/shape-generator?import=sketch`,
     },
   ];
 
@@ -102,7 +104,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       onShowAuth?.();
       return;
     }
-    router.push(`/${lang}/shape-generator?shell=v2`);
+    router.push(`/${lang}/shape-generator`);
   };
 
   return (
@@ -336,6 +338,16 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
             <span>{isKo ? '파트·프로젝트·브랜치 검색…' : 'Search parts, projects, branches…'}</span>
             <span className="kbd">⌘K</span>
           </div>
+          <button
+            type="button"
+            className="nx-pillbtn"
+            style={{ height: 32, padding: '0 10px' }}
+            onClick={toggleTheme}
+            title={isKo ? '테마 전환' : 'Toggle theme'}
+            aria-label={isKo ? '테마 전환' : 'Toggle theme'}
+          >
+            {themeMode === 'dark' ? <I.sun size={14} /> : <I.moon size={14} />}
+          </button>
           <button type="button" className="nx-pillbtn" style={{ height: 32 }}>
             <I.bolt size={14} /> {isKo ? '새 소식' : "What's new"}
           </button>
@@ -533,7 +545,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   <button
                     type="button"
                     key={p.id}
-                    onClick={() => router.push(`/${lang}/shape-generator?project=${p.id}&shell=v2`)}
+                    onClick={() => router.push(`/${lang}/shape-generator?project=${p.id}`)}
                     style={{
                       background: 'var(--nx-panel)',
                       border: '1px solid var(--nx-border)',
@@ -605,7 +617,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 className="nx-link"
                 style={{ fontSize: 11 }}
               >
-                {isKo ? '레거시 대시보드 →' : 'Legacy dashboard →'}
+                {isKo ? '운영 대시보드 (주문·견적·정산) →' : 'Ops dashboard (orders · RFQ · settlements) →'}
               </a>
             </div>
 
@@ -702,7 +714,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                           cursor: 'pointer',
                         }}
                         onClick={() =>
-                          router.push(`/${lang}/shape-generator?project=${p.id}&shell=v2`)
+                          router.push(`/${lang}/shape-generator?project=${p.id}`)
                         }
                       >
                         <td
