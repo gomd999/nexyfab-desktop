@@ -273,7 +273,7 @@ export default function DesignFunnelBar({
   ];
 
   return (
-    <div className="sg-autohide" style={{
+    <div className="sg-autohide" data-shell-v2-hide="funnel-bar" style={{
       background: theme.panelBg,
       borderBottom: `1px solid ${theme.border}`,
       padding: '0 12px',

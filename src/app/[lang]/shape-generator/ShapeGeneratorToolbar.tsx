@@ -463,7 +463,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
   } = props;
 
   return (
-    <div className="sg-topbar sg-autohide" style={{
+    <div className="sg-topbar sg-autohide" data-shell-v2-hide="top-toolbar" style={{
       background: 'rgba(13, 17, 23, 0.85)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',

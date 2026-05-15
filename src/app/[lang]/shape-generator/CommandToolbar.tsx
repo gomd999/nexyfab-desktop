@@ -1648,7 +1648,7 @@ function ToolButton({ tool, openSub, onOpenSub, onClose }: {
   };
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative' }}>
+    <div ref={wrapRef} style={{ position: 'relative' }} data-shell-v2-hide="command-toolbar">
       <button
         data-tour={tool.dataTour}
         style={btnStyle}

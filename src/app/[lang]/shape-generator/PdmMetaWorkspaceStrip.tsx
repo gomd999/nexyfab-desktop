@@ -37,6 +37,7 @@ export default function PdmMetaWorkspaceStrip({ isKo, onFieldsEdited }: PdmMetaW
 
   return (
     <div
+      data-shell-v2-hide="pdm-strip"
       style={{
         display: 'flex',
         alignItems: 'center',
