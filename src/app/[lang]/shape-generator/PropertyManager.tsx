@@ -154,6 +154,51 @@ export default function PropertyManager({
             </div>
           </div>
         )}
+
+        {/* APPEARANCE — mirrors mockup #14's "Inherit From body / Material" row.
+            Shows material chip if available, else placeholder text. */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 6, cursor: 'pointer' }}
+          onClick={() => setCollapsed(c => ({ ...c, appearance: !c.appearance }))}
+        >
+          <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.appearance ? '▶' : '▼'}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
+            {lang === 'ko' ? '외형' : 'Appearance'}
+          </span>
+          <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
+        </div>
+        {!collapsed.appearance && (
+          <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+              <span style={{ color: 'var(--nx-text-3)' }}>{lang === 'ko' ? '상속' : 'Inherit'}</span>
+              <span style={{ color: 'var(--nx-text)' }}>{lang === 'ko' ? '본체로부터' : 'From body'}</span>
+            </div>
+          </div>
+        )}
+
+        {/* EDGES — only meaningful for edge-based features (fillet/chamfer).
+            Shows count placeholder; deep edge-list wiring is a follow-up. */}
+        {(featureType === 'fillet' || featureType === 'chamfer') && (
+          <>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 6, cursor: 'pointer' }}
+              onClick={() => setCollapsed(c => ({ ...c, edges: !c.edges }))}
+            >
+              <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.edges ? '▶' : '▼'}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
+                {lang === 'ko' ? '엣지' : 'Edges'}
+              </span>
+              <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
+            </div>
+            {!collapsed.edges && (
+              <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10, color: 'var(--nx-text-3)', fontStyle: 'italic' }}>
+                {lang === 'ko'
+                  ? '뷰포트에서 엣지를 클릭하여 추가/제거'
+                  : 'Click edges in viewport to add / remove'}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Footer */}

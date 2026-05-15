@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from 'react';
 import { TitleBar, type TitleBarProps } from './TitleBar';
 import { ModeRibbon, MODE_DEFAULT_TABS, type ShellMode, type RibbonHandler, type RibbonActiveCheck } from './ModeRibbons';
 import { StatusBar, type StatusBarProps } from './StatusBar';
+import { useShellBridge } from './shellBridgeStore';
 import type { RibbonTabDef } from './Ribbon';
 
 export interface ShellProps {
@@ -51,6 +52,28 @@ export function Shell({
       document.body.classList.remove('sg-shell-v2');
     };
   }, []);
+
+  // FPS counter — averages frames over a 1s window and publishes to the
+  // bridge so StatusBar's pill shows live performance.
+  const setFps = useShellBridge(s => s.setFps);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let frames = 0;
+    let last = performance.now();
+    let raf = 0;
+    const tick = () => {
+      frames++;
+      const now = performance.now();
+      if (now - last >= 1000) {
+        setFps(Math.round((frames * 1000) / (now - last)));
+        frames = 0;
+        last = now;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [setFps]);
 
   return (
     <div className="nx-app">

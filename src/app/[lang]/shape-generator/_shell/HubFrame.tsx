@@ -1,5 +1,83 @@
 'use client';
 
+// Generates a deterministic isometric cube SVG colored by the project name,
+// so each tile feels unique without needing a real 3D render. Uses thumbnail
+// data URL when available.
+function ProjectThumbnail({ name, thumbnail }: { name: string; thumbnail?: string }) {
+  if (thumbnail) {
+    return (
+      <div
+        style={{
+          height: 100,
+          background: `url(${thumbnail}) center/cover`,
+          borderBottom: '1px solid var(--nx-border)',
+        }}
+      />
+    );
+  }
+  // Seed two accent colors from the name hash.
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  const PALETTE = [
+    ['#22e0c8', '#0a8074'],
+    ['#5e9eff', '#1a3a8a'],
+    ['#ff9b3d', '#7a3e0f'],
+    ['#a87bff', '#3e1f72'],
+    ['#ffd24d', '#7a5500'],
+    ['#ff6b9b', '#7a1f3e'],
+    ['#5eead4', '#0a8074'],
+  ];
+  const [top, side] = PALETTE[Math.abs(h) % PALETTE.length];
+  const initials = name
+    .split(/\s|[-_]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(s => s[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+  return (
+    <div
+      style={{
+        height: 100,
+        background:
+          'radial-gradient(ellipse at center, var(--nx-viewport-bg-top), var(--nx-viewport-bg-bot))',
+        position: 'relative',
+        borderBottom: '1px solid var(--nx-border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      <svg width="72" height="72" viewBox="0 0 100 100" aria-hidden="true">
+        {/* isometric cube */}
+        <polygon points="50,20 80,35 50,50 20,35" fill={top} opacity="0.9" />
+        <polygon points="20,35 50,50 50,82 20,67" fill={side} opacity="0.8" />
+        <polygon points="80,35 50,50 50,82 80,67" fill={side} opacity="0.6" />
+        <polygon
+          points="50,20 80,35 50,50 20,35"
+          fill="none"
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="0.6"
+        />
+      </svg>
+      <span
+        style={{
+          position: 'absolute',
+          fontSize: 14,
+          fontWeight: 800,
+          color: 'rgba(255,255,255,0.92)',
+          letterSpacing: '0.04em',
+          textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+        }}
+      >
+        {initials || '?'}
+      </span>
+    </div>
+  );
+}
+
 // Hub view (Phase 2) — shell-v2 styled landing screen for /[lang]/nexyfab/hub.
 // Renders sidebar + main grid using shape-generator design tokens.
 // Reads existing useAuthStore / useProjectsStore data — no new fetch logic.
@@ -679,21 +757,8 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                       color: 'var(--nx-text)',
                     }}
                   >
-                    <div
-                      style={{
-                        height: 100,
-                        background:
-                          'radial-gradient(ellipse at center, var(--nx-viewport-bg-top), var(--nx-viewport-bg-bot))',
-                        position: 'relative',
-                        borderBottom: '1px solid var(--nx-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--nx-text-2)',
-                      }}
-                    >
-                      <I.cube size={32} />
-                    </div>
+                    <ProjectThumbnail name={p.name} thumbnail={p.thumbnail} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                     <div style={{ padding: '8px 10px' }}>
                       <div
                         style={{

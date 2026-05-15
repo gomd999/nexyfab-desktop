@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shell } from './Shell';
 import { I } from './Icons';
+import { useShellBridge } from './shellBridgeStore';
 import { useFreemiumGate } from '../hooks/useFreemiumGate';
 
 interface DrawingFrameProps {
@@ -283,6 +284,12 @@ function DrawingCanvas({
   isKo: boolean;
   onBackToModeling: () => void;
 }) {
+  // Pull modeler stats from the bridge — if the user has the modeler open
+  // in another tab/route, these reflect real data; otherwise they're zero.
+  const selectedLabel = useShellBridge(s => s.selectedLabel);
+  const volume = useShellBridge(s => s.volume);
+  const triangleCount = useShellBridge(s => s.triangleCount);
+
   // A3 paper aspect 297:420 → fits within available space.
   return (
     <div
@@ -376,10 +383,22 @@ function DrawingCanvas({
           }}
         >
           {[
-            { k: isKo ? '도면명' : 'Title', v: isKo ? '브래킷 v14' : 'Bracket v14' },
-            { k: isKo ? '도면 번호' : 'Part №', v: 'NXF-0001-A' },
-            { k: isKo ? '재질' : 'Material', v: 'Al 6061-T6' },
-            { k: isKo ? '축척' : 'Scale', v: '1 : 2' },
+            {
+              k: isKo ? '도면명' : 'Title',
+              v: selectedLabel ?? (isKo ? '무제 파트' : 'Untitled Part'),
+            },
+            {
+              k: isKo ? '도면 번호' : 'Part №',
+              v: selectedLabel ? `NXF-${selectedLabel.slice(0, 6).toUpperCase()}` : 'NXF-0001-A',
+            },
+            {
+              k: isKo ? '볼륨' : 'Volume',
+              v: volume !== null ? `${volume.toFixed(1)} cm³` : '—',
+            },
+            {
+              k: isKo ? '삼각형' : 'Triangles',
+              v: triangleCount > 0 ? `${Math.round(triangleCount).toLocaleString()}` : '—',
+            },
           ].map(c => (
             <div key={c.k} style={{ borderRight: '1px solid #999', borderBottom: '1px solid #999', padding: '4px 6px' }}>
               <div style={{ fontSize: 8, color: '#999', textTransform: 'uppercase' }}>{c.k}</div>

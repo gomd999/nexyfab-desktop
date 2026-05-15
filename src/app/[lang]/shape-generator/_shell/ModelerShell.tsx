@@ -17,11 +17,13 @@ import { useRouter } from 'next/navigation';
 import { WorkspaceLoading } from '../WorkspaceLoading';
 import { useLang } from '../hooks/useLang';
 import { useTheme } from '../ThemeContext';
+import { useAuthStore } from '@/hooks/useAuth';
 import { Shell } from './Shell';
 import { I } from './Icons';
 import { useShellBridge } from './shellBridgeStore';
 import { ViewportChips } from './ViewportChips';
 import { SelectionBubble } from './SelectionBubble';
+import { SolverInfoChip } from './SolverInfoChip';
 import type { ShellMode } from './ModeRibbons';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
@@ -78,12 +80,27 @@ export function ModelerShell() {
   const router = useRouter();
   const lang = useLang();
   const { mode: themeMode, toggleTheme } = useTheme();
+  const user = useAuthStore(s => s.user);
   const [activeTab, setActiveTab] = useState('solid');
   const [mode, setMode] = useState<ShellMode>('modeling');
   const [tool, setTool] = useState<string | null>(null);
 
   const isKo = lang === 'ko';
   const langSeg = lang === 'ko' ? 'kr' : lang;
+
+  // Avatars: current user only for now (collab broadcast → multiple in a
+  // follow-up). Falls back to a "?" guest avatar if not signed in.
+  const userInitials = (user?.name ?? user?.email ?? '?').slice(0, 2).toUpperCase();
+  const userColor = (() => {
+    // Deterministic color from email hash so the same user is always the
+    // same color, but different users distinct.
+    const seed = user?.email ?? 'guest';
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    const palette = ['#22e0c8', '#5e9eff', '#ff9b3d', '#a87bff', '#ffd24d', '#ff6b9b'];
+    return palette[Math.abs(h) % palette.length];
+  })();
+  const avatars = user ? [{ initials: userInitials, color: userColor }] : [];
 
   // Pull live status from Inner via the bridge store.
   const bridgeEditMode = useShellBridge(s => s.editMode);
@@ -181,7 +198,7 @@ export function ModelerShell() {
               }
             }
           : undefined,
-        avatars: [],
+        avatars,
         canUndo: true,
         canRedo: true,
         onNew: () => router.push(`/${langSeg}/nexyfab/hub`),
@@ -250,6 +267,7 @@ export function ModelerShell() {
           <ShapeGeneratorInner />
           <ViewportChips isKo={isKo} />
           <SelectionBubble isKo={isKo} />
+          <SolverInfoChip isKo={isKo} />
         </Suspense>
       }
       statusBar={{

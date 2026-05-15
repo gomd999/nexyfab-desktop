@@ -3064,18 +3064,24 @@ export function ShapeGeneratorInner() {
         openAIAssistant('advisor');
         return;
       }
-      // Assembly mode tools — all funnel into the Assembly browser panel,
-      // which owns the actual Insert/Mate/Motion/BOM controls. Individual
-      // sub-action wiring (e.g. "Coincident mate") is a follow-up — the
-      // panel itself surfaces these as buttons once a part is selected.
+      // Assembly mode mate buttons — preselect mate type via custom event
+      // so AssemblyPanel opens with the right type already chosen.
+      const MATE_TYPES: Record<string, string> = {
+        'mate.coincident': 'coincident',
+        'mate.concentric': 'concentric',
+        'mate.distance': 'distance',
+        'mate.angle': 'angle',
+      };
+      if (MATE_TYPES[id]) {
+        setShowAssemblyPanel(true);
+        window.dispatchEvent(new CustomEvent('nexyfab:assembly-mate-type', { detail: { type: MATE_TYPES[id] } }));
+        return;
+      }
+      // Remaining assembly tools just open the browser panel.
       if (
         id === 'asm.insert' ||
         id === 'asm.replace' ||
         id === 'asm.subassembly' ||
-        id === 'mate.coincident' ||
-        id === 'mate.concentric' ||
-        id === 'mate.distance' ||
-        id === 'mate.angle' ||
         id === 'motion.drive' ||
         id === 'asm.interference' ||
         id === 'asm.section' ||
@@ -3143,18 +3149,42 @@ export function ShapeGeneratorInner() {
     });
   }, [isSaving, lastSavedAt, cloudSavedAt, saveError, versionConflictNeedsReload, bridgeCloud]);
 
-  // Sketch solver bridge — only meaningful when isSketchMode. TitleBar reads
-  // sketchSolverOk + sketchDof for the "Fully constrained · DOF 0" pill.
+  // Sketch solver bridge — TitleBar reads sketchSolverOk + sketchDof for the
+  // "Fully constrained · DOF 0" pill, plus a floating SolverInfoChip reads
+  // entities/constraints/dimensions/solveMs for the engineer-mode readout.
   const bridgeSketchSolver = useShellBridge(s => s.setSketchSolver);
   useEffect(() => {
     if (!isSketchMode) {
-      bridgeSketchSolver({ sketchSolverOk: null, sketchDof: null });
+      bridgeSketchSolver({
+        sketchSolverOk: null,
+        sketchDof: null,
+        sketchEntities: 0,
+        sketchConstraints: 0,
+        sketchDimensions: 0,
+        sketchSolveMs: null,
+      });
       return;
     }
     const ok = constraintStatus === 'ok';
     const dof = constraintDiagnostic?.dof ?? null;
-    bridgeSketchSolver({ sketchSolverOk: ok, sketchDof: dof });
-  }, [isSketchMode, constraintStatus, constraintDiagnostic?.dof, bridgeSketchSolver]);
+    bridgeSketchSolver({
+      sketchSolverOk: ok,
+      sketchDof: dof,
+      sketchEntities: sketchProfile?.segments?.length ?? 0,
+      sketchConstraints: sketchConstraints?.length ?? 0,
+      sketchDimensions: sketchDimensions?.length ?? 0,
+      sketchSolveMs: typeof constraintDiagnostic?.residual === 'number' ? constraintDiagnostic.residual : null,
+    });
+  }, [
+    isSketchMode,
+    constraintStatus,
+    constraintDiagnostic?.dof,
+    constraintDiagnostic?.residual,
+    sketchProfile,
+    sketchConstraints,
+    sketchDimensions,
+    bridgeSketchSolver,
+  ]);
 
   // Selection bridge — drives Shell's floating "{feature} · {n} edges" bubble.
   const bridgeSelection = useShellBridge(s => s.setSelection);

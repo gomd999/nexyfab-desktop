@@ -41,6 +41,10 @@ export interface ShellBridgeState {
   // Sketch DOF info (only meaningful when isSketchMode)
   sketchSolverOk: boolean | null;
   sketchDof: number | null;
+  sketchEntities: number;
+  sketchConstraints: number;
+  sketchDimensions: number;
+  sketchSolveMs: number | null;
 
   // Current canvas selection — drives the floating "Fillet 1 · 12 edges" bubble.
   selectionKind: 'face' | 'edge' | 'vertex' | 'feature' | 'multi' | null;
@@ -54,7 +58,7 @@ export interface ShellBridgeState {
   setStats: (s: Partial<Pick<ShellBridgeState, 'featureCount' | 'mass' | 'volume' | 'triangleCount' | 'selectedLabel'>>) => void;
   setFps: (n: number) => void;
   setCloud: (s: Partial<Pick<ShellBridgeState, 'cloudStatus' | 'cloudSavedAt' | 'autosaveSavedAt'>>) => void;
-  setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof'>>) => void;
+  setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof' | 'sketchEntities' | 'sketchConstraints' | 'sketchDimensions' | 'sketchSolveMs'>>) => void;
   setSelection: (s: Partial<Pick<ShellBridgeState, 'selectionKind' | 'selectionLabel' | 'selectionCount'>>) => void;
 }
 
@@ -75,6 +79,10 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   autosaveSavedAt: null,
   sketchSolverOk: null,
   sketchDof: null,
+  sketchEntities: 0,
+  sketchConstraints: 0,
+  sketchDimensions: 0,
+  sketchSolveMs: null,
   selectionKind: null,
   selectionLabel: null,
   selectionCount: 0,

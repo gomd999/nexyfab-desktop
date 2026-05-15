@@ -261,6 +261,21 @@ export default function AssemblyPanel({
   const [newValue, setNewValue] = useState(10);
   const [activeSection, setActiveSection] = useState<'mates' | 'interference' | 'explode' | 'solver'>('mates');
 
+  // Listen for shell-v2 ribbon "mate.{type}" clicks — open add-mate UI and
+  // preselect the requested type. Dispatched from ShapeGeneratorInner's
+  // nexyfab:tool handler.
+  useEffect(() => {
+    const onMateType = (e: Event) => {
+      const t = (e as CustomEvent<{ type?: MateType }>).detail?.type;
+      if (!t) return;
+      setNewMateType(t);
+      setAddMode(true);
+      setActiveSection('mates');
+    };
+    window.addEventListener('nexyfab:assembly-mate-type', onMateType);
+    return () => window.removeEventListener('nexyfab:assembly-mate-type', onMateType);
+  }, []);
+
   // Solver tab: local `AssemblyState` until user clicks Sync from BOM (`mateSelectionMapping`).
   const {
     assembly: solverAssembly,

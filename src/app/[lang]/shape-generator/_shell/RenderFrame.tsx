@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { Shell } from './Shell';
 import { I, type IconName } from './Icons';
 import { useFreemiumGate } from '../hooks/useFreemiumGate';
+import { PbrSpherePreview } from './PbrSpherePreview';
 
 interface RenderFrameProps {
   lang: string;
@@ -130,6 +131,10 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
             isKo={isKo}
             material={selectedMaterial}
             color={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.color ?? '#888'}
+            roughness={roughness}
+            metalness={metalness}
+            exposure={exposure}
+            hdri={hdri}
             onBackToModeling={() =>
               router.push(`/${lang}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
             }
@@ -470,11 +475,19 @@ function RenderCanvas({
   isKo,
   material,
   color,
+  roughness,
+  metalness,
+  exposure,
+  hdri,
   onBackToModeling,
 }: {
   isKo: boolean;
   material: string;
   color: string;
+  roughness: number;
+  metalness: number;
+  exposure: number;
+  hdri: string;
   onBackToModeling: () => void;
 }) {
   return (
@@ -484,32 +497,26 @@ function RenderCanvas({
           <div>
             <span className="k">MATERIAL</span> <span className="v mono">{material}</span>
           </div>
+          <div>
+            <span className="k">R/M</span> <span className="v mono">{roughness.toFixed(2)} / {metalness.toFixed(2)}</span>
+          </div>
+          <div>
+            <span className="k">HDRI</span> <span className="v mono">{hdri}</span>
+          </div>
         </div>
         <div className="nx-readout bl">
-          <div>{isKo ? '실시간 PBR · 32 spp 미리보기' : 'Live PBR · 32 spp preview'}</div>
+          <div>{isKo ? '실시간 PBR · WebGL2' : 'Live PBR · WebGL2'}</div>
         </div>
       </div>
 
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <svg viewBox="-100 -100 200 200" width="60%" height="60%" style={{ filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.45))' }}>
-          <defs>
-            <radialGradient id="mat-grad" cx="35%" cy="30%" r="70%">
-              <stop offset="0%" stopColor={shade(color, 0.4)} />
-              <stop offset="55%" stopColor={color} />
-              <stop offset="100%" stopColor={shade(color, -0.5)} />
-            </radialGradient>
-          </defs>
-          <circle cx="0" cy="0" r="72" fill="url(#mat-grad)" />
-          <ellipse cx="-22" cy="-26" rx="22" ry="10" fill="rgba(255,255,255,0.35)" />
-        </svg>
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <PbrSpherePreview
+          color={color}
+          roughness={roughness}
+          metalness={metalness}
+          exposure={exposure}
+          hdri={hdri}
+        />
       </div>
 
       <div className="nx-floater" style={{ bottom: 12, left: 12 }}>
