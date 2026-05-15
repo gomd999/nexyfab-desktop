@@ -245,25 +245,25 @@ export default function SheetMetalPanel({
   // ── Styles ──
   const panelStyle: React.CSSProperties = {
     position: 'absolute', right: 12, top: 60, width: 300,
-    background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
-    color: '#c9d1d9', fontFamily: 'Inter, sans-serif', zIndex: 100,
+    background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 10,
+    color: 'var(--nx-text)', fontFamily: 'Inter, sans-serif', zIndex: 100,
     boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
   };
 
   const headerStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '10px 14px', borderBottom: '1px solid #30363d',
+    padding: '10px 14px', borderBottom: '1px solid var(--nx-border)',
   };
 
   const tabBarStyle: React.CSSProperties = {
-    display: 'flex', borderBottom: '1px solid #30363d',
+    display: 'flex', borderBottom: '1px solid var(--nx-border)',
   };
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     flex: 1, padding: '8px 0', textAlign: 'center', cursor: 'pointer',
     fontSize: 11, fontWeight: 600, border: 'none', background: 'transparent',
-    color: active ? '#58a6ff' : '#8b949e',
-    borderBottom: active ? '2px solid #58a6ff' : '2px solid transparent',
+    color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
+    borderBottom: active ? '2px solid var(--nx-accent-2)' : '2px solid transparent',
     transition: 'all 0.15s',
   });
 
@@ -276,12 +276,12 @@ export default function SheetMetalPanel({
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 11, color: '#8b949e', fontWeight: 600,
+    fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600,
   };
 
   const inputStyle: React.CSSProperties = {
     width: 80, padding: '4px 8px', borderRadius: 4,
-    border: '1px solid #30363d', background: '#0d1117', color: '#c9d1d9',
+    border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)',
     fontSize: 12, textAlign: 'right',
   };
 
@@ -291,12 +291,12 @@ export default function SheetMetalPanel({
 
   const buttonStyle: React.CSSProperties = {
     width: '100%', padding: '8px 0', borderRadius: 6, border: 'none',
-    background: '#238636', color: '#fff', fontWeight: 700, fontSize: 12,
+    background: '#238636', color: 'var(--nx-text)', fontWeight: 700, fontSize: 12,
     cursor: 'pointer', transition: 'background 0.15s',
   };
 
   const closeStyle: React.CSSProperties = {
-    background: 'none', border: 'none', color: '#8b949e', fontSize: 16,
+    background: 'none', border: 'none', color: 'var(--nx-text-2)', fontSize: 16,
     cursor: 'pointer', padding: '2px 6px', borderRadius: 4,
   };
 
@@ -334,7 +334,7 @@ export default function SheetMetalPanel({
             <span style={labelStyle}>{t.bendPosition} (%)</span>
             <input type="range" style={{ flex: 1, margin: '0 8px' }} value={bendPosition} min={5} max={95} step={1}
               onChange={e => setBendPosition(Number(e.target.value))} />
-            <span style={{ fontSize: 11, color: '#58a6ff', minWidth: 30, textAlign: 'right' }}>{bendPosition}%</span>
+            <span style={{ fontSize: 11, color: 'var(--nx-accent-2)', minWidth: 30, textAlign: 'right' }}>{bendPosition}%</span>
           </div>
           <div style={rowStyle}>
             <span style={labelStyle}>{t.bendDirection}</span>
@@ -401,7 +401,7 @@ export default function SheetMetalPanel({
               <input type="number" style={inputStyle} value={kFactor} min={0.2} max={0.6} step={0.01}
                 onChange={e => setKFactor(Number(e.target.value))} />
             </div>
-            <div style={{ fontSize: 10, color: '#8b949e', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
               {t.kFactorHint}
             </div>
             <button style={buttonStyle} onClick={handleGenerateFlat}>{t.generateFlat}</button>

@@ -143,6 +143,7 @@ import { buildWorkspaceCommands } from './commandWorkspaceCommands';
 import WorkspaceEmptyHint from './WorkspaceEmptyHint';
 import { MATERIAL_PRESETS } from './materials';
 import { useTheme } from './ThemeContext';
+import { useShellBridge } from './_shell/shellBridgeStore';
 import { evaluateExpression, findBrokenExpressions, freezeBrokenExpressions, type ExprVariable } from './ExpressionEngine';
 import { globalMacroRecorder } from './history/macroRecorder';
 import { analyzeChangeImpact } from './analysis/changeImpact';
@@ -255,7 +256,7 @@ import WorkflowStepper from './WorkflowStepper';
 const ManufacturerMatch = dynamic(() => import('./analysis/ManufacturerMatch'), {
   ssr: false,
   loading: () => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#0d1117', color: '#6e7681', fontSize: 13 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--nx-bg)', color: 'var(--nx-text-3)', fontSize: 13 }}>
       Loading Manufacturer Match...
     </div>
   ) });
@@ -513,6 +514,9 @@ export function ShapeGeneratorInner() {
     cancel: cancelInterferenceWorker,
     loading: interferenceWorkerHookLoading,
   } = useInterferenceWorker();
+  // Ref-of-current-effectiveResult so the Shell tool listener (declared before
+  // effectiveResult) can still reach the latest geometry. Synced via effect below.
+  const effectiveResultRef = useRef<ShapeResult | null>(null);
   const history = useHistory();
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   // Auto-clear stale selection when undo/rollback removes the selected feature.
@@ -2981,7 +2985,194 @@ export function ShapeGeneratorInner() {
     globalMacroRecorder.record({ kind: 'add-feature', featureType: type });
   }, [addFeature, undoLast]);
 
+  // Shell-v2 Ribbon bridge: the new Shell's ribbon `onTool` dispatches a
+  // `nexyfab:tool` CustomEvent with { id }. Map common tool ids to the
+  // existing Inner handlers so clicking Extrude / Fillet / Line / etc.
+  // from the new chrome triggers the real command stack.
+  useEffect(() => {
+    const FEATURE_TYPES: Record<string, FeatureType> = {
+      'extrude': 'sketchExtrude',
+      'revolve': 'revolve',
+      'sweep': 'sweep',
+      'loft': 'loft',
+      'hole': 'hole',
+      'fillet': 'fillet',
+      'chamfer': 'chamfer',
+      'shell': 'shell',
+      'draft': 'draft',
+      'mirror': 'mirror',
+      'combine': 'boolean',
+      'pattern.linear': 'linearPattern',
+    };
+    const SKETCH_TOOLS: Record<string, 'line' | 'rect' | 'circle' | 'arc' | 'polygon' | 'spline' | 'trim' | 'offset' | 'mirror' | 'dimension' | 'constraint' | 'construction'> = {
+      'sketch.line': 'line',
+      'sketch.rect': 'rect',
+      'sketch.circle': 'circle',
+      'sketch.arc': 'arc',
+      'sketch.poly': 'polygon',
+      'sketch.spline': 'spline',
+      'sketch.trim': 'trim',
+      'sketch.offset': 'offset',
+      'sketch.mirror': 'mirror',
+      'sketch.dim': 'dimension',
+      'sketch.constraint': 'constraint',
+      'sketch.project': 'construction',
+    };
+    const onTool = (e: Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      if (id === 'sketch') {
+        setIsSketchMode(true);
+        return;
+      }
+      if (id === 'sketch.finish') {
+        setIsSketchMode(false);
+        return;
+      }
+      if (id === 'measure') {
+        setMeasureActive(v => !v);
+        return;
+      }
+      // Inspect tools
+      if (id === 'section') {
+        setSectionActive(v => !v);
+        return;
+      }
+      if (id === 'mass-props') {
+        setShowMassProps(true);
+        setShowCenterOfMass(null);
+        return;
+      }
+      if (id === 'interference') {
+        // Interference check requires multi-part input (assembly). Open the
+        // Assembly panel where the existing interference workflow lives.
+        setShowAssemblyPanel(true);
+        return;
+      }
+      // Nexy AI tools — open the unified AI sidebar on the right tab. The
+      // user types or accepts the suggested prompt from there. Pre-filling
+      // a prompt would require an additional event channel into ShapeChat.
+      if (id === 'ai.suggest') {
+        openAIAssistant('suggestions');
+        return;
+      }
+      if (id === 'ai.lighten' || id === 'ai.ribs') {
+        openAIAssistant('chat');
+        return;
+      }
+      if (id === 'ai.fillet') {
+        openAIAssistant('advisor');
+        return;
+      }
+      // Assembly mode tools — all funnel into the Assembly browser panel,
+      // which owns the actual Insert/Mate/Motion/BOM controls. Individual
+      // sub-action wiring (e.g. "Coincident mate") is a follow-up — the
+      // panel itself surfaces these as buttons once a part is selected.
+      if (
+        id === 'asm.insert' ||
+        id === 'asm.replace' ||
+        id === 'asm.subassembly' ||
+        id === 'mate.coincident' ||
+        id === 'mate.concentric' ||
+        id === 'mate.distance' ||
+        id === 'mate.angle' ||
+        id === 'motion.drive' ||
+        id === 'asm.interference' ||
+        id === 'asm.section' ||
+        id === 'asm.measure' ||
+        id === 'bom.show' ||
+        id === 'bom.export'
+      ) {
+        setShowAssemblyPanel(true);
+        return;
+      }
+      const ft = FEATURE_TYPES[id];
+      if (ft) {
+        handleAddFeatureCmd(ft);
+        return;
+      }
+      const st = SKETCH_TOOLS[id];
+      if (st) {
+        setIsSketchMode(true);
+        setSketchTool(st);
+        return;
+      }
+    };
+    window.addEventListener('nexyfab:tool', onTool);
+    return () => window.removeEventListener('nexyfab:tool', onTool);
+  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, openAIAssistant]);
+
   // F7 — DRC rule set state. Loaded from .drc.json or built inline.
+
+  // Below — Shell-v2 bridge writers. Wire Inner's status into useShellBridge
+  // so the new TitleBar mode chip and StatusBar reflect live values.
+  // Keep these effects cheap (only set when value changes).
+  const bridgeMode = useShellBridge(s => s.setMode);
+  const bridgeUnits = useShellBridge(s => s.setUnits);
+  const bridgeStats = useShellBridge(s => s.setStats);
+  const bridgeCloud = useShellBridge(s => s.setCloud);
+
+  useEffect(() => {
+    const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
+      ? 'sketch'
+      : showAssemblyPanel
+        ? 'assembly'
+        : 'modeling';
+    bridgeMode({ isSketchMode, assemblyOpen: showAssemblyPanel, editMode });
+  }, [isSketchMode, showAssemblyPanel, bridgeMode]);
+
+  useEffect(() => {
+    bridgeUnits(unitSystem);
+  }, [unitSystem, bridgeUnits]);
+
+  useEffect(() => {
+    const status: 'idle' | 'saving' | 'saved' | 'error' | 'conflict' =
+      versionConflictNeedsReload
+        ? 'conflict'
+        : saveError
+          ? 'error'
+          : isSaving
+            ? 'saving'
+            : (lastSavedAt || cloudSavedAt)
+              ? 'saved'
+              : 'idle';
+    bridgeCloud({
+      cloudStatus: status,
+      cloudSavedAt: cloudSavedAt ?? null,
+      autosaveSavedAt: lastSavedAt ?? null,
+    });
+  }, [isSaving, lastSavedAt, cloudSavedAt, saveError, versionConflictNeedsReload, bridgeCloud]);
+
+  // Sketch solver bridge — only meaningful when isSketchMode. TitleBar reads
+  // sketchSolverOk + sketchDof for the "Fully constrained · DOF 0" pill.
+  const bridgeSketchSolver = useShellBridge(s => s.setSketchSolver);
+  useEffect(() => {
+    if (!isSketchMode) {
+      bridgeSketchSolver({ sketchSolverOk: null, sketchDof: null });
+      return;
+    }
+    const ok = constraintStatus === 'ok';
+    const dof = constraintDiagnostic?.dof ?? null;
+    bridgeSketchSolver({ sketchSolverOk: ok, sketchDof: dof });
+  }, [isSketchMode, constraintStatus, constraintDiagnostic?.dof, bridgeSketchSolver]);
+
+  // Selection bridge — drives Shell's floating "{feature} · {n} edges" bubble.
+  const bridgeSelection = useShellBridge(s => s.setSelection);
+  useEffect(() => {
+    if (!selectedElement) {
+      bridgeSelection({ selectionKind: null, selectionLabel: null, selectionCount: 0 });
+      return;
+    }
+    const kind = selectedElement.type as 'face' | 'edge' | 'vertex' | 'multi';
+    const count =
+      selectedElement.type === 'multi'
+        ? (selectedElement as { count?: number }).count ?? 1
+        : 1;
+    const label = selectedFeatureId ?? selectedId ?? kind;
+    bridgeSelection({ selectionKind: kind, selectionLabel: label, selectionCount: count });
+  }, [selectedElement, selectedFeatureId, selectedId, bridgeSelection]);
+
+  // Note: feature stats bridge writer is declared below after effectiveResult is in scope.
   const [drcRuleSet, setDrcRuleSet] = useState<import('./analysis/drcEngine').DrcRuleSet | null>(null);
 
   // F6 — confirm-impact dialog state. Shown before destructive feature
@@ -3176,6 +3367,24 @@ export function ShapeGeneratorInner() {
     const activeFeatureId = features.length > 0 ? features[features.length - 1].id : undefined;
     topoMap.update(geo, activeFeatureId);
   }, [effectiveResult?.geometry]);
+
+  // Shell-v2 bridge: feature stats. Declared here (after effectiveResult is in scope).
+  useEffect(() => {
+    const featureCount = features?.length ?? 0;
+    const volume = effectiveResult?.volume_cm3 ?? null;
+    const triangleCount = effectiveResult?.geometry?.index
+      ? effectiveResult.geometry.index.count / 3
+      : 0;
+    bridgeStats({
+      featureCount,
+      mass: null,
+      volume,
+      triangleCount,
+      selectedLabel: selectedId,
+    });
+    // Keep ref in sync for the early-declared tool listener.
+    effectiveResultRef.current = effectiveResult;
+  }, [features, effectiveResult, selectedId, bridgeStats]);
 
   /** Sketch palette “slice guide” ↔ 3D section plane (X) when solid geometry exists. */
   useEffect(() => {
@@ -4387,9 +4596,9 @@ export function ShapeGeneratorInner() {
     }).join(' ');
     return (
       <svg width={w} height={h} style={{ width: '100%', height: 'auto' }}>
-        <line x1={padX} y1={padY} x2={padX} y2={h - padY} stroke="#30363d" strokeWidth={1} />
-        <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="#30363d" strokeWidth={1} />
-        <text x={w / 2} y={h - 1} textAnchor="middle" fill="#484f58" fontSize={8}>Iteration</text>
+        <line x1={padX} y1={padY} x2={padX} y2={h - padY} stroke="var(--nx-border)" strokeWidth={1} />
+        <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="var(--nx-border)" strokeWidth={1} />
+        <text x={w / 2} y={h - 1} textAnchor="middle" fill="var(--nx-border-strong)" fontSize={8}>Iteration</text>
         <polyline points={points} fill="none" stroke="#8b5cf6" strokeWidth={1.5} />
       </svg>
     );
@@ -5711,10 +5920,10 @@ export function ShapeGeneratorInner() {
     if (activeTab === 'optimize') {
       if (isOptimizing) return { icon: '⏳', text: `Iteration ${progress?.iteration ?? 0}/${progress?.maxIteration ?? '—'}...`, color: '#8b5cf6' };
       if (optResult) return { icon: '✅', text: 'Optimization complete. Export STL or send to quote.', color: '#16a34a' };
-      if (!effectiveResult) return { icon: '🧊', text: lt.goDesignTabFirst, color: '#f59e0b' };
-      if (fixedFaces.length === 0) return { icon: '📌', text: 'Click a face in the viewer to set fixed boundary.', color: '#f59e0b' };
-      if (loads.length === 0) return { icon: '⬇', text: 'Now add a load: select Load mode and click a face.', color: '#f59e0b' };
-      return { icon: '▶', text: 'Ready. Click Generate in toolbar to start optimization.', color: '#6366f1' };
+      if (!effectiveResult) return { icon: '🧊', text: lt.goDesignTabFirst, color: 'var(--nx-warn)' };
+      if (fixedFaces.length === 0) return { icon: '📌', text: 'Click a face in the viewer to set fixed boundary.', color: 'var(--nx-warn)' };
+      if (loads.length === 0) return { icon: '⬇', text: 'Now add a load: select Load mode and click a face.', color: 'var(--nx-warn)' };
+      return { icon: '▶', text: 'Ready. Click Generate in toolbar to start optimization.', color: 'var(--nx-accent)' };
     }
     if (activeTab === 'design' && measureActive) return { icon: '📏', text: lt.measureToolActive, color: '#f97316' };
     if (isSketchMode && !sketchResult) return { icon: '✏️', text: 'Draw a closed profile. Click first point to close.', color: '#7c3aed' };
@@ -5723,9 +5932,9 @@ export function ShapeGeneratorInner() {
     if (editMode === 'face') return { icon: '▣', text: lt.faceEditHint, color: '#22c55e' };
     if (activeTab === 'design' && selectedFeatureId) {
       const feat = features.find(f => f.id === selectedFeatureId);
-      if (feat) return { icon: '🎯', text: `${lt.featureSelectedPrefix} ${feat.type}`, color: '#a371f7' };
+      if (feat) return { icon: '🎯', text: `${lt.featureSelectedPrefix} ${feat.type}`, color: 'var(--nx-accent-2)' };
     }
-    if (!effectiveResult) return { icon: '🧊', text: 'Select a shape or use AI Chat to begin.', color: '#6b7280' };
+    if (!effectiveResult) return { icon: '🧊', text: 'Select a shape or use AI Chat to begin.', color: 'var(--nx-text-3)' };
     if (
       activeTab === 'design'
       && effectiveResult
@@ -5734,9 +5943,9 @@ export function ShapeGeneratorInner() {
       && !measureActive
       && transformMode === 'off'
     ) {
-      return { icon: '💡', text: lt.designEditQuickGuide, color: '#79c0ff' };
+      return { icon: '💡', text: lt.designEditQuickGuide, color: 'var(--nx-accent-2)' };
     }
-    return { icon: '📐', text: `${shapeLabels[`shapeName_${selectedId}`] || selectedId} — ${effectiveResult.bbox.w.toFixed(0)}×${effectiveResult.bbox.h.toFixed(0)}×${effectiveResult.bbox.d.toFixed(0)} mm`, color: '#58a6ff' };
+    return { icon: '📐', text: `${shapeLabels[`shapeName_${selectedId}`] || selectedId} — ${effectiveResult.bbox.w.toFixed(0)}×${effectiveResult.bbox.h.toFixed(0)}×${effectiveResult.bbox.d.toFixed(0)} mm`, color: 'var(--nx-accent-2)' };
   }, [activeTab, isOptimizing, optResult, fixedFaces, loads, progress, isSketchMode, sketchResult, editMode, effectiveResult, selectedId, t, lang, measureActive, selectedFeatureId, features, lt, transformMode]);
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -5944,7 +6153,7 @@ export function ShapeGeneratorInner() {
   if (isMobile) {
     return (
       <div style={{
-        minHeight: '100dvh', background: '#0d1117', color: '#e6edf3',
+        minHeight: '100dvh', background: 'var(--nx-bg)', color: 'var(--nx-text)',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         padding: '32px 20px 40px' }}>
@@ -5960,7 +6169,7 @@ export function ShapeGeneratorInner() {
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px', textAlign: 'center', lineHeight: 1.3 }}>
           {lt.designOn3dPc}
         </h1>
-        <p style={{ fontSize: 14, color: '#8b949e', textAlign: 'center', lineHeight: 1.7, margin: '0 0 32px', maxWidth: 280 }}>
+        <p style={{ fontSize: 14, color: 'var(--nx-text-2)', textAlign: 'center', lineHeight: 1.7, margin: '0 0 32px', maxWidth: 280 }}>
           {lt.mobileHint}
         </p>
 
@@ -5984,13 +6193,13 @@ export function ShapeGeneratorInner() {
           aria-label={lt.mobileShareViewTitle}
           style={{
             width: '100%', maxWidth: 320, marginBottom: 24, padding: '14px 16px',
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
           }}
         >
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#58a6ff', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-accent-2)', marginBottom: 8 }}>
             {lt.mobileShareViewTitle}
           </div>
-          <p style={{ margin: 0, fontSize: 12, color: '#8b949e', lineHeight: 1.65 }}>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.65 }}>
             {lt.mobileShareViewBody}
           </p>
         </div>
@@ -5999,55 +6208,55 @@ export function ShapeGeneratorInner() {
         <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <a href={`/${lang}/nexyfab`} style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-            padding: '16px 18px', textDecoration: 'none', color: '#e6edf3' }}>
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
+            padding: '16px 18px', textDecoration: 'none', color: 'var(--nx-text)' }}>
             <span style={{ fontSize: 24 }}>📊</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{lt.dashboard}</div>
-              <div style={{ fontSize: 12, color: '#8b949e', marginTop: 2 }}>{lt.checkProjects}</div>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginTop: 2 }}>{lt.checkProjects}</div>
             </div>
-            <span style={{ marginLeft: 'auto', color: '#484f58' }}>›</span>
+            <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>›</span>
           </a>
 
           <a href={`/${lang}/nexyfab/marketplace`} style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-            padding: '16px 18px', textDecoration: 'none', color: '#e6edf3' }}>
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
+            padding: '16px 18px', textDecoration: 'none', color: 'var(--nx-text)' }}>
             <span style={{ fontSize: 24 }}>🏭</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{lt.marketplace}</div>
-              <div style={{ fontSize: 12, color: '#8b949e', marginTop: 2 }}>{lt.browseMfrs}</div>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginTop: 2 }}>{lt.browseMfrs}</div>
             </div>
-            <span style={{ marginLeft: 'auto', color: '#484f58' }}>›</span>
+            <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>›</span>
           </a>
 
           <a href={`/${lang}/nexyfab/orders`} style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-            padding: '16px 18px', textDecoration: 'none', color: '#e6edf3' }}>
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
+            padding: '16px 18px', textDecoration: 'none', color: 'var(--nx-text)' }}>
             <span style={{ fontSize: 24 }}>📦</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{lt.orderTracking}</div>
-              <div style={{ fontSize: 12, color: '#8b949e', marginTop: 2 }}>{lt.trackMfgProgress}</div>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginTop: 2 }}>{lt.trackMfgProgress}</div>
             </div>
-            <span style={{ marginLeft: 'auto', color: '#484f58' }}>›</span>
+            <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>›</span>
           </a>
 
           <a href={`/${lang}/nexyfab/rfq`} style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-            padding: '16px 18px', textDecoration: 'none', color: '#e6edf3' }}>
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
+            padding: '16px 18px', textDecoration: 'none', color: 'var(--nx-text)' }}>
             <span style={{ fontSize: 24 }}>📋</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{lt.rfqQuotes}</div>
-              <div style={{ fontSize: 12, color: '#8b949e', marginTop: 2 }}>{lt.manageQuotes}</div>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginTop: 2 }}>{lt.manageQuotes}</div>
             </div>
-            <span style={{ marginLeft: 'auto', color: '#484f58' }}>›</span>
+            <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>›</span>
           </a>
         </div>
 
         {/* Desktop hint */}
-        <p style={{ fontSize: 12, color: '#484f58', textAlign: 'center', marginTop: 32, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12, color: 'var(--nx-border-strong)', textAlign: 'center', marginTop: 32, lineHeight: 1.6 }}>
           {lt.desktopHint}
         </p>
       </div>
@@ -6842,8 +7051,8 @@ export function ShapeGeneratorInner() {
 
           {/* Plugin toolbar buttons */}
           {pluginToolbarButtons.length > 0 && activeTab === 'design' && (
-            <div className="sg-autohide" style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '1px 8px', background: '#161b22', borderBottom: '1px solid #30363d', height: 22 }}>
-              <span style={{ color: '#8b949e', fontSize: 9, fontWeight: 700, marginRight: 3 }}>🧩</span>
+            <div className="sg-autohide" style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '1px 8px', background: 'var(--nx-panel)', borderBottom: '1px solid var(--nx-border)', height: 22 }}>
+              <span style={{ color: 'var(--nx-text-2)', fontSize: 9, fontWeight: 700, marginRight: 3 }}>🧩</span>
               {pluginToolbarButtons.map(btn => (
                 <button
                   key={btn.id}
@@ -6852,10 +7061,10 @@ export function ShapeGeneratorInner() {
                   style={{
                     padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                     border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                    background: '#21262d', color: '#c9d1d9',
+                    background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
                     display: 'flex', alignItems: 'center', gap: 3, height: 18 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
                 >
                   <span style={{ fontSize: 11 }}>{btn.icon}</span>
                   {btn.label}
@@ -6866,11 +7075,11 @@ export function ShapeGeneratorInner() {
                 onClick={() => setShowPluginManager(true)}
                 style={{
                   padding: '1px 6px', borderRadius: 3, fontSize: 9, fontWeight: 700,
-                  border: '1px solid #30363d', cursor: 'pointer',
-                  background: 'transparent', color: '#8b949e',
+                  border: '1px solid var(--nx-border)', cursor: 'pointer',
+                  background: 'transparent', color: 'var(--nx-text-2)',
                   transition: 'all 0.12s', height: 18 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#c9d1d9'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
               >
                 {lt.manageLabel}
               </button>
@@ -6879,16 +7088,16 @@ export function ShapeGeneratorInner() {
 
           {/* ── Merged Context Bar (Split / DirectEdit / Transform / Collab) ── */}
           {activeTab === 'design' && !isSketchMode && (
-            <div data-tour="transform-tools" className="sg-topbar sg-autohide" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '1px 8px', background: '#0d1117', borderBottom: '1px solid #30363d', height: 24 }}>
+            <div data-tour="transform-tools" className="sg-topbar sg-autohide" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '1px 8px', background: 'var(--nx-bg)', borderBottom: '1px solid var(--nx-border)', height: 24 }}>
               {/* Collab Indicator */}
               <div
                 title={`${onlineCount} online`}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600, background: '#21262d', color: '#c9d1d9', height: 18, border: onlineCount > 1 ? '1px solid rgba(63, 185, 80, 0.4)' : '1px solid transparent' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600, background: 'var(--nx-panel-2)', color: 'var(--nx-text)', height: 18, border: onlineCount > 1 ? '1px solid rgba(63, 185, 80, 0.4)' : '1px solid transparent' }}
               >
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: onlineCount > 1 ? '#3fb950' : '#8b949e', boxShadow: onlineCount > 1 ? '0 0 4px #3fb950' : 'none' }} />
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: onlineCount > 1 ? 'var(--nx-ok)' : 'var(--nx-text-2)', boxShadow: onlineCount > 1 ? '0 0 4px var(--nx-ok)' : 'none' }} />
                 {onlineCount} {onlineCount === 1 ? 'user' : 'users'}
               </div>
-              <div style={{ width: 1, height: 14, background: '#30363d', margin: '0 2px' }} />
+              <div style={{ width: 1, height: 14, background: 'var(--nx-border)', margin: '0 2px' }} />
 
               {/* Split View */}
               <button
@@ -6897,8 +7106,8 @@ export function ShapeGeneratorInner() {
                 style={{
                   padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                   border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                  background: multiView ? '#388bfd' : '#21262d',
-                  color: multiView ? '#fff' : '#c9d1d9',
+                  background: multiView ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                  color: multiView ? 'var(--nx-text)' : 'var(--nx-text)',
                   display: 'flex', alignItems: 'center', gap: 3, height: 18 }}
               >
                 <span style={{ fontSize: 10, fontFamily: 'monospace' }}>&#x229e;</span>
@@ -6908,12 +7117,12 @@ export function ShapeGeneratorInner() {
               {/* Direct Edit */}
               {effectiveResult && !simpleMode && (
                 <>
-                  <div style={{ width: 1, height: 14, background: '#30363d', margin: '0 2px' }} />
-                  <span style={{ color: '#8b949e', fontSize: 9, fontWeight: 700 }}>{lt.directEdit}</span>
+                  <div style={{ width: 1, height: 14, background: 'var(--nx-border)', margin: '0 2px' }} />
+                  <span style={{ color: 'var(--nx-text-2)', fontSize: 9, fontWeight: 700 }}>{lt.directEdit}</span>
                   {([
-                    ['face', '▣', lt.faceEditMode, '#388bfd'],
+                    ['face', '▣', lt.faceEditMode, 'var(--nx-accent)'],
                     ['vertex', '⬡', lt.vertexEditMode, '#22c55e'],
-                    ['edge', '╱', lt.edgeEditMode, '#f59e0b'],
+                    ['edge', '╱', lt.edgeEditMode, 'var(--nx-warn)'],
                   ] as const).map(([mode, icon, label, activeColor]) => (
                     <button
                       key={mode}
@@ -6922,8 +7131,8 @@ export function ShapeGeneratorInner() {
                       style={{
                         padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                         border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                        background: editMode === mode ? activeColor : '#21262d',
-                        color: editMode === mode ? '#fff' : '#c9d1d9',
+                        background: editMode === mode ? activeColor : 'var(--nx-panel-2)',
+                        color: editMode === mode ? 'var(--nx-text)' : 'var(--nx-text)',
                         display: 'flex', alignItems: 'center', gap: 3, height: 18 }}
                     >
                       <span>{icon}</span>{label}
@@ -6938,8 +7147,8 @@ export function ShapeGeneratorInner() {
                     style={{
                       padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                       border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                      background: showCSGPanel ? '#8b5cf6' : '#21262d',
-                      color: showCSGPanel ? '#fff' : '#c9d1d9',
+                      background: showCSGPanel ? '#8b5cf6' : 'var(--nx-panel-2)',
+                      color: showCSGPanel ? 'var(--nx-text)' : 'var(--nx-text)',
                       display: 'flex', alignItems: 'center', gap: 3, height: 18 }}
                   >
                     ⊕ {lt.booleanShort}
@@ -6948,7 +7157,7 @@ export function ShapeGeneratorInner() {
                     <button
                       onClick={() => setEditMode('none')}
                       title={lt.exitEdit}
-                      style={{ padding: '1px 6px', borderRadius: 3, fontSize: 10, border: 'none', cursor: 'pointer', background: '#21262d', color: '#f85149', height: 18 }}
+                      style={{ padding: '1px 6px', borderRadius: 3, fontSize: 10, border: 'none', cursor: 'pointer', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', height: 18 }}
                     >
                       ✕
                     </button>
@@ -6959,7 +7168,7 @@ export function ShapeGeneratorInner() {
               {/* Transform (only when not in edit mode) */}
               {editMode === 'none' && effectiveResult && (
                 <>
-                  <div style={{ width: 1, height: 14, background: '#30363d', margin: '0 2px' }} />
+                  <div style={{ width: 1, height: 14, background: 'var(--nx-border)', margin: '0 2px' }} />
                   <span style={{ color: theme.textMuted, fontSize: 9, fontWeight: 700 }}>Transform:</span>
                   {([['translate', 'T', 'Translate (T)'], ['rotate', 'R', 'Rotate (R)'], ['scale', 'G', 'Scale (G)']] as const).map(([mode, key, title]) => (
                     <button
@@ -6969,8 +7178,8 @@ export function ShapeGeneratorInner() {
                       style={{
                         padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                         border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                        background: transformMode === mode ? '#388bfd' : '#21262d',
-                        color: transformMode === mode ? '#fff' : '#c9d1d9',
+                        background: transformMode === mode ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                        color: transformMode === mode ? 'var(--nx-text)' : 'var(--nx-text)',
                         display: 'flex', alignItems: 'center', gap: 3, height: 18 }}
                     >
                       <span style={{ fontSize: 9, fontFamily: 'monospace' }}>{key}</span>{mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -6982,7 +7191,7 @@ export function ShapeGeneratorInner() {
                       title="Disable transform (Esc)"
                       style={{
                         padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
-                        border: 'none', cursor: 'pointer', background: '#21262d', color: '#f85149', height: 18 }}
+                        border: 'none', cursor: 'pointer', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', height: 18 }}
                     >
                       ✕ Off
                     </button>
@@ -6992,7 +7201,7 @@ export function ShapeGeneratorInner() {
             </div>
           )}
           {activeTab === 'design' && !isSketchMode && transformMode !== 'off' && (
-            <div style={{ padding: '4px 10px', background: '#0d1117', borderBottom: '1px solid #30363d' }}>
+            <div style={{ padding: '4px 10px', background: 'var(--nx-bg)', borderBottom: '1px solid var(--nx-border)' }}>
               <TransformInputPanel
                 transformMatrix={transformMatrix}
                 onMatrixChange={setTransformMatrix}
@@ -7026,7 +7235,7 @@ export function ShapeGeneratorInner() {
                   minWidth: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  borderRight: isMobile ? 'none' : '1px solid #30363d',
+                  borderRight: isMobile ? 'none' : '1px solid var(--nx-border)',
                   touchAction: 'none',
                   cursor: getToolCursor(isSketchMode, sketchTool, editMode, isDragging, measureActive) }}
                 onMouseDown={(e) => { if (e.button === 2) rightMouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
@@ -7041,7 +7250,7 @@ export function ShapeGeneratorInner() {
                     background: 'rgba(0,0,0,0.35)', pointerEvents: 'none' }}>
                     <div style={{
                       width: 32, height: 32, border: '3px solid rgba(255,255,255,0.2)',
-                      borderTopColor: '#58a6ff', borderRadius: '50%',
+                      borderTopColor: 'var(--nx-accent-2)', borderRadius: '50%',
                       animation: 'spin 0.8s linear infinite' }} />
                   </div>
                 )}
@@ -7107,7 +7316,7 @@ export function ShapeGeneratorInner() {
                         pointerEvents: 'auto',
                         fontSize: 14,
                         fontWeight: 600,
-                        color: '#e6edf3',
+                        color: 'var(--nx-text)',
                         fontFamily: 'system-ui, sans-serif',
                       }}
                     >
@@ -7255,7 +7464,7 @@ export function ShapeGeneratorInner() {
                       zIndex: 40,
                       background: 'rgba(22,27,34,0.97)',
                       backdropFilter: 'blur(12px)',
-                      border: '1px solid #30363d',
+                      border: '1px solid var(--nx-border)',
                       borderRadius: 14,
                       padding: '16px 20px',
                       display: 'flex', flexDirection: 'column', gap: 12,
@@ -7264,7 +7473,7 @@ export function ShapeGeneratorInner() {
                       transition: 'opacity 0.2s, transform 0.2s' }}>
                       {/* Depth slider */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ color: '#8b949e', fontSize: 11, whiteSpace: 'nowrap' }}>
+                        <span style={{ color: 'var(--nx-text-2)', fontSize: 11, whiteSpace: 'nowrap' }}>
                           {lt.depthMm}
                         </span>
                         <input
@@ -7272,9 +7481,9 @@ export function ShapeGeneratorInner() {
                           min={10} max={200} step={1}
                           value={sketchConfig.depth ?? 50}
                           onChange={e => setSketchConfig({ ...sketchConfig, depth: Number(e.target.value) })}
-                          style={{ flex: 1, accentColor: '#388bfd' }}
+                          style={{ flex: 1, accentColor: 'var(--nx-accent)' }}
                         />
-                        <span style={{ color: '#e6edf3', fontSize: 12, fontWeight: 700, minWidth: 32, textAlign: 'right', fontFamily: 'monospace' }}>
+                        <span style={{ color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, minWidth: 32, textAlign: 'right', fontFamily: 'monospace' }}>
                           {sketchConfig.depth ?? 50}
                         </span>
                       </div>
@@ -7287,8 +7496,8 @@ export function ShapeGeneratorInner() {
                           style={{
                             flex: 2,
                             padding: '10px 16px', borderRadius: 8,
-                            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                            border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
+                            background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                            border: 'none', color: 'var(--nx-text)', fontSize: 13, fontWeight: 700,
                             cursor: 'pointer',
                             animation: 'nf-extrude-pulse 2s ease-in-out infinite',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
@@ -7306,8 +7515,8 @@ export function ShapeGeneratorInner() {
                           style={{
                             flex: 1,
                             padding: '10px 10px', borderRadius: 8,
-                            background: '#21262d',
-                            border: '1px solid #30363d', color: '#c9d1d9', fontSize: 12, fontWeight: 600,
+                            background: 'var(--nx-panel-2)',
+                            border: '1px solid var(--nx-border)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
                             cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                         >
@@ -7321,8 +7530,8 @@ export function ShapeGeneratorInner() {
                           style={{
                             flex: 1,
                             padding: '10px 10px', borderRadius: 8,
-                            background: '#21262d',
-                            border: '1px solid #30363d', color: '#8b949e', fontSize: 12, fontWeight: 600,
+                            background: 'var(--nx-panel-2)',
+                            border: '1px solid var(--nx-border)', color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600,
                             cursor: 'pointer' }}
                         >
                           {lt.continueEditing}
@@ -7338,8 +7547,8 @@ export function ShapeGeneratorInner() {
                     position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
                     zIndex: 40 }}>
                     <span style={{
-                      background: '#21262d', border: '1px solid #30363d',
-                      borderRadius: 6, padding: '5px 14px', color: '#8b949e', fontSize: 11,
+                      background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
+                      borderRadius: 6, padding: '5px 14px', color: 'var(--nx-text-2)', fontSize: 11,
                       fontFamily: 'system-ui, sans-serif' }}>
                       {lt.sketchClickHint}
                     </span>
@@ -7356,12 +7565,12 @@ export function ShapeGeneratorInner() {
                 style={{
                   position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
                   zIndex: 30, padding: '8px 6px', borderRadius: 8,
-                  background: '#21262d', border: '1px solid #30363d',
-                  color: '#8b949e', fontSize: 11, cursor: 'pointer',
+                  background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
+                  color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
                   writingMode: 'vertical-rl', fontWeight: 700,
                   transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; e.currentTarget.style.color = '#c9d1d9'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.color = '#8b949e'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
               >
                 3D ▶
               </button>
@@ -7375,7 +7584,7 @@ export function ShapeGeneratorInner() {
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 0,
-                background: '#0d1117',
+                background: 'var(--nx-bg)',
                 position: 'relative' }}>
               {!isMobile && (
                 <SidebarResizer
@@ -7406,14 +7615,14 @@ export function ShapeGeneratorInner() {
                   style={{
                     pointerEvents: 'auto',
                     padding: '3px 8px', borderRadius: 5,
-                    background: 'rgba(33,38,45,0.85)', border: '1px solid #30363d',
-                    color: '#6e7681', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                    background: 'rgba(33,38,45,0.85)', border: '1px solid var(--nx-border)',
+                    color: 'var(--nx-text-3)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
                     transition: 'all 0.15s',
                     flexShrink: 0,
                     whiteSpace: 'nowrap',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#6e7681'; }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-3)'; }}
                 >
                   ◀ {lt.hideLabel}
                 </button>
@@ -7425,9 +7634,9 @@ export function ShapeGeneratorInner() {
                     style={{
                       pointerEvents: 'auto',
                       padding: '4px 10px', borderRadius: 6,
-                      border: '1px solid #30363d',
-                      background: showAssemblyPanel ? '#388bfd' : '#21262d',
-                      color: showAssemblyPanel ? '#fff' : '#8b949e',
+                      border: '1px solid var(--nx-border)',
+                      background: showAssemblyPanel ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                      color: showAssemblyPanel ? 'var(--nx-text)' : 'var(--nx-text-2)',
                       fontSize: 11, fontWeight: 700, cursor: 'pointer',
                       fontFamily: 'system-ui, sans-serif',
                       transition: 'all 0.15s',
@@ -7445,9 +7654,9 @@ export function ShapeGeneratorInner() {
                   style={{
                     pointerEvents: 'auto',
                     padding: '4px 10px', borderRadius: 6,
-                    border: '1px solid #30363d',
-                    background: showPartPlacement ? '#388bfd' : '#21262d',
-                    color: showPartPlacement ? '#fff' : '#8b949e',
+                    border: '1px solid var(--nx-border)',
+                    background: showPartPlacement ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                    color: showPartPlacement ? 'var(--nx-text)' : 'var(--nx-text-2)',
                     fontSize: 11, fontWeight: 700, cursor: 'pointer',
                     fontFamily: 'system-ui, sans-serif',
                     transition: 'all 0.15s',
@@ -7478,14 +7687,14 @@ export function ShapeGeneratorInner() {
                     position: 'absolute', bottom: 8, left: 0, right: 0, zIndex: 20,
                     display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
                     <div style={{
-                      background: 'rgba(13,17,23,0.85)', border: '1px solid #21262d',
+                      background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)',
                       padding: '3px 12px', borderRadius: 6,
                       fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
-                      display: 'flex', gap: 8, alignItems: 'center', color: '#484f58' }}>
-                      <span style={{ color: '#6e7681' }}>Center:</span>
-                      <span style={{ color: '#ef4444' }}>X</span><span style={{ color: '#c9d1d9' }}>{(res.bbox.w / 2).toFixed(1)}</span>
-                      <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: '#c9d1d9' }}>{(res.bbox.h / 2).toFixed(1)}</span>
-                      <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: '#c9d1d9' }}>{(res.bbox.d / 2).toFixed(1)}</span>
+                      display: 'flex', gap: 8, alignItems: 'center', color: 'var(--nx-border-strong)' }}>
+                      <span style={{ color: 'var(--nx-text-3)' }}>Center:</span>
+                      <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.w / 2).toFixed(1)}</span>
+                      <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.h / 2).toFixed(1)}</span>
+                      <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.d / 2).toFixed(1)}</span>
                       <span>mm</span>
                     </div>
                   </div>
@@ -7550,11 +7759,11 @@ export function ShapeGeneratorInner() {
                 ) : !webglSupported ? (
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flex: 1, minHeight: 0, background: '#0d1117', color: '#e6edf3',
+                    flex: 1, minHeight: 0, background: 'var(--nx-bg)', color: 'var(--nx-text)',
                     flexDirection: 'column', gap: 12, padding: 24, textAlign: 'center' }}>
                     <div style={{ fontSize: 48 }}>⚠️</div>
                     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>WebGL Not Supported</h3>
-                    <p style={{ margin: 0, fontSize: 14, color: '#8b949e', maxWidth: 400 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--nx-text-2)', maxWidth: 400 }}>
                       Your browser does not support WebGL, which is required for the 3D modeler.
                       Please try Chrome, Firefox, or Edge with hardware acceleration enabled.
                     </p>
@@ -7580,7 +7789,7 @@ export function ShapeGeneratorInner() {
                     flexDirection: 'column',
                     gap: 10,
                     padding: 24,
-                    color: '#8b949e',
+                    color: 'var(--nx-text-2)',
                     fontSize: 13,
                     textAlign: 'center',
                     lineHeight: 1.5,
@@ -7680,10 +7889,10 @@ export function ShapeGeneratorInner() {
                       padding: '8px 12px',
                       borderRadius: 8,
                       background: 'rgba(22,27,34,0.94)',
-                      border: '1px solid #30363d',
+                      border: '1px solid var(--nx-border)',
                       fontSize: 11,
                       fontWeight: 600,
-                      color: '#c9d1d9',
+                      color: 'var(--nx-text)',
                       lineHeight: 1.45,
                       pointerEvents: 'none',
                     }}
@@ -7720,7 +7929,7 @@ export function ShapeGeneratorInner() {
               }}>
                 <div style={{ padding: '8px 12px', background: '#f6f8fa', borderBottom: '1px solid #d0d7de', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#24292f' }}>Edit {editingNode.label || editingDef.type}</span>
-                  <button onClick={() => finishEditing?.()} style={{ background: 'transparent', border: 'none', color: '#6e7681', cursor: 'pointer', fontSize: 14 }}>✕</button>
+                  <button onClick={() => finishEditing?.()} style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 14 }}>✕</button>
                 </div>
                 <div style={{ padding: '12px', maxHeight: '60vh', overflowY: 'auto' }} className="nf-scroll">
                   <FeatureParams
@@ -8462,13 +8671,13 @@ export function ShapeGeneratorInner() {
       {showOpenScad && (
         <div style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 380, zIndex: 120,
-          background: '#161b22', borderLeft: '1px solid #30363d',
+          background: 'var(--nx-panel)', borderLeft: '1px solid var(--nx-border)',
           display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.5)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #30363d', flexShrink: 0 }}>
-            <span style={{ color: '#e6edf3', fontWeight: 700, fontSize: 13 }}>{lt.aiShapeGenPanel}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--nx-border)', flexShrink: 0 }}>
+            <span style={{ color: 'var(--nx-text)', fontWeight: 700, fontSize: 13 }}>{lt.aiShapeGenPanel}</span>
             <button
               onClick={() => setShowOpenScad(false)}
-              style={{ background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+              style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
             >×</button>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -8496,12 +8705,12 @@ export function ShapeGeneratorInner() {
           backdropFilter: 'blur(4px)' }} onClick={() => setShowManufacturerMatch(false)}>
           <div style={{ width: 560, maxHeight: '85vh', overflow: 'auto', borderRadius: 14 }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #30363d' }}>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#e6edf3' }}>
+            <div style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--nx-border)' }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--nx-text)' }}>
                   🏭 {lt.selectManufacturer}
                 </span>
-                <button onClick={() => setShowManufacturerMatch(false)} style={{ background: 'none', border: 'none', color: '#6e7681', fontSize: 16, cursor: 'pointer' }}>✕</button>
+                <button onClick={() => setShowManufacturerMatch(false)} style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', fontSize: 16, cursor: 'pointer' }}>✕</button>
               </div>
               <ManufacturerMatch
                 lang={lang}
@@ -8553,37 +8762,37 @@ export function ShapeGeneratorInner() {
           display: 'flex', justifyContent: 'flex-end' }} onClick={() => setShowCommentsPanel(false)}>
           <div
             style={{
-              width: 320, height: '100%', background: '#0d1117',
-              border: '1px solid #21262d', borderRight: 'none',
+              width: 320, height: '100%', background: 'var(--nx-bg)',
+              border: '1px solid var(--nx-panel-2)', borderRight: 'none',
               boxShadow: '-4px 0 24px rgba(0,0,0,0.5)',
               display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
           >
             {/* Panel header */}
             <div style={{
-              padding: '10px 14px', borderBottom: '1px solid #21262d',
+              padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <span style={{ fontWeight: 700, fontSize: 13, color: '#e6edf3' }}>
+              <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--nx-text)' }}>
                 {lt.collabPanel}
               </span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
                   onClick={() => { setShowChatPanel(false); }}
                   title={lt.pinComments}
-                  style={{ background: !showChatPanel ? '#388bfd22' : 'none', border: !showChatPanel ? '1px solid #388bfd44' : '1px solid transparent', borderRadius: 5, color: !showChatPanel ? '#388bfd' : '#6e7681', fontSize: 13, cursor: 'pointer', padding: '3px 8px' }}
+                  style={{ background: !showChatPanel ? 'var(--nx-accent)22' : 'none', border: !showChatPanel ? '1px solid var(--nx-accent)44' : '1px solid transparent', borderRadius: 5, color: !showChatPanel ? 'var(--nx-accent)' : 'var(--nx-text-3)', fontSize: 13, cursor: 'pointer', padding: '3px 8px' }}
                 >
                   📌
                 </button>
                 <button
                   onClick={() => { setShowChatPanel(true); }}
                   title={lt.chatLabel}
-                  style={{ background: showChatPanel ? '#388bfd22' : 'none', border: showChatPanel ? '1px solid #388bfd44' : '1px solid transparent', borderRadius: 5, color: showChatPanel ? '#388bfd' : '#6e7681', fontSize: 13, cursor: 'pointer', padding: '3px 8px' }}
+                  style={{ background: showChatPanel ? 'var(--nx-accent)22' : 'none', border: showChatPanel ? '1px solid var(--nx-accent)44' : '1px solid transparent', borderRadius: 5, color: showChatPanel ? 'var(--nx-accent)' : 'var(--nx-text-3)', fontSize: 13, cursor: 'pointer', padding: '3px 8px' }}
                 >
                   💬
                 </button>
                 <button
                   onClick={() => setShowCommentsPanel(false)}
-                  style={{ background: 'none', border: 'none', color: '#6e7681', fontSize: 16, cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', fontSize: 16, cursor: 'pointer' }}
                 >✕</button>
               </div>
             </div>

@@ -41,8 +41,8 @@ export default function WorkflowStepper({
       display: 'flex',
       alignItems: 'center',
       height: 20,
-      background: '#161b22',
-      borderBottom: '1px solid #30363d',
+      background: 'var(--nx-panel)',
+      borderBottom: '1px solid var(--nx-border)',
       padding: '0 12px',
       gap: 0,
       flexShrink: 0,
@@ -57,14 +57,14 @@ export default function WorkflowStepper({
         const circleColor = isDone
           ? '#22c55e'
           : isActive
-          ? '#388bfd'
-          : '#484f58';
+          ? 'var(--nx-accent)'
+          : 'var(--nx-border-strong)';
 
         const textColor = isDone
           ? '#22c55e'
           : isActive
-          ? '#e6edf3'
-          : '#484f58';
+          ? 'var(--nx-text)'
+          : 'var(--nx-border-strong)';
 
         return (
           <React.Fragment key={stepNum}>
@@ -72,7 +72,7 @@ export default function WorkflowStepper({
               <div style={{
                 flex: 1,
                 height: 1,
-                background: isDone ? '#22c55e' : '#30363d',
+                background: isDone ? '#22c55e' : 'var(--nx-border)',
                 minWidth: 16,
                 maxWidth: 48,
                 transition: 'background 0.2s',
@@ -95,14 +95,14 @@ export default function WorkflowStepper({
                 justifyContent: 'center',
                 fontSize: 8,
                 fontWeight: 700,
-                color: '#fff',
+                color: 'var(--nx-text)',
                 flexShrink: 0,
                 transition: 'background 0.2s',
                 boxShadow: isActive ? `0 0 5px ${circleColor}80` : 'none',
               }}>
                 {isDone ? (
                   <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                    <polyline points="2,5 4,8 8,2" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points="2,5 4,8 8,2" stroke="var(--nx-text)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ) : stepNum}
               </div>

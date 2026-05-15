@@ -9,15 +9,15 @@ import { useAnalysisStore } from '../store/analysisStore';
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
   blue: '#2e80cc',
 };
 
@@ -281,7 +281,7 @@ export default function DraftAnalysisPanel({
                     padding: '8px 4px',
                     border: `1px solid ${active ? C.accent : C.border}`,
                     background: active ? C.accent : C.card,
-                    color: active ? '#fff' : C.text,
+                    color: active ? 'var(--nx-text)' : C.text,
                     borderRadius: 4,
                     cursor: 'pointer',
                     fontFamily: 'monospace',
@@ -319,7 +319,7 @@ export default function DraftAnalysisPanel({
               width: '100%',
               padding: '10px 12px',
               background: C.accent,
-              color: '#fff',
+              color: 'var(--nx-text)',
               border: 'none',
               borderRadius: 4,
               fontWeight: 700,
@@ -424,7 +424,7 @@ function StatRow({ color, label, count, pct }: { color: string; label: string; c
         <span style={{ color }}>● {label}</span>
         <span style={{ fontFamily: 'monospace' }}>{count.toLocaleString()} ({pct.toFixed(1)}%)</span>
       </div>
-      <div style={{ height: 4, background: '#0d1117', borderRadius: 2, overflow: 'hidden' }}>
+      <div style={{ height: 4, background: 'var(--nx-bg)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color }} />
       </div>
     </div>

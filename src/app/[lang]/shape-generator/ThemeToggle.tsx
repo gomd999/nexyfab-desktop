@@ -59,7 +59,7 @@ export function ThemeToggleButton() {
         justifyContent: 'center',
         fontSize: 15,
         transition: 'all 0.2s',
-        color: isDark ? '#c9d1d9' : '#24292f',
+        color: isDark ? 'var(--nx-text)' : '#24292f',
       }}
       onMouseEnter={e => {
         e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';

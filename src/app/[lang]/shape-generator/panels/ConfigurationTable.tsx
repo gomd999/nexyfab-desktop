@@ -39,14 +39,14 @@ const dict = {
 };
 
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#58a6ff',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent-2)',
   active: '#1f6feb22',
-  cellBg: '#0d1117',
-  danger: '#f85149',
+  cellBg: 'var(--nx-bg)',
+  danger: 'var(--nx-error)',
 };
 
 export default function ConfigurationTable({
@@ -102,7 +102,7 @@ export default function ConfigurationTable({
       <div style={{ overflow: 'auto', flex: 1 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
           <thead>
-            <tr style={{ background: '#21262d', position: 'sticky', top: 0 }}>
+            <tr style={{ background: 'var(--nx-panel-2)', position: 'sticky', top: 0 }}>
               <th style={cellHeaderStyle}>{t.config}</th>
               {paramKeys.map(k => (
                 <th key={k} style={cellHeaderStyle} title={k}>
@@ -144,7 +144,7 @@ export default function ConfigurationTable({
                         marginLeft: 4, padding: '1px 6px', borderRadius: 3,
                         border: `1px solid ${isActive ? C.accent : C.border}`,
                         background: isActive ? C.accent : 'transparent',
-                        color: isActive ? '#fff' : C.muted,
+                        color: isActive ? 'var(--nx-text)' : C.muted,
                         fontSize: 9, cursor: 'pointer',
                       }}
                       title={t.activate}

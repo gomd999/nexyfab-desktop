@@ -32,7 +32,7 @@ export default function ComposeIndicator({
     >
       <div
         style={{
-          background: '#0f172a', padding: '28px 40px', borderRadius: 12,
+          background: 'var(--nx-bg)', padding: '28px 40px', borderRadius: 12,
           border: '1px solid #334155', color: '#f1f5f9',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
         }}

@@ -66,7 +66,7 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
 
   if (!visible) return null;
 
-  const fpsColor = fps > 50 ? '#3fb950' : fps >= 30 ? '#d29922' : '#f85149';
+  const fpsColor = fps > 50 ? 'var(--nx-ok)' : fps >= 30 ? 'var(--nx-warn)' : 'var(--nx-error)';
 
   const formatTris = (n: number): string => {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
@@ -110,7 +110,7 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
             fontFamily: 'system-ui, sans-serif',
             fontSize: '11px',
             lineHeight: 1.35,
-            color: '#c9d1d9',
+            color: 'var(--nx-text)',
           }}
         >
           <input
@@ -135,7 +135,7 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
             fontFamily: 'monospace',
             fontSize: '10px',
             lineHeight: '16px',
-            color: '#8b949e',
+            color: 'var(--nx-text-2)',
             display: 'flex',
             flexDirection: 'column',
             gap: '1px',

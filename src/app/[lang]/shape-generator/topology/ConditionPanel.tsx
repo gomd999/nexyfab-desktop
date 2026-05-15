@@ -51,7 +51,7 @@ const RESOLUTION_ELEMENTS: Record<string, string> = {
 };
 
 const cardStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--nx-text)',
   borderRadius: 16,
   border: '1px solid #e5e7eb',
   padding: 14,
@@ -92,7 +92,7 @@ export default function ConditionPanel({
             <div key={key}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{label}</label>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1' }}>{val} mm</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{val} mm</span>
               </div>
               <input
                 type="range"
@@ -102,9 +102,9 @@ export default function ConditionPanel({
                 value={val}
                 onChange={e => onDimChange(key as 'dimX' | 'dimY' | 'dimZ', parseFloat(e.target.value))}
                 disabled={isOptimizing}
-                style={{ width: '100%', accentColor: '#6366f1' }}
+                style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#9ca3af' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-2)' }}>
                 <span>50mm</span>
                 <span>500mm</span>
               </div>
@@ -139,11 +139,11 @@ export default function ConditionPanel({
         </select>
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           <div style={{ background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
-            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600 }}>E (GPa)</div>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>E (GPa)</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{(MATERIALS[materialKey].E / 1e9).toFixed(1)}</div>
           </div>
           <div style={{ background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
-            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600 }}>{t.density || 'Density'} (kg/m3)</div>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>{t.density || 'Density'} (kg/m3)</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{MATERIALS[materialKey].density}</div>
           </div>
         </div>
@@ -168,12 +168,12 @@ export default function ConditionPanel({
                 flex: 1,
                 padding: '8px 6px',
                 borderRadius: 10,
-                border: selectionMode === mode ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                border: selectionMode === mode ? '2px solid var(--nx-accent)' : '1px solid #e5e7eb',
                 background: selectionMode === mode ? '#f5f3ff' : '#fafafa',
                 cursor: isOptimizing ? 'not-allowed' : 'pointer',
                 fontSize: 11,
                 fontWeight: 700,
-                color: selectionMode === mode ? '#6366f1' : '#6b7280',
+                color: selectionMode === mode ? 'var(--nx-accent)' : 'var(--nx-text-3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -207,7 +207,7 @@ export default function ConditionPanel({
         {/* Load force inputs (shown when in load mode) */}
         {selectionMode === 'load' && (
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {t.forceDirection || 'Force Direction (N)'}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
@@ -244,7 +244,7 @@ export default function ConditionPanel({
         {/* Fixed faces list */}
         {fixedFaces.length > 0 && (
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {t.fixedFaces || 'Fixed Faces'}
             </div>
             {fixedFaces.map(face => (
@@ -285,7 +285,7 @@ export default function ConditionPanel({
         {/* Load list */}
         {loads.length > 0 && (
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {t.appliedLoads || 'Applied Loads'}
             </div>
             {loads.map(load => (
@@ -304,7 +304,7 @@ export default function ConditionPanel({
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
                     {FACE_LABELS[load.face]}
                   </span>
-                  <span style={{ fontSize: 9, color: '#6b7280' }}>
+                  <span style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>
                     [{load.force[0]}, {load.force[1]}, {load.force[2]}] N
                   </span>
                 </div>
@@ -329,7 +329,7 @@ export default function ConditionPanel({
         )}
 
         {fixedFaces.length === 0 && loads.length === 0 && selectionMode === 'none' && (
-          <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: '10px 0' }}>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)', textAlign: 'center', padding: '10px 0' }}>
             {t.noBoundary || 'Select Fix or Load mode, then click faces on the 3D model.'}
           </div>
         )}
@@ -343,7 +343,7 @@ export default function ConditionPanel({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.volumeFraction || 'Volume Fraction'}</label>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1' }}>{Math.round(volfrac * 100)}%</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{Math.round(volfrac * 100)}%</span>
             </div>
             <input
               type="range"
@@ -353,9 +353,9 @@ export default function ConditionPanel({
               value={volfrac}
               onChange={e => onVolfracChange(parseFloat(e.target.value))}
               disabled={isOptimizing}
-              style={{ width: '100%', accentColor: '#6366f1' }}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#9ca3af' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-2)' }}>
               <span>10%</span>
               <span>90%</span>
             </div>
@@ -374,18 +374,18 @@ export default function ConditionPanel({
                     flex: 1,
                     padding: '6px 4px',
                     borderRadius: 8,
-                    border: resolution === r ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                    border: resolution === r ? '2px solid var(--nx-accent)' : '1px solid #e5e7eb',
                     background: resolution === r ? '#f5f3ff' : '#fafafa',
                     cursor: isOptimizing ? 'not-allowed' : 'pointer',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: resolution === r ? '#6366f1' : '#6b7280',
+                    color: resolution === r ? 'var(--nx-accent)' : 'var(--nx-text-3)',
                     textAlign: 'center',
                     transition: 'all 0.15s',
                   }}
                 >
                   <div>{r === 'low' ? (t.low || 'Low') : r === 'medium' ? (t.medium || 'Medium') : (t.high || 'High')}</div>
-                  <div style={{ fontSize: 8, fontWeight: 500, color: '#9ca3af', marginTop: 2 }}>
+                  <div style={{ fontSize: 8, fontWeight: 500, color: 'var(--nx-text-2)', marginTop: 2 }}>
                     {RESOLUTION_ELEMENTS[r]}
                   </div>
                 </button>
@@ -397,7 +397,7 @@ export default function ConditionPanel({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.penalty || 'Penalty (p)'}</label>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1' }}>{penal}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{penal}</span>
             </div>
             <input
               type="range"
@@ -407,9 +407,9 @@ export default function ConditionPanel({
               value={penal}
               onChange={e => onPenalChange(parseFloat(e.target.value))}
               disabled={isOptimizing}
-              style={{ width: '100%', accentColor: '#6366f1' }}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#9ca3af' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-2)' }}>
               <span>1</span>
               <span>5</span>
             </div>
@@ -419,7 +419,7 @@ export default function ConditionPanel({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.filterRadius || 'Filter Radius'}</label>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1' }}>{rmin.toFixed(1)}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{rmin.toFixed(1)}</span>
             </div>
             <input
               type="range"
@@ -429,9 +429,9 @@ export default function ConditionPanel({
               value={rmin}
               onChange={e => onRminChange(parseFloat(e.target.value))}
               disabled={isOptimizing}
-              style={{ width: '100%', accentColor: '#6366f1' }}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#9ca3af' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-2)' }}>
               <span>0.5</span>
               <span>3.0</span>
             </div>
@@ -441,7 +441,7 @@ export default function ConditionPanel({
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{t.maxIterations || 'Max Iterations'}</label>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1' }}>{maxIter}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent)' }}>{maxIter}</span>
             </div>
             <input
               type="range"
@@ -451,9 +451,9 @@ export default function ConditionPanel({
               value={maxIter}
               onChange={e => onMaxIterChange(parseFloat(e.target.value))}
               disabled={isOptimizing}
-              style={{ width: '100%', accentColor: '#6366f1' }}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#9ca3af' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-2)' }}>
               <span>10</span>
               <span>200</span>
             </div>
@@ -472,9 +472,9 @@ export default function ConditionPanel({
           border: 'none',
           cursor: canGenerate ? 'pointer' : 'not-allowed',
           background: canGenerate
-            ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+            ? 'linear-gradient(135deg, var(--nx-accent) 0%, #8b5cf6 100%)'
             : '#d1d5db',
-          color: '#fff',
+          color: 'var(--nx-text)',
           fontWeight: 800,
           fontSize: 14,
           boxShadow: canGenerate ? '0 4px 16px rgba(99,102,241,0.3)' : 'none',
@@ -511,8 +511,8 @@ export default function ConditionPanel({
           borderRadius: 12,
           border: '1px solid #e5e7eb',
           cursor: isOptimizing ? 'not-allowed' : 'pointer',
-          background: '#fff',
-          color: '#6b7280',
+          background: 'var(--nx-text)',
+          color: 'var(--nx-text-3)',
           fontWeight: 600,
           fontSize: 12,
           transition: 'all 0.2s',

@@ -232,15 +232,15 @@ interface Props {
 /* ── Theme ─────────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#0d1117',
-  card: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  red: '#f85149',
-  yellow: '#d29922',
+  bg: 'var(--nx-bg)',
+  card: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
+  yellow: 'var(--nx-warn)',
 };
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
@@ -737,7 +737,7 @@ export default function ParametricSweepPanel({
     borderRadius: 4,
     border: `1px solid ${active ? C.accent : C.border}`,
     background: active ? C.accent : 'transparent',
-    color: active ? '#fff' : C.text,
+    color: active ? 'var(--nx-text)' : C.text,
     cursor: 'pointer',
     fontSize: 11,
     fontWeight: active ? 600 : 400,
@@ -865,7 +865,7 @@ export default function ParametricSweepPanel({
                 borderRadius: 6,
                 border: 'none',
                 background: running ? C.border : C.accent,
-                color: '#fff',
+                color: 'var(--nx-text)',
                 fontWeight: 700,
                 fontSize: 12,
                 cursor: running ? 'not-allowed' : 'pointer',

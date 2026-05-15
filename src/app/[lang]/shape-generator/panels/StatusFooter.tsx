@@ -63,7 +63,7 @@ export default function StatusFooter({
           borderRadius: 6,
           border: `1px solid ${occtMode ? '#10b981' : '#4b5563'}`,
           background: occtMode ? 'rgba(16,185,129,0.15)' : 'rgba(31,41,55,0.85)',
-          color: occtMode ? '#10b981' : '#9ca3af',
+          color: occtMode ? '#10b981' : 'var(--nx-text-2)',
           cursor: occtInitPending ? 'wait' : 'pointer',
           opacity: occtInitPending ? 0.6 : 1,
         }}

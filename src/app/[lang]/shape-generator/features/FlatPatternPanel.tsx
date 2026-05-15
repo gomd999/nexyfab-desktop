@@ -197,7 +197,7 @@ export default function FlatPatternPanel({
           borderRadius: 6,
           border: 'none',
           background: theme.accent,
-          color: '#fff',
+          color: 'var(--nx-text)',
           fontSize: 12,
           fontWeight: 700,
           cursor: geometry ? 'pointer' : 'default',
@@ -211,7 +211,7 @@ export default function FlatPatternPanel({
         <div
           style={{
             fontSize: 11,
-            color: '#f85149',
+            color: 'var(--nx-error)',
             padding: 8,
             background: '#2a1a1a',
             borderRadius: 4,

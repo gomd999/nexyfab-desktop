@@ -165,14 +165,14 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
               {t.multiSelect} ({multi.faces.length})
             </span>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '2px 4px' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '2px 4px' }}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
           <Row label={t.area} value={`${fmt(multi.totalArea)} mm²`} accent />
           <Row label={t.triangles} value={`${multi.totalTriangleCount}${t.trianglesUnit}`} />
           {multi.faces.map((f, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, opacity: 0.75 }}>
-              <span style={{ color: '#6b7280', flexShrink: 0 }}>#{i + 1}</span>
+              <span style={{ color: 'var(--nx-text-3)', flexShrink: 0 }}>#{i + 1}</span>
               <span style={{ color: '#c4b5fd', fontFamily: 'monospace', textAlign: 'right' }}>
                 {f.normalLabel} · {fmt(f.area)} mm²
               </span>
@@ -235,7 +235,7 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
         </div>
         <button
           onClick={onClose}
-          style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '2px 4px' }}
+          style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '2px 4px' }}
         >
           ✕
         </button>
@@ -261,7 +261,7 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
       {/* Quick action chips */}
       {isFace && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 5, fontWeight: 600, letterSpacing: '0.04em' }}>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 5, fontWeight: 600, letterSpacing: '0.04em' }}>
             {t.quickActions}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -318,7 +318,7 @@ export default function SelectionInfoBadge({ info, onClose, onSendToChat }: Prop
 function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-      <span style={{ color: '#6b7280', flexShrink: 0, minWidth: 56 }}>{label}</span>
+      <span style={{ color: 'var(--nx-text-3)', flexShrink: 0, minWidth: 56 }}>{label}</span>
       <span style={{ color: accent ? '#22d3ee' : '#e5e7eb', fontFamily: 'monospace', textAlign: 'right', wordBreak: 'break-all' }}>
         {value}
       </span>

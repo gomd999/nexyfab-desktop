@@ -77,28 +77,28 @@ export default function StandardPartsLibrary({
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#21262d', borderRadius: 14, padding: 24,
+          background: 'var(--nx-panel-2)', borderRadius: 14, padding: 24,
           maxWidth: 600, width: '90%', maxHeight: '80vh', overflow: 'auto',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          border: '1px solid #30363d',
+          border: '1px solid var(--nx-border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#c9d1d9' }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--nx-text)' }}>
             {l.standardPartsLibrary}
           </h3>
           <button
             onClick={onClose}
             style={{
               border: 'none', background: 'none', fontSize: 18,
-              cursor: 'pointer', color: '#8b949e',
+              cursor: 'pointer', color: 'var(--nx-text-2)',
             }}
           >✕</button>
         </div>
         {categories.map(cat => (
           <div key={cat.key} style={{ marginBottom: 16 }}>
             <div style={{
-              fontSize: 12, fontWeight: 800, color: '#8b949e',
+              fontSize: 12, fontWeight: 800, color: 'var(--nx-text-2)',
               textTransform: 'uppercase', marginBottom: 8,
             }}>
               {cat.icon} {cat.label}
@@ -118,19 +118,19 @@ export default function StandardPartsLibrary({
                     display: 'flex', flexDirection: 'column',
                     alignItems: 'center', gap: 4,
                     padding: '12px 8px', borderRadius: 10,
-                    border: selectedStandardPart === part.id ? '2px solid #388bfd' : '1px solid #30363d',
-                    background: selectedStandardPart === part.id ? '#388bfd22' : '#161b22',
+                    border: selectedStandardPart === part.id ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                    background: selectedStandardPart === part.id ? 'var(--nx-accent)22' : 'var(--nx-panel)',
                     cursor: 'pointer', transition: 'all 0.12s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#58a6ff')}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--nx-accent-2)')}
                   onMouseLeave={e => {
                     e.currentTarget.style.borderColor =
-                      selectedStandardPart === part.id ? '#388bfd' : '#30363d';
+                      selectedStandardPart === part.id ? 'var(--nx-accent)' : 'var(--nx-border)';
                   }}
                 >
                   <span style={{ fontSize: 24 }}>{part.icon}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textAlign: 'center' }}>{part.name}</span>
-                  <span style={{ fontSize: 9, color: '#8b949e' }}>{part.std}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)', textAlign: 'center' }}>{part.name}</span>
+                  <span style={{ fontSize: 9, color: 'var(--nx-text-2)' }}>{part.std}</span>
                 </button>
               ))}
             </div>

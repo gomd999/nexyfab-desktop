@@ -239,7 +239,7 @@ export default function BranchSelector({
                           borderRadius: 4,
                           transition: 'color 0.1s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#f85149'; }}
+                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-error)'; }}
                         onMouseLeave={e => { e.currentTarget.style.color = theme.textMuted; }}
                         title={labels.delete}
                       >
@@ -256,7 +256,7 @@ export default function BranchSelector({
                       padding: '4px 10px 4px 26px',
                       fontSize: 10,
                     }}>
-                      <span style={{ color: '#f85149', fontWeight: 600, flex: 1 }}>
+                      <span style={{ color: 'var(--nx-error)', fontWeight: 600, flex: 1 }}>
                         {labels.confirmDelete}
                       </span>
                       <button
@@ -269,8 +269,8 @@ export default function BranchSelector({
                           padding: '2px 8px',
                           borderRadius: 4,
                           border: 'none',
-                          background: '#f85149',
-                          color: '#fff',
+                          background: 'var(--nx-error)',
+                          color: 'var(--nx-text)',
                           fontSize: 10,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -331,7 +331,7 @@ export default function BranchSelector({
                   borderRadius: 4,
                   border: 'none',
                   background: newName.trim() ? theme.accent : theme.border,
-                  color: '#fff',
+                  color: 'var(--nx-text)',
                   fontSize: 10,
                   fontWeight: 700,
                   cursor: newName.trim() ? 'pointer' : 'default',

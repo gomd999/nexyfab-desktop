@@ -59,7 +59,7 @@ export default function BOMExportButton({ parts, disabled, lang }: BOMExportButt
         borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.08)',
         background: 'rgba(255,255,255,0.03)',
-        color: disabled || !parts.length ? '#484f58' : '#58a6ff',
+        color: disabled || !parts.length ? 'var(--nx-border-strong)' : 'var(--nx-accent-2)',
         fontSize: 11,
         fontWeight: 600,
         cursor: disabled || !parts.length ? 'not-allowed' : 'pointer',

@@ -372,11 +372,11 @@ function OverlaySvg({
       {/* Geometry A - blue */}
       <polyline
         points={poly([pA.frontBL, pA.frontBR, pA.frontTR, pA.frontTL, pA.frontBL])}
-        stroke="#58a6ff" strokeWidth={1.5} fill="none" strokeOpacity={0.7}
+        stroke="var(--nx-accent-2)" strokeWidth={1.5} fill="none" strokeOpacity={0.7}
       />
       <polyline
         points={poly([pA.frontTL, pA.frontTR, pA.backTR, pA.backTL, pA.frontTL])}
-        stroke="#58a6ff" strokeWidth={1.5} fill="none" strokeOpacity={0.5}
+        stroke="var(--nx-accent-2)" strokeWidth={1.5} fill="none" strokeOpacity={0.5}
       />
       {/* Geometry B - yellow */}
       <polyline
@@ -388,10 +388,10 @@ function OverlaySvg({
         stroke="#e3b341" strokeWidth={1.5} fill="none" strokeOpacity={0.5} strokeDasharray="4 2"
       />
       {/* Legend */}
-      <rect x={4} y={svgSize - 24} width={8} height={8} fill="#58a6ff" rx={1} />
-      <text x={15} y={svgSize - 16} fontSize={8} fill="#8b949e" fontFamily="monospace">A</text>
+      <rect x={4} y={svgSize - 24} width={8} height={8} fill="var(--nx-accent-2)" rx={1} />
+      <text x={15} y={svgSize - 16} fontSize={8} fill="var(--nx-text-2)" fontFamily="monospace">A</text>
       <rect x={28} y={svgSize - 24} width={8} height={8} fill="#e3b341" rx={1} />
-      <text x={39} y={svgSize - 16} fontSize={8} fill="#8b949e" fontFamily="monospace">B</text>
+      <text x={39} y={svgSize - 16} fontSize={8} fill="var(--nx-text-2)" fontFamily="monospace">B</text>
     </svg>
   );
 }
@@ -411,13 +411,13 @@ function DiffRow({ label, valA, valB, unit, decimals = 2 }: DiffRowProps) {
   const absDelta = Math.abs(delta);
   const isPositive = delta > 0.001;
   const isNegative = delta < -0.001;
-  const color = isPositive ? '#3fb950' : isNegative ? '#f85149' : '#8b949e';
+  const color = isPositive ? 'var(--nx-ok)' : isNegative ? 'var(--nx-error)' : 'var(--nx-text-2)';
   const sign = isPositive ? '+' : '';
 
   return (
-    <tr style={{ borderBottom: '1px solid #21262d' }}>
-      <td style={{ padding: '6px 8px', color: '#8b949e', fontSize: 12, whiteSpace: 'nowrap' }}>{label}</td>
-      <td style={{ padding: '6px 8px', color: '#58a6ff', fontSize: 12, textAlign: 'right', fontFamily: 'monospace' }}>
+    <tr style={{ borderBottom: '1px solid var(--nx-panel-2)' }}>
+      <td style={{ padding: '6px 8px', color: 'var(--nx-text-2)', fontSize: 12, whiteSpace: 'nowrap' }}>{label}</td>
+      <td style={{ padding: '6px 8px', color: 'var(--nx-accent-2)', fontSize: 12, textAlign: 'right', fontFamily: 'monospace' }}>
         {fmt(valA, decimals)} {unit}
       </td>
       <td style={{ padding: '6px 8px', color: '#e3b341', fontSize: 12, textAlign: 'right', fontFamily: 'monospace' }}>
@@ -478,7 +478,7 @@ export default function ShapeVersionDiff({
     return { mA, mB, changedCount, volumePct, summaryText };
   }, [geometryA, geometryB, resolvedLang]);
 
-  const summaryColor = Math.abs(volumePct) < 0.05 ? '#8b949e' : volumePct > 0 ? '#3fb950' : '#f85149';
+  const summaryColor = Math.abs(volumePct) < 0.05 ? 'var(--nx-text-2)' : volumePct > 0 ? 'var(--nx-ok)' : 'var(--nx-error)';
 
   return (
     <div
@@ -489,8 +489,8 @@ export default function ShapeVersionDiff({
         transform: 'translateX(-50%)',
         width: 560,
         maxWidth: 'calc(100vw - 32px)',
-        background: '#161b22',
-        border: '1px solid #30363d',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 10,
         zIndex: 800,
         boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
@@ -509,20 +509,20 @@ export default function ShapeVersionDiff({
           justifyContent: 'space-between',
           padding: '10px 14px',
           background: '#1c2128',
-          borderBottom: '1px solid #30363d',
+          borderBottom: '1px solid var(--nx-border)',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, color: '#e6edf3', fontWeight: 600 }}>
+          <span style={{ fontSize: 14, color: 'var(--nx-text)', fontWeight: 600 }}>
             {t(resolvedLang, 'title')}
           </span>
           <span
             style={{
               fontSize: 11,
-              color: '#58a6ff',
-              background: '#0d1117',
-              border: '1px solid #30363d',
+              color: 'var(--nx-accent-2)',
+              background: 'var(--nx-bg)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               padding: '1px 6px',
               fontFamily: 'monospace',
@@ -530,13 +530,13 @@ export default function ShapeVersionDiff({
           >
             {lA}
           </span>
-          <span style={{ color: '#8b949e', fontSize: 12 }}>→</span>
+          <span style={{ color: 'var(--nx-text-2)', fontSize: 12 }}>→</span>
           <span
             style={{
               fontSize: 11,
               color: '#e3b341',
-              background: '#0d1117',
-              border: '1px solid #30363d',
+              background: 'var(--nx-bg)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               padding: '1px 6px',
               fontFamily: 'monospace',
@@ -550,7 +550,7 @@ export default function ShapeVersionDiff({
           style={{
             background: 'none',
             border: 'none',
-            color: '#8b949e',
+            color: 'var(--nx-text-2)',
             cursor: 'pointer',
             fontSize: 16,
             lineHeight: 1,
@@ -572,8 +572,8 @@ export default function ShapeVersionDiff({
         <div
           style={{
             padding: '8px 14px',
-            background: '#0d1117',
-            borderBottom: '1px solid #21262d',
+            background: 'var(--nx-bg)',
+            borderBottom: '1px solid var(--nx-panel-2)',
             fontSize: 12,
             color: summaryColor,
             display: 'flex',
@@ -602,20 +602,20 @@ export default function ShapeVersionDiff({
             justifyContent: 'center',
             gap: 12,
             padding: '14px',
-            borderBottom: '1px solid #21262d',
+            borderBottom: '1px solid var(--nx-panel-2)',
           }}
         >
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 4, fontFamily: 'monospace' }}>{lA}</div>
+            <div style={{ fontSize: 11, color: 'var(--nx-accent-2)', marginBottom: 4, fontFamily: 'monospace' }}>{lA}</div>
             <BBoxSvgWireframe
               w={mA.w} h={mA.h} d={mA.d}
-              color="#58a6ff"
+              color="var(--nx-accent-2)"
               label=""
               svgSize={110}
             />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>{t(resolvedLang, 'overlap')}</div>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t(resolvedLang, 'overlap')}</div>
             <OverlaySvg mA={mA} mB={mB} svgSize={110} />
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -633,17 +633,17 @@ export default function ShapeVersionDiff({
         <div style={{ padding: '4px 14px 14px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #30363d' }}>
-                <th style={{ padding: '6px 8px', color: '#8b949e', fontSize: 11, textAlign: 'left', fontWeight: 500 }}>
+              <tr style={{ borderBottom: '1px solid var(--nx-border)' }}>
+                <th style={{ padding: '6px 8px', color: 'var(--nx-text-2)', fontSize: 11, textAlign: 'left', fontWeight: 500 }}>
                   {t(resolvedLang, 'dimension')}
                 </th>
-                <th style={{ padding: '6px 8px', color: '#58a6ff', fontSize: 11, textAlign: 'right', fontWeight: 500 }}>
+                <th style={{ padding: '6px 8px', color: 'var(--nx-accent-2)', fontSize: 11, textAlign: 'right', fontWeight: 500 }}>
                   {lA}
                 </th>
                 <th style={{ padding: '6px 8px', color: '#e3b341', fontSize: 11, textAlign: 'right', fontWeight: 500 }}>
                   {lB}
                 </th>
-                <th style={{ padding: '6px 8px', color: '#8b949e', fontSize: 11, textAlign: 'right', fontWeight: 500 }}>
+                <th style={{ padding: '6px 8px', color: 'var(--nx-text-2)', fontSize: 11, textAlign: 'right', fontWeight: 500 }}>
                   {t(resolvedLang, 'change')}
                 </th>
               </tr>
@@ -655,10 +655,10 @@ export default function ShapeVersionDiff({
               <DiffRow label={`${t(resolvedLang, 'volume')} (${t(resolvedLang, 'cm3')})`} valA={mA.volume} valB={mB.volume} unit={t(resolvedLang, 'cm3')} />
               <DiffRow label={`${t(resolvedLang, 'surfaceArea')} (${t(resolvedLang, 'cm2')})`} valA={mA.surface} valB={mB.surface} unit={t(resolvedLang, 'cm2')} />
               <tr>
-                <td style={{ padding: '6px 8px', color: '#8b949e', fontSize: 12, whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '6px 8px', color: 'var(--nx-text-2)', fontSize: 12, whiteSpace: 'nowrap' }}>
                   {t(resolvedLang, 'vertices')}
                 </td>
-                <td style={{ padding: '6px 8px', color: '#58a6ff', fontSize: 12, textAlign: 'right', fontFamily: 'monospace' }}>
+                <td style={{ padding: '6px 8px', color: 'var(--nx-accent-2)', fontSize: 12, textAlign: 'right', fontFamily: 'monospace' }}>
                   {mA.vertices.toLocaleString()}
                 </td>
                 <td style={{ padding: '6px 8px', color: '#e3b341', fontSize: 12, textAlign: 'right', fontFamily: 'monospace' }}>
@@ -673,10 +673,10 @@ export default function ShapeVersionDiff({
                     fontWeight: 600,
                     color:
                       mB.vertices > mA.vertices
-                        ? '#3fb950'
+                        ? 'var(--nx-ok)'
                         : mB.vertices < mA.vertices
-                        ? '#f85149'
-                        : '#8b949e',
+                        ? 'var(--nx-error)'
+                        : 'var(--nx-text-2)',
                   }}
                 >
                   {mB.vertices !== mA.vertices
@@ -695,13 +695,13 @@ export default function ShapeVersionDiff({
               padding: '0 14px 14px',
             }}
           >
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>
               {t(resolvedLang, 'volume')} Δ {pct(mA.volume, mB.volume)}%
             </div>
             <div
               style={{
                 height: 6,
-                background: '#21262d',
+                background: 'var(--nx-panel-2)',
                 borderRadius: 3,
                 overflow: 'hidden',
               }}
@@ -710,7 +710,7 @@ export default function ShapeVersionDiff({
                 style={{
                   height: '100%',
                   width: `${Math.min(Math.abs(volumePct), 100)}%`,
-                  background: volumePct > 0 ? '#3fb950' : '#f85149',
+                  background: volumePct > 0 ? 'var(--nx-ok)' : 'var(--nx-error)',
                   borderRadius: 3,
                   transition: 'width 0.4s ease',
                 }}

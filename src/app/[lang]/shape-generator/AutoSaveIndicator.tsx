@@ -129,7 +129,7 @@ export default function AutoSaveIndicator({
   const showCloud = cloudStatus && cloudStatus !== 'idle';
   if (!isSaving && !lastSavedAt && !saveError && !showCloud) return null;
 
-  const color = saveError ? '#f85149' : isSaving ? '#e3b341' : '#3fb950';
+  const color = saveError ? 'var(--nx-error)' : isSaving ? '#e3b341' : 'var(--nx-ok)';
   const label = saveError
     ? t.error
     : isSaving
@@ -161,17 +161,17 @@ export default function AutoSaveIndicator({
         animation: isSaving ? 'nf-save-pulse 1s ease-in-out infinite' : 'none',
       }} />
       <span>{label}</span>
-      {relative && <span style={{ color: '#6e7681', fontWeight: 400 }}>· {relative}</span>}
+      {relative && <span style={{ color: 'var(--nx-text-3)', fontWeight: 400 }}>· {relative}</span>}
       {showCloud && (
         <>
-          <span style={{ color: '#30363d', margin: '0 2px' }}>|</span>
+          <span style={{ color: 'var(--nx-border)', margin: '0 2px' }}>|</span>
           <span style={{
-            color: cloudStatus === 'error' ? '#f85149' : cloudStatus === 'syncing' ? '#e3b341' : '#58a6ff',
+            color: cloudStatus === 'error' ? 'var(--nx-error)' : cloudStatus === 'syncing' ? '#e3b341' : 'var(--nx-accent-2)',
             animation: cloudStatus === 'syncing' ? 'nf-save-pulse 1s ease-in-out infinite' : 'none',
           }}>
             ☁ {cloudLabel}
             {cloudStatus === 'synced' && cloudSavedAt && (
-              <span style={{ color: '#6e7681', fontWeight: 400 }}>
+              <span style={{ color: 'var(--nx-text-3)', fontWeight: 400 }}>
                 {' '}· {formatRelative(cloudSavedAt, t, now)}
               </span>
             )}
@@ -186,9 +186,9 @@ export default function AutoSaveIndicator({
                   fontSize: 10,
                   fontWeight: 600,
                   borderRadius: 4,
-                  border: '1px solid #58a6ff',
+                  border: '1px solid var(--nx-accent-2)',
                   background: 'rgba(88,166,255,0.15)',
-                  color: '#79c0ff',
+                  color: 'var(--nx-accent-2)',
                   cursor: 'pointer',
                 }}
               >

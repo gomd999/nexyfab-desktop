@@ -77,13 +77,13 @@ function generateCollabRoomId(): string {
 
 // ─── Theme constants (match CommandToolbar) ──────────────────────────────────
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  hover: '#30363d',
-  dropBg: '#21262d',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  hover: 'var(--nx-border)',
+  dropBg: 'var(--nx-panel-2)',
 };
 
 interface ShareButtonProps {
@@ -242,7 +242,7 @@ export default function ShareButton({
     borderRadius: 5,
     border: 'none',
     background: popoverOpen ? C.accent : 'transparent',
-    color: popoverOpen ? '#fff' : C.text,
+    color: popoverOpen ? 'var(--nx-text)' : C.text,
     fontSize: 11,
     fontWeight: 600,
     cursor: 'pointer',
@@ -276,7 +276,7 @@ export default function ShareButton({
     borderRadius: 4,
     border: `1px solid ${C.border}`,
     background: active ? '#16a34a' : C.hover,
-    color: active ? '#fff' : C.text,
+    color: active ? 'var(--nx-text)' : C.text,
     fontSize: 11,
     fontWeight: 700,
     cursor: 'pointer',
@@ -350,7 +350,7 @@ export default function ShareButton({
               🔒 {t.viewOnlyLink}
             </div>
             <div style={urlRowStyle}>
-              <span style={{ ...urlTextStyle, color: '#f59e0b' }}>{viewOnlyUrl}</span>
+              <span style={{ ...urlTextStyle, color: 'var(--nx-warn)' }}>{viewOnlyUrl}</span>
               <button style={copyBtnStyle(copiedView)} onClick={handleCopyView}>
                 {copiedView ? t.copyDone : t.copy}
               </button>

@@ -61,7 +61,7 @@ export default function DFMWarningBadges({ dfmResults, visible, lang }: DFMWarni
         transition: 'transform 0.2s',
       }}>
         <span style={{ fontSize: 13 }}>✅</span>
-        <span style={{ fontSize: 11, color: '#3fb950', fontWeight: 700, letterSpacing: '0.02em' }}>{t.noIssues}</span>
+        <span style={{ fontSize: 11, color: 'var(--nx-ok)', fontWeight: 700, letterSpacing: '0.02em' }}>{t.noIssues}</span>
       </div>
     );
   }
@@ -77,7 +77,7 @@ export default function DFMWarningBadges({ dfmResults, visible, lang }: DFMWarni
     }}>
       {issues.slice(0, 3).map((issue, i) => {
         const isWarn = issue.severity === 'warning';
-        const color = isWarn ? '#d29922' : '#f85149';
+        const color = isWarn ? 'var(--nx-warn)' : 'var(--nx-error)';
         const bg = isWarn ? 'linear-gradient(135deg, rgba(210,153,34,0.15) 0%, rgba(187,128,9,0.2) 100%)' : 'linear-gradient(135deg, rgba(248,81,73,0.15) 0%, rgba(218,54,51,0.2) 100%)';
         const borderColor = isWarn ? 'rgba(210,153,34,0.4)' : 'rgba(248,81,73,0.4)';
         const tip = [issue.description, issue.suggestion].filter(Boolean).join('\n\n');

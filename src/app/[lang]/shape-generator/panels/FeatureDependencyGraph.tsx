@@ -174,14 +174,14 @@ export default function FeatureDependencyGraph({
   const onMouseUp = useCallback(() => setIsPanning(false), []);
 
   return (
-    <div style={{ width: '100%', height: '100%', background: '#0d1117', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', background: 'var(--nx-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span style={{ fontSize: 13 }}>🕸</span>
-        <span style={{ fontWeight: 700, fontSize: 12, color: '#c9d1d9', flex: 1 }}>
+        <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--nx-text)', flex: 1 }}>
           {t.title}
         </span>
-        <span style={{ fontSize: 10, color: '#6e7681' }}>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
           {nodes.length} {t.nodes}
         </span>
       </div>
@@ -202,7 +202,7 @@ export default function FeatureDependencyGraph({
         >
           <defs>
             <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L8,3 z" fill="#388bfd88" />
+              <path d="M0,0 L0,6 L8,3 z" fill="var(--nx-accent)88" />
             </marker>
           </defs>
 
@@ -221,7 +221,7 @@ export default function FeatureDependencyGraph({
                 <path
                   d={`M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`}
                   fill="none"
-                  stroke={gn.enabled ? '#388bfd55' : '#30363d'}
+                  stroke={gn.enabled ? 'var(--nx-accent)55' : 'var(--nx-border)'}
                   strokeWidth={1.5}
                   markerEnd="url(#arrow)"
                   strokeDasharray={gn.enabled ? undefined : '4 3'}
@@ -235,8 +235,8 @@ export default function FeatureDependencyGraph({
             const isActive = gn.id === activeNodeId;
             const isHovered = gn.id === hoveredId;
             const hasError = !!gn.error;
-            const borderColor = hasError ? '#f85149' : isActive ? '#388bfd' : isHovered ? '#8b9cf4' : '#30363d';
-            const bg = isActive ? '#388bfd18' : hasError ? '#f8514918' : '#161b22';
+            const borderColor = hasError ? 'var(--nx-error)' : isActive ? 'var(--nx-accent)' : isHovered ? '#8b9cf4' : 'var(--nx-border)';
+            const bg = isActive ? 'var(--nx-accent)18' : hasError ? 'var(--nx-error)18' : 'var(--nx-panel)';
 
             return (
               <g
@@ -259,7 +259,7 @@ export default function FeatureDependencyGraph({
 
                 {/* Disabled overlay */}
                 {!gn.enabled && (
-                  <rect width={NODE_W} height={NODE_H} rx={6} fill="#0d111788" />
+                  <rect width={NODE_W} height={NODE_H} rx={6} fill="var(--nx-bg)88" />
                 )}
 
                 {/* Icon */}
@@ -274,7 +274,7 @@ export default function FeatureDependencyGraph({
                   dominantBaseline="middle"
                   fontSize={10}
                   fontWeight={isActive ? 700 : 400}
-                  fill={gn.enabled ? (hasError ? '#f85149' : '#c9d1d9') : '#6e7681'}
+                  fill={gn.enabled ? (hasError ? 'var(--nx-error)' : 'var(--nx-text)') : 'var(--nx-text-3)'}
                   fontFamily="system-ui, sans-serif"
                 >
                   {gn.label.length > 12 ? gn.label.slice(0, 11) + '…' : gn.label}
@@ -282,20 +282,20 @@ export default function FeatureDependencyGraph({
 
                 {/* Error indicator */}
                 {hasError && (
-                  <circle cx={NODE_W - 7} cy={7} r={5} fill="#f85149" />
+                  <circle cx={NODE_W - 7} cy={7} r={5} fill="var(--nx-error)" />
                 )}
 
                 {/* Active dot */}
                 {isActive && !hasError && (
-                  <circle cx={NODE_W - 7} cy={7} r={5} fill="#388bfd" />
+                  <circle cx={NODE_W - 7} cy={7} r={5} fill="var(--nx-accent)" />
                 )}
 
                 {/* Tooltip on hover */}
                 {isHovered && gn.error && (
                   <foreignObject x={NODE_W + 4} y={0} width={160} height={60}>
                     <div style={{
-                      background: '#1c2128', border: '1px solid #f8514944', borderRadius: 6,
-                      padding: '5px 8px', fontSize: 10, color: '#f85149', lineHeight: 1.4,
+                      background: '#1c2128', border: '1px solid var(--nx-error)44', borderRadius: 6,
+                      padding: '5px 8px', fontSize: 10, color: 'var(--nx-error)', lineHeight: 1.4,
                       fontFamily: 'system-ui, sans-serif',
                     }}>
                       {gn.error}
@@ -309,18 +309,18 @@ export default function FeatureDependencyGraph({
       </div>
 
       {/* Legend */}
-      <div style={{ padding: '6px 14px', borderTop: '1px solid #21262d', display: 'flex', gap: 12, flexShrink: 0 }}>
+      <div style={{ padding: '6px 14px', borderTop: '1px solid var(--nx-panel-2)', display: 'flex', gap: 12, flexShrink: 0 }}>
         {[
-          { color: '#388bfd', label: t.active },
-          { color: '#f85149', label: t.error },
-          { color: '#30363d', label: t.disabled },
+          { color: 'var(--nx-accent)', label: t.active },
+          { color: 'var(--nx-error)', label: t.error },
+          { color: 'var(--nx-border)', label: t.disabled },
         ].map(({ color, label }) => (
-          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: '#6e7681' }}>
+          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: 'var(--nx-text-3)' }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
             {label}
           </span>
         ))}
-        <span style={{ fontSize: 9, color: '#6e7681', marginLeft: 'auto' }}>
+        <span style={{ fontSize: 9, color: 'var(--nx-text-3)', marginLeft: 'auto' }}>
           {t.dragHint}
         </span>
       </div>

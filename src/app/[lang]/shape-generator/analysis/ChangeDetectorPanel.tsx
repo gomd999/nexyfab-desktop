@@ -229,9 +229,9 @@ const langMap: Record<string, Lang> = {
 };
 
 const C = {
-  bg: '#0d1117', surface: '#161b22', card: '#21262d', border: '#30363d',
-  text: '#e6edf3', textDim: '#8b949e', textMuted: '#6e7681',
-  accent: '#388bfd', green: '#3fb950', yellow: '#d29922', red: '#f85149', purple: '#8b5cf6',
+  bg: 'var(--nx-bg)', surface: 'var(--nx-panel)', card: 'var(--nx-panel-2)', border: 'var(--nx-border)',
+  text: 'var(--nx-text)', textDim: 'var(--nx-text-2)', textMuted: 'var(--nx-text-3)',
+  accent: 'var(--nx-accent)', green: 'var(--nx-ok)', yellow: 'var(--nx-warn)', red: 'var(--nx-error)', purple: '#8b5cf6',
 };
 
 const IMPACT_COLOR = { high: C.red, medium: C.yellow, low: C.green };
@@ -461,8 +461,8 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
               disabled={loading}
               style={{
                 flex: 1, padding: 10, borderRadius: 8, border: 'none',
-                background: loading ? '#388bfd66' : 'linear-gradient(135deg, #8b5cf6, #388bfd)',
-                color: '#fff', fontSize: 13, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
+                background: loading ? 'var(--nx-accent)66' : 'linear-gradient(135deg, #8b5cf6, var(--nx-accent))',
+                color: 'var(--nx-text)', fontSize: 13, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
               }}
             >
               {loading ? t.analysing : t.detectChanges}
@@ -475,7 +475,7 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
                   style={{
                     flex: 1, padding: 10, borderRadius: 8, border: 'none',
                     background: `linear-gradient(135deg, ${C.red}, #f97316)`,
-                    color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                    color: 'var(--nx-text)', fontSize: 13, fontWeight: 800, cursor: 'pointer',
                   }}
                 >
                   {t.reIssueRfq}

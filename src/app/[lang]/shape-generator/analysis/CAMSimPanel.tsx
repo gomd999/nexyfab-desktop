@@ -125,19 +125,19 @@ const langMap: Record<string, keyof typeof dict> = {
 };
 
 const C = {
-  bg: '#0d1117',
-  panel: '#161b22',
-  border: '#30363d',
-  accent: '#388bfd',
-  accentBright: '#58a6ff',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  green: '#3fb950',
-  red: '#f85149',
+  bg: 'var(--nx-bg)',
+  panel: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  accentBright: 'var(--nx-accent-2)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
 };
 
 /** Depth layer palette — wraps modulo 5 */
-const LAYER_COLORS = ['#388bfd', '#3fb950', '#f0883e', '#a371f7', '#e3b341'];
+const LAYER_COLORS = ['var(--nx-accent)', 'var(--nx-ok)', 'var(--nx-warn)', 'var(--nx-accent-2)', '#e3b341'];
 
 /** Point type extended with Y coordinate for 3D projection. */
 type TimelinePoint = { x: number; y: number; z: number; pathIdx: number; segIdx: number };
@@ -478,13 +478,13 @@ export default function CAMSimPanel({ result, operation, onClose }: CAMSimPanelP
               color: C.accentBright, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
               transition: 'all 0.15s', whiteSpace: 'nowrap',
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#388bfd1a'}
+            onMouseOver={(e) => e.currentTarget.style.background = 'var(--nx-accent)1a'}
             onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
           >
             {t.downloadCode}
           </button>
           <button onClick={onClose} style={{
-            border: 'none', background: '#30363d', cursor: 'pointer',
+            border: 'none', background: 'var(--nx-border)', cursor: 'pointer',
             color: C.dim, width: 24, height: 24, borderRadius: 6, fontSize: 12,
           }}>✕</button>
         </div>
@@ -674,7 +674,7 @@ export default function CAMSimPanel({ result, operation, onClose }: CAMSimPanelP
               padding: '5px 16px', borderRadius: 6, fontSize: 12, fontWeight: 800,
               border: 'none',
               background: playing ? C.red : `linear-gradient(135deg, ${C.accent}, #1f6feb)`,
-              color: '#fff', cursor: 'pointer',
+              color: 'var(--nx-text)', cursor: 'pointer',
             }}>
               {playing ? t.pause : t.play}
             </button>
@@ -702,7 +702,7 @@ export default function CAMSimPanel({ result, operation, onClose }: CAMSimPanelP
           </div>
 
           {result.warnings.length > 0 && (
-            <div style={{ fontSize: 10, color: '#d29922' }}>
+            <div style={{ fontSize: 10, color: 'var(--nx-warn)' }}>
               {result.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
             </div>
           )}

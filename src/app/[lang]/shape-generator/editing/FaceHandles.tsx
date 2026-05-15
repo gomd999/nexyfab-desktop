@@ -13,7 +13,7 @@ import type { UniqueFace } from './useFaceEditing';
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 const COLOR_HOVERED = '#fbbf24';
-const COLOR_SELECTED = '#388bfd';
+const COLOR_SELECTED = 'var(--nx-accent)';
 const COLOR_ARROW = '#22c55e';
 
 // ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ function FaceMesh({
       {/* Sketch tooltip on hover */}
       {isHovered && onFaceSketch && (
         <Html center style={{ pointerEvents: 'none', userSelect: 'none' }}>
-          <div style={{ background: 'rgba(56,139,253,0.85)', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <div style={{ background: 'rgba(56,139,253,0.85)', color: 'var(--nx-text)', fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 700, whiteSpace: 'nowrap' }}>
             더블클릭: 이 면에 스케치
           </div>
         </Html>
@@ -325,7 +325,7 @@ function PushPullArrow({
           <div style={{
             background: 'rgba(36,41,47,0.9)',
             border: '1px solid rgba(255,255,255,0.2)',
-            color: '#fff',
+            color: 'var(--nx-text)',
             padding: '6px 12px',
             borderRadius: 8,
             fontSize: 14,

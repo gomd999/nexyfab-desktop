@@ -146,9 +146,9 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
   if (!shown) return null;
 
   const cards = [
-    { heading: copy.s1h, lines: copy.s1b, icon: '🖊', color: '#388bfd' },
-    { heading: copy.s2h, lines: copy.s2b, icon: '📐', color: '#3fb950' },
-    { heading: copy.s3h, lines: copy.s3b, icon: '⬆️', color: '#f0883e' },
+    { heading: copy.s1h, lines: copy.s1b, icon: '🖊', color: 'var(--nx-accent)' },
+    { heading: copy.s2h, lines: copy.s2b, icon: '📐', color: 'var(--nx-ok)' },
+    { heading: copy.s3h, lines: copy.s3b, icon: '⬆️', color: 'var(--nx-warn)' },
   ];
 
   return (
@@ -162,8 +162,8 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
         opacity: exiting ? 0 : 1,
         transition: 'opacity 0.28s ease, transform 0.28s ease',
         zIndex: 300,
-        background: '#161b22',
-        border: '1px solid #30363d',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 12,
         padding: '10px 14px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
@@ -175,15 +175,15 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span id="nexyfab-sketch-tip-title" style={{ fontSize: 12, fontWeight: 800, color: '#e6edf3', letterSpacing: -0.2 }}>
+        <span id="nexyfab-sketch-tip-title" style={{ fontSize: 12, fontWeight: 800, color: 'var(--nx-text)', letterSpacing: -0.2 }}>
           {copy.title}
         </span>
         <button
           type="button"
           onClick={() => dismiss(false)}
-          style={{ background: 'none', border: 'none', color: '#484f58', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#8b949e'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#484f58'; }}
+          style={{ background: 'none', border: 'none', color: 'var(--nx-border-strong)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-border-strong)'; }}
           title={copy.closeAria}
           aria-label={copy.closeAria}
         >×</button>
@@ -194,7 +194,7 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
         const card = cards[stepIdx];
         return (
           <div style={{
-            background: '#0d1117', border: `1px solid ${card.color}30`,
+            background: 'var(--nx-bg)', border: `1px solid ${card.color}30`,
             borderRadius: 8, padding: '10px 12px',
             borderTop: `2px solid ${card.color}`,
             marginBottom: 10,
@@ -203,10 +203,10 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span>{card.icon}</span> {card.heading}
               </span>
-              <span style={{ fontSize: 10, color: '#484f58', fontWeight: 700 }}>{stepIdx + 1} / 3</span>
+              <span style={{ fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 700 }}>{stepIdx + 1} / 3</span>
             </div>
             {card.lines.map((line, i) => (
-              <div key={i} style={{ fontSize: 10.5, color: '#8b949e', lineHeight: 1.6, fontFamily: 'ui-monospace, monospace' }}>
+              <div key={i} style={{ fontSize: 10.5, color: 'var(--nx-text-2)', lineHeight: 1.6, fontFamily: 'ui-monospace, monospace' }}>
                 {line}
               </div>
             ))}
@@ -223,8 +223,8 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
             onClick={() => setStepIdx(s => Math.max(0, s - 1))}
             style={{
               padding: '4px 10px', borderRadius: 5,
-              border: '1px solid #30363d', background: stepIdx === 0 ? '#161b22' : '#21262d',
-              color: stepIdx === 0 ? '#484f58' : '#c9d1d9', fontSize: 10, fontWeight: 700, cursor: stepIdx === 0 ? 'not-allowed' : 'pointer',
+              border: '1px solid var(--nx-border)', background: stepIdx === 0 ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+              color: stepIdx === 0 ? 'var(--nx-border-strong)' : 'var(--nx-text)', fontSize: 10, fontWeight: 700, cursor: stepIdx === 0 ? 'not-allowed' : 'pointer',
             }}
           >
             {copy.prev}
@@ -235,8 +235,8 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
               onClick={() => setStepIdx(s => Math.min(2, s + 1))}
               style={{
                 padding: '4px 12px', borderRadius: 5,
-                border: 'none', background: '#388bfd',
-                color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                border: 'none', background: 'var(--nx-accent)',
+                color: 'var(--nx-text)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
               }}
             >
               {copy.next}
@@ -247,8 +247,8 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
               onClick={() => dismiss(false)}
               style={{
                 padding: '4px 14px', borderRadius: 5,
-                border: 'none', background: '#388bfd',
-                color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: 'none', background: 'var(--nx-accent)',
+                color: 'var(--nx-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
               }}
             >
               {copy.got}
@@ -261,11 +261,11 @@ export default function SketchContextTip({ visible, lang, recoveryVisible = fals
             onClick={() => dismiss(true)}
             style={{
               padding: '4px 10px', borderRadius: 5,
-              border: '1px solid #21262d', background: 'transparent',
-              color: '#484f58', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid var(--nx-panel-2)', background: 'transparent',
+              color: 'var(--nx-border-strong)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#8b949e'; e.currentTarget.style.borderColor = '#30363d'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#484f58'; e.currentTarget.style.borderColor = '#21262d'; }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-border-strong)'; e.currentTarget.style.borderColor = 'var(--nx-panel-2)'; }}
           >
             {copy.again}
           </button>

@@ -89,7 +89,7 @@ export default function AuthModelPlacementDock({
           position: 'fixed', top: 48, right: 320, zIndex: 900,
           width: 300, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
           background: 'rgba(22,27,34,0.97)', backdropFilter: 'blur(12px)',
-          border: '1px solid #30363d', borderRadius: 12,
+          border: '1px solid var(--nx-border)', borderRadius: 12,
           padding: '12px 14px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         }}>

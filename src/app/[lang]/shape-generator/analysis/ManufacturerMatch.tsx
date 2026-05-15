@@ -294,15 +294,15 @@ interface QuoteState {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  textMuted: '#6e7681',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  textMuted: 'var(--nx-text-3)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
 };
 
 const REGION_FLAGS: Record<string, string> = {
@@ -331,9 +331,9 @@ const PROCESS_LABELS: Record<string, Record<Lang, string>> = {
 };
 
 const PRICE_META: Record<string, { labels: Record<Lang, string>; color: string }> = {
-  low:    { color: '#3fb950', labels: { en: 'Low',    ko: '저가', ja: '低価格', zh: '低价', es: 'Bajo',   ar: 'منخفض' } },
-  medium: { color: '#d29922', labels: { en: 'Medium', ko: '중가', ja: '中価格', zh: '中价', es: 'Medio',  ar: 'متوسط' } },
-  high:   { color: '#f0883e', labels: { en: 'High',   ko: '고가', ja: '高価格', zh: '高价', es: 'Alto',   ar: 'مرتفع' } },
+  low:    { color: 'var(--nx-ok)', labels: { en: 'Low',    ko: '저가', ja: '低価格', zh: '低价', es: 'Bajo',   ar: 'منخفض' } },
+  medium: { color: 'var(--nx-warn)', labels: { en: 'Medium', ko: '중가', ja: '中価格', zh: '中价', es: 'Medio',  ar: 'متوسط' } },
+  high:   { color: 'var(--nx-warn)', labels: { en: 'High',   ko: '고가', ja: '高価格', zh: '高价', es: 'Alto',   ar: 'مرتفع' } },
 };
 
 // Rough KRW-per-cm³ for a finished part, covering material + machining + margin.
@@ -469,7 +469,7 @@ function renderStars(rating: number) {
   const full = Math.floor(rating);
   const half = rating - full >= 0.5;
   return (
-    <span style={{ color: '#d29922', fontSize: 12 }}>
+    <span style={{ color: 'var(--nx-warn)', fontSize: 12 }}>
       {'★'.repeat(full)}
       {half ? '½' : ''}
       {'☆'.repeat(5 - full - (half ? 1 : 0))}
@@ -657,17 +657,17 @@ export default function ManufacturerMatch({
           borderRadius: 12,
         }}>
           <div style={{
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
             padding: '24px 28px', width: 320, boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
           }}>
             {quoteState.orderId ? (
               /* ── Success state ── */
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#3fb950', marginBottom: 6 }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--nx-ok)', marginBottom: 6 }}>
                   {t.quoteDone}
                 </p>
-                <p style={{ fontSize: 12, color: '#8b949e', marginBottom: 20, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 20, lineHeight: 1.5 }}>
                   {t.quoteDoneDesc(isKo ? quoteState.manufacturer.nameKo : quoteState.manufacturer.name)}
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
@@ -675,8 +675,8 @@ export default function ManufacturerMatch({
                     href={`/${lang}/nexyfab/orders`}
                     style={{
                       display: 'block', padding: '8px 20px', borderRadius: 8,
-                      background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                      color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none',
+                      background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                      color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, textDecoration: 'none',
                     }}
                   >
                     {t.trackOrder}
@@ -684,8 +684,8 @@ export default function ManufacturerMatch({
                   <button
                     onClick={() => setQuoteState(null)}
                     style={{
-                      padding: '8px 14px', borderRadius: 8, border: '1px solid #30363d',
-                      background: 'transparent', color: '#8b949e', fontSize: 12, cursor: 'pointer',
+                      padding: '8px 14px', borderRadius: 8, border: '1px solid var(--nx-border)',
+                      background: 'transparent', color: 'var(--nx-text-2)', fontSize: 12, cursor: 'pointer',
                     }}
                   >
                     {t.closeBtn}
@@ -695,15 +695,15 @@ export default function ManufacturerMatch({
             ) : (
               /* ── Form state ── */
               <>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3', marginBottom: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 4 }}>
                   {t.quoteTitle}
                 </div>
-                <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 18 }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 18 }}>
                   {isKo ? quoteState.manufacturer.nameKo : quoteState.manufacturer.name}
                   {partName && <> · {partName}</>}
                 </div>
 
-                <label style={{ fontSize: 11, color: '#8b949e', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 11, color: 'var(--nx-text-2)', display: 'block', marginBottom: 6 }}>
                   {t.qtyLabel}
                 </label>
                 <input
@@ -713,14 +713,14 @@ export default function ManufacturerMatch({
                   onChange={e => setQuoteState(s => s ? { ...s, quantity: Math.max(1, parseInt(e.target.value) || 1) } : s)}
                   style={{
                     width: '100%', padding: '7px 10px', borderRadius: 6,
-                    border: '1px solid #30363d', background: '#0d1117',
-                    color: '#e6edf3', fontSize: 13, outline: 'none',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+                    color: 'var(--nx-text)', fontSize: 13, outline: 'none',
                     boxSizing: 'border-box', marginBottom: 16,
                   }}
                 />
 
                 {quoteState.error && (
-                  <p style={{ fontSize: 11, color: '#f85149', marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: 'var(--nx-error)', marginBottom: 12 }}>
                     {quoteState.error}
                   </p>
                 )}
@@ -729,8 +729,8 @@ export default function ManufacturerMatch({
                   <button
                     onClick={() => setQuoteState(null)}
                     style={{
-                      flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid #30363d',
-                      background: 'transparent', color: '#8b949e', fontSize: 12, cursor: 'pointer',
+                      flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid var(--nx-border)',
+                      background: 'transparent', color: 'var(--nx-text-2)', fontSize: 12, cursor: 'pointer',
                     }}
                   >
                     {t.cancelBtn}
@@ -740,8 +740,8 @@ export default function ManufacturerMatch({
                     disabled={quoteState.submitting}
                     style={{
                       flex: 2, padding: '8px 0', borderRadius: 8, border: 'none',
-                      background: quoteState.submitting ? '#388bfd88' : 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                      color: '#fff', fontSize: 12, fontWeight: 700, cursor: quoteState.submitting ? 'default' : 'pointer',
+                      background: quoteState.submitting ? 'var(--nx-accent)88' : 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                      color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: quoteState.submitting ? 'default' : 'pointer',
                     }}
                   >
                     {quoteState.submitting ? t.submitting : t.submitBtn}
@@ -852,7 +852,7 @@ export default function ManufacturerMatch({
         ) : requiresPro ? (
           <div style={{ padding: '36px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#e6edf3', margin: '0 0 6px' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)', margin: '0 0 6px' }}>
               {t.proOnlyTitle}
             </p>
             <p style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6, margin: '0 0 18px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
@@ -862,8 +862,8 @@ export default function ManufacturerMatch({
               onClick={() => setShowUpgradeModal(true)}
               style={{
                 padding: '9px 20px', borderRadius: 8, border: 'none',
-                background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
               }}
             >
               ⚡ {t.upgradeBtn}
@@ -878,7 +878,7 @@ export default function ManufacturerMatch({
             />
           </div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#f85149' }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--nx-error)' }}>
             {error}
           </div>
         ) : sorted.length === 0 ? (
@@ -928,7 +928,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
   const [hovered, setHovered] = useState(false);
   const price = PRICE_META[m.priceLevel];
   const flag = REGION_FLAGS[m.region] ?? '🌐';
-  const scoreColor = matchScore >= 85 ? '#3fb950' : matchScore >= 65 ? '#d29922' : '#8b949e';
+  const scoreColor = matchScore >= 85 ? 'var(--nx-ok)' : matchScore >= 65 ? 'var(--nx-warn)' : 'var(--nx-text-2)';
 
   return (
     <div
@@ -951,7 +951,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
         width: 40,
         height: 40,
         borderRadius: 8,
-        background: '#0d1117',
+        background: 'var(--nx-bg)',
         border: `1px solid ${C.border}`,
         display: 'flex',
         alignItems: 'center',
@@ -971,7 +971,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
           {isTopMatch && (
             <span style={{
               fontSize: 9, padding: '2px 7px', borderRadius: 10,
-              background: 'linear-gradient(90deg,#388bfd,#8b5cf6)', color: '#fff', fontWeight: 800,
+              background: 'linear-gradient(90deg,var(--nx-accent),#8b5cf6)', color: 'var(--nx-text)', fontWeight: 800,
             }}>
               ✦ {t.topMatch}
             </span>
@@ -1003,7 +1003,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
               fontSize: 10,
               padding: '2px 7px',
               borderRadius: 4,
-              background: '#388bfd18',
+              background: 'var(--nx-accent)18',
               color: C.accent,
               border: `1px solid #388bfd30`,
             }}>
@@ -1034,7 +1034,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
                 fontSize: 9,
                 padding: '1px 5px',
                 borderRadius: 3,
-                background: '#3fb95015',
+                background: 'var(--nx-ok)15',
                 color: C.green,
                 border: `1px solid #3fb95030`,
               }}>
@@ -1052,10 +1052,10 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
           <div style={{ fontSize: 10, color: scoreColor, fontWeight: 700, marginBottom: 3, textAlign: 'right' }}>
             {matchScore}% {t.matchSuffix}
           </div>
-          <div style={{ width: '100%', height: 4, background: '#21262d', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+          <div style={{ width: '100%', height: 4, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
             <div style={{
               width: `${matchScore}%`, height: '100%', borderRadius: 3,
-              background: matchScore >= 85 ? '#3fb950' : matchScore >= 65 ? '#d29922' : '#8b949e',
+              background: matchScore >= 85 ? 'var(--nx-ok)' : matchScore >= 65 ? 'var(--nx-warn)' : 'var(--nx-text-2)',
               transition: 'width 0.4s ease',
             }} />
           </div>
@@ -1071,11 +1071,11 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
                 const pct = Math.round((val / max) * 100);
                 return (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9 }}>
-                    <span style={{ color: '#8b949e', flex: '0 0 auto', minWidth: 40, textAlign: 'left' }}>{t[labelKey]}</span>
-                    <div style={{ flex: 1, height: 3, background: '#21262d', borderRadius: 2 }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: pct >= 80 ? '#3fb950' : pct >= 50 ? '#d29922' : '#8b949e' }} />
+                    <span style={{ color: 'var(--nx-text-2)', flex: '0 0 auto', minWidth: 40, textAlign: 'left' }}>{t[labelKey]}</span>
+                    <div style={{ flex: 1, height: 3, background: 'var(--nx-panel-2)', borderRadius: 2 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: pct >= 80 ? 'var(--nx-ok)' : pct >= 50 ? 'var(--nx-warn)' : 'var(--nx-text-2)' }} />
                     </div>
-                    <span style={{ color: '#c9d1d9', flex: '0 0 auto', minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{val}</span>
+                    <span style={{ color: 'var(--nx-text)', flex: '0 0 auto', minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{val}</span>
                   </div>
                 );
               })}
@@ -1097,8 +1097,8 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
             padding: '5px 12px',
             borderRadius: 6,
             border: 'none',
-            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-            color: '#fff',
+            background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+            color: 'var(--nx-text)',
             fontSize: 11,
             fontWeight: 700,
             cursor: 'pointer',
@@ -1135,7 +1135,7 @@ const selectStyle: React.CSSProperties = {
   padding: '5px 10px',
   borderRadius: 6,
   border: `1px solid ${C.border}`,
-  background: '#0d1117',
+  background: 'var(--nx-bg)',
   color: C.text,
   fontSize: 12,
   outline: 'none',

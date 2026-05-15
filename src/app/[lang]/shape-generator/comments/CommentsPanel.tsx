@@ -321,12 +321,12 @@ export default function CommentsPanel({
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: '#0d1117', color: '#c9d1d9',
+      background: 'var(--nx-bg)', color: 'var(--nx-text)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       {/* Header */}
       <div style={{
-        padding: '12px 14px', borderBottom: '1px solid #21262d',
+        padding: '12px 14px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{ fontSize: 14 }}>📌</span>
@@ -336,7 +336,7 @@ export default function CommentsPanel({
         {openCount > 0 && (
           <span style={{
             padding: '1px 7px', borderRadius: 10, fontSize: 10, fontWeight: 700,
-            background: '#388bfd22', color: '#388bfd', border: '1px solid #388bfd44',
+            background: 'var(--nx-accent)22', color: 'var(--nx-accent)', border: '1px solid var(--nx-accent)44',
           }}>
             {openCount}
           </span>
@@ -344,21 +344,21 @@ export default function CommentsPanel({
       </div>
 
       {/* Tab switcher */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #21262d' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--nx-panel-2)' }}>
         {(['comments', 'activity'] as TabView[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             style={{
               flex: 1, padding: '8px 0', fontSize: 11, fontWeight: tab === t ? 700 : 400, cursor: 'pointer',
-              border: 'none', borderBottom: tab === t ? '2px solid #388bfd' : '2px solid transparent',
-              background: 'transparent', color: tab === t ? '#388bfd' : '#6e7681',
+              border: 'none', borderBottom: tab === t ? '2px solid var(--nx-accent)' : '2px solid transparent',
+              background: 'transparent', color: tab === t ? 'var(--nx-accent)' : 'var(--nx-text-3)',
               transition: 'all 0.15s',
             }}
           >
             {t === 'comments' ? tt.comments : tt.activity}
             {t === 'activity' && activityFeed.length > 0 && (
-              <span style={{ marginLeft: 4, fontSize: 9, background: '#388bfd', color: '#fff', borderRadius: 10, padding: '0 4px' }}>
+              <span style={{ marginLeft: 4, fontSize: 9, background: 'var(--nx-accent)', color: 'var(--nx-text)', borderRadius: 10, padding: '0 4px' }}>
                 {activityFeed.length}
               </span>
             )}
@@ -372,14 +372,14 @@ export default function CommentsPanel({
         <>
           {/* Stats row */}
           {comments.length > 0 && (issueCount > 0 || approvalCount > 0) && (
-            <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderBottom: '1px solid #21262d' }}>
+            <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
               {issueCount > 0 && (
                 <span style={{ fontSize: 10, color: '#e3b341', fontWeight: 700 }}>
                   ⚠ {issueCount} {tt.openIssue(issueCount)}
                 </span>
               )}
               {approvalCount > 0 && (
-                <span style={{ fontSize: 10, color: '#3fb950', fontWeight: 700 }}>
+                <span style={{ fontSize: 10, color: 'var(--nx-ok)', fontWeight: 700 }}>
                   ✓ {approvalCount} {tt.approval(approvalCount)}
                 </span>
               )}
@@ -387,14 +387,14 @@ export default function CommentsPanel({
           )}
 
           {/* Add pin button */}
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d' }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
             <button
               onClick={() => setIsPlacingComment(!isPlacingComment)}
               style={{
                 width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', border: `1px solid ${isPlacingComment ? '#388bfd' : '#30363d'}`,
-                background: isPlacingComment ? '#388bfd22' : 'transparent',
-                color: isPlacingComment ? '#388bfd' : '#8b949e',
+                cursor: 'pointer', border: `1px solid ${isPlacingComment ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                background: isPlacingComment ? 'var(--nx-accent)22' : 'transparent',
+                color: isPlacingComment ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'all 0.15s',
               }}
@@ -402,7 +402,7 @@ export default function CommentsPanel({
               {isPlacingComment ? tt.clickToPlacePin : tt.addPin}
             </button>
             {isPlacingComment && (
-              <p style={{ margin: '6px 0 0', fontSize: 10, color: '#6e7681', textAlign: 'center', lineHeight: 1.4 }}>
+              <p style={{ margin: '6px 0 0', fontSize: 10, color: 'var(--nx-text-3)', textAlign: 'center', lineHeight: 1.4 }}>
                 {tt.clickHint}
               </p>
             )}
@@ -410,7 +410,7 @@ export default function CommentsPanel({
 
           {/* Filters */}
           {comments.length > 0 && (
-            <div style={{ padding: '8px 14px', borderBottom: '1px solid #21262d', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {(['all', 'comment', 'issue', 'approval'] as FilterType[]).map(t => (
                   <button
@@ -419,9 +419,9 @@ export default function CommentsPanel({
                     style={{
                       flex: 1, padding: '3px 0', borderRadius: 5, fontSize: 10,
                       fontWeight: typeFilter === t ? 700 : 400, cursor: 'pointer',
-                      border: `1px solid ${typeFilter === t ? (t === 'all' ? '#8b949e' : TYPE_COLOR[t as MeshComment['type']]) : '#30363d'}`,
-                      background: typeFilter === t ? (t === 'all' ? '#8b949e22' : TYPE_COLOR[t as MeshComment['type']] + '22') : 'transparent',
-                      color: typeFilter === t ? (t === 'all' ? '#c9d1d9' : TYPE_COLOR[t as MeshComment['type']]) : '#6e7681',
+                      border: `1px solid ${typeFilter === t ? (t === 'all' ? 'var(--nx-text-2)' : TYPE_COLOR[t as MeshComment['type']]) : 'var(--nx-border)'}`,
+                      background: typeFilter === t ? (t === 'all' ? 'var(--nx-text-2)22' : TYPE_COLOR[t as MeshComment['type']] + '22') : 'transparent',
+                      color: typeFilter === t ? (t === 'all' ? 'var(--nx-text)' : TYPE_COLOR[t as MeshComment['type']]) : 'var(--nx-text-3)',
                       transition: 'all 0.12s',
                     }}
                   >
@@ -437,9 +437,9 @@ export default function CommentsPanel({
                     style={{
                       flex: 1, padding: '3px 0', borderRadius: 5, fontSize: 10,
                       fontWeight: statusFilter === s ? 700 : 400, cursor: 'pointer',
-                      border: `1px solid ${statusFilter === s ? '#388bfd' : '#30363d'}`,
-                      background: statusFilter === s ? '#388bfd22' : 'transparent',
-                      color: statusFilter === s ? '#388bfd' : '#6e7681',
+                      border: `1px solid ${statusFilter === s ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                      background: statusFilter === s ? 'var(--nx-accent)22' : 'transparent',
+                      color: statusFilter === s ? 'var(--nx-accent)' : 'var(--nx-text-3)',
                       transition: 'all 0.12s',
                     }}
                   >
@@ -453,14 +453,14 @@ export default function CommentsPanel({
           {/* Comment list */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {comments.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: '#6e7681' }}>
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--nx-text-3)' }}>
                 <div style={{ fontSize: 32, marginBottom: 10, opacity: 0.4 }}>📌</div>
                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
                   {tt.noComments}
                 </p>
               </div>
             ) : filtered.length === 0 ? (
-              <div style={{ padding: '28px 20px', textAlign: 'center', color: '#6e7681', fontSize: 12 }}>
+              <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--nx-text-3)', fontSize: 12 }}>
                 {tt.noMatchFilter}
               </div>
             ) : (
@@ -503,7 +503,7 @@ function CommentItem({
   onReply?: (id: string, text: string) => void;
   onClick?: () => void;
 }) {
-  const color = comment.resolved ? '#8b949e' : TYPE_COLOR[comment.type];
+  const color = comment.resolved ? 'var(--nx-text-2)' : TYPE_COLOR[comment.type];
   const typeLabel = typeLabelFor(comment.type, tt);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -525,12 +525,12 @@ function CommentItem({
       ref={focusedRef as React.RefObject<HTMLDivElement>}
       onClick={onClick}
       style={{
-        borderBottom: '1px solid #21262d',
+        borderBottom: '1px solid var(--nx-panel-2)',
         padding: '11px 14px',
         opacity: comment.resolved ? 0.65 : 1,
         cursor: 'pointer',
-        background: isFocused ? '#388bfd11' : 'transparent',
-        borderLeft: isFocused ? '2px solid #388bfd' : '2px solid transparent',
+        background: isFocused ? 'var(--nx-accent)11' : 'transparent',
+        borderLeft: isFocused ? '2px solid var(--nx-accent)' : '2px solid transparent',
         transition: 'background 0.15s',
       }}
     >
@@ -543,13 +543,13 @@ function CommentItem({
           {typeLabel}
         </span>
         {comment.resolved && (
-          <span style={{ fontSize: 10, color: '#3fb950' }}>✓ {tt.resolvedLabel}</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-ok)' }}>✓ {tt.resolvedLabel}</span>
         )}
-        {isFocused && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#388bfd' }}>● {tt.focused}</span>}
+        {isFocused && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--nx-accent)' }}>● {tt.focused}</span>}
       </div>
 
       {/* Text */}
-      <p style={{ margin: '0 0 6px', fontSize: 12, color: '#c9d1d9', lineHeight: 1.5, wordBreak: 'break-word' }}>
+      <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--nx-text)', lineHeight: 1.5, wordBreak: 'break-word' }}>
         {comment.text}
       </p>
 
@@ -558,13 +558,13 @@ function CommentItem({
         {comment.authorColor && (
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: comment.authorColor, flexShrink: 0, display: 'inline-block' }} />
         )}
-        <span style={{ fontSize: 10, fontWeight: 600, color: '#8b949e' }}>{comment.author}</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)' }}>{comment.author}</span>
         {comment.authorPlan && (
-          <span style={{ fontSize: 9, color: '#388bfd', padding: '0 4px', border: '1px solid #388bfd44', borderRadius: 3 }}>
+          <span style={{ fontSize: 9, color: 'var(--nx-accent)', padding: '0 4px', border: '1px solid var(--nx-accent)44', borderRadius: 3 }}>
             {comment.authorPlan}
           </span>
         )}
-        <span style={{ fontSize: 10, color: '#6e7681', marginLeft: 'auto' }}>{dateStr}</span>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)', marginLeft: 'auto' }}>{dateStr}</span>
       </div>
 
       {/* Existing reactions */}
@@ -577,7 +577,7 @@ function CommentItem({
                 onClick={(e) => { e.stopPropagation(); onReact?.(comment.id, emoji); }}
                 style={{
                   padding: '1px 6px', borderRadius: 10, fontSize: 11, cursor: 'pointer',
-                  border: '1px solid #30363d', background: '#21262d', color: '#c9d1d9',
+                  border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
                 }}
               >
                 {emoji} {userIds.length}
@@ -589,17 +589,17 @@ function CommentItem({
 
       {/* Replies preview */}
       {(comment.replies?.length ?? 0) > 0 && (
-        <div style={{ borderLeft: '2px solid #30363d', paddingLeft: 8, marginBottom: 8 }}>
+        <div style={{ borderLeft: '2px solid var(--nx-border)', paddingLeft: 8, marginBottom: 8 }}>
           {comment.replies.map(r => (
             <div key={r.id} style={{ marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
                 {r.authorColor && <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.authorColor, flexShrink: 0, display: 'inline-block' }} />}
-                <span style={{ fontSize: 10, fontWeight: 600, color: '#6e7681' }}>{r.author}</span>
-                <span style={{ fontSize: 9, color: '#6e7681', marginLeft: 'auto' }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3)' }}>{r.author}</span>
+                <span style={{ fontSize: 9, color: 'var(--nx-text-3)', marginLeft: 'auto' }}>
                   {new Date(r.createdAt).toLocaleTimeString(bcp47(lang), { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p style={{ margin: 0, fontSize: 11, color: '#c9d1d9', lineHeight: 1.4 }}>{r.text}</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-text)', lineHeight: 1.4 }}>{r.text}</p>
             </div>
           ))}
         </div>
@@ -615,8 +615,8 @@ function CommentItem({
             rows={2}
             placeholder={tt.replyPlaceholder}
             style={{
-              width: '100%', background: '#161b22', border: '1px solid #30363d',
-              borderRadius: 5, color: '#c9d1d9', fontSize: 12, padding: '5px 8px',
+              width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+              borderRadius: 5, color: 'var(--nx-text)', fontSize: 12, padding: '5px 8px',
               resize: 'none', outline: 'none', boxSizing: 'border-box', marginBottom: 6,
               fontFamily: 'system-ui, sans-serif',
             }}
@@ -627,11 +627,11 @@ function CommentItem({
           />
           <div style={{ display: 'flex', gap: 5 }}>
             <button onClick={(e) => { e.stopPropagation(); submitReply(); }}
-              style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #388bfd66', background: '#388bfd22', color: '#388bfd' }}>
+              style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid var(--nx-accent)66', background: 'var(--nx-accent)22', color: 'var(--nx-accent)' }}>
               {tt.reply}
             </button>
             <button onClick={(e) => { e.stopPropagation(); setShowReply(false); }}
-              style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #6e767166', background: 'transparent', color: '#6e7681' }}>
+              style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #6e767166', background: 'transparent', color: 'var(--nx-text-3)' }}>
               {tt.cancel}
             </button>
           </div>
@@ -643,7 +643,7 @@ function CommentItem({
         <div style={{ display: 'flex', gap: 4, marginBottom: 6 }} onClick={e => e.stopPropagation()}>
           {REACTION_EMOJIS.map(emoji => (
             <button key={emoji} onClick={() => { onReact(comment.id, emoji); setShowReactions(false); }}
-              style={{ padding: '2px 5px', borderRadius: 5, fontSize: 13, cursor: 'pointer', border: '1px solid #30363d', background: '#21262d' }}>
+              style={{ padding: '2px 5px', borderRadius: 5, fontSize: 13, cursor: 'pointer', border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)' }}>
               {emoji}
             </button>
           ))}
@@ -655,26 +655,26 @@ function CommentItem({
         {onReact && (
           <button
             onClick={() => setShowReactions(v => !v)}
-            style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #30363d', background: 'transparent', color: '#6e7681' }}
+            style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid var(--nx-border)', background: 'transparent', color: 'var(--nx-text-3)' }}
           >
             😊
           </button>
         )}
         {onReply && !showReply && (
           <button onClick={() => setShowReply(true)}
-            style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #6e767166', background: 'transparent', color: '#6e7681' }}>
+            style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #6e767166', background: 'transparent', color: 'var(--nx-text-3)' }}>
             {tt.reply}
             {(comment.replies?.length ?? 0) > 0 && ` (${comment.replies.length})`}
           </button>
         )}
         {!comment.resolved && (
           <button onClick={() => onResolve(comment.id)}
-            style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #3fb95066', background: '#3fb95022', color: '#3fb950' }}>
+            style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid var(--nx-ok)66', background: 'var(--nx-ok)22', color: 'var(--nx-ok)' }}>
             {tt.resolve}
           </button>
         )}
         <button onClick={() => onDelete(comment.id)}
-          style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid #f8514966', background: '#f8514922', color: '#f85149' }}>
+          style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: '1px solid var(--nx-error)66', background: 'var(--nx-error)22', color: 'var(--nx-error)' }}>
           {tt.delete}
         </button>
       </div>
@@ -713,7 +713,7 @@ function ActivityFeedPanel({ events, tt, lang }: { events: ActivityEvent[]; tt: 
 
   if (sorted.length === 0) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6e7681', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nx-text-3)', flexDirection: 'column', gap: 8 }}>
         <div style={{ fontSize: 28, opacity: 0.4 }}>📋</div>
         <p style={{ margin: 0, fontSize: 12 }}>{tt.noActivity}</p>
       </div>
@@ -723,25 +723,25 @@ function ActivityFeedPanel({ events, tt, lang }: { events: ActivityEvent[]; tt: 
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
       {sorted.map(evt => (
-        <div key={evt.id} style={{ padding: '9px 14px', borderBottom: '1px solid #21262d', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <div key={evt.id} style={{ padding: '9px 14px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{ACTIVITY_ICON[evt.type]}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
               {evt.actorColor && (
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: evt.actorColor, flexShrink: 0, display: 'inline-block' }} />
               )}
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#c9d1d9' }}>{evt.actor}</span>
-              <span style={{ fontSize: 11, color: '#6e7681' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text)' }}>{evt.actor}</span>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
                 {activityLabel(evt.type)}
               </span>
             </div>
             {evt.detail && (
-              <p style={{ margin: 0, fontSize: 10, color: '#8b949e', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-2)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {evt.detail}
               </p>
             )}
           </div>
-          <span style={{ fontSize: 9, color: '#6e7681', flexShrink: 0, marginTop: 2 }}>
+          <span style={{ fontSize: 9, color: 'var(--nx-text-3)', flexShrink: 0, marginTop: 2 }}>
             {new Date(evt.ts).toLocaleTimeString(bcp47(lang), { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>

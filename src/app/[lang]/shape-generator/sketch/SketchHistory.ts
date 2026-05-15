@@ -90,8 +90,8 @@ export function generateSketchThumbnail(profile: SketchProfile, size = 80): stri
     }
 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect width="${size}" height="${size}" fill="#161b22" rx="4"/>
-  <path d="${pathData.trim()}" fill="none" stroke="#388bfd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="${size}" height="${size}" fill="var(--nx-panel)" rx="4"/>
+  <path d="${pathData.trim()}" fill="none" stroke="var(--nx-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
     return `data:image/svg+xml;base64,${btoa(svg)}`;

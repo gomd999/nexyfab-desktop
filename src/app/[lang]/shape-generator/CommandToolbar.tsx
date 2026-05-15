@@ -1515,14 +1515,14 @@ interface CommandToolbarProps {
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C_DARK = {
-  bg: '#161b22',
+  bg: 'var(--nx-panel)',
   tabBar: '#1b1f27',
-  border: '#30363d',
-  accent: '#388bfd',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  hover: '#30363d',
-  dropBg: '#21262d',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  hover: 'var(--nx-border)',
+  dropBg: 'var(--nx-panel-2)',
 };
 
 const _C_LIGHT_RIBBON = {
@@ -1563,7 +1563,7 @@ const S = {
   tab: (active: boolean) => ({
     padding: '6px 16px', border: 'none', borderRadius: 0,
     background: active ? C_DARK.bg : 'transparent',
-    color: active ? '#fff' : C_DARK.textDim,
+    color: active ? 'var(--nx-text)' : C_DARK.textDim,
     fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer',
     borderBottom: active ? `2px solid ${C_DARK.accent}` : '2px solid transparent',
     transition: 'all 0.12s', height: '100%',
@@ -1588,7 +1588,7 @@ const S = {
     justifyContent: 'flex-start', gap: 1,
     width: 50, minWidth: 50, padding: '3px 2px 2px', borderRadius: 6,
     border: 'none', background: active ? C_DARK.accent : 'transparent',
-    color: active ? '#fff' : disabled ? '#6e7681' : C_DARK.text,
+    color: active ? 'var(--nx-text)' : disabled ? 'var(--nx-text-3)' : C_DARK.text,
     cursor: disabled ? 'default' : 'pointer',
     fontSize: 10, fontWeight: 600, transition: 'background 0.1s',
     opacity: disabled ? 0.5 : 1, position: 'relative' as const,
@@ -1617,7 +1617,7 @@ const S = {
     display: 'flex', alignItems: 'center', gap: 4,
     padding: '4px 10px', borderRadius: 5, border: 'none',
     background: active ? C_DARK.accent : 'transparent',
-    color: active ? '#fff' : C_DARK.text,
+    color: active ? 'var(--nx-text)' : C_DARK.text,
     fontSize: 11, fontWeight: 600, cursor: 'pointer',
     transition: 'background 0.1s',
   }),
@@ -1678,7 +1678,7 @@ function ToolButton({ tool, openSub, onOpenSub, onClose }: {
             <span style={{
               position: 'absolute', top: -1, right: -2,
               minWidth: 14, height: 14, borderRadius: 7,
-              background: '#f85149', color: '#fff',
+              background: 'var(--nx-error)', color: 'var(--nx-text)',
               fontSize: 9, fontWeight: 800, lineHeight: '14px',
               textAlign: 'center', padding: '0 2px',
               pointerEvents: 'none',
@@ -2259,11 +2259,11 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                   if (recent.length === 0) return null;
                   return (
                     <>
-                      <div style={{ padding: '6px 12px 3px', fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ padding: '6px 12px 3px', fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 5 }}>
                         {tt.recentFiles}
                         <span
                           title={tt.recentFilesTip}
-                          style={{ cursor: 'help', fontSize: 10, color: '#484f58', border: '1px solid #484f58', borderRadius: '50%', width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}
+                          style={{ cursor: 'help', fontSize: 10, color: 'var(--nx-border-strong)', border: '1px solid var(--nx-border-strong)', borderRadius: '50%', width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}
                         >?</span>
                       </div>
                       {recent.slice(0, 5).map((f: { name: string; ext: string; date: number }, i: number) => (
@@ -2274,7 +2274,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                         >
                           <span style={{ fontSize: 13, width: 18, textAlign: 'center' }}>🕐</span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
-                          <span style={{ fontSize: 9, color: '#484f58', flexShrink: 0, marginLeft: 4 }}>
+                          <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', flexShrink: 0, marginLeft: 4 }}>
                             {new Date(f.date).toLocaleDateString()}
                           </span>
                         </div>
@@ -2285,7 +2285,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
               })()}
               <div style={{ height: 1, background: C_DARK.border, margin: '3px 8px' }} />
               {!hasResult && (
-                <div style={{ padding: '4px 12px 2px', fontSize: 10, color: '#6e7681', fontStyle: 'italic' }}>
+                <div style={{ padding: '4px 12px 2px', fontSize: 10, color: 'var(--nx-text-3)', fontStyle: 'italic' }}>
                   {tt.genShapeFirst}
                 </div>
               )}
@@ -2322,15 +2322,15 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'STEP' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
                 <span>{exportingFormat === 'STEP' ? tt.exportingSTEP : tt.exportSTEP}</span>
-                {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#374151', color: '#9ca3af', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
-                {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: '#fff', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+                {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#374151', color: 'var(--nx-text-2)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
+                {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'GLTF') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'GLTF'} onClick={() => { onExportGLTF?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'GLTF' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
                 <span>{exportingFormat === 'GLTF' ? tt.exportingGLTF : tt.exportGLTFLabel}</span>
-                {lockedFormats.includes('gltf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: '#fff', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+                {lockedFormats.includes('gltf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: hasResult ? 1 : 0.4 }} disabled={!hasResult} onClick={() => { if (hasResult) { onExportGLB?.(); closeSub(); } }}
                 onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}
@@ -2408,14 +2408,14 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'Rhino' ? <span className="__nf_exporting">⟳</span> : '🦏'}</span>
                 <span>{exportingFormat === 'Rhino' ? tt.exportingRhino : (t.exportRhino ?? tt.exportRhinoJSON)}</span>
-                {lockedFormats.includes('rhino') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#ec4899', color: '#fff', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 TEAM</span>}
+                {lockedFormats.includes('rhino') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#ec4899', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 TEAM</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'Grasshopper') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'Grasshopper'} onClick={() => { onExportGrasshopper?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'Grasshopper' ? <span className="__nf_exporting">⟳</span> : '🌿'}</span>
                 <span>{exportingFormat === 'Grasshopper' ? tt.exportingGH : (t.exportGrasshopper ?? tt.exportGHPoints)}</span>
-                {lockedFormats.includes('grasshopper') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#ec4899', color: '#fff', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 TEAM</span>}
+                {lockedFormats.includes('grasshopper') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#ec4899', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 TEAM</span>}
               </button>
               <div style={{ height: 1, background: C_DARK.border, margin: '3px 8px' }} />
               <button style={S.dropItem} onClick={() => { onSaveScene?.(); closeSub(); }}
@@ -2437,7 +2437,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'DXF' ? <span className="__nf_exporting">⟳</span> : '📐'}</span>
                   <span>{exportingFormat === 'DXF' ? tt.exportingDXF : tt.exportDXF}</span>
-                  {lockedFormats.includes('dxf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: '#fff', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+                  {lockedFormats.includes('dxf') && <span style={{ marginLeft: 'auto', fontSize: 9, background: '#8b5cf6', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
                 </button>
                 <button style={S.dropItem} onClick={() => { onExportFlatPatternDXF?.(); closeSub(); }}
                   onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
@@ -2450,7 +2450,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                   onChange={e => onDxfProjectionChange?.(e.target.value as 'xy' | 'xz' | 'yz')}
                   onClick={e => e.stopPropagation()}
                   style={{
-                    background: '#0d1117', color: C_DARK.text, border: `1px solid ${C_DARK.border}`,
+                    background: 'var(--nx-bg)', color: C_DARK.text, border: `1px solid ${C_DARK.border}`,
                     borderRadius: 4, padding: '2px 6px', fontSize: 11, cursor: 'pointer',
                     marginLeft: 'auto',
                   }}
@@ -2476,7 +2476,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
         {tabs.filter(tab => isSketchMode ? tab.key === 'sketch' : true).map(tab => (
           <button key={tab.key} style={tabStyle(commandTab === tab.key)}
             onClick={() => { setCommandTab(tab.key); closeSub(); }}
-            onMouseEnter={e => { if (commandTab !== tab.key) e.currentTarget.style.color = '#fff'; }}
+            onMouseEnter={e => { if (commandTab !== tab.key) e.currentTarget.style.color = 'var(--nx-text)'; }}
             onMouseLeave={e => { if (commandTab !== tab.key) e.currentTarget.style.color = C_DARK.textDim; }}
             title={tab.key === 'sketch' ? tt.sketchModeTip : undefined}
           >
@@ -2515,8 +2515,8 @@ export default function CommandToolbar(props: CommandToolbarProps) {
               style={{
                 padding: '6px 12px',
                 backgroundColor: 'transparent',
-                color: '#c9d1d9',
-                border: '1px solid #30363d',
+                color: 'var(--nx-text)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 6,
                 fontSize: 12,
                 fontWeight: 600,

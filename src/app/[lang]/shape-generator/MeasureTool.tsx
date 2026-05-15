@@ -495,12 +495,12 @@ export default function MeasureTool({
           }}>
             <div style={{
               background: 'rgba(0,0,0,0.8)',
-              color: '#e6edf3',
+              color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 600,
               padding: '5px 14px',
               borderRadius: 6,
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
               whiteSpace: 'nowrap',
               display: 'flex',
               alignItems: 'center',
@@ -509,7 +509,7 @@ export default function MeasureTool({
               <span style={{ opacity: 0.6 }}>📐</span>
               {promptText}
               {wip.length > 0 && (
-                <span style={{ color: '#8b949e', fontSize: 10 }}>
+                <span style={{ color: 'var(--nx-text-2)', fontSize: 10 }}>
                   {t.escCancel}
                 </span>
               )}
@@ -526,7 +526,7 @@ export default function MeasureTool({
               right: 12,
               width: 200,
               background: 'rgba(13,17,23,0.93)',
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
               borderRadius: 10,
               padding: '8px 0',
               pointerEvents: 'auto',
@@ -537,10 +537,10 @@ export default function MeasureTool({
               padding: '0 10px 5px',
               fontSize: 10,
               fontWeight: 800,
-              color: '#8b949e',
+              color: 'var(--nx-text-2)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              borderBottom: '1px solid #30363d',
+              borderBottom: '1px solid var(--nx-border)',
               marginBottom: 2,
               display: 'flex',
               justifyContent: 'space-between',
@@ -549,7 +549,7 @@ export default function MeasureTool({
               <span>{t.measurements}</span>
               <button
                 onClick={clearAll}
-                style={{ fontSize: 10, color: '#8b949e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                style={{ fontSize: 10, color: 'var(--nx-text-2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
                 {t.clearAll}
               </button>
@@ -605,7 +605,7 @@ function MeasureEntryRow({
       padding: '4px 10px',
       gap: 6,
       fontSize: 11,
-      borderBottom: '1px solid #21262d',
+      borderBottom: '1px solid var(--nx-panel-2)',
     }}>
       <span style={{ color: modeColor, fontWeight: 700, minWidth: 14, textAlign: 'center' }}>
         {modeIcon}
@@ -618,7 +618,7 @@ function MeasureEntryRow({
         title={copyLabel}
         style={{
           fontSize: 10,
-          color: copied ? '#22d3ee' : '#8b949e',
+          color: copied ? '#22d3ee' : 'var(--nx-text-2)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -632,7 +632,7 @@ function MeasureEntryRow({
         title={deleteLabel}
         style={{
           fontSize: 10,
-          color: '#8b949e',
+          color: 'var(--nx-text-2)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',

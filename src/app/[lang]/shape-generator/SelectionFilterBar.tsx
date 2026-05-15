@@ -37,11 +37,11 @@ export default function SelectionFilterBar({ activeFilters, onToggle, lang }: Se
     <div style={{
       display: 'flex', alignItems: 'center', gap: 2,
       padding: '2px 8px', height: 26,
-      background: '#161b22', borderBottom: '1px solid #21262d',
+      background: 'var(--nx-panel)', borderBottom: '1px solid var(--nx-panel-2)',
       flexShrink: 0,
       direction: lang === 'ar' ? 'rtl' : 'ltr',
     }}>
-      <span style={{ color: '#6e7681', fontSize: 10, fontWeight: 700, marginRight: 4 }}>
+      <span style={{ color: 'var(--nx-text-3)', fontSize: 10, fontWeight: 700, marginRight: 4 }}>
         {lbl(lang, 'title')}:
       </span>
       {FILTERS.map(f => {
@@ -54,15 +54,15 @@ export default function SelectionFilterBar({ activeFilters, onToggle, lang }: Se
             style={{
               display: 'flex', alignItems: 'center', gap: 3,
               padding: '2px 8px', borderRadius: 4,
-              border: active ? '1px solid #388bfd' : '1px solid transparent',
+              border: active ? '1px solid var(--nx-accent)' : '1px solid transparent',
               background: active ? 'rgba(56,139,253,0.15)' : 'transparent',
-              color: active ? '#58a6ff' : '#6e7681',
+              color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
               fontSize: 10, fontWeight: 700, cursor: 'pointer',
               fontFamily: 'system-ui, sans-serif',
               transition: 'all 0.12s',
             }}
-            onMouseEnter={e => { if (!active) e.currentTarget.style.color = '#c9d1d9'; }}
-            onMouseLeave={e => { if (!active) e.currentTarget.style.color = '#6e7681'; }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'var(--nx-text)'; }}
+            onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--nx-text-3)'; }}
           >
             <span style={{ fontSize: 12, lineHeight: 1 }}>{f.icon}</span>
             {lbl(lang, f.id)}
@@ -79,8 +79,8 @@ export default function SelectionFilterBar({ activeFilters, onToggle, lang }: Se
         }}
         style={{
           padding: '1px 6px', borderRadius: 3,
-          border: '1px solid #21262d', background: 'transparent',
-          color: '#6e7681', fontSize: 9, fontWeight: 700,
+          border: '1px solid var(--nx-panel-2)', background: 'transparent',
+          color: 'var(--nx-text-3)', fontSize: 9, fontWeight: 700,
           cursor: 'pointer', fontFamily: 'system-ui, sans-serif',
         }}
       >

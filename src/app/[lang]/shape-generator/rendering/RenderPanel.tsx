@@ -83,12 +83,12 @@ const ENV_KEYS: { value: EnvironmentPreset; key: 'studio' | 'city' | 'sunset' | 
 
 const toggleStyle = (active: boolean): React.CSSProperties => ({
   width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
-  background: active ? '#388bfd' : '#484f58',
+  background: active ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
   position: 'relative', transition: 'background 0.2s', flexShrink: 0,
 });
 
 const knobStyle = (active: boolean): React.CSSProperties => ({
-  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+  width: 16, height: 16, borderRadius: '50%', background: 'var(--nx-text)',
   position: 'absolute', top: 2, left: active ? 18 : 2, transition: 'left 0.2s',
 });
 
@@ -120,14 +120,14 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
     if (hdriInputRef.current) hdriInputRef.current.value = '';
   };
 
-  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#c9d1d9' };
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--nx-text)' };
   const rowStyle: React.CSSProperties = { marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' };
-  const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, marginTop: 4 };
+  const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, marginTop: 4 };
 
   return (
-    <div style={{ background: '#21262d', borderRadius: 10, border: '1px solid #30363d', padding: 12 }}>
+    <div style={{ background: 'var(--nx-panel-2)', borderRadius: 10, border: '1px solid var(--nx-border)', padding: 12 }}>
       {/* Header */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 14 }}>🎬</span>
         {t.title}
       </div>
@@ -145,16 +145,16 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
           onChange={handleHdriUpload}
         />
         {settings.customHdriUrl ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, padding: '5px 8px' }}>
-            <span style={{ fontSize: 11, color: '#3fb950', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 6, padding: '5px 8px' }}>
+            <span style={{ fontSize: 11, color: 'var(--nx-ok)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               ✓ {settings.customHdriName ?? 'custom.hdr'}
             </span>
-            <button onClick={clearHdri} style={{ fontSize: 10, background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', padding: '0 2px' }}>✕</button>
+            <button onClick={clearHdri} style={{ fontSize: 10, background: 'none', border: 'none', color: 'var(--nx-error)', cursor: 'pointer', padding: '0 2px' }}>✕</button>
           </div>
         ) : (
           <button
             onClick={() => hdriInputRef.current?.click()}
-            style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px dashed #484f58', background: 'transparent', color: '#8b949e', fontSize: 11, cursor: 'pointer', textAlign: 'center' }}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px dashed var(--nx-border-strong)', background: 'transparent', color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer', textAlign: 'center' }}
           >
             {t.upload}
           </button>
@@ -167,7 +167,7 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
           <select
             value={settings.environment}
             onChange={e => update('environment', e.target.value as EnvironmentPreset)}
-            style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #30363d', background: '#0d1117', color: '#c9d1d9', fontSize: 12, cursor: 'pointer', outline: 'none' }}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 12, cursor: 'pointer', outline: 'none' }}
           >
             {ENV_KEYS.map(opt => (
               <option key={opt.value} value={opt.value}>{t[opt.key]}</option>
@@ -197,7 +197,7 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
       <div style={{ ...rowStyle, marginBottom: 12 }}>
         <div>
           <label style={labelStyle}>Path Tracing</label>
-          <div style={{ fontSize: 9, color: '#6e7681', marginTop: 1 }}>{t.ptDesc}</div>
+          <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 1 }}>{t.ptDesc}</div>
         </div>
         <button onClick={() => update('pathTracing', !settings.pathTracing)} style={toggleStyle(!!settings.pathTracing)}>
           <div style={knobStyle(!!settings.pathTracing)} />
@@ -210,38 +210,38 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
       <div style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
           <label style={labelStyle}>{t.shadow}</label>
-          <span style={{ fontSize: 10, color: '#6e7681', fontFamily: 'monospace' }}>{settings.shadowIntensity.toFixed(2)}</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontFamily: 'monospace' }}>{settings.shadowIntensity.toFixed(2)}</span>
         </div>
         <input type="range" min={0} max={1} step={0.05} value={settings.shadowIntensity}
           onChange={e => update('shadowIntensity', parseFloat(e.target.value))}
-          style={{ width: '100%', accentColor: '#388bfd', height: 4 }} />
+          style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 4 }} />
       </div>
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
           <label style={labelStyle}>{t.exposure}</label>
-          <span style={{ fontSize: 10, color: '#6e7681', fontFamily: 'monospace' }}>{settings.exposure.toFixed(2)}</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontFamily: 'monospace' }}>{settings.exposure.toFixed(2)}</span>
         </div>
         <input type="range" min={0.2} max={3} step={0.05} value={settings.exposure}
           onChange={e => update('exposure', parseFloat(e.target.value))}
-          style={{ width: '100%', accentColor: '#388bfd', height: 4 }} />
+          style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 4 }} />
       </div>
 
       {/* ─ Capture buttons ─ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <button onClick={onCapture}
-          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #388bfd', background: 'linear-gradient(135deg, #1a2332, #0d1117)', color: '#58a6ff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#388bfd'; e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #1a2332, #0d1117)'; e.currentTarget.style.color = '#58a6ff'; }}
+          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--nx-accent)', background: 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-bg))', color: 'var(--nx-accent-2)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-bg))'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
         >
           <span>📸</span>{t.capture}
         </button>
 
         {onHighResCapture && (
           <button onClick={onHighResCapture}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #3fb950', background: 'linear-gradient(135deg, #1a2332, #0d1117)', color: '#3fb950', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#238636'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #1a2332, #0d1117)'; e.currentTarget.style.color = '#3fb950'; }}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--nx-ok)', background: 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-bg))', color: 'var(--nx-ok)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#238636'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-bg))'; e.currentTarget.style.color = 'var(--nx-ok)'; }}
           >
             <span>🖼️</span>{t.hiRes}
           </button>

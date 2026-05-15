@@ -121,9 +121,9 @@ function isStepFile(file: File) {
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #21262d' }}>
-      <span style={{ color: '#8b949e', fontSize: 12, fontWeight: 500 }}>{label}</span>
-      <span style={{ color: '#e6edf3', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--nx-panel-2)' }}>
+      <span style={{ color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 500 }}>{label}</span>
+      <span style={{ color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </div>
   );
 }
@@ -227,12 +227,12 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      background: '#0d1117',
-      border: '1px solid #21262d',
+      background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-panel-2)',
       borderRadius: 12,
       padding: 20,
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#e6edf3',
+      color: 'var(--nx-text)',
       maxWidth: 480,
     }}>
 
@@ -244,7 +244,7 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
           style={{
-            border: `2px dashed ${isDragging ? '#388bfd' : '#30363d'}`,
+            border: `2px dashed ${isDragging ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
             borderRadius: 10,
             padding: '36px 24px',
             textAlign: 'center',
@@ -257,17 +257,17 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
           <svg width={40} height={40} viewBox="0 0 24 24" fill="none"
             style={{ margin: '0 auto 12px', display: 'block', opacity: 0.5 }}>
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
-              stroke="#58a6ff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              stroke="var(--nx-accent-2)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             <polyline points="14 2 14 8 20 8"
-              stroke="#58a6ff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              stroke="var(--nx-accent-2)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             <line x1="12" y1="18" x2="12" y2="12"
-              stroke="#58a6ff" strokeWidth={1.5} strokeLinecap="round" />
+              stroke="var(--nx-accent-2)" strokeWidth={1.5} strokeLinecap="round" />
             <polyline points="9 15 12 12 15 15"
-              stroke="#58a6ff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              stroke="var(--nx-accent-2)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <p style={{ fontSize: 13, color: '#8b949e', margin: 0, lineHeight: 1.6 }}>{T.dropZone}</p>
+          <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: 0, lineHeight: 1.6 }}>{T.dropZone}</p>
           {fileName && (
-            <p style={{ fontSize: 11, color: '#484f58', marginTop: 8 }}>{fileName}</p>
+            <p style={{ fontSize: 11, color: 'var(--nx-border-strong)', marginTop: 8 }}>{fileName}</p>
           )}
           <input ref={inputRef} type="file" accept=".step,.stp,.iges,.igs"
             style={{ display: 'none' }} onChange={handleFileChange} />
@@ -278,25 +278,25 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
       {isUploading && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 13, color: '#8b949e' }}>{T.uploading}</span>
-            <span style={{ fontSize: 12, color: '#484f58', fontVariantNumeric: 'tabular-nums' }}>{uploadProgress}%</span>
+            <span style={{ fontSize: 13, color: 'var(--nx-text-2)' }}>{T.uploading}</span>
+            <span style={{ fontSize: 12, color: 'var(--nx-border-strong)', fontVariantNumeric: 'tabular-nums' }}>{uploadProgress}%</span>
           </div>
-          <div style={{ height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: 6, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{
               height: '100%',
               width: `${uploadProgress}%`,
-              background: 'linear-gradient(90deg, #388bfd, #58a6ff)',
+              background: 'linear-gradient(90deg, var(--nx-accent), var(--nx-accent-2))',
               borderRadius: 3,
               transition: 'width 0.3s ease',
             }} />
           </div>
           {fileName && (
-            <p style={{ fontSize: 11, color: '#484f58', marginTop: 8 }}>{fileName}</p>
+            <p style={{ fontSize: 11, color: 'var(--nx-border-strong)', marginTop: 8 }}>{fileName}</p>
           )}
           <button onClick={handleCancel} style={{
             marginTop: 12, padding: '5px 14px', borderRadius: 6,
-            border: '1px solid #30363d', background: 'transparent',
-            color: '#8b949e', fontSize: 12, cursor: 'pointer',
+            border: '1px solid var(--nx-border)', background: 'transparent',
+            color: 'var(--nx-text-2)', fontSize: 12, cursor: 'pointer',
           }}>
             {T.cancel}
           </button>
@@ -310,11 +310,11 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
             background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)',
             borderRadius: 8, padding: '10px 14px', marginBottom: 12,
           }}>
-            <span style={{ fontSize: 12, color: '#f85149' }}>{error}</span>
+            <span style={{ fontSize: 12, color: 'var(--nx-error)' }}>{error}</span>
           </div>
           <button onClick={handleReset} style={{
-            padding: '6px 16px', borderRadius: 6, border: '1px solid #30363d',
-            background: '#21262d', color: '#c9d1d9', fontSize: 12, cursor: 'pointer',
+            padding: '6px 16px', borderRadius: 6, border: '1px solid var(--nx-border)',
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 12, cursor: 'pointer',
           }}>
             {T.retry}
           </button>
@@ -326,10 +326,10 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
         <div>
           {/* Stats header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#58a6ff' }}>{T.stats}</h4>
+            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--nx-accent-2)' }}>{T.stats}</h4>
             <button onClick={handleReset} style={{
-              padding: '3px 10px', borderRadius: 5, border: '1px solid #30363d',
-              background: 'transparent', color: '#8b949e', fontSize: 11, cursor: 'pointer',
+              padding: '3px 10px', borderRadius: 5, border: '1px solid var(--nx-border)',
+              background: 'transparent', color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
             }}>
               {T.retry}
             </button>
@@ -338,13 +338,13 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
           {/* Part Selection Tree */}
           {result.parts && result.parts.length > 1 && (
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>{T.partList}</label>
+              <label style={{ fontSize: 12, color: 'var(--nx-text-2)', display: 'block', marginBottom: 4 }}>{T.partList}</label>
               <select
                 value={selectedPartId || ''}
                 onChange={e => setSelectedPartId(e.target.value || null)}
                 style={{
                   width: '100%', padding: '6px 8px', borderRadius: 6,
-                  border: '1px solid #30363d', background: '#0d1117', color: '#c9d1d9',
+                  border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)',
                   fontSize: 12, outline: 'none'
                 }}
               >
@@ -378,7 +378,7 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
                     <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
                       {displayStats.dfmSuggestions.map((s, i) => (
                         <li key={i} style={{
-                          fontSize: 11, color: '#8b949e', lineHeight: 1.6,
+                          fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.6,
                           marginBottom: 4, listStyle: 'disc',
                         }}>
                           {s}
@@ -407,14 +407,14 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
                 }}
                 style={{
                   width: '100%', padding: '9px 0', borderRadius: 8,
-                  border: 'none', background: isLoadingGeo ? '#21262d' : '#3fb950',
-                  color: isLoadingGeo ? '#8b949e' : '#fff',
+                  border: 'none', background: isLoadingGeo ? 'var(--nx-panel-2)' : 'var(--nx-ok)',
+                  color: isLoadingGeo ? 'var(--nx-text-2)' : 'var(--nx-text)',
                   fontSize: 13, fontWeight: 700,
                   cursor: isLoadingGeo ? 'default' : 'pointer',
                   transition: 'background 0.15s',
                 }}
                 onMouseEnter={e => { if (!isLoadingGeo) (e.currentTarget as HTMLButtonElement).style.background = '#56d364'; }}
-                onMouseLeave={e => { if (!isLoadingGeo) (e.currentTarget as HTMLButtonElement).style.background = '#3fb950'; }}
+                onMouseLeave={e => { if (!isLoadingGeo) (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-ok)'; }}
               >
                 {isLoadingGeo ? T.loadingGeo : T.loadViewport}
               </button>
@@ -423,12 +423,12 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
               onClick={() => onAnalysisComplete(result)}
               style={{
                 width: '100%', padding: '9px 0', borderRadius: 8,
-                border: 'none', background: '#388bfd',
-                color: '#fff', fontSize: 13, fontWeight: 700,
+                border: 'none', background: 'var(--nx-accent)',
+                color: 'var(--nx-text)', fontSize: 13, fontWeight: 700,
                 cursor: 'pointer', transition: 'background 0.15s',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#58a6ff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#388bfd'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-accent-2)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-accent)'; }}
             >
               {T.applyDesign}
             </button>

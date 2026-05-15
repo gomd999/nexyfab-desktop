@@ -119,7 +119,7 @@ function AxisSystem() {
         <meshBasicMaterial color="#ffffff" />
       </mesh>
       <Html position={[-6, -6, 0]} style={{ pointerEvents: 'none' }}>
-        <div style={{ color: '#9ca3af', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>
+        <div style={{ color: 'var(--nx-text-2)', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>
           O(0,0,0)
         </div>
       </Html>
@@ -275,12 +275,12 @@ function Crosshair({
     <group>
       {crosshairGeo && (
         <lineSegments geometry={crosshairGeo}>
-          <lineBasicMaterial color="#6366f1" transparent opacity={0.2} depthTest={false} />
+          <lineBasicMaterial color="var(--nx-accent)" transparent opacity={0.2} depthTest={false} />
         </lineSegments>
       )}
       {alignGeo && (
         <lineSegments geometry={alignGeo}>
-          <lineBasicMaterial color="#f59e0b" transparent opacity={0.6} depthTest={false} />
+          <lineBasicMaterial color="var(--nx-warn)" transparent opacity={0.6} depthTest={false} />
         </lineSegments>
       )}
       {/* Snap indicator ring */}
@@ -324,7 +324,7 @@ function PreviewLine({ profile, cursorPt, plane }: { profile: SketchProfile; cur
   if (!geo) return null;
   return (
     <lineSegments geometry={geo}>
-      <lineBasicMaterial color="#6366f1" transparent opacity={0.5} depthTest={false} />
+      <lineBasicMaterial color="var(--nx-accent)" transparent opacity={0.5} depthTest={false} />
     </lineSegments>
   );
 }
@@ -476,7 +476,7 @@ function ProfileLines({ profile, plane }: { profile: SketchProfile; plane: 'xy' 
   if (points.length === 0) return null;
   return (
     <lineSegments geometry={geo}>
-      <lineBasicMaterial color={profile.closed ? '#22c55e' : '#f59e0b'} linewidth={2} />
+      <lineBasicMaterial color={profile.closed ? '#22c55e' : 'var(--nx-warn)'} linewidth={2} />
     </lineSegments>
   );
 }
@@ -494,7 +494,7 @@ function PointMarkers({ profile, plane }: { profile: SketchProfile; plane: 'xy' 
           <group key={i}>
             <mesh position={pos3d}>
               <sphereGeometry args={[1.5, 8, 8]} />
-              <meshBasicMaterial color={i === 0 ? '#ef4444' : '#f59e0b'} />
+              <meshBasicMaterial color={i === 0 ? '#ef4444' : 'var(--nx-warn)'} />
             </mesh>
             <Html position={[pos3d.x, pos3d.y + 4, pos3d.z]} style={{ pointerEvents: 'none' }}>
               <div style={{
@@ -639,16 +639,16 @@ function InfoHUD({
     }}>
       {/* Active plane badge */}
       <div style={{
-        background: 'rgba(13,17,23,0.92)', border: '1px solid #388bfd',
+        background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-accent)',
         padding: '6px 12px', borderRadius: 8,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{ fontSize: 14 }}>📐</span>
         <div>
-          <div style={{ color: '#58a6ff', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>
+          <div style={{ color: 'var(--nx-accent-2)', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>
             {PLANE_LABELS[plane]}
           </div>
-          <div style={{ color: '#6b7280', fontSize: 10, fontWeight: 600 }}>
+          <div style={{ color: 'var(--nx-text-3)', fontSize: 10, fontWeight: 600 }}>
             {pointCount} pts · {segCount} segs · {profile.closed ? '✅ Closed' : '⏳ Open'}
           </div>
         </div>
@@ -662,9 +662,9 @@ function InfoHUD({
             onClick={() => onViewPreset(key)}
             title={`${v.label} view${v.plane ? ` → ${PLANE_LABELS[v.plane]}` : ''}`}
             style={{
-              padding: '4px 9px', borderRadius: 6, border: '1px solid #30363d',
+              padding: '4px 9px', borderRadius: 6, border: '1px solid var(--nx-border)',
               background: detectedPlane === v.plane ? 'rgba(56,139,253,0.2)' : 'rgba(13,17,23,0.9)',
-              color: detectedPlane === v.plane ? '#58a6ff' : '#8b949e',
+              color: detectedPlane === v.plane ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'monospace',
               outline: 'none', transition: 'all 0.12s',
             }}
@@ -682,9 +682,9 @@ function InfoHUD({
             onClick={() => onPlaneSelect(p)}
             style={{
               padding: '3px 8px', borderRadius: 5, cursor: 'pointer',
-              border: `1px solid ${plane === p ? '#388bfd' : '#30363d'}`,
+              border: `1px solid ${plane === p ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
               background: plane === p ? 'rgba(56,139,253,0.15)' : 'rgba(13,17,23,0.9)',
-              color: plane === p ? '#58a6ff' : '#6b7280',
+              color: plane === p ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
               fontSize: 10, fontWeight: 700, fontFamily: 'monospace', outline: 'none',
             }}
           >
@@ -706,23 +706,23 @@ function InfoHUD({
 
       {/* Shortcuts */}
       <div style={{
-        background: 'rgba(13,17,23,0.85)', border: '1px solid #21262d',
+        background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)',
         padding: '3px 10px', borderRadius: 6,
-        fontSize: 9, fontWeight: 600, color: '#484f58', fontFamily: 'monospace',
+        fontSize: 9, fontWeight: 600, color: 'var(--nx-border-strong)', fontFamily: 'monospace',
         display: 'flex', gap: 8, pointerEvents: 'none',
       }}>
-        <span style={{ color: canUndo ? '#f59e0b' : '#374151' }}>Ctrl+Z</span>
+        <span style={{ color: canUndo ? 'var(--nx-warn)' : '#374151' }}>Ctrl+Z</span>
         <span>[T]op [F]ront [R]ight [I]so</span>
       </div>
 
       {/* Cursor coordinate display */}
       {cursorPt && (
-        <div style={{ background: 'rgba(13,17,23,0.85)', border: '1px solid #21262d', padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#484f58', fontFamily: 'monospace', display: 'flex', gap: 6, pointerEvents: 'none' }}>
-          <span style={{ color: '#ef4444' }}>X</span><span style={{ color: '#c9d1d9' }}>{cursorPt.x.toFixed(1)}</span>
-          <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: '#c9d1d9' }}>{cursorPt.y.toFixed(1)}</span>
+        <div style={{ background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)', padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: 'var(--nx-border-strong)', fontFamily: 'monospace', display: 'flex', gap: 6, pointerEvents: 'none' }}>
+          <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.x.toFixed(1)}</span>
+          <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{cursorPt.y.toFixed(1)}</span>
           {/* Z is always 0 on the sketch plane */}
-          <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: '#c9d1d9' }}>0.0</span>
-          <span style={{ color: '#484f58' }}>mm</span>
+          <span style={{ color: '#3b82f6' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>0.0</span>
+          <span style={{ color: 'var(--nx-border-strong)' }}>mm</span>
         </div>
       )}
     </div>
@@ -822,7 +822,7 @@ function ExtrudeDepthHandle({
       {/* Shaft along extrude direction */}
       <group quaternion={arrowQuat} position={[extrudeDir.x * depth / 2, extrudeDir.y * depth / 2, extrudeDir.z * depth / 2]}>
         <mesh geometry={shaftGeo}>
-          <meshStandardMaterial color="#388bfd" roughness={0.4} metalness={0.1} transparent opacity={0.7} />
+          <meshStandardMaterial color="var(--nx-accent)" roughness={0.4} metalness={0.1} transparent opacity={0.7} />
         </mesh>
         {/* Cone tip at top of shaft (drag handle) */}
         <mesh
@@ -837,7 +837,7 @@ function ExtrudeDepthHandle({
         {/* Label */}
         <Html position={[0, Math.max(depth, 2) / 2 + 10, 0]} center style={{ pointerEvents: 'none' }}>
           <div style={{
-            background: 'rgba(56,139,253,0.9)', color: '#fff',
+            background: 'rgba(56,139,253,0.9)', color: 'var(--nx-text)',
             fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
             fontFamily: 'monospace', whiteSpace: 'nowrap',
           }}>
@@ -855,7 +855,7 @@ function ExtrudeDepthHandle({
           const extGeo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
           return (
             <mesh geometry={extGeo} position={[0, -depth / 2, 0]}>
-              <meshBasicMaterial color="#388bfd" wireframe transparent opacity={0.25} />
+              <meshBasicMaterial color="var(--nx-accent)" wireframe transparent opacity={0.25} />
             </mesh>
           );
         })()}
@@ -911,7 +911,7 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
   }, [sketchPlane]);
 
   return (
-    <div style={{ width: '100%', height: '100%', background: '#0d1117', position: 'relative', touchAction: 'none', userSelect: 'none' }}
+    <div style={{ width: '100%', height: '100%', background: 'var(--nx-bg)', position: 'relative', touchAction: 'none', userSelect: 'none' }}
       onDragStart={e => e.preventDefault()}>
       {/* HUD overlay */}
       <InfoHUD
@@ -925,7 +925,7 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
       />
 
       <Canvas camera={{ position: [80, 120, 160], fov: 50 }} style={{ width: '100%', height: '100%' }}>
-        <color attach="background" args={['#0d1117']} />
+        <color attach="background" args={['var(--nx-bg)']} />
         <ambientLight intensity={0.5} />
         <directionalLight position={[20, 30, 15]} intensity={1} />
 
@@ -961,7 +961,7 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
           position={gridProps.position}
           rotation={gridProps.rotation}
           cellSize={5} cellThickness={0.3} cellColor="#1c2128"
-          sectionSize={25} sectionThickness={0.6} sectionColor="#30363d"
+          sectionSize={25} sectionThickness={0.6} sectionColor="var(--nx-border)"
           fadeDistance={300} fadeStrength={3} infiniteGrid
         />
 

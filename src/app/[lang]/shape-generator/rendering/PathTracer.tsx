@@ -81,14 +81,14 @@ export function PathTracerHUD({ samples, max, isKo }: { samples: number; max: nu
   return (
     <div style={{
       position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
-      background: 'rgba(13,17,23,0.85)', border: '1px solid #30363d',
-      borderRadius: 8, padding: '5px 14px', color: '#c9d1d9', fontSize: 11,
+      background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-border)',
+      borderRadius: 8, padding: '5px 14px', color: 'var(--nx-text)', fontSize: 11,
       fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 8,
       backdropFilter: 'blur(4px)', zIndex: 300, pointerEvents: 'none', whiteSpace: 'nowrap',
     }}>
-      <span style={{ color: '#388bfd' }}>◉</span>
+      <span style={{ color: 'var(--nx-accent)' }}>◉</span>
       {isKo ? `Path Tracing: ${samples}/${max} (${pct}%)` : `Path Tracing: ${samples}/${max} samples (${pct}%)`}
-      {samples >= max && <span style={{ color: '#3fb950', marginLeft: 4 }}>✓ {isKo ? '완료' : 'Done'}</span>}
+      {samples >= max && <span style={{ color: 'var(--nx-ok)', marginLeft: 4 }}>✓ {isKo ? '완료' : 'Done'}</span>}
     </div>
   );
 }

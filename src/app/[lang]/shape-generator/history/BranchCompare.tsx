@@ -265,8 +265,8 @@ function Visual3DDiff({ branchA, branchB, diff, theme, lang }: Visual3DDiffProps
     fa => diff.featureDiffsB.some(fb => fb.type === fa.type)
   );
 
-  const colorA = branchA?.color || '#f85149';
-  const colorB = branchB?.color || '#3fb950';
+  const colorA = branchA?.color || 'var(--nx-error)';
+  const colorB = branchB?.color || 'var(--nx-ok)';
 
   const cardStyle: React.CSSProperties = {
     background: theme.cardBg,
@@ -311,7 +311,7 @@ function Visual3DDiff({ branchA, branchB, diff, theme, lang }: Visual3DDiffProps
           <span style={{ color: theme.text }}>{branchB?.name || 'B'} ({labels.onlyB})</span>
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#8b949e', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--nx-text-2)', display: 'inline-block' }} />
           <span style={{ color: theme.text }}>{labels.noChange}</span>
         </span>
       </div>
@@ -375,7 +375,7 @@ function Visual3DDiff({ branchA, branchB, diff, theme, lang }: Visual3DDiffProps
                     <span key={pd.key} style={{
                       fontSize: 8,
                       background: `${colorA}cc`,
-                      color: '#fff',
+                      color: 'var(--nx-text)',
                       borderRadius: 3,
                       padding: '1px 4px',
                       fontFamily: 'monospace',
@@ -475,7 +475,7 @@ function Visual3DDiff({ branchA, branchB, diff, theme, lang }: Visual3DDiffProps
                     <span key={pd.key} style={{
                       fontSize: 8,
                       background: `${colorB}cc`,
-                      color: '#fff',
+                      color: 'var(--nx-text)',
                       borderRadius: 3,
                       padding: '1px 4px',
                       fontFamily: 'monospace',
@@ -822,7 +822,7 @@ export default function BranchCompare({
               borderRadius: 6,
               border: 'none',
               background: branchBId ? theme.accent : theme.border,
-              color: '#fff',
+              color: 'var(--nx-text)',
               fontSize: 12,
               fontWeight: 700,
               cursor: branchBId ? 'pointer' : 'default',
@@ -918,8 +918,8 @@ export default function BranchCompare({
                     {labels.shape}
                   </div>
                   <div style={{ display: 'flex', gap: 8, fontSize: 12 }}>
-                    <span style={{ color: '#f85149', fontFamily: 'monospace' }}>- {diff.shapeA || t.none}</span>
-                    <span style={{ color: '#3fb950', fontFamily: 'monospace' }}>+ {diff.shapeB || t.none}</span>
+                    <span style={{ color: 'var(--nx-error)', fontFamily: 'monospace' }}>- {diff.shapeA || t.none}</span>
+                    <span style={{ color: 'var(--nx-ok)', fontFamily: 'monospace' }}>+ {diff.shapeB || t.none}</span>
                   </div>
                 </div>
               )}
@@ -942,11 +942,11 @@ export default function BranchCompare({
                       background: theme.bg,
                     }}>
                       <span style={{ color: theme.textMuted, fontWeight: 600, minWidth: 80 }}>{pd.key}</span>
-                      <span style={{ color: '#f85149' }}>
+                      <span style={{ color: 'var(--nx-error)' }}>
                         {pd.valueA !== undefined ? pd.valueA : '-'}
                       </span>
                       <span style={{ color: theme.textMuted }}>{'\u2192'}</span>
-                      <span style={{ color: '#3fb950' }}>
+                      <span style={{ color: 'var(--nx-ok)' }}>
                         {pd.valueB !== undefined ? pd.valueB : '-'}
                       </span>
                     </div>
@@ -975,8 +975,8 @@ export default function BranchCompare({
                             marginBottom: 2,
                             fontSize: 10,
                             fontFamily: 'monospace',
-                            background: inB ? theme.bg : '#f8514915',
-                            color: inB ? theme.text : '#f85149',
+                            background: inB ? theme.bg : 'var(--nx-error)15',
+                            color: inB ? theme.text : 'var(--nx-error)',
                           }}>
                             {f.type} {!f.enabled && '(off)'}
                             {!inB && <span style={{ marginLeft: 4, opacity: 0.7 }}>({labels.onlyInA})</span>}
@@ -998,8 +998,8 @@ export default function BranchCompare({
                             marginBottom: 2,
                             fontSize: 10,
                             fontFamily: 'monospace',
-                            background: inA ? theme.bg : '#3fb95015',
-                            color: inA ? theme.text : '#3fb950',
+                            background: inA ? theme.bg : 'var(--nx-ok)15',
+                            color: inA ? theme.text : 'var(--nx-ok)',
                           }}>
                             {f.type} {!f.enabled && '(off)'}
                             {!inA && <span style={{ marginLeft: 4, opacity: 0.7 }}>({labels.onlyInB})</span>}
@@ -1043,8 +1043,8 @@ export default function BranchCompare({
                           padding: '6px 16px',
                           borderRadius: 6,
                           border: 'none',
-                          background: '#3fb950',
-                          color: '#fff',
+                          background: 'var(--nx-ok)',
+                          color: 'var(--nx-text)',
                           fontSize: 12,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -1076,15 +1076,15 @@ export default function BranchCompare({
                         padding: '8px 14px',
                         borderRadius: 8,
                         border: `1px solid #3fb950`,
-                        background: '#3fb95018',
-                        color: '#3fb950',
+                        background: 'var(--nx-ok)18',
+                        color: 'var(--nx-ok)',
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#3fb95030'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#3fb95018'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-ok)30'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-ok)18'; }}
                     >
                       {labels.merge} &quot;{branchB?.name}&quot; {labels.mergeInto} &quot;{branchA?.name}&quot;
                     </button>

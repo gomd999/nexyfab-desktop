@@ -147,7 +147,7 @@ function getContent(lang: string): ContentMap {
       subtitle: s('기본 워크플로우', 'Basic workflow', '基本ワークフロー', '基本工作流程', 'Flujo básico', 'سير العمل الأساسي'),
       cards: [
         {
-          icon: '🧊', color: '#58a6ff',
+          icon: '🧊', color: 'var(--nx-accent-2)',
           heading: s('① 형상 선택', '① Pick a Shape', '① 形状を選択', '① 选择形状', '① Elige una forma', '① اختر شكلاً'),
           lines: [
             s('왼쪽 패널에서 기본 형상 선택', 'Choose a base shape from the left panel', '左パネルから基本形状を選択', '从左侧面板选择基础形状', 'Elige una forma en el panel izquierdo', 'اختر شكلاً أساسياً من اللوحة اليسرى'),
@@ -156,7 +156,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '⚙️', color: '#3fb950',
+          icon: '⚙️', color: 'var(--nx-ok)',
           heading: s('② 피처 적용', '② Apply Features', '② フィーチャーを適用', '② 应用特征', '② Aplica operaciones', '② طبّق الميزات'),
           lines: [
             s('상단 Command Toolbar에서 피처 선택', 'Pick a feature from the Command Toolbar', 'Command Toolbarからフィーチャー選択', '从命令工具栏选择特征', 'Elige una operación en la Command Toolbar', 'اختر ميزة من شريط الأوامر'),
@@ -165,7 +165,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '📦', color: '#f0883e',
+          icon: '📦', color: 'var(--nx-warn)',
           heading: s('③ 견적 요청', '③ Get a Quote', '③ 見積もりを取得', '③ 获取报价', '③ Solicita cotización', '③ احصل على عرض سعر'),
           lines: [
             s('재료 선택 → Get Quote 버튼 클릭', 'Select material → click "Get Quote"', '材料を選択 → "Get Quote"をクリック', '选择材料 → 点击 "Get Quote"', 'Selecciona material → clic en "Get Quote"', 'اختر المادة → انقر "Get Quote"'),
@@ -181,7 +181,7 @@ function getContent(lang: string): ContentMap {
       subtitle: s('2D 프로파일 → 3D 솔리드', '2D Profile → 3D Solid', '2Dプロファイル → 3Dソリッド', '2D 轮廓 → 3D 实体', 'Perfil 2D → Sólido 3D', 'مظهر 2D → صلب 3D'),
       cards: [
         {
-          icon: '🖊', color: '#388bfd',
+          icon: '🖊', color: 'var(--nx-accent)',
           heading: s('① 도구 선택', '① Pick a Tool', '① ツールを選択', '① 选择工具', '① Elige una herramienta', '① اختر أداة'),
           lines: [
             'L=Line  A=Arc  C=Circle  R=Rect',
@@ -190,7 +190,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '📐', color: '#3fb950',
+          icon: '📐', color: 'var(--nx-ok)',
           heading: s('② 그리고 닫기', '② Draw & Close', '② 描いて閉じる', '② 绘制并闭合', '② Dibuja y cierra', '② ارسم وأغلق'),
           lines: [
             s('캔버스 클릭 → 점 추가', 'Click canvas to add points', 'キャンバスクリックで点追加', '点击画布添加点', 'Clic en el lienzo para añadir puntos', 'انقر على اللوحة لإضافة نقاط'),
@@ -199,7 +199,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '⬆️', color: '#f0883e',
+          icon: '⬆️', color: 'var(--nx-warn)',
           heading: s('③ 3D 돌출', '③ Extrude to 3D', '③ 3D Extrude', '③ 3D Extrude', '③ Extrude a 3D', '③ Extrude إلى 3D'),
           lines: [
             s('닫힌 프로파일 → 하단 돌출 버튼 출현', 'Closed profile → Extrude button appears', '閉じたプロファイル → Extrudeボタン出現', '闭合轮廓 → 出现 Extrude 按钮', 'Perfil cerrado → aparece botón Extrude', 'مسار مغلق → يظهر زر Extrude'),
@@ -215,7 +215,7 @@ function getContent(lang: string): ContentMap {
       subtitle: s('형상에 3D 조작 적용', 'Apply 3D operations to geometry', '形状に3D操作を適用', '对几何体应用 3D 操作', 'Aplica operaciones 3D al modelo', 'طبّق عمليات 3D على الشكل'),
       cards: [
         {
-          icon: '✏️', color: '#388bfd',
+          icon: '✏️', color: 'var(--nx-accent)',
           heading: s('① 스케치 먼저', '① Sketch First', '① まずスケッチ', '① 先绘制草图', '① Boceto primero', '① الرسم أولاً'),
           lines: [
             s('S 키 → 스케치 모드 진입', 'Press S to enter Sketch Mode', 'Sキー → スケッチモード', '按 S 进入草图模式', 'Pulsa S para modo Sketch', 'اضغط S للدخول إلى وضع Sketch'),
@@ -224,7 +224,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '⚙️', color: '#3fb950',
+          icon: '⚙️', color: 'var(--nx-ok)',
           heading: s('② 파라미터 조정', '② Adjust Parameters', '② パラメータ調整', '② 调整参数', '② Ajusta parámetros', '② اضبط المعاملات'),
           lines: [
             s('왼쪽 패널에서 깊이·각도·두께 설정', 'Set depth, angle, thickness in left panel', '左パネルで深さ・角度・厚み設定', '在左侧面板设置深度、角度、厚度', 'Configura profundidad, ángulo y grosor a la izquierda', 'اضبط العمق والزاوية والسماكة في اللوحة اليسرى'),
@@ -233,7 +233,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '🌳', color: '#d2a8ff',
+          icon: '🌳', color: 'var(--nx-accent-2)',
           heading: s('③ 피처 트리', '③ Feature Tree', '③ Feature Tree', '③ Feature Tree', '③ Feature Tree', '③ Feature Tree'),
           lines: [
             s('왼쪽 패널 → 피처 순서 드래그', 'Left panel → drag to reorder features', '左パネル → フィーチャーをドラッグで並べ替え', '左侧面板 → 拖动重新排序特征', 'Panel izquierdo → arrastra para reordenar', 'اللوحة اليسرى → اسحب لإعادة الترتيب'),
@@ -249,7 +249,7 @@ function getContent(lang: string): ContentMap {
       subtitle: s('실시간 3D 렌더링', 'Real-time 3D rendering', 'リアルタイム3Dレンダリング', '实时 3D 渲染', 'Renderizado 3D en tiempo real', 'تصيير 3D فوري'),
       cards: [
         {
-          icon: '🎨', color: '#f0883e',
+          icon: '🎨', color: 'var(--nx-warn)',
           heading: s('① 재료 & 조명', '① Material & Lighting', '① 材料 & ライティング', '① 材料与光照', '① Material e iluminación', '① المادة والإضاءة'),
           lines: [
             s('왼쪽 패널에서 재료 선택', 'Select material from left panel', '左パネルから材料を選択', '从左侧面板选择材料', 'Selecciona material en el panel izquierdo', 'اختر المادة من اللوحة اليسرى'),
@@ -258,7 +258,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '📷', color: '#58a6ff',
+          icon: '📷', color: 'var(--nx-accent-2)',
           heading: s('② 뷰포트 조작', '② Viewport Controls', '② ビューポート操作', '② 视口操作', '② Controles de viewport', '② تحكم في العرض'),
           lines: [
             s('마우스 드래그 = 궤도  휠 = 줌', 'Drag = orbit  Scroll = zoom', 'ドラッグ = オービット  ホイール = ズーム', '拖动 = 轨道  滚轮 = 缩放', 'Arrastrar = orbitar  Rueda = zoom', 'السحب = دوران  العجلة = تكبير'),
@@ -267,7 +267,7 @@ function getContent(lang: string): ContentMap {
           ],
         },
         {
-          icon: '📤', color: '#3fb950',
+          icon: '📤', color: 'var(--nx-ok)',
           heading: s('③ 내보내기', '③ Export', '③ エクスポート', '③ 导出', '③ Exportar', '③ تصدير'),
           lines: [
             s('STL / STEP / OBJ / GLTF 지원', 'STL / STEP / OBJ / GLTF supported', 'STL / STEP / OBJ / GLTF supported', 'STL / STEP / OBJ / GLTF supported', 'STL / STEP / OBJ / GLTF supported', 'STL / STEP / OBJ / GLTF supported'),
@@ -343,7 +343,7 @@ export default function ContextHelpPanel({
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#161b22', border: '1px solid #30363d',
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
           borderRadius: 16,
           width: 'min(820px, 96vw)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
@@ -362,23 +362,23 @@ export default function ContextHelpPanel({
             <div style={{ fontSize: 18, fontWeight: 800, color: '#f0f6fc', letterSpacing: -0.35, lineHeight: 1.25, wordBreak: 'keep-all' }}>
               {current.title}
             </div>
-            <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 4, lineHeight: 1.45, wordBreak: 'keep-all' }}>
+            <div style={{ fontSize: 13, color: 'var(--nx-text-2)', marginTop: 4, lineHeight: 1.45, wordBreak: 'keep-all' }}>
               {current.subtitle}
             </div>
           </div>
           <button onClick={close} style={{
-            background: 'none', border: 'none', color: '#484f58', cursor: 'pointer',
+            background: 'none', border: 'none', color: 'var(--nx-border-strong)', cursor: 'pointer',
             fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 4,
           }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#8b949e'; e.currentTarget.style.background = '#21262d'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#484f58'; e.currentTarget.style.background = 'none'; }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-border-strong)'; e.currentTarget.style.background = 'none'; }}
           >×</button>
         </div>
 
         {/* ── Context tabs ── */}
         <div style={{
           display: 'flex', gap: 4, padding: '12px 20px 0',
-          borderBottom: '1px solid #21262d', marginBottom: 0,
+          borderBottom: '1px solid var(--nx-panel-2)', marginBottom: 0,
         }}>
           {TABS.map(tab => (
             <button
@@ -387,14 +387,14 @@ export default function ContextHelpPanel({
               style={{
                 padding: '8px 14px', borderRadius: '6px 6px 0 0',
                 border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
-                background: activeTab === tab ? '#21262d' : 'transparent',
-                color: activeTab === tab ? '#e6edf3' : '#6e7681',
-                borderBottom: activeTab === tab ? '2px solid #388bfd' : '2px solid transparent',
+                background: activeTab === tab ? 'var(--nx-panel-2)' : 'transparent',
+                color: activeTab === tab ? 'var(--nx-text)' : 'var(--nx-text-3)',
+                borderBottom: activeTab === tab ? '2px solid var(--nx-accent)' : '2px solid transparent',
                 transition: 'all 0.15s',
                 position: 'relative', bottom: -1,
               }}
-              onMouseEnter={e => { if (activeTab !== tab) e.currentTarget.style.color = '#c9d1d9'; }}
-              onMouseLeave={e => { if (activeTab !== tab) e.currentTarget.style.color = '#6e7681'; }}
+              onMouseEnter={e => { if (activeTab !== tab) e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseLeave={e => { if (activeTab !== tab) e.currentTarget.style.color = 'var(--nx-text-3)'; }}
             >
               {tabLabel(tab)}
             </button>
@@ -410,7 +410,7 @@ export default function ContextHelpPanel({
         }}>
           {current.cards.map((card, i) => (
             <div key={i} style={{
-              background: '#0d1117', borderRadius: 12,
+              background: 'var(--nx-bg)', borderRadius: 12,
               border: `1px solid ${card.color}33`,
               borderTop: `3px solid ${card.color}`,
               padding: '14px 16px',
@@ -428,7 +428,7 @@ export default function ContextHelpPanel({
               {card.lines.map((line, li) => (
                 <div key={li} style={{
                   fontSize: 13,
-                  color: '#c9d1d9',
+                  color: 'var(--nx-text)',
                   lineHeight: 1.65,
                   marginBottom: li < card.lines.length - 1 ? 8 : 0,
                   fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
@@ -449,14 +449,14 @@ export default function ContextHelpPanel({
           flexWrap: 'wrap', gap: 10,
           padding: '4px 20px 18px',
         }}>
-          <span style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.45, maxWidth: '100%' }}>
+          <span style={{ fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.45, maxWidth: '100%' }}>
             {t(lang, 'hint')}
           </span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button onClick={onOpenShortcuts} style={footerBtn('#8b949e')}>
+            <button onClick={onOpenShortcuts} style={footerBtn('var(--nx-text-2)')}>
               {t(lang, 'shortcuts')}
             </button>
-            <button onClick={() => onDismissForever(activeTab)} style={footerBtn('#484f58')}>
+            <button onClick={() => onDismissForever(activeTab)} style={footerBtn('var(--nx-border-strong)')}>
               {t(lang, 'dontShow')}
             </button>
             <button onClick={close} style={primaryBtn}>
@@ -481,6 +481,6 @@ function footerBtn(color: string): React.CSSProperties {
 
 const primaryBtn: React.CSSProperties = {
   padding: '8px 18px', borderRadius: 8,
-  border: 'none', background: '#388bfd',
-  color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+  border: 'none', background: 'var(--nx-accent)',
+  color: 'var(--nx-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
 };

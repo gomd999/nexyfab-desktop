@@ -17,10 +17,10 @@ interface SupplierPanelProps {
 }
 
 const C = {
-  bg: '#161b22', card: '#21262d', border: '#30363d',
-  accent: '#388bfd', accentBright: '#58a6ff',
-  text: '#c9d1d9', dim: '#8b949e',
-  green: '#3fb950', yellow: '#d29922', red: '#f85149',
+  bg: 'var(--nx-panel)', card: 'var(--nx-panel-2)', border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)', accentBright: 'var(--nx-accent-2)',
+  text: 'var(--nx-text)', dim: 'var(--nx-text-2)',
+  green: 'var(--nx-ok)', yellow: 'var(--nx-warn)', red: 'var(--nx-error)',
 };
 
 const dict = {

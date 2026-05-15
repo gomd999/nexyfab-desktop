@@ -54,12 +54,12 @@ type DictLang = keyof typeof dict;
 const TAGS = ['top', 'bottom', 'front', 'back', 'left', 'right'] as const;
 
 const TAG_COLORS: Record<string, string> = {
-  top:    '#3fb950',
-  bottom: '#f85149',
-  front:  '#388bfd',
+  top:    'var(--nx-ok)',
+  bottom: 'var(--nx-error)',
+  front:  'var(--nx-accent)',
   back:   '#bc8cff',
-  left:   '#d29922',
-  right:  '#79c0ff',
+  left:   'var(--nx-warn)',
+  right:  'var(--nx-accent-2)',
 };
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -109,8 +109,8 @@ export default function TopoPanel({
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      background: '#0d1117',
-      border: '1px solid #21262d',
+      background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-panel-2)',
       borderRadius: 10,
       overflow: 'hidden',
       fontFamily: 'Inter, system-ui, sans-serif',
@@ -118,16 +118,16 @@ export default function TopoPanel({
       {/* Header */}
       <div style={{
         padding: '10px 14px',
-        borderBottom: '1px solid #21262d',
+        borderBottom: '1px solid var(--nx-panel-2)',
         background: 'linear-gradient(135deg, rgba(56,139,253,0.08), rgba(188,140,255,0.08))',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
           <span style={{ fontSize: 14 }}>🏷️</span>
-          <span style={{ fontSize: 12, fontWeight: 800, color: '#c9d1d9' }}>{t.title}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--nx-text)' }}>{t.title}</span>
           <span style={{
             marginLeft: 'auto',
             fontSize: 10, fontWeight: 700,
-            color: '#388bfd',
+            color: 'var(--nx-accent)',
             background: 'rgba(56,139,253,0.12)',
             border: '1px solid rgba(56,139,253,0.3)',
             borderRadius: 4,
@@ -136,7 +136,7 @@ export default function TopoPanel({
             {t.generation} {map.generation}
           </span>
         </div>
-        <div style={{ fontSize: 10, color: '#8b949e' }}>
+        <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
           {t.subtitle} · {allFaces.length} {t.faces}
         </div>
       </div>
@@ -144,16 +144,16 @@ export default function TopoPanel({
       {/* Tag filter chips */}
       <div style={{
         display: 'flex', gap: 4, padding: '8px 12px',
-        borderBottom: '1px solid #21262d',
+        borderBottom: '1px solid var(--nx-panel-2)',
         flexWrap: 'wrap',
       }}>
         <button
           onClick={() => setTagFilter(null)}
           style={{
             padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
-            border: tagFilter === null ? '1px solid #388bfd' : '1px solid #30363d',
-            background: tagFilter === null ? 'rgba(56,139,253,0.15)' : '#161b22',
-            color: tagFilter === null ? '#58a6ff' : '#6e7681',
+            border: tagFilter === null ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+            background: tagFilter === null ? 'rgba(56,139,253,0.15)' : 'var(--nx-panel)',
+            color: tagFilter === null ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
             cursor: 'pointer',
           }}
         >
@@ -163,16 +163,16 @@ export default function TopoPanel({
           const count = allFaces.filter(f => f.tag === tag).length;
           if (count === 0) return null;
           const active = tagFilter === tag;
-          const color = TAG_COLORS[tag] ?? '#8b949e';
+          const color = TAG_COLORS[tag] ?? 'var(--nx-text-2)';
           return (
             <button
               key={tag}
               onClick={() => setTagFilter(active ? null : tag)}
               style={{
                 padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
-                border: active ? `1px solid ${color}` : '1px solid #30363d',
-                background: active ? `${color}22` : '#161b22',
-                color: active ? color : '#6e7681',
+                border: active ? `1px solid ${color}` : '1px solid var(--nx-border)',
+                background: active ? `${color}22` : 'var(--nx-panel)',
+                color: active ? color : 'var(--nx-text-3)',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 3,
               }}
@@ -186,7 +186,7 @@ export default function TopoPanel({
       </div>
 
       {/* Search */}
-      <div style={{ padding: '6px 12px', borderBottom: '1px solid #21262d' }}>
+      <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--nx-panel-2)' }}>
         <input
           type="text"
           value={search}
@@ -194,8 +194,8 @@ export default function TopoPanel({
           placeholder={t.search}
           style={{
             width: '100%', boxSizing: 'border-box',
-            background: '#161b22', border: '1px solid #30363d',
-            borderRadius: 6, color: '#c9d1d9', fontSize: 11,
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+            borderRadius: 6, color: 'var(--nx-text)', fontSize: 11,
             padding: '5px 8px', outline: 'none',
           }}
         />
@@ -204,19 +204,19 @@ export default function TopoPanel({
       {/* Face list */}
       <div className="nf-scroll" style={{ flex: 1, overflowY: 'auto', maxHeight: 340 }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#484f58', fontStyle: 'italic' }}>
+          <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: 'var(--nx-border-strong)', fontStyle: 'italic' }}>
             {t.noFaces}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
             <thead>
-              <tr style={{ background: '#161b22', position: 'sticky', top: 0, zIndex: 1 }}>
+              <tr style={{ background: 'var(--nx-panel)', position: 'sticky', top: 0, zIndex: 1 }}>
                 {[t.index, t.tag, t.faceId, t.area].map(col => (
                   <th key={col} style={{
                     padding: '4px 8px', textAlign: 'left',
-                    color: '#6e7681', fontWeight: 700, fontSize: 9,
+                    color: 'var(--nx-text-3)', fontWeight: 700, fontSize: 9,
                     textTransform: 'uppercase', letterSpacing: '0.05em',
-                    borderBottom: '1px solid #21262d',
+                    borderBottom: '1px solid var(--nx-panel-2)',
                   }}>{col}</th>
                 ))}
               </tr>
@@ -224,7 +224,7 @@ export default function TopoPanel({
             <tbody>
               {filtered.map(face => {
                 const isSelected = face.faceIndex === selectedFaceIndex;
-                const tagColor = TAG_COLORS[face.tag ?? ''] ?? '#8b949e';
+                const tagColor = TAG_COLORS[face.tag ?? ''] ?? 'var(--nx-text-2)';
                 return (
                   <tr
                     key={face.stableId}
@@ -233,12 +233,12 @@ export default function TopoPanel({
                       background: isSelected ? 'rgba(56,139,253,0.1)' : 'transparent',
                       cursor: onSelectFace ? 'pointer' : 'default',
                       transition: 'background 0.1s',
-                      borderBottom: '1px solid #161b22',
+                      borderBottom: '1px solid var(--nx-panel)',
                     }}
-                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#161b22'; }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--nx-panel)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'rgba(56,139,253,0.1)' : 'transparent'; }}
                   >
-                    <td style={{ padding: '4px 8px', color: '#6e7681', fontFamily: 'monospace' }}>
+                    <td style={{ padding: '4px 8px', color: 'var(--nx-text-3)', fontFamily: 'monospace' }}>
                       {face.faceIndex}
                     </td>
                     <td style={{ padding: '4px 8px' }}>
@@ -251,10 +251,10 @@ export default function TopoPanel({
                         {t[face.tag as keyof typeof t] ?? face.tag ?? '—'}
                       </span>
                     </td>
-                    <td style={{ padding: '4px 8px', fontFamily: 'monospace', color: '#8b949e', fontSize: 9 }}>
+                    <td style={{ padding: '4px 8px', fontFamily: 'monospace', color: 'var(--nx-text-2)', fontSize: 9 }}>
                       {face.stableId.slice(0, 16)}…
                     </td>
-                    <td style={{ padding: '4px 8px', color: '#c9d1d9', fontFamily: 'monospace' }}>
+                    <td style={{ padding: '4px 8px', color: 'var(--nx-text)', fontFamily: 'monospace' }}>
                       {face.signature.area.toFixed(1)}
                     </td>
                   </tr>
@@ -269,38 +269,38 @@ export default function TopoPanel({
       {selectedFaceIndex != null && (() => {
         const face = Object.values(map.faces).find(f => f.faceIndex === selectedFaceIndex);
         if (!face) return null;
-        const _tagColor = TAG_COLORS[face.tag ?? ''] ?? '#8b949e';
+        const _tagColor = TAG_COLORS[face.tag ?? ''] ?? 'var(--nx-text-2)';
         return (
           <div style={{
             padding: '8px 12px',
-            borderTop: '1px solid #21262d',
+            borderTop: '1px solid var(--nx-panel-2)',
             background: 'rgba(56,139,253,0.05)',
           }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '0.05em' }}>
               {t.faceId}
             </div>
-            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#79c0ff', marginBottom: 4, wordBreak: 'break-all' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--nx-accent-2)', marginBottom: 4, wordBreak: 'break-all' }}>
               {face.stableId}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 10, color: '#8b949e' }}>
-                {t.normal}: <span style={{ color: '#c9d1d9', fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
+                {t.normal}: <span style={{ color: 'var(--nx-text)', fontFamily: 'monospace' }}>
                   [{face.signature.normal.map(v => v.toFixed(2)).join(', ')}]
                 </span>
               </div>
-              <div style={{ fontSize: 10, color: '#8b949e' }}>
-                {t.area}: <span style={{ color: '#c9d1d9', fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
+                {t.area}: <span style={{ color: 'var(--nx-text)', fontFamily: 'monospace' }}>
                   {face.signature.area.toFixed(1)} mm²
                 </span>
               </div>
             </div>
-            <div style={{ fontSize: 10, color: '#8b949e', marginTop: 2 }}>
-              {t.centroid}: <span style={{ color: '#c9d1d9', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginTop: 2 }}>
+              {t.centroid}: <span style={{ color: 'var(--nx-text)', fontFamily: 'monospace' }}>
                 [{face.signature.centroid.map(v => v.toFixed(1)).join(', ')}]
               </span>
             </div>
             {face.originFeatureId && (
-              <div style={{ fontSize: 9, color: '#6e7681', marginTop: 4, fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 4, fontFamily: 'monospace' }}>
                 Origin: {face.originFeatureId.slice(0, 24)}
               </div>
             )}

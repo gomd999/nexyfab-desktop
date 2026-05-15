@@ -321,7 +321,7 @@ export default function SketchPalette({
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#8b949e', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tt.lineType}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tt.lineType}</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {(['normal', 'construction', 'centerline'] as const).map(mode => (
             <button
@@ -334,9 +334,9 @@ export default function SketchPalette({
                 borderRadius: 8,
                 fontSize: 10,
                 fontWeight: 600,
-                border: sketchLineStyle === mode ? '1px solid #388bfd' : '1px solid rgba(255,255,255,0.08)',
+                border: sketchLineStyle === mode ? '1px solid var(--nx-accent)' : '1px solid rgba(255,255,255,0.08)',
                 background: sketchLineStyle === mode ? 'rgba(56, 139, 253, 0.15)' : 'rgba(255,255,255,0.03)',
-                color: sketchLineStyle === mode ? '#58a6ff' : '#c9d1d9',
+                color: sketchLineStyle === mode ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -375,7 +375,7 @@ export default function SketchPalette({
         <Row label={tt.snap} checked={snapEnabled} onChange={onSnapChange} />
         <Row label={tt.slice} checked={sliceEnabled} onChange={onSliceChange} />
         {sliceEnabled && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', fontSize: 12, color: '#c9d1d9' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', fontSize: 12, color: 'var(--nx-text)' }}>
             <span style={{ minWidth: 120 }}>{tt.slicePlaneMm}</span>
             <input
               type="range"
@@ -386,7 +386,7 @@ export default function SketchPalette({
               onChange={e => onSlicePlaneMmChange(Number(e.target.value))}
               style={{ flex: 1, accentColor: '#ea580c' }}
             />
-            <span style={{ fontFamily: 'monospace', fontSize: 11, minWidth: 36, color: '#8b949e' }}>{slicePlaneMm}</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 11, minWidth: 36, color: 'var(--nx-text-2)' }}>{slicePlaneMm}</span>
           </label>
         )}
         <Row label={tt.profile} checked={profileHighlight} onChange={onProfileHighlightChange} />
@@ -400,7 +400,7 @@ export default function SketchPalette({
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
         fontSize: 11,
         fontWeight: 600,
-        color: '#8b949e',
+        color: 'var(--nx-text-2)',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
         marginBottom: 10,
@@ -417,7 +417,7 @@ export default function SketchPalette({
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
             background: 'rgba(255, 255, 255, 0.03)',
-            color: '#c9d1d9',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
@@ -437,7 +437,7 @@ export default function SketchPalette({
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
             background: hasReferenceImage ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-            color: '#c9d1d9',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: hasReferenceImage ? 'pointer' : 'default',
@@ -450,7 +450,7 @@ export default function SketchPalette({
           {tt.clearRef}
         </button>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#c9d1d9', marginBottom: 6 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--nx-text)', marginBottom: 6 }}>
         <span style={{ minWidth: 72 }}>{tt.refOpacity}</span>
         <input
           type="range"
@@ -460,11 +460,11 @@ export default function SketchPalette({
           value={referenceOpacity}
           onChange={e => onReferenceOpacityChange(Number(e.target.value))}
           disabled={!hasReferenceImage || referenceLocked}
-          style={{ flex: 1, accentColor: '#388bfd', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
+          style={{ flex: 1, accentColor: 'var(--nx-accent)', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
         />
       </label>
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: '#8b949e', width: '100%' }}>{tt.opacityQuick}</span>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)', width: '100%' }}>{tt.opacityQuick}</span>
         {[0.25, 0.5, 0.75].map(p => (
           <button
             key={p}
@@ -478,7 +478,7 @@ export default function SketchPalette({
               borderRadius: 6,
               border: '1px solid rgba(255, 255, 255, 0.08)',
               background: 'rgba(255, 255, 255, 0.03)',
-              color: '#c9d1d9',
+              color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 600,
               cursor: hasReferenceImage && !referenceLocked ? 'pointer' : 'default',
@@ -493,7 +493,7 @@ export default function SketchPalette({
         ))}
       </div>
       <Row label={tt.refLock} checked={referenceLocked} onChange={onReferenceLockedChange} disabled={!hasReferenceImage} />
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#c9d1d9', marginBottom: 6 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--nx-text)', marginBottom: 6 }}>
         <span style={{ minWidth: 72 }}>{tt.refScale}</span>
         <input
           type="range"
@@ -503,11 +503,11 @@ export default function SketchPalette({
           value={referenceScale}
           onChange={e => onReferenceScaleChange(Number(e.target.value))}
           disabled={!hasReferenceImage || referenceLocked}
-          style={{ flex: 1, accentColor: '#388bfd', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
+          style={{ flex: 1, accentColor: 'var(--nx-accent)', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
         />
       </label>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <label style={{ fontSize: 11, color: '#c9d1d9' }}>
+        <label style={{ fontSize: 11, color: 'var(--nx-text)' }}>
           {tt.refOffX}
           <input
             type="number"
@@ -515,10 +515,10 @@ export default function SketchPalette({
             value={referenceOffsetX}
             onChange={e => onReferenceOffsetChange(Number(e.target.value), referenceOffsetY)}
             disabled={!hasReferenceImage || referenceLocked}
-            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--nx-text)' }}
           />
         </label>
-        <label style={{ fontSize: 11, color: '#c9d1d9' }}>
+        <label style={{ fontSize: 11, color: 'var(--nx-text)' }}>
           {tt.refOffY}
           <input
             type="number"
@@ -526,7 +526,7 @@ export default function SketchPalette({
             value={referenceOffsetY}
             onChange={e => onReferenceOffsetChange(referenceOffsetX, Number(e.target.value))}
             disabled={!hasReferenceImage || referenceLocked}
-            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--nx-text)' }}
           />
         </label>
       </div>
@@ -564,8 +564,8 @@ export default function SketchPalette({
             padding: '10px 12px',
             borderRadius: 8,
             border: 'none',
-            background: 'linear-gradient(180deg, #388bfd 0%, #2169ce 100%)',
-            color: '#fff',
+            background: 'linear-gradient(180deg, var(--nx-accent) 0%, #2169ce 100%)',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
@@ -586,7 +586,7 @@ export default function SketchPalette({
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.12)',
             background: 'rgba(255, 255, 255, 0.05)',
-            color: '#c9d1d9',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',

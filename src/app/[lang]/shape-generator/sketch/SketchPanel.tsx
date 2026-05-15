@@ -431,7 +431,7 @@ interface SketchPanelProps {
 // ─── Styles (dark theme) ────────────────────────────────────────────────────
 
 const sectionSep: React.CSSProperties = {
-  borderTop: '1px solid #21262d',
+  borderTop: '1px solid var(--nx-panel-2)',
   paddingTop: 6,
   marginTop: 6,
 };
@@ -439,7 +439,7 @@ const sectionSep: React.CSSProperties = {
 const sectionTitle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 800,
-  color: '#6e7681',
+  color: 'var(--nx-text-3)',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.05em',
   marginBottom: 6,
@@ -450,12 +450,12 @@ const toolBtnBase: React.CSSProperties = {
   minWidth: 0,
   padding: '4px 0',
   borderRadius: 6,
-  border: '1px solid #30363d',
-  background: '#161b22',
+  border: '1px solid var(--nx-border)',
+  background: 'var(--nx-panel)',
   cursor: 'pointer',
   fontSize: 14,
   fontWeight: 700,
-  color: '#8b949e',
+  color: 'var(--nx-text-2)',
   transition: 'all 0.15s',
   display: 'flex',
   flexDirection: 'row',
@@ -465,9 +465,9 @@ const toolBtnBase: React.CSSProperties = {
 
 const toolBtnActive: React.CSSProperties = {
   ...toolBtnBase,
-  border: '2px solid #388bfd',
-  background: '#0d1117',
-  color: '#388bfd',
+  border: '2px solid var(--nx-accent)',
+  background: 'var(--nx-bg)',
+  color: 'var(--nx-accent)',
 };
 
 const sliderRowStyle: React.CSSProperties = {
@@ -481,7 +481,7 @@ const sliderRowStyle: React.CSSProperties = {
 const sliderLabelStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
-  color: '#9ca3af',
+  color: 'var(--nx-text-2)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -489,7 +489,7 @@ const sliderLabelStyle: React.CSSProperties = {
 
 const sliderStyle: React.CSSProperties = {
   width: '100%',
-  accentColor: '#388bfd',
+  accentColor: 'var(--nx-accent)',
   cursor: 'pointer',
   height: 3,
   borderRadius: 2,
@@ -498,7 +498,7 @@ const sliderStyle: React.CSSProperties = {
 const sliderValueStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 700,
-  color: '#388bfd',
+  color: 'var(--nx-accent)',
   textAlign: 'right',
   fontFamily: 'monospace',
 };
@@ -507,9 +507,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '6px 10px',
   borderRadius: 8,
-  border: '1px solid #30363d',
-  background: '#0d1117',
-  color: '#c9d1d9',
+  border: '1px solid var(--nx-border)',
+  background: 'var(--nx-bg)',
+  color: 'var(--nx-text)',
   fontSize: 12,
   fontWeight: 600,
   outline: 'none',
@@ -518,20 +518,20 @@ const inputStyle: React.CSSProperties = {
 const constraintBtnBase: React.CSSProperties = {
   padding: '3px 6px',
   borderRadius: 5,
-  border: '1px solid #30363d',
-  background: '#161b22',
+  border: '1px solid var(--nx-border)',
+  background: 'var(--nx-panel)',
   cursor: 'pointer',
   fontSize: 10,
   fontWeight: 600,
-  color: '#8b949e',
+  color: 'var(--nx-text-2)',
   transition: 'all 0.15s',
 };
 
 const _constraintBtnActive: React.CSSProperties = {
   ...constraintBtnBase,
-  border: '1px solid #388bfd',
-  background: '#0d1117',
-  color: '#388bfd',
+  border: '1px solid var(--nx-accent)',
+  background: 'var(--nx-bg)',
+  color: 'var(--nx-accent)',
 };
 
 // ─── Tool definitions ───────────────────────────────────────────────────────
@@ -664,15 +664,15 @@ export default function SketchPanel({
             padding: '5px 8px', marginBottom: 6,
             borderRadius: 6,
             background: isClosed ? 'rgba(63,185,80,0.07)' : segCount > 0 ? 'rgba(210,153,34,0.07)' : 'rgba(255,255,255,0.03)',
-            border: `1px solid ${isClosed ? '#3fb95033' : segCount > 0 ? '#d2992233' : '#21262d'}`,
+            border: `1px solid ${isClosed ? 'var(--nx-ok)33' : segCount > 0 ? 'var(--nx-warn)33' : 'var(--nx-panel-2)'}`,
           }}>
             <span style={{
               fontSize: 13,
-              color: isClosed ? '#3fb950' : segCount > 0 ? '#d29922' : '#484f58',
+              color: isClosed ? 'var(--nx-ok)' : segCount > 0 ? 'var(--nx-warn)' : 'var(--nx-border-strong)',
             }}>
               {isClosed ? '✓' : segCount > 0 ? '○' : '◌'}
             </span>
-            <span style={{ fontSize: 10, color: isClosed ? '#3fb950' : segCount > 0 ? '#d29922' : '#484f58', fontWeight: 700 }}>
+            <span style={{ fontSize: 10, color: isClosed ? 'var(--nx-ok)' : segCount > 0 ? 'var(--nx-warn)' : 'var(--nx-border-strong)', fontWeight: 700 }}>
               {isClosed
                 ? i18n.profileClosed
                 : segCount > 0
@@ -680,7 +680,7 @@ export default function SketchPanel({
                   : i18n.startSketching}
             </span>
             <span style={{ flex: 1 }} />
-            <span style={{ fontSize: 9, color: '#484f58', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>
               {pointCount}pt
             </span>
           </div>
@@ -749,13 +749,13 @@ export default function SketchPanel({
             <div style={{ display: 'flex', gap: 3, marginBottom: 3, alignItems: 'stretch' }}>
               {drawTools.map(renderTool)}
               {/* Divider */}
-              <div style={{ width: 1, background: '#30363d', margin: '2px 1px', flexShrink: 0 }} />
+              <div style={{ width: 1, background: 'var(--nx-border)', margin: '2px 1px', flexShrink: 0 }} />
               {interactTools.map(renderTool)}
               {/* F1 — sketch text entry. Opens a dialog that converts a string
                   to a closed sketch loop (extrude → engrave / emboss). */}
               {onOpenTextPanel && (
                 <>
-                  <div style={{ width: 1, background: '#30363d', margin: '2px 1px', flexShrink: 0 }} />
+                  <div style={{ width: 1, background: 'var(--nx-border)', margin: '2px 1px', flexShrink: 0 }} />
                   <button
                     onClick={onOpenTextPanel}
                     title="Sketch Text (engrave / emboss)"
@@ -771,10 +771,10 @@ export default function SketchPanel({
             {/* ① Active tool hint */}
             {hint && (
               <div style={{
-                fontSize: 10, color: '#8b949e',
+                fontSize: 10, color: 'var(--nx-text-2)',
                 padding: '3px 6px', marginBottom: 3,
                 background: 'rgba(56,139,253,0.06)',
-                borderLeft: '2px solid #388bfd55',
+                borderLeft: '2px solid var(--nx-accent)55',
                 borderRadius: '0 4px 4px 0',
               }}>
                 {hint}
@@ -786,24 +786,24 @@ export default function SketchPanel({
               <div style={{
                 marginBottom: 3, padding: '5px 6px',
                 background: 'rgba(56,139,253,0.03)',
-                border: '1px solid #21262d', borderRadius: 5,
+                border: '1px solid var(--nx-panel-2)', borderRadius: 5,
               }}>
                 {/* Shape sub-group */}
-                <div style={{ fontSize: 9, color: '#484f58', fontWeight: 700, marginBottom: 3, letterSpacing: '0.05em' }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontWeight: 700, marginBottom: 3, letterSpacing: '0.05em' }}>
                   {i18n.groupShape}
                 </div>
                 <div style={{ display: 'flex', gap: 3, marginBottom: 5 }}>
                   {moreTools.filter(t => ['ellipse','slot','spline'].includes(t.id)).map(renderTool)}
                 </div>
                 {/* Edit sub-group */}
-                <div style={{ fontSize: 9, color: '#484f58', fontWeight: 700, marginBottom: 3, letterSpacing: '0.05em' }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontWeight: 700, marginBottom: 3, letterSpacing: '0.05em' }}>
                   {i18n.groupEdit}
                 </div>
                 <div style={{ display: 'flex', gap: 3, marginBottom: 5 }}>
                   {moreTools.filter(t => ['fillet','mirror','offset','trim'].includes(t.id)).map(renderTool)}
                 </div>
                 {/* Aux sub-group */}
-                <div style={{ fontSize: 9, color: '#484f58', fontWeight: 700, marginBottom: 3, letterSpacing: '0.05em' }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontWeight: 700, marginBottom: 3, letterSpacing: '0.05em' }}>
                   {i18n.groupAux}
                 </div>
                 <div style={{ display: 'flex', gap: 3 }}>
@@ -817,9 +817,9 @@ export default function SketchPanel({
               onClick={() => setShowMoreTools(v => !v)}
               style={{
                 width: '100%', padding: '3px 0',
-                background: 'none', border: '1px solid #21262d',
+                background: 'none', border: '1px solid var(--nx-panel-2)',
                 borderRadius: 4, cursor: 'pointer',
-                color: showMoreTools ? '#388bfd' : '#8b949e',
+                color: showMoreTools ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                 fontSize: 10, fontWeight: 600,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                 transition: 'color 0.15s',
@@ -830,7 +830,7 @@ export default function SketchPanel({
                 : `${i18n.more} ▼ (${moreTools.length})`}
               {!showMoreTools && isMoreTool && (
                 <span style={{
-                  background: '#388bfd', color: '#fff',
+                  background: 'var(--nx-accent)', color: 'var(--nx-text)',
                   borderRadius: 3, fontSize: 9, padding: '0 4px',
                 }}>active</span>
               )}
@@ -843,10 +843,10 @@ export default function SketchPanel({
       {activeTool === 'constraint' && (
         <div style={{
           marginBottom: 6, padding: '6px',
-          background: '#0d1117', border: '1px solid #388bfd44',
+          background: 'var(--nx-bg)', border: '1px solid var(--nx-accent)44',
           borderRadius: 6,
         }}>
-          <div style={{ fontSize: 9, color: '#484f58', fontWeight: 700, marginBottom: 4, letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontWeight: 700, marginBottom: 4, letterSpacing: '0.05em' }}>
             {i18n.constraintType}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
@@ -860,13 +860,13 @@ export default function SketchPanel({
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 8px', borderRadius: 5,
-                border: selectedConstraintType === ct.type ? '1px solid #388bfd' : '1px solid transparent',
+                border: selectedConstraintType === ct.type ? '1px solid var(--nx-accent)' : '1px solid transparent',
                 background: selectedConstraintType === ct.type ? 'rgba(56,139,253,0.15)' : 'transparent',
-                color: selectedConstraintType === ct.type ? '#58a6ff' : '#c9d1d9',
+                color: selectedConstraintType === ct.type ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                 fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 transition: 'all 0.1s',
               }}
-              onMouseEnter={e => { if (selectedConstraintType !== ct.type) e.currentTarget.style.background = '#21262d'; }}
+              onMouseEnter={e => { if (selectedConstraintType !== ct.type) e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
               onMouseLeave={e => { if (selectedConstraintType !== ct.type) e.currentTarget.style.background = 'transparent'; }}
             >
               <span style={{ fontSize: 13, width: 16, textAlign: 'center' }}>{ct.icon}</span>
@@ -900,14 +900,14 @@ export default function SketchPanel({
                   style={{
                     padding: '4px 10px',
                     borderRadius: 5,
-                    border: isActive ? '2px solid #388bfd' : '1px solid #30363d',
-                    background: isActive ? 'linear-gradient(135deg, #388bfd22, #1f6feb11)' : '#161b22',
-                    color: isActive ? '#58a6ff' : '#8b949e',
+                    border: isActive ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                    background: isActive ? 'linear-gradient(135deg, var(--nx-accent)22, #1f6feb11)' : 'var(--nx-panel)',
+                    color: isActive ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
                     fontWeight: isActive ? 800 : 600,
                     fontSize: 10,
                     cursor: 'pointer',
                     transition: 'all 0.12s',
-                    boxShadow: isActive ? '0 0 0 1px #388bfd44' : 'none',
+                    boxShadow: isActive ? '0 0 0 1px var(--nx-accent)44' : 'none',
                   }}
                 >
                   {isActive ? '● ' : ''}{label}
@@ -920,8 +920,8 @@ export default function SketchPanel({
               onClick={onAddHoleProfile}
               style={{
                 flex: 1, padding: '4px 8px', borderRadius: 6,
-                border: '1px solid #30363d', background: '#161b22',
-                color: '#3fb950', fontWeight: 700, fontSize: 10, cursor: 'pointer',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                color: 'var(--nx-ok)', fontWeight: 700, fontSize: 10, cursor: 'pointer',
               }}
             >
               + {t.addHoleProfile || 'Add Hole'}
@@ -930,13 +930,13 @@ export default function SketchPanel({
               <div style={{ flex: 1, display: 'flex', gap: 3 }}>
                 <button
                   onClick={() => setConfirmDeleteProfileIdx(null)}
-                  style={{ flex: 1, padding: '4px 6px', borderRadius: 6, border: '1px solid #30363d', background: '#161b22', color: '#8b949e', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-panel)', color: 'var(--nx-text-2)', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}
                 >
                   {i18n.cancel}
                 </button>
                 <button
                   onClick={() => { onDeleteProfile?.(multiSketch.activeProfileIndex); setConfirmDeleteProfileIdx(null); }}
-                  style={{ flex: 1, padding: '4px 6px', borderRadius: 6, border: '1px solid #f85149', background: '#3d1010', color: '#f85149', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}
                 >
                   {i18n.confirmDelete}
                 </button>
@@ -948,8 +948,8 @@ export default function SketchPanel({
                 title={multiSketch.activeProfileIndex === 0 ? i18n.cannotDeleteOuter : i18n.deleteCurrentHole}
                 style={{
                   flex: 1, padding: '4px 8px', borderRadius: 6,
-                  border: '1px solid #30363d', background: '#161b22',
-                  color: multiSketch.activeProfileIndex === 0 ? '#6e7681' : '#f85149',
+                  border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                  color: multiSketch.activeProfileIndex === 0 ? 'var(--nx-text-3)' : 'var(--nx-error)',
                   fontWeight: 700, fontSize: 10,
                   cursor: multiSketch.activeProfileIndex === 0 ? 'not-allowed' : 'pointer',
                 }}
@@ -1057,7 +1057,7 @@ export default function SketchPanel({
       {activeTool === 'mirror' && (
         <div style={sectionSep}>
           <div style={sectionTitle}>{i18n.mirrorTitle}</div>
-          <p style={{ fontSize: 10, color: '#8b949e', margin: 0 }}>
+          <p style={{ fontSize: 10, color: 'var(--nx-text-2)', margin: 0 }}>
             {i18n.mirrorDesc}
           </p>
         </div>
@@ -1066,7 +1066,7 @@ export default function SketchPanel({
       {activeTool === 'construction' && (
         <div style={sectionSep}>
           <div style={sectionTitle}>{i18n.constructionTitle}</div>
-          <p style={{ fontSize: 10, color: '#8b949e', margin: 0 }}>
+          <p style={{ fontSize: 10, color: 'var(--nx-text-2)', margin: 0 }}>
             {i18n.constructionDesc}
           </p>
         </div>
@@ -1074,7 +1074,7 @@ export default function SketchPanel({
 
       {activeTool === 'dimension' && (
         <div style={sectionSep}>
-          <p style={{ fontSize: 10, color: '#8b949e', margin: 0 }}>
+          <p style={{ fontSize: 10, color: 'var(--nx-text-2)', margin: 0 }}>
             {i18n.dimensionDesc}
           </p>
         </div>
@@ -1086,7 +1086,7 @@ export default function SketchPanel({
         const isWarn = constraintStatus === 'under-defined';
         const isOk = constraintStatus === 'ok';
         const bg = isError ? '#3d1f1f' : isWarn ? '#1c2933' : '#1a2d1a';
-        const border = isError ? '#f85149' : isWarn ? '#388bfd' : '#3fb950';
+        const border = isError ? 'var(--nx-error)' : isWarn ? 'var(--nx-accent)' : 'var(--nx-ok)';
         const icon = isError ? '⚠️' : isWarn ? 'ℹ️' : '✓';
         const label =
           constraintStatus === 'over-defined'
@@ -1128,7 +1128,7 @@ export default function SketchPanel({
                 {typeof unsat === 'number' && unsat > 0 && (
                   <span
                     title={`${unsat} — ${i18n.unsatTip}`}
-                    style={{ cursor: 'help', borderBottom: '1px dotted currentColor', color: '#f85149' }}
+                    style={{ cursor: 'help', borderBottom: '1px dotted currentColor', color: 'var(--nx-error)' }}
                   >
                     {i18n.unsatLabel}={unsat}
                   </span>
@@ -1166,30 +1166,30 @@ export default function SketchPanel({
             onClick={() => setShowConstraints(s => !s)}
             style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showConstraints ? 4 : 0 }}
           >
-            <span style={{ fontSize: 10, color: '#6e7681', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Constraints ({constraints.length}) {constraintStatus === 'over-defined' ? '⚠️' : constraintStatus === 'ok' ? '✓' : ''}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {/* Auto-solve toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', fontSize: 10, color: '#8b949e', fontWeight: 600 }}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', fontSize: 10, color: 'var(--nx-text-2)', fontWeight: 600 }}
                 onClick={e => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   checked={autoSolve}
                   onChange={e => onAutoSolveChange?.(e.target.checked)}
-                  style={{ accentColor: '#388bfd', cursor: 'pointer' }}
+                  style={{ accentColor: 'var(--nx-accent)', cursor: 'pointer' }}
                 />
                 {t.autoSolve || 'Auto'}
               </label>
               {!autoSolve && (
                 <button
                   onClick={e => { e.stopPropagation(); onSolveConstraints?.(); }}
-                  style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #388bfd', background: '#0d1a2e', color: '#388bfd', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}
+                  style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid var(--nx-accent)', background: '#0d1a2e', color: 'var(--nx-accent)', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}
                 >
                   {t.solveConstraints || 'Solve'}
                 </button>
               )}
-              <span style={{ fontSize: 10, color: '#484f58' }}>{showConstraints ? '▲' : '▼'}</span>
+              <span style={{ fontSize: 10, color: 'var(--nx-border-strong)' }}>{showConstraints ? '▲' : '▼'}</span>
             </div>
           </div>
           {showConstraints && (
@@ -1197,23 +1197,23 @@ export default function SketchPanel({
               {constraints.map(c => (
                 <div key={c.id} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '3px 6px', borderRadius: 5, background: '#161b22',
+                  padding: '3px 6px', borderRadius: 5, background: 'var(--nx-panel)',
                   border: `1px solid ${c.satisfied ? '#238636' : '#da3633'}`,
                 }}>
-                  <span style={{ fontSize: 10, color: c.satisfied ? '#3fb950' : '#f85149', fontWeight: 600 }}>
+                  <span style={{ fontSize: 10, color: c.satisfied ? 'var(--nx-ok)' : 'var(--nx-error)', fontWeight: 600 }}>
                     {c.satisfied ? '✓' : '✗'} {({ horizontal: i18n.cHorizontal, vertical: i18n.cVertical, perpendicular: i18n.cPerpendicular, parallel: i18n.cParallel, tangent: i18n.cTangent, coincident: i18n.cCoincident, equal: i18n.cEqual, symmetric: i18n.cSymmetric, midpoint: i18n.cMidpoint, angle: i18n.cAngle, fixed: i18n.cFixed } as Record<string, string>)[c.type] ?? c.type}
                   </span>
                   {confirmRemoveConstraintId === c.id ? (
                     <div style={{ display: 'flex', gap: 3 }}>
                       <button
                         onClick={() => setConfirmRemoveConstraintId(null)}
-                        style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid #30363d', background: '#161b22', color: '#8b949e', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
+                        style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-panel)', color: 'var(--nx-text-2)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
                       >
                         {i18n.no}
                       </button>
                       <button
                         onClick={() => { onRemoveConstraint?.(c.id); setConfirmRemoveConstraintId(null); }}
-                        style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid #f85149', background: '#3d1010', color: '#f85149', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
+                        style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
                       >
                         {i18n.del}
                       </button>
@@ -1222,9 +1222,9 @@ export default function SketchPanel({
                     <button
                       onClick={() => setConfirmRemoveConstraintId(c.id)}
                       title={i18n.removeConstraint}
-                      style={{ background: 'none', border: 'none', color: '#6e7681', cursor: 'pointer', fontSize: 11, padding: '0 3px' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#f85149')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#6e7681')}
+                      style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 11, padding: '0 3px' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = 'var(--nx-error)')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--nx-text-3)')}
                     >
                       ✕
                     </button>
@@ -1244,8 +1244,8 @@ export default function SketchPanel({
             {dimensions.map(d => (
               <div key={d.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '3px 6px', borderRadius: 5, background: '#161b22',
-                border: '1px solid #30363d',
+                padding: '3px 6px', borderRadius: 5, background: 'var(--nx-panel)',
+                border: '1px solid var(--nx-border)',
               }}>
                 {dimEditId === d.id ? (
                   <input
@@ -1269,7 +1269,7 @@ export default function SketchPanel({
                 ) : (
                   <span
                     onClick={() => { setDimEditId(d.id); setDimEditValue(String(d.value)); }}
-                    style={{ fontSize: 10, color: '#c9d1d9', fontWeight: 600, cursor: 'pointer' }}
+                    style={{ fontSize: 10, color: 'var(--nx-text)', fontWeight: 600, cursor: 'pointer' }}
                   >
                     {d.type}: {d.value.toFixed(1)} {d.type === 'angular' ? '°' : 'mm'}
                     {d.locked ? ' 🔒' : ''}
@@ -1279,13 +1279,13 @@ export default function SketchPanel({
                   <div style={{ display: 'flex', gap: 3 }}>
                     <button
                       onClick={() => setConfirmRemoveDimensionId(null)}
-                      style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid #30363d', background: '#161b22', color: '#8b949e', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
+                      style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-panel)', color: 'var(--nx-text-2)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
                     >
                       {i18n.no}
                     </button>
                     <button
                       onClick={() => { onRemoveDimension?.(d.id); setConfirmRemoveDimensionId(null); }}
-                      style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid #f85149', background: '#3d1010', color: '#f85149', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
+                      style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontSize: 9, cursor: 'pointer', fontWeight: 700 }}
                     >
                       {i18n.del}
                     </button>
@@ -1294,9 +1294,9 @@ export default function SketchPanel({
                   <button
                     onClick={() => setConfirmRemoveDimensionId(d.id)}
                     title={i18n.removeDimension}
-                    style={{ background: 'none', border: 'none', color: '#6e7681', cursor: 'pointer', fontSize: 11, padding: '0 3px' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#f85149')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#6e7681')}
+                    style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 11, padding: '0 3px' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--nx-error)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--nx-text-3)')}
                   >
                     ✕
                   </button>
@@ -1316,9 +1316,9 @@ export default function SketchPanel({
             style={{
               width: '100%', padding: '9px 14px', borderRadius: 8, border: 'none',
               background: canGenerate
-                ? 'linear-gradient(135deg, #388bfd 0%, #1f6feb 100%)'
-                : '#21262d',
-              color: canGenerate ? '#fff' : '#484f58',
+                ? 'linear-gradient(135deg, var(--nx-accent) 0%, #1f6feb 100%)'
+                : 'var(--nx-panel-2)',
+              color: canGenerate ? 'var(--nx-text)' : 'var(--nx-border-strong)',
               fontWeight: 800, fontSize: 13, cursor: canGenerate ? 'pointer' : 'not-allowed',
               boxShadow: canGenerate ? '0 4px 16px rgba(56,139,253,0.3)' : 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -1327,9 +1327,9 @@ export default function SketchPanel({
             {i18n.setup3d}
           </button>
           {!canGenerate && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, padding: '6px 8px', borderRadius: 6, background: '#1c2233', border: '1px solid #30363d', marginTop: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, padding: '6px 8px', borderRadius: 6, background: '#1c2233', border: '1px solid var(--nx-border)', marginTop: 5 }}>
               <span style={{ fontSize: 12, flexShrink: 0, marginTop: 1 }}>ℹ️</span>
-              <p style={{ fontSize: 11, color: '#8b949e', margin: 0, lineHeight: 1.4 }}>
+              <p style={{ fontSize: 11, color: 'var(--nx-text-2)', margin: 0, lineHeight: 1.4 }}>
                 {i18n.unlockHint}
               </p>
             </div>
@@ -1341,8 +1341,8 @@ export default function SketchPanel({
             onClick={() => onSketchStepChange?.('draw')}
             style={{
               width: '100%', padding: '6px 10px', borderRadius: 7, marginBottom: 8,
-              border: '1px solid #30363d', background: '#161b22',
-              color: '#8b949e', fontWeight: 700, fontSize: 11, cursor: 'pointer',
+              border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+              color: 'var(--nx-text-2)', fontWeight: 700, fontSize: 11, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 5,
             }}
           >
@@ -1355,7 +1355,7 @@ export default function SketchPanel({
       {sketchStep === 'setup3d' && (
       <div style={sectionSep}>
         {/* #wf8: default values hint */}
-        <div style={{ background: 'rgba(56,139,253,0.06)', border: '1px solid rgba(56,139,253,0.2)', borderRadius: 6, padding: '5px 8px', marginBottom: 8, fontSize: 10, color: '#8b949e', lineHeight: 1.5 }}>
+        <div style={{ background: 'rgba(56,139,253,0.06)', border: '1px solid rgba(56,139,253,0.2)', borderRadius: 6, padding: '5px 8px', marginBottom: 8, fontSize: 10, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
           {i18n.operationHint}
         </div>
         <div style={sectionTitle}>{t.sketchExtrude || 'Operation'}</div>
@@ -1378,9 +1378,9 @@ export default function SketchPanel({
                 onClick={() => onConfigChange({ ...config, mode })}
                 style={{
                   flex: 1, padding: '5px 4px', borderRadius: 6,
-                  border: active ? '2px solid #388bfd' : '1px solid #30363d',
-                  background: active ? 'linear-gradient(135deg, #388bfd 0%, #1f6feb 100%)' : '#161b22',
-                  color: active ? '#fff' : '#8b949e', fontWeight: 700, fontSize: 10, cursor: 'pointer', transition: 'all 0.15s',
+                  border: active ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                  background: active ? 'linear-gradient(135deg, var(--nx-accent) 0%, #1f6feb 100%)' : 'var(--nx-panel)',
+                  color: active ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 700, fontSize: 10, cursor: 'pointer', transition: 'all 0.15s',
                 }}
               >
                 {icons[mode]} {labels[mode]}
@@ -1427,9 +1427,9 @@ export default function SketchPanel({
                     onClick={() => onConfigChange({ ...config, revolveAxis: axis })}
                     style={{
                       flex: 1, padding: '4px 8px', borderRadius: 6,
-                      border: active ? '2px solid #388bfd' : '1px solid #30363d',
-                      background: active ? '#0d1117' : '#161b22',
-                      color: active ? '#388bfd' : '#8b949e', fontWeight: 700, fontSize: 10, cursor: 'pointer',
+                      border: active ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                      background: active ? 'var(--nx-bg)' : 'var(--nx-panel)',
+                      color: active ? 'var(--nx-accent)' : 'var(--nx-text-2)', fontWeight: 700, fontSize: 10, cursor: 'pointer',
                     }}
                   >
                     {axis.toUpperCase()} Axis
@@ -1456,9 +1456,9 @@ export default function SketchPanel({
             onClick={onToggleSketchHistory}
             style={{
               width: '100%', padding: '5px 10px', borderRadius: 6,
-              border: `1px solid ${showSketchHistory ? '#388bfd' : '#30363d'}`,
-              background: showSketchHistory ? '#1a2332' : '#161b22',
-              color: showSketchHistory ? '#388bfd' : '#8b949e',
+              border: `1px solid ${showSketchHistory ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+              background: showSketchHistory ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+              color: showSketchHistory ? 'var(--nx-accent)' : 'var(--nx-text-2)',
               fontWeight: 700, fontSize: 10, cursor: 'pointer', transition: 'all 0.15s',
               marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5,
             }}
@@ -1475,13 +1475,13 @@ export default function SketchPanel({
           disabled={!canGenerate}
           style={{
             width: '100%', padding: '9px 14px', borderRadius: 8,
-            border: editingFeatureId ? '2px solid #d29922' : 'none',
+            border: editingFeatureId ? '2px solid var(--nx-warn)' : 'none',
             background: canGenerate
               ? editingFeatureId
-                ? 'linear-gradient(135deg, #d29922 0%, #b07d10 100%)'
-                : 'linear-gradient(135deg, #388bfd 0%, #1f6feb 100%)'
-              : '#21262d',
-            color: canGenerate ? '#fff' : '#484f58',
+                ? 'linear-gradient(135deg, var(--nx-warn) 0%, #b07d10 100%)'
+                : 'linear-gradient(135deg, var(--nx-accent) 0%, #1f6feb 100%)'
+              : 'var(--nx-panel-2)',
+            color: canGenerate ? 'var(--nx-text)' : 'var(--nx-border-strong)',
             fontWeight: 800, fontSize: 13, cursor: canGenerate ? 'pointer' : 'not-allowed',
             transition: 'all 0.2s',
             boxShadow: canGenerate ? '0 4px 16px rgba(56,139,253,0.3)' : 'none',
@@ -1495,20 +1495,20 @@ export default function SketchPanel({
         )}
 
         {confirmClear ? (
-          <div style={{ padding: '8px 10px', borderRadius: 7, border: '1px solid #f85149', background: '#2d0e0e', marginBottom: 2 }}>
-            <p style={{ fontSize: 11, color: '#f85149', fontWeight: 700, margin: '0 0 6px', textAlign: 'center' }}>
+          <div style={{ padding: '8px 10px', borderRadius: 7, border: '1px solid var(--nx-error)', background: '#2d0e0e', marginBottom: 2 }}>
+            <p style={{ fontSize: 11, color: 'var(--nx-error)', fontWeight: 700, margin: '0 0 6px', textAlign: 'center' }}>
               {i18n.confirmClear}
             </p>
             <div style={{ display: 'flex', gap: 5 }}>
               <button
                 onClick={() => setConfirmClear(false)}
-                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-panel)', color: 'var(--nx-text)', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
               >
                 {i18n.cancel}
               </button>
               <button
                 onClick={() => { onClear(); setConfirmClear(false); }}
-                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid #f85149', background: '#3d1010', color: '#f85149', fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--nx-error)', background: '#3d1010', color: 'var(--nx-error)', fontWeight: 800, fontSize: 11, cursor: 'pointer' }}
               >
                 {i18n.clearAll}
               </button>
@@ -1522,8 +1522,8 @@ export default function SketchPanel({
               title={profile.segments.length === 0 ? i18n.nothingUndo : i18n.undoLast}
               style={{
                 flex: 1, padding: '6px 8px', borderRadius: 6,
-                border: '1px solid #30363d', background: '#161b22',
-                color: profile.segments.length > 0 ? '#c9d1d9' : '#6e7681',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                color: profile.segments.length > 0 ? 'var(--nx-text)' : 'var(--nx-text-3)',
                 fontWeight: 600, fontSize: 11,
                 cursor: profile.segments.length > 0 ? 'pointer' : 'not-allowed',
               }}
@@ -1536,8 +1536,8 @@ export default function SketchPanel({
               title={profile.segments.length === 0 ? i18n.nothingClear : i18n.clearAllTip}
               style={{
                 flex: 1, padding: '6px 8px', borderRadius: 6,
-                border: '1px solid #30363d', background: '#161b22',
-                color: profile.segments.length > 0 ? '#f85149' : '#6e7681',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                color: profile.segments.length > 0 ? 'var(--nx-error)' : 'var(--nx-text-3)',
                 fontWeight: 600, fontSize: 11,
                 cursor: profile.segments.length > 0 ? 'pointer' : 'not-allowed',
               }}
@@ -1550,8 +1550,8 @@ export default function SketchPanel({
 
       {/* ── Add to Feature Tree ── */}
       {onAddSketchFeature && (
-        <div style={{ ...sectionSep, borderColor: '#388bfd44' }}>
-          <div style={{ ...sectionTitle, color: '#58a6ff' }}>
+        <div style={{ ...sectionSep, borderColor: 'var(--nx-accent)44' }}>
+          <div style={{ ...sectionTitle, color: 'var(--nx-accent-2)' }}>
             {t.addToFeatureTree || 'Add to Feature Tree'}
           </div>
 
@@ -1565,9 +1565,9 @@ export default function SketchPanel({
                 onClick={() => onSketchPlaneChange?.(p)}
                 style={{
                   flex: 1, padding: '4px 6px', borderRadius: 5,
-                  border: sketchPlane === p ? '2px solid #388bfd' : '1px solid #30363d',
-                  background: sketchPlane === p ? '#0d1a2e' : '#161b22',
-                  color: sketchPlane === p ? '#388bfd' : '#8b949e',
+                  border: sketchPlane === p ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                  background: sketchPlane === p ? '#0d1a2e' : 'var(--nx-panel)',
+                  color: sketchPlane === p ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                   fontWeight: 700, fontSize: 10, cursor: 'pointer',
                 }}
               >
@@ -1600,9 +1600,9 @@ export default function SketchPanel({
                   onClick={() => onSketchOperationChange?.(op)}
                   style={{
                     flex: 1, padding: '5px 6px', borderRadius: 6,
-                    border: active ? '2px solid #388bfd' : '1px solid #30363d',
-                    background: active ? 'linear-gradient(135deg, #388bfd 0%, #1f6feb 100%)' : '#161b22',
-                    color: active ? '#fff' : '#8b949e', fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                    border: active ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                    background: active ? 'linear-gradient(135deg, var(--nx-accent) 0%, #1f6feb 100%)' : 'var(--nx-panel)',
+                    color: active ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 700, fontSize: 11, cursor: 'pointer',
                   }}
                 >
                   {icons[op]} {labels[op]}
@@ -1612,7 +1612,7 @@ export default function SketchPanel({
           </div>
             </>
           ) : (
-            <p style={{ fontSize: 10, color: '#8b949e', margin: '0 0 10px', lineHeight: 1.45 }}>
+            <p style={{ fontSize: 10, color: 'var(--nx-text-2)', margin: '0 0 10px', lineHeight: 1.45 }}>
               {i18n.unlockHint}
             </p>
           )}
@@ -1624,9 +1624,9 @@ export default function SketchPanel({
             style={{
               width: '100%', padding: '9px 14px', borderRadius: 8, border: 'none',
               background: canGenerate
-                ? 'linear-gradient(135deg, #3fb950 0%, #238636 100%)'
-                : '#21262d',
-              color: canGenerate ? '#fff' : '#484f58',
+                ? 'linear-gradient(135deg, var(--nx-ok) 0%, #238636 100%)'
+                : 'var(--nx-panel-2)',
+              color: canGenerate ? 'var(--nx-text)' : 'var(--nx-border-strong)',
               fontWeight: 800, fontSize: 12, cursor: canGenerate ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
               boxShadow: canGenerate ? '0 4px 14px rgba(63,185,80,0.3)' : 'none',
@@ -1641,7 +1641,7 @@ export default function SketchPanel({
 
       {/* ── Tips ── */}
       <div style={{ ...sectionSep, borderStyle: 'dashed' }}>
-        <p style={{ fontSize: 10, color: '#6e7681', lineHeight: 1.4, margin: 0 }}>
+        <p style={{ fontSize: 10, color: 'var(--nx-text-3)', lineHeight: 1.4, margin: 0 }}>
           {t.sketchTip || 'Click to place points. Double-click or click first point to close. Ctrl+Z to undo.'}
         </p>
       </div>

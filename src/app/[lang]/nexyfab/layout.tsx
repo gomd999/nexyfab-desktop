@@ -54,6 +54,7 @@ export default function NexyfabLayout({ children, params }: NexyfabLayoutProps) 
         >
           <div style={{ flex: 1 }}>{children}</div>
           <footer
+            data-shell-v2-hide="nexyfab-footer"
             style={{
               padding: '12px 24px',
               fontSize: '11px',

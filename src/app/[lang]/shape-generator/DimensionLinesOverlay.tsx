@@ -61,7 +61,7 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
           <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700, fontFamily: 'monospace' }}>
             {fmt(dims[0].value)}
           </span>
-          <span style={{ fontSize: 9, color: '#484f58' }}>mm</span>
+          <span style={{ fontSize: 9, color: 'var(--nx-border-strong)' }}>mm</span>
         </div>
         <div style={{ width: 32, height: 1, background: dims[0].color, opacity: 0.6 }} />
       </div>
@@ -94,7 +94,7 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
           <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700, fontFamily: 'monospace' }}>
             {fmt(dims[1].value)}
           </span>
-          <span style={{ fontSize: 9, color: '#484f58' }}>mm</span>
+          <span style={{ fontSize: 9, color: 'var(--nx-border-strong)' }}>mm</span>
         </div>
         <div style={{ width: 1, height: 32, background: dims[1].color, opacity: 0.6 }} />
       </div>
@@ -126,7 +126,7 @@ export default function DimensionLinesOverlay({ bbox, visible, lang }: Dimension
           <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700, fontFamily: 'monospace' }}>
             {fmt(dims[2].value)}
           </span>
-          <span style={{ fontSize: 9, color: '#484f58' }}>mm</span>
+          <span style={{ fontSize: 9, color: 'var(--nx-border-strong)' }}>mm</span>
         </div>
         <div style={{ width: 24, height: 1, background: dims[2].color, opacity: 0.6 }} />
       </div>

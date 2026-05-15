@@ -44,9 +44,9 @@ function getJointValueAtTime(joint: Joint, effectiveTime: number): number {
 
 // ── Bar color based on how close to limit ────────────────────────────────────
 function limitColor(ratio: number): string {
-  if (ratio >= 1)   return '#f85149'; // at limit
+  if (ratio >= 1)   return 'var(--nx-error)'; // at limit
   if (ratio >= 0.8) return '#e3b341'; // near limit
-  return '#3fb950';                   // within limits
+  return 'var(--nx-ok)';                   // within limits
 }
 
 // ── Kinematic schematic SVG ──────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function JointDiagram({ joints, jointValues }: JointDiagramProps) {
         key="backbone"
         x1={startX} y1={cy}
         x2={startX + spacing * (joints.length - 1)} y2={cy}
-        stroke="#30363d" strokeWidth={2}
+        stroke="var(--nx-border)" strokeWidth={2}
       />
     );
   }
@@ -113,9 +113,9 @@ function JointDiagram({ joints, jointValues }: JointDiagramProps) {
             stroke={color} strokeWidth={2} strokeLinecap="round"
           />
           {/* Joint circle */}
-          <circle cx={cx} cy={cy} r={6} fill="#161b22" stroke={color} strokeWidth={1.5} />
+          <circle cx={cx} cy={cy} r={6} fill="var(--nx-panel)" stroke={color} strokeWidth={1.5} />
           {/* Label */}
-          <text x={cx} y={cy + r + 14} textAnchor="middle" fill="#8b949e" fontSize={8} fontFamily="monospace">
+          <text x={cx} y={cy + r + 14} textAnchor="middle" fill="var(--nx-text-2)" fontSize={8} fontFamily="monospace">
             {joint.name.slice(0, 8)}
           </text>
           <text x={cx} y={cy + r + 24} textAnchor="middle" fill={color} fontSize={7} fontFamily="monospace">
@@ -132,14 +132,14 @@ function JointDiagram({ joints, jointValues }: JointDiagramProps) {
       elements.push(
         <g key={joint.id}>
           {/* Track */}
-          <line x1={cx - halfLen} y1={cy} x2={cx + halfLen} y2={cy} stroke="#30363d" strokeWidth={3} strokeLinecap="round" />
+          <line x1={cx - halfLen} y1={cy} x2={cx + halfLen} y2={cy} stroke="var(--nx-border)" strokeWidth={3} strokeLinecap="round" />
           {/* Arrowheads */}
-          <polygon points={`${cx - halfLen - 6},${cy} ${cx - halfLen + 4},${cy - 4} ${cx - halfLen + 4},${cy + 4}`} fill="#6e7681" />
-          <polygon points={`${cx + halfLen + 6},${cy} ${cx + halfLen - 4},${cy - 4} ${cx + halfLen - 4},${cy + 4}`} fill="#6e7681" />
+          <polygon points={`${cx - halfLen - 6},${cy} ${cx - halfLen + 4},${cy - 4} ${cx - halfLen + 4},${cy + 4}`} fill="var(--nx-text-3)" />
+          <polygon points={`${cx + halfLen + 6},${cy} ${cx + halfLen - 4},${cy - 4} ${cx + halfLen - 4},${cy + 4}`} fill="var(--nx-text-3)" />
           {/* Position indicator */}
           <circle cx={dotX} cy={cy} r={5} fill={color} />
           {/* Label */}
-          <text x={cx} y={cy + 20} textAnchor="middle" fill="#8b949e" fontSize={8} fontFamily="monospace">
+          <text x={cx} y={cy + 20} textAnchor="middle" fill="var(--nx-text-2)" fontSize={8} fontFamily="monospace">
             {joint.name.slice(0, 8)}
           </text>
           <text x={cx} y={cy + 30} textAnchor="middle" fill={color} fontSize={7} fontFamily="monospace">
@@ -151,8 +151,8 @@ function JointDiagram({ joints, jointValues }: JointDiagramProps) {
       // Fixed / planar — gray rectangle
       elements.push(
         <g key={joint.id}>
-          <rect x={cx - 8} y={cy - 8} width={16} height={16} fill="#21262d" stroke="#30363d" strokeWidth={1} rx={2} />
-          <text x={cx} y={cy + 22} textAnchor="middle" fill="#484f58" fontSize={8} fontFamily="monospace">
+          <rect x={cx - 8} y={cy - 8} width={16} height={16} fill="var(--nx-panel-2)" stroke="var(--nx-border)" strokeWidth={1} rx={2} />
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="var(--nx-border-strong)" fontSize={8} fontFamily="monospace">
             {joint.name.slice(0, 8)}
           </text>
         </g>
@@ -161,7 +161,7 @@ function JointDiagram({ joints, jointValues }: JointDiagramProps) {
   });
 
   return (
-    <svg width={W} height={H} style={{ display: 'block', background: '#0d1117', borderRadius: 6, border: '1px solid #21262d' }}>
+    <svg width={W} height={H} style={{ display: 'block', background: 'var(--nx-bg)', borderRadius: 6, border: '1px solid var(--nx-panel-2)' }}>
       {elements}
     </svg>
   );
@@ -177,7 +177,7 @@ function LiveJointValues({ joints, jointValues }: LiveJointValuesProps) {
   if (joints.length === 0) return null;
 
   return (
-    <div style={{ marginTop: 8, padding: 8, background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
+    <div style={{ marginTop: 8, padding: 8, background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
       {joints.map(joint => {
         const val   = jointValues[joint.id] ?? 0;
         const isRev = joint.type === 'revolute' || joint.type === 'ball' || joint.type === 'cylindrical';
@@ -194,13 +194,13 @@ function LiveJointValues({ joints, jointValues }: LiveJointValuesProps) {
         return (
           <div key={joint.id} style={{ marginBottom: 5 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-              <span style={{ fontSize: 9, color: '#8b949e', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: 9, color: 'var(--nx-text-2)', fontFamily: 'monospace' }}>
                 {joint.name}
-                <span style={{ color: '#484f58' }}> {joint.parentPartId.slice(0, 6)} → {joint.childPartId.slice(0, 6)}</span>
+                <span style={{ color: 'var(--nx-border-strong)' }}> {joint.parentPartId.slice(0, 6)} → {joint.childPartId.slice(0, 6)}</span>
               </span>
               <span style={{ fontSize: 9, color: color, fontFamily: 'monospace', fontWeight: 700 }}>{displayVal}</span>
             </div>
-            <div style={{ height: 4, background: '#21262d', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: 'var(--nx-panel-2)', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2, transition: 'width 0.05s linear' }} />
             </div>
           </div>
@@ -245,20 +245,20 @@ function VelAccTable({ tt, joints, summary }: VelAccTableProps) {
   });
 
   return (
-    <div style={{ marginTop: 8, padding: 8, background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', marginBottom: 6 }}>{tt.velTable}</div>
+    <div style={{ marginTop: 8, padding: 8, background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 6 }}>{tt.velTable}</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, fontFamily: 'monospace' }}>
         <thead>
           <tr>
-            <th style={{ color: '#484f58', fontWeight: 600, textAlign: 'left', paddingBottom: 4 }}>{tt.joint_col}</th>
-            <th style={{ color: '#484f58', fontWeight: 600, textAlign: 'right', paddingBottom: 4 }}>{tt.maxVel_col}</th>
-            <th style={{ color: '#484f58', fontWeight: 600, textAlign: 'right', paddingBottom: 4 }}>{tt.peakAcc_col}</th>
+            <th style={{ color: 'var(--nx-border-strong)', fontWeight: 600, textAlign: 'left', paddingBottom: 4 }}>{tt.joint_col}</th>
+            <th style={{ color: 'var(--nx-border-strong)', fontWeight: 600, textAlign: 'right', paddingBottom: 4 }}>{tt.maxVel_col}</th>
+            <th style={{ color: 'var(--nx-border-strong)', fontWeight: 600, textAlign: 'right', paddingBottom: 4 }}>{tt.peakAcc_col}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(({ joint, maxVelDisplay, peakAcc, unit, accUnit, velColor, accColor }) => (
             <tr key={joint.id}>
-              <td style={{ color: '#8b949e', paddingBottom: 3, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{joint.name}</td>
+              <td style={{ color: 'var(--nx-text-2)', paddingBottom: 3, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{joint.name}</td>
               <td style={{ color: velColor, textAlign: 'right', paddingBottom: 3 }}>{maxVelDisplay.toFixed(1)} {unit}</td>
               <td style={{ color: accColor, textAlign: 'right', paddingBottom: 3 }}>{peakAcc.toFixed(1)} {accUnit}</td>
             </tr>
@@ -413,41 +413,41 @@ export default function MotionStudyPanel({
   const activeJoints = lastConfigRef.current?.joints ?? joints;
 
   return (
-    <div style={{ position: 'fixed', top: 60, right: 16, width: 320, maxHeight: 'calc(100vh - 80px)', overflow: 'auto', background: '#161b22', border: '1px solid #30363d', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.6)', zIndex: 800, direction: isAr ? 'rtl' : 'ltr' }}>
+    <div style={{ position: 'fixed', top: 60, right: 16, width: 320, maxHeight: 'calc(100vh - 80px)', overflow: 'auto', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.6)', zIndex: 800, direction: isAr ? 'rtl' : 'ltr' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid #21262d', background: 'rgba(139,92,246,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid var(--nx-panel-2)', background: 'rgba(139,92,246,0.06)' }}>
         <span style={{ fontSize: 16, marginRight: 6 }}>🎬</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#c9d1d9', flex: 1 }}>{t.title}</span>
-        <button onClick={onClose} style={{ border: 'none', background: 'none', color: '#6e7681', fontSize: 16, cursor: 'pointer' }}>✕</button>
+        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--nx-text)', flex: 1 }}>{t.title}</span>
+        <button onClick={onClose} style={{ border: 'none', background: 'none', color: 'var(--nx-text-3)', fontSize: 16, cursor: 'pointer' }}>✕</button>
       </div>
 
       <div style={{ padding: 12 }}>
         {/* Joint list */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#8b949e' }}>{t.joint} ({joints.length})</span>
-          <button onClick={addJoint} style={{ padding: '3px 10px', borderRadius: 5, border: '1px solid #30363d', background: '#21262d', color: '#58a6ff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>+ {t.addJoint}</button>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2)' }}>{t.joint} ({joints.length})</span>
+          <button onClick={addJoint} style={{ padding: '3px 10px', borderRadius: 5, border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-accent-2)', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>+ {t.addJoint}</button>
         </div>
 
         {joints.length === 0 && (
-          <div style={{ padding: 16, textAlign: 'center', color: '#484f58', fontSize: 11 }}>{t.noJoints}</div>
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--nx-border-strong)', fontSize: 11 }}>{t.noJoints}</div>
         )}
 
         {joints.map(j => (
-          <div key={j.id} style={{ padding: 8, background: '#0d1117', borderRadius: 8, border: '1px solid #21262d', marginBottom: 6, fontSize: 10 }}>
+          <div key={j.id} style={{ padding: 8, background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)', marginBottom: 6, fontSize: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-              <input value={j.name} onChange={e => updateJoint(j.id, { name: e.target.value })} style={{ flex: 1, background: 'transparent', border: 'none', color: '#c9d1d9', fontWeight: 700, fontSize: 11 }} />
-              <button onClick={() => removeJoint(j.id)} style={{ border: 'none', background: 'none', color: '#f85149', cursor: 'pointer', fontSize: 12 }}>✕</button>
+              <input value={j.name} onChange={e => updateJoint(j.id, { name: e.target.value })} style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--nx-text)', fontWeight: 700, fontSize: 11 }} />
+              <button onClick={() => removeJoint(j.id)} style={{ border: 'none', background: 'none', color: 'var(--nx-error)', cursor: 'pointer', fontSize: 12 }}>✕</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
               <div>
-                <label style={{ color: '#6e7681', fontSize: 9 }}>{t.joint}</label>
-                <select value={j.type} onChange={e => updateJoint(j.id, { type: e.target.value as JointType })} style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 10, padding: '2px 4px' }}>
+                <label style={{ color: 'var(--nx-text-3)', fontSize: 9 }}>{t.joint}</label>
+                <select value={j.type} onChange={e => updateJoint(j.id, { type: e.target.value as JointType })} style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 10, padding: '2px 4px' }}>
                   {JOINT_TYPES.map(jt => <option key={jt} value={jt}>{t[jt]}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ color: '#6e7681', fontSize: 9 }}>{t.speed}</label>
-                <input type="number" value={j.speed} step={0.1} onChange={e => updateJoint(j.id, { speed: parseFloat(e.target.value) || 0 })} style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 10, padding: '2px 4px' }} />
+                <label style={{ color: 'var(--nx-text-3)', fontSize: 9 }}>{t.speed}</label>
+                <input type="number" value={j.speed} step={0.1} onChange={e => updateJoint(j.id, { speed: parseFloat(e.target.value) || 0 })} style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 10, padding: '2px 4px' }} />
               </div>
             </div>
           </div>
@@ -456,22 +456,22 @@ export default function MotionStudyPanel({
         {/* Config */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
           <div>
-            <label style={{ fontSize: 9, color: '#6e7681', fontWeight: 600 }}>{t.duration}</label>
-            <input type="number" value={duration} min={0.5} max={60} step={0.5} onChange={e => setDuration(parseFloat(e.target.value) || 3)} style={{ width: '100%', background: '#0d1117', border: '1px solid #21262d', borderRadius: 4, color: '#c9d1d9', fontSize: 10, padding: '3px 6px' }} />
+            <label style={{ fontSize: 9, color: 'var(--nx-text-3)', fontWeight: 600 }}>{t.duration}</label>
+            <input type="number" value={duration} min={0.5} max={60} step={0.5} onChange={e => setDuration(parseFloat(e.target.value) || 3)} style={{ width: '100%', background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 10, padding: '3px 6px' }} />
           </div>
           <div>
-            <label style={{ fontSize: 9, color: '#6e7681', fontWeight: 600 }}>{t.fps}</label>
-            <input type="number" value={fps} min={10} max={60} onChange={e => setFps(parseInt(e.target.value) || 30)} style={{ width: '100%', background: '#0d1117', border: '1px solid #21262d', borderRadius: 4, color: '#c9d1d9', fontSize: 10, padding: '3px 6px' }} />
+            <label style={{ fontSize: 9, color: 'var(--nx-text-3)', fontWeight: 600 }}>{t.fps}</label>
+            <input type="number" value={fps} min={10} max={60} onChange={e => setFps(parseInt(e.target.value) || 30)} style={{ width: '100%', background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 10, padding: '3px 6px' }} />
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#8b949e', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--nx-text-2)', cursor: 'pointer' }}>
             <input type="checkbox" checked={loop} onChange={e => setLoop(e.target.checked)} style={{ accentColor: '#8b5cf6' }} />
             {t.loop}
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#8b949e', cursor: 'pointer' }}>
-            <input type="checkbox" checked={collisionDetect} onChange={e => setCollisionDetect(e.target.checked)} style={{ accentColor: '#f85149' }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--nx-text-2)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={collisionDetect} onChange={e => setCollisionDetect(e.target.checked)} style={{ accentColor: 'var(--nx-error)' }} />
             {t.collision}
           </label>
         </div>
@@ -480,7 +480,7 @@ export default function MotionStudyPanel({
         <button
           onClick={handleRun}
           disabled={running || joints.length === 0}
-          style={{ width: '100%', padding: '8px 0', marginTop: 10, borderRadius: 6, border: 'none', background: running ? '#21262d' : 'linear-gradient(135deg, #8b5cf6, #388bfd)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: running ? 'default' : 'pointer' }}
+          style={{ width: '100%', padding: '8px 0', marginTop: 10, borderRadius: 6, border: 'none', background: running ? 'var(--nx-panel-2)' : 'linear-gradient(135deg, #8b5cf6, var(--nx-accent))', color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: running ? 'default' : 'pointer' }}
         >
           {running ? `${progress}%...` : t.run}
         </button>
@@ -489,7 +489,7 @@ export default function MotionStudyPanel({
         {frames.length > 0 && (
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button onClick={togglePlay} style={{ padding: '4px 12px', borderRadius: 5, border: 'none', background: playing ? '#f85149' : '#3fb950', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={togglePlay} style={{ padding: '4px 12px', borderRadius: 5, border: 'none', background: playing ? 'var(--nx-error)' : 'var(--nx-ok)', color: 'var(--nx-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                 {playing ? '⏹ ' + t.stop : '▶ ' + t.play}
               </button>
               <input
@@ -502,11 +502,11 @@ export default function MotionStudyPanel({
                 }}
                 style={{ flex: 1, accentColor: '#8b5cf6', height: 3 }}
               />
-              <span style={{ fontSize: 9, color: '#6e7681', fontFamily: 'monospace', minWidth: 30 }}>{playIdx}/{frames.length - 1}</span>
+              <span style={{ fontSize: 9, color: 'var(--nx-text-3)', fontFamily: 'monospace', minWidth: 30 }}>{playIdx}/{frames.length - 1}</span>
             </div>
             {/* Time label */}
             {frames[playIdx] && (
-              <div style={{ fontSize: 9, color: '#484f58', textAlign: 'right', marginTop: 2, fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', textAlign: 'right', marginTop: 2, fontFamily: 'monospace' }}>
                 {frames[playIdx].time.toFixed(2)}s
               </div>
             )}
@@ -516,7 +516,7 @@ export default function MotionStudyPanel({
         {/* ── Live Joint Values ── */}
         {frames.length > 0 && activeJoints.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', marginBottom: 4 }}>{t.liveJoints}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.liveJoints}</div>
             <LiveJointValues joints={activeJoints} jointValues={liveJointValues} />
           </div>
         )}
@@ -524,20 +524,20 @@ export default function MotionStudyPanel({
         {/* ── Joint Diagram ── */}
         {frames.length > 0 && activeJoints.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', marginBottom: 4 }}>{t.diagram}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.diagram}</div>
             <JointDiagram joints={activeJoints} jointValues={liveJointValues} />
           </div>
         )}
 
         {/* ── Results ── */}
         {summary && (
-          <div style={{ marginTop: 10, padding: 8, background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', marginBottom: 4 }}>{t.results}</div>
+          <div style={{ marginTop: 10, padding: 8, background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.results}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 10 }}>
-              <div style={{ color: '#6e7681' }}>{t.frames}</div>
-              <div style={{ color: '#c9d1d9', fontWeight: 700, textAlign: 'right' }}>{summary.totalFrames}</div>
-              <div style={{ color: '#6e7681' }}>{t.collisions}</div>
-              <div style={{ color: summary.collisionCount > 0 ? '#f85149' : '#3fb950', fontWeight: 700, textAlign: 'right' }}>{summary.collisionCount}</div>
+              <div style={{ color: 'var(--nx-text-3)' }}>{t.frames}</div>
+              <div style={{ color: 'var(--nx-text)', fontWeight: 700, textAlign: 'right' }}>{summary.totalFrames}</div>
+              <div style={{ color: 'var(--nx-text-3)' }}>{t.collisions}</div>
+              <div style={{ color: summary.collisionCount > 0 ? 'var(--nx-error)' : 'var(--nx-ok)', fontWeight: 700, textAlign: 'right' }}>{summary.collisionCount}</div>
             </div>
           </div>
         )}

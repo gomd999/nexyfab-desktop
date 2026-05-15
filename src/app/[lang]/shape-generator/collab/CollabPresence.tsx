@@ -87,7 +87,7 @@ export default function CollabPresence({
               fontWeight: 700,
               padding: '2px 8px',
               borderRadius: 10,
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
               background: mode === 'realtime'
                 ? 'rgba(34,211,238,0.15)'
                 : mode === 'demo'
@@ -97,7 +97,7 @@ export default function CollabPresence({
                 ? '#22d3ee'
                 : mode === 'demo'
                 ? '#f97316'
-                : '#8b949e',
+                : 'var(--nx-text-2)',
               cursor: 'pointer',
               transition: 'background 0.2s, color 0.2s',
             }}
@@ -115,7 +115,7 @@ export default function CollabPresence({
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: connected ? '#22c55e' : '#6b7280',
+              background: connected ? '#22c55e' : 'var(--nx-text-3)',
               boxShadow: connected ? '0 0 4px #22c55e' : 'none',
               transition: 'background 0.3s, box-shadow 0.3s',
             }}
@@ -128,11 +128,11 @@ export default function CollabPresence({
             style={{
               fontSize: 10,
               fontWeight: 700,
-              color: '#8b949e',
+              color: 'var(--nx-text-2)',
               background: 'rgba(13,17,23,0.8)',
               padding: '2px 8px',
               borderRadius: 10,
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
             }}
           >
             {users.length} {t.collabUsers}
@@ -153,15 +153,15 @@ export default function CollabPresence({
             alignItems: 'center',
             gap: 4,
             background: 'rgba(13,17,23,0.85)',
-            border: '1px solid #30363d',
+            border: '1px solid var(--nx-border)',
             borderRadius: 8,
             padding: '2px 8px',
           }}
         >
-          <span style={{ fontSize: 10, color: '#6e7681', fontWeight: 600 }}>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontWeight: 600 }}>
             {t.collabRoom}:
           </span>
-          <span style={{ fontSize: 10, color: '#c9d1d9', fontWeight: 700, letterSpacing: '0.05em' }}>
+          <span style={{ fontSize: 10, color: 'var(--nx-text)', fontWeight: 700, letterSpacing: '0.05em' }}>
             {roomId}
           </span>
           <button
@@ -171,7 +171,7 @@ export default function CollabPresence({
               fontSize: 10,
               background: 'none',
               border: 'none',
-              color: copied ? '#22c55e' : '#8b949e',
+              color: copied ? '#22c55e' : 'var(--nx-text-2)',
               cursor: 'pointer',
               padding: '0 2px',
               transition: 'color 0.2s',
@@ -208,8 +208,8 @@ function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
           justifyContent: 'center',
           fontSize: 12,
           fontWeight: 800,
-          color: '#fff',
-          border: '2px solid #0d1117',
+          color: 'var(--nx-text)',
+          border: '2px solid var(--nx-bg)',
           opacity: stale ? 0.45 : 1,
           transition: 'opacity 0.3s',
           cursor: 'default',
@@ -227,20 +227,20 @@ function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
             top: '100%',
             right: 0,
             marginTop: 4,
-            background: '#161b22',
-            color: '#c9d1d9',
+            background: 'var(--nx-panel)',
+            color: 'var(--nx-text)',
             fontSize: 11,
             fontWeight: 600,
             padding: '3px 8px',
             borderRadius: 4,
-            border: '1px solid #30363d',
+            border: '1px solid var(--nx-border)',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
             fontFamily: 'system-ui, sans-serif',
           }}
         >
           {user.name}
-          {stale && <span style={{ color: '#6e7681', marginLeft: 4 }}>(away)</span>}
+          {stale && <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>(away)</span>}
         </div>
       )}
     </div>

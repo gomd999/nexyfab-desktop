@@ -107,23 +107,23 @@ const S = {
   }),
   modeDot: (sketch: boolean, editing: boolean): React.CSSProperties => ({
     width: 6, height: 6, borderRadius: '50%',
-    background: sketch ? '#388bfd' : editing ? '#d29922' : '#3fb950',
+    background: sketch ? '#388bfd' : editing ? 'var(--nx-warn)' : 'var(--nx-ok)',
     flexShrink: 0,
   }),
   modeLabel: (sketch: boolean): React.CSSProperties => ({
     color: sketch ? '#58a6ff' : '#8b949e', fontSize: 10,
   }),
   toolWrap: { display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
-  toolLabelKey: { color: '#d2a8ff', fontSize: 10 } as React.CSSProperties,
+  toolLabelKey: { color: 'var(--nx-accent-2)', fontSize: 10 } as React.CSSProperties,
   toolLabelVal: { color: '#c9d1d9', fontSize: 10 } as React.CSSProperties,
   coordWrap: { display: 'flex', alignItems: 'center', gap: 4, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%', minWidth: 180 } as React.CSSProperties,
   coordEmpty: { color: '#484f58' } as React.CSSProperties,
-  coordX: { color: '#f47067' } as React.CSSProperties,
-  coordY: { color: '#7ee787' } as React.CSSProperties,
-  coordZ: { color: '#79c0ff' } as React.CSSProperties,
+  coordX: { color: 'var(--nx-error)' } as React.CSSProperties,
+  coordY: { color: 'var(--nx-ok)' } as React.CSSProperties,
+  coordZ: { color: 'var(--nx-accent-2)' } as React.CSSProperties,
   coordVal: { color: '#c9d1d9', minWidth: 42, textAlign: 'right' as const } as React.CSSProperties,
   selWrap: { display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
-  selCount: { color: '#d29922' } as React.CSSProperties,
+  selCount: { color: 'var(--nx-warn)' } as React.CSSProperties,
   selLabel: { color: '#8b949e', fontSize: 10 } as React.CSSProperties,
   snapBtn: (on: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 3,
@@ -136,7 +136,7 @@ const S = {
   sectionWrap: { display: 'flex', alignItems: 'center', gap: 4, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
   sectionAxisBtn: (active: boolean): React.CSSProperties => ({
     padding: '0 5px', borderRadius: 2, border: 'none', fontSize: 9, fontWeight: 700, cursor: 'pointer',
-    background: active ? '#388bfd' : 'transparent', color: active ? '#fff' : '#6e7681',
+    background: active ? '#388bfd' : 'transparent', color: active ? 'var(--nx-text)' : '#6e7681',
     fontFamily: 'inherit',
   }),
   sectionPct: { fontSize: 9, color: '#6e7681', minWidth: 24 } as React.CSSProperties,
@@ -247,7 +247,7 @@ export default function StatusBar({
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 background: snapSize === mm ? '#388bfd' : 'transparent',
-                color: snapSize === mm ? '#fff' : '#6e7681',
+                color: snapSize === mm ? 'var(--nx-text)' : '#6e7681',
               }}
             >
               {mm}

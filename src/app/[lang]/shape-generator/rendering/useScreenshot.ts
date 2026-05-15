@@ -45,14 +45,14 @@ export function captureHighRes(
 
   // Draw pin overlays
   if (pins && pins.pins.length > 0) {
-    const PIN_COLORS = { comment: '#388bfd', issue: '#e3b341', approval: '#3fb950' };
+    const PIN_COLORS = { comment: 'var(--nx-accent)', issue: '#e3b341', approval: 'var(--nx-ok)' };
     const r = 10 * scale;
     ctx.font = `${10 * scale}px system-ui, sans-serif`;
 
     pins.pins.forEach((pin, idx) => {
       const x = pin.screenX * offscreen.width;
       const y = pin.screenY * offscreen.height;
-      const color = pin.resolved ? '#8b949e' : PIN_COLORS[pin.type];
+      const color = pin.resolved ? 'var(--nx-text-2)' : PIN_COLORS[pin.type];
 
       // Circle
       ctx.beginPath();
@@ -64,7 +64,7 @@ export function captureHighRes(
       ctx.stroke();
 
       // Index number
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = 'var(--nx-text)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(String(idx + 1), x, y);
@@ -88,7 +88,7 @@ export function captureHighRes(
       ctx.fill();
       ctx.font = `${9 * scale}px system-ui, sans-serif`;
       pins.pins.forEach((pin, idx) => {
-        const color = pin.resolved ? '#8b949e' : PIN_COLORS[pin.type];
+        const color = pin.resolved ? 'var(--nx-text-2)' : PIN_COLORS[pin.type];
         const ty = legendY + idx * lineH + lineH / 2;
         ctx.fillStyle = color;
         ctx.textAlign = 'left';

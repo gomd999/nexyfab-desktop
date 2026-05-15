@@ -89,17 +89,17 @@ interface COTSPanelProps {
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#161b22',
+  bg: 'var(--nx-panel)',
   panel: '#1c2128',
-  card: '#21262d',
-  cardHover: '#30363d',
-  border: '#30363d',
-  accent: '#388bfd',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  success: '#3fb950',
+  card: 'var(--nx-panel-2)',
+  cardHover: 'var(--nx-border)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  success: 'var(--nx-ok)',
   warn: '#e3b341',
-  danger: '#f85149',
+  danger: 'var(--nx-error)',
   overlay: 'rgba(0,0,0,0.55)',
 };
 
@@ -117,18 +117,18 @@ interface CategoryTab {
 const CATEGORY_TABS: CategoryTab[] = [
   { key: 'all',     labelEn: 'All',     labelKo: '전체',  color: C.accent },
   { key: 'bolt',    labelEn: 'Bolt',    labelKo: '볼트',  color: '#e3b341' },
-  { key: 'nut',     labelEn: 'Nut',     labelKo: '너트',  color: '#3fb950' },
-  { key: 'bearing', labelEn: 'Bearing', labelKo: '베어링', color: '#d2a8ff' },
-  { key: 'collar',  labelEn: 'Collar',  labelKo: '칼라',  color: '#79c0ff' },
+  { key: 'nut',     labelEn: 'Nut',     labelKo: '너트',  color: 'var(--nx-ok)' },
+  { key: 'bearing', labelEn: 'Bearing', labelKo: '베어링', color: 'var(--nx-accent-2)' },
+  { key: 'collar',  labelEn: 'Collar',  labelKo: '칼라',  color: 'var(--nx-accent-2)' },
   { key: 'clip',    labelEn: 'Clip',    labelKo: '클립',  color: '#ff9a72' },
   { key: 'washer',  labelEn: 'Washer',  labelKo: '와셔',  color: '#56d364' },
 ];
 
 const CATEGORY_COLOR: Record<COTSPart['category'], string> = {
   bolt:    '#e3b341',
-  nut:     '#3fb950',
-  bearing: '#d2a8ff',
-  collar:  '#79c0ff',
+  nut:     'var(--nx-ok)',
+  bearing: 'var(--nx-accent-2)',
+  collar:  'var(--nx-accent-2)',
   clip:    '#ff9a72',
   washer:  '#56d364',
 };
@@ -283,7 +283,7 @@ function PartCard({ part, onInsert, isKo, tt }: PartCardProps) {
       <div style={{ fontSize: 11, color: C.dim, marginBottom: 6 }}>
         <span
           style={{
-            background: '#30363d',
+            background: 'var(--nx-border)',
             borderRadius: 4,
             padding: '1px 5px',
             marginRight: 6,

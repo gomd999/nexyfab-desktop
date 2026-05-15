@@ -49,7 +49,7 @@ function getAxisColor(key: string): string {
   for (const [k, v] of Object.entries(AXIS_COLORS)) {
     if (lower.includes(k.toLowerCase())) return v;
   }
-  return '#58a6ff';
+  return 'var(--nx-accent-2)';
 }
 
 /* ── Single dimension row ──────────────────────────────────────────────── */
@@ -127,7 +127,7 @@ function DimensionRow({
 
       {/* Label */}
       <span style={{
-        fontSize: 11, color: '#8b949e', fontWeight: 600,
+        fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600,
         minWidth: 44, flexShrink: 0,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
@@ -145,7 +145,7 @@ function DimensionRow({
           onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
           style={{
             width: 56, padding: '2px 6px', border: `1px solid ${axisColor}`,
-            borderRadius: 4, background: 'rgba(0,0,0,0.4)', color: '#fff',
+            borderRadius: 4, background: 'rgba(0,0,0,0.4)', color: 'var(--nx-text)',
             fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
             outline: 'none', textAlign: 'right',
           }}
@@ -176,7 +176,7 @@ function DimensionRow({
       )}
 
       {/* Unit */}
-      <span style={{ fontSize: 10, color: '#484f58', fontWeight: 600, flexShrink: 0 }}>
+      <span style={{ fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 600, flexShrink: 0 }}>
         {paramDef.unit}
       </span>
 
@@ -187,7 +187,7 @@ function DimensionRow({
         style={{
           width: 18, height: 18, borderRadius: 4,
           border: 'none', background: locked ? 'rgba(255,255,255,0.08)' : 'transparent',
-          color: locked ? '#fcc419' : '#484f58',
+          color: locked ? '#fcc419' : 'var(--nx-border-strong)',
           cursor: 'pointer', fontSize: 10,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0, transition: 'all 0.12s',
@@ -284,7 +284,7 @@ export default function InViewportGizmo({
           onClick={() => setCollapsed(c => !c)}
           style={{
             border: 'none', background: 'rgba(255,255,255,0.05)',
-            color: '#8b949e', cursor: 'pointer', fontSize: 10,
+            color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 10,
             width: 20, height: 20, borderRadius: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.12s',

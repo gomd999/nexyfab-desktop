@@ -34,7 +34,7 @@ export default function ThreadHoleCalloutDock({
       position: 'fixed', right: 0, top: 0, bottom: 0, width: 340,
       zIndex: 8000,
       boxShadow: '-4px 0 24px rgba(0,0,0,0.5)',
-      border: '1px solid #21262d',
+      border: '1px solid var(--nx-panel-2)',
     }}>
       <ThreadHoleCalloutPanel
         threadCallouts={threadCallouts}
@@ -49,7 +49,7 @@ export default function ThreadHoleCalloutDock({
         onClick={onClose}
         style={{
           position: 'absolute', top: 10, right: 10,
-          background: 'none', border: 'none', color: '#6e7681',
+          background: 'none', border: 'none', color: 'var(--nx-text-3)',
           fontSize: 16, cursor: 'pointer', zIndex: 1,
         }}
       >✕</button>

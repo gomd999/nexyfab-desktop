@@ -603,11 +603,11 @@ const SHAPE_ICONS: Record<string, string> = {
 };
 
 const MODE_BADGES: Record<string, { icon: string; label: string; color: string; bg: string }> = {
-  single: { icon: '🧊', label: 'Part', color: '#58a6ff', bg: '#1a2332' },
+  single: { icon: '🧊', label: 'Part', color: 'var(--nx-accent-2)', bg: 'var(--nx-panel-2)' },
   bom: { icon: '📋', label: 'BOM', color: '#39d2e0', bg: '#0d2a2e' },
   sketch: { icon: '✏️', label: 'Sketch', color: '#bc8cff', bg: '#1e1533' },
-  optimize: { icon: '🔬', label: 'Optimize', color: '#3fb950', bg: '#0d2818' },
-  modify: { icon: '🔧', label: 'Modify', color: '#d29922', bg: '#2a1f0a' },
+  optimize: { icon: '🔬', label: 'Optimize', color: 'var(--nx-ok)', bg: '#0d2818' },
+  modify: { icon: '🔧', label: 'Modify', color: 'var(--nx-warn)', bg: '#2a1f0a' },
 };
 
 /* ─── Animated typing dots ────────────────────────────────────────────────── */
@@ -615,9 +615,9 @@ const MODE_BADGES: Record<string, { icon: string; label: string; color: string; 
 function TypingDots() {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-      <span style={{ animation: 'nf-dot 1.2s infinite 0s', display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#8b949e' }} />
-      <span style={{ animation: 'nf-dot 1.2s infinite 0.2s', display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#8b949e' }} />
-      <span style={{ animation: 'nf-dot 1.2s infinite 0.4s', display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#8b949e' }} />
+      <span style={{ animation: 'nf-dot 1.2s infinite 0s', display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--nx-text-2)' }} />
+      <span style={{ animation: 'nf-dot 1.2s infinite 0.2s', display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--nx-text-2)' }} />
+      <span style={{ animation: 'nf-dot 1.2s infinite 0.4s', display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--nx-text-2)' }} />
     </span>
   );
 }
@@ -1020,7 +1020,7 @@ export default function ShapeChat({
 
   return (
     <div style={{
-      background: '#161b22', borderRadius: 16, border: '1px solid #30363d',
+      background: 'var(--nx-panel)', borderRadius: 16, border: '1px solid var(--nx-border)',
       overflow: 'hidden',
       maxWidth: 800, margin: '0 auto 24px',
     }}>
@@ -1029,7 +1029,7 @@ export default function ShapeChat({
         <div ref={scrollRef} style={{
           maxHeight: 260, overflowY: 'auto', padding: '12px 16px',
           display: 'flex', flexDirection: 'column', gap: 8,
-          borderBottom: '1px solid #30363d',
+          borderBottom: '1px solid var(--nx-border)',
         }}>
           {messages.map((msg, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: 6 }}>
@@ -1037,8 +1037,8 @@ export default function ShapeChat({
               <div style={{
                 maxWidth: '85%', padding: '8px 14px', borderRadius: 14,
                 fontSize: 13, lineHeight: 1.6,
-                background: msg.role === 'user' ? '#388bfd' : '#21262d',
-                color: msg.role === 'user' ? '#fff' : '#c9d1d9',
+                background: msg.role === 'user' ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                color: msg.role === 'user' ? 'var(--nx-text)' : 'var(--nx-text)',
                 borderBottomRightRadius: msg.role === 'user' ? 4 : 14,
                 borderBottomLeftRadius: msg.role === 'assistant' ? 4 : 14,
               }}>
@@ -1054,11 +1054,11 @@ export default function ShapeChat({
               <div style={{
                 maxWidth: '85%', padding: '8px 14px', borderRadius: 14,
                 fontSize: 13, lineHeight: 1.6,
-                background: '#21262d', color: '#c9d1d9',
+                background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
                 borderBottomLeftRadius: 4,
               }}>
                 {streamingText}
-                <span style={{ display: 'inline-block', width: 2, height: 13, background: '#58a6ff', marginLeft: 3, animation: 'nf-blink 0.8s step-end infinite', verticalAlign: 'text-bottom' }} />
+                <span style={{ display: 'inline-block', width: 2, height: 13, background: 'var(--nx-accent-2)', marginLeft: 3, animation: 'nf-blink 0.8s step-end infinite', verticalAlign: 'text-bottom' }} />
               </div>
             </div>
           )}
@@ -1067,8 +1067,8 @@ export default function ShapeChat({
           {!loading && pendingResult && MODE_BADGES[pendingResult.mode] && (
             <div style={{
               margin: '4px 0', padding: '10px 14px', borderRadius: 12,
-              background: '#21262d',
-              border: '2px solid #388bfd', position: 'relative',
+              background: 'var(--nx-panel-2)',
+              border: '2px solid var(--nx-accent)', position: 'relative',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{
@@ -1078,7 +1078,7 @@ export default function ShapeChat({
                 }}>
                   {MODE_BADGES[pendingResult.mode].icon} {MODE_BADGES[pendingResult.mode].label}
                 </span>
-                <span style={{ fontSize: 11, color: '#58a6ff', fontWeight: 700 }}>
+                <span style={{ fontSize: 11, color: 'var(--nx-accent-2)', fontWeight: 700 }}>
                   {t.aiPreviewReady || tr.aiPreviewReady}
                 </span>
               </div>
@@ -1086,7 +1086,7 @@ export default function ShapeChat({
                 <button onClick={handleApplyPreview} style={{
                   flex: 1, padding: '9px 0', borderRadius: 10, border: 'none',
                   background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                  color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                  color: 'var(--nx-text)', fontWeight: 800, fontSize: 13, cursor: 'pointer',
                   boxShadow: '0 2px 8px rgba(22,163,74,0.3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
@@ -1094,7 +1094,7 @@ export default function ShapeChat({
                 </button>
                 <button onClick={handleCancelPreview} style={{
                   padding: '9px 20px', borderRadius: 10,
-                  border: '1px solid #30363d', background: '#0d1117',
+                  border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
                   color: '#ef4444', fontWeight: 700, fontSize: 13, cursor: 'pointer',
                 }}>
                   ✕ {t.aiPreviewCancel || tr.aiPreviewCancel}
@@ -1117,7 +1117,7 @@ export default function ShapeChat({
               <button
                 onClick={() => setBudgetAdvisory(null)}
                 style={{
-                  background: 'none', border: 'none', color: '#9ca3af',
+                  background: 'none', border: 'none', color: 'var(--nx-text-2)',
                   cursor: 'pointer', fontSize: 14, padding: '0 4px',
                 }}
                 aria-label="dismiss"
@@ -1136,7 +1136,7 @@ export default function ShapeChat({
               {lastFailedText && (
                 <button onClick={handleRetry} style={{
                   padding: '6px 14px', borderRadius: 8, border: 'none',
-                  background: '#388bfd', color: '#fff', fontSize: 12, fontWeight: 700,
+                  background: 'var(--nx-accent)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
                   cursor: 'pointer', flexShrink: 0,
                 }}>
                   ↺ {t.aiRetry || tr.aiRetry}
@@ -1162,7 +1162,7 @@ export default function ShapeChat({
           {loading && !streamingText && (
             <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 6 }}>
               <span style={{ fontSize: 16, marginTop: 4 }}>🤖</span>
-              <div style={{ padding: '10px 14px', borderRadius: 14, background: '#21262d', fontSize: 13, color: '#8b949e', borderBottomLeftRadius: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '10px 14px', borderRadius: 14, background: 'var(--nx-panel-2)', fontSize: 13, color: 'var(--nx-text-2)', borderBottomLeftRadius: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>{t.aiTyping || tr.aiTyping}</span>
                 <TypingDots />
               </div>
@@ -1173,14 +1173,14 @@ export default function ShapeChat({
 
       {/* BOM Result Card */}
       {bomResult && bomResult.parts.length > 0 && (
-        <div style={{ padding: '16px', borderBottom: '1px solid #30363d' }}>
+        <div style={{ padding: '16px', borderBottom: '1px solid var(--nx-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ fontSize: 20 }}>📋</span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#c9d1d9' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--nx-text)' }}>
                 {bomResult.productName} BOM
               </div>
-              <div style={{ fontSize: 12, color: '#8b949e' }}>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
                 {bomResult.parts.length}{t.bomParts || tr.bomParts}
               </div>
             </div>
@@ -1191,37 +1191,37 @@ export default function ShapeChat({
               <div key={idx} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 12px', borderRadius: 12,
-                background: '#0d1117', border: '1px solid #30363d',
+                background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
                 cursor: 'pointer', transition: 'all 0.15s',
               }}
                 onClick={() => handleApplyPart(part)}
-                onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.borderColor = '#58a6ff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#0d1117'; e.currentTarget.style.borderColor = '#30363d'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-bg)'; e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
               >
                 <div style={{
-                  width: 24, height: 24, borderRadius: '50%', background: '#388bfd',
-                  color: '#fff', fontSize: 12, fontWeight: 700,
+                  width: 24, height: 24, borderRadius: '50%', background: 'var(--nx-accent)',
+                  color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>{idx + 1}</div>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{SHAPE_ICONS[part.shapeId] || '🧊'}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#c9d1d9' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
                     {part.name}
-                    {part.quantity > 1 && <span style={{ fontSize: 11, color: '#58a6ff', marginLeft: 6 }}>×{part.quantity}</span>}
+                    {part.quantity > 1 && <span style={{ fontSize: 11, color: 'var(--nx-accent-2)', marginLeft: 6 }}>×{part.quantity}</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: '#8b949e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 11, color: 'var(--nx-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {part.description}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap' }}>
                   {part.suggestedMaterial && (
-                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: '#1a2332', color: '#58a6ff' }}>{part.suggestedMaterial}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'var(--nx-panel-2)', color: 'var(--nx-accent-2)' }}>{part.suggestedMaterial}</span>
                   )}
                   {part.suggestedProcess && (
-                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: '#0d2818', color: '#3fb950' }}>{part.suggestedProcess}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: '#0d2818', color: 'var(--nx-ok)' }}>{part.suggestedProcess}</span>
                   )}
                 </div>
-                <span style={{ fontSize: 12, color: '#58a6ff', flexShrink: 0 }}>→</span>
+                <span style={{ fontSize: 12, color: 'var(--nx-accent-2)', flexShrink: 0 }}>→</span>
               </div>
             ))}
           </div>
@@ -1231,8 +1231,8 @@ export default function ShapeChat({
               onClick={handleAddAllToCart}
               style={{
                 flex: 1, padding: '11px 0', borderRadius: 12, border: 'none',
-                background: 'linear-gradient(135deg, #388bfd 0%, #58a6ff 100%)',
-                color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                background: 'linear-gradient(135deg, var(--nx-accent) 0%, var(--nx-accent-2) 100%)',
+                color: 'var(--nx-text)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(56,139,253,0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
@@ -1243,8 +1243,8 @@ export default function ShapeChat({
               onClick={() => setBomResult(null)}
               style={{
                 padding: '11px 16px', borderRadius: 12,
-                border: '1px solid #30363d', background: '#0d1117',
-                color: '#8b949e', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+                color: 'var(--nx-text-2)', fontWeight: 600, fontSize: 13, cursor: 'pointer',
               }}
             >✕</button>
           </div>
@@ -1256,14 +1256,14 @@ export default function ShapeChat({
         {/* Multi-turn context banner */}
         {showContinuingBanner && (
           <div style={{
-            fontSize: 11, color: '#8b949e', marginBottom: 8,
+            fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 8,
             display: 'flex', alignItems: 'center', gap: 6,
-            background: '#21262d', borderRadius: 8, padding: '5px 10px',
+            background: 'var(--nx-panel-2)', borderRadius: 8, padding: '5px 10px',
           }}>
-            <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+            <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700 }}>
               {t.aiContinuing || tr.aiContinuing}
             </span>
-            <span style={{ color: '#c9d1d9', fontWeight: 600 }}>
+            <span style={{ color: 'var(--nx-text)', fontWeight: 600 }}>
               {SHAPE_ICONS[lastShapeId!] || '🧊'} {lastShapeId}
             </span>
           </div>
@@ -1271,35 +1271,35 @@ export default function ShapeChat({
 
         {/* Contextual hint */}
         {messages.length > 0 && !loading && !showContinuingBanner && (
-          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700 }}>{tr.tryLabel}</span>
             {activeTab === 'design' ? (
               hasShape ? (
                 <>
-                  <span style={{ color: '#58a6ff' }}>{tr.tryFilletEdge}</span>
-                  <span style={{ color: '#484f58' }}>·</span>
-                  <span style={{ color: '#d29922' }}>{tr.tryAddHole}</span>
-                  <span style={{ color: '#484f58' }}>·</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{tr.tryFilletEdge}</span>
+                  <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
+                  <span style={{ color: 'var(--nx-warn)' }}>{tr.tryAddHole}</span>
+                  <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
                   <span style={{ color: '#bc8cff' }}>{tr.tryHalfSize}</span>
-                  <span style={{ color: '#484f58' }}>·</span>
-                  <span style={{ color: '#3fb950' }}>{tr.tryShell}</span>
+                  <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
+                  <span style={{ color: 'var(--nx-ok)' }}>{tr.tryShell}</span>
                 </>
               ) : (
                 <>
-                  <span style={{ color: '#58a6ff' }}>{tr.tryBracket}</span>
-                  <span style={{ color: '#484f58' }}>·</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{tr.tryBracket}</span>
+                  <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
                   <span style={{ color: '#bc8cff' }}>{tr.tryStarSketch}</span>
-                  <span style={{ color: '#484f58' }}>·</span>
+                  <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
                   <span style={{ color: '#39d2e0' }}>{tr.tryFanAssembly}</span>
-                  <span style={{ color: '#484f58' }}>·</span>
-                  <span style={{ color: '#3fb950' }}>{tr.tryVase}</span>
+                  <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
+                  <span style={{ color: 'var(--nx-ok)' }}>{tr.tryVase}</span>
                 </>
               )
             ) : (
               <>
-                <span style={{ color: '#3fb950' }}>{tr.tryFixLoad}</span>
-                <span style={{ color: '#484f58' }}>·</span>
-                <span style={{ color: '#3fb950' }}>{tr.tryVolReduce}</span>
+                <span style={{ color: 'var(--nx-ok)' }}>{tr.tryFixLoad}</span>
+                <span style={{ color: 'var(--nx-border-strong)' }}>·</span>
+                <span style={{ color: 'var(--nx-ok)' }}>{tr.tryVolReduce}</span>
               </>
             )}
           </div>
@@ -1311,12 +1311,12 @@ export default function ShapeChat({
             {examples.map((ex, i) => (
               <button key={i} onClick={() => handleExampleClick(ex.text)} style={{
                 padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                border: '1px solid #30363d', background: '#21262d', color: '#8b949e',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
                 cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
                 <span style={{ fontSize: 13 }}>{ex.icon}</span> {ex.text}
               </button>
@@ -1330,11 +1330,11 @@ export default function ShapeChat({
             {quickChips.map((chip, i) => (
               <button key={i} onClick={() => handleExampleClick(t[chip.key] || chip.fallback)} style={{
                 padding: '5px 12px', borderRadius: 16, fontSize: 11, fontWeight: 600,
-                border: '1px solid #30363d', background: '#21262d', color: '#8b949e',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
                 cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#388bfd22'; e.currentTarget.style.borderColor = '#388bfd'; e.currentTarget.style.color = '#58a6ff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent)22'; e.currentTarget.style.borderColor = 'var(--nx-accent)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
               >
                 {t[chip.key] || chip.fallback}
               </button>
@@ -1354,7 +1354,7 @@ export default function ShapeChat({
               role="status"
               style={{
                 marginBottom: 6, padding: '8px 12px', borderRadius: 8,
-                background: '#3d1519', border: '1px solid #f8514944',
+                background: '#3d1519', border: '1px solid var(--nx-error)44',
                 color: '#fda4af', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8,
               }}
             >
@@ -1385,13 +1385,13 @@ export default function ShapeChat({
             disabled={loading || (budgetLockUntil !== null && budgetLockUntil > budgetLockNow)}
             style={{
               flex: 1, padding: '11px 16px', borderRadius: 12,
-              border: '2px solid #30363d', fontSize: 14, outline: 'none',
-              color: '#c9d1d9',
-              background: loading ? '#161b22' : '#0d1117',
+              border: '2px solid var(--nx-border)', fontSize: 14, outline: 'none',
+              color: 'var(--nx-text)',
+              background: loading ? 'var(--nx-panel)' : 'var(--nx-bg)',
               transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
-            onFocus={e => { e.currentTarget.style.borderColor = '#388bfd'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56,139,253,0.15)'; }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.boxShadow = 'none'; }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--nx-accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56,139,253,0.15)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.boxShadow = 'none'; }}
           />
           {/* Mic button */}
           <button
@@ -1423,8 +1423,8 @@ export default function ShapeChat({
             }}
             style={{
               padding: '11px 13px', borderRadius: 12, border: 'none', flexShrink: 0,
-              background: isListening ? '#f85149' : '#21262d',
-              color: isListening ? '#fff' : '#8b949e',
+              background: isListening ? 'var(--nx-error)' : 'var(--nx-panel-2)',
+              color: isListening ? 'var(--nx-text)' : 'var(--nx-text-2)',
               fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
               animation: isListening ? 'pulse 1.2s infinite' : 'none',
             }}
@@ -1435,9 +1435,9 @@ export default function ShapeChat({
             style={{
               padding: '11px 18px', borderRadius: 12, border: 'none',
               background: input.trim() && !loading
-                ? '#388bfd'
-                : '#30363d',
-              color: '#fff', fontWeight: 700, fontSize: 16,
+                ? 'var(--nx-accent)'
+                : 'var(--nx-border)',
+              color: 'var(--nx-text)', fontWeight: 700, fontSize: 16,
               cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s', flexShrink: 0,
               boxShadow: input.trim() && !loading ? '0 2px 8px rgba(56,139,253,0.3)' : 'none',

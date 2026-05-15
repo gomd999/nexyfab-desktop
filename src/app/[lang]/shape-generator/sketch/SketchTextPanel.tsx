@@ -36,12 +36,12 @@ const dict = {
 };
 
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#58a6ff',
-  cellBg: '#0d1117',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent-2)',
+  cellBg: 'var(--nx-bg)',
 };
 
 export default function SketchTextPanel({
@@ -147,7 +147,7 @@ export default function SketchTextPanel({
             padding: 10, fontSize: 11, color: C.muted, minHeight: 36,
           }}>
             {fontState.loading && <span>{t.loading}</span>}
-            {fontState.error && <span style={{ color: '#f85149' }}>{fontState.error}</span>}
+            {fontState.error && <span style={{ color: 'var(--nx-error)' }}>{fontState.error}</span>}
             {fontState.font && (
               <span>
                 {t.preview}: {previewBbox.width.toFixed(1)} × {previewBbox.height.toFixed(1)} mm
@@ -169,7 +169,7 @@ export default function SketchTextPanel({
               style={{
                 padding: '8px 14px', borderRadius: 6, border: 'none',
                 background: fontState.font ? C.accent : '#374151',
-                color: '#fff', fontSize: 13, fontWeight: 700,
+                color: 'var(--nx-text)', fontSize: 13, fontWeight: 700,
                 cursor: fontState.font ? 'pointer' : 'not-allowed',
               }}
             >{t.apply}</button>

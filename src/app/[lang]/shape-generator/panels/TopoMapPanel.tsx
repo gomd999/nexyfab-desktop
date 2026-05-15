@@ -40,9 +40,9 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
           style={{
             padding: '5px 11px',
             borderRadius: 7,
-            border: open ? '1px solid #bc8cff' : '1px solid #30363d',
-            background: open ? 'rgba(188,140,255,0.15)' : '#161b22',
-            color: open ? '#bc8cff' : '#6e7681',
+            border: open ? '1px solid #bc8cff' : '1px solid var(--nx-border)',
+            background: open ? 'rgba(188,140,255,0.15)' : 'var(--nx-panel)',
+            color: open ? '#bc8cff' : 'var(--nx-text-3)',
             fontSize: 11, fontWeight: 700,
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 5,
@@ -54,8 +54,8 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
             e.currentTarget.style.color = '#bc8cff';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = open ? '#bc8cff' : '#30363d';
-            e.currentTarget.style.color = open ? '#bc8cff' : '#6e7681';
+            e.currentTarget.style.borderColor = open ? '#bc8cff' : 'var(--nx-border)';
+            e.currentTarget.style.color = open ? '#bc8cff' : 'var(--nx-text-3)';
           }}
         >
           <span>🏷️</span>

@@ -59,15 +59,15 @@ type Lang = keyof typeof dict;
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 10px', borderRadius: 8,
-  border: '1px solid #30363d', background: '#0d1117',
-  color: '#c9d1d9', fontSize: 12, outline: 'none',
+  border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+  color: 'var(--nx-text)', fontSize: 12, outline: 'none',
   boxSizing: 'border-box',
 };
 
 const selectStyle: React.CSSProperties = { ...inputStyle };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 700, color: '#8b949e',
+  fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)',
   textTransform: 'uppercase', letterSpacing: '0.04em',
   display: 'block', marginBottom: 4,
 };
@@ -180,25 +180,25 @@ export default function RfqPanel({
 
   return (
     <div style={{
-      background: '#0d1117', border: '1px solid #21262d', borderRadius: 14,
+      background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)', borderRadius: 14,
       width: 340, fontFamily: 'Inter, system-ui, sans-serif',
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       overflow: 'hidden',
     }}>
       {/* Header */}
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #21262d',
+        padding: '12px 16px', borderBottom: '1px solid var(--nx-panel-2)',
         background: 'linear-gradient(135deg,rgba(240,160,50,0.08),rgba(56,139,253,0.08))',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{ fontSize: 16 }}>📋</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#c9d1d9' }}>{t.title}</div>
-          <div style={{ fontSize: 10, color: '#8b949e' }}>{t.subtitle}</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--nx-text)' }}>{t.title}</div>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{t.subtitle}</div>
         </div>
         {onClose && (
           <button onClick={onClose} style={{
-            border: 'none', background: '#161b22', color: '#6e7681',
+            border: 'none', background: 'var(--nx-panel)', color: 'var(--nx-text-3)',
             width: 22, height: 22, borderRadius: 6, cursor: 'pointer', fontSize: 11,
           }}>✕</button>
         )}
@@ -307,24 +307,24 @@ export default function RfqPanel({
             background: 'rgba(240,160,50,0.08)', border: '1px solid rgba(240,160,50,0.2)',
             borderRadius: 8, padding: '10px 12px', marginBottom: 12,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#d29922', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-warn)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
               {t.estimatedCost}
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 9, color: '#8b949e' }}>{t.perPiece}</div>
+                <div style={{ fontSize: 9, color: 'var(--nx-text-2)' }}>{t.perPiece}</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#e3b341' }}>
                   {opts.currency} {estimate.perPiece.low.toFixed(2)}–{estimate.perPiece.high.toFixed(2)}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 9, color: '#8b949e' }}>{t.total} (×{opts.quantity})</div>
+                <div style={{ fontSize: 9, color: 'var(--nx-text-2)' }}>{t.total} (×{opts.quantity})</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#e3b341' }}>
                   {opts.currency} {estimate.low.toFixed(0)}–{estimate.high.toFixed(0)}
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: 9, color: '#484f58', marginTop: 4 }}>
+            <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginTop: 4 }}>
               Rough estimate only — actual quotes may differ significantly.
             </div>
           </div>
@@ -337,9 +337,9 @@ export default function RfqPanel({
           style={{
             width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
             background: geometry && !generating
-              ? 'linear-gradient(135deg,#d29922,#f0a032)'
-              : '#21262d',
-            color: geometry && !generating ? '#0d1117' : '#484f58',
+              ? 'linear-gradient(135deg,var(--nx-warn),#f0a032)'
+              : 'var(--nx-panel-2)',
+            color: geometry && !generating ? 'var(--nx-bg)' : 'var(--nx-border-strong)',
             fontWeight: 800, fontSize: 13, cursor: geometry && !generating ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'all 0.15s',
@@ -349,7 +349,7 @@ export default function RfqPanel({
             <>
               <span style={{
                 width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)',
-                borderTop: '2px solid #0d1117', borderRadius: '50%',
+                borderTop: '2px solid var(--nx-bg)', borderRadius: '50%',
                 animation: 'rfqSpin 0.8s linear infinite', display: 'inline-block',
               }} />
               <style>{`@keyframes rfqSpin{to{transform:rotate(360deg)}}`}</style>
@@ -368,8 +368,8 @@ export default function RfqPanel({
             width: '100%', padding: '11px 0', borderRadius: 10, border: '1px solid #238636',
             background: geometry && !submitting
               ? '#238636'
-              : '#21262d',
-            color: geometry && !submitting ? '#ffffff' : '#484f58',
+              : 'var(--nx-panel-2)',
+            color: geometry && !submitting ? '#ffffff' : 'var(--nx-border-strong)',
             fontWeight: 800, fontSize: 13, cursor: geometry && !submitting ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'all 0.15s',

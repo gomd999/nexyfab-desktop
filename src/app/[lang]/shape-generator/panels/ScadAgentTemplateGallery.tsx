@@ -261,8 +261,8 @@ export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalle
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         <div style={headerStyle}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>{t.title}</div>
-            <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>{t.subtitle}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>{t.title}</div>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>{t.subtitle}</div>
           </div>
           <button onClick={() => setOpen(false)} style={closeBtnStyle} aria-label={t.close}>✕</button>
         </div>
@@ -277,15 +277,15 @@ export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalle
                 e.currentTarget.style.background = '#0d2547';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#30363d';
-                e.currentTarget.style.background = '#0d1117';
+                e.currentTarget.style.borderColor = 'var(--nx-border)';
+                e.currentTarget.style.background = 'var(--nx-bg)';
               }}
             >
               <div style={{ fontSize: 28, marginBottom: 4 }}>{tpl.emoji}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3', marginBottom: 3 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 3 }}>
                 {isKo ? tpl.title_ko : tpl.title_en}
               </div>
-              <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 6, minHeight: 26, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginBottom: 6, minHeight: 26, lineHeight: 1.3 }}>
                 {isKo ? tpl.desc_ko : tpl.desc_en}
               </div>
               <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -303,8 +303,8 @@ export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalle
 
 const openBtnStyle: React.CSSProperties = {
   padding: '4px 10px', fontSize: 10, fontWeight: 700,
-  borderRadius: 6, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 6, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };
 const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0,
@@ -314,21 +314,21 @@ const overlayStyle: React.CSSProperties = {
 };
 const modalStyle: React.CSSProperties = {
   width: 'min(820px, 92vw)', maxHeight: '85vh',
-  background: '#161b22',
-  border: '1px solid #30363d', borderRadius: 10,
+  background: 'var(--nx-panel)',
+  border: '1px solid var(--nx-border)', borderRadius: 10,
   display: 'flex', flexDirection: 'column',
   overflow: 'hidden',
 };
 const headerStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-start',
   padding: '14px 18px',
-  borderBottom: '1px solid #21262d',
+  borderBottom: '1px solid var(--nx-panel-2)',
   justifyContent: 'space-between',
 };
 const closeBtnStyle: React.CSSProperties = {
   padding: '4px 10px', fontSize: 14,
-  borderRadius: 4, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 4, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };
 const gridStyle: React.CSSProperties = {
   padding: 14,
@@ -340,10 +340,10 @@ const gridStyle: React.CSSProperties = {
 };
 const cardStyle: React.CSSProperties = {
   padding: 12, textAlign: 'left',
-  background: '#0d1117',
-  border: '1px solid #30363d',
+  background: 'var(--nx-bg)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 8,
-  color: '#c9d1d9',
+  color: 'var(--nx-text)',
   cursor: 'pointer',
   transition: 'all 0.12s',
   display: 'flex', flexDirection: 'column',
@@ -352,7 +352,7 @@ const tagPillStyle: React.CSSProperties = {
   padding: '1px 6px',
   fontSize: 9, fontWeight: 600,
   background: '#1f6feb22',
-  color: '#79c0ff',
+  color: 'var(--nx-accent-2)',
   borderRadius: 8,
   fontFamily: 'monospace',
 };

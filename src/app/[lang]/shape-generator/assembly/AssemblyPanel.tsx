@@ -206,15 +206,15 @@ interface AssemblyPanelProps {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  danger: '#f85149',
-  success: '#3fb950',
-  warning: '#f0883e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  danger: 'var(--nx-error)',
+  success: 'var(--nx-ok)',
+  warning: 'var(--nx-warn)',
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -354,7 +354,7 @@ export default function AssemblyPanel({
     fontWeight: 700,
     cursor: 'pointer',
     background: active ? C.accent : C.card,
-    color: active ? '#fff' : C.textDim,
+    color: active ? 'var(--nx-text)' : C.textDim,
     transition: 'all 0.15s',
   });
 
@@ -450,7 +450,7 @@ export default function AssemblyPanel({
                     padding: '5px 10px',
                     borderRadius: 6,
                     border: `1px solid ${C.accent}`,
-                    background: '#0d1117',
+                    background: 'var(--nx-bg)',
                     color: C.accent,
                     fontSize: 10,
                     fontWeight: 700,
@@ -475,7 +475,7 @@ export default function AssemblyPanel({
                   padding: '9px 10px',
                   borderRadius: 8,
                   border: `1px solid ${C.accent}`,
-                  background: '#0d1117',
+                  background: 'var(--nx-bg)',
                   color: C.accent,
                   fontSize: 12,
                   fontWeight: 700,
@@ -503,7 +503,7 @@ export default function AssemblyPanel({
                   <span style={{
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#fff',
+                    color: 'var(--nx-text)',
                     background: C.accent,
                     borderRadius: 4,
                     padding: '1px 6px',
@@ -554,7 +554,7 @@ export default function AssemblyPanel({
                         padding: '3px 6px',
                         borderRadius: 4,
                         border: `1px solid ${C.border}`,
-                        background: '#0d1117',
+                        background: 'var(--nx-bg)',
                         color: C.text,
                         fontSize: 11,
                         fontWeight: 600,
@@ -569,7 +569,7 @@ export default function AssemblyPanel({
             {/* Add mate form */}
             {addMode ? (
               <div style={{
-                background: '#0d1117',
+                background: 'var(--nx-bg)',
                 borderRadius: 8,
                 border: `1px solid ${C.accent}`,
                 padding: 10,
@@ -680,7 +680,7 @@ export default function AssemblyPanel({
                       borderRadius: 6,
                       border: 'none',
                       background: C.accent,
-                      color: '#fff',
+                      color: 'var(--nx-text)',
                       fontSize: 11,
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -752,7 +752,7 @@ export default function AssemblyPanel({
                 padding: '8px 10px',
                 borderRadius: 8,
                 border: `1px solid ${canSyncSolverFromBom ? C.accent : C.border}`,
-                background: canSyncSolverFromBom ? '#0d1117' : C.card,
+                background: canSyncSolverFromBom ? 'var(--nx-bg)' : C.card,
                 color: canSyncSolverFromBom ? C.accent : C.textDim,
                 fontSize: 11,
                 fontWeight: 700,
@@ -821,7 +821,7 @@ export default function AssemblyPanel({
                   padding: '10px',
                   borderRadius: 8,
                   border: `1px solid ${C.accent}`,
-                  background: interferenceLoading ? C.card : '#0d1117',
+                  background: interferenceLoading ? C.card : 'var(--nx-bg)',
                   color: C.accent,
                   fontSize: 12,
                   fontWeight: 700,
@@ -996,7 +996,7 @@ export default function AssemblyPanel({
                     fontWeight: 700,
                     cursor: 'pointer',
                     background: Math.abs(explodeFactor - v) < 0.01 ? C.accent : C.card,
-                    color: Math.abs(explodeFactor - v) < 0.01 ? '#fff' : C.textDim,
+                    color: Math.abs(explodeFactor - v) < 0.01 ? 'var(--nx-text)' : C.textDim,
                     transition: 'all 0.12s',
                   }}
                 >

@@ -102,16 +102,16 @@ export default function SplitSpecPanel({ lang = 'en', onClose }: Props) {
         position: 'absolute', top: 0, left: 0, bottom: 0,
         width: 320, zIndex: 20,
         background: 'rgba(13,17,23,0.92)',
-        borderRight: '1px solid #30363d',
+        borderRight: '1px solid var(--nx-border)',
         display: 'flex', flexDirection: 'column',
         backdropFilter: 'blur(4px)',
-        color: '#e6edf3',
+        color: 'var(--nx-text)',
       }}
     >
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', borderBottom: '1px solid #30363d',
-        fontSize: 12, fontWeight: 700, color: '#c9d1d9',
+        padding: '8px 12px', borderBottom: '1px solid var(--nx-border)',
+        fontSize: 12, fontWeight: 700, color: 'var(--nx-text)',
       }}>
         <span>📐 {t.title}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -119,8 +119,8 @@ export default function SplitSpecPanel({ lang = 'en', onClose }: Props) {
             onClick={handleExportSheet}
             disabled={!selectedId}
             style={{
-              fontSize: 11, color: '#8b949e', background: 'none',
-              border: '1px solid #30363d', borderRadius: 4,
+              fontSize: 11, color: 'var(--nx-text-2)', background: 'none',
+              border: '1px solid var(--nx-border)', borderRadius: 4,
               cursor: selectedId ? 'pointer' : 'default',
               padding: '2px 8px', opacity: selectedId ? 1 : 0.5,
             }}
@@ -129,7 +129,7 @@ export default function SplitSpecPanel({ lang = 'en', onClose }: Props) {
           <button
             onClick={onClose}
             style={{
-              fontSize: 12, color: '#8b949e', background: 'none',
+              fontSize: 12, color: 'var(--nx-text-2)', background: 'none',
               border: 'none', cursor: 'pointer', padding: 4,
             }}
             aria-label="Close"
@@ -139,36 +139,36 @@ export default function SplitSpecPanel({ lang = 'en', onClose }: Props) {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 18px', fontFamily: 'monospace', fontSize: 12 }}>
         {!selectedId ? (
-          <div style={{ color: '#8b949e', fontStyle: 'italic' }}>{t.noShape}</div>
+          <div style={{ color: 'var(--nx-text-2)', fontStyle: 'italic' }}>{t.noShape}</div>
         ) : (
           <>
             <section style={{ marginBottom: 14 }}>
-              <div style={{ color: '#8b949e', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              <div style={{ color: 'var(--nx-text-2)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                 {t.shape}
               </div>
-              <div style={{ color: '#e6edf3', fontSize: 14, fontWeight: 700 }}>{selectedId}</div>
+              <div style={{ color: 'var(--nx-text)', fontSize: 14, fontWeight: 700 }}>{selectedId}</div>
             </section>
 
             <section style={{ marginBottom: 14 }}>
-              <div style={{ color: '#8b949e', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              <div style={{ color: 'var(--nx-text-2)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                 {t.material}
               </div>
               <div>{materialId || '—'}</div>
             </section>
 
             <section>
-              <div style={{ color: '#8b949e', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              <div style={{ color: 'var(--nx-text-2)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                 {t.parameters}
               </div>
               {paramRows.length === 0 ? (
-                <div style={{ color: '#6e7681', fontStyle: 'italic' }}>—</div>
+                <div style={{ color: 'var(--nx-text-3)', fontStyle: 'italic' }}>—</div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
                     {paramRows.map(([k, v]) => (
-                      <tr key={k} style={{ borderBottom: '1px solid #21262d' }}>
-                        <td style={{ padding: '4px 0', color: '#8b949e' }}>{k}</td>
-                        <td style={{ padding: '4px 0', textAlign: 'right', color: '#c9d1d9' }}>
+                      <tr key={k} style={{ borderBottom: '1px solid var(--nx-panel-2)' }}>
+                        <td style={{ padding: '4px 0', color: 'var(--nx-text-2)' }}>{k}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'right', color: 'var(--nx-text)' }}>
                           {typeof v === 'number' ? v.toFixed(v % 1 === 0 ? 0 : 2) : String(v)}
                         </td>
                       </tr>

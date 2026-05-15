@@ -96,7 +96,7 @@ export default function ScadAgentPresence({ lang, sessionId, userId, userLabel }
               <Avatar key={p.id} id={p.id} label={p.label} />
             ))}
             {others.length > 3 && (
-              <span style={{ ...avatarStyle, background: '#30363d', color: '#8b949e' }}>
+              <span style={{ ...avatarStyle, background: 'var(--nx-border)', color: 'var(--nx-text-2)' }}>
                 +{others.length - 3}
               </span>
             )}
@@ -105,7 +105,7 @@ export default function ScadAgentPresence({ lang, sessionId, userId, userLabel }
       </button>
       {open && (
         <div style={popoverStyle}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#58a6ff', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-accent-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             {t.list}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -132,7 +132,7 @@ function Avatar({ id, label }: { id: string; label: string }) {
 
 function PeerRow({ id, label, self = false }: { id: string; label: string; self?: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#c9d1d9' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--nx-text)' }}>
       <Avatar id={id} label={label} />
       <span style={{ fontWeight: self ? 700 : 400 }}>{label}</span>
     </div>
@@ -151,8 +151,8 @@ function colorFor(id: string): string {
 const pillStyle: React.CSSProperties = {
   padding: '4px 8px', fontSize: 10, fontWeight: 700,
   borderRadius: 12,
-  border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af',
+  border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)',
   cursor: 'pointer',
   display: 'inline-flex', alignItems: 'center', gap: 4,
 };
@@ -160,15 +160,15 @@ const avatarStyle: React.CSSProperties = {
   width: 18, height: 18,
   borderRadius: 9,
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  fontSize: 9, fontWeight: 700, color: '#fff',
+  fontSize: 9, fontWeight: 700, color: 'var(--nx-text)',
   marginLeft: -4,
-  border: '1px solid #161b22',
+  border: '1px solid var(--nx-panel)',
 };
 const popoverStyle: React.CSSProperties = {
   position: 'absolute', top: '100%', right: 0, marginTop: 4,
   padding: 10,
-  background: '#0d1117',
-  border: '1px solid #30363d',
+  background: 'var(--nx-bg)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 8,
   minWidth: 180,
   zIndex: 800,

@@ -162,9 +162,9 @@ export default function NotificationBell({ lang }: { lang: string }) {
         style={{
           position: 'relative',
           width: 36, height: 36,
-          border: '1px solid #30363d',
+          border: '1px solid var(--nx-border)',
           borderRadius: 8,
-          background: open ? '#21262d' : 'transparent',
+          background: open ? 'var(--nx-panel-2)' : 'transparent',
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 16,
@@ -180,11 +180,11 @@ export default function NotificationBell({ lang }: { lang: string }) {
             minWidth: 17, height: 17,
             borderRadius: 9,
             background: '#da3633',
-            color: '#fff',
+            color: 'var(--nx-text)',
             fontSize: 10,
             fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid #0d1117',
+            border: '2px solid var(--nx-bg)',
             paddingInline: 3,
             lineHeight: 1,
           }}>
@@ -200,8 +200,8 @@ export default function NotificationBell({ lang }: { lang: string }) {
           top: 40, right: 0,
           width: 320,
           zIndex: 9999,
-          background: '#161b22',
-          border: '1px solid #30363d',
+          background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)',
           borderRadius: 12,
           boxShadow: '0 8px 32px #0009',
           overflow: 'hidden',
@@ -209,13 +209,13 @@ export default function NotificationBell({ lang }: { lang: string }) {
           {/* Header */}
           <div style={{
             padding: '12px 16px',
-            borderBottom: '1px solid #21262d',
+            borderBottom: '1px solid var(--nx-panel-2)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
               {t.title}
               {loading && (
-                <span style={{ marginLeft: 8, fontSize: 10, color: '#8b949e' }}>
+                <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--nx-text-2)' }}>
                   {t.refreshing}
                 </span>
               )}
@@ -223,7 +223,7 @@ export default function NotificationBell({ lang }: { lang: string }) {
             <button
               onClick={clearAll}
               style={{
-                fontSize: 11, color: '#8b949e', background: 'none',
+                fontSize: 11, color: 'var(--nx-text-2)', background: 'none',
                 border: 'none', cursor: 'pointer', padding: '2px 6px',
                 borderRadius: 4,
               }}
@@ -238,7 +238,7 @@ export default function NotificationBell({ lang }: { lang: string }) {
             {notifications.length === 0 ? (
               <div style={{
                 padding: '32px 16px', textAlign: 'center',
-                color: '#8b949e', fontSize: 13,
+                color: 'var(--nx-text-2)', fontSize: 13,
               }}>
                 {t.empty}
               </div>
@@ -262,10 +262,10 @@ function NotificationItem({ notification: n, tt }: { notification: Notification;
   const inner = (
     <div style={{
       padding: '12px 16px',
-      borderBottom: '1px solid #21262d',
+      borderBottom: '1px solid var(--nx-panel-2)',
       display: 'flex', gap: 10,
-      background: unread ? '#161b2299' : 'transparent',
-      borderLeft: unread ? '3px solid #388bfd' : '3px solid transparent',
+      background: unread ? 'var(--nx-panel)99' : 'transparent',
+      borderLeft: unread ? '3px solid var(--nx-accent)' : '3px solid transparent',
       transition: 'background 0.15s',
       cursor: n.link ? 'pointer' : 'default',
     }}>
@@ -278,14 +278,14 @@ function NotificationItem({ notification: n, tt }: { notification: Notification;
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 13, fontWeight: unread ? 700 : 500,
-          color: '#e6edf3', lineHeight: 1.4,
+          color: 'var(--nx-text)', lineHeight: 1.4,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {n.title}
         </div>
         {n.body && (
           <div style={{
-            fontSize: 11, color: '#8b949e', marginTop: 2, lineHeight: 1.4,
+            fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2, lineHeight: 1.4,
             overflow: 'hidden',
             display: '-webkit-box',
             WebkitLineClamp: 2,
@@ -294,7 +294,7 @@ function NotificationItem({ notification: n, tt }: { notification: Notification;
             {n.body}
           </div>
         )}
-        <div style={{ fontSize: 10, color: '#6e7681', marginTop: 4 }}>
+        <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 4 }}>
           {timeAgo(n.created_at, tt)}
         </div>
       </div>

@@ -10,14 +10,14 @@ import {
 } from './toleranceStack';
 
 const C = {
-  bg: '#161b22',
+  bg: 'var(--nx-panel)',
   card: '#1c2128',
-  border: '#30363d',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  accent: '#388bfd',
-  danger: '#f85149',
-  success: '#3fb950',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  danger: 'var(--nx-error)',
+  success: 'var(--nx-ok)',
 };
 
 interface Props {
@@ -158,7 +158,7 @@ export default function ToleranceStackPanel({ initialEntries, lang = 'ko', onCha
 const methodBtn = (active: boolean): React.CSSProperties => ({
   padding: '4px 10px',
   background: active ? C.accent : 'transparent',
-  color: active ? '#fff' : C.dim,
+  color: active ? 'var(--nx-text)' : C.dim,
   border: `1px solid ${active ? C.accent : C.border}`,
   borderRadius: 5,
   cursor: 'pointer',

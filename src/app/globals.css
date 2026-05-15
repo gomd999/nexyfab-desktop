@@ -419,6 +419,17 @@ body.sg-shell-v2 [data-testid="shape-generator-workspace"] {
   flex: 1 1 auto;
 }
 
+/* Light-theme reskin for ShapeGeneratorInner's hardcoded dark panel/card hex.
+   Inner uses inline `style={{ background: '#0d1117' }}` etc in ~600 places
+   that don't go through theme.bg. We can't match inline style VALUES in CSS,
+   but we can re-skin the workspace BACKGROUND so the canvas/viewport reads
+   light. Per-panel patches will land in a follow-up refactor.
+   Reference: 47 hardcoded hex in panels/LeftPanel.tsx alone (audited 2026-05-15). */
+html[data-theme="light"] [data-testid="shape-generator-workspace"] {
+  background: var(--nx-bg) !important;
+  color: var(--nx-text);
+}
+
 :root,
 [data-theme="dark"] {
   --nx-bg: #0c0f14;

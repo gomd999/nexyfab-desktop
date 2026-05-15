@@ -17,3 +17,4 @@ export { HubFrame } from './HubFrame';
 export { DrawingFrame } from './DrawingFrame';
 export { RenderFrame } from './RenderFrame';
 export { ModelerShell } from './ModelerShell';
+export { useShellBridge, type ShellBridgeState, type ShellEditMode, type ShellUnitSystem, type ShellCloudStatus } from './shellBridgeStore';

@@ -334,9 +334,6 @@ export const MODE_DEFAULT_TABS: Record<ShellMode, RibbonTabDef[]> = {
   modeling: [
     { id: 'file', label: 'File' },
     { id: 'solid', label: 'Solid' },
-    { id: 'surface', label: 'Surface' },
-    { id: 'sheet', label: 'Sheet Metal' },
-    { id: 'mesh', label: 'Mesh' },
     { id: 'assembly', label: 'Assembly' },
     { id: 'drawing', label: 'Drawing' },
     { id: 'inspect', label: 'Inspect' },

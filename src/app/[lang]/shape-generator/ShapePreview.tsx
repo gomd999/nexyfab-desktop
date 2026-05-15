@@ -807,7 +807,7 @@ function FaceScene({
             borderRadius: 8,
             background: 'rgba(13,17,23,0.95)',
             border: '1px solid rgba(34,197,94,0.65)',
-            color: '#e6edf3',
+            color: 'var(--nx-text)',
             fontSize: 11,
             lineHeight: 1.45,
             fontWeight: 500,
@@ -837,9 +837,9 @@ function FaceScene({
                 flexShrink: 0,
                 padding: '2px 8px',
                 borderRadius: 4,
-                border: '1px solid #30363d',
-                background: '#21262d',
-                color: '#8b949e',
+                border: '1px solid var(--nx-border)',
+                background: 'var(--nx-panel-2)',
+                color: 'var(--nx-text-2)',
                 fontSize: 10,
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -848,9 +848,9 @@ function FaceScene({
               {dismissLabel}
             </button>
           </div>
-          <div style={{ color: '#c9d1d9' }}>{emptySelectionCallout}</div>
+          <div style={{ color: 'var(--nx-text)' }}>{emptySelectionCallout}</div>
           {calloutTip ? (
-            <div style={{ marginTop: 6, fontSize: 10, color: '#8b949e', lineHeight: 1.35 }}>
+            <div style={{ marginTop: 6, fontSize: 10, color: 'var(--nx-text-2)', lineHeight: 1.35 }}>
               {calloutTip}
             </div>
           ) : null}
@@ -863,19 +863,19 @@ function FaceScene({
           <div style={{
             position: 'fixed', top: 84, right: 16, zIndex: 50,
             padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(13,17,23,0.92)', border: '1px solid #388bfd',
-            color: '#c9d1d9', fontSize: 12, fontWeight: 600,
+            background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-accent)',
+            color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
             fontFamily: 'system-ui, sans-serif',
             display: 'flex', alignItems: 'center', gap: 10,
             backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           }}>
-            <span style={{ color: '#58a6ff' }}>▣</span>
+            <span style={{ color: 'var(--nx-accent-2)' }}>▣</span>
             <span>{faceT.facesSelected(selectedFaceIds.size)}</span>
             <button
               onClick={clearSelection}
               style={{
-                padding: '3px 8px', borderRadius: 4, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                padding: '3px 8px', borderRadius: 4, border: '1px solid var(--nx-border)',
+                background: 'transparent', color: 'var(--nx-text-2)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
               }}
             >
               {faceT.clearSel}
@@ -1738,7 +1738,7 @@ export default function ShapePreview({
 
   return (
     <>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#0d1117', borderRadius: 'inherit', overflow: 'hidden', touchAction: 'none', userSelect: 'none', position: 'relative' }}
+      <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--nx-bg)', borderRadius: 'inherit', overflow: 'hidden', touchAction: 'none', userSelect: 'none', position: 'relative' }}
         onDragStart={e => e.preventDefault()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1750,8 +1750,8 @@ export default function ShapePreview({
           <div style={{ position: 'fixed', top: radialMenu.y, left: radialMenu.x, zIndex: 99999, pointerEvents: 'none' }}>
             <div style={{ position: 'absolute', transform: `translate(-50%, -50%) scale(${radialScale})`, pointerEvents: 'auto', transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', transformOrigin: 'center center' }}>
               {/* Center Circle */}
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(36,41,47,0.95)', border: '1px solid #484f58', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setRadialMenu(null)}>
-                <span style={{ fontSize: 16, color: '#c9d1d9' }}>✕</span>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(36,41,47,0.95)', border: '1px solid var(--nx-border-strong)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setRadialMenu(null)}>
+                <span style={{ fontSize: 16, color: 'var(--nx-text)' }}>✕</span>
               </div>
               
               {/* Top Item */}
@@ -1760,7 +1760,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_line' : 'extrude'); 
                   else { onGeometryFitRequest?.(); setFitKey(k => k + 1); }
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#e6edf3', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `↗ ${t.radialLine}` : `⏫ ${t.radialExtrude}`}
                 </button>
               </div>
@@ -1771,7 +1771,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_circle' : 'fillet'); 
                   else dispatchView('iso');
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#e6edf3', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `⭕ ${t.radialCircle}` : `🔘 ${t.radialFillet}`}
                 </button>
               </div>
@@ -1782,7 +1782,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_finish' : 'cancel'); 
                   else setDisplayMode('wireframe');
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#f85149', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `✅ ${t.radialFinish}` : `❌ ${t.radialCancel}`}
                 </button>
               </div>
@@ -1793,7 +1793,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_rect' : 'sketch_start'); 
                   else setDisplayMode('solid');
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#3fb950', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-ok)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `▱ ${t.radialRect}` : `✏️ ${t.radialSketch}`}
                 </button>
               </div>
@@ -1806,20 +1806,20 @@ export default function ShapePreview({
           <div style={{
             position: 'absolute', inset: 0, zIndex: 500,
             background: 'rgba(56,139,253,0.12)',
-            border: '2px dashed #388bfd',
+            border: '2px dashed var(--nx-accent)',
             borderRadius: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             pointerEvents: 'none',
           }}>
             <div style={{
-              background: '#161b22ee', borderRadius: 12, padding: '20px 32px',
-              border: '1px solid #388bfd',
-              color: '#58a6ff', fontSize: 16, fontWeight: 700,
+              background: 'var(--nx-panel)ee', borderRadius: 12, padding: '20px 32px',
+              border: '1px solid var(--nx-accent)',
+              color: 'var(--nx-accent-2)', fontSize: 16, fontWeight: 700,
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
             }}>
               <span style={{ fontSize: 32 }}>📂</span>
               <span>{t.drop}</span>
-              <span style={{ fontSize: 11, color: '#8b949e' }}>STEP · STL · OBJ · PLY · DXF</span>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>STEP · STL · OBJ · PLY · DXF</span>
             </div>
           </div>
         )}
@@ -1831,7 +1831,7 @@ export default function ShapePreview({
               <><span style={{ color: '#22c55e' }}>● </span>{t.editMode}: {editMode}</>
             ) : isAssembly ? (
               <>{assemblyLabel || t.assemblyShort}{' '}
-                <span data-testid="assembly-bom-count" style={{ color: '#58a6ff', fontSize: 11 }}>({bomParts!.length})</span>
+                <span data-testid="assembly-bom-count" style={{ color: 'var(--nx-accent-2)', fontSize: 11 }}>({bomParts!.length})</span>
               </>
             ) : t.preview3d}
           </span>
@@ -1863,7 +1863,7 @@ export default function ShapePreview({
 
         {/* Fusion 360-style Top Right ViewCube */}
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'rgba(13,17,23,0.85)', padding: 4, borderRadius: 8, border: '1px solid #30363d', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'rgba(13,17,23,0.85)', padding: 4, borderRadius: 8, border: '1px solid var(--nx-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
             {([
               { label: t.top, key: '7', view: 'top' },
               { label: t.front, key: '5', view: 'front' },
@@ -1880,7 +1880,7 @@ export default function ShapePreview({
                   fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                   opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}
-                onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = '#58a6ff'; }}
+                onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffffff'; }}
               >
                 {label}
@@ -1896,7 +1896,7 @@ export default function ShapePreview({
                 fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', gridColumn: 'span 2', whiteSpace: 'nowrap',
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = '#58a6ff'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffffff'; }}
             >
               {t.fit}
@@ -1905,7 +1905,7 @@ export default function ShapePreview({
         </div>
 
         {/* Fusion 360-style Bottom Center Navigation Bar */}
-        <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,17,23,0.85)', padding: '4px 6px', borderRadius: 12, border: '1px solid #30363d', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', flexWrap: 'nowrap' }}>
+        <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,17,23,0.85)', padding: '4px 6px', borderRadius: 12, border: '1px solid var(--nx-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', flexWrap: 'nowrap' }}>
           <div style={{ display: 'flex', gap: 2, flexWrap: 'nowrap' }}>
             {MODES.map(({ key, label, icon }) => (
               <button
@@ -1917,7 +1917,7 @@ export default function ShapePreview({
                   padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                   cursor: viewChromeDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
                   background: displayMode === key ? 'rgba(56,139,253,0.15)' : 'transparent',
-                  color: displayMode === key ? '#58a6ff' : '#ffffff',
+                  color: displayMode === key ? 'var(--nx-accent-2)' : '#ffffff',
                   border: displayMode === key ? '1px solid rgba(56,139,253,0.3)' : '1px solid transparent',
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
@@ -1930,7 +1930,7 @@ export default function ShapePreview({
               </button>
             ))}
           </div>
-          <div style={{ width: 1, height: 16, background: '#30363d', margin: '0 2px' }} />
+          <div style={{ width: 1, height: 16, background: 'var(--nx-border)', margin: '0 2px' }} />
           <div style={{ display: 'flex', gap: 2, flexWrap: 'nowrap' }}>
             {onToggleSelection && (
               <button
@@ -1962,7 +1962,7 @@ export default function ShapePreview({
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: pbrPanelOpen ? 'rgba(217,119,6,0.15)' : 'transparent',
                 borderColor: pbrPanelOpen ? 'rgba(217,119,6,0.3)' : 'transparent',
-                color: pbrPanelOpen ? '#f59e0b' : '#ffffff', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                color: pbrPanelOpen ? 'var(--nx-warn)' : '#ffffff', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
               onMouseEnter={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
@@ -1977,7 +1977,7 @@ export default function ShapePreview({
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: showDims ? 'rgba(56,139,253,0.15)' : 'transparent',
                 borderColor: showDims ? 'rgba(56,139,253,0.3)' : 'transparent',
-                color: showDims ? '#58a6ff' : '#ffffff', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                color: showDims ? 'var(--nx-accent-2)' : '#ffffff', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
               onMouseEnter={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
@@ -2074,13 +2074,13 @@ export default function ShapePreview({
               position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
               zIndex: 20, display: 'flex', alignItems: 'center', gap: 8,
               background: 'rgba(13,17,23,0.85)', borderRadius: 10,
-              border: '1px solid #30363d', padding: '4px 10px',
+              border: '1px solid var(--nx-border)', padding: '4px 10px',
               backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', flexWrap: 'nowrap'
             }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                 {lang === 'ko' ? '스케치 평면' : 'Sketch Plane'}
               </span>
-              <div style={{ width: 1, height: 14, background: '#30363d' }} />
+              <div style={{ width: 1, height: 14, background: 'var(--nx-border)' }} />
               <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                 {(['xy', 'xz', 'yz'] as const).map(p => (
                   <button key={p} onClick={() => onSketchPlaneChange(p)} style={{
@@ -2106,13 +2106,13 @@ export default function ShapePreview({
               <div style={{ textAlign: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
                   <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="64" height="64" rx="14" fill="#0d1117"/>
-                    <text x="10" y="50" fontFamily="'Segoe UI', Arial, sans-serif" fontWeight="700" fontSize="46" fill="#388bfd">N</text>
+                    <rect width="64" height="64" rx="14" fill="var(--nx-bg)"/>
+                    <text x="10" y="50" fontFamily="'Segoe UI', Arial, sans-serif" fontWeight="700" fontSize="46" fill="var(--nx-accent)">N</text>
                   </svg>
-                  <span style={{ fontSize: '22px', fontWeight: 700, color: '#e6edf3', letterSpacing: '-0.3px' }}>NexyFab</span>
+                  <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--nx-text)', letterSpacing: '-0.3px' }}>NexyFab</span>
                 </div>
                 <p style={{
-                  color: '#9ca3af',
+                  color: 'var(--nx-text-2)',
                   fontSize: '13px',
                   margin: 0,
                   width: '100%',
@@ -2133,19 +2133,19 @@ export default function ShapePreview({
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                     width: '140px', padding: '20px 12px', borderRadius: '12px',
-                    border: '1px solid #30363d', background: '#161b22',
-                    color: '#e6edf3', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                    color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#388bfd'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d'; (e.currentTarget as HTMLButtonElement).style.background = '#161b22'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent)'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                 >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#388bfd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                     <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
                   </svg>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600 }}>{t.shapeLibraryTitle}</div>
-                    <div style={{ fontSize: '11px', color: '#6e7681', marginTop: '3px' }}>{t.pickShape}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--nx-text-3)', marginTop: '3px' }}>{t.pickShape}</div>
                   </div>
                 </button>
 
@@ -2156,13 +2156,13 @@ export default function ShapePreview({
                     style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                       width: '140px', padding: '20px 12px', borderRadius: '12px',
-                      border: '1px solid #30363d', background: '#161b22',
-                      color: '#e6edf3', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                      border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                      color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#3fb950'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d'; (e.currentTarget as HTMLButtonElement).style.background = '#161b22'; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-ok)'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                   >
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3fb950" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-ok)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                     </svg>
                     <div style={{ textAlign: 'center' }}>
@@ -2177,23 +2177,23 @@ export default function ShapePreview({
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                     width: '140px', padding: '20px 12px', borderRadius: '12px',
-                    border: '1px solid #30363d', background: '#161b22',
-                    color: '#e6edf3', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                    color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#a371f7'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d'; (e.currentTarget as HTMLButtonElement).style.background = '#161b22'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent-2)'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                 >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a371f7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent-2)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                   </svg>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600 }}>{t.aiChatTitle}</div>
-                    <div style={{ fontSize: '11px', color: '#6e7681', marginTop: '3px' }}>{t.aiChat}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--nx-text-3)', marginTop: '3px' }}>{t.aiChat}</div>
                   </div>
                 </button>
               </div>
 
-              <p style={{ color: '#484f58', fontSize: '11px', margin: 0 }}>{t.shortcutsHint}</p>
+              <p style={{ color: 'var(--nx-border-strong)', fontSize: '11px', margin: 0 }}>{t.shortcutsHint}</p>
             </div>
           ) : (
             <>
@@ -2254,7 +2254,7 @@ export default function ShapePreview({
                   <GizmoViewport axisColors={['#ff3b30', '#34c759', '#007aff']} labelColor="white" hideNegativeAxes />
                 </GizmoHelper>
               )}
-              <color attach="background" args={['#0d1117']} />
+              <color attach="background" args={['var(--nx-bg)']} />
               {renderMode === 'photorealistic' && renderSettings ? (
                 <Suspense fallback={null}>
                   <RenderMode
@@ -2381,7 +2381,7 @@ export default function ShapePreview({
                       return (
                         <mesh key={`interference_${i}`} position={[center.x, center.y, center.z]}>
                           <boxGeometry args={[size.x, size.y, size.z]} />
-                          <meshStandardMaterial color="#f85149" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
+                          <meshStandardMaterial color="var(--nx-error)" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
                         </mesh>
                       );
                     })}
@@ -2403,14 +2403,14 @@ export default function ShapePreview({
                       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
 
                       const colorMap: Record<string, string> = {
-                        coincident: '#388bfd', concentric: '#3fb950', distance: '#d29922',
-                        angle: '#f85149', parallel: '#a371f7', perpendicular: '#f778ba', tangent: '#2ea043'
+                        coincident: 'var(--nx-accent)', concentric: 'var(--nx-ok)', distance: 'var(--nx-warn)',
+                        angle: 'var(--nx-error)', parallel: 'var(--nx-accent-2)', perpendicular: '#f778ba', tangent: '#2ea043'
                       };
                       const iconMap: Record<string, string> = {
                         coincident: '═', concentric: '⊙', distance: '↔', angle: '∡', parallel: '∥', perpendicular: '⊥', tangent: '⌒'
                       };
                       
-                      const color = colorMap[mate.type] || '#8b949e';
+                      const color = colorMap[mate.type] || 'var(--nx-text-2)';
                       const icon = iconMap[mate.type] || '🔗';
                       const midPoint = new THREE.Vector3().addVectors(ptA, ptB).multiplyScalar(0.5);
 
@@ -2431,7 +2431,7 @@ export default function ShapePreview({
                             <div style={{
                               background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                               border: `1px solid ${color}88`, borderRadius: 12, padding: '2px 6px',
-                              color: '#fff', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                              color: 'var(--nx-text)', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                               boxShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap'
                             }}>
                               <span style={{ color }}>{icon}</span>
@@ -2639,7 +2639,7 @@ export default function ShapePreview({
               position: 'absolute', bottom: 6, right: 8,
               background: 'rgba(13,17,23,0.75)', borderRadius: '4px',
               padding: '2px 7px', fontSize: '10px', fontWeight: 600,
-              color: isOrbiting ? '#f0883e' : '#6e7681',
+              color: isOrbiting ? 'var(--nx-warn)' : 'var(--nx-text-3)',
               pointerEvents: 'none', userSelect: 'none',
               fontFamily: 'monospace', letterSpacing: '0.02em',
               border: '1px solid rgba(48,54,61,0.6)',
@@ -2653,35 +2653,35 @@ export default function ShapePreview({
         </div>
 
         {/* Stats bar */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', background: '#161b22', borderTop: '1px solid #30363d', fontSize: '11px', flexShrink: 0, gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', background: 'var(--nx-panel)', borderTop: '1px solid var(--nx-border)', fontSize: '11px', flexShrink: 0, gap: '10px', flexWrap: 'wrap' }}>
           {stats ? (
             <>
-              <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+              <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700 }}>
                 {stats.w.toFixed(1)} × {stats.h.toFixed(1)} × {stats.d.toFixed(1)} mm
               </span>
-              <span style={{ color: '#30363d' }}>│</span>
-              <span style={{ color: '#6e7681' }}>Vol: {stats.vol.toFixed(2)} cm³</span>
-              <span style={{ color: '#30363d' }}>│</span>
-              <span style={{ color: '#6e7681' }}>SA: {stats.sa.toFixed(2)} cm²</span>
+              <span style={{ color: 'var(--nx-border)' }}>│</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>Vol: {stats.vol.toFixed(2)} cm³</span>
+              <span style={{ color: 'var(--nx-border)' }}>│</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>SA: {stats.sa.toFixed(2)} cm²</span>
               {isAssembly && (
                 <>
-                  <span style={{ color: '#30363d' }}>│</span>
+                  <span style={{ color: 'var(--nx-border)' }}>│</span>
                   <span style={{ color: '#8b9cf4' }}>{bomParts!.length} parts</span>
                 </>
               )}
               {isEditing && (
                 <>
-                  <span style={{ color: '#30363d' }}>│</span>
+                  <span style={{ color: 'var(--nx-border)' }}>│</span>
                   <span style={{ color: '#22c55e' }}>Editing: {editMode}</span>
                 </>
               )}
               {isTransforming && (
                 <>
-                  <span style={{ color: '#30363d' }}>│</span>
-                  <span style={{ color: '#f0883e' }}>Transform: {transformMode}</span>
+                  <span style={{ color: 'var(--nx-border)' }}>│</span>
+                  <span style={{ color: 'var(--nx-warn)' }}>Transform: {transformMode}</span>
                 </>
               )}
-              <span style={{ marginLeft: 'auto', color: '#484f58' }}>
+              <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>
                 {isEditing && (editMode === 'vertex' || editMode === 'edge')
                   ? t.directEditNavHint
                   : isEditing
@@ -2692,7 +2692,7 @@ export default function ShapePreview({
               </span>
             </>
           ) : (
-            <span style={{ color: '#484f58' }}>{t.defaultNavHint}</span>
+            <span style={{ color: 'var(--nx-border-strong)' }}>{t.defaultNavHint}</span>
           )}
         </div>
       </div>

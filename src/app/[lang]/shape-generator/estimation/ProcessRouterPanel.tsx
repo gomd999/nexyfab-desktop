@@ -15,16 +15,16 @@ import { formatCost, getProcessName, PROCESS_ICONS } from './CostEstimator';
 import { routeProcesses, type ProcessRouterResult, type ProcessRouterUseCase } from './processRouter';
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  purple: '#a371f7',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  text: '#c9d1d9',
-  dim: '#8b949e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  purple: 'var(--nx-accent-2)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
 };
 
 const dict = {
@@ -341,7 +341,7 @@ export default function ProcessRouterPanel({
         <button onClick={runRouter} disabled={loading || !metrics} style={{
           padding: '8px 0', borderRadius: 6, border: 'none',
           background: loading ? C.border : `linear-gradient(135deg, ${C.purple}, ${C.accent})`,
-          color: '#fff', fontSize: 12, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
+          color: 'var(--nx-text)', fontSize: 12, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
           opacity: !metrics ? 0.5 : 1,
         }}>
           {loading ? t.analyzing : `🧭 ${t.reanalyze}`}
@@ -443,7 +443,7 @@ export default function ProcessRouterPanel({
                       {onSelectProcess && (
                         <button onClick={() => onSelectProcess(estimate.process)} style={{
                           width: '100%', marginTop: 10, padding: '7px 0', borderRadius: 6, border: 'none',
-                          background: C.purple, color: '#fff', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                          background: C.purple, color: 'var(--nx-text)', fontSize: 11, fontWeight: 800, cursor: 'pointer',
                         }}>
                           🧭 {t.proceed}
                         </button>

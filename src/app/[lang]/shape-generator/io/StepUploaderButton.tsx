@@ -105,9 +105,9 @@ export default function StepUploaderButton({ onResult, lang = 'en' }: StepUpload
           gap: 8,
           padding: '8px 18px',
           borderRadius: 8,
-          border: '1px solid #30363d',
-          background: isLoading ? '#21262d' : '#161b22',
-          color: isLoading ? '#484f58' : '#e6edf3',
+          border: '1px solid var(--nx-border)',
+          background: isLoading ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+          color: isLoading ? 'var(--nx-border-strong)' : 'var(--nx-text)',
           fontSize: 13,
           fontWeight: 600,
           cursor: isLoading ? 'not-allowed' : 'pointer',
@@ -115,33 +115,33 @@ export default function StepUploaderButton({ onResult, lang = 'en' }: StepUpload
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
         onMouseEnter={e => {
-          if (!isLoading) (e.currentTarget as HTMLButtonElement).style.borderColor = '#388bfd';
+          if (!isLoading) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent)';
         }}
         onMouseLeave={e => {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d';
+          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)';
         }}
       >
         {/* File icon */}
         {!isLoading ? (
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
-              stroke="#58a6ff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              stroke="var(--nx-accent-2)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             <polyline points="14 2 14 8 20 8"
-              stroke="#58a6ff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              stroke="var(--nx-accent-2)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         ) : (
           /* Spinner */
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none"
             style={{ animation: 'spin 0.8s linear infinite' }}>
-            <circle cx={12} cy={12} r={9} stroke="#484f58" strokeWidth={2} />
-            <path d="M12 3a9 9 0 019 9" stroke="#388bfd" strokeWidth={2} strokeLinecap="round" />
+            <circle cx={12} cy={12} r={9} stroke="var(--nx-border-strong)" strokeWidth={2} />
+            <path d="M12 3a9 9 0 019 9" stroke="var(--nx-accent)" strokeWidth={2} strokeLinecap="round" />
           </svg>
         )}
         {isLoading ? loading : label}
       </button>
 
       {error && (
-        <span style={{ fontSize: 11, color: '#f85149' }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-error)' }}>
           {errLabel}: {error}
         </span>
       )}

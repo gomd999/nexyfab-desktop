@@ -289,7 +289,7 @@ export function ViewCubeOverlay() {
     width: CUBE_SIZE,
     height: CUBE_SIZE,
     background: hovered === id ? 'rgba(88, 166, 255, 0.9)' : 'rgba(22, 27, 34, 0.75)',
-    border: `1.5px solid ${hovered === id ? '#58a6ff' : 'rgba(255,255,255,0.15)'}`,
+    border: `1.5px solid ${hovered === id ? 'var(--nx-accent-2)' : 'rgba(255,255,255,0.15)'}`,
     boxShadow: hovered === id 
       ? '0 0 16px rgba(88, 166, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2)' 
       : 'inset 0 0 8px rgba(255,255,255,0.05)',
@@ -299,7 +299,7 @@ export function ViewCubeOverlay() {
     fontSize: 10,
     fontWeight: 800,
     fontFamily: '"Inter", system-ui, sans-serif',
-    color: hovered === id ? '#ffffff' : '#8b949e',
+    color: hovered === id ? '#ffffff' : 'var(--nx-text-2)',
     cursor: 'pointer',
     userSelect: 'none',
     transform,
@@ -383,7 +383,7 @@ export function ViewCubeOverlay() {
             borderRadius: '50%',
             background: 'rgba(22, 27, 34, 0.8)',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: '#c9d1d9',
+            color: 'var(--nx-text)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -396,13 +396,13 @@ export function ViewCubeOverlay() {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(88, 166, 255, 0.9)';
-            e.currentTarget.style.color = '#fff';
-            e.currentTarget.style.borderColor = '#58a6ff';
+            e.currentTarget.style.color = 'var(--nx-text)';
+            e.currentTarget.style.borderColor = 'var(--nx-accent-2)';
             e.currentTarget.style.boxShadow = '0 0 12px rgba(88, 166, 255, 0.5)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(22, 27, 34, 0.8)';
-            e.currentTarget.style.color = '#c9d1d9';
+            e.currentTarget.style.color = 'var(--nx-text)';
             e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
             e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
           }}

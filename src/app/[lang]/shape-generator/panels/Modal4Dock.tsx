@@ -81,7 +81,7 @@ export default function Modal4Dock({
             onClick={e => e.stopPropagation()}
             style={{
               width: 640, height: 480, borderRadius: 12, overflow: 'hidden',
-              border: '1px solid #21262d',
+              border: '1px solid var(--nx-panel-2)',
               boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
             }}
           >
@@ -109,7 +109,7 @@ export default function Modal4Dock({
             onClick={e => e.stopPropagation()}
             style={{
               width: 800, height: 560, borderRadius: 12, overflow: 'hidden',
-              border: '1px solid #21262d',
+              border: '1px solid var(--nx-panel-2)',
               boxShadow: '0 8px 40px rgba(0,0,0,0.6)', position: 'relative',
             }}
           >

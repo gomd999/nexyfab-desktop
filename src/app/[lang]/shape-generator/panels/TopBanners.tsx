@@ -97,25 +97,25 @@ export default function TopBanners({
       {isPreviewMode && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '6px 20px',
-          background: 'linear-gradient(90deg, #1a2332 0%, #161b22 100%)',
+          background: 'linear-gradient(90deg, var(--nx-panel-2) 0%, var(--nx-panel) 100%)',
           borderBottom: '1px solid #1f6feb', flexShrink: 0,
         }}>
           <div style={{
-            width: 6, height: 6, borderRadius: '50%', background: '#f59e0b',
-            animation: 'genSpin 2s linear infinite', boxShadow: '0 0 8px #f59e0b',
+            width: 6, height: 6, borderRadius: '50%', background: 'var(--nx-warn)',
+            animation: 'genSpin 2s linear infinite', boxShadow: '0 0 8px var(--nx-warn)',
           }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>{lt.aiPreviewMode}</span>
-          <span style={{ fontSize: 11, color: '#8b949e' }}>{lt.aiPreviewHint}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-warn)' }}>{lt.aiPreviewMode}</span>
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{lt.aiPreviewHint}</span>
           <div style={{ flex: 1 }} />
           <button
             onClick={onCancelPreview}
             style={{
-              padding: '3px 12px', borderRadius: 6, border: '1px solid #30363d',
-              background: '#21262d', color: '#f85149', fontSize: 11, fontWeight: 700,
+              padding: '3px 12px', borderRadius: 6, border: '1px solid var(--nx-border)',
+              background: 'var(--nx-panel-2)', color: 'var(--nx-error)', fontSize: 11, fontWeight: 700,
               cursor: 'pointer', transition: 'all 0.12s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#3d1519'; e.currentTarget.style.borderColor = '#f85149'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.borderColor = '#30363d'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#3d1519'; e.currentTarget.style.borderColor = 'var(--nx-error)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
           >
             {lt.cancelLabel} (Esc)
           </button>
@@ -155,7 +155,7 @@ export default function TopBanners({
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           padding: '6px 16px', background: 'rgba(245,158,11,0.12)',
           borderBottom: '1px solid rgba(245,158,11,0.3)',
-          fontSize: 12, color: '#f59e0b', fontWeight: 600, flexShrink: 0,
+          fontSize: 12, color: 'var(--nx-warn)', fontWeight: 600, flexShrink: 0,
         }}>
           {lt.viewerOnlyMode}
         </div>

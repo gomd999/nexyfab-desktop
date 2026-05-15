@@ -55,7 +55,7 @@ function PresenceCursor({ clientId, state, now }: { clientId: number; state: Pre
         <div
           style={{
             background: color,
-            color: '#fff',
+            color: 'var(--nx-text)',
             fontSize: '10px',
             fontWeight: 700,
             padding: '1px 6px',

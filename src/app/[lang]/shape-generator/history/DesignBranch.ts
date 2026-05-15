@@ -19,12 +19,12 @@ export interface BranchState {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 export const BRANCH_COLORS = [
-  '#58a6ff', // blue  (main)
-  '#3fb950', // green
-  '#d29922', // orange
+  'var(--nx-accent-2)', // blue  (main)
+  'var(--nx-ok)', // green
+  'var(--nx-warn)', // orange
   '#bc8cff', // purple
-  '#f85149', // red
-  '#79c0ff', // light blue
+  'var(--nx-error)', // red
+  'var(--nx-accent-2)', // light blue
   '#e3b341', // yellow
   '#db61a2', // pink
 ];

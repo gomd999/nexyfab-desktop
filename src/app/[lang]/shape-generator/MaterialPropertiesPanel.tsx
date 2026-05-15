@@ -337,13 +337,13 @@ export default function MaterialPropertiesPanel({
   const panelStyle: React.CSSProperties = {
     position: 'fixed', top: 60, right: 20, zIndex: 500, width: 260,
     maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
-    backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-    color: '#e6edf3', fontFamily: 'sans-serif', fontSize: 13,
+    backgroundColor: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
+    color: 'var(--nx-text)', fontFamily: 'sans-serif', fontSize: 13,
     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
   };
 
   const sectionTitle: React.CSSProperties = {
-    fontWeight: 700, fontSize: 10, color: '#8b949e',
+    fontWeight: 700, fontSize: 10, color: 'var(--nx-text-2)',
     textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6, marginTop: 10,
   };
 
@@ -351,14 +351,14 @@ export default function MaterialPropertiesPanel({
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ ...sectionTitle, marginTop: 0, marginBottom: 0 }}>{label}</span>
-        <span style={{ color: '#58a6ff', fontWeight: 700, fontSize: 11 }}>
+        <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700, fontSize: 11 }}>
           {(override[key] ?? defaultVal).toFixed(2)}
         </span>
       </div>
       <input type="range" min={min} max={max} step={step}
         value={override[key] ?? defaultVal}
         onChange={e => set(key, parseFloat(e.target.value))}
-        style={{ width: '100%', accentColor: '#58a6ff', cursor: 'pointer', marginTop: 3 }} />
+        style={{ width: '100%', accentColor: 'var(--nx-accent-2)', cursor: 'pointer', marginTop: 3 }} />
     </div>
   );
 
@@ -372,16 +372,16 @@ export default function MaterialPropertiesPanel({
           onChange={handleTextureUpload(key)}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 10, color: '#8b949e', minWidth: 80 }}>{label}</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)', minWidth: 80 }}>{label}</span>
           {url ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, background: '#0d1117', border: '1px solid #30363d', borderRadius: 5, padding: '3px 6px' }}>
-              <span style={{ fontSize: 10, color: '#3fb950', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tt.applied}</span>
-              <button onClick={() => clearTexture(key)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 10, padding: 0 }}>✕</button>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 5, padding: '3px 6px' }}>
+              <span style={{ fontSize: 10, color: 'var(--nx-ok)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tt.applied}</span>
+              <button onClick={() => clearTexture(key)} style={{ background: 'none', border: 'none', color: 'var(--nx-error)', cursor: 'pointer', fontSize: 10, padding: 0 }}>✕</button>
             </div>
           ) : (
             <button
               onClick={() => inputRefs.current[key]?.click()}
-              style={{ flex: 1, padding: '3px 6px', borderRadius: 5, border: '1px dashed #484f58', background: 'transparent', color: '#6e7681', fontSize: 10, cursor: 'pointer' }}
+              style={{ flex: 1, padding: '3px 6px', borderRadius: 5, border: '1px dashed var(--nx-border-strong)', background: 'transparent', color: 'var(--nx-text-3)', fontSize: 10, cursor: 'pointer' }}
             >
               {tt.upload}
             </button>
@@ -393,9 +393,9 @@ export default function MaterialPropertiesPanel({
 
   return (
     <div style={panelStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #30363d', fontWeight: 600, fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--nx-border)', fontWeight: 600, fontSize: 13 }}>
         <span>🎨 {tt.title}</span>
-        {presetName && <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 400 }}>{presetName}</span>}
+        {presetName && <span style={{ fontSize: 10, color: 'var(--nx-text-2)', fontWeight: 400 }}>{presetName}</span>}
       </div>
 
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -418,16 +418,16 @@ export default function MaterialPropertiesPanel({
                 width: 64, height: 64, borderRadius: '50%',
                 background: `radial-gradient(circle at 30% 25%, ${highlightColor} 0%, rgba(255,255,255,${highlightAlpha.toFixed(2)}) ${highlightSize * 0.2}%, ${baseColor} ${highlightSize}%, ${rimDark} 100%)`,
                 boxShadow: 'inset -4px -4px 10px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.4)',
-                border: '1px solid #30363d',
+                border: '1px solid var(--nx-border)',
                 flexShrink: 0,
               }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 10, color: '#8b949e' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 10, color: 'var(--nx-text-2)' }}>
                 <div>{tt.livePreview}</div>
                 <div style={{ fontSize: 9 }}>
-                  M: <span style={{ color: '#58a6ff', fontWeight: 700 }}>{metal.toFixed(2)}</span>
-                  {' · '}R: <span style={{ color: '#58a6ff', fontWeight: 700 }}>{rough.toFixed(2)}</span>
+                  M: <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700 }}>{metal.toFixed(2)}</span>
+                  {' · '}R: <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700 }}>{rough.toFixed(2)}</span>
                 </div>
-                <div style={{ fontSize: 9, color: metal > 0.7 ? '#d29922' : metal > 0.3 ? '#8b949e' : '#3fb950' }}>
+                <div style={{ fontSize: 9, color: metal > 0.7 ? 'var(--nx-warn)' : metal > 0.3 ? 'var(--nx-text-2)' : 'var(--nx-ok)' }}>
                   {metal > 0.7 ? tt.metallic : metal > 0.3 ? tt.semiMetal : tt.dielectric}
                 </div>
               </div>
@@ -440,10 +440,10 @@ export default function MaterialPropertiesPanel({
           <div style={sectionTitle}>{tt.color}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="color" value={override.color ?? '#888888'} onChange={e => set('color', e.target.value)}
-              style={{ width: 32, height: 24, borderRadius: 4, border: '1px solid #30363d', cursor: 'pointer', padding: 0, background: 'none' }} />
+              style={{ width: 32, height: 24, borderRadius: 4, border: '1px solid var(--nx-border)', cursor: 'pointer', padding: 0, background: 'none' }} />
             <input type="text" value={override.color ?? ''} placeholder="#888888"
               onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) set('color', e.target.value); }}
-              style={{ flex: 1, background: '#0d1117', border: '1px solid #30363d', borderRadius: 5, color: '#e6edf3', fontSize: 11, padding: '3px 7px', fontFamily: 'monospace' }} />
+              style={{ flex: 1, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 5, color: 'var(--nx-text)', fontSize: 11, padding: '3px 7px', fontFamily: 'monospace' }} />
           </div>
         </div>
 
@@ -469,7 +469,7 @@ export default function MaterialPropertiesPanel({
           <div style={sectionTitle}>{tt.environment}</div>
           {ENV_PRESET_GROUPS.map(group => (
             <div key={group.categoryKey} style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                 {tt[group.categoryKey]}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -477,9 +477,9 @@ export default function MaterialPropertiesPanel({
                   <button key={id} onClick={() => onEnvPresetChange(id)} style={{
                     padding: '4px 7px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', gap: 3,
-                    border: envPreset === id ? '1px solid #388bfd' : '1px solid #30363d',
-                    background: envPreset === id ? 'rgba(56,139,253,0.15)' : '#21262d',
-                    color: envPreset === id ? '#388bfd' : '#8b949e',
+                    border: envPreset === id ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                    background: envPreset === id ? 'rgba(56,139,253,0.15)' : 'var(--nx-panel-2)',
+                    color: envPreset === id ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                   }} title={tt[labelKey]}>
                     <span style={{ fontSize: 11 }}>{icon}</span>
                     <span>{tt[labelKey]}</span>
@@ -491,7 +491,7 @@ export default function MaterialPropertiesPanel({
         </div>
 
         <button
-          style={{ width: '100%', padding: '5px 0', backgroundColor: '#21262d', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}
+          style={{ width: '100%', padding: '5px 0', backgroundColor: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 6, color: 'var(--nx-text-2)', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}
           onClick={onReset}
         >
           {tt.resetToPreset}

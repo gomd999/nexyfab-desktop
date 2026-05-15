@@ -17,16 +17,16 @@ import {
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  orange: '#f0883e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  orange: 'var(--nx-warn)',
 };
 
 /* ─── i18n ───────────────────────────────────────────────────────────────── */
@@ -423,7 +423,7 @@ export default function SurfaceQualityPanel({
             width: '100%',
             padding: '8px 0',
             background: geometry ? C.accent : C.card,
-            color: '#fff',
+            color: 'var(--nx-text)',
             border: 'none',
             borderRadius: 6,
             fontWeight: 600,

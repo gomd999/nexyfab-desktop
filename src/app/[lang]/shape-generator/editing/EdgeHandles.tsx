@@ -9,13 +9,13 @@ import { snapToGrid } from './snap';
 const MAX_EDGES = 500;
 const HANDLE_SIZE = 2;
 
-const COLOR_DEFAULT_EDGE    = new THREE.Color('#9ca3af');
+const COLOR_DEFAULT_EDGE    = new THREE.Color('var(--nx-text-2)');
 const COLOR_HOVERED_EDGE    = new THREE.Color('#22d3ee');
-const COLOR_SELECTED_EDGE   = new THREE.Color('#f59e0b');
-const COLOR_DEFAULT_HANDLE  = new THREE.Color('#9ca3af');
+const COLOR_SELECTED_EDGE   = new THREE.Color('var(--nx-warn)');
+const COLOR_DEFAULT_HANDLE  = new THREE.Color('var(--nx-text-2)');
 const COLOR_HOVERED_HANDLE  = new THREE.Color('#22d3ee');
 const COLOR_DRAGGING_HANDLE = new THREE.Color('#22c55e');
-const COLOR_SELECTED_HANDLE = new THREE.Color('#f59e0b');
+const COLOR_SELECTED_HANDLE = new THREE.Color('var(--nx-warn)');
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -100,7 +100,7 @@ export default function EdgeHandles({
   const handleMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#9ca3af',
+        color: 'var(--nx-text-2)',
         transparent: true,
         opacity: 0.8,
         roughness: 0.4,

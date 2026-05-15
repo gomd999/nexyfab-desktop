@@ -5,7 +5,7 @@
 // Reads existing useAuthStore / useProjectsStore data — no new fetch logic.
 // "New Design" and project cards route into /shape-generator (the real 3D modeler).
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
 import { useProjectsStore } from '@/hooks/useProjects';
@@ -24,6 +24,8 @@ interface NavItem {
   ico: IconName;
   href?: string;
   badge?: string;
+  disabled?: boolean;
+  comingSoon?: boolean;
 }
 
 interface QuickStart {
@@ -41,14 +43,15 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   const { projects, isLoading, saveProject } = useProjectsStore();
   const { mode: themeMode, toggleTheme } = useTheme();
   const plan = user?.plan ?? 'free';
+  const [searchQuery, setSearchQuery] = useState('');
 
   const navItems: NavItem[] = [
     { id: 'recent', lbl: isKo ? '최근' : 'Recent', ico: 'history' },
-    { id: 'projects', lbl: isKo ? '프로젝트' : 'Projects', ico: 'folder' },
-    { id: 'shared', lbl: isKo ? '공유된 항목' : 'Shared with me', ico: 'share' },
-    { id: 'branches', lbl: isKo ? '브랜치' : 'Branches', ico: 'branch' },
-    { id: 'ai', lbl: isKo ? 'Nexy AI 스튜디오' : 'Nexy AI Studio', ico: 'ai', badge: 'NEW' },
-    { id: 'library', lbl: isKo ? '부품 라이브러리' : 'Part Library', ico: 'cube' },
+    { id: 'projects', lbl: isKo ? '프로젝트' : 'Projects', ico: 'folder', href: `/${lang}/nexyfab/projects` },
+    { id: 'shared', lbl: isKo ? '공유된 항목' : 'Shared with me', ico: 'share', href: `/${lang}/nexyfab/projects?filter=shared` },
+    { id: 'branches', lbl: isKo ? '브랜치' : 'Branches', ico: 'branch', comingSoon: true },
+    { id: 'ai', lbl: isKo ? 'Nexy AI 스튜디오' : 'Nexy AI Studio', ico: 'ai', badge: 'NEW', href: `/${lang}/shape-generator?mode=ai` },
+    { id: 'library', lbl: isKo ? '부품 라이브러리' : 'Part Library', ico: 'cube', href: `/${lang}/nexyfab/cots` },
   ];
 
   const quickStarts: QuickStart[] = [
@@ -86,13 +89,21 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     },
   ];
 
-  // Top 6 recent projects sorted by updatedAt
+  // Filtered projects driven by Hub search input.
+  const filteredProjects = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = projects ?? [];
+    if (!q) return list;
+    return list.filter(p => p.name.toLowerCase().includes(q));
+  }, [projects, searchQuery]);
+
+  // Top 6 recent projects sorted by updatedAt (filtered by search query)
   const recentProjects = useMemo(
     () =>
-      [...(projects ?? [])]
+      [...filteredProjects]
         .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
         .slice(0, 6),
-    [projects],
+    [filteredProjects],
   );
 
   const userInitials = user?.email?.slice(0, 2).toUpperCase() ?? '?';
@@ -106,6 +117,18 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   const GUEST_QUOTA_KEY = 'nexyfab.guest.projectCount';
   const GUEST_MIGRATED_KEY = 'nexyfab.guest.migrated';
   const AUTOSAVE_META_KEY = 'nexyfab-autosave-meta';
+
+  // Hub is a full-screen app surface. Add the body class so shell-v2 CSS
+  // (data-shell-v2-hide elements, ops sidebar suppression, footer hiding)
+  // applies — the parent /nexyfab/layout otherwise reserves space for its
+  // footer, which produces a duplicate scrollbar on long Hub content.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.classList.add('sg-shell-v2');
+    return () => {
+      document.body.classList.remove('sg-shell-v2');
+    };
+  }, []);
 
   // ── Guest → signed-in migration ────────────────────────────────────────────
   // When a guest authenticates, lift their most-recent localStorage autosave
@@ -165,7 +188,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   return (
     <div
       className="nx-app"
-      style={{ flexDirection: 'row', minHeight: '100vh', height: '100vh' }}
+      style={{ flexDirection: 'row', minHeight: 0, height: '100%' }}
     >
       {/* Sidebar */}
       <aside
@@ -242,27 +265,46 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
           {navItems.map(item => {
             const Icon = I[item.ico] ?? I.cube;
             const isActive = item.id === 'recent';
+            const disabled = item.comingSoon || item.disabled;
+            const onClick = () => {
+              if (disabled) return;
+              if (item.href) router.push(item.href);
+            };
             return (
-              <div
+              <button
+                type="button"
                 key={item.id}
+                onClick={onClick}
+                disabled={disabled}
+                title={item.comingSoon ? (isKo ? '곧 출시' : 'Coming soon') : undefined}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   padding: '7px 10px',
                   borderRadius: 5,
-                  cursor: 'pointer',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
                   fontSize: 12,
+                  border: 'none',
+                  textAlign: 'left',
                   background: isActive ? 'var(--nx-accent-soft)' : 'transparent',
                   color: isActive ? 'var(--nx-accent-2)' : 'var(--nx-text)',
+                  opacity: disabled ? 0.45 : 1,
                 }}
               >
-                <Icon size={14} /> {item.lbl}
-                {item.badge && (
+                <Icon size={14} /> <span style={{ flex: 1 }}>{item.lbl}</span>
+                {item.comingSoon && (
+                  <span
+                    className="nx-chip"
+                    style={{ fontSize: 9, color: 'var(--nx-text-3)' }}
+                  >
+                    {isKo ? '준비중' : 'Soon'}
+                  </span>
+                )}
+                {item.badge && !item.comingSoon && (
                   <span
                     className="nx-chip"
                     style={{
-                      marginLeft: 'auto',
                       fontSize: 9,
                       color: 'var(--nx-accent)',
                       borderColor: 'var(--nx-accent-line)',
@@ -271,7 +313,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                     {item.badge}
                   </span>
                 )}
-              </div>
+              </button>
             );
           })}
         </nav>
@@ -388,11 +430,25 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
             {(projects?.length ?? 0)} {isKo ? '개 프로젝트' : 'projects'}
           </span>
           <div style={{ flex: 1 }} />
-          <div className="nx-search" style={{ width: 320 }}>
+          <label className="nx-search" style={{ width: 320, cursor: 'text' }}>
             <I.search size={12} />
-            <span>{isKo ? '파트·프로젝트·브랜치 검색…' : 'Search parts, projects, branches…'}</span>
-            <span className="kbd">⌘K</span>
-          </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={isKo ? '파트·프로젝트·브랜치 검색…' : 'Search parts, projects, branches…'}
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 0,
+                outline: 0,
+                color: 'var(--nx-text)',
+                fontSize: 11,
+                minWidth: 0,
+              }}
+            />
+            {!searchQuery && <span className="kbd">⌘K</span>}
+          </label>
           <button
             type="button"
             className="nx-pillbtn"
@@ -403,7 +459,13 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
           >
             {themeMode === 'dark' ? <I.sun size={14} /> : <I.moon size={14} />}
           </button>
-          <button type="button" className="nx-pillbtn" style={{ height: 32 }}>
+          <button
+            type="button"
+            className="nx-pillbtn"
+            style={{ height: 32 }}
+            onClick={() => router.push(`/${lang}/nexyfab/releases`)}
+            title={isKo ? '릴리스 노트' : 'Release notes'}
+          >
             <I.bolt size={14} /> {isKo ? '새 소식' : "What's new"}
           </button>
         </div>
@@ -483,7 +545,12 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 >
                   {isKo ? 'AI 스튜디오 열기' : 'Open AI Studio'}
                 </button>
-                <button type="button" className="nx-pillbtn" style={{ height: 30, padding: '0 14px' }}>
+                <button
+                  type="button"
+                  className="nx-pillbtn"
+                  onClick={() => router.push(`/${lang}/how-it-works`)}
+                  style={{ height: 30, padding: '0 14px' }}
+                >
                   {isKo ? '튜토리얼 보기' : 'See tutorial'}
                 </button>
               </div>
@@ -741,7 +808,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.length === 0 ? (
+                  {filteredProjects.length === 0 ? (
                     <tr>
                       <td
                         colSpan={3}
@@ -755,13 +822,17 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                           ? isKo
                             ? '불러오는 중…'
                             : 'Loading…'
-                          : isKo
-                            ? '아직 프로젝트가 없습니다.'
-                            : 'No projects yet.'}
+                          : searchQuery
+                            ? isKo
+                              ? `'${searchQuery}' 에 해당하는 프로젝트가 없습니다.`
+                              : `No projects match '${searchQuery}'.`
+                            : isKo
+                              ? '아직 프로젝트가 없습니다.'
+                              : 'No projects yet.'}
                       </td>
                     </tr>
                   ) : (
-                    projects.slice(0, 20).map(p => (
+                    filteredProjects.slice(0, 20).map(p => (
                       <tr
                         key={p.id}
                         style={{

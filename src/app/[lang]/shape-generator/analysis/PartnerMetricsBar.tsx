@@ -70,7 +70,7 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
 
   if (!metrics) {
     return (
-      <div style={{ fontSize: 10, color: '#8b949e', padding: '2px 0' }}>
+      <div style={{ fontSize: 10, color: 'var(--nx-text-2)', padding: '2px 0' }}>
         {t.notMeasured}
       </div>
     );
@@ -83,7 +83,7 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
       value: metrics.onTimeRate,
       formatted: metrics.onTimeRate != null ? `${(metrics.onTimeRate * 100).toFixed(0)}%` : t.none,
       pct: metrics.onTimeRate != null ? metrics.onTimeRate : null,
-      color: '#3fb950',
+      color: 'var(--nx-ok)',
     },
     {
       key: 'quality',
@@ -102,7 +102,7 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
       pct: metrics.avgResponseMinutes != null
         ? Math.max(0, Math.min(1, 1 - (metrics.avgResponseMinutes - 60) / 1380))
         : null,
-      color: '#d29922',
+      color: 'var(--nx-warn)',
     },
     {
       key: 'comm',
@@ -110,7 +110,7 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
       value: metrics.communicationAvg,
       formatted: metrics.communicationAvg != null ? `${metrics.communicationAvg.toFixed(1)}/5` : t.none,
       pct: metrics.communicationAvg != null ? metrics.communicationAvg / 5 : null,
-      color: '#a371f7',
+      color: 'var(--nx-accent-2)',
     },
   ];
 
@@ -124,9 +124,9 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
               padding: '2px 7px',
               fontSize: 10, fontWeight: 600,
               borderRadius: 10,
-              border: `1px solid ${d.value != null ? d.color : '#30363d'}`,
+              border: `1px solid ${d.value != null ? d.color : 'var(--nx-border)'}`,
               background: d.value != null ? `${d.color}22` : 'transparent',
-              color: d.value != null ? d.color : '#8b949e',
+              color: d.value != null ? d.color : 'var(--nx-text-2)',
               fontFamily: 'monospace',
               whiteSpace: 'nowrap',
             }}
@@ -144,8 +144,8 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {dims.map(d => (
         <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-          <span style={{ width: 60, color: '#8b949e' }}>{d.label}</span>
-          <div style={{ flex: 1, height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' }}>
+          <span style={{ width: 60, color: 'var(--nx-text-2)' }}>{d.label}</span>
+          <div style={{ flex: 1, height: 6, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden' }}>
             {d.pct != null && (
               <div style={{
                 width: `${Math.max(2, d.pct * 100)}%`,
@@ -158,7 +158,7 @@ export default function PartnerMetricsBar({ lang, metrics, variant = 'compact' }
           <span style={{
             width: 60, textAlign: 'right',
             fontFamily: 'monospace',
-            color: d.value != null ? '#c9d1d9' : '#6e7681',
+            color: d.value != null ? 'var(--nx-text)' : 'var(--nx-text-3)',
             fontWeight: 600,
           }}>
             {d.formatted}

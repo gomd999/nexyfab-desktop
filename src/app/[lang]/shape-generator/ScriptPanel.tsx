@@ -299,7 +299,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
       }}
     >
       <div style={{
-        background: '#0d1117', border: '1px solid #30363d', borderRadius: 12,
+        background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 12,
         width: 600, maxWidth: '95vw', maxHeight: '90vh',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
@@ -307,17 +307,17 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px', borderBottom: '1px solid #21262d',
+          padding: '12px 16px', borderBottom: '1px solid var(--nx-panel-2)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               fontSize: 11, fontWeight: 800, fontStyle: 'italic',
-              color: '#a78bfa', background: '#6366f122',
+              color: '#a78bfa', background: 'var(--nx-accent)22',
               borderRadius: 4, padding: '2px 6px', letterSpacing: 0.5,
             }}>
               NS
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#c9d1d9' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
               {t.title}
             </span>
           </div>
@@ -327,8 +327,8 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
               onChange={(e) => { if (e.target.value) setCode(EXAMPLE_SCRIPTS[e.target.value]); e.target.value = ''; }}
               defaultValue=""
               style={{
-                background: '#21262d', border: '1px solid #30363d', borderRadius: 5,
-                color: '#8b949e', fontSize: 11, padding: '3px 6px', cursor: 'pointer',
+                background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 5,
+                color: 'var(--nx-text-2)', fontSize: 11, padding: '3px 6px', cursor: 'pointer',
               }}
             >
               <option value="" disabled>{t.loadExample}</option>
@@ -339,18 +339,18 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
             <button
               onClick={() => setShowHelp(v => !v)}
               style={{
-                padding: '3px 8px', borderRadius: 5, border: `1px solid ${showHelp ? '#388bfd' : '#30363d'}`,
-                background: showHelp ? '#388bfd1a' : 'transparent',
-                color: showHelp ? '#58a6ff' : '#8b949e', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                padding: '3px 8px', borderRadius: 5, border: `1px solid ${showHelp ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                background: showHelp ? 'var(--nx-accent)1a' : 'transparent',
+                color: showHelp ? 'var(--nx-accent-2)' : 'var(--nx-text-2)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
               }}
             >
               API
             </button>
             <button
               onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 4 }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; e.currentTarget.style.background = '#21262d'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#8b949e'; e.currentTarget.style.background = 'none'; }}
+              style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 4 }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; e.currentTarget.style.background = 'none'; }}
             >
               &times;
             </button>
@@ -361,8 +361,8 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
         {showHelp && (
           <pre style={{
             margin: 0, padding: '10px 16px',
-            fontSize: 11, color: '#484f58', background: '#010409',
-            borderBottom: '1px solid #21262d', fontFamily: 'ui-monospace, monospace',
+            fontSize: 11, color: 'var(--nx-border-strong)', background: '#010409',
+            borderBottom: '1px solid var(--nx-panel-2)', fontFamily: 'ui-monospace, monospace',
             whiteSpace: 'pre-wrap', lineHeight: 1.6,
           }}>
             {HELP_TEXT}
@@ -382,7 +382,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
               width: '100%', height: '100%', minHeight: 220,
               padding: '12px 16px 12px 48px',
               background: '#010409', border: 'none', outline: 'none',
-              color: '#c9d1d9', fontSize: 12.5, fontFamily: 'ui-monospace, "Cascadia Code", Consolas, monospace',
+              color: 'var(--nx-text)', fontSize: 12.5, fontFamily: 'ui-monospace, "Cascadia Code", Consolas, monospace',
               lineHeight: 1.65, resize: 'none',
               boxSizing: 'border-box',
             }}
@@ -392,7 +392,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
             position: 'absolute', top: 0, left: 0, width: 40,
             padding: '12px 0', pointerEvents: 'none',
             fontFamily: 'ui-monospace, monospace', fontSize: 12.5, lineHeight: 1.65,
-            color: '#30363d', textAlign: 'right',
+            color: 'var(--nx-border)', textAlign: 'right',
           }}>
             {code.split('\n').map((_, i) => (
               <div key={i} style={{ paddingRight: 8 }}>{i + 1}</div>
@@ -402,13 +402,13 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
 
         {/* Console output */}
         <div style={{
-          borderTop: '1px solid #21262d',
+          borderTop: '1px solid var(--nx-panel-2)',
           background: '#010409',
           maxHeight: 120, overflowY: 'auto',
           padding: logs.length === 0 ? '6px 16px' : '6px 0',
         }}>
           {logs.length === 0 ? (
-            <span style={{ fontSize: 11, color: '#30363d', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: 11, color: 'var(--nx-border)', fontFamily: 'monospace' }}>
               {t.noOutput}
             </span>
           ) : logs.map((entry, i) => (
@@ -417,8 +417,8 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
               style={{
                 padding: '2px 16px', fontSize: 11.5,
                 fontFamily: 'ui-monospace, monospace',
-                color: entry.type === 'error' ? '#f85149' : entry.type === 'success' ? '#3fb950' : '#8b949e',
-                background: entry.type === 'error' ? '#f851490a' : 'transparent',
+                color: entry.type === 'error' ? 'var(--nx-error)' : entry.type === 'success' ? 'var(--nx-ok)' : 'var(--nx-text-2)',
+                background: entry.type === 'error' ? 'var(--nx-error)0a' : 'transparent',
               }}
             >
               {entry.type === 'error' ? '✗ ' : entry.type === 'success' ? '▶ ' : '  '}{entry.msg}
@@ -429,18 +429,18 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
         {/* Footer / Run button */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 16px', borderTop: '1px solid #21262d',
-          background: '#0d1117',
+          padding: '10px 16px', borderTop: '1px solid var(--nx-panel-2)',
+          background: 'var(--nx-bg)',
         }}>
-          <span style={{ fontSize: 10, color: '#484f58' }}>
+          <span style={{ fontSize: 10, color: 'var(--nx-border-strong)' }}>
             {t.footerHint}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => { setCode(''); setLogs([]); }}
               style={{
-                padding: '5px 14px', borderRadius: 6, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                padding: '5px 14px', borderRadius: 6, border: '1px solid var(--nx-border)',
+                background: 'transparent', color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
               {t.clear}
@@ -449,7 +449,7 @@ export default function ScriptPanel({ visible, onClose, lang }: ScriptPanelProps
               onClick={handleRun}
               style={{
                 padding: '5px 18px', borderRadius: 6, border: '1px solid #238636',
-                background: '#238636', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                background: '#238636', color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 0 0 0 #238636',
                 transition: 'background 0.15s',
               }}

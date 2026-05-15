@@ -302,7 +302,7 @@ export default function ComposeResultPanel({
           width: '100%',
           maxWidth: 880,
           maxHeight: '92vh',
-          background: '#0f172a',
+          background: 'var(--nx-bg)',
           border: '1px solid #334155',
           borderRadius: 16,
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
@@ -315,7 +315,7 @@ export default function ComposeResultPanel({
         <div
           style={{
             padding: '16px 24px',
-            borderBottom: '1px solid #1e293b',
+            borderBottom: '1px solid var(--nx-border-strong)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -357,7 +357,7 @@ export default function ComposeResultPanel({
               style={{
                 padding: '10px 14px',
                 background: 'rgba(245,158,11,0.15)',
-                border: '1px solid #f59e0b',
+                border: '1px solid var(--nx-warn)',
                 borderRadius: 8,
                 color: '#fbbf24',
                 fontSize: 13,
@@ -416,7 +416,7 @@ export default function ComposeResultPanel({
           <div
             style={{
               padding: 14,
-              background: '#1e293b',
+              background: 'var(--nx-border-strong)',
               borderRadius: 10,
               marginBottom: 14,
               display: 'grid',
@@ -453,10 +453,10 @@ export default function ComposeResultPanel({
                   marginTop: 8,
                   padding: '10px 14px',
                   background: '#0b1220',
-                  border: '1px solid #1e293b',
+                  border: '1px solid var(--nx-border-strong)',
                   borderRadius: 8,
                   fontSize: 12,
-                  color: '#cbd5e1',
+                  color: 'var(--nx-text)',
                   lineHeight: 1.7,
                 }}
               >
@@ -517,10 +517,10 @@ export default function ComposeResultPanel({
                 gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
                 gap: 6,
                 padding: '10px 12px',
-                background: '#1e293b',
+                background: 'var(--nx-border-strong)',
                 borderRadius: 8,
                 fontSize: 12,
-                color: '#cbd5e1',
+                color: 'var(--nx-text)',
                 fontFamily: 'monospace',
               }}
             >
@@ -552,10 +552,10 @@ export default function ComposeResultPanel({
                       style={{
                         textAlign: 'left',
                         padding: '10px 12px',
-                        background: isCurrent ? 'rgba(34,211,238,0.1)' : '#1e293b',
+                        background: isCurrent ? 'rgba(34,211,238,0.1)' : 'var(--nx-border-strong)',
                         border: isCurrent ? '1px solid #22d3ee' : '1px solid #334155',
                         borderRadius: 8,
-                        color: isCurrent ? '#22d3ee' : '#cbd5e1',
+                        color: isCurrent ? '#22d3ee' : 'var(--nx-text)',
                         fontSize: 12,
                         cursor: isCurrent ? 'default' : 'pointer',
                         display: 'flex',
@@ -589,7 +589,7 @@ export default function ComposeResultPanel({
         <div
           style={{
             padding: '14px 24px',
-            borderTop: '1px solid #1e293b',
+            borderTop: '1px solid var(--nx-border-strong)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -604,7 +604,7 @@ export default function ComposeResultPanel({
               borderRadius: 8,
               border: '1px solid #334155',
               background: 'transparent',
-              color: '#cbd5e1',
+              color: 'var(--nx-text)',
               cursor: swapping ? 'not-allowed' : 'pointer',
               fontSize: 13,
             }}
@@ -622,7 +622,7 @@ export default function ComposeResultPanel({
                 swapping !== null
                   ? '#334155'
                   : 'linear-gradient(135deg, #0ea5e9, #22d3ee)',
-              color: '#fff',
+              color: 'var(--nx-text)',
               cursor: swapping ? 'not-allowed' : 'pointer',
               fontSize: 14,
               fontWeight: 600,
@@ -663,7 +663,7 @@ function LayerCard({
     <div
       style={{
         padding: 14,
-        background: '#1e293b',
+        background: 'var(--nx-border-strong)',
         border: '1px solid #334155',
         borderRadius: 10,
         opacity: swapping ? 0.5 : 1,
@@ -698,8 +698,8 @@ function LayerCard({
                   padding: '6px 8px',
                   borderRadius: 6,
                   border: '1px solid #334155',
-                  background: '#0f172a',
-                  color: '#cbd5e1',
+                  background: 'var(--nx-bg)',
+                  color: 'var(--nx-text)',
                   fontSize: 11,
                   cursor: swapping ? 'not-allowed' : 'pointer',
                   display: 'flex',

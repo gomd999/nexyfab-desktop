@@ -251,17 +251,17 @@ const dict = {
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  orange: '#f0883e',
-  purple: '#a371f7',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  orange: 'var(--nx-warn)',
+  purple: 'var(--nx-accent-2)',
 };
 
 /* ─── Process labels ─────────────────────────────────────────────────────── */
@@ -611,7 +611,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
         {/* ── Feature-based Process Recommendation (pre-analysis) ── */}
         {processRecommendations && processRecommendations.length > 0 && !results && (
           <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 8, background: 'rgba(56,139,253,0.06)', border: '1px solid rgba(56,139,253,0.25)' }}>
-            <div style={{ fontWeight: 700, fontSize: 10, color: '#388bfd', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 10, color: 'var(--nx-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               {t.featureBasedTitle}
             </div>
             {processRecommendations.slice(0, 3).map((rec) => (
@@ -619,26 +619,26 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                 <span style={{ fontSize: 14 }}>{rec.emoji}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)' }}>
                       {PROCESS_META[rec.process].label[lang]}
                     </span>
-                    <span style={{ fontSize: 10, color: rec.confidence >= 80 ? '#3fb950' : rec.confidence >= 50 ? '#f0883e' : '#8b949e' }}>
+                    <span style={{ fontSize: 10, color: rec.confidence >= 80 ? 'var(--nx-ok)' : rec.confidence >= 50 ? 'var(--nx-warn)' : 'var(--nx-text-2)' }}>
                       {rec.confidence}%
                     </span>
                   </div>
                   {rec.reasons.length > 0 && (
-                    <div style={{ fontSize: 9, color: '#8b949e', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 9, color: 'var(--nx-text-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {rec.reasons[0]}
                     </div>
                   )}
                 </div>
                 {/* Confidence bar */}
-                <div style={{ width: 48, height: 4, borderRadius: 2, background: '#21262d', flexShrink: 0 }}>
-                  <div style={{ width: `${rec.confidence}%`, height: '100%', borderRadius: 2, background: rec.confidence >= 80 ? '#3fb950' : rec.confidence >= 50 ? '#f0883e' : '#8b949e', transition: 'width 0.3s' }} />
+                <div style={{ width: 48, height: 4, borderRadius: 2, background: 'var(--nx-panel-2)', flexShrink: 0 }}>
+                  <div style={{ width: `${rec.confidence}%`, height: '100%', borderRadius: 2, background: rec.confidence >= 80 ? 'var(--nx-ok)' : rec.confidence >= 50 ? 'var(--nx-warn)' : 'var(--nx-text-2)', transition: 'width 0.3s' }} />
                 </div>
               </div>
             ))}
-            <div style={{ fontSize: 9, color: '#6e7681', marginTop: 6 }}>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 6 }}>
               {t.featureBasedHint}
             </div>
           </div>
@@ -720,8 +720,8 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
             disabled={selectedProcesses.size === 0}
             style={{
               width: '100%', padding: '8px 12px', borderRadius: 6,
-              border: 'none', background: selectedProcesses.size > 0 ? C.accent : '#484f58',
-              color: '#fff', fontSize: 12, fontWeight: 700, cursor: selectedProcesses.size > 0 ? 'pointer' : 'default',
+              border: 'none', background: selectedProcesses.size > 0 ? C.accent : 'var(--nx-border-strong)',
+              color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: selectedProcesses.size > 0 ? 'pointer' : 'default',
               transition: 'opacity 0.12s',
             }}
             onMouseEnter={e => { if (selectedProcesses.size > 0) e.currentTarget.style.opacity = '0.85'; }}
@@ -744,9 +744,9 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
               onClick={onAutoDraftFix}
               style={{
                 width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 6,
-                border: '1px solid #d29922',
+                border: '1px solid var(--nx-warn)',
                 background: 'rgba(210, 153, 34, 0.16)',
-                color: '#d29922', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                color: 'var(--nx-warn)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 transition: 'all 0.12s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(210, 153, 34, 0.28)'; }}
@@ -813,7 +813,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                           <span style={{ fontSize: 10, fontWeight: 600, color: C.text, flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                             {meta.label[lang]}
                           </span>
-                          <div style={{ width: 60, height: 5, background: '#0d1117', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
+                          <div style={{ width: 60, height: 5, background: 'var(--nx-bg)', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
                             <div style={{ width: `${barWidth}%`, height: '100%', background: scoreColor, borderRadius: 3 }} />
                           </div>
                           <span style={{ fontSize: 10, fontWeight: 800, color: scoreColor, width: 28, textAlign: 'right', fontFamily: 'monospace', flexShrink: 0 }}>
@@ -828,7 +828,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                       );
                     })}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 9, color: '#484f58', marginTop: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 9, color: 'var(--nx-border-strong)', marginTop: 2 }}>
                     {t.scoreDiff}
                   </div>
                 </div>
@@ -889,7 +889,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
 
                   {/* Score gauge */}
                   <div style={{ padding: '0 12px', background: C.card }}>
-                    <div style={{ height: 4, background: '#0d1117', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: 4, background: 'var(--nx-bg)', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{
                         width: `${r.score}%`, height: '100%',
                         background: scoreColor, borderRadius: 2,
@@ -1080,7 +1080,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                                           style={{
                                             width: '100%', padding: '4px 0', borderRadius: 4,
                                             border: 'none', background: C.green,
-                                            color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                            color: 'var(--nx-text)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
                                           }}
                                         >
                                           {t.applyFix}
@@ -1090,7 +1090,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
 
                                     {issue.faceIndices && issue.faceIndices.length > 0 && (
                                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, gap: 6 }}>
-                                        <span style={{ fontSize: 9, color: '#484f58', fontFamily: 'monospace' }}>
+                                        <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>
                                           {issue.faceIndices.length} {t.facesAffected}
                                         </span>
                                         <div style={{ display: 'flex', gap: 4 }}>
@@ -1105,11 +1105,11 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                                               title={t.jumpToFeature}
                                               style={{
                                                 padding: '2px 8px', borderRadius: 4, border: `1px solid ${C.border}`,
-                                                background: 'transparent', color: '#a371f7', fontSize: 9,
+                                                background: 'transparent', color: 'var(--nx-accent-2)', fontSize: 9,
                                                 fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s',
                                               }}
-                                              onMouseEnter={e => { e.currentTarget.style.background = '#a371f7'; e.currentTarget.style.color = '#fff'; }}
-                                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#a371f7'; }}
+                                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent-2)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+                                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
                                             >
                                               🌳 {t.featureBtn}
                                             </button>
@@ -1121,7 +1121,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                                               background: 'transparent', color: C.accent, fontSize: 9,
                                               fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s',
                                             }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = C.accent; e.currentTarget.style.color = '#fff'; }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = C.accent; e.currentTarget.style.color = 'var(--nx-text)'; }}
                                             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.accent; }}
                                           >
                                             {t.highlightBtn}
@@ -1144,7 +1144,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
             })}
 
             {/* Color legend */}
-            <div style={{ marginTop: 8, padding: '10px', background: '#0d1117', borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <div style={{ marginTop: 8, padding: '10px', background: 'var(--nx-bg)', borderRadius: 8, border: `1px solid ${C.border}` }}>
               <div style={{ fontWeight: 700, fontSize: 10, color: C.textDim, marginBottom: 6 }}>
                 {t.colorLegend}
               </div>
@@ -1166,7 +1166,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
         )}
 
         {!results && (
-          <div style={{ textAlign: 'center', padding: '30px 10px', color: '#484f58' }}>
+          <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--nx-border-strong)' }}>
             <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>🏭</div>
             <div style={{ fontSize: 11 }}>
               {t.emptyPrompt}
@@ -1242,7 +1242,7 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
           width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 6,
           border: '1px solid #1f6feb',
           background: busy ? '#1f6feb88' : 'rgba(31,111,235,0.16)',
-          color: '#79c0ff', fontSize: 12, fontWeight: 700,
+          color: 'var(--nx-accent-2)', fontSize: 12, fontWeight: 700,
           cursor: busy ? 'wait' : 'pointer',
           transition: 'background 0.12s',
         }}
@@ -1255,7 +1255,7 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
           marginTop: 4, padding: '4px 8px',
           fontSize: 10, color: '#ffa198',
           background: 'rgba(248,81,73,0.12)',
-          border: '1px solid #f85149', borderRadius: 4,
+          border: '1px solid var(--nx-error)', borderRadius: 4,
         }}>
           {err}
         </div>

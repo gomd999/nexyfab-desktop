@@ -263,14 +263,14 @@ export default function AssemblyMatesPanel({
   const dof = calculateDOF(assemblyState);
 
   const dofColor =
-    dof === 0 ? '#3fb950' :   // fully constrained — green
+    dof === 0 ? 'var(--nx-ok)' :   // fully constrained — green
     dof >  0 ? '#e3b341' :    // under-constrained — yellow
-               '#f85149';     // over-constrained  — red (dof < 0 shouldn't happen; shown as 0)
+               'var(--nx-error)';     // over-constrained  — red (dof < 0 shouldn't happen; shown as 0)
 
   const dofBg =
     dof === 0 ? '#16a34a22' :
-    dof >  0 ? '#d2992222' :
-               '#f8514922';
+    dof >  0 ? 'var(--nx-warn)22' :
+               'var(--nx-error)22';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -334,7 +334,7 @@ export default function AssemblyMatesPanel({
             const isUnsatisfied = solveResult?.unsatisfied.includes(mate.id);
             const isConflict = mate.conflict || solveResult?.conflicts.includes(mate.id);
             const borderColor = isConflict
-              ? '#f85149'
+              ? 'var(--nx-error)'
               : isUnsatisfied
                 ? '#e3b341'
                 : theme.border;
@@ -370,7 +370,7 @@ export default function AssemblyMatesPanel({
                 </div>
 
                 {isConflict && (
-                  <span style={{ fontSize: 10, color: '#f85149', flexShrink: 0 }} title="Conflict">
+                  <span style={{ fontSize: 10, color: 'var(--nx-error)', flexShrink: 0 }} title="Conflict">
                     &#x26A0;
                   </span>
                 )}
@@ -397,8 +397,8 @@ export default function AssemblyMatesPanel({
                     padding: '2px 6px',
                     borderRadius: 4,
                     border: 'none',
-                    background: '#f8514922',
-                    color: '#f85149',
+                    background: 'var(--nx-error)22',
+                    color: 'var(--nx-error)',
                     fontSize: 10,
                     cursor: 'pointer',
                     flexShrink: 0,
@@ -421,7 +421,7 @@ export default function AssemblyMatesPanel({
           borderRadius: 6,
           border: 'none',
           background: theme.accent,
-          color: '#fff',
+          color: 'var(--nx-text)',
           fontSize: 12,
           fontWeight: 700,
           cursor: assemblyState.mates.length === 0 ? 'not-allowed' : 'pointer',
@@ -449,7 +449,7 @@ export default function AssemblyMatesPanel({
               {tt.status}
             </span>
             <span style={{
-              color: solveResult.converged ? '#3fb950' : '#e3b341',
+              color: solveResult.converged ? 'var(--nx-ok)' : '#e3b341',
               fontWeight: 700,
             }}>
               {solveResult.converged ? tt.converged : tt.notConverged}
@@ -482,7 +482,7 @@ export default function AssemblyMatesPanel({
 
           {/* Conflict warning */}
           {solveResult.conflicts.length > 0 && (
-            <div style={{ color: '#f85149', fontSize: 10 }}>
+            <div style={{ color: 'var(--nx-error)', fontSize: 10 }}>
               &#x2715;&nbsp;{solveResult.conflicts.length}&nbsp;
               {tt.conflicting}
             </div>
@@ -518,9 +518,9 @@ export default function AssemblyMatesPanel({
                           fontSize: 9,
                           padding: '2px 6px',
                           borderRadius: 4,
-                          background: isConflict ? '#f8514922' : '#e3b34122',
-                          color: isConflict ? '#f85149' : '#e3b341',
-                          border: isConflict ? '1px solid #f8514944' : '1px solid #e3b34144',
+                          background: isConflict ? 'var(--nx-error)22' : '#e3b34122',
+                          color: isConflict ? 'var(--nx-error)' : '#e3b341',
+                          border: isConflict ? '1px solid var(--nx-error)44' : '1px solid #e3b34144',
                         }}
                       >
                         {id}

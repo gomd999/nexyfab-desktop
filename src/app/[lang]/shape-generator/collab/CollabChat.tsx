@@ -105,18 +105,18 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: '#0d1117', fontFamily: 'system-ui, -apple-system, sans-serif',
+      background: 'var(--nx-bg)', fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       {/* Header */}
       <div style={{
-        padding: '10px 14px', borderBottom: '1px solid #21262d',
+        padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
       }}>
         <span style={{ fontSize: 14 }}>💬</span>
-        <span style={{ fontWeight: 700, fontSize: 13, color: '#c9d1d9', flex: 1 }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--nx-text)', flex: 1 }}>
           {t.title}
         </span>
-        <span style={{ fontSize: 10, color: '#6e7681' }}>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
           {users.length} {t.online}
         </span>
       </div>
@@ -124,11 +124,11 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
       {/* Online users */}
       {users.length > 0 && (
         <div style={{
-          padding: '6px 14px', borderBottom: '1px solid #21262d',
+          padding: '6px 14px', borderBottom: '1px solid var(--nx-panel-2)',
           display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0,
         }}>
           {users.map(u => (
-            <span key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#8b949e' }}>
+            <span key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--nx-text-2)' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: u.color, display: 'inline-block' }} />
               {u.name}
             </span>
@@ -139,7 +139,7 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
       {/* Message list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {messages.length === 0 ? (
-          <div style={{ padding: '30px 20px', textAlign: 'center', color: '#6e7681' }}>
+          <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--nx-text-3)' }}>
             <div style={{ fontSize: 28, opacity: 0.4, marginBottom: 8 }}>💬</div>
             <p style={{ margin: 0, fontSize: 12 }}>
               {t.empty}
@@ -164,7 +164,7 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
                     width: 24, height: 24, borderRadius: '50%',
                     background: msg.color, flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 700, color: '#fff', marginTop: 2,
+                    fontSize: 10, fontWeight: 700, color: 'var(--nx-text)', marginTop: 2,
                   }}>
                     {msg.name[0]?.toUpperCase()}
                   </div>
@@ -173,7 +173,7 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
                 <div style={{ maxWidth: '75%' }}>
                   {!isSameSender && (
                     <div style={{
-                      fontSize: 10, color: isOwn ? '#388bfd' : msg.color,
+                      fontSize: 10, color: isOwn ? 'var(--nx-accent)' : msg.color,
                       fontWeight: 600, marginBottom: 2,
                       textAlign: isOwn ? 'right' : 'left',
                     }}>
@@ -181,16 +181,16 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
                     </div>
                   )}
                   <div style={{
-                    background: isOwn ? '#388bfd22' : '#21262d',
-                    border: `1px solid ${isOwn ? '#388bfd44' : '#30363d'}`,
+                    background: isOwn ? 'var(--nx-accent)22' : 'var(--nx-panel-2)',
+                    border: `1px solid ${isOwn ? 'var(--nx-accent)44' : 'var(--nx-border)'}`,
                     borderRadius: isOwn ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                    padding: '6px 10px', fontSize: 12, color: '#c9d1d9',
+                    padding: '6px 10px', fontSize: 12, color: 'var(--nx-text)',
                     lineHeight: 1.5, wordBreak: 'break-word',
                     whiteSpace: 'pre-wrap',
                   }}>
                     {renderMentions(msg.text, users)}
                   </div>
-                  <div style={{ fontSize: 9, color: '#6e7681', marginTop: 2, textAlign: isOwn ? 'right' : 'left' }}>
+                  <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 2, textAlign: isOwn ? 'right' : 'left' }}>
                     {new Date(msg.ts).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
@@ -204,14 +204,14 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
       {/* Typing indicator */}
       {Object.keys(typingUsers).filter(uid => uid !== currentUserId).length > 0 && (
         <div style={{ padding: '4px 14px 0', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 10, color: '#8b949e', fontStyle: 'italic' }}>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)', fontStyle: 'italic' }}>
             {Object.values(typingUsers).filter((_, i) => Object.keys(typingUsers)[i] !== currentUserId).join(', ')}
             {' '}{t.typing}
           </span>
           <span style={{ display: 'flex', gap: 2 }}>
             {[0, 1, 2].map(i => (
               <span key={i} style={{
-                width: 4, height: 4, borderRadius: '50%', background: '#8b949e',
+                width: 4, height: 4, borderRadius: '50%', background: 'var(--nx-text-2)',
                 animation: `bounce 1s ease-in-out ${i * 0.2}s infinite`,
                 display: 'inline-block',
               }} />
@@ -223,13 +223,13 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
 
       {/* Input area */}
       <div style={{
-        padding: '10px 14px', borderTop: '1px solid #21262d', flexShrink: 0, position: 'relative',
+        padding: '10px 14px', borderTop: '1px solid var(--nx-panel-2)', flexShrink: 0, position: 'relative',
       }}>
         {/* @mention dropdown */}
         {mentionOpen && filteredUsers.length > 0 && (
           <div style={{
             position: 'absolute', bottom: '100%', left: 14, right: 14, zIndex: 999,
-            background: '#1c2128', border: '1px solid #388bfd66', borderRadius: 6,
+            background: '#1c2128', border: '1px solid var(--nx-accent)66', borderRadius: 6,
             boxShadow: '0 -4px 12px rgba(0,0,0,0.5)', overflow: 'hidden',
           }}>
             {filteredUsers.map(u => (
@@ -237,11 +237,11 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
                 key={u.id}
                 onMouseDown={(e) => { e.preventDefault(); insertMention(u.name); }}
                 style={{ padding: '6px 12px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#388bfd22')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--nx-accent)22')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: u.color, flexShrink: 0, display: 'inline-block' }} />
-                <span style={{ color: '#c9d1d9' }}>{u.name}</span>
+                <span style={{ color: 'var(--nx-text)' }}>{u.name}</span>
               </div>
             ))}
           </div>
@@ -254,8 +254,8 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
             placeholder={t.placeholder}
             rows={1}
             style={{
-              flex: 1, background: '#161b22', border: '1px solid #30363d',
-              borderRadius: 8, color: '#c9d1d9', fontSize: 12, padding: '7px 10px',
+              flex: 1, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+              borderRadius: 8, color: 'var(--nx-text)', fontSize: 12, padding: '7px 10px',
               resize: 'none', outline: 'none', fontFamily: 'system-ui, sans-serif',
               lineHeight: 1.5, maxHeight: 100, overflow: 'auto',
             }}
@@ -270,8 +270,8 @@ export default function CollabChat({ messages, currentUserId, users, typingUsers
             style={{
               padding: '7px 14px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 700,
               cursor: draft.trim() ? 'pointer' : 'default',
-              background: draft.trim() ? '#388bfd' : '#21262d',
-              color: draft.trim() ? '#fff' : '#6e7681',
+              background: draft.trim() ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+              color: draft.trim() ? 'var(--nx-text)' : 'var(--nx-text-3)',
               transition: 'all 0.15s', flexShrink: 0,
             }}
           >
@@ -290,7 +290,7 @@ function renderMentions(text: string, users: CollabUser[]) {
       const name = part.slice(1);
       const user = users.find(u => u.name.toLowerCase() === name.toLowerCase());
       return (
-        <span key={i} style={{ color: user ? user.color : '#388bfd', fontWeight: 600 }}>
+        <span key={i} style={{ color: user ? user.color : 'var(--nx-accent)', fontWeight: 600 }}>
           {part}
         </span>
       );

@@ -24,7 +24,7 @@ const COLOR = {
   ink: '#111827',
   accent: '#1f6feb',
   leader: '#374151',
-  partDot: '#9ca3af',
+  partDot: 'var(--nx-text-2)',
 };
 
 export default function AutoExplodedSVG({

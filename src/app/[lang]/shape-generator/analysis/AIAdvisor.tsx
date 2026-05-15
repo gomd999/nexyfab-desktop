@@ -620,10 +620,10 @@ export function generateAdvisorSuggestions(
 // ─── Category colours ─────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<AdvisorSuggestion['category'], string> = {
-  cost: '#f0883e',
-  weight: '#3fb950',
-  process: '#79c0ff',
-  optimize: '#a371f7',
+  cost: 'var(--nx-warn)',
+  weight: 'var(--nx-ok)',
+  process: 'var(--nx-accent-2)',
+  optimize: 'var(--nx-accent-2)',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -688,15 +688,15 @@ export default function AIAdvisor({
 
       {/* ── Text-to-CAD section ── */}
       <div style={{
-        background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
+        background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 10,
         padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
           <span style={{ fontSize: 14 }}>✏️</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
             {t.t2cTitle}
           </span>
-          <span style={{ fontSize: 10, color: '#6e7681' }}>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
             {t.t2cExample}
           </span>
         </div>
@@ -706,31 +706,31 @@ export default function AIAdvisor({
           placeholder={t.t2cPlaceholder}
           rows={2}
           style={{
-            width: '100%', background: '#0d1117', border: '1px solid #30363d', borderRadius: 6,
-            color: '#c9d1d9', fontSize: 11, padding: '6px 8px', resize: 'none',
+            width: '100%', background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 6,
+            color: 'var(--nx-text)', fontSize: 11, padding: '6px 8px', resize: 'none',
             outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
           }}
         />
         {parsed && (
-          <div style={{ background: '#0d1117', borderRadius: 6, padding: '8px 10px', fontSize: 11 }}>
+          <div style={{ background: 'var(--nx-bg)', borderRadius: 6, padding: '8px 10px', fontSize: 11 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
-                background: parsed.confidence === 'high' ? '#3fb95022' : parsed.confidence === 'medium' ? '#f0883e22' : '#6e767122',
-                color: parsed.confidence === 'high' ? '#3fb950' : parsed.confidence === 'medium' ? '#f0883e' : '#6e7681',
+                background: parsed.confidence === 'high' ? 'var(--nx-ok)22' : parsed.confidence === 'medium' ? '#f0883e22' : '#6e767122',
+                color: parsed.confidence === 'high' ? 'var(--nx-ok)' : parsed.confidence === 'medium' ? 'var(--nx-warn)' : 'var(--nx-text-3)',
               }}>
                 {parsed.confidence === 'high' ? t.confHigh :
                  parsed.confidence === 'medium' ? t.confMedium :
                  t.confLow}
               </span>
-              <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+              <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700 }}>
                 {shapeLabelKeys[parsed.shapeId] ? t[shapeLabelKeys[parsed.shapeId]] : parsed.shapeId}
               </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
               {Object.entries(parsed.params).map(([k, v]) => (
-                <span key={k} style={{ color: '#8b949e' }}>
-                  <span style={{ color: '#79c0ff' }}>{k}</span>: {v}mm
+                <span key={k} style={{ color: 'var(--nx-text-2)' }}>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{k}</span>: {v}mm
                 </span>
               ))}
             </div>
@@ -742,9 +742,9 @@ export default function AIAdvisor({
             disabled={nlApplied || !onTextToCAD}
             style={{
               alignSelf: 'flex-end', padding: '5px 14px', borderRadius: 6,
-              border: `1px solid ${nlApplied ? '#30363d' : '#388bfd'}`,
-              background: nlApplied ? '#21262d' : '#388bfd18',
-              color: nlApplied ? '#6e7681' : '#58a6ff',
+              border: `1px solid ${nlApplied ? 'var(--nx-border)' : 'var(--nx-accent)'}`,
+              background: nlApplied ? 'var(--nx-panel-2)' : 'var(--nx-accent)18',
+              color: nlApplied ? 'var(--nx-text-3)' : 'var(--nx-accent-2)',
               fontSize: 11, fontWeight: 700, cursor: nlApplied ? 'default' : 'pointer',
             }}
           >
@@ -752,7 +752,7 @@ export default function AIAdvisor({
           </button>
         )}
         {!parsed && nlText.trim().length > 5 && (
-          <div style={{ fontSize: 10, color: '#8b949e' }}>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
             {t.shapeUnrecognized}
           </div>
         )}
@@ -760,8 +760,8 @@ export default function AIAdvisor({
 
       {suggestions.length === 0 ? (
         <div style={{
-          background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
-          padding: '16px 20px', color: '#8b949e', fontSize: 13, textAlign: 'center',
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 10,
+          padding: '16px 20px', color: 'var(--nx-text-2)', fontSize: 13, textAlign: 'center',
         }}>
           {t.noSuggestions}
         </div>
@@ -770,12 +770,12 @@ export default function AIAdvisor({
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 16 }}>🤖</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
               {t.advisorTitle}
             </span>
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 7px',
-              borderRadius: 10, background: '#a371f718', color: '#a371f7',
+              borderRadius: 10, background: 'var(--nx-accent-2)18', color: 'var(--nx-accent-2)',
             }}>
               {suggestions.length} {t.suggestionsCount}
             </span>
@@ -788,8 +788,8 @@ export default function AIAdvisor({
               <div
                 key={s.id}
                 style={{
-                  background: '#161b22',
-                  border: `1px solid ${isApplied ? color + '55' : '#30363d'}`,
+                  background: 'var(--nx-panel)',
+                  border: `1px solid ${isApplied ? color + '55' : 'var(--nx-border)'}`,
                   borderRadius: 10,
                   padding: '12px 14px',
                   display: 'flex',
@@ -811,7 +811,7 @@ export default function AIAdvisor({
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{
-                    margin: '0 0 6px', fontSize: 12, color: '#e6edf3', lineHeight: 1.5,
+                    margin: '0 0 6px', fontSize: 12, color: 'var(--nx-text)', lineHeight: 1.5,
                     wordBreak: 'keep-all',
                   }}>
                     {renderHeadline(s)}
@@ -823,7 +823,7 @@ export default function AIAdvisor({
                     }}>
                       {t[s.impactKey]}
                     </span>
-                    <span style={{ fontSize: 10, color: '#6e7681', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: 10, color: 'var(--nx-text-3)', textTransform: 'uppercase' }}>
                       {s.category}
                     </span>
                   </div>
@@ -837,9 +837,9 @@ export default function AIAdvisor({
                     flexShrink: 0,
                     padding: '5px 12px',
                     borderRadius: 6,
-                    border: `1px solid ${isApplied ? '#30363d' : color}`,
-                    background: isApplied ? '#21262d' : color + '18',
-                    color: isApplied ? '#6e7681' : color,
+                    border: `1px solid ${isApplied ? 'var(--nx-border)' : color}`,
+                    background: isApplied ? 'var(--nx-panel-2)' : color + '18',
+                    color: isApplied ? 'var(--nx-text-3)' : color,
                     fontSize: 11, fontWeight: 700, cursor: isApplied ? 'default' : 'pointer',
                     transition: 'background 0.15s, color 0.15s',
                     whiteSpace: 'nowrap',

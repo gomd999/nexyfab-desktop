@@ -42,14 +42,14 @@ const dict = {
 };
 
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#58a6ff',
-  green: '#3fb950',
-  red: '#f85149',
-  cellBg: '#0d1117',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent-2)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
+  cellBg: 'var(--nx-bg)',
 };
 
 export default function PlmConfigPanel({
@@ -183,7 +183,7 @@ export default function PlmConfigPanel({
               style={{
                 flex: 1, padding: '8px 12px', borderRadius: 6, border: 'none',
                 background: (baseUrl && token && bomLines.length > 0 && status.kind === 'idle') ? C.green : '#374151',
-                color: '#fff', fontSize: 12, fontWeight: 700,
+                color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
                 cursor: !baseUrl || !token || bomLines.length === 0 || status.kind !== 'idle' ? 'not-allowed' : 'pointer',
               }}
             >

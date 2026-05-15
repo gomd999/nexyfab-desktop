@@ -112,7 +112,7 @@ export default function SketchRadialMenu({
           height: MENU_R * 1.7,
           borderRadius: '50%',
           background: 'rgba(241,243,245,0.92)',
-          border: '1px solid #c9d1d9',
+          border: '1px solid var(--nx-text)',
           boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
           pointerEvents: 'auto',
         }}
@@ -213,7 +213,7 @@ export default function SketchRadialMenu({
             maxHeight: (MENU_R + BTN_R) * 2 - 16,
             overflowY: 'auto',
             background: 'rgba(255,255,255,0.98)',
-            border: '1px solid #c9d1d9',
+            border: '1px solid var(--nx-text)',
             borderRadius: 8,
             boxShadow: '0 8px 28px rgba(0,0,0,0.12)',
             pointerEvents: 'auto',

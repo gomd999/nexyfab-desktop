@@ -241,7 +241,7 @@ export default function SectionPropertiesPanel({ shapeId, params, isKo }: Props)
   }, [shapeId, params]);
 
   if (!SUPPORTED.has(shapeId)) {
-    return <div style={{ fontSize: 10, color: '#484f58', textAlign: 'center', padding: '6px 0' }}>{t.noSupport}</div>;
+    return <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', textAlign: 'center', padding: '6px 0' }}>{t.noSupport}</div>;
   }
 
   if (!sp) return null;
@@ -264,18 +264,18 @@ export default function SectionPropertiesPanel({ shapeId, params, isKo }: Props)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color: '#484f58', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-border-strong)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
         {t.title}
       </div>
       {rows.map(row => (
         <div key={row.label} style={{
           display: 'grid', gridTemplateColumns: '1fr auto auto',
           alignItems: 'baseline', gap: 4,
-          padding: '2px 0', borderBottom: '1px solid #21262d',
+          padding: '2px 0', borderBottom: '1px solid var(--nx-panel-2)',
         }}>
-          <span style={{ fontSize: 10, color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#e6edf3', fontFamily: 'monospace', textAlign: 'right' }}>{row.value}</span>
-          <span style={{ fontSize: 9, color: '#484f58', minWidth: 32, textAlign: 'right' }}>{row.unit}</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)', fontFamily: 'monospace', textAlign: 'right' }}>{row.value}</span>
+          <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', minWidth: 32, textAlign: 'right' }}>{row.unit}</span>
         </div>
       ))}
     </div>

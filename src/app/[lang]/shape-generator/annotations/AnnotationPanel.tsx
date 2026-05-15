@@ -225,15 +225,15 @@ const GDT_SYMBOL_NAMES_LOCALIZED: Record<Lang, Record<string, string>> = {
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
+  bg: 'var(--nx-panel)',
   card: '#1c2128',
-  border: '#30363d',
-  accent: '#388bfd',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  hover: '#30363d',
-  danger: '#f85149',
-  success: '#3fb950',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  hover: 'var(--nx-border)',
+  danger: 'var(--nx-error)',
+  success: 'var(--nx-ok)',
 };
 
 const panelStyle: React.CSSProperties = {
@@ -286,7 +286,7 @@ const inputStyle: React.CSSProperties = {
   padding: '5px 8px',
   borderRadius: 4,
   border: `1px solid ${C.border}`,
-  background: '#0d1117',
+  background: 'var(--nx-bg)',
   color: C.text,
   fontSize: 11,
   fontFamily: 'monospace',
@@ -487,7 +487,7 @@ export default function AnnotationPanel({
           {showGDTDropdown && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
-              background: '#21262d', border: `1px solid ${C.border}`, borderRadius: 5,
+              background: 'var(--nx-panel-2)', border: `1px solid ${C.border}`, borderRadius: 5,
               maxHeight: 280, overflowY: 'auto', padding: 4,
             }}>
               {Object.entries(GDT_CATEGORIES).map(([cat, symbols]) => (
@@ -595,7 +595,7 @@ export default function AnnotationPanel({
               ))}
             </div>
             {/* Live FCF preview */}
-            <div style={{ marginTop: 8, padding: '4px 6px', background: '#0d1117', borderRadius: 4, fontFamily: 'monospace', fontSize: 11, color: C.accent }}>
+            <div style={{ marginTop: 8, padding: '4px 6px', background: 'var(--nx-bg)', borderRadius: 4, fontFamily: 'monospace', fontSize: 11, color: C.accent }}>
               {formatFCF({
                 symbol: selectedSymbol,
                 toleranceValue: parseFloat(tolValue) || 0,
@@ -613,7 +613,7 @@ export default function AnnotationPanel({
           onClick={handleAddGDT}
           style={{
             ...btnBase, width: '100%', marginBottom: 10,
-            background: C.accent, color: '#fff',
+            background: C.accent, color: 'var(--nx-text)',
           }}
         >
           {t.addGdtBtn}
@@ -630,7 +630,7 @@ export default function AnnotationPanel({
               style={{
                 ...btnBase, flex: 1, fontSize: 10, padding: '4px 2px',
                 background: dimType === dt ? C.accent : C.card,
-                color: dimType === dt ? '#fff' : C.dim,
+                color: dimType === dt ? 'var(--nx-text)' : C.dim,
                 border: `1px solid ${dimType === dt ? C.accent : C.border}`,
               }}
             >
@@ -722,7 +722,7 @@ export default function AnnotationPanel({
           onClick={handleAddDimension}
           style={{
             ...btnBase, width: '100%', marginBottom: 10,
-            background: '#fbbf24', color: '#0d1117',
+            background: '#fbbf24', color: 'var(--nx-bg)',
           }}
         >
           {t.addDimBtn}

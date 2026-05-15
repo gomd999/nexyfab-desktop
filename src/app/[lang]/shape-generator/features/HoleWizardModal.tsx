@@ -268,7 +268,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
           </h2>
           <button
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: '#9ca3af', fontSize: 20, cursor: 'pointer' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-2)', fontSize: 20, cursor: 'pointer' }}
             aria-label="Close"
           >
             ×
@@ -277,7 +277,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
 
         {/* Series picker */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 6 }}>
             {t.standardSeries}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -300,7 +300,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
 
         {/* Size picker */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 6 }}>
             {t.size}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
@@ -323,7 +323,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
 
         {/* Kind picker */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 6 }}>
             {t.holeType}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
@@ -346,21 +346,21 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
 
         {/* Position + depth */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
-          <label style={{ fontSize: 12, color: '#9ca3af' }}>
+          <label style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
             X (mm)
             <input
               type="number" value={posX} onChange={e => setPosX(Number(e.target.value))} step={1}
               style={{ width: '100%', padding: '6px 8px', background: '#111827', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
             />
           </label>
-          <label style={{ fontSize: 12, color: '#9ca3af' }}>
+          <label style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
             Z (mm)
             <input
               type="number" value={posZ} onChange={e => setPosZ(Number(e.target.value))} step={1}
               style={{ width: '100%', padding: '6px 8px', background: '#111827', color: '#f3f4f6', border: '1px solid #374151', borderRadius: 4, marginTop: 4 }}
             />
           </label>
-          <label style={{ fontSize: 12, color: '#9ca3af' }}>
+          <label style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
             {t.depth} (mm)
             <input
               type="number" value={depth} onChange={e => setDepth(Number(e.target.value))} step={1} min={1}
@@ -368,7 +368,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
             />
           </label>
         </div>
-        <div style={{ fontSize: 11, color: '#6b7280', marginTop: -6, marginBottom: 6 }}>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginTop: -6, marginBottom: 6 }}>
           {t.throughAllNote}
         </div>
 
@@ -376,7 +376,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
             1.5×D / 2×D rather than typing arbitrary numbers. */}
         {preview && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>{t.depthPreset}</div>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.depthPreset}</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {HOLE_DEPTH_PRESETS.map(p => {
                 const value = depthFromPreset(p, preview.diameter);
@@ -407,7 +407,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
             padding: 10, fontSize: 12, fontFamily: 'monospace', color: '#d1d5db',
             marginBottom: 14,
           }}>
-            <div style={{ color: '#9ca3af', marginBottom: 6, fontFamily: 'inherit', fontSize: 11 }}>
+            <div style={{ color: 'var(--nx-text-2)', marginBottom: 6, fontFamily: 'inherit', fontSize: 11 }}>
               {t.resolved}
             </div>
             <div>{t.holeDia}: <b>{preview.diameter.toFixed(2)} mm</b></div>
@@ -437,7 +437,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
           </button>
           <button
             onClick={handleApply}
-            style={{ padding: '8px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+            style={{ padding: '8px 14px', background: '#2563eb', color: 'var(--nx-text)', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
           >
             {t.addHole}
           </button>

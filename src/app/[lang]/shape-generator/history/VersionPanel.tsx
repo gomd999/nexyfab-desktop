@@ -518,15 +518,15 @@ export default function VersionPanel({
           style={{
             padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
             fontSize: 11, fontWeight: 700, transition: 'all 0.15s',
-            border: `1px solid ${compareMode ? '#f0883e' : theme.border}`,
+            border: `1px solid ${compareMode ? 'var(--nx-warn)' : theme.border}`,
             background: compareMode ? '#f0883e18' : theme.cardBg,
-            color: compareMode ? '#f0883e' : theme.textMuted,
+            color: compareMode ? 'var(--nx-warn)' : theme.textMuted,
             flex: compareMode ? 1 : 0, whiteSpace: 'nowrap',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#f0883e'; e.currentTarget.style.color = '#f0883e'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-warn)'; e.currentTarget.style.color = 'var(--nx-warn)'; }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = compareMode ? '#f0883e' : theme.border;
-            e.currentTarget.style.color = compareMode ? '#f0883e' : theme.textMuted;
+            e.currentTarget.style.borderColor = compareMode ? 'var(--nx-warn)' : theme.border;
+            e.currentTarget.style.color = compareMode ? 'var(--nx-warn)' : theme.textMuted;
           }}
         >
           {compareMode ? `✕ ${labels.compareExit}` : `⇄ ${labels.compareMode}`}
@@ -534,7 +534,7 @@ export default function VersionPanel({
       </div>
       {compareMode && (
         <div style={{ padding: '6px 14px', background: '#f0883e0a', borderBottom: `1px solid ${theme.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#f0883e', fontWeight: 600, flex: 1 }}>
+          <span style={{ fontSize: 11, color: 'var(--nx-warn)', fontWeight: 600, flex: 1 }}>
             {labels.compareModeHint} — {compareIds.length}/2 {labels.compareSelected}
           </span>
           {compareIds.length === 2 && onShow3DDiff && (() => {
@@ -547,7 +547,7 @@ export default function VersionPanel({
                 onClick={() => onShow3DDiff(older, newer)}
                 style={{
                   padding: '3px 10px', borderRadius: 5, fontSize: 11, fontWeight: 700,
-                  background: '#388bfd', color: '#fff', border: 'none', cursor: 'pointer',
+                  background: 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', cursor: 'pointer',
                 }}
               >
                 {labels.threeDDiff}
@@ -629,10 +629,10 @@ export default function VersionPanel({
                     {compareMode ? (
                       <div style={{
                         width: 18, height: 18, borderRadius: '50%', flexShrink: 0, zIndex: 2, marginTop: 1,
-                        background: isCompareSelected ? '#f0883e' : theme.cardBg,
-                        border: `2px solid ${isCompareSelected ? '#f0883e' : theme.border}`,
+                        background: isCompareSelected ? 'var(--nx-warn)' : theme.cardBg,
+                        border: `2px solid ${isCompareSelected ? 'var(--nx-warn)' : theme.border}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 9, fontWeight: 800, color: isCompareSelected ? '#fff' : theme.textMuted,
+                        fontSize: 9, fontWeight: 800, color: isCompareSelected ? 'var(--nx-text)' : theme.textMuted,
                       }}>
                         {isCompareSelected ? compareSelectionIdx + 1 : ''}
                       </div>
@@ -774,7 +774,7 @@ export default function VersionPanel({
                           borderRadius: 4,
                           border: 'none',
                           background: theme.accent,
-                          color: '#fff',
+                          color: 'var(--nx-text)',
                           fontSize: 10,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -837,8 +837,8 @@ export default function VersionPanel({
                             <div key={i} style={{
                               padding: '1px 6px',
                               borderRadius: 3,
-                              background: c.startsWith('+') ? '#16a34a20' : '#f8514920',
-                              color: c.startsWith('+') ? '#3fb950' : '#f85149',
+                              background: c.startsWith('+') ? '#16a34a20' : 'var(--nx-error)20',
+                              color: c.startsWith('+') ? 'var(--nx-ok)' : 'var(--nx-error)',
                               fontFamily: 'monospace',
                               marginBottom: 1,
                             }}>
@@ -864,15 +864,15 @@ export default function VersionPanel({
         const diff = computeDiff(vA, vB);
         return (
           <div style={{
-            borderTop: `1px solid #f0883e44`, background: '#0d1117',
+            borderTop: `1px solid #f0883e44`, background: 'var(--nx-bg)',
             padding: '12px 14px', flexShrink: 0, maxHeight: 260, overflowY: 'auto',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#f0883e', marginBottom: 8 }}>⇄ {labels.comparisonResult}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--nx-warn)', marginBottom: 8 }}>⇄ {labels.comparisonResult}</div>
             {/* Side-by-side thumbnails */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               {[vA, vB].map((v, i) => (
-                <div key={v.id} style={{ flex: 1, background: theme.cardBg, borderRadius: 6, padding: '6px 8px', border: `1px solid ${i === 0 ? '#f0883e55' : '#388bfd55'}` }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: i === 0 ? '#f0883e' : '#58a6ff', marginBottom: 4 }}>
+                <div key={v.id} style={{ flex: 1, background: theme.cardBg, borderRadius: 6, padding: '6px 8px', border: `1px solid ${i === 0 ? '#f0883e55' : 'var(--nx-accent)55'}` }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: i === 0 ? 'var(--nx-warn)' : 'var(--nx-accent-2)', marginBottom: 4 }}>
                     {i === 0 ? '① ' : '② '}{v.label || v.autoLabel}
                   </div>
                   {v.thumbnail ? (
@@ -900,7 +900,7 @@ export default function VersionPanel({
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, marginBottom: 3 }}>{labels.featureDiff}</div>
                 {diff.featureChanges.map((c, i) => (
-                  <div key={i} style={{ fontFamily: 'monospace', fontSize: 10, padding: '2px 6px', borderRadius: 3, background: c.startsWith('+') ? '#16a34a20' : '#f8514920', color: c.startsWith('+') ? '#3fb950' : '#f85149', marginBottom: 2 }}>{c}</div>
+                  <div key={i} style={{ fontFamily: 'monospace', fontSize: 10, padding: '2px 6px', borderRadius: 3, background: c.startsWith('+') ? '#16a34a20' : 'var(--nx-error)20', color: c.startsWith('+') ? 'var(--nx-ok)' : 'var(--nx-error)', marginBottom: 2 }}>{c}</div>
                 ))}
               </div>
             )}
@@ -961,7 +961,7 @@ export default function VersionPanel({
               padding: '6px 12px',
               border: 'none',
               background: 'transparent',
-              color: '#f85149',
+              color: 'var(--nx-error)',
               fontSize: 12,
               fontWeight: 600,
               cursor: 'pointer',
@@ -969,7 +969,7 @@ export default function VersionPanel({
               textAlign: 'left',
               transition: 'background 0.1s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#f8514915'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-error)15'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
           >
             🗑️ {labels.delete}

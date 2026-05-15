@@ -26,8 +26,8 @@ export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: Welc
       dir={isRtl ? 'rtl' : 'ltr'}
       style={{
         position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 8000, background: 'linear-gradient(135deg, #1c2128, #161b22)',
-        border: '1px solid #388bfd55', borderRadius: 14,
+        zIndex: 8000, background: 'linear-gradient(135deg, #1c2128, var(--nx-panel))',
+        border: '1px solid var(--nx-accent)55', borderRadius: 14,
         padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
         boxShadow: '0 8px 40px rgba(56,139,253,0.18)',
         fontFamily: 'system-ui, sans-serif', minWidth: 360, maxWidth: 540,
@@ -36,10 +36,10 @@ export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: Welc
     >
       <div style={{ fontSize: 30, flexShrink: 0 }} aria-hidden="true">🚀</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3', marginBottom: 3 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 3 }}>
           {copy.heading}
         </div>
-        <div style={{ fontSize: 11, color: '#8b949e', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
           {copy.sub}
         </div>
       </div>
@@ -48,8 +48,8 @@ export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: Welc
           onClick={onStartTutorial}
           style={{
             padding: '8px 16px', borderRadius: 8, border: 'none',
-            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-            color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+            color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
             whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(56,139,253,0.35)',
           }}
         >
@@ -59,8 +59,8 @@ export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: Welc
           onClick={onDismiss}
           style={{
             padding: '8px 10px', borderRadius: 8,
-            border: '1px solid #30363d', background: 'transparent',
-            color: '#6e7681', fontSize: 13, cursor: 'pointer', lineHeight: 1,
+            border: '1px solid var(--nx-border)', background: 'transparent',
+            color: 'var(--nx-text-3)', fontSize: 13, cursor: 'pointer', lineHeight: 1,
           }}
           aria-label="Dismiss"
         >

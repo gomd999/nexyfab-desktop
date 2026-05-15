@@ -25,14 +25,14 @@ import { useAnalysisStore } from '../store/analysisStore';
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  red: '#f85149',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
   white: '#ffffff',
 };
 
@@ -460,7 +460,7 @@ export default function AutoDrawingPanel({
   const primaryBtn: React.CSSProperties = {
     ...btnStyle,
     background: C.accent,
-    color: '#fff',
+    color: 'var(--nx-text)',
   };
 
   const secondaryBtn: React.CSSProperties = {
@@ -592,7 +592,7 @@ export default function AutoDrawingPanel({
 
         {/* Preset chips — one click sets matching linear/angular/Ra together */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600 }}>{tt.presets}:</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)', fontWeight: 600 }}>{tt.presets}:</span>
           {TOL_PRESETS.map(p => {
             const active = linearTol === p.linear && angularTol === p.angular && raValue === p.ra;
             const labelKey = p.id === 'precision' ? 'presetPrec' : p.id === 'standard' ? 'presetStd' : 'presetRough';
@@ -612,14 +612,14 @@ export default function AutoDrawingPanel({
                   fontSize: 10,
                   lineHeight: 1.3,
                   cursor: 'pointer',
-                  border: active ? '1px solid #58a6ff' : '1px solid #30363d',
-                  background: active ? 'rgba(56,139,253,0.15)' : '#0d1117',
-                  color: active ? '#58a6ff' : '#c9d1d9',
+                  border: active ? '1px solid var(--nx-accent-2)' : '1px solid var(--nx-border)',
+                  background: active ? 'rgba(56,139,253,0.15)' : 'var(--nx-bg)',
+                  color: active ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                   transition: 'all 0.1s',
                 }}
               >
                 <span style={{ fontWeight: 700 }}>{tt[labelKey]}</span>
-                <span style={{ fontSize: 9, color: active ? '#58a6ff' : '#6e7681', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 9, color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-3)', fontFamily: 'monospace' }}>
                   {p.linear} · Ra{p.ra}
                 </span>
               </button>
@@ -685,7 +685,7 @@ export default function AutoDrawingPanel({
             background: 'rgba(240,136,62,0.12)',
             borderBottom: `1px solid ${C.border}`,
             fontSize: 12,
-            color: '#f0883e',
+            color: 'var(--nx-warn)',
             lineHeight: 1.45,
             display: 'flex',
             alignItems: 'center',
@@ -706,7 +706,7 @@ export default function AutoDrawingPanel({
               borderRadius: 8,
               border: '1px solid #f0883e',
               background: 'rgba(240,136,62,0.2)',
-              color: '#fff',
+              color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 700,
               cursor: 'pointer',
@@ -966,7 +966,7 @@ export default function AutoDrawingPanel({
                   <rect
                     x={result.bounds.x} y={result.bounds.y}
                     width={result.bounds.w} height={result.bounds.h}
-                    fill="#fff" stroke="#000" strokeWidth={0.3}
+                    fill="var(--nx-text)" stroke="#000" strokeWidth={0.3}
                   />
                   {/* Hatching */}
                   {result.hatch.map((line, li) => (
@@ -994,7 +994,7 @@ export default function AutoDrawingPanel({
           to remove the last entry. A future iteration will add inline
           editing of focal point / cut line. */}
       {drawing && (
-        <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid #21262d' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid var(--nx-panel-2)' }}>
           <button
             onClick={() => {
               const idx = detailSpecs.length;
@@ -1014,8 +1014,8 @@ export default function AutoDrawingPanel({
             }}
             style={{
               padding: '4px 10px', borderRadius: 4,
-              border: '1px solid #388bfd', background: '#388bfd22',
-              color: '#388bfd', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid var(--nx-accent)', background: 'var(--nx-accent)22',
+              color: 'var(--nx-accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
           >+ Detail View</button>
           <button
@@ -1039,8 +1039,8 @@ export default function AutoDrawingPanel({
             }}
             style={{
               padding: '4px 10px', borderRadius: 4,
-              border: '1px solid #d29922', background: '#d2992222',
-              color: '#d29922', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid var(--nx-warn)', background: 'var(--nx-warn)22',
+              color: 'var(--nx-warn)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
           >+ Section View</button>
           {(detailSpecs.length > 0 || sectionSpecs.length > 0) && (
@@ -1048,8 +1048,8 @@ export default function AutoDrawingPanel({
               onClick={() => { setDetailSpecs([]); setSectionSpecs([]); }}
               style={{
                 padding: '4px 10px', borderRadius: 4,
-                border: '1px solid #30363d', background: 'transparent',
-                color: '#8b949e', fontSize: 11, cursor: 'pointer',
+                border: '1px solid var(--nx-border)', background: 'transparent',
+                color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
               }}
             >Clear extras</button>
           )}
@@ -1080,8 +1080,8 @@ function ExplodedViewSection({
   );
 
   return (
-    <div style={{ marginTop: 16, padding: 12, background: '#0d1117', borderRadius: 6 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9', marginBottom: 8 }}>
+    <div style={{ marginTop: 16, padding: 12, background: 'var(--nx-bg)', borderRadius: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 8 }}>
         🎯 Exploded View ({parts.length} parts)
       </div>
       <AutoExplodedSVG layout={layout} width={760} height={420} />

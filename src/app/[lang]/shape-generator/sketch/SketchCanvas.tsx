@@ -2097,7 +2097,7 @@ function SketchCanvas({
       <text
         x={sliceX + 6 / zoom}
         y={vbY + 16 / zoom}
-        fill="#fb923c"
+        fill="var(--nx-warn)"
         fontSize={11 / zoom}
         fontFamily="system-ui, sans-serif"
       >
@@ -2182,9 +2182,9 @@ function SketchCanvas({
       liveDimension = (
         <g>
           <rect x={midX - boxW / 2} y={midY - boxH - 2 / zoom} width={boxW} height={boxH}
-            rx={2 / zoom} fill="#1c2128" stroke="#388bfd" strokeWidth={0.5 / zoom} opacity={0.92} />
+            rx={2 / zoom} fill="#1c2128" stroke="var(--nx-accent)" strokeWidth={0.5 / zoom} opacity={0.92} />
           <text x={midX} y={midY - 4 / zoom}
-            fill="#58a6ff" fontSize={8 / zoom} fontFamily="monospace" fontWeight="700"
+            fill="var(--nx-accent-2)" fontSize={8 / zoom} fontFamily="monospace" fontWeight="700"
             textAnchor="middle">
             {labelText}
           </text>
@@ -2209,7 +2209,7 @@ function SketchCanvas({
       const y2 = -(drawingRefPt.y + ny * ext);
       angleAxisLine = (
         <line x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke="#388bfd" strokeWidth={0.5 / zoom}
+          stroke="var(--nx-accent)" strokeWidth={0.5 / zoom}
           strokeDasharray={`${4 / zoom} ${4 / zoom}`} opacity={0.4} />
       );
     }
@@ -2240,7 +2240,7 @@ function SketchCanvas({
   // ── Snap indicator ─────────────────────────────────────────────────────────
   let snapIndicator: React.ReactNode = null;
   if (snapTarget && snapType !== 'grid') {
-    const color = snapType === 'endpoint' ? '#3fb950' : '#f0883e';
+    const color = snapType === 'endpoint' ? 'var(--nx-ok)' : 'var(--nx-warn)';
     const r = snapType === 'endpoint' ? 7 / zoom : 5 / zoom;
     snapIndicator = (
       <g>
@@ -2287,7 +2287,7 @@ function SketchCanvas({
     const previewR = r > 0.5 ? r : circleRadius;
     circlePreview = (
       <circle cx={center.x} cy={-center.y} r={previewR}
-        fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+        fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
         strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />
     );
   }
@@ -2304,7 +2304,7 @@ function SketchCanvas({
     if (w > 0.5 || h > 0.5) {
       rectPreview = (
         <rect x={x} y={y} width={w} height={h}
-          fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+          fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
           strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />
       );
     }
@@ -2326,7 +2326,7 @@ function SketchCanvas({
       }
       d += ' Z';
       polyPreview = (
-        <path d={d} fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+        <path d={d} fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
           strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />
       );
     }
@@ -2341,7 +2341,7 @@ function SketchCanvas({
       const rx = Math.max(1, Math.abs(mousePos.x - c.x)) || ellipseRx;
       ellipsePreview = (
         <ellipse cx={c.x} cy={-c.y} rx={rx} ry={ellipseRy}
-          fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+          fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
           strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />
       );
     } else if (tempPoints.length === 2) {
@@ -2352,12 +2352,12 @@ function SketchCanvas({
       ellipsePreview = (
         <>
           <ellipse cx={c.x} cy={-c.y} rx={rx} ry={ry}
-            fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+            fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
             strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />
           <line x1={c.x} y1={-c.y} x2={c.x + rx} y2={-c.y}
-            stroke="#388bfd" strokeWidth={0.8 / zoom} strokeDasharray={`${3 / zoom} ${3 / zoom}`} opacity={0.5} />
+            stroke="var(--nx-accent)" strokeWidth={0.8 / zoom} strokeDasharray={`${3 / zoom} ${3 / zoom}`} opacity={0.5} />
           <line x1={c.x} y1={-c.y} x2={c.x} y2={-c.y - ry}
-            stroke="#388bfd" strokeWidth={0.8 / zoom} strokeDasharray={`${3 / zoom} ${3 / zoom}`} opacity={0.5} />
+            stroke="var(--nx-accent)" strokeWidth={0.8 / zoom} strokeDasharray={`${3 / zoom} ${3 / zoom}`} opacity={0.5} />
         </>
       );
     }
@@ -2375,7 +2375,7 @@ function SketchCanvas({
         d += ` L ${s.points[1].x} ${-s.points[1].y}`;
       }
       d += ' Z';
-      slotPreview = <path d={d} fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+      slotPreview = <path d={d} fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
         strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />;
     }
   }
@@ -2394,7 +2394,7 @@ function SketchCanvas({
     if (bestPt) {
       filletPreview = (
         <circle cx={bestPt.x} cy={-bestPt.y} r={filletRadius}
-          fill="rgba(56,139,253,0.1)" stroke="#388bfd" strokeWidth={1.5 / zoom} opacity={0.8} />
+          fill="rgba(56,139,253,0.1)" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom} opacity={0.8} />
       );
     }
   }
@@ -2408,18 +2408,18 @@ function SketchCanvas({
       <>
         {/* X-axis mirror (default) */}
         <line x1={vbX} y1={-pivot.y} x2={vbX + viewBoxW} y2={-pivot.y}
-          stroke="#f0883e" strokeWidth={1 / zoom} strokeDasharray={`${6/zoom} ${4/zoom}`} opacity={0.6} />
+          stroke="var(--nx-warn)" strokeWidth={1 / zoom} strokeDasharray={`${6/zoom} ${4/zoom}`} opacity={0.6} />
         {/* Y-axis mirror label */}
         <text x={pivot.x + 5 / zoom} y={-pivot.y - 5 / zoom}
-          fill="#f0883e" fontSize={9 / zoom} fontFamily="monospace">
+          fill="var(--nx-warn)" fontSize={9 / zoom} fontFamily="monospace">
           {t.axisHint}
         </text>
         {/* Center dot */}
         <circle cx={pivot.x} cy={-pivot.y} r={4 / zoom}
-          fill="#f0883e" opacity={0.8} />
+          fill="var(--nx-warn)" opacity={0.8} />
         {/* Y-axis preview line (faint) */}
         <line x1={pivot.x} y1={vbY} x2={pivot.x} y2={vbY + viewBoxH}
-          stroke="#f0883e" strokeWidth={0.5 / zoom} strokeDasharray={`${4/zoom} ${4/zoom}`} opacity={0.3} />
+          stroke="var(--nx-warn)" strokeWidth={0.5 / zoom} strokeDasharray={`${4/zoom} ${4/zoom}`} opacity={0.3} />
       </>
     );
     void ext;
@@ -2436,7 +2436,7 @@ function SketchCanvas({
       constructionLines.push(
         <line key={`con${i}`}
           x1={p0.x} y1={-p0.y} x2={p1.x} y2={-p1.y}
-          stroke="#484f58" strokeWidth={1 / zoom}
+          stroke="var(--nx-border-strong)" strokeWidth={1 / zoom}
           strokeDasharray={`${8/zoom} ${4/zoom}`} opacity={0.7} />
       );
     }
@@ -2447,7 +2447,7 @@ function SketchCanvas({
   if (activeTool === 'spline' && splinePoints.length > 0) {
     const controlDots = splinePoints.map((pt, i) => (
       <circle key={`scp${i}`} cx={pt.x} cy={-pt.y} r={4 / zoom}
-        fill="#a371f7" stroke="#0d1117" strokeWidth={1 / zoom} />
+        fill="var(--nx-accent-2)" stroke="var(--nx-bg)" strokeWidth={1 / zoom} />
     ));
 
     let curvePath: React.ReactNode = null;
@@ -2460,7 +2460,7 @@ function SketchCanvas({
           d += ` L ${s.end.x} ${-s.end.y}`;
         }
         curvePath = (
-          <path d={d} fill="none" stroke="#a371f7" strokeWidth={1.5 / zoom}
+          <path d={d} fill="none" stroke="var(--nx-accent-2)" strokeWidth={1.5 / zoom}
             strokeDasharray={`${4 / zoom} ${4 / zoom}`} opacity={0.8} />
         );
       }
@@ -2505,11 +2505,11 @@ function SketchCanvas({
       const r = 6 / zoom;
       return (
         <g key={`ix${k}`}>
-          <circle cx={px} cy={-py} r={r} fill="none" stroke="#f85149" strokeWidth={2 / zoom} />
+          <circle cx={px} cy={-py} r={r} fill="none" stroke="var(--nx-error)" strokeWidth={2 / zoom} />
           <line x1={px - r * 0.6} y1={-py - r * 0.6} x2={px + r * 0.6} y2={-py + r * 0.6}
-            stroke="#f85149" strokeWidth={2 / zoom} strokeLinecap="round" />
+            stroke="var(--nx-error)" strokeWidth={2 / zoom} strokeLinecap="round" />
           <line x1={px - r * 0.6} y1={-py + r * 0.6} x2={px + r * 0.6} y2={-py - r * 0.6}
-            stroke="#f85149" strokeWidth={2 / zoom} strokeLinecap="round" />
+            stroke="var(--nx-error)" strokeWidth={2 / zoom} strokeLinecap="round" />
         </g>
       );
     });
@@ -2524,7 +2524,7 @@ function SketchCanvas({
         <line
           x1={seg.points[0].x} y1={-seg.points[0].y}
           x2={seg.points[1].x} y2={-seg.points[1].y}
-          stroke="#f0883e" strokeWidth={4 / zoom} opacity={0.9}
+          stroke="var(--nx-warn)" strokeWidth={4 / zoom} opacity={0.9}
           strokeLinecap="round"
         />
       );
@@ -2534,7 +2534,7 @@ function SketchCanvas({
         let d = `M ${pts[0].x} ${-pts[0].y}`;
         for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].x} ${-pts[i].y}`;
         selectionHighlight = (
-          <path d={d} fill="none" stroke="#f0883e" strokeWidth={4 / zoom} opacity={0.9} strokeLinecap="round" />
+          <path d={d} fill="none" stroke="var(--nx-warn)" strokeWidth={4 / zoom} opacity={0.9} strokeLinecap="round" />
         );
       }
     }
@@ -2582,7 +2582,7 @@ function SketchCanvas({
                 x={cx - size / 2} y={cy - size / 2}
                 width={size} height={size} rx={3 / zoom}
                 fill={c.satisfied ? 'rgba(63,185,80,0.18)' : 'rgba(248,81,73,0.18)'}
-                stroke={c.satisfied ? '#3fb950' : '#f85149'}
+                stroke={c.satisfied ? 'var(--nx-ok)' : 'var(--nx-error)'}
                 strokeWidth={1 / zoom}
               />
               <text
@@ -2590,7 +2590,7 @@ function SketchCanvas({
                 fontSize={size * 0.7}
                 fontFamily="ui-monospace, monospace"
                 fontWeight={700}
-                fill={c.satisfied ? '#3fb950' : '#f85149'}
+                fill={c.satisfied ? 'var(--nx-ok)' : 'var(--nx-error)'}
                 textAnchor="middle"
                 dominantBaseline="central"
               >
@@ -2612,7 +2612,7 @@ function SketchCanvas({
         <line
           x1={seg.points[0].x} y1={-seg.points[0].y}
           x2={seg.points[1].x} y2={-seg.points[1].y}
-          stroke="#f85149" strokeWidth={3 / zoom} opacity={0.8}
+          stroke="var(--nx-error)" strokeWidth={3 / zoom} opacity={0.8}
         />
       );
     } else if (seg.type === 'arc' && seg.points.length === 3) {
@@ -2621,7 +2621,7 @@ function SketchCanvas({
         let d = `M ${pts[0].x} ${-pts[0].y}`;
         for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].x} ${-pts[i].y}`;
         trimHighlight = (
-          <path d={d} fill="none" stroke="#f85149" strokeWidth={3 / zoom} opacity={0.8} />
+          <path d={d} fill="none" stroke="var(--nx-error)" strokeWidth={3 / zoom} opacity={0.8} />
         );
       }
     }
@@ -2710,13 +2710,13 @@ function SketchCanvas({
             width={12 / zoom} height={12 / zoom}
             rx={2 / zoom}
             fill={c.satisfied ? '#238636' : '#da3633'}
-            stroke={c.satisfied ? '#2ea043' : '#f85149'}
+            stroke={c.satisfied ? '#2ea043' : 'var(--nx-error)'}
             strokeWidth={0.3 / zoom}
             opacity={0.92}
           />
           <text
             x={mx} y={-my - dy + 6 / zoom}
-            fill="#fff" fontSize={8 / zoom} fontFamily="monospace"
+            fill="var(--nx-text)" fontSize={8 / zoom} fontFamily="monospace"
             textAnchor="middle" dominantBaseline="middle"
             pointerEvents="none"
           >
@@ -2769,31 +2769,31 @@ function SketchCanvas({
         <g key={d.id}>
           {/* Extension lines */}
           <line x1={ext0x0} y1={ext0y0} x2={x0} y2={y0}
-            stroke="#58a6ff" strokeWidth={0.5 / zoom} opacity={0.6} />
+            stroke="var(--nx-accent-2)" strokeWidth={0.5 / zoom} opacity={0.6} />
           <line x1={ext1x0} y1={ext1y0} x2={x1} y2={y1}
-            stroke="#58a6ff" strokeWidth={0.5 / zoom} opacity={0.6} />
+            stroke="var(--nx-accent-2)" strokeWidth={0.5 / zoom} opacity={0.6} />
           {/* Dimension line */}
           <line x1={x0} y1={y0} x2={x1} y2={y1}
-            stroke="#58a6ff" strokeWidth={1 / zoom} />
+            stroke="var(--nx-accent-2)" strokeWidth={1 / zoom} />
           {/* Arrows */}
           <line x1={x0} y1={y0} x2={x0 + adx + ady * 0.3} y2={y0 + ady - adx * 0.3}
-            stroke="#58a6ff" strokeWidth={1 / zoom} />
+            stroke="var(--nx-accent-2)" strokeWidth={1 / zoom} />
           <line x1={x0} y1={y0} x2={x0 + adx - ady * 0.3} y2={y0 + ady + adx * 0.3}
-            stroke="#58a6ff" strokeWidth={1 / zoom} />
+            stroke="var(--nx-accent-2)" strokeWidth={1 / zoom} />
           <line x1={x1} y1={y1} x2={x1 - adx + ady * 0.3} y2={y1 - ady - adx * 0.3}
-            stroke="#58a6ff" strokeWidth={1 / zoom} />
+            stroke="var(--nx-accent-2)" strokeWidth={1 / zoom} />
           <line x1={x1} y1={y1} x2={x1 - adx - ady * 0.3} y2={y1 - ady + adx * 0.3}
-            stroke="#58a6ff" strokeWidth={1 / zoom} />
+            stroke="var(--nx-accent-2)" strokeWidth={1 / zoom} />
           {/* Value text */}
           <rect
             x={midX - 16 / zoom} y={midY - 7 / zoom}
             width={32 / zoom} height={14 / zoom}
             rx={2 / zoom}
-            fill="#0d1117" stroke="#58a6ff" strokeWidth={0.5 / zoom}
+            fill="var(--nx-bg)" stroke="var(--nx-accent-2)" strokeWidth={0.5 / zoom}
           />
           <text
             x={midX} y={midY + 3 / zoom}
-            fill="#58a6ff" fontSize={9 / zoom} fontFamily="monospace" fontWeight="700"
+            fill="var(--nx-accent-2)" fontSize={9 / zoom} fontFamily="monospace" fontWeight="700"
             textAnchor="middle"
           >
             {d.value.toFixed(1)}
@@ -2859,14 +2859,14 @@ function SketchCanvas({
   else cursorStyle = 'crosshair';
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#0d1117' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: 'var(--nx-bg)' }}>
       {otherProfiles.length > 0 && (
         <div
           style={{
             position: 'absolute', left: 8, bottom: 8, zIndex: 6, maxWidth: 'min(440px, calc(100% - 16px))',
             padding: '5px 10px', borderRadius: 8,
-            background: 'rgba(13,17,23,0.92)', border: '1px solid #30363d',
-            color: '#c9d1d9', fontSize: 11, lineHeight: 1.4, pointerEvents: 'none',
+            background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-border)',
+            color: 'var(--nx-text)', fontSize: 11, lineHeight: 1.4, pointerEvents: 'none',
             wordBreak: 'keep-all',
           }}
         >
@@ -2926,14 +2926,14 @@ function SketchCanvas({
         {pathD && (
           <path d={pathD}
             fill={profile.closed ? 'rgba(56,139,253,0.08)' : 'none'}
-            stroke="#388bfd" strokeWidth={2 / zoom}
+            stroke="var(--nx-accent)" strokeWidth={2 / zoom}
             strokeLinejoin="round" strokeLinecap="round"
           />
         )}
 
         {/* Preview line */}
         {previewPath && (
-          <path d={previewPath} fill="none" stroke="#388bfd" strokeWidth={1.5 / zoom}
+          <path d={previewPath} fill="none" stroke="var(--nx-accent)" strokeWidth={1.5 / zoom}
             strokeDasharray={`${6 / zoom} ${4 / zoom}`} opacity={0.7} />
         )}
 
@@ -2971,7 +2971,7 @@ function SketchCanvas({
         {activeTool === 'select' && profile.segments.flatMap((seg, si) =>
           seg.points.map((p, pi) => (
             <circle key={`dh${si}_${pi}`} cx={p.x} cy={-p.y} r={8 / zoom}
-              fill="rgba(56,139,253,0.08)" stroke="#388bfd55" strokeWidth={1 / zoom}
+              fill="rgba(56,139,253,0.08)" stroke="var(--nx-accent)55" strokeWidth={1 / zoom}
               style={{ cursor: 'move' }} />
           ))
         )}
@@ -2979,20 +2979,20 @@ function SketchCanvas({
         {/* Points */}
         {allPoints.map((p, i) => (
           <circle key={`pt${i}`} cx={p.x} cy={-p.y} r={ptR}
-            fill="#388bfd" stroke="#0d1117" strokeWidth={1 / zoom} />
+            fill="var(--nx-accent)" stroke="var(--nx-bg)" strokeWidth={1 / zoom} />
         ))}
 
         {/* Temp points */}
         {tempPoints.map((p, i) => (
           <circle key={`tp${i}`} cx={p.x} cy={-p.y} r={ptR}
-            fill="#f0883e" stroke="#0d1117" strokeWidth={1 / zoom} />
+            fill="var(--nx-warn)" stroke="var(--nx-bg)" strokeWidth={1 / zoom} />
         ))}
 
         {/* First point highlight for closing */}
         {firstPt && !profile.closed && (profile.segments.length > 0 || tempPoints.length > 1) && (
           <circle cx={firstPt.x} cy={-firstPt.y} r={firstPtR}
-            fill={nearFirst ? '#3fb950' : 'transparent'}
-            stroke="#3fb950" strokeWidth={2 / zoom} opacity={nearFirst ? 0.9 : 0.5} />
+            fill={nearFirst ? 'var(--nx-ok)' : 'transparent'}
+            stroke="var(--nx-ok)" strokeWidth={2 / zoom} opacity={nearFirst ? 0.9 : 0.5} />
         )}
 
         {/* Snap indicator */}
@@ -3002,9 +3002,9 @@ function SketchCanvas({
         {!isPanning && !['select', 'trim', 'dimension', 'constraint'].includes(activeTool) && !profile.closed && (
           <>
             <line x1={mousePos.x - 8 / zoom} y1={-mousePos.y} x2={mousePos.x + 8 / zoom} y2={-mousePos.y}
-              stroke="#fff" strokeWidth={0.5 / zoom} opacity={0.5} />
+              stroke="var(--nx-text)" strokeWidth={0.5 / zoom} opacity={0.5} />
             <line x1={mousePos.x} y1={-mousePos.y - 8 / zoom} x2={mousePos.x} y2={-mousePos.y + 8 / zoom}
-              stroke="#fff" strokeWidth={0.5 / zoom} opacity={0.5} />
+              stroke="var(--nx-text)" strokeWidth={0.5 / zoom} opacity={0.5} />
           </>
         )}
 
@@ -3024,7 +3024,7 @@ function SketchCanvas({
             <g>
               <line x1={start.x} y1={-start.y} x2={ex} y2={-ey}
                 stroke="#e3b341" strokeWidth={2 / zoom} strokeDasharray={`${6 / zoom} ${3 / zoom}`} />
-              <circle cx={ex} cy={-ey} r={4 / zoom} fill="#e3b341" stroke="#fff" strokeWidth={1 / zoom} />
+              <circle cx={ex} cy={-ey} r={4 / zoom} fill="#e3b341" stroke="var(--nx-text)" strokeWidth={1 / zoom} />
             </g>
           );
         })()}
@@ -3077,16 +3077,16 @@ function SketchCanvas({
         })()}
 
         {/* Coordinate readout */}
-        <text x={vbX + 8 / zoom} y={vbY + 16 / zoom} fill="#9ca3af" fontSize={12 / zoom} fontFamily="monospace">
+        <text x={vbX + 8 / zoom} y={vbY + 16 / zoom} fill="var(--nx-text-2)" fontSize={12 / zoom} fontFamily="monospace">
           {`(${mousePos.x.toFixed(1)}, ${mousePos.y.toFixed(1)}) mm`}
         </text>
-        <text x={vbX + 8 / zoom} y={vbY + 30 / zoom} fill="#6b7280" fontSize={10 / zoom} fontFamily="monospace">
+        <text x={vbX + 8 / zoom} y={vbY + 30 / zoom} fill="var(--nx-text-3)" fontSize={10 / zoom} fontFamily="monospace">
           {`zoom: ${zoom.toFixed(2)}x · Ctrl+Z Undo · Shift=${t.angleLocked} · Grid: 5mm`}
         </text>
 
         {/* Tool indicator */}
         <text x={vbX + viewBoxW - 8 / zoom} y={vbY + 16 / zoom}
-          fill="#388bfd" fontSize={11 / zoom} fontFamily="monospace" fontWeight="700" textAnchor="end">
+          fill="var(--nx-accent)" fontSize={11 / zoom} fontFamily="monospace" fontWeight="700" textAnchor="end">
           {activeTool.toUpperCase()}
         </text>
       </svg>
@@ -3098,8 +3098,8 @@ function SketchCanvas({
           zIndex: 12, display: 'flex', alignItems: 'center', gap: 8,
           padding: '6px 14px', borderRadius: 8,
           background: 'rgba(13,17,23,0.92)',
-          border: `1px solid ${dimInput ? '#e3b341' : '#30363d'}`,
-          color: '#c9d1d9', fontSize: 13, fontWeight: 600,
+          border: `1px solid ${dimInput ? '#e3b341' : 'var(--nx-border)'}`,
+          color: 'var(--nx-text)', fontSize: 13, fontWeight: 600,
           fontFamily: 'system-ui, sans-serif', pointerEvents: 'none',
           backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         }}>
@@ -3108,10 +3108,10 @@ function SketchCanvas({
               <span style={{ color: '#e3b341', fontFamily: 'monospace', fontSize: 15 }}>
                 {dimInput}<span style={{ opacity: 0.5 }}> mm</span>
               </span>
-              <span style={{ color: '#6e7681', fontSize: 10, fontWeight: 400 }}>Enter ↵</span>
+              <span style={{ color: 'var(--nx-text-3)', fontSize: 10, fontWeight: 400 }}>Enter ↵</span>
             </>
           ) : (
-            <span style={{ color: '#6e7681', fontSize: 11, fontWeight: 400 }}>{L('dimHint')}</span>
+            <span style={{ color: 'var(--nx-text-3)', fontSize: 11, fontWeight: 400 }}>{L('dimHint')}</span>
           )}
         </div>
       )}
@@ -3119,16 +3119,16 @@ function SketchCanvas({
       {/* Cursor coordinate overlay */}
       <div style={{
         position: 'absolute', bottom: 8, left: 8, zIndex: 10,
-        background: 'rgba(13,17,23,0.85)', border: '1px solid #21262d',
+        background: 'rgba(13,17,23,0.85)', border: '1px solid var(--nx-panel-2)',
         padding: '3px 10px', borderRadius: 6, pointerEvents: 'none',
         fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
         display: 'flex', gap: 6, alignItems: 'center',
       }}>
-        <span style={{ color: '#ef4444' }}>X</span><span style={{ color: '#c9d1d9' }}>{mousePos.x.toFixed(1)}</span>
-        <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: '#c9d1d9' }}>{mousePos.y.toFixed(1)}</span>
-        <span style={{ color: '#484f58' }}>mm</span>
+        <span style={{ color: '#ef4444' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.x.toFixed(1)}</span>
+        <span style={{ color: '#22c55e' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{mousePos.y.toFixed(1)}</span>
+        <span style={{ color: 'var(--nx-border-strong)' }}>mm</span>
         {snapType !== 'none' && snapType !== 'grid' && (
-          <span style={{ color: snapType === 'endpoint' ? '#22c55e' : '#f59e0b', marginLeft: 4, fontSize: 9 }}>
+          <span style={{ color: snapType === 'endpoint' ? '#22c55e' : 'var(--nx-warn)', marginLeft: 4, fontSize: 9 }}>
             ● {snapType}
           </span>
         )}
@@ -3137,21 +3137,21 @@ function SketchCanvas({
       {/* Active tool HUD (bottom-left) */}
       {(() => {
         const toolMeta: Record<SketchTool, { label: string; icon: string; color: string }> = {
-          line:         { label: t.toolLine,         icon: '/',   color: '#388bfd' },
-          arc:          { label: t.toolArc,          icon: '⌒',  color: '#58a6ff' },
-          circle:       { label: t.toolCircle,       icon: '○',  color: '#3fb950' },
-          rect:         { label: t.toolRect,         icon: '□',  color: '#f0883e' },
-          polygon:      { label: t.toolPolygon,      icon: '⬡',  color: '#a371f7' },
+          line:         { label: t.toolLine,         icon: '/',   color: 'var(--nx-accent)' },
+          arc:          { label: t.toolArc,          icon: '⌒',  color: 'var(--nx-accent-2)' },
+          circle:       { label: t.toolCircle,       icon: '○',  color: 'var(--nx-ok)' },
+          rect:         { label: t.toolRect,         icon: '□',  color: 'var(--nx-warn)' },
+          polygon:      { label: t.toolPolygon,      icon: '⬡',  color: 'var(--nx-accent-2)' },
           ellipse:      { label: t.toolEllipse,      icon: '⬭',  color: '#56d364' },
-          slot:         { label: t.toolSlot,         icon: '⬮',  color: '#79c0ff' },
-          fillet:       { label: t.toolFillet,       icon: '◜',  color: '#f0883e' },
-          mirror:       { label: t.toolMirror,       icon: '⇆',  color: '#d2a8ff' },
-          construction: { label: t.toolConstruction, icon: '- -', color: '#484f58' },
+          slot:         { label: t.toolSlot,         icon: '⬮',  color: 'var(--nx-accent-2)' },
+          fillet:       { label: t.toolFillet,       icon: '◜',  color: 'var(--nx-warn)' },
+          mirror:       { label: t.toolMirror,       icon: '⇆',  color: 'var(--nx-accent-2)' },
+          construction: { label: t.toolConstruction, icon: '- -', color: 'var(--nx-border-strong)' },
           spline:       { label: t.toolSpline,       icon: '∿',  color: '#e3b341' },
-          offset:       { label: t.toolOffset,       icon: '⇉',  color: '#79c0ff' },
+          offset:       { label: t.toolOffset,       icon: '⇉',  color: 'var(--nx-accent-2)' },
           trim:         { label: t.toolTrim,         icon: '✂',  color: '#ff7b72' },
-          select:       { label: t.toolSelect,       icon: '↖',  color: '#8b949e' },
-          dimension:    { label: t.toolDimension,    icon: '↔',  color: '#d2a8ff' },
+          select:       { label: t.toolSelect,       icon: '↖',  color: 'var(--nx-text-2)' },
+          dimension:    { label: t.toolDimension,    icon: '↔',  color: 'var(--nx-accent-2)' },
           constraint:   { label: t.toolConstraint,   icon: '⚓',  color: '#ffa657' },
         };
         const meta = toolMeta[activeTool] ?? toolMeta.select;
@@ -3170,7 +3170,7 @@ function SketchCanvas({
             {ptCount > 0 && (
               <span style={{ color: '#e3b341', fontWeight: 700 }}>· {ptCount}{t.points}</span>
             )}
-            <span style={{ color: '#6e7681', fontWeight: 400, marginLeft: 4, fontSize: 11 }}>
+            <span style={{ color: 'var(--nx-text-3)', fontWeight: 400, marginLeft: 4, fontSize: 11 }}>
               {t.esc}
             </span>
           </div>
@@ -3182,7 +3182,7 @@ function SketchCanvas({
         <div style={{
           position: 'absolute', left: 12, bottom: 48, padding: '6px 10px',
           borderRadius: 8, background: 'rgba(248,81,73,0.15)',
-          border: '1px solid #f8514988', color: '#f85149',
+          border: '1px solid var(--nx-error)88', color: 'var(--nx-error)',
           fontSize: 11, fontWeight: 600, fontFamily: 'system-ui, sans-serif',
           pointerEvents: 'none',
         }}>
@@ -3195,8 +3195,8 @@ function SketchCanvas({
         <div style={{
           position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
           padding: '8px 16px', borderRadius: 8,
-          background: 'rgba(13,17,23,0.95)', border: '1px solid #388bfd88',
-          color: '#e6edf3', fontSize: 12, fontWeight: 600,
+          background: 'rgba(13,17,23,0.95)', border: '1px solid var(--nx-accent)88',
+          color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
           fontFamily: 'system-ui, sans-serif', pointerEvents: 'none',
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           animation: 'sketch-toast-in 0.2s ease-out',
@@ -3217,7 +3217,7 @@ function SketchCanvas({
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
             background: gridVisible ? 'rgba(56,139,253,0.18)' : 'rgba(255,255,255,0.06)',
-            color: gridVisible ? '#388bfd' : '#484f58',
+            color: gridVisible ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
           }}
@@ -3229,7 +3229,7 @@ function SketchCanvas({
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
             background: snapEnabled ? 'rgba(56,139,253,0.18)' : 'rgba(255,255,255,0.06)',
-            color: snapEnabled ? '#388bfd' : '#484f58',
+            color: snapEnabled ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
           }}
@@ -3241,7 +3241,7 @@ function SketchCanvas({
           style={{
             width: 28, height: 28, borderRadius: 5, border: 'none', cursor: 'pointer',
             background: 'rgba(255,255,255,0.06)',
-            color: '#8b949e',
+            color: 'var(--nx-text-2)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
           }}
@@ -3264,7 +3264,7 @@ function SketchCanvas({
             width: 28, height: 28, borderRadius: 5, border: 'none',
             cursor: profile.segments.length === 0 ? 'not-allowed' : 'pointer',
             background: 'rgba(255,255,255,0.06)',
-            color: profile.segments.length === 0 ? '#30363d' : '#8b949e',
+            color: profile.segments.length === 0 ? 'var(--nx-border)' : 'var(--nx-text-2)',
             fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s',
           }}
@@ -3279,12 +3279,12 @@ function SketchCanvas({
           transform: 'translate(-50%, -50%)',
           zIndex: 30,
           background: 'rgba(13,17,23,0.97)',
-          border: '1px solid #388bfd',
+          border: '1px solid var(--nx-accent)',
           borderRadius: 10, padding: '12px 16px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
           display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200,
         }}>
-          <div style={{ fontSize: 11, color: '#8b949e', fontWeight: 700 }}>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 700 }}>
             {t.setDimension}
           </div>
           <input
@@ -3311,8 +3311,8 @@ function SketchCanvas({
               }
             }}
             style={{
-              background: '#0d1117', border: '1px solid #30363d', borderRadius: 6,
-              color: '#e6edf3', fontSize: 15, fontWeight: 700, fontFamily: 'monospace',
+              background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 6,
+              color: 'var(--nx-text)', fontSize: 15, fontWeight: 700, fontFamily: 'monospace',
               padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box',
             }}
           />
@@ -3332,7 +3332,7 @@ function SketchCanvas({
               }}
               style={{
                 flex: 1, padding: '5px 0', borderRadius: 6,
-                background: '#388bfd', border: 'none', color: '#fff',
+                background: 'var(--nx-accent)', border: 'none', color: 'var(--nx-text)',
                 fontWeight: 700, fontSize: 12, cursor: 'pointer',
               }}
             >{t.ok}</button>
@@ -3340,7 +3340,7 @@ function SketchCanvas({
               onClick={() => setPendingDim(null)}
               style={{
                 padding: '5px 10px', borderRadius: 6,
-                background: '#21262d', border: 'none', color: '#8b949e',
+                background: 'var(--nx-panel-2)', border: 'none', color: 'var(--nx-text-2)',
                 fontWeight: 600, fontSize: 12, cursor: 'pointer',
               }}
             >ESC</button>
@@ -3355,10 +3355,10 @@ function SketchCanvas({
           alignItems: 'center', justifyContent: 'center', gap: 20, pointerEvents: 'none',
         }}>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#388bfd', fontSize: 16, fontWeight: 700, margin: '0 0 6px', opacity: 0.7 }}>
+            <p style={{ color: 'var(--nx-accent)', fontSize: 16, fontWeight: 700, margin: '0 0 6px', opacity: 0.7 }}>
               {t.clickToStart}
             </p>
-            <p style={{ color: '#6e7681', fontSize: 12, margin: 0, opacity: 0.6 }}>
+            <p style={{ color: 'var(--nx-text-3)', fontSize: 12, margin: 0, opacity: 0.6 }}>
               {t.selectToolThenClick}
             </p>
           </div>
@@ -3366,10 +3366,10 @@ function SketchCanvas({
           {showFloatingSketchShortcuts && (
             <div style={{ display: 'flex', gap: 10, pointerEvents: 'auto' }}>
               {([
-                { tool: 'line' as SketchTool, label: t.qtLine, color: '#388bfd' },
-                { tool: 'circle' as SketchTool, label: t.qtCircle, color: '#3fb950' },
-                { tool: 'rect' as SketchTool, label: t.qtRect, color: '#f0883e' },
-                { tool: 'polygon' as SketchTool, label: t.qtPolygon, color: '#a371f7' },
+                { tool: 'line' as SketchTool, label: t.qtLine, color: 'var(--nx-accent)' },
+                { tool: 'circle' as SketchTool, label: t.qtCircle, color: 'var(--nx-ok)' },
+                { tool: 'rect' as SketchTool, label: t.qtRect, color: 'var(--nx-warn)' },
+                { tool: 'polygon' as SketchTool, label: t.qtPolygon, color: 'var(--nx-accent-2)' },
               ]).map(({ tool, label, color }) => (
                 <button
                   key={tool}
@@ -3389,7 +3389,7 @@ function SketchCanvas({
               ))}
             </div>
           )}
-          <p style={{ color: '#484f58', fontSize: 11, margin: 0, opacity: 0.5 }}>
+          <p style={{ color: 'var(--nx-border-strong)', fontSize: 11, margin: 0, opacity: 0.5 }}>
             {t.orSelect3D}
           </p>
         </div>

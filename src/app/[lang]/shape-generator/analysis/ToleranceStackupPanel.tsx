@@ -167,16 +167,16 @@ const langMap: Record<string, keyof typeof dict> = {
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  panelBg: '#0d1117',
-  border: '#30363d',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  row: '#21262d',
+  bg: 'var(--nx-panel)',
+  panelBg: 'var(--nx-bg)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  row: 'var(--nx-panel-2)',
 };
 
 const panelStyle: React.CSSProperties = {
@@ -412,7 +412,7 @@ export default function ToleranceStackupPanel({
                 style={{
                   ...btnStyle,
                   background: d.direction === 1 ? C.accent : C.yellow,
-                  color: '#fff',
+                  color: 'var(--nx-text)',
                   fontSize: 13,
                   padding: '2px 0',
                 }}
@@ -454,7 +454,7 @@ export default function ToleranceStackupPanel({
             style={{
               ...btnStyle,
               background: C.accent,
-              color: '#fff',
+              color: 'var(--nx-text)',
               width: '100%',
               padding: '7px 0',
               fontSize: 12,
@@ -525,7 +525,7 @@ export default function ToleranceStackupPanel({
                           padding: '1px 8px',
                           borderRadius: 8,
                           background: cpkColor,
-                          color: '#fff',
+                          color: 'var(--nx-text)',
                           fontWeight: 700,
                           fontSize: 10,
                         }}

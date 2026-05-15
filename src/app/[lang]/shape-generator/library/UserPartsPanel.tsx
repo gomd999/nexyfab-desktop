@@ -165,39 +165,39 @@ export default function UserPartsPanel({
   return (
     <div style={{
       position: 'fixed', top: 80, left: 20, width: 380, maxHeight: 'calc(100vh - 120px)',
-      background: '#0d1117', border: '1px solid #30363d', borderRadius: 8,
+      background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 8,
       boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex',
-      flexDirection: 'column', color: '#c9d1d9', fontSize: 13,
+      flexDirection: 'column', color: 'var(--nx-text)', fontSize: 13,
     }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #30363d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <strong>📚 {t.title}</strong>
-        <button onClick={onClose} style={{ background: 'transparent', color: '#8b949e', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        <button onClick={onClose} style={{ background: 'transparent', color: 'var(--nx-text-2)', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
       </div>
 
-      <div style={{ padding: 10, borderBottom: '1px solid #30363d' }}>
+      <div style={{ padding: 10, borderBottom: '1px solid var(--nx-border)' }}>
         <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder={t.namePh}
-          style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '5px 8px', color: '#c9d1d9', marginBottom: 6 }} />
+          style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '5px 8px', color: 'var(--nx-text)', marginBottom: 6 }} />
         <input type="text" value={newTags} onChange={e => setNewTags(e.target.value)} placeholder={t.tags}
-          style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '5px 8px', color: '#c9d1d9', marginBottom: 6 }} />
+          style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '5px 8px', color: 'var(--nx-text)', marginBottom: 6 }} />
         <button onClick={handleSave}
-          style={{ width: '100%', background: '#238636', color: '#fff', border: 'none', borderRadius: 4, padding: '6px', cursor: 'pointer', fontWeight: 600 }}>
+          style={{ width: '100%', background: '#238636', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '6px', cursor: 'pointer', fontWeight: 600 }}>
           💾 {t.save}
         </button>
       </div>
 
-      <div style={{ padding: '6px 10px', borderBottom: '1px solid #30363d' }}>
+      <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--nx-border)' }}>
         <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder={t.search}
-          style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9', fontSize: 12 }} />
+          style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)', fontSize: 12 }} />
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: '#6e7681', fontSize: 12 }}>{t.empty}</div>
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--nx-text-3)', fontSize: 12 }}>{t.empty}</div>
         ) : filtered.map(p => (
-          <div key={p.id} style={{ padding: 8, marginBottom: 6, background: '#161b22', border: '1px solid #30363d', borderRadius: 6 }}>
+          <div key={p.id} style={{ padding: 8, marginBottom: 6, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 6 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               {p.thumbnail && (
-                <img src={p.thumbnail} alt={p.name} style={{ width: 64, height: 64, borderRadius: 4, objectFit: 'cover', border: '1px solid #30363d' }} />
+                <img src={p.thumbnail} alt={p.name} style={{ width: 64, height: 64, borderRadius: 4, objectFit: 'cover', border: '1px solid var(--nx-border)' }} />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 {editingId === p.id ? (
@@ -205,29 +205,29 @@ export default function UserPartsPanel({
                     onBlur={() => handleRename(p.id)}
                     onKeyDown={e => { if (e.key === 'Enter') handleRename(p.id); if (e.key === 'Escape') setEditingId(null); }}
                     autoFocus
-                    style={{ width: '100%', background: '#0d1117', border: '1px solid #58a6ff', borderRadius: 3, padding: '2px 4px', color: '#c9d1d9', fontSize: 12 }} />
+                    style={{ width: '100%', background: 'var(--nx-bg)', border: '1px solid var(--nx-accent-2)', borderRadius: 3, padding: '2px 4px', color: 'var(--nx-text)', fontSize: 12 }} />
                 ) : (
                   <div style={{ fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                 )}
-                <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 4 }}>{p.shapeId}</div>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{p.shapeId}</div>
                 {p.tags && p.tags.length > 0 && (
                   <div style={{ fontSize: 10, marginBottom: 4 }}>
                     {p.tags.map(tag => (
-                      <span key={tag} style={{ background: '#1f2d3f', color: '#58a6ff', padding: '1px 6px', borderRadius: 8, marginRight: 3 }}>#{tag}</span>
+                      <span key={tag} style={{ background: '#1f2d3f', color: 'var(--nx-accent-2)', padding: '1px 6px', borderRadius: 8, marginRight: 3 }}>#{tag}</span>
                     ))}
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => onLoadPart(p)}
-                    style={{ background: '#1f6feb', color: '#fff', border: 'none', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
+                    style={{ background: '#1f6feb', color: 'var(--nx-text)', border: 'none', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
                     ↻ {t.load}
                   </button>
                   <button onClick={() => { setEditingId(p.id); setEditingName(p.name); }}
-                    style={{ background: 'transparent', color: '#8b949e', border: '1px solid #30363d', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
+                    style={{ background: 'transparent', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
                     ✎
                   </button>
                   <button onClick={() => handleDelete(p.id)}
-                    style={{ background: 'transparent', color: '#f85149', border: '1px solid #f85149', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11, marginLeft: 'auto' }}>
+                    style={{ background: 'transparent', color: 'var(--nx-error)', border: '1px solid var(--nx-error)', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11, marginLeft: 'auto' }}>
                     🗑
                   </button>
                 </div>
@@ -237,13 +237,13 @@ export default function UserPartsPanel({
         ))}
       </div>
 
-      <div style={{ padding: 8, borderTop: '1px solid #30363d', display: 'flex', gap: 4 }}>
+      <div style={{ padding: 8, borderTop: '1px solid var(--nx-border)', display: 'flex', gap: 4 }}>
         <button onClick={handleExport}
-          style={{ flex: 1, background: 'transparent', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 3, padding: '4px', cursor: 'pointer', fontSize: 11 }}>
+          style={{ flex: 1, background: 'transparent', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '4px', cursor: 'pointer', fontSize: 11 }}>
           📥 {t.export}
         </button>
         <button onClick={handleImport}
-          style={{ flex: 1, background: 'transparent', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 3, padding: '4px', cursor: 'pointer', fontSize: 11 }}>
+          style={{ flex: 1, background: 'transparent', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '4px', cursor: 'pointer', fontSize: 11 }}>
           📤 {t.import}
         </button>
       </div>

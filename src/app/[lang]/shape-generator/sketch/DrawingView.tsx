@@ -614,9 +614,9 @@ export default function DrawingView({
   if (!result || !views) {
     return (
       <div style={{
-        width: '100%', height: '100%', background: '#0d1117',
+        width: '100%', height: '100%', background: 'var(--nx-bg)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#484f58', fontSize: 14,
+        color: 'var(--nx-border-strong)', fontSize: 14,
       }}>
         {tt.noGeometry}
       </div>
@@ -664,7 +664,7 @@ export default function DrawingView({
 
   return (
     <div ref={containerRef} style={{
-      width: '100%', height: '100%', background: '#161b22',
+      width: '100%', height: '100%', background: 'var(--nx-panel)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       overflow: 'auto', padding: 8,
     }}
@@ -676,8 +676,8 @@ export default function DrawingView({
         <button
           onClick={handleExport}
           style={{
-            padding: '5px 14px', borderRadius: 6, border: '1px solid #30363d',
-            background: '#21262d', color: '#c9d1d9', fontSize: 12, fontWeight: 600,
+            padding: '5px 14px', borderRadius: 6, border: '1px solid var(--nx-border)',
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
           }}
         >
@@ -690,9 +690,9 @@ export default function DrawingView({
           onClick={handleExportPDF}
           disabled={pdfExporting}
           style={{
-            padding: '5px 14px', borderRadius: 6, border: '1px solid #388bfd',
-            background: pdfExporting ? '#21262d' : '#0d1117',
-            color: pdfExporting ? '#8b949e' : '#58a6ff',
+            padding: '5px 14px', borderRadius: 6, border: '1px solid var(--nx-accent)',
+            background: pdfExporting ? 'var(--nx-panel-2)' : 'var(--nx-bg)',
+            color: pdfExporting ? 'var(--nx-text-2)' : 'var(--nx-accent-2)',
             fontSize: 12, fontWeight: 600,
             cursor: pdfExporting ? 'default' : 'pointer',
             display: 'flex', alignItems: 'center', gap: 5,
@@ -720,25 +720,25 @@ export default function DrawingView({
         </button>
 
         {/* Drawing settings */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 8, borderLeft: '1px solid #30363d', paddingLeft: 8 }}>
-          <label style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'nowrap' }}>{tt.generalRoughness}</label>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 8, borderLeft: '1px solid var(--nx-border)', paddingLeft: 8 }}>
+          <label style={{ fontSize: 10, color: 'var(--nx-text-2)', whiteSpace: 'nowrap' }}>{tt.generalRoughness}</label>
           <select value={roughness} onChange={e => setRoughness(e.target.value as SurfaceRoughnessGrade)}
-            style={{ fontSize: 10, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 4, padding: '2px 4px' }}>
+            style={{ fontSize: 10, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text)', borderRadius: 4, padding: '2px 4px' }}>
             {(['N4','N5','N6','N7','N8','N9','N10','N11','N12'] as SurfaceRoughnessGrade[]).map(g => (
               <option key={g} value={g}>{g} (Ra {ROUGHNESS_RA[g]}µm)</option>
             ))}
           </select>
-          <label style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'nowrap' }}>{tt.tolerance}</label>
+          <label style={{ fontSize: 10, color: 'var(--nx-text-2)', whiteSpace: 'nowrap' }}>{tt.tolerance}</label>
           <select value={tolerance} onChange={e => setTolerance(e.target.value as ISO2768Class)}
-            style={{ fontSize: 10, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 4, padding: '2px 4px' }}>
+            style={{ fontSize: 10, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text)', borderRadius: 4, padding: '2px 4px' }}>
             <option value="f">{tt.tolF}</option>
             <option value="m">{tt.tolM}</option>
             <option value="c">{tt.tolC}</option>
             <option value="v">{tt.tolV}</option>
           </select>
-          <label style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'nowrap' }}>{tt.projection}</label>
+          <label style={{ fontSize: 10, color: 'var(--nx-text-2)', whiteSpace: 'nowrap' }}>{tt.projection}</label>
           <select value={projection} onChange={e => setProjection(e.target.value as 'first' | 'third')}
-            style={{ fontSize: 10, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 4, padding: '2px 4px' }}>
+            style={{ fontSize: 10, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text)', borderRadius: 4, padding: '2px 4px' }}>
             <option value="first">{tt.firstAngle}</option>
             <option value="third">{tt.thirdAngle}</option>
           </select>
@@ -746,7 +746,7 @@ export default function DrawingView({
       </div>
       {/* Drawing sheet */}
       <div style={{
-        border: '2px solid #30363d', borderRadius: 4, background: '#fff',
+        border: '2px solid var(--nx-border)', borderRadius: 4, background: 'var(--nx-text)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
         maxWidth: '100%', overflow: 'auto',
       }}>
@@ -756,7 +756,7 @@ export default function DrawingView({
           viewBox={`0 0 ${DRAWING_W} ${DRAWING_H}`}
           width={DRAWING_W}
           height={DRAWING_H}
-          style={{ display: 'block', background: '#fff' }}
+          style={{ display: 'block', background: 'var(--nx-text)' }}
         >
           {/* Drawing border */}
           <rect x={MARGIN / 2} y={MARGIN / 2} width={DRAWING_W - MARGIN} height={DRAWING_H - MARGIN}

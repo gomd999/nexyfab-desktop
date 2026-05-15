@@ -53,13 +53,13 @@ export default function ScadAgentCheckpointTimeline({ lang, checkpoints, onRever
   return (
     <div style={{
       padding: '6px 10px',
-      borderTop: '1px solid #21262d',
-      borderBottom: '1px solid #21262d',
+      borderTop: '1px solid var(--nx-panel-2)',
+      borderBottom: '1px solid var(--nx-panel-2)',
       background: '#0a0e14',
       display: 'flex', alignItems: 'center', gap: 8,
     }}>
       <span style={{
-        fontSize: 10, fontWeight: 700, color: '#58a6ff',
+        fontSize: 10, fontWeight: 700, color: 'var(--nx-accent-2)',
         textTransform: 'uppercase', letterSpacing: 0.5,
         flexShrink: 0,
       }}>
@@ -85,9 +85,9 @@ export default function ScadAgentCheckpointTimeline({ lang, checkpoints, onRever
                 fontSize: 10, fontWeight: 600,
                 fontFamily: 'monospace',
                 borderRadius: 12,
-                border: `1px solid ${isLatest ? '#238636' : '#30363d'}`,
+                border: `1px solid ${isLatest ? '#238636' : 'var(--nx-border)'}`,
                 background: isLatest ? '#0d3819' : 'transparent',
-                color: isLatest ? '#7ee787' : '#c9d1d9',
+                color: isLatest ? 'var(--nx-ok)' : 'var(--nx-text)',
                 cursor: isLatest ? 'default' : 'pointer',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
@@ -100,8 +100,8 @@ export default function ScadAgentCheckpointTimeline({ lang, checkpoints, onRever
               } : undefined}
               onMouseLeave={!isLatest ? e => {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = '#30363d';
-                e.currentTarget.style.color = '#c9d1d9';
+                e.currentTarget.style.borderColor = 'var(--nx-border)';
+                e.currentTarget.style.color = 'var(--nx-text)';
               } : undefined}
             >
               #{cp.index} {truncate(cp.label, 14)}

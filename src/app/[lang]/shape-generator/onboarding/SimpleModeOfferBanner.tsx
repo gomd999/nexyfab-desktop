@@ -90,7 +90,7 @@ export default function SimpleModeOfferBanner({
 
   const presetBtn = (preset: UserPreset, label: string, accent: string): React.CSSProperties => ({
     padding: '8px 12px', borderRadius: 6, border: 'none',
-    background: accent, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    background: accent, color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
     transition: 'transform 0.1s, filter 0.1s',
     minHeight: 32,
   });
@@ -108,8 +108,8 @@ export default function SimpleModeOfferBanner({
         flexShrink: 0,
       }}
     >
-      <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.45, textAlign: 'center', maxWidth: 640 }}>
-        <strong style={{ color: '#e6edf3' }}>{labels.presetPickTitle}</strong>
+      <div style={{ fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.45, textAlign: 'center', maxWidth: 640 }}>
+        <strong style={{ color: 'var(--nx-text)' }}>{labels.presetPickTitle}</strong>
         {' — '}
         {labels.presetPickDesc}
       </div>
@@ -122,7 +122,7 @@ export default function SimpleModeOfferBanner({
           onClick={() => choose('designer')}>
           {labels.presetDesigner}
         </button>
-        <button type="button" style={presetBtn('engineer', labels.presetEngineer, '#6e7681')}
+        <button type="button" style={presetBtn('engineer', labels.presetEngineer, 'var(--nx-text-3)')}
           onClick={() => choose('engineer')}>
           {labels.presetEngineer}
         </button>
@@ -131,7 +131,7 @@ export default function SimpleModeOfferBanner({
           onClick={() => dismiss(true)}
           style={{
             padding: '8px 12px', borderRadius: 6,
-            border: '1px solid #30363d', background: '#21262d', color: '#8b949e',
+            border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
             fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}
         >

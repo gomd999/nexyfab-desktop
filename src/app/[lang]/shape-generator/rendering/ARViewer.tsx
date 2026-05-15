@@ -106,7 +106,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
       const reticleGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
       const reticle = new THREE.Mesh(
         reticleGeo,
-        new THREE.MeshBasicMaterial({ color: '#3fb950' }),
+        new THREE.MeshBasicMaterial({ color: 'var(--nx-ok)' }),
       );
       reticle.matrixAutoUpdate = false;
       reticle.visible = false;
@@ -221,7 +221,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
       {arState === 'idle' && (
         <div style={{ textAlign: 'center', padding: 32 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
-          <p style={{ color: '#c9d1d9', fontSize: 15, marginBottom: 24, maxWidth: 320 }}>
+          <p style={{ color: 'var(--nx-text)', fontSize: 15, marginBottom: 24, maxWidth: 320 }}>
             {T.placementHint}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
@@ -229,7 +229,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
               onClick={startAR}
               style={{
                 padding: '10px 28px', borderRadius: 8, border: 'none',
-                background: '#3fb950', color: '#fff', fontSize: 14, fontWeight: 700,
+                background: 'var(--nx-ok)', color: 'var(--nx-text)', fontSize: 14, fontWeight: 700,
                 cursor: 'pointer',
               }}
             >
@@ -238,8 +238,8 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
             <button
               onClick={onClose}
               style={{
-                padding: '10px 20px', borderRadius: 8, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', fontSize: 14, cursor: 'pointer',
+                padding: '10px 20px', borderRadius: 8, border: '1px solid var(--nx-border)',
+                background: 'transparent', color: 'var(--nx-text-2)', fontSize: 14, cursor: 'pointer',
               }}
             >
               ✕
@@ -249,11 +249,11 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
       )}
 
       {(arState === 'checking' || arState === 'starting') && (
-        <div style={{ color: '#c9d1d9', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ color: 'var(--nx-text)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
           <svg width={18} height={18} viewBox="0 0 24 24" fill="none"
             style={{ animation: 'spin 0.8s linear infinite' }}>
-            <circle cx={12} cy={12} r={9} stroke="#30363d" strokeWidth={2} />
-            <path d="M12 3a9 9 0 019 9" stroke="#388bfd" strokeWidth={2} strokeLinecap="round" />
+            <circle cx={12} cy={12} r={9} stroke="var(--nx-border)" strokeWidth={2} />
+            <path d="M12 3a9 9 0 019 9" stroke="var(--nx-accent)" strokeWidth={2} strokeLinecap="round" />
           </svg>
           {arState === 'checking' ? T.checkingSupport : T.starting}
         </div>
@@ -262,10 +262,10 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
       {arState === 'unsupported' && (
         <div style={{ textAlign: 'center', padding: 24, maxWidth: 360 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-          <p style={{ color: '#f85149', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>{T.notSupported}</p>
+          <p style={{ color: 'var(--nx-error)', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>{T.notSupported}</p>
           <button onClick={onClose} style={{
-            padding: '8px 24px', borderRadius: 8, border: '1px solid #30363d',
-            background: '#21262d', color: '#c9d1d9', fontSize: 13, cursor: 'pointer',
+            padding: '8px 24px', borderRadius: 8, border: '1px solid var(--nx-border)',
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 13, cursor: 'pointer',
           }}>
             {isKo ? '닫기' : 'Close'}
           </button>
@@ -274,10 +274,10 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
 
       {arState === 'error' && (
         <div style={{ textAlign: 'center', padding: 24, maxWidth: 360 }}>
-          <p style={{ color: '#f85149', fontSize: 13 }}>{T.error}{errorMsg}</p>
+          <p style={{ color: 'var(--nx-error)', fontSize: 13 }}>{T.error}{errorMsg}</p>
           <button onClick={onClose} style={{
-            marginTop: 16, padding: '8px 24px', borderRadius: 8, border: '1px solid #30363d',
-            background: '#21262d', color: '#c9d1d9', fontSize: 13, cursor: 'pointer',
+            marginTop: 16, padding: '8px 24px', borderRadius: 8, border: '1px solid var(--nx-border)',
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 13, cursor: 'pointer',
           }}>
             {isKo ? '닫기' : 'Close'}
           </button>
@@ -290,7 +290,7 @@ export default function ARViewer({ geometry, color = '#8b9cf4', onClose, lang = 
           style={{
             position: 'absolute', top: 16, right: 16, zIndex: 910,
             padding: '8px 20px', borderRadius: 8, border: 'none',
-            background: 'rgba(13,17,23,0.85)', color: '#e6edf3',
+            background: 'rgba(13,17,23,0.85)', color: 'var(--nx-text)',
             fontSize: 13, fontWeight: 700, cursor: 'pointer',
             backdropFilter: 'blur(4px)',
           }}

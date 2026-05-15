@@ -251,8 +251,8 @@ export default function VersionDiff3DViewer({
       <div style={{
         width: '90vw', maxWidth: 960,
         height: '85vh',
-        background: '#0d1117',
-        border: '1px solid #30363d',
+        background: 'var(--nx-bg)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 12,
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
@@ -261,26 +261,26 @@ export default function VersionDiff3DViewer({
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '12px 16px', borderBottom: '1px solid #21262d', flexShrink: 0,
+          padding: '12px 16px', borderBottom: '1px solid var(--nx-panel-2)', flexShrink: 0,
         }}>
           <span style={{ fontSize: 16 }}>🔄</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#e6edf3' }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--nx-text)' }}>
               {t.title}
             </div>
-            <div style={{ fontSize: 11, color: '#8b949e', marginTop: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 1 }}>
               <span style={{ color: '#5aa8ff' }}>■ A</span>
               {' '}{versionA.label || versionA.autoLabel} ({formatTs(versionA.timestamp)})
               {' '}
-              <span style={{ color: '#6e7681' }}>→</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>→</span>
               {' '}
               <span style={{ color: '#ffaa66' }}>■ B</span>
               {' '}{versionB.label || versionB.autoLabel} ({formatTs(versionB.timestamp)})
             </div>
           </div>
           <button onClick={onClose} style={{
-            background: '#21262d', border: '1px solid #30363d',
-            color: '#8b949e', borderRadius: 6, padding: '5px 10px',
+            background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
+            color: 'var(--nx-text-2)', borderRadius: 6, padding: '5px 10px',
             cursor: 'pointer', fontSize: 12, fontWeight: 600,
           }}>
             {t.close}
@@ -295,7 +295,7 @@ export default function VersionDiff3DViewer({
             style={{
               flex: '1 1 60%',
               position: 'relative',
-              background: '#0d1117',
+              background: 'var(--nx-bg)',
               minWidth: 0,
             }}
           >
@@ -303,7 +303,7 @@ export default function VersionDiff3DViewer({
               <div style={{
                 position: 'absolute', inset: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#6e7681', fontSize: 13,
+                color: 'var(--nx-text-3)', fontSize: 13,
               }}>
                 {t.noGeo}
               </div>
@@ -323,24 +323,24 @@ export default function VersionDiff3DViewer({
           {/* Diff table */}
           <div style={{
             flex: '0 0 320px',
-            borderLeft: '1px solid #21262d',
+            borderLeft: '1px solid var(--nx-panel-2)',
             overflowY: 'auto',
             padding: '12px 0',
             fontSize: 12,
           }}>
             {/* Summary */}
-            <div style={{ padding: '0 14px 10px', borderBottom: '1px solid #21262d', marginBottom: 8 }}>
-              <div style={{ color: '#8b949e', marginBottom: 4, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ padding: '0 14px 10px', borderBottom: '1px solid var(--nx-panel-2)', marginBottom: 8 }}>
+              <div style={{ color: 'var(--nx-text-2)', marginBottom: 4, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t.summary}
               </div>
-              <div style={{ color: changedCount > 0 ? '#f0883e' : '#3fb950', fontWeight: 700 }}>
+              <div style={{ color: changedCount > 0 ? 'var(--nx-warn)' : 'var(--nx-ok)', fontWeight: 700 }}>
                 {changedCount > 0
                   ? `${changedCount} ${t.paramChanges}`
                   : t.noParamChanges
                 }
               </div>
               {featureDiff.filter(f => !f.inA || !f.inB).length > 0 && (
-                <div style={{ color: '#d29922', fontWeight: 600, marginTop: 2 }}>
+                <div style={{ color: 'var(--nx-warn)', fontWeight: 600, marginTop: 2 }}>
                   {featureDiff.filter(f => !f.inA || !f.inB).length} {t.featureChanges}
                 </div>
               )}
@@ -349,12 +349,12 @@ export default function VersionDiff3DViewer({
             {/* Parameter diff */}
             {paramDiff.length > 0 && (
               <div>
-                <div style={{ padding: '0 14px 4px', fontSize: 10, color: '#6e7681', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{ padding: '0 14px 4px', fontSize: 10, color: 'var(--nx-text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {t.parameters}
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                   <thead>
-                    <tr style={{ background: '#161b22', color: '#8b949e' }}>
+                    <tr style={{ background: 'var(--nx-panel)', color: 'var(--nx-text-2)' }}>
                       <th style={{ textAlign: 'left', padding: '4px 14px', fontWeight: 600 }}>{t.param}</th>
                       <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 600, color: '#5aa8ff' }}>A</th>
                       <th style={{ textAlign: 'right', padding: '4px 14px', fontWeight: 600, color: '#ffaa66' }}>B</th>
@@ -363,21 +363,21 @@ export default function VersionDiff3DViewer({
                   <tbody>
                     {paramDiff.map(row => (
                       <tr key={row.key} style={{
-                        borderBottom: '1px solid #161b22',
+                        borderBottom: '1px solid var(--nx-panel)',
                         background: row.changed ? '#f0883e11' : 'transparent',
                       }}>
-                        <td style={{ padding: '3px 14px', color: row.changed ? '#e6edf3' : '#8b949e', fontWeight: row.changed ? 600 : 400 }}>
+                        <td style={{ padding: '3px 14px', color: row.changed ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: row.changed ? 600 : 400 }}>
                           {row.key}
                         </td>
-                        <td style={{ padding: '3px 8px', textAlign: 'right', color: row.changed ? '#5aa8ff' : '#6e7681' }}>
+                        <td style={{ padding: '3px 8px', textAlign: 'right', color: row.changed ? '#5aa8ff' : 'var(--nx-text-3)' }}>
                           {typeof row.valA === 'number' ? row.valA.toFixed(2) : row.valA}
                         </td>
-                        <td style={{ padding: '3px 14px', textAlign: 'right', color: row.changed ? '#ffaa66' : '#6e7681', fontWeight: row.changed ? 700 : 400 }}>
+                        <td style={{ padding: '3px 14px', textAlign: 'right', color: row.changed ? '#ffaa66' : 'var(--nx-text-3)', fontWeight: row.changed ? 700 : 400 }}>
                           {typeof row.valB === 'number' ? row.valB.toFixed(2) : row.valB}
                           {row.changed && typeof row.valA === 'number' && typeof row.valB === 'number' && (
                             <span style={{
                               marginLeft: 4, fontSize: 9,
-                              color: (row.valB as number) > (row.valA as number) ? '#3fb950' : '#f85149',
+                              color: (row.valB as number) > (row.valA as number) ? 'var(--nx-ok)' : 'var(--nx-error)',
                             }}>
                               {(row.valB as number) > (row.valA as number) ? '▲' : '▼'}
                               {Math.abs(((row.valB as number) - (row.valA as number))).toFixed(2)}
@@ -394,13 +394,13 @@ export default function VersionDiff3DViewer({
             {/* Feature diff */}
             {featureDiff.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ padding: '0 14px 4px', fontSize: 10, color: '#6e7681', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{ padding: '0 14px 4px', fontSize: 10, color: 'var(--nx-text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {t.features}
                 </div>
                 {featureDiff.map(f => (
                   <div key={f.type} style={{
                     padding: '3px 14px',
-                    color: (!f.inA && f.inB) ? '#3fb950' : (f.inA && !f.inB) ? '#f85149' : '#8b949e',
+                    color: (!f.inA && f.inB) ? 'var(--nx-ok)' : (f.inA && !f.inB) ? 'var(--nx-error)' : 'var(--nx-text-2)',
                     fontSize: 11,
                   }}>
                     {!f.inA && f.inB ? '+ ' : f.inA && !f.inB ? '− ' : '  '}{f.type}

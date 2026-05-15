@@ -42,14 +42,14 @@ const dict = {
 
 /* ── Design tokens ── */
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  hover: '#21262d',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  hover: 'var(--nx-panel-2)',
   past: '#1c2128',
-  future: '#0d1117',
+  future: 'var(--nx-bg)',
   currentBg: '#1f3158',
 };
 
@@ -117,7 +117,7 @@ export default function HistoryPanel({ lang = 'en', onClose }: HistoryPanelProps
               borderRadius: 5,
               border: 'none',
               background: canUndo ? C.accent : C.hover,
-              color: canUndo ? '#fff' : C.textDim,
+              color: canUndo ? 'var(--nx-text)' : C.textDim,
               fontSize: 13,
               cursor: canUndo ? 'pointer' : 'default',
               opacity: canUndo ? 1 : 0.5,
@@ -135,7 +135,7 @@ export default function HistoryPanel({ lang = 'en', onClose }: HistoryPanelProps
               borderRadius: 5,
               border: 'none',
               background: canRedo ? C.accent : C.hover,
-              color: canRedo ? '#fff' : C.textDim,
+              color: canRedo ? 'var(--nx-text)' : C.textDim,
               fontSize: 13,
               cursor: canRedo ? 'pointer' : 'default',
               opacity: canRedo ? 1 : 0.5,
@@ -281,7 +281,7 @@ export default function HistoryPanel({ lang = 'en', onClose }: HistoryPanelProps
           onMouseEnter={e => {
             if (history.past.length > 0 || history.future.length > 0) {
               (e.currentTarget as HTMLElement).style.background = C.hover;
-              (e.currentTarget as HTMLElement).style.color = '#e6edf3';
+              (e.currentTarget as HTMLElement).style.color = 'var(--nx-text)';
             }
           }}
           onMouseLeave={e => {

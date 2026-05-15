@@ -250,15 +250,15 @@ function SubMenu({ items, x, y, onSelect, onClose }: { items: ContextMenuItem[];
           style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%',
             padding: '8px 14px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
-            background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : '#e6edf3',
+            background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : 'var(--nx-text)',
             cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
           }}
           onMouseEnter={e => { if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = '#ffffff'; } }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#e6edf3'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
         >
           <span style={{ width: 18, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{item.icon || ''}</span>
           <span style={{ flex: 1 }}>{item.label}</span>
-          {item.shortcut && <span style={{ fontSize: 10, color: '#484f58', fontFamily: 'monospace' }}>{item.shortcut}</span>}
+          {item.shortcut && <span style={{ fontSize: 10, color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>{item.shortcut}</span>}
         </button>
       ))}
     </div>
@@ -334,18 +334,18 @@ export default function ContextMenu({ x, y, visible, items, onSelect, onClose }:
                 if (!item.disabled) { e.currentTarget.style.background = 'rgba(88,166,255,0.15)'; e.currentTarget.style.color = '#ffffff'; }
                 handleItemHover(item, e);
               }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#e6edf3'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                 padding: '8px 14px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
-                background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : '#e6edf3',
+                background: 'transparent', color: item.disabled ? 'rgba(255,255,255,0.3)' : 'var(--nx-text)',
                 cursor: item.disabled ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
               }}
             >
               <span style={{ width: 18, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{item.icon || ''}</span>
               <span style={{ flex: 1 }}>{item.label}</span>
-              {item.shortcut && <span style={{ fontSize: 10, color: '#484f58', fontFamily: 'monospace' }}>{item.shortcut}</span>}
-              {item.children && <span style={{ fontSize: 10, color: '#484f58' }}>▶</span>}
+              {item.shortcut && <span style={{ fontSize: 10, color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>{item.shortcut}</span>}
+              {item.children && <span style={{ fontSize: 10, color: 'var(--nx-border-strong)' }}>▶</span>}
             </button>
           </React.Fragment>
         ))}

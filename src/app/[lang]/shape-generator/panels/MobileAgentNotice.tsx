@@ -87,21 +87,21 @@ const containerStyle: React.CSSProperties = {
   position: 'fixed',
   bottom: 12, left: 12, right: 12,
   padding: 14,
-  background: '#161b22',
+  background: 'var(--nx-panel)',
   border: '1px solid #1f6feb',
   borderRadius: 10,
-  color: '#e6edf3',
+  color: 'var(--nx-text)',
   zIndex: 800,
   boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
 };
 const headerStyle: React.CSSProperties = {
   fontSize: 13, fontWeight: 700,
-  color: '#79c0ff',
+  color: 'var(--nx-accent-2)',
   marginBottom: 6,
 };
 const bodyStyle: React.CSSProperties = {
   fontSize: 12, lineHeight: 1.4,
-  color: '#c9d1d9',
+  color: 'var(--nx-text)',
   margin: '0 0 10px 0',
 };
 const btnRowStyle: React.CSSProperties = {
@@ -111,9 +111,9 @@ const btnSecondary: React.CSSProperties = {
   padding: '6px 12px',
   fontSize: 11, fontWeight: 600,
   borderRadius: 6,
-  border: '1px solid #30363d',
+  border: '1px solid var(--nx-border)',
   background: 'transparent',
-  color: '#c9d1d9',
+  color: 'var(--nx-text)',
   cursor: 'pointer',
 };
 const btnPrimary: React.CSSProperties = {
@@ -122,6 +122,6 @@ const btnPrimary: React.CSSProperties = {
   borderRadius: 6,
   border: '1px solid #1f6feb',
   background: '#1f6feb',
-  color: '#fff',
+  color: 'var(--nx-text)',
   cursor: 'pointer',
 };

@@ -140,9 +140,9 @@ export default function FirstTimeTour({ userId, lang = 'en', onPickShape, onOpen
     >
       <div
         style={{
-          background: '#161b22', border: '1px solid #30363d',
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
           borderRadius: 14, padding: '28px 28px 22px', width: 420, maxWidth: '92vw',
-          fontFamily: 'system-ui, sans-serif', color: '#e6edf3',
+          fontFamily: 'system-ui, sans-serif', color: 'var(--nx-text)',
           boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
         }}
         onClick={e => e.stopPropagation()}
@@ -153,7 +153,7 @@ export default function FirstTimeTour({ userId, lang = 'en', onPickShape, onOpen
               key={i}
               style={{
                 flex: 1, height: 3, borderRadius: 2,
-                background: i <= step ? '#388bfd' : '#30363d',
+                background: i <= step ? 'var(--nx-accent)' : 'var(--nx-border)',
                 transition: 'background 0.2s',
               }}
             />
@@ -161,14 +161,14 @@ export default function FirstTimeTour({ userId, lang = 'en', onPickShape, onOpen
         </div>
 
         <h2 style={{ margin: '0 0 10px', fontSize: 20, fontWeight: 800 }}>{current.title}</h2>
-        <p style={{ margin: '0 0 22px', fontSize: 14, color: '#c9d1d9', lineHeight: 1.55 }}>{current.body}</p>
+        <p style={{ margin: '0 0 22px', fontSize: 14, color: 'var(--nx-text)', lineHeight: 1.55 }}>{current.body}</p>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <button
             type="button" onClick={dismiss}
             style={{
               padding: '7px 12px', borderRadius: 6,
-              background: 'transparent', color: '#8b949e',
+              background: 'transparent', color: 'var(--nx-text-2)',
               border: 'none', cursor: 'pointer', fontSize: 12,
             }}
           >{t.skip}</button>
@@ -180,8 +180,8 @@ export default function FirstTimeTour({ userId, lang = 'en', onPickShape, onOpen
                 onClick={() => { dismiss(); onPickShape(); }}
                 style={{
                   padding: '7px 14px', borderRadius: 6,
-                  background: '#21262d', color: '#e6edf3',
-                  border: '1px solid #30363d', cursor: 'pointer', fontSize: 13,
+                  background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
+                  border: '1px solid var(--nx-border)', cursor: 'pointer', fontSize: 13,
                 }}
               >{current.cta}</button>
             )}
@@ -191,8 +191,8 @@ export default function FirstTimeTour({ userId, lang = 'en', onPickShape, onOpen
                 onClick={() => { dismiss(); onOpenChat(); }}
                 style={{
                   padding: '7px 14px', borderRadius: 6,
-                  background: '#21262d', color: '#e6edf3',
-                  border: '1px solid #30363d', cursor: 'pointer', fontSize: 13,
+                  background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
+                  border: '1px solid var(--nx-border)', cursor: 'pointer', fontSize: 13,
                 }}
               >{current.cta}</button>
             )}
@@ -201,8 +201,8 @@ export default function FirstTimeTour({ userId, lang = 'en', onPickShape, onOpen
               onClick={() => isLast ? dismiss() : setStep(step + 1)}
               style={{
                 padding: '7px 16px', borderRadius: 6,
-                background: '#388bfd', color: '#fff',
-                border: '1px solid #388bfd', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                background: 'var(--nx-accent)', color: 'var(--nx-text)',
+                border: '1px solid var(--nx-accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600,
               }}
             >{isLast ? t.done : t.next}</button>
           </div>

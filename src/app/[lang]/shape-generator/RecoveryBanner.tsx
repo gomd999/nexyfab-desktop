@@ -90,8 +90,8 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
         alignItems: 'center',
         gap: 10,
         padding: '6px 10px 6px 12px',
-        background: '#21262d',
-        border: '1px solid #f59e0b55',
+        background: 'var(--nx-panel-2)',
+        border: '1px solid var(--nx-warn)55',
         borderRadius: 8,
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         flexShrink: 0,
@@ -104,16 +104,16 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
       {/* Warning icon */}
       <div style={{
         width: 8, height: 8, borderRadius: '50%',
-        background: '#f59e0b',
+        background: 'var(--nx-warn)',
         boxShadow: '0 0 8px rgba(245, 158, 11, 0.5)',
         flexShrink: 0,
       }} />
 
       {/* Message */}
-      <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-warn)', whiteSpace: 'nowrap' }}>
         {fromCrash ? t.crashRecovered : t.recovered}
       </span>
-      <span style={{ fontSize: 11, color: '#8b949e', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 11, color: 'var(--nx-text-2)', whiteSpace: 'nowrap' }}>
         {timeAgo}
       </span>
 
@@ -124,9 +124,9 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
           style={{
             padding: '3px 10px',
             borderRadius: 5,
-            border: '1px solid #58a6ff',
+            border: '1px solid var(--nx-accent-2)',
             background: 'rgba(88, 166, 255, 0.12)',
-            color: '#58a6ff',
+            color: 'var(--nx-accent-2)',
             fontSize: 11,
             fontWeight: 700,
             cursor: 'pointer',
@@ -146,9 +146,9 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
         style={{
           padding: '3px 10px',
           borderRadius: 5,
-          border: '1px solid #f59e0b',
+          border: '1px solid var(--nx-warn)',
           background: 'rgba(245, 158, 11, 0.15)',
-          color: '#f59e0b',
+          color: 'var(--nx-warn)',
           fontSize: 11,
           fontWeight: 700,
           cursor: 'pointer',
@@ -175,15 +175,15 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
           borderRadius: 4,
           border: 'none',
           background: 'transparent',
-          color: '#8b949e',
+          color: 'var(--nx-text-2)',
           fontSize: 16, lineHeight: 1,
           fontWeight: 400,
           cursor: 'pointer',
           transition: 'color 0.15s',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = '#8b949e'; }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; }}
       >
         ×
       </button>
