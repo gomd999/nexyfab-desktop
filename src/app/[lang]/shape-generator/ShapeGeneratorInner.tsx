@@ -517,6 +517,9 @@ export function ShapeGeneratorInner() {
   // Ref-of-current-effectiveResult so the Shell tool listener (declared before
   // effectiveResult) can still reach the latest geometry. Synced via effect below.
   const effectiveResultRef = useRef<ShapeResult | null>(null);
+  // Forward ref to handleGenerateActiveProfile so the early-mounted tool
+  // listener can fire it (the handler is declared later in this function).
+  const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
   const history = useHistory();
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   // Auto-clear stale selection when undo/rollback removes the selected feature.
@@ -2360,7 +2363,11 @@ export function ShapeGeneratorInner() {
   // Wire localStorage autosave → cloud sync (when logged in)
   useEffect(() => {
     if (viewMode !== 'workspace' || !authUser) return;
-    scheduleCloudSync(buildAutoSaveState(), selectedId ?? '', materialId);
+    // Pass the latest viewport thumbnail so the dashboard shows a real
+    // preview instead of a placeholder. captureRef may not yet be wired on
+    // initial mount — that's fine, the next save attempt will catch it.
+    const thumb = captureRef.current ? captureRef.current() : null;
+    scheduleCloudSync(buildAutoSaveState(), selectedId ?? '', materialId, thumb);
   }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode]);
 
 
@@ -3029,6 +3036,10 @@ export function ShapeGeneratorInner() {
         setIsSketchMode(false);
         return;
       }
+      if (id === 'sketch.extrude-active') {
+        handleGenerateActiveProfileRef.current?.();
+        return;
+      }
       if (id === 'measure') {
         setMeasureActive(v => !v);
         return;
@@ -3414,7 +3425,14 @@ export function ShapeGeneratorInner() {
     });
     // Keep ref in sync for the early-declared tool listener.
     effectiveResultRef.current = effectiveResult;
-  }, [features, effectiveResult, selectedId, bridgeStats]);
+    // Bridge geometry to Drawing / Render routes via sessionStorage.
+    // Key is the cloud project id when available, otherwise 'local'.
+    if (effectiveResult?.geometry) {
+      void import('./_shell/geometryBridge').then(({ writeGeometry }) => {
+        writeGeometry(cloudProjectId ?? 'local', effectiveResult.geometry, selectedId ?? null);
+      });
+    }
+  }, [features, effectiveResult, selectedId, bridgeStats, cloudProjectId]);
 
   /** Sketch palette “slice guide” ↔ 3D section plane (X) when solid geometry exists. */
   useEffect(() => {
@@ -4212,6 +4230,65 @@ export function ShapeGeneratorInner() {
     setIsSketchMode(false);
     addToast('success', lt.addedToFeatureTree);
   }, [sketchProfile, sketchConfig, sketchPlane, sketchOperation, sketchPlaneOffset, sketchConstraints, sketchDimensions, addSketchFeature, setSketchProfile, setIsSketchMode, addToast, lang]);
+
+  // ── Multi-body workflow: extrude ACTIVE profile only, stay in sketch ──
+  // User flow: draw multiple profiles → click "Generate body & continue" →
+  // active profile becomes a separate body in the feature tree → sketch
+  // stays open so the user can pick the next profile and extrude that
+  // separately. Mirrors Fusion 360 / Onshape "contour selection".
+  const handleGenerateActiveProfile = useCallback(() => {
+    const active = sketchProfiles[activeProfileIdx] ?? sketchProfile;
+    if (!active || !active.closed || active.segments.length === 0) {
+      addToast('error', lt.closeProfileFirst);
+      return;
+    }
+    addSketchFeature(
+      active,
+      sketchConfig,
+      sketchPlane as 'xy' | 'xz' | 'yz',
+      sketchOperation,
+      sketchPlaneOffset,
+      sketchConstraints,
+      sketchDimensions,
+    );
+    // Remove the just-extruded profile from the working set so the user
+    // sees their remaining profiles clearly. If it was the only one,
+    // reseed with an empty slot. Then advance activeProfileIdx so the
+    // next profile becomes active.
+    const remaining = sketchProfiles.filter((_, idx) => idx !== activeProfileIdx);
+    if (remaining.length === 0) {
+      setSketchProfile({ segments: [], closed: false });
+      setSketchProfiles([{ segments: [], closed: false }]);
+      setActiveProfileIdx(0);
+    } else {
+      setSketchProfiles(remaining);
+      setSketchProfile(remaining[0]);
+      setActiveProfileIdx(0);
+    }
+    // Stay in sketch mode — DO NOT call setIsSketchMode(false).
+    addToast('success', lt.addedToFeatureTree);
+  }, [
+    sketchProfiles,
+    activeProfileIdx,
+    sketchProfile,
+    sketchConfig,
+    sketchPlane,
+    sketchOperation,
+    sketchPlaneOffset,
+    sketchConstraints,
+    sketchDimensions,
+    addSketchFeature,
+    setSketchProfile,
+    setSketchProfiles,
+    setActiveProfileIdx,
+    addToast,
+    lt,
+  ]);
+  // Keep the forward ref pointing at the latest version so the tool
+  // listener (declared earlier) always calls the current handler.
+  useEffect(() => {
+    handleGenerateActiveProfileRef.current = handleGenerateActiveProfile;
+  }, [handleGenerateActiveProfile]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // SKETCH HISTORY HANDLERS

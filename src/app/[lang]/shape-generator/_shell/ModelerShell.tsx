@@ -11,7 +11,7 @@
 // is still wired to handlers. Connecting Ribbon → CommandToolbar action ids
 // is a follow-up PR.
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { WorkspaceLoading } from '../WorkspaceLoading';
@@ -19,6 +19,7 @@ import { useLang } from '../hooks/useLang';
 import { useTheme } from '../ThemeContext';
 import { useAuthStore } from '@/hooks/useAuth';
 import { useCollabPolling } from '@/hooks/useCollabPolling';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSearchParams } from 'next/navigation';
 import { Shell } from './Shell';
 import { I } from './Icons';
@@ -91,6 +92,15 @@ export function ModelerShell() {
 
   const isKo = lang === 'ko';
   const langSeg = lang === 'ko' ? 'kr' : lang;
+  const isMobile = useIsMobile();
+  // Toggle a body attribute so shell-v2 CSS can scale hit targets and
+  // collapse rails on touch-primary devices.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (isMobile) document.body.setAttribute('data-mobile', '1');
+    else document.body.removeAttribute('data-mobile');
+    return () => { document.body.removeAttribute('data-mobile'); };
+  }, [isMobile]);
 
   const fileMenuItems: FileMenuItem[] = [
     {
@@ -196,6 +206,26 @@ export function ModelerShell() {
   const bridgeAutosaveSavedAt = useShellBridge(s => s.autosaveSavedAt);
   const bridgeSketchSolverOk = useShellBridge(s => s.sketchSolverOk);
   const bridgeSketchDof = useShellBridge(s => s.sketchDof);
+
+  // Sync shell mode + active sketch tab to Inner's sketch state. When the
+  // user toggles sketch mode in Inner, the shell ribbon switches to the
+  // sketch tabs (Draw/Constrain/Finish); when they exit, we pop back to
+  // 'solid'. Guard against echoing user clicks by only changing tab when
+  // the current tab is for the wrong mode.
+  useEffect(() => {
+    if (bridgeEditMode === 'sketch') {
+      setMode('sketch');
+      if (!activeTab.startsWith('sketch.')) setActiveTab('sketch.draw');
+    } else if (bridgeEditMode === 'assembly') {
+      setMode('assembly');
+    } else {
+      // Exit sketch — pop back to the Solid tab in modeling mode.
+      if (activeTab.startsWith('sketch.')) {
+        setMode('modeling');
+        setActiveTab('solid');
+      }
+    }
+  }, [bridgeEditMode, activeTab]);
 
   // Mode chip & hint reflect Inner's actual edit mode.
   const modeChip =
@@ -314,6 +344,11 @@ export function ModelerShell() {
         activeTab,
         onTabChange: id => {
           setActiveTab(id);
+          // Sketch sub-tabs (Draw / Constrain / Finish) stay in sketch mode.
+          if (id.startsWith('sketch.')) {
+            setMode('sketch');
+            return;
+          }
           // Drawing / Render tabs route to their standalone surfaces.
           if (id === 'drawing') {
             router.push(`/${langSeg}/shape-generator/drawing`);

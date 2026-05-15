@@ -70,7 +70,9 @@
     "backup": "tsx scripts/backup.ts",
     "backup:list": "tsx scripts/backup.ts --list",
     "import:factories": "tsx scripts/import-factories-directory.ts",
-    "invites:prune-expired": "node scripts/prune-expired-invites.mjs"
+    "invites:prune-expired": "node scripts/prune-expired-invites.mjs",
+    "perf:bench": "node scripts/perf-benchmark.mjs",
+    "perf:bench:json": "node scripts/perf-benchmark.mjs --json"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1025.0",

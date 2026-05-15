@@ -141,6 +141,16 @@ const SKETCH_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [[{ id: 'sketch.project', lbl: 'Project geom', ico: 'plane' }]],
   },
   {
+    title: 'Body',
+    rows: [
+      [
+        // Multi-body workflow — extrude only the active profile, stay in
+        // sketch so the next profile can be extruded separately.
+        { id: 'sketch.extrude-active', lbl: 'Body & continue', ico: 'extrude' },
+      ],
+    ],
+  },
+  {
     title: 'Finish',
     rows: [[{ id: 'sketch.finish', lbl: 'Finish Sketch', ico: 'check' }]],
   },
@@ -296,8 +306,20 @@ const GROUPS_BY_MODE: Record<ShellMode, { title: string; rows: RibbonAction[][] 
   render: RENDER_GROUPS,
 };
 
+// Per-tab filtering for sketch mode — splits the SKETCH_GROUPS into three
+// subsets so each top-tab shows only the relevant tools.
+const SKETCH_TAB_GROUPS: Record<string, string[]> = {
+  'sketch.draw': ['Draw', 'Modify'],
+  'sketch.constrain': ['Constrain'],
+  'sketch.finish': ['Project', 'Body', 'Finish'],
+};
+
 export function ModeRibbon({ mode, tabs, activeTab, onTabChange, onTool, isActive }: ModeRibbonProps) {
-  const groups = GROUPS_BY_MODE[mode];
+  let groups = GROUPS_BY_MODE[mode];
+  if (mode === 'sketch' && SKETCH_TAB_GROUPS[activeTab]) {
+    const titles = new Set(SKETCH_TAB_GROUPS[activeTab]);
+    groups = groups.filter(g => titles.has(g.title));
+  }
   return (
     <Ribbon tabs={tabs} activeTab={activeTab} onTabChange={onTabChange}>
       {groups.map(g => (
@@ -340,7 +362,15 @@ export const MODE_DEFAULT_TABS: Record<ShellMode, RibbonTabDef[]> = {
     { id: 'render', label: 'Render' },
     { id: 'view', label: 'View' },
   ],
-  sketch: [{ id: 'sketch', label: 'Sketch', mode: true }],
+  // 3-tab sketch IA: Draw (primitives + modify) / Constrain (dim + relations)
+  // / Finish (project + extrude-active + finish). Each tab swaps which group
+  // set is shown by the ribbon. The mode chip stays on while any sketch tab
+  // is active so users still see "SKETCH MODE" in the title bar.
+  sketch: [
+    { id: 'sketch.draw', label: 'Draw', mode: true },
+    { id: 'sketch.constrain', label: 'Constrain', mode: true },
+    { id: 'sketch.finish', label: 'Finish', mode: true },
+  ],
   // Assembly / Drawing / Render share the same top tabs as Modeling so users
   // can cross-navigate from any route — click "Solid" from inside Drawing to
   // pop back to the modeler, click "Render" from inside Drawing to jump to

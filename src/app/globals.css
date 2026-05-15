@@ -410,6 +410,14 @@ body.sg-fs-hide::before {
 body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
 body.sg-shell-v2 .sg-topbar { display: none !important; }
 body.sg-shell-v2 .sg-autohide { display: none !important; }
+
+/* Mobile/touch-primary mode — scales ribbon hit targets, hides bulky labels,
+   tightens panel widths. data-mobile is toggled by ModelerShell + DrawingFrame
+   via useIsMobile (pointer-coarse || width<768). */
+body[data-mobile="1"] .nx-tool { min-width: 44px; min-height: 44px; }
+body[data-mobile="1"] .nx-tool .lbl { display: none; }
+body[data-mobile="1"] .nx-ribbon-tabs button { padding: 8px 12px; font-size: 13px; }
+body[data-mobile="1"] .nx-readout { font-size: 10px; }
 /* Inner's outer container hard-codes height: 100dvh, which overflows when
    nested inside Shell's flex viewport slot. Override so Inner fills the
    slot's available space instead. */

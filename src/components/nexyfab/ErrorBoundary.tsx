@@ -52,7 +52,22 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         es: { title: 'Algo salió mal', desc: 'Ocurrió un error inesperado', retry: 'Reintentar' },
         ar: { title: 'حدث خطأ', desc: 'حدث خطأ غير متوقع', retry: 'إعادة المحاولة' },
       };
-      const detectedLang = typeof navigator !== 'undefined' ? (navigator.language?.slice(0, 2) || 'en') : 'en';
+      // Prefer URL path segment over navigator.language — the user picked
+      // their site language explicitly, e.g. /kr/... outranks a JP-default
+      // browser locale.
+      const URL_LANG_MAP: Record<string, string> = {
+        kr: 'ko', ko: 'ko', en: 'en', ja: 'ja',
+        cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
+      };
+      let detectedLang = 'en';
+      if (typeof window !== 'undefined') {
+        const seg = window.location.pathname.split('/').filter(Boolean)[0] || '';
+        if (URL_LANG_MAP[seg]) detectedLang = URL_LANG_MAP[seg];
+        else if (typeof navigator !== 'undefined') {
+          const nav = navigator.language?.slice(0, 2) || 'en';
+          detectedLang = boundaryI18n[nav] ? nav : 'en';
+        }
+      }
       const lang = boundaryI18n[detectedLang] ? detectedLang : 'en';
       const t = boundaryI18n[lang];
 

@@ -149,6 +149,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
             metalness={metalness}
             exposure={exposure}
             hdri={hdri}
+            projectId={projectId}
             onBackToModeling={() =>
               router.push(`/${lang}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
             }
@@ -493,6 +494,7 @@ function RenderCanvas({
   metalness,
   exposure,
   hdri,
+  projectId,
   onBackToModeling,
 }: {
   isKo: boolean;
@@ -502,6 +504,7 @@ function RenderCanvas({
   metalness: number;
   exposure: number;
   hdri: string;
+  projectId?: string;
   onBackToModeling: () => void;
 }) {
   return (
@@ -530,6 +533,7 @@ function RenderCanvas({
           metalness={metalness}
           exposure={exposure}
           hdri={hdri}
+          projectId={projectId}
         />
       </div>
 

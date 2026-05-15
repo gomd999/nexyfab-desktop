@@ -6,12 +6,14 @@
 // integration with DimensionOverlay arrives in Phase 6 — Phase 3 ships the
 // route + IA + commercial CTAs (PDF / Print) so marketing can showcase it.
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import * as THREE from 'three';
 import { Shell } from './Shell';
 import { I } from './Icons';
 import { useShellBridge } from './shellBridgeStore';
 import { useFreemiumGate } from '../hooks/useFreemiumGate';
+import { readGeometry } from './geometryBridge';
 
 interface DrawingFrameProps {
   lang: string;
@@ -33,14 +35,43 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   const [activeTab, setActiveTab] = useState('drawing');
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState('view.iso');
+  // Real geometry bridged from modeler via sessionStorage. Falls back to
+  // primitive silhouette when not present (route visited directly).
+  // Re-hydrate when the user navigates here from the modeler (sessionStorage
+  // may have been updated mid-session).
+  const [hydrateNonce, setHydrateNonce] = useState(0);
+  useEffect(() => {
+    const onFocus = () => setHydrateNonce(n => n + 1);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+  const { edges, bbox } = useDrawingGeometry(projectId, hydrateNonce);
   // Multi-sheet pagination — defaults to 1, user can add more via +button.
-  const [sheetIds, setSheetIds] = useState<string[]>(['sheet1']);
+  // Per-sheet state — each sheet has its own layout. Sheet1 = 4-view ortho,
+  // subsequent sheets cycle through layouts so the multi-sheet UI is not
+  // just visual chrome. Real per-sheet view editing is a follow-up.
+  type SheetLayout = 'ortho4' | 'iso-only' | 'section' | 'detail';
+  interface Sheet { id: string; title: string; layout: SheetLayout }
+  const [sheets, setSheetsState] = useState<Sheet[]>([
+    { id: 'sheet1', title: 'Sheet 1 · A3', layout: 'ortho4' },
+  ]);
+  const sheetIds = sheets.map(s => s.id);
   const [activeSheet, setActiveSheet] = useState('sheet1');
   const addSheet = () => {
-    const id = `sheet${sheetIds.length + 1}`;
-    setSheetIds(prev => [...prev, id]);
+    const next = sheets.length + 1;
+    const cycle: SheetLayout[] = ['ortho4', 'iso-only', 'section', 'detail'];
+    const layout = cycle[(next - 1) % cycle.length];
+    const id = `sheet${next}`;
+    const titles: Record<SheetLayout, string> = {
+      'ortho4': `Sheet ${next} · A3 · 4-view`,
+      'iso-only': `Sheet ${next} · A3 · Isometric`,
+      'section': `Sheet ${next} · A3 · Section`,
+      'detail': `Sheet ${next} · A3 · Detail`,
+    };
+    setSheetsState(prev => [...prev, { id, title: titles[layout], layout }]);
     setActiveSheet(id);
   };
+  const activeSheetMeta = sheets.find(s => s.id === activeSheet) ?? sheets[0];
 
   const langSeg = lang === 'ko' ? 'kr' : lang;
   const project = projectId ? `?project=${projectId}` : '';
@@ -56,24 +87,112 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
       router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
   };
 
-  const sheets: SheetTreeNode[] = [
-    { id: 'sheet1', lbl: 'Sheet 1 · A3', kind: 'sheet' },
-    { id: 'view.top', lbl: 'Top', kind: 'view', meta: '1:2' },
-    { id: 'view.front', lbl: 'Front', kind: 'view', meta: '1:2' },
-    { id: 'view.right', lbl: 'Right', kind: 'view', meta: '1:2' },
-    { id: 'view.iso', lbl: 'Isometric', kind: 'view', meta: '1:2' },
-    { id: 'view.section', lbl: 'Section A-A', kind: 'view', meta: '1:1' },
-  ];
+  // Sheet tree nodes — one entry per sheet plus its view children (built
+  // from the per-sheet layout).
+  const sheetTreeNodes: SheetTreeNode[] = sheets.flatMap(s => {
+    const sheetNode: SheetTreeNode = { id: s.id, lbl: s.title, kind: 'sheet', selected: s.id === activeSheet };
+    if (s.layout === 'ortho4') {
+      return [
+        sheetNode,
+        { id: `${s.id}.top`, lbl: 'Top', kind: 'view', meta: '1:2' },
+        { id: `${s.id}.front`, lbl: 'Front', kind: 'view', meta: '1:2' },
+        { id: `${s.id}.right`, lbl: 'Right', kind: 'view', meta: '1:2' },
+        { id: `${s.id}.iso`, lbl: 'Isometric', kind: 'view', meta: '1:2' },
+      ];
+    }
+    if (s.layout === 'iso-only') {
+      return [sheetNode, { id: `${s.id}.iso`, lbl: 'Isometric', kind: 'view', meta: '1:1' }];
+    }
+    if (s.layout === 'section') {
+      return [sheetNode, { id: `${s.id}.section`, lbl: 'Section A-A', kind: 'view', meta: '1:1' }];
+    }
+    return [sheetNode, { id: `${s.id}.detail`, lbl: 'Detail', kind: 'view', meta: '2:1' }];
+  });
 
   const onExportPDF = () => {
-    gate.requirePro('share', () => {
-      // window.print() lets the browser turn the current sheet into a PDF
-      // via "Save as PDF" target. CSS @page rule sizes the page to A3.
-      // Real DWG/PDF export with vector primitives is a follow-up that
-      // needs a server-side render or jsPDF + SVG serialization.
-      if (typeof window !== 'undefined') {
-        window.print();
+    gate.requirePro('share', async () => {
+      if (typeof window === 'undefined') return;
+      if (edges && bbox) {
+        // Real vector PDF — projects each ortho view to SVG paths and
+        // rasterizes them onto an A3 jspdf document. Vector preservation
+        // means CAD users can scale without quality loss.
+        try {
+          const { jsPDF } = await import('jspdf');
+          const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+          const views: { v: 'top' | 'front' | 'right' | 'iso'; x: number; y: number; label: string }[] = [
+            { v: 'top',   x: 25,  y: 20,  label: 'TOP' },
+            { v: 'iso',   x: 220, y: 20,  label: 'ISOMETRIC' },
+            { v: 'front', x: 25,  y: 145, label: 'FRONT' },
+            { v: 'right', x: 220, y: 145, label: 'RIGHT' },
+          ];
+          const W = 170, H = 110;
+          doc.setLineWidth(0.25);
+          doc.setDrawColor(40);
+          for (const { v, x, y, label } of views) {
+            // Frame
+            doc.setLineWidth(0.15);
+            doc.setDrawColor(160);
+            doc.rect(x, y, W, H);
+            // Re-project at PDF mm resolution so vector strokes stay crisp.
+            const d = projectEdgesToSvg(edges, bbox, v, W, H);
+            // Parse the M/L path data and emit jspdf line segments.
+            doc.setLineWidth(0.25);
+            doc.setDrawColor(20);
+            const re = /M([\-\d.]+) ([\-\d.]+)L([\-\d.]+) ([\-\d.]+)/g;
+            let m: RegExpExecArray | null;
+            while ((m = re.exec(d)) !== null) {
+              const x1 = parseFloat(m[1]) + x;
+              const y1 = parseFloat(m[2]) + y;
+              const x2 = parseFloat(m[3]) + x;
+              const y2 = parseFloat(m[4]) + y;
+              doc.line(x1, y1, x2, y2);
+            }
+            // View label
+            doc.setFontSize(8);
+            doc.setTextColor(80);
+            doc.text(label, x + 2, y + H - 2);
+          }
+          // Title block
+          doc.setFontSize(7);
+          doc.setTextColor(40);
+          doc.text(`NexyFab Drawing  ·  Generated ${new Date().toISOString().slice(0, 10)}`, 25, 285);
+          doc.save(`nexyfab-drawing-${Date.now()}.pdf`);
+          return;
+        } catch (e) {
+          console.warn('jspdf export failed, falling back to print', e);
+        }
       }
+      // Fallback (no geometry bridged or jspdf load failed) — browser print.
+      window.print();
+    });
+  };
+
+  const onExportDXF = () => {
+    gate.requirePro('export', () => {
+      if (typeof window === 'undefined' || !edges || !bbox) return;
+      // Emit a minimal AutoCAD R12-compatible DXF with the front-view
+      // edges as LINE entities. Enough for downstream CAM tools to consume.
+      const W = 1000, H = 700;
+      const d = projectEdgesToSvg(edges, bbox, 'front', W, H);
+      const re = /M([\-\d.]+) ([\-\d.]+)L([\-\d.]+) ([\-\d.]+)/g;
+      const lines: string[] = [];
+      lines.push('0\nSECTION\n2\nENTITIES');
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(d)) !== null) {
+        const x1 = parseFloat(m[1]);
+        const y1 = H - parseFloat(m[2]); // flip Y to CAD convention
+        const x2 = parseFloat(m[3]);
+        const y2 = H - parseFloat(m[4]);
+        lines.push(`0\nLINE\n8\n0\n10\n${x1.toFixed(3)}\n20\n${y1.toFixed(3)}\n30\n0\n11\n${x2.toFixed(3)}\n21\n${y2.toFixed(3)}\n31\n0`);
+      }
+      lines.push('0\nENDSEC\n0\nEOF');
+      const blob = new Blob([lines.join('\n')], { type: 'application/dxf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nexyfab-drawing-${Date.now()}.dxf`;
+      a.click();
+      URL.revokeObjectURL(url);
     });
   };
 
@@ -95,12 +214,17 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         ribbon={{
           activeTab,
           onTabChange: handleTabChange,
-          onTool: id => setActiveTool(id),
+          onTool: id => {
+            // Drawing-specific tool handlers — intercept export commands.
+            if (id === 'file.export-pdf') onExportPDF();
+            else if (id === 'file.export-dxf') onExportDXF();
+            else setActiveTool(id);
+          },
           isActive: id => activeTool === id,
         }}
         leftWidth={240}
         rightWidth={300}
-        left={<DrawingTreePane nodes={sheets} selectedId={selectedView} onSelect={setSelectedView} isKo={isKo} />}
+        left={<DrawingTreePane nodes={sheetTreeNodes} selectedId={selectedView} onSelect={setSelectedView} isKo={isKo} />}
         right={<DrawingPropsPane isKo={isKo} selectedView={selectedView} />}
         viewport={
           <>
@@ -113,6 +237,9 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
             />
             <DrawingCanvas
               isKo={isKo}
+              edges={edges}
+              bbox={bbox}
+              layout={activeSheetMeta?.layout ?? 'ortho4'}
               onBackToModeling={() =>
                 router.push(`/${lang}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
               }
@@ -244,9 +371,116 @@ function SheetTabs({
   );
 }
 
+// Reads the geometry bridge once on mount + when projectId/nonce changes.
+// Drawing route is separate from modeler so we hydrate via sessionStorage.
+function useDrawingGeometry(projectId: string | undefined, nonce: number = 0): {
+  edges: THREE.EdgesGeometry | null;
+  bbox: THREE.Box3 | null;
+} {
+  return useMemo(() => {
+    if (typeof window === 'undefined') return { edges: null, bbox: null };
+    const result = readGeometry(projectId ?? 'local');
+    if (!result) return { edges: null, bbox: null };
+    const edges = new THREE.EdgesGeometry(result.geometry, 15);
+    const bbox = new THREE.Box3().setFromBufferAttribute(
+      result.geometry.getAttribute('position') as THREE.BufferAttribute,
+    );
+    return { edges, bbox };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, nonce]);
+}
+
+// Projects 3D edges to 2D for a given orthographic view. Returns SVG path data.
+function projectEdgesToSvg(
+  edges: THREE.EdgesGeometry,
+  bbox: THREE.Box3,
+  view: 'top' | 'front' | 'right' | 'iso',
+  width: number,
+  height: number,
+): string {
+  const positions = edges.getAttribute('position') as THREE.BufferAttribute;
+  if (!positions) return '';
+
+  // Pick 2D axes per view (CAD convention: top = XY plane looking -Z,
+  // front = XZ looking -Y, right = YZ looking -X).
+  const project = (x: number, y: number, z: number): [number, number] => {
+    switch (view) {
+      case 'top':   return [x, -y];
+      case 'front': return [x, -z];
+      case 'right': return [y, -z];
+      case 'iso': {
+        // Standard 30°/30° iso (Z up).
+        const cos30 = Math.cos(Math.PI / 6);
+        const sin30 = Math.sin(Math.PI / 6);
+        return [(x - y) * cos30, -z - (x + y) * sin30];
+      }
+    }
+  };
+
+  // Get 2D bounds.
+  const size = bbox.getSize(new THREE.Vector3());
+  const center = bbox.getCenter(new THREE.Vector3());
+  const allX: number[] = [];
+  const allY: number[] = [];
+  const corners = [
+    [bbox.min.x, bbox.min.y, bbox.min.z], [bbox.max.x, bbox.min.y, bbox.min.z],
+    [bbox.min.x, bbox.max.y, bbox.min.z], [bbox.max.x, bbox.max.y, bbox.min.z],
+    [bbox.min.x, bbox.min.y, bbox.max.z], [bbox.max.x, bbox.min.y, bbox.max.z],
+    [bbox.min.x, bbox.max.y, bbox.max.z], [bbox.max.x, bbox.max.y, bbox.max.z],
+  ];
+  for (const [x, y, z] of corners) {
+    const [u, v] = project(x, y, z);
+    allX.push(u); allY.push(v);
+  }
+  const u0 = Math.min(...allX), u1 = Math.max(...allX);
+  const v0 = Math.min(...allY), v1 = Math.max(...allY);
+  const du = u1 - u0 || 1, dv = v1 - v0 || 1;
+  const padding = 8;
+  const sx = (width - padding * 2) / du;
+  const sy = (height - padding * 2) / dv;
+  const s = Math.min(sx, sy);
+  const ox = width / 2 - (u0 + du / 2) * s;
+  const oy = height / 2 - (v0 + dv / 2) * s;
+
+  const lines: string[] = [];
+  // EdgesGeometry stores pairs of vertices (each edge = 2 positions).
+  for (let i = 0; i < positions.count; i += 2) {
+    const ax = positions.getX(i), ay = positions.getY(i), az = positions.getZ(i);
+    const bx = positions.getX(i + 1), by = positions.getY(i + 1), bz = positions.getZ(i + 1);
+    const [pu, pv] = project(ax, ay, az);
+    const [qu, qv] = project(bx, by, bz);
+    const x1 = (pu * s + ox).toFixed(2);
+    const y1 = (pv * s + oy).toFixed(2);
+    const x2 = (qu * s + ox).toFixed(2);
+    const y2 = (qv * s + oy).toFixed(2);
+    lines.push(`M${x1} ${y1}L${x2} ${y2}`);
+  }
+  // Suppress unused-var lint for `size` / `center` (kept for future centering).
+  void size; void center;
+  return lines.join('');
+}
+
+function OrthoSvgReal({
+  view,
+  edges,
+  bbox,
+}: {
+  view: 'top' | 'front' | 'right' | 'iso';
+  edges: THREE.EdgesGeometry;
+  bbox: THREE.Box3;
+}) {
+  const W = 100, H = 60;
+  const d = useMemo(() => projectEdgesToSvg(edges, bbox, view, W, H), [edges, bbox, view]);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="90%" height="90%" preserveAspectRatio="xMidYMid meet">
+      <path d={d} fill="none" stroke="#222" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Picks a primitive SVG silhouette based on selectedId so each ortho view
-// roughly matches the user's part type. Full geometry-driven projection is
-// a follow-up (requires sharing Inner.effectiveResult across routes).
+// roughly matches the user's part type. Used as a fallback when no real
+// geometry has been bridged from the modeler yet.
 function OrthoSvg({
   view,
   selectedLabel,
@@ -436,9 +670,15 @@ function DrawingPropsPane({ isKo, selectedView }: { isKo: boolean; selectedView:
 
 function DrawingCanvas({
   isKo,
+  edges,
+  bbox,
+  layout,
   onBackToModeling,
 }: {
   isKo: boolean;
+  edges: THREE.EdgesGeometry | null;
+  bbox: THREE.Box3 | null;
+  layout: 'ortho4' | 'iso-only' | 'section' | 'detail';
   onBackToModeling: () => void;
 }) {
   // Pull modeler stats from the bridge — if the user has the modeler open
@@ -471,18 +711,29 @@ function DrawingCanvas({
           fontFamily: 'var(--font-inter), sans-serif',
         }}
       >
-        {/* 4 ortho view boxes */}
+        {/* View boxes — count and arrangement depend on the active sheet's layout */}
+        {(() => {
+          const layoutViews: Record<typeof layout, ('top' | 'front' | 'right' | 'iso')[]> = {
+            ortho4: ['top', 'iso', 'front', 'right'],
+            'iso-only': ['iso'],
+            section: ['front'],
+            detail: ['iso'],
+          };
+          const views = layoutViews[layout];
+          const cols = views.length === 1 ? '1fr' : '1fr 1fr';
+          const rows = views.length <= 2 ? '1fr' : '1fr 1fr';
+          return (
         <div
           style={{
             position: 'absolute',
             inset: '6% 6% 18% 6%',
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: '1fr 1fr',
+            gridTemplateColumns: cols,
+            gridTemplateRows: rows,
             gap: 12,
           }}
         >
-          {(['top', 'iso', 'front', 'right'] as const).map(view => (
+          {views.map(view => (
             <div
               key={view}
               style={{
@@ -510,10 +761,16 @@ function DrawingCanvas({
                  view === 'front' ? (isKo ? '정면' : 'Front') :
                  (isKo ? '우측' : 'Right')}
               </span>
-              <OrthoSvg view={view} selectedLabel={selectedLabel} />
+              {edges && bbox ? (
+                <OrthoSvgReal view={view} edges={edges} bbox={bbox} />
+              ) : (
+                <OrthoSvg view={view} selectedLabel={selectedLabel} />
+              )}
             </div>
           ))}
         </div>
+          );
+        })()}
 
         {/* Title block */}
         <div

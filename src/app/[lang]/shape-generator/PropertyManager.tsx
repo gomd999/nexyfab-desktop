@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import ExpressionInput from './ExpressionInput';
+import type { ExprVariable } from './ExpressionEngine';
 
 export interface PropertyManagerProps {
   visible: boolean;
@@ -13,6 +15,10 @@ export interface PropertyManagerProps {
   onParamChange: (param: string, value: number) => void;
   onClose: () => void;
   onApply: () => void;
+  /** Optional: raw expressions per param. Enables expression editing (e.g. "d/2"). */
+  expressions?: Record<string, string>;
+  /** Optional: callback for expression text changes (separate from numeric value). */
+  onExpressionChange?: (param: string, expression: string) => void;
 }
 
 const L: Record<string, Record<string, string>> = {
@@ -62,10 +68,15 @@ const FEATURE_ICONS: Record<string, string> = {
 export default function PropertyManager({
   visible, lang, selectedFeatureId, featureName, featureType,
   featureParams, paramDefs, onParamChange, onClose, onApply,
+  expressions, onExpressionChange,
 }: PropertyManagerProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!visible || !selectedFeatureId) return null;
+
+  // Build the variable list from sibling params so expressions can reference
+  // them ("d/2" where d is another param on the same feature).
+  const variables: ExprVariable[] = Object.entries(featureParams).map(([name, value]) => ({ name, value }));
 
   const typeLabel = t(lang, featureType);
 
@@ -109,19 +120,37 @@ export default function PropertyManager({
 
         {!collapsed.params && paramDefs.map(def => {
           const value = featureParams[def.name] ?? 0;
+          const expr = expressions?.[def.name] ?? String(value);
+          const supportsExpression = !!onExpressionChange;
           return (
             <div key={def.name} style={{ marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)' }}>{def.label}</label>
-                <input type="number" value={value} min={def.min} max={def.max} step={def.step ?? 1}
-                  onChange={e => onParamChange(def.name, parseFloat(e.target.value) || 0)}
-                  style={{
-                    width: 60, padding: '2px 6px', borderRadius: 4,
-                    border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
-                    color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
-                    fontFamily: 'ui-monospace, monospace', textAlign: 'right',
-                  }}
-                />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, gap: 6 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.label}</label>
+                {supportsExpression ? (
+                  <div style={{ width: 120 }}>
+                    <ExpressionInput
+                      expression={expr}
+                      variables={variables.filter(v => v.name !== def.name)}
+                      onValueChange={v => onParamChange(def.name, v)}
+                      onExpressionChange={e => onExpressionChange!(def.name, e)}
+                      onCommit={() => { /* applied immediately on value change */ }}
+                      min={def.min ?? -Infinity}
+                      max={def.max ?? Infinity}
+                      step={def.step ?? 1}
+                      unit="mm"
+                    />
+                  </div>
+                ) : (
+                  <input type="number" value={value} min={def.min} max={def.max} step={def.step ?? 1}
+                    onChange={e => onParamChange(def.name, parseFloat(e.target.value) || 0)}
+                    style={{
+                      width: 60, padding: '2px 6px', borderRadius: 4,
+                      border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+                      color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
+                      fontFamily: 'ui-monospace, monospace', textAlign: 'right',
+                    }}
+                  />
+                )}
               </div>
               {def.min !== undefined && def.max !== undefined && (
                 <input type="range" min={def.min} max={def.max} step={def.step ?? 1} value={value}

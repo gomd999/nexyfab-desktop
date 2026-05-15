@@ -14,6 +14,9 @@ const createProjectSchema = z.object({
   shapeId: z.string().max(100).optional(),
   materialId: z.string().max(100).optional(),
   sceneData: z.string().max(5_000_000).optional(), // 5MB max
+  // Thumbnail is a data URL (~PNG base64) captured client-side from the
+  // viewport. Cap at 512 KB so a single project save doesn't blow the row.
+  thumbnail: z.string().max(512_000).optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
 });
 
@@ -124,7 +127,7 @@ export async function POST(req: NextRequest) {
     body.shapeId ?? null,
     body.materialId ?? null,
     body.sceneData ?? null,
-    null,
+    body.thumbnail ?? null,
     body.tags ? JSON.stringify(body.tags) : null,
     now,
     now,

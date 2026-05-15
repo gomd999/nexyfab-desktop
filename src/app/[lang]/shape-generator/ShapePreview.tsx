@@ -3,11 +3,11 @@
 import { usePathname } from 'next/navigation';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import ErrorBoundary from '@/components/nexyfab/ErrorBoundary';
-import { OrbitControls, Grid, TransformControls, Environment, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
+import { OrbitControls, Grid, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
 import { NF_R3F_VIEWPORT_DATA_ENGINE } from '@/lib/nexyfab/viewport';
 import * as THREE from 'three';
 import type { TransformControls as TransformControlsThree } from 'three/examples/jsm/controls/TransformControls.js';
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
+import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShapeResult } from './shapes';
 import type { EditMode } from './editing/types';
@@ -210,6 +210,70 @@ function SceneBg() {
     return () => mo.disconnect();
   }, []);
   return <color attach="background" args={[hex]} />;
+}
+
+// drei's <Environment preset> downloads HDRI maps (e.g. potsdamer_platz_1k.hdr)
+// from the pmndrs/drei-assets CDN. Offline / CDN-blocked / cold networks
+// throw, which previously bubbled up to the page-level ErrorBoundary and
+// blanked the entire viewport. Catch it here so the scene still renders
+// with the directional lights below as a fallback.
+class EnvironmentBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn('HDRI environment load failed — falling back to default lighting', error?.message);
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+// Procedural environment — produces an env map for PBR reflections from
+// <Lightformer> children alone, with NO HDRI file fetch. Eliminates the
+// CDN dependency that previously failed with "Could not load
+// potsdamer_platz_1k.hdr". Each preset gets a slightly different lightformer
+// layout so reflections still vary by chosen environment.
+type ProceduralEnvPreset =
+  | 'apartment' | 'city' | 'dawn' | 'forest' | 'lobby'
+  | 'night' | 'park' | 'studio' | 'sunset' | 'warehouse';
+
+const PRESET_TINTS: Record<ProceduralEnvPreset, { top: string; key: string; fill: string; rim: string }> = {
+  studio:    { top: '#ffffff', key: '#ffffff', fill: '#c8d8ff', rim: '#ffe8d0' },
+  warehouse: { top: '#e6e8ec', key: '#fff5e8', fill: '#a8b0c0', rim: '#d8c8a8' },
+  apartment: { top: '#f0e8d8', key: '#ffe0b0', fill: '#c0c8e0', rim: '#fff0d8' },
+  city:      { top: '#c8d0e0', key: '#fff0d0', fill: '#a0b8e0', rim: '#ffe0a8' },
+  dawn:      { top: '#ffd8b8', key: '#ffb070', fill: '#a8c0e8', rim: '#ffe0c0' },
+  forest:    { top: '#a8c098', key: '#c8e0a0', fill: '#80a0b0', rim: '#d8e8c0' },
+  lobby:     { top: '#ece4d4', key: '#ffe8c8', fill: '#b8c0d0', rim: '#fff8e8' },
+  night:     { top: '#1a2030', key: '#3060a0', fill: '#2030a0', rim: '#5070b0' },
+  park:      { top: '#b8d0e0', key: '#fff0d8', fill: '#a8c098', rim: '#ffe8c0' },
+  sunset:    { top: '#ff9060', key: '#ff7040', fill: '#8060a0', rim: '#ffb070' },
+};
+
+function ProceduralEnvironment({ preset }: { preset: ProceduralEnvPreset }) {
+  const tint = PRESET_TINTS[preset] ?? PRESET_TINTS.studio;
+  return (
+    <Environment background={false} resolution={256} frames={1}>
+      {/* Top dome */}
+      <Lightformer form="rect" intensity={2.0} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} color={tint.top} />
+      {/* Key light */}
+      <Lightformer form="rect" intensity={2.5} position={[3, 3, 4]} scale={[5, 5, 1]} color={tint.key} />
+      {/* Fill light */}
+      <Lightformer form="rect" intensity={1.2} position={[-4, 2, 1]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color={tint.fill} />
+      {/* Rim light */}
+      <Lightformer form="rect" intensity={1.5} position={[0, 2, -4]} scale={[8, 3, 1]} color={tint.rim} />
+      {/* Bottom bounce */}
+      <Lightformer form="rect" intensity={0.3} position={[0, -3, 0]} rotation-x={-Math.PI / 2} scale={[10, 10, 1]} color="#404040" />
+    </Environment>
+  );
 }
 
 // Single shape mesh
@@ -2319,7 +2383,7 @@ export default function ShapePreview({
                 </>
               )}
               <Suspense fallback={null}>
-                {renderMode !== 'photorealistic' && <Environment preset={envPreset} background={false} />}
+                {renderMode !== 'photorealistic' && <EnvironmentBoundary><ProceduralEnvironment preset={envPreset} /></EnvironmentBoundary>}
                 <CameraFitter
                   results={allResults}
                   bomParts={isAssembly ? bomParts : undefined}

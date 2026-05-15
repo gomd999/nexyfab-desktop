@@ -8,6 +8,14 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 export type EnvironmentPreset = 'studio' | 'city' | 'sunset' | 'forest' | 'warehouse';
 
+const ENV_TINTS: Record<EnvironmentPreset, { top: string; key: string; fill: string; rim: string }> = {
+  studio:    { top: '#ffffff', key: '#ffffff', fill: '#c8d8ff', rim: '#ffe8d0' },
+  city:      { top: '#c8d0e0', key: '#fff0d0', fill: '#a0b8e0', rim: '#ffe0a8' },
+  sunset:    { top: '#ff9060', key: '#ff7040', fill: '#8060a0', rim: '#ffb070' },
+  forest:    { top: '#a8c098', key: '#c8e0a0', fill: '#80a0b0', rim: '#d8e8c0' },
+  warehouse: { top: '#e6e8ec', key: '#fff5e8', fill: '#a8b0c0', rim: '#d8c8a8' },
+};
+
 export interface RenderModeProps {
   environment: EnvironmentPreset;
   showBackground: boolean;
@@ -77,15 +85,15 @@ export default function RenderMode({
           <CustomHdriEnv url={customHdriUrl} showBackground={showBackground} />
         </Suspense>
       ) : (
-        <Environment
-          preset={environment}
-          background={showBackground}
-          environmentIntensity={1.2}
-        >
-          <Lightformer form="rect" intensity={2} position={[0, 4, -3]} scale={[10, 2, 1]} color="var(--nx-text)" />
-          <Lightformer form="rect" intensity={0.8} position={[-5, 2, 0]} rotation-y={Math.PI / 2} scale={[6, 3, 1]} color="#c8d8ff" />
-          <Lightformer form="circle" intensity={0.5} position={[5, 3, 2]} scale={[3, 3, 1]} color="#ffe8d0" />
-          <Lightformer form="rect" intensity={1.5} position={[0, 2, 5]} scale={[8, 2, 1]} color="var(--nx-text)" />
+        // Procedural lights-only Environment — no HDRI CDN fetch, so the
+        // photorealistic preview cannot fail due to a missing preset asset.
+        // Users who want a real-world HDRI can upload one (customHdriUrl).
+        <Environment background={showBackground} resolution={256} frames={1}>
+          <Lightformer form="rect" intensity={2.0} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} color={ENV_TINTS[environment].top} />
+          <Lightformer form="rect" intensity={2.5} position={[3, 3, 4]} scale={[5, 5, 1]} color={ENV_TINTS[environment].key} />
+          <Lightformer form="rect" intensity={1.2} position={[-4, 2, 1]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color={ENV_TINTS[environment].fill} />
+          <Lightformer form="rect" intensity={1.5} position={[0, 2, -4]} scale={[8, 3, 1]} color={ENV_TINTS[environment].rim} />
+          <Lightformer form="rect" intensity={0.3} position={[0, -3, 0]} rotation-x={-Math.PI / 2} scale={[10, 10, 1]} color="#404040" />
         </Environment>
       )}
 

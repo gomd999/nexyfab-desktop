@@ -14,6 +14,7 @@ interface PbrProps {
   metalness: number;
   exposure: number;
   hdri: string;
+  projectId?: string;
 }
 
 // SSR-disabled because @react-three/fiber needs WebGL2.
