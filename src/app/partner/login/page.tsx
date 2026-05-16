@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePartnerLang } from '../_lib/partnerLang';
+import { loginDict } from '../_lib/dicts/login';
 
 export default function PartnerLoginPage() {
   const router = useRouter();
@@ -12,13 +13,14 @@ export default function PartnerLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const lang = usePartnerLang();
+  const t = loginDict(lang);
   // NexySys unified SSO entry — opt-in via env until auth-server Phase 2
   // ships. When unset, the SSO card stays hidden so we never advertise a
   // broken button.
   const nexysysSsoUrl = process.env.NEXT_PUBLIC_NEXYSYS_OAUTH_URL;
 
   useEffect(() => {
-    // 이미 세션이 있으면 hub로
+    // If a session already exists → hub.
     const session = localStorage.getItem('partnerSession');
     if (!session) return;
     if (session === 'demo') { router.replace(`/partner/hub?lang=${lang}`); return; }
@@ -43,7 +45,7 @@ export default function PartnerLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || '로그인에 실패했습니다.');
+        setError(data.error || t.errLogin);
         return;
       }
 
@@ -51,7 +53,7 @@ export default function PartnerLoginPage() {
       localStorage.setItem('partnerInfo', JSON.stringify(data.partner));
       router.push(`/partner/hub?lang=${lang}`);
     } catch {
-      setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      setError(t.errServer);
     } finally {
       setLoading(false);
     }
@@ -60,30 +62,31 @@ export default function PartnerLoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* 로고 */}
+        {/* Brand */}
         <div className="text-center mb-8">
           <Link href="/" prefetch={false} className="inline-block">
             <span className="text-2xl font-black text-gray-900">NexyFab</span>
           </Link>
-          <h1 className="text-xl font-bold text-gray-800 mt-3">파트너 포털</h1>
-          <p className="text-sm text-gray-500 mt-1">파트너 전용 관리 포털입니다</p>
+          <h1 className="text-xl font-bold text-gray-800 mt-3">{t.pageTitle}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t.pageSubtitle}</p>
         </div>
 
-        {/* NexySys 통합 SSO — preferred entry once auth-server Phase 2 ships.
-            Promoted above the legacy access-code form so new partners default
-            to SSO. Hidden when NEXT_PUBLIC_NEXYSYS_OAUTH_URL is unset so we
-            never advertise a broken button. */}
+        {/* NexySys unified SSO — preferred entry once auth-server Phase 2
+            ships. Promoted above the legacy access-code form so new
+            partners default to SSO. Hidden when
+            NEXT_PUBLIC_NEXYSYS_OAUTH_URL is unset so we never advertise a
+            broken button. */}
         {nexysysSsoUrl && (
           <div className="mb-4 bg-white rounded-2xl shadow-sm border-2 border-blue-100 p-6">
-            <p className="text-xs font-bold text-blue-600 uppercase tracking-wide text-center mb-3">권장 로그인 · NexySys 통합 계정</p>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-wide text-center mb-3">{t.ssoCardKicker}</p>
             <a
               href={`${nexysysSsoUrl}?return_to=${encodeURIComponent(`/partner/hub?lang=${lang}`)}`}
               className="w-full inline-block text-center py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition text-sm"
             >
-              NexySys 계정으로 로그인
+              {t.ssoCardBtn}
             </a>
             <p className="mt-2 text-center text-[11px] text-gray-400">
-              고객사 SaaS와 동일 계정으로 로그인합니다. 별도 액세스 코드가 필요 없습니다.
+              {t.ssoCardHint}
             </p>
           </div>
         )}
@@ -91,13 +94,13 @@ export default function PartnerLoginPage() {
         <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-8 ${nexysysSsoUrl ? 'opacity-90' : ''}`}>
           {nexysysSsoUrl && (
             <p className="text-[11px] text-gray-400 mb-3 text-center">
-              기존 액세스 코드 로그인 (점진 폐지 중)
+              {t.legacyHint}
             </p>
           )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                이메일 주소
+                {t.emailLabel}
               </label>
               <input
                 type="email"
@@ -105,21 +108,21 @@ export default function PartnerLoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoFocus
-                placeholder="partner@example.com"
+                placeholder={t.emailPlaceholder}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                액세스 코드 (6자리)
+                {t.codeLabel}
               </label>
               <input
                 type="text"
                 value={token}
                 onChange={e => setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
-                placeholder="123456"
+                placeholder={t.codePlaceholder}
                 maxLength={6}
                 inputMode="numeric"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition font-mono tracking-widest text-center text-lg"
@@ -137,24 +140,24 @@ export default function PartnerLoginPage() {
               disabled={loading || email.length < 3 || token.length !== 6}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm"
             >
-              {loading ? '로그인 중...' : '로그인'}
+              {loading ? t.submitting : t.submit}
             </button>
           </form>
 
           <p className="mt-6 text-center text-xs text-gray-400">
-            코드가 없으신가요?{' '}
-            <span className="text-gray-600">담당자에게 문의하세요.</span>
+            {t.noCode}{' '}
+            <span className="text-gray-600">{t.contactStaff}</span>
           </p>
 
           <p className="mt-3 text-center text-xs text-gray-400">
-            아직 파트너가 아니신가요?{' '}
-            <Link href={`/partner/register?lang=${lang}`} prefetch={false} className="text-blue-600 font-semibold hover:underline">파트너 신청하기 →</Link>
+            {t.noAccount}{' '}
+            <Link href={`/partner/register?lang=${lang}`} prefetch={false} className="text-blue-600 font-semibold hover:underline">{t.applyAsPartner}</Link>
           </p>
         </div>
 
-        {/* 데모 체험 */}
+        {/* Demo entry */}
         <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide text-center mb-3">파트너 포털 체험</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide text-center mb-3">{t.demoKicker}</p>
           <button
             onClick={() => {
               localStorage.setItem('partnerSession', 'demo');
@@ -168,18 +171,20 @@ export default function PartnerLoginPage() {
             }}
             className="w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition text-sm border border-blue-200"
           >
-            🔧 파트너사 데모로 체험하기
+            {t.demoBtn}
           </button>
-          <p className="text-xs text-gray-400 text-center mt-2">데모 계정은 읽기 전용이며 실제 데이터에 영향을 주지 않습니다.</p>
+          <p className="text-xs text-gray-400 text-center mt-2">{t.demoNote}</p>
         </div>
 
         <p className="text-center mt-4 text-xs text-gray-400">
-          파트너 등록 문의:{' '}
+          {t.inquiryLine}{' '}
           <a href="mailto:partner@nexyfab.com" className="text-gray-500 hover:underline">partner@nexyfab.com</a>
         </p>
 
         <p className="text-center mt-2 text-xs text-gray-400">
-          <Link href="/login" prefetch={false} className="text-blue-600 font-semibold hover:underline">Nexysys 통합 로그인</Link>으로 돌아가기
+          {t.unifiedLoginPrefix}
+          <Link href="/login" prefetch={false} className="text-blue-600 font-semibold hover:underline">{t.unifiedLoginLink}</Link>
+          {t.unifiedLoginSuffix}
         </p>
       </div>
     </div>

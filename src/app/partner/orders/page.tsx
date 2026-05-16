@@ -3,18 +3,20 @@
 /**
  * /partner/orders — Partner-side order workflow.
  *
- * Kanban-style 4-column view (생산 중 / 품질 검사 / 배송 중 / 완료).
+ * Kanban-style 4-column view (Production / QC / Shipping / Delivered).
  * Click a card to open the detail drawer where the partner can:
  *   - advance to next status (POST /api/partner/orders PATCH)
  *   - drop a note, photo, shipment number, or delay report (POST .../events)
  *
  * Multi-dimensional metrics are loaded once at the top so partners see
- * exactly which axis (납기/응답/품질/소통) needs improvement, never a
- * single composite credit score (per project memory: feedback_metric_design).
+ * exactly which axis (delivery / response / quality / communication)
+ * needs improvement, never a single composite credit score (per project
+ * memory: feedback_metric_design).
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import PartnerNav from '../PartnerNav';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { ordersDict, type OrdersDict } from '../_lib/dicts/orders';
 
 interface OrderRow {
   id: string;
@@ -60,43 +62,57 @@ interface MetricsSummary {
 }
 
 const STATUS_FLOW: Array<OrderRow['status']> = ['placed', 'production', 'qc', 'shipped', 'delivered'];
-const STATUS_LABEL: Record<OrderRow['status'], string> = {
-  placed: '주문 접수',
-  production: '생산 중',
-  qc: '품질 검사',
-  shipped: '배송 중',
-  delivered: '완료',
-};
 
-const COLUMNS: Array<{ key: OrderRow['status']; label: string; tone: string }> = [
-  { key: 'production', label: '🏭 생산 중', tone: 'border-amber-200 bg-amber-50/40' },
-  { key: 'qc',         label: '🔍 품질 검사', tone: 'border-purple-200 bg-purple-50/40' },
-  { key: 'shipped',    label: '🚚 배송 중', tone: 'border-sky-200 bg-sky-50/40' },
-  { key: 'delivered',  label: '✅ 완료',    tone: 'border-emerald-200 bg-emerald-50/40' },
-];
-
-function won(n: number) { return `₩${n.toLocaleString('ko-KR')}`; }
-
-function relTime(ts: number) {
-  const diff = Date.now() - ts;
-  const day = 86_400_000;
-  if (diff < 60_000) return '방금';
-  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
-  if (diff < day) return `${Math.round(diff / 3_600_000)}시간 전`;
-  if (diff < 7 * day) return `${Math.round(diff / day)}일 전`;
-  return new Date(ts).toLocaleDateString('ko-KR');
+function statusText(s: OrderRow['status'], t: OrdersDict): string {
+  return t[`status_${s}` as `status_${OrderRow['status']}`];
 }
 
-function MetricsBar({ m }: { m: MetricsSummary }) {
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+
+function fmtMoney(n: number, lang: string) {
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', {
+      style: 'currency', currency: 'KRW', maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return `₩${n.toLocaleString()}`;
+  }
+}
+
+function fmtDate(ts: number, lang: string) {
+  try {
+    return new Date(ts).toLocaleDateString(LOCALE_FOR_LANG[lang] ?? 'en-US');
+  } catch {
+    return new Date(ts).toDateString();
+  }
+}
+
+function relTime(ts: number, t: OrdersDict, lang: string) {
+  const diff = Date.now() - ts;
+  const day = 86_400_000;
+  if (diff < 60_000) return t.timelineRelJustNow;
+  if (diff < 3_600_000) return t.timelineRelMinutes(Math.round(diff / 60_000));
+  if (diff < day) return t.timelineRelHours(Math.round(diff / 3_600_000));
+  if (diff < 7 * day) return t.timelineRelDays(Math.round(diff / day));
+  return fmtDate(ts, lang);
+}
+
+function MetricsBar({ m, t, lang }: { m: MetricsSummary; t: OrdersDict; lang: string }) {
+  const responseValue = m.avgResponseMinutes != null
+    ? (m.avgResponseMinutes >= 60
+        ? new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US').format(Math.round(m.avgResponseMinutes / 60)) + ' h'
+        : new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US').format(m.avgResponseMinutes) + ' m')
+    : '—';
+
   const cards = [
-    { label: '납기 준수율', value: m.onTimeRate != null ? `${m.onTimeRate}%` : '—', sub: `완료 ${m.onTimeCount + m.lateCount}건`, tone: 'text-emerald-700 bg-emerald-50' },
-    { label: '평균 리드타임', value: m.avgLeadTimeDays != null ? `${m.avgLeadTimeDays}일` : '—', sub: '주문→납품', tone: 'text-blue-700 bg-blue-50' },
-    { label: '평균 응답속도', value: m.avgResponseMinutes != null
-        ? (m.avgResponseMinutes >= 60 ? `${Math.round(m.avgResponseMinutes / 60)}시간` : `${m.avgResponseMinutes}분`)
-        : '—', sub: `${m.responseSamples}건 견적`, tone: 'text-purple-700 bg-purple-50' },
-    { label: '품질 평점', value: m.qualityAvg != null ? `★ ${m.qualityAvg}` : '—', sub: `${m.reviewCount}건`, tone: 'text-amber-700 bg-amber-50' },
-    { label: '소통 평점', value: m.communicationAvg != null ? `★ ${m.communicationAvg}` : '—', sub: `${m.reviewCount}건`, tone: 'text-rose-700 bg-rose-50' },
-    { label: '재주문률', value: m.reorderRate != null ? `${m.reorderRate}%` : '—', sub: `최근 ${m.windowDays}일`, tone: 'text-indigo-700 bg-indigo-50' },
+    { label: t.metricOnTime, value: m.onTimeRate != null ? `${m.onTimeRate}%` : '—', sub: t.metricOnTimeSub(m.onTimeCount + m.lateCount), tone: 'text-emerald-700 bg-emerald-50' },
+    { label: t.metricLeadTime, value: m.avgLeadTimeDays != null ? `${m.avgLeadTimeDays}` : '—', sub: t.metricLeadTimeSub, tone: 'text-blue-700 bg-blue-50' },
+    { label: t.metricResponse, value: responseValue, sub: t.metricResponseSub(m.responseSamples), tone: 'text-purple-700 bg-purple-50' },
+    { label: t.metricQuality, value: m.qualityAvg != null ? `★ ${m.qualityAvg}` : '—', sub: t.metricQualitySub(m.reviewCount), tone: 'text-amber-700 bg-amber-50' },
+    { label: t.metricCommunication, value: m.communicationAvg != null ? `★ ${m.communicationAvg}` : '—', sub: t.metricCommunicationSub(m.reviewCount), tone: 'text-rose-700 bg-rose-50' },
+    { label: t.metricReorder, value: m.reorderRate != null ? `${m.reorderRate}%` : '—', sub: t.metricReorderSub(m.windowDays), tone: 'text-indigo-700 bg-indigo-50' },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4">
@@ -111,8 +127,8 @@ function MetricsBar({ m }: { m: MetricsSummary }) {
   );
 }
 
-function OrderCard({ order, onClick, isLate }: {
-  order: OrderRow; onClick: () => void; isLate: boolean;
+function OrderCard({ order, onClick, isLate, t, lang }: {
+  order: OrderRow; onClick: () => void; isLate: boolean; t: OrdersDict; lang: string;
 }) {
   return (
     <button
@@ -122,13 +138,13 @@ function OrderCard({ order, onClick, isLate }: {
     >
       <div className="flex items-start justify-between gap-2 mb-1">
         <span className="text-[11px] font-mono text-gray-400">{order.id}</span>
-        {isLate && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">납기 초과</span>}
+        {isLate && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">{t.lateBadge}</span>}
       </div>
       <div className="text-sm font-bold text-gray-900 truncate">{order.partName}</div>
-      <div className="text-xs text-gray-500 mt-0.5">{order.quantity.toLocaleString()}개 · {won(order.totalPriceKRW)}</div>
+      <div className="text-xs text-gray-500 mt-0.5">{order.quantity.toLocaleString()}{t.qtyUnit} · {fmtMoney(order.totalPriceKRW, lang)}</div>
       <div className="text-[11px] text-gray-400 mt-1.5 flex items-center justify-between">
-        <span>납기 {new Date(order.estimatedDeliveryAt).toLocaleDateString('ko-KR')}</span>
-        <span>{relTime(order.createdAt)} 주문</span>
+        <span>{t.dueDateLabel} {fmtDate(order.estimatedDeliveryAt, lang)}</span>
+        <span>{relTime(order.createdAt, t, lang)} {t.orderedSuffix}</span>
       </div>
     </button>
   );
@@ -136,6 +152,8 @@ function OrderCard({ order, onClick, isLate }: {
 
 export default function PartnerOrdersPage() {
   const router = useRouter();
+  const lang = usePartnerLang();
+  const t = ordersDict(lang);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +167,13 @@ export default function PartnerOrdersPage() {
   const [delayInput, setDelayInput] = useState('');
 
   const session = () => (typeof window !== 'undefined' ? localStorage.getItem('partnerSession') ?? '' : '');
+
+  const COLUMNS: Array<{ key: OrderRow['status']; label: string; tone: string }> = [
+    { key: 'production', label: t.colProduction, tone: 'border-amber-200 bg-amber-50/40' },
+    { key: 'qc',         label: t.colQc,         tone: 'border-purple-200 bg-purple-50/40' },
+    { key: 'shipped',    label: t.colShipped,    tone: 'border-sky-200 bg-sky-50/40' },
+    { key: 'delivered',  label: t.colDelivered,  tone: 'border-emerald-200 bg-emerald-50/40' },
+  ];
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -195,9 +220,9 @@ export default function PartnerOrdersPage() {
   }, []);
 
   useEffect(() => {
-    if (!session()) { router.replace('/partner/login'); return; }
+    if (!session()) { router.replace(`/partner/login?lang=${lang}`); return; }
     loadOrders();
-  }, [router, loadOrders]);
+  }, [router, loadOrders, lang]);
 
   async function openOrder(order: OrderRow) {
     setSelected(order);
@@ -244,10 +269,9 @@ export default function PartnerOrdersPage() {
       if (!res.ok) throw new Error();
       setOrders(prev => prev.map(o => o.id === selected.id ? { ...o, status: next } : o));
       setSelected({ ...selected, status: next });
-      // Reload events to pick up the auto-recorded status_change row
       openOrder({ ...selected, status: next });
-    } catch (_err) {
-      alert('상태 변경에 실패했습니다.');
+    } catch {
+      alert(t.errAdvance);
     } finally {
       setAdvancing(false);
     }
@@ -275,7 +299,7 @@ export default function PartnerOrdersPage() {
       if (kind === 'shipment') setShipmentInput('');
       if (kind === 'delay') setDelayInput('');
     } catch {
-      alert('등록에 실패했습니다.');
+      alert(t.errPost);
     } finally {
       setPosting(false);
     }
@@ -285,24 +309,23 @@ export default function PartnerOrdersPage() {
     placed: [], production: [], qc: [], shipped: [], delivered: [],
   };
   for (const o of orders) {
-    if (o.status === 'placed') grouped.production.push(o); // placed before production payment — show in 생산 column anyway
+    if (o.status === 'placed') grouped.production.push(o);
     else grouped[o.status].push(o);
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <PartnerNav />
-      <main className="flex-1 p-6 overflow-auto pb-24 md:pb-6">
+    <div className="min-h-screen bg-gray-50">
+      <main className="p-6 overflow-auto pb-24 md:pb-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-4">
-            <h1 className="text-2xl font-black text-gray-900">주문 워크플로우</h1>
-            <p className="text-sm text-gray-500 mt-1">진행 중 주문을 단계별로 관리하고, 사진·메모를 등록하면 고객에게 실시간 공유됩니다.</p>
+            <h1 className="text-2xl font-black text-gray-900">{t.pageTitle}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t.pageSubtitle}</p>
           </div>
 
-          {metrics && <MetricsBar m={metrics} />}
+          {metrics && <MetricsBar m={metrics} t={t} lang={lang} />}
 
           {loading ? (
-            <div className="text-center py-20 text-gray-400 text-sm">불러오는 중…</div>
+            <div className="text-center py-20 text-gray-400 text-sm">{t.loading}</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
               {COLUMNS.map(col => (
@@ -313,11 +336,11 @@ export default function PartnerOrdersPage() {
                   </div>
                   <div className="space-y-2">
                     {grouped[col.key].length === 0 && (
-                      <div className="text-xs text-gray-400 px-1 py-3 text-center">없음</div>
+                      <div className="text-xs text-gray-400 px-1 py-3 text-center">{t.emptyColumn}</div>
                     )}
                     {grouped[col.key].map(o => {
                       const isLate = o.status !== 'delivered' && Date.now() > o.estimatedDeliveryAt;
-                      return <OrderCard key={o.id} order={o} onClick={() => openOrder(o)} isLate={isLate} />;
+                      return <OrderCard key={o.id} order={o} onClick={() => openOrder(o)} isLate={isLate} t={t} lang={lang} />;
                     })}
                   </div>
                 </div>
@@ -329,42 +352,42 @@ export default function PartnerOrdersPage() {
 
       {selected && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-stretch justify-end" onClick={() => setSelected(null)}>
-          <div className="bg-white w-full max-w-xl h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-xl h-full overflow-y-auto" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className="bg-gray-900 text-white px-6 py-5 sticky top-0 z-10">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs text-gray-400 font-mono">{selected.id}</div>
                   <h2 className="text-lg font-black mt-0.5">{selected.partName}</h2>
                   <div className="text-xs text-gray-300 mt-1">
-                    {selected.quantity.toLocaleString()}개 · {won(selected.totalPriceKRW)}
+                    {selected.quantity.toLocaleString()}{t.qtyUnit} · {fmtMoney(selected.totalPriceKRW, lang)}
                   </div>
                 </div>
-                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-white text-2xl leading-none" aria-label={t.drawerCloseLabel}>×</button>
               </div>
               <div className="flex items-center gap-2 mt-3">
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-600">현재: {STATUS_LABEL[selected.status]}</span>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-600">{t.drawerCurrent}: {statusText(selected.status, t)}</span>
                 {selected.status !== 'delivered' && (
                   <button
                     onClick={advance}
                     disabled={advancing}
                     className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 transition"
                   >
-                    {advancing ? '처리 중…' : `→ ${STATUS_LABEL[STATUS_FLOW[STATUS_FLOW.indexOf(selected.status) + 1]]}`}
+                    {advancing ? t.drawerAdvanceLoading : t.drawerAdvance(statusText(STATUS_FLOW[STATUS_FLOW.indexOf(selected.status) + 1], t))}
                   </button>
                 )}
               </div>
             </div>
 
             <div className="p-6 space-y-5">
-              {/* 빠른 입력 */}
+              {/* Quick input */}
               <section>
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">진행 메모</h3>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{t.drawerSectionNotes}</h3>
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <input
                       value={noteInput}
                       onChange={e => setNoteInput(e.target.value)}
-                      placeholder="고객에게 공유할 진행 상황 (예: 가공 80% 완료)"
+                      placeholder={t.drawerPlaceholderNote}
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                     />
                     <button
@@ -372,14 +395,14 @@ export default function PartnerOrdersPage() {
                       disabled={posting || !noteInput.trim()}
                       className="px-3 py-2 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                     >
-                      등록
+                      {t.drawerBtnPost}
                     </button>
                   </div>
                   <div className="flex gap-2">
                     <input
                       value={shipmentInput}
                       onChange={e => setShipmentInput(e.target.value)}
-                      placeholder="운송장 번호 + 택배사 (예: 한진 123456789)"
+                      placeholder={t.drawerPlaceholderShipment}
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                     />
                     <button
@@ -387,14 +410,14 @@ export default function PartnerOrdersPage() {
                       disabled={posting || !shipmentInput.trim()}
                       className="px-3 py-2 text-sm font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50"
                     >
-                      등록
+                      {t.drawerBtnPost}
                     </button>
                   </div>
                   <div className="flex gap-2">
                     <input
                       value={delayInput}
                       onChange={e => setDelayInput(e.target.value)}
-                      placeholder="지연 사유 (예: 소재 수급 지연 +3일 예상)"
+                      placeholder={t.drawerPlaceholderDelay}
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                     />
                     <button
@@ -402,24 +425,24 @@ export default function PartnerOrdersPage() {
                       disabled={posting || !delayInput.trim()}
                       className="px-3 py-2 text-sm font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50"
                     >
-                      알림
+                      {t.drawerBtnNotify}
                     </button>
                   </div>
                 </div>
               </section>
 
-              {/* 타임라인 */}
+              {/* Timeline */}
               <section>
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">타임라인</h3>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{t.drawerSectionTimeline}</h3>
                 {eventLoading ? (
-                  <div className="text-center py-6 text-gray-400 text-xs">불러오는 중…</div>
+                  <div className="text-center py-6 text-gray-400 text-xs">{t.loading}</div>
                 ) : events.length === 0 ? (
-                  <div className="text-center py-6 text-gray-400 text-xs">아직 이벤트가 없습니다.</div>
+                  <div className="text-center py-6 text-gray-400 text-xs">{t.emptyTimeline}</div>
                 ) : (
                   <ol className="space-y-3">
                     {events.map(ev => (
                       <li key={ev.id} className="flex gap-3 text-sm">
-                        <div className="w-6 shrink-0 text-center pt-0.5">
+                        <div className="w-6 shrink-0 text-center pt-0.5" aria-hidden="true">
                           {ev.kind === 'status_change' && '🔄'}
                           {ev.kind === 'note' && '📝'}
                           {ev.kind === 'photo' && '📷'}
@@ -429,19 +452,20 @@ export default function PartnerOrdersPage() {
                         <div className="flex-1">
                           {ev.kind === 'status_change' ? (
                             <div className="text-gray-700">
-                              상태 변경: <span className="font-semibold">{STATUS_LABEL[(ev.fromStatus ?? 'placed') as OrderRow['status']]}</span>
+                              {t.drawerEventStatusChange}: <span className="font-semibold">{statusText((ev.fromStatus ?? 'placed') as OrderRow['status'], t)}</span>
                               {' → '}
-                              <span className="font-semibold text-blue-700">{STATUS_LABEL[(ev.toStatus ?? 'placed') as OrderRow['status']]}</span>
+                              <span className="font-semibold text-blue-700">{statusText((ev.toStatus ?? 'placed') as OrderRow['status'], t)}</span>
                             </div>
                           ) : (
                             <div className="text-gray-800">{ev.body}</div>
                           )}
                           {ev.photoUrl && (
                             <a href={ev.photoUrl} target="_blank" rel="noreferrer" className="block mt-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={ev.photoUrl} alt="" className="rounded-lg max-h-48 border border-gray-100" />
                             </a>
                           )}
-                          <div className="text-[11px] text-gray-400 mt-1">{relTime(ev.createdAt)} · {ev.authorRole}</div>
+                          <div className="text-[11px] text-gray-400 mt-1">{relTime(ev.createdAt, t, lang)} · {ev.authorRole}</div>
                         </div>
                       </li>
                     ))}
