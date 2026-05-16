@@ -7,6 +7,8 @@ import dynamicImport from 'next/dynamic';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
+import { usePartnerLang } from '../../_lib/partnerLang';
+import { projectDetailDict, type ProjectDetailDict } from '../../_lib/dicts/projectDetail';
 
 // ModelViewer pulls in Three.js + OCCT — load only when actually rendered.
 const ModelViewer = dynamicImport(() => import('../../../components/ModelViewer'), { ssr: false });
@@ -68,11 +70,6 @@ interface Message {
   createdAt: string;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  contracted: '계약 완료', in_progress: '진행 중', quality_check: '품질 검수',
-  delivered: '납품 완료', completed: '완료', cancelled: '취소됨',
-};
-
 const STATUS_COLORS: Record<string, string> = {
   contracted: 'bg-blue-100 text-blue-700',
   in_progress: 'bg-yellow-100 text-yellow-700',
@@ -82,17 +79,43 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-600',
 };
 
-const NEXT_STATUS: Record<string, { status: string; label: string } | null> = {
-  contracted: { status: 'in_progress', label: '진행 시작' },
-  in_progress: { status: 'quality_check', label: '품질검사 시작' },
-  quality_check: { status: 'delivered', label: '납품 완료' },
+function statusText(s: string, t: ProjectDetailDict): string {
+  const key = `status_${s}` as keyof ProjectDetailDict;
+  const v = t[key];
+  return typeof v === 'string' ? v : s;
+}
+
+const NEXT_STATUS_MAP: Record<string, string | null> = {
+  contracted: 'in_progress',
+  in_progress: 'quality_check',
+  quality_check: 'delivered',
   delivered: null, completed: null, cancelled: null,
 };
+
+function nextStatusLabel(current: string, t: ProjectDetailDict): { status: string; label: string } | null {
+  const next = NEXT_STATUS_MAP[current];
+  if (!next) return null;
+  const key = `nextLabel_${next}` as keyof ProjectDetailDict;
+  const v = t[key];
+  return { status: next, label: typeof v === 'string' ? v : next };
+}
 
 const MODEL_EXTS = ['stl', 'step', 'stp', 'obj', '3ds', 'iges', 'igs'];
 const _DOCUMENT_EXTS = ['pdf', 'dwg', 'dxf'];
 
-function won(n: number) { return n?.toLocaleString('ko-KR') + '원'; }
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+
+function fmtMoney(n: number, lang: string) {
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', {
+      style: 'currency', currency: 'KRW', maximumFractionDigits: 0,
+    }).format(n ?? 0);
+  } catch {
+    return `₩${(n ?? 0).toLocaleString()}`;
+  }
+}
 
 function formatDateTime(iso: string) {
   if (!iso) return '-';
@@ -107,15 +130,15 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
-function getDdayInfo(deadline: string): { label: string; color: string } {
+function getDdayInfo(deadline: string, t: ProjectDetailDict): { label: string; color: string } {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(deadline); due.setHours(0, 0, 0, 0);
   const diff = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return { label: `D+${Math.abs(diff)} (기한 초과)`, color: 'text-red-600 font-bold' };
-  if (diff === 0) return { label: 'D-Day', color: 'text-red-600 font-bold' };
-  if (diff <= 7) return { label: `D-${diff}`, color: 'text-red-500 font-semibold' };
-  if (diff <= 14) return { label: `D-${diff}`, color: 'text-amber-500 font-semibold' };
-  return { label: `D-${diff}`, color: 'text-green-600 font-semibold' };
+  if (diff < 0) return { label: `${t.ddayDplus(Math.abs(diff))}${t.ddayExceededSuffix}`, color: 'text-red-600 font-bold' };
+  if (diff === 0) return { label: t.ddayDDay, color: 'text-red-600 font-bold' };
+  if (diff <= 7) return { label: t.ddayDminus(diff), color: 'text-red-500 font-semibold' };
+  if (diff <= 14) return { label: t.ddayDminus(diff), color: 'text-amber-500 font-semibold' };
+  return { label: t.ddayDminus(diff), color: 'text-green-600 font-semibold' };
 }
 
 function getFileIcon(att: Attachment) {
@@ -143,7 +166,7 @@ function groupByName(attachments: Attachment[]): Map<string, Attachment[]> {
   return groups;
 }
 
-function uploadWithProgress(file: File, contractId: string, session: string, onProgress: (pct: number) => void): Promise<any> {
+function uploadWithProgress(file: File, contractId: string, session: string, onProgress: (pct: number) => void, t: ProjectDetailDict): Promise<any> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
@@ -154,8 +177,8 @@ function uploadWithProgress(file: File, contractId: string, session: string, onP
     xhr.onload = () => {
       try {
         const body = JSON.parse(xhr.responseText);
-        if (xhr.status === 413) { reject(new Error(body.error || '저장 공간이 부족합니다.')); return; }
-        if (xhr.status >= 400) { reject(new Error(body.error || '업로드 실패')); return; }
+        if (xhr.status === 413) { reject(new Error(body.error || t.toastStorageFull)); return; }
+        if (xhr.status >= 400) { reject(new Error(body.error || 'upload failed')); return; }
         resolve(body);
       } catch { reject(new Error('parse error')); }
     };
@@ -167,11 +190,12 @@ function uploadWithProgress(file: File, contractId: string, session: string, onP
 }
 
 // ── VersionedFileRow ─────────────────────────────────────────────────────────
-function VersionedFileRow({ group, onView, onDelete, deleting }: {
+function VersionedFileRow({ group, onView, onDelete, deleting, t }: {
   group: Attachment[];
   onView: (url: string, filename: string) => void;
   onDelete: (id: string) => void;
   deleting: string | null;
+  t: ProjectDetailDict;
 }) {
   const [showOld, setShowOld] = useState(false);
   const sorted = [...group].sort((a, b) => (b.version || 1) - (a.version || 1));
@@ -188,36 +212,36 @@ function VersionedFileRow({ group, onView, onDelete, deleting }: {
           <div className="flex items-center gap-1.5">
             <p className="text-xs font-semibold text-gray-700 truncate">{latest.originalName}</p>
             <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${maxV >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-              v{maxV}{maxV >= 2 ? ' (최신)' : ''}
+              v{maxV}{maxV >= 2 ? t.versionLatestSuffix : ''}
             </span>
           </div>
-          <p className="text-xs text-gray-400">{latest.type === 'model' ? '3D 모델' : latest.type === 'image' ? '이미지' : '도면'} · {formatBytes(latest.size)} · {formatDateTime(latest.uploadedAt)}</p>
+          <p className="text-xs text-gray-400">{latest.type === 'model' ? t.fileType_model : latest.type === 'image' ? t.fileType_image : t.fileType_document} · {formatBytes(latest.size)} · {formatDateTime(latest.uploadedAt)}</p>
         </div>
         <div className="flex gap-1 shrink-0">
           {latest.type === 'model' && (
             <button onClick={() => onView(latest.url, latest.originalName)}
               className="px-2 py-1 text-xs font-semibold rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 transition">
-              🧊 3D 보기
+              {t.btnView3d}
             </button>
           )}
           {(latest.type === 'image' || latest.type === 'document') && (
             <button onClick={() => onView(latest.url, latest.originalName)}
               className="px-2 py-1 text-xs font-semibold rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 transition">
-              👁 미리보기
+              {t.btnPreview}
             </button>
           )}
           <a href={latest.url} download={latest.originalName}
             className="px-2 py-1 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300 transition">
-            다운로드
+            {t.btnDownload}
           </a>
           <button onClick={() => onDelete(latest.id)} disabled={deleting === latest.id}
             className="px-2 py-1 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition disabled:opacity-50">
-            {deleting === latest.id ? '...' : '삭제'}
+            {deleting === latest.id ? '...' : t.btnDelete}
           </button>
           {older.length > 0 && (
             <button onClick={() => setShowOld(v => !v)}
               className="px-2 py-1 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
-              {showOld ? '▲' : '▼'} 이전 버전
+              {showOld ? '▲' : '▼'} {t.btnPrevVersions}
             </button>
           )}
         </div>
@@ -230,9 +254,9 @@ function VersionedFileRow({ group, onView, onDelete, deleting }: {
             <span className="text-xs text-gray-400 ml-1.5">{formatDateTime(att.uploadedAt)}</span>
           </div>
           <div className="flex gap-1 shrink-0">
-            <a href={att.url} download={att.originalName} className="px-2 py-1 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 transition">다운로드</a>
+            <a href={att.url} download={att.originalName} className="px-2 py-1 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 transition">{t.btnDownload}</a>
             <button onClick={() => onDelete(att.id)} disabled={deleting === att.id} className="px-2 py-1 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 transition disabled:opacity-50">
-              {deleting === att.id ? '...' : '삭제'}
+              {deleting === att.id ? '...' : t.btnDelete}
             </button>
           </div>
         </div>
@@ -242,10 +266,11 @@ function VersionedFileRow({ group, onView, onDelete, deleting }: {
 }
 
 // ── FileUploadSection ────────────────────────────────────────────────────────
-function FileUploadSection({ contract, session, onAttachmentsChange }: {
+function FileUploadSection({ contract, session, onAttachmentsChange, t }: {
   contract: Contract;
   session: string;
   onAttachmentsChange: (attachments: Attachment[]) => void;
+  t: ProjectDetailDict;
 }) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -270,10 +295,10 @@ function FileUploadSection({ contract, session, onAttachmentsChange }: {
     for (const file of fileArr) {
       setUploadProgress({ name: file.name, pct: 0 });
       try {
-        const data = await uploadWithProgress(file, contract.id, session, pct => setUploadProgress({ name: file.name, pct }));
-        if (data.error) { toast('error', `파일 업로드 실패: ${data.error || file.name}`); continue; }
+        const data = await uploadWithProgress(file, contract.id, session, pct => setUploadProgress({ name: file.name, pct }), t);
+        if (data.error) { toast('error', t.toastUploadFailed(data.error || file.name)); continue; }
         updatedAttachments = [...updatedAttachments, data.attachment];
-      } catch { toast('error', `업로드 중 오류: ${file.name}`); }
+      } catch { toast('error', t.toastUploadError(file.name)); }
     }
     onAttachmentsChange(updatedAttachments);
     setUploading(false);
@@ -296,16 +321,16 @@ function FileUploadSection({ contract, session, onAttachmentsChange }: {
   }
 
   async function handleDelete(attId: string) {
-    if (!confirm('파일을 삭제하시겠습니까?')) return;
+    if (!confirm(t.confirmDeleteFile)) return;
     setDeleting(attId);
     try {
       const res = await fetch(`/api/partner/upload?id=${attId}&contractId=${contract.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session}` },
       });
-      if (!res.ok) { const err = await res.json(); toast('error', `삭제 실패: ${err.error}`); return; }
+      if (!res.ok) { const err = await res.json(); toast('error', t.toastDeleteFailed(err.error ?? '')); return; }
       onAttachmentsChange(attachments.filter(a => a.id !== attId));
-    } catch { toast('error', '삭제 중 오류가 발생했습니다.'); }
+    } catch { toast('error', t.toastDeleteError); }
     finally { setDeleting(null); }
   }
 
@@ -318,25 +343,25 @@ function FileUploadSection({ contract, session, onAttachmentsChange }: {
         onDrop={e => { e.preventDefault(); setIsDragging(false); handleFilesArray(Array.from(e.dataTransfer.files)); }}
         className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors mb-3 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
       >
-        <div className="text-2xl mb-1">{isDragging ? '📂' : '📎'}</div>
-        <p className="text-xs text-gray-500">파일을 드래그하거나 아래 버튼을 클릭하세요</p>
-        <p className="text-xs text-gray-400 mt-0.5">이미지, STL, STEP, PDF, DWG 지원</p>
+        <div className="text-2xl mb-1" aria-hidden="true">{isDragging ? '📂' : '📎'}</div>
+        <p className="text-xs text-gray-500">{isDragging ? t.dropzoneActive : t.dropzoneIdle}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{t.dropzoneHint}</p>
         <p className="text-xs text-sky-600 mt-1.5" style={{ lineHeight: 1.4 }}>
-          계약 완료 후 180일간 파일이 보관됩니다. 중요한 파일은 로컬에 백업해 주세요.
+          {t.dropzoneRetention}
         </p>
       </div>
 
       {/* Image preview */}
       {imagePreview && pendingFile && !uploading && (
         <div className="mb-3 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-          <Image src={imagePreview} alt="미리보기" width={64} height={64} className="rounded-lg border border-blue-200 object-cover" unoptimized />
+          <Image src={imagePreview} alt={t.previewLabel} width={64} height={64} className="rounded-lg border border-blue-200 object-cover" unoptimized />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-blue-800 truncate">{pendingFile.name}</p>
-            <p className="text-xs text-blue-500">업로드 전 미리보기</p>
+            <p className="text-xs text-blue-500">{t.previewBeforeUpload}</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => handleFilesArray([pendingFile])} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">업로드</button>
-            <button onClick={() => { setImagePreview(null); setPendingFile(null); }} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition">취소</button>
+            <button onClick={() => handleFilesArray([pendingFile])} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">{t.previewBtnUpload}</button>
+            <button onClick={() => { setImagePreview(null); setPendingFile(null); }} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition">{t.previewBtnCancel}</button>
           </div>
         </div>
       )}
@@ -344,7 +369,7 @@ function FileUploadSection({ contract, session, onAttachmentsChange }: {
       {/* Upload progress */}
       {uploading && uploadProgress && (
         <div className="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-          <p className="text-xs font-semibold text-gray-700 mb-1.5 truncate">업로드 중: {uploadProgress.name}</p>
+          <p className="text-xs font-semibold text-gray-700 mb-1.5 truncate">{t.uploadingPrefix} {uploadProgress.name}</p>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div className="bg-blue-600 h-2 rounded-full transition-all duration-150" style={{ width: `${uploadProgress.pct}%` }} />
           </div>
@@ -356,11 +381,11 @@ function FileUploadSection({ contract, session, onAttachmentsChange }: {
       <div className="flex gap-2 mb-4">
         <button onClick={() => cameraInputRef.current?.click()} disabled={uploading}
           className="flex-1 px-3 py-2 text-xs font-bold bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition disabled:opacity-50">
-          📷 사진 촬영
+          {t.btnCamera}
         </button>
         <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
           className="flex-1 px-3 py-2 text-xs font-bold bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition disabled:opacity-50">
-          📎 파일 선택
+          {t.btnPickFile}
         </button>
       </div>
 
@@ -387,20 +412,20 @@ function FileUploadSection({ contract, session, onAttachmentsChange }: {
       {otherGroups.size > 0 && (
         <div className="space-y-2">
           {Array.from(otherGroups.values()).map(group => (
-            <VersionedFileRow key={group[0].originalName} group={group} onView={(url, filename) => setViewingModel({ url, filename })} onDelete={handleDelete} deleting={deleting} />
+            <VersionedFileRow key={group[0].originalName} group={group} onView={(url, filename) => setViewingModel({ url, filename })} onDelete={handleDelete} deleting={deleting} t={t} />
           ))}
         </div>
       )}
 
       {attachments.length === 0 && !uploading && !imagePreview && (
-        <p className="text-xs text-gray-400 py-2">첨부된 파일이 없습니다.</p>
+        <p className="text-xs text-gray-400 py-2">{t.emptyAttachments}</p>
       )}
 
       {/* Lightbox */}
       {lightboxUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
-          <Image src={lightboxUrl} alt="원본 이미지" width={1600} height={1200} className="max-h-[90vh] w-auto max-w-full object-contain rounded-xl shadow-2xl" unoptimized onClick={e => e.stopPropagation()} />
-          <button className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300" onClick={() => setLightboxUrl(null)}>✕</button>
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)} role="dialog" aria-modal="true">
+          <Image src={lightboxUrl} alt={t.lightboxAlt} width={1600} height={1200} className="max-h-[90vh] w-auto max-w-full object-contain rounded-xl shadow-2xl" unoptimized onClick={e => e.stopPropagation()} />
+          <button className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300" onClick={() => setLightboxUrl(null)} aria-label="Close">✕</button>
         </div>
       )}
 
@@ -417,6 +442,8 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
   const { id } = use(params);
   const router = useRouter();
   const { toast } = useToast();
+  const lang = usePartnerLang();
+  const t = projectDetailDict(lang);
   const [partner, setPartner] = useState<Partner | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
@@ -440,17 +467,17 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
   const logout = () => {
     localStorage.removeItem('partnerSession');
     localStorage.removeItem('partnerInfo');
-    router.push('/partner/login');
+    router.push(`/partner/login?lang=${lang}`);
   };
 
   useEffect(() => {
     const session = getSession();
-    if (!session) { router.replace('/partner/login'); return; }
+    if (!session) { router.replace(`/partner/login?lang=${lang}`); return; }
 
     fetch(`/api/partner/auth?session=${session}`)
       .then(r => r.json())
       .then(d => {
-        if (!d.valid) { router.replace('/partner/login'); return; }
+        if (!d.valid) { router.replace(`/partner/login?lang=${lang}`); return; }
         setPartner(d.partner);
         return fetch('/api/partner/contracts', { headers: { Authorization: `Bearer ${session}` } });
       })
@@ -460,9 +487,9 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
         const found = (data.contracts || []).find((c: Contract) => c.id === id);
         setContract(found || null);
       })
-      .catch(() => router.replace('/partner/login'))
+      .catch(() => router.replace(`/partner/login?lang=${lang}`))
       .finally(() => setLoading(false));
-  }, [router, id]);
+  }, [router, id, lang]);
 
   // Fetch message count for badge
   useEffect(() => {
@@ -500,7 +527,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
       if (!res.ok) throw new Error();
       const data = await res.json();
       setContract(data.contract);
-    } catch { toast('error', '상태 변경에 실패했습니다.'); }
+    } catch { toast('error', t.toastStatusFailed); }
     finally { setUpdating(false); }
   }
 
@@ -518,7 +545,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
       const data = await res.json();
       setContract(data.contract);
       setNoteInput('');
-    } catch { toast('error', '메모 저장에 실패했습니다.'); }
+    } catch { toast('error', t.toastNoteSaveFailed); }
     finally { setSavingNote(false); }
   }
 
@@ -533,8 +560,8 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
       if (!res.ok) throw new Error();
       const data = await res.json();
       setContract(data.contract);
-      toast('success', '완료 확인 요청이 전송되었습니다.');
-    } catch { toast('error', '완료 요청에 실패했습니다.'); }
+      toast('success', t.toastCompletionSent);
+    } catch { toast('error', t.toastCompletionFailed); }
     finally { setRequestingCompletion(false); }
   }
 
@@ -551,7 +578,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
       const data = await res.json();
       setContract(data.contract);
       setProgressInput(null);
-    } catch { toast('error', '진행률 저장에 실패했습니다.'); }
+    } catch { toast('error', t.toastProgressFailed); }
     finally { setSavingProgress(false); }
   }
 
@@ -576,21 +603,21 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
     } catch {
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setMsgInput(text);
-      toast('error', '메시지 전송에 실패했습니다.');
+      toast('error', t.toastMsgSendFailed);
     }
     finally { setSendingMsg(false); }
   }
 
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400 text-sm">불러오는 중...</p></div>;
+  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400 text-sm">{t.loading}</p></div>;
   if (!contract) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center flex-col gap-3">
-      <p className="text-gray-500">계약을 찾을 수 없습니다.</p>
-      <Link href="/partner/projects" prefetch={false} className="text-sm font-bold text-blue-600 hover:underline">← 프로젝트 목록으로</Link>
+      <p className="text-gray-500">{t.notFound}</p>
+      <Link href={`/partner/projects?lang=${lang}`} prefetch={false} className="text-sm font-bold text-blue-600 hover:underline">{t.backToList}</Link>
     </div>
   );
 
-  const nextAction = NEXT_STATUS[contract.status];
-  const ddayInfo = contract.deadline ? getDdayInfo(contract.deadline) : null;
+  const nextAction = nextStatusLabel(contract.status, t);
+  const ddayInfo = contract.deadline ? getDdayInfo(contract.deadline, t) : null;
   const daysLeft: number | null = contract.deadline ? (() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const due = new Date(contract.deadline!); due.setHours(0, 0, 0, 0);
@@ -598,9 +625,9 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
   })() : null;
 
   const navItems: { id: ProjectTab; label: string; icon: string; badge?: number }[] = [
-    { id: 'overview', label: '프로젝트 개요', icon: '📋' },
-    { id: 'files', label: '파일 관리', icon: '📁' },
-    { id: 'messages', label: '메시지', icon: '💬', badge: msgCount > 0 ? msgCount : undefined },
+    { id: 'overview', label: t.navOverview, icon: '📋' },
+    { id: 'files', label: t.navFiles, icon: '📁' },
+    { id: 'messages', label: t.navMessages, icon: '💬', badge: msgCount > 0 ? msgCount : undefined },
   ];
 
   return (
@@ -608,26 +635,26 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
       {/* ⑧ Sidebar — hidden on mobile */}
       <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 min-h-screen">
         <div className="px-5 py-5 border-b border-gray-100">
-          <Link href="/" prefetch={false} className="text-lg font-black text-gray-900">NexyFab</Link>
-          <p className="text-xs text-gray-400 mt-0.5">파트너 포털</p>
+          <Link href={`/?lang=${lang}`} prefetch={false} className="text-lg font-black text-gray-900">NexyFab</Link>
+          <p className="text-xs text-gray-400 mt-0.5">{t.brandSubtitle}</p>
         </div>
         {partner && (
           <div className="px-5 py-4 border-b border-gray-100">
-            <div className="text-sm font-bold text-gray-800 truncate">{partner.company || '파트너'}</div>
+            <div className="text-sm font-bold text-gray-800 truncate">{partner.company || t.fallbackPartner}</div>
             <div className="text-xs text-gray-400 truncate">{partner.email}</div>
           </div>
         )}
 
         {/* Back */}
         <div className="px-3 pt-3 pb-1">
-          <Link href="/partner/projects" prefetch={false} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">
-            ← 프로젝트 목록
+          <Link href={`/partner/projects?lang=${lang}`} prefetch={false} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">
+            {t.backToList}
           </Link>
         </div>
 
         {/* Project nav */}
         <nav className="flex-1 px-3 py-1 space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pb-1">이 프로젝트</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pb-1">{t.thisProject}</p>
           {navItems.map(item => (
             <button key={item.id} onClick={() => setTab(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${tab === item.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
@@ -644,15 +671,15 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
 
         {/* Status */}
         <div className="px-5 py-4 border-t border-gray-100">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">현재 상태</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{t.statusHeader}</p>
           <span className={`text-xs font-bold px-2.5 py-1.5 rounded-full ${STATUS_COLORS[contract.status] || 'bg-gray-100 text-gray-500'}`}>
-            {STATUS_LABELS[contract.status] || contract.status}
+            {statusText(contract.status, t)}
           </span>
         </div>
 
         <div className="px-3 py-4 border-t border-gray-100">
           <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-            <span>🚪</span>로그아웃
+            <span aria-hidden="true">🚪</span>{t.navLogout}
           </button>
         </div>
       </aside>
@@ -676,15 +703,15 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
           {/* ── Overview Tab ─── */}
           {tab === 'overview' && (
             <div>
-              {/* ⑦ Deadline urgency banner */}
+              {/* Deadline urgency banner */}
               {daysLeft !== null && daysLeft <= 7 && (
                 <div className={`mb-4 px-4 py-3 border rounded-2xl flex items-center gap-3 ${daysLeft < 0 ? 'bg-red-100 border-red-300' : daysLeft <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-                  <span className="text-2xl shrink-0">{daysLeft < 0 ? '🚨' : daysLeft === 0 ? '⚠️' : '⏰'}</span>
+                  <span className="text-2xl shrink-0" aria-hidden="true">{daysLeft < 0 ? '🚨' : daysLeft === 0 ? '⚠️' : '⏰'}</span>
                   <div>
                     <p className={`text-sm font-bold ${daysLeft < 0 ? 'text-red-700' : daysLeft <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
-                      {daysLeft < 0 ? `납기 ${Math.abs(daysLeft)}일 초과!` : daysLeft === 0 ? '오늘이 납기일입니다!' : `납기까지 ${daysLeft}일 남았습니다`}
+                      {daysLeft < 0 ? t.bannerOverdue(Math.abs(daysLeft)) : daysLeft === 0 ? t.bannerToday : t.bannerDaysLeft(daysLeft)}
                     </p>
-                    <p className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-400' : 'text-amber-500'}`}>납기일: {contract.deadline}</p>
+                    <p className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-400' : 'text-amber-500'}`}>{t.bannerDeadlinePrefix} {contract.deadline}</p>
                   </div>
                 </div>
               )}
@@ -694,9 +721,9 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                   <h1 className="text-2xl font-black text-gray-900">{contract.projectName}</h1>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[contract.status] || 'bg-gray-100 text-gray-500'}`}>
-                      {STATUS_LABELS[contract.status] || contract.status}
+                      {statusText(contract.status, t)}
                     </span>
-                    {contract.completionRequested && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">완료 확인 요청 중</span>}
+                    {contract.completionRequested && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">{t.completionRequested}</span>}
                   </div>
                 </div>
                 <button onClick={async () => {
@@ -705,7 +732,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                   const win = window.open('', '_blank');
                   win?.document.write(html); win?.document.close(); win?.print();
                 }} className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition">
-                  🖨️ 계약서 출력
+                  {t.btnPrintContract}
                 </button>
               </div>
 
@@ -713,24 +740,24 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">계약 금액</p>
-                    <p className="text-lg font-black text-gray-900">{won(contract.contractAmount)}</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t.fieldContractAmount}</p>
+                    <p className="text-lg font-black text-gray-900">{fmtMoney(contract.contractAmount, lang)}</p>
                   </div>
                   {contract.contractDate && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">계약일</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t.fieldContractDate}</p>
                       <p className="text-sm font-semibold text-gray-700">{contract.contractDate}</p>
                     </div>
                   )}
                   {contract.factoryName && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">공장명</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t.fieldFactory}</p>
                       <p className="text-sm font-semibold text-gray-700">{contract.factoryName}</p>
                     </div>
                   )}
                   {contract.deadline && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">납기일</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t.fieldDeadline}</p>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-gray-700">{contract.deadline}</p>
                         {ddayInfo && <span className={`text-xs ${ddayInfo.color}`}>{ddayInfo.label}</span>}
@@ -743,7 +770,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
               {/* Customer contact */}
               {contract.customerContact && (contract.customerContact.name || contract.customerContact.email || contract.customerContact.phone) && (
                 <div className="bg-blue-50 rounded-2xl px-5 py-4 mb-4">
-                  <p className="text-xs font-semibold text-blue-600 mb-2">고객 담당자</p>
+                  <p className="text-xs font-semibold text-blue-600 mb-2">{t.customerContactTitle}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-blue-800">
                     {contract.customerContact.name && <span>👤 {contract.customerContact.name}</span>}
                     {contract.customerContact.email && <a href={`mailto:${contract.customerContact.email}`} className="hover:underline">✉️ {contract.customerContact.email}</a>}
@@ -758,13 +785,13 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                   {nextAction && (
                     <button onClick={() => updateStatus(nextAction.status)} disabled={updating}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition disabled:opacity-50">
-                      {updating ? '처리 중...' : `${nextAction.label} →`}
+                      {updating ? t.btnUpdating : t.btnNextStatus(nextAction.label)}
                     </button>
                   )}
                   {contract.status === 'delivered' && !contract.completionRequested && (
                     <button onClick={requestCompletion} disabled={requestingCompletion}
                       className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition disabled:opacity-50">
-                      {requestingCompletion ? '요청 중...' : '✅ 완료 확인 요청'}
+                      {requestingCompletion ? t.btnRequestingCompletion : t.btnRequestCompletion}
                     </button>
                   )}
                 </div>
@@ -773,7 +800,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
               {/* Progress percent slider */}
               {contract.status !== 'completed' && contract.status !== 'cancelled' && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">제조 진행률</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t.progressTitle}</p>
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-2xl font-black text-blue-600 w-12 text-center shrink-0">
                       {progressInput !== null ? progressInput : (contract.progressPercent ?? 0)}%
@@ -790,7 +817,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                   {progressInput !== null && progressInput !== (contract.progressPercent ?? 0) && (
                     <button onClick={saveProgress} disabled={savingProgress}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition disabled:opacity-50">
-                      {savingProgress ? '저장 중...' : '진행률 저장'}
+                      {savingProgress ? t.progressSaving : t.progressSaveBtn}
                     </button>
                   )}
                 </div>
@@ -799,14 +826,14 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
               {/* Progress notes input */}
               {contract.status !== 'completed' && contract.status !== 'cancelled' && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">진행 메모 추가</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t.notesAddTitle}</p>
                   <div className="flex gap-2">
                     <input value={noteInput} onChange={e => setNoteInput(e.target.value)}
-                      placeholder="진행 상황 메모 입력..."
+                      placeholder={t.notesPlaceholder}
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
                     <button onClick={saveNote} disabled={savingNote || !noteInput.trim()}
                       className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50">
-                      {savingNote ? '저장 중...' : '저장'}
+                      {savingNote ? t.notesSaving : t.notesSaveBtn}
                     </button>
                   </div>
                 </div>
@@ -815,7 +842,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
               {/* Progress timeline */}
               {contract.progressNotes && contract.progressNotes.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">진행 기록</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t.timelineTitle}</p>
                   <div className="space-y-3">
                     {[...contract.progressNotes].reverse().map((pn, idx) => (
                       <div key={idx} className="flex gap-3">
@@ -842,17 +869,18 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
           {tab === 'files' && (
             <div>
               <div className="mb-5">
-                <h1 className="text-2xl font-black text-gray-900">파일 관리</h1>
-                <p className="text-sm text-gray-500 mt-1">{contract.projectName} · {STATUS_LABELS[contract.status]}</p>
+                <h1 className="text-2xl font-black text-gray-900">{t.filesTitle}</h1>
+                <p className="text-sm text-gray-500 mt-1">{t.filesSubtitle(contract.projectName, statusText(contract.status, t))}</p>
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  📎 파일 / 결과물 {(contract.attachments || []).length > 0 && `(${(contract.attachments || []).length}개)`}
+                  {t.filesCountLabel((contract.attachments || []).length)}
                 </p>
                 <FileUploadSection
                   contract={contract}
                   session={getSession()}
                   onAttachmentsChange={(attachments) => setContract(prev => prev ? { ...prev, attachments } : prev)}
+                  t={t}
                 />
               </div>
             </div>
@@ -862,18 +890,18 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
           {tab === 'messages' && (
             <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
               <div className="mb-4 shrink-0">
-                <h1 className="text-2xl font-black text-gray-900">메시지</h1>
+                <h1 className="text-2xl font-black text-gray-900">{t.messagesTitle}</h1>
                 <p className="text-sm text-gray-500 mt-1">{contract.projectName}</p>
               </div>
-              <div ref={msgRef} className="flex-1 overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-3 space-y-2">
+              <div ref={msgRef} className="flex-1 overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-3 space-y-2" role="log" aria-live="polite">
                 {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">메시지가 없습니다.</div>
+                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">{t.messagesEmpty}</div>
                 ) : messages.map(msg => {
                   const isPartner = msg.senderType === 'partner';
                   const isCustomer = msg.senderType === 'customer';
                   const isFile = msg.text?.startsWith('📎 파일:');
                   const fileUrl = isFile ? msg.text.replace('📎 파일:', '').trim() : null;
-                  const fileName = fileUrl ? decodeURIComponent(fileUrl.split('/').pop() || '파일') : null;
+                  const fileName = fileUrl ? decodeURIComponent(fileUrl.split('/').pop() || t.messageFilePrefix) : null;
                   return (
                     <div key={msg.id} className={`flex ${isPartner ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs ${isPartner ? 'bg-blue-600 text-white' : isCustomer ? 'bg-green-100 text-green-800' : 'bg-white border border-gray-200 text-gray-700'}`}>
@@ -887,7 +915,7 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                           <p className="leading-relaxed break-words">{msg.text}</p>
                         )}
                         <div className={`text-[10px] mt-1 ${isPartner ? 'text-blue-200' : 'text-gray-400'}`}>
-                          {new Date(msg.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          {new Date(msg.createdAt).toLocaleString(LOCALE_FOR_LANG[lang] ?? 'en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
                     </div>
@@ -904,8 +932,8 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                       const fd = new FormData(); fd.append('file', file);
                       const res = await fetch('/api/quick-quote/upload', { method: 'POST', body: fd });
                       const data = await res.json();
-                      if (res.status === 413) { toast('error', data.error || '저장 공간이 부족합니다.'); return; }
-                      if (!res.ok) { toast('error', data.error || '파일 업로드에 실패했습니다.'); return; }
+                      if (res.status === 413) { toast('error', data.error || t.toastStorageFull); return; }
+                      if (!res.ok) { toast('error', data.error || t.toastFileUploadFailed); return; }
                       if (data.url) {
                         const msgRes = await fetch('/api/messages', {
                           method: 'POST',
@@ -920,17 +948,18 @@ export default function PartnerProjectDetailPage({ params }: { params: Promise<{
                       }
                     } catch { /* silent */ } finally { setAttachUploading(false); if (msgFileInputRef.current) msgFileInputRef.current.value = ''; }
                   }} />
-                <button onClick={() => msgFileInputRef.current?.click()} disabled={attachUploading} title="파일 첨부"
+                <button onClick={() => msgFileInputRef.current?.click()} disabled={attachUploading} title={t.attachLabel} aria-label={t.attachLabel}
                   className="p-2.5 rounded-xl bg-gray-100 border border-gray-200 text-lg hover:bg-gray-200 transition disabled:opacity-50 shrink-0">
                   {attachUploading ? '⏳' : '📎'}
                 </button>
                 <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  placeholder="메시지 입력... (Enter로 전송)"
+                  placeholder={t.messageInputPlaceholder}
+                  aria-label={t.messagesTitle}
                   className="flex-1 px-4 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
                 <button onClick={sendMessage} disabled={sendingMsg || !msgInput.trim()}
                   className="px-5 py-2.5 text-sm font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition">
-                  {sendingMsg ? '...' : '전송'}
+                  {sendingMsg ? t.sendingShort : t.btnSend}
                 </button>
               </div>
             </div>
