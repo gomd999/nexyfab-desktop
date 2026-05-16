@@ -29,6 +29,12 @@ interface NavItem {
   href: string;
   badge?: 'NEW' | 'PRO' | 'TEAM';
   comingSoon?: boolean;
+  /**
+   * If true, the href is used verbatim (no `/${lang}` prefix). Use for
+   * cross-surface links like the partner portal that lives outside the
+   * customer i18n tree.
+   */
+  external?: boolean;
 }
 
 interface NavSection {
@@ -57,7 +63,7 @@ const SECTIONS: NavSection[] = [
       { icon: '💬', labelKo: '견적 요청',     labelEn: 'RFQ',             href: '/nexyfab/rfq' },
       { icon: '📦', labelKo: '주문 추적',     labelEn: 'Orders',          href: '/nexyfab/orders' },
       { icon: '🏭', labelKo: '제조사 매칭',   labelEn: 'Marketplace',     href: '/nexyfab/marketplace' },
-      { icon: '⚙️', labelKo: '제조 대시보드', labelEn: 'Mfr Dashboard',   href: '/nexyfab/manufacturer' },
+      { icon: '⚙️', labelKo: '내 제조 의뢰 처리', labelEn: 'My production tasks', href: '/nexyfab/manufacturer' },
       { icon: '💾', labelKo: '파일 관리',     labelEn: 'Files',           href: '/nexyfab/files' },
       { icon: '👥', labelKo: '팀 협업',       labelEn: 'Team',            href: '/nexyfab/team', badge: 'TEAM' },
     ],
@@ -69,6 +75,7 @@ const SECTIONS: NavSection[] = [
       { icon: '💳', labelKo: '결제 & 구독', labelEn: 'Billing',  href: '/nexyfab/billing' },
       { icon: '🔧', labelKo: '설정',         labelEn: 'Settings', href: '/nexyfab/settings' },
       { icon: '📖', labelKo: '사용 가이드', labelEn: 'Guide',    href: '/help' },
+      { icon: '🏗️', labelKo: '파트너 포털 (입점 제조사)', labelEn: 'Partner portal (external mfrs)', href: '/partner/hub', external: true },
     ],
   },
 ];
@@ -169,11 +176,17 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                 {isKo ? sec.titleKo : sec.titleEn}
               </div>
               {sec.items.map((item) => {
-                const active = isActive(item.href);
+                const active = item.external ? false : isActive(item.href);
+                // External (cross-surface) links — append ?lang to preserve
+                // the customer's language preference into surfaces that don't
+                // share our [lang] segment (e.g. partner portal).
+                const linkHref = item.external
+                  ? `${item.href}${item.href.includes('?') ? '&' : '?'}lang=${lang}`
+                  : `/${lang}${item.href}`;
                 return (
                   <Link
                     key={item.href}
-                    href={`/${lang}${item.href}`}
+                    href={linkHref}
                     aria-current={active ? 'page' : undefined}
                     aria-label={isKo ? item.labelKo : item.labelEn}
                     style={{

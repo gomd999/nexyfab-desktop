@@ -3,26 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-
-const NAV_ITEMS = [
-  { href: '/partner/dashboard', label: '대시보드', icon: '📊' },
-  { href: '/partner/projects',  label: '프로젝트',  icon: '📦' },
-  { href: '/partner/quotes',    label: '견적',      icon: '📝' },
-  { href: '/partner/orders',    label: '주문',      icon: '🏗️' },
-  { href: '/partner/rma',       label: 'RMA·불량',  icon: '⚠️' },
-  { href: '/partner/settlements', label: '정산',    icon: '💰' },
-  { href: '/partner/portfolio', label: '포트폴리오', icon: '🏆' },
-  { href: '/partner/profile',   label: '프로필',    icon: '🏭' },
-];
-
-// Mobile nav shows a subset (no portfolio to keep it compact)
-const MOBILE_NAV_ITEMS = [
-  { href: '/partner/dashboard', label: '대시보드', icon: '📊' },
-  { href: '/partner/quotes',    label: '견적',      icon: '📝' },
-  { href: '/partner/orders',    label: '주문',      icon: '🏗️' },
-  { href: '/partner/rma',       label: 'RMA',       icon: '⚠️' },
-  { href: '/partner/profile',   label: '프로필',    icon: '🏭' },
-];
+import { usePartnerLang } from './_lib/partnerLang';
+import { partnerDict } from './_lib/partnerDict';
 
 interface PartnerInfo {
   email: string;
@@ -33,6 +15,28 @@ export default function PartnerNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [info, setInfo] = useState<PartnerInfo>({ email: '', company: '' });
+  const lang = usePartnerLang();
+  const t = partnerDict(lang);
+
+  const NAV_ITEMS = [
+    { href: '/partner/hub',         label: t.navHub,         icon: '🏠' },
+    { href: '/partner/dashboard',   label: t.navDashboard,   icon: '📊' },
+    { href: '/partner/projects',    label: t.navProjects,    icon: '📦' },
+    { href: '/partner/quotes',      label: t.navQuotes,      icon: '📝' },
+    { href: '/partner/orders',      label: t.navOrders,      icon: '🏗️' },
+    { href: '/partner/rma',         label: t.navRma,         icon: '⚠️' },
+    { href: '/partner/settlements', label: t.navSettlements, icon: '💰' },
+    { href: '/partner/portfolio',   label: t.navPortfolio,   icon: '🏆' },
+    { href: '/partner/profile',     label: t.navProfile,     icon: '🏭' },
+  ];
+
+  const MOBILE_NAV_ITEMS = [
+    { href: '/partner/hub',       label: t.navHub,       icon: '🏠' },
+    { href: '/partner/quotes',    label: t.navQuotes,    icon: '📝' },
+    { href: '/partner/orders',    label: t.navOrders,    icon: '🏗️' },
+    { href: '/partner/rma',       label: t.navRma,       icon: '⚠️' },
+    { href: '/partner/profile',   label: t.navProfile,   icon: '🏭' },
+  ];
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -54,16 +58,20 @@ export default function PartnerNav() {
   const logout = useCallback(() => {
     localStorage.removeItem('partnerSession');
     localStorage.removeItem('partnerInfo');
-    router.push('/partner/login');
-  }, [router]);
+    router.push(`/partner/login?lang=${lang}`);
+  }, [router, lang]);
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 min-h-screen">
+      <aside
+        className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 min-h-screen"
+        role="navigation"
+        aria-label={t.brandSubtitle}
+      >
         <div className="px-5 py-5 border-b border-gray-100">
-          <Link href="/" prefetch={false} className="text-lg font-black text-gray-900">NexyFab</Link>
-          <p className="text-xs text-gray-400 mt-0.5">파트너 포털</p>
+          <Link href={`/?lang=${lang}`} prefetch={false} className="text-lg font-black text-gray-900">NexyFab</Link>
+          <p className="text-xs text-gray-400 mt-0.5">{t.brandSubtitle}</p>
         </div>
         {(info.company || info.email) && (
           <div className="px-5 py-4 border-b border-gray-100">
@@ -83,13 +91,14 @@ export default function PartnerNav() {
                 key={item.href}
                 href={item.href}
                 prefetch={false}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-blue-50 text-blue-700 font-semibold'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <span>{item.icon}</span>
+                <span aria-hidden="true">{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -100,13 +109,16 @@ export default function PartnerNav() {
             onClick={logout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
           >
-            <span>🚪</span>로그아웃
+            <span aria-hidden="true">🚪</span>{t.navLogout}
           </button>
         </div>
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 flex items-center justify-around py-2">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 flex items-center justify-around py-2"
+        aria-label={t.brandSubtitle}
+      >
         {MOBILE_NAV_ITEMS.map(item => {
           const isActive = pathname === item.href;
           return (
@@ -114,11 +126,12 @@ export default function PartnerNav() {
               key={item.href}
               href={item.href}
               prefetch={false}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl ${
                 isActive ? 'text-blue-600' : 'text-gray-500'
               }`}
             >
-              <span className="text-xl leading-tight">{item.icon}</span>
+              <span aria-hidden="true" className="text-xl leading-tight">{item.icon}</span>
               <span className="text-[10px] font-semibold">{item.label}</span>
             </Link>
           );

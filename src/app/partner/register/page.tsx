@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePartnerLang } from '../_lib/partnerLang';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ export default function PartnerRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const lang = usePartnerLang();
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -276,7 +278,7 @@ export default function PartnerRegisterPage() {
               담당자 이메일({form.contactEmail})로 결과를 보내드립니다.
             </p>
             <Link
-              href="/partner/login"
+              href={`/partner/login?lang=${lang}`}
               className="inline-block w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-sm"
             >
               파트너 로그인으로 돌아가기
@@ -504,7 +506,7 @@ export default function PartnerRegisterPage() {
 
         <p className="text-center mt-4 text-xs text-gray-400">
           이미 계정이 있으신가요?{' '}
-          <Link href="/partner/login" className="text-blue-600 font-semibold hover:underline">파트너 로그인</Link>
+          <Link href={`/partner/login?lang=${lang}`} className="text-blue-600 font-semibold hover:underline">파트너 로그인</Link>
         </p>
       </div>
     </div>

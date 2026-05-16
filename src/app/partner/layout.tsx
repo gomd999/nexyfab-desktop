@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Noto_Sans_KR } from 'next/font/google';
 import ToastProvider from '@/components/ToastProvider';
 import PartnerNav from './PartnerNav';
@@ -21,9 +22,14 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       >
         <ToastProvider>
           <div style={{ display: 'flex', minHeight: '100vh' }}>
-            <PartnerNav />
+            {/* Suspense boundary required because PartnerNav + child pages
+                call useSearchParams() via usePartnerLang(); without this,
+                static prerender of /partner/* pages bails out. */}
+            <Suspense fallback={null}>
+              <PartnerNav />
+            </Suspense>
             <div style={{ flex: 1, minWidth: 0 }}>
-              {children}
+              <Suspense fallback={null}>{children}</Suspense>
             </div>
           </div>
         </ToastProvider>

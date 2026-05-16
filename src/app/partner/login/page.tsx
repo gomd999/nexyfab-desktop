@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePartnerLang } from '../_lib/partnerLang';
 
 export default function PartnerLoginPage() {
   const router = useRouter();
@@ -10,17 +11,22 @@ export default function PartnerLoginPage() {
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const lang = usePartnerLang();
+  // NexySys unified SSO entry — opt-in via env until auth-server Phase 2
+  // ships. When unset, the SSO card stays hidden so we never advertise a
+  // broken button.
+  const nexysysSsoUrl = process.env.NEXT_PUBLIC_NEXYSYS_OAUTH_URL;
 
   useEffect(() => {
-    // 이미 세션이 있으면 대시보드로
+    // 이미 세션이 있으면 hub로
     const session = localStorage.getItem('partnerSession');
     if (!session) return;
-    if (session === 'demo') { router.replace('/partner/dashboard'); return; }
+    if (session === 'demo') { router.replace(`/partner/hub?lang=${lang}`); return; }
     fetch(`/api/partner/auth?session=${session}`)
       .then(r => r.json())
-      .then(d => { if (d.valid) router.replace('/partner/dashboard'); })
+      .then(d => { if (d.valid) router.replace(`/partner/hub?lang=${lang}`); })
       .catch(() => {});
-  }, [router]);
+  }, [router, lang]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +49,7 @@ export default function PartnerLoginPage() {
 
       localStorage.setItem('partnerSession', data.sessionToken);
       localStorage.setItem('partnerInfo', JSON.stringify(data.partner));
-      router.push('/partner/dashboard');
+      router.push(`/partner/hub?lang=${lang}`);
     } catch {
       setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
@@ -118,9 +124,27 @@ export default function PartnerLoginPage() {
 
           <p className="mt-3 text-center text-xs text-gray-400">
             아직 파트너가 아니신가요?{' '}
-            <Link href="/partner/register" prefetch={false} className="text-blue-600 font-semibold hover:underline">파트너 신청하기 →</Link>
+            <Link href={`/partner/register?lang=${lang}`} prefetch={false} className="text-blue-600 font-semibold hover:underline">파트너 신청하기 →</Link>
           </p>
         </div>
+
+        {/* NexySys 통합 계정으로 로그인 (auth-server Phase 2 wire-up).
+            Hidden until NEXT_PUBLIC_NEXYSYS_OAUTH_URL is configured so
+            we don't ship a broken button. */}
+        {nexysysSsoUrl && (
+          <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide text-center mb-3">NexySys 통합 계정</p>
+            <a
+              href={`${nexysysSsoUrl}?return_to=${encodeURIComponent(`/partner/hub?lang=${lang}`)}`}
+              className="w-full inline-block text-center py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition text-sm"
+            >
+              NexySys 계정으로 로그인 (베타)
+            </a>
+            <p className="mt-2 text-center text-[11px] text-gray-400">
+              고객사 SaaS와 동일 계정으로 로그인합니다. 별도 액세스 코드가 필요 없습니다.
+            </p>
+          </div>
+        )}
 
         {/* 데모 체험 */}
         <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -134,7 +158,7 @@ export default function PartnerLoginPage() {
                 factoryId: 'demo-factory-001',
                 factoryName: 'Demo 제조사',
               }));
-              router.push('/partner/dashboard');
+              router.push(`/partner/hub?lang=${lang}`);
             }}
             className="w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition text-sm border border-blue-200"
           >

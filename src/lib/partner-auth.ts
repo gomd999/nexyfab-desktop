@@ -4,6 +4,15 @@
  * Dual-mode: JWT (new) + legacy opaque session token (backward compat).
  * Partners are nf_users with nf_user_roles (nexyfab, partner).
  * Sessions are stored in nf_partner_sessions (DB).
+ *
+ * NexySys unified-OAuth migration path
+ *   The JWT branch below already accepts the unified Bearer token issued
+ *   by `auth-server` (see memory: project_auth_server) as long as the
+ *   token carries the `nexyfab:partner` role claim. The legacy DB
+ *   session branch is preserved so existing partner logins keep working
+ *   while we cut over. Once auth-server Phase 2 is live and all active
+ *   partners have re-authenticated through SSO, the legacy branch (and
+ *   `nf_partner_sessions`) can be deprecated.
  */
 import { createHash } from 'crypto';
 import { getAuthUser, type AuthUser as _AuthUser } from './auth-middleware';
