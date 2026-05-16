@@ -4,6 +4,8 @@ import {
   PROCESS_LABELS, PROCESS_CODES,
   type ProcessCapability, type ProcessCapabilitySpec, type ProcessCode,
 } from '@/lib/partner-pricebook';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { profileEditorsDict } from '../_lib/dicts/profileEditors';
 
 interface Props {
   value: ProcessCapability;
@@ -24,6 +26,8 @@ const DEFAULT_SPEC: ProcessCapabilitySpec = {
 };
 
 export default function CapabilityEditor({ value, onChange, onSave, saving }: Props) {
+  const lang = usePartnerLang();
+  const t = profileEditorsDict(lang);
   const v = value || {};
 
   function updateSpec(code: ProcessCode, patch: Partial<ProcessCapabilitySpec>) {
@@ -45,15 +49,15 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <div>
-          <h2 className="font-bold text-gray-900">공정 능력표</h2>
-          <p className="text-xs text-gray-400 mt-0.5">설비/툴링이 처리 가능한 한계를 등록합니다.</p>
+          <h2 className="font-bold text-gray-900">{t.capTitle}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{t.capSubtitle}</p>
         </div>
         <button
           onClick={onSave}
           disabled={saving}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50"
         >
-          {saving ? '저장 중...' : '저장'}
+          {saving ? t.savingBtn : t.saveBtn}
         </button>
       </div>
 
@@ -77,9 +81,9 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
 
               {enabled && spec && (
                 <div className="px-4 pb-4 space-y-3 border-t border-blue-100">
-                  {/* 최대 가공 크기 */}
+                  {/* Work envelope */}
                   <div className="pt-3">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">최대 가공 크기 (mm)</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capMaxBboxTitle}</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['x', 'y', 'z'] as const).map(axis => (
                         <div key={axis} className="flex items-center gap-1.5">
@@ -97,10 +101,10 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                     </div>
                   </div>
 
-                  {/* 미세 한계 */}
+                  {/* Fine limits */}
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">최소 두께 (mm)</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capMinWall}</label>
                       <input
                         type="number"
                         step="0.1"
@@ -110,7 +114,7 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">최소 홀 (mm)</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capMinHole}</label>
                       <input
                         type="number"
                         step="0.1"
@@ -120,7 +124,7 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">최소 공차 (±mm)</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capMinTolerance}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -131,9 +135,9 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                     </div>
                   </div>
 
-                  {/* 표면조도 옵션 */}
+                  {/* Surface finish */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">표면조도 옵션 (Ra)</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capSurfaceFinish}</label>
                     <div className="flex flex-wrap gap-1.5">
                       {[0.4, 0.8, 1.6, 3.2, 6.3, 12.5].map(ra => {
                         const active = (spec.surfaceFinishRa ?? []).includes(ra);
@@ -157,9 +161,9 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                     </div>
                   </div>
 
-                  {/* 리드타임 */}
+                  {/* Lead time */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">리드타임 (영업일)</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capLeadTime}</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -174,18 +178,18 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                         onChange={e => updateSpec(code, { leadTimeDaysMax: Math.max(1, Number(e.target.value) || 1) })}
                         className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                       />
-                      <span className="text-xs text-gray-400">일</span>
+                      <span className="text-xs text-gray-400">{t.capLeadTimeUnit}</span>
                     </div>
                   </div>
 
-                  {/* 메모 */}
+                  {/* Notes */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">메모</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t.capNotes}</label>
                     <input
                       type="text"
                       value={spec.notes ?? ''}
                       onChange={e => updateSpec(code, { notes: e.target.value })}
-                      placeholder="특수 옵션, 제약 등"
+                      placeholder={t.capNotesPh}
                       className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                     />
                   </div>
