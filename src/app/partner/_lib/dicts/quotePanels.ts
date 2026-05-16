@@ -216,6 +216,69 @@ export interface QuotePanelsDict {
   qaInsightSuggestion: string;
   qaConfidence: (pct: number) => string;
   qaApplyBtn: string;
+  qaHeader: string;
+  qaHeaderSubtitle: string;
+  qaAccuracyLabel: string;
+  qaBiasOver: (pct: number) => string;
+  qaBiasUnder: (pct: number) => string;
+  qaBiasExact: string;
+  qaSampleSuffix: (n: number) => string;
+  qaAccuracyShort: (n: number) => string;
+  qaDbLoading: string;
+  qaDbLoaded: (n: number) => string;
+  qaInputTitle: string;
+  qaAddRow: string;
+  qaColProcess: string;
+  qaColDraft: string;
+  qaColAccepted: string;
+  qaColActual: string;
+  qaPhProcess: string;
+  qaPhRequired: string;
+  qaPhOptional: string;
+  qaInputHint: string;
+  qaSampleCount: string;
+  qaProcessBiasTitle: string;
+  qaSuggestionsTitle: string;
+  qaRunBtn: string;
+  qaRunning: string;
+  qaRerunBtn: string;
+  qaClose: string;
+  qaErrorPro: string;
+  qaErrorGeneric: string;
+  qaErrorMinEntries: string;
+  qaUnitDash: string;
+
+  // CapacityMatchPanel
+  cmHeader: string;
+  cmHeaderSubtitle: string;
+  cmLoading: string;
+  cmEmpty: string;
+  cmErrorPro: string;
+  cmErrorGeneric: string;
+  cmRunBtn: string;
+  cmRunning: string;
+  cmRerunBtn: string;
+  cmClose: string;
+  cmFieldProcesses: string;
+  cmCustomProcessPh: string;
+  cmFieldIdleDays: string;
+  cmFieldLeadDays: string;
+  cmFieldHourlyRate: string;
+  cmFieldHourlyRatePh: string;
+  cmFieldCerts: string;
+  cmEmptyRfqs: string;
+  cmEmptyMatches: string;
+  cmResultsHeader: (n: number) => string;
+  cmBtnNoRfq: string;
+  cmBtnNoRfqTooltip: string;
+  cmRematchBtn: string;
+  cmReasonsTitle: string;
+  cmPitchTitle: string;
+  cmCopy: string;
+  cmCopyBody: string;
+  cmCopied: string;
+  cmCopiedBody: string;
+  cmErrNoProcesses: string;
 }
 
 const KO: QuotePanelsDict = {
@@ -422,6 +485,68 @@ const KO: QuotePanelsDict = {
   qaInsightSuggestion: '추천 가격',
   qaConfidence: (pct) => `신뢰도 ${pct}%`,
   qaApplyBtn: '응답폼에 적용',
+  qaHeader: '견적 정확도 학습기',
+  qaHeaderSubtitle: '과거 견적 이력을 분석해 공정별 가격 편향과 보정 제안을 제공합니다.',
+  qaAccuracyLabel: '정확도',
+  qaBiasOver: (pct) => `+${pct}% 과대`,
+  qaBiasUnder: (pct) => `${pct}% 과소`,
+  qaBiasExact: '±0% 정확',
+  qaSampleSuffix: (n) => `${n}건`,
+  qaAccuracyShort: (n) => `정확도 ${n}`,
+  qaDbLoading: '수락된 견적을 DB에서 불러오는 중…',
+  qaDbLoaded: (n) => `✅ 수락된 견적 ${n}건을 DB에서 불러왔습니다. 실제 원가를 추가하면 더 정확합니다.`,
+  qaInputTitle: '견적 이력 입력',
+  qaAddRow: '+ 행 추가',
+  qaColProcess: '공정',
+  qaColDraft: '초안 금액 (원)',
+  qaColAccepted: '수락 금액 (원)',
+  qaColActual: '실제 원가 (원)',
+  qaPhProcess: '예: CNC',
+  qaPhRequired: '필수 *',
+  qaPhOptional: '선택',
+  qaInputHint: '💡 수락 금액 또는 실제 원가가 있어야 정확도를 계산합니다. 없는 항목은 분석에서 제외됩니다.',
+  qaSampleCount: '분석 건수',
+  qaProcessBiasTitle: '공정별 편향',
+  qaSuggestionsTitle: '보정 제안',
+  qaRunBtn: '📊 정확도 분석 실행',
+  qaRunning: '분석 중...',
+  qaRerunBtn: '🔄 다시 분석',
+  qaClose: '닫기',
+  qaErrorPro: 'Pro 플랜이 필요합니다.',
+  qaErrorGeneric: '오류가 발생했습니다.',
+  qaErrorMinEntries: '초안 금액이 입력된 항목이 1건 이상 필요합니다.',
+  qaUnitDash: '—',
+
+  cmHeader: '캐파 매칭',
+  cmHeaderSubtitle: '유휴 캐파를 오픈 RFQ와 매칭하고 자동 제안 이메일을 생성합니다.',
+  cmLoading: '분석 중...',
+  cmEmpty: '매칭할 RFQ가 없습니다.',
+  cmErrorPro: 'Pro 플랜이 필요합니다.',
+  cmErrorGeneric: '오류가 발생했습니다.',
+  cmRunBtn: '🔗 캐파 매칭 실행',
+  cmRunning: '분석 중...',
+  cmRerunBtn: '🔄 다시 매칭',
+  cmClose: '닫기',
+  cmFieldProcesses: '보유 공정 (복수 선택)',
+  cmCustomProcessPh: '기타 공정 직접 입력...',
+  cmFieldIdleDays: '유휴 기간 (일)',
+  cmFieldLeadDays: '납품 가능 기간 (일)',
+  cmFieldHourlyRate: '시간당 단가 (원, 선택)',
+  cmFieldHourlyRatePh: '예: 80000',
+  cmFieldCerts: '보유 인증 (쉼표 구분)',
+  cmEmptyRfqs: '현재 배정된 RFQ가 없습니다. RFQ가 배정되면 캐파 매칭을 활용하세요.',
+  cmEmptyMatches: '매칭 결과가 없습니다.',
+  cmResultsHeader: (n) => `매칭된 RFQ (${n}건) — 클릭하여 제안 이메일 확인`,
+  cmBtnNoRfq: '🔗 RFQ 없음',
+  cmBtnNoRfqTooltip: '배정된 RFQ가 없어 매칭을 실행할 수 없습니다.',
+  cmRematchBtn: '🔄 다시 매칭',
+  cmReasonsTitle: '매칭 이유',
+  cmPitchTitle: '자동 제안 이메일',
+  cmCopy: '복사',
+  cmCopyBody: '본문 복사',
+  cmCopied: '✓',
+  cmCopiedBody: '✓ 복사됨',
+  cmErrNoProcesses: '하나 이상의 공정을 선택해주세요.',
 };
 
 const EN: QuotePanelsDict = {
@@ -628,6 +753,68 @@ const EN: QuotePanelsDict = {
   qaInsightSuggestion: 'Suggested price',
   qaConfidence: (pct) => `${pct}% confidence`,
   qaApplyBtn: 'Apply to response form',
+  qaHeader: 'Quote accuracy trainer',
+  qaHeaderSubtitle: 'Analyse past quote history to surface per-process price bias and correction suggestions.',
+  qaAccuracyLabel: 'Accuracy',
+  qaBiasOver: (pct) => `+${pct}% over`,
+  qaBiasUnder: (pct) => `${pct}% under`,
+  qaBiasExact: '±0% on target',
+  qaSampleSuffix: (n) => `${n}`,
+  qaAccuracyShort: (n) => `accuracy ${n}`,
+  qaDbLoading: 'Loading accepted quotes from the database…',
+  qaDbLoaded: (n) => `✅ Loaded ${n} accepted quote${n === 1 ? '' : 's'}. Adding the actual cost improves accuracy.`,
+  qaInputTitle: 'Quote history input',
+  qaAddRow: '+ Add row',
+  qaColProcess: 'Process',
+  qaColDraft: 'Draft amount (KRW)',
+  qaColAccepted: 'Accepted amount (KRW)',
+  qaColActual: 'Actual cost (KRW)',
+  qaPhProcess: 'e.g. CNC',
+  qaPhRequired: 'Required *',
+  qaPhOptional: 'Optional',
+  qaInputHint: '💡 Either accepted amount or actual cost is required for accuracy. Rows without it are skipped.',
+  qaSampleCount: 'Samples',
+  qaProcessBiasTitle: 'Per-process bias',
+  qaSuggestionsTitle: 'Suggestions',
+  qaRunBtn: '📊 Run accuracy analysis',
+  qaRunning: 'Analysing…',
+  qaRerunBtn: '🔄 Re-run',
+  qaClose: 'Close',
+  qaErrorPro: 'Pro plan required.',
+  qaErrorGeneric: 'Something went wrong.',
+  qaErrorMinEntries: 'Need at least one row with a draft amount.',
+  qaUnitDash: '—',
+
+  cmHeader: 'Capacity match',
+  cmHeaderSubtitle: 'Match your idle capacity to open RFQs and generate auto-pitch emails.',
+  cmLoading: 'Analysing…',
+  cmEmpty: 'No RFQs to match.',
+  cmErrorPro: 'Pro plan required.',
+  cmErrorGeneric: 'Something went wrong.',
+  cmRunBtn: '🔗 Run capacity match',
+  cmRunning: 'Analysing…',
+  cmRerunBtn: '🔄 Re-match',
+  cmClose: 'Close',
+  cmFieldProcesses: 'Capabilities (multi-select)',
+  cmCustomProcessPh: 'Type a custom process…',
+  cmFieldIdleDays: 'Idle window (days)',
+  cmFieldLeadDays: 'Lead capacity (days)',
+  cmFieldHourlyRate: 'Hourly rate (KRW, optional)',
+  cmFieldHourlyRatePh: 'e.g. 80000',
+  cmFieldCerts: 'Certifications (comma-separated)',
+  cmEmptyRfqs: 'No RFQs currently assigned. Use this once you have open RFQs to fill.',
+  cmEmptyMatches: 'No matches found.',
+  cmResultsHeader: (n) => `${n} matched RFQ${n === 1 ? '' : 's'} — click to view the pitch email`,
+  cmBtnNoRfq: '🔗 No RFQs',
+  cmBtnNoRfqTooltip: 'No assigned RFQs — capacity match cannot run.',
+  cmRematchBtn: '🔄 Re-match',
+  cmReasonsTitle: 'Match reasons',
+  cmPitchTitle: 'Auto-pitch email',
+  cmCopy: 'Copy',
+  cmCopyBody: 'Copy body',
+  cmCopied: '✓',
+  cmCopiedBody: '✓ Copied',
+  cmErrNoProcesses: 'Pick at least one process.',
 };
 
 const JA: QuotePanelsDict = {

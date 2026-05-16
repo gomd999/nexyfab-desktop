@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { matchCapacity, type PartnerProfile, type OpenRfqInput, type CapacityMatchResult, type MatchedRfq } from './capacityMatch';
+import { usePartnerLang, isKoreanPartner } from '../_lib/partnerLang';
+import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 const C = {
   bg: '#0d1117', surface: '#161b22', card: '#21262d', border: '#30363d',
@@ -30,9 +32,14 @@ interface Props {
 
 const PROCESS_OPTIONS = ['CNC Milling', 'CNC Turning', 'Injection Molding', '3D Printing', 'Sheet Metal', 'Die Casting', 'Laser Cutting', 'Welding', 'Forging', 'EDM'];
 
-function won(n: number | null) {
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+function fmtMoney(n: number | null, lang: string) {
   if (n == null) return '—';
-  return n.toLocaleString('ko-KR') + '원';
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n);
+  } catch { return `₩${n.toLocaleString()}`; }
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -47,7 +54,7 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
+function PitchCard({ match, isKo, t, lang }: { match: MatchedRfq; isKo: boolean; t: QuotePanelsDict; lang: string }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<'subject' | 'body' | null>(null);
   const subject = isKo ? match.pitchSubjectKo : match.pitchSubject;
@@ -80,7 +87,7 @@ function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
         </span>
         {match.estimatedMarginKrw != null && (
           <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>
-            +{won(match.estimatedMarginKrw)}
+            +{fmtMoney(match.estimatedMarginKrw, lang)}
           </span>
         )}
         <span style={{ color: C.textMuted, fontSize: 12 }}>{open ? '▲' : '▼'}</span>
@@ -91,7 +98,7 @@ function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
           {/* Match reasons */}
           <div style={{ marginTop: 10, marginBottom: 10 }}>
             <p style={{ margin: '0 0 5px', fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>
-              {isKo ? '매칭 이유' : 'Match Reasons'}
+              {t.cmReasonsTitle}
             </p>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {(isKo ? match.matchReasonsKo : match.matchReasons).map((r, i) => (
@@ -104,7 +111,7 @@ function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
 
           {/* Pitch email */}
           <p style={{ margin: '0 0 5px', fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>
-            {isKo ? '자동 제안 이메일' : 'Auto-Pitch Email'}
+            {t.cmPitchTitle}
           </p>
           <div style={{ background: C.bg, borderRadius: 7, padding: '8px 10px', border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -113,7 +120,7 @@ function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
                 onClick={() => copy('subject', subject)}
                 style={{ fontSize: 9, padding: '2px 7px', borderRadius: 5, border: `1px solid ${C.border}`, background: 'transparent', color: copied === 'subject' ? C.green : C.textMuted, cursor: 'pointer' }}
               >
-                {copied === 'subject' ? '✓' : isKo ? '복사' : 'Copy'}
+                {copied === 'subject' ? t.cmCopied : t.cmCopy}
               </button>
             </div>
             <pre style={{ margin: 0, fontSize: 10, color: C.textDim, whiteSpace: 'pre-wrap', lineHeight: 1.6, fontFamily: 'inherit' }}>
@@ -124,7 +131,7 @@ function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
                 onClick={() => copy('body', body)}
                 style={{ fontSize: 9, padding: '3px 10px', borderRadius: 5, border: `1px solid ${C.border}`, background: 'transparent', color: copied === 'body' ? C.green : C.textMuted, cursor: 'pointer' }}
               >
-                {copied === 'body' ? '✓ 복사됨' : isKo ? '본문 복사' : 'Copy Body'}
+                {copied === 'body' ? t.cmCopiedBody : t.cmCopyBody}
               </button>
             </div>
           </div>
@@ -135,7 +142,9 @@ function PitchCard({ match, isKo }: { match: MatchedRfq; isKo: boolean }) {
 }
 
 export default function CapacityMatchPanel({ quotes, company, onClose }: Props) {
-  const isKo = true;
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
+  const isKo = isKoreanPartner(lang);
 
   const [processes, setProcesses] = useState<string[]>([]);
   const [customProcess, setCustomProcess] = useState('');
@@ -155,7 +164,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
   async function run() {
     const allProcesses = [...processes, ...(customProcess.trim() ? [customProcess.trim()] : [])];
     if (allProcesses.length === 0) {
-      setError('하나 이상의 공정을 선택해주세요.');
+      setError(t.cmErrNoProcesses);
       return;
     }
 
@@ -184,7 +193,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
       setResult(r);
     } catch (e) {
       const err = e as Error & { requiresPro?: boolean };
-      setError(err.requiresPro ? 'Pro 플랜이 필요합니다.' : (err.message || '오류가 발생했습니다.'));
+      setError(err.requiresPro ? t.cmErrorPro : (err.message || t.cmErrorGeneric));
     } finally {
       setLoading(false);
     }
@@ -201,10 +210,10 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
       >
         {/* Header */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1a2535, #1a2030)' }}>
-          <span style={{ fontSize: 18 }}>🔗</span>
+          <span style={{ fontSize: 18 }} aria-hidden="true">🔗</span>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>캐파 매칭</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>유휴 캐파를 오픈 RFQ와 매칭하고 자동 제안 이메일을 생성합니다.</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>{t.cmHeader}</p>
+            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{t.cmHeaderSubtitle}</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
@@ -214,7 +223,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
             <>
               {/* Process chips */}
               <div>
-                <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>보유 공정 (복수 선택)</p>
+                <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>{t.cmFieldProcesses}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {PROCESS_OPTIONS.map(p => (
                     <button
@@ -235,7 +244,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
                   type="text"
                   value={customProcess}
                   onChange={e => setCustomProcess(e.target.value)}
-                  placeholder="기타 공정 직접 입력..."
+                  placeholder={t.cmCustomProcessPh}
                   style={{ marginTop: 8, width: '100%', padding: '6px 8px', borderRadius: 6, fontSize: 11, boxSizing: 'border-box', background: C.card, color: C.text, border: `1px solid ${C.border}`, outline: 'none' }}
                 />
               </div>
@@ -243,7 +252,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
               {/* Capacity params */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>유휴 기간 (일)</p>
+                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>{t.cmFieldIdleDays}</p>
                   <input
                     type="number"
                     value={idleDays}
@@ -253,7 +262,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
                   />
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>납품 가능 기간 (일)</p>
+                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>{t.cmFieldLeadDays}</p>
                   <input
                     type="number"
                     value={leadDays}
@@ -263,18 +272,18 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
                   />
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>시간당 단가 (원, 선택)</p>
+                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>{t.cmFieldHourlyRate}</p>
                   <input
                     type="number"
                     value={hourlyRate}
                     onChange={e => setHourlyRate(e.target.value)}
                     min={0}
-                    placeholder="예: 80000"
+                    placeholder={t.cmFieldHourlyRatePh}
                     style={{ width: '100%', padding: '6px 8px', borderRadius: 6, fontSize: 11, boxSizing: 'border-box', background: C.card, color: C.text, border: `1px solid ${C.border}`, outline: 'none' }}
                   />
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>보유 인증 (쉼표 구분)</p>
+                  <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: C.textDim }}>{t.cmFieldCerts}</p>
                   <input
                     type="text"
                     value={certs}
@@ -287,7 +296,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
 
               {quotes.length === 0 && (
                 <div style={{ background: `${C.yellow}12`, border: `1px solid ${C.yellow}30`, borderRadius: 8, padding: '10px 14px', fontSize: 12, color: C.yellow }}>
-                  현재 배정된 RFQ가 없습니다. RFQ가 배정되면 캐파 매칭을 활용하세요.
+                  {t.cmEmptyRfqs}
                 </div>
               )}
             </>
@@ -308,16 +317,16 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
 
               {result.matches.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: C.textMuted, fontSize: 13 }}>
-                  매칭 결과가 없습니다.
+                  {t.cmEmptyMatches}
                 </div>
               ) : (
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>
-                    매칭된 RFQ ({result.totalMatched}건) — 클릭하여 제안 이메일 확인
+                    {t.cmResultsHeader(result.totalMatched)}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {result.matches.map(m => (
-                      <PitchCard key={m.rfqId} match={m} isKo={isKo} />
+                      <PitchCard key={m.rfqId} match={m} isKo={isKo} t={t} lang={lang} />
                     ))}
                   </div>
                 </div>
@@ -332,7 +341,7 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
             <button
               onClick={run}
               disabled={loading || quotes.length === 0}
-              title={quotes.length === 0 ? '배정된 RFQ가 없어 매칭을 실행할 수 없습니다.' : undefined}
+              title={quotes.length === 0 ? t.cmBtnNoRfqTooltip : undefined}
               style={{
                 flex: 1, padding: 10, borderRadius: 8, border: 'none',
                 background: loading || quotes.length === 0 ? `${C.teal}44` : `linear-gradient(135deg, #0d9488, ${C.teal})`,
@@ -341,21 +350,21 @@ export default function CapacityMatchPanel({ quotes, company, onClose }: Props) 
                 opacity: quotes.length === 0 ? 0.5 : 1,
               }}
             >
-              {loading ? '분석 중...' : quotes.length === 0 ? '🔗 RFQ 없음' : '🔗 캐파 매칭 실행'}
+              {loading ? t.cmRunning : quotes.length === 0 ? t.cmBtnNoRfq : t.cmRunBtn}
             </button>
           ) : (
             <button
               onClick={() => setResult(null)}
               style={{ flex: 1, padding: 10, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textDim, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
             >
-              🔄 다시 매칭
+              {t.cmRematchBtn}
             </button>
           )}
           <button
             onClick={onClose}
             style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
-            닫기
+            {t.cmClose}
           </button>
         </div>
       </div>
