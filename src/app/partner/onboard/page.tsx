@@ -15,6 +15,8 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { onboardDict } from '../_lib/dicts/onboard';
 
 interface Prefill {
   email: string | null;
@@ -26,91 +28,12 @@ interface Prefill {
 
 const AGREEMENT_VERSION = 'v1.0';
 
-// Per memory policy, partner pages support ko/en. Detection is best-effort:
-// browser language → fall back to Korean since the platform is Korea-based.
-type Lang = 'ko' | 'en';
-function detectLang(): Lang {
-  if (typeof window === 'undefined') return 'ko';
-  const nav = navigator.language?.toLowerCase() ?? '';
-  return nav.startsWith('ko') || nav === '' ? 'ko' : 'en';
-}
-
-const dict: Record<Lang, Record<string, string>> = {
-  ko: {
-    title: 'NexyFab 파트너 가입',
-    subtitle: '1분만에 가입 완료 — 견적 작성 즉시 가능',
-    noToken: '초청 토큰이 없습니다.',
-    contactOps: '운영팀에 다시 문의해주세요',
-    loading: '로딩 중…',
-    headerError: '파트너 가입',
-    email: '회사 이메일 *',
-    contactName: '담당자 이름 *',
-    company: '회사명 *',
-    phone: '담당자 번호 * (휴대폰 또는 회사 직통)',
-    bizRegNo: '사업자 등록 번호 * (10자리)',
-    bizRegHint: '국세청 등록 번호 — 가입 즉시 검증됩니다.',
-    password: '비밀번호 * (10자 이상)',
-    needAgree: '파트너 약관에 동의해주세요.',
-    pwTooShort: '비밀번호는 10자 이상이어야 합니다.',
-    agreeText: '에 동의합니다.',
-    agreeShow: '전문 보기',
-    agreeHide: '약관 접기',
-    rule1Title: '거래 우회 금지',
-    rule1Body: 'NexyFab 통해 알게 된 고객과 24개월간 직접 거래 금지 (위약금 거래액 50%)',
-    rule2Title: '안전거래(에스크로)',
-    rule2Body: '모든 거래는 NexyFab 플랫폼 결제 의무',
-    rule3Title: 'NexyFab 수수료',
-    rule3Body: '거래액의 8% (정산 시 자동 공제)',
-    rule4Title: '분쟁',
-    rule4Body: '1단계 자율 협의 → 2단계 NexyFab 중재 → 3단계 대한상사중재원',
-    fullAgreement: '📄 파트너 약관 전문',
-    submitting: '가입 중…',
-    submit: '✓ 약관 동의 + 가입 완료',
-    footer: '가입 후 견적 작성 페이지로 이동합니다.',
-    inquiry: '문의',
-  },
-  en: {
-    title: 'NexyFab Partner Sign-Up',
-    subtitle: 'One-minute onboarding — start quoting immediately',
-    noToken: 'Invitation token missing.',
-    contactOps: 'Please contact ops',
-    loading: 'Loading…',
-    headerError: 'Partner Sign-Up',
-    email: 'Company email *',
-    contactName: 'Contact name *',
-    company: 'Company name *',
-    phone: 'Contact phone * (mobile or direct line)',
-    bizRegNo: 'Business registration number * (10 digits)',
-    bizRegHint: 'Korean tax registration — verified at sign-up.',
-    password: 'Password * (10+ chars)',
-    needAgree: 'Please accept the partner agreement.',
-    pwTooShort: 'Password must be at least 10 characters.',
-    agreeText: ' (I accept)',
-    agreeShow: 'Show full text',
-    agreeHide: 'Hide',
-    rule1Title: 'No off-platform circumvention',
-    rule1Body: '24-month direct-deal ban with introduced clients (50% liquidated damages)',
-    rule2Title: 'Mandatory escrow',
-    rule2Body: 'All settlements via NexyFab platform',
-    rule3Title: 'NexyFab commission',
-    rule3Body: '8% of deal value (auto-deducted at settlement)',
-    rule4Title: 'Disputes',
-    rule4Body: 'Self-resolution → NexyFab mediation → KCAB arbitration',
-    fullAgreement: '📄 Full partner agreement',
-    submitting: 'Submitting…',
-    submit: '✓ Accept agreement & sign up',
-    footer: 'You will be redirected to the quote workspace after sign-up.',
-    inquiry: 'Inquiries',
-  },
-};
-
 function PartnerOnboardInner() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params?.get('invite') ?? '';
-  const [lang, setLang] = useState<Lang>('ko');
-  const t = dict[lang];
-  useEffect(() => { setLang(detectLang()); }, []);
+  const lang = usePartnerLang();
+  const t = onboardDict(lang);
 
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -268,7 +191,7 @@ function PartnerOnboardInner() {
 }
 
 export default function Page() {
-  return <Suspense fallback={<div style={muted}>로딩 중…</div>}><PartnerOnboardInner /></Suspense>;
+  return <Suspense fallback={<div style={muted}>…</div>}><PartnerOnboardInner /></Suspense>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
