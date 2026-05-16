@@ -1,12 +1,14 @@
 'use client';
 
 /**
- * PartnerAIPrefsPanel — AI 견적 기본값 설정 모달.
- * 시간당 단가, 재료 마진, 보유 공정, 인증서를 저장.
- * 서버(/api/partner/profile)와 localStorage 동시 저장.
+ * PartnerAIPrefsPanel — AI quote defaults modal.
+ * Persists hourly rate, material margin, capabilities and certs to the
+ * server (/api/partner/profile) and localStorage.
  */
 
 import { useEffect as _useEffect, useState } from 'react';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict } from '../_lib/dicts/quotePanels';
 
 export interface AiPrefs {
   hourlyRateKrw: number;
@@ -51,6 +53,8 @@ export function saveLocalAiPrefs(prefs: AiPrefs) {
 }
 
 export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose }: Props) {
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const [hourlyRate, setHourlyRate] = useState(initial?.hourlyRateKrw ?? 80000);
   const [materialMargin, setMaterialMargin] = useState(initial?.materialMargin ?? 0.35);
   const [leadCapacityDays, setLeadCapacityDays] = useState<number | ''>(initial?.leadCapacityDays ?? '');
@@ -81,7 +85,7 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
         body: JSON.stringify({ aiPrefs: prefs }),
       });
-    } catch { /* 네트워크 실패 시 localStorage만 저장 */ }
+    } catch { /* if the network call fails we still keep localStorage */ }
     setSaving(false);
     setSaved(true);
     onSave(prefs);
@@ -99,21 +103,21 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
       >
         {/* 헤더 */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>⚙️</span>
+          <span style={{ fontSize: 18 }} aria-hidden="true">⚙️</span>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>AI 견적 기본값 설정</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>저장하면 RFQ 회신 초안에 자동으로 적용됩니다.</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>{t.apHeader}</p>
+            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{t.apHeaderSubtitle}</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* 원가 설정 */}
+          {/* Cost basis */}
           <div>
-            <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: C.textDim }}>원가 기준</p>
+            <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: C.textDim }}>{t.apCostSection}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.textMuted, marginBottom: 5 }}>시간당 단가 (KRW/hr)</label>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.textMuted, marginBottom: 5 }}>{t.apHourlyRate}</label>
                 <input
                   type="number"
                   value={hourlyRate}
@@ -124,7 +128,7 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.textMuted, marginBottom: 5 }}>재료 마진 (0 ~ 1)</label>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.textMuted, marginBottom: 5 }}>{t.apMargin}</label>
                 <input
                   type="number"
                   value={materialMargin}
@@ -134,22 +138,22 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.textMuted, marginBottom: 5 }}>현재 가용 납기 (일, 선택)</label>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.textMuted, marginBottom: 5 }}>{t.apLeadCapacity}</label>
                 <input
                   type="number"
                   value={leadCapacityDays}
                   onChange={e => setLeadCapacityDays(e.target.value ? Number(e.target.value) : '')}
                   min={1}
-                  placeholder="비워두면 무제한"
+                  placeholder={t.apLeadCapacityPh}
                   style={{ width: '100%', padding: '7px 10px', borderRadius: 7, fontSize: 13, background: C.card, color: C.text, border: `1px solid ${C.border}`, outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
             </div>
           </div>
 
-          {/* 공정 선택 */}
+          {/* Capabilities */}
           <div>
-            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>보유 공정</p>
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>{t.apProcessesSection}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {PROCESS_LIST.map(p => {
                 const active = processes.includes(p);
@@ -165,9 +169,9 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
             </div>
           </div>
 
-          {/* 인증서 선택 */}
+          {/* Certifications */}
           <div>
-            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>보유 인증</p>
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>{t.apCertsSection}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {CERT_LIST.map(c => {
                 const active = certifications.includes(c);
@@ -184,11 +188,11 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
           </div>
 
           <p style={{ margin: 0, fontSize: 10, color: C.textMuted }}>
-            💡 이 설정은 서버와 기기에 모두 저장됩니다. RFQ 회신 패널에서 자동으로 불러옵니다.
+            {t.apFootnote}
           </p>
         </div>
 
-        {/* 푸터 */}
+        {/* Footer */}
         <div style={{ borderTop: `1px solid ${C.border}`, padding: '12px 18px', display: 'flex', gap: 8 }}>
           <button
             onClick={() => void handleSave()}
@@ -199,13 +203,13 @@ export default function PartnerAIPrefsPanel({ session, initial, onSave, onClose 
               color: '#fff', fontSize: 13, fontWeight: 800, cursor: saving ? 'default' : 'pointer',
             }}
           >
-            {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
+            {saved ? `✓ ${t.apSaved}` : saving ? t.apSaving : t.apSaveBtn}
           </button>
           <button
             onClick={onClose}
             style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMuted, fontSize: 13, cursor: 'pointer' }}
           >
-            취소
+            {t.apCancel}
           </button>
         </div>
       </div>

@@ -154,6 +154,18 @@ export interface QuotePanelsDict {
   apSave: string;
   apSaving: string;
   apSaved: string;
+  apHeader: string;
+  apHeaderSubtitle: string;
+  apCostSection: string;
+  apHourlyRate: string;
+  apMargin: string;
+  apLeadCapacity: string;
+  apLeadCapacityPh: string;
+  apProcessesSection: string;
+  apCertsSection: string;
+  apFootnote: string;
+  apSaveBtn: string;
+  apCancel: string;
 
   // RfqResponderPanel
   rrTitle: string;
@@ -172,6 +184,27 @@ export interface QuotePanelsDict {
   rrSubmitting: string;
   rrErrorAmount: string;
   rrSuccess: string;
+  rrHeader: string;
+  rrHourlyRate: string;
+  rrMargin: string;
+  rrRegenerating: string;
+  rrRegenerateBtn: string;
+  rrErrorPro: string;
+  rrErrorGeneric: string;
+  rrAccuracyApplied: (pct: number, direction: 'down' | 'up') => string;
+  rrAdjustDirDown: string;
+  rrAdjustDirUp: string;
+  rrAiEstimate: string;
+  rrEstimatedDays: string;
+  rrEstimatedDaysSuffix: (n: number) => string;
+  rrConfidence: string;
+  rrBreakdownTitle: string;
+  rrCaveatsTitle: string;
+  rrEditTitle: string;
+  rrFieldAmountWon: string;
+  rrApplyBtn: string;
+  rrCancel: string;
+
 
   // QuoteAccuracyPanel
   qaTitle: string;
@@ -329,6 +362,18 @@ const KO: QuotePanelsDict = {
   apSave: '저장',
   apSaving: '저장 중...',
   apSaved: '저장됨',
+  apHeader: 'AI 견적 기본값 설정',
+  apHeaderSubtitle: '저장하면 RFQ 회신 초안에 자동으로 적용됩니다.',
+  apCostSection: '원가 기준',
+  apHourlyRate: '시간당 단가 (KRW/hr)',
+  apMargin: '재료 마진 (0 ~ 1)',
+  apLeadCapacity: '현재 가용 납기 (일, 선택)',
+  apLeadCapacityPh: '비워두면 무제한',
+  apProcessesSection: '보유 공정',
+  apCertsSection: '보유 인증',
+  apFootnote: '💡 이 설정은 서버와 기기에 모두 저장됩니다. RFQ 회신 패널에서 자동으로 불러옵니다.',
+  apSaveBtn: '💾 저장',
+  apCancel: '취소',
 
   rrTitle: 'AI 견적 응답',
   rrSubtitle: 'AI 가 초안을 만들어 빠르게 응답할 수 있습니다.',
@@ -346,6 +391,27 @@ const KO: QuotePanelsDict = {
   rrSubmitting: '등록 중...',
   rrErrorAmount: '견적 금액을 입력해 주세요.',
   rrSuccess: '견적이 등록됐습니다.',
+  rrHeader: '🤖 AI 회신 초안',
+  rrHourlyRate: '시간당 단가 (KRW/hr)',
+  rrMargin: '재료 마진 (0-1)',
+  rrRegenerating: '생성 중...',
+  rrRegenerateBtn: '🔄 다시 생성',
+  rrErrorPro: 'Pro 플랜으로 업그레이드해주세요.',
+  rrErrorGeneric: '초안 생성 실패',
+  rrAccuracyApplied: (pct, dir) => `견적 정확도 분석 결과 적용됨: 편향 ${pct >= 0 ? '+' : ''}${pct}% → 금액이 ${dir === 'down' ? '하향' : '상향'} 보정되었습니다.`,
+  rrAdjustDirDown: '하향',
+  rrAdjustDirUp: '상향',
+  rrAiEstimate: 'AI 추정 금액',
+  rrEstimatedDays: '예상 납기',
+  rrEstimatedDaysSuffix: (n) => `${n}일`,
+  rrConfidence: '신뢰도',
+  rrBreakdownTitle: '비용 분해',
+  rrCaveatsTitle: '⚠️ 주의 사항',
+  rrEditTitle: '편집 가능 (적용 시 모달에 채워짐)',
+  rrFieldAmountWon: '금액 (원)',
+  rrApplyBtn: '✓ 초안 적용',
+  rrCancel: '취소',
+
 
   qaTitle: '견적 정확도',
   qaSubtitle: '과거 수주/실패 데이터 기반 가격 인사이트',
@@ -502,6 +568,18 @@ const EN: QuotePanelsDict = {
   apSave: 'Save',
   apSaving: 'Saving…',
   apSaved: 'Saved',
+  apHeader: 'AI quote defaults',
+  apHeaderSubtitle: 'Once saved, these auto-fill the RFQ response draft.',
+  apCostSection: 'Cost basis',
+  apHourlyRate: 'Hourly rate (KRW/hr)',
+  apMargin: 'Material margin (0 - 1)',
+  apLeadCapacity: 'Current capacity (days, optional)',
+  apLeadCapacityPh: 'Leave blank for unlimited',
+  apProcessesSection: 'Capabilities',
+  apCertsSection: 'Certifications',
+  apFootnote: '💡 Saved both on the server and this device. The RFQ response panel reads it automatically.',
+  apSaveBtn: '💾 Save',
+  apCancel: 'Cancel',
 
   rrTitle: 'AI quote response',
   rrSubtitle: 'AI drafts a quote so you can respond quickly.',
@@ -519,6 +597,27 @@ const EN: QuotePanelsDict = {
   rrSubmitting: 'Submitting…',
   rrErrorAmount: 'Please enter a quote amount.',
   rrSuccess: 'Quote submitted.',
+  rrHeader: '🤖 AI quote draft',
+  rrHourlyRate: 'Hourly rate (KRW/hr)',
+  rrMargin: 'Material margin (0-1)',
+  rrRegenerating: 'Generating…',
+  rrRegenerateBtn: '🔄 Regenerate',
+  rrErrorPro: 'Please upgrade to the Pro plan.',
+  rrErrorGeneric: 'Draft generation failed',
+  rrAccuracyApplied: (pct, dir) => `Accuracy correction applied: bias ${pct >= 0 ? '+' : ''}${pct}% — amount adjusted ${dir === 'down' ? 'down' : 'up'}.`,
+  rrAdjustDirDown: 'down',
+  rrAdjustDirUp: 'up',
+  rrAiEstimate: 'AI estimate',
+  rrEstimatedDays: 'Est. lead time',
+  rrEstimatedDaysSuffix: (n) => `${n}d`,
+  rrConfidence: 'Confidence',
+  rrBreakdownTitle: 'Cost breakdown',
+  rrCaveatsTitle: '⚠️ Caveats',
+  rrEditTitle: 'Editable (fills the response form on apply)',
+  rrFieldAmountWon: 'Amount (KRW)',
+  rrApplyBtn: '✓ Apply draft',
+  rrCancel: 'Cancel',
+
 
   qaTitle: 'Quote accuracy',
   qaSubtitle: 'Price insights from past wins/losses',

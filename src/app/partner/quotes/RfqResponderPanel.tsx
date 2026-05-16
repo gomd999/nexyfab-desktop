@@ -10,6 +10,8 @@
 
 import { useEffect, useState } from 'react';
 import { draftRfqResponse, type RfqResponseDraft, type RfqBrief, type PartnerCapacity } from './rfqResponder';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict } from '../_lib/dicts/quotePanels';
 
 interface Props {
   rfq: RfqBrief;
@@ -20,11 +22,18 @@ interface Props {
   onClose: () => void;
 }
 
-function won(n: number): string {
-  return n.toLocaleString('ko-KR') + '원';
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+function fmtMoney(n: number, lang: string): string {
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n);
+  } catch { return `₩${n.toLocaleString()}`; }
 }
 
 export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustment, onApply, onClose }: Props) {
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const [partner, setPartner] = useState<PartnerCapacity>({
     hourlyRateKrw: defaultPartner?.hourlyRateKrw ?? 80000,
     materialMargin: defaultPartner?.materialMargin ?? 0.35,
@@ -55,7 +64,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
       setEditNote(showKo ? result.noteKo : result.note);
     } catch (e) {
       const err = e as Error & { requiresPro?: boolean };
-      setError(err.requiresPro ? 'Pro 플랜으로 업그레이드해주세요.' : (err.message || '초안 생성 실패'));
+      setError(err.requiresPro ? t.rrErrorPro : (err.message || t.rrErrorGeneric));
     } finally {
       setLoading(false);
     }
@@ -82,7 +91,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
       >
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold flex items-center gap-2">🤖 AI 회신 초안</h2>
+            <h2 className="text-lg font-bold flex items-center gap-2">{t.rrHeader}</h2>
             <p className="text-xs text-purple-100 mt-0.5">{rfq.projectName ?? rfq.partName ?? 'RFQ'}</p>
           </div>
           <button onClick={onClose} className="text-white/80 hover:text-white text-xl leading-none">×</button>
@@ -92,7 +101,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
           {/* Partner capacity inputs */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-gray-500 mb-1">시간당 단가 (KRW/hr)</label>
+              <label className="block text-[11px] font-semibold text-gray-500 mb-1">{t.rrHourlyRate}</label>
               <input
                 type="number"
                 value={partner.hourlyRateKrw ?? 0}
@@ -101,7 +110,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-500 mb-1">재료 마진 (0-1)</label>
+              <label className="block text-[11px] font-semibold text-gray-500 mb-1">{t.rrMargin}</label>
               <input
                 type="number"
                 step="0.05"
@@ -116,7 +125,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
             disabled={loading}
             className="w-full py-2 text-sm font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50"
           >
-            {loading ? '생성 중...' : '🔄 다시 생성'}
+            {loading ? t.rrRegenerating : t.rrRegenerateBtn}
           </button>
 
           {error && (
@@ -127,36 +136,35 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
             <>
               {accuracyAdjustment != null && Math.abs(accuracyAdjustment) >= 3 && (
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                  <span>📊</span>
+                  <span aria-hidden="true">📊</span>
                   <span>
-                    견적 정확도 분석 결과 적용됨: 편향 {accuracyAdjustment > 0 ? '+' : ''}{accuracyAdjustment}% →
-                    금액이 {accuracyAdjustment > 0 ? '하향' : '상향'} 보정되었습니다.
+                    {t.rrAccuracyApplied(accuracyAdjustment, accuracyAdjustment > 0 ? 'down' : 'up')}
                   </span>
                 </div>
               )}
               <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 space-y-1.5">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-purple-700 font-semibold">AI 추정 금액</span>
-                  <span className="text-lg font-black text-purple-900">{won(draft.estimatedAmount)}</span>
+                  <span className="text-xs text-purple-700 font-semibold">{t.rrAiEstimate}</span>
+                  <span className="text-lg font-black text-purple-900">{fmtMoney(draft.estimatedAmount, lang)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-purple-700">
-                  <span>예상 납기</span>
-                  <span className="font-bold">{draft.estimatedDays}일</span>
+                  <span>{t.rrEstimatedDays}</span>
+                  <span className="font-bold">{t.rrEstimatedDaysSuffix(draft.estimatedDays)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-purple-700">
-                  <span>신뢰도</span>
+                  <span>{t.rrConfidence}</span>
                   <span className="font-bold">{Math.round(draft.confidence * 100)}%</span>
                 </div>
               </div>
 
               {draft.breakdown.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">비용 분해</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">{t.rrBreakdownTitle}</p>
                   <div className="bg-gray-50 rounded-lg divide-y divide-gray-100">
                     {draft.breakdown.map((b, i) => (
                       <div key={i} className="flex justify-between text-sm px-3 py-1.5">
                         <span className="text-gray-600">{showKo ? b.labelKo : b.label}</span>
-                        <span className="font-semibold text-gray-800">{won(b.amountKrw)}</span>
+                        <span className="font-semibold text-gray-800">{fmtMoney(b.amountKrw, lang)}</span>
                       </div>
                     ))}
                   </div>
@@ -165,7 +173,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
 
               {draft.caveats.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-amber-700 uppercase mb-1.5">⚠️ 주의 사항</p>
+                  <p className="text-xs font-semibold text-amber-700 uppercase mb-1.5">{t.rrCaveatsTitle}</p>
                   <ul className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 space-y-0.5 text-xs text-amber-800">
                     {(showKo ? draft.caveatsKo : draft.caveats).map((c, i) => <li key={i}>• {c}</li>)}
                   </ul>
@@ -174,7 +182,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
 
               <div className="border-t border-gray-100 pt-3 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-500 uppercase">편집 가능 (적용 시 모달에 채워짐)</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">{t.rrEditTitle}</p>
                   <button
                     onClick={() => {
                       const next = !showKo;
@@ -188,7 +196,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">금액 (원)</label>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">{t.rrFieldAmountWon}</label>
                     <input
                       type="number"
                       value={editAmount}
@@ -197,7 +205,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">납기 (일)</label>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">{t.rrFieldDays}</label>
                     <input
                       type="number"
                       value={editDays}
@@ -207,7 +215,7 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1">메모 ({showKo ? 'KO' : 'EN'})</label>
+                  <label className="block text-[11px] font-semibold text-gray-500 mb-1">{t.rrFieldNote} ({showKo ? 'KO' : 'EN'})</label>
                   <textarea
                     value={editNote}
                     onChange={e => setEditNote(e.target.value)}
@@ -226,13 +234,13 @@ export default function RfqResponderPanel({ rfq, defaultPartner, accuracyAdjustm
             disabled={!draft || !editAmount}
             className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
           >
-            ✓ 초안 적용
+            {t.rrApplyBtn}
           </button>
           <button
             onClick={onClose}
             className="px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
           >
-            취소
+            {t.rrCancel}
           </button>
         </div>
       </div>
