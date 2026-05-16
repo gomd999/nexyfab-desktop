@@ -51,6 +51,74 @@ export interface QuotesDict {
 
   validUntilPrefix: string;
   respondedAtPrefix: string;
+
+  pageHeader: string;
+  pageSubheader: string;
+  aiMenuToggle: string;
+  aiBtnPriority: string;
+  aiBtnCapacity: string;
+  aiBtnAccuracy: string;
+  aiBtnHistory: string;
+  aiBtnOrders: string;
+  aiBtnStats: string;
+  aiBtnPrefs: string;
+  invitationsBannerTitle: (n: number) => string;
+  invitationsBannerBody: string;
+  fetchErrorTitle: string;
+  retryBtn: string;
+  emptyAssigned: string;
+  emptyAssignedHint: string;
+  validUntil: (date: string) => string;
+  selectAria: string;
+  btnSubmitQuote: string;
+  btnEditQuote: string;
+  btnQuotePdf: string;
+  modelSectionTitle: string;
+  submittedQuoteTitle: string;
+  submittedAmount: string;
+  submittedDays: string;
+  submittedDaysUnit: (n: number) => string;
+  submittedAt: (date: string) => string;
+  modalEdit: string;
+  modalNew: string;
+  modalAiDraft: string;
+  modalAutoCalc: string;
+  modalAutoCalcLoading: string;
+  modalUrgentBtn: string;
+  modalAutoResultTitle: string;
+  modalUrgentBadge: string;
+  modalLabelTotal: string;
+  modalLabelUnit: string;
+  modalLabelMaterial: string;
+  modalLabelMachine: string;
+  modalLabelSetup: string;
+  modalLabelVolumeDiscount: string;
+  modalLabelLeadTime: string;
+  modalLabelLeadTimeRange: (min: number, max: number) => string;
+  modalFieldAmount: string;
+  modalFieldAmountPh: string;
+  modalFieldDays: string;
+  modalFieldDaysPh: string;
+  modalFieldNote: string;
+  modalFieldNotePh: string;
+  modalSubmitting: string;
+  modalSubmit: string;
+  modalSubmitEdit: string;
+  modalCancel: string;
+  toastAiDraftApplied: string;
+  toastSubmitOk: string;
+  toastEditOk: string;
+  toastSubmitFail: string;
+  toastDemoSubmit: string;
+  toastAutoQuoteFailed: string;
+  toastAutoQuoteDemoWarning: string;
+  bulkToolbarLabel: string;
+  bulkValidLabel: string;
+  bulkExtendBtn: string;
+  bulkExtending: string;
+  bulkDeclineBtn: string;
+  bulkDeclining: string;
+  bulkClearSelection: string;
 }
 
 const KO: QuotesDict = {
@@ -97,6 +165,74 @@ const KO: QuotesDict = {
 
   validUntilPrefix: '유효기간:',
   respondedAtPrefix: '응답일:',
+
+  pageHeader: '견적 요청',
+  pageSubheader: '어드민이 지정한 견적 요청 목록',
+  aiMenuToggle: '⚙ AI 도구',
+  aiBtnPriority: '🏆 AI 우선순위',
+  aiBtnCapacity: '🔗 캐파 매칭',
+  aiBtnAccuracy: '📊 견적 정확도',
+  aiBtnHistory: '📜 AI 이력',
+  aiBtnOrders: '📦 주문 관리',
+  aiBtnStats: '📈 실적 통계',
+  aiBtnPrefs: '⚙️ AI 설정',
+  invitationsBannerTitle: (n) => `들어온 견적 요청 ${n}건`,
+  invitationsBannerBody: 'NexyFab 운영팀이 귀사를 추천한 RFQ입니다 — 견적을 작성해 주세요',
+  fetchErrorTitle: '견적 목록을 불러오지 못했습니다.',
+  retryBtn: '다시 시도',
+  emptyAssigned: '배정된 견적 요청이 없습니다',
+  emptyAssignedHint: '어드민이 견적을 배정하면 여기에 표시됩니다.',
+  validUntil: (date) => `유효: ${date}`,
+  selectAria: '견적 선택',
+  btnSubmitQuote: '견적 제출',
+  btnEditQuote: '수정',
+  btnQuotePdf: '견적서 PDF',
+  modelSectionTitle: '3D 모델',
+  submittedQuoteTitle: '제출한 견적',
+  submittedAmount: '견적 금액',
+  submittedDays: '납기일',
+  submittedDaysUnit: (n) => `${n}일`,
+  submittedAt: (date) => `제출: ${date}`,
+  modalEdit: '견적 수정',
+  modalNew: '견적 제출',
+  modalAiDraft: '🤖 AI 회신 초안 (자동 작성)',
+  modalAutoCalc: '📋 단가표 자동 견적',
+  modalAutoCalcLoading: '계산 중…',
+  modalUrgentBtn: '⚡ 긴급 단가',
+  modalAutoResultTitle: '단가표 기준 자동 견적',
+  modalUrgentBadge: '긴급 ×',
+  modalLabelTotal: '총액',
+  modalLabelUnit: '단가 (개당)',
+  modalLabelMaterial: '재료',
+  modalLabelMachine: '가공',
+  modalLabelSetup: '셋업',
+  modalLabelVolumeDiscount: '수량 할인',
+  modalLabelLeadTime: '리드타임',
+  modalLabelLeadTimeRange: (min, max) => `${min}~${max}일`,
+  modalFieldAmount: '견적 금액 (원) *',
+  modalFieldAmountPh: '예: 45000000',
+  modalFieldDays: '납기일 (일수)',
+  modalFieldDaysPh: '예: 14',
+  modalFieldNote: '메모',
+  modalFieldNotePh: '견적 관련 추가 사항...',
+  modalSubmitting: '처리 중...',
+  modalSubmit: '제출하기',
+  modalSubmitEdit: '수정하기',
+  modalCancel: '취소',
+  toastAiDraftApplied: 'AI 초안이 적용되었습니다. 검토 후 제출해주세요.',
+  toastSubmitOk: '견적이 제출되었습니다.',
+  toastEditOk: '견적이 수정되었습니다.',
+  toastSubmitFail: '견적 제출에 실패했습니다.',
+  toastDemoSubmit: '[데모] 견적이 제출되었습니다.',
+  toastAutoQuoteFailed: '자동 견적 생성에 실패했습니다. 단가표를 먼저 등록해 주세요.',
+  toastAutoQuoteDemoWarning: '데모 모드: 단가표 미사용, 예시 값입니다.',
+  bulkToolbarLabel: '견적 일괄 작업',
+  bulkValidLabel: '유효기간',
+  bulkExtendBtn: '일괄 연장',
+  bulkExtending: '적용 중…',
+  bulkDeclineBtn: '일괄 거절',
+  bulkDeclining: '거절 중…',
+  bulkClearSelection: '선택 해제',
 };
 
 const EN: QuotesDict = {
@@ -143,6 +279,74 @@ const EN: QuotesDict = {
 
   validUntilPrefix: 'Valid until:',
   respondedAtPrefix: 'Responded:',
+
+  pageHeader: 'RFQs',
+  pageSubheader: 'Quote requests assigned by admin',
+  aiMenuToggle: '⚙ AI tools',
+  aiBtnPriority: '🏆 AI priority',
+  aiBtnCapacity: '🔗 Capacity match',
+  aiBtnAccuracy: '📊 Quote accuracy',
+  aiBtnHistory: '📜 AI history',
+  aiBtnOrders: '📦 Orders',
+  aiBtnStats: '📈 Performance',
+  aiBtnPrefs: '⚙️ AI settings',
+  invitationsBannerTitle: (n) => `${n} incoming RFQ${n === 1 ? '' : 's'}`,
+  invitationsBannerBody: 'NexyFab ops shortlisted your factory — write the quote.',
+  fetchErrorTitle: 'Could not load the quote list.',
+  retryBtn: 'Retry',
+  emptyAssigned: 'No assigned RFQs',
+  emptyAssignedHint: 'Assigned RFQs from admin will show up here.',
+  validUntil: (date) => `Valid: ${date}`,
+  selectAria: 'Select quote',
+  btnSubmitQuote: 'Submit quote',
+  btnEditQuote: 'Edit',
+  btnQuotePdf: 'Quote PDF',
+  modelSectionTitle: '3D model',
+  submittedQuoteTitle: 'Submitted quote',
+  submittedAmount: 'Amount',
+  submittedDays: 'Lead time',
+  submittedDaysUnit: (n) => `${n}d`,
+  submittedAt: (date) => `Submitted: ${date}`,
+  modalEdit: 'Edit quote',
+  modalNew: 'Submit quote',
+  modalAiDraft: '🤖 AI draft response',
+  modalAutoCalc: '📋 Auto quote from price book',
+  modalAutoCalcLoading: 'Calculating…',
+  modalUrgentBtn: '⚡ Urgent rate',
+  modalAutoResultTitle: 'Price-book based auto-quote',
+  modalUrgentBadge: 'Urgent ×',
+  modalLabelTotal: 'Total',
+  modalLabelUnit: 'Unit price',
+  modalLabelMaterial: 'Material',
+  modalLabelMachine: 'Machining',
+  modalLabelSetup: 'Setup',
+  modalLabelVolumeDiscount: 'Volume discount',
+  modalLabelLeadTime: 'Lead time',
+  modalLabelLeadTimeRange: (min, max) => `${min}-${max}d`,
+  modalFieldAmount: 'Quote amount (KRW) *',
+  modalFieldAmountPh: 'e.g. 45000000',
+  modalFieldDays: 'Lead time (days)',
+  modalFieldDaysPh: 'e.g. 14',
+  modalFieldNote: 'Note',
+  modalFieldNotePh: 'Additional notes…',
+  modalSubmitting: 'Processing…',
+  modalSubmit: 'Submit',
+  modalSubmitEdit: 'Save',
+  modalCancel: 'Cancel',
+  toastAiDraftApplied: 'AI draft applied. Review and submit.',
+  toastSubmitOk: 'Quote submitted.',
+  toastEditOk: 'Quote updated.',
+  toastSubmitFail: 'Failed to submit the quote.',
+  toastDemoSubmit: '[demo] Quote submitted.',
+  toastAutoQuoteFailed: 'Auto-quote failed. Please set up the price book first.',
+  toastAutoQuoteDemoWarning: 'Demo mode: no price book used, example values.',
+  bulkToolbarLabel: 'Bulk quote actions',
+  bulkValidLabel: 'Valid until',
+  bulkExtendBtn: 'Extend',
+  bulkExtending: 'Applying…',
+  bulkDeclineBtn: 'Decline',
+  bulkDeclining: 'Declining…',
+  bulkClearSelection: 'Clear selection',
 };
 
 const JA: QuotesDict = {
