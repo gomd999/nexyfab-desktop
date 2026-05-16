@@ -56,7 +56,7 @@ export function newtonRaphson(
   maxIters = 25,
   damping = 1.0,
 ): NewtonResult {
-  let u = [...initial];
+  const u = [...initial];
   let iter = 0;
   let residual = Infinity;
   for (iter = 0; iter < maxIters; iter++) {

@@ -85,7 +85,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         const decoder = new TextDecoder();
         let buffer = '';
         let acc = '';
-        let final: { diagnostics?: Message['diagnostics']; intent?: Record<string, unknown>; pattern?: { id: string; title: string } } = {};
+        const final: { diagnostics?: Message['diagnostics']; intent?: Record<string, unknown>; pattern?: { id: string; title: string } } = {};
         // Mark first chunk arrival → stop the typing-indicator.
         let firstChunk = true;
 

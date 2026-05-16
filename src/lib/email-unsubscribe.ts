@@ -2,7 +2,7 @@
 // templates. Extracted from the email-preferences route because Next.js
 // route files may only export route handlers.
 
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 export type EmailCategory =
   | 'transactional'
@@ -35,7 +35,6 @@ export function verifyUnsubscribeToken(
   const [userId, category, sig] = parts;
   if (!EMAIL_CATEGORIES.includes(category as EmailCategory)) return null;
   const expected = signUnsubscribeToken(userId, category as EmailCategory).split('.')[2];
-  const { timingSafeEqual } = require('crypto') as typeof import('crypto');
   try {
     const a = Buffer.from(sig);
     const b = Buffer.from(expected);
