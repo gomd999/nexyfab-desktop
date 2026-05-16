@@ -39,6 +39,8 @@ import { BottomDrawer } from './BottomDrawer';
 import { MotionStudyPanel } from './MotionStudyPanel';
 import { OnboardingTutorial } from './OnboardingTutorial';
 import { VersionTreePanel } from './VersionTreePanel';
+import { EmailVerifyBanner } from './EmailVerifyBanner';
+import { AccountTypeCard } from './AccountTypeCard';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useTouchGestures } from './useTouchGestures';
 
@@ -457,6 +459,8 @@ export function ModelerShell() {
             items={fileMenuItems}
           />
           <OnboardingTutorial isKo={isKo} />
+          <EmailVerifyBanner isKo={isKo} />
+          <AccountTypeCard isKo={isKo} />
         </Suspense>
       }
       bottomDrawer={

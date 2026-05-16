@@ -186,6 +186,51 @@ export async function POST(req: NextRequest) {
       welcomeHtml(displayName, emailLocale),
     ).catch(err => console.error('[signup] welcome email failed:', err));
 
+    // Verification code — 6-digit, 15-minute TTL. Sent immediately so the
+    // user can confirm their address without leaving the modeler. Banner in
+    // ModelerShell shows entry UI until verified. Fire-and-forget — if SMTP
+    // is down the user can hit Resend from the banner.
+    const verifyCode = String(Math.floor(100000 + Math.random() * 900000));
+    const verifyExpiresAt = Date.now() + 15 * 60 * 1000;
+    void db
+      .execute('DELETE FROM nf_verification_codes WHERE user_id = ?', id)
+      .then(() => db.execute(
+        `INSERT INTO nf_verification_codes (code, user_id, email, expires_at)
+         VALUES (?, ?, ?, ?)`,
+        verifyCode, id, email, verifyExpiresAt,
+      ))
+      .then(() => {
+        if (!process.env.SMTP_HOST && !process.env.RESEND_API_KEY) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`[NexyFab:dev] Verification code for ${email}: ${verifyCode}`);
+          }
+          return null;
+        }
+        const verifyHtml = `<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#0f0f0f;font-family:-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 0;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:12px;border:1px solid #2a2a2a;overflow:hidden;">
+        <tr><td style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:32px 40px;text-align:center;">
+          <span style="font-size:24px;font-weight:700;color:#60a5fa;">NexyFab</span>
+          <span style="font-size:24px;font-weight:300;color:#94a3b8;"> — 이메일 인증</span>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="color:#e2e8f0;font-size:16px;line-height:1.6;margin:0 0 24px;">${displayName} 님, 환영합니다! 아래 6자리 코드로 이메일 인증을 완료해 주세요.</p>
+          <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px;text-align:center;margin:0 0 24px;">
+            <p style="color:#64748b;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">인증 코드</p>
+            <span style="font-size:42px;font-weight:700;letter-spacing:12px;color:#60a5fa;">${verifyCode}</span>
+          </div>
+          <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0;">유효시간 <strong style="color:#94a3b8;">15분</strong>. 인증 전에도 NexyFab 을 사용할 수 있지만, 공유 및 마켓플레이스 게시에는 인증이 필요합니다.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+        return sendEmail(email, '[NexyFab] 이메일 인증 코드', verifyHtml);
+      })
+      .catch(err => console.error('[signup] verification email failed:', err));
+
     const response = NextResponse.json({ user }, { status: 201 });
     const src = refreshTokenCookie(rawRefresh);
     response.cookies.set(src.name, src.value, src.options);
