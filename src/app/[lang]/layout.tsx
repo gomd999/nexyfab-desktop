@@ -82,9 +82,14 @@ export default async function LangLayout({
                 <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16" />
                 <link rel="icon" href="/favicon.ico" sizes="any" />
                 <link rel="apple-touch-icon" href="/favicon-icon.png" sizes="256x256" />
-                {/* PWA */}
-                <link rel="manifest" href="/manifest.json" />
-                <meta name="theme-color" content="#0f172a" />
+                {/* PWA — manifest.webmanifest is the canonical name (W3C);
+                    manifest.json kept for legacy clients that requested it. */}
+                <link rel="manifest" href="/manifest.webmanifest" />
+                <meta name="theme-color" content="#0c0f14" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <meta name="apple-mobile-web-app-title" content="NexyFab" />
+                <meta name="mobile-web-app-capable" content="yes" />
 
                 {adminSettings.headScripts && (
                     <div dangerouslySetInnerHTML={{ __html: adminSettings.headScripts }} />

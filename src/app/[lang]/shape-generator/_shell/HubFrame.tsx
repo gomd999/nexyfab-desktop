@@ -89,6 +89,7 @@ import { useAuthStore } from '@/hooks/useAuth';
 import { useProjectsStore } from '@/hooks/useProjects';
 import { useTheme } from '../ThemeContext';
 import { I, type IconName } from './Icons';
+import { SAMPLE_PROJECTS, sampleHref } from './sampleProjects';
 
 interface HubFrameProps {
   lang: string;
@@ -704,15 +705,45 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   background: 'var(--nx-panel)',
                   border: '1px dashed var(--nx-border)',
                   borderRadius: 8,
-                  padding: '40px 24px',
-                  textAlign: 'center',
-                  color: 'var(--nx-text-3)',
-                  fontSize: 12,
+                  padding: '24px',
                 }}
               >
-                {isKo
-                  ? '아직 프로젝트가 없습니다. "새 디자인"을 눌러 시작해보세요.'
-                  : 'No projects yet. Click "New Design" to start.'}
+                <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 16, textAlign: 'center' }}>
+                  {isKo ? '예제 프로젝트로 60초 안에 둘러보기' : 'Try a sample project — explore in 60 seconds'}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                  {SAMPLE_PROJECTS.map(sample => (
+                    <a
+                      key={sample.id}
+                      href={sampleHref(lang, sample)}
+                      style={{
+                        display: 'flex', flexDirection: 'column', gap: 6,
+                        padding: 12, textDecoration: 'none',
+                        background: 'var(--nx-panel-2)',
+                        border: '1px solid var(--nx-border)',
+                        borderRadius: 6,
+                        color: 'var(--nx-text)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: 64, borderRadius: 4,
+                          background: `linear-gradient(135deg, hsl(${sample.thumbnailHue}, 50%, 28%), hsl(${sample.thumbnailHue}, 35%, 14%))`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: 800,
+                        }}
+                      >
+                        {sample.titleEn.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>
+                        {isKo ? sample.titleKo : sample.titleEn}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-3)', lineHeight: 1.4 }}>
+                        {isKo ? sample.descKo : sample.descEn}
+                      </div>
+                    </a>
+                  ))}
+                </div>
               </div>
             ) : (
               <div

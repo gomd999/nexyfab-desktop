@@ -10,6 +10,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { updateSubscriptionQuantity } from '@/lib/airwallex-client';
 import { type Product, recordBillingAnalytics } from '@/lib/billing-engine';
+import { withRateLimit, RATE_LIMITS } from '@/lib/with-rate-limit';
 
 const schema = z.object({
   product: z.enum(['nexyfab', 'nexyflow', 'nexywise', 'nexyremote']).default('nexyfab'),
@@ -17,7 +18,7 @@ const schema = z.object({
   quantity: z.number().int().min(1).max(1000),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit({ key: 'billing-seats', ...RATE_LIMITS.billing_action }, async (req: NextRequest) => {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -82,4 +83,4 @@ export async function POST(req: NextRequest) {
     prorationKrw,
     daysRemaining: Math.round(msUntilCycleEnd / 86_400_000),
   });
-}
+});

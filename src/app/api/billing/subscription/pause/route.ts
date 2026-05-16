@@ -9,6 +9,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { pauseSubscription, resumeSubscription } from '@/lib/airwallex-client';
 import { recordBillingAnalytics, type Product } from '@/lib/billing-engine';
+import { withRateLimit, RATE_LIMITS } from '@/lib/with-rate-limit';
 
 const pauseSchema = z.object({
   product: z.enum(['nexyfab', 'nexyflow', 'nexywise', 'nexyremote']).default('nexyfab'),
@@ -16,7 +17,7 @@ const pauseSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit({ key: 'billing-pause', ...RATE_LIMITS.billing_action }, async (req: NextRequest) => {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -60,9 +61,9 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true, resumesAt, months: parsed.data.months });
-}
+});
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withRateLimit({ key: 'billing-resume', ...RATE_LIMITS.billing_action }, async (req: NextRequest) => {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -95,4 +96,4 @@ export async function DELETE(req: NextRequest) {
     payload: { resumedAt: Date.now() },
   });
   return NextResponse.json({ ok: true });
-}
+});
