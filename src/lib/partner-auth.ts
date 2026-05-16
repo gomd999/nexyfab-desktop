@@ -47,7 +47,7 @@ export async function getPartnerAuth(req: Request): Promise<PartnerInfo | null> 
     }
   } catch { /* fall through to legacy */ }
 
-  // 2. Legacy opaque session token → DB lookup
+  // 2. Legacy opaque session token → DB lookup (deprecated, see header).
   const auth = req.headers.get('Authorization') || '';
   const token = auth.replace('Bearer ', '').trim();
   if (!token) return null;
@@ -64,10 +64,43 @@ export async function getPartnerAuth(req: Request): Promise<PartnerInfo | null> 
 
   if (!row || row.expires_at <= Date.now()) return null;
 
+  // Telemetry — count legacy-session hits so we can decide when it's
+  // safe to remove this branch (target: < 5% of partner traffic after
+  // NexySys SSO rollout). Best-effort write, never blocks auth.
+  void recordLegacyHit(row.partner_id);
+
   return {
     partnerId: row.partner_id,
     userId: row.user_id ?? row.partner_id,
     email: row.email,
     company: row.company,
   };
+}
+
+let legacyMetricEnsured = false;
+async function recordLegacyHit(partnerId: string): Promise<void> {
+  try {
+    const db = getDbAdapter();
+    if (!legacyMetricEnsured) {
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS nf_partner_legacy_session_hits (
+          day TEXT NOT NULL,
+          partner_id TEXT NOT NULL,
+          hits INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (day, partner_id)
+        )
+      `).catch(() => { /* ignore */ });
+      legacyMetricEnsured = true;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    // UPSERT-compatible across sqlite + postgres (both support
+    // ON CONFLICT DO UPDATE).
+    await db.execute(
+      `INSERT INTO nf_partner_legacy_session_hits (day, partner_id, hits)
+         VALUES (?, ?, 1)
+       ON CONFLICT (day, partner_id) DO UPDATE SET hits = hits + 1`,
+      day,
+      partnerId,
+    ).catch(() => { /* ignore */ });
+  } catch { /* never block auth on telemetry */ }
 }

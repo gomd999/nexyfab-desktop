@@ -32,6 +32,7 @@ interface ManufacturerDetail {
   contactPhone: string | null;
   website: string | null;
   hasPartnerProfile: boolean;
+  partnerEmail: string | null;
   techExp: string | null;
   matchField: string | null;
   capacityAmount: string | null;
@@ -101,7 +102,22 @@ export default function ManufacturerDetailPage({
         if (r.status === 404) { setNotFound(true); return null; }
         return r.json() as Promise<{ manufacturer: ManufacturerDetail }>;
       })
-      .then(data => { if (data) setMfr(data.manufacturer); })
+      .then(data => {
+        if (!data) return;
+        setMfr(data.manufacturer);
+        // Fire a portfolio-view event for the partner Hub counter. Best
+        // effort — failures are silent so they never block the page.
+        if (data.manufacturer.partnerEmail) {
+          void fetch('/api/partner/portfolio/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              partnerEmail: data.manufacturer.partnerEmail,
+              source: 'partner-page',
+            }),
+          }).catch(() => { /* ignore */ });
+        }
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);

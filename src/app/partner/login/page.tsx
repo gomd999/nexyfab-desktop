@@ -69,7 +69,31 @@ export default function PartnerLoginPage() {
           <p className="text-sm text-gray-500 mt-1">파트너 전용 관리 포털입니다</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        {/* NexySys 통합 SSO — preferred entry once auth-server Phase 2 ships.
+            Promoted above the legacy access-code form so new partners default
+            to SSO. Hidden when NEXT_PUBLIC_NEXYSYS_OAUTH_URL is unset so we
+            never advertise a broken button. */}
+        {nexysysSsoUrl && (
+          <div className="mb-4 bg-white rounded-2xl shadow-sm border-2 border-blue-100 p-6">
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-wide text-center mb-3">권장 로그인 · NexySys 통합 계정</p>
+            <a
+              href={`${nexysysSsoUrl}?return_to=${encodeURIComponent(`/partner/hub?lang=${lang}`)}`}
+              className="w-full inline-block text-center py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition text-sm"
+            >
+              NexySys 계정으로 로그인
+            </a>
+            <p className="mt-2 text-center text-[11px] text-gray-400">
+              고객사 SaaS와 동일 계정으로 로그인합니다. 별도 액세스 코드가 필요 없습니다.
+            </p>
+          </div>
+        )}
+
+        <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-8 ${nexysysSsoUrl ? 'opacity-90' : ''}`}>
+          {nexysysSsoUrl && (
+            <p className="text-[11px] text-gray-400 mb-3 text-center">
+              기존 액세스 코드 로그인 (점진 폐지 중)
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -127,24 +151,6 @@ export default function PartnerLoginPage() {
             <Link href={`/partner/register?lang=${lang}`} prefetch={false} className="text-blue-600 font-semibold hover:underline">파트너 신청하기 →</Link>
           </p>
         </div>
-
-        {/* NexySys 통합 계정으로 로그인 (auth-server Phase 2 wire-up).
-            Hidden until NEXT_PUBLIC_NEXYSYS_OAUTH_URL is configured so
-            we don't ship a broken button. */}
-        {nexysysSsoUrl && (
-          <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide text-center mb-3">NexySys 통합 계정</p>
-            <a
-              href={`${nexysysSsoUrl}?return_to=${encodeURIComponent(`/partner/hub?lang=${lang}`)}`}
-              className="w-full inline-block text-center py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition text-sm"
-            >
-              NexySys 계정으로 로그인 (베타)
-            </a>
-            <p className="mt-2 text-center text-[11px] text-gray-400">
-              고객사 SaaS와 동일 계정으로 로그인합니다. 별도 액세스 코드가 필요 없습니다.
-            </p>
-          </div>
-        )}
 
         {/* 데모 체험 */}
         <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

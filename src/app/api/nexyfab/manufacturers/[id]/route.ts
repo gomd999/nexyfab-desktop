@@ -73,6 +73,7 @@ export async function GET(
     contactPhone: row.contact_phone,
     website: row.website,
     hasPartnerProfile: !!row.partner_email,
+    partnerEmail: row.partner_email,
     techExp: row.tech_exp,
     matchField: row.match_field,
     capacityAmount: row.capacity_amount,

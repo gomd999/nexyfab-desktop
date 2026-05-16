@@ -4,8 +4,10 @@
 //   2. localStorage.nf_partner_lang   — persisted between visits
 //   3. document.documentElement.lang  — last-resort default
 //
-// Returns a normalised 2-letter route lang (ko/en/ja/cn/es/ar). Most
-// templates only ship ko/en at first; missing locales fall back to en.
+// Returns a normalised 2-letter route lang (ko/en/ja/cn/es/ar). Once
+// resolved we patch <html lang> + <html dir> on the client so Arabic
+// flips to RTL even though the SSR'd html tag was rendered with the
+// Korean default in layout.tsx.
 
 'use client';
 
@@ -30,6 +32,14 @@ function normalise(input: string | null | undefined): PartnerLang | null {
  * first effect tick because most existing partner pages are Korean-only
  * — that keeps the SSR HTML stable for screen-readers and skip-links.
  */
+function applyHtmlLang(lang: PartnerLang) {
+  try {
+    const root = document.documentElement;
+    root.lang = lang;
+    root.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  } catch { /* SSR / sandboxed */ }
+}
+
 export function usePartnerLang(): PartnerLang {
   const search = useSearchParams();
   const [lang, setLang] = useState<PartnerLang>('ko');
@@ -38,6 +48,7 @@ export function usePartnerLang(): PartnerLang {
     const fromQuery = normalise(search?.get('lang'));
     if (fromQuery) {
       setLang(fromQuery);
+      applyHtmlLang(fromQuery);
       try { window.localStorage.setItem(STORAGE_KEY, fromQuery); } catch { /* ignore */ }
       return;
     }
@@ -45,11 +56,15 @@ export function usePartnerLang(): PartnerLang {
       const stored = normalise(window.localStorage.getItem(STORAGE_KEY));
       if (stored) {
         setLang(stored);
+        applyHtmlLang(stored);
         return;
       }
     } catch { /* ignore */ }
     const fromHtml = normalise(document.documentElement.lang);
-    if (fromHtml) setLang(fromHtml);
+    if (fromHtml) {
+      setLang(fromHtml);
+      applyHtmlLang(fromHtml);
+    }
   }, [search]);
 
   return lang;

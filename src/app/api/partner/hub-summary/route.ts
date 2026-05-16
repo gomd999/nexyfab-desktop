@@ -15,15 +15,18 @@
  *   • Upcoming settlement → completed `nf_contracts` rows for the
  *     partner that have not yet been paid out. Mirrors
  *     `/api/partner/settlements` aggregation.
- *   • Portfolio views & dedicated profile/portfolio tables don't exist
- *     yet (factory record substitutes for profile completion); those
- *     fields stay zero/false here and are TODO-flagged for the
- *     factories-schema follow-up.
+ *   • Portfolio = completed nf_contracts (we treat each completed
+ *     contract as a portfolio entry — matches what /partner/portfolio
+ *     renders).
+ *   • Portfolio view events → `nf_partner_portfolio_views` (created
+ *     lazily by ensurePortfolioViewTable, written by
+ *     `POST /api/partner/portfolio/view`).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { findFactoryForPartnerEmail, normPartnerEmail } from '@/lib/partner-factory-access';
+import { countViewsInLastDays } from '@/lib/partner-portfolio-views';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,8 +81,8 @@ export async function GET(req: NextRequest) {
       partnerEmail,
     ).catch(() => null);
 
-    // ── 3) Portfolio views — not yet tracked; placeholder 0 ──────────────────
-    const portfolioViews7d = 0;
+    // ── 3) Portfolio views — tracked via nf_partner_portfolio_views ──────────
+    const portfolioViews7d = await countViewsInLastDays(partnerEmail, 7);
 
     // ── 4) Funnel flags ──────────────────────────────────────────────────────
     const firstQuoteRow = await db.queryOne<{ n: number }>(
@@ -89,10 +92,20 @@ export async function GET(req: NextRequest) {
       partnerEmail,
     ).catch(() => null);
 
+    // step3: any completed contract = portfolio entry (matches what
+    // /partner/portfolio renders today). Add ad-hoc portfolio_items in
+    // the future if we let partners curate beyond completed contracts.
+    const portfolioRow = await db.queryOne<{ n: number }>(
+      `SELECT COUNT(*) as n FROM nf_contracts
+         WHERE status = 'completed'
+           AND LOWER(TRIM(partner_email)) = ?`,
+      partnerEmail,
+    ).catch(() => null);
+
     const funnel: FunnelFlags = {
       step1: true,
       step2: !!(factory && factory.name && factory.name.trim().length > 0),
-      step3: false,
+      step3: (portfolioRow?.n ?? 0) > 0,
       step4: (firstQuoteRow?.n ?? 0) > 0,
     };
 
