@@ -199,7 +199,14 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div
+        ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+        aria-label={isKo ? 'AI 대화 내역' : 'AI conversation history'}
+        style={{ flex: 1, overflow: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}
+      >
         {messages.map(m => (
           <div
             key={m.id}
@@ -291,6 +298,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
           onChange={e => setInput(e.target.value)}
           placeholder={isKo ? 'AI 에게 요청…' : 'Ask Nexy AI…'}
           disabled={busy}
+          aria-label={isKo ? 'AI 메시지 입력' : 'AI message input'}
           style={{
             flex: 1, height: 28, padding: '0 10px',
             borderRadius: 4, border: '1px solid var(--nx-border)',
@@ -302,6 +310,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         <button
           type="submit"
           disabled={busy || !input.trim()}
+          aria-label={isKo ? '보내기' : 'Send'}
           style={{
             padding: '0 12px', height: 28, border: 0, borderRadius: 4,
             background: busy ? 'var(--nx-text-3)' : 'var(--nx-accent)',

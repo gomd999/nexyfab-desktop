@@ -152,26 +152,36 @@ export default function AuthModal({
   const fieldErrorStyle = { borderColor: '#f85149' };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9000,
-      background: 'rgba(0,0,0,0.65)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backdropFilter: 'blur(4px)',
-    }} onClick={onClose}>
-      <div style={{
-        position: 'relative',
-        background: '#161b22', border: '1px solid #30363d',
-        borderRadius: 16, padding: '32px 28px', width: 400, maxWidth: 'calc(100vw - 32px)',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-        fontFamily: 'system-ui, sans-serif',
-      }} onClick={e => e.stopPropagation()}>
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9000,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+        style={{
+          position: 'relative',
+          background: '#161b22', border: '1px solid #30363d',
+          borderRadius: 16, padding: '32px 28px', width: 400, maxWidth: 'calc(100vw - 32px)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#e6edf3', marginBottom: 4 }}>
             <span style={{ color: '#8b9cf4' }}>Nexy</span>Fab
           </div>
-          <p style={{ fontSize: 13, color: '#6e7681', margin: 0 }}>
+          <p id="auth-modal-title" style={{ fontSize: 13, color: '#6e7681', margin: 0 }}>
             {mode === 'login' ? t.loginTitle : t.signupTitle}
           </p>
         </div>

@@ -77,6 +77,8 @@ export function GuestExpiryBanner({ isKo }: GuestExpiryBannerProps) {
   return (
     <div
       role="status"
+      aria-live={urgency === 'urgent' ? 'assertive' : 'polite'}
+      aria-atomic="true"
       style={{
         position: 'fixed',
         bottom: 16,

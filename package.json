@@ -72,7 +72,9 @@
     "import:factories": "tsx scripts/import-factories-directory.ts",
     "invites:prune-expired": "node scripts/prune-expired-invites.mjs",
     "perf:bench": "node scripts/perf-benchmark.mjs",
-    "perf:bench:json": "node scripts/perf-benchmark.mjs --json"
+    "perf:bench:json": "node scripts/perf-benchmark.mjs --json",
+    "bundle:budget": "node scripts/bundle-budget.mjs",
+    "bundle:budget:json": "node scripts/bundle-budget.mjs --json"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1025.0",

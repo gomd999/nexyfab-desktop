@@ -122,6 +122,8 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
       `}</style>
       <aside
         className="nf-uni-nav"
+        role="navigation"
+        aria-label={isKo ? '주요 메뉴' : 'Main navigation'}
         style={{
           flex: '0 0 auto',
           background: 'var(--nx-panel)',
@@ -172,6 +174,8 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                   <Link
                     key={item.href}
                     href={`/${lang}${item.href}`}
+                    aria-current={active ? 'page' : undefined}
+                    aria-label={isKo ? item.labelKo : item.labelEn}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '8px 14px',
@@ -190,7 +194,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                       if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
                     }}
                   >
-                    <span style={{ fontSize: 16, flex: '0 0 18px', textAlign: 'center' }}>{item.icon}</span>
+                    <span aria-hidden="true" style={{ fontSize: 16, flex: '0 0 18px', textAlign: 'center' }}>{item.icon}</span>
                     <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {isKo ? item.labelKo : item.labelEn}
                     </span>

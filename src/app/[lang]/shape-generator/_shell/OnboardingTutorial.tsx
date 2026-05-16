@@ -128,6 +128,7 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
       {/* Backdrop */}
       <div
         onClick={dismiss}
+        aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, zIndex: 9000,
           background: 'rgba(0,0,0,0.55)',
@@ -137,7 +138,9 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
       {/* Card */}
       <div
         role="dialog"
-        aria-modal
+        aria-modal="true"
+        aria-labelledby="nx-onboarding-title"
+        aria-describedby="nx-onboarding-body"
         style={{
           position: 'fixed', zIndex: 9001,
           left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
@@ -159,7 +162,7 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
           }}>
             {step + 1}
           </span>
-          <h2 style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700 }}>{text.title}</h2>
+          <h2 id="nx-onboarding-title" style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700 }}>{text.title}</h2>
           <button
             onClick={dismiss}
             aria-label="Close"
@@ -169,7 +172,7 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
             }}
           >×</button>
         </div>
-        <p style={{
+        <p id="nx-onboarding-body" style={{
           fontSize: 13, lineHeight: 1.6,
           color: 'var(--nx-text-2)',
           margin: '0 0 16px',
