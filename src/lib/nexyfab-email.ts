@@ -634,7 +634,7 @@ export function dripD1EmailSubject(locale: NexyfabEmailContentLocale): string {
   }
 }
 
-export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko', _unsubscribeUrl?: string): string {
+export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko', unsubscribeUrl?: string): string {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://nexyfab.com';
   const safeName = escapeHtml(name || '');
   const langPath = nexyfabAppLangPathFromEmailLocale(locale);
@@ -723,7 +723,7 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
     </a>
   `;
 
-  return emailWrapper(content);
+  return emailWrapper(content, unsubscribeUrl);
 }
 
 // ─── Template: 드립 D+7 — Pro 업그레이드 제안 ──────────────────────────────────

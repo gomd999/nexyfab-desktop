@@ -43,4 +43,23 @@ test.describe('Billing API surface', () => {
     const res = await request.post('/api/cron/trial-reminders');
     expect(res.status()).toBe(403);
   });
+
+  test('POST /api/cron/metered-billing rejects without cron-secret', async ({ request }) => {
+    const res = await request.post('/api/cron/metered-billing');
+    expect(res.status()).toBe(403);
+  });
+
+  test('POST /api/cron/cancel-winback rejects without cron-secret', async ({ request }) => {
+    const res = await request.post('/api/cron/cancel-winback');
+    expect(res.status()).toBe(403);
+  });
+
+  test('GET /api/docs/openapi serves a valid OpenAPI 3.1 document', async ({ request }) => {
+    const res = await request.get('/api/docs/openapi');
+    expect(res.status()).toBe(200);
+    const spec = await res.json();
+    expect(spec.openapi).toMatch(/^3\./);
+    expect(spec.info?.title).toBe('NexyFab Public API');
+    expect(spec.paths?.['/api/public/v1/projects']).toBeDefined();
+  });
 });

@@ -74,6 +74,7 @@ export function AccountTypeCard({ isKo }: AccountTypeCardProps) {
     <>
       <div
         onClick={close}
+        aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, zIndex: 8800,
           background: 'rgba(0,0,0,0.5)',
@@ -82,7 +83,9 @@ export function AccountTypeCard({ isKo }: AccountTypeCardProps) {
       />
       <div
         role="dialog"
-        aria-modal
+        aria-modal="true"
+        aria-labelledby="nx-account-type-title"
+        aria-describedby="nx-account-type-desc"
         style={{
           position: 'fixed', zIndex: 8801,
           left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
@@ -95,10 +98,10 @@ export function AccountTypeCard({ isKo }: AccountTypeCardProps) {
           color: 'var(--nx-text)',
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+        <h2 id="nx-account-type-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
           {isKo ? 'NexyFab 을 어떻게 사용하시나요?' : 'How will you use NexyFab?'}
         </h2>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.5, marginBottom: 16 }}>
+        <p id="nx-account-type-desc" style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.5, marginBottom: 16 }}>
           {isKo
             ? '사용 환경에 맞게 기능을 최적화해 드립니다. 나중에 설정에서 언제든 변경 가능합니다.'
             : 'So we can tailor features. You can change this any time in Settings.'}

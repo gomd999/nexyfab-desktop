@@ -168,6 +168,13 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
       {/* Bell button */}
       <button
         onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={
+          unreadCount > 0
+            ? (isKo ? `알림 ${unreadCount}개 읽지 않음` : `Notifications, ${unreadCount} unread`)
+            : (isKo ? '알림' : 'Notifications')
+        }
         style={{
           background: 'none',
           border: 'none',
@@ -185,7 +192,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
         onMouseEnter={e => { e.currentTarget.style.background = '#161b22'; e.currentTarget.style.color = '#c9d1d9'; }}
         onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6e7681'; }}
       >
-        <span style={{ fontSize: 16, position: 'relative', flexShrink: 0 }}>
+        <span aria-hidden="true" style={{ fontSize: 16, position: 'relative', flexShrink: 0 }}>
           🔔
           {unreadCount > 0 && (
             <span style={{
@@ -215,19 +222,24 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
 
       {/* Dropdown */}
       {open && (
-        <div style={{
-          position: 'absolute',
-          bottom: '100%',
-          left: 8,
-          width: 320,
-          background: '#161b22',
-          border: '1px solid #30363d',
-          borderRadius: 10,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          zIndex: 9999,
-          overflow: 'hidden',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-        }}>
+        <div
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="nx-notif-title"
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: 8,
+            width: 320,
+            background: '#161b22',
+            border: '1px solid #30363d',
+            borderRadius: 10,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            zIndex: 9999,
+            overflow: 'hidden',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+          }}
+        >
           {/* Header */}
           <div style={{
             display: 'flex',
@@ -236,7 +248,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
             padding: '10px 14px',
             borderBottom: '1px solid #30363d',
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+            <span id="nx-notif-title" style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
               {isKo ? '알림' : 'Notifications'}
             </span>
             {unreadCount > 0 && (
@@ -258,7 +270,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
           </div>
 
           {/* List */}
-          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <div role="list" aria-live="polite" style={{ maxHeight: 320, overflowY: 'auto' }}>
             {notifications.length === 0 ? (
               <div style={{
                 padding: '24px 14px',
@@ -272,7 +284,11 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
               notifications.map(n => (
                 <div
                   key={n.id}
+                  role="listitem"
                   onClick={() => handleNotificationClick(n)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNotificationClick(n); } }}
+                  tabIndex={n.link ? 0 : -1}
+                  aria-label={`${n.read === 0 ? (isKo ? '읽지 않음' : 'unread') + ': ' : ''}${n.title}`}
                   style={{
                     display: 'flex',
                     gap: 10,
@@ -285,7 +301,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                   onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = n.read === 0 ? '#1c2128' : 'transparent'; }}
                 >
-                  <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.4 }}>{getIcon(n.type)}</span>
+                  <span aria-hidden="true" style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.4 }}>{getIcon(n.type)}</span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{
                       margin: 0,

@@ -96,6 +96,8 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
 
   return (
     <div
+      role="region"
+      aria-label={isKo ? '이메일 인증 안내' : 'Email verification notice'}
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
@@ -108,13 +110,13 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
         boxShadow: '0 2px 12px rgba(0, 0, 0, 0.25)',
       }}
     >
-      <span style={{ fontSize: 16 }}>✉</span>
+      <span aria-hidden="true" style={{ fontSize: 16 }}>✉</span>
       <span style={{ flex: 1, minWidth: 0 }}>
         {isKo
           ? <>이메일 인증이 필요합니다 — <strong>{user.email}</strong> 로 발송된 6자리 코드를 입력해주세요.</>
           : <>Email verification needed — enter the 6-digit code sent to <strong>{user.email}</strong>.</>}
-        {info && <span style={{ marginLeft: 10, color: '#0a4f1f', fontWeight: 700 }}>{info}</span>}
-        {error && <span style={{ marginLeft: 10, color: '#7a2222', fontWeight: 700 }}>{error}</span>}
+        {info && <span role="status" aria-live="polite" style={{ marginLeft: 10, color: '#0a4f1f', fontWeight: 700 }}>{info}</span>}
+        {error && <span role="alert" aria-live="assertive" style={{ marginLeft: 10, color: '#7a2222', fontWeight: 700 }}>{error}</span>}
       </span>
       {showInput && (
         <>
@@ -127,6 +129,8 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
             onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyDown={e => { if (e.key === 'Enter') verify(); }}
             disabled={busy}
+            aria-label={isKo ? '6자리 인증 코드' : '6-digit verification code'}
+            autoComplete="one-time-code"
             style={{
               height: 28, padding: '0 10px',
               border: '1px solid rgba(0, 0, 0, 0.3)', borderRadius: 4,
@@ -177,7 +181,7 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
       </button>
       <button
         onClick={dismiss}
-        aria-label="Dismiss"
+        aria-label={isKo ? '인증 안내 닫기' : 'Dismiss verification notice'}
         style={{
           width: 24, height: 24, padding: 0, border: 0, background: 'transparent',
           color: '#0f0f0f', fontSize: 18, cursor: 'pointer',
