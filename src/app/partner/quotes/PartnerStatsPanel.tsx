@@ -1,9 +1,12 @@
 'use client';
 
 /**
- * PartnerStatsPanel — 파트너 월별 실적 통계 모달.
- * 전달받은 quotes 배열을 기반으로 수락률, 평균 금액, 응답 속도, 공정 분포를 계산.
+ * PartnerStatsPanel — partner monthly performance stats modal.
+ * Computes accept-rate / avg amount / response speed / process distribution
+ * from the passed `quotes` array.
  */
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 interface Quote {
   id: string;
@@ -33,8 +36,13 @@ const C = {
   purple: '#8b5cf6', teal: '#2dd4bf', orange: '#f97316',
 };
 
-function won(n: number): string {
-  return n.toLocaleString('ko-KR') + '원';
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+function fmtMoney(n: number, lang: string): string {
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n);
+  } catch { return `₩${n.toLocaleString()}`; }
 }
 
 function StatBox({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
@@ -47,11 +55,11 @@ function StatBox({ label, value, sub, color }: { label: string; value: string; s
   );
 }
 
-function ProcessBar({ process, count, max }: { process: string; count: number; max: number }) {
+function ProcessBar({ process, count, max, uncategorisedLabel }: { process: string; count: number; max: number; uncategorisedLabel: string }) {
   const pct = max > 0 ? (count / max) * 100 : 0;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 11, color: C.textDim, minWidth: 100, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{process || '미분류'}</span>
+      <span style={{ fontSize: 11, color: C.textDim, minWidth: 100, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{process || uncategorisedLabel}</span>
       <div style={{ flex: 1, height: 8, background: C.border, borderRadius: 4, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: C.accent, borderRadius: 4 }} />
       </div>
@@ -60,7 +68,7 @@ function ProcessBar({ process, count, max }: { process: string; count: number; m
   );
 }
 
-function MonthRow({ month, total, accepted, avgAmount: _avgAmount }: { month: string; total: number; accepted: number; avgAmount: number }) {
+function MonthRow({ month, total, accepted, avgAmount: _avgAmount, countLabel }: { month: string; total: number; accepted: number; avgAmount: number; countLabel: (n: number) => string }) {
   const rate = total > 0 ? Math.round((accepted / total) * 100) : 0;
   const color = rate >= 60 ? C.green : rate >= 30 ? C.yellow : C.red;
   return (
@@ -70,7 +78,7 @@ function MonthRow({ month, total, accepted, avgAmount: _avgAmount }: { month: st
         <div style={{ width: `${rate}%`, height: '100%', background: color, borderRadius: 3 }} />
       </div>
       <span style={{ fontSize: 11, fontWeight: 700, color, textAlign: 'right' }}>{rate}%</span>
-      <span style={{ fontSize: 10, color: C.textMuted, textAlign: 'right' }}>{total}건</span>
+      <span style={{ fontSize: 10, color: C.textMuted, textAlign: 'right' }}>{countLabel(total)}</span>
     </div>
   );
 }
@@ -81,6 +89,8 @@ function getMonth(iso: string): string {
 }
 
 export default function PartnerStatsPanel({ quotes, company, onClose }: Props) {
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const total = quotes.length;
   const responded = quotes.filter(q => ['responded', 'accepted'].includes(q.status)).length;
   const accepted  = quotes.filter(q => q.status === 'accepted').length;
@@ -97,10 +107,11 @@ export default function PartnerStatsPanel({ quotes, company, onClose }: Props) {
 
   const totalRevenue = acceptedQuotes.reduce((s, q) => s + (q.partnerResponse?.estimatedAmount ?? 0), 0);
 
-  // 공정 분포
+  // process distribution (data prefix kept KR canonical so existing
+  // partner records remain comparable across locales)
   const processCounts: Record<string, number> = {};
   for (const q of quotes) {
-    const p = q.dfmProcess ?? '미분류';
+    const p = q.dfmProcess ?? t.psProcessUncategorised;
     processCounts[p] = (processCounts[p] ?? 0) + 1;
   }
   const processEntries = Object.entries(processCounts).sort((a, b) => b[1] - a[1]);
@@ -133,71 +144,71 @@ export default function PartnerStatsPanel({ quotes, company, onClose }: Props) {
       >
         {/* 헤더 */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1a2030, #1a301e)' }}>
-          <span style={{ fontSize: 18 }}>📈</span>
+          <span style={{ fontSize: 18 }} aria-hidden="true">📈</span>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>파트너 실적 통계</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{company ?? '내 견적'} · 전체 기간</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>{t.psHeader}</p>
+            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{company ?? t.psFallbackCompany} · {t.psPeriodAll}</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* 핵심 지표 */}
+          {/* Key metrics */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <StatBox label="전체 RFQ" value={String(total)} sub="건" />
-            <StatBox label="수락률" value={`${acceptRate}%`} sub={`${accepted}/${total}건`} color={acceptRateColor} />
-            <StatBox label="응답률" value={`${responseRate}%`} sub={`${responded}/${total}건`} color={C.accent} />
-            <StatBox label="평균 수락금액" value={avgAmount > 0 ? won(avgAmount) : '—'} sub="수락 건 기준" color={C.teal} />
+            <StatBox label={t.psMetricTotalRfq} value={String(total)} sub={t.psSubCountSuffix} />
+            <StatBox label={t.psMetricAccept} value={`${acceptRate}%`} sub={t.psSubAcceptRatio(accepted, total)} color={acceptRateColor} />
+            <StatBox label={t.psMetricResponse} value={`${responseRate}%`} sub={t.psSubAcceptRatio(responded, total)} color={C.accent} />
+            <StatBox label={t.psMetricAvgAccept} value={avgAmount > 0 ? fmtMoney(avgAmount, lang) : t.psUnitDash} sub={t.psSubAcceptBase} color={C.teal} />
           </div>
 
-          {/* 수락/거절 막대 */}
+          {/* Outcome distribution */}
           <div style={{ background: C.card, borderRadius: 10, padding: '14px 16px', border: `1px solid ${C.border}` }}>
-            <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>RFQ 결과 분포</p>
+            <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.psDistributionTitle}</p>
             <div style={{ display: 'flex', gap: 4, height: 18, borderRadius: 4, overflow: 'hidden' }}>
-              {accepted > 0  && <div style={{ flex: accepted,  background: C.green  }} title={`수락 ${accepted}건`} />}
-              {responded > accepted && <div style={{ flex: responded - accepted, background: C.accent }} title={`응답중 ${responded - accepted}건`} />}
-              {rejected > 0  && <div style={{ flex: rejected,  background: C.red    }} title={`거절 ${rejected}건`} />}
-              {total - responded - rejected > 0 && <div style={{ flex: total - responded - rejected, background: C.border }} title={`대기 ${total - responded - rejected}건`} />}
+              {accepted > 0  && <div style={{ flex: accepted,  background: C.green  }} title={`${t.psLegendAccepted} ${t.psLegendCount(accepted)}`} />}
+              {responded > accepted && <div style={{ flex: responded - accepted, background: C.accent }} title={`${t.psLegendInProgress} ${t.psLegendCount(responded - accepted)}`} />}
+              {rejected > 0  && <div style={{ flex: rejected,  background: C.red    }} title={`${t.psLegendRejected} ${t.psLegendCount(rejected)}`} />}
+              {total - responded - rejected > 0 && <div style={{ flex: total - responded - rejected, background: C.border }} title={`${t.psLegendPending} ${t.psLegendCount(total - responded - rejected)}`} />}
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               {[
-                { label: '수락', color: C.green,  n: accepted },
-                { label: '거절', color: C.red,    n: rejected },
-                { label: '대기', color: C.border, n: total - responded - rejected },
+                { label: t.psLegendAccepted, color: C.green,  n: accepted },
+                { label: t.psLegendRejected, color: C.red,    n: rejected },
+                { label: t.psLegendPending,  color: C.border, n: total - responded - rejected },
               ].map(({ label, color, n }) => (
                 <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: C.textMuted }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: color, display: 'inline-block' }} />
-                  {label} {n}건
+                  {label} {t.psLegendCount(n)}
                 </span>
               ))}
             </div>
           </div>
 
-          {/* 총 수익 */}
+          {/* Cumulative revenue */}
           {totalRevenue > 0 && (
             <div style={{ background: `${C.green}12`, border: `1px solid ${C.green}30`, borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 700 }}>💰 누적 수주 금액</p>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: C.green }}>{won(totalRevenue)}</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.green, fontWeight: 700 }}>{t.psCumulativeTitle}</p>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: C.green }}>{fmtMoney(totalRevenue, lang)}</p>
             </div>
           )}
 
-          {/* 공정 분포 */}
+          {/* Process distribution */}
           {processEntries.length > 0 && (
             <div style={{ background: C.card, borderRadius: 10, padding: '14px 16px', border: `1px solid ${C.border}` }}>
-              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>공정별 RFQ</p>
+              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.psProcessTitle}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {processEntries.slice(0, 6).map(([p, cnt]) => (
-                  <ProcessBar key={p} process={p} count={cnt} max={maxProcess} />
+                  <ProcessBar key={p} process={p} count={cnt} max={maxProcess} uncategorisedLabel={t.psProcessUncategorised} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* 월별 추이 */}
+          {/* Monthly trend */}
           {sortedMonths.length > 1 && (
             <div style={{ background: C.card, borderRadius: 10, padding: '14px 16px', border: `1px solid ${C.border}` }}>
-              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>월별 수락률 추이</p>
+              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.psMonthlyTitle}</p>
               <div>
                 {sortedMonths.map(([m, stat]) => (
                   <MonthRow
@@ -206,6 +217,7 @@ export default function PartnerStatsPanel({ quotes, company, onClose }: Props) {
                     total={stat.total}
                     accepted={stat.accepted}
                     avgAmount={stat.amounts.length > 0 ? Math.round(stat.amounts.reduce((a, b) => a + b, 0) / stat.amounts.length) : 0}
+                    countLabel={t.psLegendCount}
                   />
                 ))}
               </div>
@@ -213,7 +225,7 @@ export default function PartnerStatsPanel({ quotes, company, onClose }: Props) {
           )}
 
           {total === 0 && (
-            <p style={{ color: C.textMuted, fontSize: 12, textAlign: 'center', padding: '32px 0' }}>아직 RFQ 데이터가 없습니다.</p>
+            <p style={{ color: C.textMuted, fontSize: 12, textAlign: 'center', padding: '32px 0' }}>{t.psEmpty}</p>
           )}
         </div>
 
@@ -222,7 +234,7 @@ export default function PartnerStatsPanel({ quotes, company, onClose }: Props) {
             onClick={onClose}
             style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textDim, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
-            닫기
+            {t.psClose}
           </button>
         </div>
       </div>

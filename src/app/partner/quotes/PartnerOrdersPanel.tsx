@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 interface PartnerOrder {
   id: string;
@@ -16,13 +18,24 @@ interface PartnerOrder {
   paymentStatus?: string | null;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  placed:     { label: '주문 접수',  color: '#388bfd' },
-  production: { label: '생산 중',   color: '#f0883e' },
-  qc:         { label: '품질 검사', color: '#e3b341' },
-  shipped:    { label: '배송 중',   color: '#79c0ff' },
-  delivered:  { label: '납품 완료', color: '#3fb950' },
+const STATUS_COLORS: Record<string, string> = {
+  placed:     '#388bfd',
+  production: '#f0883e',
+  qc:         '#e3b341',
+  shipped:    '#79c0ff',
+  delivered:  '#3fb950',
 };
+
+function statusLabel(s: string, t: QuotePanelsDict): string {
+  switch (s) {
+    case 'placed':     return t.poStatus_placed;
+    case 'production': return t.poStatus_production;
+    case 'qc':         return t.poStatus_qc;
+    case 'shipped':    return t.poStatus_shipped;
+    case 'delivered':  return t.poStatus_delivered;
+    default:           return s;
+  }
+}
 
 const NEXT_STATUS: Record<string, string> = {
   placed: 'production',
@@ -31,12 +44,15 @@ const NEXT_STATUS: Record<string, string> = {
   shipped: 'delivered',
 };
 
-const NEXT_LABEL: Record<string, string> = {
-  placed:     '생산 시작',
-  production: 'QC 시작',
-  qc:         '배송 시작',
-  shipped:    '납품 완료',
-};
+function nextLabel(s: string, t: QuotePanelsDict): string {
+  switch (s) {
+    case 'placed':     return t.poNext_placed;
+    case 'production': return t.poNext_production;
+    case 'qc':         return t.poNext_qc;
+    case 'shipped':    return t.poNext_shipped;
+    default:           return '';
+  }
+}
 
 interface Props {
   session: string;
@@ -44,6 +60,8 @@ interface Props {
 }
 
 export default function PartnerOrdersPanel({ session, onClose }: Props) {
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -58,11 +76,11 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
       const d = await r.json() as { orders?: PartnerOrder[] };
       setOrders(d.orders ?? []);
     } catch {
-      setMsg('주문 목록을 불러오지 못했습니다.');
+      setMsg(t.poErrorLoad);
     } finally {
       setLoading(false);
     }
-  }, [session, statusFilter]);
+  }, [session, statusFilter, t]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -84,21 +102,28 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
       const d = await r.json() as { ok?: boolean; error?: string };
       if (d.ok) {
         setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: next } : o));
-        setMsg(`✅ ${order.partName} 상태가 "${STATUS_LABELS[next]?.label}"으로 업데이트됐습니다.`);
+        setMsg(t.poUpdateSuccess(order.partName, statusLabel(next, t)));
       } else {
-        setMsg(`❌ ${d.error ?? '업데이트 실패'}`);
+        setMsg(`❌ ${d.error ?? t.poUpdateFail}`);
       }
     } catch {
-      setMsg('❌ 오류가 발생했습니다.');
+      setMsg(t.poErrorGeneric);
     } finally {
       setUpdating(null);
     }
   }
 
+  const LOCALE: Record<string, string> = {
+    ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+  };
   function fmtDate(ts: number) {
-    return new Date(ts).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    return new Date(ts).toLocaleDateString(LOCALE[lang] ?? 'en-US', { month: 'short', day: 'numeric' });
   }
-  function won(n: number) { return n.toLocaleString('ko-KR') + '원'; }
+  function fmtMoney(n: number) {
+    try {
+      return new Intl.NumberFormat(LOCALE[lang] ?? 'en-US', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n);
+    } catch { return `₩${n.toLocaleString()}`; }
+  }
 
   const C = {
     bg: '#0d1117', panel: '#161b22', border: '#30363d', text: '#e6edf3',
@@ -120,8 +145,8 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
       }}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>📦 담당 주문 관리</span>
-          <span style={{ fontSize: 12, color: C.dim }}>({filtered.length}건)</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{t.poHeader}</span>
+          <span style={{ fontSize: 12, color: C.dim }}>{t.poCount(filtered.length)}</span>
           <div style={{ flex: 1 }} />
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
@@ -135,7 +160,7 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
               background: statusFilter === s ? C.accent + '22' : 'transparent',
               color: statusFilter === s ? C.accent : C.muted,
             }}>
-              {s === '' ? '전체' : STATUS_LABELS[s]?.label ?? s}
+              {s === '' ? t.poFilterAll : statusLabel(s, t)}
             </button>
           ))}
         </div>
@@ -155,17 +180,18 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px 24px' }}>
           {loading && (
-            <div style={{ color: C.dim, textAlign: 'center', padding: '40px 0', fontSize: 13 }}>불러오는 중...</div>
+            <div style={{ color: C.dim, textAlign: 'center', padding: '40px 0', fontSize: 13 }}>{t.poLoading}</div>
           )}
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '60px 0', color: C.dim, fontSize: 13 }}>
-              {statusFilter ? '해당 상태의 주문이 없습니다.' : '담당 주문이 없습니다.'}
+              {statusFilter ? t.poEmptyFiltered : t.poEmpty}
             </div>
           )}
           {!loading && filtered.map(order => {
-            const sl = STATUS_LABELS[order.status];
+            const slColor = STATUS_COLORS[order.status] ?? '#6e7681';
+            const slLabel = statusLabel(order.status, t);
             const nextStatus = NEXT_STATUS[order.status];
-            const nextLabel = NEXT_LABEL[order.status];
+            const nextBtnLabel = nextLabel(order.status, t);
             const currentStep = ['placed','production','qc','shipped','delivered'].indexOf(order.status);
             const pct = Math.round((currentStep / 4) * 100);
             const isPaid = order.paymentStatus === 'paid';
@@ -181,22 +207,22 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
                       <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{order.partName}</span>
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                        background: (sl?.color ?? '#6e7681') + '22', color: sl?.color ?? '#6e7681',
-                      }}>{sl?.label ?? order.status}</span>
+                        background: slColor + '22', color: slColor,
+                      }}>{slLabel}</span>
                       {isPaid && (
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 8, background: '#3fb95022', color: '#3fb950' }}>결제완료</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 8, background: '#3fb95022', color: '#3fb950' }}>{t.poBadgePaid}</span>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-                      {order.id} · 수량 {order.quantity.toLocaleString()}개 · {won(order.totalPriceKRW)}
+                      {order.id} · {t.poOrderQty(order.quantity.toLocaleString())} · {fmtMoney(order.totalPriceKRW)}
                     </div>
                     <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>
-                      주문일 {fmtDate(order.createdAt)} · 납기 예정 {fmtDate(order.estimatedDeliveryAt)}
+                      {t.poOrderedOn(fmtDate(order.createdAt))} · {t.poDueOn(fmtDate(order.estimatedDeliveryAt))}
                     </div>
 
                     {/* Progress bar */}
                     <div style={{ marginTop: 10, height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: sl?.color ?? C.accent, transition: 'width 0.4s' }} />
+                      <div style={{ height: '100%', width: `${pct}%`, background: slColor, transition: 'width 0.4s' }} />
                     </div>
                   </div>
 
@@ -215,11 +241,11 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
                         opacity: updating === order.id ? 0.7 : 1,
                       }}
                     >
-                      {updating === order.id ? '처리 중...' : `→ ${nextLabel}`}
+                      {updating === order.id ? t.poBtnProcessing : `→ ${nextBtnLabel}`}
                     </button>
                   )}
                   {!nextStatus && order.status === 'delivered' && (
-                    <span style={{ fontSize: 11, color: '#3fb950', fontWeight: 700 }}>✓ 납품 완료</span>
+                    <span style={{ fontSize: 11, color: '#3fb950', fontWeight: 700 }}>{t.poBtnDeliveredDone}</span>
                   )}
                   <a
                     href={`/api/nexyfab/orders/${order.id}/pdf`}
@@ -231,7 +257,7 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
                       background: 'transparent', textAlign: 'center',
                     }}
                   >
-                    📄 PDF
+                    {t.poBtnPdf}
                   </a>
                   <a
                     href={`/api/nexyfab/orders/${order.id}/tax-invoice`}
@@ -243,7 +269,7 @@ export default function PartnerOrdersPanel({ session, onClose }: Props) {
                       background: 'transparent', textAlign: 'center',
                     }}
                   >
-                    🧾 세금계산서
+                    {t.poBtnTaxInvoice}
                   </a>
                   </div>
                 </div>

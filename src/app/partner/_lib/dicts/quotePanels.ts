@@ -81,6 +81,29 @@ export interface QuotePanelsDict {
   poStatus_delivered: string;
   poDueLabel: string;
   poQtyUnit: string;
+  poHeader: string;
+  poCount: (n: number) => string;
+  poFilterAll: string;
+  poStatus_placed: string;
+  poStatus_production: string;
+  poStatus_qc: string;
+  poErrorLoad: string;
+  poErrorGeneric: string;
+  poUpdateSuccess: (name: string, status: string) => string;
+  poUpdateFail: string;
+  poBadgePaid: string;
+  poEmptyFiltered: string;
+  poOrderQty: (n: string) => string;
+  poOrderedOn: (date: string) => string;
+  poDueOn: (date: string) => string;
+  poBtnProcessing: string;
+  poBtnDeliveredDone: string;
+  poBtnPdf: string;
+  poBtnTaxInvoice: string;
+  poNext_placed: string;
+  poNext_production: string;
+  poNext_qc: string;
+  poNext_shipped: string;
 
   // PartnerStatsPanel
   psTitle: string;
@@ -91,6 +114,29 @@ export interface QuotePanelsDict {
   psMetricAvgResponse: string;
   psMetricAvgAmount: string;
   psWindowLabel: (days: number) => string;
+  psHeader: string;
+  psFallbackCompany: string;
+  psPeriodAll: string;
+  psMetricTotalRfq: string;
+  psMetricAccept: string;
+  psMetricResponse: string;
+  psMetricAvgAccept: string;
+  psSubAcceptBase: string;
+  psSubCountSuffix: string;
+  psSubAcceptRatio: (n: number, total: number) => string;
+  psDistributionTitle: string;
+  psLegendAccepted: string;
+  psLegendInProgress: string;
+  psLegendRejected: string;
+  psLegendPending: string;
+  psLegendCount: (n: number) => string;
+  psCumulativeTitle: string;
+  psProcessTitle: string;
+  psProcessUncategorised: string;
+  psMonthlyTitle: string;
+  psEmpty: string;
+  psClose: string;
+  psUnitDash: string;
 
   // PartnerAIPrefsPanel
   apTitle: string;
@@ -205,13 +251,36 @@ const KO: QuotePanelsDict = {
   poTitle: '진행 주문',
   poSubtitle: '확정된 주문의 진행 상태',
   poLoading: '불러오는 중...',
-  poEmpty: '진행 중인 주문이 없습니다.',
+  poEmpty: '담당 주문이 없습니다.',
   poStatus_pending: '대기',
   poStatus_in_progress: '진행 중',
   poStatus_shipped: '배송 중',
-  poStatus_delivered: '완료',
+  poStatus_delivered: '납품 완료',
   poDueLabel: '납기',
   poQtyUnit: '개',
+  poHeader: '📦 담당 주문 관리',
+  poCount: (n) => `(${n}건)`,
+  poFilterAll: '전체',
+  poStatus_placed: '주문 접수',
+  poStatus_production: '생산 중',
+  poStatus_qc: '품질 검사',
+  poErrorLoad: '주문 목록을 불러오지 못했습니다.',
+  poErrorGeneric: '❌ 오류가 발생했습니다.',
+  poUpdateSuccess: (name, status) => `✅ ${name} 상태가 "${status}"으로 업데이트됐습니다.`,
+  poUpdateFail: '업데이트 실패',
+  poBadgePaid: '결제완료',
+  poEmptyFiltered: '해당 상태의 주문이 없습니다.',
+  poOrderQty: (n) => `수량 ${n}개`,
+  poOrderedOn: (date) => `주문일 ${date}`,
+  poDueOn: (date) => `납기 예정 ${date}`,
+  poBtnProcessing: '처리 중...',
+  poBtnDeliveredDone: '✓ 납품 완료',
+  poBtnPdf: '📄 PDF',
+  poBtnTaxInvoice: '🧾 세금계산서',
+  poNext_placed: '생산 시작',
+  poNext_production: 'QC 시작',
+  poNext_qc: '배송 시작',
+  poNext_shipped: '납품 완료',
 
   psTitle: '내 실적',
   psSubtitle: '최근 견적 활동 요약',
@@ -221,6 +290,29 @@ const KO: QuotePanelsDict = {
   psMetricAvgResponse: '평균 응답',
   psMetricAvgAmount: '평균 견적가',
   psWindowLabel: (d) => `최근 ${d}일`,
+  psHeader: '파트너 실적 통계',
+  psFallbackCompany: '내 견적',
+  psPeriodAll: '전체 기간',
+  psMetricTotalRfq: '전체 RFQ',
+  psMetricAccept: '수락률',
+  psMetricResponse: '응답률',
+  psMetricAvgAccept: '평균 수락금액',
+  psSubAcceptBase: '수락 건 기준',
+  psSubCountSuffix: '건',
+  psSubAcceptRatio: (n, total) => `${n}/${total}건`,
+  psDistributionTitle: 'RFQ 결과 분포',
+  psLegendAccepted: '수락',
+  psLegendInProgress: '응답중',
+  psLegendRejected: '거절',
+  psLegendPending: '대기',
+  psLegendCount: (n) => `${n}건`,
+  psCumulativeTitle: '💰 누적 수주 금액',
+  psProcessTitle: '공정별 RFQ',
+  psProcessUncategorised: '미분류',
+  psMonthlyTitle: '월별 수락률 추이',
+  psEmpty: '아직 RFQ 데이터가 없습니다.',
+  psClose: '닫기',
+  psUnitDash: '—',
 
   apTitle: 'AI 설정',
   apSubtitle: 'AI 견적 초안의 기본값을 설정합니다.',
@@ -332,13 +424,36 @@ const EN: QuotePanelsDict = {
   poTitle: 'Active orders',
   poSubtitle: 'Confirmed orders in progress',
   poLoading: 'Loading…',
-  poEmpty: 'No orders in progress.',
+  poEmpty: 'No assigned orders.',
   poStatus_pending: 'Pending',
   poStatus_in_progress: 'In progress',
   poStatus_shipped: 'Shipping',
   poStatus_delivered: 'Delivered',
   poDueLabel: 'Due',
   poQtyUnit: ' pcs',
+  poHeader: '📦 Order management',
+  poCount: (n) => `(${n})`,
+  poFilterAll: 'All',
+  poStatus_placed: 'Placed',
+  poStatus_production: 'In production',
+  poStatus_qc: 'Quality check',
+  poErrorLoad: 'Could not load orders.',
+  poErrorGeneric: '❌ Something went wrong.',
+  poUpdateSuccess: (name, status) => `✅ ${name} moved to "${status}".`,
+  poUpdateFail: 'Update failed',
+  poBadgePaid: 'Paid',
+  poEmptyFiltered: 'No orders in this status.',
+  poOrderQty: (n) => `Qty ${n}`,
+  poOrderedOn: (date) => `Ordered ${date}`,
+  poDueOn: (date) => `Due ${date}`,
+  poBtnProcessing: 'Processing…',
+  poBtnDeliveredDone: '✓ Delivered',
+  poBtnPdf: '📄 PDF',
+  poBtnTaxInvoice: '🧾 Tax invoice',
+  poNext_placed: 'Start production',
+  poNext_production: 'Start QC',
+  poNext_qc: 'Start shipping',
+  poNext_shipped: 'Mark delivered',
 
   psTitle: 'My performance',
   psSubtitle: 'Recent quoting summary',
@@ -348,6 +463,29 @@ const EN: QuotePanelsDict = {
   psMetricAvgResponse: 'Avg response',
   psMetricAvgAmount: 'Avg quote',
   psWindowLabel: (d) => `last ${d}d`,
+  psHeader: 'Partner performance',
+  psFallbackCompany: 'My quotes',
+  psPeriodAll: 'All time',
+  psMetricTotalRfq: 'Total RFQs',
+  psMetricAccept: 'Accept rate',
+  psMetricResponse: 'Response rate',
+  psMetricAvgAccept: 'Avg accepted',
+  psSubAcceptBase: 'accepted only',
+  psSubCountSuffix: '',
+  psSubAcceptRatio: (n, total) => `${n}/${total}`,
+  psDistributionTitle: 'RFQ outcomes',
+  psLegendAccepted: 'Accepted',
+  psLegendInProgress: 'Responding',
+  psLegendRejected: 'Rejected',
+  psLegendPending: 'Pending',
+  psLegendCount: (n) => `${n}`,
+  psCumulativeTitle: '💰 Cumulative won',
+  psProcessTitle: 'RFQs by process',
+  psProcessUncategorised: 'Uncategorised',
+  psMonthlyTitle: 'Monthly accept rate',
+  psEmpty: 'No RFQ data yet.',
+  psClose: 'Close',
+  psUnitDash: '—',
 
   apTitle: 'AI preferences',
   apSubtitle: 'Defaults for AI quote drafts.',
@@ -457,13 +595,36 @@ const JA: QuotePanelsDict = {
   poTitle: '進行中の注文',
   poSubtitle: '確定済み注文の進行状況',
   poLoading: '読み込み中…',
-  poEmpty: '進行中の注文はありません。',
+  poEmpty: '担当注文はありません。',
   poStatus_pending: '待機',
   poStatus_in_progress: '進行中',
   poStatus_shipped: '配送中',
-  poStatus_delivered: '完了',
+  poStatus_delivered: '納品完了',
   poDueLabel: '納期',
   poQtyUnit: '個',
+  poHeader: '📦 注文管理',
+  poCount: (n) => `(${n}件)`,
+  poFilterAll: 'すべて',
+  poStatus_placed: '注文受付',
+  poStatus_production: '生産中',
+  poStatus_qc: '品質検査',
+  poErrorLoad: '注文一覧の取得に失敗しました。',
+  poErrorGeneric: '❌ エラーが発生しました。',
+  poUpdateSuccess: (name, status) => `✅ ${name} を「${status}」に更新しました。`,
+  poUpdateFail: '更新失敗',
+  poBadgePaid: '決済完了',
+  poEmptyFiltered: '該当ステータスの注文はありません。',
+  poOrderQty: (n) => `数量 ${n}個`,
+  poOrderedOn: (date) => `注文日 ${date}`,
+  poDueOn: (date) => `納期予定 ${date}`,
+  poBtnProcessing: '処理中…',
+  poBtnDeliveredDone: '✓ 納品完了',
+  poBtnPdf: '📄 PDF',
+  poBtnTaxInvoice: '🧾 税金計算書',
+  poNext_placed: '生産開始',
+  poNext_production: 'QC 開始',
+  poNext_qc: '配送開始',
+  poNext_shipped: '納品完了',
   psTitle: '実績',
   psSubtitle: '最近の見積もり活動サマリー',
   psLoading: '読み込み中…',
@@ -578,13 +739,36 @@ const CN: QuotePanelsDict = {
   poTitle: '进行中订单',
   poSubtitle: '已确认订单的进展',
   poLoading: '加载中…',
-  poEmpty: '没有进行中的订单。',
+  poEmpty: '没有负责订单。',
   poStatus_pending: '待处理',
   poStatus_in_progress: '进行中',
   poStatus_shipped: '运输中',
   poStatus_delivered: '已交付',
   poDueLabel: '交期',
   poQtyUnit: ' 件',
+  poHeader: '📦 订单管理',
+  poCount: (n) => `(${n}件)`,
+  poFilterAll: '全部',
+  poStatus_placed: '订单已收',
+  poStatus_production: '生产中',
+  poStatus_qc: '质量检查',
+  poErrorLoad: '加载订单列表失败。',
+  poErrorGeneric: '❌ 发生错误。',
+  poUpdateSuccess: (name, status) => `✅ 已将 ${name} 更新为"${status}"。`,
+  poUpdateFail: '更新失败',
+  poBadgePaid: '已支付',
+  poEmptyFiltered: '该状态下没有订单。',
+  poOrderQty: (n) => `数量 ${n} 件`,
+  poOrderedOn: (date) => `下单日 ${date}`,
+  poDueOn: (date) => `预计交期 ${date}`,
+  poBtnProcessing: '处理中…',
+  poBtnDeliveredDone: '✓ 已交付',
+  poBtnPdf: '📄 PDF',
+  poBtnTaxInvoice: '🧾 税务发票',
+  poNext_placed: '开始生产',
+  poNext_production: '开始 QC',
+  poNext_qc: '开始运输',
+  poNext_shipped: '标记交付',
   psTitle: '我的业绩',
   psSubtitle: '近期报价活动摘要',
   psLoading: '加载中…',
@@ -696,13 +880,36 @@ const ES: QuotePanelsDict = {
   aihRelSeconds: (n) => `hace ${n}s`,
   poTitle: 'Pedidos activos',
   poSubtitle: 'Pedidos confirmados en curso',
-  poEmpty: 'No hay pedidos en curso.',
+  poEmpty: 'No tienes pedidos asignados.',
   poStatus_pending: 'Pendiente',
   poStatus_in_progress: 'En curso',
   poStatus_shipped: 'En envío',
   poStatus_delivered: 'Entregado',
   poDueLabel: 'Entrega',
   poQtyUnit: ' uds',
+  poHeader: '📦 Gestión de pedidos',
+  poCount: (n) => `(${n})`,
+  poFilterAll: 'Todos',
+  poStatus_placed: 'Recibido',
+  poStatus_production: 'En producción',
+  poStatus_qc: 'Control de calidad',
+  poErrorLoad: 'No se pudo cargar la lista.',
+  poErrorGeneric: '❌ Ocurrió un error.',
+  poUpdateSuccess: (name, status) => `✅ ${name} pasó a "${status}".`,
+  poUpdateFail: 'Error al actualizar',
+  poBadgePaid: 'Pagado',
+  poEmptyFiltered: 'Sin pedidos en este estado.',
+  poOrderQty: (n) => `Cant. ${n}`,
+  poOrderedOn: (date) => `Pedido ${date}`,
+  poDueOn: (date) => `Entrega ${date}`,
+  poBtnProcessing: 'Procesando…',
+  poBtnDeliveredDone: '✓ Entregado',
+  poBtnPdf: '📄 PDF',
+  poBtnTaxInvoice: '🧾 Factura fiscal',
+  poNext_placed: 'Iniciar producción',
+  poNext_production: 'Iniciar QC',
+  poNext_qc: 'Iniciar envío',
+  poNext_shipped: 'Marcar entregado',
   psTitle: 'Mi desempeño',
   psSubtitle: 'Resumen reciente de cotizaciones',
   psMetricTotalQuotes: 'Total cotizaciones',
@@ -812,13 +1019,36 @@ const AR: QuotePanelsDict = {
   aihRelSeconds: (n) => `قبل ${n} ث`,
   poTitle: 'الطلبات النشطة',
   poSubtitle: 'الطلبات المؤكدة قيد التنفيذ',
-  poEmpty: 'لا توجد طلبات قيد التنفيذ.',
+  poEmpty: 'لا توجد طلبات مُسندة.',
   poStatus_pending: 'بانتظار',
   poStatus_in_progress: 'قيد التنفيذ',
   poStatus_shipped: 'قيد الشحن',
   poStatus_delivered: 'تم التسليم',
   poDueLabel: 'الموعد',
   poQtyUnit: ' قطعة',
+  poHeader: '📦 إدارة الطلبات',
+  poCount: (n) => `(${n})`,
+  poFilterAll: 'الكل',
+  poStatus_placed: 'تم الاستلام',
+  poStatus_production: 'قيد التصنيع',
+  poStatus_qc: 'فحص الجودة',
+  poErrorLoad: 'تعذّر تحميل قائمة الطلبات.',
+  poErrorGeneric: '❌ حدث خطأ.',
+  poUpdateSuccess: (name, status) => `✅ تم تحديث ${name} إلى "${status}".`,
+  poUpdateFail: 'فشل التحديث',
+  poBadgePaid: 'مدفوع',
+  poEmptyFiltered: 'لا توجد طلبات في هذه الحالة.',
+  poOrderQty: (n) => `الكمية ${n}`,
+  poOrderedOn: (date) => `تاريخ الطلب ${date}`,
+  poDueOn: (date) => `موعد التسليم ${date}`,
+  poBtnProcessing: 'جارٍ المعالجة…',
+  poBtnDeliveredDone: '✓ تم التسليم',
+  poBtnPdf: '📄 PDF',
+  poBtnTaxInvoice: '🧾 فاتورة ضريبية',
+  poNext_placed: 'بدء التصنيع',
+  poNext_production: 'بدء الفحص',
+  poNext_qc: 'بدء الشحن',
+  poNext_shipped: 'تأكيد التسليم',
   psTitle: 'أدائي',
   psSubtitle: 'ملخص نشاط التسعير',
   psMetricTotalQuotes: 'إجمالي العروض',
