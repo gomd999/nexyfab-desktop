@@ -107,7 +107,12 @@ export default function Footer() {
     const pathname = usePathname();
     const parts = pathname?.split('/').filter(Boolean) || [];
 
+    // Suppress footer on the 3D modeler and the NexyFab hub — both are
+    // app-style surfaces where a marketing footer would steal vertical
+    // real estate from the canvas / project gallery.
     if (pathname?.includes('/shape-generator')) return null;
+    if (pathname?.includes('/nexyfab/hub')) return null;
+    if (pathname?.includes('/nexyfab/dashboard')) return null;
 
     // adminlink 폴더 내부에 있을 경우, 메인 사이트 링크가 깨지지 않도록 처리
     const isAdmin = parts[0] === 'adminlink';

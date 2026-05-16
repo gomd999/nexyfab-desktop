@@ -239,7 +239,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     }
   }, [user, saveProject, isKo]);
 
-  const handleNewDesign = () => {
+  const handleNewDesign = async () => {
     if (user) {
       router.push(`/${lang}/shape-generator`);
       return;
@@ -260,6 +260,13 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     } catch {
       /* ignore */
     }
+    // Bootstrap a server-side demo session so the projects created in
+    // guest mode can be migrated atomically when the user signs up.
+    // Fire-and-forget — if this fails we still route to the modeler
+    // (autosave to localStorage keeps the guest's work safe).
+    try {
+      await fetch('/api/nexyfab/demo/start', { method: 'POST', credentials: 'same-origin' });
+    } catch { /* network — skip silently */ }
     router.push(`/${lang}/shape-generator?guest=1`);
   };
 
@@ -268,17 +275,10 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       className="nx-app"
       style={{ flexDirection: 'row', minHeight: 0, height: '100%' }}
     >
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: 220,
-          flex: '0 0 220px',
-          background: 'var(--nx-panel)',
-          borderRight: '1px solid var(--nx-border)',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+      {/* Sidebar is provided by the parent [lang]/nexyfab layout
+          (NexyfabUnifiedSidebar). Keep this aside as a no-render placeholder
+          so the surrounding flex row layout stays unchanged. */}
+      <aside style={{ display: 'none' }}>
         <div
           style={{
             height: 48,
@@ -289,26 +289,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
             borderBottom: '1px solid var(--nx-border)',
           }}
         >
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 5,
-              background: 'linear-gradient(135deg, var(--nx-accent), #1a3a8a)',
-              position: 'relative',
-            }}
-          >
-            <span
-              style={{
-                position: 'absolute',
-                inset: 5,
-                border: '1.5px solid #0a1518',
-                borderRadius: 2,
-                display: 'block',
-              }}
-            />
-          </div>
-          <span style={{ fontWeight: 600, letterSpacing: '0.02em', fontSize: 13 }}>
+          <span style={{ fontWeight: 700, letterSpacing: '0.02em', fontSize: 14 }}>
             NEXYFAB
           </span>
           <span className="nx-chip" style={{ marginLeft: 'auto', fontSize: 9 }}>
@@ -549,10 +530,10 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
-          {/* AI hero */}
+          {/* AI hero — uses token gradient so light/dark both render correctly. */}
           <div
             style={{
-              background: 'linear-gradient(120deg, #0e2424 0%, #112030 70%, #0e1218 100%)',
+              background: 'linear-gradient(120deg, var(--nx-panel) 0%, var(--nx-panel-2) 70%, var(--nx-panel-3) 100%)',
               border: '1px solid var(--nx-accent-line)',
               borderRadius: 10,
               padding: '20px 24px',

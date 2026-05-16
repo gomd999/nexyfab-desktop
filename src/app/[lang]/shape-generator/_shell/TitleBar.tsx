@@ -61,7 +61,6 @@ export function TitleBar({
   return (
     <div className="nx-title">
       <div className="brand">
-        <div className="logo" />
         <span>NEXYFAB</span>
       </div>
 

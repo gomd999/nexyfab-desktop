@@ -41,6 +41,8 @@ import { OnboardingTutorial } from './OnboardingTutorial';
 import { VersionTreePanel } from './VersionTreePanel';
 import { EmailVerifyBanner } from './EmailVerifyBanner';
 import { AccountTypeCard } from './AccountTypeCard';
+import { GuestExpiryBanner } from './GuestExpiryBanner';
+import AuthModal from '@/components/nexyfab/AuthModal';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useTouchGestures } from './useTouchGestures';
 
@@ -110,6 +112,20 @@ export function ModelerShell() {
   // Touch gestures (pinch/pan/orbit/long-press) — enabled only on touch-
   // primary devices to avoid double-firing with the desktop mouse path.
   useTouchGestures({ enabled: isMobile });
+  // Guest-mode signup gate — listens for any `requireSignup` dispatched by
+  // shell components (PDF export, DXF export, share link, AI quota) and
+  // pops the AuthModal so the user can sign up without leaving the modeler.
+  const [signupModalOpen, setSignupModalOpen] = useState(false);
+  const [signupReason, setSignupReason] = useState<string>('');
+  useEffect(() => {
+    const onRequire = (e: Event) => {
+      const ce = e as CustomEvent<{ feature?: string }>;
+      setSignupReason(ce.detail?.feature ?? '');
+      setSignupModalOpen(true);
+    };
+    window.addEventListener('nexyfab:require-signup', onRequire);
+    return () => window.removeEventListener('nexyfab:require-signup', onRequire);
+  }, []);
   // Bottom drawer — surfaces DFM/FEA/Cost/Variants via custom event from
   // ModelerRightPane Inspector ANALYZE rows.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -461,6 +477,20 @@ export function ModelerShell() {
           <OnboardingTutorial isKo={isKo} />
           <EmailVerifyBanner isKo={isKo} />
           <AccountTypeCard isKo={isKo} />
+          <GuestExpiryBanner isKo={isKo} />
+          <AuthModal
+            open={signupModalOpen}
+            onClose={() => setSignupModalOpen(false)}
+            defaultMode="signup"
+            redirectMessage={
+              signupReason === 'pdf-export' ? (isKo ? 'PDF 내보내기를 사용하려면 가입하세요' : 'Sign up to export PDF')
+              : signupReason === 'dxf-export' ? (isKo ? 'DWG/DXF 내보내기를 사용하려면 가입하세요' : 'Sign up to export DWG/DXF')
+              : signupReason === 'share' ? (isKo ? '공유 링크 생성에 가입이 필요합니다' : 'Sign up to share your design')
+              : signupReason === 'ai-quota' ? (isKo ? 'AI 무제한 사용에 가입이 필요합니다' : 'Sign up for unlimited AI')
+              : (isKo ? '계속하려면 가입하세요' : 'Sign up to continue')
+            }
+            lang={lang}
+          />
         </Suspense>
       }
       bottomDrawer={

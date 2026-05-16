@@ -112,6 +112,25 @@ export function useFreemiumGate() {
     fn();
   };
 
+  /**
+   * Guest-mode gate. Calls `fn` if the user is signed in; otherwise emits
+   * a `nexyfab:require-signup` event so the host page can pop the AuthModal
+   * with the originating action carried in `detail.feature`. Used by the
+   * STEP/PDF export, share link, marketplace publish, and AI quota gates.
+   *
+   * Returns true if the action proceeded (logged-in path), false if the
+   * signup gate fired.
+   */
+  const requireSignup = (feature: string, fn: () => void): boolean => {
+    if (authUser) { fn(); return true; }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:require-signup', { detail: { feature } }));
+      // Stash so post-signup we can resume the intent.
+      stashPaywallIntent(feature);
+    }
+    return false;
+  };
+
   return {
     authUser,
     planLimits,
@@ -121,6 +140,7 @@ export function useFreemiumGate() {
     setUpgradeFeature,
     requirePro,
     requirePhotoReal,
+    requireSignup,
     checkCartLimit,
     triggerProjectLimitPrompt,
   };

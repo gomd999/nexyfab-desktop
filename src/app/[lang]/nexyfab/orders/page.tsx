@@ -4,7 +4,7 @@ import { useEffect, useState, use, useCallback, useMemo, useRef, Suspense } from
 import type { NexyfabOrder, NexyfabOrderStatus } from '@/types/nexyfab-orders';
 import { useAuthStore } from '@/hooks/useAuth';
 import AuthModal from '@/components/nexyfab/AuthModal';
-import NexyfabNav from '@/components/nexyfab/NexyfabNav';
+// NexyfabNav removed — sidebar comes from [lang]/nexyfab layout.
 import OrderTimeline from './OrderTimeline';
 import ThreadView from '@/components/nexyfab/ThreadView';
 import DisputeButton from '@/components/nexyfab/DisputeButton';
@@ -1289,12 +1289,11 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0d1117',
-      fontFamily: 'system-ui, -apple-system, sans-serif', color: '#e6edf3',
+      minHeight: '100vh',
+      fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--nx-text)',
       display: 'flex',
     }}>
-      {/* Sidebar nav */}
-      <NexyfabNav lang={lang} />
+      {/* Sidebar is provided by the [lang]/nexyfab layout (NexyfabUnifiedSidebar). */}
 
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>

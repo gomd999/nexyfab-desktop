@@ -113,6 +113,9 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   });
 
   const onExportPDF = () => {
+    // Guest gate first → signup modal. Authenticated users still hit the
+    // Pro gate as before for plan-tier paywalls.
+    if (!gate.requireSignup('pdf-export', () => { /* proceed below */ })) return;
     gate.requirePro('share', async () => {
       if (typeof window === 'undefined') return;
       if (edges && bbox) {
@@ -171,6 +174,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   };
 
   const onExportDXF = () => {
+    if (!gate.requireSignup('dxf-export', () => { /* proceed */ })) return;
     gate.requirePro('export', () => {
       if (typeof window === 'undefined' || !edges || !bbox) return;
       // Emit a minimal AutoCAD R12-compatible DXF with the front-view
