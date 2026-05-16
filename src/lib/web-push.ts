@@ -60,7 +60,7 @@ export async function sendPushToUser(
   }
   let wp: WebPushLike | null = null;
   try {
-    const mod = (await import('web-push' as string)) as { default?: WebPushLike } & WebPushLike;
+    const mod = (await import(/* webpackIgnore: true */ 'web-push' as string)) as { default?: WebPushLike } & WebPushLike;
     wp = (mod.default ?? mod) as WebPushLike;
     wp.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
   } catch (err) {

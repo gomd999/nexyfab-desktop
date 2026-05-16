@@ -8,14 +8,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createHmac, timingSafeEqual } from 'crypto';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
-
-export type EmailCategory = 'transactional' | 'billing' | 'product_updates' | 'marketing' | 'collab';
-
-const CATEGORIES: EmailCategory[] = ['transactional', 'billing', 'product_updates', 'marketing', 'collab'];
+import {
+  EMAIL_CATEGORIES as CATEGORIES,
+  type EmailCategory,
+  verifyUnsubscribeToken as verifyToken,
+} from '@/lib/email-unsubscribe';
 
 const patchSchema = z.object({
   preferences: z.record(z.enum(CATEGORIES as [EmailCategory, ...EmailCategory[]]), z.boolean()).optional(),
@@ -37,33 +37,6 @@ async function ensureTable() {
       updated_at INTEGER NOT NULL
     )
   `);
-}
-
-function signToken(userId: string, category: EmailCategory): string {
-  const secret = process.env.EMAIL_UNSUB_SECRET ?? process.env.NEXTAUTH_SECRET ?? 'dev-secret';
-  const h = createHmac('sha256', secret);
-  h.update(`${userId}:${category}`);
-  return `${userId}.${category}.${h.digest('base64url').slice(0, 32)}`;
-}
-
-function verifyToken(token: string): { userId: string; category: EmailCategory } | null {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const [userId, category, sig] = parts;
-  if (!CATEGORIES.includes(category as EmailCategory)) return null;
-  const expected = signToken(userId, category as EmailCategory).split('.')[2];
-  try {
-    const a = Buffer.from(sig);
-    const b = Buffer.from(expected);
-    if (a.length !== b.length) return null;
-    return timingSafeEqual(a, b) ? { userId, category: category as EmailCategory } : null;
-  } catch { return null; }
-}
-
-/** Public helper: returns a signed unsubscribe URL for use in email templates. */
-export function buildUnsubscribeUrl(userId: string, category: EmailCategory): string {
-  const base = process.env.NEXT_PUBLIC_NEXYFAB_URL ?? 'https://nexyfab.com';
-  return `${base}/kr/unsubscribe?token=${encodeURIComponent(signToken(userId, category))}&cat=${category}`;
 }
 
 export async function GET(req: NextRequest) {
