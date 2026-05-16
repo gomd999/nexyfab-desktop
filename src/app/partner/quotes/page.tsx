@@ -23,6 +23,8 @@ const PartnerOrdersPanel = dynamic(() => import('./PartnerOrdersPanel'), { ssr: 
 import PartnerNotificationBell from './PartnerNotificationBell';
 import PartnerProBadge from '@/components/nexyfab/PartnerProBadge';
 import { loadLocalAiPrefs, type AiPrefs } from './PartnerAIPrefsPanel';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotesDict, type QuotesDict } from '../_lib/dicts/quotes';
 
 interface Partner {
   partnerId: string;
@@ -52,14 +54,6 @@ interface Quote {
   };
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '응답 대기',
-  responded: '응답 완료',
-  accepted: '수락됨',
-  rejected: '거절됨',
-  expired: '만료됨',
-};
-
 const STATUS_COLORS: Record<string, string> = {
   pending:   'bg-amber-100 text-amber-700',
   responded: 'bg-blue-100 text-blue-700',
@@ -68,15 +62,13 @@ const STATUS_COLORS: Record<string, string> = {
   expired:   'bg-gray-100 text-gray-500',
 };
 
-type QuoteTab = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
+function statusText(s: string, t: QuotesDict): string {
+  const key = `status_${s}` as keyof QuotesDict;
+  const v = t[key];
+  return typeof v === 'string' ? v : s;
+}
 
-const QUOTE_TABS: { key: QuoteTab; label: string }[] = [
-  { key: 'all',      label: '전체' },
-  { key: 'pending',  label: '검토중' },
-  { key: 'accepted', label: '수락됨' },
-  { key: 'rejected', label: '거절됨' },
-  { key: 'expired',  label: '만료' },
-];
+type QuoteTab = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
 
 function won(n: number) {
   return n?.toLocaleString('ko-KR') + '원';
@@ -91,6 +83,15 @@ function downloadQuotePdf(quote: Quote) {
 export default function PartnerQuotesPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const lang = usePartnerLang();
+  const t = quotesDict(lang);
+  const QUOTE_TABS: { key: QuoteTab; label: string }[] = [
+    { key: 'all',      label: t.tabAll },
+    { key: 'pending',  label: t.tabPending },
+    { key: 'accepted', label: t.tabAccepted },
+    { key: 'rejected', label: t.tabRejected },
+    { key: 'expired',  label: t.tabExpired },
+  ];
   const [partner, setPartner] = useState<Partner | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -146,7 +147,7 @@ export default function PartnerQuotesPage() {
 
   async function runBulk(action: 'decline' | 'extend_validity') {
     if (selectedIds.size === 0) return;
-    if (action === 'decline' && !confirm(`${selectedIds.size}건의 견적을 거절 처리합니다. 계속할까요?`)) return;
+    if (action === 'decline' && !confirm(t.bulkConfirmDecline(selectedIds.size))) return;
 
     const session = getSession();
     if (!session || session === 'demo') {
@@ -157,7 +158,7 @@ export default function PartnerQuotesPage() {
         return { ...q, validUntil: bulkValidUntil };
       }));
       clearSelection();
-      toast('success', `[데모] ${selectedIds.size}건 처리 완료`);
+      toast('success', t.bulkDemoSuccess(selectedIds.size));
       return;
     }
 
@@ -174,14 +175,14 @@ export default function PartnerQuotesPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(err.error ?? '일괄 처리 실패');
+        throw new Error(err.error ?? t.bulkErrFailed);
       }
       const data = await res.json() as { updated: number; skipped: number };
-      toast('success', `${data.updated}건 처리 완료${data.skipped ? ` (${data.skipped}건 건너뜀)` : ''}`);
+      toast('success', t.bulkSuccess(data.updated, data.skipped));
       clearSelection();
       await fetchQuotes(session);
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '일괄 처리에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : t.bulkErrFailed);
     } finally {
       setBulkBusy(null);
     }
@@ -627,7 +628,7 @@ export default function PartnerQuotesPage() {
                                 />
                               )}
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[quote.status] || 'bg-gray-100 text-gray-500'}`}>
-                                {STATUS_LABELS[quote.status] || quote.status}
+                                {statusText(quote.status, t)}
                               </span>
                               {/* D-day expiry badge */}
                               {dday && (

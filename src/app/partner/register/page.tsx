@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePartnerLang } from '../_lib/partnerLang';
+import { registerDict } from '../_lib/dicts/register';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,6 @@ const INDUSTRY_OPTIONS = ['자동차', '전자/반도체', '의료기기', '항�
 const EMPLOYEE_OPTIONS = ['1-9', '10-49', '50-199', '200+'];
 
 const TOTAL_STEPS = 4;
-const STEP_LABELS = ['회사 정보', '담당자 정보', '제조 역량', '포트폴리오/소개'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -132,11 +132,11 @@ function CheckboxGroup({ options, selected, onChange }: { options: string[]; sel
 
 // ─── Progress Bar ─────────────────────────────────────────────────────────────
 
-function ProgressBar({ step }: { step: number }) {
+function ProgressBar({ step, labels, counterText }: { step: number; labels: string[]; counterText: string }) {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-2">
-        {STEP_LABELS.map((label, i) => (
+        {labels.map((label, i) => (
           <div key={i} className="flex-1 flex flex-col items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
               i + 1 < step
@@ -159,7 +159,7 @@ function ProgressBar({ step }: { step: number }) {
           style={{ width: `${((step - 1) / (TOTAL_STEPS - 1)) * 100}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400 text-right mt-1">{step} / {TOTAL_STEPS}</p>
+      <p className="text-xs text-gray-400 text-right mt-1">{counterText}</p>
     </div>
   );
 }
@@ -174,6 +174,8 @@ export default function PartnerRegisterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const lang = usePartnerLang();
+  const t = registerDict(lang);
+  const STEP_LABELS = [t.step1Label, t.step2Label, t.step3Label, t.step4Label];
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -272,16 +274,15 @@ export default function PartnerRegisterPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-3">신청이 접수되었습니다</h2>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              영업일 기준 2-3일 내 검토 후 안내드립니다.<br />
-              담당자 이메일({form.contactEmail})로 결과를 보내드립니다.
+            <h2 className="text-xl font-bold text-gray-900 mb-3">{t.successHeading}</h2>
+            <p className="text-sm text-gray-600 leading-relaxed mb-6 whitespace-pre-line">
+              {t.successBody(form.contactEmail)}
             </p>
             <Link
               href={`/partner/login?lang=${lang}`}
               className="inline-block w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-sm"
             >
-              파트너 로그인으로 돌아가기
+              {t.successBackToLogin}
             </Link>
           </div>
         </div>
@@ -304,12 +305,12 @@ export default function PartnerRegisterPage() {
           <Link href="/" prefetch={false} className="inline-block">
             <span className="text-2xl font-black text-gray-900">NexyFab</span>
           </Link>
-          <h1 className="text-xl font-bold text-gray-800 mt-3">파트너 등록 신청</h1>
-          <p className="text-sm text-gray-500 mt-1">제조 파트너로 등록하여 신규 수주를 확대하세요</p>
+          <h1 className="text-xl font-bold text-gray-800 mt-3">{t.pageTitle}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t.pageSubtitle}</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <ProgressBar step={step} />
+          <ProgressBar step={step} labels={STEP_LABELS} counterText={t.stepCounter(step, TOTAL_STEPS)} />
 
           {/* Step 1 */}
           {step === 1 && (
@@ -480,7 +481,7 @@ export default function PartnerRegisterPage() {
                 onClick={handleBack}
                 className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition text-sm"
               >
-                이전
+                {t.btnBack}
               </button>
             )}
             {step < TOTAL_STEPS ? (
@@ -489,7 +490,7 @@ export default function PartnerRegisterPage() {
                 onClick={handleNext}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-sm"
               >
-                다음
+                {t.btnNext}
               </button>
             ) : (
               <button
@@ -498,15 +499,15 @@ export default function PartnerRegisterPage() {
                 disabled={submitting}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm"
               >
-                {submitting ? '제출 중...' : '신청 제출'}
+                {submitting ? t.btnSubmitting : t.btnSubmit}
               </button>
             )}
           </div>
         </div>
 
         <p className="text-center mt-4 text-xs text-gray-400">
-          이미 계정이 있으신가요?{' '}
-          <Link href={`/partner/login?lang=${lang}`} className="text-blue-600 font-semibold hover:underline">파트너 로그인</Link>
+          {t.haveAccountPrefix}{' '}
+          <Link href={`/partner/login?lang=${lang}`} className="text-blue-600 font-semibold hover:underline">{t.haveAccountLink}</Link>
         </p>
       </div>
     </div>
