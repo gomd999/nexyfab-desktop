@@ -736,8 +736,18 @@ export interface GeometryStats {
   bbox?: { min: [number, number, number]; max: [number, number, number] };
   volume_mm3?: number;
   surfaceArea_mm2?: number;
+  /** True only for a verified clean closed solid (watertight + manifold). When
+   *  the STL was parsed and checked this reflects real geometry — not merely
+   *  "the render compiled". */
   manifold?: boolean;
+  /** Closed (no open boundary edges). Set when real verification ran. */
+  watertight?: boolean;
+  /** Number of disjoint connected shells (1 = single body). */
+  componentCount?: number;
   triangleCount?: number;
+  /** Layer-1 verification critique when the geometry has problems (gaps,
+   *  inside-out normals, fragments). Undefined/empty when the model is clean. */
+  issues?: string;
 }
 
 export interface BudgetState {

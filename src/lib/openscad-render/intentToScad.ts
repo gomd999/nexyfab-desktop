@@ -63,6 +63,7 @@ const SUPPORTED_SHAPES = new Set([
   'heatsink', 'manifold', 'turbine',
   'enclosure', 'tBeam', 'uChannel', 'zPurlin',
   'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
+  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
 ]);
 
 const BOSL2_SHAPES = new Set([
@@ -606,6 +607,76 @@ function emitBaseShape(shapeId: string, p: Record<string, number>): string {
         `      ]\n` +
         `    );`;
       return `union() {\n  // Hub disc\n  cylinder(h=${hubH}, d=${hubDia}, center=true);\n  // Curved blades\n  for (i = [0 : ${bladeCount - 1}]) rotate([0, 0, 360 * i / ${bladeCount}])\n    ${blade}\n}`;
+    }
+    // ── Everyday consumer products (lay-user designs) ─────────────────────
+    case 'nameplate': {
+      // Desk/door nameplate: flat base plate with a raised border frame that
+      // leaves a recessed center for engraving a name.
+      const W = num(p.width, 120);
+      const D = num(p.depth, 45);
+      const t = num(p.thickness, 6);
+      const border = num(p.border ?? p.borderWidth, 4);
+      const borderH = num(p.borderHeight, 2);
+      const innerW = Math.max(1, W - 2 * border);
+      const innerD = Math.max(1, D - 2 * border);
+      return `union() {\n  // Base plate\n  translate([0, 0, ${t / 2}]) cube([${W}, ${D}, ${t}], center=true);\n  // Raised engraving border\n  translate([0, 0, ${t + borderH / 2}]) difference() {\n    cube([${W}, ${D}, ${borderH}], center=true);\n    cube([${innerW}, ${innerD}, ${borderH + 0.2}], center=true);\n  }\n}`;
+    }
+    case 'phoneStand': {
+      // Cradle phone stand: base + vertical back rest + front lip, with a slot
+      // gap between the lip and the back wall for the phone to rest in.
+      const PW = num(p.width ?? p.phoneWidth, 85);
+      const t = num(p.thickness ?? p.wallThickness, 6);
+      const baseDepth = num(p.baseDepth ?? p.depth, 65);
+      const backHeight = num(p.backHeight ?? p.height, 90);
+      const frontHeight = num(p.frontHeight ?? p.lipHeight, 22);
+      const slotGap = num(p.slotGap, 12);
+      return `union() {\n  // Base\n  translate([${-PW / 2}, ${-baseDepth / 2}, 0]) cube([${PW}, ${baseDepth}, ${t}]);\n  // Back rest\n  translate([${-PW / 2}, ${baseDepth / 2 - t}, 0]) cube([${PW}, ${t}, ${backHeight}]);\n  // Front lip\n  translate([${-PW / 2}, ${baseDepth / 2 - 2 * t - slotGap}, 0]) cube([${PW}, ${t}, ${frontHeight}]);\n}`;
+    }
+    case 'coaster': {
+      // Drink coaster: a disk base with a raised rim to catch condensation.
+      const dia = num(p.diameter, 90);
+      const t = num(p.thickness, 4);
+      const rimH = num(p.rimHeight, 3);
+      const rimW = num(p.rimWidth, 4);
+      const innerDia = Math.max(1, dia - 2 * rimW);
+      return `union() {\n  // Base\n  cylinder(h=${t}, d=${dia});\n  // Raised rim\n  translate([0, 0, ${t}]) difference() {\n    cylinder(h=${rimH}, d=${dia});\n    translate([0, 0, -0.1]) cylinder(h=${rimH + 0.2}, d=${innerDia});\n  }\n}`;
+    }
+    case 'wallHook': {
+      // Wall-mounted J-hook: a back plate with two screw holes + a forward arm
+      // with an upturned tip to keep items from sliding off.
+      const plateW = num(p.plateWidth ?? p.width, 32);
+      const plateH = num(p.plateHeight ?? p.height, 55);
+      const plateT = num(p.plateThickness ?? p.thickness, 6);
+      const screwDia = num(p.screwHoleDiameter ?? p.screwDiameter, 5);
+      const hookLen = num(p.hookLength, 40);
+      const hookDia = num(p.hookDiameter, 10);
+      const hookUp = num(p.hookTipHeight ?? p.hookDrop, 18);
+      const holeOff = plateH / 2 - hookDia;
+      const armZ = -plateH / 2 + hookDia / 2;
+      return `union() {\n  // Wall plate with two screw holes\n  difference() {\n    cube([${plateW}, ${plateT}, ${plateH}], center=true);\n    translate([0, 0, ${holeOff}]) rotate([90, 0, 0]) cylinder(h=${plateT + 0.4}, d=${screwDia}, center=true);\n    translate([0, 0, ${-holeOff}]) rotate([90, 0, 0]) cylinder(h=${plateT + 0.4}, d=${screwDia}, center=true);\n  }\n  // Forward arm\n  translate([0, ${plateT / 2}, ${armZ}]) rotate([-90, 0, 0]) cylinder(h=${hookLen}, d=${hookDia});\n  // Upturned tip\n  translate([0, ${plateT / 2 + hookLen}, ${armZ}]) cylinder(h=${hookUp}, d=${hookDia});\n}`;
+    }
+    case 'drawerKnob': {
+      // Cabinet/drawer knob: a flattened spherical knob on a cylindrical stem,
+      // with a screw bore up from the base for mounting.
+      const knobDia = num(p.knobDiameter ?? p.diameter, 30);
+      const stemDia = num(p.stemDiameter, 10);
+      const stemH = num(p.stemHeight, 12);
+      const boreDia = num(p.boreDiameter ?? p.screwDiameter, 4);
+      const flatten = 0.7;
+      const knobZ = stemH + (knobDia / 2) * flatten * 0.6;
+      return `difference() {\n  union() {\n    // Stem\n    cylinder(h=${stemH}, d=${stemDia});\n    // Knob (flattened sphere)\n    translate([0, 0, ${knobZ.toFixed(3)}]) scale([1, 1, ${flatten}]) sphere(d=${knobDia});\n  }\n  // Screw bore from the base\n  translate([0, 0, -0.1]) cylinder(h=${(stemH + 2).toFixed(3)}, d=${boreDia});\n}`;
+    }
+    case 'planterPot': {
+      // Tapered planter pot: a frustum shell (open top) with a floor and a
+      // central drainage hole through the bottom.
+      const topDia = num(p.topDiameter ?? p.diameter, 100);
+      const botDia = num(p.bottomDiameter, 75);
+      const h = num(p.height, 90);
+      const wall = Math.max(0.8, num(p.wallThickness ?? p.wall, 4));
+      const drainDia = num(p.drainDiameter, 12);
+      const innerTop = Math.max(1, topDia - 2 * wall);
+      const innerBot = Math.max(1, botDia - 2 * wall);
+      return `difference() {\n  // Outer tapered body\n  cylinder(h=${h}, d1=${botDia}, d2=${topDia});\n  // Inner cavity (leaves a ${wall}mm floor)\n  translate([0, 0, ${wall}]) cylinder(h=${h}, d1=${innerBot}, d2=${innerTop});\n  // Drainage hole\n  translate([0, 0, -0.1]) cylinder(h=${wall + 0.2}, d=${drainDia});\n}`;
     }
     default:
       throw new Error(`Unsupported shape: ${shapeId}`);

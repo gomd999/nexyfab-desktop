@@ -106,9 +106,18 @@ export function validateStartup(): void {
     }
   }
 
-  // Warn about missing production infrastructure
-  if (!process.env.DATABASE_URL) {
-    warnings.push('⚠️  DATABASE_URL not set — using SQLite. Not recommended for production (no horizontal scaling).');
+  // Database durability — refuse to boot a production server whose data lives
+  // only in the ephemeral container filesystem ({cwd}/nexyfab.db), which Railway
+  // wipes on every redeploy (all users/projects lost). Durable iff one of
+  // DATABASE_URL / NEXYFAB_DB_PATH / DATA_ROOT is set (see db.ts path priority).
+  const hasDurableDb = !!(process.env.DATABASE_URL || process.env.NEXYFAB_DB_PATH || process.env.DATA_ROOT);
+  if (!hasDurableDb) {
+    errors.push(
+      '❌ No durable database configured — SQLite falls back to {cwd}/nexyfab.db, which is EPHEMERAL on Railway (wiped on every redeploy; all users/projects lost).\n' +
+      '   Hint: set DATABASE_URL (Postgres, recommended) — or DATA_ROOT=/data (a mounted Railway volume) / NEXYFAB_DB_PATH for a durable SQLite file.',
+    );
+  } else if (!process.env.DATABASE_URL) {
+    warnings.push('⚠️  DATABASE_URL not set — using SQLite on a persistent path. Durable, but single-instance only (no horizontal scaling).');
   }
   if (!process.env.REDIS_URL) {
     warnings.push(

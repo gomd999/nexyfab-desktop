@@ -12,6 +12,9 @@ import { meshVolume } from '../features/roundingGuard';
  *   • bounding box within the requested size envelope
  *   • not riddled with degenerate / sliver triangles
  *   • positive solid volume
+ *   • outward-facing normals (signed volume > 0 — not inside-out)
+ *   • single connected body when required (no floating fragments)
+ *   • mesh complexity within a triangle budget (when one is given)
  *
  * (Self-intersection scanning is intentionally omitted here: the available
  * detector flags edge-adjacent triangles of valid closed solids as crossings,
@@ -30,6 +33,11 @@ export interface ModelConstraints {
   minSizeMm?: number;
   /** Require a closed solid (no open boundary edges). Default true. */
   requireWatertight?: boolean;
+  /** Require the mesh to be a single connected body. Default false (an
+   *  assembly may legitimately contain multiple disjoint shells). */
+  requireSingleBody?: boolean;
+  /** Soft cap on triangle count — exceeding it warns about a heavy mesh. */
+  maxTriangles?: number;
 }
 
 export interface ModelCheck {
@@ -49,6 +57,8 @@ export interface ModelVerificationResult {
     volumeMm3: number;
     bbox: { x: number; y: number; z: number };
     boundaryEdges: number;
+    /** Number of disjoint connected shells (welded). 1 for a single body. */
+    componentCount: number;
   };
 }
 
@@ -75,6 +85,51 @@ function boundaryEdgeCount(geo: THREE.BufferGeometry): number {
   return boundary;
 }
 
+/** Signed divergence-theorem volume. Sign encodes winding: a closed solid with
+ *  outward-facing normals is positive; inside-out normals make it negative. */
+function signedMeshVolume(geo: THREE.BufferGeometry): number {
+  const pos = geo.attributes.position;
+  if (!pos) return 0;
+  const idx = geo.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  let vol = 0;
+  for (let t = 0; t < triCount; t++) {
+    const i0 = idx ? idx.getX(t * 3) : t * 3;
+    const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    const ax = pos.getX(i0), ay = pos.getY(i0), az = pos.getZ(i0);
+    const bx = pos.getX(i1), by = pos.getY(i1), bz = pos.getZ(i1);
+    const cx = pos.getX(i2), cy = pos.getY(i2), cz = pos.getZ(i2);
+    vol += ax * (by * cz - bz * cy) + bx * (cy * az - cz * ay) + cx * (ay * bz - az * by);
+  }
+  return vol / 6;
+}
+
+/** Count disjoint connected shells via union-find over welded vertices. A
+ *  single solid → 1; floating fragments / an assembly of separate parts → >1. */
+function connectedComponentCount(geo: THREE.BufferGeometry): number {
+  const pos = geo.attributes.position;
+  if (!pos || pos.count === 0) return 0;
+  const idx = geo.index ? Array.from(geo.index.array as ArrayLike<number>) : Array.from({ length: pos.count }, (_, i) => i);
+  const key = (i: number) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+  const vid = new Map<string, number>();
+  const canon = (i: number) => { const k = key(i); let v = vid.get(k); if (v === undefined) { v = vid.size; vid.set(k, v); } return v; };
+  const parent: number[] = [];
+  const ensure = (v: number) => { while (parent.length <= v) parent.push(parent.length); };
+  const find = (x: number): number => { let r = x; while (parent[r] !== r) r = parent[r]!; while (parent[x] !== r) { const n = parent[x]!; parent[x] = r; x = n; } return r; };
+  const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+  const seen = new Set<number>();
+  for (let t = 0; t < idx.length / 3; t++) {
+    const a = canon(idx[t * 3]!), b = canon(idx[t * 3 + 1]!), c = canon(idx[t * 3 + 2]!);
+    ensure(a); ensure(b); ensure(c);
+    seen.add(a); seen.add(b); seen.add(c);
+    union(a, b); union(b, c);
+  }
+  const roots = new Set<number>();
+  for (const v of seen) roots.add(find(v));
+  return roots.size;
+}
+
 export function verifyGeneratedModel(
   geometry: THREE.BufferGeometry,
   constraints: ModelConstraints = {},
@@ -88,7 +143,7 @@ export function verifyGeneratedModel(
   // 1. non-empty
   if (triangleCount === 0) {
     checks.push({ id: 'non-empty', pass: false, severity: 'error', message: 'The model is empty (no geometry was produced). The code likely renders nothing — check that the top-level object is actually emitted.' });
-    return { pass: false, checks, metrics: { triangleCount: 0, volumeMm3: 0, bbox: { x: 0, y: 0, z: 0 }, boundaryEdges: 0 } };
+    return { pass: false, checks, metrics: { triangleCount: 0, volumeMm3: 0, bbox: { x: 0, y: 0, z: 0 }, boundaryEdges: 0, componentCount: 0 } };
   }
   checks.push({ id: 'non-empty', pass: true, severity: 'error', message: `Produced ${triangleCount} triangles.` });
 
@@ -131,8 +186,31 @@ export function verifyGeneratedModel(
     checks.push({ id: 'volume', pass: false, severity: 'warning', message: 'Volume is ~0 — the result is a surface/shell, not a solid body.' });
   }
 
+  // 6. orientation (outward-facing normals). Only meaningful on a closed solid
+  //    with a real volume — signed volume is ill-defined for open meshes, and a
+  //    ~0 volume is already flagged above. A negative sign means the winding is
+  //    inverted (inside-out), which trips up CSG and slicers.
+  if (boundaryEdges === 0 && volumeMm3 > 1e-6) {
+    const signed = signedMeshVolume(geometry);
+    if (signed < 0) {
+      checks.push({ id: 'orientation', pass: false, severity: 'warning', message: 'Inverted normals: the solid is inside-out (negative signed volume). Flip face winding so normals point outward.' });
+    }
+  }
+
+  // 7. single connected body (when required). Otherwise just reported in metrics
+  //    so callers can decide — multiple shells are legitimate for assemblies.
+  const componentCount = connectedComponentCount(geometry);
+  if (constraints.requireSingleBody && componentCount > 1) {
+    checks.push({ id: 'single-body', pass: false, severity: 'error', message: `Expected one connected body but found ${componentCount} separate pieces. Join them (union) or remove floating fragments.` });
+  }
+
+  // 8. mesh complexity budget (when given).
+  if (constraints.maxTriangles !== undefined && triangleCount > constraints.maxTriangles) {
+    checks.push({ id: 'mesh-complexity', pass: false, severity: 'warning', message: `Mesh has ${triangleCount} triangles, over the ${constraints.maxTriangles} budget — consider lowering facet resolution ($fn) for a lighter model.` });
+  }
+
   const pass = checks.every(c => c.pass || c.severity === 'warning');
-  return { pass, checks, metrics: { triangleCount, volumeMm3, bbox: ext, boundaryEdges } };
+  return { pass, checks, metrics: { triangleCount, volumeMm3, bbox: ext, boundaryEdges, componentCount } };
 }
 
 /** Render the result as a compact critique string for the AI self-correction
@@ -165,6 +243,8 @@ const LAY_MESSAGES: Record<string, { en: string; ko: string }> = {
   'max-size': { en: 'The model is too large for the allowed size — make it smaller.', ko: '모델이 허용 크기보다 너무 커요. 더 작게 만들어 주세요.' },
   'min-size': { en: 'One side is very thin — it may be too fragile or hard to make.', ko: '한쪽이 너무 얇아요 — 약하거나 제작이 어려울 수 있어요.' },
   volume: { en: 'This looks hollow (a shell), not a solid — it may not produce well.', ko: '속이 빈 모양(껍데기)이라 제대로 제작되지 않을 수 있어요.' },
+  orientation: { en: 'The surface is turned inside-out, which can confuse manufacturing.', ko: '면이 안팎으로 뒤집혀 있어요 — 제작 시 문제가 될 수 있어요.' },
+  'single-body': { en: 'The design is in separate pieces but should be one connected part.', ko: '여러 조각으로 떨어져 있어요 — 하나로 이어진 부품이어야 해요.' },
 };
 
 /** Plain-language guidance for the customer/lay surface. Skips jargon-only

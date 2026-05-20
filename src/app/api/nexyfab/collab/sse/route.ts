@@ -8,6 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { getDbAdapter } from '@/lib/db-adapter';
+import { resolveProjectAccess } from '@/lib/nfProjectAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +36,12 @@ export async function GET(req: NextRequest) {
 
   const projectId = req.nextUrl.searchParams.get('project');
   if (!projectId) return NextResponse.json({ error: 'project required' }, { status: 400 });
+
+  // Project-membership gate: only the owner or an invited member may subscribe
+  // to a project's collab stream. Without this any authenticated user could
+  // read another tenant's live edits (IDOR).
+  const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser.userId);
+  if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const subId = `${authUser.userId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -92,6 +100,12 @@ export async function POST(req: NextRequest) {
 
   const projectId = req.nextUrl.searchParams.get('project');
   if (!projectId) return NextResponse.json({ error: 'project required' }, { status: 400 });
+
+  // Publishing a doc mutation requires edit rights; viewers (and non-members)
+  // are rejected so they can't inject updates into a project they can't edit.
+  const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser.userId);
+  if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!access.canEdit) return NextResponse.json({ error: 'Forbidden: viewer cannot publish updates' }, { status: 403 });
 
   const body = await req.json().catch(() => null) as { sessionId?: string; update?: string; kind?: 'doc' | 'awareness' } | null;
   if (!body?.update) return NextResponse.json({ error: 'update required' }, { status: 400 });

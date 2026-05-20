@@ -34,8 +34,8 @@ interface Snapshot {
 
 const GOLDEN: Record<string, Snapshot> = {
   'shape-chat':                  { version: '1.0.0', templateHash: '5ae3a7a77dd63ba53099733999b03f958b8bcbf6be072069132a48e9a72c81a6' },
-  'scad-intent-from-nl':         { version: '1.1.0', templateHash: '78c258901bbc0d4bfc7737101a746e7dad7ebf47c05839740646cc6298cf3777' },
-  'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: '78c258901bbc0d4bfc7737101a746e7dad7ebf47c05839740646cc6298cf3777' },
+  'scad-intent-from-nl':         { version: '1.2.0', templateHash: 'c613ab48e72d3d4035a6c1a8d2da28e49ccc6e4acff0d4068113af2e790c8388' },
+  'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: 'c613ab48e72d3d4035a6c1a8d2da28e49ccc6e4acff0d4068113af2e790c8388' },
   'openscad-gen':                { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },
   'openscad-gen-generate':       { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },
   'openscad-gen-refine':         { version: '1.0.0', templateHash: 'ee5a3a70366e947988a43b26f878664ce2080d36f73d0505c6a7aeb5355131fa' },

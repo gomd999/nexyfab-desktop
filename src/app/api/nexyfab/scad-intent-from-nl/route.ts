@@ -33,6 +33,7 @@ const SUPPORTED_SHAPES = [
   'heatsink', 'manifold', 'turbine',
   'enclosure', 'tBeam', 'uChannel', 'zPurlin',
   'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
+  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
 ] as const;
 const SUPPORTED_FEATURES = [
   'hole', 'fillet', 'chamfer', 'mirror', 'linearPattern', 'circularPattern', 'scale', 'shell',

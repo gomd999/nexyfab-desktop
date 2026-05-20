@@ -308,10 +308,16 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       }
       // S — broadcast every render outcome so peers see the live preview.
       await broadcastOp(session, { type: 'render_completed', ok: state.ok === true, triangleCount: state.triangles });
-      const summary = state.ok
+      let summary = state.ok
         ? `OK. Rendered ${state.stlBytes ?? 0} bytes, ${state.triangles ?? 0} triangles. (checkpoint #${session.checkpoints.length} saved)`
         : `FAILED with ${state.errors.length} error(s):\n${state.errors.slice(0, 5).map(e => `  line ${e.line ?? '?'}: ${e.message}`).join('\n')}`;
-      return { ok: true, output: summary, meta: { renderOk: state.ok } };
+      // The render compiled, but the geometry may still be unsound (gaps,
+      // inside-out normals, fragments). Surface the verification critique so
+      // the model fixes it instead of shipping a broken solid.
+      if (state.ok && session.geometry.issues) {
+        summary += `\n\n⚠ geometry verification flagged issues:\n${session.geometry.issues}\nThe model rendered but isn't a clean solid — repair the SCAD and render again.`;
+      }
+      return { ok: true, output: summary, meta: { renderOk: state.ok, geometryOk: state.ok ? !session.geometry.issues : undefined } };
     } catch (e) {
       return {
         ok: false,
@@ -342,7 +348,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       g.volume_mm3 !== undefined ? `volume: ${g.volume_mm3.toFixed(2)} mm³` : '',
       g.surfaceArea_mm2 !== undefined ? `surface: ${g.surfaceArea_mm2.toFixed(2)} mm²` : '',
       g.manifold !== undefined ? `manifold: ${g.manifold}` : '',
+      g.watertight !== undefined ? `watertight: ${g.watertight}` : '',
+      g.componentCount !== undefined ? `bodies: ${g.componentCount}` : '',
       g.triangleCount !== undefined ? `triangles: ${g.triangleCount}` : '',
+      g.issues ? `\n⚠ verification:\n${g.issues}` : '',
     ].filter(Boolean);
     return { ok: true, output: lines.join('\n') };
   };
