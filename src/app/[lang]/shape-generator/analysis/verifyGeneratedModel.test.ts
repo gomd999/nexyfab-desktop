@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { verifyGeneratedModel, formatVerificationCritique } from './verifyGeneratedModel';
+import { verifyGeneratedModel, formatVerificationCritique, formatForCustomer, formatForVendor, formatForAudience } from './verifyGeneratedModel';
 
 function box(s = 20): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(s, s, s);
@@ -71,5 +71,40 @@ describe('formatVerificationCritique', () => {
     const critique = formatVerificationCritique(r);
     // max-size is an error, min-size is a warning → error line comes first.
     expect(critique.indexOf('ERROR')).toBeLessThan(critique.indexOf('WARN'));
+  });
+});
+
+describe('role-based formatting (one engine, two surfaces)', () => {
+  it('vendor view is the technical critique (alias of formatVerificationCritique)', () => {
+    const r = verifyGeneratedModel(openBox());
+    expect(formatForVendor(r)).toBe(formatVerificationCritique(r));
+    expect(formatForVendor(r)).toMatch(/watertight/i); // jargon kept for experts
+  });
+
+  it('customer view translates an open mesh into plain language (no jargon)', () => {
+    const r = verifyGeneratedModel(openBox());
+    const en = formatForCustomer(r, 'en');
+    const ko = formatForCustomer(r, 'ko');
+    expect(en).toMatch(/gaps or holes/i);
+    expect(en).not.toMatch(/watertight|boundary edge/i); // no engineering terms
+    expect(ko).toMatch(/틈이나 구멍/);
+  });
+
+  it('customer view is empty when the model is sound', () => {
+    expect(formatForCustomer(verifyGeneratedModel(box()))).toBe('');
+  });
+
+  it('customer view skips technical-only failures it cannot map', () => {
+    // Force a check id with no lay mapping by stubbing a result shape.
+    const r = { pass: false, checks: [{ id: 'sliver-facets', pass: false, severity: 'warning' as const, message: 'x' }], metrics: { triangleCount: 0, volumeMm3: 0, bbox: { x: 0, y: 0, z: 0 }, boundaryEdges: 0 } };
+    expect(formatForCustomer(r)).toBe('');
+    // …but the vendor still sees it.
+    expect(formatForVendor(r)).toMatch(/sliver-facets/);
+  });
+
+  it('formatForAudience dispatches to the right surface', () => {
+    const r = verifyGeneratedModel(openBox());
+    expect(formatForAudience(r, 'vendor')).toBe(formatForVendor(r));
+    expect(formatForAudience(r, 'customer', 'ko')).toBe(formatForCustomer(r, 'ko'));
   });
 });

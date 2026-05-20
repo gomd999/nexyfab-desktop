@@ -144,3 +144,43 @@ export function formatVerificationCritique(result: ModelVerificationResult): str
   const warns = fails.filter(c => c.severity === 'warning').map(c => `WARN [${c.id}]: ${c.message}`);
   return [...errs, ...warns].join('\n');
 }
+
+// ── Role-based formatting (one engine, role-appropriate surfaces) ───────────
+// The verifier produces a structured result; each surface formats it for its
+// audience. Vendor/expert sees the technical critique; the customer/lay user
+// sees plain-language guidance. Works in any mode (lay-solo, expert-solo, or
+// collaborative) since both derive from the same ModelVerificationResult.
+
+export type VerificationAudience = 'customer' | 'vendor';
+
+/** Technical critique for the expert/vendor surface (same as the AI-loop one). */
+export function formatForVendor(result: ModelVerificationResult): string {
+  return formatVerificationCritique(result);
+}
+
+const LAY_MESSAGES: Record<string, { en: string; ko: string }> = {
+  'non-empty': { en: 'The design came out empty — nothing was created. Try again.', ko: '디자인이 비어 있어요. 다시 시도해 주세요.' },
+  watertight: { en: 'The model has gaps or holes, so it won’t form a solid object.', ko: '모델에 틈이나 구멍이 있어 통짜 형태로 만들어지지 않아요.' },
+  manifold: { en: 'Parts of the surface overlap. The shapes need to be merged or kept apart.', ko: '표면이 겹쳐 있어요. 모양을 합치거나 떨어뜨려야 해요.' },
+  'max-size': { en: 'The model is too large for the allowed size — make it smaller.', ko: '모델이 허용 크기보다 너무 커요. 더 작게 만들어 주세요.' },
+  'min-size': { en: 'One side is very thin — it may be too fragile or hard to make.', ko: '한쪽이 너무 얇아요 — 약하거나 제작이 어려울 수 있어요.' },
+  volume: { en: 'This looks hollow (a shell), not a solid — it may not produce well.', ko: '속이 빈 모양(껍데기)이라 제대로 제작되지 않을 수 있어요.' },
+};
+
+/** Plain-language guidance for the customer/lay surface. Skips jargon-only
+ *  warnings (slivers/degenerate facets) that a lay user can't act on. */
+export function formatForCustomer(result: ModelVerificationResult, lang: 'en' | 'ko' = 'en'): string {
+  const lines: string[] = [];
+  for (const c of result.checks) {
+    if (c.pass) continue;
+    const plain = LAY_MESSAGES[c.id];
+    if (!plain) continue; // technical-only check → not surfaced to lay users
+    lines.push(plain[lang]);
+  }
+  return lines.join('\n');
+}
+
+/** Convenience: format for the given audience. */
+export function formatForAudience(result: ModelVerificationResult, audience: VerificationAudience, lang: 'en' | 'ko' = 'en'): string {
+  return audience === 'vendor' ? formatForVendor(result) : formatForCustomer(result, lang);
+}
