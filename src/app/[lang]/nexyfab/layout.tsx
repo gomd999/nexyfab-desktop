@@ -2,6 +2,7 @@ import { use } from 'react';
 import type { Metadata } from 'next';
 import NexyfabUnifiedSidebar from '@/components/nexyfab/NexyfabUnifiedSidebar';
 import ToastProvider from '@/components/ToastProvider';
+import NfBodyMode from './NfBodyMode';
 import { buildMetadata } from '@/lib/metaHelper';
 import { toRouteLang, type RouteLang } from '@/lib/i18n/normalize';
 
@@ -33,6 +34,7 @@ export default function NexyfabLayout({ children, params }: NexyfabLayoutProps) 
 
   return (
     <ToastProvider>
+      <NfBodyMode />
       <div
         style={{
           display: 'flex',

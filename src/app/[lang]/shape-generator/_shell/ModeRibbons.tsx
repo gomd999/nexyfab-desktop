@@ -65,6 +65,9 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
         { id: 'chamfer', lbl: 'Chamfer', ico: 'chamfer' },
         { id: 'shell', lbl: 'Shell', ico: 'shell' },
         { id: 'draft', lbl: 'Draft', ico: 'draft' },
+        // Phase-1 entry — opens the push/pull gizmo on the selected face.
+        // The drag → upstream-parameter mapping is wired up in phase-2 (#233).
+        { id: 'push-pull', lbl: 'Push/Pull', ico: 'extrude' },
       ],
     ],
   },
@@ -98,6 +101,13 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
         { id: 'ai.ribs', lbl: 'Add ribs', ico: 'ai', big: false },
         { id: 'ai.fillet', lbl: 'Auto-fillet', ico: 'ai', big: false },
       ],
+    ],
+  },
+  {
+    title: 'OpenSCAD',
+    rows: [
+      // Toggleable read-only projection of the feature tree as OpenSCAD code.
+      [{ id: 'view.scad', lbl: 'View SCAD', ico: 'doc' }],
     ],
   },
 ];
@@ -147,6 +157,13 @@ const SKETCH_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
         // Multi-body workflow — extrude only the active profile, stay in
         // sketch so the next profile can be extruded separately.
         { id: 'sketch.extrude-active', lbl: 'Body & continue', ico: 'extrude' },
+        // Direct revolve from the open sketch — uses the same active
+        // profile + sketchConfig.revolveAxis as the action menu path,
+        // so this is "Revolve" without leaving sketch mode.
+        { id: 'sketch.revolve', lbl: 'Revolve', ico: 'revolve' },
+        // Sweep path tool — canvas clicks append to config.sweepPath.points;
+        // ESC returns to select, switching tool away auto-commits the path.
+        { id: 'sketch.sweep-path', lbl: 'Sweep path', ico: 'sweep' },
       ],
     ],
   },
@@ -406,14 +423,20 @@ export const MODE_DEFAULT_TABS: Record<ShellMode, RibbonTabDef[]> = {
     { id: 'render', label: 'Render' },
     { id: 'view', label: 'View' },
   ],
-  // 3-tab sketch IA: Draw (primitives + modify) / Constrain (dim + relations)
-  // / Finish (project + extrude-active + finish). Each tab swaps which group
-  // set is shown by the ribbon. The mode chip stays on while any sketch tab
-  // is active so users still see "SKETCH MODE" in the title bar.
+  // 3-tab sketch IA + exit lanes. Draw/Constrain/Finish are the in-sketch
+  // sub-tabs (mode:true → highlighted as the active mode); the trailing
+  // Solid/Drawing/Render tabs let the user leave sketch in one click. The
+  // parent (ModelerShell) intercepts non-sketch tab clicks while in sketch
+  // mode and dispatches `sketch.finish` first so the in-progress sketch is
+  // committed before the surface swap.
   sketch: [
     { id: 'sketch.draw', label: 'Draw', mode: true },
     { id: 'sketch.constrain', label: 'Constrain', mode: true },
     { id: 'sketch.finish', label: 'Finish', mode: true },
+    { id: 'solid', label: 'Solid' },
+    { id: 'assembly', label: 'Assembly' },
+    { id: 'drawing', label: 'Drawing' },
+    { id: 'render', label: 'Render' },
   ],
   // Assembly / Drawing / Render share the same top tabs as Modeling so users
   // can cross-navigate from any route — click "Solid" from inside Drawing to

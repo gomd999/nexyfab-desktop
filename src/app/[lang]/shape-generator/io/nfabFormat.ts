@@ -99,6 +99,16 @@ export interface NfabProjectV1 {
     ribbonTheme?: 'dark' | 'lightRibbon';
     /** Section plane + sketch slice guide (viewport studio chrome) */
     studioView?: NfabStudioViewV1;
+    /** Phase-2 "Sketch on tilted face" frame. Optional on legacy files
+     *  (and on saves taken before a sketch-on-face was started). When
+     *  present, restored sketches reconstruct on the same arbitrary plane
+     *  they were authored on, not collapsed back to XY/XZ/YZ. */
+    sketchFaceFrame?: {
+      origin: [number, number, number];
+      normal: [number, number, number];
+      uAxis: [number, number, number];
+      vAxis: [number, number, number];
+    } | null;
   };
 
   /** Optional assembly snapshot — absent for single-part projects */

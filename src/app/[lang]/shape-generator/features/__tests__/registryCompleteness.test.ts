@@ -19,6 +19,8 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'splitBody',
     'bend',
     'flange',
+    'hem',
+    'jog',
     'flatPattern',
     'variableFillet',
     'boundarySurface',

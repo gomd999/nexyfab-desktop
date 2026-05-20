@@ -42,9 +42,9 @@
     "positionHash": "a2797967"
   },
   "box-fillet-default": {
-    "vertexCount": 24,
-    "triangleCount": 12,
-    "indexed": true,
+    "vertexCount": 1764,
+    "triangleCount": 588,
+    "indexed": false,
     "hasNormals": true,
     "bbox": {
       "min": [
@@ -58,13 +58,13 @@
         15
       ]
     },
-    "volume_mm3": 72000,
-    "surfaceArea_mm2": 10800,
-    "positionHash": "5cb8ec95"
+    "volume_mm3": 70988.044,
+    "surfaceArea_mm2": 10111.721,
+    "positionHash": "20fb544d"
   },
   "box-chamfer-default": {
-    "vertexCount": 24,
-    "triangleCount": 12,
+    "vertexCount": 453,
+    "triangleCount": 151,
     "indexed": true,
     "hasNormals": true,
     "bbox": {
@@ -79,8 +79,8 @@
         15
       ]
     },
-    "volume_mm3": 72000,
-    "surfaceArea_mm2": 10800,
-    "positionHash": "b01fe5d5"
+    "volume_mm3": 71008,
+    "surfaceArea_mm2": 10184.959,
+    "positionHash": "9773b87f"
   }
 }

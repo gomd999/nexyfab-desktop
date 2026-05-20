@@ -11,12 +11,36 @@ import { I } from '../Icons';
 import { useShellBridge } from '../shellBridgeStore';
 import { AiChatPanel } from './AiChatPanel';
 import { CommentsPanel } from './CommentsPanel';
+import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+import type { FeatureRoute } from '../../featureCatalog/registry';
 
 export interface ModelerRightPaneProps {
   isKo: boolean;
 }
 
-type Tab = 'inspector' | 'ai' | 'comments';
+type Tab = 'inspector' | 'ai' | 'comments' | 'engineering';
+
+// Engineering domains that have no dedicated shell mode of their own; the
+// modeling workspace surfaces them through a single switchable catalog panel.
+const ENGINEERING_ROUTES: FeatureRoute[] = ['modeling', 'cam', 'mold', 'sheet-metal', 'plant', 'hvac', 'cost', 'dfm'];
+
+const ENG_ROUTE_LABELS_KO: Partial<Record<FeatureRoute, string>> = {
+  modeling: '모델링/역학', cam: 'CAM 가공', mold: '금형', 'sheet-metal': '판금',
+  plant: '플랜트 배관', hvac: '공조', cost: '견적/원가', dfm: 'DFM',
+};
+const ENG_ROUTE_LABELS_EN: Partial<Record<FeatureRoute, string>> = {
+  modeling: 'Modeling/Dynamics', cam: 'CAM', mold: 'Mold', 'sheet-metal': 'Sheet Metal',
+  plant: 'Plant Piping', hvac: 'HVAC', cost: 'Cost/Estimate', dfm: 'DFM',
+};
+
+const ENG_CATALOG_DICT_KO: CatalogPanelDict = {
+  catalogTitle: '엔지니어링 계산기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
+  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
+};
+const ENG_CATALOG_DICT_EN: CatalogPanelDict = {
+  catalogTitle: 'Engineering Calculators', catalogLoading: 'Loading…', catalogReady: 'Ready',
+  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
+};
 
 export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
   const [activeTab, setActiveTab] = useState<Tab>('inspector');
@@ -35,6 +59,7 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
       side="right"
       tabs={[
         { id: 'inspector', label: isKo ? '인스펙터' : 'Inspector', icon: <I.tree size={12} /> },
+        { id: 'engineering', label: isKo ? '엔지니어링' : 'Engineering', icon: <I.cog size={12} /> },
         { id: 'ai', label: isKo ? 'Nexy AI' : 'Nexy AI', icon: <I.ai size={12} /> },
         { id: 'comments', label: isKo ? '코멘트' : 'Comments', icon: <I.comments size={12} />, badge: 3 },
       ]}
@@ -53,6 +78,7 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
           featureParams={selectedFeature?.params ?? null}
         />
       )}
+      {activeTab === 'engineering' && <EngineeringTab isKo={isKo} />}
       {activeTab === 'ai' && <AiTab isKo={isKo} />}
       {activeTab === 'comments' && <CommentsTab isKo={isKo} />}
     </SidePanel>
@@ -311,6 +337,28 @@ function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; dra
       <span style={{ flex: 1, fontSize: 11 }}>{label}</span>
       {meta && <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{meta}</span>}
       <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>→</span>
+    </div>
+  );
+}
+
+// ─── Engineering tab ─────────────────────────────────────────────────────────
+// Surfaces the registry-driven engineering calculators (CAM/mold/sheet-metal/
+// plant/HVAC/cost/DFM/dynamics) that have no dedicated shell mode. One panel,
+// switchable domain dropdown, click → lazy-load → run example.
+
+function EngineeringTab({ isKo }: { isKo: boolean }) {
+  return (
+    <div style={{ padding: '10px 12px' }}>
+      <FeatureCatalogPanel
+        routes={ENGINEERING_ROUTES}
+        routeLabels={isKo ? ENG_ROUTE_LABELS_KO : ENG_ROUTE_LABELS_EN}
+        license="pro"
+        dict={isKo ? ENG_CATALOG_DICT_KO : ENG_CATALOG_DICT_EN}
+        onRun={(featureId, entryFn) => {
+          // eslint-disable-next-line no-console
+          console.info(`[catalog] run ${featureId} via ${entryFn}()`);
+        }}
+      />
     </div>
   );
 }

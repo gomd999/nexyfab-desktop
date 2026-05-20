@@ -25,7 +25,8 @@ export type MateType =
   | 'fixed'           // Part is fixed in space
   | 'hinge'           // Kinematic: 1 rotational DOF (Concentric + Coincident plane)
   | 'slider'          // Kinematic: 1 translational DOF (Concentric without position lock)
-  | 'gear';           // Kinematic: Rotation ratio between two axes
+  | 'gear'            // Kinematic: Rotation ratio between two axes (gear mesh)
+  | 'belt';           // Kinematic: Rotation coupling via belt / chain — ratio derived from pulley radii
 
 export type MateSelectionType = 'face' | 'edge' | 'point' | 'axis' | 'plane';
 
@@ -53,6 +54,12 @@ export interface Mate {
   angle?: number;
   /** For gear mates: gear ratio (e.g. 2.0 means body A rotates twice as fast as body B) */
   gearRatio?: number;
+  /** For belt mates: driver pulley radius (mm). */
+  beltRadius0?: number;
+  /** For belt mates: driven pulley radius (mm). */
+  beltRadius1?: number;
+  /** For belt mates: `true` flips the direction (crossed belt). */
+  beltCrossed?: boolean;
   /** Is this mate enabled? */
   enabled: boolean;
   /** Is this mate over-defining (conflict detected)? */
@@ -250,18 +257,46 @@ function applyPerpendicularConstraint(bodies: AssemblyBody[], mate: Mate): numbe
   if (residual < 1e-6) return residual;
 
   const currentAngle = Math.acos(Math.abs(dot));
-  const correction = (Math.PI / 2 - currentAngle) * 0.5;
+  let correction = (Math.PI / 2 - currentAngle) * 0.5;
 
-  const rotAxis = new THREE.Vector3().crossVectors(n0, n1);
-  if (rotAxis.lengthSq() < 1e-10) return residual;
+  let rotAxis = new THREE.Vector3().crossVectors(n0, n1);
+  let usedFallback = false;
+  if (rotAxis.lengthSq() < 1e-10) {
+    // n0 ‖ n1 (or anti-parallel): cross product is zero so we have no
+    // natural rotation plane. Pick any axis perpendicular to n0 (world
+    // up unless n0 is itself up, in which case use world X) and apply a
+    // FULL 90° rotation in one step. Partial corrections cause iter-2
+    // to compute an opposite-signed natural axis and oscillate the
+    // body away from perpendicular instead of toward it.
+    const fallback = Math.abs(n0.y) < 0.9
+      ? new THREE.Vector3(0, 1, 0)
+      : new THREE.Vector3(1, 0, 0);
+    rotAxis = new THREE.Vector3().crossVectors(n0, fallback);
+    if (rotAxis.lengthSq() < 1e-10) return residual;
+    usedFallback = true;
+    correction = Math.PI / 2;
+  }
   rotAxis.normalize();
 
-  const rotQuat = new THREE.Quaternion().setFromAxisAngle(rotAxis, correction);
-  if (!b0.fixed) {
-    const q = new THREE.Quaternion().setFromEuler(b0.rotation);
-    q.premultiply(rotQuat);
-    b0.rotation.setFromQuaternion(q);
+  // Distribute the correction so it always sums to `correction` between
+  // the two bodies. If both free: each rotates half (opposite signs).
+  // If only one free: that body absorbs the full correction.
+  // (Previously a *0.5 was always applied which under-rotated when one
+  // body was fixed, and the fallback case oscillated past target.)
+  const halfFor0 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b0.fixed ? correction : 0);
+  const halfFor1 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b1.fixed ? correction : 0);
+
+  if (halfFor0 > 0) {
+    const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
+    q0.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, halfFor0));
+    b0.rotation.setFromQuaternion(q0);
   }
+  if (halfFor1 > 0) {
+    const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
+    q1.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, -halfFor1));
+    b1.rotation.setFromQuaternion(q1);
+  }
+  void usedFallback; // reserved for future telemetry — silences ts-unused.
 
   return residual;
 }
@@ -409,15 +444,96 @@ function applySliderConstraint(bodies: AssemblyBody[], mate: Mate): number {
   return posResidual + axisResidual;
 }
 
+/** Twist component of a quaternion around a given axis. Decomposes Q
+ *  into swing × twist where twist is rotation purely around `axis` and
+ *  returns the twist angle in radians (signed by right-hand rule).
+ *  Used by the gear constraint to read out each body's current rotation
+ *  around its gear axis without depending on iteration history. */
+function twistAngleAroundAxis(quat: THREE.Quaternion, axis: THREE.Vector3): number {
+  const a = axis.clone().normalize();
+  // The twist part of (qx, qy, qz, qw) is the projection of (qx, qy, qz)
+  // onto the axis, plus the original qw — then renormalised.
+  const v = new THREE.Vector3(quat.x, quat.y, quat.z);
+  const proj = a.clone().multiplyScalar(v.dot(a));
+  const twist = new THREE.Quaternion(proj.x, proj.y, proj.z, quat.w).normalize();
+  // Signed twist angle: 2·atan2(|axis-component|, w), with sign from
+  // whether the projection points along or against the axis.
+  const sign = Math.sign(v.dot(a)) || 1;
+  return 2 * Math.atan2(sign * proj.length(), twist.w);
+}
+
 /**
- * Gear: Enforces a rotation ratio between two axes.
- * This is a kinematic constraint coupling two 1-DOF motions.
+ * Gear: enforce a rotation ratio between two bodies around their gear
+ * axes. `mate.gearRatio` is read as ω_A : ω_B — gearRatio = 2 means A
+ * spins twice for every full turn of B. Negative ratio = opposite
+ * rotation (external mesh); positive = same direction (internal mesh,
+ * or pulleys via the open-belt path).
+ *
+ * Reference frame: rotation is measured from the identity orientation
+ * (the assembly's modelling pose). When the user expects "current pose
+ * is the rest pose", the caller should snapshot rotations and apply
+ * `gearRatio = 0` here — that path is handled by the position-driver
+ * task. For the static constraint we just enforce that
+ *     twist(A) × ratio = twist(B)
+ * with corrections distributed across free bodies. */
+function applyGearConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const [s0, s1] = mate.selections;
+  const b0 = bodies[s0.bodyIndex];
+  const b1 = bodies[s1.bodyIndex];
+  const ratio = mate.gearRatio ?? 1;
+  if (!Number.isFinite(ratio) || ratio === 0) return 0;
+
+  const axis0 = worldNormal(b0, s0.localAxis ?? s0.localNormal);
+  const axis1 = worldNormal(b1, s1.localAxis ?? s1.localNormal);
+
+  const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
+  const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
+  const twist0 = twistAngleAroundAxis(q0, axis0);
+  const twist1 = twistAngleAroundAxis(q1, axis1);
+
+  // Constraint: twist0 × ratio = twist1   →   error = twist1 - twist0×ratio
+  // We rotate b1 by -error around its axis (or b0 by +error/ratio around
+  // its axis when b1 is fixed). When both are free, share the load by
+  // weighting each correction by the body it ultimately moves the most.
+  const error = twist1 - twist0 * ratio;
+  const residual = Math.abs(error);
+  if (residual < 1e-6) return residual;
+
+  if (!b0.fixed && !b1.fixed) {
+    // Both free: rotate each by half the angle they each "owe".
+    const dq0 = new THREE.Quaternion().setFromAxisAngle(axis0, error / (2 * ratio));
+    const dq1 = new THREE.Quaternion().setFromAxisAngle(axis1, -error / 2);
+    const nq0 = q0.clone().premultiply(dq0); b0.rotation.setFromQuaternion(nq0);
+    const nq1 = q1.clone().premultiply(dq1); b1.rotation.setFromQuaternion(nq1);
+  } else if (!b1.fixed) {
+    const dq1 = new THREE.Quaternion().setFromAxisAngle(axis1, -error);
+    const nq1 = q1.clone().premultiply(dq1); b1.rotation.setFromQuaternion(nq1);
+  } else if (!b0.fixed) {
+    const dq0 = new THREE.Quaternion().setFromAxisAngle(axis0, error / ratio);
+    const nq0 = q0.clone().premultiply(dq0); b0.rotation.setFromQuaternion(nq0);
+  }
+  return residual;
+}
+
+/**
+ * Belt / pulley: rotation coupling between two pulleys connected by a
+ * belt or chain. Surface speed at the belt is identical on both sides,
+ * so:  ω_A × R_A = ω_B × R_B  →  ω_A / ω_B = R_B / R_A.
+ *
+ * Implemented by delegating to the gear constraint with an effective
+ * ratio derived from the pulley radii. `beltCrossed` flips the direction
+ * (a crossed belt reverses the driven pulley); open belts are the default.
  */
-function applyGearConstraint(_bodies: AssemblyBody[], _mate: Mate): number {
-  // Note: Gear constraints require tracking absolute rotation history over iterations.
-  // In a static GS solver, we approximate by enforcing relative angular displacement.
-  // We'll leave the residual as 0 for this simplified static pass unless we add dynamic step integration.
-  return 0;
+function applyBeltConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const r0 = mate.beltRadius0 ?? 0;
+  const r1 = mate.beltRadius1 ?? 0;
+  if (!(r0 > 0) || !(r1 > 0)) return 0;
+  const sign = mate.beltCrossed ? -1 : 1;
+  // ω_A × R_A = ω_B × R_B  →  twist0 × (R_A / R_B) = twist1  →  ratio = R_A / R_B
+  // (matches the convention used in applyGearConstraint where
+  // `twist0 × ratio = twist1`).
+  const effectiveRatio = sign * (r0 / r1);
+  return applyGearConstraint(bodies, { ...mate, gearRatio: effectiveRatio });
 }
 
 // ─── DOF bookkeeping ──────────────────────────────────────────────────────────
@@ -434,6 +550,7 @@ const DOF_PER_MATE: Record<MateType, number> = {
   hinge:         5,
   slider:        5,
   gear:          1,
+  belt:          1,
   fixed:         6,
 };
 
@@ -519,6 +636,9 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
             break;
           case 'gear':
             residual = applyGearConstraint(bodies, mate);
+            break;
+          case 'belt':
+            residual = applyBeltConstraint(bodies, mate);
             break;
           default:
             break;

@@ -33,6 +33,10 @@ export interface ChatCompletionRequest {
   task?: string;
   /** Caller's user id for per-user observability in nf_api_usage */
   userId?: string;
+  /** Abort signal — when fired, the provider should cancel its fetch
+   *  and reject the call. Plumbed from the request handler so an SSE
+   *  client disconnect can stop in-flight provider work. */
+  signal?: AbortSignal;
 }
 
 export interface ChatCompletionResponse {

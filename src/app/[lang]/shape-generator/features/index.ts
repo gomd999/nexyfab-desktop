@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureDefinition, FeatureInstance, FeatureType, MapBackedFeatureType } from './types';
 import { runPipeline, runPipelineAsync, type PipelineResult, type PipelineOptions } from './pipelineManager';
+import { applyFeatureContext } from './featureContext';
 
 // ─── Import actual feature implementations ───────────────────────────────────
 
@@ -16,7 +17,7 @@ import { draftFeature } from './draft';
 import { scaleFeature } from './scale';
 import { moveCopyFeature } from './moveCopy';
 import { splitBodyFeature } from './splitBody';
-import { bendFeature, flangeFeature, flatPatternFeature } from './sheetMetal';
+import { bendFeature, flangeFeature, flatPatternFeature, hemFeature, jogFeature } from './sheetMetal';
 import { variableFilletFeature } from './variableFillet';
 import { boundarySurfaceFeature } from './boundarySurface';
 import { revolveFeature } from './revolve';
@@ -49,6 +50,8 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   splitBodyFeature,
   bendFeature,
   flangeFeature,
+  hemFeature,
+  jogFeature,
   flatPatternFeature,
   variableFilletFeature,
   boundarySurfaceFeature,
@@ -96,14 +99,16 @@ export function applyFeaturePipelineDetailedAsync(
   features: FeatureInstance[],
   opts: PipelineOptions = {},
 ): Promise<PipelineResult> {
-  return runPipelineAsync(baseGeometry, features, FEATURE_MAP, opts);
+  const resolved = applyFeatureContext(features);
+  return runPipelineAsync(baseGeometry, resolved, FEATURE_MAP, opts);
 }
 
 export function applyFeaturePipelineDetailed(
   baseGeometry: THREE.BufferGeometry,
   features: FeatureInstance[],
 ): PipelineResult {
-  return runPipeline(baseGeometry, features, FEATURE_MAP);
+  const resolved = applyFeatureContext(features);
+  return runPipeline(baseGeometry, resolved, FEATURE_MAP);
 }
 
 // Re-export types

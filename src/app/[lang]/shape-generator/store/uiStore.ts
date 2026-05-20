@@ -130,6 +130,11 @@ interface UIState {
   showDraftAnalysis: boolean
   showHoleWizard: boolean
   showMassProps: boolean
+  /** Phase-2 push/pull edit mode. When true and a face is selected,
+   *  the viewport renders a normal-direction arrow hint (phase 2-A) and
+   *  will eventually let users drag that arrow to mutate the upstream
+   *  feature parameter (phase 2-B, gizmo wiring). */
+  pushPullMode: boolean
   showAnnotationPanel: boolean
   showValidation: boolean
   showLibrary: boolean
@@ -293,6 +298,7 @@ interface UIActions {
   setShowDraftAnalysis: (v: boolean) => void
   setShowHoleWizard: (v: boolean) => void
   setShowMassProps: (v: boolean) => void
+  setPushPullMode: (v: boolean) => void
   setShowAnnotationPanel: (v: boolean) => void
   setShowValidation: (v: boolean) => void
   setShowLibrary: (v: boolean) => void
@@ -377,6 +383,7 @@ export const useUIStore = create<UIStore>()(
     showDraftAnalysis: false,
     showHoleWizard: false,
     showMassProps: false,
+    pushPullMode: false,
     showAnnotationPanel: false,
     showValidation: false,
     showLibrary: false,
@@ -601,6 +608,9 @@ export const useUIStore = create<UIStore>()(
     setShowDraftAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showDraftAnalysis', v) }),
     setShowHoleWizard: (v) => set((state) => { setExclusivePanel(state, 'showHoleWizard', v) }),
     setShowMassProps: (v) => set((state) => { setExclusivePanel(state, 'showMassProps', v) }),
+    // Push/Pull mode is *not* a panel — it's a transient viewport edit
+    // mode, so it doesn't participate in the exclusive-panel group.
+    setPushPullMode: (v) => set((state) => { state.pushPullMode = v }),
     setShowAnnotationPanel: (v) => set((state) => { setExclusivePanel(state, 'showAnnotationPanel', v) }),
     setShowValidation: (v) => set((state) => { setExclusivePanel(state, 'showValidation', v) }),
     setShowPrintAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showPrintAnalysis', v) }),

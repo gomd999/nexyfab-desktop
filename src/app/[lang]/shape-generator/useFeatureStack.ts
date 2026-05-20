@@ -45,6 +45,13 @@ export interface SketchNodeData {
   operation: 'add' | 'subtract';
   constraints?: import('./sketch/types').SketchConstraint[];
   dimensions?: import('./sketch/types').SketchDimension[];
+  /** Phase-2 "Sketch on tilted face" — see FeatureInstance.sketchData.faceFrame. */
+  faceFrame?: {
+    origin: [number, number, number];
+    normal: [number, number, number];
+    uAxis: [number, number, number];
+    vAxis: [number, number, number];
+  };
 }
 
 export interface HistoryNode {
@@ -457,6 +464,7 @@ export function useFeatureStack() {
     planeOffset: number = 0,
     constraints?: import('./sketch/types').SketchConstraint[],
     dimensions?: import('./sketch/types').SketchDimension[],
+    faceFrame?: SketchNodeData['faceFrame'],
   ): void => {
     const id = genId();
     const current = labelCounters.get('sketchExtrude') || 0;
@@ -480,7 +488,7 @@ export function useFeatureStack() {
       children: [],
       editingActive: false,
       timestamp: Date.now(),
-      sketchData: { profile, config, plane, planeOffset, operation, constraints, dimensions },
+      sketchData: { profile, config, plane, planeOffset, operation, constraints, dimensions, faceFrame },
     };
 
     setNodeMap(prev => {

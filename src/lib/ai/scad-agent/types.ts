@@ -883,6 +883,9 @@ export interface AgentRunOptions {
   tools?: ToolExecutorMap;
   /** Streaming callback fired after each model round / tool call. */
   onEvent?: (ev: AgentEvent) => void;
+  /** Abort signal — propagated to the AI client and the tool loop so a
+   *  client disconnect (SSE close) stops further provider calls. */
+  signal?: AbortSignal;
 }
 
 export type AgentEvent =
@@ -900,8 +903,15 @@ export type AgentEvent =
 // ─── AI client + tool executor abstractions (mockable) ─────────────────────
 
 export interface AiClient {
-  /** Returns model text + an estimate of tokens consumed. */
-  complete(messages: { role: 'system' | 'user' | 'assistant'; content: string }[]): Promise<{
+  /** Returns model text + an estimate of tokens consumed. The optional
+   *  `signal` lets callers (e.g. the SSE route handler) abort the
+   *  in-flight provider call when the client disconnects — without this,
+   *  the server task keeps running and burning provider quota even though
+   *  no one is listening to the response. */
+  complete(
+    messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+    opts?: { signal?: AbortSignal },
+  ): Promise<{
     text: string;
     promptTokens?: number;
     completionTokens?: number;

@@ -173,7 +173,7 @@ export const es = {
 
     featKicker: 'NexyFab · Capabilities.',
     featTitle: 'Herramientas Todo-en-Uno para Ingenieros',
-    featSub: 'Disena, analiza, optimiza y cotiza — funciones nivel SolidWorks, gratis en tu navegador.',
+    featSub: 'Diseno → cotizacion → pedido a partner coreano en una sola cadena. Compatible con OpenSCAD · colaborativo · sin instalacion.',
     feat1Title: 'CAD 3D Parametrico',
     feat1Desc: '16 formas, boceto a extruir, filetes, chaflanes, patrones y funciones profesionales.',
     feat2Title: 'Analisis Estructural (FEA)',
@@ -204,7 +204,7 @@ export const es = {
     personaKicker: 'NexyFab · For You.',
     personaTitle: '¿Para quién es esta plataforma?',
     persona1Title: 'Ingenieros de Diseno',
-    persona1Desc: 'CAD y FEA profesional sin SolidWorks. Disena directo en tu navegador.',
+    persona1Desc: 'CAD parametrico en navegador con codigo OpenSCAD bidireccional. Optimizado para diseno de piezas estandar y salida de planos.',
     persona1Cta: 'Iniciar Diseno 3D',
     persona2Title: 'Gerentes de Compras',
     persona2Desc: 'Sube planos → comparacion instantanea de cotizaciones. Solo fabricantes verificados.',

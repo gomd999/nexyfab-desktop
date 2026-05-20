@@ -30,6 +30,7 @@ const MATE_ICONS: Record<MateType, string> = {
   hinge:         '\u21BA', // ↺
   slider:        '\u21C4', // ⇄
   gear:          '\u2699', // ⚙
+  belt:          '⟿', // ⟿
   fixed:         '\uD83D\uDD12', // 🔒
 };
 
@@ -37,27 +38,27 @@ const MATE_ICONS: Record<MateType, string> = {
 const MATE_LABELS: Record<string, Record<MateType, string>> = {
   en: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
-    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Hinge', slider: 'Slider', gear: 'Gear', fixed: 'Fixed',
+    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Hinge', slider: 'Slider', gear: 'Gear', belt: 'Belt', fixed: 'Fixed',
   },
   ko: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
-    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '힌지', slider: '슬라이더', gear: '기어', fixed: '고정',
+    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '힌지', slider: '슬라이더', gear: '기어', belt: '벨트', fixed: '고정',
   },
   ja: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
-    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'ヒンジ', slider: 'スライダー', gear: 'ギア', fixed: '固定',
+    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'ヒンジ', slider: 'スライダー', gear: 'ギア', belt: 'ベルト', fixed: '固定',
   },
   zh: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
-    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '铰链', slider: '滑块', gear: '齿轮', fixed: '固定',
+    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '铰链', slider: '滑块', gear: '齿轮', belt: '皮带', fixed: '固定',
   },
   es: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
-    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Bisagra', slider: 'Deslizador', gear: 'Engranaje', fixed: 'Fijo',
+    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Bisagra', slider: 'Deslizador', gear: 'Engranaje', belt: 'Correa', fixed: 'Fijo',
   },
   ar: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
-    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'مفصلة', slider: 'منزلق', gear: 'ترس', fixed: 'ثابت',
+    distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'مفصلة', slider: 'منزلق', gear: 'ترس', belt: 'حزام', fixed: 'ثابت',
   },
 };
 

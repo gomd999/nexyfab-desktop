@@ -134,6 +134,10 @@ export function useNfabFileIO(deps: Deps) {
         explodeFactor: sceneSnapshot.explodeFactor,
         sketchViewMode: sceneSnapshot.sketchViewMode,
         ribbonTheme: sceneSnapshot.ribbonTheme,
+        // Phase-2 "Sketch on tilted face" frame — without this, reopen
+        // would collapse the tilted-face sketch back to the world XY/XZ/YZ
+        // plane and the extrude would land in the wrong place.
+        sketchFaceFrame: sceneSnapshot.sketchFaceFrame ?? null,
         ...(studioView ? { studioView } : {}),
       },
       manufacturing: {
@@ -383,6 +387,9 @@ export function useNfabFileIO(deps: Deps) {
             : '2d',
         ribbonTheme:
           project.scene.ribbonTheme === 'lightRibbon' ? 'lightRibbon' : 'dark',
+        // Restore Phase-2 face frame — `?? null` keeps legacy files
+        // (which never had this field) starting in fast-path mode.
+        sketchFaceFrame: project.scene.sketchFaceFrame ?? null,
       });
       restoreStudioViewSnapshot?.(project.scene.studioView);
       replaceHistory(project.tree.nodes, project.tree.rootId, project.tree.activeNodeId);

@@ -28,6 +28,8 @@ export type FeatureType =
   | 'splitBody'
   | 'bend'
   | 'flange'
+  | 'hem'
+  | 'jog'
   | 'flatPattern'
   | 'variableFillet'
   | 'boundarySurface'
@@ -58,6 +60,19 @@ export interface FeatureApplyContext {
    *  before calling `applyCSG()` so output triangles from the tool keep
    *  this feature's id while base-inherited triangles keep theirs. */
   featureId: string;
+  /** Phase-2 — persistent edge ids the user selected when authoring this
+   *  feature. fillet/chamfer use these to restrict the operation to a
+   *  subset of edges instead of the global default. Empty/undefined →
+   *  legacy global behaviour. */
+  targetEdgeIds?: string[];
+  /** Phase-2 — persistent face ids (shell with face-removal, etc). */
+  targetFaceIds?: string[];
+  /** Phase 3-c — click-time edge selection data needed to build a
+   *  replicad EdgeFinder predicate. Optional and parallel to
+   *  targetEdgeIds: ids survive serialization; selection geometry
+   *  (position / length / normal) is what actually drives the OCCT
+   *  predicate construction. */
+  edgeSelections?: import('../editing/selectionInfo').EdgeSelectionInfo[];
 }
 
 export interface FeatureDefinition {
@@ -83,6 +98,19 @@ export interface FeatureInstance {
   params: Record<string, number>;
   enabled: boolean;
   error?: string;
+  /** Phase-1 "fillet / chamfer on selected edges". Persistent edge ids
+   *  (resolved via the topology tracker). When present, feature
+   *  implementations may restrict the operation to just those edges; when
+   *  absent the legacy global-edge behaviour applies. The OCCT path
+   *  still ignores this until per-edge wiring lands in phase 2. */
+  targetEdgeIds?: string[];
+  /** Phase-1 "shell with face removal". Persistent face ids of the
+   *  faces to leave open. Same fallback story as targetEdgeIds. */
+  targetFaceIds?: string[];
+  /** Phase 3-c — full click-time edge selection. Stored alongside
+   *  targetEdgeIds so the OCCT path can build an EdgeFinder predicate
+   *  without round-tripping back through the topology tracker. */
+  edgeSelections?: import('../editing/selectionInfo').EdgeSelectionInfo[];
   /** Present only when type === 'sketchExtrude' */
   sketchData?: {
     profile: SketchProfile;
@@ -92,6 +120,15 @@ export interface FeatureInstance {
     operation: 'add' | 'subtract';
     constraints?: import('../sketch/types').SketchConstraint[];
     dimensions?: import('../sketch/types').SketchDimension[];
+    /** Phase-2 "Sketch on tilted face". When present, the pipeline
+     *  ignores `plane`/`planeOffset` for placement and instead transforms
+     *  the sketch geometry onto this oriented frame. */
+    faceFrame?: {
+      origin: [number, number, number];
+      normal: [number, number, number];
+      uAxis: [number, number, number];
+      vAxis: [number, number, number];
+    };
   };
   /**
    * Runtime-only handle into the OCCT shape registry (phase 2d of #98). Lets

@@ -17,17 +17,28 @@ export interface RenderRightPaneProps {
   exposure: number;
   hdri: string;
   lens: number;
+  /** Phase-2 PBR extras — optional so existing callers (older shells)
+   *  keep working without forwarding setters that don't exist yet. */
+  specular?: number;
+  clearcoat?: number;
+  anisotropy?: number;
   setRoughness: (v: number) => void;
   setMetalness: (v: number) => void;
   setExposure: (v: number) => void;
   setHdri: (v: string) => void;
   setLens: (v: number) => void;
+  setSpecular?: (v: number) => void;
+  setClearcoat?: (v: number) => void;
+  setAnisotropy?: (v: number) => void;
   onRenderFinal: () => void;
 }
 
 export function RenderRightPane({
   isKo, material, color, roughness, metalness, exposure, hdri, lens,
-  setRoughness, setMetalness, setExposure, setHdri, setLens, onRenderFinal,
+  specular = 0.5, clearcoat = 0, anisotropy = 0.3,
+  setRoughness, setMetalness, setExposure, setHdri, setLens,
+  setSpecular, setClearcoat, setAnisotropy,
+  onRenderFinal,
 }: RenderRightPaneProps) {
   return (
     <SidePanel
@@ -53,9 +64,9 @@ export function RenderRightPane({
       <PropSection title={isKo ? 'PBR · 물리' : 'PBR — Physical'}>
         <Slider label={isKo ? '거칠기' : 'Roughness'} value={roughness} min={0} max={1} step={0.01} onChange={setRoughness} />
         <Slider label={isKo ? '금속성' : 'Metalness'} value={metalness} min={0} max={1} step={0.01} onChange={setMetalness} />
-        <Slider label={isKo ? '반사' : 'Specular'} value={0.5} min={0} max={1} step={0.01} onChange={() => { /* TODO */ }} />
-        <Slider label={isKo ? '클리어코트' : 'Clearcoat'} value={0} min={0} max={1} step={0.01} onChange={() => { /* TODO */ }} />
-        <Slider label={isKo ? '이방성' : 'Anisotropy'} value={0.3} min={0} max={1} step={0.01} onChange={() => { /* TODO */ }} />
+        <Slider label={isKo ? '반사' : 'Specular'}    value={specular}    min={0} max={1} step={0.01} onChange={setSpecular    ?? (() => {})} />
+        <Slider label={isKo ? '클리어코트' : 'Clearcoat'} value={clearcoat} min={0} max={1} step={0.01} onChange={setClearcoat ?? (() => {})} />
+        <Slider label={isKo ? '이방성' : 'Anisotropy'}  value={anisotropy}  min={0} max={1} step={0.01} onChange={setAnisotropy  ?? (() => {})} />
         <PropRow label={isKo ? '범프맵' : 'Bump map'}>
           <span style={{ fontSize: 11, color: 'var(--nx-accent)', cursor: 'pointer' }}>brushed_x.exr ↗</span>
         </PropRow>

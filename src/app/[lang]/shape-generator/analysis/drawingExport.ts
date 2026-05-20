@@ -160,7 +160,33 @@ function pdfStrokeFor(type: DrawingLine['type']): { w: number; dash: number[]; r
 /** Flip Y from our Y-up view space to jsPDF's Y-down page space. */
 function flipY(y: number, viewHeight: number): number { return viewHeight - y; }
 
-async function createDrawingJsPdf(drawing: DrawingResult): Promise<jsPDF> {
+/** GD&T feature control frame annotation as placed by AutoDrawingPanel —
+ *  position is in paper-mm coordinates (top-left origin to match the PDF
+ *  page system). */
+export interface GdtAnnotationOverlay {
+  id: string;
+  text: string;
+  /** Paper-space mm, top-left origin. */
+  x: number;
+  y: number;
+}
+
+/** Render the GD&T overlay frames onto the PDF page. Pill is 5 mm tall,
+ *  width scales with text length; ASCII pill border + monochrome text. */
+function drawGdtOverlayPDF(doc: jsPDF, frames: readonly GdtAnnotationOverlay[]): void {
+  if (frames.length === 0) return;
+  doc.setLineWidth(0.25);
+  doc.setDrawColor(0, 0, 0);
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(3);
+  for (const a of frames) {
+    const w = Math.max(28, a.text.length * 1.6);
+    doc.rect(a.x, a.y - 3.5, w, 5);
+    doc.text(a.text, a.x + 2, a.y + 0.5);
+  }
+}
+
+async function createDrawingJsPdf(drawing: DrawingResult, gdt: readonly GdtAnnotationOverlay[] = []): Promise<jsPDF> {
   const { default: JsPDF } = await import('jspdf');
   const isLandscape = drawing.paperWidth > drawing.paperHeight;
   const doc = new JsPDF({
@@ -188,17 +214,18 @@ async function createDrawingJsPdf(drawing: DrawingResult): Promise<jsPDF> {
   }
 
   drawTitleBlockPDF(doc, drawing);
+  drawGdtOverlayPDF(doc, gdt);
   return doc;
 }
 
 /** For tests / headless verification — same bytes as download, without triggering save. */
-export async function buildDrawingPdfArrayBuffer(drawing: DrawingResult): Promise<ArrayBuffer> {
-  const doc = await createDrawingJsPdf(drawing);
+export async function buildDrawingPdfArrayBuffer(drawing: DrawingResult, gdt: readonly GdtAnnotationOverlay[] = []): Promise<ArrayBuffer> {
+  const doc = await createDrawingJsPdf(drawing, gdt);
   return doc.output('arraybuffer') as ArrayBuffer;
 }
 
-export async function exportDrawingPDF(drawing: DrawingResult, fileName: string): Promise<void> {
-  const doc = await createDrawingJsPdf(drawing);
+export async function exportDrawingPDF(drawing: DrawingResult, fileName: string, opts?: { gdt?: readonly GdtAnnotationOverlay[] }): Promise<void> {
+  const doc = await createDrawingJsPdf(drawing, opts?.gdt ?? []);
   const safeName = (fileName || 'drawing').replace(/[^\w\-.]+/g, '_');
   doc.save(`${safeName}.pdf`);
 }
@@ -314,7 +341,7 @@ function dxfText(layer: string, x: number, y: number, height: number, text: stri
 }
 
 /** R12 ASCII DXF (mm). Exposed for CI; `exportDrawingDXF` wraps this + download. */
-export function buildDrawingDxfString(drawing: DrawingResult): string {
+export function buildDrawingDxfString(drawing: DrawingResult, gdt: readonly GdtAnnotationOverlay[] = []): string {
   let dxf = '';
 
   dxf += '0\nSECTION\n2\nHEADER\n';
@@ -380,12 +407,27 @@ export function buildDrawingDxfString(drawing: DrawingResult): string {
       `General Tol: Linear ${drawing.tolerance.linear}  Angular ${drawing.tolerance.angular}`);
   }
 
+  // Phase ⑤-3 — GD&T overlay: emit one TEXT + 4 LINEs per feature
+  // control frame so downstream DXF readers see both the pill border
+  // and the symbol/tolerance/datum text exactly as on the screen.
+  // Coordinates flip to DXF's Y-up convention.
+  for (const a of gdt) {
+    const yUp = drawing.paperHeight - a.y;
+    const w = Math.max(28, a.text.length * 1.6);
+    // Pill border — 4 lines (top, right, bottom, left).
+    dxf += dxfLine('GDT', a.x,     yUp - 2.5, a.x + w, yUp - 2.5);
+    dxf += dxfLine('GDT', a.x + w, yUp - 2.5, a.x + w, yUp + 2.5);
+    dxf += dxfLine('GDT', a.x + w, yUp + 2.5, a.x,     yUp + 2.5);
+    dxf += dxfLine('GDT', a.x,     yUp + 2.5, a.x,     yUp - 2.5);
+    dxf += dxfText('GDT', a.x + 2, yUp - 1,  3, a.text);
+  }
+
   dxf += '0\nENDSEC\n0\nEOF\n';
   return dxf;
 }
 
-export async function exportDrawingDXF(drawing: DrawingResult, fileName: string): Promise<void> {
-  const dxf = buildDrawingDxfString(drawing);
+export async function exportDrawingDXF(drawing: DrawingResult, fileName: string, opts?: { gdt?: readonly GdtAnnotationOverlay[] }): Promise<void> {
+  const dxf = buildDrawingDxfString(drawing, opts?.gdt ?? []);
   const safeName = (fileName || 'drawing').replace(/[^\w\-.]+/g, '_');
   const blob = new Blob([dxf], { type: 'application/dxf' });
   await downloadBlob(`${safeName}.dxf`, blob);

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { usePartnerLang } from './_lib/partnerLang';
 import { partnerDict } from './_lib/partnerDict';
+import { partnerLogout } from './_lib/partnerSession';
 
 interface PartnerInfo {
   email: string;
@@ -55,9 +56,10 @@ export default function PartnerNav() {
     });
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('partnerSession');
-    localStorage.removeItem('partnerInfo');
+  const logout = useCallback(async () => {
+    // Clears localStorage (legacy) + nf_access_token / nf_partner_sso
+    // cookies (SSO) in one call. See _lib/partnerSession.ts.
+    await partnerLogout();
     router.push(`/partner/login?lang=${lang}`);
   }, [router, lang]);
 

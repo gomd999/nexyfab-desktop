@@ -5,13 +5,14 @@
 // Reuses existing useFreemiumGate.requirePhotoReal for the 1-use Free demo;
 // real Three.js PBR viewport and HDRI sphere come in Phase 6.
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shell } from './Shell';
 import { I, type IconName } from './Icons';
 import { useFreemiumGate } from '../hooks/useFreemiumGate';
 import { PbrSpherePreview } from './PbrSpherePreview';
 import { RenderRightPane } from './sidebars/RenderRightPane';
+import { useSceneStore } from '../store/sceneStore';
 
 interface RenderFrameProps {
   lang: string;
@@ -76,13 +77,53 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
       router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
   };
   const [matFilter, setMatFilter] = useState<MaterialSwatch['group'] | 'all'>('all');
-  const [selectedMaterial, setSelectedMaterial] = useState('aluminum');
+  const [selectedMaterial, setSelectedMaterialLocal] = useState(() => useSceneStore.getState().materialId ?? 'aluminum');
+  // Material picks in Render Studio also propagate to the main modeler
+  // viewport so the user sees the same material everywhere. Falls back to
+  // local-only when the chosen swatch id isn't a sceneStore material preset.
+  const setSelectedMaterial = (id: string) => {
+    setSelectedMaterialLocal(id);
+    try { useSceneStore.getState().setMaterialId(id); } catch { /* materialId schema may evolve */ }
+  };
   const [hdri, setHdri] = useState('studio');
   const [roughness, setRoughness] = useState(0.35);
   const [metalness, setMetalness] = useState(0.85);
   const [exposure, setExposure] = useState(1.0);
   const [hdriRot, setHdriRot] = useState(0);
   const [lens, setLens] = useState(50);
+
+  // PBR extras (Specular / Clearcoat / Anisotropy). Local state drives the
+  // slider UI; on every change we also push to sceneStore.renderSettings so
+  // the main modeler viewport's MeshPhysicalMaterial picks it up live.
+  const renderSettings = useSceneStore(s => s.renderSettings);
+  const setRenderSettings = useSceneStore(s => s.setRenderSettings);
+  const [specular, setSpecularLocal]   = useState<number>(renderSettings?.specular   ?? 0.5);
+  const [clearcoat, setClearcoatLocal] = useState<number>(renderSettings?.clearcoat  ?? 0);
+  const [anisotropy, setAnisoLocal]    = useState<number>(renderSettings?.anisotropy ?? 0.3);
+
+  const pushPbr = useCallback(
+    (patch: { specular?: number; clearcoat?: number; anisotropy?: number }) => {
+      const base = useSceneStore.getState().renderSettings;
+      setRenderSettings({
+        environment:       base?.environment       ?? 'studio',
+        showBackground:    base?.showBackground    ?? false,
+        shadowIntensity:   base?.shadowIntensity   ?? 0.4,
+        bloomIntensity:    base?.bloomIntensity    ?? 0,
+        showGround:        base?.showGround        ?? true,
+        exposure:          base?.exposure          ?? 1.0,
+        customHdriUrl:     base?.customHdriUrl,
+        customHdriName:    base?.customHdriName,
+        pathTracing:       base?.pathTracing,
+        specular:          patch.specular   ?? base?.specular,
+        clearcoat:         patch.clearcoat  ?? base?.clearcoat,
+        anisotropy:        patch.anisotropy ?? base?.anisotropy,
+      });
+    },
+    [setRenderSettings],
+  );
+  const setSpecular   = useCallback((v: number) => { setSpecularLocal(v);   pushPbr({ specular: v });   }, [pushPbr]);
+  const setClearcoat  = useCallback((v: number) => { setClearcoatLocal(v);  pushPbr({ clearcoat: v });  }, [pushPbr]);
+  const setAnisotropy = useCallback((v: number) => { setAnisoLocal(v);      pushPbr({ anisotropy: v }); }, [pushPbr]);
 
   const visibleMats = MATERIAL_LIBRARY.filter(m => matFilter === 'all' || m.group === matFilter);
 
@@ -145,6 +186,12 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
             setExposure={setExposure}
             setHdri={setHdri}
             setLens={setLens}
+            specular={specular}
+            clearcoat={clearcoat}
+            anisotropy={anisotropy}
+            setSpecular={setSpecular}
+            setClearcoat={setClearcoat}
+            setAnisotropy={setAnisotropy}
             onRenderFinal={onRenderFinal}
           />
         }

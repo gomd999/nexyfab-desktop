@@ -148,7 +148,7 @@ export const ko = {
 
     featKicker: 'NexyFab · Capabilities.',
     featTitle: '엔지니어를 위한 올인원 도구',
-    featSub: '설계, 해석, 최적화, 견적까지 — SolidWorks급 기능을 브라우저에서 무료로.',
+    featSub: '브라우저에서 설계 → 견적 → 한국 파트너 발주까지 한 사슬. OpenSCAD 친화 · 협업 가능 · 설치 불필요.',
     feat1Title: '파라메트릭 3D CAD',
     feat1Desc: '16가지 형상, 스케치 → 돌출, 필렛, 챔퍼, 패턴 등 전문 피처로 부품을 설계하세요.',
     feat2Title: '구조 해석 (FEA)',
@@ -179,7 +179,7 @@ export const ko = {
     personaKicker: 'NexyFab · For You.',
     personaTitle: '누구를 위한 플랫폼인가요?',
     persona1Title: '설계 엔지니어',
-    persona1Desc: 'SolidWorks 없이도 전문 설계 & 해석. 브라우저에서 바로 작업하세요.',
+    persona1Desc: '브라우저 기반 파라메트릭 CAD + OpenSCAD 코드 양방향. 표준 부품 설계와 도면 출력에 최적화.',
     persona1Cta: '3D 설계 시작',
     persona2Title: '구매 담당자',
     persona2Desc: '도면 업로드 → 즉시 견적 비교. 검증된 제조사만 추천합니다.',

@@ -2,17 +2,20 @@
 
 // NexyfabUnifiedSidebar — single left-rail nav across all NexyFab routes.
 // Replaces the old NexyfabNav (operational) + the Hub-local sidebar that
-// confusingly lived alongside it. Sections mirror the user journey:
+// confusingly lived alongside it.
 //
-//   DESIGN          — what the user creates (Hub, CAD, AI, Library)
-//   MANUFACTURING   — what they do with their designs (RFQ, Orders, …)
-//   ACCOUNT         — billing, settings, help
+// Sidebar surface intentionally narrow — only the Design destinations are
+// pinned. Manufacturing (RFQ/Orders/etc.) and Account (Settings/Guide/
+// Billing/Logout) used to be sibling sections; both were dropped on user
+// request (2026-05-16) because the dashboard already covers Manufacturing
+// and Account belongs in the avatar dropdown (industry pattern).
 //
 // Token-driven (--nx-*) so light/dark are free. Mobile: collapses to a
 // 56px rail with icon-only entries.
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
 import { isKorean } from '@/lib/i18n/normalize';
 import NotificationBell from './NotificationBell';
@@ -56,28 +59,14 @@ const SECTIONS: NavSection[] = [
       { icon: '🔩', labelKo: '부품 라이브러리',   labelEn: 'Part Library',       href: '/nexyfab/cots' },
     ],
   },
-  {
-    titleKo: '제조',
-    titleEn: 'Manufacturing',
-    items: [
-      { icon: '💬', labelKo: '견적 요청',     labelEn: 'RFQ',             href: '/nexyfab/rfq' },
-      { icon: '📦', labelKo: '주문 추적',     labelEn: 'Orders',          href: '/nexyfab/orders' },
-      { icon: '🏭', labelKo: '제조사 매칭',   labelEn: 'Marketplace',     href: '/nexyfab/marketplace' },
-      { icon: '⚙️', labelKo: '내 제조 의뢰 처리', labelEn: 'My production tasks', href: '/nexyfab/manufacturer' },
-      { icon: '💾', labelKo: '파일 관리',     labelEn: 'Files',           href: '/nexyfab/files' },
-      { icon: '👥', labelKo: '팀 협업',       labelEn: 'Team',            href: '/nexyfab/team', badge: 'TEAM' },
-    ],
-  },
-  {
-    titleKo: '계정',
-    titleEn: 'Account',
-    items: [
-      { icon: '💳', labelKo: '결제 & 구독', labelEn: 'Billing',  href: '/nexyfab/billing' },
-      { icon: '🔧', labelKo: '설정',         labelEn: 'Settings', href: '/nexyfab/settings' },
-      { icon: '📖', labelKo: '사용 가이드', labelEn: 'Guide',    href: '/help' },
-      { icon: '🏗️', labelKo: '파트너 포털 (입점 제조사)', labelEn: 'Partner portal (external mfrs)', href: '/partner/hub', external: true },
-    ],
-  },
+];
+
+// Avatar dropdown items (replaces the old Account sidebar section).
+interface MenuItem { icon: string; labelKo: string; labelEn: string; href: string; external?: boolean; }
+const AVATAR_MENU: MenuItem[] = [
+  { icon: '💳', labelKo: '결제 & 구독',  labelEn: 'Billing',  href: '/nexyfab/billing' },
+  { icon: '🔧', labelKo: '설정',          labelEn: 'Settings', href: '/nexyfab/settings' },
+  { icon: '📖', labelKo: '사용 가이드',  labelEn: 'Guide',    href: '/help' },
 ];
 
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
@@ -89,8 +78,26 @@ const PLAN_BADGE: Record<string, { label: string; color: string }> = {
 
 export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
   const pathname = usePathname();
-  const { user, token } = useAuthStore();
+  const router = useRouter();
+  const { user, token, logout } = useAuthStore();
   const isKo = isKorean(lang);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close avatar dropdown on outside click / Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setMenuOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   // Hide on the modeler / sketch routes — those have their own shell-v2 chrome.
   if (pathname?.includes('/shape-generator')) return null;
@@ -143,11 +150,13 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           top: 0,
         }}
       >
-        {/* Brand */}
+        {/* Brand — clicking returns to the main customer landing.
+            "NexyFab" is one word; the colored spans must not have any gap
+            between them. */}
         <Link
-          href={`/${lang}/nexyfab/hub`}
+          href={`/${lang}`}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', gap: 0,
             padding: '14px 14px 10px',
             textDecoration: 'none',
             color: 'var(--nx-text)',
@@ -231,38 +240,127 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           ))}
         </div>
 
-        {/* Footer — user profile + notifications + app switcher */}
+        {/* Footer — user profile + notifications + app switcher.
+            Avatar+name area is the trigger for the account dropdown
+            (Billing / Settings / Guide / Logout) — replaces the old
+            Account sidebar section. */}
         <div
+          ref={menuRef}
           style={{
+            position: 'relative',
             borderTop: '1px solid var(--nx-border)',
             padding: '10px 12px',
             display: 'flex', alignItems: 'center', gap: 8,
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={() => setMenuOpen(o => !o)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
             style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'var(--nx-accent-soft)',
-              color: 'var(--nx-accent)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700,
-              flex: '0 0 28px',
+              display: 'flex', alignItems: 'center', gap: 8,
+              flex: 1, minWidth: 0,
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
+              textAlign: 'left',
             }}
           >
-            {initials}
-          </div>
-          <div className="nf-uni-label" style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.name ?? (isKo ? '게스트' : 'Guest')}
+            <div
+              style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: 'var(--nx-accent-soft)',
+                color: 'var(--nx-accent)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700,
+                flex: '0 0 28px',
+              }}
+            >
+              {initials}
             </div>
-            <div style={{ fontSize: 9, color: badge.color, fontWeight: 700 }}>
-              {badge.label}
+            <div className="nf-uni-label" style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.name ?? (isKo ? '게스트' : 'Guest')}
+              </div>
+              <div style={{ fontSize: 9, color: badge.color, fontWeight: 700 }}>
+                {badge.label}
+              </div>
             </div>
-          </div>
+          </button>
           <div className="nf-uni-label" style={{ display: 'flex', gap: 4 }}>
             {token && <NotificationBell token={token} lang={lang} />}
             <NexysysAppSwitcher />
           </div>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              style={{
+                position: 'absolute',
+                bottom: 'calc(100% + 4px)',
+                left: 8,
+                right: 8,
+                background: 'var(--nx-panel)',
+                border: '1px solid var(--nx-border)',
+                borderRadius: 8,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                padding: 4,
+                zIndex: 50,
+              }}
+            >
+              {AVATAR_MENU.map(item => (
+                <Link
+                  key={item.href}
+                  href={`/${lang}${item.href}`}
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    textDecoration: 'none',
+                    color: 'var(--nx-text)',
+                    fontSize: 12,
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
+                >
+                  <span aria-hidden="true" style={{ fontSize: 14, width: 16, textAlign: 'center' }}>{item.icon}</span>
+                  <span>{isKo ? item.labelKo : item.labelEn}</span>
+                </Link>
+              ))}
+              <div style={{ height: 1, background: 'var(--nx-border)', margin: '4px 0' }} />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  logout();
+                  router.push(`/${lang}`);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  color: 'var(--nx-text)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-hover)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <span aria-hidden="true" style={{ fontSize: 14, width: 16, textAlign: 'center' }}>🚪</span>
+                <span>{isKo ? '로그아웃' : 'Log out'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>

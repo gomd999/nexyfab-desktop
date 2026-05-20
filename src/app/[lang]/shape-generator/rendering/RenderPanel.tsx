@@ -54,6 +54,12 @@ export interface RenderSettings {
   customHdriName?: string;
   /** Whether path tracing mode is on */
   pathTracing?: boolean;
+  /** Phase-2 PBR extras (Specular/Clearcoat/Anisotropy). The RenderRightPane
+   *  panel exposes sliders for these; the viewport material reads them in
+   *  phase-2B so the change becomes visible. */
+  specular?: number;
+  clearcoat?: number;
+  anisotropy?: number;
 }
 
 export const DEFAULT_RENDER_SETTINGS: RenderSettings = {

@@ -56,8 +56,16 @@ export interface ShellSketchConstraint {
 export interface ShellSketchDimension {
   id: string;
   name: string;
+  /** Resolved numeric value — already evaluated from expression when present. */
   value: number;
   unit?: string;
+  /** Optional raw expression (e.g. `2*D1 + 5`). When set, the sidebar shows
+   *  it as the primary editable text and the resolved value as a subscript. */
+  expression?: string;
+  /** Per-dimension expression error surfaced by resolveDimensionTargetsWithErrors.
+   *  Lets the UI mark cycle / unknown-id / non-finite cases with a tooltip
+   *  rather than silently falling back to `value`. */
+  expressionError?: { reason: 'syntax' | 'unknown-identifier' | 'cycle' | 'runtime' | 'non-finite'; detail?: string };
 }
 
 export interface ShellBridgeState {

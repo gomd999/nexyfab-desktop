@@ -48,7 +48,13 @@ export async function exportToStepAsync(
   // Path 3 — legacy hand-written AP242 emitter. Only Box geometries
   // round-trip cleanly here; for other shapes the caller should have used
   // `canExportStepCleanly()` to grey out the button. Kept as last-resort
-  // path so a misconfigured caller still gets a file.
+  // path so a misconfigured caller still gets a file. Telemetry warning
+  // so we can spot UI regressions where the predicate is bypassed (a user
+  // hitting this path almost always means a broken caller, not an
+  // intentional fallback). Single-line console.warn keeps the export
+  // succeeding for whoever's already invoking it.
+
+  console.warn('[step-export] Reached legacy AP242 emitter — output may be rejected by importers for non-box geometries. Caller should have gated this with canExportStepCleanly().');
   return exportToStep(geometry, partName);
 }
 
@@ -197,7 +203,10 @@ export function exportToStep(
 
 export async function downloadStep(geometry: THREE.BufferGeometry, filename = 'part'): Promise<void> {
   const { downloadBlob } = await import('@/lib/platform');
-  const content = exportToStep(geometry, filename);
+  // Route through the OCCT bridge so non-box meshes round-trip cleanly. The
+  // sync exportToStep emits legacy AP242 that occt-import-js rejects for
+  // anything but a box (R2 burn-in 2026-05-08), so never use it for downloads.
+  const content = await exportToStepAsync(geometry, filename);
   const blob = new Blob([content], { type: 'model/step' });
   await downloadBlob(`${filename}.step`, blob);
 }

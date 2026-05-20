@@ -4,22 +4,26 @@ import { test, expect } from '@playwright/test';
 // Verifies that ?shell=v2 mounts the new UI without regressing the legacy path.
 
 test.describe('Shell v2 — gating', () => {
-  test('legacy chrome renders by default at /en/shape-generator', async ({ page }) => {
+  test('Shell v2 chrome (ModelerShell) renders by default at /en/shape-generator', async ({ page }) => {
     await page.goto('/en/shape-generator');
-    // The legacy ShellPreview marker should NOT be present.
-    await expect(page.locator('text=Shell v2 Preview')).toHaveCount(0, { timeout: 8000 });
-    // The page should still mount something (canvas or known toolbar element).
+    // ModelerShell is the post-Phase 6 default — TitleBar + Ribbon should be live.
+    await expect(page.locator('.nx-title')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('.nx-ribbon')).toBeVisible();
+  });
+
+  test('?classic=1 falls back to legacy ShapeGeneratorInner', async ({ page }) => {
+    await page.goto('/en/shape-generator?classic=1');
+    // Shell-v2 chrome should be absent.
+    await expect(page.locator('.nx-title')).toHaveCount(0, { timeout: 4000 });
+    // Legacy inner still mounts something (canvas / toolbar).
     const liveSurface = page.locator('canvas, [class*="canvas"], [data-testid="shape-generator"]').first();
     await expect(liveSurface).toBeVisible({ timeout: 15000 }).catch(() => {});
   });
 
-  test('?shell=v2 mounts the ShellPreview at /en/shape-generator', async ({ page }) => {
-    await page.goto('/en/shape-generator?shell=v2');
-    // Mode toggle buttons present.
+  test('?dev-shell=v2 mounts the ShellPreview sandbox', async ({ page }) => {
+    await page.goto('/en/shape-generator?dev-shell=v2');
     await expect(page.locator('text=Shell v2 Preview')).toBeVisible({ timeout: 8000 });
-    // TitleBar brand visible.
     await expect(page.locator('.nx-title')).toBeVisible();
-    // Ribbon rendered.
     await expect(page.locator('.nx-ribbon')).toBeVisible();
   });
 
@@ -40,18 +44,17 @@ test.describe('Shell v2 — gating', () => {
 });
 
 test.describe('Shell v2 — Hub route', () => {
-  test('?shell=v2 on dashboard mounts HubFrame', async ({ page }) => {
-    await page.goto('/en/nexyfab/dashboard?shell=v2');
-    // NEXYFAB brand and Welcome string from HubFrame should appear.
+  test('/nexyfab/hub mounts HubFrame as the dedicated start screen', async ({ page }) => {
+    await page.goto('/en/nexyfab/hub');
     await expect(page.locator('text=NEXYFAB').first()).toBeVisible({ timeout: 8000 });
     await expect(page.locator('text=/Welcome back/i')).toBeVisible({ timeout: 5000 });
     // Quick-start tile exists.
     await expect(page.locator('text=/New Part/i')).toBeVisible();
   });
 
-  test('legacy dashboard renders without the flag', async ({ page }) => {
+  test('/nexyfab/dashboard remains the operational console (no HubFrame)', async ({ page }) => {
     await page.goto('/en/nexyfab/dashboard');
-    // HubFrame greeting should NOT appear.
+    // HubFrame greeting should NOT appear on the dashboard route.
     await expect(page.locator('text=/Welcome back/i')).toHaveCount(0, { timeout: 4000 });
   });
 });

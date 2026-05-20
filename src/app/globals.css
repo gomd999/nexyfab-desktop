@@ -364,6 +364,12 @@ body.sg-mode > header,
 body.sg-mode > footer,
 body.sg-mode > div[data-cookie-banner] { display: none; }
 
+/* NexyFab SaaS surface (/nexyfab/*): hide the customer-landing
+   <Header>/<Footer>. The SaaS layout owns its own chrome
+   (NexyfabUnifiedSidebar + per-layout footer). */
+body.nf-app-mode > header,
+body.nf-app-mode > footer { display: none; }
+
 /* Shape-generator top toolbar: prevent label wrap, scroll horizontally if needed */
 .sg-topbar { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .sg-topbar::-webkit-scrollbar { height: 4px; }

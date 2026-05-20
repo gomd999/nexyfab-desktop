@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 
 interface Props {
@@ -50,6 +50,13 @@ export default function FaceHighlightMesh({
     geo.computeVertexNormals();
     return geo;
   }, [sourceGeometry, allIndices]);
+
+  // Dispose the geometry on unmount or when allIndices changes — useMemo
+  // recreates it but doesn't free the old one, so without this cleanup
+  // every face-selection click leaks GPU memory.
+  useEffect(() => {
+    return () => { highlightGeo?.dispose(); };
+  }, [highlightGeo]);
 
   if (!highlightGeo) return null;
 

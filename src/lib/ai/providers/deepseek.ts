@@ -36,7 +36,11 @@ export const deepseekProvider: ProviderAdapter = {
         max_tokens: req.maxTokens ?? 4096,
         temperature: req.temperature ?? 0.2,
       }),
-      signal: AbortSignal.timeout(req.timeoutMs ?? 30_000),
+      // Combine the timeout signal with the caller-supplied abort signal
+      // (e.g. SSE client disconnect) so either path cancels the fetch.
+      signal: req.signal
+        ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs ?? 30_000)])
+        : AbortSignal.timeout(req.timeoutMs ?? 30_000),
     });
 
     if (!res.ok) {

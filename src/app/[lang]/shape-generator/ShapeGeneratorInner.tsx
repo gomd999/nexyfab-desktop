@@ -3,6 +3,7 @@
 // Main workspace shell (split from ShapeGeneratorApp for maintainability).
 
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import { isKorean } from '@/lib/i18n/normalize';
 import { useUIStore } from './store/uiStore';
 import { useSelectionStore } from './store/selectionStore';
 import { useCanvasSelectionHandlers } from './hooks/useCanvasSelectionHandlers';
@@ -46,14 +47,18 @@ import { usePdmProjectMetaStore } from './store/pdmProjectMetaStore';
 import { getDrawingTitlePartName } from '@/lib/nfabPartDisplay';
 import { patchFetchForTauri, hasDesktopPower, isTauriApp } from '@/lib/tauri';
 import {
-  prefGetString,
-  prefSetString,
-  PREF_KEYS,
   upsertRecentImportFile,
   isDesktopFirstRunComplete,
   resetDesktopFirstRun,
 } from '@/lib/platform';
 import { useNfabFileIO } from './hooks/useNfabFileIO';
+import { useDesignPreviewWidth } from './hooks/useDesignPreviewWidth';
+import { useContextMenu } from './hooks/useContextMenu';
+import { useSketchRadialMenu } from './hooks/useSketchRadialMenu';
+import { useViewportOverlays } from './hooks/useViewportOverlays';
+import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
+import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
+import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
 import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
@@ -65,7 +70,7 @@ import { useInterferenceWorker } from './workers/useInterferenceWorker';
 import { useFeatureStack, type FeatureHistory } from './useFeatureStack';
 import { useShapeCart } from './useShapeCart';
 import { exportBomCSV, exportBomExcel, estimateWeight, type BomRow } from './io/bomExport';
-import { canExportStepCleanly } from './io/stepExporter';
+import { canExportStepViaBridge } from './io/stepExporter';
 import { useHistory } from './useHistory';
 import { useToast } from './useToast';
 import ToastContainer from './ToastContainer';
@@ -85,7 +90,7 @@ import type { BomPartResult } from './ShapePreview';
 // Sketch imports
 import type { SketchProfile, SketchConfig, SketchConstraint, SketchDimension, SketchSegment } from './sketch/types';
 import { profileToGeometry, profileToGeometryMulti } from './sketch/extrudeProfile';
-import { solveConstraints } from './sketch/constraintSolver';
+import { solveConstraints, resolveDimensionTargetsWithErrors } from './sketch/constraintSolver';
 import SketchCanvas from './sketch/SketchCanvas';
 import {
   type SketchHistoryEntry,
@@ -105,6 +110,9 @@ import { useAnalysisState } from './hooks/useAnalysisState';
 import { useSketchState } from './hooks/useSketchState';
 import { useFreemium } from '@/hooks/useFreemium';
 import UpgradeModalsDock from './panels/UpgradeModalsDock';
+import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
+import type { SampleTemplate } from './templates/sampleTemplates';
+import AiAssistantShell from './ai/AiAssistantShell';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
@@ -122,7 +130,6 @@ import { useTopologicalMap } from './topology/useTopologicalMap';
 import { decodeShareLink } from './io/shareLink';
 import { useSearchParams } from 'next/navigation';
 import { getContextItemsEmpty, getContextItemsGeometry, getContextItemsSketch } from './ContextMenu';
-import type { ContextMenuItem } from './ContextMenu';
 import SketchPalette from './sketch/SketchPalette';
 import { useSketchReferenceUnderlay } from './hooks/useSketchReferenceUnderlay';
 // New module imports
@@ -282,6 +289,9 @@ import { getToolCursor } from './hooks/useToolCursor';
 // Advanced analysis panels (still inline-mounted: ParametricSweep, AutoDrawing)
 const ParametricSweepPanel = dynamic(() => import('./analysis/ParametricSweepPanel'), { ssr: false });
 const AutoDrawingPanel = dynamic(() => import('./analysis/AutoDrawingPanel'), { ssr: false });
+const ScadCodePanel = dynamic(() => import('./openscad/ScadCodePanel'), { ssr: false });
+const PushPullBanner = dynamic(() => import('./pushpull/PushPullBanner'), { ssr: false });
+const GdtPicker = dynamic(() => import('./drawing/GdtPicker'), { ssr: false });
 import type { PlacedPart } from './assembly/PartPlacementPanel';
 import { placedPartsToBomResults } from './assembly/PartPlacementPanel';
 import { bomPartWorldMatrixFromBom } from './assembly/bomPartWorldMatrix';
@@ -294,15 +304,6 @@ import { useCadWorkspaceInference } from './hooks/useCadWorkspaceInference';
 import { useGeometryGC } from './hooks/useGeometryGC';
 
 // ─── Design tab: resizable 3D preview column (right) ───────────────────────────
-
-const DESIGN_PREVIEW_MIN = 260;
-const DESIGN_PREVIEW_MAX_CAP = 920;
-
-function clampDesignPreviewWidth(w: number): number {
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
-  const maxW = Math.max(DESIGN_PREVIEW_MIN + 80, Math.min(DESIGN_PREVIEW_MAX_CAP, vw - 320));
-  return Math.round(Math.min(maxW, Math.max(DESIGN_PREVIEW_MIN, w)));
-}
 
 /** First segment after `shape-generator` for bookmarkable sub-routes. */
 function shapeGeneratorRouteSegment(pathname: string | null): 'sketch' | 'analysis' | '3d-edit' | null {
@@ -380,28 +381,7 @@ export function ShapeGeneratorInner() {
     isDragging, setIsDragging,
     dragCounterRef } = useShapeGeneratorUI();
 
-  const [designPreviewWidth, setDesignPreviewWidth] = useState(380);
-  useEffect(() => {
-    try {
-      const raw = prefGetString(PREF_KEYS.designPreviewWidth);
-      if (raw) {
-        const v = parseInt(raw, 10);
-        if (Number.isFinite(v)) setDesignPreviewWidth(clampDesignPreviewWidth(v));
-      }
-    } catch { /* ignore */ }
-  }, []);
-  useEffect(() => {
-    const onResize = () => setDesignPreviewWidth((w) => clampDesignPreviewWidth(w));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  const handleDesignPreviewResize = useCallback((next: number) => {
-    const c = clampDesignPreviewWidth(next);
-    setDesignPreviewWidth(c);
-    try {
-      prefSetString(PREF_KEYS.designPreviewWidth, String(c));
-    } catch { /* ignore */ }
-  }, []);
+  const { designPreviewWidth, handleDesignPreviewResize } = useDesignPreviewWidth();
 
   // ══════════════════════════════════════════════════════════════════════════
   // RESPONSIVE STATE
@@ -533,9 +513,11 @@ export function ShapeGeneratorInner() {
   const [cartAdded, setCartAdded] = useState(false);
   const [bomParts, setBomParts] = useState<BomPartResult[]>([]);
   const [highlightedPartId, setHighlightedPartId] = useState<string | null>(null);
-  const [assemblyHiddenParts, setAssemblyHiddenParts] = useState<Set<string>>(new Set());
-  const [assemblyTransparentParts, setAssemblyTransparentParts] = useState<Set<string>>(new Set());
-  const [assemblyPartColors, setAssemblyPartColors] = useState<Record<string, string>>({});
+  const {
+    hiddenParts: assemblyHiddenParts, setHiddenParts: setAssemblyHiddenParts,
+    transparentParts: assemblyTransparentParts, setTransparentParts: setAssemblyTransparentParts,
+    partColors: assemblyPartColors, setPartColors: setAssemblyPartColors,
+  } = useAssemblyPartDisplay();
   const [bomLabel, setBomLabel] = useState('');
   const materialId = useSceneStore(s => s.materialId);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
@@ -1071,6 +1053,9 @@ export function ShapeGeneratorInner() {
   }, [crdtBridge]);
   const sketchPlane = useSceneStore(s => s.sketchPlane);
   const setSketchPlaneRaw = useSceneStore(s => s.setSketchPlane);
+  const sketchFaceFrame = useSceneStore(s => s.sketchFaceFrame);
+  const [showScadPanel, setShowScadPanel] = useState(false);
+  const [showGdtPicker, setShowGdtPicker] = useState(false);
   const sketchProfile = useSceneStore(s => s.sketchProfile);
   const setSketchProfile = useSceneStore(s => s.setSketchProfile);
   const sketchConfig = useSceneStore(s => s.sketchConfig);
@@ -1608,20 +1593,22 @@ export function ShapeGeneratorInner() {
   ], []);
 
   // ── Context menu state ──
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; visible: boolean; items: ContextMenuItem[] }>({ x: 0, y: 0, visible: false, items: [] });
+  const { ctxMenu, openContextMenu, closeContextMenu } = useContextMenu();
   /** Radial marking menu (2D sketch context). */
-  const [sketchRadial, setSketchRadial] = useState<{ visible: boolean; x: number; y: number }>({ visible: false, x: 0, y: 0 });
+  const { sketchRadial, openSketchRadial, closeSketchRadial } = useSketchRadialMenu();
   /** Sketch palette toggles ↔ SketchCanvas overlays. */
-  const [sketchPalGrid, setSketchPalGrid] = useState(true);
-  const [sketchPalSnap, setSketchPalSnap] = useState(true);
-  const [sketchPalDims, setSketchPalDims] = useState(true);
-  const [sketchPalConst, setSketchPalConst] = useState(true);
-  const [sketchLineStyle, setSketchLineStyle] = useState<'normal' | 'construction' | 'centerline'>('normal');
+  const {
+    grid: sketchPalGrid, setGrid: setSketchPalGrid,
+    snap: sketchPalSnap, setSnap: setSketchPalSnap,
+    dims: sketchPalDims, setDims: setSketchPalDims,
+    constraints: sketchPalConst, setConstraints: setSketchPalConst,
+    profile: sketchPalProfile, setProfile: setSketchPalProfile,
+  } = useSketchPaletteToggles();
+  const {
+    lineStyle: sketchLineStyle, setLineStyle: setSketchLineStyle,
+    pickFilter: sketchPickFilter, cyclePickFilter: cycleSketchPickFilter,
+  } = useSketchInteractionMode(isSketchMode);
   const [sketchLookAtNonce, setSketchLookAtNonce] = useState(0);
-  const [sketchPickFilter, setSketchPickFilter] = useState<'all' | 'segments' | 'points'>('all');
-  const cycleSketchPickFilter = useCallback(() => {
-    setSketchPickFilter(f => (f === 'all' ? 'segments' : f === 'segments' ? 'points' : 'all'));
-  }, []);
   const sketchPickFilterHint = useMemo(() => {
     switch (sketchPickFilter) {
       case 'segments': return lt.sketchPickFilterSegments;
@@ -1629,10 +1616,6 @@ export function ShapeGeneratorInner() {
       default: return lt.sketchPickFilterAll;
     }
   }, [sketchPickFilter, lt]);
-  useEffect(() => {
-    if (!isSketchMode) setSketchPickFilter('all');
-  }, [isSketchMode]);
-  const [sketchPalProfile, setSketchPalProfile] = useState(true);
   const ribbonTheme = useSceneStore(s => s.ribbonTheme);
   const setRibbonTheme = useSceneStore(s => s.setRibbonTheme);
   // 오른쪽 버튼 누른 위치 추적 (드래그 vs 단순 클릭 구분용)
@@ -1814,6 +1797,7 @@ export function ShapeGeneratorInner() {
     planLimits,
     showUpgradePrompt, setShowUpgradePrompt,
     upgradeFeature, setUpgradeFeature,
+    promptUpgrade,
     requirePro: _requirePro,
     requirePhotoReal,
     checkCartLimit,
@@ -1958,10 +1942,12 @@ export function ShapeGeneratorInner() {
   const [camSimResult, setCamSimResult] = useState<{ result: import('./analysis/camLite').CAMResult; operation: import('./analysis/camLite').CAMOperation } | null>(null);
 
   // ── Generative Design / ECAD overlays (visualization layers, not panels) ──
-  const [genDesignResult, setGenDesignResult] = useState<BufferGeometry | null>(null);
-  const [showGenOverlay, setShowGenOverlay] = useState(false);
-  const [thermalOverlayGeo, setThermalOverlayGeo] = useState<BufferGeometry | null>(null);
-  const [showThermalOverlay, setShowThermalOverlay] = useState(false);
+  const {
+    genDesignResult, setGenDesignResult,
+    showGenOverlay, setShowGenOverlay,
+    thermalOverlayGeo, setThermalOverlayGeo,
+    showThermalOverlay, setShowThermalOverlay,
+  } = useViewportOverlays();
 
   // ── Analysis modal panels (centralised in useUIStore for closeAllPanels / simpleMode) ──
   const showCOTSPanel        = useUIStore(s => s.showCOTSPanel);
@@ -3011,7 +2997,7 @@ export function ShapeGeneratorInner() {
       'combine': 'boolean',
       'pattern.linear': 'linearPattern',
     };
-    const SKETCH_TOOLS: Record<string, 'line' | 'rect' | 'circle' | 'arc' | 'polygon' | 'spline' | 'trim' | 'offset' | 'mirror' | 'dimension' | 'constraint' | 'construction'> = {
+    const SKETCH_TOOLS: Record<string, 'line' | 'rect' | 'circle' | 'arc' | 'polygon' | 'spline' | 'trim' | 'offset' | 'mirror' | 'dimension' | 'constraint' | 'construction' | 'sweep-path'> = {
       'sketch.line': 'line',
       'sketch.rect': 'rect',
       'sketch.circle': 'circle',
@@ -3024,11 +3010,75 @@ export function ShapeGeneratorInner() {
       'sketch.dim': 'dimension',
       'sketch.constraint': 'constraint',
       'sketch.project': 'construction',
+      'sketch.sweep-path': 'sweep-path',
     };
     const onTool = (e: Event) => {
       const id = (e as CustomEvent<{ id?: string }>).detail?.id;
       if (!id) return;
       if (id === 'sketch') {
+        // "Sketch on face" — Phase 1 (axis-aligned fast-path) +
+        // Phase 2 (arbitrary tilted face → store an oriented frame).
+        //
+        //   Axis-aligned face (|n.x|, |n.y|, |n.z| one dominant):
+        //     route to the XY/XZ/YZ plane + offset; clear faceFrame.
+        //   Tilted face:
+        //     compute an orthonormal frame (origin, normal, u, v) and
+        //     set sketchFaceFrame; pipeline applies that frame at the
+        //     extrude step. sketchPlane is kept on its previous value
+        //     so legacy consumers don't NPE.
+        const sel = useSelectionStore.getState().selectedElement;
+        const sceneSet = useSceneStore.getState();
+        if (sel && sel.type === 'face') {
+          const [nx, ny, nz] = sel.normal;
+          const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+          const max = Math.max(ax, ay, az);
+          const AXIS_ALIGN_TOL = 0.99; // cos(~8°) — close to a primary axis
+          const isAxisAligned = max >= AXIS_ALIGN_TOL;
+          if (isAxisAligned) {
+            if (ax >= ay && ax >= az) {
+              setSketchPlaneRaw('yz');
+              setSketchPlaneOffset(sel.position[0]);
+            } else if (ay >= ax && ay >= az) {
+              setSketchPlaneRaw('xz');
+              setSketchPlaneOffset(sel.position[1]);
+            } else {
+              setSketchPlaneRaw('xy');
+              setSketchPlaneOffset(sel.position[2]);
+            }
+            sceneSet.setSketchFaceFrame(null);
+          } else {
+            // Build orthonormal frame from face normal. Pick a world axis
+            // not parallel to the normal as the seed for the u-axis to
+            // avoid the degenerate "cross product = 0" case.
+            const n: [number, number, number] = [nx, ny, nz];
+            const seed: [number, number, number] = ax < 0.9 ? [1, 0, 0] : [0, 1, 0];
+            // u = normalize(seed - (seed·n) n)
+            const sd = seed[0] * n[0] + seed[1] * n[1] + seed[2] * n[2];
+            const uRaw: [number, number, number] = [
+              seed[0] - sd * n[0],
+              seed[1] - sd * n[1],
+              seed[2] - sd * n[2],
+            ];
+            const uLen = Math.hypot(uRaw[0], uRaw[1], uRaw[2]) || 1;
+            const u: [number, number, number] = [uRaw[0] / uLen, uRaw[1] / uLen, uRaw[2] / uLen];
+            // v = n × u
+            const v: [number, number, number] = [
+              n[1] * u[2] - n[2] * u[1],
+              n[2] * u[0] - n[0] * u[2],
+              n[0] * u[1] - n[1] * u[0],
+            ];
+            sceneSet.setSketchFaceFrame({
+              origin: sel.position,
+              normal: n,
+              uAxis: u,
+              vAxis: v,
+            });
+          }
+        } else {
+          // No face selection → ensure a stale frame from a previous
+          // sketch session doesn't bleed into the next one.
+          sceneSet.setSketchFaceFrame(null);
+        }
         setIsSketchMode(true);
         return;
       }
@@ -3038,6 +3088,18 @@ export function ShapeGeneratorInner() {
       }
       if (id === 'sketch.extrude-active') {
         handleGenerateActiveProfileRef.current?.();
+        return;
+      }
+      // Phase-1 sketch-revolve ribbon entry. Flip config.mode to 'revolve'
+      // then trigger the same active-profile generator the action menu
+      // uses. The pipeline picks up mode='revolve' and routes through
+      // `revolveGeometry` in extrudeProfile.ts.
+      if (id === 'sketch.revolve') {
+        const sc = useSceneStore.getState().sketchConfig;
+        useSceneStore.getState().setSketchConfig({ ...sc, mode: 'revolve' });
+        // Defer to next microtask so the store update settles before the
+        // generator reads sketchConfig.
+        setTimeout(() => handleGenerateActiveProfileRef.current?.(), 0);
         return;
       }
       if (id === 'measure') {
@@ -3058,6 +3120,87 @@ export function ShapeGeneratorInner() {
         // Interference check requires multi-part input (assembly). Open the
         // Assembly panel where the existing interference workflow lives.
         setShowAssemblyPanel(true);
+        return;
+      }
+      // Drawing route output buttons — open the AutoDrawingPanel where the
+      // PDF/DXF export buttons live. Direct one-click export would need a
+      // pre-baked DrawingResult; opening the panel lets the user review the
+      // generated views first (closer to SolidWorks "Drawing → Save As PDF"
+      // pattern). Ribbon was previously dead.
+      if (id === 'output.pdf' || id === 'output.print') {
+        setShowAutoDrawing(true);
+        return;
+      }
+      // OpenSCAD code projection — feature tree → OpenSCAD code, read-only.
+      // Toggleable so power users can keep it open while iterating.
+      if (id === 'view.scad' || id === 'scad') {
+        setShowScadPanel(v => !v);
+        return;
+      }
+      // GD&T picker — opens a modal with 14 standard ASME/ISO symbols
+      // (form / profile / orientation / location / runout) + tolerance,
+      // modifier, datum inputs. Phase-1 emits clipboard / event; phase-2
+      // wires the resulting feature control frame into the active drawing.
+      if (id === 'note.gdt' || id === 'gdt' || id === 'drawing.gdt') {
+        setShowGdtPicker(true);
+        return;
+      }
+      // BOM export — assemble a CSV from the bridgeAssemblyItems list and
+      // download. No assembly mounted → toast the user that BOM needs an
+      // assembly first; ribbon dead-button otherwise.
+      if (id === 'bom.export' || id === 'bom.show') {
+        const items = useShellBridge.getState().assemblyItems;
+        if (!items || items.length === 0) {
+          addToast('info', isKorean(lang)
+            ? 'BOM은 어셈블리에 부품이 추가된 후에 내보낼 수 있습니다.'
+            : 'BOM export requires an assembly with at least one part.');
+          return;
+        }
+        if (id === 'bom.show') {
+          setShowAssemblyPanel(true);
+          return;
+        }
+        // Build CSV. Quote any field containing comma / quote / newline.
+        const quote = (v: string | number) => {
+          const s = String(v);
+          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const rows = [
+          ['#', 'Part', 'Qty', 'Mass (g)'].join(','),
+          ...items.map((p, i) => [i + 1, quote(p.label), p.count, ((p as { massG?: number }).massG ?? 0).toFixed(2)].join(',')),
+        ];
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedId || 'assembly'}-bom.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        addToast('success', isKorean(lang) ? 'BOM CSV 내보내기 완료' : 'BOM CSV exported');
+        return;
+      }
+      // Direct-edit push/pull — Phase-2A: toggle a viewport edit mode so
+      // any subsequent face click pairs with the normal-arrow overlay
+      // (drawn in the SelectionMesh layer). Phase-2B will hook the
+      // pointer drag to the upstream feature parameter.
+      if (id === 'push-pull') {
+        const next = !useUIStore.getState().pushPullMode;
+        useUIStore.getState().setPushPullMode(next);
+        addToast('info', isKorean(lang)
+          ? (next
+              ? 'Push/Pull 모드 ON — 면을 선택하면 법선 화살표가 표시됩니다. 다시 누르면 끄기.'
+              : 'Push/Pull 모드 OFF.')
+          : (next
+              ? 'Push/Pull mode ON — select a face to see the normal arrow. Click again to turn off.'
+              : 'Push/Pull mode OFF.'));
+        return;
+      }
+      // Drawing > Views — opens the same panel so the user can build sheet
+      // views. Same panel hosts View tools (base / projection / section / detail).
+      if (id === 'view.base' || id === 'view.projection' || id === 'view.section' || id === 'view.detail') {
+        setShowAutoDrawing(true);
         return;
       }
       // Nexy AI tools — open the unified AI sidebar on the right tab. The
@@ -3205,15 +3348,33 @@ export function ShapeGeneratorInner() {
         type: (c as { type?: string }).type ?? 'unknown',
         label: (c as { type?: string }).type ?? undefined,
       })),
-      dimensions: (sketchDimensions ?? []).map((d, i) => {
-        const dim = d as { id?: string; name?: string; value?: number; unit?: string };
-        return {
-          id: dim.id ?? `d${i + 1}`,
-          name: dim.name ?? `d${i + 1}`,
-          value: dim.value ?? 0,
-          unit: dim.unit ?? 'mm',
-        };
-      }),
+      dimensions: (() => {
+        const dims = (sketchDimensions ?? []) as Array<{ id?: string; name?: string; value?: number; unit?: string; expression?: string; type?: string; entityIds?: string[]; position?: { x: number; y: number }; locked?: boolean }>;
+        // Resolve expressions once per snapshot so the sidebar can show
+        // {expr, evaluated value, error} as a single coherent row.
+        const fullDims = dims.map((d, i) => ({
+          id: d.id ?? `d${i + 1}`,
+          name: d.name ?? `d${i + 1}`,
+          type: (d.type as 'linear' | 'angular' | 'radial' | 'diameter') ?? 'linear',
+          entityIds: d.entityIds ?? [],
+          value: d.value ?? 0,
+          position: d.position ?? { x: 0, y: 0 },
+          locked: d.locked ?? false,
+          expression: d.expression,
+        }));
+        const { targets, errors } = resolveDimensionTargetsWithErrors(fullDims);
+        return dims.map((d, i) => {
+          const id = d.id ?? `d${i + 1}`;
+          return {
+            id,
+            name: d.name ?? `d${i + 1}`,
+            value: targets.get(id) ?? d.value ?? 0,
+            unit: d.unit ?? 'mm',
+            expression: d.expression,
+            expressionError: errors.get(id),
+          };
+        });
+      })(),
     });
   }, [
     isSketchMode,
@@ -3508,19 +3669,56 @@ export function ShapeGeneratorInner() {
 
   // Shell-v2 Sketch dimension inline edit → patch sketchDimensions by id.
   // SketchLeftPane's DimensionEditableRow dispatches this event on commit.
+  // `expression: null` clears any prior formula and pins value back to a
+  // bare number; `expression: string` sets/replaces the formula (value
+  // becomes a fallback used when the expression fails to resolve).
   useEffect(() => {
     const onDim = (e: Event) => {
-      const ce = e as CustomEvent<{ id: string; name: string; value: number }>;
+      const ce = e as CustomEvent<{ id: string; name: string; value: number; expression?: string | null }>;
       if (!ce.detail) return;
-      const { id, value } = ce.detail;
+      const { id, value, expression } = ce.detail;
       setSketchDimensions((sketchDimensions ?? []).map(d => {
-        const dim = d as { id?: string; value?: number };
-        return dim.id === id ? { ...d, value } : d;
+        const dim = d as { id?: string; value?: number; expression?: string };
+        if (dim.id !== id) return d;
+        const next = { ...d, value } as typeof d & { expression?: string };
+        if (expression === null) delete next.expression;
+        else if (typeof expression === 'string') next.expression = expression;
+        return next;
       }));
     };
     window.addEventListener('nexyfab:update-sketch-dimension', onDim);
     return () => window.removeEventListener('nexyfab:update-sketch-dimension', onDim);
   }, [sketchDimensions, setSketchDimensions]);
+
+  // Sketch entity / dimension delete handlers — driven by the X button
+  // in SketchLeftPane rows. Entity ids match sketchProfile.segments[].id
+  // (or the synthetic `seg${i}` fallback used in the bridge writer).
+  useEffect(() => {
+    const onDeleteEntity = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      const id = ce.detail?.id;
+      if (!id) return;
+      const profile = useSceneStore.getState().sketchProfile;
+      const filtered = profile.segments.filter((s, i) => (s.id ?? `seg${i}`) !== id);
+      if (filtered.length === profile.segments.length) return;
+      setSketchProfile({ ...profile, segments: filtered });
+    };
+    const onDeleteDim = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      const id = ce.detail?.id;
+      if (!id) return;
+      setSketchDimensions((sketchDimensions ?? []).filter((d, i) => {
+        const dim = d as { id?: string };
+        return (dim.id ?? `d${i + 1}`) !== id;
+      }));
+    };
+    window.addEventListener('nexyfab:delete-sketch-entity', onDeleteEntity);
+    window.addEventListener('nexyfab:delete-sketch-dimension', onDeleteDim);
+    return () => {
+      window.removeEventListener('nexyfab:delete-sketch-entity', onDeleteEntity);
+      window.removeEventListener('nexyfab:delete-sketch-dimension', onDeleteDim);
+    };
+  }, [sketchDimensions, setSketchDimensions, setSketchProfile]);
 
   // Shell-v2 Feature tree row click → set selected feature so PropertyManager
   // updates and the highlight matches the tree state.
@@ -3532,6 +3730,47 @@ export function ShapeGeneratorInner() {
     window.addEventListener('nexyfab:select-feature', onSelect);
     return () => window.removeEventListener('nexyfab:select-feature', onSelect);
   }, [setSelectedId]);
+
+  // SCAD apply-to-tree → push a feature with caller-supplied params. Lets
+  // ScadCodePanel translate `translate([x,y,z]) cube(...)` into a base
+  // shape + moveCopy feature node without holding a useFeatureStack ref.
+  useEffect(() => {
+    const onAdd = (e: Event) => {
+      const ce = e as CustomEvent<{ type: string; overrides?: Record<string, number> }>;
+      const type = ce.detail?.type;
+      if (!type) return;
+      addFeatureWithParams(type as Parameters<typeof addFeatureWithParams>[0], ce.detail?.overrides ?? {});
+    };
+    window.addEventListener('nexyfab:add-feature', onAdd);
+    return () => window.removeEventListener('nexyfab:add-feature', onAdd);
+  }, [addFeatureWithParams]);
+
+  // Shell-v2 Assembly tree row click — reuses the same selectedId so the
+  // assembly browser / PropertyManager light up. Future work: a separate
+  // assembly-selection store if more granular state is needed.
+  useEffect(() => {
+    const onAsm = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      if (ce.detail?.id) setSelectedId(ce.detail.id);
+    };
+    window.addEventListener('nexyfab:select-assembly', onAsm);
+    return () => window.removeEventListener('nexyfab:select-assembly', onAsm);
+  }, [setSelectedId]);
+
+  // Push/Pull arrow on a sketchExtrude face → feature param drag. The
+  // arrow lives in the Canvas tree and can't call updateFeatureParam
+  // directly (it's a hook return, scoped to this component), so it fires
+  // a window event we listen for here.
+  useEffect(() => {
+    const onUpdate = (e: Event) => {
+      const ce = e as CustomEvent<{ featureId?: string; key?: string; value?: number }>;
+      const { featureId, key, value } = ce.detail ?? {};
+      if (!featureId || !key || typeof value !== 'number') return;
+      updateFeatureParam(featureId, key, value);
+    };
+    window.addEventListener('nexyfab:update-feature-param', onUpdate);
+    return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
+  }, [updateFeatureParam]);
 
   // Shell-v2 Components → Standard parts materialization. The grid emits a
   // resolved SCAD source; we POST it to /api/nexyfab/openscad-render to get
@@ -4549,13 +4788,13 @@ export function ShapeGeneratorInner() {
       addToast('error', lt.closeProfileFirst);
       return;
     }
-    addSketchFeature(sketchProfile, sketchConfig, sketchPlane as 'xy' | 'xz' | 'yz', sketchOperation, sketchPlaneOffset, sketchConstraints, sketchDimensions);
+    addSketchFeature(sketchProfile, sketchConfig, sketchPlane as 'xy' | 'xz' | 'yz', sketchOperation, sketchPlaneOffset, sketchConstraints, sketchDimensions, sketchFaceFrame ?? undefined);
     setSketchProfile({ segments: [], closed: false });
     setSketchProfiles([{ segments: [], closed: false }]);
     setActiveProfileIdx(0);
     setIsSketchMode(false);
     addToast('success', lt.addedToFeatureTree);
-  }, [sketchProfile, sketchConfig, sketchPlane, sketchOperation, sketchPlaneOffset, sketchConstraints, sketchDimensions, addSketchFeature, setSketchProfile, setIsSketchMode, addToast, lang]);
+  }, [sketchProfile, sketchConfig, sketchPlane, sketchOperation, sketchPlaneOffset, sketchConstraints, sketchDimensions, sketchFaceFrame, addSketchFeature, setSketchProfile, setIsSketchMode, addToast, lang]);
 
   // ── Multi-body workflow: extrude ACTIVE profile only, stay in sketch ──
   // User flow: draw multiple profiles → click "Generate body & continue" →
@@ -4576,6 +4815,7 @@ export function ShapeGeneratorInner() {
       sketchPlaneOffset,
       sketchConstraints,
       sketchDimensions,
+      sketchFaceFrame ?? undefined,
     );
     // Remove the just-extruded profile from the working set so the user
     // sees their remaining profiles clearly. If it was the only one,
@@ -5121,18 +5361,18 @@ export function ShapeGeneratorInner() {
       if (Math.sqrt(dx * dx + dy * dy) > 5) return;
     }
     if (isSketchMode && sketchViewMode === '2d') {
-      setSketchRadial({ x: e.clientX, y: e.clientY, visible: true });
-      setCtxMenu(prev => ({ ...prev, visible: false }));
+      openSketchRadial(e.clientX, e.clientY);
+      closeContextMenu();
       return;
     }
     const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
-    setCtxMenu({ x: e.clientX, y: e.clientY, visible: true, items });
-  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length]);
+    openContextMenu(e.clientX, e.clientY, items);
+  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, openContextMenu, closeContextMenu, openSketchRadial]);
 
   const handleContextSelect = useCallback((id: string) => {
-    setCtxMenu(prev => ({ ...prev, visible: false }));
-    setSketchRadial(prev => ({ ...prev, visible: false }));
+    closeContextMenu();
+    closeSketchRadial();
     switch (id) {
       case 'action-extrude': {
         setPendingChatMsg(`Extrude the selected face by 10mm`);
@@ -5249,7 +5489,7 @@ export function ShapeGeneratorInner() {
         break;
       }
     }
-  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode]);
+  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial]);
 
   const handleExportDrawingPDF = useCallback(async () => {
     if (!effectiveResult) return;
@@ -5274,21 +5514,21 @@ export function ShapeGeneratorInner() {
   }, [effectiveResult, isSketchMode, selectedId, t, addToast, lang]);
 
   const handleContextClose = useCallback(() => {
-    setCtxMenu(prev => ({ ...prev, visible: false }));
-    setSketchRadial(prev => ({ ...prev, visible: false }));
-  }, []);
+    closeContextMenu();
+    closeSketchRadial();
+  }, [closeContextMenu, closeSketchRadial]);
 
   // Long-press context menu for mobile touch
   const handleLongPress = useCallback((x: number, y: number) => {
     if (isSketchMode && sketchViewMode === '2d') {
-      setSketchRadial({ x, y, visible: true });
-      setCtxMenu(prev => ({ ...prev, visible: false }));
+      openSketchRadial(x, y);
+      closeContextMenu();
       return;
     }
     const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
-    setCtxMenu({ x, y, visible: true, items });
-  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length]);
+    openContextMenu(x, y, items);
+  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, openContextMenu, closeContextMenu, openSketchRadial]);
   const touchGestureHandlers = useTouchGestures({ onLongPress: isMobile ? handleLongPress : undefined });
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -5350,7 +5590,7 @@ export function ShapeGeneratorInner() {
     const geo = effectiveResult?.geometry;
     if (!geo) return;
     if (!planLimits.exportFormats.includes('step')) {
-      setUpgradeFeature(lt.stepExportFeature); setShowUpgradePrompt(true); return;
+      promptUpgrade(lt.stepExportFeature); return;
     }
     // Soft upsell: free users see a one-time prompt describing Pro-only
     // pre-export optimization. The export still proceeds after the modal closes.
@@ -5384,13 +5624,13 @@ export function ShapeGeneratorInner() {
     } finally {
       setExportingFormat(null);
     }
-  }, [effectiveResult, addToast, lang, planLimits.exportFormats, setUpgradeFeature, setShowUpgradePrompt, isProPlan, setShowExportOptimizeUpgrade, selectedId, unitSystem, materialId, buildBomRows, placedParts.length]);
+  }, [effectiveResult, addToast, lang, planLimits.exportFormats, promptUpgrade, isProPlan, setShowExportOptimizeUpgrade, selectedId, unitSystem, materialId, buildBomRows, placedParts.length]);
 
   const handleExportGLTF = useCallback(async () => {
     const geo = effectiveResult?.geometry;
     if (!geo) return;
     if (!planLimits.exportFormats.includes('gltf')) {
-      setUpgradeFeature(lt.gltfExportFeature); setShowUpgradePrompt(true); return;
+      promptUpgrade(lt.gltfExportFeature); return;
     }
     setExportingFormat('GLTF');
     try {
@@ -5412,7 +5652,7 @@ export function ShapeGeneratorInner() {
     const geo = effectiveResult?.geometry;
     if (!geo) return;
     if (!planLimits.exportFormats.includes('dxf')) {
-      setUpgradeFeature(lt.dxfExportFeature); setShowUpgradePrompt(true); return;
+      promptUpgrade(lt.dxfExportFeature); return;
     }
     setExportingFormat('DXF');
     try {
@@ -5475,7 +5715,7 @@ export function ShapeGeneratorInner() {
     const geo = getEffectiveGeometry();
     if (!geo) return;
     if (!planLimits.exportFormats.includes('rhino')) {
-      setUpgradeFeature(lt.rhinoExportFeature); setShowUpgradePrompt(true); return;
+      promptUpgrade(lt.rhinoExportFeature); return;
     }
     setExportingFormat('Rhino');
     try {
@@ -5494,7 +5734,7 @@ export function ShapeGeneratorInner() {
     const geo = getEffectiveGeometry();
     if (!geo) return;
     if (!planLimits.exportFormats.includes('grasshopper')) {
-      setUpgradeFeature(lt.grasshopperExportFeature); setShowUpgradePrompt(true); return;
+      promptUpgrade(lt.grasshopperExportFeature); return;
     }
     setExportingFormat('Grasshopper');
     try {
@@ -5654,8 +5894,12 @@ export function ShapeGeneratorInner() {
     parametricSweep:  () => setShowParametricSweep(true),
     toleranceStackup: () => setShowToleranceStackup(true),
     surfaceQuality:   () => setShowSurfaceQuality(true),
-    autoDrawing:      () => setShowAutoDrawing(true),
-    mfgPipeline:      () => setShowMfgPipeline(true) }), []);
+    // Phase-6 cutover: autoDrawing now navigates to the dedicated
+    // Drawing route instead of opening a modal. The legacy modal state
+    // (setShowAutoDrawing) is preserved for regression-rollback only
+    // and is no longer reachable from the toolbar.
+    autoDrawing:      () => router.push(`/${langRef.current}/shape-generator/drawing`),
+    mfgPipeline:      () => setShowMfgPipeline(true) }), [router]);
 
   // Entries that need geometry to be meaningful — handleAnalysis will bail before
   // opening the panel if `effectiveResult.geometry` is missing.
@@ -5835,8 +6079,7 @@ export function ShapeGeneratorInner() {
     const plan = useAuthStore.getState().user?.plan;
     if (!dfmAnalysisAllowed(plan)) {
       if (!opts?.suppressUpgradePrompt) {
-        setUpgradeFeature(lt.dfmAnalysisFeature);
-        setShowUpgradePrompt(true);
+        promptUpgrade(lt.dfmAnalysisFeature);
       }
       return;
     }
@@ -5852,7 +6095,7 @@ export function ShapeGeneratorInner() {
       const msg = err instanceof Error ? err.message : String(err);
       addToast('error', lt.dfmFailed(msg));
     }
-  }, [effectiveResult, analyzeDFMWorker, addToast, lang, setUpgradeFeature, setShowUpgradePrompt, setDfmHighlightedIssue, lt]);
+  }, [effectiveResult, analyzeDFMWorker, addToast, lang, promptUpgrade, setDfmHighlightedIssue, lt]);
 
   const handleApplyDFMFix = useCallback((
     _issueType: string,
@@ -5987,7 +6230,7 @@ export function ShapeGeneratorInner() {
 
   const handleFEARunAnalysis = useCallback(async (material: FEAMaterial) => {
     if (!getPlanLimits(useAuthStore.getState().user?.plan).feaAnalysis) {
-      setUpgradeFeature(lt.feaUpgradeFeature); setShowUpgradePrompt(true); return;
+      promptUpgrade(lt.feaUpgradeFeature); return;
     }
     const geo = effectiveResult?.geometry;
     if (!geo || feaConditions.length === 0) return;
@@ -5999,7 +6242,7 @@ export function ShapeGeneratorInner() {
       const msg = err instanceof Error ? err.message : String(err);
       addToast('error', lt.feaFailed(msg));
     }
-  }, [effectiveResult, feaConditions, runFEAWorker, addToast, lang, setUpgradeFeature, setShowUpgradePrompt]);
+  }, [effectiveResult, feaConditions, runFEAWorker, addToast, lang, promptUpgrade]);
 
   const feaTotalFaces = useMemo(() => {
     const geo = effectiveResult?.geometry;
@@ -7383,7 +7626,7 @@ export function ShapeGeneratorInner() {
             onExportPLY={handleExportPLY}
             onExport3MF={handleExport3MF}
             onExportSTEP={handleExportSTEP}
-            stepExportSupported={!!effectiveResult?.geometry && canExportStepCleanly(effectiveResult.geometry)}
+            stepExportSupported={!!effectiveResult?.geometry && canExportStepViaBridge(effectiveResult.geometry)}
             onExportGLTF={handleExportGLTF}
             onExportDXF={handleExportDXF}
             onExportFlatPatternDXF={handleExportFlatPatternDXF}
@@ -7812,6 +8055,11 @@ export function ShapeGeneratorInner() {
                       sketchLineStyle={sketchLineStyle}
                       lookAtNonce={sketchLookAtNonce}
                       pickFilter={sketchPickFilter}
+                      sweepPathPoints={sketchConfig.sweepPath?.points ?? []}
+                      onSweepPathChange={(pts) => setSketchConfig({
+                        ...sketchConfig,
+                        sweepPath: pts.length > 0 ? { points: pts, steps: sketchConfig.sweepPath?.steps ?? 32 } : undefined,
+                      })}
                     />
                   )) : null}
                   </div>
@@ -8875,8 +9123,7 @@ export function ShapeGeneratorInner() {
             lang={lang}
             agentUnlocked={isProPlan}
             onLockedAgentClick={() => {
-              setUpgradeFeature('AI Agent (OpenSCAD)');
-              setShowUpgradePrompt(true);
+              promptUpgrade('AI Agent (OpenSCAD)');
             }}
           />
         </div>
@@ -8992,6 +9239,64 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Upgrade Modals (all 8 paywall dialogs) — see panels/UpgradeModalsDock.tsx ═══ */}
       <UpgradeModalsDock lang={lang} />
+
+      {/* Phase-2 first-time UX: sample template picker, 3-step tutorial,
+          floating quick-export, modeler checklist. Single orchestrator
+          keeps the wiring footprint tiny. */}
+      <FirstTimeOnboardingShell
+        lang={lang}
+        featureCount={features.length}
+        hasGeometry={!!effectiveResult?.geometry}
+        onLoadTemplate={(template: SampleTemplate) => {
+          // Clear current pipeline, then enqueue each template feature
+          // through the public addFeature APIs. SetTimeout 0 lets the
+          // clearAll commit before features land (same pattern as
+          // handleRestoreVersion).
+          clearAll();
+          window.setTimeout(() => {
+            for (const feat of template.build()) {
+              if (feat.type === 'sketchExtrude' && feat.sketchData) {
+                addSketchFeature(
+                  feat.sketchData.profile,
+                  feat.sketchData.config,
+                  feat.sketchData.plane,
+                  feat.sketchData.operation,
+                  feat.sketchData.planeOffset ?? 0,
+                  feat.sketchData.constraints,
+                  feat.sketchData.dimensions,
+                );
+              } else if (feat.type === 'sketch') {
+                addFeature('sketch');
+              } else {
+                addFeatureWithParams(feat.type as FeatureType, feat.params);
+              }
+            }
+          }, 30);
+        }}
+        onExportStl={() => { setStlExportDialogOpen(true); }}
+      />
+
+      {/* Phase-2/3 floating AI shell — viewport-overlay prompt +
+          intent dispatcher. promptToIntents is a placeholder stub
+          until the LLM pipeline (lib/ai/scad-agent) is wired through;
+          for now it returns an empty intent list with a help message. */}
+      <AiAssistantShell
+        lang={lang}
+        store={{
+          features,
+          addFeatureWithParams: (type, params) => addFeatureWithParams(type as FeatureType, params),
+          addSketchFeature: () => { /* sketch via picker not via free-form prompt */ },
+          updateFeatureParam,
+          removeFeature,
+          moveFeature,
+          toggleFeature,
+          clearAll,
+        }}
+        promptToIntents={async (prompt) => ({
+          intents: [],
+          explanation: `Received: "${prompt}" — AI pipeline wiring in progress.`,
+        })}
+      />
 
       {/* ═══ AI Process Router Panel ═══ */}
       {showProcessRouter && (
@@ -9154,6 +9459,10 @@ export function ShapeGeneratorInner() {
                   ? Math.floor(effectiveResult.geometry.attributes.position.count / 3)
                   : undefined}
                 hasUndercuts={(printAnalysis?.overhangFaces.length ?? 0) > 50}
+                dfmErrorCount={dfmResults
+                  ? dfmResults.reduce((n, r) => n + r.issues.filter(i => i.severity === 'error').length, 0)
+                  : 0}
+                aiAuthored={chatHistory.length > 0}
                 onSelectManufacturer={(m: Manufacturer) => {
                   setShowManufacturerMatch(false);
                   // Fire-and-forget: notify manufacturer via email
@@ -9373,6 +9682,52 @@ export function ShapeGeneratorInner() {
         </div>
       )}
 
+
+      {/* ═══ GD&T picker modal ═══ */}
+      <GdtPicker open={showGdtPicker} isKo={isKorean(lang)} onClose={() => setShowGdtPicker(false)} />
+
+      {/* ═══ Push/Pull mode banner ═══
+          Phase-2A — visual mode indicator + currently-selected face label.
+          The 3-D normal arrow gizmo + drag-to-param wiring is phase-2B. */}
+      <PushPullBanner />
+
+      {/* ═══ OpenSCAD code projection panel ═══ */}
+      {showScadPanel && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 12, right: 12,
+            width: 460, height: 'min(540px, 70vh)',
+            zIndex: 500,
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
+            borderRadius: 8,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.28)',
+            padding: 10,
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
+            <span style={{ flex: 1 }}>{isKorean(lang) ? 'OpenSCAD 코드' : 'OpenSCAD code'}</span>
+            <button
+              type="button"
+              onClick={() => setShowScadPanel(false)}
+              style={{ width: 22, height: 22, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--nx-text-3)', fontSize: 16 }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ScadCodePanel
+              features={features}
+              baseShapeId={selectedId}
+              baseParams={params}
+              header={selectedId || 'part'}
+              isKo={isKorean(lang)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ═══ Auto Drawing Panel ═══ */}
       {showAutoDrawing && (

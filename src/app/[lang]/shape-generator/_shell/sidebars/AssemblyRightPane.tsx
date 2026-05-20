@@ -6,6 +6,16 @@
 import { SidePanel, PropSection, PropItemRow } from './';
 import { useShellBridge } from '../shellBridgeStore';
 import { I } from '../Icons';
+import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+const ASM_CATALOG_DICT_KO: CatalogPanelDict = {
+  catalogTitle: '체결/끼워맞춤 계산기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
+  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
+};
+const ASM_CATALOG_DICT_EN: CatalogPanelDict = {
+  catalogTitle: 'Joint / Fit Calculators', catalogLoading: 'Loading…', catalogReady: 'Ready',
+  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
+};
 
 export interface AssemblyRightPaneProps {
   isKo: boolean;
@@ -59,6 +69,18 @@ export function AssemblyRightPane({ isKo }: AssemblyRightPaneProps) {
             </tr>
           </tbody>
         </table>
+      </PropSection>
+
+      <PropSection title={isKo ? '계산기 (라이브)' : 'Calculators (live)'}>
+        <FeatureCatalogPanel
+          route="assembly"
+          license="pro"
+          dict={isKo ? ASM_CATALOG_DICT_KO : ASM_CATALOG_DICT_EN}
+          onRun={(featureId, entryFn) => {
+            // eslint-disable-next-line no-console
+            console.info(`[catalog] run ${featureId} via ${entryFn}()`);
+          }}
+        />
       </PropSection>
     </SidePanel>
   );

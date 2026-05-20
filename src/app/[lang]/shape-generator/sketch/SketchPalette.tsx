@@ -287,6 +287,17 @@ export default function SketchPalette({
   onLookAtSketch: () => void;
 }) {
   const tt = tr(lang);
+  // Reference-image section is collapsible — it has ~7 rows of controls
+  // that are mostly useless until an image is loaded, and was the main
+  // culprit behind the palette eating half the viewport. Auto-expanded
+  // whenever an image is present so the controls are still reachable.
+  const [refOpen, setRefOpen] = React.useState(false);
+  React.useEffect(() => { if (hasReferenceImage) setRefOpen(true); }, [hasReferenceImage]);
+
+  // Whole-panel minimize. When collapsed the palette shrinks to its
+  // header bar, which is still a click target to expand again. Persisted
+  // in-memory only — fresh sketch session always opens expanded.
+  const [collapsed, setCollapsed] = React.useState(false);
 
   return (
     <aside
@@ -312,13 +323,22 @@ export default function SketchPalette({
         fontSize: 14,
         fontWeight: 600,
         color: 'var(--nx-text)',
-        marginBottom: 16,
-        paddingBottom: 10,
-        borderBottom: '1px solid var(--nx-border)',
+        marginBottom: collapsed ? 0 : 16,
+        paddingBottom: collapsed ? 0 : 10,
+        borderBottom: collapsed ? 'none' : '1px solid var(--nx-border)',
         letterSpacing: '0.02em',
-      }}>
-        {tt.title}
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: 'pointer',
+      }}
+      onClick={() => setCollapsed(v => !v)}
+      title={collapsed ? 'Expand sketch palette' : 'Minimize sketch palette'}
+      >
+        <span style={{ flex: 1 }}>{tt.title}</span>
+        <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>{collapsed ? '▾' : '−'}</span>
       </div>
+      {!collapsed && (<>{/* collapsed body — closed at the bottom of the aside */}
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tt.lineType}</div>
@@ -394,19 +414,35 @@ export default function SketchPalette({
         <Row label={tt.constraints} checked={showConstraints} onChange={onConstraintsChange} />
       </div>
 
-      <div style={{
-        marginTop: 16,
-        paddingTop: 12,
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        fontSize: 11,
-        fontWeight: 600,
-        color: 'var(--nx-text-2)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        marginBottom: 10,
-      }}>
-        {tt.refSection}
-      </div>
+      <button
+        type="button"
+        onClick={() => setRefOpen(o => !o)}
+        aria-expanded={refOpen}
+        style={{
+          marginTop: 16,
+          paddingTop: 12,
+          paddingBottom: refOpen ? 10 : 0,
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--nx-text-2)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          textAlign: 'left',
+        }}
+      >
+        <span>{tt.refSection}</span>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{refOpen ? '▾' : '▸'}</span>
+      </button>
+      {refOpen && (
+      <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button
           type="button"
@@ -531,6 +567,9 @@ export default function SketchPalette({
         </label>
       </div>
 
+      </>
+      )}
+
       <button
         type="button"
         onClick={onOpen3dSketch}
@@ -598,6 +637,7 @@ export default function SketchPalette({
           {tt.exit}
         </button>
       </div>
+      </>)}{/* /collapsed body */}
     </aside>
   );
 }

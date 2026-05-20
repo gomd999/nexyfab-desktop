@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
 import { getPlanLimits, mergePlanLimitsWithBmStage, type PlanLimits } from '../freemium/planLimits';
 import { dfmAnalysisAllowed } from '../freemium/freeDfmAllowance';
@@ -13,6 +13,13 @@ export function useFreemiumGate() {
   );
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('');
+
+  /** Open the upgrade prompt for a named feature. Stable identity (setters from
+   *  useState are stable) so it's safe in callback dependency arrays. */
+  const promptUpgrade = useCallback((feature: string) => {
+    setUpgradeFeature(feature);
+    setShowUpgradePrompt(true);
+  }, []);
 
   // Round 32: when a Pro gate fires, also stash a PendingIntent so the user
   // can resume the action after upgrading or signing up. The intent kind is
@@ -138,6 +145,7 @@ export function useFreemiumGate() {
     setShowUpgradePrompt,
     upgradeFeature,
     setUpgradeFeature,
+    promptUpgrade,
     requirePro,
     requirePhotoReal,
     requireSignup,

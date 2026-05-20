@@ -58,6 +58,8 @@ import type { ArrayPattern } from './features/instanceArray';
 import { buildInstanceMatrices } from './features/instanceArray';
 import NurbsCPEditor from './editing/NurbsCPEditor';
 import SelectionMeshR3F from './editing/SelectionMesh';
+import PushPullArrow from './pushpull/PushPullArrow';
+import { useSceneStore } from './store/sceneStore';
 import FaceHighlightMesh from './editing/FaceHighlightMesh';
 import { assemblyViewportLoadBand } from '@/lib/assemblyLoadPolicy';
 import { assemblyViewportChrome } from '@/lib/assemblyViewportChrome';
@@ -113,6 +115,27 @@ function disposeObject(obj: THREE.Object3D): void {
   });
 }
 
+/** Ground-plane X/Y/Z axis indicator at the world origin.
+ *
+ * Built on `axesHelper` but with `setColors()` forcing the same iOS R/G/B
+ * the bottom-left `GizmoViewport` uses, so users see the same coordinate
+ * system in both widgets. Length kept short (30 mm) so the axis sits
+ * inside the default-sized box rather than slicing through and out the
+ * back; depth test (default `true`) makes it visible only when the
+ * camera angle clears the body. The +0.5 Y lift avoids z-fighting with
+ * the grid. */
+function WorldAxes() {
+  const ref = useRef<THREE.AxesHelper | null>(null);
+  useEffect(() => {
+    const ax = ref.current;
+    if (!ax) return;
+    // `setColors` exists on three.js r147+. The exact strings mirror
+    // GizmoViewport's axisColors array.
+    ax.setColors(new THREE.Color('#ff3b30'), new THREE.Color('#34c759'), new THREE.Color('#007aff'));
+  }, []);
+  return <axesHelper ref={ref} args={[30]} position={[0, 0.5, 0]} />;
+}
+
 /** Mounted inside <Canvas> — disposes the entire scene on unmount and on
  *  the custom 'nexyfab:scene-cleanup' event dispatched by version rollback. */
 function SceneCleanup() {
@@ -140,20 +163,27 @@ const PART_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c4
 /** Stable empty list so CameraFitter deps do not change every render. */
 const EMPTY_SHAPE_RESULTS: ShapeResult[] = [];
 
-// Loads texture maps imperatively and applies them to a meshStandardMaterial ref
+// Loads texture maps imperatively and applies them to a meshPhysicalMaterial
+// ref. Switched from MeshStandardMaterial → MeshPhysicalMaterial so the PBR
+// extras (specular intensity / clearcoat / anisotropy) the Render right pane
+// exposes can actually affect the render. MeshPhysicalMaterial inherits all
+// MeshStandardMaterial properties so existing roughness / metalness / map
+// wiring is unchanged.
 function TexturedMeshMaterial({
   color, roughness, metalness, opacity, transparent, envMapIntensity,
   normalScale = 1, displacementScale = 1,
   normalMapUrl, roughnessMapUrl, metalnessMapUrl, aoMapUrl, displacementMapUrl,
   polygonOffset, polygonOffsetFactor, polygonOffsetUnits,
+  specular, clearcoat, anisotropy,
 }: {
   color: string; roughness: number; metalness: number; opacity: number; transparent: boolean;
   envMapIntensity: number; normalScale?: number; displacementScale?: number;
   normalMapUrl?: string; roughnessMapUrl?: string; metalnessMapUrl?: string;
   aoMapUrl?: string; displacementMapUrl?: string;
   polygonOffset?: boolean; polygonOffsetFactor?: number; polygonOffsetUnits?: number;
+  specular?: number; clearcoat?: number; anisotropy?: number;
 }) {
-  const matRef = useRef<THREE.MeshStandardMaterial>(null);
+  const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
 
   useEffect(() => {
     const mat = matRef.current;
@@ -177,7 +207,7 @@ function TexturedMeshMaterial({
   }, [normalMapUrl, roughnessMapUrl, metalnessMapUrl, aoMapUrl, displacementMapUrl, normalScale, displacementScale]);
 
   return (
-    <meshStandardMaterial
+    <meshPhysicalMaterial
       ref={matRef}
       color={color}
       roughness={roughness}
@@ -189,6 +219,12 @@ function TexturedMeshMaterial({
       polygonOffset={polygonOffset}
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}
+      // PBR extras from RenderRightPane. Undefined → omitted so the
+      // default MeshPhysicalMaterial value applies (specular 0.5, no
+      // clearcoat, no anisotropy).
+      {...(typeof specular   === 'number' ? { specularIntensity: specular } : {})}
+      {...(typeof clearcoat  === 'number' ? { clearcoat } : {})}
+      {...(typeof anisotropy === 'number' ? { anisotropy } : {})}
     />
   );
 }
@@ -286,6 +322,15 @@ function ShapeMesh({ result, displayMode, color, position, rotation, partIndex =
   const edgeGeo = result.edgeGeometry;
   const rot = rotation ? rotation.map(d => d * Math.PI / 180) as [number, number, number] : undefined;
 
+  // PBR extras (Specular/Clearcoat/Anisotropy) come from sceneStore so the
+  // Render right-pane sliders affect the live viewport, not just the
+  // photoreal capture path. Selector returns the 3 numbers as an object so
+  // a slider change doesn't re-render the whole mesh subtree.
+  const renderSettings = useSceneStore(s => s.renderSettings);
+  const matSpecular   = renderSettings?.specular;
+  const matClearcoat  = renderSettings?.clearcoat;
+  const matAnisotropy = renderSettings?.anisotropy;
+
   const matColor = override?.color ?? material?.color ?? color;
   const matRoughness = override?.roughness ?? material?.roughness ?? 0.35;
   const matMetalness = override?.metalness ?? material?.metalness ?? 0.4;
@@ -308,9 +353,10 @@ function ShapeMesh({ result, displayMode, color, position, rotation, partIndex =
               metalnessMapUrl={override?.metalnessMapUrl} aoMapUrl={override?.aoMapUrl}
               displacementMapUrl={override?.displacementMapUrl}
               polygonOffset polygonOffsetFactor={partIndex} polygonOffsetUnits={partIndex}
+              specular={matSpecular} clearcoat={matClearcoat} anisotropy={matAnisotropy}
             />
           ) : (
-            <meshStandardMaterial
+            <meshPhysicalMaterial
               color={matColor}
               roughness={matRoughness}
               metalness={matMetalness}
@@ -321,6 +367,9 @@ function ShapeMesh({ result, displayMode, color, position, rotation, partIndex =
               transparent={matTransparent}
               opacity={matOpacity}
               envMapIntensity={matEnvMapIntensity}
+              {...(typeof matSpecular   === 'number' ? { specularIntensity: matSpecular } : {})}
+              {...(typeof matClearcoat  === 'number' ? { clearcoat: matClearcoat } : {})}
+              {...(typeof matAnisotropy === 'number' ? { anisotropy: matAnisotropy } : {})}
             />
           )}
         </mesh>
@@ -2353,7 +2402,11 @@ export default function ShapePreview({
             >
               <SceneCleanup />
               {!viewChromeDisabled && (
-                <GizmoHelper alignment="bottom-left" margin={[80, 80]}>
+                // Smaller margin so the gizmo stays inside small viewports
+                // (3D 미리보기 thumbnail, split views) — the previous 80px
+                // pushed it out of bounds on narrow panels and made it
+                // appear to "jump" as the viewport reflowed.
+                <GizmoHelper alignment="bottom-left" margin={[56, 56]}>
                   <GizmoViewport axisColors={['#ff3b30', '#34c759', '#007aff']} labelColor="white" hideNegativeAxes />
                 </GizmoHelper>
               )}
@@ -2712,8 +2765,13 @@ export default function ShapePreview({
                   infiniteGrid
                 />
               </group>
-              {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid */}
-              <axesHelper args={[80]} position={[0, 0.5, 0]} />
+              {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid.
+                  Colors are forced to match GizmoViewport (iOS red/green/blue) so the bottom-left
+                  triad and the ground axes read as the same coordinate system. */}
+              <WorldAxes />
+              {/* Push/Pull arrow gizmo — Phase 2B (visualization only).
+                  Drag → param delta lands in phase-2C. */}
+              <PushPullArrow />
               {/* Pin Comments (Figma-style, manufacturer ↔ designer) */}
               {pinComments && onAddPinComment && onResolvePinComment && onDeletePinComment && (
                 <PinComments

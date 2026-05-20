@@ -392,6 +392,14 @@ export function ModelerShell() {
         activeTab,
         onTabChange: id => {
           setActiveTab(id);
+          // Leaving sketch mode via a non-sketch top-tab — commit the
+          // in-progress sketch first so the user doesn't lose work, then
+          // fall through to the normal mode/route switch below.
+          if (mode === 'sketch' && !id.startsWith('sketch.')) {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'sketch.finish' } }));
+            }
+          }
           // Sketch sub-tabs (Draw / Constrain / Finish) stay in sketch mode.
           if (id.startsWith('sketch.')) {
             setMode('sketch');

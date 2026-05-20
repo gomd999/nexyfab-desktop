@@ -3,7 +3,10 @@
 // Floating solver-info badge — mirrors mockup #15's
 // "entities: 8 · constraints: 14 · DOF 0 · 0.6 ms" engineering panel.
 // Reads from shellBridgeStore; only visible in sketch mode.
+// Phase-floating: header click collapses to a single-row pill so it
+// stops occluding the bottom-left of the viewport when not needed.
 
+import { useState } from 'react';
 import { useShellBridge } from './shellBridgeStore';
 
 interface SolverInfoChipProps {
@@ -11,6 +14,7 @@ interface SolverInfoChipProps {
 }
 
 export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const editMode = useShellBridge(s => s.editMode);
   const ok = useShellBridge(s => s.sketchSolverOk);
   const dof = useShellBridge(s => s.sketchDof);
@@ -53,19 +57,35 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
       }}
     >
       <div
+        onClick={() => setCollapsed(v => !v)}
+        title={collapsed ? 'Expand solver info' : 'Collapse solver info'}
         style={{
           fontSize: 9,
           fontWeight: 700,
           color: 'var(--nx-text-2)',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          paddingBottom: 4,
-          borderBottom: '1px solid var(--nx-border)',
+          paddingBottom: collapsed ? 0 : 4,
+          borderBottom: collapsed ? 'none' : '1px solid var(--nx-border)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: 'pointer',
         }}
       >
-        {isKo ? '솔버' : 'Solver'}
+        <span style={{ flex: 1 }}>{isKo ? '솔버' : 'Solver'}</span>
+        {collapsed && (
+          <span style={{
+            color: ok ? 'var(--nx-ok)' : ok === false ? 'var(--nx-error)' : 'var(--nx-text-3)',
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: 9,
+          }}>
+            DOF {dof ?? '—'} · {ok ? 'OK' : ok === false ? 'fail' : '—'}
+          </span>
+        )}
+        <span style={{ color: 'var(--nx-text-3)' }}>{collapsed ? '▾' : '−'}</span>
       </div>
-      {rows.map(r => (
+      {!collapsed && rows.map(r => (
         <div
           key={r.k}
           style={{

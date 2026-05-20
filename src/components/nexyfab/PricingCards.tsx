@@ -15,7 +15,7 @@ interface BundleNote {
 }
 
 interface Plan {
-  id: 'free' | 'pro' | 'team';
+  id: 'free' | 'pro_lite' | 'pro' | 'team';
   name: string;
   price: string;
   priceAlt: string;
@@ -69,6 +69,50 @@ const PLANS: Plan[] = [
     cta: '무료로 시작',
     ctaEn: 'Start Free',
     ctaJa: '無料で始める',
+  },
+  {
+    // Pro Lite — Phase-2 funnel widening tier. Sits between Free (3 projects,
+    // limited AI) and Pro (unlimited). Aimed at students / pre-seed HW makers
+    // who feel hemmed in by Free but won't yet pay full Pro. Memory:
+    // nexyfab-freemium 정책 (Free=1 project full workflow, Pro=2nd project).
+    id: 'pro_lite',
+    name: 'Pro Lite',
+    price: '₩9,900',
+    priceAlt: '$8',
+    priceJa: '¥1,200',
+    period: '/월',
+    periodEn: '/mo',
+    periodJa: '/月',
+    features: [
+      '프로젝트 5개',
+      '풀 형상 + 어셈블리 + 도면',
+      '🤖 AI 형상 생성 (월 30회)',
+      '🤖 AI DFM 설명 (월 30회)',
+      '공유 링크 (14일)',
+      'STL / STEP / DXF export',
+      '커뮤니티 지원',
+    ],
+    featuresEn: [
+      'Up to 5 projects',
+      'Full modeling + assembly + drawing',
+      '🤖 AI shape generation (30/mo)',
+      '🤖 AI DFM Explainer (30/mo)',
+      'Share link (14 days)',
+      'STL / STEP / DXF export',
+      'Community support',
+    ],
+    featuresJa: [
+      'プロジェクト5件',
+      'フルモデリング＋アセンブリ＋図面',
+      '🤖 AI形状生成（月30回）',
+      '🤖 AI DFM解説（月30回）',
+      '共有リンク（14日）',
+      'STL / STEP / DXF エクスポート',
+      'コミュニティサポート',
+    ],
+    cta: 'Pro Lite 시작',
+    ctaEn: 'Start Pro Lite',
+    ctaJa: 'Pro Liteを始める',
   },
   {
     id: 'pro',

@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FeatureDefinition } from './types';
 import {
   type SheetMetalMaterial,
-  SHEET_METAL_MATERIALS as _SHEET_METAL_MATERIALS,
+  SHEET_METAL_MATERIALS,
   DEFAULT_MATERIAL,
   getKFactor,
   bendAllowance as tableBendAllowance,
@@ -44,6 +44,57 @@ export interface FlangeParams {
   angle: number;
   radius: number;
   edgeIndex: number;
+}
+
+/** Hem types per ASM Handbook / press-brake conventions:
+ *   - closed:  flange folds back flat against base, ~0 gap. Strongest
+ *              edge stiffening, hides sharp edge. Used on appliance
+ *              panels and exposed enclosure edges.
+ *   - open:    same fold but with a gap ≈ thickness, leaving a
+ *              parallel slot. Used when the edge needs to grip a wire,
+ *              cable, or weather strip.
+ *   - teardrop: rounded inner radius preserved (no full flatten); used
+ *              on thicker stock that cracks when closed-hemmed. Common
+ *              on stainless and high-tensile steels.
+ *
+ * `length` is the flat distance the material folds back, before the
+ * 180° bend itself — typically 4–6× thickness. */
+export type HemType = 'closed' | 'open' | 'teardrop';
+
+export interface HemParams {
+  type: HemType;
+  /** Flat length of the folded-back portion, mm. */
+  length: number;
+  /** Edge to apply the hem to — same indexing as FlangeParams. */
+  edgeIndex: number;
+}
+
+/** A hem warning surfaces conditions the press-brake can't accommodate
+ *  without cracking or tearing — same shape as SheetMetalBendWarning so
+ *  consumers can merge both into a single DFM list. */
+export type SheetMetalHemWarning = SheetMetalBendWarning;
+
+/** Jog (Z-bend) — two parallel bends in series that offset one half of
+ *  the sheet by a fixed perpendicular distance without changing its
+ *  facing direction. Common on chassis stiffeners, mounting tabs, and
+ *  cable clips where one plane needs to clear an obstacle while
+ *  remaining parallel to the base.
+ *
+ *  - `offset`: perpendicular Y displacement between the two parallel
+ *    halves (= jog height). Always positive (downward jogs are achieved
+ *    via the edge selection, not a negative offset).
+ *  - `position`: 0–1 fraction along the primary axis where the first
+ *    bend line sits, same convention as BendParams.
+ *  - `spacing`: distance between the two bend lines along the primary
+ *    axis (= length of the slanted middle section). Defaults to the
+ *    sheet thickness so the ramp angle is steep but the mesh stays
+ *    non-degenerate. */
+export interface JogParams {
+  offset: number;
+  position: number;
+  spacing?: number;
+  /** Inner bend radius for each of the two bend lines, mm. */
+  radius?: number;
 }
 
 // ─── Bend Allowance Calculation ────────────────────────────────────────────────
@@ -313,6 +364,154 @@ export function applyFlange(
   return merged;
 }
 
+// ─── Apply Hem ─────────────────────────────────────────────────────────────────
+
+/** Inner-radius picker per hem type. Closed hems set R to half the
+ *  thickness — flat enough to be visually closed but non-zero so the
+ *  mesh doesn't collapse to a degenerate strip. Teardrop preserves a
+ *  full-thickness inner radius (the "drop" shape). Open hems use 1.0×
+ *  thickness so the resulting parallel gap reads as a slot. */
+export function hemInnerRadius(type: HemType, thickness: number): number {
+  switch (type) {
+    case 'closed':   return thickness * 0.5;
+    case 'open':     return thickness * 1.0;
+    case 'teardrop': return thickness * 1.5;
+  }
+}
+
+/**
+ * Apply a 180° hem to the selected edge. Implemented as a specialised
+ * flange so the meshing path is shared with the existing flange feature;
+ * the hem-specific bits are the fixed 180° angle and a type-driven inner
+ * radius. The flange's `length` becomes the hem's flat length, before
+ * accounting for the bend arc itself.
+ */
+export function applyHem(
+  geometry: THREE.BufferGeometry,
+  params: HemParams,
+): THREE.BufferGeometry {
+  const geo = geometry.clone();
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox!;
+  const thickness = bb.max.y - bb.min.y;
+  if (thickness <= 0) throw new Error('Hem requires a sheet body with positive thickness');
+
+  const radius = hemInnerRadius(params.type, thickness);
+  // The flange's `height` is the total reach from the bend root; for a
+  // hem we want the flat tail to be `params.length`, so the height that
+  // includes the arc tip is roughly `length + radius`.
+  return applyFlange(geo, {
+    height: params.length + radius,
+    angle: 180,
+    radius,
+    edgeIndex: params.edgeIndex,
+  });
+}
+
+// ─── Apply Jog (Z-bend) ────────────────────────────────────────────────────────
+
+/**
+ * Apply a Z-bend (jog) by shearing vertices past the bend line. Implemented
+ * as a per-vertex transform — same approach as `applyBend` — so triangle
+ * count is preserved and the original sketch profile stays intact.
+ *
+ * Model: two parallel bends with a slanted middle section connecting
+ * them. The middle's ramp angle = atan2(offset, spacing); for a typical
+ * 90° jog we set spacing = thickness, producing a near-vertical wall.
+ *
+ * Bend allowance for both bend lines is recorded in `__bendHistory` so
+ * the flat-pattern feature can unfold a jogged sheet correctly.
+ */
+export function applyJog(
+  geometry: THREE.BufferGeometry,
+  params: JogParams,
+): THREE.BufferGeometry {
+  const geo = geometry.clone();
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox!;
+  const thickness = bb.max.y - bb.min.y;
+  if (thickness <= 0) throw new Error('Jog requires a sheet body with positive thickness');
+
+  const offset = params.offset;
+  const spacing = Math.max(0.1, params.spacing ?? thickness);
+  const sizeX = bb.max.x - bb.min.x;
+  const sizeZ = bb.max.z - bb.min.z;
+  const bendAlongX = sizeZ >= sizeX;
+  const primarySize = bendAlongX ? sizeZ : sizeX;
+  const primaryMin = bendAlongX ? bb.min.z : bb.min.x;
+  const bendLine1 = primaryMin + primarySize * Math.max(0, Math.min(1, params.position));
+
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const primary = bendAlongX ? z : x;
+    const dist = primary - bendLine1;
+    if (dist <= 0) continue;          // base region untouched
+    if (dist >= spacing) {
+      // Far region — translated up by `offset`. Primary stays so the
+      // two parallel halves keep their original length along the axis.
+      pos.setY(i, y + offset);
+    } else {
+      // Ramp middle: linear interpolation in Y. Primary stays so the
+      // ramp appears as a sheared wall connecting the two halves.
+      const frac = dist / spacing;
+      pos.setY(i, y + offset * frac);
+    }
+  }
+
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  geo.computeBoundingBox();
+
+  // Record two bends in history so flat pattern unfolds correctly. The
+  // jog angle is atan2(offset, spacing) and applies to both bends in
+  // opposite directions (up then back to horizontal).
+  const jogAngleRad = Math.atan2(offset, spacing);
+  const jogAngleDeg = (jogAngleRad * 180) / Math.PI;
+  const radius = params.radius ?? Math.max(0.5, thickness);
+  const parentHistory =
+    (geometry.userData as { __bendHistory?: BendParams[] } | undefined)?.__bendHistory ?? [];
+  geo.userData = {
+    ...(geo.userData ?? {}),
+    __bendHistory: [
+      ...parentHistory,
+      { angle: jogAngleDeg, radius, position: params.position, direction: 'up' as const },
+      { angle: jogAngleDeg, radius, position: params.position, direction: 'down' as const },
+    ],
+  };
+  return geo;
+}
+
+/** Validate hem feasibility per material + thickness. Closed hems are
+ *  the strictest — many high-tensile alloys can't be closed-hemmed
+ *  without cracking. We mirror SolidWorks' default flag set:
+ *   - closed:  require thickness ≤ 1.6mm on mild steel; ≤ 1.0mm on stainless
+ *   - open:    no extra restriction beyond the underlying bend validate
+ *   - teardrop: require radius ≥ thickness (already enforced by picker) */
+export function validateHem(
+  material: SheetMetalMaterial,
+  thickness: number,
+  type: HemType,
+): SheetMetalHemWarning[] {
+  const out: SheetMetalHemWarning[] = [];
+  if (type === 'closed') {
+    const limit = material === 'stainless304' ? 1.0 : 1.6;
+    if (thickness > limit) {
+      out.push({
+        severity: 'error',
+        code: 'radiusTooSmall',
+        messageKo: `폐쇄형 헴은 ${SHEET_METAL_MATERIALS[material]?.labelKo ?? material} ${limit}mm 이하에서만 권장됩니다 (현재 ${thickness}mm). 균열 위험 — 개방형 또는 티어드롭 헴을 고려하세요.`,
+        messageEn: `Closed hem is only recommended at ≤ ${limit}mm for ${SHEET_METAL_MATERIALS[material]?.labelEn ?? material} (current ${thickness}mm). Cracking risk — consider open or teardrop hem.`,
+      });
+    }
+  }
+  // 180° bend uses the type-derived radius which is always ≥ 0.5T, so the
+  // ordinary min-bend-radius gate is always satisfied; we don't re-run it.
+  return out;
+}
+
 // ─── Generate Flat Pattern ─────────────────────────────────────────────────────
 
 /**
@@ -535,6 +734,59 @@ export const flangeFeature: FeatureDefinition = {
       height: params.height,
       angle: params.angle,
       radius: params.radius,
+      edgeIndex: Math.round(params.edgeIndex),
+    });
+  },
+};
+
+export const jogFeature: FeatureDefinition = {
+  type: 'jog',
+  icon: '⌢',
+  params: [
+    { key: 'offset', labelKey: 'paramJogOffset', default: 10, min: 0.5, max: 200, step: 0.5, unit: 'mm' },
+    { key: 'position', labelKey: 'paramBendPosition', default: 50, min: 1, max: 99, step: 1, unit: '%' },
+    { key: 'spacing', labelKey: 'paramJogSpacing', default: 2, min: 0.1, max: 100, step: 0.5, unit: 'mm' },
+    { key: 'radius', labelKey: 'paramBendRadius', default: 1, min: 0.1, max: 20, step: 0.5, unit: 'mm' },
+  ],
+  apply(geometry, params) {
+    return applyJog(geometry, {
+      offset: params.offset,
+      position: params.position / 100,
+      spacing: params.spacing,
+      radius: params.radius,
+    });
+  },
+};
+
+export const hemFeature: FeatureDefinition = {
+  type: 'hem',
+  icon: '⤿',
+  params: [
+    {
+      key: 'hemType', labelKey: 'paramHemType', default: 0, min: 0, max: 2, step: 1, unit: '',
+      options: [
+        { value: 0, labelKey: 'featureOpt_hemClosed' },
+        { value: 1, labelKey: 'featureOpt_hemOpen' },
+        { value: 2, labelKey: 'featureOpt_hemTeardrop' },
+      ],
+    },
+    { key: 'length', labelKey: 'paramHemLength', default: 6, min: 1, max: 50, step: 0.5, unit: 'mm' },
+    {
+      key: 'edgeIndex', labelKey: 'paramFlangeEdge', default: 0, min: 0, max: 3, step: 1, unit: '',
+      options: [
+        { value: 0, labelKey: 'featureOpt_edgePlusZ' },
+        { value: 1, labelKey: 'featureOpt_edgeMinusZ' },
+        { value: 2, labelKey: 'featureOpt_edgePlusX' },
+        { value: 3, labelKey: 'featureOpt_edgeMinusX' },
+      ],
+    },
+  ],
+  apply(geometry, params) {
+    const types: HemType[] = ['closed', 'open', 'teardrop'];
+    const type = types[Math.round(params.hemType ?? 0)] ?? 'closed';
+    return applyHem(geometry, {
+      type,
+      length: params.length,
       edgeIndex: Math.round(params.edgeIndex),
     });
   },

@@ -148,7 +148,7 @@ export const en = {
 
     featKicker: 'NexyFab · Capabilities.',
     featTitle: 'All-in-One Tools for Engineers',
-    featSub: 'Design, analyze, optimize, and quote — SolidWorks-level features, free in your browser.',
+    featSub: 'Design → quote → Korea-partner fulfillment in one chain. OpenSCAD-friendly · collaborative · no install.',
     feat1Title: 'Parametric 3D CAD',
     feat1Desc: '16 shapes, sketch-to-extrude, fillets, chamfers, patterns, and professional features.',
     feat2Title: 'Structural Analysis (FEA)',
@@ -179,7 +179,7 @@ export const en = {
     personaKicker: 'NexyFab · For You.',
     personaTitle: 'Who is this platform for?',
     persona1Title: 'Design Engineers',
-    persona1Desc: 'Professional CAD & FEA without SolidWorks. Design directly in your browser.',
+    persona1Desc: 'Browser-based parametric CAD with bidirectional OpenSCAD code. Optimized for standard part design and drawing output.',
     persona1Cta: 'Start 3D Design',
     persona2Title: 'Procurement Managers',
     persona2Desc: 'Upload drawings → instant quote comparison. Only verified manufacturers.',

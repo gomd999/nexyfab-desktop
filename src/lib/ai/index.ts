@@ -93,6 +93,12 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
   }
 
   for (const name of chain) {
+    // Bail out fast on each fallback iteration if the caller aborted —
+    // otherwise we'd keep retrying providers for a request whose response
+    // can no longer be delivered.
+    if (req.signal?.aborted) {
+      throw new AiProviderError(name, undefined, 'aborted');
+    }
     const adapter = REGISTRY[name];
     if (!adapter) {
       errors.push(`${name}: no chat adapter (vision-only?)`);

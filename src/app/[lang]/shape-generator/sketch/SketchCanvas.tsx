@@ -346,6 +346,11 @@ interface SketchCanvasProps {
   lookAtNonce?: number;
   /** Select tool: what geometry responds to clicks (default all). */
   pickFilter?: 'all' | 'segments' | 'points';
+  /** Current sweep-path points (sketch-plane mm, z always 0 here — the
+   *  geometry builder maps them through the active sketch plane). Pass
+   *  alongside `onSweepPathChange` to enable the sweep-path drawing tool. */
+  sweepPathPoints?: { x: number; y: number; z: number }[];
+  onSweepPathChange?: (points: { x: number; y: number; z: number }[]) => void;
 }
 
 // ─── Named constants ─────────────────────────────────────────────────────────
@@ -888,6 +893,8 @@ function SketchCanvas({
   sketchLineStyle = 'normal',
   lookAtNonce = 0,
   pickFilter = 'all',
+  sweepPathPoints,
+  onSweepPathChange,
 }: SketchCanvasProps) {
   // ── i18n: resolve locale from URL segment ──
   const pathname = usePathname();
@@ -1217,6 +1224,18 @@ function SketchCanvas({
       }
       const nearest = findNearestSegment(profile.segments, pt, 15 / zoom);
       setSelectedSegIdx(nearest ? nearest.index : -1);
+      return;
+    }
+
+    // ── Sweep-path tool ─────────────────────────────────
+    // Append a 3-D point onto the active sweep path. Sketch (x, y) maps
+    // to the sketch-plane's local frame; the geometry builder turns
+    // {x, y, z=0} into world space when it samples the path. ESC clears
+    // the in-progress path via the global keydown above.
+    if (activeTool === 'sweep-path') {
+      if (!onSweepPathChange) return;
+      const next = [...(sweepPathPoints ?? []), { x: pt.x, y: pt.y, z: 0 }];
+      onSweepPathChange(next);
       return;
     }
 
@@ -1649,7 +1668,7 @@ function SketchCanvas({
       }
       setSplinePoints([]);
     }
-  }, [activeTool, profile, tempPoints.length, closeProfile, splinePoints, smartSnap, onProfileChange]);
+  }, [activeTool, profile, tempPoints.length, closeProfile, splinePoints, smartSnap, onProfileChange, sweepPathPoints, onSweepPathChange]);
 
   // Mouse move
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -2957,6 +2976,55 @@ function SketchCanvas({
         {/* Spline preview */}
         {splinePreview}
 
+        {/* Sweep-path preview — accent polyline + numbered handles so the
+            user can verify path order before extruding. Live segment to the
+            cursor when the path tool is active. */}
+        {sweepPathPoints && sweepPathPoints.length > 0 && (
+          <g>
+            {sweepPathPoints.length > 1 && (
+              <polyline
+                points={sweepPathPoints.map(p => `${p.x},${-p.y}`).join(' ')}
+                fill="none"
+                stroke="var(--nx-accent)"
+                strokeWidth={2 / zoom}
+                strokeDasharray={`${6 / zoom} ${4 / zoom}`}
+                opacity={0.85}
+              />
+            )}
+            {activeTool === 'sweep-path' && (
+              <line
+                x1={sweepPathPoints[sweepPathPoints.length - 1].x}
+                y1={-sweepPathPoints[sweepPathPoints.length - 1].y}
+                x2={mousePos.x}
+                y2={-mousePos.y}
+                stroke="var(--nx-accent)"
+                strokeWidth={1 / zoom}
+                strokeDasharray={`${3 / zoom} ${3 / zoom}`}
+                opacity={0.5}
+              />
+            )}
+            {sweepPathPoints.map((p, i) => (
+              <g key={`swp${i}`}>
+                <circle
+                  cx={p.x}
+                  cy={-p.y}
+                  r={5 / zoom}
+                  fill="var(--nx-accent)"
+                  stroke="var(--nx-bg)"
+                  strokeWidth={1 / zoom}
+                />
+                <text
+                  x={p.x + 7 / zoom}
+                  y={-p.y - 7 / zoom}
+                  fontSize={10 / zoom}
+                  fill="var(--nx-accent)"
+                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                >{i + 1}</text>
+              </g>
+            ))}
+          </g>
+        )}
+
         {/* Constraint icons */}
         <g style={{ opacity: showConstraintOverlay ? 1 : 0.12, pointerEvents: showConstraintOverlay ? 'auto' : 'none' as const }}>
           {constraintIcons}
@@ -3153,6 +3221,7 @@ function SketchCanvas({
           select:       { label: t.toolSelect,       icon: '↖',  color: 'var(--nx-text-2)' },
           dimension:    { label: t.toolDimension,    icon: '↔',  color: 'var(--nx-accent-2)' },
           constraint:   { label: t.toolConstraint,   icon: '⚓',  color: '#ffa657' },
+          'sweep-path': { label: 'Sweep path',       icon: '↝',  color: 'var(--nx-accent)' },
         };
         const meta = toolMeta[activeTool] ?? toolMeta.select;
         const ptCount = tempPoints.length + splinePoints.length;

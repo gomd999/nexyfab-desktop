@@ -22,6 +22,13 @@ export interface LoginDict {
   ssoCardBtn: string;
   ssoCardHint: string;
   legacyHint: string;
+  legacyToggleShow: string;
+  legacyToggleHide: string;
+  errStateMismatch: string;
+  errTokenExchange: string;
+  errInvalidToken: string;
+  errNoToken: string;
+  errSsoUnconfigured: string;
   demoKicker: string;
   demoBtn: string;
   demoNote: string;
@@ -50,6 +57,13 @@ const KO: LoginDict = {
   ssoCardBtn: 'NexySys 계정으로 로그인',
   ssoCardHint: '고객사 SaaS와 동일 계정으로 로그인합니다. 별도 액세스 코드가 필요 없습니다.',
   legacyHint: '기존 액세스 코드 로그인 (점진 폐지 중)',
+  legacyToggleShow: '기존 액세스 코드로 로그인',
+  legacyToggleHide: '닫기',
+  errStateMismatch: '로그인 세션이 만료되었습니다. 다시 시도해 주세요.',
+  errTokenExchange: 'NexySys 인증 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+  errInvalidToken: '유효하지 않은 인증 토큰입니다. 다시 로그인해 주세요.',
+  errNoToken: '인증 응답이 누락되었습니다. 다시 로그인해 주세요.',
+  errSsoUnconfigured: 'NexySys SSO가 아직 활성화되지 않았습니다. 액세스 코드로 로그인해 주세요.',
   demoKicker: '파트너 포털 체험',
   demoBtn: '🔧 파트너사 데모로 체험하기',
   demoNote: '데모 계정은 읽기 전용이며 실제 데이터에 영향을 주지 않습니다.',
@@ -78,6 +92,13 @@ const EN: LoginDict = {
   ssoCardBtn: 'Log in with NexySys',
   ssoCardHint: 'Use the same account as the customer SaaS. No access code required.',
   legacyHint: 'Legacy access-code login (being phased out)',
+  legacyToggleShow: 'Use legacy access code',
+  legacyToggleHide: 'Close',
+  errStateMismatch: 'Your sign-in session expired. Please try again.',
+  errTokenExchange: 'NexySys authentication failed. Please try again in a moment.',
+  errInvalidToken: 'The authentication token is invalid. Please sign in again.',
+  errNoToken: 'Authentication response was missing. Please sign in again.',
+  errSsoUnconfigured: 'NexySys SSO is not yet enabled. Please sign in with an access code.',
   demoKicker: 'Try the partner portal',
   demoBtn: '🔧 Explore as a demo partner',
   demoNote: 'The demo account is read-only and does not affect real data.',
@@ -106,6 +127,13 @@ const JA: LoginDict = {
   ssoCardBtn: 'NexySys アカウントでログイン',
   ssoCardHint: '顧客サイトと同じアカウントでログインします。アクセスコードは不要です。',
   legacyHint: '従来のアクセスコードログイン (段階的に廃止)',
+  legacyToggleShow: '従来のアクセスコードを使う',
+  legacyToggleHide: '閉じる',
+  errStateMismatch: 'サインインセッションの有効期限が切れました。もう一度お試しください。',
+  errTokenExchange: 'NexySys 認証に失敗しました。しばらくしてから再度お試しください。',
+  errInvalidToken: '認証トークンが無効です。もう一度サインインしてください。',
+  errNoToken: '認証応答がありません。もう一度サインインしてください。',
+  errSsoUnconfigured: 'NexySys SSO はまだ有効化されていません。アクセスコードでサインインしてください。',
   demoKicker: 'パートナーポータル体験',
   demoBtn: '🔧 デモパートナーとして試す',
   demoNote: 'デモアカウントは読み取り専用で、実データには影響しません。',
@@ -134,6 +162,13 @@ const CN: LoginDict = {
   ssoCardBtn: '使用 NexySys 账户登录',
   ssoCardHint: '使用与客户站点相同的账户登录。无需访问码。',
   legacyHint: '旧版访问码登录（即将停用）',
+  legacyToggleShow: '使用旧版访问码登录',
+  legacyToggleHide: '关闭',
+  errStateMismatch: '登录会话已过期。请重试。',
+  errTokenExchange: 'NexySys 认证失败。请稍后重试。',
+  errInvalidToken: '认证令牌无效。请重新登录。',
+  errNoToken: '认证响应缺失。请重新登录。',
+  errSsoUnconfigured: 'NexySys SSO 尚未启用。请使用访问码登录。',
   demoKicker: '体验合作伙伴门户',
   demoBtn: '🔧 以演示合作伙伴身份体验',
   demoNote: '演示账户为只读，不会影响真实数据。',
@@ -162,6 +197,13 @@ const ES: LoginDict = {
   ssoCardBtn: 'Iniciar sesión con NexySys',
   ssoCardHint: 'Usa la misma cuenta que el SaaS de clientes. Sin código de acceso.',
   legacyHint: 'Inicio de sesión heredado (en desuso)',
+  legacyToggleShow: 'Usar código de acceso heredado',
+  legacyToggleHide: 'Cerrar',
+  errStateMismatch: 'Tu sesión de inicio expiró. Inténtalo de nuevo.',
+  errTokenExchange: 'La autenticación de NexySys falló. Inténtalo de nuevo en un momento.',
+  errInvalidToken: 'El token de autenticación no es válido. Inicia sesión de nuevo.',
+  errNoToken: 'Faltó la respuesta de autenticación. Inicia sesión de nuevo.',
+  errSsoUnconfigured: 'NexySys SSO aún no está habilitado. Inicia sesión con un código de acceso.',
   demoKicker: 'Prueba el portal de socios',
   demoBtn: '🔧 Explorar como socio demo',
   demoNote: 'La cuenta demo es de solo lectura y no afecta a datos reales.',
@@ -190,6 +232,13 @@ const AR: LoginDict = {
   ssoCardBtn: 'تسجيل الدخول عبر NexySys',
   ssoCardHint: 'استخدم نفس حساب موقع العملاء. لا حاجة لرمز وصول.',
   legacyHint: 'تسجيل الدخول القديم برمز الوصول (قيد الإيقاف)',
+  legacyToggleShow: 'استخدام رمز الوصول القديم',
+  legacyToggleHide: 'إغلاق',
+  errStateMismatch: 'انتهت صلاحية جلسة تسجيل الدخول. يرجى المحاولة مرة أخرى.',
+  errTokenExchange: 'فشل التحقق من NexySys. يرجى المحاولة بعد لحظات.',
+  errInvalidToken: 'رمز التحقق غير صالح. يرجى تسجيل الدخول مرة أخرى.',
+  errNoToken: 'استجابة التحقق مفقودة. يرجى تسجيل الدخول مرة أخرى.',
+  errSsoUnconfigured: 'لم يتم تفعيل NexySys SSO بعد. يرجى تسجيل الدخول برمز الوصول.',
   demoKicker: 'تجربة بوابة الشركاء',
   demoBtn: '🔧 التجربة كشريك تجريبي',
   demoNote: 'الحساب التجريبي للقراءة فقط ولا يؤثر على البيانات الفعلية.',

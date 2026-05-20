@@ -6,6 +6,16 @@
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck, PropItemRow } from './';
 import { I } from '../Icons';
 import { ToleranceStackSection } from './ToleranceStackSection';
+import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+const CATALOG_DICT_KO: CatalogPanelDict = {
+  catalogTitle: 'GD&T 평가기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
+  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
+};
+const CATALOG_DICT_EN: CatalogPanelDict = {
+  catalogTitle: 'GD&T Evaluators', catalogLoading: 'Loading…', catalogReady: 'Ready',
+  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
+};
 
 export interface DrawingRightPaneProps {
   isKo: boolean;
@@ -76,6 +86,18 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
           <FcfBox sym="⌖" tol="∅0.2" datums={['A', 'B', 'C']} note={isKo ? '위치 공차: 4× ∅6.5 홀' : 'Position tolerance: 4× ∅6.5 holes'} />
           <FcfBox sym="⫳" tol="0.05" datums={['A']} note={isKo ? '평면도: 기준면' : 'Flatness: base face'} />
         </div>
+      </PropSection>
+
+      <PropSection title={isKo ? 'GD&T 평가기 (라이브)' : 'GD&T Evaluators (live)'}>
+        <FeatureCatalogPanel
+          route="inspection"
+          license="pro"
+          dict={isKo ? CATALOG_DICT_KO : CATALOG_DICT_EN}
+          onRun={(featureId, entryFn) => {
+            // eslint-disable-next-line no-console
+            console.info(`[catalog] run ${featureId} via ${entryFn}()`);
+          }}
+        />
       </PropSection>
 
       <ToleranceStackSection isKo={isKo} />

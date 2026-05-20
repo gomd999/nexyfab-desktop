@@ -111,6 +111,11 @@ export async function POST(req: NextRequest) {
 
   const encoder = new TextEncoder();
   const t0 = Date.now();
+  // Wire the incoming request's abort signal into the agent loop so a
+  // client disconnect (browser closed, navigation away) stops further
+  // provider calls instead of letting the server task keep burning quota.
+  const abortController = new AbortController();
+  req.signal.addEventListener('abort', () => abortController.abort(), { once: true });
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const sendEvent = (ev: AgentEvent) => {
@@ -137,6 +142,7 @@ export async function POST(req: NextRequest) {
           // Pro defaults to BUDGET_DEFAULTS.visionCallsCap (3).
           visionCallsCap: tightBudget ? 0 : undefined,
           onEvent: sendEvent,
+          signal: abortController.signal,
         });
         finalStatus = finalSession.status;
         totalTokens = finalSession.budget.tokensUsed;

@@ -66,6 +66,10 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
               bullet={seg.type === 'circle' ? '○' : seg.type === 'rect' ? '■' : seg.type === 'arc' ? '⌒' : seg.construction ? '┊' : '✏'}
               label={seg.label}
               meta={seg.meta}
+              onRemove={() => {
+                if (typeof window === 'undefined') return;
+                window.dispatchEvent(new CustomEvent('nexyfab:delete-sketch-entity', { detail: { id: seg.id } }));
+              }}
             />
           ))
         )}
@@ -111,23 +115,73 @@ const CONSTRAINT_GLYPH: Record<string, string> = {
   fix: '◇',
 };
 
-// Inline-editable dimension row. Click value → number input. Enter or blur
-// commits via nexyfab:update-sketch-dimension event; Inner listens and
-// calls the sketch store's setDimensionValue.
-function DimensionEditableRow({ dim, isKo }: { dim: { id: string; name: string; value: number; unit?: string }; isKo: boolean }) {
+type DimensionRowData = {
+  id: string;
+  name: string;
+  value: number;
+  unit?: string;
+  expression?: string;
+  expressionError?: { reason: 'syntax' | 'unknown-identifier' | 'cycle' | 'runtime' | 'non-finite'; detail?: string };
+};
+
+/** i18n for the expression error tooltip. Reasons map to short human strings —
+ *  detail is appended verbatim (e.g. the offending identifier name). */
+function formatExprError(err: NonNullable<DimensionRowData['expressionError']>, isKo: boolean): string {
+  const detail = err.detail ? ` (${err.detail})` : '';
+  if (isKo) {
+    switch (err.reason) {
+      case 'syntax':              return `수식 오류${detail}`;
+      case 'unknown-identifier':  return `미정의 변수${detail}`;
+      case 'cycle':               return `순환 참조${detail}`;
+      case 'runtime':             return `실행 오류${detail}`;
+      case 'non-finite':          return `유효하지 않은 값${detail}`;
+    }
+  }
+  switch (err.reason) {
+    case 'syntax':              return `Syntax error${detail}`;
+    case 'unknown-identifier':  return `Unknown variable${detail}`;
+    case 'cycle':               return `Cyclic reference${detail}`;
+    case 'runtime':             return `Runtime error${detail}`;
+    case 'non-finite':          return `Non-finite value${detail}`;
+  }
+}
+
+// Inline-editable dimension row. Click value → input. When the dim has an
+// `expression`, the input pre-fills with the expression text so the user
+// can edit the formula directly; otherwise it's a plain numeric input.
+// Commit via nexyfab:update-sketch-dimension event — Inner listens and
+// calls the sketch store's setDimensionValue (or setDimensionExpression
+// when the committed text isn't a bare number).
+function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: boolean }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(dim.value));
-  React.useEffect(() => setDraft(String(dim.value)), [dim.value]);
+  const [draft, setDraft] = useState(dim.expression ?? String(dim.value));
+  React.useEffect(() => setDraft(dim.expression ?? String(dim.value)), [dim.expression, dim.value]);
 
   const commit = () => {
-    const v = parseFloat(draft);
-    if (Number.isFinite(v) && typeof window !== 'undefined' && Math.abs(v - dim.value) > 1e-6) {
+    const trimmed = draft.trim();
+    if (typeof window === 'undefined') { setEditing(false); return; }
+    // Bare number → value update (clears expression). Anything else →
+    // expression update so the auto-resolver handles it next snapshot.
+    const asNum = Number(trimmed);
+    if (trimmed !== '' && Number.isFinite(asNum) && /^-?\d+(\.\d+)?$/.test(trimmed)) {
+      if (Math.abs(asNum - dim.value) > 1e-6 || dim.expression) {
+        window.dispatchEvent(new CustomEvent('nexyfab:update-sketch-dimension', {
+          detail: { id: dim.id, name: dim.name, value: asNum, expression: null },
+        }));
+      }
+    } else if (trimmed !== '' && trimmed !== dim.expression) {
       window.dispatchEvent(new CustomEvent('nexyfab:update-sketch-dimension', {
-        detail: { id: dim.id, name: dim.name, value: v },
+        detail: { id: dim.id, name: dim.name, value: dim.value, expression: trimmed },
       }));
     }
     setEditing(false);
   };
+
+  const errMsg = dim.expressionError ? formatExprError(dim.expressionError, isKo) : null;
+  const hasExpr = !!dim.expression;
+  const valueLabel = hasExpr
+    ? `${dim.expression} → ${dim.value.toFixed(2)}`
+    : `${dim.value.toFixed(2)}`;
 
   if (editing) {
     return (
@@ -135,21 +189,22 @@ function DimensionEditableRow({ dim, isKo }: { dim: { id: string; name: string; 
         <span style={{ flex: '0 0 auto', color: 'var(--nx-accent)' }}>↔</span>
         <input
           autoFocus
-          type="number"
-          step={0.01}
+          type="text"
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={e => {
             if (e.key === 'Enter') commit();
-            if (e.key === 'Escape') { setDraft(String(dim.value)); setEditing(false); }
+            if (e.key === 'Escape') { setDraft(dim.expression ?? String(dim.value)); setEditing(false); }
           }}
+          placeholder={isKo ? '값 또는 수식 (예: 2*D1)' : 'Value or expression (e.g. 2*D1)'}
           style={{
             flex: 1, minWidth: 0, height: 20, padding: '0 6px',
-            border: '1px solid var(--nx-accent)', borderRadius: 3,
+            border: `1px solid ${errMsg ? 'var(--nx-error)' : 'var(--nx-accent)'}`, borderRadius: 3,
             background: 'var(--nx-bg)', color: 'var(--nx-text)',
             fontSize: 11, fontFamily: 'ui-monospace, monospace', textAlign: 'right',
           }}
+          title={errMsg ?? undefined}
         />
         <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{dim.unit ?? 'mm'} · {dim.name}</span>
       </div>
@@ -158,19 +213,44 @@ function DimensionEditableRow({ dim, isKo }: { dim: { id: string; name: string; 
 
   return (
     <div
-      onClick={() => setEditing(true)}
       style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        padding: '3px 0', cursor: 'text',
+        padding: '3px 0',
         borderRadius: 3,
       }}
-      title={isKo ? '클릭하여 편집' : 'Click to edit'}
+      title={errMsg ?? undefined}
     >
-      <span style={{ flex: '0 0 auto', color: 'var(--nx-accent)' }}>↔</span>
-      <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: 'var(--nx-text)', fontFamily: 'ui-monospace, monospace' }}>
-        {dim.value.toFixed(2)} {dim.unit ?? 'mm'}
+      <span style={{ flex: '0 0 auto', color: errMsg ? 'var(--nx-error)' : 'var(--nx-accent)' }}>
+        {errMsg ? '⚠' : hasExpr ? 'fx' : '↔'}
+      </span>
+      <span
+        onClick={() => setEditing(true)}
+        title={errMsg ?? (isKo ? '클릭하여 편집' : 'Click to edit')}
+        style={{
+          flex: 1, minWidth: 0,
+          fontSize: 11,
+          color: errMsg ? 'var(--nx-error)' : hasExpr ? 'var(--nx-accent-2)' : 'var(--nx-text)',
+          fontFamily: 'ui-monospace, monospace', cursor: 'text',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}
+      >
+        {valueLabel} {dim.unit ?? 'mm'}
       </span>
       <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{dim.name}</span>
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof window === 'undefined') return;
+          window.dispatchEvent(new CustomEvent('nexyfab:delete-sketch-dimension', { detail: { id: dim.id } }));
+        }}
+        aria-label={isKo ? '치수 제거' : 'Remove dimension'}
+        style={{
+          width: 16, height: 16, border: 0, background: 'transparent',
+          color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,
+        }}
+      >
+        ×
+      </button>
     </div>
   );
 }

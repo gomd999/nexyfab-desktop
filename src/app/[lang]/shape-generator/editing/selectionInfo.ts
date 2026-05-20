@@ -6,6 +6,9 @@ export interface FaceSelectionInfo {
   type: 'face';
   normal: [number, number, number];      // 월드 좌표계 법선 (단위 벡터)
   position: [number, number, number];    // 클릭 지점 (mm)
+  /** Phase-1 persistent face id from the topology tracker. Same fallback
+   *  story as EdgeSelectionInfo.persistentId. */
+  persistentId?: string;
   area: number;                          // 동일 법선 면들의 합산 면적 (mm²)
   triangleCount: number;                 // 동일 법선 삼각형 수
   normalLabel: string;                   // e.g. "+Y 상면", "-X 좌측면"
@@ -19,6 +22,10 @@ export interface EdgeSelectionInfo {
   length: number;                        // 추정 엣지 길이 (mm)
   normal: [number, number, number];      // 해당 면의 법선
   partName?: string;                     // 어셈블리 내 파트 식별자 (Optional)
+  /** Phase-1 persistent edge id from the topology tracker. Optional
+   *  until phase-2 topology naming is wired into the pipeline; when
+   *  present, downstream features (fillet/chamfer) can attach it. */
+  persistentId?: string;
 }
 
 export interface MultiSelectionInfo {

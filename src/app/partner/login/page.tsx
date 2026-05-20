@@ -1,26 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePartnerLang } from '../_lib/partnerLang';
-import { loginDict } from '../_lib/dicts/login';
+import { loginDict, type LoginDict } from '../_lib/dicts/login';
 
-export default function PartnerLoginPage() {
+function mapErrCode(err: string | null, t: LoginDict): string {
+  if (!err) return '';
+  switch (err) {
+    case 'state_mismatch':       return t.errStateMismatch;
+    case 'token_exchange_failed':return t.errTokenExchange;
+    case 'invalid_token':        return t.errInvalidToken;
+    case 'no_token':             return t.errNoToken;
+    case 'sso_unconfigured':     return t.errSsoUnconfigured;
+    default:                     return '';
+  }
+}
+
+function PartnerLoginPageInner() {
   const router = useRouter();
+  const search = useSearchParams();
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showLegacy, setShowLegacy] = useState(false);
   const lang = usePartnerLang();
   const t = loginDict(lang);
-  // NexySys unified SSO entry — opt-in via env until auth-server Phase 2
-  // ships. When unset, the SSO card stays hidden so we never advertise a
-  // broken button.
-  const nexysysSsoUrl = process.env.NEXT_PUBLIC_NEXYSYS_OAUTH_URL;
+
+  // SSO entry — always go through `/partner/oauth/start`. That route
+  // performs env detection server-side and redirects back here with
+  // `?err=sso_unconfigured` when CLIENT_ID is missing, so the client
+  // doesn't need a separate `NEXT_PUBLIC_*` flag.
+  const ssoStartHref = `/partner/oauth/start?lang=${encodeURIComponent(lang)}&return_to=${encodeURIComponent(`/partner/hub?lang=${lang}`)}`;
+
+  // Surface OAuth callback errors on first paint.
+  useEffect(() => {
+    const err = search?.get('err');
+    if (err) {
+      setError(mapErrCode(err, t));
+      // If SSO is unconfigured, auto-expand the legacy form so the
+      // partner has somewhere to go.
+      if (err === 'sso_unconfigured') setShowLegacy(true);
+    }
+  }, [search, t]);
 
   useEffect(() => {
-    // If a session already exists → hub.
+    // Already authenticated? Bounce to hub. Two checks:
+    //   1. legacy localStorage session (pre-cutover partners)
+    //   2. SSO cookie sentinel `nf_partner_sso=1` set by callback
+    const sso = typeof document !== 'undefined' && document.cookie.split('; ').some(c => c.startsWith('nf_partner_sso=1'));
+    if (sso) { router.replace(`/partner/hub?lang=${lang}`); return; }
     const session = localStorage.getItem('partnerSession');
     if (!session) return;
     if (session === 'demo') { router.replace(`/partner/hub?lang=${lang}`); return; }
@@ -60,8 +91,13 @@ export default function PartnerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: '#f4f6fb' }}>
+      {/* NexyFlow-style background blobs */}
+      <div className="absolute pointer-events-none" style={{ top: '-20%', right: '-10%', width: 600, height: 600, background: 'rgba(96, 165, 250, 0.10)', borderRadius: '50%', filter: 'blur(120px)' }} />
+      <div className="absolute pointer-events-none" style={{ bottom: '-20%', left: '-10%', width: 600, height: 600, background: 'rgba(245, 158, 11, 0.10)', borderRadius: '50%', filter: 'blur(120px)' }} />
+      <style>{`@keyframes nfPartnerScaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
+
+      <div className="w-full max-w-md relative" style={{ zIndex: 1, animation: 'nfPartnerScaleIn 0.25s ease-out' }}>
         {/* Brand */}
         <div className="text-center mb-8">
           <Link href="/" prefetch={false} className="inline-block">
@@ -71,88 +107,102 @@ export default function PartnerLoginPage() {
           <p className="text-sm text-gray-500 mt-1">{t.pageSubtitle}</p>
         </div>
 
-        {/* NexySys unified SSO — preferred entry once auth-server Phase 2
-            ships. Promoted above the legacy access-code form so new
-            partners default to SSO. Hidden when
-            NEXT_PUBLIC_NEXYSYS_OAUTH_URL is unset so we never advertise a
-            broken button. */}
-        {nexysysSsoUrl && (
-          <div className="mb-4 bg-white rounded-2xl shadow-sm border-2 border-blue-100 p-6">
-            <p className="text-xs font-bold text-blue-600 uppercase tracking-wide text-center mb-3">{t.ssoCardKicker}</p>
-            <a
-              href={`${nexysysSsoUrl}?return_to=${encodeURIComponent(`/partner/hub?lang=${lang}`)}`}
-              className="w-full inline-block text-center py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition text-sm"
-            >
-              {t.ssoCardBtn}
-            </a>
-            <p className="mt-2 text-center text-[11px] text-gray-400">
-              {t.ssoCardHint}
-            </p>
+        {/* Callback / submit error banner */}
+        {error && (
+          <div role="alert" className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl font-semibold flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{error}</span>
           </div>
         )}
 
-        <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-8 ${nexysysSsoUrl ? 'opacity-90' : ''}`}>
-          {nexysysSsoUrl && (
-            <p className="text-[11px] text-gray-400 mb-3 text-center">
-              {t.legacyHint}
-            </p>
+        {/* NexySys unified SSO — primary CTA. Always shown; the
+            `/partner/oauth/start` route handles env-absent fallback
+            by sending users back here with `?err=sso_unconfigured`. */}
+        <div className="mb-4 bg-white rounded-2xl shadow-sm border-2 border-blue-200 p-6">
+          <p className="text-xs font-bold text-blue-600 uppercase tracking-wide text-center mb-3">{t.ssoCardKicker}</p>
+          <a
+            href={ssoStartHref}
+            className="w-full inline-block text-center py-3 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition text-sm"
+          >
+            {t.ssoCardBtn}
+          </a>
+          <p className="mt-2 text-center text-[11px] text-gray-400">
+            {t.ssoCardHint}
+          </p>
+        </div>
+
+        {/* Legacy access-code form — collapsed by default; expanded
+            when toggled or when the SSO route returns `sso_unconfigured`. */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowLegacy(v => !v)}
+            className="w-full px-6 py-3 text-left text-xs font-semibold text-gray-500 hover:bg-gray-50 flex items-center justify-between"
+            aria-expanded={showLegacy}
+          >
+            <span>{showLegacy ? t.legacyToggleHide : t.legacyToggleShow}</span>
+            <span className="text-gray-300">{showLegacy ? '−' : '+'}</span>
+          </button>
+          {showLegacy && (
+            <div className="px-6 pb-6">
+              <p className="text-[11px] text-gray-400 mb-3">
+                {t.legacyHint}
+              </p>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {t.emailLabel}
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder={t.emailPlaceholder}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {t.codeLabel}
+                  </label>
+                  <input
+                    type="text"
+                    value={token}
+                    onChange={e => setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    placeholder={t.codePlaceholder}
+                    maxLength={6}
+                    inputMode="numeric"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition font-mono tracking-widest text-center text-lg"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || email.length < 3 || token.length !== 6}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm"
+                >
+                  {loading ? t.submitting : t.submit}
+                </button>
+              </form>
+
+              <p className="mt-6 text-center text-xs text-gray-400">
+                {t.noCode}{' '}
+                <span className="text-gray-600">{t.contactStaff}</span>
+              </p>
+
+              <p className="mt-3 text-center text-xs text-gray-400">
+                {t.noAccount}{' '}
+                <Link href={`/partner/register?lang=${lang}`} prefetch={false} className="text-blue-600 font-semibold hover:underline">{t.applyAsPartner}</Link>
+              </p>
+            </div>
           )}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                {t.emailLabel}
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoFocus
-                placeholder={t.emailPlaceholder}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                {t.codeLabel}
-              </label>
-              <input
-                type="text"
-                value={token}
-                onChange={e => setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                required
-                placeholder={t.codePlaceholder}
-                maxLength={6}
-                inputMode="numeric"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition font-mono tracking-widest text-center text-lg"
-              />
-            </div>
-
-            {error && (
-              <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl font-semibold">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || email.length < 3 || token.length !== 6}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm"
-            >
-              {loading ? t.submitting : t.submit}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-xs text-gray-400">
-            {t.noCode}{' '}
-            <span className="text-gray-600">{t.contactStaff}</span>
-          </p>
-
-          <p className="mt-3 text-center text-xs text-gray-400">
-            {t.noAccount}{' '}
-            <Link href={`/partner/register?lang=${lang}`} prefetch={false} className="text-blue-600 font-semibold hover:underline">{t.applyAsPartner}</Link>
-          </p>
         </div>
 
         {/* Demo entry */}
@@ -188,5 +238,14 @@ export default function PartnerLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function PartnerLoginPage() {
+  // useSearchParams requires a Suspense boundary in app-router pages.
+  return (
+    <Suspense fallback={null}>
+      <PartnerLoginPageInner />
+    </Suspense>
   );
 }

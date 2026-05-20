@@ -318,9 +318,30 @@ interface MeshedShape {
   mesh: (opts?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] };
 }
 
+/** Opaque branded type for replicad's EdgeFinder.
+ *
+ *  We deliberately don't import `replicad`'s real type — it would
+ *  drag the WASM module into the type graph at compile time and
+ *  inflate cold-start. The branding still prevents callers from
+ *  passing arbitrary unknown values: only values produced by
+ *  `topologyEdgeFinder.buildEdgeFinderFromSelection` (or its multi /
+ *  loop / split variants) carry the brand.
+ *
+ *  Lifecycle:
+ *    - constructed by the topology module (branded via cast there)
+ *    - flows through pipeline params untouched
+ *    - finally handed to replicad's `fillet(radius, predicate)` /
+ *      `chamfer(distance, predicate)`, which only inspects the
+ *      builder methods, not the brand.
+ */
+declare const ReplicadEdgeFinderBrand: unique symbol;
+export type ReplicadEdgeFinder = { readonly [ReplicadEdgeFinderBrand]: 'ReplicadEdgeFinder' };
+
 interface FilletChamferShape extends MeshedShape {
-  fillet: (radius: number) => FilletChamferShape;
-  chamfer: (distance: number) => FilletChamferShape;
+  /** replicad accepts `(radius, predicate?)`; predicate is an EdgeFinder
+   *  or `(edge) => boolean`. NexyFab passes it through opaquely. */
+  fillet: (radius: number, predicate?: ReplicadEdgeFinder) => FilletChamferShape;
+  chamfer: (distance: number, predicate?: ReplicadEdgeFinder) => FilletChamferShape;
   translate: (v: [number, number, number]) => FilletChamferShape;
 }
 
@@ -354,6 +375,7 @@ export function occtFilletBox(
   radius: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
+  edgeFinder?: ReplicadEdgeFinder,
 ): OcctBooleanResult {
   const rc = requireReplicad();
   const chained = getShape(hostHandle) as FilletChamferShape | null;
@@ -361,7 +383,11 @@ export function occtFilletBox(
     const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
-  const filleted = source.fillet(radius);
+  // Phase 3-c-prep: pass the optional EdgeFinder through to replicad.
+  // Phase 3-c-1 (separate PR) constructs an EdgeFinder from the NexyFab
+  // persistent edge ids the user selected; this slot stays an opaque
+  // pass-through so the contract is stable while that work is in flight.
+  const filleted = edgeFinder !== undefined ? source.fillet(radius, edgeFinder) : source.fillet(radius);
   const mesh = filleted.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
@@ -378,6 +404,7 @@ export function occtChamferBox(
   distance: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
+  edgeFinder?: ReplicadEdgeFinder,
 ): OcctBooleanResult {
   const rc = requireReplicad();
   const chained = getShape(hostHandle) as FilletChamferShape | null;
@@ -385,7 +412,7 @@ export function occtChamferBox(
     const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
-  const chamfered = source.chamfer(distance);
+  const chamfered = edgeFinder !== undefined ? source.chamfer(distance, edgeFinder) : source.chamfer(distance);
   const mesh = chamfered.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,

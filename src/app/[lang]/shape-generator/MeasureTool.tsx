@@ -291,13 +291,109 @@ export default function MeasureTool({
       const x = ((ne.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((ne.clientY - rect.top) / rect.height) * 2 + 1;
 
-      raycasterRef.current.setFromCamera(new THREE.Vector2(x, y), camera);
-      const meshes: THREE.Object3D[] = [];
-      scene.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o); });
-      const hits = raycasterRef.current.intersectObjects(meshes, false);
+      const raycaster = raycasterRef.current;
+      raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+      // Widen Line/Points hit thresholds so edges and vertices are easy
+      // to pick at typical model scale. Mesh face hits keep their exact
+      // intersection point; line hits snap to the nearest endpoint when
+      // close enough (so "click the edge near corner" lands on the corner).
+      raycaster.params.Line = { threshold: 2 };
+      raycaster.params.Points = { threshold: 1.5 };
+
+      const pickables: THREE.Object3D[] = [];
+      scene.traverse((o) => {
+        // Skip MeasureTool's own helper geometry (giant interceptor sphere,
+        // dimension lines, WIP markers).
+        const isMeasureChild = !!(o.parent && o.parent.type === 'Group' && o.parent.userData?.__measure);
+        if (isMeasureChild || !o.visible) return;
+        // Each three.js leaf class sets a boolean flag (`isMesh` /
+        // `isLine` / `isLineSegments` / `isPoints`). We just look for any
+        // of them; the strict union of all those classes confuses TS, so
+        // narrow via `unknown` to a flag-only shape.
+        const flags = o as unknown as {
+          isMesh?: boolean; isLine?: boolean; isLineSegments?: boolean; isPoints?: boolean;
+        };
+        if (flags.isMesh || flags.isLineSegments || flags.isLine || flags.isPoints) {
+          pickables.push(o);
+        }
+      });
+      const hits = raycaster.intersectObjects(pickables, false);
       if (!hits.length) return;
 
-      const pt = hits[0].point.clone();
+      // Resolve the click to a precise point with type-aware logic.
+      //
+      // Models in this app are almost always mesh-only — edges and
+      // vertices don't have their own raycast-able objects — so a click
+      // "on an edge" actually lands on the mesh face. To make
+      // line/vertex/face all feel pickable, we look at the triangle that
+      // was hit and snap to:
+      //   1. the nearest vertex of the triangle if it's within VERTEX_SNAP
+      //   2. else the nearest edge of the triangle if within EDGE_SNAP
+      //      (point-on-segment projection)
+      //   3. else the raw hit point on the face
+      const hit = hits[0];
+      let pt: THREE.Vector3 = hit.point.clone();
+      const hitFlags = hit.object as unknown as {
+        isMesh?: boolean; isPoints?: boolean; isLine?: boolean; isLineSegments?: boolean;
+        geometry?: THREE.BufferGeometry; matrixWorld: THREE.Matrix4;
+      };
+
+      // Distance thresholds scale with viewport size so the snap radius
+      // is roughly constant in screen pixels regardless of zoom level.
+      const camDist = camera.position.distanceTo(pt);
+      const VERTEX_SNAP = Math.max(0.4, camDist * 0.012);
+      const EDGE_SNAP   = Math.max(0.6, camDist * 0.018);
+
+      if (hitFlags.isLineSegments || hitFlags.isLine) {
+        // LineSegments path — endpoint snap as before.
+        const pos = hitFlags.geometry?.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (pos && hit.index !== undefined) {
+          const segStart = hit.index;
+          const endpoints = [segStart, segStart + 1].map(i => {
+            const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+            return v.applyMatrix4(hitFlags.matrixWorld);
+          });
+          for (const ep of endpoints) {
+            if (ep.distanceTo(pt) <= VERTEX_SNAP) { pt = ep; break; }
+          }
+        }
+      } else if (hitFlags.isMesh && hit.face) {
+        // Mesh face hit — derive the 3 triangle vertices in world space.
+        const pos = hitFlags.geometry?.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (pos) {
+          const ia = hit.face.a, ib = hit.face.b, ic = hit.face.c;
+          const va = new THREE.Vector3(pos.getX(ia), pos.getY(ia), pos.getZ(ia)).applyMatrix4(hitFlags.matrixWorld);
+          const vb = new THREE.Vector3(pos.getX(ib), pos.getY(ib), pos.getZ(ib)).applyMatrix4(hitFlags.matrixWorld);
+          const vc = new THREE.Vector3(pos.getX(ic), pos.getY(ic), pos.getZ(ic)).applyMatrix4(hitFlags.matrixWorld);
+
+          // Vertex snap — closest of the 3 corners.
+          const vDistA = va.distanceTo(pt);
+          const vDistB = vb.distanceTo(pt);
+          const vDistC = vc.distanceTo(pt);
+          const vMin = Math.min(vDistA, vDistB, vDistC);
+          if (vMin <= VERTEX_SNAP) {
+            pt = vMin === vDistA ? va : vMin === vDistB ? vb : vc;
+          } else {
+            // Edge snap — closest of the 3 edges (point-segment projection).
+            const closestOnSeg = (p: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3) => {
+              const ab = new THREE.Vector3().subVectors(b, a);
+              const t = Math.max(0, Math.min(1, new THREE.Vector3().subVectors(p, a).dot(ab) / ab.dot(ab)));
+              return new THREE.Vector3().copy(a).addScaledVector(ab, t);
+            };
+            const cAB = closestOnSeg(pt, va, vb);
+            const cBC = closestOnSeg(pt, vb, vc);
+            const cCA = closestOnSeg(pt, vc, va);
+            const eDistAB = cAB.distanceTo(pt);
+            const eDistBC = cBC.distanceTo(pt);
+            const eDistCA = cCA.distanceTo(pt);
+            const eMin = Math.min(eDistAB, eDistBC, eDistCA);
+            if (eMin <= EDGE_SNAP) {
+              pt = eMin === eDistAB ? cAB : eMin === eDistBC ? cBC : cCA;
+            }
+          }
+        }
+      }
+
       const next = [...wip, pt];
 
       if (next.length < requiredClicks) {
@@ -343,6 +439,14 @@ export default function MeasureTool({
     for (let i = 0; i < wip.length - 1; i++) pts.push(wip[i], wip[i + 1]);
     return new THREE.BufferGeometry().setFromPoints(pts);
   }, [wip]);
+
+  // Dispose previous WIP geometry whenever it changes — useMemo recreates
+  // it on every click during measurement but doesn't free the prior one.
+  // Without this, in-progress measurement clicks leak a BufferGeometry
+  // worth of GPU vertex buffer per click.
+  useEffect(() => {
+    return () => { wipLineGeo?.dispose(); };
+  }, [wipLineGeo]);
 
   const wipLabelPos = useMemo(() => {
     if (wip.length < 2) return null;

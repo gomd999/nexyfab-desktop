@@ -45,7 +45,15 @@ export function AssemblyLeftPane({ isKo }: AssemblyLeftPaneProps) {
         <Tree
           nodes={treeNodes}
           selectedId={selectedId}
-          onSelect={() => { /* TODO wire selection */ }}
+          onSelect={(id) => {
+            // Inner listens via `nexyfab:select-assembly` and routes to
+            // the assembly browser / selection store. Event-based wiring
+            // mirrors how the feature tree fires `nexyfab:select-feature`
+            // so this sidebar stays decoupled from Inner's state.
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('nexyfab:select-assembly', { detail: { id } }));
+            }
+          }}
         />
       )}
       {activeTab === 'mates' && (

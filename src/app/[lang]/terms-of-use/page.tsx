@@ -63,6 +63,13 @@ const dict = {
         aBetai1: '본 서비스는 정식 출시 전의 "유료 베타" 버전으로 제공될 수 있으며, 회사는 성능 개선 및 오류 수정을 위해 사전 고지 없이 인터페이스나 기능 일부를 변경할 수 있습니다.',
         aBetai2: '베타 기간 중 생성된 데이터는 정식 서비스 전환 시 이관되는 것을 원칙으로 하나, 불가피한 기술적 사유로 처리 방식을 변경해야 하는 경우 사용자에게 최소 7일 전에 공지합니다.',
         aBetai3: '긴급 점검 등으로 서비스 이용이 일시 중단될 수 있으며, 그에 따른 보상 범위는 별도로 고지된 유료 베타 특약이 있는 경우 그에 따르고, 없는 경우 제6조(책임의 제한)를 따릅니다.',
+        aAiTitle: '제11조 (AI 생성 콘텐츠 및 책임의 한계)',
+        aAii1: '회사는 AI를 활용한 설계 보조 기능(자연어→설계, SCAD 코드 자동 생성, AI 챗봇 제안 등)을 제공할 수 있습니다. AI 출력은 결정론적이지 않으며, 동일 입력에 대해서도 결과가 달라질 수 있습니다.',
+        aAii2: 'AI가 생성한 모든 설계·도면·코드·치수·물성 정보는 "초안"으로만 제공되며, 정확성, 안전성, 제조 가능성, 표준 준수에 대한 보증을 포함하지 않습니다.',
+        aAii3: '사용자는 AI 출력을 발주, 양산, 가공, 시공, 시제품 제작 등 실제 적용하기 전에 자격을 갖춘 인간 엔지니어의 검토 및 검증을 수행할 의무가 있습니다.',
+        aAii4: '회사는 AI 생성물의 사용으로 인한 잘못된 부품 제작, 가공 오류, 안전 사고, 자재 손실, 발주 손실, 지적재산권 침해 등 어떠한 직간접 손해에 대해서도 책임을 부담하지 않습니다.',
+        aAii5: '발주 단계에서 사용자는 본 책임의 분배를 인지하고 동의함을 별도 체크박스로 확인하여야 하며, 동의 없이 발주된 모든 행위의 결과는 사용자에게 귀속됩니다.',
+        aAii6: 'AI 모델은 제3자(예: OpenAI, Anthropic, DeepSeek 등) 또는 회사의 로컬 모델일 수 있으며, 회사는 제3자 모델의 변경·종료·오류에 대해 책임을 지지 않습니다.',
     },
     en: {
         kicker: 'Nexyfab · Terms of Use',
@@ -123,6 +130,13 @@ const dict = {
         aBetai1: 'The Service may be offered as a paid pre-release “beta” version; the Company may change parts of the interface or features without prior notice for performance improvements and bug fixes.',
         aBetai2: 'Data created during the beta is intended to be migrated when the Service moves to general availability; if a technical change is unavoidable, the Company will notify users at least 7 days in advance.',
         aBetai3: 'Emergency maintenance may cause temporary unavailability; any compensation scope follows a separately posted paid-beta addendum if provided, otherwise Article 6 (Limitation of Liability).',
+        aAiTitle: 'Article 11 (AI-Generated Content and Limitation of Liability)',
+        aAii1: 'The Company may offer AI-assisted design features (natural-language-to-design, automatic SCAD code generation, AI chat suggestions, etc.). AI outputs are not deterministic; identical inputs may produce different results.',
+        aAii2: 'All AI-generated designs, drawings, code, dimensions, and material properties are provided as "drafts" only and carry no warranty of accuracy, safety, manufacturability, or standards compliance.',
+        aAii3: 'Users are obligated to have qualified human engineers review and validate AI outputs before applying them to manufacturing, mass production, machining, construction, prototyping, or any real-world use.',
+        aAii4: 'The Company is not liable for any direct or indirect damages arising from use of AI-generated content, including but not limited to defective parts, machining errors, safety incidents, material loss, order loss, or IP infringement.',
+        aAii5: 'At the ordering stage, users must explicitly acknowledge and accept this allocation of responsibility via a separate checkbox; results of any order placed without such acknowledgment are the sole responsibility of the user.',
+        aAii6: 'AI models may be provided by third parties (e.g. OpenAI, Anthropic, DeepSeek) or by the Company\'s local model. The Company is not liable for third-party model changes, discontinuation, or errors.',
     },
     ja: {
         kicker: 'Nexyfab · 利用規約',
@@ -183,6 +197,13 @@ const dict = {
         aBetai1: '本サービスは正式リリース前の「有償ベータ」として提供される場合があり、会社は性能改善および不具合修正のため、事前通知なくインターフェースまたは機能の一部を変更することがあります。',
         aBetai2: 'ベータ期間中に作成されたデータは本番移行時に移行することを原則としますが、やむを得ない技術的理由により変更が必要な場合、少なくとも7日前にユーザーへ通知します。',
         aBetai3: '緊急メンテナンス等により一時的に利用できない場合があり、その補償範囲は別途掲示された有償ベータ特約がある場合はそれに従い、ない場合は第6条（責任の制限）に従います。',
+        aAiTitle: '第11条（AI生成コンテンツおよび責任の制限）',
+        aAii1: '会社はAIを活用した設計支援機能（自然言語→設計、SCADコード自動生成、AIチャット提案など）を提供する場合があります。AIの出力は決定論的ではなく、同一入力でも結果が異なることがあります。',
+        aAii2: 'AIが生成したすべての設計・図面・コード・寸法・物性情報は「下書き」としてのみ提供され、正確性、安全性、製造可能性、規格適合性についていかなる保証も含みません。',
+        aAii3: 'ユーザーは、AIの出力を発注、量産、加工、施工、試作などの実用に供する前に、有資格の人間エンジニアによる検査・検証を行う義務があります。',
+        aAii4: '会社は、AI生成物の使用に起因する不良部品、加工エラー、安全事故、材料損失、発注損失、知的財産権侵害など、いかなる直接・間接損害についても責任を負いません。',
+        aAii5: '発注の段階で、ユーザーはこの責任分担を認識し同意することを別途チェックボックスで確認する必要があります。同意なく行われた発注の結果はすべてユーザーに帰属します。',
+        aAii6: 'AIモデルは第三者（OpenAI、Anthropic、DeepSeek等）または会社のローカルモデルである可能性があり、会社は第三者モデルの変更・終了・エラーについて責任を負いません。',
     },
     zh: {
         kicker: 'Nexyfab · 服务条款',
@@ -243,6 +264,13 @@ const dict = {
         aBetai1: '本服务可能以正式发布前的“付费测试（beta）”形式提供；公司为改进性能与修复错误，可在未经事先通知的情况下变更部分界面或功能。',
         aBetai2: '测试期间产生的数据在转为正式服务时原则上予以迁移；如因不可避免的技术原因需变更处理方式，公司将至少提前7日通知用户。',
         aBetai3: '因紧急维护等原因可能导致服务暂时中断；补偿范围如另有付费测试特别约定则从其约定，否则适用第六条（责任限制）。',
+        aAiTitle: '第十一条（AI生成内容及责任限制）',
+        aAii1: '公司可能提供基于AI的设计辅助功能（自然语言→设计、SCAD代码自动生成、AI聊天建议等）。AI输出不具有确定性，相同输入也可能产生不同结果。',
+        aAii2: '所有AI生成的设计、图纸、代码、尺寸、物性信息仅作为"草稿"提供，不包含对准确性、安全性、可制造性、标准符合性的任何保证。',
+        aAii3: '用户在将AI输出应用于下单、量产、加工、施工、样品制作等实际用途之前，有义务由具备资格的人类工程师进行检查和验证。',
+        aAii4: '对于因使用AI生成物而导致的任何直接或间接损失，包括但不限于次品、加工错误、安全事故、材料损失、订单损失、知识产权侵权等，公司不承担任何责任。',
+        aAii5: '在下单阶段，用户必须通过单独的复选框明确确认并同意此责任分配；未经此确认而下单的所有行为后果由用户自行承担。',
+        aAii6: 'AI模型可能由第三方（如OpenAI、Anthropic、DeepSeek等）或公司本地模型提供，公司对第三方模型的变更、终止或错误不承担责任。',
     }
 };
 
@@ -377,6 +405,18 @@ export default function TermsOfUsePage() {
                         <p style={{ marginBottom: '8px' }}>{t.a8s2Desc}</p>
                         <p style={{ color: '#555', fontSize: '15px' }}>{t.a8s2Penalty}</p>
                     </div>
+                </div>
+
+                <div style={{ borderLeft: '4px solid #8b5cf6', paddingLeft: '16px', background: '#f5f3ff', padding: '16px 16px 16px 20px', borderRadius: '8px' }}>
+                    <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '12px', color: '#111' }}>{t.aAiTitle}</h2>
+                    <ul style={{ paddingLeft: '20px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <li>{t.aAii1}</li>
+                        <li>{t.aAii2}</li>
+                        <li>{t.aAii3}</li>
+                        <li>{t.aAii4}</li>
+                        <li>{t.aAii5}</li>
+                        <li>{t.aAii6}</li>
+                    </ul>
                 </div>
 
             </section>

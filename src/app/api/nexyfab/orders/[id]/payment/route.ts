@@ -5,6 +5,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { confirmPayment } from '@/lib/toss-client';
 import { recordOrderCompletion } from '@/lib/stage-engine';
+import { notifyFounder } from '@/lib/notify/founderNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,36 @@ export async function POST(
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   if (order.user_id !== authUser.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (order.payment_status === 'paid') return NextResponse.json({ error: '이미 결제된 주문입니다.' }, { status: 400 });
+
+  // Phase-1 fake-door gate. While NEXYFAB_ESCROW_ENABLED is false the
+  // automated Toss escrow flow is suppressed — incoming payment attempts
+  // are turned into "reservations" that the founder follows up on by
+  // hand (Toss console manual link → email/카톡). Trigger flips to true
+  // in M4 after 통신판매중개업 신고 + Toss 에스크로 옵션 활성.
+  const escrowEnabled = process.env.NEXYFAB_ESCROW_ENABLED === 'true';
+  if (!escrowEnabled) {
+    await db.execute(
+      "UPDATE nf_orders SET payment_status = 'reserved_awaiting_manager', updated_at = ? WHERE id = ?",
+      Date.now(), orderId,
+    );
+    // Pull buyer email for the founder alert (best-effort).
+    const buyer = await db.queryOne<{ email: string | null }>(
+      'SELECT email FROM nf_users WHERE id = ?', authUser.userId,
+    ).catch(() => null);
+    await notifyFounder({
+      kind: 'reservation',
+      orderId,
+      customerId: authUser.userId,
+      customerEmail: buyer?.email ?? undefined,
+      amountKrw: Number(order.total_price_krw) || undefined,
+      note: '담당자가 24시간 내 Toss 콘솔에서 수동 결제 링크 발행 + 도면 검토.',
+    });
+    return NextResponse.json({
+      reserved: true,
+      status: 'reserved_awaiting_manager',
+      message: '담당자 검토 상태로 예약되었습니다. 24시간 내 확정 견적과 결제 링크를 보내드립니다.',
+    });
+  }
 
   // Toss용 고유 orderId (영문+숫자만, 6-64자)
   const tossOrderId = `NF-${orderId.replace(/[^A-Z0-9]/gi, '').slice(0, 20).toUpperCase()}-${Date.now()}`;

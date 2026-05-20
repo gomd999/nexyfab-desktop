@@ -2,14 +2,21 @@ import * as THREE from 'three';
 
 /**
  * Topological Naming Problem Tracking System
- * 
+ *
  * In parametric CAD, when an upstream sketch or feature is modified, the underlying
  * mesh topology (faces, edges, vertices) changes. Downstream operations like Fillet
  * or Chamfer that reference specific edge indices will fail or apply to the wrong edges.
- * 
+ *
  * This module provides a robust hashing system to generate persistent Topological IDs
  * for faces and edges. It traces their origin from the generator profile (e.g., Sketch Lines)
  * through operations (Extrude, Revolve, Boolean).
+ *
+ * ⚠ Wire-up status (2026-05-16): the hashing helpers are exported here and
+ *   `EdgeSelectionInfo.persistentId` / `FeatureInstance.targetEdgeIds` type
+ *   channels are in place. The pipeline manager does *not* yet populate
+ *   `BufferGeometry.userData.topoFaceMap`, so selection still falls back to
+ *   triangle-index ids. Phase-2 work (per-feature hash emission + selection
+ *   lookup) is tracked in task #232.
  */
 
 export interface TopoHash {

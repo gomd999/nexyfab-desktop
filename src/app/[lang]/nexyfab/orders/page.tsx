@@ -9,6 +9,7 @@ import OrderTimeline from './OrderTimeline';
 import ThreadView from '@/components/nexyfab/ThreadView';
 import DisputeButton from '@/components/nexyfab/DisputeButton';
 import OrderMilestoneFeed from '@/components/nexyfab/OrderMilestoneFeed';
+import ReservationConfirmModal from '@/components/nexyfab/ReservationConfirmModal';
 import { formatDate, formatDday } from '@/lib/formatDate';
 import { isKorean } from '@/lib/i18n/normalize';
 
@@ -120,6 +121,7 @@ const DEMO_ORDERS: NexyfabOrder[] = [
 async function openTossPayment(opts: {
   orderId: string; token: string | null; lang: string;
   onSuccess: () => void; onError: (msg: string) => void;
+  onReserved?: () => void;
 }) {
   try {
     const res = await fetch(`/api/nexyfab/orders/${opts.orderId}/payment`, {
@@ -130,7 +132,18 @@ async function openTossPayment(opts: {
         'X-Requested-With': 'XMLHttpRequest',
       },
     });
-    const data = await res.json() as { tossOrderId?: string; amount?: number; orderName?: string; clientKey?: string; error?: string };
+    const data = await res.json() as {
+      tossOrderId?: string; amount?: number; orderName?: string; clientKey?: string;
+      reserved?: boolean; status?: string; message?: string;
+      error?: string;
+    };
+    // Phase-1 fake-door: NEXYFAB_ESCROW_ENABLED=false 인 경우 백엔드가
+    // 'reserved_awaiting_manager' 상태로 잡고 founder에게 알림 발송. Toss
+    // SDK 호출을 skip하고 안내 모달만 띄운다.
+    if (res.ok && data.reserved) {
+      opts.onReserved?.();
+      return;
+    }
     if (!res.ok || !data.tossOrderId) { opts.onError(data.error ?? '결제 정보 생성 실패'); return; }
     if (!data.clientKey) { opts.onError('NEXT_PUBLIC_TOSS_CLIENT_KEY 환경변수를 설정하세요.'); return; }
 
@@ -1180,6 +1193,9 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
   const [reorderMsg, setReorderMsg] = useState('');
   const [paymentMsg, setPaymentMsg] = useState('');
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
+  // Phase-1 fake-door: 결제 시도 시 backend가 'reserved' 응답하면 이 모달
+  // 띄움. NEXYFAB_ESCROW_ENABLED=true로 flip되면 자연스레 발동 안 함.
+  const [showReservationModal, setShowReservationModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<NexyfabOrderStatus | ''>('');
   const [ordersPage, setOrdersPage] = useState(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1447,6 +1463,14 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
             </div>
           )}
 
+          {/* Phase-1 fake-door reservation modal */}
+          <ReservationConfirmModal
+            open={showReservationModal}
+            lang={lang}
+            buyerEmail={user?.email}
+            onClose={() => setShowReservationModal(false)}
+          />
+
           {/* Reorder message */}
           {reorderMsg && (
             <div style={{
@@ -1560,6 +1584,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                           orderId: order.id, token, lang,
                           onSuccess: () => { setPayingOrderId(null); loadOrders(true); },
                           onError: msg => { setPayingOrderId(null); setPaymentMsg(msg); },
+                          onReserved: () => { setPayingOrderId(null); setShowReservationModal(true); loadOrders(true); },
                         });
                       } : undefined}
                     />

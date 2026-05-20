@@ -1366,11 +1366,13 @@ export default function SketchPanel({
               extrude: t.sketchExtrude || 'Extrude',
               revolve: t.sketchRevolve || 'Revolve',
               extrudeCut: t.sketchExtrudeCut || 'Cut',
+              sweep: 'Sweep',
             };
             const icons: Record<ExtrudeMode, string> = {
               extrude: '⬆',
               revolve: '↻',
               extrudeCut: '▼',
+              sweep: '↝',
             };
             return (
               <button
