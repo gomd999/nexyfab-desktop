@@ -63,8 +63,8 @@
     "positionHash": "20fb544d"
   },
   "box-chamfer-default": {
-    "vertexCount": 453,
-    "triangleCount": 151,
+    "vertexCount": 24,
+    "triangleCount": 44,
     "indexed": true,
     "hasNormals": true,
     "bbox": {
@@ -79,8 +79,8 @@
         15
       ]
     },
-    "volume_mm3": 71008,
-    "surfaceArea_mm2": 10184.959,
-    "positionHash": "9773b87f"
+    "volume_mm3": 71002.667,
+    "surfaceArea_mm2": 10178.73,
+    "positionHash": "7571ba31"
   }
 }

@@ -32,6 +32,12 @@ export interface ScadRecognisedShape {
    *  param, or a transform on the base shape. Absent (or zero-vector) means
    *  the SCAD had no translate prefix. */
   translate?: { x: number; y: number; z: number };
+  /** C2 — outermost rotate([x,y,z]) in degrees, if the SCAD had one. */
+  rotate?: { x: number; y: number; z: number };
+  /** C2 — combined scale factor, if the SCAD had any scale() prefix. */
+  scale?: { x: number; y: number; z: number };
+  /** C2 — outermost mirror([x,y,z]) axis, if present. */
+  mirror?: { x: number; y: number; z: number };
 }
 
 export type ScadParseResult =
@@ -47,6 +53,12 @@ const NUM = '(-?\\d+(?:\\.\\d+)?)';
 const TRANSLATE_PREFIX_RE = new RegExp(
   '^translate\\s*\\(\\s*\\[\\s*' + NUM + '\\s*,\\s*' + NUM + '\\s*,\\s*' + NUM + '\\s*\\]\\s*\\)\\s*',
 );
+// C2 — rotate / scale / mirror with a [x,y,z] vector argument.
+const VEC3 = '\\[\\s*' + NUM + '\\s*,\\s*' + NUM + '\\s*,\\s*' + NUM + '\\s*\\]';
+const ROTATE_PREFIX_RE = new RegExp('^rotate\\s*\\(\\s*' + VEC3 + '\\s*\\)\\s*');
+const SCALE_PREFIX_RE = new RegExp('^scale\\s*\\(\\s*' + VEC3 + '\\s*\\)\\s*');
+const SCALE_SCALAR_RE = new RegExp('^scale\\s*\\(\\s*' + NUM + '\\s*\\)\\s*');
+const MIRROR_PREFIX_RE = new RegExp('^mirror\\s*\\(\\s*' + VEC3 + '\\s*\\)\\s*');
 
 // `cube([w, h, d], center=true)` — w/h/d float, center optional and ignored
 // (NexyFab default already centers the box on origin).
@@ -63,25 +75,50 @@ const CYL_RE = new RegExp(
 // `sphere(r=r, ...)`.
 const SPHERE_RE = new RegExp('^sphere\\s*\\([^\\)]*?r\\s*=\\s*' + NUM);
 
-/** Strip any number of `translate([x,y,z])` prefixes from a statement and
- *  return the bare primitive call plus the accumulated offset. Multiple
- *  nested translates compose by simple addition (translate is commutative
- *  with itself); rotate / scale prefixes are still passed through
- *  unrecognised at this phase. */
-function stripTransforms(line: string): { rest: string; offset: { x: number; y: number; z: number } } {
+interface StrippedTransforms {
+  rest: string;
+  offset: { x: number; y: number; z: number };
+  /** Outermost rotate([x,y,z]) in degrees, if any. */
+  rotate?: { x: number; y: number; z: number };
+  /** Component-wise product of all scale() prefixes (commutative), if any. */
+  scale?: { x: number; y: number; z: number };
+  /** Outermost mirror([x,y,z]) axis, if any. */
+  mirror?: { x: number; y: number; z: number };
+}
+
+/** C2 — peel leading transform prefixes (translate / rotate / scale / mirror,
+ *  in any order) so the bare primitive call is exposed to the matchers, and
+ *  surface the captured transforms. Translates accumulate additively and
+ *  scales multiply (both order-independent); rotate/mirror keep the OUTERMOST
+ *  occurrence (composing arbitrary rotations is out of scope for this
+ *  deterministic recogniser). */
+function stripTransforms(line: string): StrippedTransforms {
   let next = line;
   let ox = 0, oy = 0, oz = 0;
-  // Cap at 4 nested transforms — defends against pathological inputs
-  // while still covering `translate(...) translate(...) cube(...)`.
-  for (let i = 0; i < 4; i++) {
-    const m = TRANSLATE_PREFIX_RE.exec(next);
-    if (!m) break;
-    ox += parseFloat(m[1]);
-    oy += parseFloat(m[2]);
-    oz += parseFloat(m[3]);
-    next = next.slice(m[0].length);
+  let rotate: { x: number; y: number; z: number } | undefined;
+  let mirror: { x: number; y: number; z: number } | undefined;
+  let sx = 1, sy = 1, sz = 1, sawScale = false;
+  // Cap nesting — defends against pathological inputs.
+  for (let i = 0; i < 8; i++) {
+    let m = TRANSLATE_PREFIX_RE.exec(next);
+    if (m) { ox += parseFloat(m[1]); oy += parseFloat(m[2]); oz += parseFloat(m[3]); next = next.slice(m[0].length); continue; }
+    m = ROTATE_PREFIX_RE.exec(next);
+    if (m) { if (!rotate) rotate = { x: parseFloat(m[1]), y: parseFloat(m[2]), z: parseFloat(m[3]) }; next = next.slice(m[0].length); continue; }
+    m = SCALE_PREFIX_RE.exec(next);
+    if (m) { sx *= parseFloat(m[1]); sy *= parseFloat(m[2]); sz *= parseFloat(m[3]); sawScale = true; next = next.slice(m[0].length); continue; }
+    m = SCALE_SCALAR_RE.exec(next);
+    if (m) { const s = parseFloat(m[1]); sx *= s; sy *= s; sz *= s; sawScale = true; next = next.slice(m[0].length); continue; }
+    m = MIRROR_PREFIX_RE.exec(next);
+    if (m) { if (!mirror) mirror = { x: parseFloat(m[1]), y: parseFloat(m[2]), z: parseFloat(m[3]) }; next = next.slice(m[0].length); continue; }
+    break;
   }
-  return { rest: next.trim(), offset: { x: ox, y: oy, z: oz } };
+  return {
+    rest: next.trim(),
+    offset: { x: ox, y: oy, z: oz },
+    rotate,
+    scale: sawScale ? { x: sx, y: sy, z: sz } : undefined,
+    mirror,
+  };
 }
 
 /** Strip `//` line comments and trim each line so the regex above matches
@@ -142,31 +179,66 @@ export function parseScadToFeatures(scad: string): ScadParseResult {
 
   // First non-comment statement is the base primitive in our projection.
   for (const raw of lines) {
-    const { rest: line, offset } = stripTransforms(raw);
+    const { rest: line, offset, rotate, scale, mirror } = stripTransforms(raw);
     const translate = (offset.x !== 0 || offset.y !== 0 || offset.z !== 0) ? offset : undefined;
+    const tf = { translate, rotate, scale, mirror };
     let m = CUBE_ARRAY_RE.exec(line);
     if (m) {
       const [w, d, h] = [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])];
       // emitter writes [w, depth, height], so map back accordingly.
-      return { ok: true, shape: { baseShapeId: 'box', params: { width: w, depth: d, height: h }, translate } };
+      return { ok: true, shape: { baseShapeId: 'box', params: { width: w, depth: d, height: h }, ...tf } };
     }
     m = CUBE_SCALAR_RE.exec(line);
     if (m) {
       const s = parseFloat(m[1]);
-      return { ok: true, shape: { baseShapeId: 'box', params: { width: s, depth: s, height: s }, translate } };
+      return { ok: true, shape: { baseShapeId: 'box', params: { width: s, depth: s, height: s }, ...tf } };
     }
     m = CYL_RE.exec(line);
     if (m) {
       const [h, r] = [parseFloat(m[1]), parseFloat(m[2])];
-      return { ok: true, shape: { baseShapeId: 'cylinder', params: { height: h, diameter: r * 2 }, translate } };
+      return { ok: true, shape: { baseShapeId: 'cylinder', params: { height: h, diameter: r * 2 }, ...tf } };
     }
     m = SPHERE_RE.exec(line);
     if (m) {
       const r = parseFloat(m[1]);
-      return { ok: true, shape: { baseShapeId: 'sphere', params: { diameter: r * 2 }, translate } };
+      return { ok: true, shape: { baseShapeId: 'sphere', params: { diameter: r * 2 }, ...tf } };
     }
     // Skip comment-only or unrecognised line and look at the next one.
   }
 
   return { ok: false, reason: 'unsupported', detail: 'no recognised primitive on first statement' };
+}
+
+// ── Round-trip feature tags (C1) ────────────────────────────────────────────
+
+export interface NfabFeatureTag {
+  type: string;
+  params: Record<string, number>;
+}
+
+const NFAB_TAG_RE = /^\s*\/\/\s*@nfab\s+([A-Za-z]\w*)\s*(.*)$/;
+const NFAB_KV_RE = /([A-Za-z]\w*)=(-?\d+(?:\.\d+)?)/g;
+
+/**
+ * Recover the machine-readable feature tags emitted by `nfabTag`
+ * (fillet/chamfer/shell/draft/thread/…). These are the features OpenSCAD can't
+ * represent natively, so they ride along as `// @nfab …` comments — letting an
+ * emit → parse round-trip restore the full feature list losslessly.
+ *
+ * Returned in feature-application order. (The emitter prepends each tag above
+ * the prior geometry, so a tag's text position is reverse-application; we undo
+ * that here.)
+ */
+export function parseNfabFeatures(scad: string): NfabFeatureTag[] {
+  const out: NfabFeatureTag[] = [];
+  for (const line of scad.split(/\r?\n/)) {
+    const m = NFAB_TAG_RE.exec(line);
+    if (!m) continue;
+    const params: Record<string, number> = {};
+    let kv: RegExpExecArray | null;
+    NFAB_KV_RE.lastIndex = 0;
+    while ((kv = NFAB_KV_RE.exec(m[2]!)) !== null) params[kv[1]!] = parseFloat(kv[2]!);
+    out.push({ type: m[1]!, params });
+  }
+  return out.reverse();
 }

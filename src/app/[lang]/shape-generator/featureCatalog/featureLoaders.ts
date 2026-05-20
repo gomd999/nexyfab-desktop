@@ -17,6 +17,7 @@
  */
 
 import { registerLoaders, type ModuleLoader } from './moduleResolver';
+import { AUTO_WIRED_LOADERS } from './featureLoaders.auto';
 
 /** Inspection GD&T evaluators — flatness, profile, runout, orientation. */
 export const INSPECTION_GDT_LOADERS: Record<string, ModuleLoader> = {
@@ -407,6 +408,9 @@ export const LOADER_MAPS: Record<string, Record<string, ModuleLoader>> = {
   'routing': ROUTING_LOADERS,
   'hvac': HVAC_LOADERS,
   'welding': WELDING_LOADERS,
+  // Auto-generated: every remaining registry feature with an importable module
+  // (brings catalog loader coverage to 100%). Regenerate via _coverageAudit.
+  'auto': AUTO_WIRED_LOADERS,
 };
 
 /** Register every wired loader map into the moduleResolver registry.

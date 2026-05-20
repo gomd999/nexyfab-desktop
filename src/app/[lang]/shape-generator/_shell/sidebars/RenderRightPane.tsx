@@ -7,6 +7,16 @@
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck } from './';
 import { I } from '../Icons';
 import { CustomMaterialUpload } from './CustomMaterialUpload';
+import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+const RENDER_CATALOG_DICT_KO: CatalogPanelDict = {
+  catalogTitle: '렌더/애니메이션 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
+  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
+};
+const RENDER_CATALOG_DICT_EN: CatalogPanelDict = {
+  catalogTitle: 'Render / Animation', catalogLoading: 'Loading…', catalogReady: 'Ready',
+  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
+};
 
 export interface RenderRightPaneProps {
   isKo: boolean;
@@ -175,6 +185,18 @@ export function RenderRightPane({
           {isKo ? '최종 · 4K · 256 spp 렌더' : 'Final · 4K · 256 spp Render'}
         </button>
       </div>
+
+      <PropSection title={isKo ? '렌더 도구 (라이브)' : 'Render Tools (live)'}>
+        <FeatureCatalogPanel
+          route="render"
+          license="pro"
+          dict={isKo ? RENDER_CATALOG_DICT_KO : RENDER_CATALOG_DICT_EN}
+          onRun={(featureId, entryFn) => {
+            // eslint-disable-next-line no-console
+            console.info(`[catalog] run ${featureId} via ${entryFn}()`);
+          }}
+        />
+      </PropSection>
     </SidePanel>
   );
 }

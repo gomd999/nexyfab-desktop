@@ -6,6 +6,16 @@
 import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, PropItemRow } from './';
 import { useShellBridge } from '../shellBridgeStore';
 import { I } from '../Icons';
+import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+const SKETCH_CATALOG_DICT_KO: CatalogPanelDict = {
+  catalogTitle: '스케치 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
+  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
+};
+const SKETCH_CATALOG_DICT_EN: CatalogPanelDict = {
+  catalogTitle: 'Sketch Tools', catalogLoading: 'Loading…', catalogReady: 'Ready',
+  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
+};
 
 export interface SketchRightPaneProps {
   isKo: boolean;
@@ -96,6 +106,18 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
             {solveMs != null ? `${solveMs.toFixed(1)} ms` : '—'}
           </span>
         </PropRow>
+      </PropSection>
+
+      <PropSection title={isKo ? '스케치 도구 (라이브)' : 'Sketch Tools (live)'}>
+        <FeatureCatalogPanel
+          route="sketch"
+          license="pro"
+          dict={isKo ? SKETCH_CATALOG_DICT_KO : SKETCH_CATALOG_DICT_EN}
+          onRun={(featureId, entryFn) => {
+            // eslint-disable-next-line no-console
+            console.info(`[catalog] run ${featureId} via ${entryFn}()`);
+          }}
+        />
       </PropSection>
     </SidePanel>
   );

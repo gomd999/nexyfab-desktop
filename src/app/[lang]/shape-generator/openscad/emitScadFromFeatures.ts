@@ -35,6 +35,20 @@ function fmt(n: number | undefined, fallback = 0): string {
   return Math.abs(v) < 1e-9 ? '0' : v.toString();
 }
 
+/**
+ * Machine-readable round-trip tag for features OpenSCAD can't represent
+ * natively (fillet/chamfer/shell/draft/…). `parseNfabFeatures` reads these
+ * back so an emit → parse round-trip is lossless for the feature list, even
+ * though the rendered SCAD treats them as pass-through. Format:
+ *   // @nfab <type> key=val key=val
+ */
+export function nfabTag(type: string, params: Record<string, number | undefined> = {}): string {
+  const parts = Object.entries(params)
+    .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+    .map(([k, v]) => `${k}=${fmt(v as number)}`);
+  return `// @nfab ${type}${parts.length ? ' ' + parts.join(' ') : ''}`;
+}
+
 function emitBase(baseShapeId: string, p: Record<string, number>): string {
   switch (baseShapeId) {
     case 'box':
@@ -106,24 +120,24 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     // shape passes through unchanged).
     case 'fillet':
     case 'variableFillet':
-      return `// fillet (radius=${fmt(p.radius, 3)}) — emitted as identity; OpenSCAD has no exact equivalent\n${prior}`;
+      return `${nfabTag(f.type, { radius: p.radius ?? 3 })}\n${prior}`;
     case 'chamfer':
-      return `// chamfer (size=${fmt(p.size, 3)}) — emitted as identity\n${prior}`;
+      return `${nfabTag('chamfer', { size: p.size ?? 3 })}\n${prior}`;
     case 'shell':
     case 'variableShell':
-      return `// shell (thickness=${fmt(p.thickness, 2)}) — emitted as identity\n${prior}`;
+      return `${nfabTag(f.type, { thickness: p.thickness ?? 2 })}\n${prior}`;
     case 'draft':
-      return `// draft (angle=${fmt(p.angle, 5)}°) — emitted as identity\n${prior}`;
+      return `${nfabTag('draft', { angle: p.angle ?? 5 })}\n${prior}`;
     case 'bend':
     case 'flange':
     case 'hem':
     case 'jog':
     case 'flatPattern':
-      return `// sheet metal ${f.type} — emitted as identity\n${prior}`;
+      return `${nfabTag(f.type)}\n${prior}`;
     case 'sweep':
     case 'loft':
     case 'boundarySurface':
-      return `// ${f.type} — emitted as identity (sketch profiles not yet serialized)\n${prior}`;
+      return `${nfabTag(f.type)}\n${prior}`;
     case 'thread':
     case 'helix':
     case 'rib':
@@ -131,7 +145,7 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'moldTools':
     case 'weldment':
     case 'nurbsSurface':
-      return `// ${f.type} — emitted as identity\n${prior}`;
+      return `${nfabTag(f.type)}\n${prior}`;
     case 'sketch':
       // Pure sketch nodes don't produce 3-D geometry on their own; they
       // feed sketchExtrude. Emit nothing, pass prior through.

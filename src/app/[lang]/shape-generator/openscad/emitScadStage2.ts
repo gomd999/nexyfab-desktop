@@ -52,16 +52,43 @@ function fmt(n: number | undefined, fallback = 0): string {
   return Math.abs(v) < 1e-9 ? '0' : v.toString();
 }
 
-/** Stage-2 emit for `fillet`. Approximates with minkowski + sphere of
- *  the fillet radius. Caller is responsible for stripping the over-
- *  rounding if the model has concave edges. */
-export function emitFilletStage2(prior: string, radius: number): Stage2Emission {
+/**
+ * Fast, exact rounded box: `hull()` of 8 spheres at the inset corners — the
+ * SCAD equivalent of three's RoundedBoxGeometry. `hull()` is far cheaper than
+ * `minkowski()` in OpenSCAD (no convex decomposition of the operand) and keeps
+ * the outer extent, so it's the preferred fillet emission when the prior is a
+ * known box. (w,d,h are full extents; r the fillet radius.)
+ */
+export function emitRoundedBoxFilletScad(w: number, d: number, h: number, r: number, fn = 24): string {
+  const rr = Math.max(0.1, Math.min(r, Math.min(w, d, h) / 2 - 1e-3));
+  const cx = w / 2 - rr, cy = d / 2 - rr, cz = h / 2 - rr;
+  const corners: string[] = [];
+  for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) {
+    corners.push(`  translate([${fmt(sx * cx)}, ${fmt(sy * cy)}, ${fmt(sz * cz)}]) sphere(r=${fmt(rr)}, $fn=${fn});`);
+  }
+  return [`// stage-2 fillet (radius=${fmt(rr)}) — fast hull of corner spheres`, `hull() {`, ...corners, `}`].join('\n');
+}
+
+/**
+ * Stage-2 emit for `fillet`. When `boxDims` is given (the prior is a box),
+ * emits the fast `hull()` form above. Otherwise falls back to a `minkowski()`
+ * with a sphere — correct for arbitrary convex priors but expensive, so the
+ * sphere resolution is kept modest ($fn=16) to bound render cost.
+ */
+export function emitFilletStage2(
+  prior: string,
+  radius: number,
+  boxDims?: { w: number; d: number; h: number },
+): Stage2Emission {
+  if (boxDims) {
+    return { code: emitRoundedBoxFilletScad(boxDims.w, boxDims.d, boxDims.h, radius), improved: true };
+  }
   const r = Math.max(0.1, radius);
   const code = [
-    `// stage-2 fillet (radius=${fmt(r)}) approximated via minkowski`,
+    `// stage-2 fillet (radius=${fmt(r)}) approximated via minkowski ($fn kept low for speed)`,
     `minkowski() {`,
     `  ${prior}`,
-    `  sphere(r=${fmt(r)}, $fn=32);`,
+    `  sphere(r=${fmt(r)}, $fn=16);`,
     `}`,
   ].join('\n');
   return { code, improved: true };

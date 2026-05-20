@@ -42,7 +42,7 @@ describe('featureLoaders wiring', () => {
       }
     }
     expect(broken, `Loaders that failed to import:\n${broken.join('\n')}`).toEqual([]);
-  });
+  }, 60_000); // 650 wired modules → raise from the 5s default
 });
 
 describe('launchFeature (real dynamic import)', () => {

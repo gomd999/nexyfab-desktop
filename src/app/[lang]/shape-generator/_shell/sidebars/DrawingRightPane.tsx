@@ -90,7 +90,8 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
 
       <PropSection title={isKo ? 'GD&T 평가기 (라이브)' : 'GD&T Evaluators (live)'}>
         <FeatureCatalogPanel
-          route="inspection"
+          routes={['inspection', 'drawing']}
+          routeLabels={isKo ? { inspection: 'GD&T/검사', drawing: '도면' } : { inspection: 'GD&T/Inspect', drawing: 'Drawing' }}
           license="pro"
           dict={isKo ? CATALOG_DICT_KO : CATALOG_DICT_EN}
           onRun={(featureId, entryFn) => {
