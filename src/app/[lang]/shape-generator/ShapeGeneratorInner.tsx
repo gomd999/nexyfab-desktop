@@ -111,6 +111,7 @@ import { useSketchState } from './hooks/useSketchState';
 import { useFreemium } from '@/hooks/useFreemium';
 import UpgradeModalsDock from './panels/UpgradeModalsDock';
 import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
+import GetQuoteButton from './export/GetQuoteButton';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
@@ -1798,7 +1799,7 @@ export function ShapeGeneratorInner() {
     showUpgradePrompt, setShowUpgradePrompt,
     upgradeFeature, setUpgradeFeature,
     promptUpgrade,
-    requirePro: _requirePro,
+    requirePro,
     requirePhotoReal,
     checkCartLimit,
     triggerProjectLimitPrompt } = useFreemiumGate();
@@ -9320,6 +9321,14 @@ export function ShapeGeneratorInner() {
           }, 30);
         }}
         onExportStl={() => { setStlExportDialogOpen(true); }}
+      />
+
+      {/* Lay-conversion CTA: "make it real → quote" once a model exists. Free
+          users hit the rfq upgrade prompt (the conversion ask); Pro opens RFQ. */}
+      <GetQuoteButton
+        lang={lang}
+        hasGeometry={!!effectiveResult?.geometry}
+        onRequestQuote={() => requirePro('rfq', () => setShowRfqPanel(true))}
       />
 
       {/* Phase-2/3 floating AI shell — viewport-overlay prompt +
