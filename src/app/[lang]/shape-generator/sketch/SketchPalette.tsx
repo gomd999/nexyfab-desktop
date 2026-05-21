@@ -296,8 +296,10 @@ export default function SketchPalette({
 
   // Whole-panel minimize. When collapsed the palette shrinks to its
   // header bar, which is still a click target to expand again. Persisted
-  // in-memory only — fresh sketch session always opens expanded.
-  const [collapsed, setCollapsed] = React.useState(false);
+  // in-memory only. Defaults COLLAPSED so a fresh sketch opens as a compact
+  // header instead of a 260px panel covering the drawing canvas — the header
+  // (title + caret) keeps it discoverable; one click expands the settings.
+  const [collapsed, setCollapsed] = React.useState(true);
 
   return (
     <aside

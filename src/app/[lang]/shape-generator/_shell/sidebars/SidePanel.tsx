@@ -96,10 +96,18 @@ export function SidePanel({
               <button
                 key={tab.id}
                 onClick={() => onTabChange?.(tab.id)}
+                title={tab.label}
                 style={{
-                  padding: '0 10px',
+                  // Equal share + min-width:0 so 3-4 tabs distribute across the
+                  // fixed panel width and the label ellipsizes instead of
+                  // truncating/overlapping the next tab or the collapse control.
+                  flex: '1 1 0',
+                  minWidth: 0,
+                  padding: '0 6px',
                   display: 'inline-flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
                   fontSize: 11,
                   color: isActive ? 'var(--nx-text)' : 'var(--nx-text-2)',
                   cursor: 'pointer',
@@ -108,17 +116,18 @@ export function SidePanel({
                   borderRight: '1px solid var(--nx-border)',
                   borderBottom: isActive ? '2px solid var(--nx-accent)' : '2px solid transparent',
                   marginBottom: isActive ? -1 : 0,
-                  gap: 5,
+                  gap: 4,
                 }}
               >
-                {tab.icon}
-                <span>{tab.label}</span>
+                <span style={{ flexShrink: 0, display: 'inline-flex' }}>{tab.icon}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{tab.label}</span>
                 {tab.badge !== undefined && (
                   <span
                     style={{
+                      flexShrink: 0,
                       padding: '0 4px',
                       fontSize: 9,
-                      marginLeft: 4,
+                      marginLeft: 2,
                       borderRadius: 3,
                       background: 'var(--nx-panel-3)',
                       color: 'var(--nx-text-2)',
