@@ -1526,15 +1526,20 @@ export function ShapeGeneratorInner() {
     // selected edge (re-resolved into an OCCT EdgeFinder at pipeline time).
     // Frozen in this closure so undo→redo replays the same selection.
     let edgeSel: import('./editing/selectionInfo').EdgeSelectionInfo[] | undefined;
+    let faceSel: import('./editing/selectionInfo').FaceSelectionInfo[] | undefined;
     if (featType === 'fillet' || featType === 'chamfer') {
       const el = useSelectionStore.getState().selectedElement;
       if (el && el.type === 'edge') edgeSel = [el];
+    } else if (featType === 'shell') {
+      // A picked face → shell opens exactly that face (re-resolved by signature).
+      const el = useSelectionStore.getState().selectedElement;
+      if (el && el.type === 'face') faceSel = [el];
     }
     commandHistory.execute({
       id: `add-feature-${featType}-${Date.now()}`,
       label: `Add feature: ${featType}`,
       labelKo: `피처 추가: ${featType}`,
-      execute: () => { addFeatureWithEdges(featType, edgeSel); },
+      execute: () => { addFeatureWithEdges(featType, edgeSel, faceSel); },
       undo: () => { undoLast(); },
     });
     contextHelp.enterContext('feature');
