@@ -340,8 +340,8 @@ export type ReplicadEdgeFinder = { readonly [ReplicadEdgeFinderBrand]: 'Replicad
 interface FilletChamferShape extends MeshedShape {
   /** replicad accepts `(radius, predicate?)`; predicate is an EdgeFinder
    *  or `(edge) => boolean`. NexyFab passes it through opaquely. */
-  fillet: (radius: number, predicate?: ReplicadEdgeFinder) => FilletChamferShape;
-  chamfer: (distance: number, predicate?: ReplicadEdgeFinder) => FilletChamferShape;
+  fillet: (radius: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
+  chamfer: (distance: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
   translate: (v: [number, number, number]) => FilletChamferShape;
 }
 
@@ -652,11 +652,10 @@ export function occtFilletBox(
     const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
-  // Phase 3-c-prep: pass the optional EdgeFinder through to replicad.
-  // Phase 3-c-1 (separate PR) constructs an EdgeFinder from the NexyFab
-  // persistent edge ids the user selected; this slot stays an opaque
-  // pass-through so the contract is stable while that work is in flight.
-  const filleted = edgeFinder !== undefined ? source.fillet(radius, edgeFinder) : source.fillet(radius);
+  // replicad's fillet(radius, filter) calls filter(new EdgeFinder()) and uses
+  // the returned finder, so a pre-built EdgeFinder must be handed back via a
+  // wrapper fn (not passed directly). No finder → fillet every edge.
+  const filleted = edgeFinder !== undefined ? source.fillet(radius, () => edgeFinder) : source.fillet(radius);
   const mesh = filleted.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
@@ -681,7 +680,7 @@ export function occtChamferBox(
     const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
-  const chamfered = edgeFinder !== undefined ? source.chamfer(distance, edgeFinder) : source.chamfer(distance);
+  const chamfered = edgeFinder !== undefined ? source.chamfer(distance, () => edgeFinder) : source.chamfer(distance);
   const mesh = chamfered.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,

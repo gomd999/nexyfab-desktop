@@ -486,7 +486,7 @@ export function ShapeGeneratorInner() {
       if (didChange) setParams(newParams);
     }
   }, [paramExpressions]);
-  const { features, addFeature, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
+  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
   const { performCSG, loading: csgLoading, cancel: cancelCsg } = useCsgWorker();
   const { runFEA: runFEAWorker, loading: feaWorkerLoading, cancel: cancelFea } = useFEAWorker();
   const { analyzeDFM: analyzeDFMWorker, loading: dfmWorkerLoading, cancel: cancelDfm } = useDFMWorker();
@@ -1522,15 +1522,23 @@ export function ShapeGeneratorInner() {
       return;
     }
     const featType = type as FeatureType;
+    // Capture the picked edge at click time so fillet/chamfer round only the
+    // selected edge (re-resolved into an OCCT EdgeFinder at pipeline time).
+    // Frozen in this closure so undo→redo replays the same selection.
+    let edgeSel: import('./editing/selectionInfo').EdgeSelectionInfo[] | undefined;
+    if (featType === 'fillet' || featType === 'chamfer') {
+      const el = useSelectionStore.getState().selectedElement;
+      if (el && el.type === 'edge') edgeSel = [el];
+    }
     commandHistory.execute({
       id: `add-feature-${featType}-${Date.now()}`,
       label: `Add feature: ${featType}`,
       labelKo: `피처 추가: ${featType}`,
-      execute: () => { addFeature(featType); },
+      execute: () => { addFeatureWithEdges(featType, edgeSel); },
       undo: () => { undoLast(); },
     });
     contextHelp.enterContext('feature');
-  }, [addFeature, undoLast]);
+  }, [addFeatureWithEdges, undoLast]);
 
   // addFeatureWithParams variant — same tracked treatment so dimension-driven
   // adds (e.g. hole diameter from quick-input) are also undoable atomically.

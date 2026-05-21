@@ -25,6 +25,7 @@ import {
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
+import { buildEdgeFinderFromSelection } from '../features/topologyEdgeFinder';
 import type { SketchProfile } from '../sketch/types';
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
@@ -201,6 +202,29 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const v = meshVolume(filleted.geometry);
     expect(v).toBeGreaterThan(55000);
     expect(v).toBeLessThan(63000);   // ~cylinder, decisively below 80000 bbox
+  });
+
+  it('an EdgeFinder fillets only the picked edge — selective, not all 12 edges', async () => {
+    // Fillet every edge of a 20-cube (no finder) → material gone from 12 edges.
+    resetShapeRegistry();
+    const host = { w: 20, h: 20, d: 20, cx: 0, cy: 0, cz: 0 };
+    const all = occtFilletBox(host, 2, {});
+    const volAll = meshVolume(all.geometry);
+    // Same box, but a finder pinned to ONE vertical edge. The makeBaseBox path
+    // centers the cube then translates z by -d/2, so it spans z∈[-20,0]; the
+    // x=10,y=10 edge runs the full 20 mm height (midpoint (10,10,-10)).
+    resetShapeRegistry();
+    const finder = await buildEdgeFinderFromSelection({
+      type: 'edge', position: [10, 10, -10], length: 20, normal: [1, 0, 0],
+    });
+    expect(finder).not.toBeNull();
+    const one = occtFilletBox(host, 2, {}, null, finder!);
+    const volOne = meshVolume(one.geometry);
+    // Both removed material (below the 8000 box) but the single-edge fillet
+    // removed strictly less — proof the finder narrowed it to one edge.
+    expect(volAll).toBeLessThan(7990);
+    expect(volOne).toBeLessThan(8000);
+    expect(volOne).toBeGreaterThan(volAll + 20);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

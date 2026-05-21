@@ -76,6 +76,10 @@ export interface HistoryNode {
   dependsOn?: string[];
   /** Present only when featureType === 'sketchExtrude' */
   sketchData?: SketchNodeData;
+  /** Click-time edge geometry captured when the user added a fillet/chamfer with
+   *  an edge selected. Re-resolved into an OCCT EdgeFinder at pipeline time so the
+   *  operation rounds only the picked edge(s) instead of every edge. */
+  edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[];
 }
 
 export interface FeatureHistory {
@@ -233,6 +237,7 @@ export function useFeatureStack() {
     icon?: string,
     params?: Record<string, number>,
     featureType?: FeatureType,
+    edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[],
   ): string => {
     const id = genId();
     const resolvedLabel = label || generateLabel(type, featureType);
@@ -252,6 +257,7 @@ export function useFeatureStack() {
       editingActive: false,
       timestamp: Date.now(),
       dependsOn: [activeNodeId],
+      ...(edgeSelections && edgeSelections.length > 0 ? { edgeSelections } : {}),
     };
 
     setNodeMap(prev => {
@@ -427,6 +433,7 @@ export function useFeatureStack() {
         enabled: n.enabled,
         error: n.error,
         sketchData: n.sketchData,
+        edgeSelections: n.edgeSelections,
       }));
   }, [getOrderedNodes, activeNodeSet]);
 
@@ -438,6 +445,22 @@ export function useFeatureStack() {
       params[p.key] = p.default;
     });
     addNode('feature', undefined, def.icon, params, type);
+  }, [addNode]);
+
+  /** Add a fillet/chamfer carrying the click-time edge selection so the OCCT
+   *  pipeline rounds only the picked edge(s). Separate from addFeature so the
+   *  script host's addFeature(type, params) signature stays unaffected. */
+  const addFeatureWithEdges = useCallback((
+    type: FeatureType,
+    edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[],
+  ) => {
+    const def = getFeatureDefinition(type);
+    if (!def) return;
+    const params: Record<string, number> = {};
+    def.params.forEach(p => {
+      params[p.key] = p.default;
+    });
+    addNode('feature', undefined, def.icon, params, type, edgeSelections);
   }, [addNode]);
 
   /** Add a feature with caller-supplied params (merged onto defaults). Used by
@@ -652,6 +675,7 @@ export function useFeatureStack() {
     // Backward-compatible API
     features: featuresCompat,
     addFeature,
+    addFeatureWithEdges,
     addFeatureWithParams,
     addSketchFeature,
     removeFeature,
