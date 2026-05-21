@@ -1,0 +1,114 @@
+/**
+ * B-rep extrude (Phase 1) — occtExtrudeProfile produces a real replicad solid,
+ * so a sketch extrude can START the B-rep chain. Verifies:
+ *   - a box profile extrudes to the analytic volume + a non-null handle
+ *   - an L-profile extrudes to the L volume, NOT its bounding box (proves it's
+ *     a true B-rep solid, not the bbox illusion)
+ *   - the returned handle chains into occtFilletBox (downstream fillet operates
+ *     on the real solid)
+ *
+ * Skipped unless RUN_OCCT_FEASIBILITY=1 (10 MB WASM init), like the sibling
+ * OCCT tests.
+ */
+
+import { describe, it, expect, beforeAll } from 'vitest';
+import * as THREE from 'three';
+import {
+  ensureOcctReady,
+  resetShapeRegistry,
+  occtExtrudeProfile,
+  occtFilletBox,
+  getShape,
+} from '../features/occtEngine';
+
+const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
+const describeMaybe = ENABLED ? describe : describe.skip;
+
+function meshVolume(geo: THREE.BufferGeometry): number {
+  const pos = geo.attributes.position;
+  const idx = geo.index;
+  if (!pos || !idx) return 0;
+  let vol = 0;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  for (let i = 0; i < idx.count; i += 3) {
+    a.fromBufferAttribute(pos, idx.getX(i));
+    b.fromBufferAttribute(pos, idx.getX(i + 1));
+    c.fromBufferAttribute(pos, idx.getX(i + 2));
+    vol += a.dot(b.clone().cross(c)) / 6;
+  }
+  return Math.abs(vol);
+}
+
+describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
+  beforeAll(async () => {
+    await ensureOcctReady();
+  });
+
+  it('extrudes a square profile to the analytic volume + returns a handle', () => {
+    resetShapeRegistry();
+    const square = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }];
+    const r = occtExtrudeProfile(square, 10);
+    expect(r.handle).toBeTruthy();
+    expect(getShape(r.handle)).not.toBeNull();
+    // 20 × 20 × 10 = 4000 mm³
+    expect(meshVolume(r.geometry)).toBeGreaterThan(3900);
+    expect(meshVolume(r.geometry)).toBeLessThan(4100);
+  });
+
+  it('extrudes an L-profile to the L volume — NOT its bounding box', () => {
+    resetShapeRegistry();
+    // L shape: 20×20 square minus the top-right 10×10 → area 300, vol 3000.
+    // Its bounding box would extrude to 4000 — the discriminator.
+    const lProfile = [
+      { x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 },
+      { x: 10, y: 20 }, { x: 10, y: 10 }, { x: 0, y: 10 },
+    ];
+    const r = occtExtrudeProfile(lProfile, 10);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(2900);
+    expect(vol).toBeLessThan(3100);          // true L volume
+    expect(vol).toBeLessThan(3500);          // decisively NOT the 4000 bbox
+  });
+
+  it('B-rep cut: host extrude minus extruded tool = pocket volume (Phase 2)', () => {
+    resetShapeRegistry();
+    // Host 20×20×10 (4000) minus a 10×10×10 corner tool (1000) → 3000.
+    const host = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 10);
+    const tool = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], 10);
+    expect(host.handle).toBeTruthy();
+    expect(tool.handle).toBeTruthy();
+    const h = getShape(host.handle) as {
+      cut: (o: unknown) => { mesh: (o?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] } };
+    };
+    const cut = h.cut(getShape(tool.handle));
+    const mesh = cut.mesh({ tolerance: 0.1, angularTolerance: 0.2 });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(mesh.vertices, 3));
+    g.setIndex(new THREE.Uint32BufferAttribute(mesh.triangles, 1));
+    const vol = meshVolume(g);
+    expect(vol).toBeGreaterThan(2900);
+    expect(vol).toBeLessThan(3100);
+  });
+
+  it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
+    resetShapeRegistry();
+    const square = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }];
+    const ext = occtExtrudeProfile(square, 10);
+    expect(ext.handle).toBeTruthy();
+    // Chained host: occtFilletBox ignores the bbox arg and fillets the real
+    // solid behind `ext.handle`. Rounding removes a little corner material.
+    const filleted = occtFilletBox(
+      { w: 20, h: 20, d: 10, cx: 0, cy: 0, cz: 0 },
+      2,
+      {},
+      ext.handle,
+    );
+    expect(filleted.handle).toBeTruthy();
+    const v = meshVolume(filleted.geometry);
+    expect(v).toBeGreaterThan(3600);  // close to 4000…
+    expect(v).toBeLessThan(4000);     // …but less, since fillet removed material
+  });
+});

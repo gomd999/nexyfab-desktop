@@ -365,6 +365,61 @@ function meshToBufferGeometry(
   return geometry;
 }
 
+// ─── B-rep extrude (Phase 1 — make sketchExtrude the start of the B-rep chain) ─
+
+interface DrawPen {
+  lineTo: (p: [number, number]) => DrawPen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => { extrude: (dist: number) => MeshedShape } };
+}
+
+export interface OcctExtrudeResult {
+  /** Tessellated solid (for callers that want the B-rep mesh directly). */
+  geometry: BufferGeometry;
+  /** Registry handle for the replicad solid, or null if the build failed. */
+  handle: string | null;
+}
+
+/**
+ * Build a real replicad B-rep solid by extruding a closed 2D profile on the
+ * XY plane, register it, and return its handle. This is what lets a sketch
+ * extrude START the B-rep chain so downstream fillet/chamfer/hole/boolean
+ * operate on the true solid instead of a bounding box.
+ *
+ * Phase 1 scope: XY plane (with optional Z offset), straight +Z extrude. Other
+ * planes / tilted faces / revolve-sweep-loft come in later phases. Requires
+ * `isOcctReady()`; throws OcctNotReadyError via requireReplicad otherwise, so
+ * callers must guard + try/catch and fall back to the mesh path.
+ */
+export function occtExtrudeProfile(
+  points: { x: number; y: number }[],
+  depth: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+  if (typeof draw !== 'function' || points.length < 3 || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    // Drop a trailing point that duplicates the start — close() adds the
+    // closing edge itself, and a zero-length segment makes an invalid wire.
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  const sketch = pen.close().sketchOnPlane('XY', planeOffset);
+  const solid = sketch.extrude(depth);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 /**
  * Round every edge of a box primitive with `radius`. Phase 2c scope —
  * chained inputs fall back to the legacy mesh-based approximator because

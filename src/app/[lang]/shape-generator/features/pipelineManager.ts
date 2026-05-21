@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureInstance, MapBackedFeatureType } from './types';
 import { classifyFeatureError } from './featureDiagnostics';
-import { profileToGeometry, countContourEdgesPerSegment } from '../sketch/extrudeProfile';
+import { profileToGeometry, countContourEdgesPerSegment, profileToPoints } from '../sketch/extrudeProfile';
 import { reportError } from '../lib/telemetry';
 import {
   cacheGet,
@@ -14,7 +14,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, getShape, registerShape } from './occtEngine';
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -418,10 +418,55 @@ function runSketchExtrude(
     const carriedMap = (geo.userData as { topoFaceMapByFeature?: Record<string, typeof thisFeatureTopo> } | undefined)
       ?.topoFaceMapByFeature ?? {};
     const mergedMap = { ...carriedMap, [f.id]: thisFeatureTopo };
+
+    // B-rep chain (Phase 1 + 2): attach a real replicad solid handle so
+    // downstream OCCT fillet/chamfer/hole/boolean operate on the true solid
+    // instead of its bounding box. The displayed mesh + provenance above stay
+    // on the mesh path (untouched) — we ONLY attach `occtHandle`, and the
+    // B-rep solid is the same shape as the displayed mesh. Three cases for a
+    // planar-XY straight extrude:
+    //   • add, upstream empty        → the extruded tool itself (chain start)
+    //   • add, upstream is B-rep     → host.fuse(tool)   (multi-body union)
+    //   • subtract, upstream is B-rep → host.cut(tool)   (pocket / cut)
+    // Any failure → no handle → existing bbox fallback (zero regression).
+    let brepHandle: string | null = null;
+    const upstreamHandle = (geo.userData?.occtHandle as string | undefined) ?? null;
+    const upstreamEmpty = !geo.attributes.position || (geo.attributes.position.count ?? 0) === 0;
+    if (
+      !faceFrame
+      && (plane === 'xy' || plane == null)
+      && config.mode === 'extrude'
+      && isOcctReady()
+      && isOcctGlobalMode()
+    ) {
+      try {
+        const pts = profileToPoints(profile);
+        const tool = occtExtrudeProfile(pts, config.depth ?? 0, {}, planeOffset ?? 0);
+        if (tool.handle) {
+          if (upstreamEmpty && operation !== 'subtract') {
+            brepHandle = tool.handle; // first solid — starts the chain
+          } else if (upstreamHandle) {
+            const host = getShape(upstreamHandle) as
+              { cut?: (o: unknown) => unknown; fuse?: (o: unknown) => unknown } | null;
+            const toolSolid = getShape(tool.handle);
+            if (host && toolSolid) {
+              const res = operation === 'subtract'
+                ? host.cut?.(toolSolid)
+                : host.fuse?.(toolSolid);
+              if (res) brepHandle = registerShape(res);
+            }
+          }
+        }
+      } catch {
+        brepHandle = null; // never break the working mesh path
+      }
+    }
+
     result.userData = {
       ...result.userData,
       topoSketchExtrudeHashes: thisFeatureTopo,
       topoFaceMapByFeature: mergedMap,
+      ...(brepHandle ? { occtHandle: brepHandle } : {}),
     };
     cachePut(key, result);
     return result;

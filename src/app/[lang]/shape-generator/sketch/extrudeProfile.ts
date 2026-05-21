@@ -121,8 +121,12 @@ function sampleArcPoints(start: SketchPoint, through: SketchPoint, end: SketchPo
 
 /**
  * Extract all profile points as a flat array, sampling arcs.
+ *
+ * Exported so the B-rep path (occtEngine.occtExtrudeProfile) samples the
+ * profile identically to the mesh path — keeping the replicad solid and the
+ * displayed ExtrudeGeometry mesh in correspondence.
  */
-function profileToPoints(profile: SketchProfile): SketchPoint[] {
+export function profileToPoints(profile: SketchProfile): SketchPoint[] {
   const points: SketchPoint[] = [];
   for (let i = 0; i < profile.segments.length; i++) {
     const seg = profile.segments[i];
