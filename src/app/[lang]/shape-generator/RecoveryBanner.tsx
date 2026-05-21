@@ -80,12 +80,22 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
   const timeAgo = formatTimeAgo(timestamp, t, key === 'en');
 
   return (
+    // In-flow banner strip (sibling of the other TopBanners) so it sits BELOW
+    // the ribbon instead of a fixed top:56 that overlapped the taller shell-v2
+    // chrome. Right-aligned compact pill; overflow-hidden contains the slide-in.
     <div
       style={{
-        position: 'fixed',
-        top: 56,
-        right: 16,
-        zIndex: 9998,
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        padding: '6px 16px 0',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+    <div
+      style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
@@ -187,6 +197,7 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
       >
         ×
       </button>
+    </div>
     </div>
   );
 }

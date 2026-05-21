@@ -86,7 +86,9 @@ export default function ModelerFirstStepsChecklist({
     <div
       style={{
         position: 'fixed',
-        bottom: 20,
+        // Sit above the bottom chrome (status bar + DFM/FEA tab row, ~64px) so
+        // the onboarding panel doesn't cover the dimensions readout / axis gizmo.
+        bottom: 72,
         left: 20,
         zIndex: 700,
         width: collapsed ? 'auto' : 280,
