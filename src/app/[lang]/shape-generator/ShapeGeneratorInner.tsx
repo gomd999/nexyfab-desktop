@@ -1558,9 +1558,6 @@ export function ShapeGeneratorInner() {
   // ── UI state ──
   const showAIAssistant = useUIStore(s => s.showAIAssistant);
   const scadAuthoringMode = useUIStore(s => s.scadAuthoringMode);
-  const setScadAuthoringMode = useUIStore(s => s.setScadAuthoringMode);
-  // Seed prompt handed to the agent panel from the lay-user front door.
-  const [pendingAgentPrompt, setPendingAgentPrompt] = useState<string | null>(null);
   const setShowAIAssistant = useUIStore(s => s.setShowAIAssistant);
   const openAIAssistant = useUIStore(s => s.openAIAssistant);
   const showShortcuts = useUIStore(s => s.showShortcuts);
@@ -1806,6 +1803,41 @@ export function ShapeGeneratorInner() {
     checkCartLimit,
     triggerProjectLimitPrompt } = useFreemiumGate();
   useEffect(() => { authUserRef.current = authUser ?? null; }, [authUser]);
+
+  // Lay-user AI front door → FREE NL→intent→render path (not the Pro agent).
+  // Posts the natural-language prompt to the deterministic intent endpoint
+  // (free plan, monthly-metered) and renders the resulting SCAD into the
+  // viewport via the same apply path the agent uses. Quota/unsupported errors
+  // surface as toasts (or the upgrade path) instead of a broken action.
+  const handleFreeAiPrompt = useCallback(async (prompt: string) => {
+    const p = prompt.trim();
+    if (!p) return;
+    addToast('info', lang === 'ko' ? 'AI가 모델을 만드는 중…' : 'AI is generating your model…');
+    try {
+      const resp = await fetch('/api/nexyfab/scad-intent-from-nl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: p }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({} as Record<string, unknown>));
+        const code = typeof body.code === 'string' ? body.code : '';
+        if (resp.status === 429 || code === 'MONTHLY_LIMIT') { promptUpgrade('AI 생성'); return; }
+        if (resp.status === 422 || code === 'UNSUPPORTED' || code === 'CONVERTER_REJECT') {
+          addToast('error', (typeof body.reason === 'string' && body.reason) || (typeof body.error === 'string' && body.error) || 'AI가 이 요청을 지원 형상으로 표현하지 못했어요.');
+          return;
+        }
+        addToast('error', (typeof body.error === 'string' && body.error) || 'AI 생성에 실패했어요.');
+        return;
+      }
+      const body = await resp.json() as { scad?: string; summary?: string };
+      if (!body.scad) { addToast('error', 'AI 응답에 모델이 없어요.'); return; }
+      await handleApplyAgentScad(body.scad);
+      if (body.summary) addToast('info', body.summary);
+    } catch (e) {
+      addToast('error', `AI 생성 실패: ${(e as Error).message}`);
+    }
+  }, [addToast, promptUpgrade, handleApplyAgentScad, lang]);
 
   // ── Ctrl+\ split-screen toggle ──
   // Cycle splitMode: off → side-notes → side-spec → off. Skip when an input
@@ -9113,7 +9145,6 @@ export function ShapeGeneratorInner() {
           variant="floating"
           onApplyScad={handleApplyAgentScad}
           onShowBrepHandle={handleShowBrepHandle}
-          initialPrompt={pendingAgentPrompt ?? undefined}
         />
       )}
       {/* X3 — Mobile users get a one-time banner instead, since the agent
@@ -9251,17 +9282,7 @@ export function ShapeGeneratorInner() {
         lang={lang}
         featureCount={features.length}
         hasGeometry={!!effectiveResult?.geometry}
-        onAiPrompt={(prompt: string) => {
-          // Lay-user front door → AI generation agent. The agent (OpenSCAD
-          // authoring) is a Pro feature, so free users get the upgrade path
-          // instead of a broken/empty action.
-          if (isProPlan) {
-            setScadAuthoringMode('agent');
-            setPendingAgentPrompt(prompt);
-          } else {
-            promptUpgrade('AI 생성');
-          }
-        }}
+        onAiPrompt={(prompt: string) => { void handleFreeAiPrompt(prompt); }}
         onLoadTemplate={(template: SampleTemplate) => {
           // Clear current pipeline, then enqueue each template feature
           // through the public addFeature APIs. SetTimeout 0 lets the
