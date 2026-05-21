@@ -161,6 +161,11 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(meshVolume(sph.geometry)).toBeLessThan(15200);
     // Box is intentionally unsupported (bbox fallback already correct).
     expect(occtBaseSolid('box', { width: 20, height: 20, depth: 20 }).handle).toBeNull();
+    // Pipe Ø60/Ø40 × L100 → π(30²−20²)·100 ≈ 157080 mm³ (tube, not bbox).
+    const pipe = occtBaseSolid('pipe', { outerDiameter: 60, innerDiameter: 40, length: 100 });
+    expect(pipe.handle).toBeTruthy();
+    expect(meshVolume(pipe.geometry)).toBeGreaterThan(150000);
+    expect(meshVolume(pipe.geometry)).toBeLessThan(164000);
   });
 
   it('a cylinder base handle chains into occtFilletBox (rounds the real cylinder, not its bbox)', () => {

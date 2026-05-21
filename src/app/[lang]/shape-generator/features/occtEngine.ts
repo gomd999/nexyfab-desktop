@@ -563,6 +563,18 @@ export function occtBaseSolid(
   } else if (shapeId === 'sphere') {
     const r = num(params.diameter, 30) / 2;
     if (r > 0) solid = (rc.makeSphere as ReplicadLike['makeSphere'])(r) as MeshedShape;
+  } else if (shapeId === 'pipe') {
+    // Tube = outer cylinder minus a slightly-taller inner cylinder (clean bore).
+    // +Y, centered — matches the mesh (LatheGeometry of a rect about Y).
+    const oR = num(params.outerDiameter, 60) / 2;
+    const iR = num(params.innerDiameter, 40) / 2;
+    const h = num(params.length ?? params.height, 100);
+    if (oR > 0 && h > 0 && iR > 0 && iR < oR) {
+      const mk = rc.makeCylinder as ReplicadLike['makeCylinder'];
+      const outer = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as CutShape;
+      const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
+      if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+    }
   }
   if (!solid || typeof solid.mesh !== 'function') {
     return { geometry: new BufferGeometry(), handle: null };
