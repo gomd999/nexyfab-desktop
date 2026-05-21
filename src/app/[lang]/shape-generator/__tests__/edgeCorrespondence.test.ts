@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchEdgeBySignature, normalizeEdgeDir, type EdgeSig } from '../features/edgeCorrespondence';
+import { matchEdgeBySignature, matchFaceBySignature, normalizeEdgeDir, type EdgeSig, type FaceSig } from '../features/edgeCorrespondence';
 
 describe('edgeCorrespondence — geometric edge matching for topology tracking', () => {
   it('normalizeEdgeDir makes an edge and its reverse compare equal', () => {
@@ -55,5 +55,35 @@ describe('edgeCorrespondence — geometric edge matching for topology tracking',
       { mid: [0, 0, 0], dir: [0, 1, 0], length: 10 },
     ];
     expect(matchEdgeBySignature(target, candidates)).toBe(-1);
+  });
+
+  describe('matchFaceBySignature', () => {
+    it('matches by signed outward normal — opposite faces do NOT match', () => {
+      const target: FaceSig = { center: [0, 0, 10], normal: [0, 0, 1] }; // +Z face
+      const faces: FaceSig[] = [
+        { center: [0, 0, -10], normal: [0, 0, -1] }, // −Z (opposite) — must NOT win
+        { center: [0, 0, 10], normal: [0, 0, 1] },   // +Z — the match
+        { center: [10, 0, 0], normal: [1, 0, 0] },   // +X
+      ];
+      expect(matchFaceBySignature(target, faces)).toBe(1);
+    });
+
+    it('breaks ties between parallel co-typed faces by centre distance', () => {
+      // A stepped part with two +Z faces at different heights.
+      const target: FaceSig = { center: [0, 0, 30], normal: [0, 0, 1], geomType: 'PLANE' };
+      const faces: FaceSig[] = [
+        { center: [0, 0, 10], normal: [0, 0, 1], geomType: 'PLANE' }, // lower +Z
+        { center: [0, 0, 30], normal: [0, 0, 1], geomType: 'PLANE' }, // upper +Z — match
+      ];
+      expect(matchFaceBySignature(target, faces, { scale: 50 })).toBe(1);
+    });
+
+    it('the surface type is a hard filter (a plane never matches a cylinder)', () => {
+      const target: FaceSig = { center: [0, 0, 0], normal: [0, 0, 1], geomType: 'PLANE' };
+      const faces: FaceSig[] = [
+        { center: [0, 0, 0], normal: [0, 0, 1], geomType: 'CYLINDRE' }, // same normal, wrong type
+      ];
+      expect(matchFaceBySignature(target, faces)).toBe(-1);
+    });
   });
 });

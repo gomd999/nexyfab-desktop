@@ -88,3 +88,65 @@ export function matchEdgeBySignature(
   }
   return bestIdx;
 }
+
+// ─── Face correspondence ──────────────────────────────────────────────────────
+
+export interface FaceSig {
+  /** A representative point on the face (surface point near its UV centre). */
+  center: [number, number, number];
+  /** Unit OUTWARD normal — a face's two sides are distinct, so this is signed
+   *  (unlike an edge direction). Opposite faces of a box do NOT match. */
+  normal: [number, number, number];
+  /** OCCT surface type tag (e.g. "PLANE", "CYLINDRE") when known; used as a
+   *  hard filter so a plane never matches a cylindrical face. */
+  geomType?: string;
+}
+
+function unit(v: [number, number, number]): [number, number, number] {
+  const len = Math.hypot(v[0], v[1], v[2]);
+  if (len < EPS) return [0, 0, 0];
+  return [v[0] / len, v[1] / len, v[2] / len];
+}
+
+export interface FaceMatchOptions {
+  /** Minimum signed normal·normal for a candidate to be eligible. */
+  minNormalAlignment?: number;
+  /** Length-scale used to normalise the centre-distance term (≈ part size). */
+  scale?: number;
+}
+
+/**
+ * Pick the candidate face that best corresponds to `target`.
+ * Returns the candidate index, or −1 when none aligns well enough.
+ *
+ * Normal direction (signed, outward) dominates; surface type is a hard filter;
+ * the centre distance breaks ties between parallel co-typed faces (e.g. the two
+ * +Z faces of a stepped part). Mirrors matchEdgeBySignature so face-based
+ * selections (shell face removal, sketch-on-face) survive rebuilds the same way.
+ */
+export function matchFaceBySignature(
+  target: FaceSig,
+  candidates: FaceSig[],
+  opts: FaceMatchOptions = {},
+): number {
+  const minAlign = opts.minNormalAlignment ?? 0.95;
+  const scale = opts.scale ?? 1;
+  const tn = unit(target.normal);
+
+  let bestIdx = -1;
+  let bestScore = -Infinity;
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i]!;
+    if (target.geomType && c.geomType && target.geomType !== c.geomType) continue;
+    const cn = unit(c.normal);
+    const align = tn[0] * cn[0] + tn[1] * cn[1] + tn[2] * cn[2]; // signed
+    if (align < minAlign) continue;
+    const centerTerm = dist(target.center, c.center) / (scale > EPS ? scale : 1);
+    const score = align - 0.5 * centerTerm;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}

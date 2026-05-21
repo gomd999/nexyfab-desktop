@@ -26,6 +26,7 @@ import {
   occtBaseSolid,
   occtFilletBox,
   occtEdgeSignatures,
+  occtFaceSignatures,
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
@@ -404,6 +405,22 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const volAll = meshVolume(all.geometry);
     expect(volOne).toBeLessThan(8000);            // the matched edge WAS rounded
     expect(volOne).toBeGreaterThan(volAll + 20);  // …but only one, not all 12
+  });
+
+  it('occtFaceSignatures enumerates a box (6 faces) with 6 distinct outward normals', () => {
+    resetShapeRegistry();
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    expect(box.handle).toBeTruthy();
+    const faces = occtFaceSignatures(box.handle);
+    expect(faces.length).toBe(6); // a box has exactly 6 faces
+    // The 6 normals must cover the 6 axis directions (±X, ±Y, ±Z) — i.e. each
+    // dominant-axis/sign combination appears once, confirming signed outward normals.
+    const keys = new Set(faces.map(f => {
+      const ax = [Math.abs(f.normal[0]), Math.abs(f.normal[1]), Math.abs(f.normal[2])];
+      const dom = ax.indexOf(Math.max(...ax));
+      return `${dom}${f.normal[dom] >= 0 ? '+' : '-'}`;
+    }));
+    expect(keys.size).toBe(6);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

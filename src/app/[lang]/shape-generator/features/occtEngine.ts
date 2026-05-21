@@ -24,7 +24,7 @@ import {
   Uint32BufferAttribute,
 } from 'three';
 import { publicWasmUrl } from '../lib/publicWasmUrl';
-import type { EdgeSig } from './edgeCorrespondence';
+import type { EdgeSig, FaceSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
 let initPromise: Promise<void> | null = null;
@@ -733,6 +733,52 @@ export function occtEdgeSignatures(handle: string | null | undefined): EdgeSig[]
       /* skip an edge that fails to read rather than abort enumeration */
     } finally {
       e.delete?.();
+    }
+  }
+  return sigs;
+}
+
+interface OcctTopoFace {
+  center: OcctVertexPoint;
+  normalAt: (loc?: unknown) => OcctVertexPoint;
+  geomType?: string;
+  delete?: () => void;
+}
+interface FaceEnumerableShape { faces: OcctTopoFace[] }
+
+/**
+ * Enumerate a registered solid's faces into geometric signatures (a surface
+ * point, the signed outward normal, and the OCCT surface type). The face half
+ * of topology tracking: a stored face selection (shell removal, sketch-on-face
+ * plane) is re-anchored by matching its signature against the CURRENT solid's
+ * faces (see matchFaceBySignature). Returns [] when the handle is unknown or
+ * the shape can't enumerate faces.
+ */
+export function occtFaceSignatures(handle: string | null | undefined): FaceSig[] {
+  const shape = getShape(handle) as FaceEnumerableShape | null;
+  if (!shape) return [];
+  let faces: OcctTopoFace[];
+  try {
+    faces = shape.faces;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(faces)) return [];
+  const sigs: FaceSig[] = [];
+  for (const f of faces) {
+    try {
+      const c = f.center;
+      const cx = c.x, cy = c.y, cz = c.z;
+      const n = f.normalAt(c);
+      const nx = n.x, ny = n.y, nz = n.z;
+      c.delete?.(); n.delete?.();
+      let geomType: string | undefined;
+      try { geomType = typeof f.geomType === 'string' ? f.geomType : undefined; } catch { geomType = undefined; }
+      sigs.push({ center: [cx, cy, cz], normal: [nx, ny, nz], geomType });
+    } catch {
+      /* skip a face that fails to read rather than abort enumeration */
+    } finally {
+      f.delete?.();
     }
   }
   return sigs;
