@@ -25,10 +25,11 @@ import {
   occtSweepHelix,
   occtBaseSolid,
   occtFilletBox,
+  occtEdgeSignatures,
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
-import { buildEdgeFinderFromSelection } from '../features/topologyEdgeFinder';
+import { buildEdgeFinderFromSelection, buildEdgeFinderBySignature } from '../features/topologyEdgeFinder';
 import { sweepFeature } from '../features/sweep';
 import type { SketchProfile } from '../sketch/types';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
@@ -370,6 +371,39 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     // more material left than rounding all 12 edges → the finder tracked it.
     expect(volOne).toBeLessThan(64000);
     expect(volOne).toBeGreaterThan(volAll + 100);
+  });
+
+  it('occtEdgeSignatures enumerates a box (12 edges) and a signature finder rounds the matched edge', async () => {
+    resetShapeRegistry();
+    // 20×20×20 box B-rep (spans x,y,z ∈ [0,20]) with a registry handle.
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    expect(box.handle).toBeTruthy();
+    const sigs = occtEdgeSignatures(box.handle);
+    expect(sigs.length).toBe(12); // a box has exactly 12 edges
+
+    // Target a vertical (±Z) edge; build a finder by matching its signature.
+    const vert = sigs.find(s => Math.abs(s.dir[2]) > 0.99);
+    expect(vert).toBeTruthy();
+    const sel = {
+      type: 'edge' as const,
+      position: vert!.mid,
+      length: vert!.length,
+      normal: [1, 0, 0] as [number, number, number],
+      direction: [0, 0, 1] as [number, number, number],
+    };
+    const finder = await buildEdgeFinderBySignature(sel, sigs);
+    expect(finder).not.toBeNull();
+
+    // Fillet the box (chained on its handle) with the matched finder → one edge.
+    const host = { w: 20, h: 20, d: 20, cx: 0, cy: 0, cz: 0 };
+    const one = occtFilletBox(host, 2, {}, box.handle, finder!);
+    const volOne = meshVolume(one.geometry);
+    resetShapeRegistry();
+    const box2 = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    const all = occtFilletBox(host, 2, {}, box2.handle);
+    const volAll = meshVolume(all.geometry);
+    expect(volOne).toBeLessThan(8000);            // the matched edge WAS rounded
+    expect(volOne).toBeGreaterThan(volAll + 20);  // …but only one, not all 12
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

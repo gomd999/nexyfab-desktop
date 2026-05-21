@@ -31,6 +31,7 @@
 
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { ReplicadEdgeFinder } from './occtEngine';
+import { matchEdgeBySignature, type EdgeSig } from './edgeCorrespondence';
 
 /** The subset of EdgeFinder builder methods we rely on. Pulled from
  *  replicad's README — kept here as a typed shim so consumers don't
@@ -119,6 +120,39 @@ export async function buildEdgeFinderFromSelection(
       f = f.ofLength(selection.length, opts.lengthTolerance ?? 0.1);
     }
     return f as unknown as ReplicadEdgeFinder;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Topology-tolerant resolution: match the stored selection against the CURRENT
+ * solid's edge signatures and anchor the finder at the matched edge's *actual*
+ * midpoint + direction. Unlike remapping a stale click point, this re-anchors
+ * onto the real edge, so the selection survives topology changes (a feature
+ * added elsewhere) as long as the target edge still exists. Returns null when
+ * there's no captured direction, no candidates, or no parallel match — callers
+ * fall back to the position/bbox-remap finder.
+ */
+export async function buildEdgeFinderBySignature(
+  selection: EdgeSelectionInfo,
+  candidates: EdgeSig[],
+  currentBbox?: BBox3,
+): Promise<ReplicadEdgeFinder | null> {
+  if (!selection.direction || candidates.length === 0) return null;
+  const Ctor = await getEdgeFinderConstructor();
+  if (!Ctor) return null;
+  // Remap the click point as the matcher's starting guess (helps when a
+  // dimension also changed); direction does the heavy lifting.
+  const targetMid = remapPointThroughBbox(selection.position, selection.bbox, currentBbox);
+  const target: EdgeSig = { mid: targetMid, dir: selection.direction, length: selection.length };
+  const idx = matchEdgeBySignature(target, candidates);
+  if (idx < 0) return null;
+  const matched = candidates[idx]!;
+  try {
+    return new Ctor()
+      .inDirection(matched.dir)
+      .containsPoint(matched.mid, 0.5) as unknown as ReplicadEdgeFinder;
   } catch {
     return null;
   }

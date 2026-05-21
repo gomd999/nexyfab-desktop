@@ -24,6 +24,7 @@ import {
   Uint32BufferAttribute,
 } from 'three';
 import { publicWasmUrl } from '../lib/publicWasmUrl';
+import type { EdgeSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
 let initPromise: Promise<void> | null = null;
@@ -690,6 +691,51 @@ export function occtSweepHelix(
     angularTolerance: tessellation.angularTolerance ?? 0.2,
   });
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface OcctVertexPoint { x: number; y: number; z: number; delete?: () => void }
+interface OcctTopoEdge { startPoint: OcctVertexPoint; endPoint: OcctVertexPoint; delete?: () => void }
+interface EdgeEnumerableShape { edges: OcctTopoEdge[] }
+
+/**
+ * Enumerate a registered solid's edges into geometric signatures (chord
+ * midpoint, sign-normalised direction, chord length). This is the OCCT half of
+ * topology tracking: a stored fillet selection is re-anchored by matching its
+ * signature against the CURRENT solid's edges (see edgeCorrespondence), which
+ * survives topology changes the absolute click point can't. Returns [] when the
+ * handle is unknown or the shape can't enumerate edges.
+ */
+export function occtEdgeSignatures(handle: string | null | undefined): EdgeSig[] {
+  const shape = getShape(handle) as EdgeEnumerableShape | null;
+  if (!shape) return [];
+  let edges: OcctTopoEdge[];
+  try {
+    edges = shape.edges;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(edges)) return [];
+  const sigs: EdgeSig[] = [];
+  for (const e of edges) {
+    try {
+      const s = e.startPoint, t = e.endPoint;
+      const sx = s.x, sy = s.y, sz = s.z, tx = t.x, ty = t.y, tz = t.z;
+      s.delete?.(); t.delete?.();
+      const dx = tx - sx, dy = ty - sy, dz = tz - sz;
+      const len = Math.hypot(dx, dy, dz);
+      if (len < 1e-9) continue;
+      sigs.push({
+        mid: [(sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2],
+        dir: [dx / len, dy / len, dz / len],
+        length: len,
+      });
+    } catch {
+      /* skip an edge that fails to read rather than abort enumeration */
+    } finally {
+      e.delete?.();
+    }
+  }
+  return sigs;
 }
 
 /**

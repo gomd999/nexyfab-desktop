@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { isOcctReady, isOcctGlobalMode, occtFilletBox, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { isOcctReady, isOcctGlobalMode, occtFilletBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
 import { tryMeshFillet } from './meshRounding';
@@ -9,6 +9,7 @@ import {
   buildEdgeFinderFromSelection,
   buildEdgeFinderFromMultiSelection,
   buildEdgeFinderForLoop,
+  buildEdgeFinderBySignature,
 } from './topologyEdgeFinder';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -38,6 +39,12 @@ async function buildBestEdgeFinder(
     const loop = await buildEdgeFinderForLoop(sels, { currentBbox });
     if (loop) return loop;
     return buildEdgeFinderFromMultiSelection(sels, { currentBbox });
+  }
+  // Primary (topology-tolerant): re-anchor to a real current edge by signature.
+  const handle = geometry?.userData?.occtHandle as string | undefined;
+  if (handle) {
+    const bySig = await buildEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    if (bySig) return bySig;
   }
   return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
 }
