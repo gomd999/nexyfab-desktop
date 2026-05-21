@@ -420,6 +420,41 @@ export function occtExtrudeProfile(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+interface ExtrudedSolid extends MeshedShape {
+  translate: (v: [number, number, number]) => ExtrudedSolid;
+}
+interface CircleDraw {
+  sketchOnPlane: (plane: string, origin?: number) => { extrude: (dist: number) => ExtrudedSolid };
+}
+
+/**
+ * Extrude a circle into an EXACT cylinder B-rep (not a faceted polygon, so
+ * downstream fillet/chamfer round one smooth edge instead of N facet edges).
+ * Used for single-`circle` sketch profiles. Same handle/registry contract as
+ * occtExtrudeProfile.
+ */
+export function occtExtrudeCircle(
+  radius: number,
+  cx: number,
+  cy: number,
+  depth: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const drawCircle = rc.drawCircle as ((r: number) => CircleDraw) | undefined;
+  if (typeof drawCircle !== 'function' || !(radius > 0) || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let solid = drawCircle(radius).sketchOnPlane('XY', planeOffset).extrude(depth);
+  if (cx !== 0 || cy !== 0) solid = solid.translate([cx, cy, 0]);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 /**
  * Round every edge of a box primitive with `radius`. Phase 2c scope —
  * chained inputs fall back to the legacy mesh-based approximator because

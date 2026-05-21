@@ -17,9 +17,12 @@ import {
   ensureOcctReady,
   resetShapeRegistry,
   occtExtrudeProfile,
+  occtExtrudeCircle,
   occtFilletBox,
   getShape,
 } from '../features/occtEngine';
+import { brepContourPoints } from '../sketch/extrudeProfile';
+import type { SketchProfile } from '../sketch/types';
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
 const describeMaybe = ENABLED ? describe : describe.skip;
@@ -91,6 +94,30 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(g);
     expect(vol).toBeGreaterThan(2900);
     expect(vol).toBeLessThan(3100);
+  });
+
+  it('occtExtrudeCircle makes an exact cylinder of the analytic volume', () => {
+    resetShapeRegistry();
+    const r = occtExtrudeCircle(10, 0, 0, 5); // π·100·5 ≈ 1570.8 mm³
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(1500);
+    expect(vol).toBeLessThan(1640);
+  });
+
+  it('brepContourPoints covers rect, skips circle + multi-contour (holes)', () => {
+    // rect → 4 corner points (the common box/plate profile Phase 1 now reaches)
+    const rect: SketchProfile = { closed: true, segments: [{ type: 'rect', points: [{ x: -10, y: -5 }, { x: 10, y: 5 }] }] };
+    expect(brepContourPoints(rect)).toHaveLength(4);
+    // single circle → null (handled by occtExtrudeCircle for an exact cylinder)
+    const circle: SketchProfile = { closed: true, segments: [{ type: 'circle', points: [{ x: 0, y: 0 }, { x: 8, y: 0 }] }] };
+    expect(brepContourPoints(circle)).toBeNull();
+    // outer rect + circle hole → multi-contour → null (no single-contour B-rep)
+    const withHole: SketchProfile = { closed: true, segments: [
+      { type: 'rect', points: [{ x: -20, y: -20 }, { x: 20, y: 20 }] },
+      { type: 'circle', points: [{ x: 0, y: 0 }, { x: 5, y: 0 }] },
+    ] };
+    expect(brepContourPoints(withHole)).toBeNull();
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

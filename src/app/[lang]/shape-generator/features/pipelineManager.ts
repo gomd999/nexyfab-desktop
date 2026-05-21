@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureInstance, MapBackedFeatureType } from './types';
 import { classifyFeatureError } from './featureDiagnostics';
-import { profileToGeometry, countContourEdgesPerSegment, profileToPoints } from '../sketch/extrudeProfile';
+import { profileToGeometry, countContourEdgesPerSegment, brepContourPoints } from '../sketch/extrudeProfile';
 import { reportError } from '../lib/telemetry';
 import {
   cacheGet,
@@ -14,7 +14,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeCircle, getShape, registerShape } from './occtEngine';
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -440,8 +440,19 @@ function runSketchExtrude(
       && isOcctGlobalMode()
     ) {
       try {
-        const pts = profileToPoints(profile);
-        const tool = occtExtrudeProfile(pts, config.depth ?? 0, {}, planeOffset ?? 0);
+        // Single circle → exact cylinder; rect/polyline → polygon contour.
+        const segs = profile.segments;
+        const depth = config.depth ?? 0;
+        const off = planeOffset ?? 0;
+        let tool: { geometry: THREE.BufferGeometry; handle: string | null };
+        if (segs.length === 1 && segs[0].type === 'circle') {
+          const c = segs[0].points[0], rim = segs[0].points[1];
+          const rr = Math.hypot(rim.x - c.x, rim.y - c.y);
+          tool = occtExtrudeCircle(rr, c.x, c.y, depth, {}, off);
+        } else {
+          const pts = brepContourPoints(profile);
+          tool = pts ? occtExtrudeProfile(pts, depth, {}, off) : { geometry: geo, handle: null };
+        }
         if (tool.handle) {
           if (upstreamEmpty && operation !== 'subtract') {
             brepHandle = tool.handle; // first solid — starts the chain

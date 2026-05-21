@@ -126,6 +126,37 @@ function sampleArcPoints(start: SketchPoint, through: SketchPoint, end: SketchPo
  * profile identically to the mesh path — keeping the replicad solid and the
  * displayed ExtrudeGeometry mesh in correspondence.
  */
+/**
+ * Build a single closed contour's 2D points for the B-rep extruder, covering
+ * the common primitive segment types `profileToPoints` doesn't (rect). Returns
+ * null when the profile can't be a single B-rep contour (a single `circle` —
+ * handled separately by occtExtrudeCircle for an exact cylinder — or a
+ * multi-contour profile with holes, i.e. a `circle`/`rect` mixed among other
+ * segments). Kept separate from `profileToPoints` so the mesh-provenance
+ * sampler (and countContourEdgesPerSegment) stay untouched.
+ */
+export function brepContourPoints(profile: SketchProfile): SketchPoint[] | null {
+  const segs = profile.segments;
+  if (!segs || segs.length === 0) return null;
+  if (segs.length === 1) {
+    const s = segs[0];
+    if (s.type === 'rect') {
+      const a = s.points[0], b = s.points[1];
+      const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+      const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+      if (x1 - x0 < 1e-6 || y1 - y0 < 1e-6) return null;
+      return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    }
+    // single circle → exact-cylinder path (occtExtrudeCircle), not here
+    if (s.type === 'circle') return null;
+  }
+  // Outer + holes (a circle/rect among multiple segments) = multi-contour,
+  // which a single replicad polyline can't represent → skip (no handle).
+  if (segs.some(s => s.type === 'circle' || s.type === 'rect')) return null;
+  const pts = profileToPoints(profile);
+  return pts.length >= 3 ? pts : null;
+}
+
 export function profileToPoints(profile: SketchProfile): SketchPoint[] {
   const points: SketchPoint[] = [];
   for (let i = 0; i < profile.segments.length; i++) {
