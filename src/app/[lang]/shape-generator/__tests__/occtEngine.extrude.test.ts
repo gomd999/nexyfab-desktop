@@ -19,6 +19,7 @@ import {
   occtExtrudeProfile,
   occtExtrudeCircle,
   occtExtrudeWithHoles,
+  occtRevolveProfile,
   occtFilletBox,
   getShape,
 } from '../features/occtEngine';
@@ -107,6 +108,18 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(r.geometry);
     expect(vol).toBeGreaterThan(13800);
     expect(vol).toBeLessThan(14200);          // plate-minus-hole, not 15000
+  });
+
+  it('occtRevolveProfile revolves a profile 360° around Y into a solid of revolution', () => {
+    resetShapeRegistry();
+    // Rect radius 10→20, height 0→30, revolved about Y → tube.
+    // Vol = π(20² − 10²)·30 = π·300·30 ≈ 28274 mm³.
+    const profile = [{ x: 10, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 30 }, { x: 10, y: 30 }];
+    const r = occtRevolveProfile(profile);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(27000);
+    expect(vol).toBeLessThan(29500);
   });
 
   it('occtExtrudeCircle makes an exact cylinder of the analytic volume', () => {

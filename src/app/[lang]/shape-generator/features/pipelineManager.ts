@@ -14,7 +14,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeCircle, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeCircle, occtRevolveProfile, getShape, registerShape } from './occtEngine';
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -435,17 +435,25 @@ function runSketchExtrude(
     if (
       !faceFrame
       && (plane === 'xy' || plane == null)
-      && config.mode === 'extrude'
+      && (config.mode === 'extrude' || config.mode === 'revolve')
       && isOcctReady()
       && isOcctGlobalMode()
     ) {
       try {
-        // Single circle → exact cylinder; rect/polyline → polygon contour.
+        // revolve → solid of revolution; single circle → exact cylinder;
+        // rect/polyline → polygon-contour extrude.
         const segs = profile.segments;
         const depth = config.depth ?? 0;
         const off = planeOffset ?? 0;
         let tool: { geometry: THREE.BufferGeometry; handle: string | null };
-        if (segs.length === 1 && segs[0].type === 'circle') {
+        if (config.mode === 'revolve') {
+          // B-rep revolve v1: full 360° about Y on x≥0 profiles only; anything
+          // else → no handle, mesh (LatheGeometry) path stands.
+          const axisOk = (config.revolveAxis ?? 'y') === 'y';
+          const fullTurn = Math.abs((config.revolveAngle ?? 360) - 360) < 0.5;
+          const pts = (axisOk && fullTurn) ? brepContourPoints(profile) : null;
+          tool = pts ? occtRevolveProfile(pts, {}, off) : { geometry: geo, handle: null };
+        } else if (segs.length === 1 && segs[0].type === 'circle') {
           const c = segs[0].points[0], rim = segs[0].points[1];
           const rr = Math.hypot(rim.x - c.x, rim.y - c.y);
           tool = occtExtrudeCircle(rr, c.x, c.y, depth, {}, off);

@@ -459,6 +459,44 @@ interface CutShape extends MeshedShape {
   cut: (other: unknown) => CutShape;
 }
 
+interface RevolvePen {
+  lineTo: (p: [number, number]) => RevolvePen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => { revolve: (axis?: [number, number, number]) => MeshedShape } };
+}
+
+/**
+ * Revolve a closed profile 360° around the Y axis into a real B-rep solid of
+ * revolution (shafts, bushings, turned parts). v1 scope: full 360° about Y; the
+ * profile must lie on x ≥ 0 (one side of the axis). Same handle/registry
+ * contract as occtExtrudeProfile; returns a null handle on failure so the
+ * caller can fall back to the mesh (LatheGeometry) path.
+ */
+export function occtRevolveProfile(
+  points: { x: number; y: number }[],
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
+  if (typeof draw !== 'function' || points.length < 3) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  const solid = pen.close().sketchOnPlane('XY', planeOffset).revolve([0, 1, 0]);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 /**
  * Extrude a closed outer contour and subtract one or more inner hole contours
  * to make a real B-rep solid (e.g. a plate with bolt holes drawn in a single
