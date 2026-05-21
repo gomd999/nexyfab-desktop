@@ -536,7 +536,10 @@ export function occtExtrudeWithHoles(
 }
 
 interface LoftSketch extends MeshedShape {
-  loftWith: (others: LoftSketch[], config?: { ruled?: boolean }) => MeshedShape;
+  loftWith: (others: LoftSketch[], config?: { ruled?: boolean }) => RotatableShape;
+}
+interface RotatableShape extends MeshedShape {
+  rotate?: (deg: number, loc: [number, number, number], dir: [number, number, number]) => MeshedShape;
 }
 interface LoftPen {
   lineTo: (p: [number, number]) => LoftPen;
@@ -544,16 +547,23 @@ interface LoftPen {
 }
 
 /**
- * Loft between two or more closed profiles stacked along Z into a real B-rep
- * solid (transitions, ducts, blended bosses). Each profile is a closed polygon
- * on the XY plane at its own Z height; replicad blends a skin across them.
+ * Loft between two or more closed profiles into a real B-rep solid
+ * (transitions, ducts, blended bosses). Each profile is a closed polygon
+ * sketched on the XY plane at its own `z`; replicad blends a skin across them.
  * Profiles must be given bottom→top and share a winding. v1 scope: polygon
- * profiles, ruled = false (smooth). Same handle/registry contract as the other
- * B-rep builders; returns a null handle on < 2 profiles or a build failure.
+ * profiles, ruled = false (smooth).
+ *
+ * `stackAxis` controls the final orientation: 'Z' (default) keeps the loft
+ * stacked along +Z; 'Y' rotates it −90° about X so the stack runs along +Y to
+ * match THREE primitives / the mesh loftFeature (verified by bbox+centroid).
+ *
+ * Same handle/registry contract as the other B-rep builders; returns a null
+ * handle on < 2 profiles or a build failure.
  */
 export function occtLoftProfiles(
   profiles: { points: { x: number; y: number }[]; z: number }[],
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  stackAxis: 'Y' | 'Z' = 'Z',
 ): OcctExtrudeResult {
   const rc = requireReplicad();
   const draw = rc.draw as ((p?: [number, number]) => LoftPen) | undefined;
@@ -575,7 +585,10 @@ export function occtLoftProfiles(
     sketches.push(pen.close().sketchOnPlane('XY', pf.z));
   }
   const [first, ...rest] = sketches;
-  const solid = first!.loftWith(rest, { ruled: false });
+  const lofted = first!.loftWith(rest, { ruled: false });
+  const solid: MeshedShape = stackAxis === 'Y' && typeof lofted.rotate === 'function'
+    ? lofted.rotate(-90, [0, 0, 0], [1, 0, 0])
+    : lofted;
   const mesh = solid.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,

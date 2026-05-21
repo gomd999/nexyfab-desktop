@@ -139,6 +139,33 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(vol).toBeLessThan(7500);
   });
 
+  it('occtLoftProfiles stackAxis Y stacks along +Y (matches the mesh loft orientation)', () => {
+    resetShapeRegistry();
+    // Big 20×20 at the −50 end, small 10×10 at the +50 end → 100 mm tall frustum.
+    const big = [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }];
+    const small = [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }];
+    const r = occtLoftProfiles([{ points: big, z: -50 }, { points: small, z: 50 }], {}, 'Y');
+    expect(r.handle).toBeTruthy();
+    const pos = r.geometry.attributes.position;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    let cy = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+      cy += y;
+    }
+    cy /= pos.count;
+    // The 100 mm stack must run along Y (not Z): Y span ≈ 100, X/Z spans ≈ 20.
+    expect(maxY - minY).toBeGreaterThan(95);
+    expect(maxY - minY).toBeLessThan(105);
+    expect(maxX - minX).toBeLessThan(25);
+    expect(maxZ - minZ).toBeLessThan(25);
+    // Big end at −Y → more cross-section there → vertex centroid biased to −Y.
+    expect(cy).toBeLessThan(0);
+  });
+
   it('occtSweepProfile sweeps a square along a straight path into a bar', () => {
     resetShapeRegistry();
     // 10×10 profile swept 50 mm along a straight Z path → 10×10×50 bar = 5000 mm³.
