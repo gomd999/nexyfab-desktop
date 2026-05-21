@@ -22,6 +22,12 @@ export interface EdgeSelectionInfo {
   length: number;                        // 추정 엣지 길이 (mm)
   normal: [number, number, number];      // 해당 면의 법선
   partName?: string;                     // 어셈블리 내 파트 식별자 (Optional)
+  /** 엣지 방향 단위벡터 (월드). inDirection 파인더로 평행 엣지를 좁힌 뒤
+   *  position 으로 특정 엣지를 고른다 — 위치 단독보다 견고. */
+  direction?: [number, number, number];
+  /** 선택 시점의 파트 월드 bounding box. 리빌드 시 현재 bbox 로 클릭점을
+   *  재매핑(scale-aware)해 치수 변경 후에도 같은 엣지를 추적한다. */
+  bbox?: { min: [number, number, number]; max: [number, number, number] };
   /** Phase-1 persistent edge id from the topology tracker. Optional
    *  until phase-2 topology naming is wired into the pipeline; when
    *  present, downstream features (fillet/chamfer) can attach it. */

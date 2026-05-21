@@ -249,11 +249,19 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
           const edgePersistentId = persistentId
             ? `edge_${persistentId}|dir_${dirKey}`
             : undefined;
+          // Capture the part's world bbox so the finder can remap the click
+          // point when a dimension changes (scale-aware re-resolution).
+          geometry.computeBoundingBox();
+          const worldBox = geometry.boundingBox?.clone().applyMatrix4(m);
           const edgeInfo: EdgeSelectionInfo = {
             type: 'edge',
             position: [bestProj.x, bestProj.y, bestProj.z],
             length: bestSeg.a.distanceTo(bestSeg.b),
             normal: n,
+            direction: [dir.x, dir.y, dir.z],
+            bbox: worldBox
+              ? { min: [worldBox.min.x, worldBox.min.y, worldBox.min.z], max: [worldBox.max.x, worldBox.max.y, worldBox.max.z] }
+              : undefined,
             persistentId: edgePersistentId,
           };
           onSelect(edgeInfo, e.shiftKey);

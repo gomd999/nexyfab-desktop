@@ -15,8 +15,17 @@ function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
 }
 
+function currentBboxOf(geometry: THREE.BufferGeometry):
+  { min: [number, number, number]; max: [number, number, number] } | undefined {
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return undefined;
+  return { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
+}
+
 async function buildBestEdgeFinder(
   ctx?: FeatureApplyContext,
+  geometry?: THREE.BufferGeometry,
 ): Promise<ReplicadEdgeFinder | null> {
   const sels = ctx?.edgeSelections;
   if (!sels || sels.length === 0) return null;
@@ -25,7 +34,8 @@ async function buildBestEdgeFinder(
     if (loop) return loop;
     return buildEdgeFinderFromMultiSelection(sels);
   }
-  return buildEdgeFinderFromSelection(sels[0]!);
+  const currentBbox = geometry ? currentBboxOf(geometry) : undefined;
+  return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
 }
 
 function applyChamferOcct(
@@ -109,7 +119,7 @@ async function applyChamferWithEdgeFinder(
   const engine = Math.round(params.engine ?? 0);
   const wantedOcct = engine === 1 || isOcctGlobalMode();
   if (wantedOcct && isOcctReady()) {
-    const edgeFinder = await buildBestEdgeFinder(ctx);
+    const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
     const out = applyChamferOcct(geometry, dist, edgeFinder);
     if (out) return out;
   }

@@ -30,6 +30,7 @@ import { brepContourPoints } from '../sketch/extrudeProfile';
 import { buildEdgeFinderFromSelection } from '../features/topologyEdgeFinder';
 import { sweepFeature } from '../features/sweep';
 import type { SketchProfile } from '../sketch/types';
+import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 
 function bboxOf(geo: THREE.BufferGeometry): { min: THREE.Vector3; max: THREE.Vector3 } {
   geo.computeBoundingBox();
@@ -320,6 +321,37 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(volAll).toBeLessThan(7990);
     expect(volOne).toBeLessThan(8000);
     expect(volOne).toBeGreaterThan(volAll + 20);
+  });
+
+  it('a scale-aware EdgeFinder follows the edge after the part grows (topological survival)', async () => {
+    // Click the x=+10, y=+10 vertical edge of a 20-cube (spans z∈[-20,0] from the
+    // makeBaseBox+translate), capturing the part bbox + edge direction.
+    const sel: EdgeSelectionInfo = {
+      type: 'edge',
+      position: [10, 10, -10],
+      length: 20,
+      normal: [1, 0, 0],
+      direction: [0, 0, 1],
+      bbox: { min: [-10, -10, -20], max: [10, 10, 0] },
+    };
+    // The part is then edited to a 40-cube. Re-resolve with the NEW bbox: the
+    // click point must remap to (20, 20, -20) — the grown box's matching edge.
+    const finder = await buildEdgeFinderFromSelection(sel, {
+      currentBbox: { min: [-20, -20, -40], max: [20, 20, 0] },
+    });
+    expect(finder).not.toBeNull();
+
+    const bigBox = { w: 40, h: 40, d: 40, cx: 0, cy: 0, cz: 0 };
+    resetShapeRegistry();
+    const one = occtFilletBox(bigBox, 2, {}, null, finder!);
+    const volOne = meshVolume(one.geometry);
+    resetShapeRegistry();
+    const all = occtFilletBox(bigBox, 2, {});
+    const volAll = meshVolume(all.geometry);
+    // Rounded exactly one edge of the GROWN cube: below the 64000 solid, but
+    // more material left than rounding all 12 edges → the finder tracked it.
+    expect(volOne).toBeLessThan(64000);
+    expect(volOne).toBeGreaterThan(volAll + 100);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

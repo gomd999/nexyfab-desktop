@@ -35,6 +35,34 @@ import type { ReplicadEdgeFinder } from './occtEngine';
 /** The subset of EdgeFinder builder methods we rely on. Pulled from
  *  replicad's README — kept here as a typed shim so consumers don't
  *  need to import `replicad` directly. */
+export interface BBox3 {
+  min: [number, number, number];
+  max: [number, number, number];
+}
+
+/**
+ * Remap a click point through a bounding-box change so the finder follows the
+ * edge when a dimension is edited. For each axis we keep the click's fractional
+ * position within the old part bbox and re-apply it to the current bbox. For
+ * axis-aligned box edges this lands the point exactly on the moved edge; for
+ * other shapes it is a close linear approximation (far better than the stale
+ * absolute point). Returns the original point if either bbox is missing.
+ */
+export function remapPointThroughBbox(
+  point: [number, number, number],
+  oldBbox: BBox3 | undefined,
+  currentBbox: BBox3 | undefined,
+): [number, number, number] {
+  if (!oldBbox || !currentBbox) return point;
+  const out: [number, number, number] = [point[0], point[1], point[2]];
+  for (let i = 0; i < 3; i++) {
+    const span = oldBbox.max[i] - oldBbox.min[i];
+    const frac = Math.abs(span) > 1e-6 ? (point[i] - oldBbox.min[i]) / span : 0.5;
+    out[i] = currentBbox.min[i] + frac * (currentBbox.max[i] - currentBbox.min[i]);
+  }
+  return out;
+}
+
 interface EdgeFinderBuilder {
   containsPoint: (point: [number, number, number], tolerance?: number) => EdgeFinderBuilder;
   inDirection: (direction: [number, number, number]) => EdgeFinderBuilder;
@@ -71,7 +99,7 @@ async function getEdgeFinderConstructor(): Promise<{ new(): EdgeFinderBuilder } 
  */
 export async function buildEdgeFinderFromSelection(
   selection: EdgeSelectionInfo,
-  opts: { positionTolerance?: number; lengthTolerance?: number } = {},
+  opts: { positionTolerance?: number; lengthTolerance?: number; currentBbox?: BBox3 } = {},
 ): Promise<ReplicadEdgeFinder | null> {
   const Ctor = await getEdgeFinderConstructor();
   if (!Ctor) return null;
@@ -80,10 +108,15 @@ export async function buildEdgeFinderFromSelection(
   // fast with `null` matches the "no replicad" path so the caller's
   // fallback path is the same.
   try {
-    const f = new Ctor()
-      .containsPoint(selection.position, opts.positionTolerance ?? 0.5);
-    if (Number.isFinite(selection.length) && selection.length > 0) {
-      return f.ofLength(selection.length, opts.lengthTolerance ?? 0.1) as unknown as ReplicadEdgeFinder;
+    // Scale-aware: remap the click point through any dimension change so the
+    // finder follows the edge; anchor with the edge direction (robust to
+    // movement) and only fall back to ofLength when no direction was captured.
+    const pt = remapPointThroughBbox(selection.position, selection.bbox, opts.currentBbox);
+    let f = new Ctor().containsPoint(pt, opts.positionTolerance ?? 0.5);
+    if (selection.direction) {
+      f = f.inDirection(selection.direction);
+    } else if (Number.isFinite(selection.length) && selection.length > 0) {
+      f = f.ofLength(selection.length, opts.lengthTolerance ?? 0.1);
     }
     return f as unknown as ReplicadEdgeFinder;
   } catch {
