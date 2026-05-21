@@ -535,6 +535,109 @@ export function occtExtrudeWithHoles(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+interface LoftSketch extends MeshedShape {
+  loftWith: (others: LoftSketch[], config?: { ruled?: boolean }) => MeshedShape;
+}
+interface LoftPen {
+  lineTo: (p: [number, number]) => LoftPen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => LoftSketch };
+}
+
+/**
+ * Loft between two or more closed profiles stacked along Z into a real B-rep
+ * solid (transitions, ducts, blended bosses). Each profile is a closed polygon
+ * on the XY plane at its own Z height; replicad blends a skin across them.
+ * Profiles must be given bottom→top and share a winding. v1 scope: polygon
+ * profiles, ruled = false (smooth). Same handle/registry contract as the other
+ * B-rep builders; returns a null handle on < 2 profiles or a build failure.
+ */
+export function occtLoftProfiles(
+  profiles: { points: { x: number; y: number }[]; z: number }[],
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => LoftPen) | undefined;
+  if (typeof draw !== 'function' || profiles.length < 2) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const sketches: LoftSketch[] = [];
+  for (const pf of profiles) {
+    const pts = pf.points;
+    if (pts.length < 3) return { geometry: new BufferGeometry(), handle: null };
+    let pen = draw([pts[0].x, pts[0].y]);
+    const last = pts.length - 1;
+    for (let i = 1; i < pts.length; i++) {
+      if (i === last
+        && Math.abs(pts[i].x - pts[0].x) < 1e-6
+        && Math.abs(pts[i].y - pts[0].y) < 1e-6) break;
+      pen = pen.lineTo([pts[i].x, pts[i].y]);
+    }
+    sketches.push(pen.close().sketchOnPlane('XY', pf.z));
+  }
+  const [first, ...rest] = sketches;
+  const solid = first!.loftWith(rest, { ruled: false });
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface SweepSketch {
+  sweepSketch: (
+    fn: (plane: unknown, origin: unknown) => unknown,
+    config?: Record<string, unknown>,
+  ) => MeshedShape;
+}
+interface SweepPen {
+  lineTo: (p: [number, number]) => SweepPen;
+  done: () => { sketchOnPlane: (plane: string, origin?: number) => SweepSketch };
+}
+interface PlaneProfileDraw {
+  lineTo: (p: [number, number]) => PlaneProfileDraw;
+  close: () => { sketchOnPlane: (plane: unknown) => unknown };
+}
+
+/**
+ * Sweep a closed 2D profile along an open polyline path into a real B-rep solid
+ * (pipes, handles, rails, gaskets). The path is drawn in `pathPlane` (default
+ * XZ, so it rises and bends out of the ground plane); the profile is swept
+ * perpendicular to the path tangent. v1 scope: polyline path, polygon profile,
+ * profile-spine orthogonality forced for clean tube ends. Same handle/registry
+ * contract; returns a null handle on a too-short path/profile or build failure.
+ */
+export function occtSweepProfile(
+  profile: { x: number; y: number }[],
+  path: { x: number; y: number }[],
+  pathPlane = 'XZ',
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => SweepPen & PlaneProfileDraw) | undefined;
+  if (typeof draw !== 'function' || profile.length < 3 || path.length < 2) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pathPen = draw([path[0].x, path[0].y]) as SweepPen;
+  for (let i = 1; i < path.length; i++) pathPen = pathPen.lineTo([path[i].x, path[i].y]);
+  const spine = pathPen.done().sketchOnPlane(pathPlane);
+  const last = profile.length - 1;
+  const solid = spine.sweepSketch((plane) => {
+    let pp = (draw as (p?: [number, number]) => PlaneProfileDraw)([profile[0]!.x, profile[0]!.y]);
+    for (let i = 1; i < profile.length; i++) {
+      if (i === last
+        && Math.abs(profile[i]!.x - profile[0]!.x) < 1e-6
+        && Math.abs(profile[i]!.y - profile[0]!.y) < 1e-6) break;
+      pp = pp.lineTo([profile[i]!.x, profile[i]!.y]);
+    }
+    return pp.close().sketchOnPlane(plane);
+  }, { forceProfileSpineOthogonality: true });
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 /**
  * Build a base PRIMITIVE as a real B-rep solid so the OCCT chain can start from
  * the base (not just from a sketch). Without this, a cylinder/sphere base has

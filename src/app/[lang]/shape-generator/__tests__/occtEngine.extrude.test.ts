@@ -20,6 +20,8 @@ import {
   occtExtrudeCircle,
   occtExtrudeWithHoles,
   occtRevolveProfile,
+  occtLoftProfiles,
+  occtSweepProfile,
   occtBaseSolid,
   occtFilletBox,
   getShape,
@@ -122,6 +124,31 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(r.geometry);
     expect(vol).toBeGreaterThan(27000);
     expect(vol).toBeLessThan(29500);
+  });
+
+  it('occtLoftProfiles blends two stacked squares into a frustum solid', () => {
+    resetShapeRegistry();
+    // 20×20 square at z=0 lofted to a 10×10 square at z=30 → square frustum.
+    // V = (h/3)(A1 + A2 + √(A1·A2)) = (30/3)(400 + 100 + 200) = 7000 mm³.
+    const big = [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }];
+    const small = [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }];
+    const r = occtLoftProfiles([{ points: big, z: 0 }, { points: small, z: 30 }]);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(6500);
+    expect(vol).toBeLessThan(7500);
+  });
+
+  it('occtSweepProfile sweeps a square along a straight path into a bar', () => {
+    resetShapeRegistry();
+    // 10×10 profile swept 50 mm along a straight Z path → 10×10×50 bar = 5000 mm³.
+    const profile = [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }];
+    const path = [{ x: 0, y: 0 }, { x: 0, y: 50 }];
+    const r = occtSweepProfile(profile, path, 'XZ');
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(4700);
+    expect(vol).toBeLessThan(5300);
   });
 
   it('occtExtrudeCircle makes an exact cylinder of the analytic volume', () => {
