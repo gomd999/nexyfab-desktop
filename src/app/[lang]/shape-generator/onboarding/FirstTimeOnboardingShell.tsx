@@ -42,6 +42,9 @@ export interface FirstTimeOnboardingShellProps {
   /** Called when user picks a template. Caller should load the
    *  template's features into the feature store. */
   onLoadTemplate: (template: SampleTemplate) => void;
+  /** AI front door: caller routes this natural-language prompt to the
+   *  generation agent. When omitted, the picker hides its AI section. */
+  onAiPrompt?: (prompt: string) => void;
   /** STL export — caller wires to the actual STL exporter. */
   onExportStl: () => void | Promise<void>;
   /** Optional override on which steps are completed (for testing /
@@ -55,6 +58,7 @@ export default function FirstTimeOnboardingShell({
   featureCount,
   hasGeometry,
   onLoadTemplate,
+  onAiPrompt,
   onExportStl,
   stepsCompletedOverride,
 }: FirstTimeOnboardingShellProps) {
@@ -97,6 +101,16 @@ export default function FirstTimeOnboardingShell({
     try { window.localStorage.setItem(PICKER_DISMISSED_KEY, 'true'); } catch { /* ok */ }
     setPickerDismissed(true);
   };
+
+  // AI front door: dismiss the picker so the agent / canvas takes over, then
+  // hand the prompt up to the host (which opens the generation agent).
+  const handleAiPrompt = onAiPrompt
+    ? (prompt: string) => {
+        try { window.localStorage.setItem(PICKER_DISMISSED_KEY, 'true'); } catch { /* ok */ }
+        setPickerDismissed(true);
+        onAiPrompt(prompt);
+      }
+    : undefined;
 
   const advanceTutorial = () => {
     if (tutorialStep === -1) return;
@@ -153,6 +167,7 @@ export default function FirstTimeOnboardingShell({
             lang={lang}
             onPick={handlePick}
             onSkip={handleSkipPicker}
+            onAiPrompt={handleAiPrompt}
           />
         </div>
       )}

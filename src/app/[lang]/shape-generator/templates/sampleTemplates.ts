@@ -301,3 +301,63 @@ export const SAMPLE_TEMPLATES: SampleTemplate[] = [
 export function getSampleTemplate(id: SampleTemplateId): SampleTemplate | null {
   return SAMPLE_TEMPLATES.find(t => t.id === id) ?? null;
 }
+
+/**
+ * Everyday-product presets for lay users. Unlike SAMPLE_TEMPLATES (which load a
+ * feature pipeline a beginner edits in the tree), these route through the AI
+ * front door: the card carries a natural-language `prompt` that seeds the
+ * generation agent, so a non-expert gets a real model from one click and can
+ * keep refining in plain language. The shape vocabulary maps to the
+ * deterministic intentToScad consumer shapes (nameplate/phoneStand/…), so the
+ * prompt reliably resolves without expert CAD steps.
+ */
+export type EverydayPresetId =
+  | 'nameplate' | 'phoneStand' | 'coaster' | 'wallHook' | 'drawerKnob' | 'planterPot';
+
+export interface EverydayPreset {
+  id: EverydayPresetId;
+  icon: string;
+  nameKo: string; nameEn: string; nameJa: string;
+  descKo: string; descEn: string; descJa: string;
+  /** Natural-language seed sent to the AI generation agent on click. */
+  promptKo: string; promptEn: string;
+}
+
+export const EVERYDAY_PRESETS: EverydayPreset[] = [
+  {
+    id: 'phoneStand', icon: '📱',
+    nameKo: '휴대폰 거치대', nameEn: 'Phone stand', nameJa: 'スマホスタンド',
+    descKo: '폭·각도만 정하면 끝나는 책상용 거치대', descEn: 'A desk stand — just set the width', descJa: '幅を決めるだけの卓上スタンド',
+    promptKo: '폭 85mm짜리 휴대폰 거치대를 만들어줘', promptEn: 'Make a phone stand 85mm wide',
+  },
+  {
+    id: 'nameplate', icon: '🪧',
+    nameKo: '명패', nameEn: 'Nameplate', nameJa: 'ネームプレート',
+    descKo: '이름을 새길 수 있는 데스크 명패', descEn: 'A desk nameplate with an engraving border', descJa: '名前を入れるデスクプレート',
+    promptKo: '가로 120mm 데스크 명패를 만들어줘', promptEn: 'Make a 120mm desk nameplate',
+  },
+  {
+    id: 'coaster', icon: '🥤',
+    nameKo: '컵받침', nameEn: 'Coaster', nameJa: 'コースター',
+    descKo: '테두리가 있는 음료 컵받침', descEn: 'A drink coaster with a raised rim', descJa: '縁付きのコースター',
+    promptKo: '지름 90mm 컵받침을 만들어줘', promptEn: 'Make a 90mm coaster',
+  },
+  {
+    id: 'wallHook', icon: '🪝',
+    nameKo: '벽걸이 후크', nameEn: 'Wall hook', nameJa: '壁掛けフック',
+    descKo: '나사로 고정하는 J자 벽 후크', descEn: 'A screw-mounted J-hook for the wall', descJa: 'ネジ留めのJ字フック',
+    promptKo: '벽걸이 후크를 만들어줘', promptEn: 'Make a wall hook',
+  },
+  {
+    id: 'drawerKnob', icon: '🚪',
+    nameKo: '서랍 손잡이', nameEn: 'Drawer knob', nameJa: '引き出しノブ',
+    descKo: '나사 구멍이 있는 둥근 손잡이', descEn: 'A round knob with a screw bore', descJa: 'ネジ穴付きの丸ノブ',
+    promptKo: '서랍 손잡이를 만들어줘', promptEn: 'Make a drawer knob',
+  },
+  {
+    id: 'planterPot', icon: '🪴',
+    nameKo: '화분', nameEn: 'Planter pot', nameJa: 'プランター',
+    descKo: '배수구가 있는 테이퍼 화분', descEn: 'A tapered pot with a drainage hole', descJa: '排水穴付きの植木鉢',
+    promptKo: '윗지름 100mm 화분을 만들어줘', promptEn: 'Make a planter pot 100mm across the top',
+  },
+];

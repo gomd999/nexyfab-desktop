@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SAMPLE_TEMPLATES, getSampleTemplate } from './sampleTemplates';
+import { SAMPLE_TEMPLATES, getSampleTemplate, EVERYDAY_PRESETS } from './sampleTemplates';
 
 describe('SAMPLE_TEMPLATES', () => {
   it('ships exactly 5 templates', () => {
@@ -91,5 +91,30 @@ describe('getSampleTemplate', () => {
 
   it('returns null for unknown id', () => {
     expect(getSampleTemplate('phantom' as never)).toBeNull();
+  });
+});
+
+describe('EVERYDAY_PRESETS (lay-user AI front door)', () => {
+  it('ships the 6 everyday consumer products', () => {
+    expect(EVERYDAY_PRESETS).toHaveLength(6);
+    expect(new Set(EVERYDAY_PRESETS.map(p => p.id)).size).toBe(6);
+  });
+
+  it('every preset id matches a deterministic intentToScad consumer shape', () => {
+    // These ids must resolve in intentToScad so the seeded prompt is reliable.
+    const SUPPORTED = ['nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot'];
+    for (const p of EVERYDAY_PRESETS) {
+      expect(SUPPORTED).toContain(p.id);
+    }
+  });
+
+  it('every preset has icon, names, descriptions and KO/EN prompts', () => {
+    for (const p of EVERYDAY_PRESETS) {
+      expect(p.icon).toBeTruthy();
+      expect(p.nameKo && p.nameEn && p.nameJa).toBeTruthy();
+      expect(p.descKo && p.descEn && p.descJa).toBeTruthy();
+      expect(p.promptKo.trim().length).toBeGreaterThan(0);
+      expect(p.promptEn.trim().length).toBeGreaterThan(0);
+    }
   });
 });

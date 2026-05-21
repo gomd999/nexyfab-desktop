@@ -182,6 +182,9 @@ export interface ScadAgentPanelProps {
   onShowBrepHandle?: (handle: string) => void | Promise<void>;
   /** UI variant — 'embedded' fits inside the AI sidebar; 'floating' is a standalone modal. */
   variant?: 'embedded' | 'floating';
+  /** Seed prompt auto-sent once when the panel opens (e.g. from the lay-user
+   *  front door's natural-language input / preset cards). */
+  initialPrompt?: string;
 }
 
 interface ThreadEntry {
@@ -245,7 +248,7 @@ function summarizeToolArgs(name: string, args: Record<string, unknown>): string 
   return '';
 }
 
-export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, variant = 'embedded' }: ScadAgentPanelProps) {
+export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, variant = 'embedded', initialPrompt }: ScadAgentPanelProps) {
   const t = dict[langMap[lang] ?? 'en'];
 
   const [thread, setThread] = useState<ThreadEntry[]>([]);
@@ -398,6 +401,18 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
     void assistantBuffer;
     void assistantId;
   }, [input, busy, session, pushEntry, t]);
+
+  // Auto-send the seed prompt exactly once when the panel opens with one
+  // (lay-user front door). Guarded by a ref so re-renders / prop identity
+  // changes don't re-fire it.
+  const initialSentRef = useRef(false);
+  useEffect(() => {
+    const seed = initialPrompt?.trim();
+    if (seed && !initialSentRef.current) {
+      initialSentRef.current = true;
+      void handleSend(seed);
+    }
+  }, [initialPrompt, handleSend]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();

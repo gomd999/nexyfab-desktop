@@ -1558,6 +1558,9 @@ export function ShapeGeneratorInner() {
   // ── UI state ──
   const showAIAssistant = useUIStore(s => s.showAIAssistant);
   const scadAuthoringMode = useUIStore(s => s.scadAuthoringMode);
+  const setScadAuthoringMode = useUIStore(s => s.setScadAuthoringMode);
+  // Seed prompt handed to the agent panel from the lay-user front door.
+  const [pendingAgentPrompt, setPendingAgentPrompt] = useState<string | null>(null);
   const setShowAIAssistant = useUIStore(s => s.setShowAIAssistant);
   const openAIAssistant = useUIStore(s => s.openAIAssistant);
   const showShortcuts = useUIStore(s => s.showShortcuts);
@@ -9110,6 +9113,7 @@ export function ShapeGeneratorInner() {
           variant="floating"
           onApplyScad={handleApplyAgentScad}
           onShowBrepHandle={handleShowBrepHandle}
+          initialPrompt={pendingAgentPrompt ?? undefined}
         />
       )}
       {/* X3 — Mobile users get a one-time banner instead, since the agent
@@ -9247,6 +9251,17 @@ export function ShapeGeneratorInner() {
         lang={lang}
         featureCount={features.length}
         hasGeometry={!!effectiveResult?.geometry}
+        onAiPrompt={(prompt: string) => {
+          // Lay-user front door → AI generation agent. The agent (OpenSCAD
+          // authoring) is a Pro feature, so free users get the upgrade path
+          // instead of a broken/empty action.
+          if (isProPlan) {
+            setScadAuthoringMode('agent');
+            setPendingAgentPrompt(prompt);
+          } else {
+            promptUpgrade('AI 생성');
+          }
+        }}
         onLoadTemplate={(template: SampleTemplate) => {
           // Clear current pipeline, then enqueue each template feature
           // through the public addFeature APIs. SetTimeout 0 lets the
