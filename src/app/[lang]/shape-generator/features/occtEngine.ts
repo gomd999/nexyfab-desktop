@@ -575,6 +575,25 @@ export function occtBaseSolid(
       const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
       if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
     }
+  } else if (shapeId === 'torus') {
+    // Revolve the minor circle (centered at x=R, radius r) about Y, then rotate
+    // +90° about X so the torus axis is +Z — matching THREE.TorusGeometry.
+    const R = num(params.majorDiameter, 80) / 2;
+    const r = num(params.tubeDiameter, 20) / 2;
+    const draw = rc.draw as ((p: [number, number]) => RevolvePen) | undefined;
+    if (R > r && r > 0 && typeof draw === 'function') {
+      const N = 32;
+      let pen = draw([R + r, 0]);
+      for (let i = 1; i < N; i++) {
+        const t = (i / N) * Math.PI * 2;
+        pen = pen.lineTo([R + r * Math.cos(t), r * Math.sin(t)]);
+      }
+      const yTorus = pen.close().sketchOnPlane('XY').revolve([0, 1, 0]) as
+        MeshedShape & { rotate?: (deg: number, loc: [number, number, number], dir: [number, number, number]) => MeshedShape };
+      solid = typeof yTorus.rotate === 'function'
+        ? yTorus.rotate(90, [0, 0, 0], [1, 0, 0])
+        : yTorus;
+    }
   }
   if (!solid || typeof solid.mesh !== 'function') {
     return { geometry: new BufferGeometry(), handle: null };

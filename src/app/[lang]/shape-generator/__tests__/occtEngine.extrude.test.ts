@@ -166,6 +166,12 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(pipe.handle).toBeTruthy();
     expect(meshVolume(pipe.geometry)).toBeGreaterThan(150000);
     expect(meshVolume(pipe.geometry)).toBeLessThan(164000);
+    // Torus major Ø80 (R40) / tube Ø20 (r10) → 2π²·R·r² ≈ 78957 mm³ (donut, not
+    // the 80×80×20 = 128000 bbox). The 32-gon profile under-fills slightly.
+    const torus = occtBaseSolid('torus', { majorDiameter: 80, tubeDiameter: 20 });
+    expect(torus.handle).toBeTruthy();
+    expect(meshVolume(torus.geometry)).toBeGreaterThan(73000);
+    expect(meshVolume(torus.geometry)).toBeLessThan(81000);
   });
 
   it('a cylinder base handle chains into occtFilletBox (rounds the real cylinder, not its bbox)', () => {
