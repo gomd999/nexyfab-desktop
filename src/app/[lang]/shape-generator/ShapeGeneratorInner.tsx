@@ -3568,7 +3568,10 @@ export function ShapeGeneratorInner() {
 
     // Run features asynchronously via the Web Worker.
     // occtMode is a dep so changing the topology engine triggers a re-run.
-    runPipelineWorker(baseShapeResult.geometry, features, { occtMode }).then(pipe => {
+    // baseSpec lets the worker rebuild the base primitive as a real B-rep solid
+    // in its own OCCT context, so a cylinder/sphere base fillet rounds the real
+    // shape (not its bbox). occtBaseSolid ignores unsupported ids (e.g. box).
+    runPipelineWorker(baseShapeResult.geometry, features, { occtMode, baseSpec: { shapeId: selectedId, params: debouncedParams } }).then(pipe => {
       if (gen !== pipelineRunGenerationRef.current) return;
       const finalGeometry = pipe.geometry;
       setPipelineErrors(prev => {

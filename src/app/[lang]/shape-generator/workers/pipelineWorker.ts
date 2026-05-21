@@ -30,6 +30,7 @@ export interface PipelineWorkerInput {
     indices?: Uint32Array;
     features: FeatureInstance[];
     occtMode?: boolean;
+    baseSpec?: { shapeId: string; params: Record<string, number> };
   };
 }
 
@@ -56,7 +57,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
   if (type !== 'RUN_PIPELINE') return;
 
   try {
-    const { positions, normals, indices, features, occtMode } = payload;
+    const { positions, normals, indices, features, occtMode, baseSpec } = payload;
 
     // Reconstruct base geometry from transferable arrays
     const baseGeo = new THREE.BufferGeometry();
@@ -79,7 +80,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
     };
 
     if (occtMode) {
-      result = await applyFeaturePipelineDetailedAsync(baseGeo, features, { occtMode: true, onProgress });
+      result = await applyFeaturePipelineDetailedAsync(baseGeo, features, { occtMode: true, onProgress, baseSpec });
     } else {
       result = applyFeaturePipelineDetailed(baseGeo, features);
     }

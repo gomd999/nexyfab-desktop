@@ -14,7 +14,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeCircle, occtRevolveProfile, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, getShape, registerShape } from './occtEngine';
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -55,6 +55,13 @@ export interface PipelineOptions {
   occtMode?: boolean;
   /** Optional callback to report progress. Only supported in async mode. */
   onProgress?: (progress: number, label: string) => void;
+  /** Base primitive spec. When OCCT mode is on, the async entry rebuilds this
+   *  primitive as a real B-rep solid IN THIS CONTEXT (worker or main) and seeds
+   *  its handle onto the base geometry, so the OCCT chain starts from the base
+   *  (a cylinder/sphere fillet then rounds the real shape, not its bbox). The
+   *  occtHandle can't cross the worker boundary, hence we pass the spec, not a
+   *  handle. */
+  baseSpec?: { shapeId: string; params: Record<string, number> };
 }
 
 // The FEATURE_MAP is provided by the caller rather than imported here to keep
@@ -104,6 +111,15 @@ export async function runPipelineAsync(
     }
   }
   resetShapeRegistry();
+  // Seed a real B-rep base handle (this context's registry) so the chain starts
+  // from a cylinder/sphere base instead of its bounding box. Built AFTER the
+  // reset so it survives into the loop; mesh display untouched (handle-only).
+  if (opts.occtMode && opts.baseSpec && isOcctReady()) {
+    try {
+      const base = occtBaseSolid(opts.baseSpec.shapeId, opts.baseSpec.params);
+      if (base.handle) baseGeometry.userData = { ...baseGeometry.userData, occtHandle: base.handle };
+    } catch { /* mesh fallback — no handle */ }
+  }
   const cacheKernel: PipelineCacheKernel = opts.occtMode ? 'occt' : 'mesh';
   return await runLoopAsync(baseGeometry, features, featureMap, cacheKernel, opts.onProgress);
 }
