@@ -28,7 +28,13 @@ import {
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
 import { buildEdgeFinderFromSelection } from '../features/topologyEdgeFinder';
+import { sweepFeature } from '../features/sweep';
 import type { SketchProfile } from '../sketch/types';
+
+function bboxOf(geo: THREE.BufferGeometry): { min: THREE.Vector3; max: THREE.Vector3 } {
+  geo.computeBoundingBox();
+  return { min: geo.boundingBox!.min.clone(), max: geo.boundingBox!.max.clone() };
+}
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
 const describeMaybe = ENABLED ? describe : describe.skip;
@@ -176,6 +182,41 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(r.geometry);
     expect(vol).toBeGreaterThan(4700);
     expect(vol).toBeLessThan(5300);
+  });
+
+  it('occtSweepProfile bbox matches the mesh sweepFeature (straight + arc paths)', () => {
+    // The sweep feature switches to the B-rep builder in OCCT mode, so the OCCT
+    // sweep must occupy the same space as the mesh sweep (orientation match).
+    const box = new THREE.BoxGeometry(10, 10, 10); // → hw=hh=5 cross-section
+    const tol = 2.0; // mm — faceted vs analytic + tessellation slack
+
+    // Straight: rect swept 100 mm along +Z.
+    resetShapeRegistry();
+    const meshStraight = sweepFeature.apply(box, { pathType: 0, length: 100, arcAngle: 90, arcRadius: 60, helixPitch: 20, helixTurns: 3 }) as THREE.BufferGeometry;
+    const profile = [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }];
+    const occtStraight = occtSweepProfile(profile, [{ x: 0, y: 0 }, { x: 0, y: 100 }], 'XZ');
+    expect(occtStraight.handle).toBeTruthy();
+    const mb = bboxOf(meshStraight), ob = bboxOf(occtStraight.geometry);
+    expect(Math.abs(ob.min.x - mb.min.x)).toBeLessThan(tol);
+    expect(Math.abs(ob.max.x - mb.max.x)).toBeLessThan(tol);
+    expect(Math.abs(ob.min.y - mb.min.y)).toBeLessThan(tol);
+    expect(Math.abs(ob.max.y - mb.max.y)).toBeLessThan(tol);
+    expect(Math.abs(ob.min.z - mb.min.z)).toBeLessThan(tol);
+    expect(Math.abs(ob.max.z - mb.max.z)).toBeLessThan(tol);
+
+    // Arc: 90° arc, R=60 → end point (60, 0, 60), bbox roughly x∈[0,60] z∈[0,60].
+    resetShapeRegistry();
+    const meshArc = sweepFeature.apply(box, { pathType: 1, length: 100, arcAngle: 90, arcRadius: 60, helixPitch: 20, helixTurns: 3 }) as THREE.BufferGeometry;
+    const arcPath: { x: number; y: number }[] = [];
+    for (let i = 0; i <= 32; i++) { const a = (i / 32) * (Math.PI / 2); arcPath.push({ x: 60 * Math.sin(a), y: 60 * (1 - Math.cos(a)) }); }
+    const occtArc = occtSweepProfile(profile, arcPath, 'XZ');
+    expect(occtArc.handle).toBeTruthy();
+    const ma = bboxOf(meshArc), oa = bboxOf(occtArc.geometry);
+    // Looser tol for the arc: Frenet (mesh) vs OCCT sweep frames differ slightly.
+    const arcTol = 6.0;
+    expect(Math.abs((oa.max.x - oa.min.x) - (ma.max.x - ma.min.x))).toBeLessThan(arcTol);
+    expect(Math.abs((oa.max.z - oa.min.z) - (ma.max.z - ma.min.z))).toBeLessThan(arcTol);
+    expect(Math.abs((oa.max.y - oa.min.y) - (ma.max.y - ma.min.y))).toBeLessThan(arcTol);
   });
 
   it('occtExtrudeCircle makes an exact cylinder of the analytic volume', () => {
