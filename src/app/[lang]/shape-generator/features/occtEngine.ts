@@ -594,6 +594,35 @@ export function occtBaseSolid(
         ? yTorus.rotate(90, [0, 0, 0], [1, 0, 0])
         : yTorus;
     }
+  } else if (shapeId === 'disk') {
+    // Disk = thin cylinder (+Y, centered); with innerDia>0 it's an annular ring
+    // (outer cylinder minus a taller inner bore) — matches the LatheGeometry mesh.
+    const oR = num(params.diameter, 80) / 2;
+    const iR = num(params.innerDia, 0) / 2;
+    const h = num(params.thickness, 8);
+    if (oR > 0 && h > 0) {
+      const mk = rc.makeCylinder as ReplicadLike['makeCylinder'];
+      if (iR > 0 && iR < oR) {
+        const outer = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as CutShape;
+        const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
+        if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+      } else {
+        solid = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as MeshedShape;
+      }
+    }
+  } else if (shapeId === 'cone') {
+    // Revolve a trapezoid (frustum) or triangle (apex, top Ø0) profile about Y,
+    // centered at the origin — matching THREE.CylinderGeometry(rTop, rBot, h).
+    const r1 = num(params.bottomDiameter, 50) / 2;
+    const r2 = num(params.topDiameter, 0) / 2;
+    const h = num(params.height, 80);
+    const draw = rc.draw as ((p: [number, number]) => RevolvePen) | undefined;
+    if (r1 > 0 && h > 0 && typeof draw === 'function') {
+      let pen = draw([0, -h / 2]).lineTo([r1, -h / 2]);
+      if (r2 > 0) pen = pen.lineTo([r2, h / 2]);
+      pen = pen.lineTo([0, h / 2]);
+      solid = pen.close().sketchOnPlane('XY').revolve([0, 1, 0]) as MeshedShape;
+    }
   }
   if (!solid || typeof solid.mesh !== 'function') {
     return { geometry: new BufferGeometry(), handle: null };

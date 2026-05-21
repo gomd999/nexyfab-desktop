@@ -172,6 +172,21 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(torus.handle).toBeTruthy();
     expect(meshVolume(torus.geometry)).toBeGreaterThan(73000);
     expect(meshVolume(torus.geometry)).toBeLessThan(81000);
+    // Disk Ø80 × t8 → π·40²·8 ≈ 40212 mm³ (thin cylinder).
+    const disk = occtBaseSolid('disk', { diameter: 80, thickness: 8 });
+    expect(disk.handle).toBeTruthy();
+    expect(meshVolume(disk.geometry)).toBeGreaterThan(38000);
+    expect(meshVolume(disk.geometry)).toBeLessThan(42000);
+    // Cone Ø50 base, apex (top Ø0), h80 → (1/3)π·25²·80 ≈ 52360 mm³.
+    const cone = occtBaseSolid('cone', { bottomDiameter: 50, topDiameter: 0, height: 80 });
+    expect(cone.handle).toBeTruthy();
+    expect(meshVolume(cone.geometry)).toBeGreaterThan(48000);
+    expect(meshVolume(cone.geometry)).toBeLessThan(54000);
+    // Frustum Ø50→Ø30, h80 → (1/3)π·80·(25²+25·15+15²) ≈ 102625 mm³.
+    const frustum = occtBaseSolid('cone', { bottomDiameter: 50, topDiameter: 30, height: 80 });
+    expect(frustum.handle).toBeTruthy();
+    expect(meshVolume(frustum.geometry)).toBeGreaterThan(97000);
+    expect(meshVolume(frustum.geometry)).toBeLessThan(107000);
   });
 
   it('a cylinder base handle chains into occtFilletBox (rounds the real cylinder, not its bbox)', () => {
