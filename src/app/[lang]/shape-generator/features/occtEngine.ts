@@ -455,6 +455,48 @@ export function occtExtrudeCircle(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+interface CutShape extends MeshedShape {
+  cut: (other: unknown) => CutShape;
+}
+
+/**
+ * Extrude a closed outer contour and subtract one or more inner hole contours
+ * to make a real B-rep solid (e.g. a plate with bolt holes drawn in a single
+ * sketch). Holes are extruded slightly proud of the body and cut through, so
+ * the result is a clean through-hole. Same handle/registry contract as
+ * occtExtrudeProfile. Returns a null handle if the outer build fails.
+ */
+export function occtExtrudeWithHoles(
+  outer: { x: number; y: number }[],
+  holes: { x: number; y: number }[][],
+  depth: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const base = occtExtrudeProfile(outer, depth, tessellation, planeOffset);
+  if (!base.handle) return { geometry: new BufferGeometry(), handle: null };
+  let solid = getShape(base.handle) as CutShape | null;
+  if (!solid || typeof solid.cut !== 'function') return base;
+  for (const hole of holes) {
+    if (!hole || hole.length < 3) continue;
+    // Extrude the hole a touch taller than the body and start it just below,
+    // so the cut is a clean through-hole (no coplanar cap faces).
+    const tool = occtExtrudeProfile(hole, depth + 0.2, tessellation, planeOffset - 0.1);
+    const toolSolid = getShape(tool.handle);
+    if (!toolSolid) continue;
+    try {
+      solid = solid.cut(toolSolid);
+    } catch {
+      /* skip a hole that fails to cut rather than abort the whole solid */
+    }
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 /**
  * Round every edge of a box primitive with `radius`. Phase 2c scope —
  * chained inputs fall back to the legacy mesh-based approximator because

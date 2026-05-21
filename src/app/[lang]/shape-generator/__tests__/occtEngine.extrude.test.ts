@@ -18,6 +18,7 @@ import {
   resetShapeRegistry,
   occtExtrudeProfile,
   occtExtrudeCircle,
+  occtExtrudeWithHoles,
   occtFilletBox,
   getShape,
 } from '../features/occtEngine';
@@ -94,6 +95,18 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(g);
     expect(vol).toBeGreaterThan(2900);
     expect(vol).toBeLessThan(3100);
+  });
+
+  it('occtExtrudeWithHoles extrudes an outer contour minus inner holes', () => {
+    resetShapeRegistry();
+    // 50×30 plate (1500) minus one 10×10 hole (100) → area 1400, ×10 = 14000.
+    const outer = [{ x: -25, y: -15 }, { x: 25, y: -15 }, { x: 25, y: 15 }, { x: -25, y: 15 }];
+    const hole = [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }];
+    const r = occtExtrudeWithHoles(outer, [hole], 10);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(13800);
+    expect(vol).toBeLessThan(14200);          // plate-minus-hole, not 15000
   });
 
   it('occtExtrudeCircle makes an exact cylinder of the analytic volume', () => {

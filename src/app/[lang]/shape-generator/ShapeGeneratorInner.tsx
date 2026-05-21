@@ -89,7 +89,8 @@ const ShapeGeneratorToolbar = dynamic(() => import('./ShapeGeneratorToolbar'), {
 import type { BomPartResult } from './ShapePreview';
 // Sketch imports
 import type { SketchProfile, SketchConfig, SketchConstraint, SketchDimension, SketchSegment } from './sketch/types';
-import { profileToGeometry, profileToGeometryMulti } from './sketch/extrudeProfile';
+import { profileToGeometry, profileToGeometryMulti, brepContourPoints } from './sketch/extrudeProfile';
+import { occtExtrudeWithHoles, isOcctReady as isOcctReadySync, isOcctGlobalMode as isOcctGlobalModeSync } from './features/occtEngine';
 import { solveConstraints, resolveDimensionTargetsWithErrors } from './sketch/constraintSolver';
 import SketchCanvas from './sketch/SketchCanvas';
 import {
@@ -4546,6 +4547,44 @@ export function ShapeGeneratorInner() {
     if (!geo) {
       addToast('warning', lt.sketchGeometryFailed);
       return;
+    }
+
+    // B-rep chain for a multi-contour sketch (outer + holes drawn in one sketch):
+    // build a real replicad solid (extrude outer, cut each hole) and attach its
+    // handle so downstream OCCT fillet/chamfer/hole operate on the true solid
+    // instead of its bounding box. Mesh display above is untouched; handle-only
+    // attach, gated + try/catch with a no-handle fallback (zero regression).
+    if (
+      sketchProfiles.length > 1
+      && sketchPlane === 'xy'
+      && sketchConfig.mode === 'extrude'
+      && isOcctReadySync()
+      && isOcctGlobalModeSync()
+    ) {
+      try {
+        // Convert each contour to polygon points (circle holes sampled to 48-gon).
+        const toPts = (p: typeof sketchProfile): { x: number; y: number }[] | null => {
+          const pts = brepContourPoints(p);
+          if (pts) return pts;
+          const s = p.segments;
+          if (s.length === 1 && s[0].type === 'circle') {
+            const c = s[0].points[0], rim = s[0].points[1];
+            const r = Math.hypot(rim.x - c.x, rim.y - c.y);
+            if (r > 0) {
+              const out: { x: number; y: number }[] = [];
+              for (let i = 0; i < 48; i++) { const t = (i / 48) * Math.PI * 2; out.push({ x: c.x + r * Math.cos(t), y: c.y + r * Math.sin(t) }); }
+              return out;
+            }
+          }
+          return null;
+        };
+        const outerPts = toPts(sketchProfiles[0]);
+        const holePts = sketchProfiles.slice(1).map(toPts).filter((p): p is { x: number; y: number }[] => p !== null);
+        if (outerPts && holePts.length > 0) {
+          const brep = occtExtrudeWithHoles(outerPts, holePts, sketchConfig.depth ?? 0, {}, 0);
+          if (brep.handle) geo.userData = { ...geo.userData, occtHandle: brep.handle };
+        }
+      } catch { /* keep mesh result without a handle */ }
     }
     const edgeGeometry = makeEdges(geo);
     const volume_cm3 = meshVolume(geo) / 1000;
