@@ -27,6 +27,7 @@ import {
   occtFilletBox,
   occtEdgeSignatures,
   occtFaceSignatures,
+  occtExtrudeProfileOnFrame,
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
@@ -421,6 +422,35 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
       return `${dom}${f.normal[dom] >= 0 ? '+' : '-'}`;
     }));
     expect(keys.size).toBe(6);
+  });
+
+  it('occtExtrudeProfileOnFrame (sketch-on-face): identity frame equals an XY extrude', () => {
+    resetShapeRegistry();
+    const square = [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }];
+    const r = occtExtrudeProfileOnFrame(square, 10, {
+      origin: [0, 0, 0], uAxis: [1, 0, 0], vAxis: [0, 1, 0], normal: [0, 0, 1],
+    });
+    expect(r.handle).toBeTruthy();
+    expect(meshVolume(r.geometry)).toBeGreaterThan(3900);
+    expect(meshVolume(r.geometry)).toBeLessThan(4100); // 20×20×10
+    const b = bboxOf(r.geometry);
+    expect(Math.abs(b.min.z - 0)).toBeLessThan(0.5);   // extruded +Z from the plane
+    expect(Math.abs(b.max.z - 10)).toBeLessThan(0.5);
+  });
+
+  it('occtExtrudeProfileOnFrame extrudes along a +Y face normal (tilted frame)', () => {
+    resetShapeRegistry();
+    // Face whose outward normal is +Y: the boss should grow in +Y, not +Z.
+    const square = [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }];
+    const r = occtExtrudeProfileOnFrame(square, 10, {
+      origin: [0, 0, 0], uAxis: [1, 0, 0], vAxis: [0, 0, -1], normal: [0, 1, 0],
+    });
+    expect(r.handle).toBeTruthy();
+    expect(meshVolume(r.geometry)).toBeGreaterThan(3900);
+    expect(meshVolume(r.geometry)).toBeLessThan(4100);
+    const b = bboxOf(r.geometry);
+    expect(Math.abs(b.min.y - 0)).toBeLessThan(0.5);   // extruded along +Y
+    expect(Math.abs(b.max.y - 10)).toBeLessThan(0.5);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

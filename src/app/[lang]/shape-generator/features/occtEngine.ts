@@ -421,6 +421,55 @@ export function occtExtrudeProfile(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+interface DrawPenOnFrame {
+  lineTo: (p: [number, number]) => DrawPenOnFrame;
+  close: () => { sketchOnPlane: (plane: unknown) => { extrude: (dist: number) => MeshedShape } };
+}
+export interface SketchFaceFrame {
+  origin: [number, number, number];
+  normal: [number, number, number];
+  uAxis: [number, number, number];
+  vAxis: [number, number, number];
+}
+
+/**
+ * Extrude a closed 2D profile that was sketched ON A SELECTED FACE — the (u,v)
+ * profile coords live in the face's frame, and the extrude runs along the face
+ * normal. This is the B-rep half of "sketch on face": a boss/pocket built on an
+ * existing face instead of a global plane. The caller fuses/cuts the result
+ * onto the host solid. Same handle/registry contract; null handle on bad input.
+ */
+export function occtExtrudeProfileOnFrame(
+  points: { x: number; y: number }[],
+  depth: number,
+  frame: SketchFaceFrame,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => DrawPenOnFrame) | undefined;
+  const PlaneCtor = rc.Plane as (new (origin: [number, number, number], xDir: [number, number, number], normal: [number, number, number]) => unknown) | undefined;
+  if (typeof draw !== 'function' || typeof PlaneCtor !== 'function' || points.length < 3 || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  // Plane(origin, xDir=uAxis, normal) → 2D (u,v) maps to origin + u·uAxis +
+  // v·(normal×uAxis) = vAxis for a right-handed frame; extrude along the normal.
+  const plane = new PlaneCtor(frame.origin, frame.uAxis, frame.normal);
+  const solid = pen.close().sketchOnPlane(plane).extrude(depth);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 interface ExtrudedSolid extends MeshedShape {
   translate: (v: [number, number, number]) => ExtrudedSolid;
 }

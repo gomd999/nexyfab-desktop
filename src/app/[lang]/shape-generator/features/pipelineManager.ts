@@ -14,7 +14,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, getShape, registerShape } from './occtEngine';
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -448,21 +448,27 @@ function runSketchExtrude(
     let brepHandle: string | null = null;
     const upstreamHandle = (geo.userData?.occtHandle as string | undefined) ?? null;
     const upstreamEmpty = !geo.attributes.position || (geo.attributes.position.count ?? 0) === 0;
+    const faceFrameExtrude = !!faceFrame && config.mode === 'extrude';
     if (
-      !faceFrame
-      && (plane === 'xy' || plane == null)
-      && (config.mode === 'extrude' || config.mode === 'revolve')
+      (faceFrameExtrude
+        || (!faceFrame
+          && (plane === 'xy' || plane == null)
+          && (config.mode === 'extrude' || config.mode === 'revolve')))
       && isOcctReady()
       && isOcctGlobalMode()
     ) {
       try {
         // revolve → solid of revolution; single circle → exact cylinder;
-        // rect/polyline → polygon-contour extrude.
+        // rect/polyline → polygon-contour extrude. sketch-on-face → extrude the
+        // (u,v) contour on the face frame along its normal.
         const segs = profile.segments;
         const depth = config.depth ?? 0;
         const off = planeOffset ?? 0;
         let tool: { geometry: THREE.BufferGeometry; handle: string | null };
-        if (config.mode === 'revolve') {
+        if (faceFrameExtrude) {
+          const pts = brepContourPoints(profile);
+          tool = pts ? occtExtrudeProfileOnFrame(pts, depth, faceFrame!) : { geometry: geo, handle: null };
+        } else if (config.mode === 'revolve') {
           // B-rep revolve v1: full 360° about Y on x≥0 profiles only; anything
           // else → no handle, mesh (LatheGeometry) path stands.
           const axisOk = (config.revolveAxis ?? 'y') === 'y';
