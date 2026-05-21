@@ -254,6 +254,7 @@ async function runLoopAsync(
         targetEdgeIds: f.targetEdgeIds,
         targetFaceIds: f.targetFaceIds,
         edgeSelections: f.edgeSelections,
+        faceSelections: f.faceSelections,
       };
       const next = def.applyAsync
         ? await def.applyAsync(geo, f.params, featureCtx)

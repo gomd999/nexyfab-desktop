@@ -28,10 +28,11 @@ import {
   occtEdgeSignatures,
   occtFaceSignatures,
   occtExtrudeProfileOnFrame,
+  occtShellBox,
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
-import { buildEdgeFinderFromSelection, buildEdgeFinderBySignature } from '../features/topologyEdgeFinder';
+import { buildEdgeFinderFromSelection, buildEdgeFinderBySignature, buildFaceFinderBySignature } from '../features/topologyEdgeFinder';
 import { sweepFeature } from '../features/sweep';
 import type { SketchProfile } from '../sketch/types';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
@@ -451,6 +452,25 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const b = bboxOf(r.geometry);
     expect(Math.abs(b.min.y - 0)).toBeLessThan(0.5);   // extruded along +Y
     expect(Math.abs(b.max.y - 10)).toBeLessThan(0.5);
+  });
+
+  it('occtShellBox removes a signature-matched face (shell open on the picked face)', async () => {
+    resetShapeRegistry();
+    // 20-cube (x,y,z ∈ [0,20]) with a handle.
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    expect(box.handle).toBeTruthy();
+    const faces = occtFaceSignatures(box.handle);
+    // Pick the +Z (top) face and build a FaceFinder by matching its signature.
+    const top = faces.find(f => f.normal[2] > 0.9);
+    expect(top).toBeTruthy();
+    const finder = await buildFaceFinderBySignature({ position: top!.center, normal: [0, 0, 1] }, faces);
+    expect(finder).not.toBeNull();
+    // Shell the box, opening exactly the matched top face.
+    const shelled = occtShellBox({ w: 20, h: 20, d: 20, cx: 10, cy: 10, cz: 20 }, 2, 0, {}, box.handle, finder);
+    expect(shelled.handle).toBeTruthy();
+    const vol = meshVolume(shelled.geometry);
+    expect(vol).toBeLessThan(8000);    // hollowed out (less than the solid cube)
+    expect(vol).toBeGreaterThan(1000); // …but a real 2 mm shell remains
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

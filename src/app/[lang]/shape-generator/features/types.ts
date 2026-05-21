@@ -73,6 +73,9 @@ export interface FeatureApplyContext {
    *  (position / length / normal) is what actually drives the OCCT
    *  predicate construction. */
   edgeSelections?: import('../editing/selectionInfo').EdgeSelectionInfo[];
+  /** Click-time face selection(s) — drives the FaceFinder for shell face
+   *  removal (re-resolved against the current solid's face signatures). */
+  faceSelections?: import('../editing/selectionInfo').FaceSelectionInfo[];
 }
 
 export interface FeatureDefinition {
@@ -111,6 +114,9 @@ export interface FeatureInstance {
    *  targetEdgeIds so the OCCT path can build an EdgeFinder predicate
    *  without round-tripping back through the topology tracker. */
   edgeSelections?: import('../editing/selectionInfo').EdgeSelectionInfo[];
+  /** Click-time face selection(s) for shell face removal. Re-resolved to a
+   *  FaceFinder against the current solid's face signatures at pipeline time. */
+  faceSelections?: import('../editing/selectionInfo').FaceSelectionInfo[];
   /** Present only when type === 'sketchExtrude' */
   sketchData?: {
     profile: SketchProfile;

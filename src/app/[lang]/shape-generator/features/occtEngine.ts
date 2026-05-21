@@ -348,7 +348,7 @@ interface FilletChamferShape extends MeshedShape {
 
 /** B-rep shape supporting shell + boolean cut (open-face trimming). */
 interface ShellableShape extends MeshedShape {
-  shell: (thickness: number) => ShellableShape;
+  shell: (thickness: number, finderFn?: (ff: unknown) => unknown) => ShellableShape;
   cut: (other: unknown) => ShellableShape;
   translate: (v: [number, number, number]) => ShellableShape;
 }
@@ -995,6 +995,7 @@ export function occtShellBox(
   openFace: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
+  faceFinder?: unknown,
 ): OcctBooleanResult {
   const rc = requireReplicad();
   const chained = getShape(hostHandle) as ShellableShape | null;
@@ -1003,11 +1004,23 @@ export function occtShellBox(
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
 
+  // With a face finder, remove the user-selected face the proper B-rep way:
+  // replicad's shell(thickness, finderFn) opens exactly those faces. Otherwise
+  // fall back to the closed shell + openFace boolean-cut heuristic.
+  if (faceFinder !== undefined) {
+    const shelledF = source.shell(-thickness, () => faceFinder);
+    const meshF = shelledF.mesh({
+      tolerance: tessellation.tolerance ?? 0.1,
+      angularTolerance: tessellation.angularTolerance ?? 0.2,
+    });
+    return { geometry: meshToBufferGeometry(meshF), handle: registerShape(shelledF) };
+  }
+
   // Replicad shell uses a negative thickness for inward.
-  // Note: we just use .shell(-thickness) for a closed hollow shell, 
+  // Note: we just use .shell(-thickness) for a closed hollow shell,
   // and cut the open face via boolean subtraction to ensure reliability.
   let shelled = source.shell(-thickness);
-  
+
   if (openFace > 0) {
     const cutHeight = thickness * 4;
     const cutBox = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w * 3, cutHeight, hostBox.d * 3) as ShellableShape;

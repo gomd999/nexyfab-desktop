@@ -31,7 +31,7 @@
 
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { ReplicadEdgeFinder } from './occtEngine';
-import { matchEdgeBySignature, type EdgeSig } from './edgeCorrespondence';
+import { matchEdgeBySignature, matchFaceBySignature, type EdgeSig, type FaceSig } from './edgeCorrespondence';
 
 /** The subset of EdgeFinder builder methods we rely on. Pulled from
  *  replicad's README — kept here as a typed shim so consumers don't
@@ -153,6 +153,45 @@ export async function buildEdgeFinderBySignature(
     return new Ctor()
       .inDirection(matched.dir)
       .containsPoint(matched.mid, 0.5) as unknown as ReplicadEdgeFinder;
+  } catch {
+    return null;
+  }
+}
+
+interface FaceFinderBuilder {
+  containsPoint: (point: [number, number, number], tolerance?: number) => FaceFinderBuilder;
+  inDirection: (direction: [number, number, number]) => FaceFinderBuilder;
+}
+
+async function getFaceFinderConstructor(): Promise<{ new(): FaceFinderBuilder } | null> {
+  try {
+    const rc = (await import('replicad')) as unknown as { FaceFinder?: new () => FaceFinderBuilder };
+    return rc.FaceFinder ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Topology-tolerant face resolution: match a stored face selection against the
+ * CURRENT solid's face signatures and build a FaceFinder anchored on the
+ * matched face's actual centre. Used by shell (remove the picked face) so a
+ * face selection survives rebuilds. Returns null when there's no candidate or
+ * no match — callers fall back to their non-face path.
+ */
+export async function buildFaceFinderBySignature(
+  selection: { position: [number, number, number]; normal: [number, number, number] },
+  candidates: FaceSig[],
+): Promise<unknown | null> {
+  if (candidates.length === 0) return null;
+  const Ctor = await getFaceFinderConstructor();
+  if (!Ctor) return null;
+  const target: FaceSig = { center: selection.position, normal: selection.normal };
+  const idx = matchFaceBySignature(target, candidates);
+  if (idx < 0) return null;
+  const matched = candidates[idx]!;
+  try {
+    return new Ctor().containsPoint(matched.center, 0.5);
   } catch {
     return null;
   }
