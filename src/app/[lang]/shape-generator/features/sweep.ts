@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtSweepProfile } from './occtEngine';
+import { isOcctReady, isOcctGlobalMode, occtSweepProfile, occtSweepHelix } from './occtEngine';
 
 /** Rectangular cross-section half-extents from the input geometry bbox. */
 function crossSection(geometry: THREE.BufferGeometry): { hw: number; hh: number } | null {
@@ -83,20 +83,32 @@ function planarPath(params: Record<string, number>): { x: number; y: number }[] 
   return null;
 }
 
-/** OCCT B-rep sweep for planar paths (straight/arc): sweep the rectangular
- *  section along the path in the XZ plane, matching the mesh bbox, and attach
- *  an occtHandle for downstream fillet/chamfer. Helix → null (mesh fallback). */
+/** OCCT B-rep sweep: planar paths (straight/arc) go through occtSweepProfile;
+ *  the helix goes through occtSweepHelix (true 3D spine). The rectangular
+ *  section + helix radius mirror the mesh path so the bbox matches; the result
+ *  carries an occtHandle for downstream fillet/chamfer. Any failure → null
+ *  (mesh fallback). */
 function applySweepOcct(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry | null {
   try {
-    const path = planarPath(params);
-    if (!path) return null;
     const cs = crossSection(geometry);
     if (!cs || !(cs.hw > 0) || !(cs.hh > 0)) return null;
     const { hw, hh } = cs;
     const profile = [
       { x: -hw, y: -hh }, { x: hw, y: -hh }, { x: hw, y: hh }, { x: -hw, y: hh },
     ];
-    const result = occtSweepProfile(profile, path, 'XZ');
+    const pathType = Math.round(params.pathType);
+    let result;
+    if (pathType === 2) {
+      // Helix: same radius/pitch/height as the mesh path (height = turns×pitch).
+      const turns = params.helixTurns;
+      const pitch = params.helixPitch;
+      const helixR = Math.max(hw, hh) * 1.5 + 20;
+      result = occtSweepHelix(profile, pitch, turns * pitch, helixR);
+    } else {
+      const path = planarPath(params);
+      if (!path) return null;
+      result = occtSweepProfile(profile, path, 'XZ');
+    }
     if (!result.handle) return null;
     result.geometry.userData.occtHandle = result.handle;
     return result.geometry;

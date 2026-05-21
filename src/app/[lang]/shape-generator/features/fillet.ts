@@ -33,12 +33,12 @@ async function buildBestEdgeFinder(
 ): Promise<ReplicadEdgeFinder | null> {
   const sels = ctx?.edgeSelections;
   if (!sels || sels.length === 0) return null;
-  if (sels.length >= 2) {
-    const loop = await buildEdgeFinderForLoop(sels);
-    if (loop) return loop;
-    return buildEdgeFinderFromMultiSelection(sels);
-  }
   const currentBbox = geometry ? currentBboxOf(geometry) : undefined;
+  if (sels.length >= 2) {
+    const loop = await buildEdgeFinderForLoop(sels, { currentBbox });
+    if (loop) return loop;
+    return buildEdgeFinderFromMultiSelection(sels, { currentBbox });
+  }
   return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
 }
 

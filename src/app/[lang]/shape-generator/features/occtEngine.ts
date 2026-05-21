@@ -652,6 +652,47 @@ export function occtSweepProfile(
 }
 
 /**
+ * Sweep a closed 2D profile along a true 3D helix into a real B-rep solid
+ * (springs, threads, augers) — the case occtSweepProfile can't reach with its
+ * planar polyline path. The helix axis is +Y to match the THREE helix sweep
+ * mesh; `height` is the total rise (turns × pitch). Same handle/registry
+ * contract; returns a null handle on bad inputs or a build failure.
+ */
+export function occtSweepHelix(
+  profile: { x: number; y: number }[],
+  pitch: number,
+  height: number,
+  radius: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const sketchHelix = rc.sketchHelix as
+    ((pitch: number, height: number, radius: number, center?: [number, number, number], dir?: [number, number, number], lefthand?: boolean) => SweepSketch) | undefined;
+  const draw = rc.draw as ((p?: [number, number]) => PlaneProfileDraw) | undefined;
+  if (typeof sketchHelix !== 'function' || typeof draw !== 'function'
+    || profile.length < 3 || !(radius > 0) || !(height > 0) || !(pitch > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], [0, 1, 0]);
+  const last = profile.length - 1;
+  const solid = spine.sweepSketch((plane) => {
+    let pp = draw([profile[0]!.x, profile[0]!.y]);
+    for (let i = 1; i < profile.length; i++) {
+      if (i === last
+        && Math.abs(profile[i]!.x - profile[0]!.x) < 1e-6
+        && Math.abs(profile[i]!.y - profile[0]!.y) < 1e-6) break;
+      pp = pp.lineTo([profile[i]!.x, profile[i]!.y]);
+    }
+    return pp.close().sketchOnPlane(plane);
+  }, { forceProfileSpineOthogonality: true });
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
  * Build a base PRIMITIVE as a real B-rep solid so the OCCT chain can start from
  * the base (not just from a sketch). Without this, a cylinder/sphere base has
  * no handle, so a downstream fillet falls back to its bounding BOX — wrong for

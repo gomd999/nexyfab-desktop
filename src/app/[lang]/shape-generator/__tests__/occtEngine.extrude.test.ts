@@ -22,6 +22,7 @@ import {
   occtRevolveProfile,
   occtLoftProfiles,
   occtSweepProfile,
+  occtSweepHelix,
   occtBaseSolid,
   occtFilletBox,
   getShape,
@@ -218,6 +219,23 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(Math.abs((oa.max.x - oa.min.x) - (ma.max.x - ma.min.x))).toBeLessThan(arcTol);
     expect(Math.abs((oa.max.z - oa.min.z) - (ma.max.z - ma.min.z))).toBeLessThan(arcTol);
     expect(Math.abs((oa.max.y - oa.min.y) - (ma.max.y - ma.min.y))).toBeLessThan(arcTol);
+  });
+
+  it('occtSweepHelix bbox spans match the mesh helix sweep', () => {
+    // Helix B-rep is the path occtSweepProfile can't reach (true 3D spine).
+    const box = new THREE.BoxGeometry(10, 10, 10); // hw=hh=5
+    const meshHelix = sweepFeature.apply(box, { pathType: 2, length: 100, arcAngle: 90, arcRadius: 60, helixPitch: 20, helixTurns: 3 }) as THREE.BufferGeometry;
+    const profile = [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }];
+    const helixR = 5 * 1.5 + 20; // matches sweep.ts: max(hw,hh)*1.5 + 20
+    resetShapeRegistry();
+    const occt = occtSweepHelix(profile, 20, 3 * 20, helixR);
+    expect(occt.handle).toBeTruthy();
+    const mb = bboxOf(meshHelix), ob = bboxOf(occt.geometry);
+    const span = (b: { min: THREE.Vector3; max: THREE.Vector3 }, ax: 'x' | 'y' | 'z') => b.max[ax] - b.min[ax];
+    const tol = 10.0; // Frenet (mesh) vs OCCT helix frames differ; compare spans
+    expect(Math.abs(span(ob, 'x') - span(mb, 'x'))).toBeLessThan(tol);
+    expect(Math.abs(span(ob, 'y') - span(mb, 'y'))).toBeLessThan(tol);
+    expect(Math.abs(span(ob, 'z') - span(mb, 'z'))).toBeLessThan(tol);
   });
 
   it('occtExtrudeCircle makes an exact cylinder of the analytic volume', () => {

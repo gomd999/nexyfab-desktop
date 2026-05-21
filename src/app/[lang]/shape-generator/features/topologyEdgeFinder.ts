@@ -167,7 +167,7 @@ export function inferLoopDirection(
  */
 export async function buildEdgeFinderForLoop(
   selections: EdgeSelectionInfo[],
-  opts: { positionTolerance?: number } = {},
+  opts: { positionTolerance?: number; currentBbox?: BBox3 } = {},
 ): Promise<ReplicadEdgeFinder | null> {
   const dir = inferLoopDirection(selections);
   if (!dir) return null;
@@ -176,10 +176,11 @@ export async function buildEdgeFinderForLoop(
   try {
     const f = new Ctor().inDirection(dir);
     // Anchor the direction filter with a single representative point
-    // so we don't match every parallel edge in the model — only those
-    // sharing the loop's plane region.
+    // (scale-aware: remapped through any dimension change) so we don't
+    // match every parallel edge — only those sharing the loop's region.
     const rep = selections[0]!;
-    return f.containsPoint(rep.position, opts.positionTolerance ?? 5.0) as unknown as ReplicadEdgeFinder;
+    const pt = remapPointThroughBbox(rep.position, rep.bbox, opts.currentBbox);
+    return f.containsPoint(pt, opts.positionTolerance ?? 5.0) as unknown as ReplicadEdgeFinder;
   } catch {
     return null;
   }
@@ -196,7 +197,7 @@ export async function buildEdgeFinderForLoop(
  */
 export async function buildEdgeFinderFromMultiSelection(
   selections: EdgeSelectionInfo[],
-  opts: { positionTolerance?: number; lengthTolerance?: number } = {},
+  opts: { positionTolerance?: number; lengthTolerance?: number; currentBbox?: BBox3 } = {},
 ): Promise<ReplicadEdgeFinder | null> {
   if (selections.length === 0) return null;
   if (selections.length === 1) {
@@ -211,8 +212,13 @@ export async function buildEdgeFinderFromMultiSelection(
   try {
     const finders: EdgeFinderBuilder[] = [];
     for (const sel of selections) {
-      let f = new Ctor().containsPoint(sel.position, posTol);
-      if (Number.isFinite(sel.length) && sel.length > 0) {
+      // Scale-aware: remap the click point + anchor with the edge direction
+      // (robust to movement) like the single-edge case.
+      const pt = remapPointThroughBbox(sel.position, sel.bbox, opts.currentBbox);
+      let f = new Ctor().containsPoint(pt, posTol);
+      if (sel.direction) {
+        f = f.inDirection(sel.direction);
+      } else if (Number.isFinite(sel.length) && sel.length > 0) {
         f = f.ofLength(sel.length, lenTol);
       }
       finders.push(f);
