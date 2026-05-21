@@ -28,6 +28,8 @@ import {
   occtEdgeSignatures,
   occtFaceSignatures,
   occtExtrudeProfileOnFrame,
+  occtExtrudeCircleOnFrame,
+  occtRevolveProfileOnFrame,
   occtShellBox,
   getShape,
 } from '../features/occtEngine';
@@ -437,6 +439,35 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const b = bboxOf(r.geometry);
     expect(Math.abs(b.min.z - 0)).toBeLessThan(0.5);   // extruded +Z from the plane
     expect(Math.abs(b.max.z - 10)).toBeLessThan(0.5);
+  });
+
+  it('occtExtrudeCircleOnFrame makes a cylinder boss on a face (along its normal)', () => {
+    resetShapeRegistry();
+    // Ø20 circle on a +Y-normal face, extruded 10 → cylinder grows along +Y.
+    // Volume π·10²·10 ≈ 3141.6; the axis is +Y so the Y span ≈ 10.
+    const r = occtExtrudeCircleOnFrame(10, 0, 0, 10, {
+      origin: [0, 0, 0], uAxis: [1, 0, 0], vAxis: [0, 0, -1], normal: [0, 1, 0],
+    });
+    expect(r.handle).toBeTruthy();
+    expect(meshVolume(r.geometry)).toBeGreaterThan(3000);
+    expect(meshVolume(r.geometry)).toBeLessThan(3300);
+    const b = bboxOf(r.geometry);
+    expect(Math.abs(b.min.y - 0)).toBeLessThan(0.5);
+    expect(Math.abs(b.max.y - 10)).toBeLessThan(0.5);
+  });
+
+  it('occtRevolveProfileOnFrame: identity frame matches the global Y-axis revolve', () => {
+    resetShapeRegistry();
+    // Same tube profile as the global revolve test: radius 10→20, height 0→30.
+    // On an identity frame (v-axis = Y) it must revolve to the same ~28274 mm³.
+    const profile = [{ x: 10, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 30 }, { x: 10, y: 30 }];
+    const r = occtRevolveProfileOnFrame(profile, {
+      origin: [0, 0, 0], uAxis: [1, 0, 0], vAxis: [0, 1, 0], normal: [0, 0, 1],
+    });
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(27000);
+    expect(vol).toBeLessThan(29500);
   });
 
   it('occtExtrudeProfileOnFrame extrudes along a +Y face normal (tilted frame)', () => {

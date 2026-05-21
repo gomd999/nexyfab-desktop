@@ -14,7 +14,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, getShape, registerShape } from './occtEngine';
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -450,8 +450,10 @@ function runSketchExtrude(
     const upstreamHandle = (geo.userData?.occtHandle as string | undefined) ?? null;
     const upstreamEmpty = !geo.attributes.position || (geo.attributes.position.count ?? 0) === 0;
     const faceFrameExtrude = !!faceFrame && config.mode === 'extrude';
+    const faceFrameRevolve = !!faceFrame && config.mode === 'revolve';
     if (
       (faceFrameExtrude
+        || faceFrameRevolve
         || (!faceFrame
           && (plane === 'xy' || plane == null)
           && (config.mode === 'extrude' || config.mode === 'revolve')))
@@ -467,8 +469,19 @@ function runSketchExtrude(
         const off = planeOffset ?? 0;
         let tool: { geometry: THREE.BufferGeometry; handle: string | null };
         if (faceFrameExtrude) {
+          if (segs.length === 1 && segs[0].type === 'circle') {
+            // Circular boss/hole on the face → exact cylinder along the normal.
+            const c = segs[0].points[0], rim = segs[0].points[1];
+            const rr = Math.hypot(rim.x - c.x, rim.y - c.y);
+            tool = occtExtrudeCircleOnFrame(rr, c.x, c.y, depth, faceFrame!);
+          } else {
+            const pts = brepContourPoints(profile);
+            tool = pts ? occtExtrudeProfileOnFrame(pts, depth, faceFrame!) : { geometry: geo, handle: null };
+          }
+        } else if (faceFrameRevolve) {
+          // Revolve the (u,v) contour 360° about the face's v-axis.
           const pts = brepContourPoints(profile);
-          tool = pts ? occtExtrudeProfileOnFrame(pts, depth, faceFrame!) : { geometry: geo, handle: null };
+          tool = pts ? occtRevolveProfileOnFrame(pts, faceFrame!) : { geometry: geo, handle: null };
         } else if (config.mode === 'revolve') {
           // B-rep revolve v1: full 360° about Y on x≥0 profiles only; anything
           // else → no handle, mesh (LatheGeometry) path stands.

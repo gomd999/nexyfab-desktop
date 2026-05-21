@@ -470,11 +470,90 @@ export function occtExtrudeProfileOnFrame(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+interface RevolvePenOnFrame {
+  lineTo: (p: [number, number]) => RevolvePenOnFrame;
+  close: () => { sketchOnPlane: (plane: unknown) => { revolve: (axis?: [number, number, number]) => MeshedShape } };
+}
+
+/**
+ * Revolve variant of the on-frame builders: a profile sketched on a selected
+ * face, revolved 360° about the face's v-axis (the sketch "vertical", matching
+ * the global revolve's Y-axis convention). For an identity frame this is
+ * identical to occtRevolveProfile. Profile must sit on the u≥0 side of the axis.
+ */
+export function occtRevolveProfileOnFrame(
+  points: { x: number; y: number }[],
+  frame: SketchFaceFrame,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => RevolvePenOnFrame) | undefined;
+  const PlaneCtor = rc.Plane as (new (origin: [number, number, number], xDir: [number, number, number], normal: [number, number, number]) => unknown) | undefined;
+  if (typeof draw !== 'function' || typeof PlaneCtor !== 'function' || points.length < 3) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  const plane = new PlaneCtor(frame.origin, frame.uAxis, frame.normal);
+  const solid = pen.close().sketchOnPlane(plane).revolve(frame.vAxis);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 interface ExtrudedSolid extends MeshedShape {
   translate: (v: [number, number, number]) => ExtrudedSolid;
 }
 interface CircleDraw {
   sketchOnPlane: (plane: string, origin?: number) => { extrude: (dist: number) => ExtrudedSolid };
+}
+interface CircleDrawOnFrame {
+  sketchOnPlane: (plane: unknown) => { extrude: (dist: number) => ExtrudedSolid };
+}
+
+/**
+ * Circle variant of occtExtrudeProfileOnFrame: a circular boss/hole sketched on
+ * a selected face. The circle (face-coords cx,cy radius r) is sketched on the
+ * face plane and extruded along the normal into an EXACT cylinder (smooth side,
+ * not a faceted polygon). The (cx,cy) offset is applied along the frame's u/v
+ * axes. Same handle/registry contract.
+ */
+export function occtExtrudeCircleOnFrame(
+  radius: number,
+  cx: number,
+  cy: number,
+  depth: number,
+  frame: SketchFaceFrame,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const drawCircle = rc.drawCircle as ((r: number) => CircleDrawOnFrame) | undefined;
+  const PlaneCtor = rc.Plane as (new (origin: [number, number, number], xDir: [number, number, number], normal: [number, number, number]) => unknown) | undefined;
+  if (typeof drawCircle !== 'function' || typeof PlaneCtor !== 'function' || !(radius > 0) || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const plane = new PlaneCtor(frame.origin, frame.uAxis, frame.normal);
+  let solid = drawCircle(radius).sketchOnPlane(plane).extrude(depth);
+  if (cx !== 0 || cy !== 0) {
+    // Offset the centre along the face's in-plane axes (u·cx + v·cy).
+    const wx = cx * frame.uAxis[0] + cy * frame.vAxis[0];
+    const wy = cx * frame.uAxis[1] + cy * frame.vAxis[1];
+    const wz = cx * frame.uAxis[2] + cy * frame.vAxis[2];
+    solid = solid.translate([wx, wy, wz]);
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
 /**
