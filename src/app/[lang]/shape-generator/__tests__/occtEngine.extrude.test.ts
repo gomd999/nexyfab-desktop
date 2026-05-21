@@ -20,6 +20,7 @@ import {
   occtExtrudeCircle,
   occtExtrudeWithHoles,
   occtRevolveProfile,
+  occtBaseSolid,
   occtFilletBox,
   getShape,
 } from '../features/occtEngine';
@@ -144,6 +145,36 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
       { type: 'circle', points: [{ x: 0, y: 0 }, { x: 5, y: 0 }] },
     ] };
     expect(brepContourPoints(withHole)).toBeNull();
+  });
+
+  it('occtBaseSolid builds cylinder/sphere B-rep bases (so the chain can start from the base)', () => {
+    resetShapeRegistry();
+    // Cylinder Ø40 × h50 → π·20²·50 ≈ 62832 mm³.
+    const cyl = occtBaseSolid('cylinder', { diameter: 40, height: 50 });
+    expect(cyl.handle).toBeTruthy();
+    expect(meshVolume(cyl.geometry)).toBeGreaterThan(61000);
+    expect(meshVolume(cyl.geometry)).toBeLessThan(64500);
+    // Sphere Ø30 → 4/3·π·15³ ≈ 14137 mm³.
+    const sph = occtBaseSolid('sphere', { diameter: 30 });
+    expect(sph.handle).toBeTruthy();
+    expect(meshVolume(sph.geometry)).toBeGreaterThan(13000);
+    expect(meshVolume(sph.geometry)).toBeLessThan(15200);
+    // Box is intentionally unsupported (bbox fallback already correct).
+    expect(occtBaseSolid('box', { width: 20, height: 20, depth: 20 }).handle).toBeNull();
+  });
+
+  it('a cylinder base handle chains into occtFilletBox (rounds the real cylinder, not its bbox)', () => {
+    resetShapeRegistry();
+    const cyl = occtBaseSolid('cylinder', { diameter: 40, height: 50 });
+    expect(cyl.handle).toBeTruthy();
+    // Chained fillet on the real cylinder solid; bbox arg is ignored on the
+    // chained path. Result stays near the cylinder volume (62832), proving it
+    // rounded the cylinder — NOT the 40×50×40 = 80000 bounding box.
+    const filleted = occtFilletBox({ w: 40, h: 50, d: 40, cx: 0, cy: 0, cz: 0 }, 3, {}, cyl.handle);
+    expect(filleted.handle).toBeTruthy();
+    const v = meshVolume(filleted.geometry);
+    expect(v).toBeGreaterThan(55000);
+    expect(v).toBeLessThan(63000);   // ~cylinder, decisively below 80000 bbox
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

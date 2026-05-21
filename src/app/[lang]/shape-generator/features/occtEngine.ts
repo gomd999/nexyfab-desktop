@@ -536,6 +536,45 @@ export function occtExtrudeWithHoles(
 }
 
 /**
+ * Build a base PRIMITIVE as a real B-rep solid so the OCCT chain can start from
+ * the base (not just from a sketch). Without this, a cylinder/sphere base has
+ * no handle, so a downstream fillet falls back to its bounding BOX — wrong for
+ * non-box shapes. Box is intentionally omitted: its bbox equals the shape, so
+ * the mesh-bbox fallback already gives the correct fillet.
+ *
+ * Conventions match the THREE primitives: cylinder is +Y, centered at origin;
+ * sphere centered at origin. Returns a null handle for unsupported shapes.
+ */
+export function occtBaseSolid(
+  shapeId: string,
+  params: Record<string, number>,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+  let solid: MeshedShape | null = null;
+  if (shapeId === 'cylinder') {
+    const r = num(params.diameter ?? params.outerDiameter, 30) / 2;
+    const h = num(params.height ?? params.length, 50);
+    if (r > 0 && h > 0) {
+      // makeCylinder(radius, height, baseLocation, axisDir) → +Y, centered.
+      solid = (rc.makeCylinder as ReplicadLike['makeCylinder'])(r, h, [0, -h / 2, 0], [0, 1, 0]) as MeshedShape;
+    }
+  } else if (shapeId === 'sphere') {
+    const r = num(params.diameter, 30) / 2;
+    if (r > 0) solid = (rc.makeSphere as ReplicadLike['makeSphere'])(r) as MeshedShape;
+  }
+  if (!solid || typeof solid.mesh !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
  * Round every edge of a box primitive with `radius`. Phase 2c scope —
  * chained inputs fall back to the legacy mesh-based approximator because
  * we don't yet plumb B-rep through the pipeline.
