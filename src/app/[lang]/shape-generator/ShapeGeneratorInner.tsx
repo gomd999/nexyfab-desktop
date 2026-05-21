@@ -1830,10 +1830,20 @@ export function ShapeGeneratorInner() {
         addToast('error', (typeof body.error === 'string' && body.error) || 'AI 생성에 실패했어요.');
         return;
       }
-      const body = await resp.json() as { scad?: string; summary?: string };
+      const body = await resp.json() as { scad?: string; summary?: string; usage?: { used: number; limit: number; remaining: number } };
       if (!body.scad) { addToast('error', 'AI 응답에 모델이 없어요.'); return; }
       await handleApplyAgentScad(body.scad);
       if (body.summary) addToast('info', body.summary);
+      // Soft-cap nudge: a gentle reminder as the generous free monthly
+      // allowance runs low — never blocks generation (the hard cap's 429
+      // upgrade prompt only fires once it's fully spent, well past the aha).
+      const u = body.usage;
+      if (u && u.limit > 0 && u.remaining <= 5) {
+        const ko = lang === 'ko';
+        addToast('info', u.remaining > 0
+          ? (ko ? `이번 달 무료 AI 생성 ${u.remaining}회 남았어요 · 무제한은 Pro` : `${u.remaining} free AI generations left this month · upgrade for unlimited`)
+          : (ko ? '이번 달 무료 AI 생성을 다 썼어요 · 무제한은 Pro' : 'Free AI generations used up this month · upgrade for unlimited'));
+      }
     } catch (e) {
       addToast('error', `AI 생성 실패: ${(e as Error).message}`);
     }
