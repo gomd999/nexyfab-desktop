@@ -1006,6 +1006,39 @@ export function occtCircularPattern(
 }
 
 /**
+ * Rib as a real B-rep: a thin box (length × height × thickness) posed along the
+ * sketch line and fused onto the host solid, so the rib merges into the body
+ * (chainable, clean STEP) instead of a mesh-CSG approximation. Mirrors the rib
+ * mesh's pose: box centred, rotated −angleY about Y, translated to the line
+ * mid-point at the right height. Null handle if the host can't be fused.
+ */
+export function occtRib(
+  handle: string | null | undefined,
+  p: { startX: number; startZ: number; endX: number; endZ: number; thickness: number; height: number; direction: number },
+  bbMinY: number,
+  bbMaxY: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const host = getShape(handle) as TransformableSolid | null;
+  if (!host || typeof host.fuse !== 'function') return { geometry: new BufferGeometry(), handle: null };
+  const dx = p.endX - p.startX, dz = p.endZ - p.startZ;
+  const len = Math.hypot(dx, dz);
+  const thickness = Math.max(0.1, p.thickness), height = Math.max(0.5, p.height);
+  if (len < 0.5) return { geometry: new BufferGeometry(), handle: null };
+  const angleY = Math.atan2(dz, dx);
+  const midX = (p.startX + p.endX) / 2, midZ = (p.startZ + p.endZ) / 2;
+  const baseY = p.direction === 0 ? bbMinY : bbMaxY - height;
+  const ribCenterY = baseY + height / 2;
+  // makeBaseBox is centred in X/Y, z∈[0,thickness]; shift −thickness/2 to centre.
+  let box = ((rc.makeBaseBox as ReplicadLike['makeBaseBox'])(len, height, thickness) as unknown as TransformableSolid)
+    .translate([0, 0, -thickness / 2]);
+  if (Math.abs(angleY) > 1e-9) box = box.rotate(-angleY * 180 / Math.PI, [0, 0, 0], [0, 1, 0]);
+  box = box.translate([midX, ribCenterY, midZ]);
+  return meshAndRegister(host.fuse(box) as MeshedShape, tessellation);
+}
+
+/**
  * Mirror as a real B-rep: fuse the host solid with its reflection across a
  * principal plane (0=YZ flip X, 1=XZ flip Y, 2=XY flip Z, through the origin).
  */

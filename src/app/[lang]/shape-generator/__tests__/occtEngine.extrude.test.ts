@@ -34,6 +34,7 @@ import {
   occtLinearPattern,
   occtCircularPattern,
   occtMirror,
+  occtRib,
   occtBoxBooleanWithPrimitive,
   exportOcctStep,
   getShape,
@@ -668,6 +669,21 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const pv = meshVolume(pulley.geometry);
     expect(pv).toBeGreaterThan(120000); // annular rim minus the V-groove
     expect(pv).toBeLessThan(240000);
+  });
+
+  it('occtRib fuses a rib onto the host (adds material, grows in +Y)', () => {
+    resetShapeRegistry();
+    // Thin disk floor (y ∈ [−4,4]); a rib runs along X at z=0, growing up.
+    const disk = occtBaseSolid('disk', { diameter: 80, thickness: 8 });
+    expect(disk.handle).toBeTruthy();
+    const diskVol = meshVolume(disk.geometry);
+    const r = occtRib(disk.handle, { startX: -30, startZ: 0, endX: 30, endZ: 0, thickness: 4, height: 20, direction: 0 }, -4, 4);
+    expect(r.handle).toBeTruthy();
+    const ribVol = meshVolume(r.geometry);
+    expect(ribVol).toBeGreaterThan(diskVol + 1000); // rib added real material
+    r.geometry.computeBoundingBox();
+    // baseY=−4, height 20 → rib top at +16; the body now reaches up to ~16.
+    expect(r.geometry.boundingBox!.max.y).toBeGreaterThan(14);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
