@@ -41,5 +41,10 @@ describe('shapeDict i18n completeness', () => {
     expect(es.featureName_bend).toBe('Pliegue');
     expect(ar.helixLeft).toBe('يسار');
     expect(ja.paramThreadDepth).toBe('ねじ深さ'); // param* batch applied
+    // batch B (advanced panels) really translated, not English fallback
+    expect(ja.mesh_repair).toBe('メッシュ修復');
+    expect(cn.library_hexBolt).toBe('六角螺栓');
+    expect(es.gdtTolerance).toBe('Tolerancia');
+    expect(ar.tutorialNext).toBe('التالي');
   });
 });
