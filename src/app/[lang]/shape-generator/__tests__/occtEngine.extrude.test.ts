@@ -31,6 +31,9 @@ import {
   occtExtrudeCircleOnFrame,
   occtRevolveProfileOnFrame,
   occtShellBox,
+  occtLinearPattern,
+  occtCircularPattern,
+  occtMirror,
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
@@ -502,6 +505,39 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(shelled.geometry);
     expect(vol).toBeLessThan(8000);    // hollowed out (less than the solid cube)
     expect(vol).toBeGreaterThan(1000); // …but a real 2 mm shell remains
+  });
+
+  it('occtLinearPattern fuses N translated copies into one B-rep solid', () => {
+    resetShapeRegistry();
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    // 3 disjoint 20-cubes (8000 each) spaced 60 along X → 24000 mm³, one handle.
+    const r = occtLinearPattern(box.handle, 0, 3, 60);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(23000);
+    expect(vol).toBeLessThan(25000);
+  });
+
+  it('occtCircularPattern fuses copies rotated about an axis', () => {
+    resetShapeRegistry();
+    // Cube offset from the Y axis (x ∈ [50,70]) so the 4 copies stay disjoint.
+    const box = occtExtrudeProfile([{ x: 50, y: 0 }, { x: 70, y: 0 }, { x: 70, y: 20 }, { x: 50, y: 20 }], 20);
+    const r = occtCircularPattern(box.handle, 1, 4, 360); // 4 about +Y, 90° apart
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(30000);  // ~4 × 8000
+    expect(vol).toBeLessThan(34000);
+  });
+
+  it('occtMirror fuses a solid with its reflection', () => {
+    resetShapeRegistry();
+    const box = occtExtrudeProfile([{ x: 5, y: 0 }, { x: 25, y: 0 }, { x: 25, y: 20 }, { x: 5, y: 20 }], 20);
+    // Box at x ∈ [5,25] mirrored across YZ → copy at x ∈ [−25,−5], disjoint → 16000.
+    const r = occtMirror(box.handle, 0);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(15000);
+    expect(vol).toBeLessThan(17000);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

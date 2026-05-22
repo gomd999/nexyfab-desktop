@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
+import { isOcctReady, isOcctGlobalMode, occtCircularPattern } from './occtEngine';
 
 export const circularPatternFeature: FeatureDefinition = {
   type: 'circularPattern',
@@ -38,5 +39,19 @@ export const circularPatternFeature: FeatureDefinition = {
     const merged = mergeGeometries(copies);
     if (!merged) throw new Error('Circular pattern merge failed');
     return merged;
+  },
+  async applyAsync(geometry, params) {
+    if (isOcctReady() && isOcctGlobalMode()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          const r = occtCircularPattern(handle, Math.round(params.axis), Math.round(params.count), Math.max(1, params.totalAngle));
+          if (r.handle) { r.geometry.userData.occtHandle = r.handle; return r.geometry; }
+        } catch (err) {
+          console.warn('[circularPattern] OCCT path failed, falling back to mesh:', err);
+        }
+      }
+    }
+    return circularPatternFeature.apply(geometry, params);
   },
 };

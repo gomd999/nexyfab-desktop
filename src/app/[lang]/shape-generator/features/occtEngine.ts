@@ -912,6 +912,100 @@ export function occtFaceSignatures(handle: string | null | undefined): FaceSig[]
   return sigs;
 }
 
+interface TransformableSolid extends MeshedShape {
+  clone: () => TransformableSolid;
+  translate: (v: [number, number, number]) => TransformableSolid;
+  rotate: (deg: number, center: [number, number, number], dir: [number, number, number]) => TransformableSolid;
+  mirror: (plane: string, origin?: [number, number, number]) => TransformableSolid;
+  fuse: (other: unknown) => TransformableSolid;
+}
+
+function meshAndRegister(
+  solid: MeshedShape,
+  tessellation: { tolerance?: number; angularTolerance?: number },
+): OcctExtrudeResult {
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
+ * Linear pattern as a real B-rep: fuse `count` translated copies of the host
+ * solid (handle) along axis 0/1/2 by `spacing`. Unlike the mesh pattern (which
+ * just merges disjoint geometries and loses the handle) this yields one solid
+ * that chains into fillet/chamfer. Null handle if the host can't be cloned.
+ */
+export function occtLinearPattern(
+  handle: string | null | undefined,
+  axis: number,
+  count: number,
+  spacing: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const base = getShape(handle) as TransformableSolid | null;
+  if (!base || typeof base.fuse !== 'function' || typeof base.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let acc: TransformableSolid | null = null;
+  for (let i = 0; i < Math.max(1, count); i++) {
+    const off: [number, number, number] = [0, 0, 0];
+    off[axis] = i * spacing;
+    const copy = base.clone().translate(off);
+    acc = acc ? acc.fuse(copy) : copy;
+  }
+  if (!acc) return { geometry: new BufferGeometry(), handle: null };
+  return meshAndRegister(acc, tessellation);
+}
+
+/**
+ * Circular pattern as a real B-rep: fuse `count` copies rotated about the given
+ * axis (0=X,1=Y,2=Z, through the origin) spread over `totalAngleDeg`. Same
+ * handle-preserving contract as occtLinearPattern.
+ */
+export function occtCircularPattern(
+  handle: string | null | undefined,
+  axis: number,
+  count: number,
+  totalAngleDeg: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const base = getShape(handle) as TransformableSolid | null;
+  if (!base || typeof base.fuse !== 'function' || typeof base.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const n = Math.max(2, count);
+  const stepDeg = totalAngleDeg / n;
+  const dir: [number, number, number] = axis === 0 ? [1, 0, 0] : axis === 1 ? [0, 1, 0] : [0, 0, 1];
+  let acc: TransformableSolid | null = null;
+  for (let i = 0; i < n; i++) {
+    const copy = base.clone().rotate(i * stepDeg, [0, 0, 0], dir);
+    acc = acc ? acc.fuse(copy) : copy;
+  }
+  if (!acc) return { geometry: new BufferGeometry(), handle: null };
+  return meshAndRegister(acc, tessellation);
+}
+
+/**
+ * Mirror as a real B-rep: fuse the host solid with its reflection across a
+ * principal plane (0=YZ flip X, 1=XZ flip Y, 2=XY flip Z, through the origin).
+ */
+export function occtMirror(
+  handle: string | null | undefined,
+  plane: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const base = getShape(handle) as TransformableSolid | null;
+  if (!base || typeof base.fuse !== 'function' || typeof base.mirror !== 'function' || typeof base.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const planeName = plane === 0 ? 'YZ' : plane === 1 ? 'XZ' : 'XY';
+  const mirrored = base.clone().mirror(planeName, [0, 0, 0]);
+  const fused = base.clone().fuse(mirrored);
+  return meshAndRegister(fused, tessellation);
+}
+
 /**
  * Build a base PRIMITIVE as a real B-rep solid so the OCCT chain can start from
  * the base (not just from a sketch). Without this, a cylinder/sphere base has
