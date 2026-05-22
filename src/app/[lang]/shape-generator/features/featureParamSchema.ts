@@ -81,6 +81,27 @@ export function isSchemaKnownFeature(type: string): boolean {
 }
 
 /**
+ * Every feature type the modeler can actually build (mirrors the FeatureType
+ * union: FEATURE_MAP keys + the pipeline-handled sketch types). An AI response
+ * referencing a type outside this set can't be built, so the sanitizer drops it
+ * rather than handing the pipeline a no-op. featureParamSchema.test's drift
+ * guard fails if a real FEATURE_MAP feature is missing here.
+ */
+export const KNOWN_FEATURE_TYPES: ReadonlySet<string> = new Set([
+  'fillet', 'chamfer', 'shell', 'hole', 'linearPattern', 'circularPattern',
+  'mirror', 'boolean', 'draft', 'scale', 'moveCopy', 'splitBody', 'bend',
+  'flange', 'hem', 'jog', 'flatPattern', 'variableFillet', 'boundarySurface',
+  'revolve', 'sweep', 'loft', 'thread', 'moldTools', 'weldment', 'nurbsSurface',
+  'helix', 'variableShell', 'rib',
+  // sketch types are materialised in the pipeline, not via FEATURE_MAP
+  'sketch', 'sketchExtrude',
+]);
+
+export function isBuildableFeatureType(type: string): boolean {
+  return KNOWN_FEATURE_TYPES.has(type);
+}
+
+/**
  * Clamp an AI-supplied param block for a known feature type to its schema:
  * every schema key is filled (clamped value if supplied, else default), and
  * params not in the schema are dropped. Returns null for unknown feature types

@@ -13,7 +13,7 @@
  *   count         : 1     .. 1000    (pattern instances etc.)
  */
 
-import { clampFeatureParams } from '@/app/[lang]/shape-generator/features/featureParamSchema';
+import { clampFeatureParams, isBuildableFeatureType } from '@/app/[lang]/shape-generator/features/featureParamSchema';
 
 const MAX_DIM_MM = 10_000;
 const MIN_DIM_MM = 0.01;
@@ -67,6 +67,9 @@ function sanitizeFeatures(features: unknown[]): unknown[] {
     .filter((f: unknown): f is Record<string, unknown> =>
       Boolean(f && typeof f === 'object' && typeof (f as Record<string, unknown>).type === 'string'),
     )
+    // Drop feature types the modeler can't build (AI hallucinations) so the
+    // pipeline never gets a no-op or unknown op.
+    .filter((f: Record<string, unknown>) => isBuildableFeatureType(f.type as string))
     .slice(0, 50)
     .map((f: Record<string, unknown>) => {
       const type = f.type as string;

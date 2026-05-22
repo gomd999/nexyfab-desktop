@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { clampFeatureParams, isSchemaKnownFeature, FEATURE_PARAM_RANGES } from '../featureParamSchema';
-import { getFeatureDefinition } from '../index';
+import { clampFeatureParams, isSchemaKnownFeature, isBuildableFeatureType, FEATURE_PARAM_RANGES } from '../featureParamSchema';
+import { getFeatureDefinition, FEATURE_MAP } from '../index';
 
 describe('featureParamSchema — clamp AI feature params to the real ranges', () => {
   it('clamps an out-of-range fillet radius down to the schema max', () => {
@@ -31,6 +31,20 @@ describe('featureParamSchema — clamp AI feature params to the real ranges', ()
     expect(clampFeatureParams('weldment', { x: 1 })).toBeNull();
     expect(isSchemaKnownFeature('fillet')).toBe(true);
     expect(isSchemaKnownFeature('weldment')).toBe(false);
+  });
+
+  it('recognises buildable feature types and rejects hallucinated ones', () => {
+    expect(isBuildableFeatureType('fillet')).toBe(true);
+    expect(isBuildableFeatureType('sweep')).toBe(true);
+    expect(isBuildableFeatureType('sketchExtrude')).toBe(true);
+    expect(isBuildableFeatureType('teleport')).toBe(false);
+    expect(isBuildableFeatureType('')).toBe(false);
+  });
+
+  it('KNOWN_FEATURE_TYPES covers every buildable FEATURE_MAP feature', () => {
+    for (const type of Object.keys(FEATURE_MAP)) {
+      expect(isBuildableFeatureType(type), `FEATURE_MAP.${type} must be AI-allowed`).toBe(true);
+    }
   });
 
   // Drift guard: the pure runtime ranges must mirror the real FeatureDefinition
