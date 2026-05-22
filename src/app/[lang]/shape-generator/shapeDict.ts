@@ -3455,4 +3455,73 @@ export const shapeDict = {
   },
 };
 
+// Supplemental translations for keys that were ko+en only. Kept in one compact,
+// reviewable place rather than edited into the giant language blocks above; the
+// backfill below applies these first, then falls back to English for anything
+// still missing. Grow this object to localise more keys.
+const i18nSupplement: Partial<Record<keyof typeof shapeDict, Record<string, string>>> = {
+  ja: {
+    paramRibStartX: '開始 X', paramRibStartZ: '開始 Z', paramRibEndX: '終了 X', paramRibEndZ: '終了 Z',
+    paramRibThickness: 'リブ厚さ', paramRibHeight: 'リブ高さ', paramRibDirection: '方向',
+    ribFromBottom: '底面から上へ', ribFromTop: '上面から下へ',
+    featureName_bend: '曲げ', featureName_flange: 'フランジ', featureName_hem: 'ヘム', featureName_jog: 'ジョグ',
+    featureName_flatPattern: '展開図', featureName_variableFillet: '可変フィレット', featureName_boundarySurface: '境界サーフェス',
+    featureOpt_hemClosed: '閉じ', featureOpt_hemOpen: '開き', featureOpt_hemTeardrop: 'ティアドロップ',
+    featureOpt_edgePlusX: '+X エッジ', featureOpt_edgeMinusX: '-X エッジ', featureOpt_edgePlusZ: '+Z エッジ', featureOpt_edgeMinusZ: '-Z エッジ',
+    helixLeft: '左ねじ', helixRight: '右ねじ',
+  },
+  cn: {
+    paramRibStartX: '起点 X', paramRibStartZ: '起点 Z', paramRibEndX: '终点 X', paramRibEndZ: '终点 Z',
+    paramRibThickness: '筋板厚度', paramRibHeight: '筋板高度', paramRibDirection: '方向',
+    ribFromBottom: '从底部向上', ribFromTop: '从顶部向下',
+    featureName_bend: '折弯', featureName_flange: '法兰', featureName_hem: '卷边', featureName_jog: '阶梯弯',
+    featureName_flatPattern: '展开图', featureName_variableFillet: '变半径圆角', featureName_boundarySurface: '边界曲面',
+    featureOpt_hemClosed: '闭合', featureOpt_hemOpen: '开放', featureOpt_hemTeardrop: '泪滴形',
+    featureOpt_edgePlusX: '+X 边', featureOpt_edgeMinusX: '-X 边', featureOpt_edgePlusZ: '+Z 边', featureOpt_edgeMinusZ: '-Z 边',
+    helixLeft: '左旋', helixRight: '右旋',
+  },
+  es: {
+    paramRibStartX: 'Inicio X', paramRibStartZ: 'Inicio Z', paramRibEndX: 'Fin X', paramRibEndZ: 'Fin Z',
+    paramRibThickness: 'Espesor de nervadura', paramRibHeight: 'Altura de nervadura', paramRibDirection: 'Dirección',
+    ribFromBottom: 'Desde abajo hacia arriba', ribFromTop: 'Desde arriba hacia abajo',
+    featureName_bend: 'Pliegue', featureName_flange: 'Brida', featureName_hem: 'Dobladillo', featureName_jog: 'Recodo',
+    featureName_flatPattern: 'Patrón plano', featureName_variableFillet: 'Redondeo variable', featureName_boundarySurface: 'Superficie límite',
+    featureOpt_hemClosed: 'Cerrado', featureOpt_hemOpen: 'Abierto', featureOpt_hemTeardrop: 'Lágrima',
+    featureOpt_edgePlusX: 'Borde +X', featureOpt_edgeMinusX: 'Borde -X', featureOpt_edgePlusZ: 'Borde +Z', featureOpt_edgeMinusZ: 'Borde -Z',
+    helixLeft: 'Izquierda', helixRight: 'Derecha',
+  },
+  ar: {
+    paramRibStartX: 'بداية X', paramRibStartZ: 'بداية Z', paramRibEndX: 'نهاية X', paramRibEndZ: 'نهاية Z',
+    paramRibThickness: 'سُمك الضلع', paramRibHeight: 'ارتفاع الضلع', paramRibDirection: 'الاتجاه',
+    ribFromBottom: 'من الأسفل إلى الأعلى', ribFromTop: 'من الأعلى إلى الأسفل',
+    featureName_bend: 'ثني', featureName_flange: 'شفة', featureName_hem: 'حاشية', featureName_jog: 'إزاحة',
+    featureName_flatPattern: 'نمط مسطح', featureName_variableFillet: 'تدوير متغير', featureName_boundarySurface: 'سطح حدّي',
+    featureOpt_hemClosed: 'مغلق', featureOpt_hemOpen: 'مفتوح', featureOpt_hemTeardrop: 'دمعة',
+    featureOpt_edgePlusX: 'حافة +X', featureOpt_edgeMinusX: 'حافة -X', featureOpt_edgePlusZ: 'حافة +Z', featureOpt_edgeMinusZ: 'حافة -Z',
+    helixLeft: 'يسار', helixRight: 'يمين',
+  },
+};
+
+// i18n safety net: apply supplemental translations, then backfill any key still
+// missing from a language block with the English value (falling back to Korean)
+// so a partially-translated key renders real text instead of `undefined`. Real
+// translations in the blocks above and the supplement always win. Once at load.
+(() => {
+  const en = shapeDict.en as unknown as Record<string, string>;
+  const ko = shapeDict.ko as unknown as Record<string, string>;
+  const keys = new Set<string>([...Object.keys(ko), ...Object.keys(en)]);
+  for (const lang of Object.keys(shapeDict) as (keyof typeof shapeDict)[]) {
+    const block = shapeDict[lang] as unknown as Record<string, string>;
+    const sup = i18nSupplement[lang];
+    if (sup) {
+      for (const [k, v] of Object.entries(sup)) {
+        if (block[k] === undefined) block[k] = v;
+      }
+    }
+    for (const k of keys) {
+      if (block[k] === undefined) block[k] = en[k] ?? ko[k];
+    }
+  }
+})();
+
 export type ShapeDictLang = keyof typeof shapeDict;
