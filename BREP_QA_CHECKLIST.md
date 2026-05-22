@@ -19,7 +19,9 @@
 | 5b | sketch-on-face 원 | 6af709a | 면에 원 스케치 → 실린더 보스/홀 | ⬜ | |
 | 5c | sketch-on-face 회전 | 6af709a | 면에 프로파일 → 회전체 | ⬜ | |
 | 6 | shell 면 제거 | 2f93e91, fa8ab3a | 면 1개 클릭 → Shell → **그 면이 열림**(top/bottom 고정 아님) | ⬜ | |
-| 7 | 회귀(OCCT OFF) | — | 기존 mesh 동작 그대로, loft/sweep 무변경, 깨짐 없음 | ⬜ | |
+| 7 | 선형/원형 패턴 B-rep | 5d6fcac | linear/circular pattern 후에도 fillet 등 B-rep 체인 유지(핸들 보존) | ⬜ | |
+| 8 | 미러 B-rep | 5d6fcac | mirror 후에도 B-rep 체인 유지 | ⬜ | |
+| 9 | 회귀(OCCT OFF) | — | 기존 mesh 동작 그대로, loft/sweep/pattern/mirror 무변경, 깨짐 없음 | ⬜ | |
 
 ## 알려진 비차단 이슈
 - `meshTopology.test.ts` 2건 사전 존재 실패(box manifold 분석) — 내 세션 작업과 무관, 빌드/런타임 영향 없음.
