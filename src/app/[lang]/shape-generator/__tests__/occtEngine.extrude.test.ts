@@ -34,6 +34,7 @@ import {
   occtLinearPattern,
   occtCircularPattern,
   occtMirror,
+  exportOcctStep,
   getShape,
 } from '../features/occtEngine';
 import { brepContourPoints } from '../sketch/extrudeProfile';
@@ -538,6 +539,22 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const vol = meshVolume(r.geometry);
     expect(vol).toBeGreaterThan(15000);
     expect(vol).toBeLessThan(17000);
+  });
+
+  it('exportOcctStep emits a TRUE B-rep STEP from a handle (not a tessellation)', async () => {
+    resetShapeRegistry();
+    // A linear-pattern solid (one of this session's new B-rep handles).
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    const pat = occtLinearPattern(box.handle, 0, 2, 60);
+    expect(pat.handle).toBeTruthy();
+    const step = await exportOcctStep(pat.handle);
+    expect(step).toBeTruthy();
+    expect(step!.length).toBeGreaterThan(500);
+    // ISO-10303 (STEP) header + parametric B-rep solid entities — NOT the
+    // faceted TRIANGULATED_FACE form that breaks in external CAD viewers.
+    expect(step).toContain('ISO-10303');
+    expect(step).toMatch(/MANIFOLD_SOLID_BREP|ADVANCED_BREP_SHAPE_REPRESENTATION|CLOSED_SHELL/);
+    expect(step).not.toContain('TRIANGULATED_FACE');
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
