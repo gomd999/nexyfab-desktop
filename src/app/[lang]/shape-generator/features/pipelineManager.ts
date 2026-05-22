@@ -304,8 +304,12 @@ async function runLoopAsync(
   try {
     const finalHandle = geo.userData?.occtHandle as string | undefined;
     if (finalHandle && isOcctReady()) {
-      const ids = pipelineNamer.update(occtEdgeSignatures(finalHandle));
-      geo.userData = { ...geo.userData, topoEdgeIds: ids };
+      const sigs = occtEdgeSignatures(finalHandle);
+      const ids = pipelineNamer.update(sigs);
+      // topoEdgeSignatures pairs each edge's stable id with its signature so the
+      // selection layer (main thread) can tag a click with a rebuild-stable id.
+      const tagged = sigs.map((sig, i) => ({ ...sig, id: ids[i]! }));
+      geo.userData = { ...geo.userData, topoEdgeIds: ids, topoEdgeSignatures: tagged };
     }
   } catch { /* topology naming is best-effort */ }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TopologyNamer, reconcileEdges, type NamedEdge } from '../features/topologyRegistry';
+import { TopologyNamer, reconcileEdges, findStableEdgeId, type NamedEdge, type TaggedEdgeSig } from '../features/topologyRegistry';
 import type { EdgeSig } from '../features/edgeCorrespondence';
 
 // A small helper to make a vertical (±Z) edge signature at (x,y).
@@ -47,6 +47,36 @@ describe('topologyRegistry — persistent edge naming across rebuilds', () => {
     expect(ids1).toEqual(ids0.slice(0, 2)); // survivors keep ids
     expect(namer.indexOf(removedId)).toBe(-1); // retired id no longer present
     expect(namer.indexOf(ids0[0]!)).toBe(0);   // a survivor still resolves
+  });
+
+  describe('findStableEdgeId — tag a click with its stable edge id', () => {
+    const tagged: TaggedEdgeSig[] = [
+      { id: 'eA', mid: [10, 10, 0], dir: [0, 0, 1], length: 20 },  // +X,+Y vertical edge
+      { id: 'eB', mid: [-10, 10, 0], dir: [0, 0, 1], length: 20 }, // -X,+Y vertical edge
+      { id: 'eC', mid: [0, 10, 10], dir: [1, 0, 0], length: 20 },  // a horizontal edge
+    ];
+
+    it('returns the id of the parallel edge the click point lies on', () => {
+      // Click partway up the +X,+Y vertical edge.
+      expect(findStableEdgeId(tagged, [10, 10, 7], [0, 0, 1])).toBe('eA');
+      // Click on the other vertical edge.
+      expect(findStableEdgeId(tagged, [-10, 10, -5], [0, 0, 1])).toBe('eB');
+    });
+
+    it('ignores parallel edges the click is far from', () => {
+      // Parallel to the verticals but nowhere near either → null.
+      expect(findStableEdgeId(tagged, [50, 50, 0], [0, 0, 1])).toBeNull();
+    });
+
+    it('respects edge direction (no perpendicular match)', () => {
+      // Click at the +X,+Y vertical edge location but with a horizontal pick dir
+      // → the verticals are filtered out; the horizontal edge eC is far → null.
+      expect(findStableEdgeId(tagged, [10, 10, 7], [1, 0, 0])).toBeNull();
+    });
+
+    it('returns null when there are no tagged signatures', () => {
+      expect(findStableEdgeId([], [0, 0, 0], [0, 0, 1])).toBeNull();
+    });
   });
 
   it('reconcileEdges is a pure 1:1 carry-forward (no double-claim)', () => {

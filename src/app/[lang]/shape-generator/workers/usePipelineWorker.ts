@@ -98,6 +98,11 @@ export function usePipelineWorker() {
 
         if (data.type === 'PIPELINE_RESULT' && data.positions) {
           const geo = deserializeGeometry(data.positions, data.normals, data.indices);
+          // Re-attach stable topology ids (userData doesn't cross the worker
+          // boundary, so the worker ships them as plain JSON alongside the mesh).
+          if (data.topoEdgeSignatures) {
+            geo.userData = { ...geo.userData, topoEdgeSignatures: data.topoEdgeSignatures };
+          }
           pending.resolve({ geometry: geo, errors: data.errors ?? {} });
         } else {
           pending.reject(new Error(data.error ?? 'Pipeline worker returned unknown error'));

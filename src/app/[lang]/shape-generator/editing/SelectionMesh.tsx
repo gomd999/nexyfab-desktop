@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { FaceSelectionInfo, EdgeSelectionInfo, ElementSelectionInfo } from './selectionInfo';
 import { normalToLabel } from './selectionInfo';
 import { getFaceFeatureIdStrict } from '../features/faceProvenance';
+import { findStableEdgeId, type TaggedEdgeSig } from '../features/topologyRegistry';
 
 /** Returns the closest distance from point `p` to the line segment `ab`,
  *  and the projected world-space point on that segment. Used by the
@@ -246,9 +247,15 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
           // the canonical `edge_<f1>|<f2>` id lands in phase D.
           const dir = new THREE.Vector3().subVectors(bestSeg.b, bestSeg.a).normalize();
           const dirKey = `${dir.x.toFixed(2)},${dir.y.toFixed(2)},${dir.z.toFixed(2)}`;
-          const edgePersistentId = persistentId
-            ? `edge_${persistentId}|dir_${dirKey}`
-            : undefined;
+          // Prefer a rebuild-stable topology id when the pipeline emitted one:
+          // tag the click against the solid's tagged edge signatures so the
+          // selection survives a chain of edits. Fall back to the face-hash id.
+          const taggedSigs = geometry.userData?.topoEdgeSignatures as TaggedEdgeSig[] | undefined;
+          const stableEdgeId = taggedSigs
+            ? findStableEdgeId(taggedSigs, [bestProj.x, bestProj.y, bestProj.z], [dir.x, dir.y, dir.z])
+            : null;
+          const edgePersistentId = stableEdgeId
+            ?? (persistentId ? `edge_${persistentId}|dir_${dirKey}` : undefined);
           // Capture the part's world bbox so the finder can remap the click
           // point when a dimension changes (scale-aware re-resolution).
           geometry.computeBoundingBox();

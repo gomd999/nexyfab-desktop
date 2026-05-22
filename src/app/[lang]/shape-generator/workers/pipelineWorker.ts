@@ -46,6 +46,9 @@ export interface PipelineWorkerOutput {
   indices?: Uint32Array;
   errors?: Record<string, string>;
   error?: string;
+  /** Stable topology data (plain JSON) so the main thread can tag selections
+   *  with rebuild-stable edge ids — userData itself doesn't cross the boundary. */
+  topoEdgeSignatures?: { id: string; mid: [number, number, number]; dir: [number, number, number]; length: number }[];
 }
 
 // ─── Worker handler ──────────────────────────────────────────────────────────
@@ -110,6 +113,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
       normals: outNormals,
       indices: outIndices,
       errors: result.errors,
+      topoEdgeSignatures: outGeo.userData?.topoEdgeSignatures as PipelineWorkerOutput['topoEdgeSignatures'],
     };
 
     const transferables: ArrayBuffer[] = [outPositions.buffer as ArrayBuffer];

@@ -15,11 +15,49 @@
  * free so it unit-tests without the WASM kernel.
  */
 
-import { bestEdgeMatch, type EdgeSig } from './edgeCorrespondence';
+import { bestEdgeMatch, normalizeEdgeDir, type EdgeSig } from './edgeCorrespondence';
 
 export interface NamedEdge {
   id: string;
   sig: EdgeSig;
+}
+
+/** A current edge signature carrying its stable id — emitted on the pipeline
+ *  result (userData.topoEdgeSignatures) so the selection layer can tag a click
+ *  with a rebuild-stable id. */
+export interface TaggedEdgeSig extends EdgeSig {
+  id: string;
+}
+
+/**
+ * Stable id of the edge a click lands on. A click sits *anywhere* along an edge
+ * (not at its midpoint), so we pick the parallel edge whose infinite line is
+ * nearest the click point, with the projection inside the edge's extent. Pure,
+ * so the selection layer can tag a click without the OCCT kernel. Returns null
+ * when no parallel edge passes near the point (`tol` mm).
+ */
+export function findStableEdgeId(
+  tagged: TaggedEdgeSig[],
+  position: [number, number, number],
+  direction: [number, number, number],
+  tol = 1.0,
+): string | null {
+  const tdir = normalizeEdgeDir(direction);
+  let bestId: string | null = null;
+  let bestPerp = Infinity;
+  for (const e of tagged) {
+    const cdir = normalizeEdgeDir(e.dir);
+    const align = Math.abs(tdir[0] * cdir[0] + tdir[1] * cdir[1] + tdir[2] * cdir[2]);
+    if (align < 0.95) continue; // must be parallel to the picked edge
+    // Project the click onto the edge line through its midpoint.
+    const wx = position[0] - e.mid[0], wy = position[1] - e.mid[1], wz = position[2] - e.mid[2];
+    const t = wx * cdir[0] + wy * cdir[1] + wz * cdir[2];        // signed distance along the edge
+    if (Math.abs(t) > e.length / 2 + 2) continue;                // click beyond the edge ends
+    const px = wx - t * cdir[0], py = wy - t * cdir[1], pz = wz - t * cdir[2];
+    const perp = Math.hypot(px, py, pz);                          // distance to the edge line
+    if (perp < bestPerp) { bestPerp = perp; bestId = e.id; }
+  }
+  return bestPerp <= tol ? bestId : null;
 }
 
 /** Minimum match score for a current edge to inherit a previous edge's id. */
