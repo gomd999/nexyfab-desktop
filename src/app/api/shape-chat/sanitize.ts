@@ -13,6 +13,8 @@
  *   count         : 1     .. 1000    (pattern instances etc.)
  */
 
+import { clampFeatureParams } from '@/app/[lang]/shape-generator/features/featureParamSchema';
+
 const MAX_DIM_MM = 10_000;
 const MIN_DIM_MM = 0.01;
 const MAX_FORCE = 1e7;
@@ -66,10 +68,15 @@ function sanitizeFeatures(features: unknown[]): unknown[] {
       Boolean(f && typeof f === 'object' && typeof (f as Record<string, unknown>).type === 'string'),
     )
     .slice(0, 50)
-    .map((f: Record<string, unknown>) => ({
-      ...f,
-      params: f.params && typeof f.params === 'object' ? sanitizeParams(f.params as Record<string, unknown>) : {},
-    }));
+    .map((f: Record<string, unknown>) => {
+      const type = f.type as string;
+      const rawParams = (f.params && typeof f.params === 'object' ? f.params : {}) as Record<string, unknown>;
+      // Known feature types → clamp to the real param schema (in-range, integer
+      // where required, defaults filled, stray params dropped). Otherwise fall
+      // back to the generic magnitude clamp.
+      const schemaParams = clampFeatureParams(type, rawParams);
+      return { ...f, params: schemaParams ?? sanitizeParams(rawParams) };
+    });
 }
 
 function sanitizeVec3(v: unknown, fallback: [number, number, number] = [0, 0, 0]): [number, number, number] {
