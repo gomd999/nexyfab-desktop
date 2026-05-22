@@ -1034,6 +1034,13 @@ export function occtMirror(
  * Conventions match the THREE primitives: cylinder is +Y, centered at origin;
  * sphere centered at origin. Returns a null handle for unsupported shapes.
  */
+interface PrismSolid extends MeshedShape {
+  translate: (v: [number, number, number]) => PrismSolid;
+  rotate: (deg: number, loc: [number, number, number], dir: [number, number, number]) => PrismSolid;
+  cut: (other: unknown) => PrismSolid;
+  fuse: (other: unknown) => PrismSolid;
+}
+
 export function occtBaseSolid(
   shapeId: string,
   params: Record<string, number>,
@@ -1063,6 +1070,60 @@ export function occtBaseSolid(
       const outer = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as CutShape;
       const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
       if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+    }
+  } else if (shapeId === 'wedge') {
+    // Right-triangle prism, centred on the bbox (matches ExtrudeGeometry+center()).
+    const w = num(params.width, 50), h = num(params.height, 40), d = num(params.depth, 30);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (w > 0 && h > 0 && d > 0 && typeof draw === 'function') {
+      const ext = draw([-w / 2, -h / 2]).lineTo([w / 2, -h / 2]).lineTo([w / 2, h / 2])
+        .close().sketchOnPlane('XY').extrude(d) as unknown as PrismSolid;
+      solid = ext.translate([0, 0, -d / 2]);
+    }
+  } else if (shapeId === 'lBracket') {
+    // L = horizontal slab fused with a left vertical leg (boxes, depth +Z).
+    const w = num(params.width, 80), h = num(params.height, 60), t = num(params.thickness, 8), d = num(params.depth, 40);
+    const vertH = h - t;
+    if (w > 0 && h > 0 && t > 0 && d > 0 && vertH > 0) {
+      const mk = rc.makeBaseBox as ReplicadLike['makeBaseBox'];
+      // makeBaseBox is centred in X/Y but spans z∈[0,d]; shift −d/2 to centre Z
+      // (matching the centred BoxGeometry the lBracket mesh uses).
+      const horz = (mk(w, t, d) as unknown as PrismSolid).translate([0, t / 2, -d / 2]);
+      const vert = (mk(t, vertH, d) as unknown as PrismSolid).translate([-w / 2 + t / 2, t + vertH / 2, -d / 2]);
+      solid = horz.fuse(vert) as MeshedShape;
+    }
+  } else if (shapeId === 'iBeam') {
+    // I-profile extruded length L, centred on Z then rotated +90° about X so the
+    // beam runs along Y (matches the iBeam mesh).
+    const H = num(params.height, 200), BF = num(params.flangeWidth, 100);
+    const tw = num(params.webThick, 8), tf = num(params.flangeThick, 12), L = num(params.length, 1000);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (H > 0 && BF > 0 && tw > 0 && tf > 0 && L > 0 && tf < H / 2 && tw < BF && typeof draw === 'function') {
+      const hw = tw / 2, hbf = BF / 2, hH = H / 2;
+      const ext = draw([-hbf, -hH]).lineTo([hbf, -hH]).lineTo([hbf, -hH + tf]).lineTo([hw, -hH + tf])
+        .lineTo([hw, hH - tf]).lineTo([hbf, hH - tf]).lineTo([hbf, hH]).lineTo([-hbf, hH])
+        .lineTo([-hbf, hH - tf]).lineTo([-hw, hH - tf]).lineTo([-hw, -hH + tf]).lineTo([-hbf, -hH + tf])
+        .close().sketchOnPlane('XY').extrude(L) as unknown as PrismSolid;
+      const centred = ext.translate([0, 0, -L / 2]);
+      solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
+    }
+  } else if (shapeId === 'hexNut') {
+    // Hex prism with a central bore, centred on Z then rotated +90° about X
+    // (thickness along Y) — matches the hexNut mesh.
+    const af = num(params.acrossFlats, 17), t = num(params.thickness, 8), hd = num(params.nominalDia, 10) / 2;
+    const cr = (af / 2) / Math.cos(Math.PI / 6);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (af > 0 && t > 0 && hd > 0 && hd < af / 2 && typeof draw === 'function') {
+      let pen = draw([cr * Math.cos(Math.PI / 6), cr * Math.sin(Math.PI / 6)]);
+      for (let i = 1; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        pen = pen.lineTo([cr * Math.cos(a), cr * Math.sin(a)]);
+      }
+      const hex = pen.close().sketchOnPlane('XY').extrude(t) as unknown as PrismSolid;
+      const bore = (rc.makeCylinder as ReplicadLike['makeCylinder'])(hd, t + 2, [0, 0, -1], [0, 0, 1]);
+      const bored = typeof hex.cut === 'function' ? hex.cut(bore) : hex;
+      const centred = bored.translate([0, 0, -t / 2]);
+      solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
     }
   } else if (shapeId === 'washer') {
     // Annular disk = outer cylinder minus inner bore, axis +Z, centred on z —

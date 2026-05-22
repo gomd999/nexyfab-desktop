@@ -44,6 +44,20 @@ import { sweepFeature } from '../features/sweep';
 import type { SketchProfile } from '../sketch/types';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 
+/** Assert a geometry's world bbox matches expected [min,max] per axis (tol mm). */
+function expectBbox(
+  geo: THREE.BufferGeometry,
+  exp: { x: [number, number]; y: [number, number]; z: [number, number] },
+  tol = 1.5,
+): void {
+  geo.computeBoundingBox();
+  const b = geo.boundingBox!;
+  (['x', 'y', 'z'] as const).forEach(ax => {
+    expect(Math.abs(b.min[ax] - exp[ax][0])).toBeLessThan(tol);
+    expect(Math.abs(b.max[ax] - exp[ax][1])).toBeLessThan(tol);
+  });
+}
+
 function bboxOf(geo: THREE.BufferGeometry): { min: THREE.Vector3; max: THREE.Vector3 } {
   geo.computeBoundingBox();
   return { min: geo.boundingBox!.min.clone(), max: geo.boundingBox!.max.clone() };
@@ -585,6 +599,41 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     // Cone removed only a little material → just under the 64000 cube.
     expect(vol).toBeLessThan(64000);
     expect(vol).toBeGreaterThan(63000);
+  });
+
+  it('occtBaseSolid builds profile prisms (wedge/lBracket/iBeam/hexNut) at the mesh placement', () => {
+    // wedge — right-triangle prism, 0.5·w·h·d = 30000 mm³, bbox-centred.
+    resetShapeRegistry();
+    const wedge = occtBaseSolid('wedge', { width: 50, height: 40, depth: 30 });
+    expect(wedge.handle).toBeTruthy();
+    expect(meshVolume(wedge.geometry)).toBeGreaterThan(29000);
+    expect(meshVolume(wedge.geometry)).toBeLessThan(31000);
+    expectBbox(wedge.geometry, { x: [-25, 25], y: [-20, 20], z: [-15, 15] });
+
+    // lBracket — two slabs fused, w·t·d + (h−t)·t·d = 42240 mm³; sits on y=0.
+    resetShapeRegistry();
+    const lb = occtBaseSolid('lBracket', { width: 80, height: 60, thickness: 8, depth: 40 });
+    expect(lb.handle).toBeTruthy();
+    expect(meshVolume(lb.geometry)).toBeGreaterThan(41000);
+    expect(meshVolume(lb.geometry)).toBeLessThan(43500);
+    expectBbox(lb.geometry, { x: [-40, 40], y: [0, 60], z: [-20, 20] });
+
+    // iBeam — I-profile × L, ≈ 3.808e6 mm³; beam runs along Y after the +90° X rot.
+    resetShapeRegistry();
+    const ib = occtBaseSolid('iBeam', { height: 200, flangeWidth: 100, webThick: 8, flangeThick: 12, length: 1000 });
+    expect(ib.handle).toBeTruthy();
+    expect(meshVolume(ib.geometry)).toBeGreaterThan(3.7e6);
+    expect(meshVolume(ib.geometry)).toBeLessThan(3.9e6);
+    expectBbox(ib.geometry, { x: [-50, 50], y: [-500, 500], z: [-100, 100] }, 2);
+
+    // hexNut — hex prism minus bore, ≈ 1373 mm³; thickness along Y after the rot.
+    resetShapeRegistry();
+    const hn = occtBaseSolid('hexNut', { acrossFlats: 17, thickness: 8, nominalDia: 10 });
+    expect(hn.handle).toBeTruthy();
+    expect(meshVolume(hn.geometry)).toBeGreaterThan(1200);
+    expect(meshVolume(hn.geometry)).toBeLessThan(1550);
+    // af/2 = 8.5 across the flats (X), thickness 8 (Y), circumradius ~9.82 (Z).
+    expectBbox(hn.geometry, { x: [-8.5, 8.5], y: [-4, 4], z: [-9.82, 9.82] });
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
