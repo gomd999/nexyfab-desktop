@@ -1125,6 +1125,36 @@ export function occtBaseSolid(
       const centred = bored.translate([0, 0, -t / 2]);
       solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
     }
+  } else if (shapeId === 'tSlot') {
+    // Square aluminium extrusion: outer square minus the inner cavity and a
+    // T-groove on each of the 4 faces; centred on Z then +90° about X (runs
+    // along Y) to match the tSlot mesh.
+    const S = num(params.profileSize, 40), L = num(params.length, 200);
+    const tw = num(params.wallThick, 3), sw = num(params.slotWidth, 8), sd = num(params.slotDepth, 6);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (S > 0 && L > 0 && tw > 0 && tw < S / 2 && typeof draw === 'function') {
+      const half = S / 2;
+      const slotHW = sw / 2, neckHW = (sw * 0.55) / 2;
+      const contours: [number, number][][] = [
+        [[-half + tw, -half + tw], [half - tw, -half + tw], [half - tw, half - tw], [-half + tw, half - tw]], // inner cavity
+        [[-neckHW, -half], [-slotHW, -half + sd], [slotHW, -half + sd], [neckHW, -half]],                     // bottom slot
+        [[-neckHW, half], [-slotHW, half - sd], [slotHW, half - sd], [neckHW, half]],                         // top slot
+        [[-half, -neckHW], [-half + sd, -slotHW], [-half + sd, slotHW], [-half, neckHW]],                     // left slot
+        [[half, -neckHW], [half - sd, -slotHW], [half - sd, slotHW], [half, neckHW]],                         // right slot
+      ];
+      const drawFn = draw;
+      const buildExtrude = (pts: [number, number][], depth: number, zoff: number): PrismSolid => {
+        let pen = drawFn(pts[0]);
+        for (let i = 1; i < pts.length; i++) pen = pen.lineTo(pts[i]);
+        return pen.close().sketchOnPlane('XY', zoff).extrude(depth) as unknown as PrismSolid;
+      };
+      let body = buildExtrude([[-half, -half], [half, -half], [half, half], [-half, half]], L, 0);
+      for (const c of contours) {
+        if (typeof body.cut === 'function') body = body.cut(buildExtrude(c, L + 0.2, -0.1));
+      }
+      const centred = body.translate([0, 0, -L / 2]);
+      solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
+    }
   } else if (shapeId === 'washer') {
     // Annular disk = outer cylinder minus inner bore, axis +Z, centred on z —
     // matching the washer mesh (ExtrudeGeometry of a ring along Z, centred).

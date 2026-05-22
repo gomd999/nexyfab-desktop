@@ -634,6 +634,18 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(meshVolume(hn.geometry)).toBeLessThan(1550);
     // af/2 = 8.5 across the flats (X), thickness 8 (Y), circumradius ~9.82 (Z).
     expectBbox(hn.geometry, { x: [-8.5, 8.5], y: [-4, 4], z: [-9.82, 9.82] });
+
+    // tSlot — square extrusion (S40 × L200) hollowed with 4 T-grooves; runs
+    // along Y after the rot. Volume is well under the 320000 solid (cavity +
+    // grooves) but a substantial frame remains; exact value is awkward because
+    // the grooves (sd6 > wall tw3) overlap the cavity, so just bound it.
+    resetShapeRegistry();
+    const ts = occtBaseSolid('tSlot', { profileSize: 40, length: 200, wallThick: 3, slotWidth: 8, slotDepth: 6 });
+    expect(ts.handle).toBeTruthy();
+    expectBbox(ts.geometry, { x: [-20, 20], y: [-100, 100], z: [-20, 20] });
+    const tsVol = meshVolume(ts.geometry);
+    expect(tsVol).toBeLessThan(320000);   // less than the solid S²·L block
+    expect(tsVol).toBeGreaterThan(50000); // …but a real frame remains (~76000)
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
