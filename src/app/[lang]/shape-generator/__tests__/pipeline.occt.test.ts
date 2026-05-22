@@ -151,4 +151,25 @@ describeMaybe('boolean feature — OCCT engine path', () => {
     expect(baseVolume - sig.volume_mm3).toBeGreaterThan(400);
     expect(baseVolume - sig.volume_mm3).toBeLessThan(2000);
   }, 60_000);
+
+  it('emits stable topoEdgeIds from the pipeline and carries them across a param change', async () => {
+    const { applyFeaturePipelineDetailedAsync } = await import('../features/index');
+
+    // Cylinder base (real B-rep handle via baseSpec) → the final solid has
+    // edges, so the namer assigns stable ids on userData.
+    const r1 = await applyFeaturePipelineDetailedAsync(makeBox(), [], {
+      occtMode: true, baseSpec: { shapeId: 'cylinder', params: { diameter: 40, height: 50 } },
+    });
+    const ids1 = r1.geometry.userData?.topoEdgeIds as string[] | undefined;
+    expect(Array.isArray(ids1)).toBe(true);
+    expect(ids1!.length).toBeGreaterThan(0);
+
+    // Resize the base — same topology, so the ids must carry forward unchanged.
+    const r2 = await applyFeaturePipelineDetailedAsync(makeBox(), [], {
+      occtMode: true, baseSpec: { shapeId: 'cylinder', params: { diameter: 50, height: 50 } },
+    });
+    const ids2 = r2.geometry.userData?.topoEdgeIds as string[] | undefined;
+    expect(Array.isArray(ids2)).toBe(true);
+    expect(new Set(ids2)).toEqual(new Set(ids1)); // stable across the rebuild
+  }, 60_000);
 });

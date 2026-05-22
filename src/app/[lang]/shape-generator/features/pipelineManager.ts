@@ -14,7 +14,13 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape } from './occtEngine';
+import { TopologyNamer } from './topologyRegistry';
+
+// Persistent across rebuilds within this module's lifetime (the worker reuses
+// one instance for settled rebuilds), so stable edge ids carry forward through
+// a chain of edits. Reconcile mints fresh ids when the shape changes wholesale.
+const pipelineNamer = new TopologyNamer();
 import {
   stampFaceFeatureIdAll,
   configureEvaluatorForProvenance,
@@ -292,6 +298,17 @@ async function runLoopAsync(
     computed++;
   }
   
+  // Stable edge ids: reconcile the final solid's edges against the previous
+  // rebuild so a fillet/shell selection stays bound through a chain of edits.
+  // Best-effort — naming never breaks the pipeline.
+  try {
+    const finalHandle = geo.userData?.occtHandle as string | undefined;
+    if (finalHandle && isOcctReady()) {
+      const ids = pipelineNamer.update(occtEdgeSignatures(finalHandle));
+      geo.userData = { ...geo.userData, topoEdgeIds: ids };
+    }
+  } catch { /* topology naming is best-effort */ }
+
   if (onProgress) onProgress(100, 'Finishing Output');
   return { geometry: geo, errors };
 }
