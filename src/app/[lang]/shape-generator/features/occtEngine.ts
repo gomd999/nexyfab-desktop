@@ -1125,6 +1125,26 @@ export function occtBaseSolid(
       const centred = bored.translate([0, 0, -t / 2]);
       solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
     }
+  } else if (shapeId === 'bolt') {
+    // Hex-head bolt: hex head prism fused with a cylindrical shaft below it,
+    // both +Y — matches the bolt mesh (head centred on 0, shaft hanging down).
+    const r = num(params.shaftDiameter, 10) / 2;
+    const sL = num(params.shaftLength, 60);
+    const hH = num(params.headHeight, 7);
+    const hF = num(params.headFlats, 17);
+    const cr = (hF / 2) / Math.cos(Math.PI / 6);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (r > 0 && sL > 0 && hH > 0 && hF > 0 && typeof draw === 'function') {
+      let pen = draw([cr * Math.cos(Math.PI / 6), cr * Math.sin(Math.PI / 6)]);
+      for (let i = 1; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        pen = pen.lineTo([cr * Math.cos(a), cr * Math.sin(a)]);
+      }
+      const headExt = pen.close().sketchOnPlane('XY').extrude(hH) as unknown as PrismSolid;
+      const head = headExt.translate([0, 0, -hH / 2]).rotate(90, [0, 0, 0], [1, 0, 0]);
+      const shaft = (rc.makeCylinder as ReplicadLike['makeCylinder'])(r, sL, [0, -hH / 2 - sL, 0], [0, 1, 0]);
+      solid = (head as PrismSolid).fuse(shaft) as MeshedShape;
+    }
   } else if (shapeId === 'tSlot') {
     // Square aluminium extrusion: outer square minus the inner cavity and a
     // T-groove on each of the 4 faces; centred on Z then +90° about X (runs

@@ -646,6 +646,17 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const tsVol = meshVolume(ts.geometry);
     expect(tsVol).toBeLessThan(320000);   // less than the solid S²·L block
     expect(tsVol).toBeGreaterThan(50000); // …but a real frame remains (~76000)
+
+    // bolt — hex head + cylindrical shaft fused. shaft πr²·sL + hex head.
+    // r5,sL60,hH7,hF17 → 4712 + ~1752 ≈ 6464 mm³; head on 0, shaft hangs to −Y.
+    resetShapeRegistry();
+    const bolt = occtBaseSolid('bolt', { shaftDiameter: 10, shaftLength: 60, headHeight: 7, headFlats: 17 });
+    expect(bolt.handle).toBeTruthy();
+    expect(meshVolume(bolt.geometry)).toBeGreaterThan(6000);
+    expect(meshVolume(bolt.geometry)).toBeLessThan(7000);
+    // flats hF/2=8.5 (X), shaft hangs head-bottom(−3.5) down to −63.5 (Y),
+    // head circumradius ~9.82 (Z).
+    expectBbox(bolt.geometry, { x: [-8.5, 8.5], y: [-63.5, 3.5], z: [-9.82, 9.82] });
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
