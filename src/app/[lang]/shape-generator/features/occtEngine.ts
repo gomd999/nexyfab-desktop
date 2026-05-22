@@ -1125,6 +1125,39 @@ export function occtBaseSolid(
       const centred = bored.translate([0, 0, -t / 2]);
       solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
     }
+  } else if (shapeId === 'pulley') {
+    // V-belt pulley: revolve the same numeric lathe profile about Y (matches the
+    // LatheGeometry mesh exactly — same profile, same axis).
+    const outerR = num(params.outerDiameter, 100) / 2;
+    const boreR = num(params.boreDiameter, 15) / 2;
+    const width = num(params.width, 25);
+    const grooveCount = Math.round(num(params.grooveCount, 1));
+    const grooveDepth = num(params.grooveDepth, 8);
+    const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
+    if (outerR > boreR && boreR > 0 && width > 0 && typeof draw === 'function') {
+      const halfAngle = (38 / 2) * Math.PI / 180;
+      const grooveTopWidth = 2 * grooveDepth * Math.tan(halfAngle);
+      const grooveSpacing = grooveTopWidth * 1.3;
+      const totalGrooveZone = grooveCount > 1 ? (grooveCount - 1) * grooveSpacing + grooveTopWidth : grooveTopWidth;
+      const rimWidth = Math.max((width - totalGrooveZone) / 2, 2);
+      const halfW = width / 2;
+      const pts: [number, number][] = [[boreR, -halfW], [outerR, -halfW]];
+      const grooveStartY = -halfW + rimWidth;
+      for (let g = 0; g < grooveCount; g++) {
+        const gc = grooveStartY + grooveTopWidth / 2 + g * grooveSpacing;
+        pts.push([outerR, gc - grooveTopWidth / 2]);
+        pts.push([outerR - grooveDepth, gc]);
+        pts.push([outerR, gc + grooveTopWidth / 2]);
+      }
+      pts.push([outerR, halfW], [boreR, halfW], [boreR, -halfW]);
+      let pen = draw(pts[0]);
+      const last = pts.length - 1;
+      for (let i = 1; i < pts.length; i++) {
+        if (i === last && Math.abs(pts[i][0] - pts[0][0]) < 1e-6 && Math.abs(pts[i][1] - pts[0][1]) < 1e-6) break;
+        pen = pen.lineTo(pts[i]);
+      }
+      solid = pen.close().sketchOnPlane('XY').revolve([0, 1, 0]);
+    }
   } else if (shapeId === 'bolt') {
     // Hex-head bolt: hex head prism fused with a cylindrical shaft below it,
     // both +Y — matches the bolt mesh (head centred on 0, shaft hanging down).

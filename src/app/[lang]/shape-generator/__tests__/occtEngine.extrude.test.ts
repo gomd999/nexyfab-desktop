@@ -659,6 +659,17 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expectBbox(bolt.geometry, { x: [-8.5, 8.5], y: [-63.5, 3.5], z: [-9.82, 9.82] });
   });
 
+  it('occtBaseSolid revolves the pulley profile about Y (matches the lathe mesh)', () => {
+    // V-belt pulley revolved about Y; Ø100 across, width 25 along Y.
+    resetShapeRegistry();
+    const pulley = occtBaseSolid('pulley', { outerDiameter: 100, boreDiameter: 15, width: 25, grooveCount: 1, grooveDepth: 8 });
+    expect(pulley.handle).toBeTruthy();
+    expectBbox(pulley.geometry, { x: [-50, 50], y: [-12.5, 12.5], z: [-50, 50] }, 2);
+    const pv = meshVolume(pulley.geometry);
+    expect(pv).toBeGreaterThan(120000); // annular rim minus the V-groove
+    expect(pv).toBeLessThan(240000);
+  });
+
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {
     resetShapeRegistry();
     const square = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }];
