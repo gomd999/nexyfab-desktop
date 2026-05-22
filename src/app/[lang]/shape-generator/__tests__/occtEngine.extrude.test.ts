@@ -34,6 +34,7 @@ import {
   occtLinearPattern,
   occtCircularPattern,
   occtMirror,
+  occtBoxBooleanWithPrimitive,
   exportOcctStep,
   getShape,
 } from '../features/occtEngine';
@@ -555,6 +556,26 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(step).toContain('ISO-10303');
     expect(step).toMatch(/MANIFOLD_SOLID_BREP|ADVANCED_BREP_SHAPE_REPRESENTATION|CLOSED_SHELL/);
     expect(step).not.toContain('TRIANGULATED_FACE');
+  });
+
+  it('occtBoxBooleanWithPrimitive cone tool cuts a countersink B-rep (handle preserved)', () => {
+    resetShapeRegistry();
+    // 40-cube host (x,y,z ∈ [0,40], 64000 mm³) with a handle.
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 40 }, { x: 0, y: 40 }], 40);
+    expect(box.handle).toBeTruthy();
+    // Subtract a cone (base Ø20, depth 10) centred on the +Y top face.
+    const r = occtBoxBooleanWithPrimitive(
+      'subtract',
+      { w: 40, h: 40, d: 40, cx: 20, cy: 20, cz: 20 },
+      { shape: 'cone', w: 20, h: 10, d: 20, cx: 20, cy: 40, cz: 20, rx: 0, ry: 0, rz: 0 },
+      undefined,
+      box.handle,
+    );
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    // Cone removed only a little material → just under the 64000 cube.
+    expect(vol).toBeLessThan(64000);
+    expect(vol).toBeGreaterThan(63000);
   });
 
   it('the extrude handle chains into occtFilletBox (real downstream fillet)', () => {

@@ -209,7 +209,7 @@ function requireReplicad(): ReplicadLike & Record<string, unknown> {
 export function occtBoxBooleanWithPrimitive(
   type: OcctBooleanType,
   hostBox: { w: number; h: number; d: number; cx: number; cy: number; cz: number },
-  tool: { shape: 'box' | 'cylinder' | 'sphere'; w: number; h: number; d: number; cx: number; cy: number; cz: number; rx: number; ry: number; rz: number },
+  tool: { shape: 'box' | 'cylinder' | 'sphere' | 'cone'; w: number; h: number; d: number; cx: number; cy: number; cz: number; rx: number; ry: number; rz: number },
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
 ): OcctBooleanResult {
@@ -259,6 +259,24 @@ export function occtBoxBooleanWithPrimitive(
       [tool.cx, tool.cy - tool.h / 2, tool.cz],
       [0, 1, 0],
     );
+  } else if (tool.shape === 'cone') {
+    // Cone tool (countersink): apex DOWN, wide base UP, axis +Y, height h,
+    // base radius w/2. Built by revolving a triangle about Y, then centred at
+    // (cx,cy,cz) so its mid-height lands there (matches the mesh ConeGeometry).
+    const r = tool.w / 2;
+    const h = tool.h;
+    const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
+    if (typeof draw === 'function' && r > 0 && h > 0) {
+      const cone = draw([0, -h / 2])
+        .lineTo([r, h / 2])
+        .lineTo([0, h / 2])
+        .close()
+        .sketchOnPlane('XY')
+        .revolve([0, 1, 0]) as unknown as { translate: (v: [number, number, number]) => unknown };
+      toolSolid = cone.translate([tool.cx, tool.cy, tool.cz]);
+    } else {
+      toolSolid = undefined;
+    }
   } else {
     const r = tool.w / 2;
     const s = (rc.makeSphere as ReplicadLike['makeSphere'])(r) as {
