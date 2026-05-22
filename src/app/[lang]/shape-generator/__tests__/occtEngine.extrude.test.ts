@@ -292,6 +292,15 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     expect(pipe.handle).toBeTruthy();
     expect(meshVolume(pipe.geometry)).toBeGreaterThan(150000);
     expect(meshVolume(pipe.geometry)).toBeLessThan(164000);
+    // Washer Ø24 outer / Ø11 inner × t2.5 → π(12²−5.5²)·2.5 ≈ 893 mm³ (annular
+    // ring along +Z, centred — fillet on the real ring, not its bbox cube).
+    const washer = occtBaseSolid('washer', { outerDia: 24, innerDia: 11, thickness: 2.5 });
+    expect(washer.handle).toBeTruthy();
+    expect(meshVolume(washer.geometry)).toBeGreaterThan(820);
+    expect(meshVolume(washer.geometry)).toBeLessThan(960);
+    const wb = washer.geometry; wb.computeBoundingBox();
+    expect(wb.boundingBox!.max.z - wb.boundingBox!.min.z).toBeLessThan(2.7); // thickness along Z
+    expect(wb.boundingBox!.max.x - wb.boundingBox!.min.x).toBeGreaterThan(23); // Ø24 across
     // Torus major Ø80 (R40) / tube Ø20 (r10) → 2π²·R·r² ≈ 78957 mm³ (donut, not
     // the 80×80×20 = 128000 bbox). The 32-gon profile under-fills slightly.
     const torus = occtBaseSolid('torus', { majorDiameter: 80, tubeDiameter: 20 });

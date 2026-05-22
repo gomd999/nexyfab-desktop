@@ -1064,6 +1064,18 @@ export function occtBaseSolid(
       const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
       if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
     }
+  } else if (shapeId === 'washer') {
+    // Annular disk = outer cylinder minus inner bore, axis +Z, centred on z —
+    // matching the washer mesh (ExtrudeGeometry of a ring along Z, centred).
+    const oR = num(params.outerDia, 24) / 2;
+    const iR = num(params.innerDia, 11) / 2;
+    const t = num(params.thickness, 2.5);
+    if (oR > 0 && t > 0 && iR > 0 && iR < oR) {
+      const mk = rc.makeCylinder as ReplicadLike['makeCylinder'];
+      const outer = mk(oR, t, [0, 0, -t / 2], [0, 0, 1]) as CutShape;
+      const inner = mk(iR, t + 2, [0, 0, -t / 2 - 1], [0, 0, 1]);
+      if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+    }
   } else if (shapeId === 'torus') {
     // Revolve the minor circle (centered at x=R, radius r) about Y, then rotate
     // +90° about X so the torus axis is +Z — matching THREE.TorusGeometry.
