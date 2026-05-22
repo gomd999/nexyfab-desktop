@@ -62,11 +62,11 @@ export interface MatchOptions {
  * Direction dominates (it's the most topology-stable signal); the midpoint and
  * length terms break ties between parallel edges.
  */
-export function matchEdgeBySignature(
+export function bestEdgeMatch(
   target: EdgeSig,
   candidates: EdgeSig[],
   opts: MatchOptions = {},
-): number {
+): { index: number; score: number } {
   const minAlign = opts.minDirAlignment ?? 0.9;
   const scale = opts.scale ?? (target.length > EPS ? target.length : 1);
   const tdir = normalizeEdgeDir(target.dir);
@@ -86,7 +86,15 @@ export function matchEdgeBySignature(
       bestIdx = i;
     }
   }
-  return bestIdx;
+  return { index: bestIdx, score: bestScore };
+}
+
+export function matchEdgeBySignature(
+  target: EdgeSig,
+  candidates: EdgeSig[],
+  opts: MatchOptions = {},
+): number {
+  return bestEdgeMatch(target, candidates, opts).index;
 }
 
 // ─── Face correspondence ──────────────────────────────────────────────────────
