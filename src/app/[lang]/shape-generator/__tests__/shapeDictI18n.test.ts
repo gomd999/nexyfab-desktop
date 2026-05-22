@@ -30,10 +30,16 @@ describe('shapeDict i18n completeness', () => {
   });
 
   it('rib feature labels are really translated (not English fallback) in ja/cn/es/ar', () => {
-    // Spot-check the supplement actually applied for a feature this work touched.
-    expect(shapeDict.ja.paramRibThickness).toBe('リブ厚さ');
-    expect(shapeDict.cn.paramRibThickness).toBe('筋板厚度');
-    expect(shapeDict.es.featureName_bend).toBe('Pliegue');
-    expect(shapeDict.ar.helixLeft).toBe('يسار');
+    // Supplement keys are injected at runtime, so read loosely (not in the
+    // static literal type). Spot-check the supplement actually applied.
+    const ja = shapeDict.ja as unknown as Record<string, string>;
+    const cn = shapeDict.cn as unknown as Record<string, string>;
+    const es = shapeDict.es as unknown as Record<string, string>;
+    const ar = shapeDict.ar as unknown as Record<string, string>;
+    expect(ja.paramRibThickness).toBe('リブ厚さ');
+    expect(cn.paramRibThickness).toBe('筋板厚度');
+    expect(es.featureName_bend).toBe('Pliegue');
+    expect(ar.helixLeft).toBe('يسار');
+    expect(ja.paramThreadDepth).toBe('ねじ深さ'); // param* batch applied
   });
 });
