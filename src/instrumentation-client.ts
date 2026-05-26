@@ -75,3 +75,72 @@ if (sentryEnabled) {
 export const onRouterTransitionStart = sentryEnabled
   ? captureRouterTransitionStart
   : () => {};
+
+/**
+ * Stale-client recovery for "Failed to find Server Action".
+ *
+ * When the server redeploys with a different Server Action encryption key
+ * (or before NEXT_SERVER_ACTIONS_ENCRYPTION_KEY was pinned), tabs that were
+ * loaded against the old build crash on form submit with this exact message.
+ * Production logs (2026-05-26) showed 20+ instances per day before the key
+ * was pinned. Even with the key pinned, a fallback recovery path lets us
+ * survive future deploys where the action surface itself changed.
+ *
+ * Strategy: listen for the signature on unhandled rejections + window errors.
+ * On first hit, ask the user to reload via a non-blocking confirm. Dispatch a
+ * custom event first so any in-app toast can override the confirm if it wants.
+ */
+if (typeof window !== 'undefined') {
+  let staleClientNotified = false;
+  const STALE_ACTION_RE = /Failed to find Server Action/i;
+
+  function isStaleActionError(value: unknown): boolean {
+    if (!value) return false;
+    if (typeof value === 'string') return STALE_ACTION_RE.test(value);
+    if (value instanceof Error) return STALE_ACTION_RE.test(value.message);
+    if (typeof value === 'object' && 'message' in value) {
+      return STALE_ACTION_RE.test(String((value as { message: unknown }).message));
+    }
+    return false;
+  }
+
+  function handleStaleClient(source: 'error' | 'unhandledrejection') {
+    if (staleClientNotified) return;
+    staleClientNotified = true;
+    const detail = { source, release: process.env.NEXT_PUBLIC_RELEASE };
+    // Forward to Sentry so the alert rule "Server Action mismatch > 10/h" can
+    // fire. Use a distinct fingerprint so it doesn't merge with random errors.
+    if (sentryEnabled) {
+      import('@sentry/nextjs').then(sentry => {
+        sentry.captureMessage?.('stale-client: Server Action mismatch', {
+          level: 'warning',
+          tags: { staleClient: source },
+          fingerprint: ['stale-client-server-action'],
+        });
+      }).catch(() => { /* SDK not loaded */ });
+    }
+    // Let any in-app toast handler (Header, ShapeGenerator) override default.
+    const evt = new CustomEvent('nexyfab:stale-client', { cancelable: true, detail });
+    const handled = !window.dispatchEvent(evt);
+    if (handled) return;
+    // Fallback: synchronous confirm. Async toast UI is not available here.
+    // Wrap in a microtask so React error boundaries finish first.
+    queueMicrotask(() => {
+      const proceed = window.confirm(
+        '새 버전이 배포됐습니다. 페이지를 새로고침해야 계속할 수 있습니다. 지금 새로고침할까요?',
+      );
+      if (proceed) window.location.reload();
+    });
+  }
+
+  window.addEventListener('error', ev => {
+    if (isStaleActionError(ev.error) || isStaleActionError(ev.message)) {
+      handleStaleClient('error');
+    }
+  });
+  window.addEventListener('unhandledrejection', ev => {
+    if (isStaleActionError(ev.reason)) {
+      handleStaleClient('unhandledrejection');
+    }
+  });
+}

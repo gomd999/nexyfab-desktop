@@ -14,6 +14,15 @@ Copy `.env.example` to `.env.local` (development) or set these in your Railway/C
 NEXT_PUBLIC_APP_URL=https://nexyfab.com
 NEXT_PUBLIC_SITE_URL=https://nexyfab.com
 NODE_ENV=production
+
+# Server Actions encryption key — REQUIRED for stable Server Action IDs across
+# rolling deploys. Without this Next.js generates a fresh key on every build,
+# breaking any tab loaded against an older build with "Failed to find Server
+# Action …" on form submit.
+#
+# Generate once per environment with `openssl rand -base64 32` and pin to ALL
+# replicas in the same env (prod and prod, not "prod and staging").
+NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=<openssl rand -base64 32 output>
 ```
 
 ### Database
