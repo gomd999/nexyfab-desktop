@@ -100,7 +100,7 @@
     "jose": "^6.2.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
-    "next": "^16.2.4",
+    "next": "^16.2.6",
     "nodemailer": "^8.0.7",
     "occt-import-js": "^0.0.23",
     "otpauth": "^9.5.0",
