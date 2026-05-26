@@ -9,6 +9,15 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    /** Per-test 60s, hooks 30s, teardown 30s. A single test that exceeds 60s is a bug — fail loud, don't hang CI. */
+    testTimeout: 60_000,
+    hookTimeout: 30_000,
+    teardownTimeout: 30_000,
+    /** Whole-suite 15min hard cap. If we ever blow past this it's almost certainly a hang, not real work. */
+    bail: 0,
+    /** Print slow tests so we can shrink them before they become hang candidates. */
+    slowTestThreshold: 5_000,
+    reporters: process.env.CI ? ['default'] : ['verbose'],
     /** Ensure single-module resolution for Three peer deps (fixes three-mesh-bvh BVH undefined in Vitest). */
     server: {
       deps: {

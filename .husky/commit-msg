@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Validate commit message against commitlint rules.
+# Format: [P0|P1|P2] type(scope?): subject  — see docs/process/commit-policy.md
+# Bypass: git commit --no-verify (log the reason in next commit body).
+npx --no-install commitlint --edit "$1"

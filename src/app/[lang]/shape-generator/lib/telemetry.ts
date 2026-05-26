@@ -159,6 +159,7 @@ function report(
 ): void {
   const message = scrubPii(err instanceof Error ? err.message : String(err));
   const stack = err instanceof Error ? scrubPii(err.stack ?? '') : undefined;
+  const scrubbed = context ? scrubContext(context) : undefined;
   enqueue({
     id: nextId(),
     ts: Date.now(),
@@ -166,10 +167,22 @@ function report(
     source,
     message,
     stack,
-    context: context ? scrubContext(context) : undefined,
+    context: scrubbed,
     url: typeof window !== 'undefined' ? window.location.pathname : undefined,
     sessionId: SESSION_ID,
   });
+  // Forward to Sentry for alerting. Dynamic import so the bundle doesn't bloat
+  // when Sentry is disabled (most dev sessions). The instrumentation-client
+  // beforeSend already scrubs PII a second time — defense in depth.
+  if (level !== 'info' && typeof window !== 'undefined') {
+    void import('@sentry/nextjs').then(sentry => {
+      sentry.captureException?.(err instanceof Error ? err : new Error(message), {
+        level: level === 'error' ? 'error' : 'warning',
+        tags: { telemetrySource: source, sessionId: SESSION_ID },
+        extra: scrubbed,
+      });
+    }).catch(() => { /* Sentry SDK not loaded — drop silently */ });
+  }
 }
 
 // ─── PII scrubbing (Q9) ────────────────────────────────────────────────────

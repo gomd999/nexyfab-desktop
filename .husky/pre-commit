@@ -1,0 +1,57 @@
+#!/usr/bin/env sh
+# NexyFab pre-commit gate — keeps the working tree from drifting into a state
+# that breaks CI silently. Four concerns, ordered cheapest → most expensive:
+#
+#   0. size gate: refuse commits >800 lines or >15 files (unless ALLOW_BIG=1)
+#   1. lint-staged: eslint --fix on staged files (mutates the file, restages)
+#   2. typecheck: full project tsc --noEmit (~20-40s) — catches type drift that
+#      a per-file lint can't see (e.g. a renamed export breaking a far file)
+#   3. vitest related --run on staged files — runs only the tests that import
+#      one of the staged paths, transitively. Skips if no tests are related.
+#
+# To bypass for a known-safe WIP commit: `git commit --no-verify` (avoid; the
+# hook exists because every "I'll fix it after I push" has a track record).
+# For a knowingly large commit (generated code, lockfile bump): prefix with
+# `ALLOW_BIG=1 git commit ...` — the next commit body should explain why.
+
+set -e
+
+# ─── 0. Size gate ───────────────────────────────────────────────────────────
+# Block mega-commits. Per docs/process/commit-policy.md: split big work into
+# meaningful units. Override via ALLOW_BIG=1 for generated code etc.
+if [ -z "${ALLOW_BIG:-}" ]; then
+  STAGED_FILES=$(git diff --cached --name-only | wc -l)
+  STAGED_LINES=$(git diff --cached --shortstat 2>/dev/null | awk '{print $4+$6}')
+  STAGED_LINES=${STAGED_LINES:-0}
+  if [ "$STAGED_FILES" -gt 15 ]; then
+    echo "✖ commit blocked: $STAGED_FILES files staged (limit 15)"
+    echo "  Split into smaller logical units — see docs/process/commit-policy.md"
+    echo "  Override (with reason in next commit body): ALLOW_BIG=1 git commit ..."
+    exit 1
+  fi
+  if [ "$STAGED_LINES" -gt 800 ]; then
+    echo "✖ commit blocked: $STAGED_LINES lines staged (limit 800)"
+    echo "  Split into smaller logical units — see docs/process/commit-policy.md"
+    echo "  Override (with reason in next commit body): ALLOW_BIG=1 git commit ..."
+    exit 1
+  fi
+fi
+
+npx lint-staged
+
+echo "→ typecheck (project-wide tsc)..."
+npm run typecheck --silent
+
+# Vitest related only runs against the files git just staged. Use the diff
+# against HEAD because lint-staged may have restaged after auto-fix.
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '\.(ts|tsx)$' \
+  | grep -v -E '\.(test|spec)\.(ts|tsx)$' \
+  || true)
+
+if [ -n "$STAGED_TS" ]; then
+  echo "→ vitest related to staged sources..."
+  echo "$STAGED_TS" | xargs npx vitest related --run --reporter=default
+else
+  echo "→ no source files staged; skipping vitest related."
+fi
