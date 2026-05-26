@@ -264,10 +264,10 @@ class EnvironmentBoundary extends React.Component<
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch(error: Error) {
+  override componentDidCatch(error: Error) {
     console.warn('HDRI environment load failed — falling back to default lighting', error?.message);
   }
-  render() {
+  override render() {
     return this.state.failed ? null : this.props.children;
   }
 }

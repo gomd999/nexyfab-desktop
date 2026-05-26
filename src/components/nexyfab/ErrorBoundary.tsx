@@ -23,7 +23,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+  override componentDidCatch(error: Error, info: React.ErrorInfo): void {
     console.error('[ErrorBoundary]', error.message, info.componentStack);
     this.props.onError?.(error, info);
     // Default Sentry forward — runs even when no onError prop is provided so
@@ -40,7 +40,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       .catch(() => { /* SDK unavailable — fallback already logged above */ });
   }
 
-  render(): React.ReactNode {
+  override render(): React.ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 

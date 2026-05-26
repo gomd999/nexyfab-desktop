@@ -441,7 +441,7 @@ function CameraPresetController({
   onDone: () => void;
 }) {
   const { camera, invalidate } = useThree();
-  const _controlsRef = useRef<any>(null);
+  const _controlsRef = useRef<unknown>(null);
 
   useEffect(() => {
     if (!preset) return;

@@ -79,8 +79,9 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData();
-    const data: Record<string, any> = {};
+    const data: Record<string, string> = {};
     const attachments: { filename: string; content: Buffer; path?: string }[] = [];
+    const attachmentPaths: string[] = [];
 
     // Separate files from text fields
     for (const [key, value] of formData.entries()) {
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
           continue; // Skip disallowed file types
         }
         attachments.push({ filename: safeName, content: buffer });
-      } else {
+      } else if (typeof value === 'string') {
         data[key] = value;
       }
     }
@@ -104,14 +105,12 @@ export async function POST(req: NextRequest) {
     if (attachments.length > 0) {
       const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'inquiries', crypto.randomUUID());
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-      const savedPaths: string[] = [];
       for (const att of attachments) {
         const filePath = path.join(uploadDir, att.filename);
         fs.writeFileSync(filePath, att.content);
         att.path = filePath;
-        savedPaths.push(`data/uploads/inquiries/${path.basename(uploadDir)}/${att.filename}`);
+        attachmentPaths.push(`data/uploads/inquiries/${path.basename(uploadDir)}/${att.filename}`);
       }
-      data._attachmentPaths = savedPaths;
     }
 
     // 1. Honeypot check

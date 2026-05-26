@@ -7,6 +7,17 @@ import { pickImportMeshFile } from '@/lib/platform';
 import { formatCadImportError } from '../io/formatCadImportError';
 import { reportInfo } from '../lib/telemetry';
 
+export interface BomPart {
+  name: string;
+  result: {
+    geometry: THREE.BufferGeometry;
+    edgeGeometry: THREE.BufferGeometry;
+    volume_cm3: number;
+    surface_area_cm2: number;
+    bbox: { w: number; h: number; d: number };
+  };
+}
+
 export interface ImportExportState {
   importedGeometry: THREE.BufferGeometry | null;
   setImportedGeometry: React.Dispatch<React.SetStateAction<THREE.BufferGeometry | null>>;
@@ -26,7 +37,7 @@ export function useImportExport(
   addToast: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void,
   getEffectiveGeometry: () => THREE.BufferGeometry | null,
   setSketchResult: React.Dispatch<React.SetStateAction<ShapeResult | null>>,
-  setBomParts: React.Dispatch<React.SetStateAction<any[]>>,
+  setBomParts: React.Dispatch<React.SetStateAction<BomPart[]>>,
   setBomLabel: React.Dispatch<React.SetStateAction<string>>,
   setIsSketchMode: React.Dispatch<React.SetStateAction<boolean>>,
   activeTab: string,

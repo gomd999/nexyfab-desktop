@@ -51,10 +51,10 @@ class PbrErrorBoundary extends React.Component<
   static getDerivedStateFromError() {
     return { hasError: true };
   }
-  componentDidCatch(error: Error) {
+  override componentDidCatch(error: Error) {
     console.warn('PBR sphere render failed; using SVG fallback', error);
   }
-  render() {
+  override render() {
     if (!this.state.hasError) return this.props.children;
     return <PbrFallback color={this.props.color} />;
   }

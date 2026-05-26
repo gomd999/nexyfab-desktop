@@ -166,7 +166,9 @@ function groupByName(attachments: Attachment[]): Map<string, Attachment[]> {
   return groups;
 }
 
-function uploadWithProgress(file: File, contractId: string, session: string, onProgress: (pct: number) => void, t: ProjectDetailDict): Promise<any> {
+type UploadResponse = { attachment: Attachment; error?: undefined } | { error: string; attachment?: undefined };
+
+function uploadWithProgress(file: File, contractId: string, session: string, onProgress: (pct: number) => void, t: ProjectDetailDict): Promise<UploadResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
@@ -296,7 +298,7 @@ function FileUploadSection({ contract, session, onAttachmentsChange, t }: {
       setUploadProgress({ name: file.name, pct: 0 });
       try {
         const data = await uploadWithProgress(file, contract.id, session, pct => setUploadProgress({ name: file.name, pct }), t);
-        if (data.error) { toast('error', t.toastUploadFailed(data.error || file.name)); continue; }
+        if (data.error || !data.attachment) { toast('error', t.toastUploadFailed(data.error || file.name)); continue; }
         updatedAttachments = [...updatedAttachments, data.attachment];
       } catch { toast('error', t.toastUploadError(file.name)); }
     }

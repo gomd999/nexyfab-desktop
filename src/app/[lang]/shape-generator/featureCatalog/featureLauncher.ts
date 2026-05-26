@@ -65,16 +65,16 @@ function callableExports(module: Record<string, unknown>): string[] {
  */
 export async function launchFeature(id: string): Promise<LaunchedFeature> {
   const entry = FEATURE_REGISTRY.find(e => e.id === id);
-  const module = await loadModule(id);
-  const functionExports = callableExports(module);
-  const entryFunctionName = resolveEntryFunction(module);
+  const mod = await loadModule(id);
+  const functionExports = callableExports(mod);
+  const entryFunctionName = resolveEntryFunction(mod);
   const hasSummarize = functionExports.some(n => /^summari[sz]e/i.test(n));
 
   return {
     id,
     name: entry?.name ?? id,
     entryHint: entryHintForId(id) ?? '',
-    module,
+    module: mod,
     functionExports,
     entryFunctionName,
     hasSummarize,
