@@ -7,6 +7,58 @@ CI(`release-desktop.yml`)의 `register-release` 잡은 이 파일에서 **해당
 
 ---
 
+## [Unreleased]
+
+`v0.1.0` 이후 누적된 주요 변경. 다음 데스크톱 릴리즈에 포함될 항목.
+
+### 추가 — CAD B-rep 엔진 (Phase 1+2)
+- 스케치 → real B-rep extrude 체인 (멀티 컨투어 외곽+홀, revolve, sweep, loft, sketch-on-face boss/pocket, helix)
+- B-rep base solids: cylinder, sphere, pipe/tube, torus, disk, cone/frustum, washer, wedge, L-bracket, I-beam, hex-nut, tSlot, bolt, pulley
+- Features: countersink hole (real cone cut), rib (mesh-CSG → B-rep), selective fillet/chamfer on picked edge, shell with face selection survives rebuild
+- Pattern/mirror: B-rep linear/circular pattern + mirror (handle-preserving)
+- Topology naming: edge-signature + face-signature correspondence, persistent topological naming across rebuild history, scale-aware edge re-resolution, rebuild-stable edge ids
+- 진단: true B-rep STEP export from an OCCT handle (test-locked), B-rep accuracy in OCCT burn-in CI
+
+### 추가 — AI / SCAD
+- Schema-aware clamping of AI-generated feature params
+- Drop unbuildable feature types from AI output (native-builder hardening)
+- Pure self-correction loop orchestrator + AI Layer-1 verifier
+- NL→intent→render free path for lay AI front door
+- Streaming AI sidebar chat
+- Generous AI soft-cap with low-balance nudge
+- BOSL2 vocab reference + role-based verification formatters
+
+### 추가 — Partner portal i18n
+- 13 페이지 + 9 패널 + 2 에디터를 6 언어(ko/en/ja/zh/es/ar)로 전면 확장 (Round 1~9)
+- portfolio 뷰 트래킹 + legacy SSO deprecation
+- demo 세션 데이터는 KR canonical 유지 정책
+
+### 추가 — Shape-generator i18n
+- ja/cn/es/ar 실번역: feature/shape parameter labels (a-batch), advanced-panel labels (b-batch)
+- backfill safety net for modeling-critical keys
+
+### 추가 — 제품 기능
+- "Make it real → quote" lay-conversion CTA
+- Live geometry verification (launch blocker close)
+- AI + presets front door on the empty-state picker
+- 3-tier signup: verify email + onboarding account-type + 사업자 정보
+- Guest mode + unified sidebar + AI Studio + billing
+- PWA, push, rate limit, admin, support chat
+- Materialized standard parts, auto-dim, inline DFM, feature hover, onboarding
+
+### 수정
+- Sketch palette 기본 접힘, right-pane 탭 truncation
+- Orientation cube가 view-preset grid와 겹치는 문제
+- Overlay z-index가 ribbon/bottom chrome 가리는 문제
+- `buildUnsubscribeUrl` 추출 + `webpackIgnore` for web-push (빌드 안정화)
+- `package-lock` 재동기 (Railway 빌드 해제)
+
+### 알려진 제약
+- 데스크톱 코드 서명 여전히 미적용 (v0.1.0과 동일)
+- Server Action ID는 배포마다 변경 — 옛 클라이언트 세션에서 "Failed to find Server Action" 발생 가능 (Next.js 16 알려진 동작)
+
+---
+
 ## [v0.1.0] — 2026-04-19
 
 NexyFab 데스크톱 최초 공개 (Tauri 번들).
