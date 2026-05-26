@@ -95,7 +95,7 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
           license="pro"
           dict={isKo ? CATALOG_DICT_KO : CATALOG_DICT_EN}
           onRun={(featureId, entryFn) => {
-            // eslint-disable-next-line no-console
+             
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);
           }}
         />

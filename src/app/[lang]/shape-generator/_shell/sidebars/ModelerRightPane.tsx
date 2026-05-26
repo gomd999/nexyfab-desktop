@@ -355,7 +355,7 @@ function EngineeringTab({ isKo }: { isKo: boolean }) {
         license="pro"
         dict={isKo ? ENG_CATALOG_DICT_KO : ENG_CATALOG_DICT_EN}
         onRun={(featureId, entryFn) => {
-          // eslint-disable-next-line no-console
+           
           console.info(`[catalog] run ${featureId} via ${entryFn}()`);
         }}
       />

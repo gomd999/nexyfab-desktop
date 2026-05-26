@@ -153,16 +153,16 @@ function generateHatch(
     // Line u + v = c; clip against the bbox.
     const intersections: Array<[number, number]> = [];
     // u = minU → v = c - minU
-    let vAtMinU = c - minU;
+    const vAtMinU = c - minU;
     if (vAtMinU >= minV && vAtMinU <= maxV) intersections.push([minU, vAtMinU]);
     // u = maxU → v = c - maxU
-    let vAtMaxU = c - maxU;
+    const vAtMaxU = c - maxU;
     if (vAtMaxU >= minV && vAtMaxU <= maxV) intersections.push([maxU, vAtMaxU]);
     // v = minV → u = c - minV
-    let uAtMinV = c - minV;
+    const uAtMinV = c - minV;
     if (uAtMinV >= minU && uAtMinV <= maxU) intersections.push([uAtMinV, minV]);
     // v = maxV → u = c - maxV
-    let uAtMaxV = c - maxV;
+    const uAtMaxV = c - maxV;
     if (uAtMaxV >= minU && uAtMaxV <= maxU) intersections.push([uAtMaxV, maxV]);
     if (intersections.length >= 2) {
       lines.push({ start: intersections[0]!, end: intersections[1]! });

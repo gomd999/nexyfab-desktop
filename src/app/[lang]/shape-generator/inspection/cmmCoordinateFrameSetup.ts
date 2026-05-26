@@ -62,7 +62,7 @@ export function setupCoordinateFrame(input: FrameSetupInput): { frame: Coordinat
   const p3 = input.primaryPoints[2];
   const v12 = sub(p2, p1);
   const v13 = sub(p3, p1);
-  let zAxis = normalize(cross(v12, v13));
+  const zAxis = normalize(cross(v12, v13));
   // Primary plane passes through centroid of the 3 points.
   const primaryCentroid: Vec3 = {
     x: (p1.x + p2.x + p3.x) / 3,
@@ -76,7 +76,7 @@ export function setupCoordinateFrame(input: FrameSetupInput): { frame: Coordinat
   const sDir = sub(s2, s1);
   // Remove the component along zAxis to project onto primary plane.
   const sDirProjected = subScaled(sDir, zAxis, dot(sDir, zAxis));
-  let xAxis = normalize(sDirProjected);
+  const xAxis = normalize(sDirProjected);
   const yAxis = normalize(cross(zAxis, xAxis));
 
   // 3. Origin: tertiary point projected onto primary plane gives X, Y origin

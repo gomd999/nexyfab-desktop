@@ -770,7 +770,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                     }}
                   >
                     <ProjectThumbnail name={p.name} thumbnail={p.thumbnail} />
-                    {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
+                    { }
                     <div style={{ padding: '8px 10px' }}>
                       <div
                         style={{

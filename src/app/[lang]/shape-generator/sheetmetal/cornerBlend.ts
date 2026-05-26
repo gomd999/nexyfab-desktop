@@ -94,7 +94,7 @@ function buildTangentArcBlend(corner: Vec2, dirA: Vec2, dirB: Vec2, edgeA: BendE
   const center: Vec2 = { x: corner.x + bisector.x * centerDist, y: corner.y + bisector.y * centerDist };
 
   const startAngle = Math.atan2(tangentA.y - center.y, tangentA.x - center.x);
-  let endAngle = Math.atan2(tangentB.y - center.y, tangentB.x - center.x);
+  const endAngle = Math.atan2(tangentB.y - center.y, tangentB.x - center.x);
   // Pick shorter arc direction.
   let sweep = endAngle - startAngle;
   if (sweep > Math.PI) sweep -= 2 * Math.PI;

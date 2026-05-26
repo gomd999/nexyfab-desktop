@@ -58,7 +58,7 @@ describe('tryMeshFillet', () => {
     const r = tryMeshFillet(makeBox(), 4)!;
     expect(r).not.toBeNull();
     const vol = meshVolume(r);
-    // eslint-disable-next-line no-console
+     
     console.info(`[meshFillet] r=4 vol=${vol.toFixed(0)} tris=${triCount(r)}`);
     expect(vol).toBeGreaterThan(0);
     expect(vol).toBeLessThan(60 * 40 * 30);          // material removed at edges
@@ -100,7 +100,7 @@ describe('tryMeshChamfer', () => {
   it('bevels a box: removes material, clean low-poly mesh', () => {
     const r = tryMeshChamfer(makeBox(), 4)!;
     const vol = meshVolume(r);
-    // eslint-disable-next-line no-console
+     
     console.info(`[meshChamfer] d=4 vol=${vol.toFixed(0)} tris=${triCount(r)} watertight=${isWatertight(r)}`);
     expect(vol).toBeLessThan(60 * 40 * 30);
     expect(vol).toBeGreaterThan(60 * 40 * 30 * 0.9);
@@ -142,7 +142,7 @@ describe('cylinder rounding (lathe)', () => {
     const r = tryMeshFillet(makeCyl(), 4)!;
     expect(r).not.toBeNull();
     const vol = meshVolume(r);
-    // eslint-disable-next-line no-console
+     
     console.info(`[cylFillet] r=4 vol=${vol.toFixed(0)} full=${fullVol.toFixed(0)} watertight=${isWatertight(r)}`);
     expect(isWatertight(r)).toBe(true);
     expect(vol).toBeLessThan(fullVol);
@@ -152,7 +152,7 @@ describe('cylinder rounding (lathe)', () => {
   it('chamfer bevels a cylinder: watertight, removes rim material', () => {
     const r = tryMeshChamfer(makeCyl(), 4)!;
     const vol = meshVolume(r);
-    // eslint-disable-next-line no-console
+     
     console.info(`[cylChamfer] d=4 vol=${vol.toFixed(0)} watertight=${isWatertight(r)}`);
     expect(isWatertight(r)).toBe(true);
     expect(vol).toBeLessThan(fullVol);

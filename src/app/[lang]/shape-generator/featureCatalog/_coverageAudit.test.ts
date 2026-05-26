@@ -45,7 +45,7 @@ describe('coverage audit + auto-loader generator', () => {
       lines.join('\n') + `\n};\n`;
 
     writeFileSync(join(here, 'featureLoaders.auto.ts'), content, 'utf8');
-    // eslint-disable-next-line no-console
+     
     console.log(`[GEN] wrote featureLoaders.auto.ts with ${lines.length} loaders (skipped ${skipped} without module)`);
     expect(lines.length).toBeGreaterThan(290);
     expect(skipped).toBe(0);

@@ -73,9 +73,9 @@ function rotateForVerify(n: [number, number, number], A: number, C: number): [nu
   const Crad = (-C * Math.PI) / 180;
   const Arad = (-A * Math.PI) / 180;
   // First undo C (rotate about Z by -C).
-  let x = n[0] * Math.cos(Crad) - n[1] * Math.sin(Crad);
-  let y = n[0] * Math.sin(Crad) + n[1] * Math.cos(Crad);
-  let z = n[2];
+  const x = n[0] * Math.cos(Crad) - n[1] * Math.sin(Crad);
+  const y = n[0] * Math.sin(Crad) + n[1] * Math.cos(Crad);
+  const z = n[2];
   // Then undo A (rotate about X by -A).
   const y2 = y * Math.cos(Arad) - z * Math.sin(Arad);
   const z2 = y * Math.sin(Arad) + z * Math.cos(Arad);

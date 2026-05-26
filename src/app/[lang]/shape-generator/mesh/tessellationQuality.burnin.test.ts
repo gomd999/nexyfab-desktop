@@ -40,7 +40,7 @@ describe('tessellation quality — primitive box', () => {
   // pins that it stays usable (never "failing") and the scorer never crashes.
   it('clean box is usable (not failing) — minimal tessellation rates poor by FEA standards', () => {
     const r = scoreMeshQuality(toMeshArrays(box()));
-    // eslint-disable-next-line no-console
+     
     console.info(`[tessQ] box: grade=${r.overallGrade} avg=${r.averageQuality.toFixed(3)} problem=${(r.problemFraction * 100).toFixed(1)}%`);
     expect(r.overallGrade).not.toBe('failing');
     expect(r.problemFraction).toBeLessThan(0.4);
@@ -51,7 +51,7 @@ describe('tessellation quality — P1 mesh fillet / chamfer', () => {
   it('RoundedBox fillet meshes at acceptable quality', () => {
     const fillet = tryMeshFillet(box(), 4)!;
     const r = scoreMeshQuality(toMeshArrays(fillet));
-    // eslint-disable-next-line no-console
+     
     console.info(`[tessQ] fillet r=4: grade=${r.overallGrade} avg=${r.averageQuality.toFixed(3)} problem=${(r.problemFraction * 100).toFixed(1)}%`);
     expect(r.overallGrade).not.toBe('failing');
     expect(r.problemFraction).toBeLessThan(0.35);
@@ -65,7 +65,7 @@ describe('tessellation quality — P1 mesh fillet / chamfer', () => {
   it('procedural chamfer is clean (low-poly, FEA-poor only from elongated strips)', () => {
     const chamfer = tryMeshChamfer(box(), 4)!;
     const r = scoreMeshQuality(toMeshArrays(chamfer));
-    // eslint-disable-next-line no-console
+     
     console.info(`[tessQ] chamfer d=4: grade=${r.overallGrade} avg=${r.averageQuality.toFixed(3)} problem=${(r.problemFraction * 100).toFixed(1)}%`);
     expect(r.overallGrade).not.toBe('failing');
   });
@@ -81,7 +81,7 @@ describe('tessellation quality — scorer discriminates degenerate meshes', () =
     ];
     const indices = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     const r = scoreMeshQuality({ positions, indices });
-    // eslint-disable-next-line no-console
+     
     console.info(`[tessQ] slivers: grade=${r.overallGrade} avg=${r.averageQuality.toFixed(3)} problem=${(r.problemFraction * 100).toFixed(1)}% minAngle=${r.perElement[0]!.minAngleDeg.toFixed(2)}`);
     expect(['poor', 'failing']).toContain(r.overallGrade);
     expect(r.problemFraction).toBeGreaterThan(0.5);

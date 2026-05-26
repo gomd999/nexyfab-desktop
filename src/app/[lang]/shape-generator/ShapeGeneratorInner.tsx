@@ -4039,7 +4039,7 @@ export function ShapeGeneratorInner() {
       }
     });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [assemblyMates]);
 
   // Shell-v2 BottomDrawer "Run →" buttons → existing uiStore-driven panels.

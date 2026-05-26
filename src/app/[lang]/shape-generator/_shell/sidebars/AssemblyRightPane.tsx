@@ -77,7 +77,7 @@ export function AssemblyRightPane({ isKo }: AssemblyRightPaneProps) {
           license="pro"
           dict={isKo ? ASM_CATALOG_DICT_KO : ASM_CATALOG_DICT_EN}
           onRun={(featureId, entryFn) => {
-            // eslint-disable-next-line no-console
+             
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);
           }}
         />

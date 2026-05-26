@@ -106,7 +106,7 @@ function parseLine(raw: string, lineNumber: number): GCodeBlock | null {
   const stripped = raw.replace(/\(.*?\)/g, '').replace(/;.*/g, '').trim();
   if (stripped === '') return null;
   // Optional N{number} line label at start.
-  let body = stripped.replace(/^N\d+\s*/i, '').trim();
+  const body = stripped.replace(/^N\d+\s*/i, '').trim();
   if (body === '') return null;
   // Split into tokens.
   const tokens = body.match(/[A-Za-z][-+]?[\d.]+/g) ?? [];

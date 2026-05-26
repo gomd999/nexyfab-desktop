@@ -76,7 +76,7 @@ export function sunPosition(date: Date, loc: Location): SunPosition {
     Math.cos(phi) * Math.sin(dec) - Math.sin(phi) * Math.cos(dec) * Math.cos(ha),
   );
   const altitudeDeg = (alt * 180) / Math.PI;
-  let azimuthDeg = ((az * 180) / Math.PI + 360) % 360;
+  const azimuthDeg = ((az * 180) / Math.PI + 360) % 360;
 
   // Direction = sun→ground, with X=east, Y=up, Z=south.
   const altRad = alt;

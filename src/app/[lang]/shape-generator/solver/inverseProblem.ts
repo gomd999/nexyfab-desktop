@@ -147,7 +147,7 @@ function nelderMead(
     history.push({ objective: value.loss, params });
   };
 
-  let simplex: Array<{ point: number[]; value: number }> = [];
+  const simplex: Array<{ point: number[]; value: number }> = [];
   // Seed: initial + small perturbations along each axis.
   const range = parameters.map(p => (p.max - p.min) * 0.05);
   simplex.push({ point: initial.slice(), value: 0 });

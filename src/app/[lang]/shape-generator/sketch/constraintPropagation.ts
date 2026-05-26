@@ -105,7 +105,7 @@ export function propagateChange(graph: DependencyGraph, startEntityId: string): 
 
 function hasCycleInSubgraph(graph: DependencyGraph, entityIds: Set<string>): boolean {
   // Simple cycle detection: count edges within subgraph; if # > # entities, cycle exists.
-  let entityCount = entityIds.size;
+  const entityCount = entityIds.size;
   let edgeCount = 0;
   const seenC = new Set<string>();
   for (const eid of entityIds) {

@@ -89,7 +89,7 @@ describeMaybe('Engine-parity burn-in (Q1)', () => {
       expect(p.mesh.triangleCount).toBeGreaterThan(0);
       expect(p.mesh.volume_mm3).toBeGreaterThan(0);
 
-      // eslint-disable-next-line no-console
+       
       console.info(`[parity] boolean r=${r}: vol Δ=${p.volDivergencePct.toFixed(2)}% ` +
         `(occt=${p.occt.volume_mm3.toFixed(0)} mesh=${p.mesh.volume_mm3.toFixed(0)}) span Δ=${p.bboxSpanDivergencePct.toFixed(2)}%`);
 
@@ -113,7 +113,7 @@ describeMaybe('Engine-parity burn-in (Q1)', () => {
       params.radius = r;
       const p = parity(filletFeature, params);
 
-      // eslint-disable-next-line no-console
+       
       console.info(`[parity] fillet r=${r}: occt=${p.occt.volume_mm3.toFixed(0)} ` +
         `mesh=${p.mesh.volume_mm3.toFixed(0)} meshTris=${p.mesh.triangleCount} volΔ=${p.volDivergencePct.toFixed(2)}%`);
 
@@ -133,7 +133,7 @@ describeMaybe('Engine-parity burn-in (Q1)', () => {
       params.distance = d;
       const p = parity(chamferFeature, params);
 
-      // eslint-disable-next-line no-console
+       
       console.info(`[parity] chamfer d=${d}: occt=${p.occt.volume_mm3.toFixed(0)} ` +
         `mesh=${p.mesh.volume_mm3.toFixed(0)} meshTris=${p.mesh.triangleCount} volΔ=${p.volDivergencePct.toFixed(2)}%`);
 

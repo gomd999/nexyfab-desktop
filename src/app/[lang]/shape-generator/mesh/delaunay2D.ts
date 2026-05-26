@@ -155,7 +155,7 @@ function buildAdjacency(triangles: Triangle[]): Map<number, number[]> {
  *  CDT handles intersecting constraints. */
 export function constrainedDelaunay2D(points: Point2D[], constraints: Array<[number, number]>): DelaunayResult {
   const result = delaunay2D(points);
-  let triangles = [...result.triangles];
+  const triangles = [...result.triangles];
 
   for (const [a, b] of constraints) {
     const edgePresent = triangles.some(t =>

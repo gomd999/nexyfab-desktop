@@ -114,7 +114,7 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
           license="pro"
           dict={isKo ? SKETCH_CATALOG_DICT_KO : SKETCH_CATALOG_DICT_EN}
           onRun={(featureId, entryFn) => {
-            // eslint-disable-next-line no-console
+             
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);
           }}
         />

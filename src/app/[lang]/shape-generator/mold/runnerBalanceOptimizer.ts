@@ -65,7 +65,7 @@ export function balanceRunners(
   const gateBranches = branches.filter(b => b.isGate);
   const flowPerGate = inputs.totalFlowCm3PerS / Math.max(1, gateBranches.length);
   const perBranchFlow = computePerBranchFlow(branches, childrenMap, flowPerGate);
-  let diameters = new Map(branches.map(b => [b.id, b.diameterMm]));
+  const diameters = new Map(branches.map(b => [b.id, b.diameterMm]));
 
   let imbalance = Infinity;
   let iter = 0;

@@ -461,7 +461,7 @@ export default function PartnerOrdersPage() {
                           )}
                           {ev.photoUrl && (
                             <a href={ev.photoUrl} target="_blank" rel="noreferrer" className="block mt-1">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              { }
                               <img src={ev.photoUrl} alt="" className="rounded-lg max-h-48 border border-gray-100" />
                             </a>
                           )}

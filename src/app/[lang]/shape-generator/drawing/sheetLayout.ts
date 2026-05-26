@@ -144,8 +144,8 @@ function placeViews(
   const placements: ViewPlacement[] = [];
   const gap = 10;
   // Anchor front view at bottom-left of usable area.
-  let frontOriginX = margin;
-  let frontOriginY = margin + (scaled.find(s => s.kind === 'top')?.h ?? 0) + gap;
+  const frontOriginX = margin;
+  const frontOriginY = margin + (scaled.find(s => s.kind === 'top')?.h ?? 0) + gap;
   for (const v of scaled) {
     switch (v.kind) {
       case 'front':
