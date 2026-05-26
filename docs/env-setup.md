@@ -35,7 +35,7 @@ DATA_ROOT=/data
 # NEXYFAB_DB_PATH=/data/nexyfab.db
 
 # Option B — PostgreSQL (Neon, Supabase, Railway Postgres)
-DATABASE_URL=postgresql://user:password@host:5432/nexyfab?sslmode=require
+DATABASE_URL=postgresql://<USERNAME>:<PASSWORD>@<HOST>:5432/nexyfab?sslmode=require
 ```
 
 ### Authentication
@@ -146,7 +146,7 @@ SENTRY_AUTH_TOKEN=
 
 ```env
 # rediss:// for TLS (Railway Redis uses rediss://)
-REDIS_URL=rediss://user:password@host:port
+REDIS_URL=rediss://<USERNAME>:<PASSWORD>@<HOST>:<PORT>
 ```
 
 ### Nexysys SSO
