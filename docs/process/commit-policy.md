@@ -67,6 +67,29 @@ Ref: ADR-007, customer-report #1432
 - ❌ `[P3]` or `[P4]` — only three tiers exist.
 - ❌ Empty body when subject promises detail (`see body`)
 
+### Placeholders in docs / examples
+
+Secret scanners (GitGuardian, GitHub secret scanning, TruffleHog) match
+credential-shaped URIs by regex. Lowercase placeholders like
+`postgresql://user:password@host:5432/db` get flagged as real leaks —
+costs a round of "is this real?" investigation for every push. Use one
+of these patterns instead, in this order of preference:
+
+1. **Angle brackets + uppercase** (best — strongly signals placeholder
+   to humans AND falls outside most credential-URI regexes):
+   `postgresql://<USERNAME>:<PASSWORD>@<HOST>:5432/db`
+2. **Documented dummy values** (`example.com`, `your-domain.com`,
+   `REPLACE_ME`, `CHANGE_ME_BCRYPT_HASH`).
+3. **Comment-out the value entirely** if the structure alone is
+   self-explanatory: `# DATABASE_URL=postgresql://...`
+
+Never use lowercase realistic-looking dummies (`admin:secret123`,
+`user:password`, `john:doe`) — scanners can't tell those from real.
+
+Surfaced: GitGuardian false positive on 2026-05-26 wave-0 push
+(`docs/env-setup.md` lines 38, 149 and `.env.example` lines 27, 30 used
+`user:password`). Fixed in `[P2] docs(security)` commit `edba8f4`.
+
 ## Enforcement (automated)
 
 | Where | What | Bypass |
