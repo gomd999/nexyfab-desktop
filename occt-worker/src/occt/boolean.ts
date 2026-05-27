@@ -15,6 +15,8 @@
  */
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
+import { serializeShape } from './_serialize.js';
+import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export interface BooleanParams {
   /** Bounding box of the host (mm). */
@@ -36,43 +38,7 @@ export interface BooleanParams {
   type?: 'cut' | 'fuse' | 'intersect';
 }
 
-export interface BooleanResult {
-  /** STL bytes — raw triangle mesh for the client viewport. */
-  stl: Buffer;
-  /** STEP text — for downstream CAD interchange. */
-  step: string;
-  meta: {
-    /** Volume in mm³ after the op. */
-    volume: number;
-    /** Surface area in mm². */
-    surface: number;
-    /** AABB after op. */
-    bbox: { min: [number, number, number]; max: [number, number, number] };
-    /** Tri count of the meshed result (post-tessellation). */
-    triangles: number;
-    /** Whether the result passed OCCT's manifold check. */
-    manifold: boolean;
-  };
-}
-
-interface ReplicadLike {
-  makeBaseBox?: (x: number, y: number, z: number) => unknown;
-  makeBaseCylinder?: (r: number, h: number) => unknown;
-  makeBaseSphere?: (r: number) => unknown;
-  exportSTL?: (shape: unknown) => Uint8Array | string;
-  exportSTEP?: (shape: unknown) => string;
-}
-
-interface OcctShape {
-  cut?: (other: OcctShape) => OcctShape;
-  fuse?: (other: OcctShape) => OcctShape;
-  intersect?: (other: OcctShape) => OcctShape;
-  translate?: (offset: [number, number, number]) => OcctShape;
-  volume?: number;
-  surface?: number;
-  boundingBox?: { min: [number, number, number]; max: [number, number, number] };
-  isClosed?: () => boolean;
-}
+export type BooleanResult = SerializedResult;
 
 export async function runBoolean(params: BooleanParams): Promise<BooleanResult> {
   await ensureOcctReady();
@@ -112,43 +78,5 @@ export async function runBoolean(params: BooleanParams): Promise<BooleanResult> 
     throw new Error(`replicad shape has no ${opKind}() method — op aborted`);
   }
 
-  // Serialize to STEP + STL.
-  const stepText = replicad.exportSTEP?.(result) ?? '';
-  if (!stepText) {
-    throw new Error('replicad.exportSTEP returned empty — kernel state lost');
-  }
-  const stlRaw = replicad.exportSTL?.(result);
-  if (!stlRaw) {
-    throw new Error('replicad.exportSTL returned empty');
-  }
-  const stl = Buffer.isBuffer(stlRaw)
-    ? stlRaw
-    : typeof stlRaw === 'string'
-      ? Buffer.from(stlRaw, 'utf8')
-      : Buffer.from(stlRaw);
-
-  // Meta — replicad exposes volume / surface / bbox via getters. The
-  // exact API depends on the kernel version; we read defensively.
-  const volume = typeof result.volume === 'number' ? result.volume : 0;
-  const surface = typeof result.surface === 'number' ? result.surface : 0;
-  const bbox = result.boundingBox ?? {
-    min: [0, 0, 0] as [number, number, number],
-    max: [0, 0, 0] as [number, number, number],
-  };
-  // Tri count: parse the STL header. Binary STL = 80-byte header +
-  // u32 LE triangle count.
-  const triangles = stl.length >= 84 ? stl.readUInt32LE(80) : 0;
-  const manifold = typeof result.isClosed === 'function' ? result.isClosed() : false;
-
-  return {
-    stl,
-    step: stepText,
-    meta: {
-      volume,
-      surface,
-      bbox,
-      triangles,
-      manifold,
-    },
-  };
+  return serializeShape(replicad, result);
 }

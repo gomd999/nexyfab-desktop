@@ -16,7 +16,10 @@
 
 import { parentPort } from 'node:worker_threads';
 import { ensureOcctReady } from '../occt/lifecycle.js';
-import { runBoolean } from '../occt/boolean.js';
+import { runBoolean, type BooleanParams } from '../occt/boolean.js';
+import { runFillet, type FilletParams } from '../occt/fillet.js';
+import { runChamfer, type ChamferParams } from '../occt/chamfer.js';
+import { runShell, type ShellParams } from '../occt/shell.js';
 import type { ParentToWorker, WorkerToParent } from './protocol.js';
 
 if (!parentPort) {
@@ -54,7 +57,16 @@ port.on('message', async (raw: ParentToWorker) => {
     let result: unknown;
     switch (op) {
       case 'boolean':
-        result = await runBoolean(params);
+        result = await runBoolean(params as BooleanParams);
+        break;
+      case 'fillet':
+        result = await runFillet(params as FilletParams);
+        break;
+      case 'chamfer':
+        result = await runChamfer(params as ChamferParams);
+        break;
+      case 'shell':
+        result = await runShell(params as ShellParams);
         break;
       default: {
         // Exhaustiveness — adding a new op without handling it here

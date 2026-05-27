@@ -32,7 +32,6 @@ import type {
   OcctOpRequest,
   WorkerToParent,
 } from './protocol.js';
-import type { BooleanParams } from '../occt/boolean.js';
 
 const DEFAULT_POOL_SIZE = Math.max(1, Math.min(os.cpus().length - 1, 3));
 const DEFAULT_QUEUE_MULT = 4;
@@ -41,7 +40,9 @@ const DEFAULT_OP_TIMEOUT_MS = 30_000;
 interface PendingJob {
   jobId: string;
   op: OcctOp;
-  params: BooleanParams;
+  /** Params shape is op-dependent. Pool keeps it opaque — the worker
+   *  entry's switch narrows by op (see protocol.OcctParamsByOp). */
+  params: unknown;
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
   enqueuedAt: number;
@@ -134,7 +135,7 @@ export class OcctWorkerPool {
   }
 
   /** Submit an op. Resolves with the worker's `result`. */
-  execute(op: OcctOp, params: BooleanParams): Promise<unknown> {
+  execute(op: OcctOp, params: unknown): Promise<unknown> {
     if (this.shuttingDown) {
       return Promise.reject(new Error('pool shutting down'));
     }
