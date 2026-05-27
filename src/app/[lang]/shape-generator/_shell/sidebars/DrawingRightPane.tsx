@@ -3,10 +3,20 @@
 // Drawing mode right pane — VIEW PROPERTIES / DIMENSIONS / GD&T / TITLE BLOCK
 // sections matching mockup #32 right side. Plot PDF / Export DWG CTA at bottom.
 
+import { useState } from 'react';
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck, PropItemRow } from './';
 import { I } from '../Icons';
 import { ToleranceStackSection } from './ToleranceStackSection';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+// Wave 1 Phase E — drawing-side knobs. Same Local + event pattern as
+// Phase F (Render) and Phase C (SketchRightPane). Inner (or a future
+// DrawingFrame integration) listens to route to the actual SVG / PDF
+// emitter when wiring lands.
+function emitDrawingSet(key: string, value: number | string | boolean): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('nexyfab:set-drawing', { detail: { key, value } }));
+}
 
 const CATALOG_DICT_KO: CatalogPanelDict = {
   catalogTitle: 'GD&T 평가기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
@@ -24,6 +34,16 @@ export interface DrawingRightPaneProps {
 }
 
 export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRightPaneProps) {
+  // Local state for view + title block knobs. Defaults match the mockup.
+  const [projection, setProjection] = useState<'first' | 'third'>('first');
+  const [scale, setScale] = useState<'1:1' | '1:2' | '2:1' | '5:1'>('1:1');
+  const [style, setStyle] = useState<'hidden-visible' | 'hidden-removed' | 'shaded'>('hidden-visible');
+  const [tangentPhantom, setTangentPhantom] = useState(true);
+  const [standard, setStandard] = useState<'asme' | 'iso' | 'jis'>('asme');
+  const [drawnBy, setDrawnBy] = useState('J. Kim');
+  const [checkedBy, setCheckedBy] = useState('A. Moon');
+  const [approvedBy, setApprovedBy] = useState('');
+
   return (
     <SidePanel
       side="right"
@@ -36,8 +56,8 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
         </PropRow>
         <PropRow label={isKo ? '투영' : 'Projection'}>
           <PropSelect
-            value="first"
-            onChange={() => { /* TODO wire */ }}
+            value={projection}
+            onChange={v => { setProjection(v as typeof projection); emitDrawingSet('projection', v); }}
             options={[
               { value: 'first', label: isKo ? '1각법 (ISO)' : 'First angle (ISO)' },
               { value: 'third', label: isKo ? '3각법 (ANSI)' : 'Third angle (ANSI)' },
@@ -46,8 +66,8 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
         </PropRow>
         <PropRow label={isKo ? '축척' : 'Scale'}>
           <PropSelect
-            value="1:1"
-            onChange={() => { /* TODO */ }}
+            value={scale}
+            onChange={v => { setScale(v as typeof scale); emitDrawingSet('scale', v); }}
             options={[
               { value: '1:1', label: '1 : 1' },
               { value: '1:2', label: '1 : 2' },
@@ -58,8 +78,8 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
         </PropRow>
         <PropRow label={isKo ? '스타일' : 'Style'}>
           <PropSelect
-            value="hidden-visible"
-            onChange={() => { /* TODO */ }}
+            value={style}
+            onChange={v => { setStyle(v as typeof style); emitDrawingSet('style', v); }}
             options={[
               { value: 'hidden-visible', label: isKo ? '숨김선 표시' : 'Hidden lines visible' },
               { value: 'hidden-removed', label: isKo ? '숨김선 제거' : 'Hidden lines removed' },
@@ -68,7 +88,11 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
           />
         </PropRow>
         <PropRow label={isKo ? '접선 엣지' : 'Tangent edges'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '팬텀' : 'Phantom'} />
+          <PropCheck
+            checked={tangentPhantom}
+            onChange={v => { setTangentPhantom(v); emitDrawingSet('tangentPhantom', v); }}
+            label={isKo ? '팬텀' : 'Phantom'}
+          />
         </PropRow>
       </PropSection>
 
@@ -106,26 +130,29 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
       <PropSection title={isKo ? '제목 블록' : 'Title Block'}>
         <PropRow label={isKo ? '제작자' : 'Drawn by'}>
           <input
-            defaultValue="J. Kim"
-            style={{ width: '100%', height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
+            value={drawnBy}
+            onChange={e => { setDrawnBy(e.target.value); emitDrawingSet('drawnBy', e.target.value); }}
+            style={titleBlockInput}
           />
         </PropRow>
         <PropRow label={isKo ? '검토' : 'Checked'}>
           <input
-            defaultValue="A. Moon"
-            style={{ width: '100%', height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
+            value={checkedBy}
+            onChange={e => { setCheckedBy(e.target.value); emitDrawingSet('checkedBy', e.target.value); }}
+            style={titleBlockInput}
           />
         </PropRow>
         <PropRow label={isKo ? '승인' : 'Approved'}>
           <input
-            defaultValue=""
-            style={{ width: '100%', height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
+            value={approvedBy}
+            onChange={e => { setApprovedBy(e.target.value); emitDrawingSet('approvedBy', e.target.value); }}
+            style={titleBlockInput}
           />
         </PropRow>
         <PropRow label={isKo ? '표준' : 'Standard'}>
           <PropSelect
-            value="asme"
-            onChange={() => { /* TODO */ }}
+            value={standard}
+            onChange={v => { setStandard(v as typeof standard); emitDrawingSet('standard', v); }}
             options={[
               { value: 'asme', label: 'ASME Y14.5-2018' },
               { value: 'iso', label: 'ISO 8015' },
@@ -167,6 +194,12 @@ function FcfBox({ sym, tol, datums, note }: { sym: string; tol: string; datums: 
     </div>
   );
 }
+
+const titleBlockInput: React.CSSProperties = {
+  width: '100%', height: 22, padding: '0 6px', borderRadius: 3,
+  border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+  color: 'var(--nx-text)', fontSize: 11,
+};
 
 const primaryBtn: React.CSSProperties = {
   flex: 1, height: 26, padding: '0 10px',
