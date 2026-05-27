@@ -153,13 +153,18 @@ describe('validateExtrudeParams', () => {
       expect(out.profile.points.length).toBeGreaterThan(5);
     }
   });
-  it('rejects svgPath with arc (W14 D3-5 scope)', () => {
-    expect(() => validateExtrudeParams({
+  it('accepts svgPath with arc (W14 D3-5 flattening)', () => {
+    const out = validateExtrudeParams({
       params: {
-        profile: { kind: 'svgPath', d: 'M 0,0 A 5,5 0 0,1 10,10 Z' },
+        profile: { kind: 'svgPath', d: 'M 10,0 A 10,10 0 0,0 0,10 L 0,0 Z' },
         height: 3,
       },
-    })).toThrow(/elliptical arc/);
+    });
+    expect(out.profile.kind).toBe('polygon');
+    if (out.profile.kind === 'polygon') {
+      // Quarter arc with default 0.1mm tolerance → ≥ 4 vertices.
+      expect(out.profile.points.length).toBeGreaterThan(4);
+    }
   });
   it('rejects svgPath out-of-range tolerance', () => {
     expect(() => validateExtrudeParams({

@@ -116,9 +116,22 @@ describe('parseSvgPath — error paths', () => {
       .toThrow(/must end with Z/);
   });
 
-  it('still rejects arc commands (W14 D3-5 scope)', () => {
-    expect(() => parseSvgPath('M 0,0 A 5,5 0 0,1 10,10 Z'))
-      .toThrow(/elliptical arc/);
+  it('flattens an elliptical arc (W14 D3-5)', () => {
+    // Quarter circle: (10,0) → (0,10) via arc radii 10. Default 0.1mm
+    // tolerance produces 8+ vertices.
+    const out = parseSvgPath('M 10,0 A 10,10 0 0,0 0,10 L 0,0 Z');
+    expect(out.closed).toBe(true);
+    expect(out.points.length).toBeGreaterThan(5);
+  });
+
+  it('rejects arc with non-binary flag', () => {
+    expect(() => parseSvgPath('M 0,0 A 5,5 0 2,1 10,0 L 10,5 L 0,5 Z'))
+      .toThrow(/large-arc-flag must be 0 or 1/);
+  });
+
+  it('handles relative arc command', () => {
+    const out = parseSvgPath('M 0,0 a 5,5 0 0,1 10,0 L 10,-2 L 0,-2 Z');
+    expect(out.points.length).toBeGreaterThan(4);
   });
 
   it('rejects invalid tolerance', () => {
