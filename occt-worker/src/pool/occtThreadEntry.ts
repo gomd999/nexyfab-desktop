@@ -23,6 +23,10 @@ import { runChamfer, type ChamferParams } from '../occt/chamfer.js';
 import { runShell, type ShellParams } from '../occt/shell.js';
 import { runExtrude, type ExtrudeParams } from '../occt/extrude.js';
 import { runRevolve, type RevolveParams } from '../occt/revolve.js';
+import { runMirror, type MirrorParams } from '../occt/mirror.js';
+import { runPattern, type PatternParams } from '../occt/pattern.js';
+import { runSweep, type SweepParams } from '../occt/sweep.js';
+import { runLoft, type LoftParams } from '../occt/loft.js';
 import type { ParentToWorker, WorkerToParent } from './protocol.js';
 
 if (!parentPort) {
@@ -92,6 +96,18 @@ port.on('message', async (raw: ParentToWorker) => {
         break;
       case 'revolve':
         result = await runRevolve(params as RevolveParams);
+        break;
+      case 'mirror':
+        result = await runMirror(params as MirrorParams);
+        break;
+      case 'pattern':
+        result = await runPattern(params as PatternParams);
+        break;
+      case 'sweep':
+        result = await runSweep(params as SweepParams);
+        break;
+      case 'loft':
+        result = await runLoft(params as LoftParams);
         break;
       default: {
         // Exhaustiveness — adding a new op without handling it here

@@ -16,8 +16,15 @@ import type { ChamferParams } from '../occt/chamfer.js';
 import type { ShellParams } from '../occt/shell.js';
 import type { ExtrudeParams } from '../occt/extrude.js';
 import type { RevolveParams } from '../occt/revolve.js';
+import type { MirrorParams } from '../occt/mirror.js';
+import type { PatternParams } from '../occt/pattern.js';
+import type { SweepParams } from '../occt/sweep.js';
+import type { LoftParams } from '../occt/loft.js';
 
-export type OcctOp = 'boolean' | 'fillet' | 'chamfer' | 'shell' | 'extrude' | 'revolve';
+export type OcctOp =
+  | 'boolean' | 'fillet' | 'chamfer' | 'shell'
+  | 'extrude' | 'revolve'
+  | 'mirror' | 'pattern' | 'sweep' | 'loft';
 
 /** Per-op param shapes; the discriminator on `op` lets the worker
  *  entry's switch narrow without casting. */
@@ -28,6 +35,10 @@ export type OcctParamsByOp = {
   shell: ShellParams;
   extrude: ExtrudeParams;
   revolve: RevolveParams;
+  mirror: MirrorParams;
+  pattern: PatternParams;
+  sweep: SweepParams;
+  loft: LoftParams;
 };
 
 export interface OcctOpRequest {
