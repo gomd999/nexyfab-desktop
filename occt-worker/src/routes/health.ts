@@ -33,6 +33,10 @@ healthRoute.get('/', (_req: Request, res: Response) => {
       queueDepth: pool.queueDepth,
       queueCapacity: pool.queueCapacity,
       opsCompleted: pool.totalOpsCompleted,
+      // W12 D1-2 soak observability — counts every slot rotation
+      // (op-count threshold, crash, timeout). Dashboards alert when
+      // this climbs unexpectedly fast (kernel instability signal).
+      recycles: pool.totalRecycles,
     },
     uptimeSec: Math.round(process.uptime()),
   });
