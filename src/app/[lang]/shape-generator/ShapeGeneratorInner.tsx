@@ -62,6 +62,7 @@ import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
 import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
+import { useWorkerToken } from './hooks/useWorkerToken';
 import { useCsgWorker } from './workers/useCsgWorker';
 import { useFEAWorker } from './workers/useFEAWorker';
 import { useDFMWorker } from './workers/useDFMWorker';
@@ -4194,11 +4195,20 @@ export function ShapeGeneratorInner() {
     addFeature: (type) => handleAddFeatureCmd(type as FeatureType),
     showToast: addToast });
 
-  // ── Async boolean via Web Worker (for standalone boolean operations) ──
+  // ── Async boolean via Web Worker + server OCCT (W17 hook) ──
+  // Worker token is fetched lazily inside applyBooleanAsync's server
+  // path so we don't burn a token mint on every render. If the user
+  // is signed out (getToken → null) the server path is skipped and
+  // the worker/sync fallback chain takes over — non-breaking.
+  const { getToken: getWorkerToken } = useWorkerToken();
   const _handleBooleanAsync = useCallback(
-    (geometry: BufferGeometry, boolParams: Record<string, number>) =>
-      applyBooleanAsync(geometry, boolParams, performCSG),
-    [performCSG],
+    async (geometry: BufferGeometry, boolParams: Record<string, number>) => {
+      const jwtToken = await getWorkerToken().catch(() => null);
+      const baseUrl = process.env.NEXT_PUBLIC_OCCT_WORKER_URL;
+      const serverOpts = jwtToken && baseUrl ? { jwtToken, baseUrl } : undefined;
+      return applyBooleanAsync(geometry, boolParams, performCSG, serverOpts);
+    },
+    [performCSG, getWorkerToken],
   );
 
   // Build design context for AI chat (includes DFM/FEA/mass/cost for AI-aware advice)
