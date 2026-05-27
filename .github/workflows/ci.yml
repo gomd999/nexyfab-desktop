@@ -154,6 +154,13 @@ jobs:
           CI: true
           JWT_SECRET: ci-e2e-jwt-secret-placeholder-32chars-min
           NODE_ENV: test
+          # playwright.config.ts's webServer launches .next/standalone/server.js
+          # with NODE_ENV=production. The startup-validation in that bundle
+          # FATALs unless one of DATABASE_URL / DATA_ROOT / NEXYFAB_DB_PATH
+          # is set (added by Wave 0 commit b474792). Use a tmp sqlite path
+          # for CI — durable enough for the test run, discarded with the
+          # runner.
+          NEXYFAB_DB_PATH: /tmp/nexyfab-ci-e2e.db
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
