@@ -6,6 +6,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   serverBoolean,
+  serverFillet,
+  serverChamfer,
+  serverShell,
+  serverMirror,
+  serverPattern,
   shouldUseServerBoolean,
   ServerOcctUnavailableError,
   SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3,
@@ -41,6 +46,16 @@ describe('shouldUseServerBoolean', () => {
 
   it('threshold sanity', () => {
     expect(SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3).toBe(1_000_000);
+  });
+
+  it('sourceR2Key (chained input) → always true (unknown size)', () => {
+    // Per W16 D1-2 — when the host comes from R2, we don't know its
+    // bbox until the worker imports it. Default to server-side to
+    // avoid the worst case where a huge imported shape blocks the tab.
+    expect(shouldUseServerBoolean({
+      sourceR2Key: 'occt-ops/u1/extrude/abc.step',
+      toolShape: 0, r: 1,
+    })).toBe(true);
   });
 });
 
@@ -241,5 +256,141 @@ describe('fetchR2Bytes', () => {
       fetchR2Bytes('occt-ops/u1/x.stl', { jwtToken: '', baseUrl: 'https://a' }),
     ).rejects.toBeInstanceOf(ServerOcctUnavailableError);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+// ─── W16: new op wrappers + chained input ──────────────────────────────────
+
+const okResponse = (op: string): Response => new Response(
+  JSON.stringify({
+    stlR2Key: `occt-ops/u1/${op}/x.stl`,
+    stepR2Key: `occt-ops/u1/${op}/x.step`,
+    meta: { volume: 100, surface: 60, bbox: { min: [0,0,0], max: [10,10,10] }, triangles: 12, manifold: true },
+    elapsedMs: 100,
+    requestId: 'r',
+  }),
+  { status: 201 },
+);
+
+describe('serverBoolean — W16 chained input', () => {
+  it('accepts sourceR2Key in body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('boolean'));
+    globalThis.fetch = fetchMock;
+    await serverBoolean(
+      { sourceR2Key: 'occt-ops/u1/extrude/abc.step', toolShape: 0, r: 5 },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.sourceR2Key).toBe('occt-ops/u1/extrude/abc.step');
+    expect(body.params.host).toBeUndefined();
+  });
+});
+
+describe('serverFillet', () => {
+  it('POSTs to /occt/op/fillet with radius', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('fillet'));
+    globalThis.fetch = fetchMock;
+    const out = await serverFillet(
+      { host: { w: 50, h: 50, d: 50 }, radius: 3, edges: 'vertical' },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/fillet');
+    expect(out.stlR2Key).toContain('fillet');
+  });
+});
+
+describe('serverChamfer', () => {
+  it('POSTs to /occt/op/chamfer with distance', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('chamfer'));
+    globalThis.fetch = fetchMock;
+    const out = await serverChamfer(
+      { sourceR2Key: 'occt-ops/u1/fillet/a.step', distance: 2 },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/chamfer');
+    expect(out.stepR2Key).toContain('chamfer');
+  });
+});
+
+describe('serverShell', () => {
+  it('POSTs to /occt/op/shell with thickness', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('shell'));
+    globalThis.fetch = fetchMock;
+    await serverShell(
+      { host: { w: 50, h: 50, d: 50 }, thickness: 2, openFace: 'top' },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/shell');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.openFace).toBe('top');
+  });
+});
+
+describe('serverMirror', () => {
+  it('POSTs to /occt/op/mirror with plane', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('mirror'));
+    globalThis.fetch = fetchMock;
+    await serverMirror(
+      { host: { w: 10, h: 10, d: 10 }, plane: 'XY' },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/mirror');
+  });
+});
+
+describe('serverPattern', () => {
+  it('POSTs linear pattern with count + spacing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('pattern'));
+    globalThis.fetch = fetchMock;
+    await serverPattern(
+      { kind: 'linear', host: { w: 10, h: 10, d: 10 }, count: 4, spacing: 20, axis: 'X' },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/pattern');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.kind).toBe('linear');
+    expect(body.params.count).toBe(4);
+  });
+
+  it('POSTs circular pattern with totalAngleDeg', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('pattern'));
+    globalThis.fetch = fetchMock;
+    await serverPattern(
+      { kind: 'circular', sourceR2Key: 'occt-ops/u1/extrude/x.step', count: 6, totalAngleDeg: 360, axis: 'Z' },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.kind).toBe('circular');
+    expect(body.params.sourceR2Key).toBeDefined();
+  });
+});
+
+describe('error mapping is shared across all ops', () => {
+  it('serverFillet — 400 maps to ServerOcctUnavailableError status 400', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'invalid params: radius out of range', requestId: 'r' }), { status: 400 }),
+    );
+    try {
+      await serverFillet(
+        { host: { w: 10, h: 10, d: 10 }, radius: 100 },
+        { jwtToken: 't', baseUrl: 'https://w.x' },
+      );
+      throw new Error('expected throw');
+    } catch (e) {
+      expect((e as ServerOcctUnavailableError).status).toBe(400);
+    }
+  });
+
+  it('serverPattern — network error wraps cleanly', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('fetch failed'));
+    try {
+      await serverPattern(
+        { kind: 'linear', host: { w: 10, h: 10, d: 10 }, count: 2, spacing: 10, axis: 'X' },
+        { jwtToken: 't', baseUrl: 'https://w.x' },
+      );
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ServerOcctUnavailableError);
+    }
   });
 });
