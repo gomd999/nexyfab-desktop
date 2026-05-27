@@ -1,9 +1,11 @@
 /**
  * /occt/op/* — OCCT operation endpoints.
  *
- * Wave 1 W11 (D3-5 + follow-up): boolean / fillet / chamfer / shell /
- * extrude / revolve are live. The 4 remaining ops (sweep / loft /
- * pattern / mirror) return 501 until W12+.
+ * Wave 1 W11-W15: all 10 ops (boolean / fillet / chamfer / shell /
+ * extrude / revolve / mirror / pattern / sweep / loft) are live.
+ * PLACEHOLDER_OPS is now empty — every documented op routes to a
+ * real handler. Chained-op surface (R2-imported shape as input)
+ * remains W16+ scope.
  *
  * Request shape (all ops follow this):
  *   POST /occt/op/{operation}
@@ -27,6 +29,10 @@ import { type ChamferParams, type ChamferEdgeScope } from '../occt/chamfer.js';
 import { type ShellParams, type ShellOpenFace } from '../occt/shell.js';
 import { type ExtrudeParams, type ExtrudePlane, type ExtrudeProfile } from '../occt/extrude.js';
 import { type RevolveParams, type RevolvePlane, type RevolveAxis, type RevolveProfile } from '../occt/revolve.js';
+import { type MirrorParams, type MirrorPlane } from '../occt/mirror.js';
+import { type PatternParams } from '../occt/pattern.js';
+import { type SweepParams } from '../occt/sweep.js';
+import { type LoftParams } from '../occt/loft.js';
 import { parseSvgPath } from '../occt/_svg.js';
 import type { SerializedResult } from '../occt/_types.js';
 import { r2Put, r2OpKey } from '../r2.js';
@@ -37,11 +43,9 @@ import type { OcctOp } from '../pool/protocol.js';
 
 export const occtRoute: Router = Router();
 
-// 4 ops still landing later. fillet/chamfer/shell came off in W11 D3-5;
-// extrude/revolve came off in W11 follow-up.
-const PLACEHOLDER_OPS = new Set([
-  'sweep', 'loft', 'pattern', 'mirror',
-]);
+// Empty — all 10 ops have real handlers as of W15. Kept for future
+// op additions: any name not in OcctOp falls through the 501 branch.
+const PLACEHOLDER_OPS: ReadonlySet<string> = new Set();
 
 // ─── Reusable dispatch ────────────────────────────────────────────────────────
 // Every live op follows the same flow: validate → pool.execute → write
@@ -107,6 +111,10 @@ occtRoute.post('/op/chamfer', (req, res) => dispatchOp('chamfer', validateChamfe
 occtRoute.post('/op/shell',   (req, res) => dispatchOp('shell',   validateShellParams,   req, res));
 occtRoute.post('/op/extrude', (req, res) => dispatchOp('extrude', validateExtrudeParams, req, res));
 occtRoute.post('/op/revolve', (req, res) => dispatchOp('revolve', validateRevolveParams, req, res));
+occtRoute.post('/op/mirror',  (req, res) => dispatchOp('mirror',  validateMirrorParams,  req, res));
+occtRoute.post('/op/pattern', (req, res) => dispatchOp('pattern', validatePatternParams, req, res));
+occtRoute.post('/op/sweep',   (req, res) => dispatchOp('sweep',   validateSweepParams,   req, res));
+occtRoute.post('/op/loft',    (req, res) => dispatchOp('loft',    validateLoftParams,    req, res));
 
 // ─── Placeholder 501s for ops landing later ──────────────────────────────────
 occtRoute.post('/op/:operation', (req: Request, res: Response) => {
@@ -326,6 +334,111 @@ function validateRevolveParams(body: unknown): RevolveParams {
   };
 }
 
+const MIRROR_PLANES: ReadonlySet<MirrorPlane> = new Set(['XY', 'YZ', 'XZ']);
+function validateMirrorParams(body: unknown): MirrorParams {
+  const p = unwrapParams(body);
+  const host = validateHost(p);
+  const plane = p.plane;
+  if (typeof plane !== 'string' || !MIRROR_PLANES.has(plane as MirrorPlane)) {
+    throw new Error(`invalid params: plane must be one of ${[...MIRROR_PLANES].join(' | ')}`);
+  }
+  return { host, plane: plane as MirrorPlane };
+}
+
+const PATTERN_AXES: ReadonlySet<'X' | 'Y' | 'Z'> = new Set(['X', 'Y', 'Z']);
+function validatePatternParams(body: unknown): PatternParams {
+  const p = unwrapParams(body);
+  const host = validateHost(p);
+  const kind = p.kind;
+  if (kind !== 'linear' && kind !== 'circular') {
+    throw new Error('invalid params: pattern.kind must be linear | circular');
+  }
+  const count = numField(p, 'count', 2, 256);
+  if (!Number.isInteger(count)) {
+    throw new Error('invalid params: pattern.count must be an integer');
+  }
+  const axisRaw = p.axis;
+  if (typeof axisRaw !== 'string' || !PATTERN_AXES.has(axisRaw as 'X' | 'Y' | 'Z')) {
+    throw new Error('invalid params: pattern.axis must be X | Y | Z');
+  }
+  const axis = axisRaw as 'X' | 'Y' | 'Z';
+  if (kind === 'linear') {
+    return { kind: 'linear', host, count, axis, spacing: numField(p, 'spacing', 0.01, 5000) };
+  }
+  return {
+    kind: 'circular', host, count, axis,
+    totalAngleDeg: numField(p, 'totalAngleDeg', -360, 360),
+  };
+}
+
+const SWEEP_PLANES: ReadonlySet<'XY' | 'XZ' | 'YZ'> = new Set(['XY', 'XZ', 'YZ']);
+function validateSweepParams(body: unknown): SweepParams {
+  const p = unwrapParams(body);
+  // Profile shares vocabulary with extrude. Sweep doesn't accept
+  // svgPath directly — pre-compile via the polygon path.
+  const profile = validateProfile(p);
+  const pathRaw = p.path;
+  if (!Array.isArray(pathRaw) || pathRaw.length < 2) {
+    throw new Error('invalid params: sweep.path must be an array of ≥ 2 points');
+  }
+  if (pathRaw.length > 256) {
+    throw new Error('invalid params: sweep.path exceeds 256 points');
+  }
+  const path: [number, number, number][] = pathRaw.map((entry, i) => {
+    if (!Array.isArray(entry) || entry.length !== 3) {
+      throw new Error(`invalid params: sweep.path[${i}] must be [x, y, z]`);
+    }
+    const [x, y, z] = entry;
+    if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number'
+        || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+      throw new Error(`invalid params: sweep.path[${i}] must be finite numbers`);
+    }
+    if (Math.abs(x) > 5000 || Math.abs(y) > 5000 || Math.abs(z) > 5000) {
+      throw new Error(`invalid params: sweep.path[${i}] out of [-5000, 5000]`);
+    }
+    return [x, y, z];
+  });
+  const plane = p.plane;
+  if (plane !== undefined && (typeof plane !== 'string' || !SWEEP_PLANES.has(plane as 'XY' | 'XZ' | 'YZ'))) {
+    throw new Error(`invalid params: plane must be one of ${[...SWEEP_PLANES].join(' | ')}`);
+  }
+  return { profile, path, plane: plane as 'XY' | 'XZ' | 'YZ' | undefined };
+}
+
+function validateLoftParams(body: unknown): LoftParams {
+  const p = unwrapParams(body);
+  const sectionsRaw = p.sections;
+  if (!Array.isArray(sectionsRaw) || sectionsRaw.length < 2) {
+    throw new Error('invalid params: loft.sections must be an array of ≥ 2 entries');
+  }
+  if (sectionsRaw.length > 32) {
+    throw new Error('invalid params: loft.sections exceeds 32 entries');
+  }
+  let lastOffset = -Infinity;
+  const sections = sectionsRaw.map((entry, i) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`invalid params: loft.sections[${i}] must be an object`);
+    }
+    const e = entry as Record<string, unknown>;
+    // Reuse profile validation. Wrap profile in the shape unwrap*
+    // helper expects (params.profile).
+    const profile = validateProfile({ profile: e.profile });
+    const offset = numField(e, 'offset', -5000, 5000);
+    if (offset <= lastOffset) {
+      throw new Error(
+        `invalid params: loft.sections[${i}].offset must be strictly increasing`,
+      );
+    }
+    lastOffset = offset;
+    return { profile, offset };
+  });
+  const plane = p.plane;
+  if (plane !== undefined && (typeof plane !== 'string' || !SWEEP_PLANES.has(plane as 'XY' | 'XZ' | 'YZ'))) {
+    throw new Error(`invalid params: plane must be one of ${[...SWEEP_PLANES].join(' | ')}`);
+  }
+  return { sections, plane: plane as 'XY' | 'XZ' | 'YZ' | undefined };
+}
+
 function numField(obj: Record<string, unknown>, key: string, min: number, max: number): number {
   const v = obj[key];
   if (typeof v !== 'number' || !Number.isFinite(v)) {
@@ -345,4 +458,8 @@ export const _testing = {
   validateShellParams,
   validateExtrudeParams,
   validateRevolveParams,
+  validateMirrorParams,
+  validatePatternParams,
+  validateSweepParams,
+  validateLoftParams,
 };

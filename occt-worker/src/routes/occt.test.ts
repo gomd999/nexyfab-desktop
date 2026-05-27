@@ -14,6 +14,10 @@ const {
   validateShellParams,
   validateExtrudeParams,
   validateRevolveParams,
+  validateMirrorParams,
+  validatePatternParams,
+  validateSweepParams,
+  validateLoftParams,
 } = _testing;
 
 const okHost = { host: { w: 10, h: 10, d: 10 } };
@@ -210,6 +214,132 @@ describe('validateRevolveParams', () => {
     expect(() => validateRevolveParams({
       params: { profile: { kind: 'circle', radius: 1 }, angle: 720 },
     })).toThrow(/angle out of range/);
+  });
+});
+
+describe('validateMirrorParams', () => {
+  it('accepts each plane', () => {
+    for (const plane of ['XY', 'YZ', 'XZ'] as const) {
+      const out = validateMirrorParams({ params: { ...okHost, plane } });
+      expect(out.plane).toBe(plane);
+    }
+  });
+  it('rejects bad plane', () => {
+    expect(() => validateMirrorParams({ params: { ...okHost, plane: 'WW' } }))
+      .toThrow(/plane must be/);
+  });
+  it('rejects missing plane', () => {
+    expect(() => validateMirrorParams({ params: okHost })).toThrow(/plane must be/);
+  });
+});
+
+describe('validatePatternParams', () => {
+  it('accepts a linear pattern', () => {
+    const out = validatePatternParams({
+      params: { ...okHost, kind: 'linear', count: 4, spacing: 20, axis: 'X' },
+    });
+    if (out.kind === 'linear') {
+      expect(out.count).toBe(4);
+      expect(out.spacing).toBe(20);
+      expect(out.axis).toBe('X');
+    } else throw new Error('kind narrowing broke');
+  });
+  it('accepts a circular pattern', () => {
+    const out = validatePatternParams({
+      params: { ...okHost, kind: 'circular', count: 6, totalAngleDeg: 360, axis: 'Z' },
+    });
+    if (out.kind === 'circular') {
+      expect(out.totalAngleDeg).toBe(360);
+    } else throw new Error('kind narrowing broke');
+  });
+  it('rejects non-integer count', () => {
+    expect(() => validatePatternParams({
+      params: { ...okHost, kind: 'linear', count: 3.5, spacing: 10, axis: 'X' },
+    })).toThrow(/integer/);
+  });
+  it('rejects count < 2', () => {
+    expect(() => validatePatternParams({
+      params: { ...okHost, kind: 'linear', count: 1, spacing: 10, axis: 'X' },
+    })).toThrow(/out of range/);
+  });
+  it('rejects bad kind', () => {
+    expect(() => validatePatternParams({
+      params: { ...okHost, kind: 'radial', count: 3, spacing: 10, axis: 'X' },
+    })).toThrow(/kind must be/);
+  });
+});
+
+describe('validateSweepParams', () => {
+  it('accepts profile + 3D polyline path', () => {
+    const out = validateSweepParams({
+      params: {
+        profile: { kind: 'circle', radius: 2 },
+        path: [[0, 0, 0], [10, 0, 0], [10, 10, 0]],
+      },
+    });
+    expect(out.path).toHaveLength(3);
+    expect(out.profile.kind).toBe('circle');
+  });
+  it('rejects path with < 2 points', () => {
+    expect(() => validateSweepParams({
+      params: { profile: { kind: 'circle', radius: 2 }, path: [[0, 0, 0]] },
+    })).toThrow(/≥ 2 points/);
+  });
+  it('rejects non-3-tuple path entry', () => {
+    expect(() => validateSweepParams({
+      params: { profile: { kind: 'circle', radius: 2 }, path: [[0, 0], [10, 0]] },
+    })).toThrow(/\[x, y, z\]/);
+  });
+  it('rejects out-of-range path coord', () => {
+    expect(() => validateSweepParams({
+      params: {
+        profile: { kind: 'circle', radius: 2 },
+        path: [[0, 0, 0], [10000, 0, 0]],
+      },
+    })).toThrow(/out of \[/);
+  });
+});
+
+describe('validateLoftParams', () => {
+  it('accepts 2 sections at different offsets', () => {
+    const out = validateLoftParams({
+      params: {
+        sections: [
+          { profile: { kind: 'circle', radius: 5 }, offset: 0 },
+          { profile: { kind: 'circle', radius: 3 }, offset: 10 },
+        ],
+      },
+    });
+    expect(out.sections).toHaveLength(2);
+  });
+  it('accepts 3+ sections (transition shape)', () => {
+    const out = validateLoftParams({
+      params: {
+        sections: [
+          { profile: { kind: 'rectangle', width: 20, height2D: 10 }, offset: 0 },
+          { profile: { kind: 'circle', radius: 5 }, offset: 5 },
+          { profile: { kind: 'circle', radius: 3 }, offset: 10 },
+        ],
+      },
+    });
+    expect(out.sections).toHaveLength(3);
+  });
+  it('rejects < 2 sections', () => {
+    expect(() => validateLoftParams({
+      params: {
+        sections: [{ profile: { kind: 'circle', radius: 5 }, offset: 0 }],
+      },
+    })).toThrow(/≥ 2/);
+  });
+  it('rejects non-monotonic offsets', () => {
+    expect(() => validateLoftParams({
+      params: {
+        sections: [
+          { profile: { kind: 'circle', radius: 5 }, offset: 10 },
+          { profile: { kind: 'circle', radius: 3 }, offset: 5 },
+        ],
+      },
+    })).toThrow(/strictly increasing/);
   });
 });
 

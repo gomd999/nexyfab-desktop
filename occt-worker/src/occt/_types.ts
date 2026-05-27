@@ -45,6 +45,12 @@ export interface SketchLike {
   /** Revolve the sketch around an axis by `angle` (degrees, default
    *  360 in replicad). Axis defaults to Y for XZ-plane sketches. */
   revolve?: (axis?: [number, number, number], angle?: number) => OcctShape;
+  /** Sweep the sketch along a polyline path expressed as a list of
+   *  3D points. replicad's `sweepAlong` / `sweepSketch` API surface
+   *  varies by version — handlers probe with optional method names. */
+  sweepAlong?: (path: [number, number, number][]) => OcctShape;
+  /** Loft between this sketch and one or more other sketches. */
+  loftWith?: (others: SketchLike[]) => OcctShape;
 }
 
 /** Shape with the ops we call across files. Methods are optional
@@ -55,6 +61,20 @@ export interface OcctShape {
   fuse?: (other: OcctShape) => OcctShape;
   intersect?: (other: OcctShape) => OcctShape;
   translate?: (offset: [number, number, number]) => OcctShape;
+  /** Rotate the shape by `angleDeg` around an axis through `origin`
+   *  with direction `direction`. Used by the circular-pattern op. */
+  rotate?: (
+    angleDeg: number,
+    origin: [number, number, number],
+    direction: [number, number, number],
+  ) => OcctShape;
+  /** Reflect the shape across a plane. The plane is identified by its
+   *  normal axis ('X' | 'Y' | 'Z') through origin OR a plane object,
+   *  depending on replicad version — handlers probe both call shapes. */
+  mirror?: (...args: unknown[]) => OcctShape;
+  /** Clone — needed by the linear-pattern fuse loop so we don't
+   *  mutate the original shape between translations. */
+  clone?: () => OcctShape;
   /** Edge / distance for chamfer + fillet take a 2nd optional selector
    *  (`(edge) => boolean`); we pass `() => true` so all edges qualify.
    *  Typed via spread so we don't pin a single arity. */
