@@ -19,10 +19,9 @@
  *   - S / s   smooth cubic Bezier (reflects prev C's last control)
  *   - Q / q   quadratic Bezier (1 control point per segment)
  *   - T / t   smooth quadratic Bezier (reflects prev Q's control)
+ *   - A / a   elliptical arc (W3C appendix B center-parameterization,
+ *               split into ≤ 90° cubic Bezier segments, then flattened)
  *   - Z / z   closepath (REQUIRED — open paths can't extrude into a solid)
- *
- *   - A / a → REJECTED for now. Elliptical arcs need a separate
- *     parametric-to-Bezier conversion that lands in W14 D3-5.
  *
  * Bezier commands flatten to line segments via recursive de Casteljau
  * subdivision (`_bezier.ts`). Chord-height tolerance defaults to
@@ -38,6 +37,7 @@
  */
 
 import { flattenCubic, flattenQuadratic, reflect, type Point } from './_bezier.js';
+import { arcToCubicBeziers } from './_arc.js';
 
 const COMMAND_RE = /([MmLlHhVvZzCcQqSsTtAa])([^MmLlHhVvZzCcQqSsTtAa]*)/g;
 const NUMBER_RE = /[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g;
@@ -91,13 +91,6 @@ export function parseSvgPath(d: string, opts: SvgParseOptions = {}): SvgParseRes
     const cmd = match[1]!;
     const args = (match[2]!.match(NUMBER_RE) ?? []).map(Number);
 
-    // Arc commands stay rejected — covered by W14 D3-5 follow-up.
-    if (cmd === 'A' || cmd === 'a') {
-      throw new Error(
-        `invalid params: SVG command '${cmd}' (elliptical arc) not supported yet — tessellate to line segments client-side or wait for W14 D3-5`,
-      );
-    }
-
     // Bezier commands consume the previous-control-point state, so
     // we clear cubic/quadratic memory on every non-Bezier command
     // (per SVG spec — see comments in cubic/smoothCubic handlers).
@@ -118,6 +111,8 @@ export function parseSvgPath(d: string, opts: SvgParseOptions = {}): SvgParseRes
       case 'q': quadRel(state, points, args, tolerance); break;
       case 'T': smoothQuadAbs(state, points, args, tolerance); break;
       case 't': smoothQuadRel(state, points, args, tolerance); break;
+      case 'A': arcAbs(state, points, args, tolerance); break;
+      case 'a': arcRel(state, points, args, tolerance); break;
       case 'Z':
       case 'z': {
         closed = true;
@@ -132,8 +127,8 @@ export function parseSvgPath(d: string, opts: SvgParseOptions = {}): SvgParseRes
     }
 
     // Reset Bezier memory after non-Bezier commands so an S/T that
-    // follows e.g. an L falls back to "control = current point" per
-    // SVG spec.
+    // follows e.g. an L or A falls back to "control = current point"
+    // per SVG spec.
     if (!'CcSsQqTt'.includes(cmd)) {
       state.prevCubicCtrl = null;
       state.prevQuadCtrl = null;
@@ -398,5 +393,58 @@ function smoothQuadRel(state: ParserState, points: [number, number][], args: num
     flattenQuadratic(p0, q1, q2, tol, points);
     state.x = q2[0]; state.y = q2[1];
     state.prevQuadCtrl = q1;
+  }
+}
+
+/** Elliptical arc — 7 args per segment: rx ry x-axis-rotation
+ *  large-arc-flag sweep-flag x y. Each arc converts to ≤ 4 cubic
+ *  Bezier segments (one per ≤ 90° sub-arc), then the existing
+ *  flattener subdivides further to honour tolerance. */
+function arcAbs(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 7 !== 0) {
+    throw new Error('invalid params: A needs multiples of 7 coordinates');
+  }
+  for (let i = 0; i + 6 < args.length; i += 7) {
+    const rx = args[i]!, ry = args[i + 1]!, phi = args[i + 2]!;
+    const fA = args[i + 3]!, fS = args[i + 4]!;
+    const x2 = args[i + 5]!, y2 = args[i + 6]!;
+    if (fA !== 0 && fA !== 1) {
+      throw new Error('invalid params: A large-arc-flag must be 0 or 1');
+    }
+    if (fS !== 0 && fS !== 1) {
+      throw new Error('invalid params: A sweep-flag must be 0 or 1');
+    }
+    const beziers = arcToCubicBeziers(
+      [state.x, state.y], [rx, ry], phi, fA as 0 | 1, fS as 0 | 1, [x2, y2],
+    );
+    for (const b of beziers) {
+      flattenCubic(b.p0, b.p1, b.p2, b.p3, tol, points);
+    }
+    state.x = x2; state.y = y2;
+  }
+}
+
+function arcRel(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 7 !== 0) {
+    throw new Error('invalid params: a needs multiples of 7 coordinates');
+  }
+  for (let i = 0; i + 6 < args.length; i += 7) {
+    const rx = args[i]!, ry = args[i + 1]!, phi = args[i + 2]!;
+    const fA = args[i + 3]!, fS = args[i + 4]!;
+    const x2 = state.x + args[i + 5]!;
+    const y2 = state.y + args[i + 6]!;
+    if (fA !== 0 && fA !== 1) {
+      throw new Error('invalid params: a large-arc-flag must be 0 or 1');
+    }
+    if (fS !== 0 && fS !== 1) {
+      throw new Error('invalid params: a sweep-flag must be 0 or 1');
+    }
+    const beziers = arcToCubicBeziers(
+      [state.x, state.y], [rx, ry], phi, fA as 0 | 1, fS as 0 | 1, [x2, y2],
+    );
+    for (const b of beziers) {
+      flattenCubic(b.p0, b.p1, b.p2, b.p3, tol, points);
+    }
+    state.x = x2; state.y = y2;
   }
 }
