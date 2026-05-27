@@ -48,6 +48,12 @@ export interface OcctOpRequest {
   /** Pool keeps params opaque (it's just routing the bytes); each op
    *  handler narrows via OcctParamsByOp at the worker entry. */
   params: unknown;
+  /** Authenticated caller's user id from the route's JWT. Threaded
+   *  through so 3D-host op handlers can enforce per-user prefix on
+   *  the sourceR2Key alternative input (W16 D1-2). Required even for
+   *  ops that don't read R2 — keeps the message shape uniform and
+   *  future-proof for per-user quotas / telemetry. */
+  userId: string;
 }
 
 export interface OcctReadyMessage {

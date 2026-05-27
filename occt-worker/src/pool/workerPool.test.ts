@@ -46,14 +46,14 @@ function makePool(opts: Partial<ConstructorParameters<typeof OcctWorkerPool>[0]>
 describe('OcctWorkerPool — happy path', () => {
   it('executes a job once a slot is ready', async () => {
     const pool = makePool();
-    const result = await pool.execute('boolean', dummyParams);
+    const result = await pool.execute('boolean', dummyParams, 'test-user');
     expect(result).toEqual({ echoed: dummyParams });
     expect(pool.status().totalOpsCompleted).toBe(1);
   });
 
   it('processes multiple jobs concurrently across slots', async () => {
     const pool = makePool({ size: 3 });
-    const jobs = Array.from({ length: 6 }, () => pool.execute('boolean', dummyParams));
+    const jobs = Array.from({ length: 6 }, () => pool.execute('boolean', dummyParams, 'test-user'));
     const results = await Promise.all(jobs);
     expect(results).toHaveLength(6);
     expect(pool.status().totalOpsCompleted).toBe(6);
@@ -99,7 +99,7 @@ describe('OcctWorkerPool — backpressure', () => {
     let queueFullSeen = false;
     for (let i = 0; i < total; i++) {
       promises.push(
-        hangPool.execute('boolean', dummyParams).catch(err => {
+        hangPool.execute('boolean', dummyParams, 'test-user').catch(err => {
           if (err instanceof QueueFullError) queueFullSeen = true;
           return null;
         }),
@@ -117,7 +117,7 @@ describe('OcctWorkerPool — slot lifecycle', () => {
   it('respawns a slot after the worker exits', async () => {
     const pool = makePool({ size: 1 });
     // First op succeeds (echo).
-    await pool.execute('boolean', dummyParams);
+    await pool.execute('boolean', dummyParams, 'test-user');
     // Forcibly recycle by accessing internals would be a layering
     // violation; instead, we trust that workerExit handler respawns
     // (covered by the crash-op fixture in a separate test).
@@ -126,7 +126,7 @@ describe('OcctWorkerPool — slot lifecycle', () => {
 
   it('drain rejects queued jobs and terminates workers', async () => {
     const pool = makePool({ size: 1 });
-    await pool.execute('boolean', dummyParams);
+    await pool.execute('boolean', dummyParams, 'test-user');
     await pool.drain();
     expect(pool.status().size).toBe(1); // size field unchanged; slots cleared
     activePool = null;
@@ -147,10 +147,10 @@ describe('OcctWorkerPool — memory metrics (W12 D3-5)', () => {
     // 4 ops across 2 slots — each fixture op posts a {1.0, 2.0, 10.0}
     // mem update. We expect both slots to report their latest.
     await Promise.all([
-      pool.execute('boolean', dummyParams),
-      pool.execute('boolean', dummyParams),
-      pool.execute('boolean', dummyParams),
-      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams, 'test-user'),
+      pool.execute('boolean', dummyParams, 'test-user'),
+      pool.execute('boolean', dummyParams, 'test-user'),
+      pool.execute('boolean', dummyParams, 'test-user'),
     ]);
     // Mem updates arrive in a separate message after 'result' — give
     // the event loop one tick.
@@ -182,7 +182,7 @@ describe('OcctWorkerPool — slot recycling (W12 D1-2)', () => {
     // expect 2 recycles (after op #2 and op #4).
     const pool = makePool({ size: 1, maxOpsPerSlot: 2 });
     for (let i = 0; i < 5; i++) {
-      await pool.execute('boolean', dummyParams);
+      await pool.execute('boolean', dummyParams, 'test-user');
     }
     // Recycle may still be settling — give the 'exit' handler a beat.
     await new Promise(r => setTimeout(r, 100));
@@ -194,7 +194,7 @@ describe('OcctWorkerPool — slot recycling (W12 D1-2)', () => {
   it('maxOpsPerSlot=0 disables recycling', async () => {
     const pool = makePool({ size: 1, maxOpsPerSlot: 0 });
     for (let i = 0; i < 5; i++) {
-      await pool.execute('boolean', dummyParams);
+      await pool.execute('boolean', dummyParams, 'test-user');
     }
     expect(pool.status().totalRecycles).toBe(0);
   });
@@ -212,9 +212,9 @@ describe('OcctWorkerPool — slot recycling (W12 D1-2)', () => {
     // serving the next op through the respawn cycle.
     const pool = makePool({ size: 1, maxOpsPerSlot: 1 });
     const results = await Promise.all([
-      pool.execute('boolean', dummyParams),
-      pool.execute('boolean', dummyParams),
-      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams, 'test-user'),
+      pool.execute('boolean', dummyParams, 'test-user'),
+      pool.execute('boolean', dummyParams, 'test-user'),
     ]);
     expect(results).toHaveLength(3);
     // Wait for the trailing recycle's exit to settle so the count is final.

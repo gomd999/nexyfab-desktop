@@ -14,12 +14,16 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { resolveShape, type OpContext } from './_input.js';
 import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export type MirrorPlane = 'XY' | 'YZ' | 'XZ';
 
 export interface MirrorParams {
-  host: { w: number; h: number; d: number };
+  /** Primitive box host. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input). */
+  sourceR2Key?: string;
   /** Reflection plane through origin. */
   plane: MirrorPlane;
 }
@@ -47,14 +51,11 @@ function tryMirror(shape: OcctShape, plane: MirrorPlane): OcctShape | null {
   return null;
 }
 
-export async function runMirror(params: MirrorParams): Promise<SerializedResult> {
+export async function runMirror(params: MirrorParams, ctx: OpContext): Promise<SerializedResult> {
   await ensureOcctReady();
   const replicad = getReplicad() as ReplicadLike;
 
-  if (!replicad.makeBaseBox) {
-    throw new Error('replicad.makeBaseBox unavailable — kernel build mismatch');
-  }
-  const host = replicad.makeBaseBox(params.host.w, params.host.h, params.host.d) as OcctShape;
+  const host = await resolveShape(replicad, params, ctx.userId);
   const mirrored = tryMirror(host, params.plane);
   if (!mirrored) {
     throw new Error(

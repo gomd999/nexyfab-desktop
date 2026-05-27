@@ -53,7 +53,7 @@ const PLACEHOLDER_OPS: ReadonlySet<string> = new Set();
 // 30 lines and keeps HTTP-status mapping in one place.
 async function dispatchOp(
   op: OcctOp,
-  validator: (body: unknown) => unknown,
+  validator: (body: unknown, userId: string) => unknown,
   req: Request,
   res: Response,
 ): Promise<void> {
@@ -62,8 +62,8 @@ async function dispatchOp(
   const requestId = (req as RequestWithId).requestId;
 
   try {
-    const params = validator(req.body);
-    const result = await getPool().execute(op, params) as SerializedResult;
+    const params = validator(req.body, userId);
+    const result = await getPool().execute(op, params, userId) as SerializedResult;
 
     // Structured-clone across the worker-thread boundary turns Buffer
     // into Uint8Array. r2Put accepts either; re-wrap so content-length
@@ -161,9 +161,41 @@ function validateHost(p: Record<string, unknown>): { w: number; h: number; d: nu
   };
 }
 
-function validateBooleanParams(body: unknown): BooleanParams {
+/** W16 D1-2: 3D-host ops accept host XOR sourceR2Key. Either-or
+ *  validation; sourceR2Key must start with `occt-ops/<userId>/` (the
+ *  worker re-checks this in _input.ts but failing here keeps the
+ *  kernel from being touched for malicious payloads). */
+function validateHostOrR2Key(
+  p: Record<string, unknown>,
+  userId: string,
+): { host?: { w: number; h: number; d: number }; sourceR2Key?: string } {
+  const hasHost = p.host !== undefined;
+  const hasKey = p.sourceR2Key !== undefined;
+  if (hasHost === hasKey) {
+    throw new Error('invalid params: exactly one of host or sourceR2Key must be set');
+  }
+  if (hasHost) {
+    return { host: validateHost(p) };
+  }
+  const key = p.sourceR2Key;
+  if (typeof key !== 'string' || key.length === 0 || key.length > 512) {
+    throw new Error('invalid params: sourceR2Key must be a string ≤ 512 chars');
+  }
+  if (key.includes('..') || key.startsWith('/')) {
+    throw new Error('invalid params: sourceR2Key has illegal path components');
+  }
+  const expectedPrefix = `occt-ops/${userId}/`;
+  if (!key.startsWith(expectedPrefix)) {
+    throw new Error(
+      `invalid params: sourceR2Key must start with ${expectedPrefix} (per-user scope)`,
+    );
+  }
+  return { sourceR2Key: key };
+}
+
+function validateBooleanParams(body: unknown, userId: string): BooleanParams {
   const p = unwrapParams(body);
-  const host = validateHost(p);
+  const input = validateHostOrR2Key(p, userId);
   const toolShape = typeof p.toolShape === 'number' ? p.toolShape : 0;
   const r = numField(p, 'r', 0.01, 5000);
   const height = p.height === undefined ? undefined : numField(p, 'height', 0.01, 5000);
@@ -174,43 +206,43 @@ function validateBooleanParams(body: unknown): BooleanParams {
   if (type !== undefined && type !== 'cut' && type !== 'fuse' && type !== 'intersect') {
     throw new Error('invalid params: type must be cut | fuse | intersect');
   }
-  return { host, toolShape, r, height, cx, cy, cz, type };
+  return { ...input, toolShape, r, height, cx, cy, cz, type };
 }
 
 const FILLET_SCOPES: ReadonlySet<FilletEdgeScope> = new Set(['all', 'vertical', 'top', 'bottom']);
-function validateFilletParams(body: unknown): FilletParams {
+function validateFilletParams(body: unknown, userId: string): FilletParams {
   const p = unwrapParams(body);
-  const host = validateHost(p);
+  const input = validateHostOrR2Key(p, userId);
   const radius = numField(p, 'radius', 0.001, 2500);
   const edges = p.edges;
   if (edges !== undefined && (typeof edges !== 'string' || !FILLET_SCOPES.has(edges as FilletEdgeScope))) {
     throw new Error(`invalid params: edges must be one of ${[...FILLET_SCOPES].join(' | ')}`);
   }
-  return { host, radius, edges: edges as FilletEdgeScope | undefined };
+  return { ...input, radius, edges: edges as FilletEdgeScope | undefined };
 }
 
 const CHAMFER_SCOPES: ReadonlySet<ChamferEdgeScope> = new Set(['all', 'vertical', 'top', 'bottom']);
-function validateChamferParams(body: unknown): ChamferParams {
+function validateChamferParams(body: unknown, userId: string): ChamferParams {
   const p = unwrapParams(body);
-  const host = validateHost(p);
+  const input = validateHostOrR2Key(p, userId);
   const distance = numField(p, 'distance', 0.001, 2500);
   const edges = p.edges;
   if (edges !== undefined && (typeof edges !== 'string' || !CHAMFER_SCOPES.has(edges as ChamferEdgeScope))) {
     throw new Error(`invalid params: edges must be one of ${[...CHAMFER_SCOPES].join(' | ')}`);
   }
-  return { host, distance, edges: edges as ChamferEdgeScope | undefined };
+  return { ...input, distance, edges: edges as ChamferEdgeScope | undefined };
 }
 
 const SHELL_FACES: ReadonlySet<ShellOpenFace> = new Set(['top', 'bottom', 'front', 'back', 'left', 'right']);
-function validateShellParams(body: unknown): ShellParams {
+function validateShellParams(body: unknown, userId: string): ShellParams {
   const p = unwrapParams(body);
-  const host = validateHost(p);
+  const input = validateHostOrR2Key(p, userId);
   const thickness = numField(p, 'thickness', 0.001, 2500);
   const openFace = p.openFace;
   if (openFace !== undefined && (typeof openFace !== 'string' || !SHELL_FACES.has(openFace as ShellOpenFace))) {
     throw new Error(`invalid params: openFace must be one of ${[...SHELL_FACES].join(' | ')}`);
   }
-  return { host, thickness, openFace: openFace as ShellOpenFace | undefined };
+  return { ...input, thickness, openFace: openFace as ShellOpenFace | undefined };
 }
 
 const EXTRUDE_PLANES: ReadonlySet<ExtrudePlane> = new Set(['XY', 'XZ', 'YZ']);
@@ -300,7 +332,7 @@ function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
   }
   throw new Error('invalid params: profile.kind must be rectangle | circle | polygon | svgPath');
 }
-function validateExtrudeParams(body: unknown): ExtrudeParams {
+function validateExtrudeParams(body: unknown, _userId: string): ExtrudeParams {
   const p = unwrapParams(body);
   const profile = validateProfile(p);
   const height = numField(p, 'height', 0.01, 5000);
@@ -313,7 +345,7 @@ function validateExtrudeParams(body: unknown): ExtrudeParams {
 
 const REVOLVE_PLANES: ReadonlySet<RevolvePlane> = new Set(['XY', 'XZ', 'YZ']);
 const REVOLVE_AXES: ReadonlySet<RevolveAxis> = new Set(['X', 'Y', 'Z']);
-function validateRevolveParams(body: unknown): RevolveParams {
+function validateRevolveParams(body: unknown, _userId: string): RevolveParams {
   const p = unwrapParams(body);
   // Profile shapes the same as extrude — reuse validator and re-tag.
   const profile = validateProfile(p) as RevolveProfile;
@@ -335,20 +367,20 @@ function validateRevolveParams(body: unknown): RevolveParams {
 }
 
 const MIRROR_PLANES: ReadonlySet<MirrorPlane> = new Set(['XY', 'YZ', 'XZ']);
-function validateMirrorParams(body: unknown): MirrorParams {
+function validateMirrorParams(body: unknown, userId: string): MirrorParams {
   const p = unwrapParams(body);
-  const host = validateHost(p);
+  const input = validateHostOrR2Key(p, userId);
   const plane = p.plane;
   if (typeof plane !== 'string' || !MIRROR_PLANES.has(plane as MirrorPlane)) {
     throw new Error(`invalid params: plane must be one of ${[...MIRROR_PLANES].join(' | ')}`);
   }
-  return { host, plane: plane as MirrorPlane };
+  return { ...input, plane: plane as MirrorPlane };
 }
 
 const PATTERN_AXES: ReadonlySet<'X' | 'Y' | 'Z'> = new Set(['X', 'Y', 'Z']);
-function validatePatternParams(body: unknown): PatternParams {
+function validatePatternParams(body: unknown, userId: string): PatternParams {
   const p = unwrapParams(body);
-  const host = validateHost(p);
+  const input = validateHostOrR2Key(p, userId);
   const kind = p.kind;
   if (kind !== 'linear' && kind !== 'circular') {
     throw new Error('invalid params: pattern.kind must be linear | circular');
@@ -363,16 +395,16 @@ function validatePatternParams(body: unknown): PatternParams {
   }
   const axis = axisRaw as 'X' | 'Y' | 'Z';
   if (kind === 'linear') {
-    return { kind: 'linear', host, count, axis, spacing: numField(p, 'spacing', 0.01, 5000) };
+    return { kind: 'linear', ...input, count, axis, spacing: numField(p, 'spacing', 0.01, 5000) };
   }
   return {
-    kind: 'circular', host, count, axis,
+    kind: 'circular', ...input, count, axis,
     totalAngleDeg: numField(p, 'totalAngleDeg', -360, 360),
   };
 }
 
 const SWEEP_PLANES: ReadonlySet<'XY' | 'XZ' | 'YZ'> = new Set(['XY', 'XZ', 'YZ']);
-function validateSweepParams(body: unknown): SweepParams {
+function validateSweepParams(body: unknown, _userId: string): SweepParams {
   const p = unwrapParams(body);
   // Profile shares vocabulary with extrude. Sweep doesn't accept
   // svgPath directly — pre-compile via the polygon path.
@@ -405,7 +437,7 @@ function validateSweepParams(body: unknown): SweepParams {
   return { profile, path, plane: plane as 'XY' | 'XZ' | 'YZ' | undefined };
 }
 
-function validateLoftParams(body: unknown): LoftParams {
+function validateLoftParams(body: unknown, _userId: string): LoftParams {
   const p = unwrapParams(body);
   const sectionsRaw = p.sections;
   if (!Array.isArray(sectionsRaw) || sectionsRaw.length < 2) {

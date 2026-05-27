@@ -16,11 +16,14 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { resolveShape, type OpContext } from './_input.js';
 import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export interface BooleanParams {
-  /** Bounding box of the host (mm). */
-  host: { w: number; h: number; d: number };
+  /** Primitive box host. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input, W16 D1-2). */
+  sourceR2Key?: string;
   /** Tool primitive selector. 0 = cylinder, 1 = sphere. Matches the
    *  main app's `toolShape` parameter so the client-side and server
    *  paths use the same numeric protocol. */
@@ -40,25 +43,32 @@ export interface BooleanParams {
 
 export type BooleanResult = SerializedResult;
 
-export async function runBoolean(params: BooleanParams): Promise<BooleanResult> {
+/** Default cylinder height when neither `params.height` nor primitive
+ *  host dimensions are available (R2-imported host). 100mm covers
+ *  typical engineering features; if the imported shape is bigger
+ *  the cylinder doesn't quite span — caller passes `height` then. */
+const DEFAULT_CYLINDER_HEIGHT_MM = 100;
+
+export async function runBoolean(params: BooleanParams, ctx: OpContext): Promise<BooleanResult> {
   await ensureOcctReady();
   const replicad = getReplicad() as ReplicadLike;
 
-  if (!replicad.makeBaseBox || !replicad.makeBaseCylinder || !replicad.makeBaseSphere) {
+  if (!replicad.makeBaseCylinder || !replicad.makeBaseSphere) {
     throw new Error(
       'replicad primitives unavailable — verify replicad-opencascadejs WASM loaded',
     );
   }
 
-  // Host: centered box.
-  const host = replicad.makeBaseBox(params.host.w, params.host.h, params.host.d) as OcctShape;
+  const host = await resolveShape(replicad, params, ctx.userId);
 
   // Tool: cylinder (default) or sphere. Translate to user's offset.
   let tool: OcctShape;
   if (params.toolShape === 1) {
     tool = replicad.makeBaseSphere(params.r) as OcctShape;
   } else {
-    const h = params.height ?? Math.max(params.host.w, params.host.h, params.host.d);
+    const h = params.height ?? (params.host
+      ? Math.max(params.host.w, params.host.h, params.host.d)
+      : DEFAULT_CYLINDER_HEIGHT_MM);
     tool = replicad.makeBaseCylinder(params.r, h) as OcctShape;
   }
   const cx = params.cx ?? 0;

@@ -13,11 +13,15 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { resolveShape, type OpContext } from './_input.js';
 import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export interface PatternLinearParams {
   kind: 'linear';
-  host: { w: number; h: number; d: number };
+  /** Primitive box. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input, W16 D1-2). */
+  sourceR2Key?: string;
   /** Number of copies including the original (≥ 2). */
   count: number;
   /** Step between adjacent copies, mm. */
@@ -28,7 +32,10 @@ export interface PatternLinearParams {
 
 export interface PatternCircularParams {
   kind: 'circular';
-  host: { w: number; h: number; d: number };
+  /** Primitive box. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input, W16 D1-2). */
+  sourceR2Key?: string;
   /** Number of copies including the original (≥ 2). */
   count: number;
   /** Total sweep (degrees). Common values: 360 (full ring), 180 (half), 90 (quarter). */
@@ -47,27 +54,36 @@ function axisVector(a: 'X' | 'Y' | 'Z'): [number, number, number] {
   }
 }
 
-function buildHost(replicad: ReplicadLike, host: PatternParams['host']): OcctShape {
-  if (!replicad.makeBaseBox) {
-    throw new Error('replicad.makeBaseBox unavailable — kernel build mismatch');
-  }
-  return replicad.makeBaseBox(host.w, host.h, host.d) as OcctShape;
+async function buildHost(
+  replicad: ReplicadLike,
+  params: PatternParams,
+  userId: string,
+): Promise<OcctShape> {
+  return resolveShape(replicad, params, userId);
 }
 
-function cloneOrRebuild(replicad: ReplicadLike, params: PatternParams): OcctShape {
-  // Prefer clone() if the kernel exposes it; otherwise rebuild the
-  // primitive (cheap for boxes — replicad reconstructs the topology
-  // without re-running boolean ops).
-  const fresh = buildHost(replicad, params.host);
+async function cloneOrRebuild(
+  replicad: ReplicadLike,
+  params: PatternParams,
+  userId: string,
+): Promise<OcctShape> {
+  // Prefer clone() if the kernel exposes it on a fresh build —
+  // otherwise re-resolve (re-fetch R2 + re-import is the expensive
+  // case, but it's safe for non-clonable kernels).
+  const fresh = await buildHost(replicad, params, userId);
   if (fresh.clone) return fresh.clone();
   return fresh;
 }
 
-function runLinear(replicad: ReplicadLike, params: PatternLinearParams): OcctShape {
-  let result = buildHost(replicad, params.host);
+async function runLinear(
+  replicad: ReplicadLike,
+  params: PatternLinearParams,
+  userId: string,
+): Promise<OcctShape> {
+  let result = await buildHost(replicad, params, userId);
   const dir = axisVector(params.axis);
   for (let i = 1; i < params.count; i++) {
-    const copy = cloneOrRebuild(replicad, params);
+    const copy = await cloneOrRebuild(replicad, params, userId);
     const offset: [number, number, number] = [
       dir[0] * params.spacing * i,
       dir[1] * params.spacing * i,
@@ -85,12 +101,16 @@ function runLinear(replicad: ReplicadLike, params: PatternLinearParams): OcctSha
   return result;
 }
 
-function runCircular(replicad: ReplicadLike, params: PatternCircularParams): OcctShape {
-  let result = buildHost(replicad, params.host);
+async function runCircular(
+  replicad: ReplicadLike,
+  params: PatternCircularParams,
+  userId: string,
+): Promise<OcctShape> {
+  let result = await buildHost(replicad, params, userId);
   const dir = axisVector(params.axis);
   const step = params.totalAngleDeg / params.count;
   for (let i = 1; i < params.count; i++) {
-    const copy = cloneOrRebuild(replicad, params);
+    const copy = await cloneOrRebuild(replicad, params, userId);
     if (!copy.rotate) {
       throw new Error('replicad shape has no rotate() — pattern op aborted');
     }
@@ -103,13 +123,13 @@ function runCircular(replicad: ReplicadLike, params: PatternCircularParams): Occ
   return result;
 }
 
-export async function runPattern(params: PatternParams): Promise<SerializedResult> {
+export async function runPattern(params: PatternParams, ctx: OpContext): Promise<SerializedResult> {
   await ensureOcctReady();
   const replicad = getReplicad() as ReplicadLike;
 
   const result = params.kind === 'linear'
-    ? runLinear(replicad, params)
-    : runCircular(replicad, params);
+    ? await runLinear(replicad, params, ctx.userId)
+    : await runCircular(replicad, params, ctx.userId);
 
   return serializeShape(replicad, result);
 }

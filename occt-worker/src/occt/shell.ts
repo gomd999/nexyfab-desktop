@@ -20,13 +20,17 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { resolveShape, type OpContext } from './_input.js';
 import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export type ShellOpenFace = 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
 
 export interface ShellParams {
-  host: { w: number; h: number; d: number };
-  /** Wall thickness (mm). 2 * thickness must be < min(host). */
+  /** Primitive box. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input, W16 D1-2). */
+  sourceR2Key?: string;
+  /** Wall thickness (mm). With host, 2 * thickness must be < min(host). */
   thickness: number;
   openFace?: ShellOpenFace;
 }
@@ -67,26 +71,31 @@ function closeTo(f: FaceLike, axis: 'x' | 'y' | 'z', target: number, eps: number
   return false;
 }
 
-export async function runShell(params: ShellParams): Promise<SerializedResult> {
+export async function runShell(params: ShellParams, ctx: OpContext): Promise<SerializedResult> {
   await ensureOcctReady();
   const replicad = getReplicad() as ReplicadLike;
 
-  if (!replicad.makeBaseBox) {
-    throw new Error('replicad.makeBaseBox unavailable — verify WASM loaded');
-  }
-  const minDim = Math.min(params.host.w, params.host.h, params.host.d);
-  if (params.thickness * 2 >= minDim) {
-    throw new Error(
-      `invalid params: thickness ${params.thickness} must satisfy 2*thickness < min(host) (${minDim})`,
-    );
+  if (params.host) {
+    const minDim = Math.min(params.host.w, params.host.h, params.host.d);
+    if (params.thickness * 2 >= minDim) {
+      throw new Error(
+        `invalid params: thickness ${params.thickness} must satisfy 2*thickness < min(host) (${minDim})`,
+      );
+    }
   }
 
-  const host = replicad.makeBaseBox(params.host.w, params.host.h, params.host.d) as OcctShape;
+  const host = await resolveShape(replicad, params, ctx.userId);
   if (!host.shell) {
     throw new Error('replicad shape has no shell() method — kernel build mismatch');
   }
   const open = params.openFace ?? 'top';
-  const selector = faceSelector(open, params.host);
+  // Face selector uses primitive box dimensions to compute target
+  // face centers. With R2 input we fall back to a "match by name"
+  // attempt via inPlane only — the centre-based fallback can't work
+  // without dimensions, so it just rejects all faces and replicad
+  // surfaces the kernel error if no face matched.
+  const hostBox = params.host ?? { w: 0, h: 0, d: 0 };
+  const selector = faceSelector(open, hostBox);
 
   let shelled: OcctShape;
   try {
