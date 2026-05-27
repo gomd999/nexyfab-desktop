@@ -1,0 +1,31 @@
+{
+  "name": "nexyfab-occt-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Server-side OCCT worker for heavy B-rep operations (Wave 1 W9-12, ADR-007).",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1025.0",
+    "@sentry/node": "^10.51.0",
+    "express": "^5.0.0",
+    "occt-import-js": "^0.0.23",
+    "replicad": "^0.23.0",
+    "replicad-opencascadejs": "^0.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^20",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^4.1.2"
+  }
+}
