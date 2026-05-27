@@ -54,6 +54,53 @@ describe('parseSvgPath — happy path', () => {
   });
 });
 
+describe('parseSvgPath — Bezier flattening', () => {
+  it('flattens a cubic Bezier into multiple vertices', () => {
+    // Half-circle-ish via single cubic — 20mm radius, default 0.1mm
+    // tolerance should produce dozens of vertices, NOT throw.
+    const out = parseSvgPath('M 0,0 C 0,20 40,20 40,0 L 40,-5 L 0,-5 Z');
+    expect(out.closed).toBe(true);
+    // Cubic curve from (0,0) to (40,0) should subdivide into ≥ 4
+    // segments at 0.1mm tolerance (in practice ~10-20).
+    expect(out.points.length).toBeGreaterThan(5);
+  });
+
+  it('flattens a quadratic Bezier', () => {
+    const out = parseSvgPath('M 0,0 Q 5,10 10,0 L 10,-2 L 0,-2 Z');
+    expect(out.closed).toBe(true);
+    expect(out.points.length).toBeGreaterThan(4);
+  });
+
+  it('honours custom tolerance (coarser = fewer vertices)', () => {
+    const fine = parseSvgPath('M 0,0 C 0,20 40,20 40,0 Z', { tolerance: 0.05 });
+    const coarse = parseSvgPath('M 0,0 C 0,20 40,20 40,0 Z', { tolerance: 2.0 });
+    expect(coarse.points.length).toBeLessThan(fine.points.length);
+  });
+
+  it('handles relative cubic c', () => {
+    const out = parseSvgPath('M 0,0 c 0,20 40,20 40,0 L 40,-2 L 0,-2 Z');
+    expect(out.points.length).toBeGreaterThan(4);
+  });
+
+  it('handles smooth cubic S after C (reflects prev control)', () => {
+    // C ends at (40,0) with last control (40,20). S's implicit P1 =
+    // reflection of (40,20) across (40,0) = (40,-20).
+    const out = parseSvgPath('M 0,0 C 0,20 40,20 40,0 S 80,-20 80,0 L 80,-2 L 0,-2 Z');
+    expect(out.points.length).toBeGreaterThan(8);
+  });
+
+  it('handles smooth quadratic T after Q', () => {
+    const out = parseSvgPath('M 0,0 Q 5,10 10,0 T 20,0 L 20,-2 L 0,-2 Z');
+    expect(out.points.length).toBeGreaterThan(5);
+  });
+
+  it('S with no prior cubic uses current point as control', () => {
+    // No preceding C → degenerate cubic (linear) — produces few vertices.
+    const out = parseSvgPath('M 0,0 S 10,5 20,0 L 20,-2 L 0,-2 Z');
+    expect(out.points.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
 describe('parseSvgPath — error paths', () => {
   it('rejects empty path', () => {
     expect(() => parseSvgPath('')).toThrow(/non-empty/);
@@ -69,16 +116,16 @@ describe('parseSvgPath — error paths', () => {
       .toThrow(/must end with Z/);
   });
 
-  it('rejects bezier commands', () => {
-    expect(() => parseSvgPath('M 0,0 C 5,0 10,5 10,10 Z'))
-      .toThrow(/Bezier\/arc/);
-    expect(() => parseSvgPath('M 0,0 Q 5,5 10,0 Z'))
-      .toThrow(/Bezier\/arc/);
+  it('still rejects arc commands (W14 D3-5 scope)', () => {
+    expect(() => parseSvgPath('M 0,0 A 5,5 0 0,1 10,10 Z'))
+      .toThrow(/elliptical arc/);
   });
 
-  it('rejects arc commands', () => {
-    expect(() => parseSvgPath('M 0,0 A 5,5 0 0,1 10,10 Z'))
-      .toThrow(/Bezier\/arc/);
+  it('rejects invalid tolerance', () => {
+    expect(() => parseSvgPath('M 0,0 L 10,0 L 10,5 Z', { tolerance: 0 }))
+      .toThrow(/positive finite/);
+    expect(() => parseSvgPath('M 0,0 L 10,0 L 10,5 Z', { tolerance: -1 }))
+      .toThrow(/positive finite/);
   });
 
   it('rejects multi-subpath', () => {
