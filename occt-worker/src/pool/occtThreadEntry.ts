@@ -20,6 +20,8 @@ import { runBoolean, type BooleanParams } from '../occt/boolean.js';
 import { runFillet, type FilletParams } from '../occt/fillet.js';
 import { runChamfer, type ChamferParams } from '../occt/chamfer.js';
 import { runShell, type ShellParams } from '../occt/shell.js';
+import { runExtrude, type ExtrudeParams } from '../occt/extrude.js';
+import { runRevolve, type RevolveParams } from '../occt/revolve.js';
 import type { ParentToWorker, WorkerToParent } from './protocol.js';
 
 if (!parentPort) {
@@ -67,6 +69,12 @@ port.on('message', async (raw: ParentToWorker) => {
         break;
       case 'shell':
         result = await runShell(params as ShellParams);
+        break;
+      case 'extrude':
+        result = await runExtrude(params as ExtrudeParams);
+        break;
+      case 'revolve':
+        result = await runRevolve(params as RevolveParams);
         break;
       default: {
         // Exhaustiveness — adding a new op without handling it here

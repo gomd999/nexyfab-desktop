@@ -7,7 +7,14 @@
 import { describe, it, expect } from 'vitest';
 import { _testing } from './occt.js';
 
-const { validateBooleanParams, validateFilletParams, validateChamferParams, validateShellParams } = _testing;
+const {
+  validateBooleanParams,
+  validateFilletParams,
+  validateChamferParams,
+  validateShellParams,
+  validateExtrudeParams,
+  validateRevolveParams,
+} = _testing;
 
 const okHost = { host: { w: 10, h: 10, d: 10 } };
 
@@ -61,6 +68,67 @@ describe('validateChamferParams', () => {
     expect(() => validateChamferParams({
       params: { ...okHost, distance: 1, edges: 'diagonal' },
     })).toThrow(/edges must be one of/);
+  });
+});
+
+describe('validateExtrudeParams', () => {
+  it('accepts rectangle profile + height', () => {
+    const out = validateExtrudeParams({
+      params: { profile: { kind: 'rectangle', width: 20, height2D: 10 }, height: 5 },
+    });
+    expect(out.profile.kind).toBe('rectangle');
+    expect(out.height).toBe(5);
+    expect(out.plane).toBeUndefined();
+  });
+  it('accepts circle profile + plane override', () => {
+    const out = validateExtrudeParams({
+      params: { profile: { kind: 'circle', radius: 3 }, height: 5, plane: 'YZ' },
+    });
+    if (out.profile.kind === 'circle') expect(out.profile.radius).toBe(3);
+    else throw new Error('profile narrowing broke');
+    expect(out.plane).toBe('YZ');
+  });
+  it('rejects missing profile', () => {
+    expect(() => validateExtrudeParams({ params: { height: 5 } })).toThrow(/profile required/);
+  });
+  it('rejects unknown profile kind', () => {
+    expect(() => validateExtrudeParams({
+      params: { profile: { kind: 'triangle', r: 1 }, height: 5 },
+    })).toThrow(/profile.kind/);
+  });
+  it('rejects bad plane', () => {
+    expect(() => validateExtrudeParams({
+      params: { profile: { kind: 'circle', radius: 1 }, height: 5, plane: 'XX' },
+    })).toThrow(/plane must be/);
+  });
+});
+
+describe('validateRevolveParams', () => {
+  it('accepts rectangle profile with defaults', () => {
+    const out = validateRevolveParams({
+      params: { profile: { kind: 'rectangle', width: 10, height2D: 4 } },
+    });
+    expect(out.profile.kind).toBe('rectangle');
+    expect(out.axis).toBeUndefined();
+    expect(out.angle).toBeUndefined();
+    expect(out.plane).toBeUndefined();
+  });
+  it('accepts circle profile + axis + angle', () => {
+    const out = validateRevolveParams({
+      params: { profile: { kind: 'circle', radius: 5 }, axis: 'Z', angle: 180 },
+    });
+    expect(out.axis).toBe('Z');
+    expect(out.angle).toBe(180);
+  });
+  it('rejects bad axis', () => {
+    expect(() => validateRevolveParams({
+      params: { profile: { kind: 'circle', radius: 1 }, axis: 'W' },
+    })).toThrow(/axis must be/);
+  });
+  it('rejects out-of-range angle', () => {
+    expect(() => validateRevolveParams({
+      params: { profile: { kind: 'circle', radius: 1 }, angle: 720 },
+    })).toThrow(/angle out of range/);
   });
 });
 

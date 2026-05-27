@@ -12,8 +12,28 @@ export interface ReplicadLike {
   makeBaseBox?: (x: number, y: number, z: number) => unknown;
   makeBaseCylinder?: (r: number, h: number) => unknown;
   makeBaseSphere?: (r: number) => unknown;
+  /** 2D profile builders for extrude / revolve. Each returns a
+   *  DrawingLike that's chained into sketchOnPlane → extrude/revolve. */
+  drawRectangle?: (w: number, h: number) => DrawingLike;
+  drawCircle?: (r: number) => DrawingLike;
   exportSTL?: (shape: unknown) => Uint8Array | string;
   exportSTEP?: (shape: unknown) => string;
+}
+
+/** 2D drawing handle returned by replicad's draw* helpers. The only
+ *  method we touch is sketchOnPlane — everything else (offset, line,
+ *  arc) is for richer profile authoring in future ops. */
+export interface DrawingLike {
+  sketchOnPlane?: (plane: 'XY' | 'XZ' | 'YZ', offset?: number) => SketchLike;
+}
+
+/** A sketched 2D profile sitting on a plane in 3-space. */
+export interface SketchLike {
+  /** Linear extrusion by `height` along the sketch's plane normal. */
+  extrude?: (height: number) => OcctShape;
+  /** Revolve the sketch around an axis by `angle` (degrees, default
+   *  360 in replicad). Axis defaults to Y for XZ-plane sketches. */
+  revolve?: (axis?: [number, number, number], angle?: number) => OcctShape;
 }
 
 /** Shape with the ops we call across files. Methods are optional
