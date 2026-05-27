@@ -205,6 +205,9 @@ function validateShellParams(body: unknown): ShellParams {
 }
 
 const EXTRUDE_PLANES: ReadonlySet<ExtrudePlane> = new Set(['XY', 'XZ', 'YZ']);
+
+const POLYGON_MAX_POINTS = 1024; // Defensive — guards against payload abuse; real CAD profiles stay well below.
+
 function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
   const raw = p.profile as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== 'object') {
@@ -221,7 +224,33 @@ function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
   if (kind === 'circle') {
     return { kind: 'circle', radius: numField(raw, 'radius', 0.01, 5000) };
   }
-  throw new Error('invalid params: profile.kind must be rectangle | circle');
+  if (kind === 'polygon') {
+    const pts = raw.points;
+    if (!Array.isArray(pts)) {
+      throw new Error('invalid params: polygon.points must be an array');
+    }
+    if (pts.length < 3) {
+      throw new Error('invalid params: polygon needs ≥ 3 points');
+    }
+    if (pts.length > POLYGON_MAX_POINTS) {
+      throw new Error(`invalid params: polygon points exceed ${POLYGON_MAX_POINTS}`);
+    }
+    const points: [number, number][] = pts.map((entry, i) => {
+      if (!Array.isArray(entry) || entry.length !== 2) {
+        throw new Error(`invalid params: polygon.points[${i}] must be [x, y]`);
+      }
+      const [x, y] = entry;
+      if (typeof x !== 'number' || !Number.isFinite(x) || typeof y !== 'number' || !Number.isFinite(y)) {
+        throw new Error(`invalid params: polygon.points[${i}] coords must be finite numbers`);
+      }
+      if (x < -5000 || x > 5000 || y < -5000 || y > 5000) {
+        throw new Error(`invalid params: polygon.points[${i}] out of [-5000, 5000]`);
+      }
+      return [x, y];
+    });
+    return { kind: 'polygon', points };
+  }
+  throw new Error('invalid params: profile.kind must be rectangle | circle | polygon');
 }
 function validateExtrudeParams(body: unknown): ExtrudeParams {
   const p = unwrapParams(body);

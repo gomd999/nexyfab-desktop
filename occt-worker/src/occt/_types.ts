@@ -16,15 +16,26 @@ export interface ReplicadLike {
    *  DrawingLike that's chained into sketchOnPlane → extrude/revolve. */
   drawRectangle?: (w: number, h: number) => DrawingLike;
   drawCircle?: (r: number) => DrawingLike;
+  /** Open-ended builder for polygon profiles. Caller chains moveTo →
+   *  lineTo* → close to produce a DrawingLike. */
+  draw?: () => DrawBuilder;
   exportSTL?: (shape: unknown) => Uint8Array | string;
   exportSTEP?: (shape: unknown) => string;
 }
 
-/** 2D drawing handle returned by replicad's draw* helpers. The only
- *  method we touch is sketchOnPlane — everything else (offset, line,
- *  arc) is for richer profile authoring in future ops. */
+/** 2D drawing handle returned by replicad's draw* helpers. */
 export interface DrawingLike {
   sketchOnPlane?: (plane: 'XY' | 'XZ' | 'YZ', offset?: number) => SketchLike;
+}
+
+/** Open drawing builder used to construct custom polygon profiles
+ *  vertex-by-vertex. replicad's `draw()` returns a chain that we drive
+ *  with moveTo/lineTo and close with `close()` → returns a closed
+ *  DrawingLike ready for sketchOnPlane. */
+export interface DrawBuilder {
+  moveTo?: (x: number, y: number) => DrawBuilder;
+  lineTo?: (x: number, y: number) => DrawBuilder;
+  close?: () => DrawingLike;
 }
 
 /** A sketched 2D profile sitting on a plane in 3-space. */

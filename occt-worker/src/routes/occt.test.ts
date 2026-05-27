@@ -101,6 +101,34 @@ describe('validateExtrudeParams', () => {
       params: { profile: { kind: 'circle', radius: 1 }, height: 5, plane: 'XX' },
     })).toThrow(/plane must be/);
   });
+  it('accepts polygon profile (L-shape)', () => {
+    const out = validateExtrudeParams({
+      params: {
+        profile: {
+          kind: 'polygon',
+          points: [[0, 0], [10, 0], [10, 5], [5, 5], [5, 10], [0, 10]],
+        },
+        height: 3,
+      },
+    });
+    expect(out.profile.kind).toBe('polygon');
+    if (out.profile.kind === 'polygon') expect(out.profile.points).toHaveLength(6);
+  });
+  it('rejects polygon with < 3 points', () => {
+    expect(() => validateExtrudeParams({
+      params: { profile: { kind: 'polygon', points: [[0, 0], [10, 0]] }, height: 5 },
+    })).toThrow(/polygon needs ≥ 3 points/);
+  });
+  it('rejects polygon non-array point', () => {
+    expect(() => validateExtrudeParams({
+      params: { profile: { kind: 'polygon', points: [[0, 0], 'bad', [0, 10]] }, height: 5 },
+    })).toThrow(/must be \[x, y\]/);
+  });
+  it('rejects polygon out-of-range coord', () => {
+    expect(() => validateExtrudeParams({
+      params: { profile: { kind: 'polygon', points: [[0, 0], [10000, 0], [0, 10]] }, height: 5 },
+    })).toThrow(/out of \[/);
+  });
 });
 
 describe('validateRevolveParams', () => {
