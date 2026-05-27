@@ -11,6 +11,8 @@ import {
   buildEdgeFinderForLoop,
   buildEdgeFinderBySignature,
 } from './topologyEdgeFinder';
+import { serverChamfer, type ServerChamferParams } from '@/lib/occt-server-client';
+import { tryServerOp, getSourceR2Key, type ServerOpts } from './serverOcctHelper';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -131,6 +133,32 @@ async function applyChamferWithEdgeFinder(
     if (out) return out;
   }
   return applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
+}
+
+/** W17 server-fallback variant — see fillet.ts for the rationale.
+ *  Same chained-input pattern: reads geometry.userData.serverStepR2Key
+ *  when present so chained ops compose. */
+export async function applyChamferAsyncWithServer(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+  ctx?: FeatureApplyContext,
+  serverOpts?: ServerOpts,
+): Promise<THREE.BufferGeometry> {
+  if (serverOpts?.jwtToken) {
+    const distance = params.distance!;
+    const sourceR2Key = getSourceR2Key(geometry);
+    const serverParams: ServerChamferParams = sourceR2Key
+      ? { sourceR2Key, distance, edges: 'all' }
+      : { host: hostBoxFromGeometry(geometry), distance, edges: 'all' };
+    const result = await tryServerOp(
+      'chamfer',
+      geometry,
+      (opts) => serverChamfer(serverParams, opts),
+      serverOpts,
+    );
+    if (result) return result;
+  }
+  return applyChamferWithEdgeFinder(geometry, params, ctx);
 }
 
 export const chamferFeature: FeatureDefinition = {

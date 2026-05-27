@@ -1,9 +1,15 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
-import type { FeatureDefinition } from './types';
+import type { FeatureDefinition, FeatureApplyContext } from './types';
 import { isOcctReady, isOcctGlobalMode, occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
 import { buildFaceFinderBySignature } from './topologyEdgeFinder';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import {
+  serverShell,
+  type ServerShellParams,
+  type ShellOpenFace,
+} from '@/lib/occt-server-client';
+import { tryServerOp, getSourceR2Key, type ServerOpts } from './serverOcctHelper';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -163,3 +169,48 @@ export const shellFeature: FeatureDefinition = {
     return shellFeature.apply(geometry, params, ctx);
   },
 };
+
+/** Local openFace code (numeric 0..5) → worker's string enum.
+ *  Order matches the existing UI param definition. */
+const OPEN_FACE_MAP: Record<number, ShellOpenFace> = {
+  0: 'top',
+  1: 'bottom',
+  2: 'front',
+  3: 'back',
+  4: 'left',
+  5: 'right',
+};
+
+/** W17 server-fallback variant — see fillet.ts for the rationale.
+ *  Same chained-input pattern: reads geometry.userData.serverStepR2Key
+ *  when present. Falls back to shellFeature.applyAsync (which itself
+ *  falls back to apply) if server skipped / fails. */
+export async function applyShellAsyncWithServer(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+  ctx?: FeatureApplyContext,
+  serverOpts?: ServerOpts,
+): Promise<THREE.BufferGeometry> {
+  if (serverOpts?.jwtToken) {
+    const thickness = params.wallThickness!;
+    const openFaceNum = Math.round(params.openFace ?? 0);
+    const openFace = OPEN_FACE_MAP[openFaceNum] ?? 'top';
+    const sourceR2Key = getSourceR2Key(geometry);
+    const serverParams: ServerShellParams = sourceR2Key
+      ? { sourceR2Key, thickness, openFace }
+      : { host: hostBoxFromGeometry(geometry), thickness, openFace };
+    const result = await tryServerOp(
+      'shell',
+      geometry,
+      (opts) => serverShell(serverParams, opts),
+      serverOpts,
+    );
+    if (result) return result;
+  }
+  // Defer to the feature def's applyAsync, which already has its own
+  // OCCT face-finder logic plus the mesh fallback chain.
+  if (shellFeature.applyAsync) {
+    return shellFeature.applyAsync(geometry, params, ctx);
+  }
+  return shellFeature.apply(geometry, params, ctx);
+}
