@@ -74,12 +74,12 @@ type Lang = keyof typeof dict;
 
 function ConfBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
-  const color = pct >= 75 ? '#3fb950' : pct >= 50 ? '#d29922' : '#f85149';
+  const color = pct >= 75 ? 'var(--nx-ok)' : pct >= 50 ? 'var(--nx-warn)' : 'var(--nx-error)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <div style={{
         flex: 1, height: 4, borderRadius: 4,
-        background: '#21262d', overflow: 'hidden',
+        background: 'var(--nx-panel-2)', overflow: 'hidden',
       }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4 }} />
       </div>
@@ -154,8 +154,8 @@ export default function StepReversePanel({
 
   return (
     <div style={{
-      background: '#0d1117',
-      border: '1px solid #21262d',
+      background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-panel-2)',
       borderRadius: 12,
       overflow: 'hidden',
       fontFamily: 'Inter, system-ui, sans-serif',
@@ -164,20 +164,20 @@ export default function StepReversePanel({
       {/* Header */}
       <div style={{
         padding: '10px 14px',
-        borderBottom: '1px solid #21262d',
+        borderBottom: '1px solid var(--nx-panel-2)',
         background: 'linear-gradient(135deg,rgba(56,139,253,0.08),rgba(63,185,80,0.08))',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{ fontSize: 14 }}>🔬</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#c9d1d9' }}>{t.title}</div>
-          <div style={{ fontSize: 10, color: '#8b949e' }}>{t.subtitle}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--nx-text)' }}>{t.title}</div>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{t.subtitle}</div>
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
             style={{
-              border: 'none', background: '#161b22', color: '#6e7681',
+              border: 'none', background: 'var(--nx-panel)', color: 'var(--nx-text-3)',
               width: 22, height: 22, borderRadius: 6, cursor: 'pointer',
               fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -187,9 +187,9 @@ export default function StepReversePanel({
 
       {/* Loading */}
       {loading && (
-        <div style={{ padding: 24, textAlign: 'center', color: '#8b949e', fontSize: 12 }}>
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--nx-text-2)', fontSize: 12 }}>
           <div style={{
-            width: 24, height: 24, border: '2px solid #21262d', borderTop: '2px solid #388bfd',
+            width: 24, height: 24, border: '2px solid var(--nx-panel-2)', borderTop: '2px solid var(--nx-accent)',
             borderRadius: '50%', animation: 'revSpin 0.8s linear infinite',
             margin: '0 auto 10px',
           }} />
@@ -202,30 +202,30 @@ export default function StepReversePanel({
       {!loading && tree && (
         <div className="nf-scroll" style={{ overflowY: 'auto', maxHeight: 520 }}>
           {/* Overall confidence */}
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
               {t.overall}
             </div>
             <ConfBar value={tree.overallConfidence} />
           </div>
 
           {/* Base shape */}
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               {t.base}
             </div>
             <div style={{
-              background: '#161b22', borderRadius: 8,
-              border: '1px solid #30363d',
+              background: 'var(--nx-panel)', borderRadius: 8,
+              border: '1px solid var(--nx-border)',
               padding: '10px 12px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <span style={{ fontSize: 16 }}>{PRIM_ICONS[tree.baseShape.type] ?? '🔷'}</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
                     {t[tree.baseShape.type as keyof typeof t] ?? tree.baseShape.type}
                   </div>
-                  <div style={{ fontSize: 10, color: '#8b949e' }}>{tree.baseShape.label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{tree.baseShape.label}</div>
                 </div>
               </div>
               <ConfBar value={tree.baseShape.confidence} />
@@ -237,7 +237,7 @@ export default function StepReversePanel({
                     background: 'rgba(56,139,253,0.1)',
                     border: '1px solid rgba(56,139,253,0.2)',
                     borderRadius: 6, padding: '3px 8px',
-                    fontSize: 10, fontWeight: 600, color: '#79c0ff',
+                    fontSize: 10, fontWeight: 600, color: 'var(--nx-accent-2)',
                   }}>
                     {t[k as keyof typeof t] ?? k}: <strong>{typeof v === 'number' ? v.toFixed(1) : v}</strong> mm
                   </div>
@@ -256,9 +256,9 @@ export default function StepReversePanel({
                   style={{
                     marginTop: 10, width: '100%',
                     padding: '7px 0', borderRadius: 8,
-                    border: '1px solid #388bfd',
+                    border: '1px solid var(--nx-accent)',
                     background: 'rgba(56,139,253,0.12)',
-                    color: '#58a6ff', fontSize: 11, fontWeight: 700,
+                    color: 'var(--nx-accent-2)', fontSize: 11, fontWeight: 700,
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.25)'; }}
@@ -271,20 +271,20 @@ export default function StepReversePanel({
           </div>
 
           {/* Detected features */}
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               {t.features} ({tree.features.length})
             </div>
             {tree.features.length === 0 ? (
-              <div style={{ fontSize: 11, color: '#484f58', fontStyle: 'italic', padding: '6px 0' }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-border-strong)', fontStyle: 'italic', padding: '6px 0' }}>
                 {t.noFeatures}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {tree.features.map((f, i) => (
                   <div key={i} style={{
-                    background: '#161b22', borderRadius: 8,
-                    border: '1px solid #30363d', overflow: 'hidden',
+                    background: 'var(--nx-panel)', borderRadius: 8,
+                    border: '1px solid var(--nx-border)', overflow: 'hidden',
                   }}>
                     <div
                       onClick={() => toggleExpand(i)}
@@ -295,17 +295,17 @@ export default function StepReversePanel({
                     >
                       <span style={{ fontSize: 13 }}>{FEAT_ICONS[f.type] ?? '🔹'}</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)' }}>
                           {t[f.type as keyof typeof t] ?? f.type}
                         </div>
-                        <div style={{ fontSize: 10, color: '#8b949e' }}>{f.label}</div>
+                        <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{f.label}</div>
                       </div>
-                      <span style={{ fontSize: 10, color: '#8b949e' }}>
+                      <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
                         {expanded.has(i) ? '▾' : '▸'}
                       </span>
                     </div>
                     {expanded.has(i) && (
-                      <div style={{ padding: '0 10px 10px', borderTop: '1px solid #21262d' }}>
+                      <div style={{ padding: '0 10px 10px', borderTop: '1px solid var(--nx-panel-2)' }}>
                         <div style={{ paddingTop: 8 }}>
                           <ConfBar value={f.confidence} />
                         </div>
@@ -315,7 +315,7 @@ export default function StepReversePanel({
                               background: 'rgba(188,140,255,0.1)',
                               border: '1px solid rgba(188,140,255,0.2)',
                               borderRadius: 6, padding: '2px 7px',
-                              fontSize: 10, fontWeight: 600, color: '#bc8cff',
+                              fontSize: 10, fontWeight: 600, color: 'var(--nx-accent-2)',
                             }}>
                               {t[k as keyof typeof t] ?? k}: <strong>{typeof v === 'number' ? v.toFixed(1) : v}</strong>
                             </div>
@@ -331,7 +331,7 @@ export default function StepReversePanel({
 
           {/* Mesh stats */}
           <div style={{ padding: '10px 14px' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
               {t.mesh}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -341,11 +341,11 @@ export default function StepReversePanel({
                 { label: 'W×H×D', value: `${tree.bbox.width}×${tree.bbox.height}×${tree.bbox.depth}` },
               ].map(item => (
                 <div key={item.label} style={{
-                  flex: 1, background: '#161b22', borderRadius: 8,
-                  border: '1px solid #30363d', padding: '6px 8px',
+                  flex: 1, background: 'var(--nx-panel)', borderRadius: 8,
+                  border: '1px solid var(--nx-border)', padding: '6px 8px',
                 }}>
-                  <div style={{ fontSize: 9, color: '#6e7681', fontWeight: 600, textTransform: 'uppercase' }}>{item.label}</div>
-                  <div style={{ fontSize: 11, color: '#c9d1d9', fontWeight: 700, marginTop: 2 }}>{item.value}</div>
+                  <div style={{ fontSize: 9, color: 'var(--nx-text-3)', fontWeight: 600, textTransform: 'uppercase' }}>{item.label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--nx-text)', fontWeight: 700, marginTop: 2 }}>{item.value}</div>
                 </div>
               ))}
             </div>

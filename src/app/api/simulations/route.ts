@@ -90,8 +90,8 @@ export async function GET(req: NextRequest) {
 
   let inputs: Record<string, unknown> = {};
   let results: Record<string, unknown> = {};
-  try { inputs = JSON.parse(row.inputs) as Record<string, unknown>; } catch { }
-  try { results = JSON.parse(row.results) as Record<string, unknown>; } catch { }
+  try { inputs = JSON.parse(row.inputs) as Record<string, unknown>; } catch (err) { console.error('[route] caught', err); }
+  try { results = JSON.parse(row.results) as Record<string, unknown>; } catch (err) { console.error('[route] caught', err); }
 
   return NextResponse.json({
     id: row.id,

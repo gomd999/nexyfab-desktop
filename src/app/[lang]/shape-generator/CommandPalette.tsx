@@ -207,7 +207,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 9998,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'var(--nx-glass-input)',
           backdropFilter: 'blur(4px)',
         }}
       />
@@ -240,7 +240,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
           alignItems: 'center',
           gap: 10,
         }}>
-          <span style={{ fontSize: 16, color: '#58a6ff', flexShrink: 0 }}>&#x2318;</span>
+          <span style={{ fontSize: 16, color: 'var(--nx-accent-2)', flexShrink: 0 }}>&#x2318;</span>
           <input
             ref={inputRef}
             type="text"
@@ -252,7 +252,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
               flex: 1,
               border: 'none',
               background: 'transparent',
-              color: '#ffffff',
+              color: 'var(--nx-text)',
               fontSize: 15,
               fontWeight: 500,
               outline: 'none',
@@ -260,8 +260,8 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
             }}
           />
           <kbd style={{
-            fontSize: 10, color: '#484f58', fontWeight: 700,
-            background: 'rgba(255,255,255,0.06)',
+            fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 700,
+            background: 'var(--nx-glass-soft)',
             border: '1px solid rgba(255,255,255,0.08)',
             padding: '2px 6px', borderRadius: 4,
             fontFamily: 'monospace',
@@ -280,7 +280,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
             <div style={{
               padding: '24px 16px',
               textAlign: 'center',
-              color: '#484f58',
+              color: 'var(--nx-border-strong)',
               fontSize: 13,
             }}>
               {tt.noResults}
@@ -290,7 +290,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
               <div key={category} style={{ marginBottom: 8 }}>
                 {/* Category header */}
                 <div style={{
-                  fontSize: 10, fontWeight: 700, color: '#8b949e',
+                  fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)',
                   textTransform: 'uppercase', letterSpacing: '0.06em',
                   padding: '4px 12px 4px',
                 }}>
@@ -318,7 +318,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                           background: isSel 
                             ? (isAi ? 'rgba(168, 85, 247, 0.15)' : 'rgba(88,166,255,0.12)') 
                             : 'transparent',
-                          color: isSel ? '#ffffff' : '#c9d1d9',
+                          color: isSel ? 'var(--nx-text)' : 'var(--nx-text)',
                           cursor: 'pointer',
                           fontSize: 13,
                           fontWeight: isSel ? 600 : 500,
@@ -334,7 +334,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                           width: 28, height: 28, borderRadius: 6,
                           background: isSel 
                             ? (isAi ? 'linear-gradient(135deg, rgba(168,85,247,0.4) 0%, rgba(59,130,246,0.4) 100%)' : 'rgba(88,166,255,0.2)') 
-                            : 'rgba(255,255,255,0.04)',
+                            : 'var(--nx-glass-soft)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 14, flexShrink: 0,
                           transition: 'background 0.08s',
@@ -344,8 +344,8 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                       <span style={{ flex: 1 }}>{(lang === 'ko' || lang === 'kr') && cmd.labelKo ? cmd.labelKo : cmd.label}</span>
                       {cmd.shortcut && (
                         <kbd style={{
-                          fontSize: 10, color: '#484f58', fontWeight: 600,
-                          background: 'rgba(255,255,255,0.04)',
+                          fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 600,
+                          background: 'var(--nx-glass-soft)',
                           border: '1px solid rgba(255,255,255,0.06)',
                           padding: '2px 6px', borderRadius: 3,
                           fontFamily: 'monospace',

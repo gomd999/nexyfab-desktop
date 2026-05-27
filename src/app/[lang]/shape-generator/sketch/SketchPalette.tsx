@@ -196,7 +196,7 @@ function Row({ label, checked, onChange, disabled }: RowProps) {
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         fontSize: 12,
-        color: '#24292f',
+        color: 'var(--nx-text)',
         userSelect: 'none',
       }}
     >
@@ -287,6 +287,19 @@ export default function SketchPalette({
   onLookAtSketch: () => void;
 }) {
   const tt = tr(lang);
+  // Reference-image section is collapsible — it has ~7 rows of controls
+  // that are mostly useless until an image is loaded, and was the main
+  // culprit behind the palette eating half the viewport. Auto-expanded
+  // whenever an image is present so the controls are still reachable.
+  const [refOpen, setRefOpen] = React.useState(false);
+  React.useEffect(() => { if (hasReferenceImage) setRefOpen(true); }, [hasReferenceImage]);
+
+  // Whole-panel minimize. When collapsed the palette shrinks to its
+  // header bar, which is still a click target to expand again. Persisted
+  // in-memory only. Defaults COLLAPSED so a fresh sketch opens as a compact
+  // header instead of a 260px panel covering the drawing canvas — the header
+  // (title + caret) keeps it discoverable; one click expands the settings.
+  const [collapsed, setCollapsed] = React.useState(true);
 
   return (
     <aside
@@ -297,7 +310,7 @@ export default function SketchPalette({
         width: 260,
         maxWidth: 'calc(100% - 24px)',
         zIndex: 35,
-        background: 'rgba(13, 17, 23, 0.65)',
+        background: 'var(--nx-glass)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -311,17 +324,26 @@ export default function SketchPalette({
       <div style={{
         fontSize: 14,
         fontWeight: 600,
-        color: '#ffffff',
-        marginBottom: 16,
-        paddingBottom: 10,
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        color: 'var(--nx-text)',
+        marginBottom: collapsed ? 0 : 16,
+        paddingBottom: collapsed ? 0 : 10,
+        borderBottom: collapsed ? 'none' : '1px solid var(--nx-border)',
         letterSpacing: '0.02em',
-      }}>
-        {tt.title}
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: 'pointer',
+      }}
+      onClick={() => setCollapsed(v => !v)}
+      title={collapsed ? 'Expand sketch palette' : 'Minimize sketch palette'}
+      >
+        <span style={{ flex: 1 }}>{tt.title}</span>
+        <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>{collapsed ? '▾' : '−'}</span>
       </div>
+      {!collapsed && (<>{/* collapsed body — closed at the bottom of the aside */}
 
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#8b949e', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tt.lineType}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tt.lineType}</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {(['normal', 'construction', 'centerline'] as const).map(mode => (
             <button
@@ -334,14 +356,14 @@ export default function SketchPalette({
                 borderRadius: 8,
                 fontSize: 10,
                 fontWeight: 600,
-                border: sketchLineStyle === mode ? '1px solid #388bfd' : '1px solid rgba(255,255,255,0.08)',
-                background: sketchLineStyle === mode ? 'rgba(56, 139, 253, 0.15)' : 'rgba(255,255,255,0.03)',
-                color: sketchLineStyle === mode ? '#58a6ff' : '#c9d1d9',
+                border: sketchLineStyle === mode ? '1px solid var(--nx-accent)' : '1px solid rgba(255,255,255,0.08)',
+                background: sketchLineStyle === mode ? 'var(--nx-accent-soft)' : 'var(--nx-glass-soft)',
+                color: sketchLineStyle === mode ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
-              onMouseEnter={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-              onMouseLeave={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseEnter={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
+              onMouseLeave={e => { if (sketchLineStyle !== mode) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
             >
               {mode === 'normal' ? tt.lineNormal : mode === 'construction' ? tt.lineConstruction : tt.lineCenterline}
             </button>
@@ -355,16 +377,16 @@ export default function SketchPalette({
             width: '100%',
             padding: '8px 10px',
             borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(255, 255, 255, 0.05)',
-            color: '#ffffff',
+            border: '1px solid var(--nx-border)',
+            background: 'var(--nx-glass-soft)',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
         >
           {tt.lookAt}
         </button>
@@ -375,7 +397,7 @@ export default function SketchPalette({
         <Row label={tt.snap} checked={snapEnabled} onChange={onSnapChange} />
         <Row label={tt.slice} checked={sliceEnabled} onChange={onSliceChange} />
         {sliceEnabled && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', fontSize: 12, color: '#c9d1d9' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', fontSize: 12, color: 'var(--nx-text)' }}>
             <span style={{ minWidth: 120 }}>{tt.slicePlaneMm}</span>
             <input
               type="range"
@@ -386,7 +408,7 @@ export default function SketchPalette({
               onChange={e => onSlicePlaneMmChange(Number(e.target.value))}
               style={{ flex: 1, accentColor: '#ea580c' }}
             />
-            <span style={{ fontFamily: 'monospace', fontSize: 11, minWidth: 36, color: '#8b949e' }}>{slicePlaneMm}</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 11, minWidth: 36, color: 'var(--nx-text-2)' }}>{slicePlaneMm}</span>
           </label>
         )}
         <Row label={tt.profile} checked={profileHighlight} onChange={onProfileHighlightChange} />
@@ -394,19 +416,35 @@ export default function SketchPalette({
         <Row label={tt.constraints} checked={showConstraints} onChange={onConstraintsChange} />
       </div>
 
-      <div style={{
-        marginTop: 16,
-        paddingTop: 12,
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        fontSize: 11,
-        fontWeight: 600,
-        color: '#8b949e',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        marginBottom: 10,
-      }}>
-        {tt.refSection}
-      </div>
+      <button
+        type="button"
+        onClick={() => setRefOpen(o => !o)}
+        aria-expanded={refOpen}
+        style={{
+          marginTop: 16,
+          paddingTop: 12,
+          paddingBottom: refOpen ? 10 : 0,
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--nx-text-2)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          textAlign: 'left',
+        }}
+      >
+        <span>{tt.refSection}</span>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{refOpen ? '▾' : '▸'}</span>
+      </button>
+      {refOpen && (
+      <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button
           type="button"
@@ -416,15 +454,15 @@ export default function SketchPalette({
             padding: '7px 10px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(255, 255, 255, 0.03)',
-            color: '#c9d1d9',
+            background: 'var(--nx-glass-soft)',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
             transition: 'background 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
         >
           {tt.insertRef}
         </button>
@@ -436,8 +474,8 @@ export default function SketchPalette({
             padding: '7px 10px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: hasReferenceImage ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-            color: '#c9d1d9',
+            background: hasReferenceImage ? 'var(--nx-glass-soft)' : 'var(--nx-glass-soft)',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: hasReferenceImage ? 'pointer' : 'default',
@@ -445,12 +483,12 @@ export default function SketchPalette({
             transition: 'background 0.15s ease',
           }}
           onMouseEnter={e => { if (hasReferenceImage) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'; }}
-          onMouseLeave={e => { if (hasReferenceImage) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+          onMouseLeave={e => { if (hasReferenceImage) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
         >
           {tt.clearRef}
         </button>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#c9d1d9', marginBottom: 6 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--nx-text)', marginBottom: 6 }}>
         <span style={{ minWidth: 72 }}>{tt.refOpacity}</span>
         <input
           type="range"
@@ -460,11 +498,11 @@ export default function SketchPalette({
           value={referenceOpacity}
           onChange={e => onReferenceOpacityChange(Number(e.target.value))}
           disabled={!hasReferenceImage || referenceLocked}
-          style={{ flex: 1, accentColor: '#388bfd', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
+          style={{ flex: 1, accentColor: 'var(--nx-accent)', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
         />
       </label>
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: '#8b949e', width: '100%' }}>{tt.opacityQuick}</span>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)', width: '100%' }}>{tt.opacityQuick}</span>
         {[0.25, 0.5, 0.75].map(p => (
           <button
             key={p}
@@ -477,23 +515,23 @@ export default function SketchPalette({
               padding: '6px 0',
               borderRadius: 6,
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              color: '#c9d1d9',
+              background: 'var(--nx-glass-soft)',
+              color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 600,
               cursor: hasReferenceImage && !referenceLocked ? 'pointer' : 'default',
               opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4,
               transition: 'background 0.15s ease',
             }}
-            onMouseEnter={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
-            onMouseLeave={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; }}
+            onMouseEnter={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
+            onMouseLeave={e => { if (hasReferenceImage && !referenceLocked) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
           >
             {Math.round(p * 100)}%
           </button>
         ))}
       </div>
       <Row label={tt.refLock} checked={referenceLocked} onChange={onReferenceLockedChange} disabled={!hasReferenceImage} />
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#c9d1d9', marginBottom: 6 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--nx-text)', marginBottom: 6 }}>
         <span style={{ minWidth: 72 }}>{tt.refScale}</span>
         <input
           type="range"
@@ -503,11 +541,11 @@ export default function SketchPalette({
           value={referenceScale}
           onChange={e => onReferenceScaleChange(Number(e.target.value))}
           disabled={!hasReferenceImage || referenceLocked}
-          style={{ flex: 1, accentColor: '#388bfd', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
+          style={{ flex: 1, accentColor: 'var(--nx-accent)', opacity: hasReferenceImage && !referenceLocked ? 1 : 0.4 }}
         />
       </label>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <label style={{ fontSize: 11, color: '#c9d1d9' }}>
+        <label style={{ fontSize: 11, color: 'var(--nx-text)' }}>
           {tt.refOffX}
           <input
             type="number"
@@ -515,10 +553,10 @@ export default function SketchPalette({
             value={referenceOffsetX}
             onChange={e => onReferenceOffsetChange(Number(e.target.value), referenceOffsetY)}
             disabled={!hasReferenceImage || referenceLocked}
-            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'var(--nx-glass-input)', color: 'var(--nx-text)' }}
           />
         </label>
-        <label style={{ fontSize: 11, color: '#c9d1d9' }}>
+        <label style={{ fontSize: 11, color: 'var(--nx-text)' }}>
           {tt.refOffY}
           <input
             type="number"
@@ -526,10 +564,13 @@ export default function SketchPalette({
             value={referenceOffsetY}
             onChange={e => onReferenceOffsetChange(referenceOffsetX, Number(e.target.value))}
             disabled={!hasReferenceImage || referenceLocked}
-            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'var(--nx-glass-input)', color: 'var(--nx-text)' }}
           />
         </label>
       </div>
+
+      </>
+      )}
 
       <button
         type="button"
@@ -540,15 +581,15 @@ export default function SketchPalette({
           padding: '8px 10px',
           borderRadius: 8,
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(255, 255, 255, 0.03)',
-          color: '#ffffff',
+          background: 'var(--nx-glass-soft)',
+          color: 'var(--nx-text)',
           fontSize: 12,
           fontWeight: 600,
           cursor: 'pointer',
           transition: 'background 0.15s ease',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
       >
         {tt.sketch3d}
       </button>
@@ -564,8 +605,8 @@ export default function SketchPalette({
             padding: '10px 12px',
             borderRadius: 8,
             border: 'none',
-            background: 'linear-gradient(180deg, #388bfd 0%, #2169ce 100%)',
-            color: '#fff',
+            background: 'linear-gradient(180deg, var(--nx-accent) 0%, #2169ce 100%)',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
@@ -585,19 +626,20 @@ export default function SketchPalette({
             padding: '10px 14px',
             borderRadius: 8,
             border: '1px solid rgba(255, 255, 255, 0.12)',
-            background: 'rgba(255, 255, 255, 0.05)',
-            color: '#c9d1d9',
+            background: 'var(--nx-glass-soft)',
+            color: 'var(--nx-text)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
             transition: 'background 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
         >
           {tt.exit}
         </button>
       </div>
+      </>)}{/* /collapsed body */}
     </aside>
   );
 }

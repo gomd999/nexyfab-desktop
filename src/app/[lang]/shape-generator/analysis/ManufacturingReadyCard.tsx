@@ -222,18 +222,18 @@ export default function ManufacturingReadyCard({
   const score        = dfmOverall?.score ?? null;
 
   // ── Status colour ──────────────────────────────────────────────────────────
-  let statusColor  = '#3fb950';
+  let statusColor  = 'var(--nx-ok)';
   let statusBg     = 'rgba(63,185,80,0.10)';
   let statusBorder = 'rgba(63,185,80,0.25)';
   let statusLabel  = tt.statusReady;
 
   if (errorCount > 0 || (score !== null && score < 50)) {
-    statusColor  = '#f85149';
+    statusColor  = 'var(--nx-error)';
     statusBg     = 'rgba(248,81,73,0.10)';
     statusBorder = 'rgba(248,81,73,0.25)';
     statusLabel  = tt.statusIssues;
   } else if (totalIssues > 0 || (score !== null && score < 80)) {
-    statusColor  = '#d29922';
+    statusColor  = 'var(--nx-warn)';
     statusBg     = 'rgba(210,153,34,0.10)';
     statusBorder = 'rgba(210,153,34,0.25)';
     statusLabel  = tt.statusWarnings;
@@ -261,7 +261,7 @@ export default function ManufacturingReadyCard({
       }}
     >
       <div data-tour="manufacturing-card" style={{
-        background: '#161b22',
+        background: 'var(--nx-panel)',
         border: `1px solid ${statusBorder}`,
         borderRadius: 12,
         overflow: 'hidden',
@@ -275,7 +275,7 @@ export default function ManufacturingReadyCard({
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 12px',
             background: statusBg,
-            borderBottom: expanded ? '1px solid #30363d' : 'none',
+            borderBottom: expanded ? '1px solid var(--nx-border)' : 'none',
             cursor: 'pointer',
           }}
         >
@@ -284,17 +284,17 @@ export default function ManufacturingReadyCard({
           </span>
           {score !== null && (
             <span style={{
-              background: '#21262d', borderRadius: 4, padding: '1px 6px',
-              fontSize: 9, color: '#8b949e', fontFamily: 'monospace', fontWeight: 700,
+              background: 'var(--nx-panel-2)', borderRadius: 4, padding: '1px 6px',
+              fontSize: 9, color: 'var(--nx-text-2)', fontFamily: 'monospace', fontWeight: 700,
             }}>
               {score}/100
             </span>
           )}
-          <span style={{ fontSize: 10, color: '#6e7681', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>▾</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-3)', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>▾</span>
           <button
             onClick={(e) => { e.stopPropagation(); dismiss(); }}
             style={{
-              background: 'none', border: 'none', color: '#6e7681',
+              background: 'none', border: 'none', color: 'var(--nx-text-3)',
               fontSize: 13, cursor: 'pointer', padding: '1px 3px', lineHeight: 1,
             }}
           >✕</button>
@@ -304,59 +304,59 @@ export default function ManufacturingReadyCard({
         {expanded && <div style={{ display: 'flex' }}>
 
           {/* Cost */}
-          <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid #30363d' }}>
-            <div style={{ fontSize: 9, color: '#6e7681', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid var(--nx-border)' }}>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {tt.estCost}
             </div>
             {bestEstimate ? (
               <>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#e6edf3', lineHeight: 1.2 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--nx-text)', lineHeight: 1.2 }}>
                   {fmt(bestEstimate.unitCost)}
                 </div>
-                <div style={{ fontSize: 9, color: '#6e7681', marginTop: 2 }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {PROCESS_ICONS[bestEstimate.process]} {getProcessName(bestEstimate.process, lang)}
                 </div>
               </>
             ) : (
-              <div style={{ fontSize: 11, color: '#484f58' }}>—</div>
+              <div style={{ fontSize: 11, color: 'var(--nx-border-strong)' }}>—</div>
             )}
           </div>
 
           {/* Mass */}
-          <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid #30363d' }}>
-            <div style={{ fontSize: 9, color: '#6e7681', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid var(--nx-border)' }}>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {tt.weight}
             </div>
             {massProps ? (
               <>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#e6edf3', lineHeight: 1.2 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--nx-text)', lineHeight: 1.2 }}>
                   {massProps.mass_g < 1_000
                     ? `${massProps.mass_g.toFixed(1)}g`
                     : `${(massProps.mass_g / 1_000).toFixed(2)}kg`}
                 </div>
-                <div style={{ fontSize: 9, color: '#6e7681', marginTop: 2 }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {result.volume_cm3.toFixed(1)} cm³
                 </div>
               </>
             ) : (
-              <div style={{ fontSize: 11, color: '#484f58' }}>—</div>
+              <div style={{ fontSize: 11, color: 'var(--nx-border-strong)' }}>—</div>
             )}
           </div>
 
           {/* DFM */}
           <div style={{ flex: 1, padding: '10px 12px' }}>
-            <div style={{ fontSize: 9, color: '#6e7681', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {tt.dfmIssues}
             </div>
             {dfmResults != null ? (
               <>
                 <div style={{
                   fontSize: 17, fontWeight: 700, lineHeight: 1.2,
-                  color: errorCount > 0 ? '#f85149' : totalIssues > 0 ? '#d29922' : '#3fb950',
+                  color: errorCount > 0 ? 'var(--nx-error)' : totalIssues > 0 ? 'var(--nx-warn)' : 'var(--nx-ok)',
                 }}>
                   {totalIssues}
                 </div>
-                <div style={{ fontSize: 9, color: '#6e7681', marginTop: 2 }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {errorCount > 0
                     ? `${tt.err} ${errorCount}`
                     : tt.items}
@@ -368,14 +368,14 @@ export default function ManufacturingReadyCard({
                 aria-live="polite"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 9, color: '#8b949e',
+                  fontSize: 9, color: 'var(--nx-text-2)',
                 }}
               >
                 <span
                   aria-hidden="true"
                   style={{
                     width: 10, height: 10, borderRadius: '50%',
-                    border: '1.5px solid #30363d', borderTopColor: '#388bfd',
+                    border: '1.5px solid var(--nx-border)', borderTopColor: 'var(--nx-accent)',
                     animation: 'mrc-dfm-spin 0.9s linear infinite',
                     display: 'inline-block',
                   }}
@@ -392,19 +392,19 @@ export default function ManufacturingReadyCard({
           {dfmResults && totalIssues > 0 && (
             <div style={{
               padding: '5px 12px 4px',
-              borderTop: '1px solid #21262d',
-              borderBottom: '1px solid #30363d',
+              borderTop: '1px solid var(--nx-panel-2)',
+              borderBottom: '1px solid var(--nx-border)',
             }}>
               {dfmResults.flatMap(r => r.issues).slice(0, 2).map((issue, i) => (
                 <div key={i} style={{ display: 'flex', gap: 5, marginBottom: 2 }}>
-                  <span style={{ fontSize: 9, flexShrink: 0, lineHeight: '16px', color: issue.severity === 'error' ? '#f85149' : '#d29922' }}>
+                  <span style={{ fontSize: 9, flexShrink: 0, lineHeight: '16px', color: issue.severity === 'error' ? 'var(--nx-error)' : 'var(--nx-warn)' }}>
                     {issue.severity === 'error' ? '●' : '▲'}
                   </span>
-                  <span style={{ fontSize: 9, color: '#8b949e', lineHeight: 1.4 }}>{issue.description}</span>
+                  <span style={{ fontSize: 9, color: 'var(--nx-text-2)', lineHeight: 1.4 }}>{issue.description}</span>
                 </div>
               ))}
               {totalIssues > 2 && (
-                <div style={{ fontSize: 9, color: '#484f58', marginTop: 1 }}>
+                <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginTop: 1 }}>
                   +{totalIssues - 2} {tt.more}
                 </div>
               )}
@@ -415,19 +415,19 @@ export default function ManufacturingReadyCard({
           <div style={{ display: 'flex', gap: 5, padding: '7px 8px' }}>
             <button
               onClick={() => dismiss(onDetailAnalysis)}
-              style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', fontSize: 10, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; }}
+              style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text)', fontSize: 10, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
             >📊 {tt.detailAnalysis}</button>
             <button
               onClick={() => dismiss(onOptimize)}
-              style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: '#21262d', border: '1px solid #30363d', color: '#a371f7', fontSize: 10, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; }}
+              style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-accent-2)', fontSize: 10, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
             >⚡ {tt.optimize}</button>
             <button
               onClick={() => dismiss(onRequestQuote)}
-              style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: 'linear-gradient(135deg, #388bfd 0%, #8b5cf6 100%)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(56,139,253,0.3)', transition: 'opacity 0.15s' }}
+              style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: 'linear-gradient(135deg, var(--nx-accent) 0%, #8b5cf6 100%)', border: 'none', color: 'var(--nx-text)', fontSize: 10, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(56,139,253,0.3)', transition: 'opacity 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
             >💬 {tt.quote}</button>
@@ -455,12 +455,12 @@ function CostBreakdown({
   if (estimates.length === 0) return null;
 
   return (
-    <div style={{ borderTop: '1px solid #21262d' }}>
+    <div style={{ borderTop: '1px solid var(--nx-panel-2)' }}>
       <button
         onClick={() => setOpen(v => !v)}
         style={{
           width: '100%', padding: '6px 12px', background: 'none', border: 'none',
-          color: '#6e7681', fontSize: 10, cursor: 'pointer',
+          color: 'var(--nx-text-3)', fontSize: 10, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}
       >
@@ -477,22 +477,22 @@ function CostBreakdown({
               <div key={`${est.process}-${est.quantity}`} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 8px', borderRadius: 6,
-                background: '#0d1117', border: '1px solid #21262d',
+                background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)',
               }}>
                 <span style={{ fontSize: 12 }}>{PROCESS_ICONS[est.process]}</span>
-                <span style={{ flex: 1, fontSize: 10, color: '#8b949e' }}>
+                <span style={{ flex: 1, fontSize: 10, color: 'var(--nx-text-2)' }}>
                   {getProcessName(est.process, lang)}
                 </span>
-                <span style={{ fontSize: 10, color: '#e6edf3', fontWeight: 700, fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 10, color: 'var(--nx-text)', fontWeight: 700, fontFamily: 'monospace' }}>
                   {fmt(est.unitCost)}
                 </span>
-                <span style={{ fontSize: 9, color: '#484f58' }}>
+                <span style={{ fontSize: 9, color: 'var(--nx-border-strong)' }}>
                   {est.leadTime}
                 </span>
                 <span style={{
                   fontSize: 9, padding: '1px 5px', borderRadius: 4,
                   background: est.confidence === 'high' ? '#1a2e1a' : est.confidence === 'medium' ? '#2d2208' : '#2d1b1b',
-                  color: est.confidence === 'high' ? '#3fb950' : est.confidence === 'medium' ? '#d29922' : '#f85149',
+                  color: est.confidence === 'high' ? 'var(--nx-ok)' : est.confidence === 'medium' ? 'var(--nx-warn)' : 'var(--nx-error)',
                 }}>
                   {est.confidence}
                 </span>

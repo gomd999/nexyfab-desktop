@@ -41,6 +41,15 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
   const { user, token } = useAuthStore();
   const isKo = isKorean(lang);
 
+  // Hub (`/[lang]/nexyfab/hub`) has its own self-contained sidebar (Recent /
+  // Projects / Shared / Branches / Nexy AI / Part Library). The ops sidebar
+  // here (Home / RFQ / Orders / Marketplace / Mfr Dashboard / Billing / ...)
+  // is for factory-side workflows and is redundant when the user is in CAD
+  // start mode. Hide it on /hub so the Hub gets a clean full-width canvas.
+  if (pathname?.endsWith('/nexyfab/hub') || pathname?.endsWith('/nexyfab/hub/')) {
+    return null;
+  }
+
   const isActive = (href: string): boolean => {
     const full = `/${lang}${href}`;
     if (href === '/nexyfab') return pathname === full;

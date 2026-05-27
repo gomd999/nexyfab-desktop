@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
+import { isOcctReady, isOcctGlobalMode, occtMirror } from './occtEngine';
 
 export const mirrorFeature: FeatureDefinition = {
   type: 'mirror',
@@ -37,5 +38,19 @@ export const mirrorFeature: FeatureDefinition = {
     const merged = mergeGeometries([geometry.clone(), clone]);
     if (!merged) throw new Error('Mirror merge failed');
     return merged;
+  },
+  async applyAsync(geometry, params) {
+    if (isOcctReady() && isOcctGlobalMode()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          const r = occtMirror(handle, Math.round(params.plane));
+          if (r.handle) { r.geometry.userData.occtHandle = r.handle; return r.geometry; }
+        } catch (err) {
+          console.warn('[mirror] OCCT path failed, falling back to mesh:', err);
+        }
+      }
+    }
+    return mirrorFeature.apply(geometry, params);
   },
 };

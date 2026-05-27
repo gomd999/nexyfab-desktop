@@ -168,10 +168,10 @@ export default function EdgeContextPanel({
     right: 20,
     zIndex: 500,
     width: 260,
-    backgroundColor: '#161b22',
-    border: '1px solid #30363d',
+    backgroundColor: 'var(--nx-panel)',
+    border: '1px solid var(--nx-border)',
     borderRadius: 12,
-    color: '#e6edf3',
+    color: 'var(--nx-text)',
     fontFamily: 'sans-serif',
     fontSize: 13,
     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
@@ -183,7 +183,7 @@ export default function EdgeContextPanel({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '10px 14px',
-    borderBottom: '1px solid #30363d',
+    borderBottom: '1px solid var(--nx-border)',
     fontWeight: 600,
     fontSize: 14,
   };
@@ -191,7 +191,7 @@ export default function EdgeContextPanel({
   const closeBtnStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     cursor: 'pointer',
     fontSize: 18,
     lineHeight: 1,
@@ -206,27 +206,27 @@ export default function EdgeContextPanel({
   };
 
   const infoBoxStyle: React.CSSProperties = {
-    backgroundColor: '#0d1117',
-    border: '1px solid #30363d',
+    backgroundColor: 'var(--nx-bg)',
+    border: '1px solid var(--nx-border)',
     borderRadius: 8,
     padding: '8px 10px',
     fontSize: 12,
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     lineHeight: 1.6,
   };
 
   const sectionTitleStyle: React.CSSProperties = {
     fontWeight: 600,
     fontSize: 12,
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     marginBottom: 8,
   };
 
   const sectionBoxStyle: React.CSSProperties = {
-    backgroundColor: '#0d1117',
-    border: '1px solid #30363d',
+    backgroundColor: 'var(--nx-bg)',
+    border: '1px solid var(--nx-border)',
     borderRadius: 8,
     padding: '10px 12px',
     display: 'flex',
@@ -239,22 +239,22 @@ export default function EdgeContextPanel({
     justifyContent: 'space-between',
     alignItems: 'center',
     fontSize: 12,
-    color: '#c9d1d9',
+    color: 'var(--nx-text)',
   };
 
   const sliderStyle: React.CSSProperties = {
     width: '100%',
-    accentColor: '#58a6ff',
+    accentColor: 'var(--nx-accent-2)',
     cursor: 'pointer',
   };
 
   const applyBtnStyle: React.CSSProperties = {
     width: '100%',
     padding: '6px 0',
-    backgroundColor: '#1f6feb',
+    backgroundColor: 'var(--nx-accent)',
     border: 'none',
     borderRadius: 6,
-    color: '#ffffff',
+    color: 'var(--nx-text)',
     fontWeight: 600,
     fontSize: 12,
     cursor: 'pointer',
@@ -263,7 +263,7 @@ export default function EdgeContextPanel({
   const segmentBtnBase: React.CSSProperties = {
     flex: 1,
     padding: '4px 0',
-    border: '1px solid #30363d',
+    border: '1px solid var(--nx-border)',
     borderRadius: 5,
     fontSize: 12,
     cursor: 'pointer',
@@ -276,7 +276,7 @@ export default function EdgeContextPanel({
     borderRadius: 8,
     padding: '8px 10px',
     fontSize: 12,
-    color: '#f85149',
+    color: 'var(--nx-error)',
     textAlign: 'center',
   };
 
@@ -289,7 +289,7 @@ export default function EdgeContextPanel({
     borderRadius: 10,
     padding: '2px 8px',
     fontSize: 11,
-    color: '#f59e0b',
+    color: 'var(--nx-warn)',
     fontWeight: 700,
   };
 
@@ -312,24 +312,24 @@ export default function EdgeContextPanel({
           {edgeCount === 1 ? (
             <>
               <div>
-                {t.edgeId}: <strong style={{ color: '#e6edf3' }}>{firstEdge.id}</strong>
+                {t.edgeId}: <strong style={{ color: 'var(--nx-text)' }}>{firstEdge.id}</strong>
               </div>
               <div>
                 {t.midpoint}:{' '}
-                <strong style={{ color: '#e6edf3' }}>
+                <strong style={{ color: 'var(--nx-text)' }}>
                   ({mx.toFixed(1)}, {my.toFixed(1)}, {mz.toFixed(1)})
                 </strong>
               </div>
             </>
           ) : (
             <>
-              <div style={{ color: '#e6edf3', fontWeight: 600, marginBottom: 4 }}>
+              <div style={{ color: 'var(--nx-text)', fontWeight: 600, marginBottom: 4 }}>
                 {t.edgesSelected(edgeCount)}
               </div>
-              <div style={{ fontSize: 11, color: '#6e7681' }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
                 IDs: {selectedEdges.map(e => e.id).join(', ')}
               </div>
-              <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginTop: 2 }}>
                 {t.shiftHint}
               </div>
             </>
@@ -340,7 +340,7 @@ export default function EdgeContextPanel({
         {edgeCount > 1 && (
           <button
             onClick={onClearSelection}
-            style={{ ...applyBtnStyle, backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+            style={{ ...applyBtnStyle, backgroundColor: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)' }}
           >
             {t.clearSelection}
           </button>
@@ -361,7 +361,7 @@ export default function EdgeContextPanel({
             <div>
               <div style={labelRowStyle}>
                 <span>{t.radius}</span>
-                <span style={{ color: '#58a6ff', fontWeight: 600 }}>{filletRadius.toFixed(1)} mm</span>
+                <span style={{ color: 'var(--nx-accent-2)', fontWeight: 600 }}>{filletRadius.toFixed(1)} mm</span>
               </div>
               <input
                 type="range"
@@ -386,9 +386,9 @@ export default function EdgeContextPanel({
                     onClick={() => setFilletSegments(seg)}
                     style={{
                       ...segmentBtnBase,
-                      backgroundColor: filletSegments === seg ? '#6e40c9' : '#161b22',
-                      borderColor: filletSegments === seg ? '#7948d0' : '#30363d',
-                      color: filletSegments === seg ? '#ffffff' : '#8b949e',
+                      backgroundColor: filletSegments === seg ? '#6e40c9' : 'var(--nx-panel)',
+                      borderColor: filletSegments === seg ? '#7948d0' : 'var(--nx-border)',
+                      color: filletSegments === seg ? 'var(--nx-text)' : 'var(--nx-text-2)',
                     }}
                   >
                     {seg}
@@ -416,7 +416,7 @@ export default function EdgeContextPanel({
             <div>
               <div style={labelRowStyle}>
                 <span>{t.distance}</span>
-                <span style={{ color: '#58a6ff', fontWeight: 600 }}>{chamferDist.toFixed(1)} mm</span>
+                <span style={{ color: 'var(--nx-accent-2)', fontWeight: 600 }}>{chamferDist.toFixed(1)} mm</span>
               </div>
               <input
                 type="range"

@@ -2,6 +2,13 @@
 
 export const shapeDict = {
   ko: {
+    catalogTitle: '기능 카탈로그',
+    catalogSearch: '기능 검색…',
+    catalogLoading: '불러오는 중…',
+    catalogReady: '준비됨',
+    catalogRun: '실행',
+    catalogFailed: '불러오기 실패',
+    catalogEmpty: '해당 기능이 없습니다',
     pageTitle: '형상 생성기',
     pageDesc: 'STEP 파일 없이 기본 형상을 선택하고 치수를 입력하면 즉시 견적을 받을 수 있습니다',
     badge: '빠른 형상 생성 · 즉시 견적',
@@ -503,7 +510,16 @@ export const shapeDict = {
     featureOpt_edgeMinusX: '-X 가장자리',
     featureName_bend: '굽힘',
     featureName_flange: '플랜지',
+    featureName_hem: '헴',
+    featureName_jog: '조그',
     featureName_flatPattern: '전개도',
+    paramHemType: '헴 종류',
+    paramHemLength: '헴 길이',
+    featureOpt_hemClosed: '폐쇄형',
+    featureOpt_hemOpen: '개방형',
+    featureOpt_hemTeardrop: '티어드롭',
+    paramJogOffset: '조그 오프셋',
+    paramJogSpacing: '조그 간격',
     featureName_variableFillet: '가변 필릿',
     featureName_boundarySurface: '경계 서피스',
     // ─── Feature extraction ───
@@ -711,6 +727,13 @@ export const shapeDict = {
     bodyManagerTooltip: '바디 분리·합체 관리',
   },
   en: {
+    catalogTitle: 'Feature Catalog',
+    catalogSearch: 'Search features…',
+    catalogLoading: 'Loading…',
+    catalogReady: 'Ready',
+    catalogRun: 'Run',
+    catalogFailed: 'Load failed',
+    catalogEmpty: 'No matching feature',
     pageTitle: 'Shape Generator',
     pageDesc: 'Select a basic shape and enter dimensions to get an instant manufacturing quote — no CAD file needed',
     badge: 'Quick Shape · Instant Quote',
@@ -1208,7 +1231,16 @@ export const shapeDict = {
     featureOpt_edgeMinusX: '-X Edge',
     featureName_bend: 'Bend',
     featureName_flange: 'Flange',
+    featureName_hem: 'Hem',
+    featureName_jog: 'Jog',
     featureName_flatPattern: 'Flat Pattern',
+    paramHemType: 'Hem Type',
+    paramHemLength: 'Hem Length',
+    featureOpt_hemClosed: 'Closed',
+    featureOpt_hemOpen: 'Open',
+    featureOpt_hemTeardrop: 'Teardrop',
+    paramJogOffset: 'Jog Offset',
+    paramJogSpacing: 'Jog Spacing',
     featureName_variableFillet: 'Variable Fillet',
     featureName_boundarySurface: 'Boundary Surface',
     // ─── Feature extraction ───
@@ -1415,6 +1447,13 @@ export const shapeDict = {
     bodyManagerTooltip: 'Split and merge bodies',
   },
   ja: {
+    catalogTitle: '機能カタログ',
+    catalogSearch: '機能を検索…',
+    catalogLoading: '読み込み中…',
+    catalogReady: '準備完了',
+    catalogRun: '実行',
+    catalogFailed: '読み込み失敗',
+    catalogEmpty: '該当する機能がありません',
     pageTitle: '形状ジェネレーター',
     pageDesc: '基本形状を選択して寸法を入力するだけで即座に製造見積もりが取得できます',
     badge: 'クイック形状 · 即座見積もり',
@@ -1905,6 +1944,13 @@ export const shapeDict = {
     bodyManagerTooltip: 'ボディの分割と結合',
   },
   cn: {
+    catalogTitle: '功能目录',
+    catalogSearch: '搜索功能…',
+    catalogLoading: '加载中…',
+    catalogReady: '就绪',
+    catalogRun: '运行',
+    catalogFailed: '加载失败',
+    catalogEmpty: '没有匹配的功能',
     pageTitle: '形状生成器',
     pageDesc: '选择基本形状并输入尺寸，无需CAD文件即可获得即时制造报价',
     badge: '快速形状 · 即时报价',
@@ -2395,6 +2441,13 @@ export const shapeDict = {
     bodyManagerTooltip: '分割与合并几何体',
   },
   es: {
+    catalogTitle: 'Catálogo de funciones',
+    catalogSearch: 'Buscar funciones…',
+    catalogLoading: 'Cargando…',
+    catalogReady: 'Listo',
+    catalogRun: 'Ejecutar',
+    catalogFailed: 'Error al cargar',
+    catalogEmpty: 'Sin funciones coincidentes',
     pageTitle: 'Generador de Formas',
     pageDesc: 'Selecciona una forma básica e ingresa dimensiones para obtener una cotización instantánea',
     badge: 'Forma Rápida · Cotización Instantánea',
@@ -2885,6 +2938,13 @@ export const shapeDict = {
     bodyManagerTooltip: 'Dividir y combinar cuerpos',
   },
   ar: {
+    catalogTitle: 'كتالوج الميزات',
+    catalogSearch: 'ابحث عن ميزات…',
+    catalogLoading: 'جارٍ التحميل…',
+    catalogReady: 'جاهز',
+    catalogRun: 'تشغيل',
+    catalogFailed: 'فشل التحميل',
+    catalogEmpty: 'لا توجد ميزة مطابقة',
     pageTitle: 'مولّد الأشكال',
     pageDesc: 'اختر شكلاً أساسياً وأدخل الأبعاد للحصول على عرض سعر فوري بدون ملف CAD',
     badge: 'شكل سريع · عرض فوري',
@@ -3394,5 +3454,180 @@ export const shapeDict = {
     bodyManagerTooltip: 'تقسيم ودمج الأجسام الهندسية',
   },
 };
+
+// Supplemental translations for keys that were ko+en only. Kept in one compact,
+// reviewable place rather than edited into the giant language blocks above; the
+// backfill below applies these first, then falls back to English for anything
+// still missing. Grow this object to localise more keys.
+const i18nSupplement: Partial<Record<keyof typeof shapeDict, Record<string, string>>> = {
+  ja: {
+    paramRibStartX: '開始 X', paramRibStartZ: '開始 Z', paramRibEndX: '終了 X', paramRibEndZ: '終了 Z',
+    paramRibThickness: 'リブ厚さ', paramRibHeight: 'リブ高さ', paramRibDirection: '方向',
+    ribFromBottom: '底面から上へ', ribFromTop: '上面から下へ',
+    featureName_bend: '曲げ', featureName_flange: 'フランジ', featureName_hem: 'ヘム', featureName_jog: 'ジョグ',
+    featureName_flatPattern: '展開図', featureName_variableFillet: '可変フィレット', featureName_boundarySurface: '境界サーフェス',
+    featureOpt_hemClosed: '閉じ', featureOpt_hemOpen: '開き', featureOpt_hemTeardrop: 'ティアドロップ',
+    featureOpt_edgePlusX: '+X エッジ', featureOpt_edgeMinusX: '-X エッジ', featureOpt_edgePlusZ: '+Z エッジ', featureOpt_edgeMinusZ: '-Z エッジ',
+    helixLeft: '左ねじ', helixRight: '右ねじ',
+    paramBendDirection: '方向', paramBendPosition: '曲げ位置', paramBendRadius: '曲げ半径',
+    paramFlangeAngle: 'フランジ角度', paramFlangeEdge: 'フランジエッジ', paramFlangeHeight: 'フランジ高さ', paramFlangeRadius: 'フランジ半径',
+    paramHeightSegs: '高さ分割数', paramHelixAxis: '軸', paramHelixHand: 'ねじれ方向', paramHelixPitch: 'ピッチ',
+    paramHelixRadius: 'らせん半径', paramHelixTurns: '巻数', paramHelixWireRadius: 'ワイヤ半径',
+    paramHemLength: 'ヘム長さ', paramHemType: 'ヘムタイプ', paramJogOffset: 'ジョグオフセット', paramJogSpacing: 'ジョグ間隔',
+    paramKFactor: 'K係数', paramMaxRadius: '最大半径', paramMoldDraftAngle: '抜き勾配', paramMoldOperation: '金型操作',
+    paramMoldPullAxis: '型抜き方向', paramMoldSplitOffset: '分割オフセット', paramRadiusX: '半径 X', paramRadiusY: '半径 Y', paramRadiusZ: '半径 Z',
+    paramSegments: '分割数', paramSemiA: '半軸 a', paramSemiB: '半軸 b', paramSheetThickness: '板厚',
+    paramSizeX: 'サイズ X', paramSizeY: 'サイズ Y', paramSteps: 'ステップ数', paramSurfCurvature: '曲率',
+    paramSurfUSegments: 'U分割数', paramSurfVSegments: 'V分割数', paramThreadAngle: 'フランク角', paramThreadCosmetic: 'ねじタイプ',
+    paramThreadDepth: 'ねじ深さ', paramThreadPitch: 'ピッチ', paramVarFilletEnd: '終了半径', paramVarFilletStart: '開始半径',
+    paramVarShellBottom: '底面厚さ', paramVarShellSide: '側面厚さ', paramVarShellTop: '上面厚さ',
+  },
+  cn: {
+    paramRibStartX: '起点 X', paramRibStartZ: '起点 Z', paramRibEndX: '终点 X', paramRibEndZ: '终点 Z',
+    paramRibThickness: '筋板厚度', paramRibHeight: '筋板高度', paramRibDirection: '方向',
+    ribFromBottom: '从底部向上', ribFromTop: '从顶部向下',
+    featureName_bend: '折弯', featureName_flange: '法兰', featureName_hem: '卷边', featureName_jog: '阶梯弯',
+    featureName_flatPattern: '展开图', featureName_variableFillet: '变半径圆角', featureName_boundarySurface: '边界曲面',
+    featureOpt_hemClosed: '闭合', featureOpt_hemOpen: '开放', featureOpt_hemTeardrop: '泪滴形',
+    featureOpt_edgePlusX: '+X 边', featureOpt_edgeMinusX: '-X 边', featureOpt_edgePlusZ: '+Z 边', featureOpt_edgeMinusZ: '-Z 边',
+    helixLeft: '左旋', helixRight: '右旋',
+    paramBendDirection: '方向', paramBendPosition: '折弯位置', paramBendRadius: '折弯半径',
+    paramFlangeAngle: '法兰角度', paramFlangeEdge: '法兰边', paramFlangeHeight: '法兰高度', paramFlangeRadius: '法兰半径',
+    paramHeightSegs: '高度分段', paramHelixAxis: '轴', paramHelixHand: '旋向', paramHelixPitch: '螺距',
+    paramHelixRadius: '螺旋半径', paramHelixTurns: '圈数', paramHelixWireRadius: '线材半径',
+    paramHemLength: '卷边长度', paramHemType: '卷边类型', paramJogOffset: '阶梯偏移', paramJogSpacing: '阶梯间距',
+    paramKFactor: 'K因子', paramMaxRadius: '最大半径', paramMoldDraftAngle: '拔模角度', paramMoldOperation: '模具操作',
+    paramMoldPullAxis: '拔模方向', paramMoldSplitOffset: '分模偏移', paramRadiusX: '半径 X', paramRadiusY: '半径 Y', paramRadiusZ: '半径 Z',
+    paramSegments: '分段数', paramSemiA: '半轴 a', paramSemiB: '半轴 b', paramSheetThickness: '板厚',
+    paramSizeX: '尺寸 X', paramSizeY: '尺寸 Y', paramSteps: '步数', paramSurfCurvature: '曲率',
+    paramSurfUSegments: 'U分段', paramSurfVSegments: 'V分段', paramThreadAngle: '牙型角', paramThreadCosmetic: '螺纹类型',
+    paramThreadDepth: '螺纹深度', paramThreadPitch: '螺距', paramVarFilletEnd: '终止半径', paramVarFilletStart: '起始半径',
+    paramVarShellBottom: '底面厚度', paramVarShellSide: '侧面厚度', paramVarShellTop: '顶面厚度',
+  },
+  es: {
+    paramRibStartX: 'Inicio X', paramRibStartZ: 'Inicio Z', paramRibEndX: 'Fin X', paramRibEndZ: 'Fin Z',
+    paramRibThickness: 'Espesor de nervadura', paramRibHeight: 'Altura de nervadura', paramRibDirection: 'Dirección',
+    ribFromBottom: 'Desde abajo hacia arriba', ribFromTop: 'Desde arriba hacia abajo',
+    featureName_bend: 'Pliegue', featureName_flange: 'Brida', featureName_hem: 'Dobladillo', featureName_jog: 'Recodo',
+    featureName_flatPattern: 'Patrón plano', featureName_variableFillet: 'Redondeo variable', featureName_boundarySurface: 'Superficie límite',
+    featureOpt_hemClosed: 'Cerrado', featureOpt_hemOpen: 'Abierto', featureOpt_hemTeardrop: 'Lágrima',
+    featureOpt_edgePlusX: 'Borde +X', featureOpt_edgeMinusX: 'Borde -X', featureOpt_edgePlusZ: 'Borde +Z', featureOpt_edgeMinusZ: 'Borde -Z',
+    helixLeft: 'Izquierda', helixRight: 'Derecha',
+    paramBendDirection: 'Dirección', paramBendPosition: 'Posición de pliegue', paramBendRadius: 'Radio de pliegue',
+    paramFlangeAngle: 'Ángulo de brida', paramFlangeEdge: 'Borde de brida', paramFlangeHeight: 'Altura de brida', paramFlangeRadius: 'Radio de brida',
+    paramHeightSegs: 'Segmentos de altura', paramHelixAxis: 'Eje', paramHelixHand: 'Sentido', paramHelixPitch: 'Paso',
+    paramHelixRadius: 'Radio de hélice', paramHelixTurns: 'Vueltas', paramHelixWireRadius: 'Radio del hilo',
+    paramHemLength: 'Longitud de dobladillo', paramHemType: 'Tipo de dobladillo', paramJogOffset: 'Desfase de recodo', paramJogSpacing: 'Espaciado de recodo',
+    paramKFactor: 'Factor K', paramMaxRadius: 'Radio máximo', paramMoldDraftAngle: 'Ángulo de desmoldeo', paramMoldOperation: 'Operación de molde',
+    paramMoldPullAxis: 'Dirección de extracción', paramMoldSplitOffset: 'Desfase de partición', paramRadiusX: 'Radio X', paramRadiusY: 'Radio Y', paramRadiusZ: 'Radio Z',
+    paramSegments: 'Segmentos', paramSemiA: 'Semieje a', paramSemiB: 'Semieje b', paramSheetThickness: 'Espesor',
+    paramSizeX: 'Tamaño X', paramSizeY: 'Tamaño Y', paramSteps: 'Pasos', paramSurfCurvature: 'Curvatura',
+    paramSurfUSegments: 'Segmentos U', paramSurfVSegments: 'Segmentos V', paramThreadAngle: 'Ángulo de flanco', paramThreadCosmetic: 'Tipo de rosca',
+    paramThreadDepth: 'Profundidad de rosca', paramThreadPitch: 'Paso', paramVarFilletEnd: 'Radio final', paramVarFilletStart: 'Radio inicial',
+    paramVarShellBottom: 'Espesor inferior', paramVarShellSide: 'Espesor lateral', paramVarShellTop: 'Espesor superior',
+  },
+  ar: {
+    paramRibStartX: 'بداية X', paramRibStartZ: 'بداية Z', paramRibEndX: 'نهاية X', paramRibEndZ: 'نهاية Z',
+    paramRibThickness: 'سُمك الضلع', paramRibHeight: 'ارتفاع الضلع', paramRibDirection: 'الاتجاه',
+    ribFromBottom: 'من الأسفل إلى الأعلى', ribFromTop: 'من الأعلى إلى الأسفل',
+    featureName_bend: 'ثني', featureName_flange: 'شفة', featureName_hem: 'حاشية', featureName_jog: 'إزاحة',
+    featureName_flatPattern: 'نمط مسطح', featureName_variableFillet: 'تدوير متغير', featureName_boundarySurface: 'سطح حدّي',
+    featureOpt_hemClosed: 'مغلق', featureOpt_hemOpen: 'مفتوح', featureOpt_hemTeardrop: 'دمعة',
+    featureOpt_edgePlusX: 'حافة +X', featureOpt_edgeMinusX: 'حافة -X', featureOpt_edgePlusZ: 'حافة +Z', featureOpt_edgeMinusZ: 'حافة -Z',
+    helixLeft: 'يسار', helixRight: 'يمين',
+    paramBendDirection: 'الاتجاه', paramBendPosition: 'موضع الثني', paramBendRadius: 'نصف قطر الثني',
+    paramFlangeAngle: 'زاوية الشفة', paramFlangeEdge: 'حافة الشفة', paramFlangeHeight: 'ارتفاع الشفة', paramFlangeRadius: 'نصف قطر الشفة',
+    paramHeightSegs: 'مقاطع الارتفاع', paramHelixAxis: 'المحور', paramHelixHand: 'اتجاه اللولب', paramHelixPitch: 'الخطوة',
+    paramHelixRadius: 'نصف قطر اللولب', paramHelixTurns: 'عدد اللفات', paramHelixWireRadius: 'نصف قطر السلك',
+    paramHemLength: 'طول الحاشية', paramHemType: 'نوع الحاشية', paramJogOffset: 'إزاحة الانحراف', paramJogSpacing: 'تباعد الانحراف',
+    paramKFactor: 'معامل K', paramMaxRadius: 'أقصى نصف قطر', paramMoldDraftAngle: 'زاوية السحب', paramMoldOperation: 'عملية القالب',
+    paramMoldPullAxis: 'اتجاه السحب', paramMoldSplitOffset: 'إزاحة الفصل', paramRadiusX: 'نصف القطر X', paramRadiusY: 'نصف القطر Y', paramRadiusZ: 'نصف القطر Z',
+    paramSegments: 'المقاطع', paramSemiA: 'نصف المحور a', paramSemiB: 'نصف المحور b', paramSheetThickness: 'السُمك',
+    paramSizeX: 'الحجم X', paramSizeY: 'الحجم Y', paramSteps: 'الخطوات', paramSurfCurvature: 'الانحناء',
+    paramSurfUSegments: 'مقاطع U', paramSurfVSegments: 'مقاطع V', paramThreadAngle: 'زاوية الجانب', paramThreadCosmetic: 'نوع السن',
+    paramThreadDepth: 'عمق السن', paramThreadPitch: 'الخطوة', paramVarFilletEnd: 'نصف القطر النهائي', paramVarFilletStart: 'نصف القطر البدئي',
+    paramVarShellBottom: 'سُمك القاع', paramVarShellSide: 'السُمك الجانبي', paramVarShellTop: 'السُمك العلوي',
+  },
+};
+
+// Batch B: advanced-panel labels (analysis / extraction / GD&T / file IO / part
+// library / mesh tools / sheet-metal / plugins / tutorial / cost terms) that
+// were ko+en only.
+const i18nSupplementB: Partial<Record<keyof typeof shapeDict, Record<string, string>>> = {
+  ja: {
+    analysis_degenerateTriangles: '退化三角形', analysis_deviation: '偏差解析', analysis_deviationDesc: 'メッシュ間の偏差を比較', analysis_duplicateVertices: '重複頂点', analysis_isClosed: '閉じたメッシュ', analysis_isManifold: '多様体', analysis_maxDeviation: '最大偏差', analysis_meanDeviation: '平均偏差', analysis_minDeviation: '最小偏差', analysis_openEdges: '開いたエッジ', analysis_rmsDeviation: 'RMS偏差', analysis_title: '解析', analysis_totalTriangles: '総三角形数', analysis_totalVertices: '総頂点数', analysis_validation: 'ジオメトリ検証', analysis_validationDesc: 'メッシュ整合性を確認',
+    assembly: 'アセンブリ', chatPlaceholderOpt: '「アルミ梁を最適化」または「底面固定、上部に荷重」', costEstimation: 'ジオメトリベースのコスト見積り', environment: '環境', explodedView: '分解図',
+    extraction_autoSurface: '自動サーフェス', extraction_cone: '円錐', extraction_confidence: '信頼度', extraction_crossSection: '断面', extraction_cylinder: '円柱', extraction_detectExtrusions: '押し出しを検出', extraction_detectPrimitives: 'プリミティブを検出', extraction_detectRotational: '回転体を検出', extraction_plane: '平面', extraction_sphere: '球', extraction_title: 'フィーチャー抽出',
+    formulaZ: 'z = f(x, y) 数式', gdtAddDimension: '寸法を追加', gdtAddGDT: 'GD&Tを追加', gdtAnnotations: '注釈', gdtDatum: 'データム', gdtDimensionTolerance: '寸法公差', gdtPlaceDimension: 'メッシュ面をクリックして寸法を配置', gdtPlaceGDT: 'メッシュ面をクリックしてGD&Tを配置', gdtTitle: 'GD&T注釈', gdtTolerance: '公差', instantQuote: '即時見積り', interference: '干渉',
+    io_exportGLTF: 'GLTF (GLB) を書き出し', io_exportOBJ: 'OBJを書き出し', io_exportPLY: 'PLYを書き出し', io_exportSTEP: 'STEPを書き出し', io_exportSTL: 'STLを書き出し', io_import: 'ファイルを読み込み', io_importDesc: 'STEP, IGES, BREP, STL, OBJ, PLY ファイルを読み込み', io_importError: 'ファイルの読み込みに失敗', io_importSuccess: 'ファイルを読み込みました', io_title: 'ファイル', leadTime: 'リードタイム',
+    library_angleBracket: 'アングルブラケット', library_ballBearing: 'ボールベアリング', library_bearings: 'ベアリング', library_bushing: 'ブッシング', library_channelBeam: 'チャンネル鋼', library_connectors: 'コネクタ', library_fasteners: '締結部品', library_flatWasher: '平ワッシャー', library_hexBolt: '六角ボルト', library_hexNut: '六角ナット', library_iBeam: 'I形鋼', library_socketHeadCapScrew: 'キャップスクリュー', library_springWasher: 'スプリングワッシャー', library_structural: '構造材', library_title: '標準部品',
+    machineCostLabel: '加工費', mate: '合致', materialCostLabel: '材料費',
+    mesh_detached: '孤立要素を除去', mesh_factor: '係数', mesh_fillHoles: '穴を埋める', mesh_flipNormals: '法線を反転', mesh_iterations: '反復回数', mesh_merge: '結合', mesh_reduceNoise: 'ノイズ低減', mesh_remesh: 'リメッシュ', mesh_removeSpikes: 'スパイク除去', mesh_repair: 'メッシュ修復', mesh_simplify: '簡略化', mesh_smooth: 'スムージング', mesh_targetRatio: '目標比率', mesh_threshold: 'しきい値', mesh_title: 'メッシュ処理',
+    moldCavity: 'キャビティ', moldCore: 'コア', moldDraftAnalysis: '抜き勾配解析', pluginDisable: '無効化', pluginEnable: '有効化', pluginManage: '管理', pluginManager: 'プラグインマネージャー', pluginNoPlugins: 'プラグインは登録されていません', pluginRegistered: '登録済み', pluginUnregister: 'プラグインを登録解除', plugins: 'プラグイン', process: '工程', quantity: '数量', renderMode: 'レンダリングモード', renderSettings: 'レンダリング設定', rendering: 'レンダリング', requestFormalQuote: '正式見積りを依頼', screenshot: 'スクリーンショット', screenshotSaved: 'スクリーンショットを保存しました', setupCostLabel: '段取り費', shapeDesc_ellipsoid: '3軸楕円体', shapeDesc_latheProfile: 'r=f(y)で定義される回転体',
+    sheetmetal_bend: '曲げ', sheetmetal_bendAngle: '曲げ角度', sheetmetal_bendDirection: '曲げ方向', sheetmetal_bendPosition: '曲げ位置', sheetmetal_bendRadius: '曲げ半径', sheetmetal_boundarySurface: '境界サーフェス', sheetmetal_box: '板金ボックス', sheetmetal_flange: 'フランジ', sheetmetal_flangeAngle: 'フランジ角度', sheetmetal_flangeEdge: 'エッジ', sheetmetal_flangeHeight: 'フランジ高さ', sheetmetal_flatPattern: '展開図', sheetmetal_generateFlat: '展開図を生成', sheetmetal_hem: 'ヘム', sheetmetal_kFactor: 'K係数', sheetmetal_thickness: '板厚', sheetmetal_title: '板金', sheetmetal_unfold: '展開', sheetmetal_variableFillet: '可変フィレット',
+    sketchConstrAngle: '角度', sketchConstrMidpoint: '中点', sketchConstrSymmetric: '対称', sketchConstrTangent: '接線', threadCosmetic: '簡略表示', threadReal: '実ねじ', tutorial: 'チュートリアル', tutorialBack: '戻る', tutorialDone: '完了', tutorialNext: '次へ', tutorialRestart: 'チュートリアルを再開', tutorialSkip: 'スキップ', unitCost: '単価',
+  },
+  cn: {
+    analysis_degenerateTriangles: '退化三角形', analysis_deviation: '偏差分析', analysis_deviationDesc: '比较网格间偏差', analysis_duplicateVertices: '重复顶点', analysis_isClosed: '封闭网格', analysis_isManifold: '流形', analysis_maxDeviation: '最大偏差', analysis_meanDeviation: '平均偏差', analysis_minDeviation: '最小偏差', analysis_openEdges: '开放边', analysis_rmsDeviation: 'RMS偏差', analysis_title: '分析', analysis_totalTriangles: '三角形总数', analysis_totalVertices: '顶点总数', analysis_validation: '几何验证', analysis_validationDesc: '检查网格完整性',
+    assembly: '装配', chatPlaceholderOpt: '"优化铝梁" 或 "固定底部，顶部加载"', costEstimation: '基于几何的成本估算', environment: '环境', explodedView: '爆炸视图',
+    extraction_autoSurface: '自动曲面', extraction_cone: '圆锥', extraction_confidence: '置信度', extraction_crossSection: '截面', extraction_cylinder: '圆柱', extraction_detectExtrusions: '检测拉伸', extraction_detectPrimitives: '检测基本体', extraction_detectRotational: '检测回转体', extraction_plane: '平面', extraction_sphere: '球', extraction_title: '特征提取',
+    formulaZ: 'z = f(x, y) 公式', gdtAddDimension: '添加尺寸', gdtAddGDT: '添加形位公差', gdtAnnotations: '注释', gdtDatum: '基准', gdtDimensionTolerance: '尺寸公差', gdtPlaceDimension: '点击网格表面放置尺寸', gdtPlaceGDT: '点击网格表面放置形位公差', gdtTitle: '形位公差注释', gdtTolerance: '公差', instantQuote: '即时报价', interference: '干涉',
+    io_exportGLTF: '导出 GLTF (GLB)', io_exportOBJ: '导出 OBJ', io_exportPLY: '导出 PLY', io_exportSTEP: '导出 STEP', io_exportSTL: '导出 STL', io_import: '导入文件', io_importDesc: '导入 STEP、IGES、BREP、STL、OBJ、PLY 文件', io_importError: '文件导入失败', io_importSuccess: '文件导入成功', io_title: '文件', leadTime: '交付周期',
+    library_angleBracket: '角支架', library_ballBearing: '球轴承', library_bearings: '轴承', library_bushing: '衬套', library_channelBeam: '槽钢', library_connectors: '连接件', library_fasteners: '紧固件', library_flatWasher: '平垫圈', library_hexBolt: '六角螺栓', library_hexNut: '六角螺母', library_iBeam: '工字钢', library_socketHeadCapScrew: '内六角圆柱头螺钉', library_springWasher: '弹簧垫圈', library_structural: '结构件', library_title: '标准件',
+    machineCostLabel: '加工成本', mate: '配合', materialCostLabel: '材料成本',
+    mesh_detached: '移除游离体', mesh_factor: '系数', mesh_fillHoles: '填补孔洞', mesh_flipNormals: '翻转法线', mesh_iterations: '迭代次数', mesh_merge: '合并', mesh_reduceNoise: '降噪', mesh_remesh: '重新网格化', mesh_removeSpikes: '移除尖刺', mesh_repair: '修复网格', mesh_simplify: '简化', mesh_smooth: '平滑', mesh_targetRatio: '目标比例', mesh_threshold: '阈值', mesh_title: '网格处理',
+    moldCavity: '型腔', moldCore: '型芯', moldDraftAnalysis: '拔模分析', pluginDisable: '禁用', pluginEnable: '启用', pluginManage: '管理', pluginManager: '插件管理器', pluginNoPlugins: '未注册插件', pluginRegistered: '已注册', pluginUnregister: '注销插件', plugins: '插件', process: '工艺', quantity: '数量', renderMode: '渲染模式', renderSettings: '渲染设置', rendering: '渲染', requestFormalQuote: '请求正式报价', screenshot: '截图', screenshotSaved: '截图已保存', setupCostLabel: '装夹成本', shapeDesc_ellipsoid: '三轴椭球体', shapeDesc_latheProfile: '由 r=f(y) 定义的回转体',
+    sheetmetal_bend: '折弯', sheetmetal_bendAngle: '折弯角度', sheetmetal_bendDirection: '折弯方向', sheetmetal_bendPosition: '折弯位置', sheetmetal_bendRadius: '折弯半径', sheetmetal_boundarySurface: '边界曲面', sheetmetal_box: '钣金盒', sheetmetal_flange: '法兰', sheetmetal_flangeAngle: '法兰角度', sheetmetal_flangeEdge: '边', sheetmetal_flangeHeight: '法兰高度', sheetmetal_flatPattern: '展开图', sheetmetal_generateFlat: '生成展开图', sheetmetal_hem: '卷边', sheetmetal_kFactor: 'K因子', sheetmetal_thickness: '板厚', sheetmetal_title: '钣金', sheetmetal_unfold: '展开', sheetmetal_variableFillet: '变半径圆角',
+    sketchConstrAngle: '角度', sketchConstrMidpoint: '中点', sketchConstrSymmetric: '对称', sketchConstrTangent: '相切', threadCosmetic: '简化显示', threadReal: '真实螺纹', tutorial: '教程', tutorialBack: '上一步', tutorialDone: '完成', tutorialNext: '下一步', tutorialRestart: '重新开始教程', tutorialSkip: '跳过', unitCost: '单价',
+  },
+  es: {
+    analysis_degenerateTriangles: 'Triángulos degenerados', analysis_deviation: 'Análisis de desviación', analysis_deviationDesc: 'Comparar desviación entre mallas', analysis_duplicateVertices: 'Vértices duplicados', analysis_isClosed: 'Malla cerrada', analysis_isManifold: 'Variedad (manifold)', analysis_maxDeviation: 'Desviación máx.', analysis_meanDeviation: 'Desviación media', analysis_minDeviation: 'Desviación mín.', analysis_openEdges: 'Aristas abiertas', analysis_rmsDeviation: 'Desviación RMS', analysis_title: 'Análisis', analysis_totalTriangles: 'Triángulos totales', analysis_totalVertices: 'Vértices totales', analysis_validation: 'Validación de geometría', analysis_validationDesc: 'Comprobar integridad de la malla',
+    assembly: 'Ensamblaje', chatPlaceholderOpt: '«Optimizar viga de aluminio» o «Fijar base, carga arriba»', costEstimation: 'Estimación de coste basada en geometría', environment: 'Entorno', explodedView: 'Vista despiezada',
+    extraction_autoSurface: 'Superficie automática', extraction_cone: 'Cono', extraction_confidence: 'Confianza', extraction_crossSection: 'Sección transversal', extraction_cylinder: 'Cilindro', extraction_detectExtrusions: 'Detectar extrusiones', extraction_detectPrimitives: 'Detectar primitivas', extraction_detectRotational: 'Detectar revolución', extraction_plane: 'Plano', extraction_sphere: 'Esfera', extraction_title: 'Extracción de operaciones',
+    formulaZ: 'z = f(x, y)  fórmula', gdtAddDimension: 'Añadir cota', gdtAddGDT: 'Añadir GD&T', gdtAnnotations: 'Anotaciones', gdtDatum: 'Referencia', gdtDimensionTolerance: 'Tolerancia dimensional', gdtPlaceDimension: 'Haz clic en la malla para colocar la cota', gdtPlaceGDT: 'Haz clic en la malla para colocar GD&T', gdtTitle: 'Anotaciones GD&T', gdtTolerance: 'Tolerancia', instantQuote: 'Presupuesto instantáneo', interference: 'Interferencia',
+    io_exportGLTF: 'Exportar GLTF (GLB)', io_exportOBJ: 'Exportar OBJ', io_exportPLY: 'Exportar PLY', io_exportSTEP: 'Exportar STEP', io_exportSTL: 'Exportar STL', io_import: 'Importar archivo', io_importDesc: 'Importar archivos STEP, IGES, BREP, STL, OBJ, PLY', io_importError: 'Error al importar el archivo', io_importSuccess: 'Archivo importado correctamente', io_title: 'Archivo', leadTime: 'Plazo de entrega',
+    library_angleBracket: 'Escuadra', library_ballBearing: 'Rodamiento de bolas', library_bearings: 'Rodamientos', library_bushing: 'Casquillo', library_channelBeam: 'Viga en U', library_connectors: 'Conectores', library_fasteners: 'Fijaciones', library_flatWasher: 'Arandela plana', library_hexBolt: 'Tornillo hexagonal', library_hexNut: 'Tuerca hexagonal', library_iBeam: 'Viga en I', library_socketHeadCapScrew: 'Tornillo Allen', library_springWasher: 'Arandela elástica', library_structural: 'Estructural', library_title: 'Piezas estándar',
+    machineCostLabel: 'Coste de máquina', mate: 'Relación de posición', materialCostLabel: 'Coste de material',
+    mesh_detached: 'Eliminar sueltos', mesh_factor: 'Factor', mesh_fillHoles: 'Rellenar huecos', mesh_flipNormals: 'Invertir normales', mesh_iterations: 'Iteraciones', mesh_merge: 'Combinar', mesh_reduceNoise: 'Reducir ruido', mesh_remesh: 'Remallar', mesh_removeSpikes: 'Eliminar picos', mesh_repair: 'Reparar malla', mesh_simplify: 'Simplificar', mesh_smooth: 'Suavizar', mesh_targetRatio: 'Proporción objetivo', mesh_threshold: 'Umbral', mesh_title: 'Procesamiento de malla',
+    moldCavity: 'Cavidad', moldCore: 'Núcleo', moldDraftAnalysis: 'Análisis de desmoldeo', pluginDisable: 'Desactivar', pluginEnable: 'Activar', pluginManage: 'Gestionar', pluginManager: 'Gestor de complementos', pluginNoPlugins: 'No hay complementos registrados', pluginRegistered: 'registrados', pluginUnregister: 'Quitar complemento', plugins: 'Complementos', process: 'Proceso', quantity: 'Cantidad', renderMode: 'Modo de renderizado', renderSettings: 'Ajustes de renderizado', rendering: 'Renderizado', requestFormalQuote: 'Solicitar presupuesto formal', screenshot: 'Captura de pantalla', screenshotSaved: 'Captura guardada', setupCostLabel: 'Coste de preparación', shapeDesc_ellipsoid: 'Elipsoide de 3 ejes', shapeDesc_latheProfile: 'Sólido de revolución definido por r=f(y)',
+    sheetmetal_bend: 'Pliegue', sheetmetal_bendAngle: 'Ángulo de pliegue', sheetmetal_bendDirection: 'Dirección de pliegue', sheetmetal_bendPosition: 'Posición de pliegue', sheetmetal_bendRadius: 'Radio de pliegue', sheetmetal_boundarySurface: 'Superficie límite', sheetmetal_box: 'Caja de chapa', sheetmetal_flange: 'Brida', sheetmetal_flangeAngle: 'Ángulo de brida', sheetmetal_flangeEdge: 'Arista', sheetmetal_flangeHeight: 'Altura de brida', sheetmetal_flatPattern: 'Patrón plano', sheetmetal_generateFlat: 'Generar patrón plano', sheetmetal_hem: 'Dobladillo', sheetmetal_kFactor: 'Factor K', sheetmetal_thickness: 'Espesor', sheetmetal_title: 'Chapa metálica', sheetmetal_unfold: 'Desplegar', sheetmetal_variableFillet: 'Redondeo variable',
+    sketchConstrAngle: 'Ángulo', sketchConstrMidpoint: 'Punto medio', sketchConstrSymmetric: 'Simétrico', sketchConstrTangent: 'Tangente', threadCosmetic: 'Cosmética', threadReal: 'Rosca real', tutorial: 'Tutorial', tutorialBack: 'Atrás', tutorialDone: 'Hecho', tutorialNext: 'Siguiente', tutorialRestart: 'Reiniciar tutorial', tutorialSkip: 'Omitir', unitCost: 'Coste unitario',
+  },
+  ar: {
+    analysis_degenerateTriangles: 'مثلثات منحلّة', analysis_deviation: 'تحليل الانحراف', analysis_deviationDesc: 'مقارنة الانحراف بين الشبكات', analysis_duplicateVertices: 'رؤوس مكررة', analysis_isClosed: 'شبكة مغلقة', analysis_isManifold: 'متشعّبة', analysis_maxDeviation: 'أقصى انحراف', analysis_meanDeviation: 'متوسط الانحراف', analysis_minDeviation: 'أدنى انحراف', analysis_openEdges: 'حواف مفتوحة', analysis_rmsDeviation: 'انحراف RMS', analysis_title: 'تحليل', analysis_totalTriangles: 'إجمالي المثلثات', analysis_totalVertices: 'إجمالي الرؤوس', analysis_validation: 'التحقق من الهندسة', analysis_validationDesc: 'فحص سلامة الشبكة',
+    assembly: 'تجميع', chatPlaceholderOpt: '«تحسين عارضة ألمنيوم» أو «تثبيت الأسفل، حِمل بالأعلى»', costEstimation: 'تقدير التكلفة حسب الهندسة', environment: 'البيئة', explodedView: 'عرض مفكك',
+    extraction_autoSurface: 'سطح تلقائي', extraction_cone: 'مخروط', extraction_confidence: 'الثقة', extraction_crossSection: 'مقطع عرضي', extraction_cylinder: 'أسطوانة', extraction_detectExtrusions: 'كشف البثق', extraction_detectPrimitives: 'كشف الأشكال الأولية', extraction_detectRotational: 'كشف الأجسام الدورانية', extraction_plane: 'مستوٍ', extraction_sphere: 'كرة', extraction_title: 'استخراج المعالم',
+    formulaZ: 'z = f(x, y) صيغة', gdtAddDimension: 'إضافة بُعد', gdtAddGDT: 'إضافة GD&T', gdtAnnotations: 'تعليقات', gdtDatum: 'مرجع', gdtDimensionTolerance: 'تفاوت البُعد', gdtPlaceDimension: 'انقر على سطح الشبكة لوضع البُعد', gdtPlaceGDT: 'انقر على سطح الشبكة لوضع GD&T', gdtTitle: 'تعليقات GD&T', gdtTolerance: 'التفاوت', instantQuote: 'عرض سعر فوري', interference: 'تداخل',
+    io_exportGLTF: 'تصدير GLTF (GLB)', io_exportOBJ: 'تصدير OBJ', io_exportPLY: 'تصدير PLY', io_exportSTEP: 'تصدير STEP', io_exportSTL: 'تصدير STL', io_import: 'استيراد ملف', io_importDesc: 'استيراد ملفات STEP وIGES وBREP وSTL وOBJ وPLY', io_importError: 'فشل استيراد الملف', io_importSuccess: 'تم استيراد الملف بنجاح', io_title: 'ملف', leadTime: 'مدة التنفيذ',
+    library_angleBracket: 'زاوية تثبيت', library_ballBearing: 'محمل كروي', library_bearings: 'محامل', library_bushing: 'جلبة', library_channelBeam: 'عارضة على شكل U', library_connectors: 'وصلات', library_fasteners: 'مثبّتات', library_flatWasher: 'حلقة مسطحة', library_hexBolt: 'برغي سداسي', library_hexNut: 'صامولة سداسية', library_iBeam: 'عارضة على شكل I', library_socketHeadCapScrew: 'برغي ألن', library_springWasher: 'حلقة زنبركية', library_structural: 'إنشائي', library_title: 'قطع قياسية',
+    machineCostLabel: 'تكلفة التشغيل الآلي', mate: 'تزاوج', materialCostLabel: 'تكلفة المواد',
+    mesh_detached: 'إزالة المنفصل', mesh_factor: 'معامل', mesh_fillHoles: 'سد الثقوب', mesh_flipNormals: 'عكس العموديات', mesh_iterations: 'التكرارات', mesh_merge: 'دمج', mesh_reduceNoise: 'تقليل الضوضاء', mesh_remesh: 'إعادة الشبكة', mesh_removeSpikes: 'إزالة النتوءات', mesh_repair: 'إصلاح الشبكة', mesh_simplify: 'تبسيط', mesh_smooth: 'تنعيم', mesh_targetRatio: 'النسبة المستهدفة', mesh_threshold: 'العتبة', mesh_title: 'معالجة الشبكة',
+    moldCavity: 'تجويف', moldCore: 'لب', moldDraftAnalysis: 'تحليل زاوية السحب', pluginDisable: 'تعطيل', pluginEnable: 'تفعيل', pluginManage: 'إدارة', pluginManager: 'مدير الإضافات', pluginNoPlugins: 'لا توجد إضافات مسجّلة', pluginRegistered: 'مسجّلة', pluginUnregister: 'إلغاء تسجيل الإضافة', plugins: 'الإضافات', process: 'العملية', quantity: 'الكمية', renderMode: 'وضع العرض', renderSettings: 'إعدادات العرض', rendering: 'عرض', requestFormalQuote: 'طلب عرض سعر رسمي', screenshot: 'لقطة شاشة', screenshotSaved: 'تم حفظ لقطة الشاشة', setupCostLabel: 'تكلفة الإعداد', shapeDesc_ellipsoid: 'مجسم إهليلجي ثلاثي المحاور', shapeDesc_latheProfile: 'مجسم دوراني معرّف بـ r=f(y)',
+    sheetmetal_bend: 'ثني', sheetmetal_bendAngle: 'زاوية الثني', sheetmetal_bendDirection: 'اتجاه الثني', sheetmetal_bendPosition: 'موضع الثني', sheetmetal_bendRadius: 'نصف قطر الثني', sheetmetal_boundarySurface: 'سطح حدّي', sheetmetal_box: 'صندوق صفائح', sheetmetal_flange: 'شفة', sheetmetal_flangeAngle: 'زاوية الشفة', sheetmetal_flangeEdge: 'حافة', sheetmetal_flangeHeight: 'ارتفاع الشفة', sheetmetal_flatPattern: 'نمط مسطح', sheetmetal_generateFlat: 'توليد نمط مسطح', sheetmetal_hem: 'حاشية', sheetmetal_kFactor: 'معامل K', sheetmetal_thickness: 'السُمك', sheetmetal_title: 'صفائح معدنية', sheetmetal_unfold: 'فرد', sheetmetal_variableFillet: 'تدوير متغير',
+    sketchConstrAngle: 'زاوية', sketchConstrMidpoint: 'نقطة المنتصف', sketchConstrSymmetric: 'متماثل', sketchConstrTangent: 'مماس', threadCosmetic: 'تمثيل مبسّط', threadReal: 'سن حقيقي', tutorial: 'دليل', tutorialBack: 'رجوع', tutorialDone: 'تم', tutorialNext: 'التالي', tutorialRestart: 'إعادة الدليل', tutorialSkip: 'تخطٍّ', unitCost: 'تكلفة الوحدة',
+  },
+};
+
+// i18n safety net: apply supplemental translations (batch A then B), then
+// backfill any key still missing from a language block with the English value
+// (falling back to Korean) so a partially-translated key renders real text
+// instead of `undefined`. Real translations always win. Runs once at load.
+(() => {
+  const en = shapeDict.en as unknown as Record<string, string>;
+  const ko = shapeDict.ko as unknown as Record<string, string>;
+  const keys = new Set<string>([...Object.keys(ko), ...Object.keys(en)]);
+  for (const lang of Object.keys(shapeDict) as (keyof typeof shapeDict)[]) {
+    const block = shapeDict[lang] as unknown as Record<string, string>;
+    for (const sup of [i18nSupplement[lang], i18nSupplementB[lang]]) {
+      if (!sup) continue;
+      for (const [k, v] of Object.entries(sup)) {
+        if (block[k] === undefined) block[k] = v;
+      }
+    }
+    for (const k of keys) {
+      if (block[k] === undefined) block[k] = en[k] ?? ko[k];
+    }
+  }
+})();
 
 export type ShapeDictLang = keyof typeof shapeDict;

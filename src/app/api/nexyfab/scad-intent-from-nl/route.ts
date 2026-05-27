@@ -33,6 +33,7 @@ const SUPPORTED_SHAPES = [
   'heatsink', 'manifold', 'turbine',
   'enclosure', 'tBeam', 'uChannel', 'zPurlin',
   'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
+  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
 ] as const;
 const SUPPORTED_FEATURES = [
   'hole', 'fillet', 'chamfer', 'mirror', 'linearPattern', 'circularPattern', 'scale', 'shell',
@@ -68,6 +69,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Per-user $ budget gate fires first — same as shape-chat.
+  // Surfaced to the client so the lay AI front door can show a gentle
+  // "N free generations left this month" nudge before the hard cap.
+  let usage: { used: number; limit: number; remaining: number } | undefined;
   if (planCheck.ok) {
     const budget = await checkUserBudget(planCheck.userId);
     if (!budget.ok) {
@@ -85,9 +89,13 @@ export async function POST(req: NextRequest) {
     const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat');
     if (!slot.ok) {
       return NextResponse.json(
-        { error: `Free plan limit reached (${slot.limit}/month).`, code: 'MONTHLY_LIMIT' },
+        { error: `Free plan limit reached (${slot.limit}/month).`, code: 'MONTHLY_LIMIT', limit: slot.limit },
         { status: 429 },
       );
+    }
+    // limit === -1 means unlimited (paid plans) — leave usage undefined there.
+    if (slot.limit > 0) {
+      usage = { used: slot.used, limit: slot.limit, remaining: Math.max(0, slot.limit - slot.used) };
     }
   }
 
@@ -231,6 +239,7 @@ export async function POST(req: NextRequest) {
     warnings: conv.warnings,
     summary,
     cached: false,
+    ...(usage ? { usage } : {}),
     ...(budgetWarning ? { budgetWarning } : {}),
   });
 }

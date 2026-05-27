@@ -316,16 +316,16 @@ type Lang = keyof typeof dict;
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  orange: '#f0883e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  orange: 'var(--nx-warn)',
 };
 
 /* ─── Material presets for FEA ───────────────────────────────────────────── */
@@ -493,7 +493,7 @@ export default function FEAPanel({
               onChange={e => handlePresetChange(e.target.value)}
               style={{
                 width: '100%', padding: '6px 8px', borderRadius: 4,
-                border: `1px solid ${C.border}`, background: '#0d1117',
+                border: `1px solid ${C.border}`, background: 'var(--nx-bg)',
                 color: C.text, fontSize: 11, cursor: 'pointer',
               }}
             >
@@ -521,12 +521,12 @@ export default function FEAPanel({
                 onChange={e => setMatProps(prev => ({ ...prev, [prop.key]: Number(e.target.value) }))}
                 style={{
                   flex: 1, padding: '3px 6px', borderRadius: 4,
-                  border: `1px solid ${C.border}`, background: '#0d1117',
+                  border: `1px solid ${C.border}`, background: 'var(--nx-bg)',
                   color: C.text, fontSize: 11, fontFamily: 'monospace',
                 }}
               />
               {prop.unit && (
-                <span style={{ fontSize: 9, color: '#484f58', width: 32, flexShrink: 0 }}>{prop.unit}</span>
+                <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', width: 32, flexShrink: 0 }}>{prop.unit}</span>
               )}
             </div>
           ))}
@@ -565,7 +565,7 @@ export default function FEAPanel({
 
           {/* Condition list */}
           {conditions.length === 0 && (
-            <div style={{ fontSize: 10, color: '#484f58', textAlign: 'center', padding: 8 }}>
+            <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', textAlign: 'center', padding: 8 }}>
               {t.addBCHint}
             </div>
           )}
@@ -586,27 +586,27 @@ export default function FEAPanel({
                   border: 'none', background: 'none', color: C.textDim, cursor: 'pointer', fontSize: 12, padding: 0,
                 }}>&#10005;</button>
               </div>
-              <div style={{ fontSize: 9, color: '#484f58', marginBottom: 4 }}>
+              <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginBottom: 4 }}>
                 {cond.faceIndices.length} {t.faces}
               </div>
               {cond.type !== 'fixed' && cond.value && (
                 <div style={{ display: 'flex', gap: 4 }}>
                   {(['X', 'Y', 'Z']).map((axis, ai) => (
                     <div key={axis} style={{ flex: 1 }}>
-                      <label style={{ fontSize: 8, color: '#484f58' }}>{axis}</label>
+                      <label style={{ fontSize: 8, color: 'var(--nx-border-strong)' }}>{axis}</label>
                       <input
                         type="number"
                         value={cond.value![ai]}
                         onChange={e => handleUpdateConditionValue(idx, ai as 0 | 1 | 2, Number(e.target.value))}
                         style={{
                           width: '100%', padding: '2px 4px', borderRadius: 3,
-                          border: `1px solid ${C.border}`, background: '#0d1117',
+                          border: `1px solid ${C.border}`, background: 'var(--nx-bg)',
                           color: C.text, fontSize: 10, fontFamily: 'monospace',
                         }}
                       />
                     </div>
                   ))}
-                  <div style={{ fontSize: 8, color: '#484f58', alignSelf: 'flex-end', paddingBottom: 3 }}>
+                  <div style={{ fontSize: 8, color: 'var(--nx-border-strong)', alignSelf: 'flex-end', paddingBottom: 3 }}>
                     {cond.type === 'force' ? 'N' : 'Pa'}
                   </div>
                 </div>
@@ -621,8 +621,8 @@ export default function FEAPanel({
           disabled={conditions.length === 0 || isRunning}
           style={{
             width: '100%', padding: '8px 12px', borderRadius: 6,
-            border: 'none', background: conditions.length === 0 ? '#21262d' : C.accent,
-            color: conditions.length === 0 ? '#484f58' : '#fff',
+            border: 'none', background: conditions.length === 0 ? 'var(--nx-panel-2)' : C.accent,
+            color: conditions.length === 0 ? 'var(--nx-border-strong)' : 'var(--nx-text)',
             fontSize: 12, fontWeight: 700, cursor: conditions.length === 0 ? 'default' : 'pointer',
             transition: 'opacity 0.12s', marginBottom: 16,
             opacity: isRunning ? 0.6 : 1,
@@ -762,7 +762,7 @@ export default function FEAPanel({
                       flex: 1, padding: '5px 6px', borderRadius: 4,
                       border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                       background: displayMode === opt.key ? C.accent : C.card,
-                      color: displayMode === opt.key ? '#fff' : C.textDim,
+                      color: displayMode === opt.key ? 'var(--nx-text)' : C.textDim,
                       transition: 'all 0.12s',
                     }}
                   >
@@ -790,7 +790,7 @@ export default function FEAPanel({
                   onChange={e => handleDeformationScaleChange(Number(e.target.value))}
                   style={{ width: '100%', accentColor: C.accent }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#484f58' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-border-strong)' }}>
                   <span>1x</span><span>250x</span><span>500x</span>
                 </div>
               </div>
@@ -798,7 +798,7 @@ export default function FEAPanel({
 
             {/* Color legend */}
             <div style={{
-              padding: '10px', background: '#0d1117', borderRadius: 8,
+              padding: '10px', background: 'var(--nx-bg)', borderRadius: 8,
               border: `1px solid ${C.border}`,
             }}>
               <div style={{ fontWeight: 700, fontSize: 10, color: C.textDim, marginBottom: 6 }}>
@@ -820,18 +820,18 @@ export default function FEAPanel({
                 ))}
               </div>
               {/* Min / quartile / max labels */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#8b949e', fontFamily: 'monospace' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-2)', fontFamily: 'monospace' }}>
                 {displayMode === 'stress' ? (
                   <>
                     <span>{result.minStress.toFixed(1)}</span>
                     <span>{((result.minStress + result.maxStress) / 2).toFixed(1)}</span>
-                    <span style={{ color: '#f85149', fontWeight: 700 }}>{result.maxStress.toFixed(1)}</span>
+                    <span style={{ color: 'var(--nx-error)', fontWeight: 700 }}>{result.maxStress.toFixed(1)}</span>
                   </>
                 ) : (
                   <>
                     <span>0</span>
                     <span>{(result.maxDisplacement / 2).toFixed(4)}</span>
-                    <span style={{ color: '#f85149', fontWeight: 700 }}>{result.maxDisplacement.toFixed(4)}</span>
+                    <span style={{ color: 'var(--nx-error)', fontWeight: 700 }}>{result.maxDisplacement.toFixed(4)}</span>
                   </>
                 )}
               </div>
@@ -849,7 +849,7 @@ export default function FEAPanel({
         )}
 
         {!result && conditions.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '20px 10px', color: '#484f58' }}>
+          <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--nx-border-strong)' }}>
             <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.4 }}>🔬</div>
             <div style={{ fontSize: 11 }}>
               {t.clickRunToStart}
@@ -858,7 +858,7 @@ export default function FEAPanel({
         )}
 
         {!result && conditions.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '20px 10px', color: '#484f58' }}>
+          <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--nx-border-strong)' }}>
             <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.4 }}>📌</div>
             <div style={{ fontSize: 11 }}>
               {t.addBCThenAnalyze}

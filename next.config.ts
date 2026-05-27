@@ -113,6 +113,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['three', '@react-three/fiber', '@react-three/drei', 'lucide-react'],
     serverActions: {
       bodySizeLimit: '10mb',
+      // Server Action encryption key is consumed by Next.js directly from env
+      // `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (Next 16+ no longer accepts it in
+      // config). Pin it on every Railway/Cloudflare env so action IDs stay
+      // stable across rolling deploys. Without it old tabs crash on submit
+      // with "Failed to find Server Action …" — see
+      // src/instrumentation-client.ts for the client-side recovery handler.
     },
   },
   // Turbopack config (Next.js 16 default bundler)

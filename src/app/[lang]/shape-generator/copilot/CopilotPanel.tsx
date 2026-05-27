@@ -78,7 +78,7 @@ interface HistoryItem {
 
 function ConfBadge({ score }: { score: number }) {
   const pct = Math.round(score * 100);
-  const color = pct >= 75 ? '#3fb950' : pct >= 50 ? '#d29922' : '#f85149';
+  const color = pct >= 75 ? 'var(--nx-ok)' : pct >= 50 ? 'var(--nx-warn)' : 'var(--nx-error)';
   return (
     <span style={{
       background: `${color}22`, border: `1px solid ${color}44`,
@@ -89,30 +89,30 @@ function ConfBadge({ score }: { score: number }) {
 }
 
 function HistoryItemRow({ item, t }: { item: HistoryItem; t: (typeof dict)[Lang] }) {
-  const statusColor = item.status === 'applied' ? '#3fb950' : item.status === 'failed' ? '#f85149' : '#d29922';
+  const statusColor = item.status === 'applied' ? 'var(--nx-ok)' : item.status === 'failed' ? 'var(--nx-error)' : 'var(--nx-warn)';
   const _statusLabel = item.status === 'applied' ? t.applied : item.status === 'failed' ? t.failed : t.unknown;
 
   return (
     <div style={{
-      padding: '8px 10px', borderBottom: '1px solid #21262d',
+      padding: '8px 10px', borderBottom: '1px solid var(--nx-panel-2)',
       display: 'flex', flexDirection: 'column', gap: 3,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{
           width: 6, height: 6, borderRadius: '50%', background: statusColor, flexShrink: 0,
         }} />
-        <span style={{ fontSize: 11, color: '#c9d1d9', fontWeight: 600, flex: 1 }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text)', fontWeight: 600, flex: 1 }}>
           {item.cmd.description}
         </span>
         <ConfBadge score={item.cmd.confidence} />
         <span style={{
-          fontSize: 9, color: '#6e7681', background: '#161b22',
-          border: '1px solid #30363d', borderRadius: 4, padding: '1px 4px',
+          fontSize: 9, color: 'var(--nx-text-3)', background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)', borderRadius: 4, padding: '1px 4px',
         }}>
           {item.cmd.source === 'rule' ? t.rule : t.llm}
         </span>
       </div>
-      <div style={{ fontSize: 10, color: '#484f58', paddingLeft: 12, fontFamily: 'monospace' }}>
+      <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', paddingLeft: 12, fontFamily: 'monospace' }}>
         {item.cmd.input}
       </div>
     </div>
@@ -197,7 +197,7 @@ export default function CopilotPanel({
 
   return (
     <div style={{
-      background: '#0d1117', border: '1px solid #21262d', borderRadius: 14,
+      background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)', borderRadius: 14,
       width: 380, fontFamily: 'Inter, system-ui, sans-serif',
       boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
       display: 'flex', flexDirection: 'column',
@@ -205,29 +205,29 @@ export default function CopilotPanel({
     }}>
       {/* Header */}
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #21262d',
+        padding: '12px 16px', borderBottom: '1px solid var(--nx-panel-2)',
         background: 'linear-gradient(135deg,rgba(88,166,255,0.08),rgba(63,185,80,0.06))',
         display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
       }}>
         <span style={{ fontSize: 18 }}>🤖</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#c9d1d9' }}>{t.title}</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--nx-text)' }}>{t.title}</div>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
           <input type="checkbox" checked={useLlm} onChange={e => setUseLlm(e.target.checked)}
-            style={{ accentColor: '#58a6ff', width: 12, height: 12 }} />
-          <span style={{ fontSize: 10, color: '#6e7681' }}>{t.useLlm}</span>
+            style={{ accentColor: 'var(--nx-accent-2)', width: 12, height: 12 }} />
+          <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{t.useLlm}</span>
         </label>
         {onClose && (
           <button onClick={onClose} style={{
-            border: 'none', background: '#161b22', color: '#6e7681',
+            border: 'none', background: 'var(--nx-panel)', color: 'var(--nx-text-3)',
             width: 22, height: 22, borderRadius: 6, cursor: 'pointer', fontSize: 11,
           }}>✕</button>
         )}
       </div>
 
       {/* Input */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid #21262d', flexShrink: 0 }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--nx-panel-2)', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <textarea
             ref={inputRef}
@@ -239,21 +239,21 @@ export default function CopilotPanel({
             placeholder={t.placeholder}
             style={{
               flex: 1, padding: '8px 10px', borderRadius: 8,
-              border: '1px solid #30363d', background: '#161b22',
-              color: '#c9d1d9', fontSize: 12, outline: 'none',
+              border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+              color: 'var(--nx-text)', fontSize: 12, outline: 'none',
               resize: 'none', fontFamily: 'inherit',
               transition: 'border-color 0.15s',
             }}
-            onFocus={e => { e.currentTarget.style.borderColor = '#388bfd'; }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#30363d'; }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--nx-accent)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
           />
           <button
             onClick={() => runCommand()}
             disabled={loading || !input.trim()}
             style={{
               padding: '8px 14px', borderRadius: 8, border: 'none',
-              background: loading || !input.trim() ? '#21262d' : '#388bfd',
-              color: loading || !input.trim() ? '#484f58' : '#fff',
+              background: loading || !input.trim() ? 'var(--nx-panel-2)' : 'var(--nx-accent)',
+              color: loading || !input.trim() ? 'var(--nx-border-strong)' : 'var(--nx-text)',
               fontSize: 12, fontWeight: 700,
               cursor: loading || !input.trim() ? 'default' : 'pointer',
               transition: 'all 0.15s', alignSelf: 'stretch',
@@ -276,7 +276,7 @@ export default function CopilotPanel({
           <div style={{
             marginTop: 8, padding: '6px 10px', borderRadius: 6,
             background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)',
-            fontSize: 11, color: '#f85149',
+            fontSize: 11, color: 'var(--nx-error)',
           }}>
             {clarification}
           </div>
@@ -287,7 +287,7 @@ export default function CopilotPanel({
           onClick={() => setShowExamples(v => !v)}
           style={{
             marginTop: 6, background: 'none', border: 'none',
-            color: '#6e7681', fontSize: 10, cursor: 'pointer',
+            color: 'var(--nx-text-3)', fontSize: 10, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 3, padding: 0,
           }}
         >
@@ -299,7 +299,7 @@ export default function CopilotPanel({
               <button key={ex} onClick={() => runCommand(ex)} style={{
                 background: 'rgba(56,139,253,0.06)', border: '1px solid rgba(56,139,253,0.15)',
                 borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
-                fontSize: 10, color: '#58a6ff', textAlign: 'left',
+                fontSize: 10, color: 'var(--nx-accent-2)', textAlign: 'left',
               }}>
                 {ex}
               </button>
@@ -312,12 +312,12 @@ export default function CopilotPanel({
       <div style={{ flex: 1, overflowY: 'auto' }} ref={historyRef}>
         <div style={{
           padding: '8px 16px 4px', fontSize: 10, fontWeight: 700,
-          color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.04em',
+          color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>
           {t.history}
         </div>
         {history.length === 0 ? (
-          <div style={{ padding: '12px 16px', fontSize: 11, color: '#484f58', fontStyle: 'italic' }}>
+          <div style={{ padding: '12px 16px', fontSize: 11, color: 'var(--nx-border-strong)', fontStyle: 'italic' }}>
             {t.noHistory}
           </div>
         ) : (

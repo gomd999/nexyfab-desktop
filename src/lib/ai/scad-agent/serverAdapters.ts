@@ -6,6 +6,45 @@
  * pulling node:fs / OpenSCAD CLI dependencies.
  */
 import type { RenderAdapter, GeometryAdapter, DfmAdapter, ToolHostAdapters, VisionAdapter, BrepAdapter, DrawingStudioAdapter } from './tools';
+import type { RenderState, GeometryStats } from './types';
+
+/**
+ * STL bytes from the last successful render, keyed by the RenderState object
+ * returned to the agent runtime. The runtime hands that exact object straight
+ * to the geometry adapter (tools.ts: `session.render = state; host.geometry(state)`),
+ * so a WeakMap by reference lets the geometry adapter recover the buffer and run
+ * REAL verification — without putting the (large) Buffer on the serialized
+ * RenderState that streams to the client. Entries are GC'd with the state.
+ */
+const lastStlBuffer = new WeakMap<RenderState, Buffer>();
+
+/**
+ * Parse a rendered binary STL and run Layer-1 verification on it, producing
+ * honest geometry stats. This replaces the old "render compiled ⇒ manifold"
+ * shortcut: `manifold`/`watertight` now reflect the actual mesh, and `issues`
+ * carries an actionable critique the agent can self-correct against.
+ */
+export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
+  const { parseStlBufferToGeometry } = await import('./renderToGeometry');
+  const { verifyGeneratedModel, formatVerificationCritique } = await import(
+    '../../../app/[lang]/shape-generator/analysis/verifyGeneratedModel'
+  );
+  const geo = await parseStlBufferToGeometry(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+  const result = verifyGeneratedModel(geo);
+  const watertight = result.checks.find(c => c.id === 'watertight')?.pass ?? false;
+  const manifoldClean = !result.checks.some(c => c.id === 'manifold' && !c.pass);
+  const critique = formatVerificationCritique(result);
+  const bb = geo.boundingBox; // verifyGeneratedModel computed it
+  return {
+    triangleCount: result.metrics.triangleCount,
+    volume_mm3: result.metrics.volumeMm3,
+    manifold: watertight && manifoldClean,
+    watertight,
+    componentCount: result.metrics.componentCount,
+    ...(bb ? { bbox: { min: [bb.min.x, bb.min.y, bb.min.z] as [number, number, number], max: [bb.max.x, bb.max.y, bb.max.z] as [number, number, number] } } : {}),
+    ...(critique ? { issues: critique } : {}),
+  };
+}
 
 /**
  * Compile SCAD via the existing runOpenScadCli helper. STL bytes are
@@ -29,25 +68,37 @@ export const serverRenderAdapter: RenderAdapter = async (scad) => {
   if (out.buffer.length >= 84) {
     triangles = out.buffer.readUInt32LE(80);
   }
-  return {
+  const state: RenderState = {
     ok: true,
     errors: parseScadStderr(out.stderr ?? ''),
     stlBytes: out.buffer.length,
     triangles,
     ts: Date.now(),
   };
+  // Stash the STL so the geometry adapter can run real verification on it.
+  lastStlBuffer.set(state, out.buffer);
+  return state;
 };
 
 /**
- * Crude STL-side geometry: bbox + triangle count. Volume / SA would need
- * the full STL parsed back into a BufferGeometry — defer that to the
- * client for now (the agent loop runs on the server).
+ * Geometry analysis from the rendered STL. When the buffer is available we
+ * parse it and run Layer-1 verification (real manifold/watertight/volume +
+ * an actionable critique). Falls back to the cheap triangle-count estimate
+ * only when the buffer is missing or unparseable — never reports a clean
+ * solid it didn't actually check.
  */
 export const serverGeometryAdapter: GeometryAdapter = async (render) => {
-  return {
-    triangleCount: render.triangles,
-    manifold: render.ok === true,
-  };
+  const buf = render.ok === true ? lastStlBuffer.get(render) : undefined;
+  if (buf) {
+    try {
+      return await verifyStlBuffer(buf);
+    } catch {
+      // Parsing/verification failed — degrade to the estimate below rather
+      // than block the agent. (Don't claim manifold we couldn't confirm.)
+      return { triangleCount: render.triangles };
+    }
+  }
+  return { triangleCount: render.triangles };
 };
 
 /**

@@ -20,12 +20,12 @@ interface TransformInputPanelProps {
 
 interface XYZ { x: number; y: number; z: number }
 
-const LABEL_COLORS = { x: '#ef4444', y: '#22c55e', z: '#3b82f6' } as const;
+const LABEL_COLORS = { x: 'var(--nx-error)', y: 'var(--nx-ok)', z: 'var(--nx-accent)' } as const;
 
 const inputStyle: React.CSSProperties = {
-  background: '#0d1117',
-  color: '#c9d1d9',
-  border: '1px solid #30363d',
+  background: 'var(--nx-bg)',
+  color: 'var(--nx-text)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 4,
   fontSize: 11,
   padding: '2px 6px',
@@ -170,8 +170,8 @@ export default function TransformInputPanel({ transformMatrix, onMatrixChange, l
 
   return (
     <div style={{
-      background: '#161b22',
-      border: '1px solid #30363d',
+      background: 'var(--nx-panel)',
+      border: '1px solid var(--nx-border)',
       padding: 10,
       borderRadius: 10,
       display: 'flex',
@@ -179,15 +179,15 @@ export default function TransformInputPanel({ transformMatrix, onMatrixChange, l
       gap: 6,
     }}>
       {disabled ? (
-        <div style={{ color: '#484f58', fontSize: 11, fontFamily: 'monospace', textAlign: 'center', padding: '4px 0' }}>
+        <div style={{ color: 'var(--nx-border-strong)', fontSize: 11, fontFamily: 'monospace', textAlign: 'center', padding: '4px 0' }}>
           {t.noSel}
         </div>
       ) : (
         <>
           {rows.map(({ label, field, unit, values }) => (
             <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 22 }}>
-              <span style={{ width: 50, color: '#6e7681', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0 }}>
-                {label}<span style={{ color: '#484f58', fontSize: 9, marginLeft: 2 }}>{unit}</span>
+              <span style={{ width: 50, color: 'var(--nx-text-3)', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0 }}>
+                {label}<span style={{ color: 'var(--nx-border-strong)', fontSize: 9, marginLeft: 2 }}>{unit}</span>
               </span>
               {(['x', 'y', 'z'] as const).map(axis => (
                 <AxisInput
@@ -205,11 +205,11 @@ export default function TransformInputPanel({ transformMatrix, onMatrixChange, l
               onClick={handleReset}
               style={{
                 padding: '2px 10px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                border: '1px solid #30363d', background: '#21262d', color: '#8b949e',
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
                 cursor: 'pointer', fontFamily: 'monospace', transition: 'all 0.12s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; e.currentTarget.style.borderColor = '#8b949e'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#8b949e'; e.currentTarget.style.borderColor = '#30363d'; }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; e.currentTarget.style.borderColor = 'var(--nx-text-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
             >
               {t.reset}
             </button>

@@ -283,7 +283,13 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
       else if (moduleNames.length > 0) noteLines.push(`Composition: not yet set — call compose_assembly when modules are ready`);
       messages.push({ role: 'user', content: noteLines.join('\n') });
     }
-    const aiResp = await callAi(opts.ai, messages);
+    // Bail out before paying for another provider call if the caller has
+     // since aborted (e.g. SSE client disconnected mid-turn).
+    if (opts.signal?.aborted) {
+      emit({ type: 'error', message: 'aborted' });
+      return { session, events };
+    }
+    const aiResp = await callAi(opts.ai, messages, opts.signal);
     const tokens = (aiResp.promptTokens ?? 0) + (aiResp.completionTokens ?? 0);
     session.budget = recordTurn(session.budget, tokens);
 
@@ -370,8 +376,9 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
 async function callAi(
   ai: AiClient,
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  signal?: AbortSignal,
 ): Promise<{ text: string; promptTokens?: number; completionTokens?: number }> {
-  return ai.complete(messages);
+  return ai.complete(messages, signal ? { signal } : undefined);
 }
 
 // ─── Real AI client adapter ────────────────────────────────────────────────
@@ -382,13 +389,14 @@ async function callAi(
  */
 export function makeServerAiClient(opts: { task?: string; temperature?: number; maxTokens?: number } = {}): AiClient {
   return {
-    async complete(messages) {
+    async complete(messages, callOpts) {
       const { chatCompletion } = await import('../index');
       const resp = await chatCompletion({
         messages,
         task: opts.task ?? 'scad-agent',
         temperature: opts.temperature ?? 0.2,
         maxTokens: opts.maxTokens ?? 2048,
+        signal: callOpts?.signal,
       });
       return {
         text: resp.text,

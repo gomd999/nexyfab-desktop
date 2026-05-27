@@ -111,9 +111,9 @@ interface PinCommentsProps {
 const PIN_RADIUS = 0.002;
 
 export const TYPE_COLOR: Record<MeshComment['type'], string> = {
-  comment: '#388bfd',
+  comment: 'var(--nx-accent)',
   issue: '#e3b341',
-  approval: '#3fb950',
+  approval: 'var(--nx-ok)',
 };
 
 export const TYPE_LABEL: Record<MeshComment['type'], { en: string; ko: string }> = {
@@ -127,14 +127,14 @@ const REACTION_EMOJIS = ['👍', '❤️', '🔥', '✅', '⚠️', '❓'];
 // ─── Popup styles ─────────────────────────────────────────────────────────────
 
 const popupStyle: React.CSSProperties = {
-  background: '#1c2128',
-  border: '1px solid #30363d',
+  background: 'var(--nx-panel-2)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 8,
   padding: '10px 12px',
   minWidth: 240,
   maxWidth: 320,
   boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-  color: '#c9d1d9',
+  color: 'var(--nx-text)',
   fontSize: 12,
   fontFamily: 'system-ui, sans-serif',
   pointerEvents: 'auto',
@@ -224,10 +224,10 @@ function MentionTextarea({
         placeholder={placeholder}
         style={{
           width: '100%',
-          background: '#161b22',
-          border: '1px solid #30363d',
+          background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)',
           borderRadius: 5,
-          color: '#c9d1d9',
+          color: 'var(--nx-text)',
           fontSize: 12,
           padding: '5px 8px',
           resize: 'vertical',
@@ -241,7 +241,7 @@ function MentionTextarea({
       {mentionOpen && filteredUsers.length > 0 && (
         <div style={{
           position: 'absolute', bottom: '100%', left: 0, zIndex: 999,
-          background: '#1c2128', border: '1px solid #388bfd66', borderRadius: 6,
+          background: 'var(--nx-panel-2)', border: '1px solid var(--nx-accent)66', borderRadius: 6,
           boxShadow: '0 4px 12px rgba(0,0,0,0.5)', overflow: 'hidden', minWidth: 140,
         }}>
           {filteredUsers.map(u => (
@@ -252,13 +252,13 @@ function MentionTextarea({
                 padding: '6px 10px', cursor: 'pointer', fontSize: 12,
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#388bfd22')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--nx-accent)22')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <span style={{
                 width: 8, height: 8, borderRadius: '50%', background: u.color, flexShrink: 0,
               }} />
-              <span style={{ color: '#c9d1d9' }}>{u.name}</span>
+              <span style={{ color: 'var(--nx-text)' }}>{u.name}</span>
             </div>
           ))}
         </div>
@@ -286,7 +286,7 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
   const [replyText, setReplyText] = useState('');
   const [showReply, setShowReply] = useState(false);
   const tt = usePinT(lang);
-  const color = comment.resolved ? '#8b949e' : TYPE_COLOR[comment.type];
+  const color = comment.resolved ? 'var(--nx-text-2)' : TYPE_COLOR[comment.type];
   const typeLabel = tt[comment.type];
   const dateStr = new Date(comment.createdAt).toLocaleDateString(tt.locale);
 
@@ -339,9 +339,9 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
               <span style={badgeStyle(color)}>{typeLabel}</span>
               {comment.resolved && (
-                <span style={{ fontSize: 10, color: '#8b949e' }}>{tt.resolved}</span>
+                <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{tt.resolved}</span>
               )}
-              {focused && <span style={{ fontSize: 10, color: '#388bfd', marginLeft: 'auto' }}>●</span>}
+              {focused && <span style={{ fontSize: 10, color: 'var(--nx-accent)', marginLeft: 'auto' }}>●</span>}
             </div>
 
             {/* Text */}
@@ -350,13 +350,13 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
             </div>
 
             {/* Meta */}
-            <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
               {comment.authorColor && (
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: comment.authorColor, flexShrink: 0, display: 'inline-block' }} />
               )}
-              <span style={{ fontWeight: 600, color: '#c9d1d9' }}>{comment.author}</span>
+              <span style={{ fontWeight: 600, color: 'var(--nx-text)' }}>{comment.author}</span>
               {comment.authorPlan && (
-                <span style={{ color: '#388bfd' }}>[{comment.authorPlan}]</span>
+                <span style={{ color: 'var(--nx-accent)' }}>[{comment.authorPlan}]</span>
               )}
               <span style={{ marginLeft: 'auto' }}>{dateStr}</span>
             </div>
@@ -370,9 +370,9 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
                     onClick={(e) => { e.stopPropagation(); onReact?.(comment.id, emoji); }}
                     style={{
                       padding: '1px 6px', borderRadius: 10, fontSize: 11, cursor: 'pointer',
-                      border: `1px solid ${userIds.includes(currentUserId ?? '') ? '#388bfd66' : '#30363d'}`,
-                      background: userIds.includes(currentUserId ?? '') ? '#388bfd22' : '#21262d',
-                      color: '#c9d1d9',
+                      border: `1px solid ${userIds.includes(currentUserId ?? '') ? 'var(--nx-accent)66' : 'var(--nx-border)'}`,
+                      background: userIds.includes(currentUserId ?? '') ? 'var(--nx-accent)22' : 'var(--nx-panel-2)',
+                      color: 'var(--nx-text)',
                     }}
                   >
                     {emoji} {userIds.length}
@@ -394,7 +394,7 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
                       border: '1px solid transparent', background: 'transparent',
                       transition: 'background 0.1s',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#388bfd22')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--nx-accent)22')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     {emoji}
@@ -405,19 +405,19 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
 
             {/* Replies */}
             {comment.replies?.length > 0 && (
-              <div style={{ borderTop: '1px solid #21262d', paddingTop: 8, marginBottom: 8 }}>
+              <div style={{ borderTop: '1px solid var(--nx-panel-2)', paddingTop: 8, marginBottom: 8 }}>
                 {comment.replies.map(r => (
                   <div key={r.id} style={{ marginBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                       {r.authorColor && (
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.authorColor, flexShrink: 0, display: 'inline-block' }} />
                       )}
-                      <span style={{ fontSize: 10, fontWeight: 600, color: '#8b949e' }}>{r.author}</span>
-                      <span style={{ fontSize: 9, color: '#6e7681', marginLeft: 'auto' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)' }}>{r.author}</span>
+                      <span style={{ fontSize: 9, color: 'var(--nx-text-3)', marginLeft: 'auto' }}>
                         {new Date(r.createdAt).toLocaleTimeString(tt.locale, { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, color: '#c9d1d9', lineHeight: 1.4, paddingLeft: 10 }}>{r.text}</div>
+                    <div style={{ fontSize: 11, color: 'var(--nx-text)', lineHeight: 1.4, paddingLeft: 10 }}>{r.text}</div>
                   </div>
                 ))}
               </div>
@@ -425,7 +425,7 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
 
             {/* Reply input */}
             {onReply && showReply && (
-              <div style={{ borderTop: '1px solid #21262d', paddingTop: 8, marginBottom: 6 }}>
+              <div style={{ borderTop: '1px solid var(--nx-panel-2)', paddingTop: 8, marginBottom: 6 }}>
                 <MentionTextarea
                   value={replyText}
                   onChange={setReplyText}
@@ -438,8 +438,8 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
                   }}
                 />
                 <div style={{ display: 'flex', gap: 5 }}>
-                  <button style={btnStyle('#388bfd')} onClick={submitReply}>{tt.reply}</button>
-                  <button style={btnStyle('#8b949e')} onClick={() => setShowReply(false)}>{tt.cancel}</button>
+                  <button style={btnStyle('var(--nx-accent)')} onClick={submitReply}>{tt.reply}</button>
+                  <button style={btnStyle('var(--nx-text-2)')} onClick={() => setShowReply(false)}>{tt.cancel}</button>
                 </div>
               </div>
             )}
@@ -447,17 +447,17 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
             {/* Actions */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {onReply && !showReply && (
-                <button style={btnStyle('#8b949e')} onClick={(e) => { e.stopPropagation(); setShowReply(true); }}>
+                <button style={btnStyle('var(--nx-text-2)')} onClick={(e) => { e.stopPropagation(); setShowReply(true); }}>
                   {tt.reply}
                   {comment.replies?.length > 0 && ` (${comment.replies.length})`}
                 </button>
               )}
               {!comment.resolved && (
-                <button style={btnStyle('#3fb950')} onClick={(e) => { e.stopPropagation(); onResolve(comment.id); }}>
+                <button style={btnStyle('var(--nx-ok)')} onClick={(e) => { e.stopPropagation(); onResolve(comment.id); }}>
                   {tt.resolve}
                 </button>
               )}
-              <button style={btnStyle('#f85149')} onClick={(e) => { e.stopPropagation(); onDelete(comment.id); }}>
+              <button style={btnStyle('var(--nx-error)')} onClick={(e) => { e.stopPropagation(); onDelete(comment.id); }}>
                 {tt.delete}
               </button>
             </div>
@@ -543,11 +543,11 @@ export default function PinComments({
         <group position={pendingPos}>
           <mesh>
             <sphereGeometry args={[PIN_RADIUS, 12, 12]} />
-            <meshStandardMaterial color="#388bfd" emissive="#388bfd" emissiveIntensity={0.8} />
+            <meshStandardMaterial color="var(--nx-accent)" emissive="var(--nx-accent)" emissiveIntensity={0.8} />
           </mesh>
           <Html position={[0, PIN_RADIUS * 8, 0]} distanceFactor={0.4} occlude={false} zIndexRange={[200, 0]}>
             <div style={{ ...popupStyle, pointerEvents: 'auto' }}>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: '#c9d1d9' }}>
+              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--nx-text)' }}>
                 {tt.addPin}
               </div>
               <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
@@ -557,9 +557,9 @@ export default function PinComments({
                     onClick={() => setPendingType(t)}
                     style={{
                       flex: 1, padding: '3px 0', borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                      border: `1px solid ${pendingType === t ? TYPE_COLOR[t] : '#30363d'}`,
+                      border: `1px solid ${pendingType === t ? TYPE_COLOR[t] : 'var(--nx-border)'}`,
                       background: pendingType === t ? TYPE_COLOR[t] + '33' : 'transparent',
-                      color: pendingType === t ? TYPE_COLOR[t] : '#8b949e',
+                      color: pendingType === t ? TYPE_COLOR[t] : 'var(--nx-text-2)',
                       transition: 'all 0.12s',
                     }}
                   >
@@ -579,8 +579,8 @@ export default function PinComments({
                 }}
               />
               <div style={{ display: 'flex', gap: 6 }}>
-                <button style={btnStyle('#388bfd')} onClick={confirmAdd}>{tt.add}</button>
-                <button style={btnStyle('#8b949e')} onClick={cancelAdd}>{tt.cancel}</button>
+                <button style={btnStyle('var(--nx-accent)')} onClick={confirmAdd}>{tt.add}</button>
+                <button style={btnStyle('var(--nx-text-2)')} onClick={cancelAdd}>{tt.cancel}</button>
               </div>
             </div>
           </Html>

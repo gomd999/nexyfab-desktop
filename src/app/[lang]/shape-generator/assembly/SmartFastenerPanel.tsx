@@ -50,13 +50,13 @@ const dict = {
 };
 
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#58a6ff',
-  green: '#3fb950',
-  cellBg: '#0d1117',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent-2)',
+  green: 'var(--nx-ok)',
+  cellBg: 'var(--nx-bg)',
 };
 
 /** Convert a list of `hole`-typed feature instances into HoleEntry[]. */
@@ -135,8 +135,8 @@ export default function SmartFastenerPanel({
             disabled={allHoles.length < 2}
             style={{
               flex: 1, padding: '8px 12px', borderRadius: 6, border: 'none',
-              background: allHoles.length >= 2 ? C.accent : '#374151',
-              color: '#fff', fontSize: 12, fontWeight: 700,
+              background: allHoles.length >= 2 ? C.accent : 'var(--nx-border-strong)',
+              color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
               cursor: allHoles.length >= 2 ? 'pointer' : 'not-allowed',
             }}
           >{t.detect}</button>
@@ -189,7 +189,7 @@ export default function SmartFastenerPanel({
               onClick={() => onApply(s, suggestionToBomRows(s))}
               style={{
                 marginTop: 4, padding: '5px 10px', borderRadius: 4, border: 'none',
-                background: C.green, color: '#fff', fontSize: 11, fontWeight: 700,
+                background: C.green, color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
                 cursor: 'pointer', alignSelf: 'flex-start',
               }}
             >+ {t.apply}</button>

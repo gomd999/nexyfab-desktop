@@ -43,8 +43,17 @@ export interface IntentInput {
 }
 
 export type IntentToScadResult =
-  | { ok: true; scad: string; warnings: string[] }
+  | { ok: true; scad: string; warnings: string[]; stage2?: Stage2Summary }
   | { ok: false; reason: string };
+
+export interface Stage2Summary {
+  /** Bounds + pattern + constraint diagnostics from scadStage2.runStage2. */
+  diagnostics: { severity: 'info' | 'warn' | 'error'; code: string; message: string }[];
+  /** Top suggested design pattern, if any score > 0.4. */
+  suggestedPattern?: { id: string; title: string; score: number };
+  /** Constraint adjustments applied silently (e.g. fillet capped to 0.4×t). */
+  adjustments: { field: string; from: unknown; to: unknown; reason: string }[];
+}
 
 const SUPPORTED_SHAPES = new Set([
   'box', 'cylinder', 'sphere', 'cone', 'torus', 'wedge', 'pipe', 'disk',
@@ -54,6 +63,7 @@ const SUPPORTED_SHAPES = new Set([
   'heatsink', 'manifold', 'turbine',
   'enclosure', 'tBeam', 'uChannel', 'zPurlin',
   'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
+  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
 ]);
 
 const BOSL2_SHAPES = new Set([
@@ -598,6 +608,76 @@ function emitBaseShape(shapeId: string, p: Record<string, number>): string {
         `    );`;
       return `union() {\n  // Hub disc\n  cylinder(h=${hubH}, d=${hubDia}, center=true);\n  // Curved blades\n  for (i = [0 : ${bladeCount - 1}]) rotate([0, 0, 360 * i / ${bladeCount}])\n    ${blade}\n}`;
     }
+    // ── Everyday consumer products (lay-user designs) ─────────────────────
+    case 'nameplate': {
+      // Desk/door nameplate: flat base plate with a raised border frame that
+      // leaves a recessed center for engraving a name.
+      const W = num(p.width, 120);
+      const D = num(p.depth, 45);
+      const t = num(p.thickness, 6);
+      const border = num(p.border ?? p.borderWidth, 4);
+      const borderH = num(p.borderHeight, 2);
+      const innerW = Math.max(1, W - 2 * border);
+      const innerD = Math.max(1, D - 2 * border);
+      return `union() {\n  // Base plate\n  translate([0, 0, ${t / 2}]) cube([${W}, ${D}, ${t}], center=true);\n  // Raised engraving border\n  translate([0, 0, ${t + borderH / 2}]) difference() {\n    cube([${W}, ${D}, ${borderH}], center=true);\n    cube([${innerW}, ${innerD}, ${borderH + 0.2}], center=true);\n  }\n}`;
+    }
+    case 'phoneStand': {
+      // Cradle phone stand: base + vertical back rest + front lip, with a slot
+      // gap between the lip and the back wall for the phone to rest in.
+      const PW = num(p.width ?? p.phoneWidth, 85);
+      const t = num(p.thickness ?? p.wallThickness, 6);
+      const baseDepth = num(p.baseDepth ?? p.depth, 65);
+      const backHeight = num(p.backHeight ?? p.height, 90);
+      const frontHeight = num(p.frontHeight ?? p.lipHeight, 22);
+      const slotGap = num(p.slotGap, 12);
+      return `union() {\n  // Base\n  translate([${-PW / 2}, ${-baseDepth / 2}, 0]) cube([${PW}, ${baseDepth}, ${t}]);\n  // Back rest\n  translate([${-PW / 2}, ${baseDepth / 2 - t}, 0]) cube([${PW}, ${t}, ${backHeight}]);\n  // Front lip\n  translate([${-PW / 2}, ${baseDepth / 2 - 2 * t - slotGap}, 0]) cube([${PW}, ${t}, ${frontHeight}]);\n}`;
+    }
+    case 'coaster': {
+      // Drink coaster: a disk base with a raised rim to catch condensation.
+      const dia = num(p.diameter, 90);
+      const t = num(p.thickness, 4);
+      const rimH = num(p.rimHeight, 3);
+      const rimW = num(p.rimWidth, 4);
+      const innerDia = Math.max(1, dia - 2 * rimW);
+      return `union() {\n  // Base\n  cylinder(h=${t}, d=${dia});\n  // Raised rim\n  translate([0, 0, ${t}]) difference() {\n    cylinder(h=${rimH}, d=${dia});\n    translate([0, 0, -0.1]) cylinder(h=${rimH + 0.2}, d=${innerDia});\n  }\n}`;
+    }
+    case 'wallHook': {
+      // Wall-mounted J-hook: a back plate with two screw holes + a forward arm
+      // with an upturned tip to keep items from sliding off.
+      const plateW = num(p.plateWidth ?? p.width, 32);
+      const plateH = num(p.plateHeight ?? p.height, 55);
+      const plateT = num(p.plateThickness ?? p.thickness, 6);
+      const screwDia = num(p.screwHoleDiameter ?? p.screwDiameter, 5);
+      const hookLen = num(p.hookLength, 40);
+      const hookDia = num(p.hookDiameter, 10);
+      const hookUp = num(p.hookTipHeight ?? p.hookDrop, 18);
+      const holeOff = plateH / 2 - hookDia;
+      const armZ = -plateH / 2 + hookDia / 2;
+      return `union() {\n  // Wall plate with two screw holes\n  difference() {\n    cube([${plateW}, ${plateT}, ${plateH}], center=true);\n    translate([0, 0, ${holeOff}]) rotate([90, 0, 0]) cylinder(h=${plateT + 0.4}, d=${screwDia}, center=true);\n    translate([0, 0, ${-holeOff}]) rotate([90, 0, 0]) cylinder(h=${plateT + 0.4}, d=${screwDia}, center=true);\n  }\n  // Forward arm\n  translate([0, ${plateT / 2}, ${armZ}]) rotate([-90, 0, 0]) cylinder(h=${hookLen}, d=${hookDia});\n  // Upturned tip\n  translate([0, ${plateT / 2 + hookLen}, ${armZ}]) cylinder(h=${hookUp}, d=${hookDia});\n}`;
+    }
+    case 'drawerKnob': {
+      // Cabinet/drawer knob: a flattened spherical knob on a cylindrical stem,
+      // with a screw bore up from the base for mounting.
+      const knobDia = num(p.knobDiameter ?? p.diameter, 30);
+      const stemDia = num(p.stemDiameter, 10);
+      const stemH = num(p.stemHeight, 12);
+      const boreDia = num(p.boreDiameter ?? p.screwDiameter, 4);
+      const flatten = 0.7;
+      const knobZ = stemH + (knobDia / 2) * flatten * 0.6;
+      return `difference() {\n  union() {\n    // Stem\n    cylinder(h=${stemH}, d=${stemDia});\n    // Knob (flattened sphere)\n    translate([0, 0, ${knobZ.toFixed(3)}]) scale([1, 1, ${flatten}]) sphere(d=${knobDia});\n  }\n  // Screw bore from the base\n  translate([0, 0, -0.1]) cylinder(h=${(stemH + 2).toFixed(3)}, d=${boreDia});\n}`;
+    }
+    case 'planterPot': {
+      // Tapered planter pot: a frustum shell (open top) with a floor and a
+      // central drainage hole through the bottom.
+      const topDia = num(p.topDiameter ?? p.diameter, 100);
+      const botDia = num(p.bottomDiameter, 75);
+      const h = num(p.height, 90);
+      const wall = Math.max(0.8, num(p.wallThickness ?? p.wall, 4));
+      const drainDia = num(p.drainDiameter, 12);
+      const innerTop = Math.max(1, topDia - 2 * wall);
+      const innerBot = Math.max(1, botDia - 2 * wall);
+      return `difference() {\n  // Outer tapered body\n  cylinder(h=${h}, d1=${botDia}, d2=${topDia});\n  // Inner cavity (leaves a ${wall}mm floor)\n  translate([0, 0, ${wall}]) cylinder(h=${h}, d1=${innerBot}, d2=${innerTop});\n  // Drainage hole\n  translate([0, 0, -0.1]) cylinder(h=${wall + 0.2}, d=${drainDia});\n}`;
+    }
     default:
       throw new Error(`Unsupported shape: ${shapeId}`);
   }
@@ -720,6 +800,33 @@ export function intentToScad(intent: IntentInput): IntentToScadResult {
     return { ok: false, reason: v.errors.join('; ') };
   }
   const warnings: string[] = [...v.warnings];
+
+  // SCAD pipeline Stage 2 — accuracy layer. Folds bounds checks + design
+  // pattern suggestions + constraint propagation into the result so the
+  // chat agent and Inspector can surface inline diagnostics.
+  let stage2: Stage2Summary | undefined;
+  try {
+    // Lazy require to keep the deterministic emit path side-effect-free for
+    // callers that don't ship the agent bundle.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@/lib/ai/scad-agent/scadStage2') as typeof import('@/lib/ai/scad-agent/scadStage2');
+    const res = mod.runStage2(intent);
+    stage2 = {
+      diagnostics: res.diagnostics,
+      suggestedPattern: res.patterns[0] && res.patterns[0].score > 0.4
+        ? { id: res.patterns[0].pattern.id, title: res.patterns[0].pattern.title, score: res.patterns[0].score }
+        : undefined,
+      adjustments: res.constraintChanges.map(c => ({ field: c.field, from: c.from, to: c.to, reason: c.reason })),
+    };
+    for (const d of res.diagnostics) {
+      if (d.severity === 'warn' || d.severity === 'error') {
+        warnings.push(`[stage2:${d.code}] ${d.message}`);
+      }
+    }
+  } catch {
+    // scadStage2 unavailable — degrade silently. Caller still gets the
+    // deterministic SCAD output without the accuracy diagnostics.
+  }
   const params = intent.params ?? {};
   const facets = Math.max(8, Math.min(256, num(intent.facets, 64)));
 
@@ -759,5 +866,5 @@ export function intentToScad(intent: IntentInput): IntentToScadResult {
   const usesBosl2 = BOSL2_SHAPES.has(intent.shapeId) || usesBosl2Feature;
   const header = usesBosl2 ? `include <BOSL2/std.scad>\n` : '';
   const scad = `// Generated by NexyFab intentToScad — shape=${intent.shapeId}\n${header}$fn = ${facets};\n\n${body}\n`;
-  return { ok: true, scad, warnings };
+  return { ok: true, scad, warnings, ...(stage2 ? { stage2 } : {}) };
 }

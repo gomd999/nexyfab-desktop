@@ -388,13 +388,13 @@ function CotsBomActions({ cart, total, lang, onClear: _onClear }: { cart: CartIt
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      {errMsg && <span style={{ fontSize: 11, color: '#f85149' }}>{errMsg}</span>}
+      {errMsg && <span style={{ fontSize: 11, color: 'var(--nx-error)' }}>{errMsg}</span>}
       <button
         onClick={() => void exportCotsCsv(cart, lang)}
         style={{
           padding: '8px 14px', borderRadius: 10,
-          border: '1px solid #30363d', background: '#21262d',
-          color: '#94a3b8', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+          border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)',
+          color: 'var(--nx-text-2)', fontWeight: 700, fontSize: 12, cursor: 'pointer',
         }}
       >
         📥 CSV
@@ -404,8 +404,8 @@ function CotsBomActions({ cart, total, lang, onClear: _onClear }: { cart: CartIt
         disabled={sending || sent}
         style={{
           padding: '8px 18px', borderRadius: 10, border: 'none',
-          background: sent ? '#3fb950' : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-          color: '#fff', fontWeight: 800, fontSize: 13, cursor: sending || sent ? 'default' : 'pointer',
+          background: sent ? 'var(--nx-ok)' : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+          color: 'var(--nx-text)', fontWeight: 800, fontSize: 13, cursor: sending || sent ? 'default' : 'pointer',
           opacity: sending ? 0.7 : 1, transition: 'all 0.2s',
         }}
       >
@@ -546,12 +546,12 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
       {/* ════════ HERO HEADER ════════ */}
       <div style={{ padding: '40px 40px 0', textAlign: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>
+        <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, color: 'var(--nx-text)', letterSpacing: '-0.03em' }}>
           <span style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>NexyFab</span>
           {' '}
-          <span style={{ color: '#e2e8f0' }}>Shape Generator</span>
+          <span style={{ color: 'var(--nx-text)' }}>Shape Generator</span>
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: 15, marginTop: 8, fontWeight: 500 }}>
+        <p style={{ color: 'var(--nx-text-2)', fontSize: 15, marginTop: 8, fontWeight: 500 }}>
           {tt.subtitle}
         </p>
       </div>
@@ -560,7 +560,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
       <div style={{ maxWidth: 700, width: '100%', margin: '24px auto 0', padding: '0 20px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)',
+          background: 'var(--nx-glass-soft)', backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16,
           padding: '6px 8px 6px 18px', transition: 'all 0.2s',
         }}>
@@ -573,7 +573,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
             placeholder={tt.chatPlaceholder}
             style={{
               flex: 1, background: 'none', border: 'none', outline: 'none',
-              color: '#e2e8f0', fontSize: 14, fontWeight: 500,
+              color: 'var(--nx-text)', fontSize: 14, fontWeight: 500,
               padding: '10px 0',
             }}
           />
@@ -582,8 +582,8 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
             disabled={!chatInput.trim()}
             style={{
               padding: '8px 20px', borderRadius: 12, border: 'none',
-              background: chatInput.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'rgba(255,255,255,0.08)',
-              color: '#fff', fontWeight: 700, fontSize: 13, cursor: chatInput.trim() ? 'pointer' : 'default',
+              background: chatInput.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'var(--nx-glass-soft)',
+              color: 'var(--nx-text)', fontWeight: 700, fontSize: 13, cursor: chatInput.trim() ? 'pointer' : 'default',
               transition: 'all 0.2s', opacity: chatInput.trim() ? 1 : 0.5,
             }}
           >
@@ -599,11 +599,11 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
               onClick={() => { setChatInput(prompt); chatInputRef.current?.focus(); }}
               style={{
                 padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#94a3b8', cursor: 'pointer', transition: 'all 0.15s',
+                background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--nx-text-2)', cursor: 'pointer', transition: 'all 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(102,126,234,0.2)'; e.currentTarget.style.color = '#a5b4fc'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(102,126,234,0.2)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-glass-soft)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
             >
               {prompt}
             </button>
@@ -618,7 +618,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
           style={{
             padding: '10px 24px', borderRadius: 14, border: '2px solid rgba(102,126,234,0.4)',
             background: 'rgba(102,126,234,0.1)', backdropFilter: 'blur(10px)',
-            color: '#a5b4fc', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+            color: 'var(--nx-accent-2)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
             transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
           }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(102,126,234,0.25)'; e.currentTarget.style.borderColor = '#667eea'; }}
@@ -649,7 +649,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 padding: '7px 12px', borderRadius: 10,
                 background: 'rgba(15,12,41,0.6)',
                 border: '1px solid rgba(102,126,234,0.25)',
-                color: '#e6edf3', fontSize: 13,
+                color: 'var(--nx-text)', fontSize: 13,
                 outline: 'none',
               }}
               onFocus={e => { e.currentTarget.style.borderColor = '#667eea'; }}
@@ -669,8 +669,8 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   padding: '4px 10px', borderRadius: 8, border: 'none',
                   background: categoryFilter === c
                     ? 'rgba(102,126,234,0.35)'
-                    : 'rgba(255,255,255,0.04)',
-                  color: categoryFilter === c ? '#a5b4fc' : '#94a3b8',
+                    : 'var(--nx-glass-soft)',
+                  color: categoryFilter === c ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
                   transition: 'background 0.15s',
                 }}
@@ -690,8 +690,8 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   padding: '6px 14px', borderRadius: 10, border: 'none',
                   background: filter === f
                     ? (f === 'cots' ? 'rgba(251,191,36,0.2)' : 'rgba(102,126,234,0.25)')
-                    : 'rgba(255,255,255,0.05)',
-                  color: filter === f ? (f === 'cots' ? '#fbbf24' : '#a5b4fc') : '#64748b',
+                    : 'var(--nx-glass-soft)',
+                  color: filter === f ? (f === 'cots' ? '#fbbf24' : 'var(--nx-accent-2)') : 'var(--nx-text-3)',
                   fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
                   position: 'relative', display: 'flex', alignItems: 'center', gap: 4,
                 }}
@@ -708,7 +708,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            <span style={{ color: '#475569', fontSize: 12, fontWeight: 600, alignSelf: 'center' }}>
+            <span style={{ color: 'var(--nx-text-3)', fontSize: 12, fontWeight: 600, alignSelf: 'center' }}>
               {filter === 'cots' ? tt.partsLabel(filteredCots.length) : tt.shapesLabel(filteredShapes.length)}
             </span>
           </div>
@@ -717,12 +717,12 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
           {filter !== 'cots' && filteredShapes.length === 0 && (
             <div style={{
               padding: '40px 20px', textAlign: 'center',
-              background: 'rgba(255,255,255,0.02)', borderRadius: 12,
+              background: 'var(--nx-glass-soft)', borderRadius: 12,
               border: '1px dashed rgba(255,255,255,0.08)',
-              color: '#94a3b8',
+              color: 'var(--nx-text-2)',
             }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#cbd5e1', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 4 }}>
                 {tt.emptyResultsTitle ?? 'No shapes match'}
               </div>
               <div style={{ fontSize: 12, marginBottom: 14 }}>
@@ -732,7 +732,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 onClick={() => { setSearchQuery(''); setCategoryFilter('all'); setFilter('all'); }}
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(102,126,234,0.4)',
-                  background: 'rgba(102,126,234,0.15)', color: '#a5b4fc',
+                  background: 'rgba(102,126,234,0.15)', color: 'var(--nx-accent-2)',
                   fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
               >
@@ -754,7 +754,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     onMouseLeave={() => setHoveredId(null)}
                     title={getShapeUsageHint(s.id, lang)}
                     style={{
-                      background: isActive ? 'rgba(102,126,234,0.15)' : isHovered ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+                      background: isActive ? 'rgba(102,126,234,0.15)' : isHovered ? 'var(--nx-glass-soft)' : 'var(--nx-glass-soft)',
                       border: isActive ? '2px solid #667eea' : '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 10, padding: 10, cursor: 'pointer',
                       transition: 'all 0.2s', transform: isHovered ? 'translateY(-2px)' : 'none',
@@ -769,30 +769,30 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     {(() => {
                       const cat = getShapeCategory(s.id);
                       const tint: Record<string, string> = {
-                        primitive:     '#3b82f6',
-                        standard:      '#10b981',
+                        primitive:     'var(--nx-accent)',
+                        standard:      'var(--nx-ok)',
                         structural:    '#f97316',
-                        manufacturing: '#a78bfa',
+                        manufacturing: 'var(--nx-accent-2)',
                       };
                       return (
                         <div style={{
                           position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                          background: tint[cat] ?? '#475569',
+                          background: tint[cat] ?? 'var(--nx-text-3)',
                           opacity: isActive ? 1 : 0.6,
                         }} />
                       );
                     })()}
                     <span style={{ fontSize: 28 }}>{SHAPE_ICONS[s.id] || s.icon}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#a5b4fc' : '#e2e8f0', textAlign: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? 'var(--nx-accent-2)' : 'var(--nx-text)', textAlign: 'center' }}>
                       {t[`shapeName_${s.id}`] ?? s.id}
                     </span>
                     {sr && (
-                      <span style={{ fontSize: 10, color: '#64748b', textAlign: 'center' }}>
+                      <span style={{ fontSize: 10, color: 'var(--nx-text-3)', textAlign: 'center' }}>
                         {sr.bbox.w.toFixed(0)}×{sr.bbox.h.toFixed(0)}×{sr.bbox.d.toFixed(0)} mm
                       </span>
                     )}
                     {s.tier === 2 && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '1px 6px', borderRadius: 4 }}>PRO</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-warn)', background: 'rgba(245,158,11,0.15)', padding: '1px 6px', borderRadius: 4 }}>PRO</span>
                     )}
                   </div>
                 );
@@ -810,7 +810,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     key={part.id}
                     onClick={() => setSelectedCots(part)}
                     style={{
-                      background: isActive ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.03)',
+                      background: isActive ? 'rgba(251,191,36,0.12)' : 'var(--nx-glass-soft)',
                       border: isActive ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
                       transition: 'all 0.15s',
@@ -819,10 +819,10 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   >
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{COTS_ICONS[part.category] ?? '⚙️'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#fbbf24' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#fbbf24' : 'var(--nx-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {lang === 'ko' ? part.nameKo : part.name}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>{part.standard}</div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{part.standard}</div>
                     </div>
                     <div style={{ fontSize: 10, color: '#fbbf24', fontWeight: 700, flexShrink: 0 }}>
                       ₩{part.unitPriceKRW}
@@ -866,7 +866,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 </div>
 
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 16, overflow: 'hidden', height: 280, flexShrink: 0, position: 'relative',
                 }}>
                   {cotsPreviewResult ? (
@@ -874,7 +874,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   ) : (
                     <div style={{
                       height: '100%', minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '20px', textAlign: 'center', fontSize: 13, color: '#94a3b8', lineHeight: 1.5,
+                      padding: '20px', textAlign: 'center', fontSize: 13, color: 'var(--nx-text-2)', lineHeight: 1.5,
                     }}>
                       {tt.cotsPreviewUnavailable}
                     </div>
@@ -883,10 +883,10 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
                 {/* Params table */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 14, padding: '14px 18px', flexShrink: 0,
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                     {tt.dimensions}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
@@ -895,8 +895,8 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                       const label = labelObj ? (labelObj[resolvedLang] ?? labelObj.en) : key;
                       return (
                         <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 5 }}>
-                          <span style={{ fontSize: 11, color: '#94a3b8' }}>{label}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{val}</span>
+                          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{val}</span>
                         </div>
                       );
                     })}
@@ -905,10 +905,10 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
                 {/* Suppliers */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 14, padding: '14px 18px', flexShrink: 0,
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                     {tt.suppliersHeader}
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -916,7 +916,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                       <span key={s} style={{
                         padding: '4px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                         background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)',
-                        color: '#a5b4fc',
+                        color: 'var(--nx-accent-2)',
                       }}>{s}</span>
                     ))}
                   </div>
@@ -929,7 +929,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     style={{
                       flex: 1, padding: '12px 0', borderRadius: 12, border: 'none',
                       background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                      color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                      color: 'var(--nx-text)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.15)'; }}
@@ -957,7 +957,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
               /* No COTS selected placeholder */
               <div style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                color: '#475569', gap: 12,
+                color: 'var(--nx-text-3)', gap: 12,
               }}>
                 <span style={{ fontSize: 48 }}>⚙️</span>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>
@@ -973,7 +973,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
             <>
               {/* 3D Preview card */}
               <div style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 16, overflow: 'hidden', height: 340, flexShrink: 0,
               }}>
                 <ShapePreview result={liveResult} />
@@ -981,16 +981,16 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
               {/* Parameter panel */}
               <div style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--nx-glass-soft)', border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 16, padding: 18, flex: 1, overflowY: 'auto', minHeight: 0,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                   <span style={{ fontSize: 22 }}>{SHAPE_ICONS[selectedId] || '🧊'}</span>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#e2e8f0' }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--nx-text)' }}>
                       {t[`shapeName_${selectedId}`] ?? selectedId}
                     </div>
-                    <div style={{ fontSize: 11, color: '#64748b' }}>
+                    <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
                       {t[`shapeDesc_${selectedId}`] ?? ''}
                     </div>
                   </div>
@@ -1003,8 +1003,8 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   return (
                     <div key={sp.key} style={{ marginBottom: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>{label}</label>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc' }}>{val}{sp.unit}</span>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text-2)' }}>{label}</label>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-accent-2)' }}>{val}{sp.unit}</span>
                       </div>
                       <input
                         type="range" min={sp.min} max={sp.max} step={sp.step} value={val}
@@ -1019,16 +1019,16 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 {liveResult && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8, padding: 10, background: 'rgba(102,126,234,0.08)', borderRadius: 10 }}>
                     <div style={{ fontSize: 11 }}>
-                      <span style={{ color: '#64748b' }}>Volume</span>
-                      <div style={{ fontWeight: 700, color: '#e2e8f0' }}>{liveResult.volume_cm3.toFixed(2)} cm³</div>
+                      <span style={{ color: 'var(--nx-text-3)' }}>Volume</span>
+                      <div style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{liveResult.volume_cm3.toFixed(2)} cm³</div>
                     </div>
                     <div style={{ fontSize: 11 }}>
-                      <span style={{ color: '#64748b' }}>Surface</span>
-                      <div style={{ fontWeight: 700, color: '#e2e8f0' }}>{liveResult.surface_area_cm2.toFixed(2)} cm²</div>
+                      <span style={{ color: 'var(--nx-text-3)' }}>Surface</span>
+                      <div style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{liveResult.surface_area_cm2.toFixed(2)} cm²</div>
                     </div>
                     <div style={{ fontSize: 11, gridColumn: 'span 2' }}>
-                      <span style={{ color: '#64748b' }}>Size</span>
-                      <div style={{ fontWeight: 700, color: '#a5b4fc' }}>{liveResult.bbox.w.toFixed(1)} × {liveResult.bbox.h.toFixed(1)} × {liveResult.bbox.d.toFixed(1)} mm</div>
+                      <span style={{ color: 'var(--nx-text-3)' }}>Size</span>
+                      <div style={{ fontWeight: 700, color: 'var(--nx-accent-2)' }}>{liveResult.bbox.w.toFixed(1)} × {liveResult.bbox.h.toFixed(1)} × {liveResult.bbox.d.toFixed(1)} mm</div>
                     </div>
                   </div>
                 )}
@@ -1040,7 +1040,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     style={{
                       flex: 1, padding: '12px 0', borderRadius: 12, border: 'none',
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                      color: 'var(--nx-text)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
                       transition: 'all 0.2s', letterSpacing: '-0.01em',
                     }}
                   >
@@ -1057,7 +1057,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
       {cotsBomCart.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
-          background: '#161b22',
+          background: 'var(--nx-panel)',
           borderTop: '2px solid #fbbf2455',
           transition: 'transform 0.25s ease',
         }}>
@@ -1067,24 +1067,24 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 24px', cursor: 'pointer',
-              borderBottom: cartOpen ? '1px solid #30363d' : 'none',
+              borderBottom: cartOpen ? '1px solid var(--nx-border)' : 'none',
             }}
           >
             <span style={{ fontSize: 16 }}>🛒</span>
             <span style={{ fontWeight: 800, fontSize: 14, color: '#fbbf24' }}>
               {tt.cotsBomHeader(cartCount)}
             </span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0', marginLeft: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--nx-text)', marginLeft: 8 }}>
               ₩{cartTotal.toLocaleString()}
             </span>
             <span style={{ flex: 1 }} />
             <button
               onClick={e => { e.stopPropagation(); setCotsBomCart([]); }}
-              style={{ fontSize: 11, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ fontSize: 11, color: 'var(--nx-text-3)', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               {tt.clearCart}
             </button>
-            <span style={{ color: '#64748b', fontSize: 12 }}>{cartOpen ? '▼' : '▲'}</span>
+            <span style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{cartOpen ? '▼' : '▲'}</span>
           </div>
 
           {/* 드로어 본문 */}
@@ -1095,25 +1095,25 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 {cotsBomCart.map(({ part, qty }) => (
                   <div key={part.id} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 12px',
+                    background: 'var(--nx-glass-soft)', borderRadius: 8, padding: '8px 12px',
                   }}>
                     <span style={{ fontSize: 18, flexShrink: 0 }}>{COTS_ICONS[part.category] ?? '⚙️'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {lang === 'ko' ? part.nameKo : part.name}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>{part.standard} · ₩{part.unitPriceKRW}/ea</div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{part.standard} · ₩{part.unitPriceKRW}/ea</div>
                     </div>
                     {/* 수량 조절 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                       <button
                         onClick={() => setCartQty(part.id, qty - 1)}
-                        style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid #30363d', background: '#21262d', color: '#e2e8f0', cursor: 'pointer', fontWeight: 700 }}
+                        style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', cursor: 'pointer', fontWeight: 700 }}
                       >−</button>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', minWidth: 28, textAlign: 'center' }}>{qty}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)', minWidth: 28, textAlign: 'center' }}>{qty}</span>
                       <button
                         onClick={() => setCartQty(part.id, qty + 1)}
-                        style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid #30363d', background: '#21262d', color: '#e2e8f0', cursor: 'pointer', fontWeight: 700 }}
+                        style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', cursor: 'pointer', fontWeight: 700 }}
                       >+</button>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', minWidth: 72, textAlign: 'right', flexShrink: 0 }}>
@@ -1121,18 +1121,18 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     </div>
                     <button
                       onClick={() => setCartQty(part.id, 0)}
-                      style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
                     >✕</button>
                   </div>
                 ))}
               </div>
 
               {/* 합계 + 액션 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 10, borderTop: '1px solid #30363d' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 10, borderTop: '1px solid var(--nx-border)' }}>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 12, color: '#64748b' }}>{tt.totalLabel}: </span>
+                  <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>{tt.totalLabel}: </span>
                   <span style={{ fontSize: 16, fontWeight: 900, color: '#fbbf24' }}>₩{cartTotal.toLocaleString()}</span>
-                  <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>
+                  <span style={{ fontSize: 11, color: 'var(--nx-text-3)', marginLeft: 6 }}>
                     ({tt.totalSummary(cotsBomCart.length, cartCount)})
                   </span>
                 </div>
@@ -1145,7 +1145,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
 
       {/* ════════ FOOTER ════════ */}
       <div style={{ padding: '16px 32px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <span style={{ fontSize: 11, color: '#475569' }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
           {tt.footerHint}
         </span>
       </div>

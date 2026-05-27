@@ -206,12 +206,12 @@ export default function GenerativeDesignPanel({ geometry, lang, onResult, onClos
   }, [geometry, config, isRunning, onResult]);
 
   const C = {
-    bg: '#0d1117',
-    card: '#161b22',
-    border: '#30363d',
-    text: '#c9d1d9',
-    muted: '#8b949e',
-    accent: '#388bfd',
+    bg: 'var(--nx-bg)',
+    card: 'var(--nx-panel)',
+    border: 'var(--nx-border)',
+    text: 'var(--nx-text)',
+    muted: 'var(--nx-text-2)',
+    accent: 'var(--nx-accent)',
   };
 
   const SliderRow = ({
@@ -307,9 +307,9 @@ export default function GenerativeDesignPanel({ geometry, lang, onResult, onClos
                   flex: 1,
                   padding: '3px 0',
                   borderRadius: 4,
-                  border: `1px solid ${isFixed ? '#3fb950' : isLoad ? '#f59e0b' : C.border}`,
+                  border: `1px solid ${isFixed ? 'var(--nx-ok)' : isLoad ? 'var(--nx-warn)' : C.border}`,
                   background: isFixed ? 'rgba(63,185,80,0.15)' : isLoad ? 'rgba(245,158,11,0.15)' : 'transparent',
-                  color: isFixed ? '#3fb950' : isLoad ? '#f59e0b' : C.muted,
+                  color: isFixed ? 'var(--nx-ok)' : isLoad ? 'var(--nx-warn)' : C.muted,
                   fontSize: 9,
                   cursor: 'pointer',
                 }}
@@ -353,7 +353,7 @@ export default function GenerativeDesignPanel({ geometry, lang, onResult, onClos
           borderRadius: 6,
           border: 'none',
           background: isRunning ? C.card : C.accent,
-          color: isRunning ? C.muted : '#fff',
+          color: isRunning ? C.muted : 'var(--nx-text)',
           fontWeight: 700,
           fontSize: 12,
           cursor: geometry && !isRunning ? 'pointer' : 'default',
@@ -372,8 +372,8 @@ export default function GenerativeDesignPanel({ geometry, lang, onResult, onClos
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {mfgFlags.map(f => {
-              const fgColor = f.feasibility === 'feasible' ? '#3fb950' : f.feasibility === 'challenging' ? '#d29922' : '#f85149';
-              const bgColor = f.feasibility === 'feasible' ? '#3fb95015' : f.feasibility === 'challenging' ? '#d2992215' : '#f8514915';
+              const fgColor = f.feasibility === 'feasible' ? 'var(--nx-ok)' : f.feasibility === 'challenging' ? 'var(--nx-warn)' : 'var(--nx-error)';
+              const bgColor = f.feasibility === 'feasible' ? 'var(--nx-ok)15' : f.feasibility === 'challenging' ? 'var(--nx-warn)15' : 'var(--nx-error)15';
               const isExpanded = expandedProcess === f.process;
               return (
                 <div

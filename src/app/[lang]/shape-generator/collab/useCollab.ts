@@ -12,8 +12,8 @@ const DEMO_USERS: Omit<CollabUser, 'lastSeen'>[] = [
 ];
 
 const USER_COLORS = [
-  '#f97316', '#22d3ee', '#a78bfa', '#34d399', '#f43f5e',
-  '#facc15', '#60a5fa', '#fb7185', '#4ade80', '#c084fc',
+  '#f97316', '#22d3ee', 'var(--nx-accent-2)', '#34d399', '#f43f5e',
+  '#facc15', '#60a5fa', '#fb7185', 'var(--nx-ok)', '#c084fc',
 ];
 
 function randomOffset(range: number): number {
@@ -160,7 +160,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
         const updated: CollabUser = {
           id: userId,
           name: p.name ?? userId,
-          color: p.color ?? '#8b9cf4',
+          color: p.color ?? 'var(--nx-accent-2)',
           cursor: p.cursor,
           lastSeen: Date.now(),
         };
@@ -177,7 +177,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
         if (prev.find(u => u.id === userId)) return prev;
         return [
           ...prev,
-          { id: userId, name: p.name ?? userId, color: p.color ?? '#8b9cf4', lastSeen: Date.now() },
+          { id: userId, name: p.name ?? userId, color: p.color ?? 'var(--nx-accent-2)', lastSeen: Date.now() },
         ];
       });
     } else if (type === 'user_leave') {
@@ -628,7 +628,7 @@ export function useCollab(callbacks: CollabCallbacks = {}) {
               const updated: CollabUser = {
                 id: msg.userId,
                 name: msg.payload.name ?? msg.userId,
-                color: msg.payload.color ?? '#8b9cf4',
+                color: msg.payload.color ?? 'var(--nx-accent-2)',
                 cursor: msg.payload.cursor,
                 cursor2d: msg.payload.cursor2d,
                 activeFeature: msg.payload.activeFeature,

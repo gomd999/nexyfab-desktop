@@ -70,10 +70,10 @@ export default function EmptyCanvasGuide({
         }}>🧊</div>
 
         <div style={{ textAlign: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#e6edf3', marginBottom: 8, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--nx-text)', marginBottom: 8, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
             {t(lang, 'title')}
           </h3>
-          <p style={{ margin: 0, fontSize: 14, color: '#8b949e', lineHeight: 1.6, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--nx-text-2)', lineHeight: 1.6, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
             {t(lang, 'desc')}
           </p>
         </div>
@@ -87,14 +87,14 @@ export default function EmptyCanvasGuide({
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '12px 16px', borderRadius: 10,
               border: '1px solid rgba(56,139,253,0.3)',
-              background: 'rgba(56,139,253,0.08)', color: '#58a6ff',
+              background: 'rgba(56,139,253,0.08)', color: 'var(--nx-accent-2)',
               cursor: 'pointer', fontSize: 13, fontWeight: 700,
               fontFamily: 'system-ui, -apple-system, sans-serif',
               transition: 'all 0.15s',
               minWidth: 88, minHeight: 52,
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.borderColor = '#388bfd'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.08)'; e.currentTarget.style.borderColor = 'rgba(56,139,253,0.3)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent-soft)'; e.currentTarget.style.borderColor = 'var(--nx-accent)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,139,253,0.08)'; e.currentTarget.style.borderColor = 'var(--nx-accent-line)'; }}
           >
             <span style={{ fontSize: 22 }}>✏️</span>
             {t(lang, 'sketch')}
@@ -111,12 +111,12 @@ export default function EmptyCanvasGuide({
               padding: '12px 16px', borderRadius: 10,
               border: `1px solid ${isImporting ? 'rgba(63,185,80,0.15)' : 'rgba(63,185,80,0.3)'}`,
               background: isImporting ? 'rgba(63,185,80,0.04)' : 'rgba(63,185,80,0.08)',
-              color: isImporting ? '#3fb95088' : '#3fb950',
+              color: isImporting ? 'var(--nx-ok)88' : 'var(--nx-ok)',
               cursor: isImporting ? 'default' : 'pointer', fontSize: 11, fontWeight: 700,
               transition: 'all 0.15s',
               minWidth: 80, minHeight: 44,
             }}
-            onMouseEnter={e => { if (!isImporting) { e.currentTarget.style.background = 'rgba(63,185,80,0.15)'; e.currentTarget.style.borderColor = '#3fb950'; } }}
+            onMouseEnter={e => { if (!isImporting) { e.currentTarget.style.background = 'rgba(63,185,80,0.15)'; e.currentTarget.style.borderColor = 'var(--nx-ok)'; } }}
             onMouseLeave={e => { if (!isImporting) { e.currentTarget.style.background = 'rgba(63,185,80,0.08)'; e.currentTarget.style.borderColor = 'rgba(63,185,80,0.3)'; } }}
           >
             <span style={{ fontSize: 22 }}>
@@ -128,7 +128,7 @@ export default function EmptyCanvasGuide({
 
         {/* Quick shapes — #1: 44px tap targets, #2: aria-label */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: '#6e7681', fontWeight: 600, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          <span style={{ fontSize: 12, color: 'var(--nx-text-3)', fontWeight: 600, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
             {t(lang, 'pickShape')}
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxWidth: 340 }}>
@@ -143,13 +143,13 @@ export default function EmptyCanvasGuide({
                 style={{
                   // #1: 44×44 minimum touch target
                   width: 44, height: 44, borderRadius: 8,
-                  border: '1px solid #21262d', background: '#0d1117',
-                  color: '#c9d1d9', cursor: 'pointer', fontSize: 20,
+                  border: '1px solid var(--nx-panel-2)', background: 'var(--nx-bg)',
+                  color: 'var(--nx-text)', cursor: 'pointer', fontSize: 20,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.12s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.background = '#161b22'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#21262d'; e.currentTarget.style.background = '#0d1117'; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.background = 'var(--nx-panel)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-panel-2)'; e.currentTarget.style.background = 'var(--nx-bg)'; }}
               >
                 {s.icon}
               </button>
@@ -161,7 +161,7 @@ export default function EmptyCanvasGuide({
           style={{
             margin: 0,
             fontSize: 11,
-            color: '#6e7681',
+            color: 'var(--nx-text-3)',
             textAlign: 'center',
             lineHeight: 1.5,
             maxWidth: 380,
@@ -176,15 +176,15 @@ export default function EmptyCanvasGuide({
           aria-label={t(lang, 'tutorial')}
           style={{
             padding: '6px 14px', borderRadius: 6,
-            border: '1px solid #21262d', background: 'transparent',
-            color: '#6e7681', fontSize: 12, fontWeight: 600,
+            border: '1px solid var(--nx-panel-2)', background: 'transparent',
+            color: 'var(--nx-text-3)', fontSize: 12, fontWeight: 600,
             fontFamily: 'system-ui, -apple-system, sans-serif',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
             transition: 'all 0.12s',
             minHeight: 36,
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; e.currentTarget.style.borderColor = '#30363d'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#6e7681'; e.currentTarget.style.borderColor = '#21262d'; }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-3)'; e.currentTarget.style.borderColor = 'var(--nx-panel-2)'; }}
         >
           💡 {t(lang, 'tutorial')}
         </button>

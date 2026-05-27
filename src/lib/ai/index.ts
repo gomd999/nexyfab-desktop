@@ -64,7 +64,11 @@ function resolveChain(req: ChatCompletionRequest): ProviderName[] {
   if (dbOverride && dbOverride.length > 0) return dbOverride;
 
   const primary = parseProviderList(process.env.AI_PROVIDER_PRIMARY, ['deepseek']);
-  const fallbacks = parseProviderList(process.env.AI_PROVIDER_FALLBACKS, ['anthropic', 'openai', 'local']);
+  // Default chain orders cheap → mid → free. Anthropic stays in REGISTRY for
+  // callers that request it explicitly via req.provider or env override, but
+  // is intentionally omitted from the default fallback to avoid surprise Opus
+  // spend on provider outages.
+  const fallbacks = parseProviderList(process.env.AI_PROVIDER_FALLBACKS, ['openai', 'local']);
   return Array.from(new Set([...primary, ...fallbacks]));
 }
 
@@ -89,6 +93,12 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
   }
 
   for (const name of chain) {
+    // Bail out fast on each fallback iteration if the caller aborted —
+    // otherwise we'd keep retrying providers for a request whose response
+    // can no longer be delivered.
+    if (req.signal?.aborted) {
+      throw new AiProviderError(name, undefined, 'aborted');
+    }
     const adapter = REGISTRY[name];
     if (!adapter) {
       errors.push(`${name}: no chat adapter (vision-only?)`);

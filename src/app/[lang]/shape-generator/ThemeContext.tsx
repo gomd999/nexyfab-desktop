@@ -31,6 +31,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Mirror mode to <html data-theme="..."> so the shell-v2 CSS variable
+  // tokens (--nx-bg, --nx-accent, ...) defined in globals.css apply.
+  // Legacy inline styles via the Theme object still work unchanged.
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.theme = mode;
+    }
+  }, [mode]);
+
   const toggleTheme = useCallback(() => {
     setMode(prev => {
       const next = prev === 'dark' ? 'light' : 'dark';

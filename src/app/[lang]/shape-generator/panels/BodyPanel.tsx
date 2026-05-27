@@ -214,17 +214,17 @@ export default function BodyPanel({
 
   // ── Styles ──────────────────────────────────────────────────────────────────
   const C = {
-    bg: '#161b22',
-    border: '#30363d',
-    text: '#e6edf3',
-    muted: '#8b949e',
-    active: '#1f6feb',
-    activeBorder: '#388bfd',
-    rowHover: '#1c2128',
-    checked: '#6366f1',
-    danger: '#f85149',
+    bg: 'var(--nx-panel)',
+    border: 'var(--nx-border)',
+    text: 'var(--nx-text)',
+    muted: 'var(--nx-text-2)',
+    active: 'var(--nx-accent)',
+    activeBorder: 'var(--nx-accent)',
+    rowHover: 'var(--nx-panel-2)',
+    checked: 'var(--nx-accent)',
+    danger: 'var(--nx-error)',
     success: '#2ea043',
-    tag: '#21262d',
+    tag: 'var(--nx-panel-2)',
   };
 
   return (
@@ -276,7 +276,7 @@ export default function BodyPanel({
                 gap: 8,
                 padding: '6px 12px',
                 cursor: 'pointer',
-                background: isActive ? '#1c2128' : 'transparent',
+                background: isActive ? 'var(--nx-panel-2)' : 'transparent',
                 borderLeft: isActive ? `2px solid ${C.activeBorder}` : '2px solid transparent',
                 transition: 'background 0.1s',
               }}
@@ -300,12 +300,12 @@ export default function BodyPanel({
                   onBlur={() => handleRenameCommit(body.id)}
                   onKeyDown={e => { if (e.key === 'Enter') handleRenameCommit(body.id); if (e.key === 'Escape') setEditingId(null); }}
                   onClick={e => e.stopPropagation()}
-                  style={{ flex: 1, background: '#0d1117', border: `1px solid ${C.activeBorder}`, borderRadius: 4, color: C.text, fontSize: 12, padding: '2px 6px', outline: 'none' }}
+                  style={{ flex: 1, background: 'var(--nx-bg)', border: `1px solid ${C.activeBorder}`, borderRadius: 4, color: C.text, fontSize: 12, padding: '2px 6px', outline: 'none' }}
                 />
               ) : (
                 <span
                   onDoubleClick={e => { e.stopPropagation(); setEditingId(body.id); setEditingName(body.name); }}
-                  style={{ flex: 1, fontSize: 12, color: isActive ? '#e6edf3' : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  style={{ flex: 1, fontSize: 12, color: isActive ? 'var(--nx-text)' : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   title={t.renameHint}
                 >
                   {body.name}
@@ -314,12 +314,12 @@ export default function BodyPanel({
               {/* Tags */}
               <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                 {isActive && (
-                  <span style={{ fontSize: 9, background: C.active, color: '#fff', borderRadius: 3, padding: '1px 4px' }}>
+                  <span style={{ fontSize: 9, background: C.active, color: 'var(--nx-text)', borderRadius: 3, padding: '1px 4px' }}>
                     {t.active}
                   </span>
                 )}
                 {body.mergedFrom && (
-                  <span style={{ fontSize: 9, background: '#2d333b', color: '#8b9cf4', borderRadius: 3, padding: '1px 4px' }}>
+                  <span style={{ fontSize: 9, background: '#2d333b', color: 'var(--nx-accent-2)', borderRadius: 3, padding: '1px 4px' }}>
                     {t.merged}
                   </span>
                 )}
@@ -333,7 +333,7 @@ export default function BodyPanel({
               <button
                 onClick={e => { e.stopPropagation(); onToggleVisible(body.id); }}
                 title={t.toggleVisible}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: body.visible ? '#8b9cf4' : C.muted, fontSize: 12, lineHeight: 1, flexShrink: 0 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: body.visible ? 'var(--nx-accent-2)' : C.muted, fontSize: 12, lineHeight: 1, flexShrink: 0 }}
               >
                 {body.visible ? '👁' : '◌'}
               </button>
@@ -360,10 +360,10 @@ export default function BodyPanel({
           style={{
             flex: 1,
             padding: '7px 0',
-            background: canMerge ? 'linear-gradient(135deg,#1f6feb,#388bfd)' : '#21262d',
-            border: `1px solid ${canMerge ? '#388bfd' : C.border}`,
+            background: canMerge ? 'linear-gradient(135deg,#1f6feb,var(--nx-accent))' : 'var(--nx-panel-2)',
+            border: `1px solid ${canMerge ? 'var(--nx-accent)' : C.border}`,
             borderRadius: 6,
-            color: canMerge ? '#fff' : C.muted,
+            color: canMerge ? 'var(--nx-text)' : C.muted,
             fontSize: 12,
             fontWeight: 600,
             cursor: canMerge ? 'pointer' : 'not-allowed',
@@ -379,10 +379,10 @@ export default function BodyPanel({
           style={{
             flex: 1,
             padding: '7px 0',
-            background: showSplitForm ? '#272e38' : canSplit ? '#21262d' : '#1a1f28',
-            border: `1px solid ${showSplitForm ? '#388bfd' : canSplit ? C.border : '#21262d'}`,
+            background: showSplitForm ? '#272e38' : canSplit ? 'var(--nx-panel-2)' : '#1a1f28',
+            border: `1px solid ${showSplitForm ? 'var(--nx-accent)' : canSplit ? C.border : 'var(--nx-panel-2)'}`,
             borderRadius: 6,
-            color: canSplit ? (showSplitForm ? '#58a6ff' : C.text) : C.muted,
+            color: canSplit ? (showSplitForm ? 'var(--nx-accent-2)' : C.text) : C.muted,
             fontSize: 12,
             fontWeight: 600,
             cursor: canSplit ? 'pointer' : 'not-allowed',
@@ -394,7 +394,7 @@ export default function BodyPanel({
 
       {/* ── Split form (expandable) ── */}
       {showSplitForm && (
-        <div style={{ padding: '12px 14px 14px', borderTop: `1px solid ${C.border}`, background: '#0d1117', borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
+        <div style={{ padding: '12px 14px 14px', borderTop: `1px solid ${C.border}`, background: 'var(--nx-bg)', borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
           {/* Plane selector */}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.splitPlane}</div>
@@ -406,10 +406,10 @@ export default function BodyPanel({
                   style={{
                     flex: 1,
                     padding: '5px 0',
-                    background: splitPlane === p ? '#1f3a5c' : '#21262d',
-                    border: `1px solid ${splitPlane === p ? '#388bfd' : C.border}`,
+                    background: splitPlane === p ? '#1f3a5c' : 'var(--nx-panel-2)',
+                    border: `1px solid ${splitPlane === p ? 'var(--nx-accent)' : C.border}`,
                     borderRadius: 5,
-                    color: splitPlane === p ? '#58a6ff' : C.muted,
+                    color: splitPlane === p ? 'var(--nx-accent-2)' : C.muted,
                     fontSize: 11,
                     cursor: 'pointer',
                   }}
@@ -422,7 +422,7 @@ export default function BodyPanel({
           {/* Offset slider */}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 10, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {t.splitOffset}: <span style={{ color: '#58a6ff', fontFamily: 'monospace' }}>{splitOffset} mm</span>
+              {t.splitOffset}: <span style={{ color: 'var(--nx-accent-2)', fontFamily: 'monospace' }}>{splitOffset} mm</span>
             </div>
             <input
               type="range"
@@ -431,7 +431,7 @@ export default function BodyPanel({
               step={1}
               value={splitOffset}
               onChange={e => setSplitOffset(Number(e.target.value))}
-              style={{ width: '100%', accentColor: '#388bfd' }}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
             />
           </div>
           {/* Apply */}
@@ -443,7 +443,7 @@ export default function BodyPanel({
               background: 'linear-gradient(135deg,#238636,#2ea043)',
               border: '1px solid #2ea043',
               borderRadius: 6,
-              color: '#fff',
+              color: 'var(--nx-text)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',

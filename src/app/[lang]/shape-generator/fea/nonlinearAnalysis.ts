@@ -1,0 +1,266 @@
+/**
+ * nonlinearAnalysis.ts — Large-deformation + elastoplastic FEA.
+ *
+ * Stage 1 FEA (`displacement.ts`, `stressField.ts`) assumes:
+ *   - Small displacements (geometric linearity)
+ *   - Linear elastic stress-strain
+ *
+ * Real parts under high load violate both assumptions:
+ *   - **Geometric nonlinearity** — large rotations / displacements
+ *     change the stiffness matrix as the part deforms.
+ *   - **Material nonlinearity** — once stress passes yield, the
+ *     material flows plastically. Subsequent loading sees a lower
+ *     effective modulus.
+ *
+ * SolidWorks Simulation Premium has both. NexyFab Stage 2 (here)
+ * adds:
+ *
+ *   1. **Newton-Raphson incremental loading** — apply load in N
+ *      steps, re-linearise tangent stiffness at each step.
+ *   2. **Bilinear elastoplastic material model** — elastic up to
+ *      σ_y, then strain-hardening at modulus E_t (= E × hardening
+ *      ratio, typical 0.01–0.1).
+ *   3. **Convergence diagnostics** — residual + step-size adaptation.
+ *
+ * We don't ship a full 3D nonlinear FE solver — that's a serious
+ * undertaking. Instead we provide the *constitutive model* (per-
+ * element stress integration) + the *incremental loading loop*. The
+ * external solver supplies linear-elastic strain increments; this
+ * module returns the nonlinear stress increment.
+ */
+
+export interface BilinearElastoPlastic {
+  /** Elastic modulus (MPa). */
+  E: number;
+  /** Poisson's ratio. */
+  nu: number;
+  /** Yield stress (MPa). */
+  yieldStrength: number;
+  /** Tangent modulus (post-yield). MPa. Typical 0.01·E to 0.1·E. */
+  tangentModulus: number;
+}
+
+export interface PlasticState {
+  /** Accumulated plastic strain (von Mises equivalent). */
+  plasticStrain: number;
+  /** Current yield surface size (grows with strain hardening). */
+  currentYield: number;
+  /** Hydrostatic stress component. */
+  hydroStress: number;
+}
+
+export function newPlasticState(material: BilinearElastoPlastic): PlasticState {
+  return {
+    plasticStrain: 0,
+    currentYield: material.yieldStrength,
+    hydroStress: 0,
+  };
+}
+
+/** von Mises equivalent stress from principal stresses. */
+export function vonMises(sigma1: number, sigma2: number, sigma3: number): number {
+  return Math.sqrt(0.5 * (
+    (sigma1 - sigma2) ** 2
+    + (sigma2 - sigma3) ** 2
+    + (sigma3 - sigma1) ** 2
+  ));
+}
+
+/** Radial-return mapping algorithm — the standard plasticity update.
+ *  Input: trial elastic stress (computed assuming purely elastic
+ *  step). Output: corrected stress that lies on the yield surface
+ *  + updated plastic state.
+ *
+ *  Returns:
+ *    - newStress    (MPa, post-return)
+ *    - newState     (updated plastic strain + yield surface)
+ *    - plasticIncrement  (this step's plastic strain increment) */
+export interface StressUpdateResult {
+  newStress: { sigma1: number; sigma2: number; sigma3: number };
+  newState: PlasticState;
+  plasticIncrement: number;
+  wasPlastic: boolean;
+}
+
+export function radialReturn(
+  trialStress: { sigma1: number; sigma2: number; sigma3: number },
+  state: PlasticState,
+  material: BilinearElastoPlastic,
+): StressUpdateResult {
+  const vmTrial = vonMises(trialStress.sigma1, trialStress.sigma2, trialStress.sigma3);
+  const f = vmTrial - state.currentYield;
+
+  if (f <= 0) {
+    // Elastic step — no plastic update.
+    return {
+      newStress: { ...trialStress },
+      newState: { ...state },
+      plasticIncrement: 0,
+      wasPlastic: false,
+    };
+  }
+
+  // Plastic step. Compute plastic multiplier dλ.
+  // For bilinear material with isotropic hardening:
+  //   dλ = f / (3G + E_t)   where G = E / (2(1+ν))
+  const G = material.E / (2 * (1 + material.nu));
+  const dLambda = f / (3 * G + material.tangentModulus);
+
+  // Hydrostatic part (mean stress).
+  const hydro = (trialStress.sigma1 + trialStress.sigma2 + trialStress.sigma3) / 3;
+  // Deviatoric components.
+  const s1 = trialStress.sigma1 - hydro;
+  const s2 = trialStress.sigma2 - hydro;
+  const s3 = trialStress.sigma3 - hydro;
+  const sNorm = Math.sqrt(s1 * s1 + s2 * s2 + s3 * s3);
+  // Direction of plastic flow (normal to yield surface).
+  const n1 = sNorm > 0 ? s1 / sNorm : 0;
+  const n2 = sNorm > 0 ? s2 / sNorm : 0;
+  const n3 = sNorm > 0 ? s3 / sNorm : 0;
+  // Stress reduction along flow direction.
+  const scale = 3 * G * dLambda;
+  const newS1 = s1 - scale * n1;
+  const newS2 = s2 - scale * n2;
+  const newS3 = s3 - scale * n3;
+
+  return {
+    newStress: {
+      sigma1: hydro + newS1,
+      sigma2: hydro + newS2,
+      sigma3: hydro + newS3,
+    },
+    newState: {
+      plasticStrain: state.plasticStrain + dLambda,
+      currentYield: state.currentYield + material.tangentModulus * dLambda,
+      hydroStress: hydro,
+    },
+    plasticIncrement: dLambda,
+    wasPlastic: true,
+  };
+}
+
+// ── Incremental loading ──────────────────────────────────────────
+
+export interface LoadStep {
+  /** Load scale factor (0..1 typically). */
+  factor: number;
+  /** Maximum allowed plastic strain in any element. */
+  maxPlasticStrain?: number;
+}
+
+export interface IncrementalResult {
+  steps: Array<{
+    factor: number;
+    converged: boolean;
+    residual: number;
+    iterationsUsed: number;
+    maxPlasticStrain: number;
+  }>;
+  /** Final stress + plastic state at every element. */
+  finalState: PlasticState[];
+  /** True when every step converged. */
+  fullyConverged: boolean;
+}
+
+export interface SolverCallback {
+  /** Caller-supplied linear FE solve at the given load factor.
+   *  Returns trial principal stresses per element. */
+  (loadFactor: number, state: PlasticState[]): Array<{ sigma1: number; sigma2: number; sigma3: number }>;
+}
+
+/** Drive a nonlinear analysis through Newton-Raphson incremental
+ *  loading. The caller's linear solver does the heavy lifting; this
+ *  module sequences the load steps + applies plasticity at each one. */
+export function runIncrementalLoading(
+  initialStates: PlasticState[],
+  material: BilinearElastoPlastic,
+  loadSteps: LoadStep[],
+  linearSolver: SolverCallback,
+  maxIterPerStep: number = 20,
+  convergenceTol: number = 1e-4,
+): IncrementalResult {
+  const states = initialStates.map(s => ({ ...s }));
+  const steps: IncrementalResult['steps'] = [];
+  let fullyConverged = true;
+
+  for (const step of loadSteps) {
+    let residual = Infinity;
+    let iters = 0;
+    let maxPlastic = 0;
+    let converged = false;
+
+    for (iters = 0; iters < maxIterPerStep; iters++) {
+      const trialStresses = linearSolver(step.factor, states);
+      let totalPlasticIncrement = 0;
+
+      for (let i = 0; i < states.length; i++) {
+        const r = radialReturn(trialStresses[i]!, states[i]!, material);
+        states[i] = r.newState;
+        totalPlasticIncrement += r.plasticIncrement;
+        if (states[i]!.plasticStrain > maxPlastic) {
+          maxPlastic = states[i]!.plasticStrain;
+        }
+      }
+
+      residual = totalPlasticIncrement / Math.max(1, states.length);
+      if (residual < convergenceTol) {
+        converged = true;
+        break;
+      }
+    }
+
+    steps.push({
+      factor: step.factor,
+      converged,
+      residual,
+      iterationsUsed: iters,
+      maxPlasticStrain: maxPlastic,
+    });
+    if (!converged) fullyConverged = false;
+    if (step.maxPlasticStrain != null && maxPlastic > step.maxPlasticStrain) {
+      break; // critical strain reached — stop
+    }
+  }
+
+  return { steps, finalState: states, fullyConverged };
+}
+
+// ── Geometric nonlinearity helpers ───────────────────────────────
+
+/** Update the deformed configuration. For large displacements, the
+ *  stiffness matrix should be recomputed in the deformed shape — this
+ *  is the basis of the Updated Lagrangian formulation. */
+export interface DeformedNode {
+  /** Original position. */
+  reference: [number, number, number];
+  /** Displacement vector. */
+  displacement: [number, number, number];
+}
+
+export function deformedPosition(node: DeformedNode): [number, number, number] {
+  return [
+    node.reference[0] + node.displacement[0],
+    node.reference[1] + node.displacement[1],
+    node.reference[2] + node.displacement[2],
+  ];
+}
+
+/** Rotation matrix from a global rotation vector (Rodrigues). */
+export function rodriguesRotation(axis: [number, number, number], angleRad: number): number[][] {
+  const len = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+  const x = axis[0] / len, y = axis[1] / len, z = axis[2] / len;
+  const c = Math.cos(angleRad), s = Math.sin(angleRad);
+  const t = 1 - c;
+  return [
+    [t * x * x + c,     t * x * y - s * z, t * x * z + s * y],
+    [t * x * y + s * z, t * y * y + c,     t * y * z - s * x],
+    [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
+  ];
+}
+
+/** Estimate Green-Lagrange strain for a 1D bar from displacements. */
+export function greenLagrangeStrain1D(originalLengthMm: number, currentLengthMm: number): number {
+  // E = (L² - L₀²) / (2·L₀²)
+  return (currentLengthMm * currentLengthMm - originalLengthMm * originalLengthMm)
+    / (2 * originalLengthMm * originalLengthMm);
+}

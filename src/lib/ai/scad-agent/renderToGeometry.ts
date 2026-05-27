@@ -66,6 +66,13 @@ function base64ToUint8Array(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, 'base64'));
 }
 
+/** Parse binary STL bytes into a BufferGeometry. Environment-agnostic
+ *  (STLLoader.parse touches no DOM), so it is reused by the server-side agent
+ *  geometry adapter to verify rendered STL — not just the browser path. */
+export async function parseStlBufferToGeometry(bytes: Uint8Array): Promise<THREE.BufferGeometry> {
+  return parseStlBinary(bytes);
+}
+
 async function parseStlBinary(bytes: Uint8Array): Promise<THREE.BufferGeometry> {
   // Lazy-load STLLoader so the agent helper doesn't bloat the initial bundle.
   const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js');

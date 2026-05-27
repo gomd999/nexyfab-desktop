@@ -201,8 +201,8 @@ export default function UpgradePrompt({
         {/* Pricing */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           {[
-            { plan: 'pro' as const, label: 'Pro', price: '₩29,000', priceEn: '$20', priceJa: '¥3,500', period: t.period, color: '#388bfd' },
-            { plan: 'team' as const, label: 'Team', price: '₩79,000', priceEn: '$57', priceJa: '¥8,500', period: t.periodSeat, color: '#a371f7' },
+            { plan: 'pro' as const, label: 'Pro', price: '₩29,000', priceEn: '$20', priceJa: '¥3,500', period: t.period, color: 'var(--nx-accent)' },
+            { plan: 'team' as const, label: 'Team', price: '₩79,000', priceEn: '$57', priceJa: '¥8,500', period: t.periodSeat, color: 'var(--nx-accent-2)' },
           ].map(item => (
             <div
               key={item.plan}
@@ -238,8 +238,8 @@ export default function UpgradePrompt({
             aria-label={t.upgradeAria}
             style={{
               width: '100%', padding: '11px 0', borderRadius: 8, border: 'none',
-              background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-              color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+              color: 'var(--nx-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
               opacity: checkoutLoading ? 0.7 : 1,
             }}>
             ⚡ {checkoutLoading === 'pro' ? t.processing : t.upgradePro}

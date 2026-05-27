@@ -29,11 +29,11 @@ function PropRow({ label, value, unit }: { label: string; value: number | undefi
   if (value === undefined) return null;
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-      <span style={{ color: '#8b949e', fontSize: 10, fontFamily: 'monospace', minWidth: 24 }}>{label}</span>
-      <span style={{ color: '#c9d1d9', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
+      <span style={{ color: 'var(--nx-text-2)', fontSize: 10, fontFamily: 'monospace', minWidth: 24 }}>{label}</span>
+      <span style={{ color: 'var(--nx-text)', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
         {value < 1 ? value.toFixed(3) : value < 10 ? value.toFixed(2) : value.toFixed(1)}
       </span>
-      <span style={{ color: '#484f58', fontSize: 9, minWidth: 36, textAlign: 'right' }}>{unit}</span>
+      <span style={{ color: 'var(--nx-border-strong)', fontSize: 9, minWidth: 36, textAlign: 'right' }}>{unit}</span>
     </div>
   );
 }
@@ -86,9 +86,9 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
                 fontSize: 10,
                 lineHeight: 1.2,
                 cursor: 'pointer',
-                border: active ? '1px solid #58a6ff' : '1px solid #30363d',
-                background: active ? 'rgba(56,139,253,0.15)' : '#0d1117',
-                color: active ? '#58a6ff' : '#8b949e',
+                border: active ? '1px solid var(--nx-accent-2)' : '1px solid var(--nx-border)',
+                background: active ? 'var(--nx-accent-soft)' : 'var(--nx-bg)',
+                color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
                 transition: 'all 0.1s',
               }}
             >
@@ -123,7 +123,7 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
                 transition: 'all 0.15s ease',
                 background: active
                   ? 'rgba(56,139,253,0.12)'
-                  : 'rgba(255,255,255,0.02)',
+                  : 'var(--nx-glass-soft)',
                 border: active
                   ? '1.5px solid rgba(56,139,253,0.6)'
                   : '1px solid rgba(255,255,255,0.06)',
@@ -138,7 +138,7 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
                 background: isMetal
                   ? `linear-gradient(135deg, ${mat.color} 0%, ${mat.color}aa 60%, #fff8 100%)`
                   : mat.color,
-                border: `1.5px solid ${active ? '#388bfd' : 'rgba(255,255,255,0.1)'}`,
+                border: `1.5px solid ${active ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                 boxShadow: isMetal ? `inset 0 1px 3px rgba(255,255,255,0.3)` : 'none',
                 opacity: mat.transparent && mat.opacity ? 0.5 + mat.opacity * 0.5 : 1,
               }} />
@@ -147,14 +147,14 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 11, fontWeight: active ? 700 : 600,
-                  color: active ? '#58a6ff' : '#c9d1d9',
+                  color: active ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   lineHeight: 1.2,
                 }}>
                   {label}
                 </div>
                 <div style={{
-                  fontSize: 9, color: '#484f58', marginTop: 2,
+                  fontSize: 9, color: 'var(--nx-border-strong)', marginTop: 2,
                   display: 'flex', gap: 6,
                 }}>
                   {mat.density !== undefined && <span>{mat.density} g/cm³</span>}
@@ -166,8 +166,8 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
               {recommended && useCase && !active && (
                 <div style={{
                   width: 6, height: 6, borderRadius: '50%',
-                  background: '#3fb950', flexShrink: 0,
-                  boxShadow: '0 0 4px #3fb950',
+                  background: 'var(--nx-ok)', flexShrink: 0,
+                  boxShadow: '0 0 4px var(--nx-ok)',
                 }} />
               )}
             </div>
@@ -185,8 +185,8 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
             left: Math.min(tooltip.x, typeof window !== 'undefined' ? window.innerWidth - 172 : tooltip.x),
             top: Math.min(tooltip.y, typeof window !== 'undefined' ? window.innerHeight - 180 : tooltip.y),
             zIndex: 9000,
-            background: '#161b22',
-            border: '1px solid #30363d',
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 8,
             padding: '10px 12px',
             minWidth: 158,
@@ -199,17 +199,17 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
             <div style={{
               width: 14, height: 14, borderRadius: '50%',
               background: tooltip.mat.color,
-              border: '1.5px solid #30363d',
+              border: '1.5px solid var(--nx-border)',
               flexShrink: 0,
               opacity: tooltip.mat.transparent && tooltip.mat.opacity ? 0.5 + tooltip.mat.opacity * 0.5 : 1,
             }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
               {tooltip.mat.name[displayLang] ?? tooltip.mat.name.en}
             </span>
           </div>
 
           {/* Mechanical properties */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid #21262d', paddingTop: 7 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--nx-panel-2)', paddingTop: 7 }}>
             <PropRow label="E"  value={tooltip.mat.youngsModulus} unit="GPa" />
             <PropRow label="σy" value={tooltip.mat.yieldStrength} unit="MPa" />
             <PropRow label="ρ"  value={tooltip.mat.density}       unit="g/cm³" />
@@ -217,17 +217,17 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
           </div>
 
           {/* Render properties row */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 7, paddingTop: 6, borderTop: '1px solid #21262d' }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 7, paddingTop: 6, borderTop: '1px solid var(--nx-panel-2)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-              <span style={{ fontSize: 9, color: '#484f58', marginBottom: 2 }}>{t.rough}</span>
-              <div style={{ width: '100%', height: 4, borderRadius: 2, background: '#21262d', overflow: 'hidden' }}>
-                <div style={{ width: `${tooltip.mat.roughness * 100}%`, height: '100%', background: '#8b949e', borderRadius: 2 }} />
+              <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginBottom: 2 }}>{t.rough}</span>
+              <div style={{ width: '100%', height: 4, borderRadius: 2, background: 'var(--nx-panel-2)', overflow: 'hidden' }}>
+                <div style={{ width: `${tooltip.mat.roughness * 100}%`, height: '100%', background: 'var(--nx-text-2)', borderRadius: 2 }} />
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-              <span style={{ fontSize: 9, color: '#484f58', marginBottom: 2 }}>{t.metal}</span>
-              <div style={{ width: '100%', height: 4, borderRadius: 2, background: '#21262d', overflow: 'hidden' }}>
-                <div style={{ width: `${tooltip.mat.metalness * 100}%`, height: '100%', background: '#58a6ff', borderRadius: 2 }} />
+              <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginBottom: 2 }}>{t.metal}</span>
+              <div style={{ width: '100%', height: 4, borderRadius: 2, background: 'var(--nx-panel-2)', overflow: 'hidden' }}>
+                <div style={{ width: `${tooltip.mat.metalness * 100}%`, height: '100%', background: 'var(--nx-accent-2)', borderRadius: 2 }} />
               </div>
             </div>
           </div>

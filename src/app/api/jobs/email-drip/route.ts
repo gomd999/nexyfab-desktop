@@ -15,7 +15,7 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
 import { dripD1Html, dripD7Html, dripD1EmailSubject, dripD7EmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
-import { buildUnsubscribeUrl } from '@/lib/unsubscribe';
+import { buildUnsubscribeUrl as buildCategoryUnsubUrl } from '@/lib/email-unsubscribe';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       await enqueueJob('send_email', {
         to: user.email,
         subject,
-        html: dripD1Html(name, locale, buildUnsubscribeUrl(user.email)),
+        html: dripD1Html(name, locale, buildCategoryUnsubUrl(user.id, 'product_updates')),
       });
       await db.execute(
         `INSERT OR IGNORE INTO nf_email_drip_log (id, user_id, drip_type, sent_at) VALUES (?, ?, 'd1', ?)`,
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       await enqueueJob('send_email', {
         to: user.email,
         subject,
-        html: dripD7Html(name, locale, buildUnsubscribeUrl(user.email)),
+        html: dripD7Html(name, locale, buildCategoryUnsubUrl(user.id, 'product_updates')),
       });
       await db.execute(
         `INSERT OR IGNORE INTO nf_email_drip_log (id, user_id, drip_type, sent_at) VALUES (?, ?, 'd7', ?)`,

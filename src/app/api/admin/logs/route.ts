@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   const logs = rows.map(r => {
     let ctx: Record<string, unknown> = {};
-    try { ctx = JSON.parse(r.context) as Record<string, unknown>; } catch { }
+    try { ctx = JSON.parse(r.context) as Record<string, unknown>; } catch (err) { console.error('[route] caught', err); }
     return {
       id: r.id,
       timestamp: r.created_at,

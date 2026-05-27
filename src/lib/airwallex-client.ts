@@ -44,7 +44,7 @@ async function getAccessToken(): Promise<string> {
   return _cachedToken;
 }
 
-async function awFetch<T>(
+export async function awFetch<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: Record<string, unknown>,
@@ -206,13 +206,73 @@ export async function cancelSubscription(subscriptionId: string): Promise<AwSubs
   return awFetch<AwSubscription>('POST', `/subscriptions/${subscriptionId}/cancel`, {});
 }
 
+export interface UpdateSubscriptionOptions {
+  /** When to apply the new plan. 'immediate' = prorate now, 'next_cycle' = at period end. */
+  effective?: 'immediate' | 'next_cycle';
+  /** Charge the proration difference now? (Only relevant when effective='immediate'.) */
+  prorate?: boolean;
+  /** Optional quantity (seat count) for per-seat plans. */
+  quantity?: number;
+}
+
+/**
+ * Update an existing subscription to a new plan. Supports proration on
+ * upgrades (charge difference now) and end-of-cycle scheduling on
+ * downgrades (preserve user's prepaid time).
+ */
 export async function updateSubscriptionPlan(
   subscriptionId: string,
   newPlanId: string,
+  opts: UpdateSubscriptionOptions = {},
+): Promise<AwSubscription> {
+  const effective = opts.effective ?? 'immediate';
+  const prorate = opts.prorate ?? (effective === 'immediate');
+  const body: Record<string, unknown> = {
+    plan_id: newPlanId,
+    proration_behavior: prorate ? 'create_prorations' : 'none',
+    billing_cycle_anchor: effective === 'next_cycle' ? 'unchanged' : 'now',
+  };
+  if (typeof opts.quantity === 'number' && opts.quantity > 0) {
+    body.quantity = opts.quantity;
+  }
+  return awFetch<AwSubscription>('PUT', `/subscriptions/${subscriptionId}`, body);
+}
+
+/**
+ * Update only the quantity (seat count) on an existing per-seat plan. The
+ * gateway charges/credits the prorated difference for the remainder of the
+ * current cycle so a mid-month seat addition costs only the fraction of
+ * remaining time, not a full month.
+ */
+export async function updateSubscriptionQuantity(
+  subscriptionId: string,
+  quantity: number,
 ): Promise<AwSubscription> {
   return awFetch<AwSubscription>('PUT', `/subscriptions/${subscriptionId}`, {
-    plan_id: newPlanId,
+    quantity,
+    proration_behavior: 'create_prorations',
   });
+}
+
+/**
+ * Pause an active subscription for a fixed period. Resumes automatically
+ * on resumesAt. The gateway suspends billing but keeps the customer +
+ * payment method linked so resume is one-click.
+ */
+export async function pauseSubscription(
+  subscriptionId: string,
+  resumesAt: number,
+): Promise<AwSubscription> {
+  return awFetch<AwSubscription>('POST', `/subscriptions/${subscriptionId}/pause`, {
+    resumes_at: new Date(resumesAt).toISOString(),
+    behavior: 'mark_uncollectible',
+  });
+}
+
+export async function resumeSubscription(
+  subscriptionId: string,
+): Promise<AwSubscription> {
+  return awFetch<AwSubscription>('POST', `/subscriptions/${subscriptionId}/resume`, {});
 }
 
 // ─── Invoice APIs ────────────────────────────────────────────────────────────

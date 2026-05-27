@@ -44,7 +44,7 @@ export function useContextHelp() {
   }, []);
 
   const dismissForever = useCallback((ctx: ContextKey) => {
-    try { localStorage.setItem(LS_PREFIX + ctx, '1'); } catch {}
+    try { localStorage.setItem(LS_PREFIX + ctx, '1'); } catch (err) { console.error('[useContextHelp] caught', err); }
     setVisible(false);
   }, []);
 
@@ -53,7 +53,7 @@ export function useContextHelp() {
     try {
       (['general', 'sketch', 'feature', 'render'] as ContextKey[])
         .forEach(k => localStorage.removeItem(LS_PREFIX + k));
-    } catch {}
+    } catch (err) { console.error('[useContextHelp] caught', err); }
   }, []);
 
   return {

@@ -201,9 +201,9 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
   const featuresEnabledCount = designContext.features.length;
 
   const subtitle = isPreviewMode ? (
-    <span style={{ color: '#f59e0b' }}>{tt.previewActive}</span>
+    <span style={{ color: 'var(--nx-warn)' }}>{tt.previewActive}</span>
   ) : isSketchMode ? (
-    <span style={{ color: '#a78bfa' }}>{tt.sketchMode}</span>
+    <span style={{ color: 'var(--nx-accent-2)' }}>{tt.sketchMode}</span>
   ) : effectiveResult ? (
     <span>{(t as Record<string, string>)[`shapeName_${selectedId ?? ''}`] || selectedId} · {featuresEnabledCount} {tt.features}</span>
   ) : (
@@ -216,13 +216,13 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
   const chrome = {
     panel: 'rgba(13, 17, 23, 0.75)', // Glassmorphism base
     headerBg: 'transparent',
-    border: 'rgba(255, 255, 255, 0.1)',
-    text: '#ffffff',
-    textMuted: '#8b949e',
-    tabBar: 'rgba(0, 0, 0, 0.2)',
-    tabActiveBg: 'rgba(255, 255, 255, 0.05)',
-    tabInactive: '#8b949e',
-    accent: '#58a6ff',
+    border: 'var(--nx-border)',
+    text: 'var(--nx-text)',
+    textMuted: 'var(--nx-text-2)',
+    tabBar: 'var(--nx-glass-input)',
+    tabActiveBg: 'var(--nx-glass-soft)',
+    tabInactive: 'var(--nx-text-2)',
+    accent: 'var(--nx-accent-2)',
     previewBg: 'rgba(88, 166, 255, 0.05)',
   };
 
@@ -307,7 +307,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
             position: 'absolute', top: 4,
             [side === 'left' ? 'right' : 'left']: 4,
             width: 22, height: 22, borderRadius: 4, border: 'none',
-            background: 'transparent', color: '#8b949e', cursor: 'pointer',
+            background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
             fontSize: 12, zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >{side === 'left' ? '◀' : '▶'}</button>
@@ -341,7 +341,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
         cursor: overlay && !isTablet ? 'grab' : 'default',
       }}>
         <div style={{
-          width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #58a6ff 0%, #3182ce 100%)',
+          width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, var(--nx-accent-2) 0%, #3182ce 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, boxShadow: '0 2px 8px rgba(88,166,255,0.4)',
         }}>✨</div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -363,18 +363,18 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
           type="button"
           style={{
             border: `1px solid rgba(255,255,255,0.1)`,
-            background: 'rgba(255,255,255,0.05)',
-            cursor: 'pointer', fontSize: 14, color: '#8b949e',
+            background: 'var(--nx-glass-soft)',
+            cursor: 'pointer', fontSize: 14, color: 'var(--nx-text-2)',
             width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.15s ease',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.background = 'var(--nx-border)';
+            e.currentTarget.style.color = 'var(--nx-text)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            e.currentTarget.style.color = '#8b949e';
+            e.currentTarget.style.background = 'var(--nx-glass-soft)';
+            e.currentTarget.style.color = 'var(--nx-text-2)';
           }}
         >✕</button>
       </div>
@@ -389,16 +389,16 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <span style={{ fontSize: 12 }}>🚀</span>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#58a6ff', letterSpacing: '0.02em' }}>{tt.techPreview}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--nx-accent-2)', letterSpacing: '0.02em' }}>{tt.techPreview}</div>
         </div>
-        <div style={{ fontSize: 11, color: '#c9d1d9', lineHeight: 1.5 }}>{tt.techPreviewBody}</div>
-        <div style={{ fontSize: 10, color: '#8b949e', marginTop: 8, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ fontSize: 11, color: 'var(--nx-text)', lineHeight: 1.5 }}>{tt.techPreviewBody}</div>
+        <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginTop: 8, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 4 }}>
           <span>💡</span> {tt.askAssistant}
         </div>
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: `1px solid rgba(255,255,255,0.1)`, background: 'rgba(0,0,0,0.2)', padding: '0 8px' }}>
+      <div style={{ display: 'flex', borderBottom: `1px solid rgba(255,255,255,0.1)`, background: 'var(--nx-glass-input)', padding: '0 8px' }}>
         {(['chat', 'advisor', 'suggestions'] as AIAssistantTab[]).map(tab => {
           const isActive = aiAssistantTab === tab;
           return (
@@ -411,8 +411,8 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
                 padding: '10px 8px',
                 background: isActive ? 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)' : 'transparent',
                 border: 'none',
-                borderBottom: `2px solid ${isActive ? '#58a6ff' : 'transparent'}`,
-                color: isActive ? '#ffffff' : '#8b949e',
+                borderBottom: `2px solid ${isActive ? 'var(--nx-accent-2)' : 'transparent'}`,
+                color: isActive ? 'var(--nx-text)' : 'var(--nx-text-2)',
                 fontSize: 12,
                 fontWeight: isActive ? 700 : 600,
                 cursor: 'pointer',
@@ -425,8 +425,8 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
                 borderTopRightRadius: 6,
                 marginTop: 4,
               }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#c9d1d9'; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#8b949e'; }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = 'var(--nx-text-2)'; }}
             >
               <span>{TAB_ICONS[tab]}</span>
               <span>{tt[TAB_LABEL_KEYS[tab]]}</span>
@@ -482,7 +482,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
               />
             ) : (
               <div style={{
-                background: lightChrome ? '#f6f8fa' : '#161b22',
+                background: lightChrome ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
                 border: `1px solid ${chrome.border}`,
                 borderRadius: 10,
                 padding: '16px 20px', color: chrome.textMuted, fontSize: 12, textAlign: 'center',

@@ -190,22 +190,22 @@ export default function DesignVariantsPanel({
   return (
     <div style={{
       position: 'fixed', top: 80, right: 20, width: 440, maxHeight: 'calc(100vh - 120px)',
-      background: '#0d1117', border: '1px solid #30363d', borderRadius: 8,
+      background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 8,
       boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex',
-      flexDirection: 'column', color: '#c9d1d9', fontSize: 13,
+      flexDirection: 'column', color: 'var(--nx-text)', fontSize: 13,
     }}>
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #30363d', display: 'flex',
+        padding: '12px 16px', borderBottom: '1px solid var(--nx-border)', display: 'flex',
         alignItems: 'center', justifyContent: 'space-between',
       }}>
         <strong style={{ fontSize: 14 }}>🎨 {t.title}</strong>
         <button onClick={onClose} style={{
-          background: 'transparent', color: '#8b949e', border: 'none',
+          background: 'transparent', color: 'var(--nx-text-2)', border: 'none',
           cursor: 'pointer', fontSize: 18, lineHeight: 1,
         }}>×</button>
       </div>
 
-      <div style={{ padding: 12, borderBottom: '1px solid #30363d', display: 'flex', gap: 8 }}>
+      <div style={{ padding: 12, borderBottom: '1px solid var(--nx-border)', display: 'flex', gap: 8 }}>
         <input
           type="text"
           value={newVariantName}
@@ -213,14 +213,14 @@ export default function DesignVariantsPanel({
           onKeyDown={e => { if (e.key === 'Enter') handleSaveCurrent(); }}
           placeholder={`${t.defaultName} ${variants.length + 1}`}
           style={{
-            flex: 1, background: '#161b22', border: '1px solid #30363d',
-            borderRadius: 4, padding: '6px 10px', color: '#c9d1d9', fontSize: 13,
+            flex: 1, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+            borderRadius: 4, padding: '6px 10px', color: 'var(--nx-text)', fontSize: 13,
           }}
         />
         <button
           onClick={handleSaveCurrent}
           style={{
-            background: '#238636', color: '#fff', border: 'none', borderRadius: 4,
+            background: 'var(--nx-ok)', color: 'var(--nx-text)', border: 'none', borderRadius: 4,
             padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
             whiteSpace: 'nowrap',
           }}
@@ -228,11 +228,11 @@ export default function DesignVariantsPanel({
       </div>
 
       {onGenerateSweep && (
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid #30363d' }}>
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--nx-border)' }}>
           <button
             onClick={() => setShowSweepPanel(v => !v)}
             style={{
-              background: 'transparent', color: '#58a6ff', border: '1px solid #30363d',
+              background: 'transparent', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-border)',
               borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12,
             }}
           >📊 {t.sweep} {showSweepPanel ? '▲' : '▼'}</button>
@@ -241,22 +241,22 @@ export default function DesignVariantsPanel({
               <select
                 value={sweepParam}
                 onChange={e => setSweepParam(e.target.value)}
-                style={{ gridColumn: 'span 2', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9', fontSize: 12 }}
+                style={{ gridColumn: 'span 2', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)', fontSize: 12 }}
               >
                 {Object.keys(currentParams).map(k => (
                   <option key={k} value={k}>{k} = {currentParams[k]?.toFixed(2)}</option>
                 ))}
               </select>
               <input type="number" placeholder={t.sweepMin} value={sweepMin} onChange={e => setSweepMin(e.target.value)}
-                style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9', fontSize: 12 }} />
+                style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)', fontSize: 12 }} />
               <input type="number" placeholder={t.sweepMax} value={sweepMax} onChange={e => setSweepMax(e.target.value)}
-                style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9', fontSize: 12 }} />
+                style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)', fontSize: 12 }} />
               <input type="number" min={2} max={20} value={sweepCount}
                 onChange={e => setSweepCount(parseInt(e.target.value) || 5)}
                 placeholder={t.sweepCount}
-                style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9', fontSize: 12 }} />
+                style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)', fontSize: 12 }} />
               <button onClick={handleSweep}
-                style={{ background: '#1f6feb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+                style={{ background: 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
                 {t.sweepGo}
               </button>
             </div>
@@ -266,7 +266,7 @@ export default function DesignVariantsPanel({
 
       <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
         {variants.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#6e7681', fontSize: 12 }}>
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--nx-text-3)', fontSize: 12 }}>
             {t.empty}
           </div>
         ) : (
@@ -276,8 +276,8 @@ export default function DesignVariantsPanel({
             return (
               <div key={v.id} style={{
                 padding: 10, marginBottom: 6,
-                background: isActive ? '#1f2d3f' : '#161b22',
-                border: `1px solid ${isActive ? '#58a6ff' : '#30363d'}`,
+                background: isActive ? '#1f2d3f' : 'var(--nx-panel)',
+                border: `1px solid ${isActive ? 'var(--nx-accent-2)' : 'var(--nx-border)'}`,
                 borderRadius: 6,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -289,15 +289,15 @@ export default function DesignVariantsPanel({
                       onBlur={() => handleRename(v.id)}
                       onKeyDown={e => { if (e.key === 'Enter') handleRename(v.id); if (e.key === 'Escape') setRenamingId(null); }}
                       autoFocus
-                      style={{ flex: 1, background: '#0d1117', border: '1px solid #58a6ff', borderRadius: 4, padding: '2px 6px', color: '#c9d1d9', fontSize: 13 }}
+                      style={{ flex: 1, background: 'var(--nx-bg)', border: '1px solid var(--nx-accent-2)', borderRadius: 4, padding: '2px 6px', color: 'var(--nx-text)', fontSize: 13 }}
                     />
                   ) : (
                     <span style={{ fontWeight: 600, flex: 1 }}>
-                      {isActive && <span style={{ color: '#58a6ff', marginRight: 4 }}>▸</span>}
+                      {isActive && <span style={{ color: 'var(--nx-accent-2)', marginRight: 4 }}>▸</span>}
                       {v.name}
                     </span>
                   )}
-                  <span style={{ fontSize: 10, color: '#6e7681', marginLeft: 8 }}>
+                  <span style={{ fontSize: 10, color: 'var(--nx-text-3)', marginLeft: 8 }}>
                     {Object.keys(v.params).length} {t.paramsCount}
                   </span>
                 </div>
@@ -305,11 +305,11 @@ export default function DesignVariantsPanel({
                 {v.thumbnail && (
                   <img src={v.thumbnail} alt={v.name} style={{
                     width: '100%', height: 80, objectFit: 'cover', borderRadius: 4,
-                    border: '1px solid #30363d', marginBottom: 6,
+                    border: '1px solid var(--nx-border)', marginBottom: 6,
                   }} />
                 )}
 
-                <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 8, fontFamily: 'monospace' }}>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginBottom: 8, fontFamily: 'monospace' }}>
                   {Object.entries(v.params).slice(0, 4).map(([k, val]) => (
                     <span key={k} style={{ marginRight: 10 }}>{k}={val.toFixed(1)}</span>
                   ))}
@@ -319,7 +319,7 @@ export default function DesignVariantsPanel({
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => onApplyVariant(v)} disabled={isActive}
                     style={{
-                      background: isActive ? '#30363d' : '#1f6feb', color: '#fff', border: 'none',
+                      background: isActive ? 'var(--nx-border)' : 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none',
                       borderRadius: 4, padding: '4px 10px', cursor: isActive ? 'default' : 'pointer', fontSize: 11,
                       opacity: isActive ? 0.6 : 1,
                     }}>
@@ -327,27 +327,27 @@ export default function DesignVariantsPanel({
                   </button>
                   <button onClick={() => setCompareId(isCompare ? null : v.id)}
                     style={{
-                      background: isCompare ? '#8957e5' : 'transparent', color: isCompare ? '#fff' : '#8957e5',
+                      background: isCompare ? '#8957e5' : 'transparent', color: isCompare ? 'var(--nx-text)' : '#8957e5',
                       border: '1px solid #8957e5', borderRadius: 4, padding: '4px 10px',
                       cursor: 'pointer', fontSize: 11,
                     }}>
                     ⇄ {t.compare}
                   </button>
                   <button onClick={() => { setRenamingId(v.id); setRenameValue(v.name); }}
-                    style={{ background: 'transparent', color: '#8b949e', border: '1px solid #30363d', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
+                    style={{ background: 'transparent', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
                     ✎
                   </button>
                   <button onClick={() => { if (confirm(t.confirmDelete)) onDeleteVariant(v.id); }}
-                    style={{ background: 'transparent', color: '#f85149', border: '1px solid #f85149', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11, marginLeft: 'auto' }}>
+                    style={{ background: 'transparent', color: 'var(--nx-error)', border: '1px solid var(--nx-error)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11, marginLeft: 'auto' }}>
                     🗑
                   </button>
                 </div>
 
                 {isCompare && compareDiff.length > 0 && (
                   <div style={{
-                    marginTop: 8, padding: 8, background: '#0d1117',
+                    marginTop: 8, padding: 8, background: 'var(--nx-bg)',
                     border: '1px dashed #8957e5', borderRadius: 4,
-                    fontSize: 11, fontFamily: 'monospace', color: '#c9d1d9',
+                    fontSize: 11, fontFamily: 'monospace', color: 'var(--nx-text)',
                   }}>
                     <div style={{ color: '#8957e5', marginBottom: 4, fontWeight: 600 }}>
                       {t.current} ← {v.name}:
@@ -362,9 +362,9 @@ export default function DesignVariantsPanel({
       </div>
 
       {variants.length > 0 && (
-        <div style={{ padding: 10, borderTop: '1px solid #30363d' }}>
+        <div style={{ padding: 10, borderTop: '1px solid var(--nx-border)' }}>
           <button onClick={handleExportJson}
-            style={{ background: 'transparent', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
+            style={{ background: 'transparent', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
             📥 {t.exportAll}
           </button>
         </div>

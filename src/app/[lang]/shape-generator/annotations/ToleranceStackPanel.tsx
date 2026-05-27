@@ -10,14 +10,14 @@ import {
 } from './toleranceStack';
 
 const C = {
-  bg: '#161b22',
-  card: '#1c2128',
-  border: '#30363d',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  accent: '#388bfd',
-  danger: '#f85149',
-  success: '#3fb950',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  danger: 'var(--nx-error)',
+  success: 'var(--nx-ok)',
 };
 
 interface Props {
@@ -97,7 +97,7 @@ export default function ToleranceStackPanel({ initialEntries, lang = 'ko', onCha
           <input type="number" step="0.001" value={e.lower} onChange={(ev) => update(e.id, { lower: Math.max(0, Number(ev.target.value)) })} style={input} />
           <button
             onClick={() => update(e.id, { direction: e.direction === 'add' ? 'subtract' : 'add' })}
-            style={{ ...input, cursor: 'pointer', background: e.direction === 'add' ? '#1f2937' : '#3f1f1f', textAlign: 'center' }}
+            style={{ ...input, cursor: 'pointer', background: e.direction === 'add' ? 'var(--nx-panel)' : '#3f1f1f', textAlign: 'center' }}
           >
             {e.direction === 'add' ? T.addSub.add : T.addSub.sub}
           </button>
@@ -158,7 +158,7 @@ export default function ToleranceStackPanel({ initialEntries, lang = 'ko', onCha
 const methodBtn = (active: boolean): React.CSSProperties => ({
   padding: '4px 10px',
   background: active ? C.accent : 'transparent',
-  color: active ? '#fff' : C.dim,
+  color: active ? 'var(--nx-text)' : C.dim,
   border: `1px solid ${active ? C.accent : C.border}`,
   borderRadius: 5,
   cursor: 'pointer',

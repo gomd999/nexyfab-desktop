@@ -8,6 +8,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AIHistoryFeature } from '@/lib/ai-history';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 type PartnerFeature = 'rfq_responder' | 'order_priority' | 'capacity_match' | 'quote_accuracy';
 
@@ -33,23 +35,37 @@ const C = {
   purple: '#8b5cf6', teal: '#2dd4bf',
 };
 
-const FEATURE_META: Record<PartnerFeature | 'all', { icon: string; label: string; color: string }> = {
-  all:            { icon: '📜', label: '전체',       color: C.textMuted },
-  rfq_responder:  { icon: '📥', label: 'RFQ 회신',   color: C.green },
-  order_priority: { icon: '🏆', label: 'AI 우선순위', color: C.accent },
-  capacity_match: { icon: '🔗', label: '캐파 매칭',   color: C.teal },
-  quote_accuracy: { icon: '📊', label: '견적 정확도', color: C.purple },
+const FEATURE_COLORS: Record<PartnerFeature | 'all', string> = {
+  all:            C.textMuted,
+  rfq_responder:  C.green,
+  order_priority: C.accent,
+  capacity_match: C.teal,
+  quote_accuracy: C.purple,
 };
+const FEATURE_ICONS: Record<PartnerFeature | 'all', string> = {
+  all: '📜', rfq_responder: '📥', order_priority: '🏆', capacity_match: '🔗', quote_accuracy: '📊',
+};
+function featureLabel(f: PartnerFeature | 'all', t: QuotePanelsDict): string {
+  switch (f) {
+    case 'all':            return t.aihFilterAll;
+    case 'rfq_responder':  return t.aihFilterRfqResponder;
+    case 'order_priority': return t.aihFilterOrderPriority;
+    case 'capacity_match': return t.aihFilterCapacityMatch;
+    case 'quote_accuracy': return t.aihFilterQuoteAccuracy;
+  }
+}
 
-function timeAgo(ts: number): string {
+function timeAgo(ts: number, t: QuotePanelsDict): string {
   const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
-  if (s < 60)    return `${s}초 전`;
-  if (s < 3600)  return `${Math.round(s / 60)}분 전`;
-  if (s < 86400) return `${Math.round(s / 3600)}시간 전`;
-  return `${Math.round(s / 86400)}일 전`;
+  if (s < 60)    return t.aihRelSeconds(s);
+  if (s < 3600)  return t.notifRelMinutes(Math.round(s / 60));
+  if (s < 86400) return t.notifRelHours(Math.round(s / 3600));
+  return t.notifRelDays(Math.round(s / 86400));
 }
 
 export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const [filter, setFilter] = useState<PartnerFeature | 'all'>('all');
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,7 +85,7 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
       const data = await res.json() as { records?: HistoryRecord[] };
       setRecords(data.records ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '불러오기 실패');
+      setError(e instanceof Error ? e.message : t.aihLoadFail);
       setRecords([]);
     } finally {
       setLoading(false);
@@ -79,7 +95,7 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
   useEffect(() => { void load(filter); }, [filter, load]);
 
   async function remove(id: string) {
-    if (!confirm('이 이력을 삭제할까요?')) return;
+    if (!confirm(t.aihConfirmDelete)) return;
     try {
       const res = await fetch(`/api/partner/ai-history?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -89,7 +105,7 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
       setRecords(prev => prev.filter(r => r.id !== id));
       if (expandedId === id) setExpandedId(null);
     } catch {
-      alert('삭제에 실패했습니다.');
+      alert(t.aihDeleteFail);
     }
   }
 
@@ -104,28 +120,29 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
       >
         {/* 헤더 */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>📜</span>
+          <span style={{ fontSize: 18 }} aria-hidden="true">📜</span>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>AI 사용 이력</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>파트너 AI 기능 실행 결과</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>{t.aihTitle}</p>
+            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{t.aihSubtitle}</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
 
         {/* 필터 칩 */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 16px', borderBottom: `1px solid ${C.border}` }}>
-          {(Object.keys(FEATURE_META) as (PartnerFeature | 'all')[]).map(f => {
-            const meta = FEATURE_META[f];
+          {(['all', 'rfq_responder', 'order_priority', 'capacity_match', 'quote_accuracy'] as (PartnerFeature | 'all')[]).map(f => {
+            const color = FEATURE_COLORS[f];
+            const icon = FEATURE_ICONS[f];
             const active = filter === f;
             return (
               <button key={f} onClick={() => setFilter(f)} style={{
                 padding: '4px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                border: `1px solid ${active ? meta.color : C.border}`,
-                background: active ? `${meta.color}22` : 'transparent',
-                color: active ? meta.color : C.textMuted,
+                border: `1px solid ${active ? color : C.border}`,
+                background: active ? `${color}22` : 'transparent',
+                color: active ? color : C.textMuted,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
-                {meta.icon} {meta.label}
+                {icon} {featureLabel(f, t)}
               </button>
             );
           })}
@@ -133,15 +150,18 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
 
         {/* 본문 */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px 16px' }}>
-          {loading && <p style={{ color: C.textMuted, fontSize: 12, textAlign: 'center', padding: '24px 0' }}>불러오는 중…</p>}
+          {loading && <p style={{ color: C.textMuted, fontSize: 12, textAlign: 'center', padding: '24px 0' }}>{t.aihLoading}</p>}
           {error && <p style={{ color: C.red, fontSize: 12, padding: 10 }}>{error}</p>}
           {!loading && !error && records.length === 0 && (
-            <p style={{ color: C.textMuted, fontSize: 12, textAlign: 'center', padding: '32px 0' }}>저장된 AI 이력이 없습니다.</p>
+            <p style={{ color: C.textMuted, fontSize: 12, textAlign: 'center', padding: '32px 0' }}>{t.aihEmpty}</p>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {records.map(r => {
-              const meta = FEATURE_META[r.feature as PartnerFeature] ?? FEATURE_META.all;
+              const featureKey = (r.feature as PartnerFeature) in FEATURE_COLORS ? (r.feature as PartnerFeature) : 'all';
+              const color = FEATURE_COLORS[featureKey];
+              const icon = FEATURE_ICONS[featureKey];
+              const label = featureLabel(featureKey, t);
               const expanded = expandedId === r.id;
               return (
                 <div key={r.id} style={{ border: `1px solid ${C.border}`, borderRadius: 8, background: C.card, overflow: 'hidden' }}>
@@ -149,10 +169,10 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
                     onClick={() => setExpandedId(expanded ? null : r.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
                   >
-                    <span style={{ fontSize: 16 }}>{meta.icon}</span>
+                    <span style={{ fontSize: 16 }} aria-hidden="true">{icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: meta.color, textTransform: 'uppercase' }}>
-                        {meta.label} · {timeAgo(r.createdAt)}
+                      <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase' }}>
+                        {label} · {timeAgo(r.createdAt, t)}
                       </p>
                       <p style={{ margin: 0, fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {r.title}
@@ -168,7 +188,7 @@ export default function PartnerAIHistoryPanel({ session, onClose }: Props) {
                       </pre>
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button onClick={() => remove(r.id)} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${C.red}44`, background: 'transparent', color: C.red, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
-                          🗑 삭제
+                          {t.aihDeleteBtn}
                         </button>
                       </div>
                     </div>

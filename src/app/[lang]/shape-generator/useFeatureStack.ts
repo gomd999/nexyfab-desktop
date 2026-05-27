@@ -45,6 +45,13 @@ export interface SketchNodeData {
   operation: 'add' | 'subtract';
   constraints?: import('./sketch/types').SketchConstraint[];
   dimensions?: import('./sketch/types').SketchDimension[];
+  /** Phase-2 "Sketch on tilted face" — see FeatureInstance.sketchData.faceFrame. */
+  faceFrame?: {
+    origin: [number, number, number];
+    normal: [number, number, number];
+    uAxis: [number, number, number];
+    vAxis: [number, number, number];
+  };
 }
 
 export interface HistoryNode {
@@ -69,6 +76,13 @@ export interface HistoryNode {
   dependsOn?: string[];
   /** Present only when featureType === 'sketchExtrude' */
   sketchData?: SketchNodeData;
+  /** Click-time edge geometry captured when the user added a fillet/chamfer with
+   *  an edge selected. Re-resolved into an OCCT EdgeFinder at pipeline time so the
+   *  operation rounds only the picked edge(s) instead of every edge. */
+  edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[];
+  /** Click-time face selection captured when the user added a shell with a face
+   *  selected. Re-resolved into a FaceFinder so shell opens that specific face. */
+  faceSelections?: import('./editing/selectionInfo').FaceSelectionInfo[];
 }
 
 export interface FeatureHistory {
@@ -226,6 +240,8 @@ export function useFeatureStack() {
     icon?: string,
     params?: Record<string, number>,
     featureType?: FeatureType,
+    edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[],
+    faceSelections?: import('./editing/selectionInfo').FaceSelectionInfo[],
   ): string => {
     const id = genId();
     const resolvedLabel = label || generateLabel(type, featureType);
@@ -245,6 +261,8 @@ export function useFeatureStack() {
       editingActive: false,
       timestamp: Date.now(),
       dependsOn: [activeNodeId],
+      ...(edgeSelections && edgeSelections.length > 0 ? { edgeSelections } : {}),
+      ...(faceSelections && faceSelections.length > 0 ? { faceSelections } : {}),
     };
 
     setNodeMap(prev => {
@@ -420,6 +438,8 @@ export function useFeatureStack() {
         enabled: n.enabled,
         error: n.error,
         sketchData: n.sketchData,
+        edgeSelections: n.edgeSelections,
+        faceSelections: n.faceSelections,
       }));
   }, [getOrderedNodes, activeNodeSet]);
 
@@ -431,6 +451,23 @@ export function useFeatureStack() {
       params[p.key] = p.default;
     });
     addNode('feature', undefined, def.icon, params, type);
+  }, [addNode]);
+
+  /** Add a fillet/chamfer/shell carrying the click-time selection so the OCCT
+   *  pipeline targets the picked edge(s)/face. Separate from addFeature so the
+   *  script host's addFeature(type, params) signature stays unaffected. */
+  const addFeatureWithEdges = useCallback((
+    type: FeatureType,
+    edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[],
+    faceSelections?: import('./editing/selectionInfo').FaceSelectionInfo[],
+  ) => {
+    const def = getFeatureDefinition(type);
+    if (!def) return;
+    const params: Record<string, number> = {};
+    def.params.forEach(p => {
+      params[p.key] = p.default;
+    });
+    addNode('feature', undefined, def.icon, params, type, edgeSelections, faceSelections);
   }, [addNode]);
 
   /** Add a feature with caller-supplied params (merged onto defaults). Used by
@@ -457,6 +494,7 @@ export function useFeatureStack() {
     planeOffset: number = 0,
     constraints?: import('./sketch/types').SketchConstraint[],
     dimensions?: import('./sketch/types').SketchDimension[],
+    faceFrame?: SketchNodeData['faceFrame'],
   ): void => {
     const id = genId();
     const current = labelCounters.get('sketchExtrude') || 0;
@@ -480,7 +518,7 @@ export function useFeatureStack() {
       children: [],
       editingActive: false,
       timestamp: Date.now(),
-      sketchData: { profile, config, plane, planeOffset, operation, constraints, dimensions },
+      sketchData: { profile, config, plane, planeOffset, operation, constraints, dimensions, faceFrame },
     };
 
     setNodeMap(prev => {
@@ -644,6 +682,7 @@ export function useFeatureStack() {
     // Backward-compatible API
     features: featuresCompat,
     addFeature,
+    addFeatureWithEdges,
     addFeatureWithParams,
     addSketchFeature,
     removeFeature,

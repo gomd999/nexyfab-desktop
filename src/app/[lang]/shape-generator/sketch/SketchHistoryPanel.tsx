@@ -82,16 +82,16 @@ interface SketchHistoryPanelProps {
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#161b22',
-  bgCard: '#21262d',
+  bg: 'var(--nx-panel)',
+  bgCard: 'var(--nx-panel-2)',
   bgHover: '#2d333b',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textMuted: '#8b949e',
-  accent: '#388bfd',
-  danger: '#f85149',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textMuted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  danger: 'var(--nx-error)',
   dangerBg: '#3d1519',
-  success: '#3fb950',
+  success: 'var(--nx-ok)',
   successBg: '#0d2818',
 } as const;
 
@@ -182,7 +182,7 @@ function SketchCard({ entry, onLoad, onDelete, onSaveTemplate, t }: SketchCardPr
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 2 }}>
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-            background: '#1a2332', color: C.accent, border: `1px solid ${C.accent}44`,
+            background: 'var(--nx-panel-2)', color: C.accent, border: `1px solid ${C.accent}44`,
           }}>
             {planeLabel(entry.plane)}
           </span>
@@ -208,10 +208,10 @@ function SketchCard({ entry, onLoad, onDelete, onSaveTemplate, t }: SketchCardPr
       {confirmLoad && (
         <div style={{ display: 'flex', gap: 4, padding: '4px 0' }}>
           <span style={{ fontSize: 10, color: '#e3b341', flex: 1 }}>{t.confirmLoadSketch || tt.confirmLoadSketch}</span>
-          <button onClick={() => setConfirmLoad(false)} style={{ padding: '3px 7px', borderRadius: 4, border: '1px solid #30363d', background: '#161b22', color: '#8b949e', fontSize: 10, cursor: 'pointer' }}>
+          <button onClick={() => setConfirmLoad(false)} style={{ padding: '3px 7px', borderRadius: 4, border: '1px solid var(--nx-border)', background: 'var(--nx-panel)', color: 'var(--nx-text-2)', fontSize: 10, cursor: 'pointer' }}>
             {t.cancel || tt.cancel}
           </button>
-          <button onClick={() => { setConfirmLoad(false); onLoad(entry); }} style={{ padding: '3px 7px', borderRadius: 4, border: '1px solid #388bfd', background: '#388bfd', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={() => { setConfirmLoad(false); onLoad(entry); }} style={{ padding: '3px 7px', borderRadius: 4, border: '1px solid var(--nx-accent)', background: 'var(--nx-accent)', color: 'var(--nx-text)', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
             {t.loadSketch || tt.loadSketch}
           </button>
         </div>
@@ -227,7 +227,7 @@ function SketchCard({ entry, onLoad, onDelete, onSaveTemplate, t }: SketchCardPr
             borderRadius: 5,
             border: `1px solid ${C.accent}`,
             background: C.accent,
-            color: '#fff',
+            color: 'var(--nx-text)',
             fontSize: 10,
             fontWeight: 700,
             cursor: 'pointer',

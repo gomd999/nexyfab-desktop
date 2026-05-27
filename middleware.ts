@@ -169,6 +169,14 @@ function getRateLimitTier(pathname: string): RLTier {
 const CORS_ORIGINS_RAW = (process.env.CORS_ALLOWED_ORIGINS ?? '')
   .split(',').map(o => o.trim()).filter(Boolean);
 
+// Default-deny is already enforced (no CORS headers when list is empty),
+// but warn loudly in production so missing env doesn't silently break the SPA.
+if (process.env.NODE_ENV === 'production' && CORS_ORIGINS_RAW.length === 0) {
+  console.warn(
+    '[middleware] CORS_ALLOWED_ORIGINS is empty in production — all cross-origin requests will be blocked.',
+  );
+}
+
 // ─── Route classification ──────────────────────────────────────────────────────
 
 /**
@@ -252,7 +260,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── Webhook bypass — webhooks use signature verification, not rate limiting ──
-  if (pathname === '/api/billing/webhook' || pathname === '/api/stripe/webhook') {
+  if (
+    pathname === '/api/billing/webhook' ||
+    pathname === '/api/stripe/webhook' ||
+    pathname === '/api/webhooks/dodo'
+  ) {
     return NextResponse.next();
   }
 

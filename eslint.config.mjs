@@ -15,13 +15,13 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   /**
-   * Gradual cleanup: the repo predates strict `any` / internal-`<a>` enforcement.
-   * Keep as warnings so `npm run lint` stays actionable; tighten back to error over time.
+   * Strict `any` enforcement — Wave 0 (2026-05-26): warn → error after batches F-1~F-8 cleanup.
+   * Tests + simulator prototype + intentionally untyped files exempted below.
    */
   {
     files: ["src/**/*.{js,jsx,ts,tsx}"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "@next/next/no-html-link-for-pages": "warn",
       "@typescript-eslint/no-require-imports": "warn",
       /** `_foo` / catch `_err` — intentional unused; keeps signal on real dead code */

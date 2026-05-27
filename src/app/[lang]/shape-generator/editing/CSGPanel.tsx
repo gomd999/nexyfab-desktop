@@ -147,7 +147,7 @@ const dict = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+    <div style={{ fontSize: 11, color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
       {children}
     </div>
   );
@@ -170,7 +170,7 @@ function NumberInput({
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-      <span style={{ fontSize: 11, color: '#8b949e' }}>{label}</span>
+      <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{label}</span>
       <input
         type="number"
         value={value}
@@ -182,10 +182,10 @@ function NumberInput({
           if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
         }}
         style={{
-          background: '#0d1117',
-          border: '1px solid #30363d',
+          background: 'var(--nx-bg)',
+          border: '1px solid var(--nx-border)',
           borderRadius: 4,
-          color: '#e6edf3',
+          color: 'var(--nx-text)',
           fontSize: 13,
           padding: '4px 8px',
           width: '100%',
@@ -236,10 +236,10 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
   const opButtonStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
     padding: '7px 0',
-    background: active ? '#1f6feb' : '#21262d',
-    border: active ? '1px solid #388bfd' : '1px solid #30363d',
+    background: active ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+    border: active ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
     borderRadius: 6,
-    color: active ? '#ffffff' : '#8b949e',
+    color: active ? 'var(--nx-text)' : 'var(--nx-text-2)',
     fontSize: 13,
     cursor: 'pointer',
     transition: 'background 0.15s, color 0.15s',
@@ -249,10 +249,10 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
   const shapeButtonStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
     padding: '6px 0',
-    background: active ? '#272e38' : '#161b22',
-    border: active ? '1px solid #388bfd' : '1px solid #30363d',
+    background: active ? '#272e38' : 'var(--nx-panel)',
+    border: active ? '1px solid var(--nx-accent)' : '1px solid var(--nx-border)',
     borderRadius: 6,
-    color: active ? '#58a6ff' : '#8b949e',
+    color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
     fontSize: 12,
     cursor: 'pointer',
     transition: 'background 0.15s, color 0.15s',
@@ -269,12 +269,12 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
         transform: 'translate(-50%, -50%)',
         zIndex: 9000,
         width: 360,
-        background: '#161b22',
-        border: '1px solid #30363d',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 10,
         boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
         padding: '20px 20px 16px',
-        color: '#e6edf3',
+        color: 'var(--nx-text)',
         fontFamily: 'inherit',
         userSelect: 'none',
       }}
@@ -287,7 +287,7 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
           style={{
             background: 'none',
             border: 'none',
-            color: '#8b949e',
+            color: 'var(--nx-text-2)',
             fontSize: 18,
             cursor: 'pointer',
             lineHeight: 1,
@@ -369,7 +369,7 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
             background: 'linear-gradient(135deg, #238636, #2ea043)',
             border: '1px solid #2ea043',
             borderRadius: 6,
-            color: '#ffffff',
+            color: 'var(--nx-text)',
             fontSize: 14,
             fontWeight: 600,
             cursor: 'pointer',
@@ -382,10 +382,10 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
           style={{
             flex: 1,
             padding: '9px 0',
-            background: '#21262d',
-            border: '1px solid #30363d',
+            background: 'var(--nx-panel-2)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 6,
-            color: '#8b949e',
+            color: 'var(--nx-text-2)',
             fontSize: 14,
             cursor: 'pointer',
           }}

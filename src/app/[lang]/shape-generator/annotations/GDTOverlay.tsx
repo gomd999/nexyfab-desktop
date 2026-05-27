@@ -13,12 +13,12 @@ const frameStyle: React.CSSProperties = {
   alignItems: 'center',
   background: 'rgba(0,0,0,0.85)',
   backdropFilter: 'blur(4px)',
-  border: '1.5px solid #58a6ff',
+  border: '1.5px solid var(--nx-accent-2)',
   borderRadius: 3,
   fontFamily: 'monospace',
   fontSize: 11,
   fontWeight: 700,
-  color: '#e6edf3',
+  color: 'var(--nx-text)',
   whiteSpace: 'nowrap',
   pointerEvents: 'none',
   userSelect: 'none',
@@ -26,7 +26,7 @@ const frameStyle: React.CSSProperties = {
 
 const cellStyle: React.CSSProperties = {
   padding: '2px 6px',
-  borderRight: '1px solid #58a6ff',
+  borderRight: '1px solid var(--nx-accent-2)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -66,7 +66,7 @@ function GDTFrame({ annotation }: { annotation: GDTAnnotation }) {
       {/* Leader line from surface anchor to label */}
       <Line
         points={[pos, labelOffset]}
-        color="#58a6ff"
+        color="var(--nx-accent-2)"
         lineWidth={1.5}
         dashed
         dashSize={1.5}
@@ -75,7 +75,7 @@ function GDTFrame({ annotation }: { annotation: GDTAnnotation }) {
       {/* Small sphere at anchor point */}
       <mesh position={pos}>
         <sphereGeometry args={[0.5, 12, 12]} />
-        <meshBasicMaterial color="#58a6ff" depthTest={false} transparent opacity={0.9} />
+        <meshBasicMaterial color="var(--nx-accent-2)" depthTest={false} transparent opacity={0.9} />
       </mesh>
       {/* ISO-style feature control frame */}
       <Html position={labelOffset} center style={{ pointerEvents: 'none' }}>
@@ -93,7 +93,7 @@ function GDTFrame({ annotation }: { annotation: GDTAnnotation }) {
           )}
         </div>
         {annotation.label && (
-          <div style={{ color: '#8b949e', fontSize: 9, textAlign: 'center', marginTop: 2, fontFamily: 'monospace' }}>
+          <div style={{ color: 'var(--nx-text-2)', fontSize: 9, textAlign: 'center', marginTop: 2, fontFamily: 'monospace' }}>
             {annotation.label}
           </div>
         )}
@@ -156,7 +156,7 @@ function DimensionFrame({ annotation }: { annotation: DimensionAnnotation }) {
           {valueStr}
         </div>
         {annotation.label && (
-          <div style={{ color: '#8b949e', fontSize: 9, textAlign: 'center', marginTop: 1, fontFamily: 'monospace' }}>
+          <div style={{ color: 'var(--nx-text-2)', fontSize: 9, textAlign: 'center', marginTop: 1, fontFamily: 'monospace' }}>
             {annotation.label}
           </div>
         )}

@@ -19,7 +19,7 @@ class HelixCurve extends THREE.Curve<THREE.Vector3> {
     this.totalHeight = numCoils * pitch;
   }
 
-  getPoint(t: number, target = new THREE.Vector3()): THREE.Vector3 {
+  override getPoint(t: number, target = new THREE.Vector3()): THREE.Vector3 {
     const angle = t * this.numCoils * Math.PI * 2;
     const y = t * this.totalHeight - this.totalHeight / 2;
     return target.set(

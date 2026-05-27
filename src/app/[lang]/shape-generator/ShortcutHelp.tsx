@@ -532,45 +532,45 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
       }}
     >
       <div style={{
-        background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
+        background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
         padding: '20px 24px', width: 'min(720px, 96vw)',
         boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
         display: 'flex', flexDirection: 'column', maxHeight: '90vh',
       }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#c9d1d9', letterSpacing: -0.3 }}>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--nx-text)', letterSpacing: -0.3 }}>
             ⌨️ {t.titleHeader}
           </h2>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {editMode ? (
               <>
-                <button onClick={handleReset} style={btnStyle('#f85149')}>
+                <button onClick={handleReset} style={btnStyle('var(--nx-error)')}>
                   {t.btnResetAll}
                 </button>
                 <button
                   onClick={handleSave}
-                  style={btnStyle(dirty ? '#3fb950' : '#484f58')}
+                  style={btnStyle(dirty ? 'var(--nx-ok)' : 'var(--nx-border-strong)')}
                 >
                   {t.btnSave}
                 </button>
                 <button
                   onClick={() => { setEditMode(false); setCustomKeys(loadCustomShortcuts()); setCapturingId(null); }}
-                  style={btnStyle('#8b949e')}
+                  style={btnStyle('var(--nx-text-2)')}
                 >
                   {t.btnCancel}
                 </button>
               </>
             ) : (
-              <button onClick={() => setEditMode(true)} style={btnStyle('#58a6ff')}>
+              <button onClick={() => setEditMode(true)} style={btnStyle('var(--nx-accent-2)')}>
                 ✏️ {t.btnCustomize}
               </button>
             )}
             <button
               onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 4 }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; e.currentTarget.style.background = '#21262d'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#8b949e'; e.currentTarget.style.background = 'none'; }}
+              style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 4 }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; e.currentTarget.style.background = 'none'; }}
             >
               ×
             </button>
@@ -578,7 +578,7 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
         </div>
 
         {editMode && (
-          <div style={{ fontSize: 10, color: '#f0883e', background: '#f0883e0a', borderRadius: 5, padding: '5px 10px', marginBottom: 10, border: '1px solid #f0883e22' }}>
+          <div style={{ fontSize: 10, color: 'var(--nx-warn)', background: '#f0883e0a', borderRadius: 5, padding: '5px 10px', marginBottom: 10, border: '1px solid #f0883e22' }}>
             {t.editModeHint}
           </div>
         )}
@@ -588,8 +588,8 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
           {categories.map((cat) => (
             <div key={cat.title}>
               <div style={{
-                fontSize: 10, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase',
-                letterSpacing: 1.2, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid #21262d',
+                fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase',
+                letterSpacing: 1.2, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--nx-panel-2)',
               }}>
                 {cat.title}
               </div>
@@ -609,8 +609,8 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
                         gap: 10,
                         minWidth: 0,
                         padding: '8px 12px',
-                        background: '#0d1117',
-                        border: '1px solid #21262d',
+                        background: 'var(--nx-bg)',
+                        border: '1px solid var(--nx-panel-2)',
                         borderRadius: 8,
                       }}
                     >
@@ -624,16 +624,16 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
                       }}>
                         {item.keys.map((key, ki) => (
                           <React.Fragment key={ki}>
-                            {ki > 0 && <span style={{ color: '#484f58', fontSize: 10, userSelect: 'none' }}>+</span>}
+                            {ki > 0 && <span style={{ color: 'var(--nx-border-strong)', fontSize: 10, userSelect: 'none' }}>+</span>}
                             {editMode && item.customizable && item.keys.length === 1 ? (
                               <button
                                 type="button"
                                 onClick={() => setCapturingId(isCapturing ? null : item.id)}
                                 style={{
                                   display: 'inline-block', padding: '2px 8px', borderRadius: 4,
-                                  background: isCapturing ? '#f0883e22' : '#21262d',
-                                  border: `1px solid ${isCapturing ? '#f0883e' : '#388bfd'}`,
-                                  color: isCapturing ? '#f0883e' : '#58a6ff',
+                                  background: isCapturing ? '#f0883e22' : 'var(--nx-panel-2)',
+                                  border: `1px solid ${isCapturing ? 'var(--nx-warn)' : 'var(--nx-accent)'}`,
+                                  color: isCapturing ? 'var(--nx-warn)' : 'var(--nx-accent-2)',
                                   fontSize: 11, fontWeight: 700,
                                   fontFamily: 'ui-monospace, monospace',
                                   lineHeight: '18px', minWidth: 24, textAlign: 'center',
@@ -650,11 +650,11 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
                         ))}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 12, color: '#c9d1d9', fontWeight: 500, lineHeight: 1.35 }}>
+                        <span style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 500, lineHeight: 1.35 }}>
                           {item.label}
                         </span>
                         {item.customizable && customKeys[item.id] && (
-                          <span style={{ fontSize: 9, color: '#3fb950', fontWeight: 700, flexShrink: 0 }}>
+                          <span style={{ fontSize: 9, color: 'var(--nx-ok)', fontWeight: 700, flexShrink: 0 }}>
                             {t.customBadge}
                           </span>
                         )}
@@ -668,7 +668,7 @@ export default function ShortcutHelp({ visible, onClose, lang }: ShortcutHelpPro
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid #21262d', fontSize: 10, color: '#484f58', textAlign: 'center' }}>
+        <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--nx-panel-2)', fontSize: 10, color: 'var(--nx-border-strong)', textAlign: 'center' }}>
           {t.footer}
         </div>
       </div>
@@ -689,8 +689,8 @@ function btnStyle(color: string): React.CSSProperties {
 
 const kbdStyle: React.CSSProperties = {
   display: 'inline-block', padding: '2px 8px', borderRadius: 4,
-  background: '#21262d', border: '1px solid #484f58',
-  color: '#c9d1d9', fontSize: 11, fontWeight: 600,
+  background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border-strong)',
+  color: 'var(--nx-text)', fontSize: 11, fontWeight: 600,
   fontFamily: 'ui-monospace, monospace',
   lineHeight: '18px', minWidth: 24, textAlign: 'center',
 };

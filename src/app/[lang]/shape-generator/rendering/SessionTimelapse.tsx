@@ -131,41 +131,41 @@ export default function SessionTimelapse({ lang, captureFrame, onClose }: Sessio
   return (
     <div style={{
       position: 'fixed', bottom: 20, left: 20, width: 460, maxHeight: '80vh',
-      background: '#0d1117', border: '1px solid #30363d', borderRadius: 8,
+      background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 8,
       boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex',
-      flexDirection: 'column', color: '#c9d1d9', fontSize: 13,
+      flexDirection: 'column', color: 'var(--nx-text)', fontSize: 13,
     }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #30363d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <strong>🎬 {t.title} ({frames.length})</strong>
-        <button onClick={onClose} style={{ background: 'transparent', color: '#8b949e', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        <button onClick={onClose} style={{ background: 'transparent', color: 'var(--nx-text-2)', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
       </div>
 
-      <div style={{ padding: 10, borderBottom: '1px solid #30363d', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ padding: 10, borderBottom: '1px solid var(--nx-border)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={() => setRecording(v => !v)}
-          style={{ background: recording ? '#da3633' : '#238636', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+          style={{ background: recording ? '#da3633' : 'var(--nx-ok)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
           {recording ? `⏹ ${t.stop}` : `⏺ ${t.start}`}
         </button>
         <button onClick={() => addFrame('manual')}
-          style={{ background: '#1f6feb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+          style={{ background: 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
           📸 {t.capture}
         </button>
-        <span style={{ fontSize: 11, color: '#8b949e', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
           {t.interval}:
           <input type="number" min={3} max={120} value={interval} onChange={e => setIntervalSec(parseInt(e.target.value) || 15)}
-            style={{ width: 48, background: '#161b22', border: '1px solid #30363d', borderRadius: 3, padding: '2px 4px', color: '#c9d1d9', fontSize: 11 }} />
+            style={{ width: 48, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '2px 4px', color: 'var(--nx-text)', fontSize: 11 }} />
         </span>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 10 }}>
         {frames.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#6e7681', fontSize: 12 }}>{t.empty}</div>
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--nx-text-3)', fontSize: 12 }}>{t.empty}</div>
         ) : (
           <>
             {currentFrame && (
               <div style={{ marginBottom: 8 }}>
                 <img src={currentFrame.dataUrl} alt={`Frame ${currentIndex + 1}`}
                   style={{ width: '100%', maxHeight: 280, objectFit: 'contain', borderRadius: 4, background: '#000' }} />
-                <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
                   <span>{t.frame} {currentIndex + 1} / {frames.length}</span>
                   <span>{new Date(currentFrame.ts).toLocaleTimeString()}</span>
                 </div>
@@ -178,15 +178,15 @@ export default function SessionTimelapse({ lang, captureFrame, onClose }: Sessio
 
             <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
               <button onClick={() => setPlaying(v => !v)} disabled={frames.length < 2}
-                style={{ background: playing ? '#da3633' : '#1f6feb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12, opacity: frames.length < 2 ? 0.5 : 1 }}>
+                style={{ background: playing ? '#da3633' : 'var(--nx-accent)', color: 'var(--nx-text)', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12, opacity: frames.length < 2 ? 0.5 : 1 }}>
                 {playing ? `⏸ ${t.pause}` : `▶ ${t.play}`}
               </button>
               <button onClick={handleExport}
-                style={{ background: 'transparent', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+                style={{ background: 'transparent', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
                 📥 {t.exportZip}
               </button>
               <button onClick={handleClear}
-                style={{ background: 'transparent', color: '#f85149', border: '1px solid #f85149', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12, marginLeft: 'auto' }}>
+                style={{ background: 'transparent', color: 'var(--nx-error)', border: '1px solid var(--nx-error)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12, marginLeft: 'auto' }}>
                 🗑 {t.clear}
               </button>
             </div>
@@ -197,7 +197,7 @@ export default function SessionTimelapse({ lang, captureFrame, onClose }: Sessio
                   onClick={() => setCurrentIndex(i)}
                   style={{
                     width: 56, height: 40, objectFit: 'cover', borderRadius: 2, cursor: 'pointer',
-                    border: i === currentIndex ? '2px solid #58a6ff' : '1px solid #30363d',
+                    border: i === currentIndex ? '2px solid var(--nx-accent-2)' : '1px solid var(--nx-border)',
                     flexShrink: 0, background: '#000',
                   }} />
               ))}

@@ -346,8 +346,8 @@ function generateFlatPatternSVG(
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#1a1a2e"/>
-  <path d="${pathData}" fill="none" stroke="#8b9cf4" stroke-width="0.5"/>
-  <text x="${padding}" y="20" fill="#8b9cf4" font-size="12" font-family="monospace">
+  <path d="${pathData}" fill="none" stroke="var(--nx-accent-2)" stroke-width="0.5"/>
+  <text x="${padding}" y="20" fill="var(--nx-accent-2)" font-size="12" font-family="monospace">
     Flat Pattern: ${flatLength.toFixed(1)}mm \xd7 ${flatWidth.toFixed(1)}mm
   </text>
 </svg>`;

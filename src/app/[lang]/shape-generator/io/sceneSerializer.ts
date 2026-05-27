@@ -63,7 +63,7 @@ export function serializeScene(
       rotation: s.rotation ?? [0, 0, 0],
       scale: s.scale ?? [1, 1, 1],
       materialPreset: s.materialPreset ?? 'aluminum',
-      color: s.color ?? '#8b9cf4',
+      color: s.color ?? 'var(--nx-accent-2)',
     })),
     camera: {
       position: camera?.position ?? DEFAULT_CAMERA.position,
@@ -87,7 +87,7 @@ export function deserializeScene(state: SceneState): {
       rotation: s.rotation ?? [0, 0, 0],
       scale: s.scale ?? [1, 1, 1],
       materialPreset: s.materialPreset ?? 'aluminum',
-      color: s.color ?? '#8b9cf4',
+      color: s.color ?? 'var(--nx-accent-2)',
     })),
     camera: {
       position: state.camera?.position ?? DEFAULT_CAMERA.position,

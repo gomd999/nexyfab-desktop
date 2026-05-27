@@ -230,14 +230,14 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
   const preview = formatThreadCallout({ standard, type, nominalDiameter: diameter, pitch, depth, fit });
 
   return (
-    <div style={{ padding: '12px 14px', borderBottom: '1px solid #21262d' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+    <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
         {tt.addThreadCallout}
       </div>
 
       {/* Standard */}
       <div style={{ marginBottom: 8 }}>
-        <label style={{ fontSize: 10, color: '#8b949e', display: 'block', marginBottom: 3 }}>{tt.standard}</label>
+        <label style={{ fontSize: 10, color: 'var(--nx-text-2)', display: 'block', marginBottom: 3 }}>{tt.standard}</label>
         <select
           value={standard}
           onChange={e => setStandard(e.target.value as ThreadStandard)}
@@ -256,9 +256,9 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
         {(['internal', 'external'] as ThreadType[]).map(tv => (
           <button key={tv} onClick={() => setType(tv)} style={{
             flex: 1, padding: '4px 0', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer',
-            border: `1px solid ${type === tv ? '#388bfd' : '#30363d'}`,
-            background: type === tv ? '#388bfd22' : 'transparent',
-            color: type === tv ? '#388bfd' : '#8b949e',
+            border: `1px solid ${type === tv ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+            background: type === tv ? 'var(--nx-accent)22' : 'transparent',
+            color: type === tv ? 'var(--nx-accent)' : 'var(--nx-text-2)',
           }}>
             {tv === 'internal' ? tt.internalFemale : tt.externalMale}
           </button>
@@ -268,7 +268,7 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
       {/* Diameter */}
       {standard === 'metric' ? (
         <div style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 10, color: '#8b949e', display: 'block', marginBottom: 3 }}>{tt.nominalDia}</label>
+          <label style={{ fontSize: 10, color: 'var(--nx-text-2)', display: 'block', marginBottom: 3 }}>{tt.nominalDia}</label>
           <select value={diameter} onChange={e => handleDiameterChange(Number(e.target.value))} style={selectStyle}>
             {METRIC_SIZES.map(s => <option key={s} value={s}>M{s}</option>)}
           </select>
@@ -284,20 +284,20 @@ function ThreadCreator({ onAdd, tt }: ThreadCreatorProps) {
 
       {/* Fit */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 10, color: '#8b949e', display: 'block', marginBottom: 3 }}>{tt.fit}</label>
+        <label style={{ fontSize: 10, color: 'var(--nx-text-2)', display: 'block', marginBottom: 3 }}>{tt.fit}</label>
         <select value={fit} onChange={e => setFit(e.target.value as ThreadFit)} style={selectStyle}>
           {['6H', '7H', '5H', '6g', '5g6g', '4h', '6e', '6f'].map(f => <option key={f} value={f}>{f}</option>)}
         </select>
       </div>
 
       {/* Preview */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 5, padding: '6px 10px', marginBottom: 10, fontFamily: 'monospace', fontSize: 12, color: '#c9d1d9' }}>
+      <div style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 5, padding: '6px 10px', marginBottom: 10, fontFamily: 'monospace', fontSize: 12, color: 'var(--nx-text)' }}>
         {preview}
       </div>
 
       <button
         onClick={() => onAdd({ standard, type, nominalDiameter: diameter, pitch, depth, fit, label: preview })}
-        style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 'none', background: '#388bfd', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+        style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 'none', background: 'var(--nx-accent)', color: 'var(--nx-text)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
       >
         {tt.add}
       </button>
@@ -339,7 +339,7 @@ function HoleCreator({ onAdd, tt }: HoleCreatorProps) {
 
   return (
     <div style={{ padding: '12px 14px' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
         {tt.addHoleCallout}
       </div>
 
@@ -348,9 +348,9 @@ function HoleCreator({ onAdd, tt }: HoleCreatorProps) {
         {(['thru', 'blind', 'counterbore', 'countersink', 'spotface'] as HoleType[]).map(htv => (
           <button key={htv} onClick={() => setHoleType(htv)} style={{
             padding: '3px 8px', borderRadius: 5, fontSize: 9, fontWeight: 600, cursor: 'pointer',
-            border: `1px solid ${holeType === htv ? '#388bfd' : '#30363d'}`,
-            background: holeType === htv ? '#388bfd22' : 'transparent',
-            color: holeType === htv ? '#388bfd' : '#8b949e',
+            border: `1px solid ${holeType === htv ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+            background: holeType === htv ? 'var(--nx-accent)22' : 'transparent',
+            color: holeType === htv ? 'var(--nx-accent)' : 'var(--nx-text-2)',
           }}>
             {tt[HOLE_TYPE_LABEL_KEYS[htv]]}
           </button>
@@ -369,14 +369,14 @@ function HoleCreator({ onAdd, tt }: HoleCreatorProps) {
       </>}
 
       {/* Optional thread */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#8b949e', cursor: 'pointer', marginBottom: addThread ? 8 : 12 }}>
-        <input type="checkbox" checked={addThread} onChange={e => setAddThread(e.target.checked)} style={{ accentColor: '#388bfd' }} />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--nx-text-2)', cursor: 'pointer', marginBottom: addThread ? 8 : 12 }}>
+        <input type="checkbox" checked={addThread} onChange={e => setAddThread(e.target.checked)} style={{ accentColor: 'var(--nx-accent)' }} />
         {tt.includeThread}
       </label>
       {addThread && (
-        <div style={{ paddingLeft: 12, borderLeft: '2px solid #388bfd33', marginBottom: 12 }}>
+        <div style={{ paddingLeft: 12, borderLeft: '2px solid var(--nx-accent)33', marginBottom: 12 }}>
           <div style={{ marginBottom: 6 }}>
-            <label style={{ fontSize: 10, color: '#8b949e', display: 'block', marginBottom: 3 }}>{tt.threadSize}</label>
+            <label style={{ fontSize: 10, color: 'var(--nx-text-2)', display: 'block', marginBottom: 3 }}>{tt.threadSize}</label>
             <select value={threadDia} onChange={e => { const d = Number(e.target.value); setThreadDia(d); setThreadPitch(METRIC_COARSE_PITCHES[d] ?? 1.0); }} style={selectStyle}>
               {[2,3,4,5,6,8,10,12,16,20,24].map(s => <option key={s} value={s}>M{s}</option>)}
             </select>
@@ -386,13 +386,13 @@ function HoleCreator({ onAdd, tt }: HoleCreatorProps) {
       )}
 
       {/* Preview */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 5, padding: '6px 10px', marginBottom: 10, fontFamily: 'monospace', fontSize: 11, color: '#c9d1d9', lineHeight: 1.6 }}>
+      <div style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 5, padding: '6px 10px', marginBottom: 10, fontFamily: 'monospace', fontSize: 11, color: 'var(--nx-text)', lineHeight: 1.6 }}>
         {preview}
       </div>
 
       <button
         onClick={() => onAdd({ ...buildHole(), label: preview })}
-        style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 'none', background: '#388bfd', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+        style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 'none', background: 'var(--nx-accent)', color: 'var(--nx-text)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
       >
         {tt.add}
       </button>
@@ -422,23 +422,23 @@ export default function ThreadHoleCalloutPanel({
   const [tab, setTab] = useState<'thread' | 'hole'>('thread');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontFamily: 'system-ui, sans-serif' }}>
       {/* Header */}
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span style={{ fontSize: 14 }}>🔩</span>
         <span style={{ fontWeight: 700, fontSize: 13 }}>{t.title}</span>
       </div>
 
       {/* Tab */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #21262d', flexShrink: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--nx-panel-2)', flexShrink: 0 }}>
         {(['thread', 'hole'] as const).map(tv => (
           <button key={tv} onClick={() => setTab(tv)} style={{
             flex: 1, padding: '7px 0', fontSize: 11, fontWeight: tab === tv ? 700 : 400, cursor: 'pointer',
-            border: 'none', borderBottom: tab === tv ? '2px solid #388bfd' : '2px solid transparent',
-            background: 'transparent', color: tab === tv ? '#388bfd' : '#6e7681',
+            border: 'none', borderBottom: tab === tv ? '2px solid var(--nx-accent)' : '2px solid transparent',
+            background: 'transparent', color: tab === tv ? 'var(--nx-accent)' : 'var(--nx-text-3)',
           }}>
             {tv === 'thread' ? t.threadTab : t.holeTab}
-            <span style={{ marginLeft: 4, fontSize: 9, background: '#388bfd33', color: '#388bfd', borderRadius: 8, padding: '0 4px' }}>
+            <span style={{ marginLeft: 4, fontSize: 9, background: 'var(--nx-accent)33', color: 'var(--nx-accent)', borderRadius: 8, padding: '0 4px' }}>
               {tv === 'thread' ? threadCallouts.length : holeCallouts.length}
             </span>
           </button>
@@ -451,14 +451,14 @@ export default function ThreadHoleCalloutPanel({
             {onAddThread && <ThreadCreator onAdd={onAddThread} tt={t} />}
             {/* Existing callouts */}
             {threadCallouts.length > 0 && (
-              <div style={{ borderTop: '1px solid #21262d' }}>
+              <div style={{ borderTop: '1px solid var(--nx-panel-2)' }}>
                 {threadCallouts.map(tc => (
-                  <div key={tc.id} style={{ padding: '8px 14px', borderBottom: '1px solid #21262d', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#c9d1d9', flex: 1 }}>
+                  <div key={tc.id} style={{ padding: '8px 14px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--nx-text)', flex: 1 }}>
                       {tc.label ?? formatThreadCallout(tc)}
                     </span>
                     {onDeleteThread && (
-                      <button onClick={() => onDeleteThread(tc.id)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
+                      <button onClick={() => onDeleteThread(tc.id)} style={{ background: 'none', border: 'none', color: 'var(--nx-error)', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
                     )}
                   </div>
                 ))}
@@ -469,14 +469,14 @@ export default function ThreadHoleCalloutPanel({
           <>
             {onAddHole && <HoleCreator onAdd={onAddHole} tt={t} />}
             {holeCallouts.length > 0 && (
-              <div style={{ borderTop: '1px solid #21262d' }}>
+              <div style={{ borderTop: '1px solid var(--nx-panel-2)' }}>
                 {holeCallouts.map(h => (
-                  <div key={h.id} style={{ padding: '8px 14px', borderBottom: '1px solid #21262d', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#c9d1d9', flex: 1 }}>
+                  <div key={h.id} style={{ padding: '8px 14px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--nx-text)', flex: 1 }}>
                       {h.label ?? formatHoleCallout(h)}
                     </span>
                     {onDeleteHole && (
-                      <button onClick={() => onDeleteHole(h.id)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
+                      <button onClick={() => onDeleteHole(h.id)} style={{ background: 'none', border: 'none', color: 'var(--nx-error)', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
                     )}
                   </div>
                 ))}
@@ -492,8 +492,8 @@ export default function ThreadHoleCalloutPanel({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const selectStyle: React.CSSProperties = {
-  width: '100%', padding: '4px 8px', background: '#161b22',
-  border: '1px solid #30363d', borderRadius: 5, color: '#c9d1d9',
+  width: '100%', padding: '4px 8px', background: 'var(--nx-panel)',
+  border: '1px solid var(--nx-border)', borderRadius: 5, color: 'var(--nx-text)',
   fontSize: 11, outline: 'none',
 };
 
@@ -503,7 +503,7 @@ function InputRow({ label, value, onChange, min, max, step, note }: {
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-      <span style={{ fontSize: 10, color: '#8b949e', flex: 1 }}>{label}</span>
+      <span style={{ fontSize: 10, color: 'var(--nx-text-2)', flex: 1 }}>{label}</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <input
           type="number"
@@ -512,9 +512,9 @@ function InputRow({ label, value, onChange, min, max, step, note }: {
           max={max}
           step={step ?? 1}
           onChange={e => onChange(Number(e.target.value))}
-          style={{ width: 64, padding: '3px 6px', background: '#161b22', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 11, outline: 'none' }}
+          style={{ width: 64, padding: '3px 6px', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 11, outline: 'none' }}
         />
-        {note && <span style={{ fontSize: 9, color: '#6e7681' }}>{note}</span>}
+        {note && <span style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>{note}</span>}
       </div>
     </div>
   );

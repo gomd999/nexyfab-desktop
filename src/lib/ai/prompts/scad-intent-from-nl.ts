@@ -10,6 +10,7 @@ const SUPPORTED_SHAPES = [
   'heatsink', 'manifold', 'turbine',
   'enclosure', 'tBeam', 'uChannel', 'zPurlin',
   'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
+  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
 ];
 const SUPPORTED_FEATURES = [
   'hole', 'fillet', 'chamfer', 'mirror', 'linearPattern', 'circularPattern',
@@ -59,6 +60,12 @@ Common parameter keys (all in millimeters; pick those relevant to the chosen sha
   shelfBracket: armWidth, armHeight, thickness, depth, gussetWidth
   hingedBracket: armWidth, armThickness, knuckleDiameter, knuckleHeight, pinDiameter
   motorMount: plateSize, thickness, boltCirclePitch, boltDiameter, centerBoreDiameter
+  nameplate:  width, depth, thickness, border, borderHeight
+  phoneStand: width, thickness, baseDepth, backHeight, frontHeight, slotGap
+  coaster:    diameter, thickness, rimHeight, rimWidth
+  wallHook:   plateWidth, plateHeight, plateThickness, screwHoleDiameter, hookLength, hookDiameter, hookTipHeight
+  drawerKnob: knobDiameter, stemDiameter, stemHeight, boreDiameter
+  planterPot: topDiameter, bottomDiameter, height, wallThickness, drainDiameter
 
 Common feature.params keys:
   hole:            diameter, x, y, z, depth
@@ -87,7 +94,7 @@ If the user's request cannot be expressed with the allowed shapes, return:
 
 const def: PromptDefinition = {
   id: 'scad-intent-from-nl',
-  version: '1.1.0',
+  version: '1.2.0',
   description: 'Parse natural-language mechanical-part descriptions into a strict JSON intent. Whitelist-bounded — never emits SCAD directly.',
   template: TEMPLATE,
   defaults: {

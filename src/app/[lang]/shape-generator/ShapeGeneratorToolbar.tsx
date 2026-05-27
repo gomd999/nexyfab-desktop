@@ -463,8 +463,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
   } = props;
 
   return (
-    <div className="sg-topbar sg-autohide" style={{
-      background: 'rgba(13, 17, 23, 0.85)',
+    <div className="sg-topbar sg-autohide" data-shell-v2-hide="top-toolbar" style={{
+      background: 'var(--nx-glass-strong)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
@@ -481,15 +481,15 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: 32, height: 32, borderRadius: 6, border: `1px solid ${theme.border}`,
           background: tabletLeftOpen ? theme.accent : theme.cardBg,
-          color: tabletLeftOpen ? '#fff' : theme.textMuted,
+          color: tabletLeftOpen ? 'var(--nx-text)' : theme.textMuted,
           fontSize: 16, cursor: 'pointer', flexShrink: 0,
         }}>☰</button>
       )}
       {/* Logo */}
-      <a href={`/${langSeg}/`} style={{ color: '#c9d1d9', fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', textDecoration: 'none', marginLeft: 4 }}>
-        <span style={{ color: '#58a6ff' }}>Nexy</span>Fab
+      <a href={`/${langSeg}/`} style={{ color: 'var(--nx-text)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', textDecoration: 'none', marginLeft: 4 }}>
+        <span style={{ color: 'var(--nx-accent-2)' }}>Nexy</span>Fab
       </a>
-      {!isMobile && <div style={{ width: 1, height: 24, background: 'rgba(255, 255, 255, 0.1)', marginLeft: 8, marginRight: 4 }} />}
+      {!isMobile && <div style={{ width: 1, height: 24, background: 'var(--nx-border)', marginLeft: 8, marginRight: 4 }} />}
 
       {/* ⌘K command palette hint — opens via Ctrl+K */}
       {!isMobile && (
@@ -501,12 +501,12 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 32, height: 32, padding: 0, borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(255, 255, 255, 0.03)',
-            color: '#c9d1d9', fontSize: 14, fontWeight: 600,
+            border: '1px solid rgba(255, 255, 255, 0.08)', background: 'var(--nx-glass-soft)',
+            color: 'var(--nx-text)', fontSize: 14, fontWeight: 600,
             cursor: 'pointer', transition: 'all 0.15s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
           >
           🔍
         </button>
@@ -520,9 +520,9 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             data-tour={tab === 'optimize' ? 'optimize-tab' : undefined}
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer',
-              background: 'transparent', color: active ? '#ffffff' : '#8b949e',
+              background: 'transparent', color: active ? 'var(--nx-text)' : 'var(--nx-text-2)',
               fontWeight: 600, fontSize: 13, transition: 'all 0.2s',
-              borderBottom: active ? '2px solid #58a6ff' : '2px solid transparent',
+              borderBottom: active ? '2px solid var(--nx-accent-2)' : '2px solid transparent',
               marginBottom: -1,
               letterSpacing: '0.02em',
             }}>
@@ -540,7 +540,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           style={{
             padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.border}`,
             background: showAdvanced ? theme.accent : theme.cardBg,
-            color: showAdvanced ? '#fff' : theme.textMuted,
+            color: showAdvanced ? 'var(--nx-text)' : theme.textMuted,
             fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
           }}
           title={tt.moreTools}
@@ -567,7 +567,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           <button onClick={() => setShowVersionPanel(!showVersionPanel)} style={{
             padding: '4px 8px', borderRadius: 4, border: 'none',
             background: showVersionPanel ? theme.accent : theme.cardBg,
-            color: showVersionPanel ? '#fff' : theme.textMuted,
+            color: showVersionPanel ? 'var(--nx-text)' : theme.textMuted,
             fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
           }} title={tt.versionHistory}>🕐</button>
         </div>
@@ -579,8 +579,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       {(!isMobile || showAdvanced) && (
         <button onClick={() => setRenderMode(renderMode === 'standard' ? 'photorealistic' : 'standard')} style={{
           width: 30, height: 28, padding: 0, borderRadius: 4, border: 'none',
-          background: renderMode === 'photorealistic' ? '#8b5cf6' : theme.cardBg,
-          color: renderMode === 'photorealistic' ? '#fff' : theme.textMuted,
+          background: renderMode === 'photorealistic' ? 'var(--nx-accent-2)' : theme.cardBg,
+          color: renderMode === 'photorealistic' ? 'var(--nx-text)' : theme.textMuted,
           fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
         }} title={`${tt.renderMode}: ${tt.render}`}>
           🎬
@@ -604,8 +604,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       {(!isMobile || showAdvanced) && (
         <button onClick={() => setShowCOTSPanel(!showCOTSPanel)} style={{
           width: 30, height: 28, padding: 0, borderRadius: 4, border: 'none',
-          background: showCOTSPanel ? '#d29922' : theme.cardBg,
-          color: showCOTSPanel ? '#fff' : theme.textMuted,
+          background: showCOTSPanel ? 'var(--nx-warn)' : theme.cardBg,
+          color: showCOTSPanel ? 'var(--nx-text)' : theme.textMuted,
           fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
         }} title={`${tt.standardPartsCatalog}: ${tt.cots}`}>
           🔩
@@ -616,8 +616,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       {(!isMobile || showAdvanced) && effectiveResult && (
         <button onClick={() => setShowAIAdvisor()} style={{
           width: 30, height: 28, padding: 0, borderRadius: 4, border: 'none',
-          background: showAIAdvisor ? '#a371f7' : theme.cardBg,
-          color: showAIAdvisor ? '#fff' : theme.textMuted,
+          background: showAIAdvisor ? 'var(--nx-accent-2)' : theme.cardBg,
+          color: showAIAdvisor ? 'var(--nx-text)' : theme.textMuted,
           fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           opacity: !planLimits.aiChat ? 0.75 : 1,
@@ -632,8 +632,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           onClick={() => setShowCommentsPanel(!showCommentsPanel)}
           style={{
             width: 30, height: 28, padding: 0, borderRadius: 4, border: 'none',
-            background: showCommentsPanel ? '#388bfd' : (isPlacingComment ? '#8b5cf6' : theme.cardBg),
-            color: showCommentsPanel || isPlacingComment ? '#fff' : theme.textMuted,
+            background: showCommentsPanel ? 'var(--nx-accent)' : (isPlacingComment ? 'var(--nx-accent-2)' : theme.cardBg),
+            color: showCommentsPanel || isPlacingComment ? 'var(--nx-text)' : theme.textMuted,
             fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
             position: 'relative',
           }}
@@ -643,7 +643,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           {commentCount > 0 && (
             <span style={{
               position: 'absolute', top: -4, right: -4,
-              background: '#f0883e', color: '#fff', borderRadius: '50%',
+              background: 'var(--nx-warn)', color: 'var(--nx-text)', borderRadius: '50%',
               width: 14, height: 14, fontSize: 9, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -661,7 +661,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           style={{
             padding: '4px 10px', borderRadius: 4, border: 'none',
             background: showDimensions ? theme.accent : theme.cardBg,
-            color: showDimensions ? '#fff' : theme.textMuted,
+            color: showDimensions ? 'var(--nx-text)' : theme.textMuted,
             fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
           }}
           title={tt.toggleDimensionsTitle}
@@ -683,8 +683,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
               onClick={onDisableSimpleMode}
               style={{
                 padding: '4px 12px', borderRadius: 4,
-                border: '1px solid #388bfd',
-                background: '#0d1f3c', color: '#58a6ff',
+                border: '1px solid var(--nx-accent)',
+                background: '#0d1f3c', color: 'var(--nx-accent-2)',
                 fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
@@ -699,8 +699,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
               onClick={onEnableSimpleMode}
               style={{
                 padding: '4px 12px', borderRadius: 4,
-                border: '1px solid #3fb950',
-                background: '#0f2d17', color: '#3fb950',
+                border: '1px solid var(--nx-ok)',
+                background: '#0f2d17', color: 'var(--nx-ok)',
                 fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
@@ -715,8 +715,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             onClick={onOpenWizard}
             style={{
               padding: '4px 12px', borderRadius: 4, border: 'none',
-              background: 'linear-gradient(135deg, #388bfd, #a371f7)',
-              color: '#fff', fontSize: 11, fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--nx-accent), var(--nx-accent-2))',
+              color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
               cursor: 'pointer', transition: 'all 0.15s',
               display: 'flex', alignItems: 'center', gap: 4,
             }}
@@ -738,9 +738,9 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           style={{
             position: 'relative',
             padding: '4px 10px', borderRadius: 4,
-            border: `1px solid ${showDFM ? '#f0883e' : dfmIssueCount > 0 ? '#f0883e55' : theme.border}`,
+            border: `1px solid ${showDFM ? 'var(--nx-warn)' : dfmIssueCount > 0 ? '#f0883e55' : theme.border}`,
             background: showDFM ? 'rgba(240,136,62,0.18)' : dfmIssueCount > 0 ? 'rgba(240,136,62,0.08)' : theme.cardBg,
-            color: dfmIssueCount > 0 ? '#f0883e' : theme.textMuted,
+            color: dfmIssueCount > 0 ? 'var(--nx-warn)' : theme.textMuted,
             fontSize: 11, fontWeight: 700, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s',
             opacity: !dfmUnlocked ? 0.75 : 1,
@@ -756,8 +756,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             <span style={{
               position: 'absolute', top: -5, right: -6,
               minWidth: 16, height: 16,
-              background: dfmIssueCount >= 5 ? '#f85149' : '#f0883e',
-              color: '#fff', borderRadius: 8,
+              background: dfmIssueCount >= 5 ? 'var(--nx-error)' : 'var(--nx-warn)',
+              color: 'var(--nx-text)', borderRadius: 8,
               fontSize: 10, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0 3px', lineHeight: 1,
@@ -771,13 +771,13 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       <button onClick={toggleTheme} style={{
         width: 32, height: 32, padding: 0, borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.08)',
-        background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(255,241,200,0.15)',
-        color: mode === 'dark' ? '#c9d1d9' : '#fbbf24',
+        background: mode === 'dark' ? 'var(--nx-glass-soft)' : 'rgba(255,241,200,0.15)',
+        color: mode === 'dark' ? 'var(--nx-text)' : '#fbbf24',
         fontSize: 15, cursor: 'pointer', transition: 'all 0.2s ease',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.background = mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(255,241,200,0.15)'; }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)'; e.currentTarget.style.background = 'var(--nx-border)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.background = mode === 'dark' ? 'var(--nx-glass-soft)' : 'rgba(255,241,200,0.15)'; }}
       title={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
         {mode === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
       </button>
@@ -794,8 +794,8 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           title={designCollabDemo ? tt.collabDemoTitleOn : tt.collabDemoTitleOff}
           style={{
             padding: '4px 10px', borderRadius: 6, border: `1px solid ${theme.border}`,
-            background: designCollabDemo ? '#388bfd' : theme.cardBg,
-            color: designCollabDemo ? '#fff' : theme.textMuted,
+            background: designCollabDemo ? 'var(--nx-accent)' : theme.cardBg,
+            color: designCollabDemo ? 'var(--nx-text)' : theme.textMuted,
             fontSize: 11, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'system-ui, sans-serif', flexShrink: 0, transition: 'all 0.15s',
           }}
@@ -823,7 +823,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         style={{
           padding: '5px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 700,
           background: cartAdded ? '#16a34a' : theme.cardBg,
-          color: cartAdded ? '#fff' : theme.textMuted,
+          color: cartAdded ? 'var(--nx-text)' : theme.textMuted,
           cursor: !disableCart ? 'pointer' : 'default', transition: 'all 0.15s',
           opacity: activeTab === 'design' ? 1 : 0.3,
         }}
@@ -867,12 +867,12 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         if (analyzing) {
           return (
             <button data-tour="get-quote" disabled style={{
-              padding: '5px 14px', borderRadius: 6, border: '1px solid #388bfd44', fontSize: 12, fontWeight: 700,
-              background: 'rgba(56,139,253,0.1)', color: '#58a6ff',
+              padding: '5px 14px', borderRadius: 6, border: '1px solid var(--nx-accent)44', fontSize: 12, fontWeight: 700,
+              background: 'rgba(56,139,253,0.1)', color: 'var(--nx-accent-2)',
               cursor: 'default', transition: 'all 0.15s',
               display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', border: '2px solid #58a6ff', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', border: '2px solid var(--nx-accent-2)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
               {tt.analyzingDFM}
             </button>
           );
@@ -887,7 +887,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
               style={{
                 padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
                 border: '1px solid #f0883e',
-                background: 'rgba(240,136,62,0.15)', color: '#f0883e',
+                background: 'rgba(240,136,62,0.15)', color: 'var(--nx-warn)',
                 cursor: 'pointer', transition: 'all 0.15s',
                 display: 'flex', alignItems: 'center', gap: 5,
               }}
@@ -906,7 +906,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             style={{
               padding: '5px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 700,
               background: clean ? 'linear-gradient(135deg, #238636, #2ea043)' : theme.accent,
-              color: '#fff', cursor: 'pointer', transition: 'all 0.15s',
+              color: 'var(--nx-text)', cursor: 'pointer', transition: 'all 0.15s',
               display: 'flex', alignItems: 'center', gap: 5,
               boxShadow: clean ? '0 0 8px rgba(46,160,67,0.4)' : undefined,
               animation: clean ? 'dfm-glow 2s ease-in-out infinite' : undefined,
@@ -933,9 +933,9 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         disabled={!effectiveResult || isCreatingShare}
         style={{
           width: 30, height: 28, padding: 0, borderRadius: 6,
-          border: '1px solid #30363d',
+          border: '1px solid var(--nx-border)',
           background: shareUrl ? '#1a2e1a' : 'transparent',
-          color: shareUrl ? '#3fb950' : '#8b949e',
+          color: shareUrl ? 'var(--nx-ok)' : 'var(--nx-text-2)',
           fontSize: 13, fontWeight: 700,
           cursor: effectiveResult ? 'pointer' : 'default',
           opacity: !planLimits.ipShareLink ? 0.6 : (effectiveResult ? 1 : 0.4), transition: 'all 0.15s',
@@ -945,20 +945,20 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         title={!planLimits.ipShareLink ? tt.ipProLocked : `${tt.ipShareHint}: ${tt.ipShare}`}
       >
         {isCreatingShare ? '...' : '🔒'}
-        {!planLimits.ipShareLink && <span style={{ position: 'absolute', top: -6, right: -6, fontSize: 8, background: '#8b5cf6', color: '#fff', padding: '1px 3px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
+        {!planLimits.ipShareLink && <span style={{ position: 'absolute', top: -6, right: -6, fontSize: 8, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 3px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
       </button>
 
       {/* ── Layout controls ── */}
       {layoutControls && !isMobile && (
         <>
-          <div style={{ width: 1, height: 20, background: '#30363d', flexShrink: 0 }} />
+          <div style={{ width: 1, height: 20, background: 'var(--nx-border)', flexShrink: 0 }} />
           <button
             onClick={layoutControls.onToggleLeft}
             title={layoutControls.leftCollapsed ? 'Expand left panel' : 'Collapse left panel'}
             style={{
               width: 28, height: 28, padding: 0, borderRadius: 4, border: 'none',
               background: layoutControls.leftCollapsed ? theme.accent : theme.cardBg,
-              color: layoutControls.leftCollapsed ? '#fff' : theme.textMuted,
+              color: layoutControls.leftCollapsed ? 'var(--nx-text)' : theme.textMuted,
               fontSize: 13, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
@@ -970,7 +970,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             style={{
               width: 28, height: 28, padding: 0, borderRadius: 4, border: 'none',
               background: layoutControls.rightCollapsed ? theme.accent : theme.cardBg,
-              color: layoutControls.rightCollapsed ? '#fff' : theme.textMuted,
+              color: layoutControls.rightCollapsed ? 'var(--nx-text)' : theme.textMuted,
               fontSize: 13, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
@@ -982,7 +982,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             style={{
               width: 28, height: 28, padding: 0, borderRadius: 4, border: 'none',
               background: layoutControls.swapSides ? theme.accent : theme.cardBg,
-              color: layoutControls.swapSides ? '#fff' : theme.textMuted,
+              color: layoutControls.swapSides ? 'var(--nx-text)' : theme.textMuted,
               fontSize: 13, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
@@ -994,7 +994,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             style={{
               height: 28, padding: '0 8px', borderRadius: 4, border: 'none',
               background: layoutControls.overlayPref !== 'auto' ? theme.accent : theme.cardBg,
-              color: layoutControls.overlayPref !== 'auto' ? '#fff' : theme.textMuted,
+              color: layoutControls.overlayPref !== 'auto' ? 'var(--nx-text)' : theme.textMuted,
               fontSize: 10, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, whiteSpace: 'nowrap',
@@ -1004,22 +1004,22 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       )}
 
       {/* ── Fullscreen toggle ── */}
-      <div style={{ width: 1, height: 20, background: '#30363d', flexShrink: 0 }} />
+      <div style={{ width: 1, height: 20, background: 'var(--nx-border)', flexShrink: 0 }} />
       <button
         onClick={onToggleFullscreen}
         title={isFullscreen ? tt.exitFullscreen : tt.fullscreen}
         style={{
-          width: 30, height: 28, padding: 0, borderRadius: 6, border: `1px solid ${isFullscreen ? '#388bfd' : '#30363d'}`,
-          background: isFullscreen ? 'rgba(56,139,253,0.15)' : 'transparent',
-          color: isFullscreen ? '#58a6ff' : '#8b949e',
+          width: 30, height: 28, padding: 0, borderRadius: 6, border: `1px solid ${isFullscreen ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+          background: isFullscreen ? 'var(--nx-accent-soft)' : 'transparent',
+          color: isFullscreen ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
           fontSize: 11, fontWeight: 700, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'all 0.15s', flexShrink: 0,
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#58a6ff'; }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; }}
         onMouseLeave={e => {
-          e.currentTarget.style.color = isFullscreen ? '#58a6ff' : '#8b949e';
-          e.currentTarget.style.borderColor = isFullscreen ? '#388bfd' : '#30363d';
+          e.currentTarget.style.color = isFullscreen ? 'var(--nx-accent-2)' : 'var(--nx-text-2)';
+          e.currentTarget.style.borderColor = isFullscreen ? 'var(--nx-accent)' : 'var(--nx-border)';
         }}
       >
         {isFullscreen ? (

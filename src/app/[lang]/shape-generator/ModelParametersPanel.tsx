@@ -145,10 +145,10 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
       left: 260,
       zIndex: 510,
       width: 260,
-      backgroundColor: '#161b22',
-      border: '1px solid #30363d',
+      backgroundColor: 'var(--nx-panel)',
+      border: '1px solid var(--nx-border)',
       borderRadius: 12,
-      color: '#e6edf3',
+      color: 'var(--nx-text)',
       fontFamily: 'sans-serif',
       fontSize: 12,
       boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
@@ -158,7 +158,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', borderBottom: '1px solid #30363d',
+        padding: '10px 14px', borderBottom: '1px solid var(--nx-border)',
         fontWeight: 700, fontSize: 13,
       }}>
         <span>⚙️ {t.title}</span>
@@ -166,7 +166,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
           onClick={addVar}
           style={{
             padding: '3px 10px', borderRadius: 5, border: 'none',
-            background: '#1f6feb', color: '#fff', fontWeight: 700,
+            background: 'var(--nx-accent)', color: 'var(--nx-text)', fontWeight: 700,
             fontSize: 11, cursor: 'pointer',
           }}
         >
@@ -177,7 +177,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
       {/* Variable list */}
       <div style={{ maxHeight: 360, overflowY: 'auto' }}>
         {vars.length === 0 ? (
-          <div style={{ padding: '16px', textAlign: 'center', color: '#6e7681', fontSize: 11 }}>
+          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--nx-text-3)', fontSize: 11 }}>
             {t.empty}
           </div>
         ) : (
@@ -200,7 +200,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
                 alignItems: 'center',
                 gap: 4,
                 padding: '5px 10px',
-                borderBottom: '1px solid #21262d',
+                borderBottom: '1px solid var(--nx-panel-2)',
               }}>
                 {/* Name */}
                 {editingId === v.id ? (
@@ -212,8 +212,8 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
                     onKeyDown={e => { if (e.key === 'Enter') commitName(v.id); if (e.key === 'Escape') setEditingId(null); }}
                     style={{
                       width: '100%', padding: '2px 5px', borderRadius: 4,
-                      border: '1px solid #388bfd', background: '#0d1117',
-                      color: '#e6edf3', fontSize: 11, fontFamily: 'monospace',
+                      border: '1px solid var(--nx-accent)', background: 'var(--nx-bg)',
+                      color: 'var(--nx-text)', fontSize: 11, fontFamily: 'monospace',
                     }}
                   />
                 ) : (
@@ -221,7 +221,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
                     onClick={() => { setEditingId(v.id); setEditName(v.name); }}
                     title={t.rename}
                     style={{
-                      color: '#79c0ff', fontWeight: 700, fontSize: 11,
+                      color: 'var(--nx-accent-2)', fontWeight: 700, fontSize: 11,
                       fontFamily: 'monospace', cursor: 'pointer',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
@@ -238,8 +238,8 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
                   placeholder="0"
                   style={{
                     width: '100%', padding: '2px 6px', borderRadius: 4,
-                    border: `1px solid ${exprError ? '#f85149' : '#30363d'}`,
-                    background: '#0d1117', color: '#e6edf3', fontSize: 11,
+                    border: `1px solid ${exprError ? 'var(--nx-error)' : 'var(--nx-border)'}`,
+                    background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11,
                     fontFamily: 'monospace',
                   }}
                 />
@@ -247,7 +247,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
                 {/* Resolved value */}
                 <span style={{
                   textAlign: 'right', fontSize: 10, fontFamily: 'monospace',
-                  color: exprError ? '#f85149' : '#3fb950',
+                  color: exprError ? 'var(--nx-error)' : 'var(--nx-ok)',
                   fontWeight: 700,
                 }}>
                   {exprError ? 'err' : (Number.isInteger(v.value) ? v.value : v.value.toFixed(3))}
@@ -259,7 +259,7 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
                   style={{
                     padding: 0, width: 20, height: 20,
                     borderRadius: 4, border: 'none', background: 'none',
-                    color: '#6e7681', cursor: 'pointer', fontSize: 13, lineHeight: 1,
+                    color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 13, lineHeight: 1,
                   }}
                   title={t.remove}
                 >
@@ -273,8 +273,8 @@ export default function ModelParametersPanel({ vars, onChange, lang }: ModelPara
 
       {/* Footer hint */}
       <div style={{
-        padding: '6px 12px', borderTop: '1px solid #30363d',
-        fontSize: 10, color: '#6e7681', lineHeight: 1.5,
+        padding: '6px 12px', borderTop: '1px solid var(--nx-border)',
+        fontSize: 10, color: 'var(--nx-text-3)', lineHeight: 1.5,
       }}>
         {t.hint}
       </div>

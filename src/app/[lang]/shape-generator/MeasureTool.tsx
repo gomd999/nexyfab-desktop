@@ -291,13 +291,109 @@ export default function MeasureTool({
       const x = ((ne.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((ne.clientY - rect.top) / rect.height) * 2 + 1;
 
-      raycasterRef.current.setFromCamera(new THREE.Vector2(x, y), camera);
-      const meshes: THREE.Object3D[] = [];
-      scene.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o); });
-      const hits = raycasterRef.current.intersectObjects(meshes, false);
+      const raycaster = raycasterRef.current;
+      raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+      // Widen Line/Points hit thresholds so edges and vertices are easy
+      // to pick at typical model scale. Mesh face hits keep their exact
+      // intersection point; line hits snap to the nearest endpoint when
+      // close enough (so "click the edge near corner" lands on the corner).
+      raycaster.params.Line = { threshold: 2 };
+      raycaster.params.Points = { threshold: 1.5 };
+
+      const pickables: THREE.Object3D[] = [];
+      scene.traverse((o) => {
+        // Skip MeasureTool's own helper geometry (giant interceptor sphere,
+        // dimension lines, WIP markers).
+        const isMeasureChild = !!(o.parent && o.parent.type === 'Group' && o.parent.userData?.__measure);
+        if (isMeasureChild || !o.visible) return;
+        // Each three.js leaf class sets a boolean flag (`isMesh` /
+        // `isLine` / `isLineSegments` / `isPoints`). We just look for any
+        // of them; the strict union of all those classes confuses TS, so
+        // narrow via `unknown` to a flag-only shape.
+        const flags = o as unknown as {
+          isMesh?: boolean; isLine?: boolean; isLineSegments?: boolean; isPoints?: boolean;
+        };
+        if (flags.isMesh || flags.isLineSegments || flags.isLine || flags.isPoints) {
+          pickables.push(o);
+        }
+      });
+      const hits = raycaster.intersectObjects(pickables, false);
       if (!hits.length) return;
 
-      const pt = hits[0].point.clone();
+      // Resolve the click to a precise point with type-aware logic.
+      //
+      // Models in this app are almost always mesh-only — edges and
+      // vertices don't have their own raycast-able objects — so a click
+      // "on an edge" actually lands on the mesh face. To make
+      // line/vertex/face all feel pickable, we look at the triangle that
+      // was hit and snap to:
+      //   1. the nearest vertex of the triangle if it's within VERTEX_SNAP
+      //   2. else the nearest edge of the triangle if within EDGE_SNAP
+      //      (point-on-segment projection)
+      //   3. else the raw hit point on the face
+      const hit = hits[0];
+      let pt: THREE.Vector3 = hit.point.clone();
+      const hitFlags = hit.object as unknown as {
+        isMesh?: boolean; isPoints?: boolean; isLine?: boolean; isLineSegments?: boolean;
+        geometry?: THREE.BufferGeometry; matrixWorld: THREE.Matrix4;
+      };
+
+      // Distance thresholds scale with viewport size so the snap radius
+      // is roughly constant in screen pixels regardless of zoom level.
+      const camDist = camera.position.distanceTo(pt);
+      const VERTEX_SNAP = Math.max(0.4, camDist * 0.012);
+      const EDGE_SNAP   = Math.max(0.6, camDist * 0.018);
+
+      if (hitFlags.isLineSegments || hitFlags.isLine) {
+        // LineSegments path — endpoint snap as before.
+        const pos = hitFlags.geometry?.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (pos && hit.index !== undefined) {
+          const segStart = hit.index;
+          const endpoints = [segStart, segStart + 1].map(i => {
+            const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+            return v.applyMatrix4(hitFlags.matrixWorld);
+          });
+          for (const ep of endpoints) {
+            if (ep.distanceTo(pt) <= VERTEX_SNAP) { pt = ep; break; }
+          }
+        }
+      } else if (hitFlags.isMesh && hit.face) {
+        // Mesh face hit — derive the 3 triangle vertices in world space.
+        const pos = hitFlags.geometry?.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (pos) {
+          const ia = hit.face.a, ib = hit.face.b, ic = hit.face.c;
+          const va = new THREE.Vector3(pos.getX(ia), pos.getY(ia), pos.getZ(ia)).applyMatrix4(hitFlags.matrixWorld);
+          const vb = new THREE.Vector3(pos.getX(ib), pos.getY(ib), pos.getZ(ib)).applyMatrix4(hitFlags.matrixWorld);
+          const vc = new THREE.Vector3(pos.getX(ic), pos.getY(ic), pos.getZ(ic)).applyMatrix4(hitFlags.matrixWorld);
+
+          // Vertex snap — closest of the 3 corners.
+          const vDistA = va.distanceTo(pt);
+          const vDistB = vb.distanceTo(pt);
+          const vDistC = vc.distanceTo(pt);
+          const vMin = Math.min(vDistA, vDistB, vDistC);
+          if (vMin <= VERTEX_SNAP) {
+            pt = vMin === vDistA ? va : vMin === vDistB ? vb : vc;
+          } else {
+            // Edge snap — closest of the 3 edges (point-segment projection).
+            const closestOnSeg = (p: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3) => {
+              const ab = new THREE.Vector3().subVectors(b, a);
+              const t = Math.max(0, Math.min(1, new THREE.Vector3().subVectors(p, a).dot(ab) / ab.dot(ab)));
+              return new THREE.Vector3().copy(a).addScaledVector(ab, t);
+            };
+            const cAB = closestOnSeg(pt, va, vb);
+            const cBC = closestOnSeg(pt, vb, vc);
+            const cCA = closestOnSeg(pt, vc, va);
+            const eDistAB = cAB.distanceTo(pt);
+            const eDistBC = cBC.distanceTo(pt);
+            const eDistCA = cCA.distanceTo(pt);
+            const eMin = Math.min(eDistAB, eDistBC, eDistCA);
+            if (eMin <= EDGE_SNAP) {
+              pt = eMin === eDistAB ? cAB : eMin === eDistBC ? cBC : cCA;
+            }
+          }
+        }
+      }
+
       const next = [...wip, pt];
 
       if (next.length < requiredClicks) {
@@ -344,6 +440,14 @@ export default function MeasureTool({
     return new THREE.BufferGeometry().setFromPoints(pts);
   }, [wip]);
 
+  // Dispose previous WIP geometry whenever it changes — useMemo recreates
+  // it on every click during measurement but doesn't free the prior one.
+  // Without this, in-progress measurement clicks leak a BufferGeometry
+  // worth of GPU vertex buffer per click.
+  useEffect(() => {
+    return () => { wipLineGeo?.dispose(); };
+  }, [wipLineGeo]);
+
   const wipLabelPos = useMemo(() => {
     if (wip.length < 2) return null;
     if (mode === 'angle' && wip.length === 3) return wip[1].clone();
@@ -380,7 +484,7 @@ export default function MeasureTool({
     return msgs[wip.length] ?? '';
   }, [active, mode, wip, t]);
 
-  const POINT_COLORS = ['#ef4444', '#3b82f6', '#22c55e'];
+  const POINT_COLORS = ['var(--nx-error)', 'var(--nx-accent)', 'var(--nx-ok)'];
 
   if (!active && entries.length === 0) return null;
 
@@ -442,8 +546,8 @@ export default function MeasureTool({
         if (entry.mode === 'angle' && pts.length === 3) {
           return (
             <group key={entry.id}>
-              <DimensionLine p1={pts[0]} p2={pts[1]} label="" color="#a78bfa" />
-              <DimensionLine p1={pts[1]} p2={pts[2]} label={entry.label} color="#a78bfa" />
+              <DimensionLine p1={pts[0]} p2={pts[1]} label="" color="var(--nx-accent-2)" />
+              <DimensionLine p1={pts[1]} p2={pts[2]} label={entry.label} color="var(--nx-accent-2)" />
             </group>
           );
         }
@@ -495,12 +599,12 @@ export default function MeasureTool({
           }}>
             <div style={{
               background: 'rgba(0,0,0,0.8)',
-              color: '#e6edf3',
+              color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 600,
               padding: '5px 14px',
               borderRadius: 6,
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
               whiteSpace: 'nowrap',
               display: 'flex',
               alignItems: 'center',
@@ -509,7 +613,7 @@ export default function MeasureTool({
               <span style={{ opacity: 0.6 }}>📐</span>
               {promptText}
               {wip.length > 0 && (
-                <span style={{ color: '#8b949e', fontSize: 10 }}>
+                <span style={{ color: 'var(--nx-text-2)', fontSize: 10 }}>
                   {t.escCancel}
                 </span>
               )}
@@ -526,7 +630,7 @@ export default function MeasureTool({
               right: 12,
               width: 200,
               background: 'rgba(13,17,23,0.93)',
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
               borderRadius: 10,
               padding: '8px 0',
               pointerEvents: 'auto',
@@ -537,10 +641,10 @@ export default function MeasureTool({
               padding: '0 10px 5px',
               fontSize: 10,
               fontWeight: 800,
-              color: '#8b949e',
+              color: 'var(--nx-text-2)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              borderBottom: '1px solid #30363d',
+              borderBottom: '1px solid var(--nx-border)',
               marginBottom: 2,
               display: 'flex',
               justifyContent: 'space-between',
@@ -549,7 +653,7 @@ export default function MeasureTool({
               <span>{t.measurements}</span>
               <button
                 onClick={clearAll}
-                style={{ fontSize: 10, color: '#8b949e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                style={{ fontSize: 10, color: 'var(--nx-text-2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
                 {t.clearAll}
               </button>
@@ -589,7 +693,7 @@ function MeasureEntryRow({
   const [copied, setCopied] = useState(false);
 
   const modeIcon = entry.mode === 'distance' ? '↔' : entry.mode === 'angle' ? '∠' : 'R';
-  const modeColor = entry.mode === 'distance' ? '#fbbf24' : entry.mode === 'angle' ? '#a78bfa' : '#34d399';
+  const modeColor = entry.mode === 'distance' ? '#fbbf24' : entry.mode === 'angle' ? 'var(--nx-accent-2)' : '#34d399';
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(entry.label).then(() => {
@@ -605,7 +709,7 @@ function MeasureEntryRow({
       padding: '4px 10px',
       gap: 6,
       fontSize: 11,
-      borderBottom: '1px solid #21262d',
+      borderBottom: '1px solid var(--nx-panel-2)',
     }}>
       <span style={{ color: modeColor, fontWeight: 700, minWidth: 14, textAlign: 'center' }}>
         {modeIcon}
@@ -618,7 +722,7 @@ function MeasureEntryRow({
         title={copyLabel}
         style={{
           fontSize: 10,
-          color: copied ? '#22d3ee' : '#8b949e',
+          color: copied ? '#22d3ee' : 'var(--nx-text-2)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -632,7 +736,7 @@ function MeasureEntryRow({
         title={deleteLabel}
         style={{
           fontSize: 10,
-          color: '#8b949e',
+          color: 'var(--nx-text-2)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
 import { getPlanLimits, mergePlanLimitsWithBmStage, type PlanLimits } from '../freemium/planLimits';
 import { dfmAnalysisAllowed } from '../freemium/freeDfmAllowance';
@@ -13,6 +13,13 @@ export function useFreemiumGate() {
   );
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('');
+
+  /** Open the upgrade prompt for a named feature. Stable identity (setters from
+   *  useState are stable) so it's safe in callback dependency arrays. */
+  const promptUpgrade = useCallback((feature: string) => {
+    setUpgradeFeature(feature);
+    setShowUpgradePrompt(true);
+  }, []);
 
   // Round 32: when a Pro gate fires, also stash a PendingIntent so the user
   // can resume the action after upgrading or signing up. The intent kind is
@@ -112,6 +119,25 @@ export function useFreemiumGate() {
     fn();
   };
 
+  /**
+   * Guest-mode gate. Calls `fn` if the user is signed in; otherwise emits
+   * a `nexyfab:require-signup` event so the host page can pop the AuthModal
+   * with the originating action carried in `detail.feature`. Used by the
+   * STEP/PDF export, share link, marketplace publish, and AI quota gates.
+   *
+   * Returns true if the action proceeded (logged-in path), false if the
+   * signup gate fired.
+   */
+  const requireSignup = (feature: string, fn: () => void): boolean => {
+    if (authUser) { fn(); return true; }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:require-signup', { detail: { feature } }));
+      // Stash so post-signup we can resume the intent.
+      stashPaywallIntent(feature);
+    }
+    return false;
+  };
+
   return {
     authUser,
     planLimits,
@@ -119,8 +145,10 @@ export function useFreemiumGate() {
     setShowUpgradePrompt,
     upgradeFeature,
     setUpgradeFeature,
+    promptUpgrade,
     requirePro,
     requirePhotoReal,
+    requireSignup,
     checkCartLimit,
     triggerProjectLimitPrompt,
   };

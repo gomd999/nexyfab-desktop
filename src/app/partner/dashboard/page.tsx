@@ -4,18 +4,36 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import PartnerNotificationBell from '@/app/components/PartnerNotificationBell';
 import { formatDate } from '@/lib/formatDate';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { dashboardDict, type DashboardDict } from '../_lib/dicts/dashboard';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function won(n: number | null | undefined) {
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+
+function fmtMoney(n: number | null | undefined, lang: string) {
   if (n == null) return '-';
-  return n.toLocaleString('ko-KR') + '원';
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', {
+      style: 'currency', currency: 'KRW', maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return `₩${n.toLocaleString()}`;
+  }
 }
 
 function getDaysLeft(deadline: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(deadline); due.setHours(0, 0, 0, 0);
   return Math.round((due.getTime() - today.getTime()) / 86_400_000);
+}
+
+function statusText(s: string, t: DashboardDict): string {
+  const key = `status_${s}` as keyof DashboardDict;
+  const v = t[key];
+  return typeof v === 'string' ? v : s;
 }
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -42,18 +60,15 @@ interface DashboardData {
   }[];
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  contracted: '계약 완료', in_progress: '진행 중', quality_check: '품질 검수',
-  delivered: '납품 완료', completed: '완료', cancelled: '취소됨',
-};
 const STATUS_COLORS: Record<string, string> = {
   contracted: 'bg-blue-100 text-blue-700', in_progress: 'bg-yellow-100 text-yellow-700',
   quality_check: 'bg-orange-100 text-orange-700', delivered: 'bg-purple-100 text-purple-700',
   completed: 'bg-green-100 text-green-700', cancelled: 'bg-red-100 text-red-600',
 };
+
 const MATERIAL_LABELS: Record<string, string> = {
   pla: 'PLA', abs: 'ABS', petg: 'PETG', nylon: 'Nylon',
-  aluminum: '알루미늄', steel: '스틸', titanium: '티타늄',
+  aluminum: 'Aluminum', steel: 'Steel', titanium: 'Titanium',
 };
 
 // ─── QuoteModal ───────────────────────────────────────────────────────────────
@@ -63,8 +78,9 @@ interface QuoteModalProps {
   session: string;
   onClose: () => void;
   onSubmitted: () => void;
+  t: DashboardDict;
 }
-function QuoteModal({ rfq, session, onClose, onSubmitted }: QuoteModalProps) {
+function QuoteModal({ rfq, session, onClose, onSubmitted, t }: QuoteModalProps) {
   const [amount, setAmount] = useState('');
   const [days, setDays] = useState('');
   const [note, setNote] = useState('');
@@ -73,7 +89,7 @@ function QuoteModal({ rfq, session, onClose, onSubmitted }: QuoteModalProps) {
   const [error, setError] = useState('');
 
   async function submit() {
-    if (!amount) { setError('견적 금액을 입력하세요.'); return; }
+    if (!amount) { setError(t.qmErrAmount); return; }
     setLoading(true); setError('');
     try {
       const validUntil = new Date(Date.now() + Number(validDays) * 86_400_000).toISOString();
@@ -85,47 +101,47 @@ function QuoteModal({ rfq, session, onClose, onSubmitted }: QuoteModalProps) {
           estimatedDays: days ? Number(days) : null, note, validUntil,
         }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error || '제출 실패'); return; }
+      if (!res.ok) { const d = await res.json(); setError(d.error || t.qmErrSubmit); return; }
       onSubmitted();
     } catch {
-      setError('네트워크 오류가 발생했습니다.');
+      setError(t.qmErrNetwork);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
         <div className="px-6 py-5 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">견적 제출</h3>
-          <p className="text-xs text-gray-400 mt-1 truncate">{rfq.shapeName} · {MATERIAL_LABELS[rfq.materialId] ?? rfq.materialId} · {rfq.quantity}개</p>
+          <h3 className="text-base font-bold text-gray-900">{t.qmTitle}</h3>
+          <p className="text-xs text-gray-400 mt-1 truncate">{rfq.shapeName} · {MATERIAL_LABELS[rfq.materialId] ?? rfq.materialId} · {rfq.quantity}{t.qtyUnit}</p>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">견적 금액 (원) *</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{t.qmAmountLabel}</label>
             <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-              placeholder="예: 250000" min="0"
+              placeholder={t.qmAmountPlaceholder} min="0"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">납기 (일)</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.qmDaysLabel}</label>
               <input type="number" value={days} onChange={e => setDays(e.target.value)}
-                placeholder="예: 7" min="1"
+                placeholder={t.qmDaysPlaceholder} min="1"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">견적 유효기간 (일)</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.qmValidLabel}</label>
               <input type="number" value={validDays} onChange={e => setValidDays(e.target.value)}
                 min="1" max="90"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">메모</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{t.qmNoteLabel}</label>
             <textarea value={note} onChange={e => setNote(e.target.value)}
-              rows={3} placeholder="추가 사항 (선택)"
+              rows={3} placeholder={t.qmNotePlaceholder}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
@@ -133,11 +149,11 @@ function QuoteModal({ rfq, session, onClose, onSubmitted }: QuoteModalProps) {
         <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
           <button onClick={onClose} disabled={loading}
             className="flex-1 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50">
-            취소
+            {t.qmBtnCancel}
           </button>
           <button onClick={submit} disabled={loading}
             className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold text-white transition disabled:opacity-50">
-            {loading ? '제출 중...' : '견적 제출'}
+            {loading ? t.qmBtnSubmitting : t.qmBtnSubmit}
           </button>
         </div>
       </div>
@@ -153,11 +169,12 @@ interface Milestone {
 }
 
 function MilestoneModal({
-  contract, session, onClose,
+  contract, session, onClose, t,
 }: {
   contract: DashboardData['activeContracts'][0];
   session: string;
   onClose: () => void;
+  t: DashboardDict;
 }) {
   const [items, setItems] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,26 +224,27 @@ function MilestoneModal({
   const doneCount = items.filter(m => m.status === 'completed').length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col">
         <div className="px-6 py-5 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">마일스톤 관리</h3>
+          <h3 className="text-base font-bold text-gray-900">{t.msTitle}</h3>
           <p className="text-xs text-gray-400 mt-1 truncate">{contract.project_name}</p>
           {!loading && (
-            <p className="text-xs text-blue-600 mt-1 font-semibold">{doneCount} / {items.length} 완료</p>
+            <p className="text-xs text-blue-600 mt-1 font-semibold">{t.msDoneOfTotal(doneCount, items.length)}</p>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loading ? (
-            <p className="text-center text-gray-400 text-sm py-8">불러오는 중...</p>
+            <p className="text-center text-gray-400 text-sm py-8">{t.msLoading}</p>
           ) : items.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-8">마일스톤이 없습니다.</p>
+            <p className="text-center text-gray-400 text-sm py-8">{t.msEmpty}</p>
           ) : (
             <div className="space-y-2">
               {items.map(ms => (
                 <div key={ms.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors">
                   <button onClick={() => toggle(ms)}
+                    aria-label={ms.status === 'completed' ? 'uncheck' : 'check'}
                     className={`w-5 h-5 rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                       ms.status === 'completed'
                         ? 'bg-green-500 border-green-500 text-white'
@@ -239,10 +257,10 @@ function MilestoneModal({
                       {ms.title}
                     </p>
                     {ms.dueDate && (
-                      <p className="text-[10px] text-gray-400 mt-0.5">기한: {ms.dueDate}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{t.msDueLabel} {ms.dueDate}</p>
                     )}
                     {ms.completedAt && (
-                      <p className="text-[10px] text-green-500 mt-0.5">완료: {formatDate(ms.completedAt)}</p>
+                      <p className="text-[10px] text-green-500 mt-0.5">{t.msCompletedLabel} {formatDate(ms.completedAt)}</p>
                     )}
                   </div>
                 </div>
@@ -251,10 +269,9 @@ function MilestoneModal({
           )}
         </div>
 
-        {/* Add form */}
         <div className="px-6 py-4 border-t border-gray-100 space-y-2">
           <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
-            placeholder="새 마일스톤 제목..."
+            placeholder={t.msNewPlaceholder}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 transition"
             onKeyDown={e => e.key === 'Enter' && addMilestone()} />
           <div className="flex gap-2">
@@ -262,7 +279,7 @@ function MilestoneModal({
               className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 transition" />
             <button onClick={addMilestone} disabled={adding || !newTitle.trim()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50">
-              {adding ? '...' : '추가'}
+              {adding ? t.msBtnAdding : t.msBtnAdd}
             </button>
           </div>
         </div>
@@ -270,7 +287,7 @@ function MilestoneModal({
         <div className="px-6 py-3 border-t border-gray-50">
           <button onClick={onClose}
             className="w-full py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
-            닫기
+            {t.msBtnClose}
           </button>
         </div>
       </div>
@@ -285,8 +302,9 @@ interface ProgressModalProps {
   session: string;
   onClose: () => void;
   onUpdated: () => void;
+  t: DashboardDict;
 }
-function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalProps) {
+function ProgressModal({ contract, session, onClose, onUpdated, t }: ProgressModalProps) {
   const [progress, setProgress] = useState(contract.progress_percent);
   const [status, setStatus] = useState(contract.status);
   const [note, setNote] = useState('');
@@ -301,10 +319,10 @@ function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalP
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
         body: JSON.stringify({ progressPercent: progress, status, note }),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error || '업데이트 실패'); return; }
+      if (!res.ok) { const d = await res.json(); setError(d.error || t.pmErrUpdate); return; }
       onUpdated();
     } catch {
-      setError('네트워크 오류가 발생했습니다.');
+      setError(t.pmErrNetwork);
     } finally {
       setLoading(false);
     }
@@ -313,15 +331,15 @@ function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalP
   const NEXT_STATUSES = ['in_progress', 'quality_check', 'delivered', 'completed'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
         <div className="px-6 py-5 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">진행 상태 업데이트</h3>
+          <h3 className="text-base font-bold text-gray-900">{t.pmTitle}</h3>
           <p className="text-xs text-gray-400 mt-1 truncate">{contract.project_name}</p>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-2">진행률: {progress}%</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">{t.pmProgressLabel(progress)}</label>
             <input type="range" min="0" max="100" step="5"
               value={progress} onChange={e => setProgress(Number(e.target.value))}
               className="w-full accent-blue-600" />
@@ -330,7 +348,7 @@ function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalP
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">상태</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{t.pmStatusLabel}</label>
             <div className="grid grid-cols-2 gap-2">
               {NEXT_STATUSES.map(s => (
                 <button key={s} onClick={() => setStatus(s)}
@@ -339,15 +357,15 @@ function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalP
                       ? 'bg-blue-600 border-blue-600 text-white'
                       : 'border-gray-200 text-gray-600 hover:border-blue-300'
                   }`}>
-                  {STATUS_LABELS[s]}
+                  {statusText(s, t)}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">업데이트 메모</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{t.pmNoteLabel}</label>
             <textarea value={note} onChange={e => setNote(e.target.value)}
-              rows={3} placeholder="진행 상황 메모 (선택)"
+              rows={3} placeholder={t.pmNotePlaceholder}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" />
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
@@ -355,11 +373,11 @@ function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalP
         <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
           <button onClick={onClose} disabled={loading}
             className="flex-1 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50">
-            취소
+            {t.pmBtnCancel}
           </button>
           <button onClick={submit} disabled={loading}
             className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold text-white transition disabled:opacity-50">
-            {loading ? '저장 중...' : '저장'}
+            {loading ? t.pmBtnSaving : t.pmBtnSave}
           </button>
         </div>
       </div>
@@ -367,7 +385,7 @@ function ProgressModal({ contract, session, onClose, onUpdated }: ProgressModalP
   );
 }
 
-// ─── Demo data (module-level — stable reference, no stale closure) ─────────────
+// ─── Demo data ───────────────────────────────────────────────────────────────
 
 const DEMO_DATA: DashboardData = {
   partner: { email: 'demo-partner@nexyfab.com', company: 'Demo 제조사', factoryId: 'demo-factory-001', factoryName: 'Demo 제조사' },
@@ -391,6 +409,8 @@ const DEMO_DATA: DashboardData = {
 
 export default function PartnerDashboardPage() {
   const router = useRouter();
+  const lang = usePartnerLang();
+  const t = dashboardDict(lang);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState('');
@@ -414,28 +434,25 @@ export default function PartnerDashboardPage() {
       const res = await fetch('/api/partner/dashboard', {
         headers: { Authorization: `Bearer ${sess}` },
       });
-      if (res.status === 401) { router.replace('/partner/login'); return; }
+      if (res.status === 401) { router.replace(`/partner/login?lang=${lang}`); return; }
       const d: DashboardData = await res.json();
       setData(d);
-      // Persist for PartnerNav (layout level)
       localStorage.setItem('partnerInfo', JSON.stringify({ email: d.partner.email, company: d.partner.company }));
     } catch {
-      // keep existing data
+      /* keep existing */
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, lang]);
 
   useEffect(() => {
     const sess = localStorage.getItem('partnerSession');
-    if (!sess) { router.replace('/partner/login'); return; }
+    if (!sess) { router.replace(`/partner/login?lang=${lang}`); return; }
     setSession(sess);
-    // Demo bypass — skip API entirely
     if (sess === 'demo') { setData(DEMO_DATA); setLoading(false); return; }
     loadDashboard(sess);
-  }, [loadDashboard, router]);
+  }, [loadDashboard, router, lang]);
 
-  // ── Settlement hook — MUST be before any early return ────────────────────────
   const loadSettlements = useCallback(async (month = '') => {
     setSettlementsLoading(true);
     try {
@@ -464,19 +481,17 @@ export default function PartnerDashboardPage() {
     })();
     return () => { cancelled = true; };
   }, [data?.partner.email]);
-  // ─────────────────────────────────────────────────────────────────────────────
 
   if (loading || !data) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">불러오는 중...</p>
+        <p className="text-gray-400 text-sm">{t.loading}</p>
       </div>
     );
   }
 
   const { partner, stats, pendingRfqs, activeContracts, recentQuotes } = data;
 
-  // Deadline alerts
   const urgentContracts = activeContracts
     .filter(c => c.deadline && getDaysLeft(c.deadline) <= 7)
     .sort((a, b) => getDaysLeft(a.deadline!) - getDaysLeft(b.deadline!));
@@ -485,11 +500,10 @@ export default function PartnerDashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <main className="p-6 overflow-auto pb-24 md:pb-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="mb-6 flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black text-gray-900">대시보드</h1>
-              <p className="text-sm text-gray-500 mt-1">{partner.factoryName} 파트너 현황</p>
+              <h1 className="text-2xl font-black text-gray-900">{t.pageTitle}</h1>
+              <p className="text-sm text-gray-500 mt-1">{partner.factoryName} {t.pageSubtitleSuffix}</p>
             </div>
             <PartnerNotificationBell session={session} />
           </div>
@@ -497,17 +511,17 @@ export default function PartnerDashboardPage() {
           {/* Stats cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {[
-              { label: '배정 RFQ', value: stats.totalAssigned + '건', color: 'text-gray-900' },
-              { label: '견적 대기', value: stats.pendingQuotes + '건', color: 'text-blue-700' },
-              { label: '진행 계약', value: stats.activeContracts + '건', color: 'text-yellow-600' },
-              { label: '완료 계약', value: stats.completedContracts + '건', color: 'text-green-600' },
+              { label: t.statTotalAssigned, value: stats.totalAssigned + t.statUnit, color: 'text-gray-900' },
+              { label: t.statPendingQuotes, value: stats.pendingQuotes + t.statUnit, color: 'text-blue-700' },
+              { label: t.statActiveContracts, value: stats.activeContracts + t.statUnit, color: 'text-yellow-600' },
+              { label: t.statCompletedContracts, value: stats.completedContracts + t.statUnit, color: 'text-green-600' },
               {
-                label: '평균 응답',
+                label: t.statAvgResponse,
                 value: stats.avgResponseHours != null ? stats.avgResponseHours + 'h' : '-',
                 color: 'text-gray-900',
               },
               {
-                label: '수주율',
+                label: t.statWinRate,
                 value: stats.winRate != null ? stats.winRate + '%' : '-',
                 color: stats.winRate != null && stats.winRate >= 60 ? 'text-green-600' : 'text-gray-700',
               },
@@ -519,11 +533,11 @@ export default function PartnerDashboardPage() {
             ))}
           </div>
 
-          {/* Phase 7-5 — 차원별 신뢰 (no single credit score) */}
+          {/* Multi-dimensional trust */}
           <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
-            <p className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">차원별 신뢰 지표 (Phase 7-5)</p>
+            <p className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">{t.trustTitle}</p>
             {trustDims === null ? (
-              <p className="text-xs text-indigo-700/80">불러오는 중...</p>
+              <p className="text-xs text-indigo-700/80">{t.trustLoading}</p>
             ) : (
               <ul className="space-y-2">
                 {trustDims.map(d => (
@@ -537,15 +551,13 @@ export default function PartnerDashboardPage() {
                 ))}
               </ul>
             )}
-            <p className="text-[10px] text-indigo-800/70 mt-2 leading-relaxed">
-              단일 신용점수로 요약하지 않습니다. 납기·품질·응답·소통·공정 적합도는 각각 독립적으로 개선할 수 있습니다.
-            </p>
+            <p className="text-[10px] text-indigo-800/70 mt-2 leading-relaxed">{t.trustFooter}</p>
           </div>
 
           {/* Urgent deadline alerts */}
           {urgentContracts.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-2">납기 임박 ({urgentContracts.length}건)</p>
+              <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-2">{t.urgentTitle(urgentContracts.length)}</p>
               <div className="space-y-2">
                 {urgentContracts.map(c => {
                   const d = getDaysLeft(c.deadline!);
@@ -554,10 +566,10 @@ export default function PartnerDashboardPage() {
                       className={`flex items-center justify-between px-4 py-3 rounded-xl border ${d < 0 ? 'bg-red-100 border-red-300' : d <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
                       <div>
                         <p className={`text-sm font-bold ${d < 0 ? 'text-red-800' : 'text-amber-800'}`}>{c.project_name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">납기: {formatDate(c.deadline)}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{t.urgentDeadlineLabel} {formatDate(c.deadline)}</p>
                       </div>
                       <span className={`text-sm font-black ${d < 0 ? 'text-red-700' : d === 0 ? 'text-red-600' : d <= 3 ? 'text-red-500' : 'text-amber-600'}`}>
-                        {d < 0 ? `D+${Math.abs(d)}` : d === 0 ? 'D-Day' : `D-${d}`}
+                        {d < 0 ? t.urgentDplus(Math.abs(d)) : d === 0 ? t.urgentDday : t.urgentDminus(d)}
                       </span>
                     </div>
                   );
@@ -569,19 +581,19 @@ export default function PartnerDashboardPage() {
           {/* Tabs */}
           <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-4 flex-wrap">
             {([
-              { key: 'pending', label: `견적 대기 (${stats.pendingQuotes})` },
-              { key: 'active', label: `진행 계약 (${stats.activeContracts})` },
-              { key: 'quotes', label: `최근 견적 (${recentQuotes.length})` },
-              { key: 'settlements', label: '정산 내역' },
-            ] as const).map(t => (
-              <button key={t.key} onClick={() => {
-                setTab(t.key);
-                if (t.key === 'settlements' && !settlements) loadSettlements(settlementMonth);
+              { key: 'pending', label: t.tabPending(stats.pendingQuotes) },
+              { key: 'active', label: t.tabActive(stats.activeContracts) },
+              { key: 'quotes', label: t.tabQuotes(recentQuotes.length) },
+              { key: 'settlements', label: t.tabSettlements },
+            ] as const).map(tt => (
+              <button key={tt.key} onClick={() => {
+                setTab(tt.key);
+                if (tt.key === 'settlements' && !settlements) loadSettlements(settlementMonth);
               }}
                 className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                  tab === t.key ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  tab === tt.key ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}>
-                {t.label}
+                {tt.label}
               </button>
             ))}
           </div>
@@ -589,10 +601,9 @@ export default function PartnerDashboardPage() {
           {/* Tab content */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
-            {/* ── 견적 대기 탭 ── */}
             {tab === 'pending' && (
               pendingRfqs.length === 0 ? (
-                <div className="py-16 text-center text-gray-400 text-sm">대기 중인 견적 요청이 없습니다.</div>
+                <div className="py-16 text-center text-gray-400 text-sm">{t.emptyPending}</div>
               ) : (
                 <div className="divide-y divide-gray-50">
                   {pendingRfqs.map(rfq => (
@@ -601,19 +612,19 @@ export default function PartnerDashboardPage() {
                         <p className="text-sm font-bold text-gray-900 truncate">{rfq.shapeName}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {MATERIAL_LABELS[rfq.materialId] ?? rfq.materialId}
-                          {' · '}{rfq.quantity}개
+                          {' · '}{rfq.quantity}{t.qtyUnit}
                           {' · '}{rfq.volume_cm3.toFixed(1)} cm³
                           {rfq.dfmScore != null && ` · DFM ${rfq.dfmScore}`}
                         </p>
                         {rfq.note && <p className="text-xs text-gray-400 mt-1 truncate">{rfq.note}</p>}
                         <p className="text-[10px] text-gray-400 mt-1">
-                          배정: {formatDate(rfq.assignedAt ?? rfq.createdAt)}
+                          {t.pendingNoteLabelAssigned} {formatDate(rfq.assignedAt ?? rfq.createdAt)}
                         </p>
                       </div>
                       <button
                         onClick={() => setQuoteTarget(rfq)}
                         className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition">
-                        견적 제출
+                        {t.pendingBtnQuote}
                       </button>
                     </div>
                   ))}
@@ -621,10 +632,9 @@ export default function PartnerDashboardPage() {
               )
             )}
 
-            {/* ── 진행 계약 탭 ── */}
             {tab === 'active' && (
               activeContracts.length === 0 ? (
-                <div className="py-16 text-center text-gray-400 text-sm">진행 중인 계약이 없습니다.</div>
+                <div className="py-16 text-center text-gray-400 text-sm">{t.emptyActive}</div>
               ) : (
                 <div className="divide-y divide-gray-50">
                   {activeContracts.map(c => (
@@ -633,13 +643,13 @@ export default function PartnerDashboardPage() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-gray-900 truncate">{c.project_name}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {won(c.contract_amount)}
-                            {c.deadline && ` · 납기 ${formatDate(c.deadline)}`}
+                            {fmtMoney(c.contract_amount, lang)}
+                            {c.deadline && ` · ${t.contractDeadlinePrefix} ${formatDate(c.deadline)}`}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[c.status] || 'bg-gray-100 text-gray-500'}`}>
-                            {STATUS_LABELS[c.status] || c.status}
+                            {statusText(c.status, t)}
                           </span>
                           <a
                             href={`/api/contracts/${c.id}/pdf`}
@@ -647,21 +657,20 @@ export default function PartnerDashboardPage() {
                             rel="noopener noreferrer"
                             className="px-3 py-1 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:border-gray-400 hover:text-gray-800 transition"
                           >
-                            PDF
+                            {t.contractBtnPdf}
                           </a>
                           <button
                             onClick={() => setMilestoneTarget(c)}
                             className="px-3 py-1 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:border-purple-300 hover:text-purple-600 transition">
-                            마일스톤
+                            {t.contractBtnMilestones}
                           </button>
                           <button
                             onClick={() => setProgressTarget(c)}
                             className="px-3 py-1 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:border-blue-300 hover:text-blue-600 transition">
-                            업데이트
+                            {t.contractBtnUpdate}
                           </button>
                         </div>
                       </div>
-                      {/* Progress bar */}
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
@@ -677,10 +686,9 @@ export default function PartnerDashboardPage() {
               )
             )}
 
-            {/* ── 최근 견적 탭 ── */}
             {tab === 'quotes' && (
               recentQuotes.length === 0 ? (
-                <div className="py-16 text-center text-gray-400 text-sm">제출된 견적이 없습니다.</div>
+                <div className="py-16 text-center text-gray-400 text-sm">{t.emptyQuotes}</div>
               ) : (
                 <div className="divide-y divide-gray-50">
                   {recentQuotes.map(q => (
@@ -688,8 +696,8 @@ export default function PartnerDashboardPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900 truncate">{q.projectName}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {q.estimatedAmount != null ? won(q.estimatedAmount) : '-'}
-                          {q.respondedAt && ` · ${formatDate(q.respondedAt)} 응답`}
+                          {q.estimatedAmount != null ? fmtMoney(q.estimatedAmount, lang) : '-'}
+                          {q.respondedAt && ` · ${formatDate(q.respondedAt)} ${t.quoteRespondedSuffix}`}
                         </p>
                       </div>
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${
@@ -698,43 +706,43 @@ export default function PartnerDashboardPage() {
                         : q.status === 'rejected' ? 'bg-red-100 text-red-600'
                         : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {q.status === 'responded' ? '응답 완료' : q.status === 'accepted' ? '채택됨'
-                          : q.status === 'rejected' ? '미채택' : q.status}
+                        {q.status === 'responded' ? t.quoteStatusResponded
+                          : q.status === 'accepted' ? t.quoteStatusAccepted
+                          : q.status === 'rejected' ? t.quoteStatusRejected
+                          : q.status}
                       </span>
                     </div>
                   ))}
                 </div>
               )
             )}
-            {/* ── 정산 내역 탭 ── */}
+
             {tab === 'settlements' && (
               <div className="px-5 py-4">
-                {/* Month filter */}
                 <div className="flex gap-2 mb-4">
                   <input type="month" value={settlementMonth}
                     onChange={e => { setSettlementMonth(e.target.value); loadSettlements(e.target.value); }}
                     className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-400" />
                   <button onClick={() => { setSettlementMonth(''); loadSettlements(''); }}
                     className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
-                    전체 기간
+                    {t.settlementMonthAll}
                   </button>
                   <a href={`/api/partner/settlement-pdf?partnerEmail=${encodeURIComponent(partner.email)}${settlementMonth ? `&month=${settlementMonth}` : ''}`}
                     target="_blank" rel="noopener noreferrer"
                     className="ml-auto px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400">
-                    PDF 내역서
+                    {t.settlementBtnPdf}
                   </a>
                 </div>
 
                 {settlementsLoading ? (
-                  <p className="text-center text-gray-400 text-sm py-8">불러오는 중...</p>
+                  <p className="text-center text-gray-400 text-sm py-8">{t.loading}</p>
                 ) : settlements ? (
                   <>
-                    {/* Summary */}
                     <div className="grid grid-cols-3 gap-3 mb-4">
                       {[
-                        { label: '총 계약금', value: won(settlements.summary.totalRevenue), color: 'text-gray-900' },
-                        { label: '플랫폼 수수료', value: won(settlements.summary.totalCommission), color: 'text-red-600' },
-                        { label: '순 수입', value: won(settlements.summary.netRevenue), color: 'text-green-700' },
+                        { label: t.settlementSumRevenue, value: fmtMoney(settlements.summary.totalRevenue, lang), color: 'text-gray-900' },
+                        { label: t.settlementSumCommission, value: fmtMoney(settlements.summary.totalCommission, lang), color: 'text-red-600' },
+                        { label: t.settlementSumNet, value: fmtMoney(settlements.summary.netRevenue, lang), color: 'text-green-700' },
                       ].map(c => (
                         <div key={c.label} className="bg-gray-50 rounded-xl p-3 text-center">
                           <p className="text-[10px] text-gray-400 mb-1">{c.label}</p>
@@ -744,7 +752,7 @@ export default function PartnerDashboardPage() {
                     </div>
 
                     {settlements.settlements.length === 0 ? (
-                      <p className="text-center text-gray-400 text-sm py-8">정산 내역이 없습니다.</p>
+                      <p className="text-center text-gray-400 text-sm py-8">{t.emptySettlements}</p>
                     ) : (
                       <div className="divide-y divide-gray-50 -mx-5">
                         {settlements.settlements.map(s => (
@@ -756,8 +764,8 @@ export default function PartnerDashboardPage() {
                               </p>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-sm font-bold text-green-700">{won(s.netAmount)}</p>
-                              <p className="text-[10px] text-gray-400">계약 {won(s.contractAmount)}</p>
+                              <p className="text-sm font-bold text-green-700">{fmtMoney(s.netAmount, lang)}</p>
+                              <p className="text-[10px] text-gray-400">{t.settlementContractPrefix} {fmtMoney(s.contractAmount, lang)}</p>
                             </div>
                           </div>
                         ))}
@@ -765,7 +773,7 @@ export default function PartnerDashboardPage() {
                     )}
                   </>
                 ) : (
-                  <p className="text-center text-gray-400 text-sm py-8">데이터를 불러오지 못했습니다.</p>
+                  <p className="text-center text-gray-400 text-sm py-8">{t.emptyData}</p>
                 )}
               </div>
             )}
@@ -779,6 +787,7 @@ export default function PartnerDashboardPage() {
           contract={milestoneTarget}
           session={session}
           onClose={() => setMilestoneTarget(null)}
+          t={t}
         />
       )}
       {quoteTarget && (
@@ -787,6 +796,7 @@ export default function PartnerDashboardPage() {
           session={session}
           onClose={() => setQuoteTarget(null)}
           onSubmitted={() => { setQuoteTarget(null); loadDashboard(session); }}
+          t={t}
         />
       )}
       {progressTarget && (
@@ -795,6 +805,7 @@ export default function PartnerDashboardPage() {
           session={session}
           onClose={() => setProgressTarget(null)}
           onUpdated={() => { setProgressTarget(null); loadDashboard(session); }}
+          t={t}
         />
       )}
     </div>

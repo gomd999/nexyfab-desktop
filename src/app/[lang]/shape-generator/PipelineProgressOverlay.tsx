@@ -19,7 +19,7 @@ export default function PipelineProgressOverlay({
       transform: 'translateX(-50%)',
       background: 'rgba(22, 27, 34, 0.85)',
       backdropFilter: 'blur(10px)',
-      border: '1px solid #30363d',
+      border: '1px solid var(--nx-border)',
       borderRadius: 8,
       padding: '12px 20px',
       display: 'flex',
@@ -32,18 +32,18 @@ export default function PipelineProgressOverlay({
       animation: 'fade-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
           {label || 'Calculating...'}
         </span>
-        <span style={{ fontSize: 11, color: '#388bfd', fontWeight: 700 }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-accent)', fontWeight: 700 }}>
           {progress}%
         </span>
       </div>
-      <div style={{ width: '100%', height: 6, background: '#0d1117', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: 6, background: 'var(--nx-bg)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{
           width: `${progress}%`,
           height: '100%',
-          background: 'linear-gradient(90deg, #388bfd, #58a6ff)',
+          background: 'linear-gradient(90deg, var(--nx-accent), var(--nx-accent-2))',
           transition: 'width 0.1s linear',
         }} />
       </div>

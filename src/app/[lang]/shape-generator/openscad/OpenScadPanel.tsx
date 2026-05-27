@@ -3,6 +3,8 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import { runJscadCode } from './jscadRunner';
+import { useJscadWorker } from '../workers/useJscadWorker';
+import { verifyGeneratedModel, formatVerificationCritique } from '../analysis/verifyGeneratedModel';
 import { loadHistory, saveToHistory, deleteFromHistory, type JscadHistoryItem } from './jscadHistory';
 import { extractParams, updateParam, type JscadParam } from './jscadParams';
 import type { ElementSelectionInfo, FaceSelectionInfo } from '../editing/selectionInfo';
@@ -854,6 +856,9 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [saveErr, setSaveErr] = useState('');
   const lastGeoRef = useRef<THREE.BufferGeometry | null>(null);
   const prevGeoRef = useRef<THREE.BufferGeometry | null>(null);
+  // Layer-1 verification critique of the last compiled model (errors/warnings),
+  // fed back to the AI on auto-fix so it can repair geometry flaws.
+  const lastVerifyCritiqueRef = useRef<string>('');
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -870,34 +875,50 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
         sessionStorage.removeItem('nexyfab:pendingJscadSource');
         setTimeout(() => compile(pendingCode, pendingSrc ?? t.ideaSourceShort), 100);
       }
-    } catch {}
+    } catch (err) { console.error('[OpenScadPanel] caught', err); }
     return () => { prevGeoRef.current?.dispose(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const params = useMemo(() => (code ? extractParams(code) : []), [code]);
 
+  // O2 — run JSCAD off the main thread (hard-terminable). Falls back to the
+  // main-thread runner inside `compile` if the worker is unavailable.
+  const { runJscad } = useJscadWorker();
+
   const compile = useCallback((codeStr: string, desc: string) => {
     if (!codeStr.trim()) return;
     setStatus('compiling');
     setErrorMsg('');
     setWarnings([]);
-    setTimeout(() => {
-      try {
-        const result = runJscadCode(codeStr);
-        prevGeoRef.current?.dispose();
-        prevGeoRef.current = result.geometry;
-        lastGeoRef.current = result.geometry;
-        setWarnings(result.warnings);
-        setTriCount(result.triCount);
-        setStatus('done');
-        onGeometryReady(result.geometry, desc);
-      } catch (e: unknown) {
-        setStatus('error');
-        setErrorMsg(errorMessageFromUnknown(e) || t.errCompile);
-      }
-    }, 0);
-  }, [onGeometryReady, t]);
+    const onOk = (result: { geometry: THREE.BufferGeometry; warnings: string[]; triCount: number }) => {
+      prevGeoRef.current?.dispose();
+      prevGeoRef.current = result.geometry;
+      lastGeoRef.current = result.geometry;
+      // Layer-1 verification: the code rendered, but is the geometry sound
+      // (watertight, manifold, sized)? Surface flaws + stash for auto-fix.
+      const critique = formatVerificationCritique(verifyGeneratedModel(result.geometry));
+      lastVerifyCritiqueRef.current = critique;
+      setWarnings(critique ? [...result.warnings, ...critique.split('\n')] : result.warnings);
+      setTriCount(result.triCount);
+      setStatus('done');
+      onGeometryReady(result.geometry, desc);
+    };
+    const onErr = (e: unknown) => {
+      setStatus('error');
+      setErrorMsg(errorMessageFromUnknown(e) || t.errCompile);
+    };
+    // Off-main-thread first (hard-terminable on runaway). If the worker is
+    // unavailable (bundling/init), fall back to the main-thread runner so the
+    // panel still compiles; real timeouts surface instead of re-blocking.
+    runJscad(codeStr).then(onOk).catch((workerErr: unknown) => {
+      const msg = workerErr instanceof Error ? workerErr.message : String(workerErr);
+      if (/timed out|terminated|superseded|cancelled/i.test(msg)) { onErr(workerErr); return; }
+      setTimeout(() => {
+        try { onOk(runJscadCode(codeStr)); } catch (e) { onErr(e); }
+      }, 0);
+    });
+  }, [onGeometryReady, t, runJscad]);
 
   // ── Core API call ──
   const callAI = useCallback(async (body: Record<string, unknown>, workingStatus: GenStatus) => {
@@ -951,9 +972,14 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
 
   // ── Auto-fix compile error ──
   const autoFix = useCallback(async () => {
-    if (!code || !errorMsg) return;
+    // Fixable when there's a compile error OR a Layer-1 geometry critique.
+    const critique = lastVerifyCritiqueRef.current;
+    if (!code || (!errorMsg && !critique)) return;
     try {
-      const data = await callAI({ currentCode: code, errorMsg, mode: 'fix' }, 'fixing');
+      // Combine the compile error (if any) with the geometry verification
+      // critique so the model repairs both syntax and shape soundness.
+      const combinedError = [errorMsg, critique].filter(Boolean).join('\n');
+      const data = await callAI({ currentCode: code, errorMsg: combinedError, mode: 'fix' }, 'fixing');
       setCode(data.code);
       compile(data.code, description);
     } catch (e: unknown) {

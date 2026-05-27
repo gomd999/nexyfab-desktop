@@ -92,7 +92,7 @@ export default function MobileSendToDesktop({ labels }: Props) {
             alt={labels.qrAlt}
             width={200}
             height={200}
-            style={{ borderRadius: 8, background: '#fff', padding: 4 }}
+            style={{ borderRadius: 8, background: 'var(--nx-text)', padding: 4 }}
           />
         </div>
       )}
@@ -103,7 +103,7 @@ export default function MobileSendToDesktop({ labels }: Props) {
           disabled={!pageUrl}
           style={{
             padding: '11px 14px', borderRadius: 8, border: '1px solid #2553a8',
-            background: copied ? '#1d6f47' : '#1c3a78', color: '#e6edf3',
+            background: copied ? '#1d6f47' : '#1c3a78', color: 'var(--nx-text)',
             fontSize: 13, fontWeight: 700, cursor: pageUrl ? 'pointer' : 'not-allowed',
             transition: 'background 0.15s',
           }}
@@ -113,8 +113,8 @@ export default function MobileSendToDesktop({ labels }: Props) {
         <a
           href={mailto}
           style={{
-            padding: '11px 14px', borderRadius: 8, border: '1px solid #30363d',
-            background: 'transparent', color: '#c9d1d9', textDecoration: 'none',
+            padding: '11px 14px', borderRadius: 8, border: '1px solid var(--nx-border)',
+            background: 'transparent', color: 'var(--nx-text)', textDecoration: 'none',
             fontSize: 13, fontWeight: 700, display: 'block',
           }}
         >

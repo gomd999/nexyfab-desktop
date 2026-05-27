@@ -121,8 +121,43 @@ function sampleArcPoints(start: SketchPoint, through: SketchPoint, end: SketchPo
 
 /**
  * Extract all profile points as a flat array, sampling arcs.
+ *
+ * Exported so the B-rep path (occtEngine.occtExtrudeProfile) samples the
+ * profile identically to the mesh path — keeping the replicad solid and the
+ * displayed ExtrudeGeometry mesh in correspondence.
  */
-function profileToPoints(profile: SketchProfile): SketchPoint[] {
+/**
+ * Build a single closed contour's 2D points for the B-rep extruder, covering
+ * the common primitive segment types `profileToPoints` doesn't (rect). Returns
+ * null when the profile can't be a single B-rep contour (a single `circle` —
+ * handled separately by occtExtrudeCircle for an exact cylinder — or a
+ * multi-contour profile with holes, i.e. a `circle`/`rect` mixed among other
+ * segments). Kept separate from `profileToPoints` so the mesh-provenance
+ * sampler (and countContourEdgesPerSegment) stay untouched.
+ */
+export function brepContourPoints(profile: SketchProfile): SketchPoint[] | null {
+  const segs = profile.segments;
+  if (!segs || segs.length === 0) return null;
+  if (segs.length === 1) {
+    const s = segs[0];
+    if (s.type === 'rect') {
+      const a = s.points[0], b = s.points[1];
+      const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+      const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+      if (x1 - x0 < 1e-6 || y1 - y0 < 1e-6) return null;
+      return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    }
+    // single circle → exact-cylinder path (occtExtrudeCircle), not here
+    if (s.type === 'circle') return null;
+  }
+  // Outer + holes (a circle/rect among multiple segments) = multi-contour,
+  // which a single replicad polyline can't represent → skip (no handle).
+  if (segs.some(s => s.type === 'circle' || s.type === 'rect')) return null;
+  const pts = profileToPoints(profile);
+  return pts.length >= 3 ? pts : null;
+}
+
+export function profileToPoints(profile: SketchProfile): SketchPoint[] {
   const points: SketchPoint[] = [];
   for (let i = 0; i < profile.segments.length; i++) {
     const seg = profile.segments[i];
@@ -152,6 +187,25 @@ function profileToPoints(profile: SketchProfile): SketchPoint[] {
 }
 
 /**
+ * How many contour edges each profile segment contributes to the closed
+ * loop fed to ExtrudeGeometry. Lines = 1 edge; arcs sample to 16 points
+ * → 15 edges; nurbs to 32 → 31 edges. The numbers mirror exactly what
+ * `profileToPoints` produces so a downstream caller (pipelineManager's
+ * runSketchExtrude → sideSegmentRanges) can map a hit triangle index
+ * back to its authoring segment hash without re-walking the sampler.
+ */
+export function countContourEdgesPerSegment(profile: SketchProfile): number[] {
+  const out: number[] = [];
+  for (const seg of profile.segments) {
+    if (seg.type === 'line') out.push(1);
+    else if (seg.type === 'arc') out.push(15);
+    else if (seg.type === 'nurbs') out.push(31);
+    else out.push(1); // safe default
+  }
+  return out;
+}
+
+/**
  * Count unique points in the profile.
  */
 function countUniquePoints(profile: SketchProfile): number {
@@ -173,8 +227,15 @@ export function profileToGeometry(profile: SketchProfile, config: SketchConfig):
   if (!profile.closed) return null;
   if (countUniquePoints(profile) < 3) return null;
 
-  if (config.mode === 'extrude') {
+  if (config.mode === 'extrude' || config.mode === 'extrudeCut') {
+    // extrudeCut tool body is geometrically identical to a normal extrude;
+    // the cut semantics happen at the boolean step in the pipeline.
     return extrudeGeometry(profile, config);
+  } else if (config.mode === 'sweep') {
+    // Phase 1 — sweep along a CatmullRom path. Falls back to straight
+    // extrude when no path is supplied so callers that flip the mode
+    // without populating sweepPath still get a usable body.
+    return sweepGeometry(profile, config) ?? extrudeGeometry(profile, config);
   } else {
     return revolveGeometry(profile, config);
   }
@@ -208,6 +269,46 @@ function segmentsIntersect(p1: SketchPoint, p2: SketchPoint, p3: SketchPoint, p4
   const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / cross;
   const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / cross;
   return t > 0.001 && t < 0.999 && u > 0.001 && u < 0.999;
+}
+
+/**
+ * Sweep `profile` along the `config.sweepPath` curve.
+ *
+ * Phase 1 — uses three.js `CatmullRomCurve3` + `ExtrudeGeometry`'s
+ * `extrudePath` option, which is the standard way to follow a 3-D path
+ * with a 2-D cross-section. Phase 2 will add a UI for drawing the path
+ * in the viewport; for now any caller that hands us a 2+ point path
+ * (test fixtures, AI Copilot, server intent) gets a real sweep body.
+ */
+function sweepGeometry(profile: SketchProfile, config: SketchConfig): THREE.BufferGeometry | null {
+  const path = config.sweepPath;
+  if (!path || path.points.length < 2) return null;
+
+  const shape = new THREE.Shape();
+  const points = profileToPoints(profile);
+  if (points.length < 3) return null;
+  if (hasSelfIntersection(points)) {
+    console.warn('Sketch profile self-intersects — cannot sweep');
+    return null;
+  }
+  shape.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    shape.lineTo(points[i].x, points[i].y);
+  }
+  shape.closePath();
+
+  const curve = new THREE.CatmullRomCurve3(
+    path.points.map(p => new THREE.Vector3(p.x, p.y, p.z)),
+    false,
+    'catmullrom',
+  );
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    steps: Math.max(4, path.steps ?? 32),
+    bevelEnabled: false,
+    extrudePath: curve,
+  });
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 function extrudeGeometry(profile: SketchProfile, config: SketchConfig): THREE.BufferGeometry | null {

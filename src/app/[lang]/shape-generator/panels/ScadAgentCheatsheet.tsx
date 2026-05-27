@@ -178,9 +178,9 @@ export default function ScadAgentCheatsheet({ lang, onPick }: ScadAgentCheatshee
           padding: '6px 10px',
           fontSize: 11, fontWeight: 700,
           borderRadius: 6,
-          border: '1px solid #30363d',
+          border: '1px solid var(--nx-border)',
           background: 'transparent',
-          color: '#9ca3af',
+          color: 'var(--nx-text-2)',
           cursor: 'pointer',
         }}
       >
@@ -192,20 +192,20 @@ export default function ScadAgentCheatsheet({ lang, onPick }: ScadAgentCheatshee
   return (
     <div style={{
       padding: 10,
-      background: '#0d1117',
-      border: '1px solid #30363d',
+      background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-border)',
       borderRadius: 8,
       maxHeight: 320,
       overflowY: 'auto',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>{t.title}</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{t.title}</span>
         <button
           onClick={() => setOpen(false)}
           style={{
             padding: '3px 8px', fontSize: 10,
-            borderRadius: 4, border: '1px solid #30363d',
-            background: 'transparent', color: '#9ca3af',
+            borderRadius: 4, border: '1px solid var(--nx-border)',
+            background: 'transparent', color: 'var(--nx-text-2)',
             cursor: 'pointer',
           }}
         >
@@ -216,7 +216,7 @@ export default function ScadAgentCheatsheet({ lang, onPick }: ScadAgentCheatshee
         {t.categories.map(cat => (
           <div key={cat.name}>
             <div style={{
-              fontSize: 10, fontWeight: 700, color: '#58a6ff',
+              fontSize: 10, fontWeight: 700, color: 'var(--nx-accent-2)',
               marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5,
             }}>
               {cat.name}
@@ -233,13 +233,13 @@ export default function ScadAgentCheatsheet({ lang, onPick }: ScadAgentCheatshee
                     borderRadius: 4,
                     border: '1px solid transparent',
                     background: 'transparent',
-                    color: '#c9d1d9',
+                    color: 'var(--nx-text)',
                     cursor: 'pointer',
                     transition: 'all 0.1s',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = '#161b22';
-                    e.currentTarget.style.borderColor = '#30363d';
+                    e.currentTarget.style.background = 'var(--nx-panel)';
+                    e.currentTarget.style.borderColor = 'var(--nx-border)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.background = 'transparent';

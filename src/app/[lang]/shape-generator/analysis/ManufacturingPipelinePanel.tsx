@@ -96,17 +96,17 @@ function tt(key: string, lang: string): string {
 /* ─── Styles ────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  orange: '#f0883e',
-  purple: '#a371f7',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  orange: 'var(--nx-warn)',
+  purple: 'var(--nx-accent-2)',
 };
 
 const PROCESS_OPTIONS = [
@@ -125,12 +125,12 @@ const STAGES: { key: PipelineStage; labelKey: string }[] = [
 ];
 
 const COST_COLORS: Record<string, string> = {
-  material: '#388bfd',
-  machining: '#f0883e',
-  finishing: '#a371f7',
-  tooling: '#d29922',
-  setup: '#3fb950',
-  shipping: '#f85149',
+  material: 'var(--nx-accent)',
+  machining: 'var(--nx-warn)',
+  finishing: 'var(--nx-accent-2)',
+  tooling: 'var(--nx-warn)',
+  setup: 'var(--nx-ok)',
+  shipping: 'var(--nx-error)',
 };
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
@@ -205,7 +205,7 @@ export default function ManufacturingPipelinePanel({
                 background: done ? C.green : active ? C.accent : 'transparent',
                 border: `2px solid ${color}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 600, color: done || active ? '#fff' : C.textDim,
+                fontSize: 11, fontWeight: 600, color: done || active ? 'var(--nx-text)' : C.textDim,
                 transition: 'all 0.3s',
                 animation: active ? 'pipelinePulse 1s ease-in-out infinite' : undefined,
                 flexShrink: 0,
@@ -324,7 +324,7 @@ export default function ManufacturingPipelinePanel({
           {m.certifications.map(c => (
             <span key={c} style={{
               fontSize: 9, padding: '2px 6px', borderRadius: 4,
-              background: 'rgba(56,139,253,0.15)', color: C.accent, border: `1px solid rgba(56,139,253,0.3)`,
+              background: 'var(--nx-accent-soft)', color: C.accent, border: `1px solid rgba(56,139,253,0.3)`,
             }}>{c}</span>
           ))}
         </div>
@@ -351,7 +351,7 @@ export default function ManufacturingPipelinePanel({
       <label style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer',
         padding: '3px 8px', borderRadius: 4,
-        background: active ? 'rgba(56,139,253,0.15)' : 'transparent',
+        background: active ? 'var(--nx-accent-soft)' : 'transparent',
         border: `1px solid ${active ? C.accent : C.border}`,
         color: active ? C.accent : C.textDim,
       }}>
@@ -444,7 +444,7 @@ export default function ManufacturingPipelinePanel({
         <button onClick={handleRun} disabled={running} style={{
           width: '100%', padding: '10px 0', borderRadius: 8, border: 'none',
           background: running ? C.border : `linear-gradient(135deg, ${C.accent}, ${C.purple})`,
-          color: '#fff', fontSize: 14, fontWeight: 700, cursor: running ? 'not-allowed' : 'pointer',
+          color: 'var(--nx-text)', fontSize: 14, fontWeight: 700, cursor: running ? 'not-allowed' : 'pointer',
           marginBottom: 14, transition: 'opacity 0.2s',
           opacity: running ? 0.6 : 1,
         }}>

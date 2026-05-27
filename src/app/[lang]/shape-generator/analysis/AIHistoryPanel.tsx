@@ -45,16 +45,16 @@ export interface ApplySuggestionArgs {
 }
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  purple: '#a371f7',
-  gold: '#d29922',
-  green: '#3fb950',
-  red: '#f85149',
-  text: '#c9d1d9',
-  dim: '#8b949e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  purple: 'var(--nx-accent-2)',
+  gold: 'var(--nx-warn)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
 };
 
 const dict = {

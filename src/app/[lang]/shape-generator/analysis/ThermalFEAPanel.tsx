@@ -139,7 +139,7 @@ const dict = {
   },
 };
 
-const C = { bg: '#0d1117', card: '#161b22', border: '#30363d', text: '#c9d1d9', muted: '#8b949e', accent: '#388bfd', hot: '#f85149', warn: '#f59e0b', ok: '#3fb950' };
+const C = { bg: 'var(--nx-bg)', card: 'var(--nx-panel)', border: 'var(--nx-border)', text: 'var(--nx-text)', muted: 'var(--nx-text-2)', accent: 'var(--nx-accent)', hot: 'var(--nx-error)', warn: 'var(--nx-warn)', ok: 'var(--nx-ok)' };
 
 type BoundaryEdit = ThermalBoundary & { id: string };
 
@@ -209,7 +209,7 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, res
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
           {(Object.entries(THERMAL_MATERIALS) as [keyof typeof THERMAL_MATERIALS, typeof THERMAL_MATERIALS[keyof typeof THERMAL_MATERIALS]][]).map(([id, m]) => (
             <button key={id} onClick={() => setMaterialId(id)}
-              style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${materialId === id ? C.accent : C.border}`, background: materialId === id ? 'rgba(56,139,253,0.15)' : 'transparent', color: materialId === id ? C.accent : C.muted, fontSize: 10, cursor: 'pointer', fontWeight: materialId === id ? 700 : 400 }}>
+              style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${materialId === id ? C.accent : C.border}`, background: materialId === id ? 'var(--nx-accent-soft)' : 'transparent', color: materialId === id ? C.accent : C.muted, fontSize: 10, cursor: 'pointer', fontWeight: materialId === id ? 700 : 400 }}>
               {isKo ? m.nameKo : m.name}
             </button>
           ))}
@@ -301,7 +301,7 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, res
 
       {/* Run button */}
       <button onClick={run} disabled={!geometry || isRunning}
-        style={{ width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', background: isRunning ? C.card : C.hot, color: isRunning ? C.muted : '#fff', fontWeight: 700, fontSize: 12, cursor: geometry && !isRunning ? 'pointer' : 'default' }}>
+        style={{ width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', background: isRunning ? C.card : C.hot, color: isRunning ? C.muted : 'var(--nx-text)', fontWeight: 700, fontSize: 12, cursor: geometry && !isRunning ? 'pointer' : 'default' }}>
         {isRunning ? `⏳ ${t.running}` : `🌡️ ${t.run}`}
       </button>
     </div>

@@ -31,17 +31,17 @@ const dict = {
     noMatches: '조건에 맞는 제조사가 없습니다.',
     topMatch: 'TOP 매칭',
     bizDays: '영업일',
-    requestQuote: '견적 요청',
-    selectBtn: '선택',
-    quoteDone: '견적 요청 완료!',
-    quoteDoneDesc: (name: string) => `${name}에 요청이 전달되었습니다.`,
+    requestQuote: '전담 매니저에게 협상 요청',
+    selectBtn: '협상 요청',
+    quoteDone: '협상 요청 완료!',
+    quoteDoneDesc: (name: string) => `${name} 그룹에 협상 요청이 전달되었습니다. 24시간 내 확정 견적을 보내드립니다.`,
     trackOrder: '주문 현황 보기 →',
     closeBtn: '닫기',
-    quoteTitle: '견적 요청',
+    quoteTitle: '전담 매니저 협상 요청',
     qtyLabel: '수량 (개)',
     cancelBtn: '취소',
     submitting: '요청 중...',
-    submitBtn: '견적 요청하기',
+    submitBtn: '협상 요청 보내기',
     matchSuffix: '매칭',
     matchReason: '매칭 이유 보기',
     scoreBreakdownTitle: '매칭 점수 분석',
@@ -49,6 +49,10 @@ const dict = {
     breakdownSizeFit: '크기 적합도',
     breakdownRating: '평점',
     breakdownLeadTime: '납기',
+    ackLabel: '본 설계의 정확성·안전성·제조 가능성에 대한 책임은 본인에게 있음을 확인합니다',
+    aiNotice: '🤖 AI 초안이 포함되어 있습니다. 발주 전 직접 검증이 필수입니다',
+    dfmBlocker: (n: number) => `⚠ DFM 오류 ${n}건이 검출되었습니다. 발주 시 제조 불가 또는 추가 비용이 발생할 수 있습니다`,
+    dfmOverrideLabel: 'DFM 오류를 인지했으며 그럼에도 발주합니다',
   },
   en: {
     panelTitle: 'Manufacturer Match',
@@ -69,17 +73,17 @@ const dict = {
     noMatches: 'No manufacturers match your filters.',
     topMatch: 'TOP MATCH',
     bizDays: 'biz days',
-    requestQuote: 'Request Quote',
-    selectBtn: 'Select',
-    quoteDone: 'Quote Requested!',
-    quoteDoneDesc: (name: string) => `Your request was sent to ${name}.`,
+    requestQuote: 'Request Manager Negotiation',
+    selectBtn: 'Request Negotiation',
+    quoteDone: 'Negotiation Requested!',
+    quoteDoneDesc: (name: string) => `Your request was sent to ${name}. A manager will return a confirmed quote within 24 hours.`,
     trackOrder: 'Track Order →',
     closeBtn: 'Close',
-    quoteTitle: 'Request Quote',
+    quoteTitle: 'Request Manager Negotiation',
     qtyLabel: 'Quantity (pcs)',
     cancelBtn: 'Cancel',
     submitting: 'Submitting...',
-    submitBtn: 'Submit Request',
+    submitBtn: 'Send Negotiation Request',
     matchSuffix: 'match',
     matchReason: 'View match breakdown',
     scoreBreakdownTitle: 'Score Breakdown',
@@ -87,6 +91,10 @@ const dict = {
     breakdownSizeFit: 'Size fit',
     breakdownRating: 'Rating',
     breakdownLeadTime: 'Lead time',
+    ackLabel: 'I confirm the accuracy, safety, and manufacturability of this design is my responsibility',
+    aiNotice: '🤖 Contains AI-drafted content. You must verify before ordering',
+    dfmBlocker: (n: number) => `⚠ ${n} DFM error(s) detected. Ordering may result in non-manufacturable parts or extra cost`,
+    dfmOverrideLabel: 'I acknowledge the DFM errors and proceed anyway',
   },
   ja: {
     panelTitle: 'メーカーマッチング',
@@ -107,17 +115,17 @@ const dict = {
     noMatches: '条件に合うメーカーがありません。',
     topMatch: 'TOP マッチ',
     bizDays: '営業日',
-    requestQuote: '見積依頼',
-    selectBtn: '選択',
-    quoteDone: '見積依頼完了!',
-    quoteDoneDesc: (name: string) => `${name}に依頼を送信しました。`,
+    requestQuote: '専任担当者へ交渉依頼',
+    selectBtn: '交渉依頼',
+    quoteDone: '交渉依頼が完了しました!',
+    quoteDoneDesc: (name: string) => `${name}に交渉依頼を送信しました。24時間以内に確定見積をお届けします。`,
     trackOrder: '注文状況を見る →',
     closeBtn: '閉じる',
-    quoteTitle: '見積依頼',
+    quoteTitle: '専任担当者へ交渉依頼',
     qtyLabel: '数量 (個)',
     cancelBtn: 'キャンセル',
     submitting: '送信中...',
-    submitBtn: '見積を依頼',
+    submitBtn: '交渉依頼を送信',
     matchSuffix: 'マッチ',
     matchReason: 'マッチング理由を見る',
     scoreBreakdownTitle: 'マッチングスコア分析',
@@ -125,6 +133,10 @@ const dict = {
     breakdownSizeFit: 'サイズ適合度',
     breakdownRating: '評価',
     breakdownLeadTime: '納期',
+    ackLabel: '本設計の精度・安全性・製造可能性は本人の責任であることを確認します',
+    aiNotice: '🤖 AI下書きが含まれます。発注前にご自身で検証してください',
+    dfmBlocker: (n: number) => `⚠ DFMエラー${n}件を検出しました。発注すると製造不可または追加費用が発生する可能性があります`,
+    dfmOverrideLabel: 'DFMエラーを認識した上で発注します',
   },
   zh: {
     panelTitle: '工厂匹配',
@@ -145,17 +157,17 @@ const dict = {
     noMatches: '没有符合条件的工厂。',
     topMatch: '最佳匹配',
     bizDays: '工作日',
-    requestQuote: '请求报价',
-    selectBtn: '选择',
-    quoteDone: '报价请求已提交!',
-    quoteDoneDesc: (name: string) => `请求已发送至 ${name}。`,
+    requestQuote: '请求专属经理协商',
+    selectBtn: '请求协商',
+    quoteDone: '协商请求已提交!',
+    quoteDoneDesc: (name: string) => `请求已发送至 ${name}。专属经理将在24小时内提供确认报价。`,
     trackOrder: '查看订单状态 →',
     closeBtn: '关闭',
-    quoteTitle: '请求报价',
+    quoteTitle: '请求专属经理协商',
     qtyLabel: '数量 (件)',
     cancelBtn: '取消',
     submitting: '提交中...',
-    submitBtn: '提交请求',
+    submitBtn: '发送协商请求',
     matchSuffix: '匹配',
     matchReason: '查看匹配详情',
     scoreBreakdownTitle: '匹配分数分析',
@@ -163,6 +175,10 @@ const dict = {
     breakdownSizeFit: '尺寸适配度',
     breakdownRating: '评分',
     breakdownLeadTime: '交期',
+    ackLabel: '我确认本设计的准确性、安全性和可制造性由本人负责',
+    aiNotice: '🤖 包含AI草稿内容。下单前必须自行验证',
+    dfmBlocker: (n: number) => `⚠ 检测到${n}个DFM错误。下单可能导致无法制造或产生额外费用`,
+    dfmOverrideLabel: '我已知晓DFM错误并仍要下单',
   },
   es: {
     panelTitle: 'Emparejamiento de fabricantes',
@@ -183,17 +199,17 @@ const dict = {
     noMatches: 'Ningún fabricante coincide con los filtros.',
     topMatch: 'MEJOR COINCIDENCIA',
     bizDays: 'días hábiles',
-    requestQuote: 'Solicitar presupuesto',
-    selectBtn: 'Seleccionar',
-    quoteDone: '¡Presupuesto solicitado!',
-    quoteDoneDesc: (name: string) => `Su solicitud fue enviada a ${name}.`,
+    requestQuote: 'Solicitar negociación con gestor',
+    selectBtn: 'Solicitar negociación',
+    quoteDone: '¡Negociación solicitada!',
+    quoteDoneDesc: (name: string) => `Su solicitud fue enviada a ${name}. Un gestor enviará un presupuesto confirmado en 24 horas.`,
     trackOrder: 'Seguir pedido →',
     closeBtn: 'Cerrar',
-    quoteTitle: 'Solicitar presupuesto',
+    quoteTitle: 'Solicitar negociación con gestor',
     qtyLabel: 'Cantidad (uds)',
     cancelBtn: 'Cancelar',
     submitting: 'Enviando...',
-    submitBtn: 'Enviar solicitud',
+    submitBtn: 'Enviar solicitud de negociación',
     matchSuffix: 'coincidencia',
     matchReason: 'Ver desglose de coincidencia',
     scoreBreakdownTitle: 'Desglose de puntuación',
@@ -201,6 +217,10 @@ const dict = {
     breakdownSizeFit: 'Ajuste de tamaño',
     breakdownRating: 'Valoración',
     breakdownLeadTime: 'Plazo de entrega',
+    ackLabel: 'Confirmo que la precisión, seguridad y fabricabilidad de este diseño son mi responsabilidad',
+    aiNotice: '🤖 Contiene contenido borrador de IA. Debe verificarlo antes de pedir',
+    dfmBlocker: (n: number) => `⚠ Se detectaron ${n} errores DFM. El pedido puede resultar en piezas no fabricables o costo adicional`,
+    dfmOverrideLabel: 'Reconozco los errores DFM y procedo de todos modos',
   },
   ar: {
     panelTitle: 'مطابقة المصنع',
@@ -221,17 +241,17 @@ const dict = {
     noMatches: 'لا يوجد مصنعون يطابقون عوامل التصفية.',
     topMatch: 'أفضل تطابق',
     bizDays: 'أيام عمل',
-    requestQuote: 'طلب عرض سعر',
-    selectBtn: 'اختيار',
-    quoteDone: 'تم طلب عرض السعر!',
-    quoteDoneDesc: (name: string) => `تم إرسال طلبك إلى ${name}.`,
+    requestQuote: 'طلب تفاوض من المدير',
+    selectBtn: 'طلب التفاوض',
+    quoteDone: 'تم طلب التفاوض!',
+    quoteDoneDesc: (name: string) => `تم إرسال طلبك إلى ${name}. سيرسل المدير عرض سعر مؤكدًا في غضون 24 ساعة.`,
     trackOrder: 'تتبع الطلب →',
     closeBtn: 'إغلاق',
-    quoteTitle: 'طلب عرض سعر',
+    quoteTitle: 'طلب تفاوض من المدير',
     qtyLabel: 'الكمية (قطعة)',
     cancelBtn: 'إلغاء',
     submitting: 'جارٍ الإرسال...',
-    submitBtn: 'إرسال الطلب',
+    submitBtn: 'إرسال طلب التفاوض',
     matchSuffix: 'تطابق',
     matchReason: 'عرض تفاصيل التطابق',
     scoreBreakdownTitle: 'تحليل نقاط التطابق',
@@ -239,6 +259,10 @@ const dict = {
     breakdownSizeFit: 'ملاءمة الحجم',
     breakdownRating: 'التقييم',
     breakdownLeadTime: 'وقت التسليم',
+    ackLabel: 'أؤكد أن دقة هذا التصميم وسلامته وقابليته للتصنيع تقع على عاتقي',
+    aiNotice: '🤖 يحتوي على محتوى مسودة من الذكاء الاصطناعي. يجب التحقق منه قبل الطلب',
+    dfmBlocker: (n: number) => `⚠ تم اكتشاف ${n} أخطاء DFM. قد يؤدي الطلب إلى أجزاء غير قابلة للتصنيع أو تكلفة إضافية`,
+    dfmOverrideLabel: 'أُقر بأخطاء DFM وأمضي قدمًا على أي حال',
   },
 } as const;
 
@@ -280,6 +304,14 @@ interface ManufacturerMatchProps {
   triangleCount?: number;
   /** Whether the design has overhangs/undercuts that would be impossible on CNC. */
   hasUndercuts?: boolean;
+  /** DFM error count from the analysis panel. When > 0 the submit modal
+   *  shows a hard block + override ack so the order doesn't go out with
+   *  known manufacturability problems. */
+  dfmErrorCount?: number;
+  /** Set when any AI-authored feature (SCAD agent, AI chat) is in the
+   *  current design. Surfaces an explicit "AI draft — verify before order"
+   *  notice in the quote modal so liability stays with the user. */
+  aiAuthored?: boolean;
   onSelectManufacturer: (m: Manufacturer) => void;
 }
 
@@ -287,6 +319,13 @@ interface QuoteState {
   manufacturer: Manufacturer;
   quantity: number;
   submitting: boolean;
+  /** Mandatory user attestation before submit fires — covers AI/DFM
+   *  responsibility under the new ToS. Without it, the submit button
+   *  stays disabled regardless of DFM state. */
+  ackChecked: boolean;
+  /** Separate override when DFM errors exist — forces a second, explicit
+   *  click so the user can't blow past errors with a single checkbox. */
+  dfmOverrideChecked: boolean;
   orderId?: string;  // set on success
   error?: string;
 }
@@ -294,15 +333,15 @@ interface QuoteState {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  textMuted: '#6e7681',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  textMuted: 'var(--nx-text-3)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
 };
 
 const REGION_FLAGS: Record<string, string> = {
@@ -331,9 +370,9 @@ const PROCESS_LABELS: Record<string, Record<Lang, string>> = {
 };
 
 const PRICE_META: Record<string, { labels: Record<Lang, string>; color: string }> = {
-  low:    { color: '#3fb950', labels: { en: 'Low',    ko: '저가', ja: '低価格', zh: '低价', es: 'Bajo',   ar: 'منخفض' } },
-  medium: { color: '#d29922', labels: { en: 'Medium', ko: '중가', ja: '中価格', zh: '中价', es: 'Medio',  ar: 'متوسط' } },
-  high:   { color: '#f0883e', labels: { en: 'High',   ko: '고가', ja: '高価格', zh: '高价', es: 'Alto',   ar: 'مرتفع' } },
+  low:    { color: 'var(--nx-ok)', labels: { en: 'Low',    ko: '저가', ja: '低価格', zh: '低价', es: 'Bajo',   ar: 'منخفض' } },
+  medium: { color: 'var(--nx-warn)', labels: { en: 'Medium', ko: '중가', ja: '中価格', zh: '中价', es: 'Medio',  ar: 'متوسط' } },
+  high:   { color: 'var(--nx-warn)', labels: { en: 'High',   ko: '고가', ja: '高価格', zh: '高价', es: 'Alto',   ar: 'مرتفع' } },
 };
 
 // Rough KRW-per-cm³ for a finished part, covering material + machining + margin.
@@ -469,7 +508,7 @@ function renderStars(rating: number) {
   const full = Math.floor(rating);
   const half = rating - full >= 0.5;
   return (
-    <span style={{ color: '#d29922', fontSize: 12 }}>
+    <span style={{ color: 'var(--nx-warn)', fontSize: 12 }}>
       {'★'.repeat(full)}
       {half ? '½' : ''}
       {'☆'.repeat(5 - full - (half ? 1 : 0))}
@@ -493,6 +532,8 @@ export default function ManufacturerMatch({
   partName,
   triangleCount,
   hasUndercuts,
+  dfmErrorCount = 0,
+  aiAuthored = false,
   onSelectManufacturer,
 }: ManufacturerMatchProps) {
   const pathname = usePathname();
@@ -607,7 +648,7 @@ export default function ManufacturerMatch({
   // ── Quote request ───────────────────────────────────────────────────────────
 
   const handleOpenQuote = useCallback((m: Manufacturer) => {
-    setQuoteState({ manufacturer: m, quantity: 1, submitting: false });
+    setQuoteState({ manufacturer: m, quantity: 1, submitting: false, ackChecked: false, dfmOverrideChecked: false });
   }, []);
 
   const handleSubmitQuote = useCallback(async () => {
@@ -657,17 +698,17 @@ export default function ManufacturerMatch({
           borderRadius: 12,
         }}>
           <div style={{
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
             padding: '24px 28px', width: 320, boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
           }}>
             {quoteState.orderId ? (
               /* ── Success state ── */
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#3fb950', marginBottom: 6 }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--nx-ok)', marginBottom: 6 }}>
                   {t.quoteDone}
                 </p>
-                <p style={{ fontSize: 12, color: '#8b949e', marginBottom: 20, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 20, lineHeight: 1.5 }}>
                   {t.quoteDoneDesc(isKo ? quoteState.manufacturer.nameKo : quoteState.manufacturer.name)}
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
@@ -675,8 +716,8 @@ export default function ManufacturerMatch({
                     href={`/${lang}/nexyfab/orders`}
                     style={{
                       display: 'block', padding: '8px 20px', borderRadius: 8,
-                      background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                      color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none',
+                      background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                      color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, textDecoration: 'none',
                     }}
                   >
                     {t.trackOrder}
@@ -684,8 +725,8 @@ export default function ManufacturerMatch({
                   <button
                     onClick={() => setQuoteState(null)}
                     style={{
-                      padding: '8px 14px', borderRadius: 8, border: '1px solid #30363d',
-                      background: 'transparent', color: '#8b949e', fontSize: 12, cursor: 'pointer',
+                      padding: '8px 14px', borderRadius: 8, border: '1px solid var(--nx-border)',
+                      background: 'transparent', color: 'var(--nx-text-2)', fontSize: 12, cursor: 'pointer',
                     }}
                   >
                     {t.closeBtn}
@@ -695,15 +736,15 @@ export default function ManufacturerMatch({
             ) : (
               /* ── Form state ── */
               <>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3', marginBottom: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 4 }}>
                   {t.quoteTitle}
                 </div>
-                <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 18 }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 18 }}>
                   {isKo ? quoteState.manufacturer.nameKo : quoteState.manufacturer.name}
                   {partName && <> · {partName}</>}
                 </div>
 
-                <label style={{ fontSize: 11, color: '#8b949e', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 11, color: 'var(--nx-text-2)', display: 'block', marginBottom: 6 }}>
                   {t.qtyLabel}
                 </label>
                 <input
@@ -713,39 +754,97 @@ export default function ManufacturerMatch({
                   onChange={e => setQuoteState(s => s ? { ...s, quantity: Math.max(1, parseInt(e.target.value) || 1) } : s)}
                   style={{
                     width: '100%', padding: '7px 10px', borderRadius: 6,
-                    border: '1px solid #30363d', background: '#0d1117',
-                    color: '#e6edf3', fontSize: 13, outline: 'none',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+                    color: 'var(--nx-text)', fontSize: 13, outline: 'none',
                     boxSizing: 'border-box', marginBottom: 16,
                   }}
                 />
 
                 {quoteState.error && (
-                  <p style={{ fontSize: 11, color: '#f85149', marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: 'var(--nx-error)', marginBottom: 12 }}>
                     {quoteState.error}
                   </p>
                 )}
+
+                {/* AI draft notice — surfaces when any AI-authored feature exists */}
+                {aiAuthored && (
+                  <div style={{
+                    fontSize: 11, color: 'var(--nx-warn)', marginBottom: 10,
+                    padding: '6px 10px', borderRadius: 6,
+                    background: 'rgba(227,179,65,0.08)', border: '1px solid rgba(227,179,65,0.3)',
+                    lineHeight: 1.5,
+                  }}>
+                    {t.aiNotice}
+                  </div>
+                )}
+
+                {/* DFM hard-blocker — only shows when issues are present */}
+                {dfmErrorCount > 0 && (
+                  <div style={{
+                    fontSize: 11, color: 'var(--nx-error)', marginBottom: 10,
+                    padding: '6px 10px', borderRadius: 6,
+                    background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.35)',
+                    lineHeight: 1.5,
+                  }}>
+                    {t.dfmBlocker(dfmErrorCount)}
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 6, cursor: 'pointer', color: 'var(--nx-text-2)' }}>
+                      <input
+                        type="checkbox"
+                        checked={quoteState.dfmOverrideChecked}
+                        onChange={e => setQuoteState(s => s ? { ...s, dfmOverrideChecked: e.target.checked } : s)}
+                        style={{ marginTop: 2, accentColor: 'var(--nx-error)' }}
+                      />
+                      <span style={{ fontSize: 11 }}>{t.dfmOverrideLabel}</span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Responsibility acknowledgement — always required before submit */}
+                <label style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 6,
+                  cursor: 'pointer', fontSize: 11, color: 'var(--nx-text-2)',
+                  marginBottom: 14, lineHeight: 1.5,
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={quoteState.ackChecked}
+                    onChange={e => setQuoteState(s => s ? { ...s, ackChecked: e.target.checked } : s)}
+                    style={{ marginTop: 2, accentColor: 'var(--nx-accent)' }}
+                  />
+                  <span>{t.ackLabel}</span>
+                </label>
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => setQuoteState(null)}
                     style={{
-                      flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid #30363d',
-                      background: 'transparent', color: '#8b949e', fontSize: 12, cursor: 'pointer',
+                      flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid var(--nx-border)',
+                      background: 'transparent', color: 'var(--nx-text-2)', fontSize: 12, cursor: 'pointer',
                     }}
                   >
                     {t.cancelBtn}
                   </button>
-                  <button
-                    onClick={handleSubmitQuote}
-                    disabled={quoteState.submitting}
-                    style={{
-                      flex: 2, padding: '8px 0', borderRadius: 8, border: 'none',
-                      background: quoteState.submitting ? '#388bfd88' : 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                      color: '#fff', fontSize: 12, fontWeight: 700, cursor: quoteState.submitting ? 'default' : 'pointer',
-                    }}
-                  >
-                    {quoteState.submitting ? t.submitting : t.submitBtn}
-                  </button>
+                  {(() => {
+                    const dfmBlocked = dfmErrorCount > 0 && !quoteState.dfmOverrideChecked;
+                    const submitDisabled = quoteState.submitting || !quoteState.ackChecked || dfmBlocked;
+                    return (
+                      <button
+                        onClick={handleSubmitQuote}
+                        disabled={submitDisabled}
+                        style={{
+                          flex: 2, padding: '8px 0', borderRadius: 8, border: 'none',
+                          background: submitDisabled
+                            ? 'var(--nx-panel-2)'
+                            : 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                          color: submitDisabled ? 'var(--nx-text-3)' : 'var(--nx-text)',
+                          fontSize: 12, fontWeight: 700,
+                          cursor: submitDisabled ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {quoteState.submitting ? t.submitting : t.submitBtn}
+                      </button>
+                    );
+                  })()}
                 </div>
               </>
             )}
@@ -852,7 +951,7 @@ export default function ManufacturerMatch({
         ) : requiresPro ? (
           <div style={{ padding: '36px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#e6edf3', margin: '0 0 6px' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)', margin: '0 0 6px' }}>
               {t.proOnlyTitle}
             </p>
             <p style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6, margin: '0 0 18px', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
@@ -862,8 +961,8 @@ export default function ManufacturerMatch({
               onClick={() => setShowUpgradeModal(true)}
               style={{
                 padding: '9px 20px', borderRadius: 8, border: 'none',
-                background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
               }}
             >
               ⚡ {t.upgradeBtn}
@@ -878,7 +977,7 @@ export default function ManufacturerMatch({
             />
           </div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#f85149' }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--nx-error)' }}>
             {error}
           </div>
         ) : sorted.length === 0 ? (
@@ -928,7 +1027,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
   const [hovered, setHovered] = useState(false);
   const price = PRICE_META[m.priceLevel];
   const flag = REGION_FLAGS[m.region] ?? '🌐';
-  const scoreColor = matchScore >= 85 ? '#3fb950' : matchScore >= 65 ? '#d29922' : '#8b949e';
+  const scoreColor = matchScore >= 85 ? 'var(--nx-ok)' : matchScore >= 65 ? 'var(--nx-warn)' : 'var(--nx-text-2)';
 
   return (
     <div
@@ -951,7 +1050,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
         width: 40,
         height: 40,
         borderRadius: 8,
-        background: '#0d1117',
+        background: 'var(--nx-bg)',
         border: `1px solid ${C.border}`,
         display: 'flex',
         alignItems: 'center',
@@ -971,7 +1070,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
           {isTopMatch && (
             <span style={{
               fontSize: 9, padding: '2px 7px', borderRadius: 10,
-              background: 'linear-gradient(90deg,#388bfd,#8b5cf6)', color: '#fff', fontWeight: 800,
+              background: 'linear-gradient(90deg,var(--nx-accent),#8b5cf6)', color: 'var(--nx-text)', fontWeight: 800,
             }}>
               ✦ {t.topMatch}
             </span>
@@ -1003,7 +1102,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
               fontSize: 10,
               padding: '2px 7px',
               borderRadius: 4,
-              background: '#388bfd18',
+              background: 'var(--nx-accent)18',
               color: C.accent,
               border: `1px solid #388bfd30`,
             }}>
@@ -1034,7 +1133,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
                 fontSize: 9,
                 padding: '1px 5px',
                 borderRadius: 3,
-                background: '#3fb95015',
+                background: 'var(--nx-ok)15',
                 color: C.green,
                 border: `1px solid #3fb95030`,
               }}>
@@ -1052,10 +1151,10 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
           <div style={{ fontSize: 10, color: scoreColor, fontWeight: 700, marginBottom: 3, textAlign: 'right' }}>
             {matchScore}% {t.matchSuffix}
           </div>
-          <div style={{ width: '100%', height: 4, background: '#21262d', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+          <div style={{ width: '100%', height: 4, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
             <div style={{
               width: `${matchScore}%`, height: '100%', borderRadius: 3,
-              background: matchScore >= 85 ? '#3fb950' : matchScore >= 65 ? '#d29922' : '#8b949e',
+              background: matchScore >= 85 ? 'var(--nx-ok)' : matchScore >= 65 ? 'var(--nx-warn)' : 'var(--nx-text-2)',
               transition: 'width 0.4s ease',
             }} />
           </div>
@@ -1071,11 +1170,11 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
                 const pct = Math.round((val / max) * 100);
                 return (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9 }}>
-                    <span style={{ color: '#8b949e', flex: '0 0 auto', minWidth: 40, textAlign: 'left' }}>{t[labelKey]}</span>
-                    <div style={{ flex: 1, height: 3, background: '#21262d', borderRadius: 2 }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: pct >= 80 ? '#3fb950' : pct >= 50 ? '#d29922' : '#8b949e' }} />
+                    <span style={{ color: 'var(--nx-text-2)', flex: '0 0 auto', minWidth: 40, textAlign: 'left' }}>{t[labelKey]}</span>
+                    <div style={{ flex: 1, height: 3, background: 'var(--nx-panel-2)', borderRadius: 2 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: pct >= 80 ? 'var(--nx-ok)' : pct >= 50 ? 'var(--nx-warn)' : 'var(--nx-text-2)' }} />
                     </div>
-                    <span style={{ color: '#c9d1d9', flex: '0 0 auto', minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{val}</span>
+                    <span style={{ color: 'var(--nx-text)', flex: '0 0 auto', minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{val}</span>
                   </div>
                 );
               })}
@@ -1097,8 +1196,8 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
             padding: '5px 12px',
             borderRadius: 6,
             border: 'none',
-            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-            color: '#fff',
+            background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+            color: 'var(--nx-text)',
             fontSize: 11,
             fontWeight: 700,
             cursor: 'pointer',
@@ -1135,7 +1234,7 @@ const selectStyle: React.CSSProperties = {
   padding: '5px 10px',
   borderRadius: 6,
   border: `1px solid ${C.border}`,
-  background: '#0d1117',
+  background: 'var(--nx-bg)',
   color: C.text,
   fontSize: 12,
   outline: 'none',

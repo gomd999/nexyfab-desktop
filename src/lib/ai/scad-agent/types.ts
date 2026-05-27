@@ -736,8 +736,18 @@ export interface GeometryStats {
   bbox?: { min: [number, number, number]; max: [number, number, number] };
   volume_mm3?: number;
   surfaceArea_mm2?: number;
+  /** True only for a verified clean closed solid (watertight + manifold). When
+   *  the STL was parsed and checked this reflects real geometry — not merely
+   *  "the render compiled". */
   manifold?: boolean;
+  /** Closed (no open boundary edges). Set when real verification ran. */
+  watertight?: boolean;
+  /** Number of disjoint connected shells (1 = single body). */
+  componentCount?: number;
   triangleCount?: number;
+  /** Layer-1 verification critique when the geometry has problems (gaps,
+   *  inside-out normals, fragments). Undefined/empty when the model is clean. */
+  issues?: string;
 }
 
 export interface BudgetState {
@@ -883,6 +893,9 @@ export interface AgentRunOptions {
   tools?: ToolExecutorMap;
   /** Streaming callback fired after each model round / tool call. */
   onEvent?: (ev: AgentEvent) => void;
+  /** Abort signal — propagated to the AI client and the tool loop so a
+   *  client disconnect (SSE close) stops further provider calls. */
+  signal?: AbortSignal;
 }
 
 export type AgentEvent =
@@ -900,8 +913,15 @@ export type AgentEvent =
 // ─── AI client + tool executor abstractions (mockable) ─────────────────────
 
 export interface AiClient {
-  /** Returns model text + an estimate of tokens consumed. */
-  complete(messages: { role: 'system' | 'user' | 'assistant'; content: string }[]): Promise<{
+  /** Returns model text + an estimate of tokens consumed. The optional
+   *  `signal` lets callers (e.g. the SSE route handler) abort the
+   *  in-flight provider call when the client disconnects — without this,
+   *  the server task keeps running and burning provider quota even though
+   *  no one is listening to the response. */
+  complete(
+    messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+    opts?: { signal?: AbortSignal },
+  ): Promise<{
     text: string;
     promptTokens?: number;
     completionTokens?: number;

@@ -159,7 +159,7 @@ function detectLang(): Lang {
             const u = JSON.parse(stored);
             if (u.language && loginDict[u.language as Lang]) return u.language as Lang;
         }
-    } catch {}
+    } catch (err) { console.error('[page] caught', err); }
     const saved = localStorage.getItem('app_language');
     if (saved && loginDict[saved as Lang]) return saved as Lang;
     const fabLang = localStorage.getItem('nexyfab_language');
@@ -168,13 +168,25 @@ function detectLang(): Lang {
     return 'ko';
 }
 
+type LoginStep = 'credentials' | '2fa';
+
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPw, setShowPw] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [lang, setLang] = useState<Lang>('ko');
+    const [discoveredSso, setDiscoveredSso] = useState<{ name: string; loginUrl: string } | null>(null);
+    // Phase ⑦ Passkey + 2FA — same auth-server endpoints NexyFlow already
+    // talks to. Step state moves from 'credentials' to '2fa' when the
+    // server returns `requires_2fa`; tempToken carries the short-lived
+    // continuation token across the step boundary.
+    const [step, setStep] = useState<LoginStep>('credentials');
+    const [totpCode, setTotpCode] = useState('');
+    const [tempToken, setTempToken] = useState('');
+    const [passkeyLoading, setPasskeyLoading] = useState(false);
 
     useEffect(() => {
         setLang(detectLang());
@@ -183,6 +195,27 @@ export default function LoginPage() {
             router.push('/account');
         }
     }, [router]);
+
+    // SSO domain discovery — debounced 350ms; aborts in-flight requests
+    // when the email changes so we don't race the latest reply.
+    useEffect(() => {
+        const e = email.trim().toLowerCase();
+        if (!e.includes('@') || !e.split('@')[1]) { setDiscoveredSso(null); return; }
+        const ctrl = new AbortController();
+        const timer = setTimeout(async () => {
+            try {
+                const r = await fetch(`/api/auth/sso/discover?email=${encodeURIComponent(e)}`, { signal: ctrl.signal });
+                if (!r.ok) { setDiscoveredSso(null); return; }
+                const data = await r.json() as { found?: boolean; provider?: { name?: string }; login_url?: string };
+                if (data?.found && data.login_url) {
+                    setDiscoveredSso({ name: data.provider?.name || 'SSO', loginUrl: data.login_url });
+                } else {
+                    setDiscoveredSso(null);
+                }
+            } catch { /* aborted or offline */ }
+        }, 350);
+        return () => { clearTimeout(timer); ctrl.abort(); };
+    }, [email]);
 
     const t = loginDict[lang];
 
@@ -218,6 +251,100 @@ export default function LoginPage() {
         }
     };
 
+    /** Phase ⑦ — WebAuthn passkey login. Mirrors NexyFlow's implementation
+     *  exactly so the same auth-server endpoints serve both products. */
+    const handlePasskeyLogin = async () => {
+        if (typeof navigator === 'undefined' || !navigator.credentials) {
+            setError(lang === 'ko' ? '이 브라우저는 패스키를 지원하지 않습니다.' : 'Passkey not supported by this browser.');
+            return;
+        }
+        if (!email.trim()) {
+            setError(lang === 'ko' ? '이메일을 먼저 입력해주세요.' : 'Enter your email first.');
+            return;
+        }
+        setPasskeyLoading(true); setError('');
+        try {
+            const b64urlToBuffer = (s: string) => {
+                const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+                const bin = atob(b64);
+                return Uint8Array.from(bin, c => c.charCodeAt(0)).buffer;
+            };
+            const bufToB64url = (buf: ArrayBuffer) =>
+                btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            const optsRes = await fetch(`${AUTH_BASE}/api/auth/webauthn/login/options?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+            if (!optsRes.ok) {
+                const e = await optsRes.json().catch(() => ({}));
+                throw new Error(e.error || (lang === 'ko' ? '패스키 옵션 조회 실패' : 'Passkey lookup failed'));
+            }
+            const opts = await optsRes.json();
+            const publicKey = {
+                ...opts,
+                challenge: b64urlToBuffer(opts.challenge),
+                allowCredentials: (opts.allowCredentials || []).map((c: { id: string }) => ({ ...c, id: b64urlToBuffer(c.id) })),
+            };
+            const cred = await navigator.credentials.get({ publicKey }) as PublicKeyCredential;
+            const resp = cred.response as AuthenticatorAssertionResponse;
+
+            const verifyRes = await fetch(`${AUTH_BASE}/api/auth/webauthn/login/verify`, {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email.trim().toLowerCase(),
+                    response: {
+                        id: cred.id,
+                        rawId: bufToB64url(cred.rawId),
+                        type: cred.type,
+                        response: {
+                            clientDataJSON: bufToB64url(resp.clientDataJSON),
+                            authenticatorData: bufToB64url(resp.authenticatorData),
+                            signature: bufToB64url(resp.signature),
+                            userHandle: resp.userHandle ? bufToB64url(resp.userHandle) : null,
+                        },
+                    },
+                }),
+            });
+            const data = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(data.error || (lang === 'ko' ? '패스키 검증 실패' : 'Passkey verify failed'));
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            window.dispatchEvent(new Event('storage'));
+            router.push('/account');
+        } catch (e: unknown) {
+            const err = e as { name?: string; message?: string };
+            if (err.name !== 'NotAllowedError') setError(err.message ?? (lang === 'ko' ? '패스키 로그인 실패' : 'Passkey login failed'));
+        } finally {
+            setPasskeyLoading(false);
+        }
+    };
+
+    /** Phase ⑦ — complete the 2FA TOTP challenge using the temp_token
+     *  the credentials step stashed. */
+    const handle2FA = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (totpCode.replace(/\s/g, '').length < 6) {
+            setError(lang === 'ko' ? '6자리 코드를 입력해주세요.' : 'Enter the 6-digit code.');
+            return;
+        }
+        setError(''); setLoading(true);
+        try {
+            const res = await fetch(`${AUTH_BASE}/api/auth/2fa/complete`, {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ temp_token: tempToken, code: totpCode.replace(/\s/g, '') }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || data.message || (lang === 'ko' ? '2FA 인증 실패' : '2FA failed'));
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            window.dispatchEvent(new Event('storage'));
+            setStep('credentials'); setTotpCode(''); setTempToken('');
+            router.push('/account');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : (lang === 'ko' ? '2FA 인증 실패' : '2FA failed'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -233,6 +360,14 @@ export default function LoginPage() {
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || data.message || t.failed);
+
+            // 2FA gate — server replies with a short-lived temp_token; we
+            // pivot to the 2fa step until the TOTP code completes.
+            if (data.requires_2fa) {
+                setTempToken(data.temp_token || '');
+                setStep('2fa');
+                return;
+            }
 
             localStorage.setItem('currentUser', JSON.stringify(data.user));
 
@@ -255,10 +390,70 @@ export default function LoginPage() {
         }
     };
 
-    return (
-        <div style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', padding: '40px 16px', fontFamily: 'Pretendard, sans-serif', direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+    // 2FA modal — overlays the credentials card without unmounting it,
+    // so cancelling drops the user back to a still-filled login form.
+    const twoFactorModal = step === '2fa' ? (
+        <div role="dialog" aria-modal style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 'min(400px, 100%)', boxShadow: '0 24px 48px rgba(0,0,0,0.32)' }}>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eff6ff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                    </div>
+                    <h2 style={{ fontSize: 18, fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>
+                        {lang === 'ko' ? '2단계 인증' : 'Two-factor authentication'}
+                    </h2>
+                    <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+                        {lang === 'ko' ? '인증 앱의 6자리 코드를 입력해 주세요.' : 'Enter the 6-digit code from your authenticator app.'}
+                    </p>
+                </div>
+                <form onSubmit={handle2FA} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={totpCode}
+                        onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="000000"
+                        autoFocus
+                        required
+                        style={{ width: '100%', padding: '14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 22, outline: 'none', textAlign: 'center', letterSpacing: '0.4em', fontWeight: 700, fontFamily: 'ui-monospace, monospace', boxSizing: 'border-box' }}
+                    />
+                    {error && (
+                        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                            <span>{error}</span>
+                        </div>
+                    )}
+                    <button
+                        type="submit"
+                        disabled={loading || totpCode.length < 6}
+                        style={{ width: '100%', padding: '12px', background: '#0b5cff', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', borderRadius: 12, cursor: loading ? 'not-allowed' : 'pointer', opacity: (loading || totpCode.length < 6) ? 0.5 : 1 }}
+                    >
+                        {loading ? (lang === 'ko' ? '확인 중…' : 'Verifying…') : (lang === 'ko' ? '인증' : 'Verify')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); setTempToken(''); }}
+                        style={{ width: '100%', padding: '8px', background: 'transparent', color: '#6b7280', fontSize: 13, border: 'none', cursor: 'pointer' }}
+                    >
+                        ← {lang === 'ko' ? '로그인 화면으로' : 'Back to sign in'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    ) : null;
 
-            <div style={{ maxWidth: '420px', width: '100%', background: '#fff', padding: '40px 32px', borderRadius: '20px', boxShadow: '0 10px 40px rgba(0,0,0,0.06)', border: '1px solid #f3f4f6' }}>
+    return (
+        <div style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f6fb', padding: '40px 16px', fontFamily: 'Pretendard, sans-serif', direction: lang === 'ar' ? 'rtl' : 'ltr', position: 'relative', overflow: 'hidden' }}>
+            {twoFactorModal}
+            {/* NexyFlow-style background blur blobs */}
+            <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: 600, height: 600, background: 'rgba(96, 165, 250, 0.10)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: 600, height: 600, background: 'rgba(167, 139, 250, 0.10)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
+            {/* scale-in animation for the card */}
+            <style>{`@keyframes nfLoginScaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
+
+            <div style={{ position: 'relative', zIndex: 1, maxWidth: '420px', width: '100%', background: '#fff', padding: '40px 32px', borderRadius: '20px', boxShadow: '0 16px 48px rgba(0,0,0,0.08)', border: '1px solid #f3f4f6', animation: 'nfLoginScaleIn 0.25s ease-out' }}>
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     {/* Text logo — same style as Header */}
                     <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: '16px' }}>
@@ -278,17 +473,55 @@ export default function LoginPage() {
                         autoFocus
                         style={{ width: '100%', padding: '14px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
                     />
-                    <input
-                        type="password"
-                        placeholder={t.password}
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '14px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
-                    />
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            type={showPw ? 'text' : 'password'}
+                            placeholder={t.password}
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            required
+                            autoComplete="current-password"
+                            style={{ width: '100%', padding: '14px 40px 14px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+                        />
+                        <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowPw(v => !v)}
+                            aria-label={showPw ? 'Hide password' : 'Show password'}
+                            aria-pressed={showPw}
+                            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                        >
+                            {showPw ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
+                            ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
+                            )}
+                        </button>
+                    </div>
+
+                    {discoveredSso && (
+                        <a
+                            href={discoveredSso.loginUrl}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16,185,129,0.2)' }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                            <span>
+                                {lang === 'ko' ? `${discoveredSso.name}으로 로그인` :
+                                 lang === 'ja' ? `${discoveredSso.name}でログイン` :
+                                 lang === 'zh' ? `使用 ${discoveredSso.name} 登录` :
+                                 lang === 'es' ? `Continuar con ${discoveredSso.name}` :
+                                 lang === 'ar' ? `المتابعة مع ${discoveredSso.name}` :
+                                 `Continue with ${discoveredSso.name}`}
+                            </span>
+                            <span>→</span>
+                        </a>
+                    )}
 
                     {error && (
-                        <p style={{ color: '#ef4444', fontSize: '13px', fontWeight: '600', margin: 0 }}>{error}</p>
+                        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                            <span>{error}</span>
+                        </div>
                     )}
 
                     <button
@@ -299,6 +532,23 @@ export default function LoginPage() {
                         {loading ? t.signingIn : t.signIn}
                     </button>
                 </form>
+
+                {/* Phase ⑦ Passkey — only show when the browser supports it. */}
+                {typeof window !== 'undefined' && typeof window.PublicKeyCredential !== 'undefined' && (
+                    <button
+                        type="button"
+                        onClick={handlePasskeyLogin}
+                        disabled={passkeyLoading}
+                        style={{ marginTop: 12, width: '100%', background: '#7c3aed', color: '#fff', fontWeight: 700, padding: '12px', borderRadius: 12, border: 'none', cursor: passkeyLoading ? 'wait' : 'pointer', opacity: passkeyLoading ? 0.6 : 1, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(124,58,237,0.2)' }}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="7" cy="14" r="5" /><path d="M11 10l5-5 1 1-1 1 1 1-2 2 1 1-2 2" />
+                        </svg>
+                        {passkeyLoading
+                            ? (lang === 'ko' ? '인증 중…' : 'Authenticating…')
+                            : (lang === 'ko' ? '패스키로 로그인' : 'Sign in with passkey')}
+                    </button>
+                )}
 
                 {/* 소셜 로그인 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0 16px' }}>
@@ -400,12 +650,44 @@ export default function LoginPage() {
                 </div>
 
                 {process.env.NODE_ENV !== 'production' && (
-                    <div style={{ marginTop: '20px', padding: '12px 16px', background: '#f8faff', border: '1px solid #dbeafe', borderRadius: '10px', fontSize: '11px', color: '#6b7280', textAlign: 'center', lineHeight: 1.8 }}>
-                        <div style={{ fontWeight: 700, color: '#374151', marginBottom: '4px' }}>테스트 계정</div>
-                        <div>test@nexysys.com / Test1234!</div>
-                        <div>orgadmin@nexysys.com / OrgAdmin1!</div>
-                        <div>customer@nexyfab.com / Customer1!</div>
-                        <div>partner@nexyfab.com / Partner1!</div>
+                    <div style={{ marginTop: '20px', padding: '12px', background: '#f8faff', border: '1px solid #dbeafe', borderRadius: '10px' }}>
+                        <div style={{ fontWeight: 700, color: '#374151', fontSize: 11, textAlign: 'center', marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>테스트 계정</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                            {[
+                                { email: 'test@nexysys.com', password: 'Test1234!', label: 'Test' },
+                                { email: 'orgadmin@nexysys.com', password: 'OrgAdmin1!', label: 'OrgAdmin' },
+                                { email: 'customer@nexyfab.com', password: 'Customer1!', label: 'Customer' },
+                                { email: 'partner@nexyfab.com', password: 'Partner1!', label: 'Partner' },
+                            ].map(acc => (
+                                <button
+                                    key={acc.email}
+                                    type="button"
+                                    onClick={() => { setEmail(acc.email); setPassword(acc.password); setError(''); }}
+                                    style={{
+                                        padding: '6px 8px',
+                                        background: 'transparent',
+                                        border: '1px dashed #cbd5e1',
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: '#475569',
+                                        cursor: 'pointer',
+                                        transition: 'border 0.15s, color 0.15s',
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.border = '1px dashed #0b5cff';
+                                        e.currentTarget.style.color = '#0b5cff';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.border = '1px dashed #cbd5e1';
+                                        e.currentTarget.style.color = '#475569';
+                                    }}
+                                    title={`${acc.email} / ${acc.password}`}
+                                >
+                                    {acc.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

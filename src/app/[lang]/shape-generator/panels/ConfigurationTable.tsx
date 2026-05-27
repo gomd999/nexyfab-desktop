@@ -39,14 +39,14 @@ const dict = {
 };
 
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#58a6ff',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent-2)',
   active: '#1f6feb22',
-  cellBg: '#0d1117',
-  danger: '#f85149',
+  cellBg: 'var(--nx-bg)',
+  danger: 'var(--nx-error)',
 };
 
 export default function ConfigurationTable({
@@ -98,11 +98,18 @@ export default function ConfigurationTable({
       borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 200,
       display: 'flex', flexDirection: 'column',
     }}>
-      <Header title={t.title} onAdd={onAdd} addLabel={t.add} onClose={onClose} />
+      <Header
+        title={t.title}
+        onAdd={onAdd}
+        addLabel={t.add}
+        onClose={onClose}
+        onExportCsv={() => exportConfigurationsCsv(configurations, paramKeys, featureCols)}
+        exportLabel="CSV"
+      />
       <div style={{ overflow: 'auto', flex: 1 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
           <thead>
-            <tr style={{ background: '#21262d', position: 'sticky', top: 0 }}>
+            <tr style={{ background: 'var(--nx-panel-2)', position: 'sticky', top: 0 }}>
               <th style={cellHeaderStyle}>{t.config}</th>
               {paramKeys.map(k => (
                 <th key={k} style={cellHeaderStyle} title={k}>
@@ -144,7 +151,7 @@ export default function ConfigurationTable({
                         marginLeft: 4, padding: '1px 6px', borderRadius: 3,
                         border: `1px solid ${isActive ? C.accent : C.border}`,
                         background: isActive ? C.accent : 'transparent',
-                        color: isActive ? '#fff' : C.muted,
+                        color: isActive ? 'var(--nx-text)' : C.muted,
                         fontSize: 9, cursor: 'pointer',
                       }}
                       title={t.activate}
@@ -231,7 +238,14 @@ export default function ConfigurationTable({
   );
 }
 
-function Header({ title, onAdd, addLabel, onClose }: { title: string; onAdd: () => void; addLabel: string; onClose?: () => void }) {
+function Header({ title, onAdd, addLabel, onClose, onExportCsv, exportLabel }: {
+  title: string;
+  onAdd: () => void;
+  addLabel: string;
+  onClose?: () => void;
+  onExportCsv?: () => void;
+  exportLabel?: string;
+}) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -239,6 +253,18 @@ function Header({ title, onAdd, addLabel, onClose }: { title: string; onAdd: () 
     }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>📊 {title}</span>
       <div style={{ display: 'flex', gap: 6 }}>
+        {onExportCsv && exportLabel && (
+          <button
+            onClick={onExportCsv}
+            style={{
+              padding: '4px 10px', borderRadius: 4, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.muted, fontSize: 11, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ⇩ {exportLabel}
+          </button>
+        )}
         <button
           onClick={onAdd}
           style={{
@@ -262,6 +288,36 @@ function Header({ title, onAdd, addLabel, onClose }: { title: string; onAdd: () 
       </div>
     </div>
   );
+}
+
+function exportConfigurationsCsv(
+  configurations: NfabConfigurationV1[],
+  paramKeys: string[],
+  featureCols: FeatureInstance[],
+): void {
+  if (typeof window === 'undefined') return;
+  const escape = (s: string) => /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const header = ['name', ...paramKeys, ...featureCols.map(f => `feature:${f.type}#${f.id.slice(0, 6)}`)];
+  const rows = configurations.map(c => {
+    const cells = [c.name];
+    for (const k of paramKeys) {
+      const v = c.params[k];
+      cells.push(typeof v === 'number' ? String(v) : '');
+    }
+    for (const f of featureCols) {
+      const enabled = c.featureEnabled?.[f.id] !== false;
+      cells.push(enabled ? '1' : '0');
+    }
+    return cells.map(escape).join(',');
+  });
+  const csv = [header.map(escape).join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nexyfab-configurations-${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 const cellHeaderStyle: React.CSSProperties = {

@@ -55,7 +55,7 @@ function CursorMesh({ position, color, name, state }: { position: THREE.Vector3,
       <Html position={[2, -4, 0]} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
         <div style={{
           background: color,
-          color: '#fff',
+          color: 'var(--nx-text)',
           padding: '2px 8px',
           borderRadius: '4px',
           fontSize: '12px',

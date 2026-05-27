@@ -5,13 +5,12 @@
 ## P1 — 연동·알림
 
 1. **CAD 업로드 / 새 버전 시 알림**  
-   `quick-quote/upload`, RFQ CAD 관련 경로에서 담당 파트너·RFQ 소유 고객에게 `nf_notifications` (+ 선택 이메일).
+   `quick-quote/upload`(`src/app/api/quick-quote/upload/route.ts`), RFQ CAD 관련 경로에서 담당 파트너·RFQ 소유 고객에게 `nf_notifications` (+ 선택 이메일).  
+   _현재 상태_: 업로드는 되지만 알림 미발송. 첨부 파일이 새 버전(`replaces_file_id` set)이면 RFQ 소유 고객/배정 파트너에게 알림 필요.
 
-2. **고객 알림 API와 `user_id` 키 정합**  
-   `GET /api/nexyfab/notifications`가 `authUser.userId`만 조회함. `customer:email` 등으로만 저장된 행은 목록에서 빠질 수 있음 → 조회 시 정규화된 수신 키 병합 또는 저장 키 통일.
-
-3. **신규 RFQ 브로드캐스트 범위**  
-   공정 매칭 전체 공장 알림 대신, **배정된 파트너** 또는 **관리자 배정 후** 대상만 알림(노이즈·스팸 감소).
+2. **신규 RFQ 브로드캐스트 범위** (제품 결정 필요)  
+   현재 `src/app/api/nexyfab/rfq/route.ts:312-353`은 `preferredFactoryId`가 있으면 단일 공장에만, 없으면 `process LIKE %"keyword"%`인 모든 active factory에 이메일+`createNotification` 발송 — 경매 다이내믹 의도.  
+   대안: **관리자 배정 후**에만 알림 → 노이즈 감소 vs 응답 속도 트레이드오프. 어느 쪽이 제품 방향인지 결정 후 코드 변경.
 
 ## P2 — 파트너 경험
 

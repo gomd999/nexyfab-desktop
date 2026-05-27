@@ -125,9 +125,9 @@ export default function AdvancedAnalysisDock(props: AdvancedAnalysisDockProps) {
             onClick={() => setShowThermalOverlay(prev => !prev)}
             style={{
               padding: '6px 14px', borderRadius: 6,
-              border: '1px solid #f59e0b',
-              background: showThermalOverlay ? '#f59e0b' : '#161b22',
-              color: showThermalOverlay ? '#000' : '#f59e0b',
+              border: '1px solid var(--nx-warn)',
+              background: showThermalOverlay ? 'var(--nx-warn)' : 'var(--nx-panel)',
+              color: showThermalOverlay ? '#000' : 'var(--nx-warn)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer',
             }}
           >
@@ -142,9 +142,9 @@ export default function AdvancedAnalysisDock(props: AdvancedAnalysisDockProps) {
             onClick={() => setShowGenOverlay(prev => !prev)}
             style={{
               padding: '6px 14px', borderRadius: 6,
-              border: '1px solid #388bfd',
-              background: showGenOverlay ? '#388bfd' : '#161b22',
-              color: showGenOverlay ? '#fff' : '#388bfd',
+              border: '1px solid var(--nx-accent)',
+              background: showGenOverlay ? 'var(--nx-accent)' : 'var(--nx-panel)',
+              color: showGenOverlay ? 'var(--nx-text)' : 'var(--nx-accent)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer',
             }}
           >

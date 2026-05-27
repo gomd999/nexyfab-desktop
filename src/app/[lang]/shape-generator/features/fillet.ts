@@ -1,11 +1,155 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
-import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtFilletBox, hostBoxFromGeometry } from './occtEngine';
+import type { FeatureDefinition, FeatureApplyContext } from './types';
+import { isOcctReady, isOcctGlobalMode, occtFilletBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { assertRoundingApplied } from './roundingGuard';
+import { tryMeshFillet } from './meshRounding';
+import {
+  buildEdgeFinderFromSelection,
+  buildEdgeFinderFromMultiSelection,
+  buildEdgeFinderForLoop,
+  buildEdgeFinderBySignature,
+} from './topologyEdgeFinder';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
+}
+
+/** World bbox of the current solid, so the finder can remap a stored click
+ *  point through a dimension change (scale-aware edge re-resolution). */
+function currentBboxOf(geometry: THREE.BufferGeometry):
+  { min: [number, number, number]; max: [number, number, number] } | undefined {
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return undefined;
+  return { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
+}
+
+/** Build the most-specific EdgeFinder for a selection set.
+ *  Priority: loop (axis-aligned cluster) → multi → single → null. */
+async function buildBestEdgeFinder(
+  ctx?: FeatureApplyContext,
+  geometry?: THREE.BufferGeometry,
+): Promise<ReplicadEdgeFinder | null> {
+  const sels = ctx?.edgeSelections;
+  if (!sels || sels.length === 0) return null;
+  const currentBbox = geometry ? currentBboxOf(geometry) : undefined;
+  if (sels.length >= 2) {
+    const loop = await buildEdgeFinderForLoop(sels, { currentBbox });
+    if (loop) return loop;
+    return buildEdgeFinderFromMultiSelection(sels, { currentBbox });
+  }
+  // Primary (topology-tolerant): re-anchor to a real current edge by signature.
+  const handle = geometry?.userData?.occtHandle as string | undefined;
+  if (handle) {
+    const bySig = await buildEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    if (bySig) return bySig;
+  }
+  return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
+}
+
+function applyFilletMeshCsg(
+  geometry: THREE.BufferGeometry,
+  radius: number,
+  segments: number,
+  ctx?: FeatureApplyContext,
+  guardNoOp = false,
+): THREE.BufferGeometry {
+  // Real rounding for box-like solids (no OCCT needed). Non-box ⇒ null, then
+  // the legacy approximation runs and (if a silent downgrade) the guard fires.
+  const rounded = tryMeshFillet(geometry, radius);
+  if (rounded) {
+    if (ctx?.featureId) stampFaceFeatureIdAll(rounded, ctx.featureId);
+    return rounded;
+  }
+  if (!geometry.index) {
+    throw new Error('Fillet requires indexed (manifold) geometry');
+  }
+  if (geometry.attributes.position.count < 4) {
+    throw new Error('Fillet requires geometry with at least 4 vertices');
+  }
+  const evaluator = new Evaluator();
+  let resultBrush = makeBrush(geometry.clone());
+  let runningGeo = resultBrush.geometry;
+
+  for (let s = 1; s <= segments; s++) {
+    const t = s / (segments + 1);
+    const offset = radius * (1 - Math.cos((t * Math.PI) / 2));
+    const intermediate = geometry.clone();
+    intermediate.computeVertexNormals();
+    const iPos = intermediate.attributes.position;
+    const iNor = intermediate.attributes.normal;
+    for (let i = 0; i < iPos.count; i++) {
+      iPos.setX(i, iPos.getX(i) + iNor.getX(i) * offset);
+      iPos.setY(i, iPos.getY(i) + iNor.getY(i) * offset);
+      iPos.setZ(i, iPos.getZ(i) + iNor.getZ(i) * offset);
+    }
+    iPos.needsUpdate = true;
+    if (ctx?.featureId) {
+      stampFaceFeatureIdAll(intermediate, ctx.featureId, { avoidIdsFrom: runningGeo });
+    }
+    configureEvaluatorForProvenance(evaluator, runningGeo, intermediate);
+    resultBrush = evaluator.evaluate(resultBrush, makeBrush(intermediate), INTERSECTION);
+    propagateFeatureIdMap(resultBrush.geometry, runningGeo, intermediate);
+    runningGeo = resultBrush.geometry;
+  }
+  if (guardNoOp) assertRoundingApplied(geometry, resultBrush.geometry, 'Fillet');
+  return resultBrush.geometry;
+}
+
+function applyFilletOcct(
+  geometry: THREE.BufferGeometry,
+  radius: number,
+  edgeFinder: ReplicadEdgeFinder | null,
+): THREE.BufferGeometry | null {
+  try {
+    const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+    const host = hostBoxFromGeometry(geometry);
+    const result = occtFilletBox(host, radius, {}, upstreamHandle, edgeFinder ?? undefined);
+    if (result.handle) result.geometry.userData.occtHandle = result.handle;
+    return result.geometry;
+  } catch (err) {
+    console.warn('[fillet] OCCT path failed, falling back to mesh approximator:', err);
+    return null;
+  }
+}
+
+function applyFilletSync(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+  ctx?: FeatureApplyContext,
+): THREE.BufferGeometry {
+  const radius = params.radius!;
+  const segments = Math.round(params.segments!);
+  const engine = Math.round(params.engine ?? 0);
+  // Sync path: no EdgeFinder (can't await dynamic replicad import).
+  // OCCT still runs globally if engine === 1.
+  const wantedOcct = engine === 1 || isOcctGlobalMode();
+  if (wantedOcct && isOcctReady()) {
+    const out = applyFilletOcct(geometry, radius, null);
+    if (out) return out;
+  }
+  // Reaching the mesh path with wantedOcct=true is a silent downgrade — guard
+  // against shipping an unrounded part. Explicit engine=0 keeps the placeholder.
+  return applyFilletMeshCsg(geometry, radius, segments, ctx, wantedOcct);
+}
+
+async function applyFilletWithEdgeFinder(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+  ctx?: FeatureApplyContext,
+): Promise<THREE.BufferGeometry> {
+  const radius = params.radius!;
+  const segments = Math.round(params.segments!);
+  const engine = Math.round(params.engine ?? 0);
+  const wantedOcct = engine === 1 || isOcctGlobalMode();
+  if (wantedOcct && isOcctReady()) {
+    const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
+    const out = applyFilletOcct(geometry, radius, edgeFinder);
+    if (out) return out;
+  }
+  return applyFilletMeshCsg(geometry, radius, segments, ctx, wantedOcct);
 }
 
 export const filletFeature: FeatureDefinition = {
@@ -28,74 +172,6 @@ export const filletFeature: FeatureDefinition = {
       ],
     },
   ],
-  apply(geometry, params, ctx) {
-    const radius = params.radius;
-    const segments = Math.round(params.segments);
-    const engine = Math.round(params.engine ?? 0);
-
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
-      try {
-        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
-        const host = hostBoxFromGeometry(geometry);
-        const result = occtFilletBox(host, radius, {}, upstreamHandle);
-        if (result.handle) result.geometry.userData.occtHandle = result.handle;
-        return result.geometry;
-      } catch (err) {
-         
-        console.warn('[fillet] OCCT path failed, falling back to mesh approximator:', err);
-      }
-    }
-
-    // Validate: geometry must have index (manifold requirement for CSG)
-    if (!geometry.index) {
-      throw new Error('Fillet requires indexed (manifold) geometry');
-    }
-    if (geometry.attributes.position.count < 4) {
-      throw new Error('Fillet requires geometry with at least 4 vertices');
-    }
-
-    const evaluator = new Evaluator();
-
-    // Minkowski-sum approximation for fillet:
-    // Intersect the original geometry with multiple intermediate offset
-    // geometries. Each intermediate is expanded along vertex normals by an
-    // amount following a cosine curve, producing a smooth rounded edge profile.
-    //
-    // B1 deep — every intermediate is a clone of the *original* geometry
-    // so it inherits the same upstream feature ids on every triangle. We
-    // then restamp each intermediate with this fillet's id, so any triangle
-    // that ends up in the result via the intermediate (i.e. the rounded
-    // edges) resolves back to the fillet feature. Untouched triangles from
-    // the original keep their upstream provenance.
-    let resultBrush = makeBrush(geometry.clone());
-    let runningGeo = resultBrush.geometry;
-
-    for (let s = 1; s <= segments; s++) {
-      const t = s / (segments + 1);
-      // Cosine easing gives a smooth circular-arc profile
-      const offset = radius * (1 - Math.cos((t * Math.PI) / 2));
-
-      const intermediate = geometry.clone();
-      intermediate.computeVertexNormals();
-      const iPos = intermediate.attributes.position;
-      const iNor = intermediate.attributes.normal;
-
-      for (let i = 0; i < iPos.count; i++) {
-        iPos.setX(i, iPos.getX(i) + iNor.getX(i) * offset);
-        iPos.setY(i, iPos.getY(i) + iNor.getY(i) * offset);
-        iPos.setZ(i, iPos.getZ(i) + iNor.getZ(i) * offset);
-      }
-      iPos.needsUpdate = true;
-
-      if (ctx?.featureId) {
-        stampFaceFeatureIdAll(intermediate, ctx.featureId, { avoidIdsFrom: runningGeo });
-      }
-      configureEvaluatorForProvenance(evaluator, runningGeo, intermediate);
-      resultBrush = evaluator.evaluate(resultBrush, makeBrush(intermediate), INTERSECTION);
-      propagateFeatureIdMap(resultBrush.geometry, runningGeo, intermediate);
-      runningGeo = resultBrush.geometry;
-    }
-
-    return resultBrush.geometry;
-  },
+  applyAsync: applyFilletWithEdgeFinder,
+  apply: applyFilletSync,
 };

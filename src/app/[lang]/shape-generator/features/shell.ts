@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtShellBox, hostBoxFromGeometry } from './occtEngine';
+import { isOcctReady, isOcctGlobalMode, occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
+import { buildFaceFinderBySignature } from './topologyEdgeFinder';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -129,5 +130,36 @@ export const shellFeature: FeatureDefinition = {
     }
 
     return result.geometry;
+  },
+
+  /** OCCT async path: when the user picked a face to leave open, re-resolve it
+   *  against the current solid's face signatures into a FaceFinder and open
+   *  exactly that face — surviving rebuilds. Otherwise defer to the sync path
+   *  (OCCT openFace heuristic / mesh fallback). */
+  async applyAsync(geometry, params, ctx) {
+    const thickness = params.wallThickness;
+    const openFace = Math.round(params.openFace);
+    const engine = Math.round(params.engine ?? 0);
+    const sel = ctx?.faceSelections?.[0];
+    if (sel && (engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+      try {
+        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        if (upstreamHandle) {
+          const faceFinder = await buildFaceFinderBySignature(
+            { position: sel.position, normal: sel.normal },
+            occtFaceSignatures(upstreamHandle),
+          );
+          if (faceFinder) {
+            const host = hostBoxFromGeometry(geometry);
+            const result = occtShellBox(host, thickness, openFace, undefined, upstreamHandle, faceFinder);
+            if (result.handle) result.geometry.userData.occtHandle = result.handle;
+            return result.geometry;
+          }
+        }
+      } catch (err) {
+        console.warn('[shell] OCCT face-finder path failed, falling back:', err);
+      }
+    }
+    return shellFeature.apply(geometry, params, ctx);
   },
 };

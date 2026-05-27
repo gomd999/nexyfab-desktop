@@ -1,0 +1,35 @@
+name: PR Title Lint
+
+# Enforces docs/process/commit-policy.md PR title format on the merge-time
+# title (which becomes the squash-merge commit message). This is the last
+# gate before main — commitlint catches per-commit format, this catches PR.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  pr-title-format:
+    name: Title format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -e
+          echo "Title: $PR_TITLE"
+          # Required: [P0|P1|P2] type(scope?): subject
+          # type ∈ feat|fix|chore|docs|refactor|test|style|perf|build|ci|revert
+          if echo "$PR_TITLE" | grep -qE '^\[P[0-2]\] (feat|fix|chore|docs|refactor|test|style|perf|build|ci|revert)(\([^)]+\))?: .+'; then
+            echo "✓ PR title matches policy"
+            exit 0
+          fi
+          echo "✖ PR title does not match policy."
+          echo "  Required format: [P0|P1|P2] type(scope?): subject"
+          echo "  Example:         [P1] feat(cad): persistent topology naming"
+          echo "  Policy:          docs/process/commit-policy.md"
+          exit 1

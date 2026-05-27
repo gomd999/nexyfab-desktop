@@ -14,13 +14,13 @@ interface ArrayPanelProps {
 }
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#388bfd',
-  danger: '#f85149',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  danger: 'var(--nx-error)',
 };
 
 // Note: 'Pattern' is kept in English across langs (technical term).
@@ -196,7 +196,7 @@ function SliderRow({ label, value, min, max, step = 1, onChange }: {
         value={value}
         onChange={e => onChange(Number(e.target.value))}
         style={{
-          width: 52, padding: '2px 6px', background: '#0d1117', color: C.text,
+          width: 52, padding: '2px 6px', background: 'var(--nx-bg)', color: C.text,
           border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 11,
           fontFamily: 'monospace', textAlign: 'right',
         }}
@@ -249,7 +249,7 @@ export default function ArrayPanel({ onApply, onClose, isKo: _isKo, t: _tt }: Ar
           color: C.muted, width: 24, height: 24, borderRadius: 6,
           display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.12s',
         }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; e.currentTarget.style.color = C.text; }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.color = C.text; }}
           onMouseLeave={e => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.muted; }}
         >✕</button>
       </div>
@@ -270,7 +270,7 @@ export default function ArrayPanel({ onApply, onClose, isKo: _isKo, t: _tt }: Ar
                 style={{
                   flex: 1, padding: '6px 4px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                   border: pattern.type === type ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
-                  background: pattern.type === type ? `${C.accent}22` : '#0d1117',
+                  background: pattern.type === type ? `${C.accent}22` : 'var(--nx-bg)',
                   color: pattern.type === type ? C.accent : C.muted,
                   cursor: 'pointer', transition: 'all 0.12s',
                 }}
@@ -312,7 +312,7 @@ export default function ArrayPanel({ onApply, onClose, isKo: _isKo, t: _tt }: Ar
                   <button key={ax} onClick={() => set('radialAxis', ax)} style={{
                     flex: 1, padding: '4px', borderRadius: 5, fontSize: 11, fontWeight: 700,
                     border: pattern.radialAxis === ax ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
-                    background: pattern.radialAxis === ax ? `${C.accent}22` : '#0d1117',
+                    background: pattern.radialAxis === ax ? `${C.accent}22` : 'var(--nx-bg)',
                     color: pattern.radialAxis === ax ? C.accent : C.muted,
                     cursor: 'pointer', transition: 'all 0.12s',
                   }}>
@@ -340,7 +340,7 @@ export default function ArrayPanel({ onApply, onClose, isKo: _isKo, t: _tt }: Ar
 
         {/* Instance count display */}
         <div style={{
-          background: '#0d1117', borderRadius: 8, border: `1px solid ${C.border}`,
+          background: 'var(--nx-bg)', borderRadius: 8, border: `1px solid ${C.border}`,
           padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>
@@ -358,7 +358,7 @@ export default function ArrayPanel({ onApply, onClose, isKo: _isKo, t: _tt }: Ar
           onClick={() => onApply(pattern)}
           style={{
             flex: 1, padding: '9px 0', borderRadius: 8, border: 'none',
-            background: C.accent, color: '#fff', fontSize: 12, fontWeight: 700,
+            background: C.accent, color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
             cursor: 'pointer', transition: 'all 0.15s',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = '#1a7fe8'; }}

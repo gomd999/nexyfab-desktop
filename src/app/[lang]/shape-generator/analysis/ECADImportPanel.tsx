@@ -86,14 +86,14 @@ const langMap: Record<string, keyof typeof dict> = {
 };
 
 const C = {
-  bg: '#0d1117',
-  card: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#388bfd',
-  warn: '#f59e0b',
-  hot: '#f85149',
+  bg: 'var(--nx-bg)',
+  card: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  warn: 'var(--nx-warn)',
+  hot: 'var(--nx-error)',
 };
 
 export default function ECADImportPanel({ geometry, onThermalResult, onClose }: Props) {
@@ -334,7 +334,7 @@ export default function ECADImportPanel({ geometry, onThermalResult, onClose }: 
               padding: '8px 0',
               borderRadius: 6,
               border: 'none',
-              background: isAnalyzing ? C.card : '#f59e0b',
+              background: isAnalyzing ? C.card : 'var(--nx-warn)',
               color: isAnalyzing ? C.muted : '#000',
               fontWeight: 700,
               fontSize: 12,

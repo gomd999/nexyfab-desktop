@@ -44,13 +44,13 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
 
   return (
     <div style={{
-      width: 320, background: '#0d1117', border: '1px solid #30363d',
+      width: 320, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
       borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-      display: 'flex', flexDirection: 'column', color: '#c9d1d9',
+      display: 'flex', flexDirection: 'column', color: 'var(--nx-text)',
       fontFamily: 'Inter, sans-serif'
     }}>
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #21262d',
+        padding: '12px 16px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -58,22 +58,22 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{t.title}</h3>
         </div>
         <button onClick={onClose} style={{
-          background: 'transparent', border: 'none', color: '#6e7681', cursor: 'pointer'
+          background: 'transparent', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer'
         }}>✕</button>
       </div>
 
       <div style={{ padding: 16, fontSize: 12 }}>
-        <p style={{ margin: '0 0 16px', color: '#8b949e', lineHeight: 1.4 }}>{t.desc}</p>
+        <p style={{ margin: '0 0 16px', color: 'var(--nx-text-2)', lineHeight: 1.4 }}>{t.desc}</p>
 
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <span>{t.moldSizeLabel}</span>
-            <span style={{ color: '#58a6ff' }}>{margin} mm</span>
+            <span style={{ color: 'var(--nx-accent-2)' }}>{margin} mm</span>
           </label>
           <input
             type="range" min="5" max="100" step="5"
             value={margin} onChange={e => setMargin(Number(e.target.value))}
-            style={{ width: '100%', accentColor: '#388bfd' }}
+            style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
           />
         </div>
 
@@ -82,7 +82,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           disabled={!geometry || loading}
           style={{
             width: '100%', padding: '8px', borderRadius: 6,
-            background: '#238636', color: '#fff', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--nx-ok)', color: 'var(--nx-text)', border: '1px solid rgba(255,255,255,0.1)',
             fontWeight: 600, cursor: (!geometry || loading) ? 'not-allowed' : 'pointer',
             opacity: (!geometry || loading) ? 0.6 : 1, marginBottom: 24
           }}
@@ -93,12 +93,12 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <span>{t.draftAngleLabel}</span>
-            <span style={{ color: '#f0883e' }}>{draftAngle}°</span>
+            <span style={{ color: 'var(--nx-warn)' }}>{draftAngle}°</span>
           </label>
           <input
             type="range" min="0" max="10" step="0.5"
             value={draftAngle} onChange={e => setDraftAngle(Number(e.target.value))}
-            style={{ width: '100%', accentColor: '#f0883e' }}
+            style={{ width: '100%', accentColor: 'var(--nx-warn)' }}
           />
         </div>
 
@@ -107,7 +107,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           disabled={!geometry}
           style={{
             width: '100%', padding: '8px', borderRadius: 6,
-            background: 'transparent', color: '#f0883e', border: '1px solid #f0883e',
+            background: 'transparent', color: 'var(--nx-warn)', border: '1px solid #f0883e',
             fontWeight: 600, cursor: !geometry ? 'not-allowed' : 'pointer',
             opacity: !geometry ? 0.6 : 1, marginBottom: 24
           }}
@@ -115,11 +115,11 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           {t.draftAnalysis}
         </button>
 
-        <div style={{ borderTop: '1px solid #21262d', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ borderTop: '1px solid var(--nx-panel-2)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             onClick={onSplitBody}
             style={{
-              padding: '8px', borderRadius: 6, background: '#1f6feb', color: '#fff',
+              padding: '8px', borderRadius: 6, background: 'var(--nx-accent)', color: 'var(--nx-text)',
               border: 'none', fontWeight: 600, cursor: 'pointer'
             }}
           >
@@ -129,8 +129,8 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
           <button
             onClick={onOpenStandardParts}
             style={{
-              padding: '8px', borderRadius: 6, background: '#30363d', color: '#c9d1d9',
-              border: '1px solid #484f58', fontWeight: 600, cursor: 'pointer'
+              padding: '8px', borderRadius: 6, background: 'var(--nx-border)', color: 'var(--nx-text)',
+              border: '1px solid var(--nx-border-strong)', fontWeight: 600, cursor: 'pointer'
             }}
           >
             {lang === 'ko' ? '표준 금형 부품 라이브러리' : 'Standard Mold Parts'}
@@ -140,8 +140,8 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
             onClick={onExportPackage}
             disabled={!geometry}
             style={{
-              padding: '8px', borderRadius: 6, background: 'transparent', color: '#3fb950',
-              border: '1px solid #3fb950', fontWeight: 600, cursor: !geometry ? 'not-allowed' : 'pointer',
+              padding: '8px', borderRadius: 6, background: 'transparent', color: 'var(--nx-ok)',
+              border: '1px solid var(--nx-ok)', fontWeight: 600, cursor: !geometry ? 'not-allowed' : 'pointer',
               opacity: !geometry ? 0.6 : 1
             }}
           >

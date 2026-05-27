@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
+import { isOcctReady, isOcctGlobalMode, occtRib } from './occtEngine';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -102,5 +103,32 @@ export const ribFeature: FeatureDefinition = {
       // user at least sees the rib visually even if it's not unioned.
       return ribGeo;
     }
+  },
+  async applyAsync(geometry, params) {
+    if (isOcctReady() && isOcctGlobalMode()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          geometry.computeBoundingBox();
+          const bb = geometry.boundingBox;
+          if (bb) {
+            const r = occtRib(
+              handle,
+              {
+                startX: params.startX, startZ: params.startZ,
+                endX: params.endX, endZ: params.endZ,
+                thickness: params.thickness, height: params.height,
+                direction: Math.round(params.direction),
+              },
+              bb.min.y, bb.max.y,
+            );
+            if (r.handle) { r.geometry.userData.occtHandle = r.handle; return r.geometry; }
+          }
+        } catch (err) {
+          console.warn('[rib] OCCT path failed, falling back to mesh:', err);
+        }
+      }
+    }
+    return ribFeature.apply(geometry, params);
   },
 };

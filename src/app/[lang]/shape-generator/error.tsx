@@ -50,25 +50,25 @@ export default function ShapeGeneratorError({
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: '#0d1117', color: '#e6edf3',
+      background: 'var(--nx-bg)', color: 'var(--nx-text)',
       fontFamily: 'system-ui, sans-serif', textAlign: 'center',
       padding: '40px 24px',
     }}>
       <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>
         {t.title}
       </h2>
-      <p style={{ fontSize: '14px', color: '#8b949e', marginBottom: '24px' }}>
+      <p style={{ fontSize: '14px', color: 'var(--nx-text-2)', marginBottom: '24px' }}>
         {process.env.NODE_ENV === 'development' ? error.message : t.desc}
       </p>
       {error.digest && (
-        <p style={{ fontSize: '12px', color: '#484f58', fontFamily: 'monospace', marginBottom: '16px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--nx-border-strong)', fontFamily: 'monospace', marginBottom: '16px' }}>
           Error ID: {error.digest}
         </p>
       )}
       <button
         onClick={reset}
         style={{
-          padding: '10px 24px', background: '#8b9cf4', color: '#fff',
+          padding: '10px 24px', background: 'var(--nx-accent-2)', color: 'var(--nx-text)',
           border: 'none', borderRadius: '8px', cursor: 'pointer',
           fontWeight: 600, fontSize: '14px',
         }}

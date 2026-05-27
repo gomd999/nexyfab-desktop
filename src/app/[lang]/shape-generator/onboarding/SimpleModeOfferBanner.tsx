@@ -90,49 +90,111 @@ export default function SimpleModeOfferBanner({
 
   const presetBtn = (preset: UserPreset, label: string, accent: string): React.CSSProperties => ({
     padding: '8px 12px', borderRadius: 6, border: 'none',
-    background: accent, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    background: accent, color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
     transition: 'transform 0.1s, filter 0.1s',
     minHeight: 32,
   });
 
   return (
     <div
-      role="region"
+      role="dialog"
+      aria-modal="true"
       aria-label={labels.regionLabel}
+      onClick={() => dismiss(false)}
       style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'column', gap: 8,
-        padding: '10px 14px',
-        background: 'linear-gradient(90deg, rgba(63,185,80,0.12), rgba(56,139,253,0.08))',
-        borderBottom: '1px solid rgba(63,185,80,0.25)',
-        flexShrink: 0,
+        zIndex: 9000,
+        animation: 'fadeIn 0.18s ease',
       }}
     >
-      <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.45, textAlign: 'center', maxWidth: 640 }}>
-        <strong style={{ color: '#e6edf3' }}>{labels.presetPickTitle}</strong>
-        {' — '}
-        {labels.presetPickDesc}
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button type="button" style={presetBtn('basic', labels.presetBasic, '#238636')}
-          onClick={() => choose('basic')}>
-          {labels.presetBasic}
-        </button>
-        <button type="button" style={presetBtn('designer', labels.presetDesigner, '#1f6feb')}
-          onClick={() => choose('designer')}>
-          {labels.presetDesigner}
-        </button>
-        <button type="button" style={presetBtn('engineer', labels.presetEngineer, '#6e7681')}
-          onClick={() => choose('engineer')}>
-          {labels.presetEngineer}
-        </button>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)',
+          borderRadius: 12,
+          boxShadow: 'var(--nx-shadow)',
+          padding: '24px 28px',
+          maxWidth: 560,
+          width: 'min(560px, 90vw)',
+          display: 'flex', flexDirection: 'column', gap: 18,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 22 }}>👋</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 6 }}>
+              {labels.presetPickTitle}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
+              {labels.presetPickDesc}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => choose('basic')}
+            style={{
+              padding: '14px 12px', borderRadius: 8, border: '1px solid var(--nx-accent-line)',
+              background: 'var(--nx-accent-soft)', color: 'var(--nx-text)',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+              transition: 'transform 0.1s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+          >
+            <span style={{ fontSize: 20 }}>🌱</span>
+            <span>{labels.presetBasic}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => choose('designer')}
+            style={{
+              padding: '14px 12px', borderRadius: 8, border: '1px solid var(--nx-accent-line)',
+              background: 'var(--nx-accent-soft)', color: 'var(--nx-text)',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+              transition: 'transform 0.1s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+          >
+            <span style={{ fontSize: 20 }}>🎨</span>
+            <span>{labels.presetDesigner}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => choose('engineer')}
+            style={{
+              padding: '14px 12px', borderRadius: 8, border: '1px solid var(--nx-border)',
+              background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+              transition: 'transform 0.1s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+          >
+            <span style={{ fontSize: 20 }}>⚙️</span>
+            <span>{labels.presetEngineer}</span>
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() => dismiss(true)}
           style={{
-            padding: '8px 12px', borderRadius: 6,
-            border: '1px solid #30363d', background: '#21262d', color: '#8b949e',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            alignSelf: 'flex-end',
+            padding: '6px 12px', borderRadius: 6,
+            border: '1px solid var(--nx-border)', background: 'transparent', color: 'var(--nx-text-2)',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}
         >
           {labels.dismiss}

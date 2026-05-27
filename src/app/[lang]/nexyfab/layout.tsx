@@ -1,7 +1,8 @@
 import { use } from 'react';
 import type { Metadata } from 'next';
-import NexyfabNav from '@/components/nexyfab/NexyfabNav';
+import NexyfabUnifiedSidebar from '@/components/nexyfab/NexyfabUnifiedSidebar';
 import ToastProvider from '@/components/ToastProvider';
+import NfBodyMode from './NfBodyMode';
 import { buildMetadata } from '@/lib/metaHelper';
 import { toRouteLang, type RouteLang } from '@/lib/i18n/normalize';
 
@@ -33,16 +34,18 @@ export default function NexyfabLayout({ children, params }: NexyfabLayoutProps) 
 
   return (
     <ToastProvider>
+      <NfBodyMode />
       <div
         style={{
           display: 'flex',
           height: '100vh',
           overflow: 'hidden',
-          background: '#0d1117',
+          background: 'var(--nx-bg)',
+          color: 'var(--nx-text)',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        <NexyfabNav lang={lang} />
+        <NexyfabUnifiedSidebar lang={lang} />
         <main
           style={{
             flex: 1,
@@ -54,24 +57,25 @@ export default function NexyfabLayout({ children, params }: NexyfabLayoutProps) 
         >
           <div style={{ flex: 1 }}>{children}</div>
           <footer
+            data-shell-v2-hide="nexyfab-footer"
             style={{
               padding: '12px 24px',
               fontSize: '11px',
-              color: '#6b7280',
+              color: 'var(--nx-text-3)',
               textAlign: 'center',
-              borderTop: '1px solid #1e293b',
-              background: '#0d1117',
+              borderTop: '1px solid var(--nx-border)',
+              background: 'var(--nx-panel)',
               lineHeight: 1.6,
               flexShrink: 0,
             }}
           >
             <span>© 2026 Nexysys Lab Co., Ltd.</span>
             {' | '}
-            <a href={`/${lang}/terms-of-use`} style={{ color: '#6b7280', textDecoration: 'underline' }}>
+            <a href={`/${lang}/terms-of-use`} style={{ color: 'var(--nx-text-3)', textDecoration: 'underline' }}>
               {t.terms}
             </a>
             {' | '}
-            <a href={`/${lang}/privacy-policy`} style={{ color: '#6b7280', textDecoration: 'underline' }}>
+            <a href={`/${lang}/privacy-policy`} style={{ color: 'var(--nx-text-3)', textDecoration: 'underline' }}>
               {t.privacy}
             </a>
           </footer>

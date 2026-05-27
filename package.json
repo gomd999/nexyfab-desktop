@@ -6,10 +6,11 @@
     "node": ">=22"
   },
   "scripts": {
+    "prepare": "husky",
     "dev": "next dev --webpack",
     "prebuild": "node -e \"const fs=require('fs');fs.copyFileSync('node_modules/occt-import-js/dist/occt-import-js.wasm','public/occt-import-js.wasm');console.log('✓ occt-import-js.wasm copied to public/');fs.mkdirSync('public/fonts',{recursive:true});fs.copyFileSync('node_modules/three/examples/fonts/helvetiker_regular.typeface.json','public/fonts/helvetiker.json');console.log('✓ helvetiker.json copied to public/fonts/')\"",
     "build": "next build --webpack",
-    "postbuild": "node scripts/sync-standalone-static.mjs",
+    "postbuild": "node scripts/sync-standalone-static.mjs && node scripts/bundle-budget.mjs",
     "start": "next start",
     "lint": "eslint src",
     "lint:ci": "eslint src --quiet",
@@ -70,7 +71,11 @@
     "backup": "tsx scripts/backup.ts",
     "backup:list": "tsx scripts/backup.ts --list",
     "import:factories": "tsx scripts/import-factories-directory.ts",
-    "invites:prune-expired": "node scripts/prune-expired-invites.mjs"
+    "invites:prune-expired": "node scripts/prune-expired-invites.mjs",
+    "perf:bench": "node scripts/perf-benchmark.mjs",
+    "perf:bench:json": "node scripts/perf-benchmark.mjs --json",
+    "bundle:budget": "node scripts/bundle-budget.mjs",
+    "bundle:budget:json": "node scripts/bundle-budget.mjs --json"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1025.0",
@@ -95,7 +100,7 @@
     "jose": "^6.2.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
-    "next": "^16.2.4",
+    "next": "^16.2.6",
     "nodemailer": "^8.0.7",
     "occt-import-js": "^0.0.23",
     "otpauth": "^9.5.0",
@@ -116,6 +121,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@tauri-apps/cli": "^2.10.1",
@@ -133,11 +140,19 @@
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "fast-check": "^4.8.0",
+    "husky": "^9.1.7",
     "jsdom": "^26.1.0",
+    "lint-staged": "^17.0.5",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vite": "^8.0.10",
     "vitest": "^4.1.2"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ]
   }
 }

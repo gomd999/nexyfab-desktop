@@ -438,8 +438,8 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
       ...containerStyle,
       display: 'flex',
       flexDirection: 'column',
-      background: '#0d1117',
-      border: '1px solid #30363d',
+      background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-border)',
       borderRadius: 10,
       overflow: 'hidden',
     }}>
@@ -447,10 +447,10 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 12px',
-        borderBottom: '1px solid #21262d',
-        background: '#161b22',
+        borderBottom: '1px solid var(--nx-panel-2)',
+        background: 'var(--nx-panel)',
       }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3', flex: 1 }}>{t.title}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', flex: 1 }}>{t.title}</span>
         <ScadAgentTemplateGallery
           lang={lang}
           onPick={(p) => { void handleSend(p); }}
@@ -481,11 +481,11 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
       {/* Thread */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
-        fontSize: 12, color: '#c9d1d9',
+        fontSize: 12, color: 'var(--nx-text)',
       }}>
         <BetaBanner feature="scad_agent" lang={lang === 'ko' ? 'ko' : 'en'} />
         {thread.length === 0 && (
-          <div style={{ color: '#6e7681', fontSize: 11, padding: '24px 8px', textAlign: 'center' }}>
+          <div style={{ color: 'var(--nx-text-3)', fontSize: 11, padding: '24px 8px', textAlign: 'center' }}>
             {t.emptyHint}
           </div>
         )}
@@ -493,7 +493,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           <ThreadRow key={e.id} entry={e} onShowBrepHandle={onShowBrepHandle} />
         ))}
         {busy && (
-          <div style={{ color: '#58a6ff', fontSize: 11, fontStyle: 'italic' }}>
+          <div style={{ color: 'var(--nx-accent-2)', fontSize: 11, fontStyle: 'italic' }}>
             ⟳ {t.busy}
           </div>
         )}
@@ -503,8 +503,8 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
       {/* Stats + apply */}
       {session && (
         <div style={{
-          padding: '6px 12px', fontSize: 10, color: '#8b949e',
-          borderTop: '1px solid #21262d',
+          padding: '6px 12px', fontSize: 10, color: 'var(--nx-text-2)',
+          borderTop: '1px solid var(--nx-panel-2)',
           display: 'flex', gap: 12, alignItems: 'center',
         }}>
           <span>{t.statsTurns}: {session.budget.turnsUsed}/{session.budget.turnsCap}</span>
@@ -528,9 +528,9 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
       {error && (
         <div style={{
           padding: '8px 12px',
-          background: error.kind === 'wedge' ? '#3d1519' : error.kind === 'budget' ? '#3d2c19' : '#1f2937',
-          color: error.kind === 'wedge' ? '#f85149' : error.kind === 'budget' ? '#d29922' : '#9ca3af',
-          fontSize: 11, borderTop: '1px solid #21262d',
+          background: error.kind === 'wedge' ? '#3d1519' : error.kind === 'budget' ? '#3d2c19' : 'var(--nx-panel)',
+          color: error.kind === 'wedge' ? 'var(--nx-error)' : error.kind === 'budget' ? 'var(--nx-warn)' : 'var(--nx-text-2)',
+          fontSize: 11, borderTop: '1px solid var(--nx-panel-2)',
           display: 'flex', gap: 8, alignItems: 'center',
         }}>
           <span style={{ fontWeight: 700 }}>
@@ -559,7 +559,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           borderBottom: '1px solid #1f6feb',
           display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#79c0ff' }}>↳</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-accent-2)' }}>↳</span>
           {pendingOptions.map(opt => (
             <button
               key={opt}
@@ -568,11 +568,11 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
                 padding: '4px 10px', fontSize: 11, fontWeight: 600,
                 borderRadius: 12,
                 border: '1px solid #1f6feb',
-                background: 'transparent', color: '#79c0ff',
+                background: 'transparent', color: 'var(--nx-accent-2)',
                 cursor: 'pointer', whiteSpace: 'nowrap',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#1f6feb'; e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#79c0ff'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
             >
               {opt}
             </button>
@@ -580,13 +580,13 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
         </div>
       )}
 
-      <div style={{ padding: '6px 8px 0', background: '#161b22', borderTop: '1px solid #21262d' }}>
+      <div style={{ padding: '6px 8px 0', background: 'var(--nx-panel)', borderTop: '1px solid var(--nx-panel-2)' }}>
         <ScadAgentCheatsheet lang={lang} onPick={(p) => setInput(p)} />
       </div>
 
       {/* Input */}
       <div style={{
-        padding: 8, background: '#161b22',
+        padding: 8, background: 'var(--nx-panel)',
         display: 'flex', gap: 6, alignItems: 'flex-end',
       }}>
         <textarea
@@ -603,10 +603,10 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           }}
           style={{
             flex: 1, padding: 8,
-            background: '#0d1117',
-            border: '1px solid #30363d',
+            background: 'var(--nx-bg)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 6,
-            color: '#e6edf3', fontSize: 12, fontFamily: 'inherit',
+            color: 'var(--nx-text)', fontSize: 12, fontFamily: 'inherit',
             resize: 'none', outline: 'none',
           }}
         />
@@ -636,8 +636,8 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
             padding: '4px 8px',
             borderRadius: 6,
             background: ok ? 'rgba(35, 134, 54, 0.12)' : 'rgba(248, 81, 73, 0.12)',
-            border: `1px solid ${ok ? '#238636' : '#f85149'}`,
-            color: ok ? '#7ee787' : '#ffa198',
+            border: `1px solid ${ok ? 'var(--nx-ok)' : 'var(--nx-error)'}`,
+            color: ok ? 'var(--nx-ok)' : '#ffa198',
             fontSize: 11, fontFamily: 'monospace',
             cursor: hasPreview ? 'pointer' : 'default',
             userSelect: 'none',
@@ -658,10 +658,10 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
             padding: '8px 10px',
             fontSize: 11,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            background: '#0d1117',
-            border: '1px solid #21262d',
+            background: 'var(--nx-bg)',
+            border: '1px solid var(--nx-panel-2)',
             borderRadius: 6,
-            color: entry.preview.lang === 'diff' ? '#c9d1d9' : '#7ee787',
+            color: entry.preview.lang === 'diff' ? 'var(--nx-text)' : 'var(--nx-ok)',
             maxHeight: 280,
             overflow: 'auto',
             whiteSpace: 'pre',
@@ -687,7 +687,7 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
   }
   if (entry.kind === 'system') {
     return (
-      <div style={{ color: '#6e7681', fontSize: 10, fontStyle: 'italic', alignSelf: 'center' }}>
+      <div style={{ color: 'var(--nx-text-3)', fontSize: 10, fontStyle: 'italic', alignSelf: 'center' }}>
         {entry.text}
       </div>
     );
@@ -697,8 +697,8 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
       <div style={{
         alignSelf: 'flex-end',
         padding: '6px 10px',
-        background: '#1f6feb',
-        color: '#fff',
+        background: 'var(--nx-accent)',
+        color: 'var(--nx-text)',
         borderRadius: 10,
         fontSize: 12,
         maxWidth: '85%',
@@ -714,8 +714,8 @@ function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrep
     <div style={{
       alignSelf: 'flex-start',
       padding: '6px 10px',
-      background: '#21262d',
-      color: '#e6edf3',
+      background: 'var(--nx-panel-2)',
+      color: 'var(--nx-text)',
       borderRadius: 10,
       fontSize: 12,
       maxWidth: '95%',
@@ -734,10 +734,10 @@ function colorizeDiff(body: string): React.ReactNode {
   const lines = body.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    let color = '#c9d1d9';
-    if (line.startsWith('+') && !line.startsWith('+++')) color = '#7ee787';
+    let color = 'var(--nx-text)';
+    if (line.startsWith('+') && !line.startsWith('+++')) color = 'var(--nx-ok)';
     else if (line.startsWith('-') && !line.startsWith('---')) color = '#ffa198';
-    else if (line.startsWith('@@')) color = '#79c0ff';
+    else if (line.startsWith('@@')) color = 'var(--nx-accent-2)';
     out.push(
       <span key={i} style={{ color }}>{line}{i < lines.length - 1 ? '\n' : ''}</span>,
     );
@@ -748,20 +748,20 @@ function colorizeDiff(body: string): React.ReactNode {
 const btnPrimary: React.CSSProperties = {
   padding: '6px 12px', fontSize: 11, fontWeight: 700,
   borderRadius: 6, border: '1px solid #1f6feb',
-  background: '#1f6feb', color: '#fff', cursor: 'pointer',
+  background: 'var(--nx-accent)', color: 'var(--nx-text)', cursor: 'pointer',
 };
 const btnDanger: React.CSSProperties = {
   padding: '6px 12px', fontSize: 11, fontWeight: 700,
-  borderRadius: 6, border: '1px solid #f85149',
-  background: '#f85149', color: '#fff', cursor: 'pointer',
+  borderRadius: 6, border: '1px solid var(--nx-error)',
+  background: 'var(--nx-error)', color: 'var(--nx-text)', cursor: 'pointer',
 };
 const btnSecondary: React.CSSProperties = {
   padding: '4px 10px', fontSize: 10, fontWeight: 700,
-  borderRadius: 6, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 6, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };
 const btnGhost: React.CSSProperties = {
   padding: '3px 8px', fontSize: 10,
-  borderRadius: 4, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 4, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };

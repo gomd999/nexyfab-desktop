@@ -700,7 +700,9 @@ function LeftPanel({
 
   if (collapsed) {
     return (
-      <div style={{
+      <div
+        data-shell-v2-hide
+        style={{
         width: RAIL_WIDTH, flexShrink: 0, background: theme.panelBg,
         [borderKey]: `1px solid ${theme.border}`,
         display: hiddenOnDevice ? 'none' : 'flex',
@@ -727,7 +729,9 @@ function LeftPanel({
   }
 
   return (
-    <div style={{
+    <div
+      data-shell-v2-hide
+      style={{
       width: effectiveWidth,
       flexShrink: 0,
       background: theme.panelBg,
@@ -931,9 +935,9 @@ function LeftPanel({
                             minWidth: 0,
                             padding: '5px 8px',
                             borderRadius: 6,
-                            border: '1px solid #30363d',
-                            background: '#0d1117',
-                            color: '#c9d1d9',
+                            border: `1px solid ${theme.border}`,
+                            background: theme.bg,
+                            color: theme.text,
                             fontSize: 11,
                           }}
                         />
@@ -943,9 +947,9 @@ function LeftPanel({
                           style={{
                             padding: '5px 8px',
                             borderRadius: 6,
-                            border: '1px solid #30363d',
-                            background: '#21262d',
-                            color: '#8b949e',
+                            border: `1px solid ${theme.border}`,
+                            background: theme.cardBg,
+                            color: theme.textMuted,
                             fontSize: 10,
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -967,9 +971,9 @@ function LeftPanel({
                           minWidth: 0,
                           padding: '5px 8px',
                           borderRadius: 6,
-                          border: '1px solid #30363d',
-                          background: '#0d1117',
-                          color: '#c9d1d9',
+                          border: `1px solid ${theme.border}`,
+                          background: theme.bg,
+                          color: theme.text,
                           fontSize: 11,
                         }}
                       />
@@ -981,9 +985,9 @@ function LeftPanel({
                         style={{
                           padding: '5px 10px',
                           borderRadius: 6,
-                          border: '1px solid #30363d',
-                          background: '#21262d',
-                          color: '#58a6ff',
+                          border: `1px solid ${theme.border}`,
+                          background: theme.cardBg,
+                          color: theme.accentBright,
                           fontSize: 10,
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -999,9 +1003,9 @@ function LeftPanel({
                           style={{
                             padding: '5px 10px',
                             borderRadius: 6,
-                            border: '1px solid #f85149',
+                            border: '1px solid var(--nx-error)',
                             background: 'transparent',
-                            color: '#f85149',
+                            color: 'var(--nx-error)',
                             fontSize: 10,
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -1018,7 +1022,7 @@ function LeftPanel({
             )}
 
             {/* ── PropertyManager ── */}
-            <div style={{ background: '#21262d', borderRadius: 8, border: '1px solid #30363d', padding: '8px 10px' }}>
+            <div style={{ background: theme.cardBg, borderRadius: 8, border: `1px solid ${theme.border}`, padding: '8px 10px' }}>
               <LeftPanelSectionHeader
                 label={isSketchMode ? tt.sketch : tt.properties}
                 sectionKey="props"
@@ -1036,9 +1040,9 @@ function LeftPanel({
                         <button key={mode} onClick={() => onSketchViewModeChange(mode)}
                           style={{
                             flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                            border: sketchViewMode === mode ? '2px solid #388bfd' : '1px solid #30363d',
-                            background: sketchViewMode === mode ? '#388bfd22' : '#0d1117',
-                            color: sketchViewMode === mode ? '#388bfd' : '#8b949e',
+                            border: sketchViewMode === mode ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                            background: sketchViewMode === mode ? `${theme.accent}22` : theme.bg,
+                            color: sketchViewMode === mode ? theme.accent : theme.textMuted,
                           }}>
                           {label}
                         </button>
@@ -1053,7 +1057,7 @@ function LeftPanel({
                         border: '1px solid rgba(234,88,12,0.35)',
                         fontSize: 10,
                         fontWeight: 600,
-                        color: '#fb923c',
+                        color: 'var(--nx-warn)',
                         textAlign: 'center',
                       }}>
                         {tt.sliceLinkedBadge}
@@ -1120,7 +1124,7 @@ function LeftPanel({
                       {/* Search bar */}
                       <div style={{ position: 'relative', marginBottom: 6 }}>
                         <svg style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-                          width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--nx-text-3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                         </svg>
                         <input
@@ -1130,15 +1134,15 @@ function LeftPanel({
                           placeholder={tt.searchShapes}
                           style={{
                             width: '100%', boxSizing: 'border-box',
-                            background: '#0d1117', border: '1px solid #30363d', borderRadius: 6,
-                            color: '#c9d1d9', fontSize: 11, padding: '5px 8px 5px 22px',
+                            background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: 6,
+                            color: theme.text, fontSize: 11, padding: '5px 8px 5px 22px',
                             outline: 'none',
                           }}
                         />
                         {shapeSearch && (
                           <button onClick={() => setShapeSearch('')} style={{
                             position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                            background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 12, padding: 0,
+                            background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12, padding: 0,
                           }}>✕</button>
                         )}
                       </div>
@@ -1161,8 +1165,8 @@ function LeftPanel({
                                   style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     padding: '5px 0', borderRadius: 6, fontSize: 16,
-                                    border: active ? '2px solid #f59e0b' : '1px solid #78350f44',
-                                    background: active ? '#f59e0b22' : '#0d1117',
+                                    border: active ? '2px solid var(--nx-warn)' : '1px solid #78350f44',
+                                    background: active ? 'var(--nx-warn)22' : theme.bg,
                                     cursor: 'pointer', transition: 'all 0.12s',
                                   }}
                                 >{SHAPE_ICONS[s.id] || s.icon}</button>
@@ -1190,8 +1194,8 @@ function LeftPanel({
                                   style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     padding: '5px 0', borderRadius: 6, fontSize: 16,
-                                    border: active ? '2px solid #388bfd' : '1px solid #30363d',
-                                    background: active ? '#388bfd22' : '#0d1117',
+                                    border: active ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                                    background: active ? `${theme.accent}22` : theme.bg,
                                     cursor: 'pointer', transition: 'all 0.12s',
                                   }}
                                 >{SHAPE_ICONS[s.id] || s.icon}</button>
@@ -1237,8 +1241,8 @@ function LeftPanel({
                                           width: '100%',
                                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                                           padding: '5px 0', borderRadius: 6, fontSize: 16,
-                                          border: active ? '2px solid #388bfd' : '1px solid #30363d',
-                                          background: active ? '#388bfd22' : '#0d1117',
+                                          border: active ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                                          background: active ? `${theme.accent}22` : theme.bg,
                                           cursor: 'pointer', transition: 'all 0.12s',
                                         }}
                                       >{SHAPE_ICONS[s.id] || s.icon}</button>
@@ -1250,7 +1254,7 @@ function LeftPanel({
                                           position: 'absolute', top: 1, right: 1,
                                           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                                           fontSize: 8, lineHeight: 1, opacity: isFav ? 1 : 0,
-                                          color: isFav ? '#f59e0b' : '#6b7280',
+                                          color: isFav ? 'var(--nx-warn)' : 'var(--nx-text-3)',
                                           transition: 'opacity 0.15s',
                                         }}
                                         className="shape-star-btn"
@@ -1267,14 +1271,14 @@ function LeftPanel({
 
                     {/* ── Material — inline under shape selector ── */}
                     {effectiveResult ? (
-                      <div data-tour="material-picker" style={{ borderTop: '1px solid #30363d', paddingTop: 6, marginBottom: 6 }}>
+                      <div data-tour="material-picker" style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 6, marginBottom: 6 }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: '#484f58', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
                           {tt.material}
                         </div>
                         <MaterialPicker selectedId={materialId} onSelect={setMaterialId} lang={lang} />
                       </div>
                     ) : (
-                      <div style={{ borderTop: '1px solid #21262d', paddingTop: 6, marginBottom: 6, fontSize: 10, color: '#484f58', textAlign: 'center', fontStyle: 'italic' }}>
+                      <div style={{ borderTop: `1px solid ${theme.cardBg}`, paddingTop: 6, marginBottom: 6, fontSize: 10, color: '#484f58', textAlign: 'center', fontStyle: 'italic' }}>
                         {tt.materialHint}
                       </div>
                     )}
@@ -1303,16 +1307,16 @@ function LeftPanel({
                         ];
 
                         const dfmWarn = dfmParamWarnings?.[sp.key];
-                        const warnColor = dfmWarn?.severity === 'error' ? '#f85149'
-                          : dfmWarn?.severity === 'warning' ? '#d29922'
-                          : dfmWarn?.severity === 'info' ? '#79c0ff'
+                        const warnColor = dfmWarn?.severity === 'error' ? 'var(--nx-error)'
+                          : dfmWarn?.severity === 'warning' ? 'var(--nx-warn)'
+                          : dfmWarn?.severity === 'info' ? 'var(--nx-accent-2)'
                           : undefined;
 
                         return (
                           <div key={sp.key} style={{ marginBottom: 3 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr 40px 20px', alignItems: 'center', gap: 4 }}>
                               <label
-                                style={{ fontSize: 10, fontWeight: 600, color: warnColor ?? '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                style={{ fontSize: 10, fontWeight: 600, color: warnColor ?? 'var(--nx-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                                 title={dfmWarn ? `DFM: ${dfmWarn.message}` : label}
                               >
                                 {dfmWarn && (
@@ -1344,9 +1348,9 @@ function LeftPanel({
                                     onChange={e => onParamChange(sp.key, parseFloat(e.target.value))}
                                     onTouchEnd={onParamCommit}
                                     onMouseDown={e => { e.currentTarget.style.accentColor = '#818cf8'; e.currentTarget.style.height = isMobile ? '8px' : '5px'; }}
-                                    onMouseUp={e => { e.currentTarget.style.accentColor = '#6366f1'; e.currentTarget.style.height = isMobile ? '6px' : '3px'; onParamCommit(); }}
-                                    onMouseLeave={e => { if (e.buttons === 0) { e.currentTarget.style.accentColor = '#6366f1'; e.currentTarget.style.height = isMobile ? '6px' : '3px'; } }}
-                                    style={{ width: '100%', accentColor: '#6366f1', height: isMobile ? 6 : 3, borderRadius: 3, cursor: 'pointer', transition: 'height 0.1s' }}
+                                    onMouseUp={e => { e.currentTarget.style.accentColor = 'var(--nx-accent)'; e.currentTarget.style.height = isMobile ? '6px' : '3px'; onParamCommit(); }}
+                                    onMouseLeave={e => { if (e.buttons === 0) { e.currentTarget.style.accentColor = 'var(--nx-accent)'; e.currentTarget.style.height = isMobile ? '6px' : '3px'; } }}
+                                    style={{ width: '100%', accentColor: 'var(--nx-accent)', height: isMobile ? 6 : 3, borderRadius: 3, cursor: 'pointer', transition: 'height 0.1s' }}
                                   />
                                   {isMobile ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1355,8 +1359,8 @@ function LeftPanel({
                                         aria-label="Decrease"
                                         style={{
                                           minWidth: 36, minHeight: 36, padding: 0,
-                                          borderRadius: 6, border: '1px solid #30363d',
-                                          background: '#21262d', color: '#c9d1d9',
+                                          borderRadius: 6, border: `1px solid ${theme.border}`,
+                                          background: theme.cardBg, color: theme.text,
                                           fontSize: 18, fontWeight: 700, cursor: 'pointer',
                                           touchAction: 'manipulation',
                                         }}
@@ -1371,8 +1375,8 @@ function LeftPanel({
                                       onBlur={onParamCommit}
                                       style={{
                                         flex: 1, minWidth: 60, minHeight: 36, padding: '6px 8px',
-                                        borderRadius: 6, border: '1px solid #30363d',
-                                        background: '#0d1117', color: '#c9d1d9',
+                                        borderRadius: 6, border: `1px solid ${theme.border}`,
+                                        background: theme.bg, color: theme.text,
                                         fontSize: 14, textAlign: 'center', fontFamily: 'monospace',
                                       }}
                                     />
@@ -1381,8 +1385,8 @@ function LeftPanel({
                                         aria-label="Increase"
                                         style={{
                                           minWidth: 36, minHeight: 36, padding: 0,
-                                          borderRadius: 6, border: '1px solid #30363d',
-                                          background: '#21262d', color: '#c9d1d9',
+                                          borderRadius: 6, border: `1px solid ${theme.border}`,
+                                          background: theme.cardBg, color: theme.text,
                                           fontSize: 18, fontWeight: 700, cursor: 'pointer',
                                           touchAction: 'manipulation',
                                         }}
@@ -1398,8 +1402,8 @@ function LeftPanel({
                                       onBlur={onParamCommit}
                                       style={{
                                         width: 40, padding: '1px 4px', borderRadius: 3,
-                                        border: '1px solid #30363d', background: '#0d1117',
-                                        color: '#c9d1d9', fontSize: 10, textAlign: 'right',
+                                        border: `1px solid ${theme.border}`, background: theme.bg,
+                                        color: theme.text, fontSize: 10, textAlign: 'right',
                                         fontFamily: 'monospace',
                                       }}
                                     />
@@ -1425,7 +1429,7 @@ function LeftPanel({
                                   lineHeight: 1, fontFamily: 'monospace',
                                   transition: 'all 0.12s',
                                 }}
-                                onMouseEnter={e => { if (!isFx) { e.currentTarget.style.color = '#c9d1d9'; e.currentTarget.style.borderColor = '#30363d'; } }}
+                                onMouseEnter={e => { if (!isFx) { e.currentTarget.style.color = theme.text; e.currentTarget.style.borderColor = theme.border; } }}
                                 onMouseLeave={e => { if (!isFx) { e.currentTarget.style.color = '#6e7681'; e.currentTarget.style.borderColor = 'transparent'; } }}
                               >
                                 fx
@@ -1437,13 +1441,13 @@ function LeftPanel({
 
                       {/* ── Formula fields (text input for function-driven shapes) ── */}
                       {shape.formulaFields && shape.formulaFields.length > 0 && (
-                        <div style={{ marginTop: 6, borderTop: '1px solid #21262d', paddingTop: 6 }}>
+                        <div style={{ marginTop: 6, borderTop: `1px solid ${theme.cardBg}`, paddingTop: 6 }}>
                           {shape.formulaFields.map(ff => {
                             const label = t[ff.labelKey] || ff.key;
                             const currentVal = formulaValues?.[ff.key] ?? ff.default;
                             return (
                               <div key={ff.key} style={{ marginBottom: 6 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: '#6366f1', marginBottom: 3, fontFamily: 'monospace' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-accent)', marginBottom: 3, fontFamily: 'monospace' }}>
                                   ∿ {label}
                                 </div>
                                 <textarea
@@ -1458,8 +1462,8 @@ function LeftPanel({
                                     padding: '5px 7px',
                                     borderRadius: 5,
                                     border: '1px solid #3b4048',
-                                    background: '#0d1117',
-                                    color: '#79c0ff',
+                                    background: theme.bg,
+                                    color: 'var(--nx-accent-2)',
                                     fontSize: 11,
                                     fontFamily: 'monospace',
                                     lineHeight: 1.4,
@@ -1481,13 +1485,13 @@ function LeftPanel({
 
                       <button
                         onClick={onShapeReset}
-                        style={{ width: '100%', padding: '4px', borderRadius: 6, border: '1px solid #30363d', background: '#0d1117', color: '#8b949e', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 4 }}
+                        style={{ width: '100%', padding: '4px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.textMuted, fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 4 }}
                       >
                         {t.resetParams}
                       </button>
 
                       {/* 단면 물성 패널 */}
-                      <div style={{ marginTop: 8, borderTop: '1px solid #21262d', paddingTop: 6 }}>
+                      <div style={{ marginTop: 8, borderTop: `1px solid ${theme.cardBg}`, paddingTop: 6 }}>
                         <SectionPropertiesPanel
                           shapeId={selectedId}
                           params={params}
@@ -1514,7 +1518,7 @@ function LeftPanel({
 
             {/* ── Geometry info ── */}
             {effectiveResult && (
-              <div style={{ background: '#21262d', borderRadius: 8, border: '1px solid #30363d', padding: '8px 10px' }}>
+              <div style={{ background: theme.cardBg, borderRadius: 8, border: `1px solid ${theme.border}`, padding: '8px 10px' }}>
                 <LeftPanelSectionHeader
                   label={tt.geometry}
                   sectionKey="geometry"
@@ -1523,12 +1527,12 @@ function LeftPanel({
                   theme={theme}
                 />
                 {sections.geometry && (
-                  <div style={{ fontSize: 10, color: '#c9d1d9', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 10, color: theme.text, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <span><span style={{ color: '#9ca3af' }}>Vol </span><b>{effectiveResult.volume_cm3.toFixed(2)}</b> cm³</span>
-                      <span><span style={{ color: '#9ca3af' }}>Surf </span><b>{effectiveResult.surface_area_cm2.toFixed(2)}</b> cm²</span>
+                      <span><span style={{ color: 'var(--nx-text-2)' }}>Vol </span><b>{effectiveResult.volume_cm3.toFixed(2)}</b> cm³</span>
+                      <span><span style={{ color: 'var(--nx-text-2)' }}>Surf </span><b>{effectiveResult.surface_area_cm2.toFixed(2)}</b> cm²</span>
                     </div>
-                    <div><span style={{ color: '#9ca3af' }}>Size </span><b style={{ color: '#58a6ff' }}>{effectiveResult.bbox.w.toFixed(1)}×{effectiveResult.bbox.h.toFixed(1)}×{effectiveResult.bbox.d.toFixed(1)} mm</b></div>
+                    <div><span style={{ color: 'var(--nx-text-2)' }}>Size </span><b style={{ color: theme.accentBright }}>{effectiveResult.bbox.w.toFixed(1)}×{effectiveResult.bbox.h.toFixed(1)}×{effectiveResult.bbox.d.toFixed(1)} mm</b></div>
                   </div>
                 )}
               </div>
@@ -1541,13 +1545,13 @@ function LeftPanel({
                   onClick={onToggleBomExportMenu}
                   aria-expanded={showBomExportMenu}
                   aria-haspopup="true"
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #30363d', background: '#21262d', color: '#c9d1d9', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.background = '#30363d'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.background = '#21262d'; }}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.text, fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accentBright; e.currentTarget.style.background = theme.border; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.cardBg; }}
                 >
                   <span style={{ fontSize: 13 }}>📋</span>
                   {t['exportBom'] ?? 'Export BOM'}
-                  <span style={{ marginLeft: 'auto', fontSize: 9, color: '#6e7681' }}>{showBomExportMenu ? '▲' : '▼'}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--nx-text-3)' }}>{showBomExportMenu ? '▲' : '▼'}</span>
                 </button>
                 {showBomExportMenu && (
                   // #7: Escape to close + role=menu for keyboard nav
@@ -1560,18 +1564,18 @@ function LeftPanel({
                       role="menuitem"
                       onClick={onExportBomCSV}
                       autoFocus
-                      style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid #30363d', background: '#0d1117', color: '#3fb950', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s' }}
+                      style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bg, color: 'var(--nx-ok)', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s' }}
                       onKeyDown={e => { if (e.key === 'Escape') onToggleBomExportMenu(); }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#0d2818'; e.currentTarget.style.borderColor = '#3fb950'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#0d1117'; e.currentTarget.style.borderColor = '#30363d'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#0d2818'; e.currentTarget.style.borderColor = 'var(--nx-ok)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = theme.bg; e.currentTarget.style.borderColor = theme.border; }}
                     >CSV</button>
                     <button
                       role="menuitem"
                       onClick={onExportBomExcel}
-                      style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid #30363d', background: '#0d1117', color: '#58a6ff', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s' }}
+                      style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bg, color: theme.accentBright, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s' }}
                       onKeyDown={e => { if (e.key === 'Escape') onToggleBomExportMenu(); }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#1a2332'; e.currentTarget.style.borderColor = '#58a6ff'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#0d1117'; e.currentTarget.style.borderColor = '#30363d'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.borderColor = theme.accentBright; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = theme.bg; e.currentTarget.style.borderColor = theme.border; }}
                     >Excel</button>
                   </div>
                 )}
@@ -1580,11 +1584,11 @@ function LeftPanel({
 
             {/* ── Imported file info ── */}
             {importedFilename && (
-              <div style={{ background: '#0d1117', borderRadius: 8, border: '1px solid #1f6feb', padding: '8px 10px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#58a6ff', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+              <div style={{ background: theme.bg, borderRadius: 8, border: '1px solid #1f6feb', padding: '8px 10px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: theme.accentBright, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
                   {tt.imported}
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#79c0ff' }}>{importedFilename}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent-2)' }}>{importedFilename}</div>
               </div>
             )}
           </>
@@ -1592,14 +1596,14 @@ function LeftPanel({
           /* ── OPTIMIZE TAB LEFT ── */
           <>
             {customDomainGeometry && (
-              <div style={{ background: '#21262d', borderRadius: 8, border: '1px solid #30363d', padding: '8px 10px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Domain</div>
+              <div style={{ background: theme.cardBg, borderRadius: 8, border: `1px solid ${theme.border}`, padding: '8px 10px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Domain</div>
                 <div style={{ display: 'flex', gap: 3 }}>
                   {[['Box', false], ['Custom', true]].map(([label, val]) => (
                     <button key={String(label)} onClick={() => onUseCustomDomainChange(val as boolean)} style={{
-                      flex: 1, padding: '5px', borderRadius: 6, border: useCustomDomain === val ? '2px solid #388bfd' : '1px solid #30363d',
-                      background: useCustomDomain === val ? '#388bfd22' : '#0d1117', fontSize: 11, fontWeight: 700,
-                      color: useCustomDomain === val ? '#388bfd' : '#8b949e', cursor: 'pointer',
+                      flex: 1, padding: '5px', borderRadius: 6, border: useCustomDomain === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                      background: useCustomDomain === val ? `${theme.accent}22` : theme.bg, fontSize: 11, fontWeight: 700,
+                      color: useCustomDomain === val ? theme.accent : theme.textMuted, cursor: 'pointer',
                     }}>{label as string}</button>
                   ))}
                 </div>
@@ -1621,23 +1625,23 @@ function LeftPanel({
               t={gt}
             />
             {optResult && !isOptimizing && (
-              <div style={{ background: '#21262d', borderRadius: 8, border: '1px solid #30363d', padding: '8px 10px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Results</div>
+              <div style={{ background: theme.cardBg, borderRadius: 8, border: `1px solid ${theme.border}`, padding: '8px 10px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Results</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 11, marginBottom: 8 }}>
-                  <div><span style={{ color: '#9ca3af' }}>Iter:</span> <b>{optResult.iterations}</b></div>
-                  <div><span style={{ color: '#9ca3af' }}>Vol:</span> <b>{(optResult.finalVolumeFraction * 100).toFixed(1)}%</b></div>
+                  <div><span style={{ color: 'var(--nx-text-2)' }}>Iter:</span> <b>{optResult.iterations}</b></div>
+                  <div><span style={{ color: 'var(--nx-text-2)' }}>Vol:</span> <b>{(optResult.finalVolumeFraction * 100).toFixed(1)}%</b></div>
                 </div>
                 {weightInfo && (
-                  <div style={{ background: '#0d1117', borderRadius: 6, padding: 8, fontSize: 11, border: '1px solid #30363d', color: '#c9d1d9' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#8b949e' }}>Original</span><b>{weightInfo.originalWeight.toFixed(3)} kg</b></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#8b949e' }}>Optimized</span><b>{weightInfo.optimizedWeight.toFixed(3)} kg</b></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#3fb950', fontWeight: 800, borderTop: '1px solid #30363d', paddingTop: 4, marginTop: 4 }}><span>Reduction</span><span>-{weightInfo.reduction.toFixed(1)}%</span></div>
+                  <div style={{ background: theme.bg, borderRadius: 6, padding: 8, fontSize: 11, border: `1px solid ${theme.border}`, color: theme.text }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: theme.textMuted }}>Original</span><b>{weightInfo.originalWeight.toFixed(3)} kg</b></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: theme.textMuted }}>Optimized</span><b>{weightInfo.optimizedWeight.toFixed(3)} kg</b></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--nx-ok)', fontWeight: 800, borderTop: `1px solid ${theme.border}`, paddingTop: 4, marginTop: 4 }}><span>Reduction</span><span>-{weightInfo.reduction.toFixed(1)}%</span></div>
                   </div>
                 )}
                 {convergenceChart && <div style={{ marginTop: 8 }}>{convergenceChart}</div>}
                 <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-                  <button onClick={onExportOptSTL} disabled={!resultMesh} style={{ flex: 1, padding: '7px', borderRadius: 6, border: '1px solid #388bfd', background: '#0d1117', color: '#58a6ff', fontSize: 11, fontWeight: 700, cursor: resultMesh ? 'pointer' : 'default' }}>Export STL</button>
-                  <button onClick={onSendOptToQuote} style={{ flex: 1, padding: '7px', borderRadius: 6, border: 'none', background: '#388bfd', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Quote</button>
+                  <button onClick={onExportOptSTL} disabled={!resultMesh} style={{ flex: 1, padding: '7px', borderRadius: 6, border: `1px solid ${theme.accent}`, background: theme.bg, color: theme.accentBright, fontSize: 11, fontWeight: 700, cursor: resultMesh ? 'pointer' : 'default' }}>Export STL</button>
+                  <button onClick={onSendOptToQuote} style={{ flex: 1, padding: '7px', borderRadius: 6, border: 'none', background: theme.accent, color: 'var(--nx-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Quote</button>
                 </div>
               </div>
             )}

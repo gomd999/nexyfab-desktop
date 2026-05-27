@@ -1650,3 +1650,14 @@ CREATE INDEX IF NOT EXISTS idx_admin_audit_target
 
 -- ─── v87: RFQ optional CAE hint snapshot (client self-report, not verified) ──
 ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS analysis_summary TEXT;
+
+-- ─── v88: Dodo Payments webhook idempotency ──────────────────────────────────
+-- Separate from nf_webhook_events (Stripe-only) so Dodo retries don't collide
+-- on event_id namespace.
+CREATE TABLE IF NOT EXISTS nf_dodo_webhook_events (
+  event_id     TEXT PRIMARY KEY,
+  event_type   TEXT NOT NULL,
+  received_at  BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dodo_webhook_events_received_at
+  ON nf_dodo_webhook_events(received_at);

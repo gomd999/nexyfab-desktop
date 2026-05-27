@@ -72,7 +72,7 @@ export default function SplitNotesPanel({ userId, lang = 'en', onClose }: Props)
         position: 'absolute', top: 0, left: 0, bottom: 0,
         width: 320, zIndex: 20,
         background: 'rgba(13,17,23,0.92)',
-        borderRight: '1px solid #30363d',
+        borderRight: '1px solid var(--nx-border)',
         display: 'flex', flexDirection: 'column',
         backdropFilter: 'blur(4px)',
       }}
@@ -80,20 +80,20 @@ export default function SplitNotesPanel({ userId, lang = 'en', onClose }: Props)
       <header
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 12px', borderBottom: '1px solid #30363d',
-          fontSize: 12, fontWeight: 700, color: '#c9d1d9',
+          padding: '8px 12px', borderBottom: '1px solid var(--nx-border)',
+          fontSize: 12, fontWeight: 700, color: 'var(--nx-text)',
         }}
       >
         <span>📝 {t.title}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
-            fontSize: 10, color: '#3fb950',
+            fontSize: 10, color: 'var(--nx-ok)',
             opacity: savedFlash ? 1 : 0, transition: 'opacity 0.2s',
           }}>{t.saved}</span>
           <button
             onClick={onClose}
             style={{
-              fontSize: 12, color: '#8b949e', background: 'none',
+              fontSize: 12, color: 'var(--nx-text-2)', background: 'none',
               border: 'none', cursor: 'pointer', padding: 4,
             }}
             aria-label="Close"
@@ -106,7 +106,7 @@ export default function SplitNotesPanel({ userId, lang = 'en', onClose }: Props)
         placeholder={t.placeholder}
         style={{
           flex: 1, padding: '12px',
-          background: 'transparent', color: '#e6edf3',
+          background: 'transparent', color: 'var(--nx-text)',
           border: 'none', resize: 'none', outline: 'none',
           fontFamily: 'monospace', fontSize: 13, lineHeight: 1.5,
         }}

@@ -209,7 +209,8 @@ function ComponentOrderContent() {
   const t = dict[strLang];
   const { toast } = useToast();
 
-  const [cart, setCart] = useState<any[]>([]);
+  type CartItem = { id: number; category: string; itemName: string; specification: string; quantity: number };
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCat, setSelectedCat] = useState('');
   const [selectedItem, setSelectedItem] = useState('');
   const [isCustom, setIsCustom] = useState(false);
@@ -307,7 +308,7 @@ function ComponentOrderContent() {
       return;
     }
 
-    setCart([...cart, { id: Date.now(), category: cat, itemName: item, specification: spec, quantity: qty }]);
+    setCart([...cart, { id: Date.now(), category: cat, itemName: item, specification: spec, quantity: Number(qty) || 1 }]);
   };
 
   const handleOrderSubmit = async () => {

@@ -10,13 +10,13 @@ import { convertToDisplay } from '../units';
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  panelBg: '#0d1117',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  row: '#21262d',
+  bg: 'var(--nx-panel)',
+  panelBg: 'var(--nx-bg)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  row: 'var(--nx-panel-2)',
 };
 
 const panelStyle: React.CSSProperties = {
@@ -58,7 +58,7 @@ const valueStyle: React.CSSProperties = {
   fontFamily: 'monospace',
   fontSize: 13,
   fontWeight: 600,
-  color: '#58a6ff',
+  color: 'var(--nx-accent-2)',
 };
 
 const smallValueStyle: React.CSSProperties = {
@@ -287,7 +287,7 @@ export default function MassPropertiesPanel({
             {t.title}
           </div>
         </div>
-        <button onClick={handleCopy} style={{ ...btnStyle, background: copied ? '#238636' : C.row, color: copied ? '#fff' : C.text }}>
+        <button onClick={handleCopy} style={{ ...btnStyle, background: copied ? 'var(--nx-ok)' : C.row, color: copied ? 'var(--nx-text)' : C.text }}>
           {copied ? t.copied : t.copy}
         </button>
         <button
@@ -357,7 +357,7 @@ export default function MassPropertiesPanel({
                     style={{
                       ...btnStyle,
                       background: showingCenterOfMass ? C.accent : C.row,
-                      color: showingCenterOfMass ? '#fff' : C.text,
+                      color: showingCenterOfMass ? 'var(--nx-text)' : C.text,
                       marginBottom: 4,
                     }}
                   >

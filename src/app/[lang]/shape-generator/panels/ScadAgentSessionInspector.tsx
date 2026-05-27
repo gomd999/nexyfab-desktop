@@ -102,8 +102,8 @@ export default function ScadAgentSessionInspector({ lang, session, onRevertToChe
         style={{
           padding: '4px 10px', fontSize: 10, fontWeight: 700,
           borderRadius: 6,
-          border: '1px solid #30363d',
-          background: 'transparent', color: '#9ca3af',
+          border: '1px solid var(--nx-border)',
+          background: 'transparent', color: 'var(--nx-text-2)',
           cursor: 'pointer',
         }}
       >
@@ -114,12 +114,12 @@ export default function ScadAgentSessionInspector({ lang, session, onRevertToChe
 
   return (
     <div style={{
-      padding: 10, background: '#0d1117',
-      border: '1px solid #30363d', borderRadius: 8,
+      padding: 10, background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-border)', borderRadius: 8,
       maxHeight: 320, overflowY: 'auto',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>{t.open} ({total})</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{t.open} ({total})</span>
         <button onClick={() => setOpen(false)} style={btnClose}>{t.close}</button>
       </div>
 
@@ -182,7 +182,7 @@ function Section({ label, count, children }: { label: string; count: number; chi
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{
-        fontSize: 10, fontWeight: 700, color: '#58a6ff',
+        fontSize: 10, fontWeight: 700, color: 'var(--nx-accent-2)',
         marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5,
       }}>
         {label} ({count})
@@ -204,18 +204,18 @@ function Row({ primary, secondary, onClick }: { primary: string; secondary?: str
         cursor: onClick ? 'pointer' : 'default',
         display: 'flex', gap: 6, alignItems: 'baseline',
       }}
-      onMouseEnter={onClick ? e => { e.currentTarget.style.background = '#161b22'; } : undefined}
+      onMouseEnter={onClick ? e => { e.currentTarget.style.background = 'var(--nx-panel)'; } : undefined}
       onMouseLeave={onClick ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
       title={onClick ? 'Click to revert' : undefined}
     >
-      <code style={{ color: '#79c0ff' }}>{primary}</code>
-      {secondary && <span style={{ color: '#8b949e', fontSize: 10 }}>{secondary}</span>}
+      <code style={{ color: 'var(--nx-accent-2)' }}>{primary}</code>
+      {secondary && <span style={{ color: 'var(--nx-text-2)', fontSize: 10 }}>{secondary}</span>}
     </div>
   );
 }
 
 const btnClose: React.CSSProperties = {
   padding: '3px 8px', fontSize: 10,
-  borderRadius: 4, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 4, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };

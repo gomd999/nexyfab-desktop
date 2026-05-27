@@ -276,16 +276,16 @@ const USE_CASES: UseCase[] = ['general', 'lightweight', 'high_strength', 'aesthe
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#161b22',
-  panel: '#1c2128',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  accentGreen: '#3fb950',
-  accentOrange: '#f0883e',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  hover: '#30363d',
+  bg: 'var(--nx-panel)',
+  panel: 'var(--nx-panel-2)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  accentGreen: 'var(--nx-ok)',
+  accentOrange: 'var(--nx-warn)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  hover: 'var(--nx-border)',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -419,13 +419,13 @@ export default function DimensionAdvisorPanel({
         <button
           onClick={onClose}
           style={{
-            border: 'none', background: '#21262d', cursor: 'pointer',
+            border: 'none', background: 'var(--nx-panel-2)', cursor: 'pointer',
             fontSize: 12, color: C.textDim,
             width: 24, height: 24, borderRadius: 6,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.text; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.color = C.textDim; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.color = C.textDim; }}
         >
           ✕
         </button>
@@ -440,10 +440,10 @@ export default function DimensionAdvisorPanel({
             {t.currentShape}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, background: '#388bfd22', color: '#58a6ff', border: '1px solid #388bfd44', fontWeight: 700 }}>
+            <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, background: 'var(--nx-accent)22', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-accent)44', fontWeight: 700 }}>
               {shape}
             </span>
-            <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, background: '#3fb95022', color: '#3fb950', border: '1px solid #3fb95044', fontWeight: 700 }}>
+            <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, background: 'var(--nx-ok)22', color: 'var(--nx-ok)', border: '1px solid var(--nx-ok)44', fontWeight: 700 }}>
               {material}
             </span>
           </div>
@@ -465,8 +465,8 @@ export default function DimensionAdvisorPanel({
                     padding: '8px 12px',
                     borderRadius: 8,
                     border: active ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
-                    background: active ? '#388bfd18' : 'transparent',
-                    color: active ? '#79c0ff' : C.text,
+                    background: active ? 'var(--nx-accent)18' : 'transparent',
+                    color: active ? 'var(--nx-accent-2)' : C.text,
                     fontSize: 12,
                     fontWeight: active ? 700 : 500,
                     cursor: 'pointer',
@@ -497,8 +497,8 @@ export default function DimensionAdvisorPanel({
                 <button key={o.v} onClick={() => setLoadCtx(c => ({ ...c, temperature: o.v }))} style={{
                   padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: active ? 700 : 500,
                   border: `1px solid ${active ? C.accent : C.border}`,
-                  background: active ? '#388bfd18' : 'transparent',
-                  color: active ? '#79c0ff' : C.text, cursor: 'pointer',
+                  background: active ? 'var(--nx-accent)18' : 'transparent',
+                  color: active ? 'var(--nx-accent-2)' : C.text, cursor: 'pointer',
                 }}>
                   {o.label}
                 </button>
@@ -514,8 +514,8 @@ export default function DimensionAdvisorPanel({
                 <button key={o.v} onClick={() => setLoadCtx(c => ({ ...c, environment: o.v }))} style={{
                   padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: active ? 700 : 500,
                   border: `1px solid ${active ? C.accent : C.border}`,
-                  background: active ? '#388bfd18' : 'transparent',
-                  color: active ? '#79c0ff' : C.text, cursor: 'pointer',
+                  background: active ? 'var(--nx-accent)18' : 'transparent',
+                  color: active ? 'var(--nx-accent-2)' : C.text, cursor: 'pointer',
                 }}>
                   {o.label}
                 </button>
@@ -531,8 +531,8 @@ export default function DimensionAdvisorPanel({
                 <button key={o.v} onClick={() => setLoadCtx(c => ({ ...c, priority: o.v }))} style={{
                   padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: active ? 700 : 500,
                   border: `1px solid ${active ? C.accent : C.border}`,
-                  background: active ? '#388bfd18' : 'transparent',
-                  color: active ? '#79c0ff' : C.text, cursor: 'pointer',
+                  background: active ? 'var(--nx-accent)18' : 'transparent',
+                  color: active ? 'var(--nx-accent-2)' : C.text, cursor: 'pointer',
                 }}>
                   {o.label}
                 </button>
@@ -550,8 +550,8 @@ export default function DimensionAdvisorPanel({
             padding: '10px',
             borderRadius: 8,
             border: 'none',
-            background: loading ? '#30363d' : C.accent,
-            color: '#fff',
+            background: loading ? 'var(--nx-border)' : C.accent,
+            color: 'var(--nx-text)',
             fontSize: 13,
             fontWeight: 700,
             cursor: loading ? 'default' : 'pointer',
@@ -590,7 +590,7 @@ export default function DimensionAdvisorPanel({
             borderRadius: 8,
             padding: '10px 12px',
             fontSize: 12,
-            color: '#f85149',
+            color: 'var(--nx-error)',
           }}>
             {error}
           </div>
@@ -599,21 +599,21 @@ export default function DimensionAdvisorPanel({
         {/* Material Recommendation Card */}
         {materialAdvice && (
           <div style={{
-            background: '#1a2332',
+            background: 'var(--nx-panel-2)',
             borderRadius: 10,
             border: `1px solid #388bfd55`,
             padding: '10px 12px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>🔬</span>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#79c0ff' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--nx-accent-2)' }}>
                 {t.recommendedMaterial}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span style={{
                 fontSize: 13, fontWeight: 800, padding: '4px 10px', borderRadius: 8,
-                background: '#388bfd22', color: '#58a6ff', border: '1px solid #388bfd44',
+                background: 'var(--nx-accent)22', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-accent)44',
               }}>
                 {MATERIAL_NAMES[materialAdvice.recommendedMaterial] ?? materialAdvice.recommendedMaterial}
               </span>
@@ -646,15 +646,15 @@ export default function DimensionAdvisorPanel({
                     padding: '4px 12px',
                     borderRadius: 6,
                     border: `1px solid ${C.accentGreen}`,
-                    background: '#3fb95018',
+                    background: 'var(--nx-ok)18',
                     color: C.accentGreen,
                     fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.12s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#3fb95030'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#3fb95018'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-ok)30'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-ok)18'; }}
                 >
                   {t.applyAll}
                 </button>
@@ -685,16 +685,16 @@ export default function DimensionAdvisorPanel({
 
                   {/* Current → Suggested */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <div style={{ flex: 1, background: '#0d1117', borderRadius: 6, padding: '6px 10px', textAlign: 'center' }}>
+                    <div style={{ flex: 1, background: 'var(--nx-bg)', borderRadius: 6, padding: '6px 10px', textAlign: 'center' }}>
                       <div style={{ fontSize: 9, color: C.textDim, fontWeight: 700, marginBottom: 2 }}>{t.current}</div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: C.text, fontFamily: 'monospace' }}>
                         {item.currentValue}
                       </div>
                     </div>
                     <div style={{ fontSize: 14, color: C.textDim }}>→</div>
-                    <div style={{ flex: 1, background: '#0d1117', borderRadius: 6, padding: '6px 10px', textAlign: 'center', border: `1px solid ${C.accent}44` }}>
+                    <div style={{ flex: 1, background: 'var(--nx-bg)', borderRadius: 6, padding: '6px 10px', textAlign: 'center', border: `1px solid ${C.accent}44` }}>
                       <div style={{ fontSize: 9, color: C.textDim, fontWeight: 700, marginBottom: 2 }}>{t.suggested}</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#79c0ff', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--nx-accent-2)', fontFamily: 'monospace' }}>
                         {item.suggestedValue}
                         <span style={{
                           fontSize: 10,
@@ -722,15 +722,15 @@ export default function DimensionAdvisorPanel({
                       padding: '6px',
                       borderRadius: 6,
                       border: 'none',
-                      background: isApplied ? '#3fb95022' : C.accent,
-                      color: isApplied ? C.accentGreen : '#fff',
+                      background: isApplied ? 'var(--nx-ok)22' : C.accent,
+                      color: isApplied ? C.accentGreen : 'var(--nx-text)',
                       fontSize: 11,
                       fontWeight: 700,
                       cursor: isApplied ? 'default' : 'pointer',
                       transition: 'background 0.12s',
                     }}
                     onMouseEnter={e => { if (!isApplied) e.currentTarget.style.background = '#4493ff'; }}
-                    onMouseLeave={e => { if (!isApplied) e.currentTarget.style.background = isApplied ? '#3fb95022' : C.accent; }}
+                    onMouseLeave={e => { if (!isApplied) e.currentTarget.style.background = isApplied ? 'var(--nx-ok)22' : C.accent; }}
                   >
                     {isApplied ? `✓ ${t.applied}` : t.apply}
                   </button>

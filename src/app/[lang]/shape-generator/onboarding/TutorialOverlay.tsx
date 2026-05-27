@@ -271,7 +271,7 @@ export default function TutorialOverlay({
         width:  targetRect.width  + 4,
         height: targetRect.height + 4,
         borderRadius: 10,
-        border: '2px solid #58a6ff',
+        border: '2px solid var(--nx-accent-2)',
         animation: 'tutorial-pulse 1.8s ease-in-out infinite',
         pointerEvents: 'none',
         transition: `top ${FADE_MS}ms ease, left ${FADE_MS}ms ease, width ${FADE_MS}ms ease, height ${FADE_MS}ms ease`,
@@ -285,8 +285,8 @@ export default function TutorialOverlay({
           top:  tooltipPos.top,
           left: tooltipPos.left,
           width: TOOLTIP_W,
-          background: '#161b22',
-          border: '1px solid #30363d',
+          background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)',
           borderRadius: 12,
           padding: 20,
           boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
@@ -309,27 +309,27 @@ export default function TutorialOverlay({
                   height: 6,
                   borderRadius: 3,
                   background:
-                    i === currentStep ? '#58a6ff'
-                    : i < currentStep ? '#388bfd'
-                    : '#30363d',
+                    i === currentStep ? 'var(--nx-accent-2)'
+                    : i < currentStep ? 'var(--nx-accent)'
+                    : 'var(--nx-border)',
                   transition: 'all 0.25s ease',
                   flexShrink: 0,
                 }}
               />
             ))}
           </div>
-          <span style={{ fontSize: 11, color: '#484f58', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 11, color: 'var(--nx-border-strong)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
             {currentStep + 1} / {totalSteps}
           </span>
         </div>
 
         {/* Title */}
-        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800, color: '#e6edf3', lineHeight: 1.3 }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800, color: 'var(--nx-text)', lineHeight: 1.3 }}>
           {getStepTitle(step, resolvedLang)}
         </h3>
 
         {/* Description */}
-        <p style={{ margin: '0 0 18px', fontSize: 13, color: '#8b949e', lineHeight: 1.65, fontWeight: 500 }}>
+        <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--nx-text-2)', lineHeight: 1.65, fontWeight: 500 }}>
           {getStepDescription(step, resolvedLang)}
         </p>
 
@@ -339,12 +339,12 @@ export default function TutorialOverlay({
             onClick={onSkip}
             style={{
               padding: '6px 14px', borderRadius: 6,
-              border: '1px solid #30363d', background: 'transparent',
-              color: '#8b949e', fontSize: 12, fontWeight: 600,
+              border: '1px solid var(--nx-border)', background: 'transparent',
+              color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600,
               cursor: 'pointer', transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#484f58'; e.currentTarget.style.color = '#c9d1d9'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-border-strong)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           >
             {nt('skip')}
           </button>
@@ -356,12 +356,12 @@ export default function TutorialOverlay({
               onClick={handlePrev}
               style={{
                 padding: '6px 14px', borderRadius: 6,
-                border: '1px solid #30363d', background: '#21262d',
-                color: '#c9d1d9', fontSize: 12, fontWeight: 600,
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)',
+                color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'all 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
             >
               {nt('back')}
             </button>
@@ -371,12 +371,12 @@ export default function TutorialOverlay({
             onClick={handleNext}
             style={{
               padding: '6px 18px', borderRadius: 6,
-              border: 'none', background: '#388bfd',
-              color: '#fff', fontSize: 12, fontWeight: 700,
+              border: 'none', background: 'var(--nx-accent)',
+              color: 'var(--nx-text)', fontSize: 12, fontWeight: 700,
               cursor: 'pointer', transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#58a6ff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#388bfd'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-accent-2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-accent)'; }}
           >
             {isLastStep ? nt('done') : nt('next')}
           </button>

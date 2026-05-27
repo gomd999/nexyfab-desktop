@@ -18,6 +18,21 @@ export const sphereShape: ShapeConfig = {
     const geometry = new THREE.SphereGeometry(r, wSeg, hSeg);
     geometry.computeVertexNormals();
 
+    // Phase 3-f — sphere is a single face surface. SphereGeometry doesn't
+    // partition into material groups, so we stamp a single hash for any
+    // hit and let the push/pull mapping resolve radius drag from there.
+    geometry.userData = {
+      ...geometry.userData,
+      topoFaceMapByFeature: {
+        sphere: {
+          featureId: 'sphere',
+          sweepFaces: [],
+          caps: ['', ''] as [string, string],
+          boxFaces: { 0: 'sphere_surface' },
+        },
+      },
+    };
+
     const edgeGeometry = makeEdges(geometry);
 
     const volume_cm3 = (4 / 3) * Math.PI * r * r * r / 1000;

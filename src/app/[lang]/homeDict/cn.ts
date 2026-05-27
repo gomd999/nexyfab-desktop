@@ -176,7 +176,7 @@ export const cn = {
 
     featKicker: 'NexyFab · Capabilities.',
     featTitle: '工程师的一站式工具',
-    featSub: '设计、分析、优化、报价 — SolidWorks级功能，浏览器中免费使用。',
+    featSub: '浏览器中设计 → 报价 → 韩国合作伙伴下单，一条链。OpenSCAD互通 · 支持协作 · 无需安装。',
     feat1Title: '参数化3D CAD',
     feat1Desc: '16种形状、草图到拉伸、倒角、圆角、阵列等专业功能。',
     feat2Title: '结构分析（FEA）',
@@ -207,7 +207,7 @@ export const cn = {
     personaKicker: 'NexyFab · For You.',
     personaTitle: '这个平台适合谁？',
     persona1Title: '设计工程师',
-    persona1Desc: '无需SolidWorks的专业设计和分析。直接在浏览器中工作。',
+    persona1Desc: '浏览器端参数化CAD + OpenSCAD代码双向。最适合标准零件设计与图纸输出。',
     persona1Cta: '开始3D设计',
     persona2Title: '采购经理',
     persona2Desc: '上传图纸→即时报价比较。仅推荐经过验证的制造商。',

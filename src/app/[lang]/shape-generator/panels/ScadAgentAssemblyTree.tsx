@@ -103,7 +103,7 @@ export default function ScadAgentAssemblyTree({ lang, session, onQuery }: Assemb
   return (
     <div style={treeContainerStyle}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>{t.title}</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{t.title}</span>
         <button onClick={() => setOpen(false)} style={btnClose}>{t.close}</button>
       </div>
 
@@ -131,8 +131,8 @@ export default function ScadAgentAssemblyTree({ lang, session, onQuery }: Assemb
                     setHighlightedHandle(prev => prev === entry.handle ? null : entry.handle);
                   }}
                   style={{
-                    background: isPivot ? '#1f6feb33' : isHighlighted ? '#3fb95018' : 'transparent',
-                    borderLeft: isPivot ? '2px solid #1f6feb' : isHighlighted ? '2px solid #3fb95066' : '2px solid transparent',
+                    background: isPivot ? '#1f6feb33' : isHighlighted ? 'var(--nx-ok)18' : 'transparent',
+                    borderLeft: isPivot ? '2px solid #1f6feb' : isHighlighted ? '2px solid var(--nx-ok)66' : '2px solid transparent',
                     borderRadius: 3,
                     cursor: mates.length > 0 ? 'pointer' : 'default',
                     transition: 'background 0.12s',
@@ -207,7 +207,7 @@ function Branch({ label, children, accent, compact, initiallyClosed }: {
         style={{
           padding: '2px 4px',
           fontSize: compact ? 10 : 11, fontWeight: accent ? 700 : 600,
-          color: accent ? '#58a6ff' : (compact ? '#c9d1d9' : '#79c0ff'),
+          color: accent ? 'var(--nx-accent-2)' : (compact ? 'var(--nx-text)' : 'var(--nx-accent-2)'),
           background: 'transparent',
           border: 'none', cursor: 'pointer',
           fontFamily: compact ? 'monospace' : 'inherit',
@@ -219,7 +219,7 @@ function Branch({ label, children, accent, compact, initiallyClosed }: {
         <span>{label}</span>
       </button>
       {openLocal && (
-        <div style={{ marginLeft: 14, borderLeft: '1px dashed #30363d', paddingLeft: 8 }}>
+        <div style={{ marginLeft: 14, borderLeft: '1px dashed var(--nx-border)', paddingLeft: 8 }}>
           {children}
         </div>
       )}
@@ -240,33 +240,33 @@ function Leaf({ primary, secondary, onClick, muted }: {
         padding: '2px 4px',
         fontSize: 10,
         fontFamily: 'monospace',
-        color: muted ? '#8b949e' : '#c9d1d9',
+        color: muted ? 'var(--nx-text-2)' : 'var(--nx-text)',
         cursor: onClick ? 'pointer' : 'default',
         borderRadius: 3,
         display: 'flex', gap: 6, alignItems: 'baseline',
       }}
-      onMouseEnter={onClick ? e => { e.currentTarget.style.background = '#161b22'; } : undefined}
+      onMouseEnter={onClick ? e => { e.currentTarget.style.background = 'var(--nx-panel)'; } : undefined}
       onMouseLeave={onClick ? e => { e.currentTarget.style.background = 'transparent'; } : undefined}
       title={onClick ? 'Click to ask the agent about this' : undefined}
     >
-      <code style={{ color: muted ? '#8b949e' : '#79c0ff' }}>{primary}</code>
-      {secondary && <span style={{ color: '#8b949e' }}>{secondary}</span>}
+      <code style={{ color: muted ? 'var(--nx-text-2)' : 'var(--nx-accent-2)' }}>{primary}</code>
+      {secondary && <span style={{ color: 'var(--nx-text-2)' }}>{secondary}</span>}
     </div>
   );
 }
 
 const pillStyle: React.CSSProperties = {
   padding: '4px 10px', fontSize: 10, fontWeight: 700,
-  borderRadius: 6, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 6, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };
 const treeContainerStyle: React.CSSProperties = {
-  padding: 10, background: '#0d1117',
-  border: '1px solid #30363d', borderRadius: 8,
+  padding: 10, background: 'var(--nx-bg)',
+  border: '1px solid var(--nx-border)', borderRadius: 8,
   maxHeight: 360, overflowY: 'auto',
 };
 const btnClose: React.CSSProperties = {
   padding: '3px 8px', fontSize: 10,
-  borderRadius: 4, border: '1px solid #30363d',
-  background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+  borderRadius: 4, border: '1px solid var(--nx-border)',
+  background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
 };

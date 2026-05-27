@@ -113,11 +113,11 @@ export default function TimelineBar({
           <div style={{
             height: '100%',
             width: `${analysisProgress.pct}%`,
-            background: analysisProgress.type === 'fea' ? '#388bfd'
-              : analysisProgress.type === 'dfm' ? '#3fb950'
-              : analysisProgress.type === 'topology' ? '#a371f7'
-              : analysisProgress.type === 'interference' ? '#58a6ff'
-              : '#f0883e',
+            background: analysisProgress.type === 'fea' ? 'var(--nx-accent)'
+              : analysisProgress.type === 'dfm' ? 'var(--nx-ok)'
+              : analysisProgress.type === 'topology' ? 'var(--nx-accent-2)'
+              : analysisProgress.type === 'interference' ? 'var(--nx-accent-2)'
+              : 'var(--nx-warn)',
             transition: 'width 0.3s ease',
           }} />
         </div>
@@ -182,7 +182,7 @@ export default function TimelineBar({
                   background: isSelected ? theme.canvasBg : isHovered ? theme.hoverBg : 'transparent',
                   border: `1px solid ${
                     dragOverId === f.id && dragId !== f.id
-                      ? '#3fb950'
+                      ? 'var(--nx-ok)'
                       : isSelected
                         ? theme.accent
                         : isHovered
@@ -197,7 +197,7 @@ export default function TimelineBar({
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%',
                   background: isSelected ? theme.hoverBg : theme.inputBg,
-                  border: `2px solid ${isSelected ? theme.accentBright : hasError ? '#f85149' : theme.textMuted}`,
+                  border: `2px solid ${isSelected ? theme.accentBright : hasError ? 'var(--nx-error)' : theme.textMuted}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, flexShrink: 0, transition: 'border-color 0.15s',
                 }}>
@@ -211,7 +211,7 @@ export default function TimelineBar({
                     whiteSpace: 'nowrap',
                   }}>
                     {def?.type || f.type}
-                    {hasError && <span style={{ color: '#f85149', marginLeft: 4 }}>!</span>}
+                    {hasError && <span style={{ color: 'var(--nx-error)', marginLeft: 4 }}>!</span>}
                   </span>
                 )}
               </div>
@@ -251,7 +251,7 @@ export default function TimelineBar({
           {onDeleteFeature && (
             <button
               onClick={() => onDeleteFeature(contextMenu.id)}
-              style={{ padding: '6px 12px', border: 'none', background: 'transparent', textAlign: 'left', fontSize: 11, fontWeight: 500, cursor: 'pointer', borderRadius: 4, color: '#f85149' }}
+              style={{ padding: '6px 12px', border: 'none', background: 'transparent', textAlign: 'left', fontSize: 11, fontWeight: 500, cursor: 'pointer', borderRadius: 4, color: 'var(--nx-error)' }}
               onMouseEnter={e => e.currentTarget.style.background = '#3d1519'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
@@ -267,14 +267,14 @@ export default function TimelineBar({
           marginLeft: 'auto', flexShrink: 0,
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '2px 4px 2px 8px', borderRadius: 4,
-          background: '#21262d', border: '1px solid #30363d',
-          fontSize: 10, color: '#8b949e',
+          background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
+          fontSize: 10, color: 'var(--nx-text-2)',
         }}>
           <div style={{
             width: 6, height: 6, borderRadius: '50%',
             background: analysisProgress.type === 'fea' || analysisProgress.type === 'interference'
-              ? '#388bfd'
-              : '#3fb950',
+              ? 'var(--nx-accent)'
+              : 'var(--nx-ok)',
             animation: 'pulse 1s infinite',
           }} />
           {analysisProgress.label} {Math.round(analysisProgress.pct)}%
@@ -289,18 +289,18 @@ export default function TimelineBar({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: 3,
                 background: 'transparent',
-                color: '#f85149',
-                border: '1px solid #30363d',
+                color: 'var(--nx-error)',
+                border: '1px solid var(--nx-border)',
                 cursor: 'pointer',
                 fontSize: 12, lineHeight: 1, fontWeight: 700,
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = '#f8514922';
-                (e.currentTarget as HTMLButtonElement).style.borderColor = '#f85149';
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-error)22';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-error)';
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)';
               }}
             >
               ✕
@@ -336,12 +336,12 @@ export default function TimelineBar({
             <button
               onClick={() => { onEditFeature(contextMenu.id); setContextMenu(null); }}
               style={{
-                background: 'transparent', border: 'none', color: '#c9d1d9',
+                background: 'transparent', border: 'none', color: 'var(--nx-text)',
                 padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'background 0.1s',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               ✏️ Edit Feature
@@ -351,12 +351,12 @@ export default function TimelineBar({
             <button
               onClick={() => { onSuppressFeature(contextMenu.id); setContextMenu(null); }}
               style={{
-                background: 'transparent', border: 'none', color: '#c9d1d9',
+                background: 'transparent', border: 'none', color: 'var(--nx-text)',
                 padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'background 0.1s',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               {features.find(f => f.id === contextMenu.id)?.enabled ? '👁️ Suppress' : '👁️‍🗨️ Unsuppress'}
@@ -367,7 +367,7 @@ export default function TimelineBar({
             <button
               onClick={() => { onDeleteFeature(contextMenu.id); setContextMenu(null); }}
               style={{
-                background: 'transparent', border: 'none', color: '#f85149',
+                background: 'transparent', border: 'none', color: 'var(--nx-error)',
                 padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'background 0.1s',
                 display: 'flex', alignItems: 'center', gap: 8,

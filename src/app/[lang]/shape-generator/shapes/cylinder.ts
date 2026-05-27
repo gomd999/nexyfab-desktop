@@ -34,6 +34,26 @@ export const cylinderShape: ShapeConfig = {
     }
 
     geometry.computeVertexNormals();
+
+    // Phase 3-f — face id stamp. CylinderGeometry tags side/top/bottom
+    // with materialIndex 0/1/2; LatheGeometry (hollow case) emits a single
+    // material group, so the side hash covers everything in that case.
+    geometry.userData = {
+      ...geometry.userData,
+      topoFaceMapByFeature: {
+        cylinder: {
+          featureId: 'cylinder',
+          sweepFaces: [],
+          caps: ['', ''] as [string, string],
+          boxFaces: {
+            0: 'cyl_face_side',
+            1: 'cyl_face_top',
+            2: 'cyl_face_bottom',
+          },
+        },
+      },
+    };
+
     const edgeGeometry = makeEdges(geometry);
 
     const PI = Math.PI;

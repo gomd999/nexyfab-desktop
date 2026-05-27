@@ -49,7 +49,7 @@ export default function AssemblyBrowser({
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'var(--nx-text)',
         borderRadius: 16,
         border: '1px solid #e5e7eb',
         padding: 16,
@@ -69,7 +69,7 @@ export default function AssemblyBrowser({
           style={{
             fontSize: 14,
             fontWeight: 800,
-            color: '#374151',
+            color: 'var(--nx-border-strong)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -90,7 +90,7 @@ export default function AssemblyBrowser({
           gap: 6,
           padding: '6px 8px',
           borderRadius: 8,
-          background: '#f9fafb',
+          background: 'var(--nx-panel)',
           border: '1px solid #e5e7eb',
           cursor: 'pointer',
           marginBottom: expanded ? 6 : 0,
@@ -100,7 +100,7 @@ export default function AssemblyBrowser({
         <span
           style={{
             fontSize: 10,
-            color: '#6b7280',
+            color: 'var(--nx-text-3)',
             fontFamily: 'monospace',
             width: 14,
             textAlign: 'center',
@@ -110,14 +110,14 @@ export default function AssemblyBrowser({
           {expanded ? '▼' : '▶'}
         </span>
         <span style={{ fontSize: 14 }}>📦</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-border-strong)', flex: 1 }}>
           {assemblyName}
         </span>
         <span
           style={{
             fontSize: 10,
             fontWeight: 700,
-            color: '#6366f1',
+            color: 'var(--nx-accent)',
             background: '#ede9fe',
             borderRadius: 8,
             padding: '1px 7px',
@@ -133,7 +133,7 @@ export default function AssemblyBrowser({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 14 }}>
           {parts.length === 0 ? (
             <div style={{ padding: '12px 0', textAlign: 'center' }}>
-              <p style={{ color: '#9ca3af', fontSize: 12, margin: 0 }}>{t.empty}</p>
+              <p style={{ color: 'var(--nx-text-2)', fontSize: 12, margin: 0 }}>{t.empty}</p>
             </div>
           ) : (
             parts.map((part, idx) => {
@@ -149,7 +149,7 @@ export default function AssemblyBrowser({
                     gap: 6,
                     padding: '5px 8px',
                     borderRadius: 8,
-                    border: isSelected ? '2px solid #6366f1' : '1px solid transparent',
+                    border: isSelected ? '2px solid var(--nx-accent)' : '1px solid transparent',
                     background: isSelected ? '#f5f3ff' : 'transparent',
                     cursor: 'pointer',
                     transition: 'all 0.12s',
@@ -174,7 +174,7 @@ export default function AssemblyBrowser({
                       flex: 1,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: isSelected ? '#6366f1' : '#374151',
+                      color: isSelected ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',

@@ -104,6 +104,10 @@ const cases: Case[] = [
     run: () => {
       const geo = makeBox();
       const params = defaultParams(filletFeature);
+      // This case smoke-tests the three-bvh-csg mesh path explicitly. The
+      // OCCT-wanted fallback now guards against a silent no-op (roundingGuard),
+      // so pin the engine to mesh to keep exercising the CSG evaluator.
+      params.engine = 0;
       return filletFeature.apply(geo, params);
     },
   },
@@ -112,6 +116,7 @@ const cases: Case[] = [
     run: () => {
       const geo = makeBox();
       const params = defaultParams(chamferFeature);
+      params.engine = 0;
       return chamferFeature.apply(geo, params);
     },
   },

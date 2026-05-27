@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate, formatDday } from '@/lib/formatDate';
-import RfqModelViewer from '@/components/nexyfab/RfqModelViewer';
 import RfqCadFilesPanel from '@/components/nexyfab/RfqCadFilesPanel';
 import DfmScoreBadge from '@/components/nexyfab/DfmScoreBadge';
+
+// RfqModelViewer pulls in Three.js + OCCT — load only when actually rendered.
+const RfqModelViewer = dynamic(() => import('@/components/nexyfab/RfqModelViewer'), { ssr: false });
 
 const RfqResponderPanel = dynamic(() => import('./RfqResponderPanel'), { ssr: false });
 const OrderPriorityPanel = dynamic(() => import('./OrderPriorityPanel'), { ssr: false });
@@ -21,6 +23,8 @@ const PartnerOrdersPanel = dynamic(() => import('./PartnerOrdersPanel'), { ssr: 
 import PartnerNotificationBell from './PartnerNotificationBell';
 import PartnerProBadge from '@/components/nexyfab/PartnerProBadge';
 import { loadLocalAiPrefs, type AiPrefs } from './PartnerAIPrefsPanel';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotesDict, type QuotesDict } from '../_lib/dicts/quotes';
 
 interface Partner {
   partnerId: string;
@@ -50,14 +54,6 @@ interface Quote {
   };
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '응답 대기',
-  responded: '응답 완료',
-  accepted: '수락됨',
-  rejected: '거절됨',
-  expired: '만료됨',
-};
-
 const STATUS_COLORS: Record<string, string> = {
   pending:   'bg-amber-100 text-amber-700',
   responded: 'bg-blue-100 text-blue-700',
@@ -66,18 +62,21 @@ const STATUS_COLORS: Record<string, string> = {
   expired:   'bg-gray-100 text-gray-500',
 };
 
+function statusText(s: string, t: QuotesDict): string {
+  const key = `status_${s}` as keyof QuotesDict;
+  const v = t[key];
+  return typeof v === 'string' ? v : s;
+}
+
 type QuoteTab = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
 
-const QUOTE_TABS: { key: QuoteTab; label: string }[] = [
-  { key: 'all',      label: '전체' },
-  { key: 'pending',  label: '검토중' },
-  { key: 'accepted', label: '수락됨' },
-  { key: 'rejected', label: '거절됨' },
-  { key: 'expired',  label: '만료' },
-];
-
-function won(n: number) {
-  return n?.toLocaleString('ko-KR') + '원';
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+function fmtMoney(n: number, lang: string): string {
+  try {
+    return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n);
+  } catch { return `₩${n?.toLocaleString() ?? '0'}`; }
 }
 
 // ── PDF download — uses server-side jsPDF endpoint ───────────────────────────
@@ -89,6 +88,15 @@ function downloadQuotePdf(quote: Quote) {
 export default function PartnerQuotesPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const lang = usePartnerLang();
+  const t = quotesDict(lang);
+  const QUOTE_TABS: { key: QuoteTab; label: string }[] = [
+    { key: 'all',      label: t.tabAll },
+    { key: 'pending',  label: t.tabPending },
+    { key: 'accepted', label: t.tabAccepted },
+    { key: 'rejected', label: t.tabRejected },
+    { key: 'expired',  label: t.tabExpired },
+  ];
   const [partner, setPartner] = useState<Partner | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -144,7 +152,7 @@ export default function PartnerQuotesPage() {
 
   async function runBulk(action: 'decline' | 'extend_validity') {
     if (selectedIds.size === 0) return;
-    if (action === 'decline' && !confirm(`${selectedIds.size}건의 견적을 거절 처리합니다. 계속할까요?`)) return;
+    if (action === 'decline' && !confirm(t.bulkConfirmDecline(selectedIds.size))) return;
 
     const session = getSession();
     if (!session || session === 'demo') {
@@ -155,7 +163,7 @@ export default function PartnerQuotesPage() {
         return { ...q, validUntil: bulkValidUntil };
       }));
       clearSelection();
-      toast('success', `[데모] ${selectedIds.size}건 처리 완료`);
+      toast('success', t.bulkDemoSuccess(selectedIds.size));
       return;
     }
 
@@ -172,14 +180,14 @@ export default function PartnerQuotesPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(err.error ?? '일괄 처리 실패');
+        throw new Error(err.error ?? t.bulkErrFailed);
       }
       const data = await res.json() as { updated: number; skipped: number };
-      toast('success', `${data.updated}건 처리 완료${data.skipped ? ` (${data.skipped}건 건너뜀)` : ''}`);
+      toast('success', t.bulkSuccess(data.updated, data.skipped));
       clearSelection();
       await fetchQuotes(session);
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '일괄 처리에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : t.bulkErrFailed);
     } finally {
       setBulkBusy(null);
     }
@@ -264,7 +272,7 @@ export default function PartnerQuotesPage() {
         unitKrw: Math.round(base * (isRush ? 1.5 : 1.0)),
         breakdown: { materialKrw: Math.round(base * 0.4), machineKrw: Math.round(base * 0.55), setupKrw: 50_000, volumeDiscountPct: 0, expressApplied: isRush },
         leadTimeDays: { min: 7, max: 14 },
-        warnings: ['데모 모드: 단가표 미사용, 예시 값입니다.'],
+        warnings: [t.toastAutoQuoteDemoWarning],
       });
       setRespondForm(f => ({ ...f, estimatedAmount: String(Math.round(base * (isRush ? 1.5 : 1.0))), estimatedDays: '14' }));
       return;
@@ -287,7 +295,7 @@ export default function PartnerQuotesPage() {
       }));
     } catch (err) {
       console.error('[runAutoQuote] failed:', err);
-      alert('자동 견적 생성에 실패했습니다. 단가표를 먼저 등록해 주세요.');
+      alert(t.toastAutoQuoteFailed);
     } finally {
       setAutoQuoting(false);
     }
@@ -309,7 +317,7 @@ export default function PartnerQuotesPage() {
       setRespondTarget(null);
       setIsEditing(false);
       setRespondForm({ estimatedAmount: '', estimatedDays: '', note: '' });
-      toast('success', '[데모] 견적이 제출되었습니다.');
+      toast('success', t.toastDemoSubmit);
       return;
     }
 
@@ -332,7 +340,7 @@ export default function PartnerQuotesPage() {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(errData.error ?? '견적 제출 실패');
+        throw new Error(errData.error ?? t.toastSubmitFail);
       }
       // 서버 응답(snake_case)이 아닌 로컬 상태로 업데이트 — 타입 불일치 방지
       setQuotes(prev => prev.map(q => q.id === respondTarget.id ? {
@@ -348,9 +356,9 @@ export default function PartnerQuotesPage() {
       setRespondTarget(null);
       setIsEditing(false);
       setRespondForm({ estimatedAmount: '', estimatedDays: '', note: '' });
-      toast('success', isEditing ? '견적이 수정되었습니다.' : '견적이 제출되었습니다.');
+      toast('success', isEditing ? t.toastEditOk : t.toastSubmitOk);
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '견적 제출에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : t.toastSubmitFail);
     } finally {
       setSubmitting(false);
     }
@@ -384,8 +392,8 @@ export default function PartnerQuotesPage() {
         <div className="max-w-4xl mx-auto">
           <div className="mb-6 flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black text-gray-900">견적 요청</h1>
-              <p className="text-sm text-gray-500 mt-1">어드민이 지정한 견적 요청 목록</p>
+              <h1 className="text-2xl font-black text-gray-900">{t.pageHeader}</h1>
+              <p className="text-sm text-gray-500 mt-1">{t.pageSubheader}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <PartnerNotificationBell session={getSession()} />
@@ -397,7 +405,7 @@ export default function PartnerQuotesPage() {
                 onClick={() => setAiMenuOpen(o => !o)}
                 className="md:hidden px-4 py-2 text-sm font-bold rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition flex items-center gap-2"
               >
-                ⚙ AI 도구 {aiMenuOpen ? '▲' : '▼'}
+                {t.aiMenuToggle} {aiMenuOpen ? '▲' : '▼'}
               </button>
 
               {/* 모바일 드롭다운 바깥 클릭 오버레이 */}
@@ -413,44 +421,44 @@ export default function PartnerQuotesPage() {
                       onClick={() => { setShowOrderPriority(true); setAiMenuOpen(false); }}
                       className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800"
                     >
-                      🏆 AI 우선순위
+                      {t.aiBtnPriority}
                     </button>
                   )}
                   <button
                     onClick={() => { setShowCapacityMatch(true); setAiMenuOpen(false); }}
                     className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800 border-t border-gray-100"
                   >
-                    🔗 캐파 매칭
+                    {t.aiBtnCapacity}
                   </button>
                   <button
                     onClick={() => { setShowQuoteAccuracy(true); setAiMenuOpen(false); }}
                     className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800 border-t border-gray-100"
                   >
-                    📊 견적 정확도
+                    {t.aiBtnAccuracy}
                   </button>
                   <button
                     onClick={() => { setShowAIHistory(true); setAiMenuOpen(false); }}
                     className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800 border-t border-gray-100"
                   >
-                    📜 AI 이력
+                    {t.aiBtnHistory}
                   </button>
                   <button
                     onClick={() => { setShowOrders(true); setAiMenuOpen(false); }}
                     className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800 border-t border-gray-100"
                   >
-                    📦 주문 관리
+                    {t.aiBtnOrders}
                   </button>
                   <button
                     onClick={() => { setShowStats(true); setAiMenuOpen(false); }}
                     className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800 border-t border-gray-100"
                   >
-                    📈 실적 통계
+                    {t.aiBtnStats}
                   </button>
                   <button
                     onClick={() => { setShowAIPrefs(true); setAiMenuOpen(false); }}
                     className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-gray-50 flex items-center gap-2 text-gray-800 border-t border-gray-100"
                   >
-                    ⚙️ AI 기본값 설정
+                    {t.aiBtnPrefs}
                   </button>
                 </div>
               )}
@@ -462,44 +470,44 @@ export default function PartnerQuotesPage() {
                     onClick={() => setShowOrderPriority(true)}
                     className="px-4 py-2 text-sm font-bold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 transition flex items-center gap-2"
                   >
-                    🏆 AI 우선순위
+                    {t.aiBtnPriority}
                   </button>
                 )}
                 <button
                   onClick={() => setShowCapacityMatch(true)}
                   className="px-4 py-2 text-sm font-bold rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 transition flex items-center gap-2"
                 >
-                  🔗 캐파 매칭
+                  {t.aiBtnCapacity}
                 </button>
                 <button
                   onClick={() => setShowQuoteAccuracy(true)}
                   className="px-4 py-2 text-sm font-bold rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition flex items-center gap-2"
                 >
-                  📊 견적 정확도
+                  {t.aiBtnAccuracy}
                 </button>
                 <button
                   onClick={() => setShowAIHistory(true)}
                   className="px-4 py-2 text-sm font-bold rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition flex items-center gap-2"
                 >
-                  📜 AI 이력
+                  {t.aiBtnHistory}
                 </button>
                 <button
                   onClick={() => setShowOrders(true)}
                   className="px-4 py-2 text-sm font-bold rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 transition flex items-center gap-2"
                 >
-                  📦 주문 관리
+                  {t.aiBtnOrders}
                 </button>
                 <button
                   onClick={() => setShowStats(true)}
                   className="px-4 py-2 text-sm font-bold rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition flex items-center gap-2"
                 >
-                  📈 실적 통계
+                  {t.aiBtnStats}
                 </button>
                 <button
                   onClick={() => setShowAIPrefs(true)}
                   className="px-4 py-2 text-sm font-bold rounded-xl bg-gray-700 text-white hover:bg-gray-600 transition flex items-center gap-2"
                 >
-                  ⚙️ AI 설정
+                  {t.aiBtnPrefs}
                 </button>
               </div>
             </div>
@@ -518,10 +526,10 @@ export default function PartnerQuotesPage() {
                   <div className="text-2xl">📥</div>
                   <div>
                     <div className="text-sm font-bold text-blue-900">
-                      들어온 견적 요청 {invitationsCount}건
+                      {t.invitationsBannerTitle(invitationsCount ?? 0)}
                     </div>
                     <div className="text-xs text-blue-700 mt-0.5">
-                      NexyFab 운영팀이 귀사를 추천한 RFQ입니다 — 견적을 작성해 주세요
+                      {t.invitationsBannerBody}
                     </div>
                   </div>
                 </div>
@@ -563,12 +571,12 @@ export default function PartnerQuotesPage() {
 
           {fetchError ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
-              <p className="text-sm text-red-400 mb-4">견적 목록을 불러오지 못했습니다.</p>
+              <p className="text-sm text-red-400 mb-4">{t.fetchErrorTitle}</p>
               <button
                 onClick={() => { setFetchError(false); setLoading(true); const s = localStorage.getItem('partnerSession') || ''; fetchQuotes(s).finally(() => setLoading(false)); }}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
               >
-                다시 시도
+                {t.retryBtn}
               </button>
             </div>
           ) : (() => {
@@ -582,19 +590,19 @@ export default function PartnerQuotesPage() {
               return (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
                   <div className="text-4xl mb-3">📝</div>
-                  <p className="text-sm font-semibold text-gray-500 mb-1">배정된 견적 요청이 없습니다</p>
-                  <p className="text-xs text-gray-400">어드민이 견적을 배정하면 여기에 표시됩니다.</p>
+                  <p className="text-sm font-semibold text-gray-500 mb-1">{t.emptyAssigned}</p>
+                  <p className="text-xs text-gray-400">{t.emptyAssignedHint}</p>
                 </div>
               );
             }
 
             if (tabFiltered.length === 0) {
               const EMPTY_TAB: Record<QuoteTab, string> = {
-                all:      '견적이 없습니다.',
-                pending:  '검토 중인 견적이 없습니다.',
-                accepted: '수락된 견적이 없습니다.',
-                rejected: '거절된 견적이 없습니다.',
-                expired:  '만료된 견적이 없습니다.',
+                all:      t.emptyAll,
+                pending:  t.emptyPending,
+                accepted: t.emptyAccepted,
+                rejected: t.emptyRejected,
+                expired:  t.emptyExpired,
               };
               return (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-14 text-center">
@@ -621,11 +629,11 @@ export default function PartnerQuotesPage() {
                                   onChange={() => toggleSelect(quote.id)}
                                   onClick={(e) => e.stopPropagation()}
                                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                  aria-label="견적 선택"
+                                  aria-label={t.selectAria}
                                 />
                               )}
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[quote.status] || 'bg-gray-100 text-gray-500'}`}>
-                                {STATUS_LABELS[quote.status] || quote.status}
+                                {statusText(quote.status, t)}
                               </span>
                               {/* D-day expiry badge */}
                               {dday && (
@@ -643,9 +651,9 @@ export default function PartnerQuotesPage() {
                             </div>
                             <h3 className="text-base font-bold text-gray-900">{quote.projectName}</h3>
                             <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold">{won(quote.estimatedAmount)}</span>
+                              <span className="font-semibold">{fmtMoney(quote.estimatedAmount, lang)}</span>
                               {quote.validUntil && (
-                                <span className="text-gray-400">유효: {formatDate(quote.validUntil)}</span>
+                                <span className="text-gray-400">{t.validUntil(formatDate(quote.validUntil))}</span>
                               )}
                             </div>
                             {quote.details && (
@@ -666,7 +674,7 @@ export default function PartnerQuotesPage() {
                                 }}
                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition"
                               >
-                                견적 제출
+                                {t.btnSubmitQuote}
                               </button>
                             )}
                             {quote.status === 'responded' && (
@@ -682,7 +690,7 @@ export default function PartnerQuotesPage() {
                                 }}
                                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg transition"
                               >
-                                수정
+                                {t.btnEditQuote}
                               </button>
                             )}
                             {/* PDF download */}
@@ -693,7 +701,7 @@ export default function PartnerQuotesPage() {
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                               </svg>
-                              견적서 PDF
+                              {t.btnQuotePdf}
                             </button>
                           </div>
                         </div>
@@ -701,7 +709,7 @@ export default function PartnerQuotesPage() {
                         {/* 3D 모델 뷰어 */}
                         {(quote.shareToken || quote.rfqId) && (
                           <div className="mt-3 border-t border-gray-100 pt-3">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">3D 모델</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.modelSectionTitle}</p>
                             <RfqModelViewer
                               rfqId={quote.rfqId}
                               shareToken={quote.shareToken}
@@ -728,23 +736,23 @@ export default function PartnerQuotesPage() {
                         {/* 응답 내용 표시 */}
                         {quote.partnerResponse && (
                           <div className="mt-3 border-t border-gray-100 pt-3">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">제출한 견적</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.submittedQuoteTitle}</p>
                             <div className="bg-blue-50 rounded-xl px-4 py-3 space-y-1">
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">견적 금액</span>
-                                <span className="font-bold text-gray-900">{won(quote.partnerResponse.estimatedAmount)}</span>
+                                <span className="text-gray-600">{t.submittedAmount}</span>
+                                <span className="font-bold text-gray-900">{fmtMoney(quote.partnerResponse.estimatedAmount, lang)}</span>
                               </div>
                               {quote.partnerResponse.estimatedDays && (
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-gray-600">납기일</span>
-                                  <span className="font-semibold text-gray-900">{quote.partnerResponse.estimatedDays}일</span>
+                                  <span className="text-gray-600">{t.submittedDays}</span>
+                                  <span className="font-semibold text-gray-900">{t.submittedDaysUnit(quote.partnerResponse.estimatedDays!)}</span>
                                 </div>
                               )}
                               {quote.partnerResponse.note && (
                                 <div className="text-sm text-gray-600 mt-1">{quote.partnerResponse.note}</div>
                               )}
                               <div className="text-xs text-gray-400 mt-1">
-                                제출: {formatDate(quote.partnerResponse.respondedAt)}
+                                {t.submittedAt(formatDate(quote.partnerResponse.respondedAt))}
                               </div>
                             </div>
                           </div>
@@ -763,7 +771,7 @@ export default function PartnerQuotesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => { setRespondTarget(null); setIsEditing(false); setAutoQuoteResult(null); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-900 text-white px-6 py-4">
-              <h2 className="text-lg font-bold">{isEditing ? '견적 수정' : '견적 제출'}</h2>
+              <h2 className="text-lg font-bold">{isEditing ? t.modalEdit : t.modalNew}</h2>
               <p className="text-sm text-gray-400 mt-0.5">{respondTarget.projectName}</p>
             </div>
             <form onSubmit={handleRespond} className="p-6 space-y-4">
@@ -772,7 +780,7 @@ export default function PartnerQuotesPage() {
                 onClick={() => setAiDraftTarget(respondTarget)}
                 className="w-full py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white transition flex items-center justify-center gap-2"
               >
-                🤖 AI 회신 초안 (자동 작성)
+                {t.modalAiDraft}
               </button>
 
               <div className="grid grid-cols-2 gap-2">
@@ -782,7 +790,7 @@ export default function PartnerQuotesPage() {
                   onClick={() => runAutoQuote(false)}
                   className="py-2 text-sm font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition disabled:opacity-50"
                 >
-                  {autoQuoting ? '계산 중…' : '📋 단가표 자동 견적'}
+                  {autoQuoting ? t.modalAutoCalcLoading : t.modalAutoCalc}
                 </button>
                 <button
                   type="button"
@@ -790,36 +798,36 @@ export default function PartnerQuotesPage() {
                   onClick={() => runAutoQuote(true)}
                   className="py-2 text-sm font-bold rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"
                 >
-                  ⚡ 긴급 단가
+                  {t.modalUrgentBtn}
                 </button>
               </div>
 
               {autoQuoteResult && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 text-xs text-gray-700 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-emerald-700">단가표 기준 자동 견적</span>
+                    <span className="font-bold text-emerald-700">{t.modalAutoResultTitle}</span>
                     {autoQuoteResult.breakdown.expressApplied && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">긴급 ×</span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">{t.modalUrgentBadge}</span>
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>총액</span>
-                    <span className="font-bold text-gray-900">{autoQuoteResult.totalKrw.toLocaleString('ko-KR')}원</span>
+                    <span>{t.modalLabelTotal}</span>
+                    <span className="font-bold text-gray-900">{fmtMoney(autoQuoteResult.totalKrw, lang)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>단가 (개당)</span>
-                    <span>{autoQuoteResult.unitKrw.toLocaleString('ko-KR')}원</span>
+                    <span>{t.modalLabelUnit}</span>
+                    <span>{fmtMoney(autoQuoteResult.unitKrw, lang)}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-emerald-100 mt-1">
-                    <div>재료 {autoQuoteResult.breakdown.materialKrw.toLocaleString('ko-KR')}</div>
-                    <div>가공 {autoQuoteResult.breakdown.machineKrw.toLocaleString('ko-KR')}</div>
-                    <div>셋업 {autoQuoteResult.breakdown.setupKrw.toLocaleString('ko-KR')}</div>
+                    <div>{t.modalLabelMaterial} {fmtMoney(autoQuoteResult.breakdown.materialKrw, lang)}</div>
+                    <div>{t.modalLabelMachine} {fmtMoney(autoQuoteResult.breakdown.machineKrw, lang)}</div>
+                    <div>{t.modalLabelSetup} {fmtMoney(autoQuoteResult.breakdown.setupKrw, lang)}</div>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500">
-                    <span>수량 할인</span><span>{autoQuoteResult.breakdown.volumeDiscountPct}%</span>
+                    <span>{t.modalLabelVolumeDiscount}</span><span>{autoQuoteResult.breakdown.volumeDiscountPct}%</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500">
-                    <span>리드타임</span><span>{autoQuoteResult.leadTimeDays.min}~{autoQuoteResult.leadTimeDays.max}일</span>
+                    <span>{t.modalLabelLeadTime}</span><span>{t.modalLabelLeadTimeRange(autoQuoteResult.leadTimeDays.min, autoQuoteResult.leadTimeDays.max)}</span>
                   </div>
                   {autoQuoteResult.warnings.length > 0 && (
                     <ul className="text-[11px] text-amber-700 mt-1 space-y-0.5">
@@ -829,35 +837,35 @@ export default function PartnerQuotesPage() {
                 </div>
               )}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">견적 금액 (원) *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{t.modalFieldAmount}</label>
                 <input
                   type="number"
                   value={respondForm.estimatedAmount}
                   onChange={e => setRespondForm(f => ({ ...f, estimatedAmount: e.target.value }))}
                   required
                   min={0}
-                  placeholder="예: 45000000"
+                  placeholder={t.modalFieldAmountPh}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">납기일 (일수)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{t.modalFieldDays}</label>
                 <input
                   type="number"
                   value={respondForm.estimatedDays}
                   onChange={e => setRespondForm(f => ({ ...f, estimatedDays: e.target.value }))}
                   min={1}
-                  placeholder="예: 14"
+                  placeholder={t.modalFieldDaysPh}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">메모</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{t.modalFieldNote}</label>
                 <textarea
                   value={respondForm.note}
                   onChange={e => setRespondForm(f => ({ ...f, note: e.target.value }))}
                   rows={3}
-                  placeholder="견적 관련 추가 사항..."
+                  placeholder={t.modalFieldNotePh}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 resize-none"
                 />
               </div>
@@ -867,14 +875,14 @@ export default function PartnerQuotesPage() {
                   disabled={submitting || !respondForm.estimatedAmount}
                   className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition"
                 >
-                  {submitting ? '처리 중...' : isEditing ? '수정하기' : '제출하기'}
+                  {submitting ? t.modalSubmitting : isEditing ? t.modalSubmitEdit : t.modalSubmit}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setRespondTarget(null); setIsEditing(false); setAutoQuoteResult(null); }}
                   className="px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                 >
-                  취소
+                  {t.modalCancel}
                 </button>
               </div>
             </form>
@@ -978,7 +986,7 @@ export default function PartnerQuotesPage() {
           accuracyAdjustment={accuracyAdjustment}
           onApply={(next) => {
             setRespondForm(next);
-            toast('success', 'AI 초안이 적용되었습니다. 검토 후 제출해주세요.');
+            toast('success', t.toastAiDraftApplied);
           }}
           onClose={() => setAiDraftTarget(null)}
         />
@@ -997,17 +1005,17 @@ export default function PartnerQuotesPage() {
       {selectedIds.size > 0 && (
         <div
           role="toolbar"
-          aria-label="견적 일괄 작업"
+          aria-label={t.bulkToolbarLabel}
           className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-white shadow-2xl border border-gray-200 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 max-w-3xl"
         >
           <span className="text-sm font-bold text-gray-800">
-            {selectedIds.size}건 선택
+            {t.bulkSelected(selectedIds.size)}
           </span>
 
           <div className="h-5 w-px bg-gray-200" />
 
           <label className="flex items-center gap-2 text-sm text-gray-600">
-            유효기간
+            {t.bulkValidLabel}
             <input
               type="date"
               value={bulkValidUntil}
@@ -1020,7 +1028,7 @@ export default function PartnerQuotesPage() {
               disabled={bulkBusy !== null}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg disabled:opacity-50"
             >
-              {bulkBusy === 'extend' ? '적용 중…' : '일괄 연장'}
+              {bulkBusy === 'extend' ? t.bulkExtending : t.bulkExtendBtn}
             </button>
           </label>
 
@@ -1032,7 +1040,7 @@ export default function PartnerQuotesPage() {
             disabled={bulkBusy !== null}
             className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg disabled:opacity-50"
           >
-            {bulkBusy === 'decline' ? '거절 중…' : '일괄 거절'}
+            {bulkBusy === 'decline' ? t.bulkDeclining : t.bulkDeclineBtn}
           </button>
 
           <button
@@ -1040,7 +1048,7 @@ export default function PartnerQuotesPage() {
             onClick={clearSelection}
             className="text-xs text-gray-500 hover:text-gray-700 px-2"
           >
-            선택 해제
+            {t.bulkClearSelection}
           </button>
         </div>
       )}

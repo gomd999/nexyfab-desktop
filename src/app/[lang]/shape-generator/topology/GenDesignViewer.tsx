@@ -65,8 +65,8 @@ function FacePlane({ face, dimX, dimY, dimZ, isFixed, isLoad, selectionMode, onC
 
   let color = '#888888';
   let opacity = 0.3;
-  if (isFixed) { color = '#ef4444'; opacity = 0.6; }
-  if (isLoad) { color = '#3b82f6'; opacity = 0.6; }
+  if (isFixed) { color = 'var(--nx-error)'; opacity = 0.6; }
+  if (isLoad) { color = 'var(--nx-accent)'; opacity = 0.6; }
   if (hovered && selectionMode !== 'none') {
     opacity = Math.min(opacity + 0.25, 0.85);
   }
@@ -152,7 +152,7 @@ function PulsingBox({ dimX, dimY, dimZ }: { dimX: number; dimY: number; dimZ: nu
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[dimX, dimY, dimZ]} />
-      <meshStandardMaterial color="#8b5cf6" transparent opacity={0.15} depthWrite={false} />
+      <meshStandardMaterial color="var(--nx-accent-2)" transparent opacity={0.15} depthWrite={false} />
     </mesh>
   );
 }
@@ -303,9 +303,9 @@ export default function GenDesignViewer({
                 style={{
                   padding: '5px 10px',
                   borderRadius: 8,
-                  border: displayMode === mode ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.2)',
-                  background: displayMode === mode ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.1)',
-                  color: '#fff',
+                  border: displayMode === mode ? '1px solid var(--nx-accent)' : '1px solid rgba(255,255,255,0.2)',
+                  background: displayMode === mode ? 'rgba(99,102,241,0.3)' : 'var(--nx-border)',
+                  color: 'var(--nx-text)',
                   fontSize: 10,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -323,8 +323,8 @@ export default function GenDesignViewer({
             padding: '5px 10px',
             borderRadius: 8,
             border: '1px solid rgba(255,255,255,0.2)',
-            background: 'rgba(255,255,255,0.1)',
-            color: '#fff',
+            background: 'var(--nx-border)',
+            color: 'var(--nx-text)',
             fontSize: 10,
             fontWeight: 600,
             cursor: 'pointer',
@@ -343,7 +343,7 @@ export default function GenDesignViewer({
           left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 10,
-          color: '#fff',
+          color: 'var(--nx-text)',
           textAlign: 'center',
           pointerEvents: 'none',
         }}>
@@ -362,7 +362,7 @@ export default function GenDesignViewer({
               : 'Computing...'}
           </div>
           {progress && (
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 4, textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
               Compliance: {progress.compliance.toFixed(2)} | Change: {progress.change.toFixed(4)}
             </div>
           )}
@@ -382,7 +382,7 @@ export default function GenDesignViewer({
           background: selectionMode === 'fixed'
             ? 'rgba(239,68,68,0.85)'
             : 'rgba(59,130,246,0.85)',
-          color: '#fff',
+          color: 'var(--nx-text)',
           fontSize: 11,
           fontWeight: 700,
           backdropFilter: 'blur(8px)',
@@ -394,7 +394,7 @@ export default function GenDesignViewer({
 
       <Canvas
         camera={{ fov: 50, near: 0.1, far: 10000 }}
-        style={{ background: '#0d1117' }}
+        style={{ background: 'var(--nx-bg)' }}
         gl={{ preserveDrawingBuffer: true }}
       >
         <CameraFitter dimX={dimX} dimY={dimY} dimZ={dimZ} fitKey={fitKey} />
@@ -412,7 +412,7 @@ export default function GenDesignViewer({
           position={[0, -dimY / 2 - 0.5, 0]}
           cellSize={Math.max(dimX, dimZ) / 8}
           cellThickness={0.5}
-          cellColor="#1e293b"
+          cellColor="var(--nx-border-strong)"
           sectionSize={Math.max(dimX, dimZ) / 2}
           sectionThickness={1}
           sectionColor="#334155"
@@ -464,7 +464,7 @@ export default function GenDesignViewer({
               <ResultMeshComponent geometry={resultMesh} materialColor="#b0b8c8" />
             ) : (
               <mesh geometry={resultMesh}>
-                <meshBasicMaterial color="#8b5cf6" wireframe />
+                <meshBasicMaterial color="var(--nx-accent-2)" wireframe />
               </mesh>
             )}
             <BoxWireframe dimX={dimX} dimY={dimY} dimZ={dimZ} opacity={0.15} />

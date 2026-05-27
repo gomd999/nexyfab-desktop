@@ -287,7 +287,7 @@ function getUserLang(): AccountLang {
       const u = JSON.parse(stored);
       if (u.language && u.language in ACCOUNT_I18N) return u.language as AccountLang;
     }
-  } catch {}
+  } catch (err) { console.error('[page] caught', err); }
   return 'ko';
 }
 

@@ -92,8 +92,8 @@ export default function FEAConditionMarkers({
     <group>
       {markers.map(m => {
         const isHighlighted = highlightedIdx === m.idx;
-        const baseColor = m.type === 'fixed' ? '#3fb950' : '#f0883e';
-        const color = isHighlighted ? '#58a6ff' : baseColor;
+        const baseColor = m.type === 'fixed' ? 'var(--nx-ok)' : 'var(--nx-warn)';
+        const color = isHighlighted ? 'var(--nx-accent-2)' : baseColor;
         const scale = isHighlighted ? markerScale * 1.4 : markerScale;
         if (m.type === 'fixed') {
           // Anchor: small octahedron with cone "spikes" pointing into the surface
@@ -109,7 +109,7 @@ export default function FEAConditionMarkers({
               </mesh>
               <Html distanceFactor={120} position={[0, scale * 1.2, 0]} center>
                 <div style={{
-                  background: 'rgba(63,185,80,0.9)', color: '#fff',
+                  background: 'rgba(63,185,80,0.9)', color: 'var(--nx-text)',
                   padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
                   whiteSpace: 'nowrap', pointerEvents: 'none',
                 }}>
@@ -161,7 +161,7 @@ export default function FEAConditionMarkers({
             </mesh>
             <Html distanceFactor={120} position={headPos.clone().add(dirN.clone().multiplyScalar(scale * 0.6)).toArray() as [number, number, number]} center>
               <div style={{
-                background: 'rgba(240,136,62,0.9)', color: '#fff',
+                background: 'rgba(240,136,62,0.9)', color: 'var(--nx-text)',
                 padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>

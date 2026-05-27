@@ -345,8 +345,8 @@ export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: Ric
     // ─── T3 — Σ simulation results ───────────────────────────────────────
     case 'sim_cfd': {
       const r = (meta?.result ?? {}) as SimCfdResult;
-      const regimeColor = r.regime === 'turbulent' ? '#f85149'
-        : r.regime === 'transitional' ? '#d29922' : '#3fb950';
+      const regimeColor = r.regime === 'turbulent' ? 'var(--nx-error)'
+        : r.regime === 'transitional' ? 'var(--nx-warn)' : 'var(--nx-ok)';
       return <Card tone="info" body={
         <div>
           <div style={S.row}>
@@ -497,7 +497,7 @@ const quoteBtnStyle: React.CSSProperties = {
   fontSize: 10,
   fontFamily: 'inherit',
   borderRadius: 4,
-  border: '1px solid #d29922',
+  border: '1px solid var(--nx-warn)',
   background: 'transparent',
   color: '#f0b34c',
   cursor: 'pointer',
@@ -539,7 +539,7 @@ const showCanvasBtnStyle: React.CSSProperties = {
   borderRadius: 4,
   border: '1px solid #1f6feb',
   background: 'transparent',
-  color: '#79c0ff',
+  color: 'var(--nx-accent-2)',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 };
@@ -590,7 +590,7 @@ function DrawingSvgCard({ meta }: { meta?: ToolResultMeta }): React.ReactElement
             marginTop: 4, padding: '4px 8px',
             fontSize: 10, color: '#f0b34c',
             background: 'rgba(210,153,34,0.12)',
-            border: '1px solid #d29922', borderRadius: 4,
+            border: '1px solid var(--nx-warn)', borderRadius: 4,
           }}>
             ⚠ 팝업 차단됨 — 브라우저 주소창의 팝업 허용 후 다시 시도하세요.
           </div>
@@ -600,7 +600,7 @@ function DrawingSvgCard({ meta }: { meta?: ToolResultMeta }): React.ReactElement
             style={{
               marginTop: 6,
               padding: 4,
-              background: '#ffffff',
+              background: 'var(--nx-text)',
               borderRadius: 4,
               maxHeight: 240,
               overflow: 'auto',
@@ -634,7 +634,7 @@ const openBtnStyle: React.CSSProperties = {
   borderRadius: 4,
   border: '1px solid #238636',
   background: 'transparent',
-  color: '#7ee787',
+  color: 'var(--nx-ok)',
   cursor: 'pointer',
 };
 
@@ -642,11 +642,11 @@ const openBtnStyle: React.CSSProperties = {
 
 function Card({ tone, body }: { tone: 'success' | 'error' | 'warning' | 'info' | 'default'; body: React.ReactNode }) {
   const palette = {
-    success: { bg: 'rgba(35,134,54,0.12)', border: '#238636', text: '#7ee787' },
-    error:   { bg: 'rgba(248,81,73,0.12)', border: '#f85149', text: '#ffa198' },
-    warning: { bg: 'rgba(210,153,34,0.12)', border: '#d29922', text: '#f0b34c' },
-    info:    { bg: 'rgba(31,111,235,0.12)', border: '#1f6feb', text: '#79c0ff' },
-    default: { bg: '#161b22', border: '#30363d', text: '#c9d1d9' },
+    success: { bg: 'rgba(35,134,54,0.12)', border: 'var(--nx-ok)', text: 'var(--nx-ok)' },
+    error:   { bg: 'rgba(248,81,73,0.12)', border: 'var(--nx-error)', text: '#ffa198' },
+    warning: { bg: 'rgba(210,153,34,0.12)', border: 'var(--nx-warn)', text: '#f0b34c' },
+    info:    { bg: 'rgba(31,111,235,0.12)', border: 'var(--nx-accent)', text: 'var(--nx-accent-2)' },
+    default: { bg: 'var(--nx-panel)', border: 'var(--nx-border)', text: 'var(--nx-text)' },
   }[tone];
   return (
     <div style={{
@@ -669,10 +669,10 @@ function Card({ tone, body }: { tone: 'success' | 'error' | 'warning' | 'info' |
 
 function Pill({ text, tone }: { text: string; tone: 'success' | 'error' | 'warning' | 'info' }) {
   const palette = {
-    success: { bg: '#238636', fg: '#fff' },
-    error:   { bg: '#f85149', fg: '#fff' },
-    warning: { bg: '#d29922', fg: '#000' },
-    info:    { bg: '#1f6feb', fg: '#fff' },
+    success: { bg: 'var(--nx-ok)', fg: 'var(--nx-text)' },
+    error:   { bg: 'var(--nx-error)', fg: 'var(--nx-text)' },
+    warning: { bg: 'var(--nx-warn)', fg: '#000' },
+    info:    { bg: 'var(--nx-accent)', fg: 'var(--nx-text)' },
   }[tone];
   return (
     <span style={{

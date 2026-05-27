@@ -44,6 +44,24 @@ interface SceneState {
    * matching row. Cleared by the consumer (or by selecting another feature).
    */
   highlightedFeatureId: string | null
+  /**
+   * Phase-2 "Sketch on face" frame. When non-null, the next sketch is
+   * laid out on this oriented plane instead of one of the world XY/XZ/YZ
+   * planes. axis-aligned faces still use the fast-path (sketchPlane +
+   * sketchPlaneOffset); arbitrary tilted faces set this so the extrude
+   * pipeline can transform the resulting 3-D body back to the face.
+   *
+   *   origin  — point on the face (world mm)
+   *   normal  — unit face normal (sketch plane Z, extrude direction)
+   *   uAxis   — unit tangent in the plane (sketch X)
+   *   vAxis   — unit tangent in the plane (sketch Y = normal × uAxis)
+   */
+  sketchFaceFrame: null | {
+    origin: [number, number, number]
+    normal: [number, number, number]
+    uAxis: [number, number, number]
+    vAxis: [number, number, number]
+  }
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -73,6 +91,7 @@ interface SceneActions {
   setSplitMode: (mode: 'off' | 'side-notes' | 'side-spec') => void
   toggleSplitMode: () => void
   setHighlightedFeatureId: (id: string | null) => void
+  setSketchFaceFrame: (frame: SceneState['sketchFaceFrame']) => void
 }
 
 type SceneStore = SceneState & SceneActions
@@ -115,6 +134,7 @@ export const useSceneStore = create<SceneStore>()(
       ribbonTheme: 'lightRibbon' as const,
       splitMode: 'off' as const,
       highlightedFeatureId: null,
+      sketchFaceFrame: null,
 
       // Actions
       setSelectedId: (id) =>
@@ -243,6 +263,11 @@ export const useSceneStore = create<SceneStore>()(
       setHighlightedFeatureId: (id) =>
         set((state) => {
           state.highlightedFeatureId = id
+        }),
+
+      setSketchFaceFrame: (frame) =>
+        set((state) => {
+          state.sketchFaceFrame = frame
         }),
     })),
     {

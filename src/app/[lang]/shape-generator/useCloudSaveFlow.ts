@@ -29,8 +29,8 @@ export interface UseCloudSaveFlowResult {
   /** POST 403 free-plan project limit hit — UI shows upgrade prompt instead of generic error */
   projectLimitReached: boolean;
   clearProjectLimitReached: () => void;
-  syncNow: (state: AutoSaveState, shapeId: string, materialId: string) => void;
-  scheduleSync: (state: AutoSaveState, shapeId: string, materialId: string) => void;
+  syncNow: (state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => void;
+  scheduleSync: (state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => void;
   /** Adopt a server project id (e.g. dashboard ?projectId=) so PATCH targets the right row */
   adoptProjectId: (id: string | null, serverUpdatedAt?: number | null) => void;
   /** 서버 `updatedAt`과 씬을 다시 맞추기 위해 동일 URL에 `projectId`를 붙여 전체 리로드 */
@@ -46,7 +46,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
   const [projectLimitReached, setProjectLimitReached] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
-  const pendingRef = useRef<{ state: AutoSaveState; shapeId: string; materialId: string } | null>(null);
+  const pendingRef = useRef<{ state: AutoSaveState; shapeId: string; materialId: string; thumbnail?: string | null } | null>(null);
   const lastServerUpdatedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -57,6 +57,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     state: AutoSaveState,
     shapeId: string,
     materialId: string,
+    thumbnail?: string | null,
   ) => {
     if (!isLoggedIn) return;
     if (!isMounted.current) return;
@@ -87,6 +88,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
       if (currentProjectId) {
         // Update existing project
         const patchBody: Record<string, unknown> = { shapeId, materialId, sceneData };
+        if (thumbnail) patchBody.thumbnail = thumbnail;
         if (lastServerUpdatedAtRef.current != null) {
           patchBody.ifMatchUpdatedAt = lastServerUpdatedAtRef.current;
         }
@@ -168,6 +170,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
             shapeId,
             materialId,
             sceneData,
+            ...(thumbnail ? { thumbnail } : {}),
           }),
         });
         // Free plan project-count gate: surface a structured upgrade flag so
@@ -230,7 +233,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     }
   }, [isLoggedIn, projectId]);
 
-  const syncNow = useCallback((state: AutoSaveState, shapeId: string, materialId: string) => {
+  const syncNow = useCallback((state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => {
     const acc = useCloudProjectAccessStore.getState();
     if (acc.hydrated && !acc.canEdit) return;
     if (debounceRef.current) {
@@ -238,7 +241,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
       debounceRef.current = null;
     }
     pendingRef.current = null;
-    void doSync(state, shapeId, materialId);
+    void doSync(state, shapeId, materialId, thumbnail);
   }, [doSync]);
 
   const reloadToFetchServerProject = useCallback(() => {
@@ -265,17 +268,17 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     }
   }, []);
 
-  const scheduleSync = useCallback((state: AutoSaveState, shapeId: string, materialId: string) => {
+  const scheduleSync = useCallback((state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => {
     if (!isLoggedIn) return;
     const acc = useCloudProjectAccessStore.getState();
     if (acc.hydrated && !acc.canEdit) return;
-    pendingRef.current = { state, shapeId, materialId };
+    pendingRef.current = { state, shapeId, materialId, thumbnail };
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (pendingRef.current && isMounted.current) {
-        const { state: s, shapeId: sid, materialId: mid } = pendingRef.current;
+        const { state: s, shapeId: sid, materialId: mid, thumbnail: th } = pendingRef.current;
         pendingRef.current = null;
-        void doSync(s, sid, mid);
+        void doSync(s, sid, mid, th);
       }
     }, DEBOUNCE_MS);
   }, [isLoggedIn, doSync]);
@@ -295,9 +298,9 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     const onResume = () => {
       if (!pendingRef.current) return;  // nothing in flight to flush
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      const { state, shapeId, materialId } = pendingRef.current;
+      const { state, shapeId, materialId, thumbnail } = pendingRef.current;
       pendingRef.current = null;
-      void doSync(state, shapeId, materialId);
+      void doSync(state, shapeId, materialId, thumbnail);
     };
     window.addEventListener('nexyfab:resume-cloud-save', onResume);
     return () => window.removeEventListener('nexyfab:resume-cloud-save', onResume);

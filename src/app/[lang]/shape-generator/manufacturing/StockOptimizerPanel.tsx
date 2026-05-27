@@ -131,33 +131,33 @@ export default function StockOptimizerPanel({ lang, onClose, initialRequirements
     <div style={{
       position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
       width: 640, maxHeight: 'calc(100vh - 120px)',
-      background: '#0d1117', border: '1px solid #30363d', borderRadius: 8,
+      background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 8,
       boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex',
-      flexDirection: 'column', color: '#c9d1d9', fontSize: 13,
+      flexDirection: 'column', color: 'var(--nx-text)', fontSize: 13,
     }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <strong>📏 {t.title}</strong>
-        <button onClick={onClose} style={{ background: 'transparent', color: '#8b949e', border: 'none', cursor: 'pointer', fontSize: 18 }}>×</button>
+        <button onClick={onClose} style={{ background: 'transparent', color: 'var(--nx-text-2)', border: 'none', cursor: 'pointer', fontSize: 18 }}>×</button>
       </div>
 
-      <div style={{ padding: 12, borderBottom: '1px solid #30363d', display: 'flex', gap: 16 }}>
+      <div style={{ padding: 12, borderBottom: '1px solid var(--nx-border)', display: 'flex', gap: 16 }}>
         <label style={{ display: 'flex', flexDirection: 'column', fontSize: 11, flex: 1 }}>
-          <span style={{ color: '#8b949e', marginBottom: 2 }}>{t.stockLength}</span>
+          <span style={{ color: 'var(--nx-text-2)', marginBottom: 2 }}>{t.stockLength}</span>
           <input type="number" value={stockLen} onChange={e => setStockLen(e.target.value)}
-            style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9' }} />
+            style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)' }} />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', fontSize: 11, width: 120 }}>
-          <span style={{ color: '#8b949e', marginBottom: 2 }}>{t.kerf}</span>
+          <span style={{ color: 'var(--nx-text-2)', marginBottom: 2 }}>{t.kerf}</span>
           <input type="number" value={kerf} onChange={e => setKerf(e.target.value)}
-            style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 4, padding: '4px 8px', color: '#c9d1d9' }} />
+            style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 8px', color: 'var(--nx-text)' }} />
         </label>
       </div>
 
-      <div style={{ padding: 10, borderBottom: '1px solid #30363d' }}>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{t.parts}</div>
+      <div style={{ padding: 10, borderBottom: '1px solid var(--nx-border)' }}>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 6 }}>{t.parts}</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ fontSize: 11, color: '#6e7681' }}>
+            <tr style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
               <th style={{ textAlign: 'left', padding: 3 }}>{t.label}</th>
               <th style={{ textAlign: 'right', padding: 3, width: 100 }}>{t.length}</th>
               <th style={{ textAlign: 'right', padding: 3, width: 70 }}>{t.qty}</th>
@@ -169,69 +169,69 @@ export default function StockOptimizerPanel({ lang, onClose, initialRequirements
               <tr key={r.id}>
                 <td style={{ padding: 2 }}>
                   <input type="text" value={r.label} onChange={e => updateRow(r.id, { label: e.target.value })}
-                    style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 3, padding: '2px 6px', color: '#c9d1d9', fontSize: 11 }} />
+                    style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '2px 6px', color: 'var(--nx-text)', fontSize: 11 }} />
                 </td>
                 <td style={{ padding: 2 }}>
                   <input type="number" value={r.length} onChange={e => updateRow(r.id, { length: e.target.value })}
-                    style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 3, padding: '2px 6px', color: '#c9d1d9', fontSize: 11, textAlign: 'right' }} />
+                    style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '2px 6px', color: 'var(--nx-text)', fontSize: 11, textAlign: 'right' }} />
                 </td>
                 <td style={{ padding: 2 }}>
                   <input type="number" value={r.qty} onChange={e => updateRow(r.id, { qty: e.target.value })}
-                    style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', borderRadius: 3, padding: '2px 6px', color: '#c9d1d9', fontSize: 11, textAlign: 'right' }} />
+                    style={{ width: '100%', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 3, padding: '2px 6px', color: 'var(--nx-text)', fontSize: 11, textAlign: 'right' }} />
                 </td>
                 <td style={{ padding: 2, textAlign: 'center' }}>
                   <button onClick={() => removeRow(r.id)}
-                    style={{ background: 'transparent', color: '#f85149', border: 'none', cursor: 'pointer', fontSize: 14 }}>×</button>
+                    style={{ background: 'transparent', color: 'var(--nx-error)', border: 'none', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <button onClick={() => setRows(prev => [...prev, makeRow()])}
-          style={{ marginTop: 6, background: 'transparent', color: '#58a6ff', border: '1px dashed #30363d', borderRadius: 3, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
+          style={{ marginTop: 6, background: 'transparent', color: 'var(--nx-accent-2)', border: '1px dashed var(--nx-border)', borderRadius: 3, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
           + {t.addRow}
         </button>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 10 }}>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{t.result}</div>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 6 }}>{t.result}</div>
         {!result ? (
-          <div style={{ color: '#6e7681', fontSize: 12 }}>—</div>
+          <div style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>—</div>
         ) : (
           <>
-            <div style={{ background: '#161b22', padding: 8, borderRadius: 4, marginBottom: 8, fontSize: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ background: 'var(--nx-panel)', padding: 8, borderRadius: 4, marginBottom: 8, fontSize: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <span><strong>{result.bars.length}</strong> × {stockLen}mm</span>
               <span>{t.used}: <strong>{result.totalUsedLength.toFixed(0)}mm</strong></span>
               <span>{t.waste}: <strong>{result.wasteLength.toFixed(0)}mm</strong></span>
-              <span style={{ color: result.utilizationPct > 85 ? '#3fb950' : result.utilizationPct > 70 ? '#d29922' : '#f85149' }}>
+              <span style={{ color: result.utilizationPct > 85 ? 'var(--nx-ok)' : result.utilizationPct > 70 ? 'var(--nx-warn)' : 'var(--nx-error)' }}>
                 {t.utilization}: <strong>{result.utilizationPct.toFixed(1)}%</strong>
               </span>
             </div>
 
             {result.unfulfilled.length > 0 && (
-              <div style={{ background: '#3b1f1f', border: '1px solid #f85149', color: '#f85149', padding: 6, borderRadius: 4, marginBottom: 6, fontSize: 11 }}>
+              <div style={{ background: '#3b1f1f', border: '1px solid var(--nx-error)', color: 'var(--nx-error)', padding: 6, borderRadius: 4, marginBottom: 6, fontSize: 11 }}>
                 {t.unfulfilled}{result.unfulfilled.map(r => `${r.id} (${r.length}mm)`).join(', ')}
               </div>
             )}
 
             {result.bars.map((bar, i) => (
-              <div key={i} style={{ marginBottom: 4, background: '#161b22', borderRadius: 4, padding: 6, fontSize: 11, fontFamily: 'monospace' }}>
-                <div style={{ color: '#58a6ff', marginBottom: 2 }}>{t.bar} {i + 1}</div>
-                <div style={{ display: 'flex', width: '100%', height: 18, background: '#0d1117', borderRadius: 2, overflow: 'hidden' }}>
+              <div key={i} style={{ marginBottom: 4, background: 'var(--nx-panel)', borderRadius: 4, padding: 6, fontSize: 11, fontFamily: 'monospace' }}>
+                <div style={{ color: 'var(--nx-accent-2)', marginBottom: 2 }}>{t.bar} {i + 1}</div>
+                <div style={{ display: 'flex', width: '100%', height: 18, background: 'var(--nx-bg)', borderRadius: 2, overflow: 'hidden' }}>
                   {bar.pieces.map((p, pi) => {
                     const pct = (p.length / bar.stockLength) * 100;
-                    const colors = ['#3fb950', '#58a6ff', '#8957e5', '#d29922', '#e74c3c', '#1abc9c'];
+                    const colors = ['var(--nx-ok)', 'var(--nx-accent-2)', '#8957e5', 'var(--nx-warn)', '#e74c3c', '#1abc9c'];
                     return (
                       <div key={pi} title={`${p.label ?? p.reqId} — ${p.length}mm`}
-                        style={{ width: `${pct}%`, background: colors[pi % colors.length], borderRight: '1px solid #0d1117', textAlign: 'center', color: '#fff', fontSize: 9, lineHeight: '18px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        style={{ width: `${pct}%`, background: colors[pi % colors.length], borderRight: '1px solid var(--nx-bg)', textAlign: 'center', color: 'var(--nx-text)', fontSize: 9, lineHeight: '18px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                         {p.length}
                       </div>
                     );
                   })}
-                  <div style={{ flex: 1, background: 'repeating-linear-gradient(45deg, #21262d 0 4px, #30363d 4px 8px)' }}
+                  <div style={{ flex: 1, background: 'repeating-linear-gradient(45deg, var(--nx-panel-2) 0 4px, var(--nx-border) 4px 8px)' }}
                     title={`Waste: ${bar.remaining.toFixed(1)}mm`} />
                 </div>
-                <div style={{ color: '#6e7681', marginTop: 2 }}>
+                <div style={{ color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {bar.pieces.map(p => p.length.toFixed(0)).join(' + ')} = {bar.used.toFixed(0)}mm ({t.waste} {bar.remaining.toFixed(0)}mm)
                 </div>
               </div>
@@ -240,9 +240,9 @@ export default function StockOptimizerPanel({ lang, onClose, initialRequirements
         )}
       </div>
 
-      <div style={{ padding: 8, borderTop: '1px solid #30363d' }}>
+      <div style={{ padding: 8, borderTop: '1px solid var(--nx-border)' }}>
         <button onClick={handleDownload} disabled={!result}
-          style={{ background: 'transparent', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 4, padding: '4px 10px', cursor: result ? 'pointer' : 'default', fontSize: 11, opacity: result ? 1 : 0.5 }}>
+          style={{ background: 'transparent', color: 'var(--nx-accent-2)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 10px', cursor: result ? 'pointer' : 'default', fontSize: 11, opacity: result ? 1 : 0.5 }}>
           📥 {t.exportTxt}
         </button>
       </div>

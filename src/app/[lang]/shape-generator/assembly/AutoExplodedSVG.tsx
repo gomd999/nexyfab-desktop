@@ -20,11 +20,11 @@ interface Props {
 }
 
 const COLOR = {
-  bg: '#ffffff',
-  ink: '#111827',
-  accent: '#1f6feb',
-  leader: '#374151',
-  partDot: '#9ca3af',
+  bg: 'var(--nx-text)',
+  ink: 'var(--nx-bg)',
+  accent: 'var(--nx-accent)',
+  leader: 'var(--nx-border-strong)',
+  partDot: 'var(--nx-text-2)',
 };
 
 export default function AutoExplodedSVG({

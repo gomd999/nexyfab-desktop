@@ -147,10 +147,22 @@ async function logEmail(to: string, subject: string, html: string, status: 'sent
   }
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: string | Buffer;
+  encoding?: 'base64' | 'utf8' | 'binary';
+  contentType?: string;
+}
+
+export interface SendEmailOptions {
+  attachments?: EmailAttachment[];
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
   html: string,
+  opts: SendEmailOptions = {},
 ): Promise<boolean> {
   const transporter = getTransporter();
 
@@ -170,6 +182,14 @@ export async function sendEmail(
         to,
         subject,
         html,
+        ...(opts.attachments?.length
+          ? { attachments: opts.attachments.map(a => ({
+              filename: a.filename,
+              content: a.content,
+              encoding: a.encoding,
+              contentType: a.contentType,
+            })) }
+          : {}),
       });
       logEmail(to, subject, html, 'sent').catch(() => {});
       // Metering — only on final outcome (don't bias latency by retries).
@@ -614,7 +634,7 @@ export function dripD1EmailSubject(locale: NexyfabEmailContentLocale): string {
   }
 }
 
-export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko', _unsubscribeUrl?: string): string {
+export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko', unsubscribeUrl?: string): string {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://nexyfab.com';
   const safeName = escapeHtml(name || '');
   const langPath = nexyfabAppLangPathFromEmailLocale(locale);
@@ -703,7 +723,7 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
     </a>
   `;
 
-  return emailWrapper(content);
+  return emailWrapper(content, unsubscribeUrl);
 }
 
 // ─── Template: 드립 D+7 — Pro 업그레이드 제안 ──────────────────────────────────

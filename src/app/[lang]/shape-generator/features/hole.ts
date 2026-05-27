@@ -84,10 +84,13 @@ export const holeFeature: FeatureDefinition = {
           currentGeo = res2.geometry;
         }
 
-        if (holeType === 2) { // Countersink
-          // We don't have a cone primitive in occtEngine.js right now. 
-          // We can fallback or add it, but since countersink requires a cone, we can throw error to fallback to CSG for countersink!
-          throw new Error('Countersink not supported yet in OCCT');
+        if (holeType === 2) { // Countersink — cut a cone (apex down) at the top.
+          const csHalfAngle = (params.countersinkAngle * Math.PI) / 360;
+          const csR = r * 2;
+          const csDepth = csR / Math.tan(csHalfAngle);
+          const res2 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cone', w: csR * 2, h: csDepth, d: csR * 2, cx: posX, cy: topY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
+          currentHandle = res2.handle ?? currentHandle;
+          currentGeo = res2.geometry;
         }
 
         if (currentHandle) currentGeo.userData.occtHandle = currentHandle;

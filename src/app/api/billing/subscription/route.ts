@@ -84,8 +84,16 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as { plan: Plan; product?: Product; trialDays?: number };
-  const { plan, product = 'nexyfab', trialDays } = body;
+  const body = await req.json() as {
+    plan: Plan;
+    product?: Product;
+    trialDays?: number;
+    /** 'immediate' (default, prorate now) or 'next_cycle' (preserve prepaid time). */
+    effective?: 'immediate' | 'next_cycle';
+    /** Override prorate behavior. Default: true on upgrade-immediate, false on next_cycle. */
+    prorate?: boolean;
+  };
+  const { plan, product = 'nexyfab', trialDays, effective = 'immediate', prorate } = body;
 
   if (!['pro', 'team', 'enterprise'].includes(plan)) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
@@ -115,8 +123,13 @@ export async function POST(req: NextRequest) {
   let awSub;
 
   if (existingSub) {
-    // Upgrade/downgrade existing subscription
-    awSub = await updateSubscriptionPlan(existingSub.aw_subscription_id, planId);
+    // Upgrade/downgrade — pass prorate + effective so the gateway either
+    // charges the difference now (immediate upgrade) or schedules the plan
+    // swap at the period end (downgrade preserving prepaid time).
+    awSub = await updateSubscriptionPlan(existingSub.aw_subscription_id, planId, {
+      effective,
+      prorate: prorate ?? (effective === 'immediate'),
+    });
     await db.execute(
       'UPDATE nf_aw_subscriptions SET plan = ?, aw_subscription_id = ?, updated_at = ? WHERE id = ?',
       plan, awSub.id, now, existingSub.id,

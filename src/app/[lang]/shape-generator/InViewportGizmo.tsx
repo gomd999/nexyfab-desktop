@@ -49,7 +49,7 @@ function getAxisColor(key: string): string {
   for (const [k, v] of Object.entries(AXIS_COLORS)) {
     if (lower.includes(k.toLowerCase())) return v;
   }
-  return '#58a6ff';
+  return 'var(--nx-accent-2)';
 }
 
 /* ── Single dimension row ──────────────────────────────────────────────── */
@@ -127,7 +127,7 @@ function DimensionRow({
 
       {/* Label */}
       <span style={{
-        fontSize: 11, color: '#8b949e', fontWeight: 600,
+        fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600,
         minWidth: 44, flexShrink: 0,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
@@ -145,7 +145,7 @@ function DimensionRow({
           onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
           style={{
             width: 56, padding: '2px 6px', border: `1px solid ${axisColor}`,
-            borderRadius: 4, background: 'rgba(0,0,0,0.4)', color: '#fff',
+            borderRadius: 4, background: 'var(--nx-glass-input)', color: 'var(--nx-text)',
             fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
             outline: 'none', textAlign: 'right',
           }}
@@ -161,7 +161,7 @@ function DimensionRow({
           onPointerUp={handleDragPointerUp}
           style={{
             fontSize: 13, fontFamily: 'monospace', fontWeight: 700,
-            color: '#ffffff', cursor: locked ? 'default' : 'ew-resize',
+            color: 'var(--nx-text)', cursor: locked ? 'default' : 'ew-resize',
             padding: '2px 6px', borderRadius: 4,
             background: dragStart ? `${axisColor}22` : 'transparent',
             border: `1px solid ${dragStart ? axisColor : 'transparent'}`,
@@ -176,7 +176,7 @@ function DimensionRow({
       )}
 
       {/* Unit */}
-      <span style={{ fontSize: 10, color: '#484f58', fontWeight: 600, flexShrink: 0 }}>
+      <span style={{ fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 600, flexShrink: 0 }}>
         {paramDef.unit}
       </span>
 
@@ -186,8 +186,8 @@ function DimensionRow({
         title={locked ? tt.unlock : tt.lock}
         style={{
           width: 18, height: 18, borderRadius: 4,
-          border: 'none', background: locked ? 'rgba(255,255,255,0.08)' : 'transparent',
-          color: locked ? '#fcc419' : '#484f58',
+          border: 'none', background: locked ? 'var(--nx-glass-soft)' : 'transparent',
+          color: locked ? '#fcc419' : 'var(--nx-border-strong)',
           cursor: 'pointer', fontSize: 10,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0, transition: 'all 0.12s',
@@ -275,7 +275,7 @@ export default function InViewportGizmo({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>📐</span>
           {!collapsed && (
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', letterSpacing: '0.02em' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--nx-text)', letterSpacing: '0.02em' }}>
               {tt.title}
             </span>
           )}
@@ -283,14 +283,14 @@ export default function InViewportGizmo({
         <button
           onClick={() => setCollapsed(c => !c)}
           style={{
-            border: 'none', background: 'rgba(255,255,255,0.05)',
-            color: '#8b949e', cursor: 'pointer', fontSize: 10,
+            border: 'none', background: 'var(--nx-glass-soft)',
+            color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 10,
             width: 20, height: 20, borderRadius: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.12s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
         >
           {collapsed ? '▶' : '◀'}
         </button>

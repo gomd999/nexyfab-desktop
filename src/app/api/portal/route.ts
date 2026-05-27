@@ -28,7 +28,17 @@ export async function GET(req: NextRequest) {
 
   // Linked contracts (quote_id matches inquiry id)
   const inquiryIds = inquiryRows.map(i => i.id);
-  const contractsByQuoteId: Record<string, any> = {};
+  type LinkedContract = {
+    id: string;
+    projectName: string;
+    status: string;
+    contractAmount: number | null;
+    deadline: string | null;
+    progressPercent: number;
+    attachments: unknown[];
+    createdAt: string;
+  };
+  const contractsByQuoteId: Record<string, LinkedContract> = {};
 
   if (inquiryIds.length > 0) {
     const placeholders = inquiryIds.map(() => '?').join(', ');

@@ -65,28 +65,28 @@ export default function ValidationResultsModal({
     <div
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+        position: 'fixed', inset: 0, background: 'var(--nx-glass-input)',
         zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#21262d', borderRadius: 14, padding: 24,
+          background: 'var(--nx-panel-2)', borderRadius: 14, padding: 24,
           maxWidth: 440, width: '90%',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          border: '1px solid #30363d',
+          border: '1px solid var(--nx-border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#c9d1d9' }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--nx-text)' }}>
             {labels.geometryValidation}
           </h3>
           <button
             onClick={onClose}
             style={{
               border: 'none', background: 'none', fontSize: 18,
-              cursor: 'pointer', color: '#8b949e',
+              cursor: 'pointer', color: 'var(--nx-text-2)',
             }}
           >✕</button>
         </div>
@@ -97,23 +97,23 @@ export default function ValidationResultsModal({
               style={{
                 display: 'flex', justifyContent: 'space-between',
                 padding: '4px 8px',
-                background: i % 2 === 0 ? '#161b22' : '#1b1f27',
+                background: i % 2 === 0 ? 'var(--nx-panel)' : 'var(--nx-panel)',
                 borderRadius: 6,
               }}
             >
-              <span style={{ color: '#8b949e', fontWeight: 600 }}>{label}</span>
-              <span style={{ fontWeight: 700, color: '#c9d1d9' }}>{val}</span>
+              <span style={{ color: 'var(--nx-text-2)', fontWeight: 600 }}>{label}</span>
+              <span style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{val}</span>
             </div>
           ))}
         </div>
         <div style={{
           marginTop: 12, padding: 10,
-          background: '#0d1117', borderRadius: 8, fontSize: 11,
-          border: '1px solid #30363d',
+          background: 'var(--nx-bg)', borderRadius: 8, fontSize: 11,
+          border: '1px solid var(--nx-border)',
         }}>
-          <div style={{ fontWeight: 700, marginBottom: 4, color: '#3fb950' }}>{labels.issuesLabel}</div>
+          <div style={{ fontWeight: 700, marginBottom: 4, color: 'var(--nx-ok)' }}>{labels.issuesLabel}</div>
           {resolved.issues.map((issue, i) => (
-            <div key={i} style={{ color: '#c9d1d9', marginBottom: 2 }}>• {issue}</div>
+            <div key={i} style={{ color: 'var(--nx-text)', marginBottom: 2 }}>• {issue}</div>
           ))}
         </div>
       </div>

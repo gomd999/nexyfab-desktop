@@ -14,16 +14,16 @@ import { usePathname } from 'next/navigation';
 import { filterCerts, type CertFilterResult } from './certFilter';
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  purple: '#a371f7',
-  text: '#c9d1d9',
-  dim: '#8b949e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  purple: 'var(--nx-accent-2)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
 };
 
 type Lang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -268,7 +268,7 @@ export default function CertFilterPanel({
         <button onClick={run} disabled={loading} style={{
           padding: '7px 0', borderRadius: 6, border: 'none',
           background: loading ? C.border : `linear-gradient(135deg, ${C.purple}, ${C.accent})`,
-          color: '#fff', fontSize: 11, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
+          color: 'var(--nx-text)', fontSize: 11, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
         }}>
           {loading ? tt.analyzing : `🛡 ${tt.reanalyze}`}
         </button>
@@ -385,7 +385,7 @@ export default function CertFilterPanel({
           <button onClick={() => onApplyFilter(result.required.map(r => r.code))} style={{
             width: '100%', padding: '8px 0', borderRadius: 6, border: 'none',
             background: `linear-gradient(135deg, ${C.purple}, ${C.accent})`,
-            color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+            color: 'var(--nx-text)', fontSize: 12, fontWeight: 800, cursor: 'pointer',
           }}>
             🔍 {tt.filterByCerts}
           </button>

@@ -11,6 +11,15 @@ function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
 }
 
+/** Ensure a geometry carries the per-vertex face-feature-id attribute so a CSG
+ *  evaluator told to process it never reads `.array` of an absent attribute.
+ *  Sentinel 0 = "unattributed" (what an unstamped base should read back as). */
+function fillSentinelFaceId(geo: THREE.BufferGeometry): void {
+  if (geo.getAttribute(FACE_FEATURE_ID_ATTR)) return;
+  const vertCount = geo.attributes.position.count;
+  geo.setAttribute(FACE_FEATURE_ID_ATTR, new THREE.BufferAttribute(new Uint32Array(vertCount), 1));
+}
+
 function getCSGOperation(type: 'union' | 'subtract' | 'intersect'): number {
   switch (type) {
     case 'subtract':
@@ -89,6 +98,12 @@ export function applyBooleanSync(
   // carries the attribute. Same wiring as CSGOperations.applyCSG; keeps
   // boolean output's mixed provenance intact.
   if (geoA.getAttribute(FACE_FEATURE_ID_ATTR) || geoB.getAttribute(FACE_FEATURE_ID_ATTR)) {
+    // three-bvh-csg requires BOTH operands to carry an attribute it's told to
+    // process. A leading boolean on a fresh (unstamped) base has it on the tool
+    // only — fill the missing side with the sentinel (0 = unattributed) so the
+    // evaluator doesn't read `.array` of an absent attribute.
+    fillSentinelFaceId(geoA);
+    fillSentinelFaceId(geoB);
     evaluator.attributes = [...evaluator.attributes, FACE_FEATURE_ID_ATTR];
   }
   const brushA = makeBrush(geoA);

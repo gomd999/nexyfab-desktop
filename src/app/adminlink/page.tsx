@@ -36,7 +36,7 @@ export default function AdminLinkPage() {
                 if (user.role === 'admin' || user.role === 'superadmin') {
                     setIsAuthorized(true);
                 }
-            } catch {}
+            } catch (err) { console.error('[page] caught', err); }
         }
 
         fetch('/api/admin-settings')

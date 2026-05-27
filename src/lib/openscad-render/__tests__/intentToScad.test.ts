@@ -568,4 +568,106 @@ describe('intentToScad', () => {
       expect((r.scad.match(/cylinder\(h=5\.4/g) ?? []).length).toBeGreaterThanOrEqual(4);
     }
   });
+
+  // ─── Round 8: everyday consumer products (lay-user designs) ────────────────
+
+  it('nameplate: base plate + recessed engraving border (no BOSL2)', () => {
+    const r = intentToScad({
+      shapeId: 'nameplate',
+      params: { width: 120, depth: 45, thickness: 6, border: 4, borderHeight: 2 },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('union()');
+      expect(r.scad).toContain('cube([120, 45, 6], center=true)');
+      expect(r.scad).toContain('difference()');
+      // Inner recess = width-2*border = 112, depth-2*border = 37.
+      expect(r.scad).toContain('cube([112, 37, 2.2], center=true)');
+      expect(r.scad).not.toContain('BOSL2');
+    }
+  });
+
+  it('phoneStand: base + back rest + front lip cradle', () => {
+    const r = intentToScad({
+      shapeId: 'phoneStand',
+      params: { width: 85, thickness: 6, baseDepth: 65, backHeight: 90, frontHeight: 22, slotGap: 12 },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('union()');
+      expect(r.scad).toContain('cube([85, 65, 6])');   // base
+      expect(r.scad).toContain('cube([85, 6, 90])');   // back rest
+      expect(r.scad).toContain('cube([85, 6, 22])');   // front lip
+    }
+  });
+
+  it('coaster: disk base with raised rim ring', () => {
+    const r = intentToScad({
+      shapeId: 'coaster',
+      params: { diameter: 90, thickness: 4, rimHeight: 3, rimWidth: 4 },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('cylinder(h=4, d=90)');
+      expect(r.scad).toContain('difference()');
+      // Inner = diameter - 2*rimWidth = 82.
+      expect(r.scad).toContain('d=82');
+    }
+  });
+
+  it('wallHook: back plate with two screw holes + forward J-arm', () => {
+    const r = intentToScad({
+      shapeId: 'wallHook',
+      params: { plateWidth: 32, plateHeight: 55, plateThickness: 6, screwHoleDiameter: 5, hookLength: 40, hookDiameter: 10, hookTipHeight: 18 },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('cube([32, 6, 55], center=true)');
+      expect(r.scad).toContain('d=5');     // screw holes
+      expect(r.scad).toContain('cylinder(h=40, d=10)');  // forward arm
+      expect(r.scad).toContain('cylinder(h=18, d=10)');  // upturned tip
+      expect((r.scad.match(/rotate\(\[90, 0, 0\]\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('drawerKnob: flattened sphere on a stem with a screw bore', () => {
+    const r = intentToScad({
+      shapeId: 'drawerKnob',
+      params: { knobDiameter: 30, stemDiameter: 10, stemHeight: 12, boreDiameter: 4 },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('difference()');
+      expect(r.scad).toContain('cylinder(h=12, d=10)');     // stem
+      expect(r.scad).toContain('scale([1, 1, 0.7]) sphere(d=30)');
+      expect(r.scad).toContain('d=4');                       // bore
+    }
+  });
+
+  it('planterPot: tapered shell (open top) with floor + drainage hole', () => {
+    const r = intentToScad({
+      shapeId: 'planterPot',
+      params: { topDiameter: 100, bottomDiameter: 75, height: 90, wallThickness: 4, drainDiameter: 12 },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('difference()');
+      expect(r.scad).toContain('cylinder(h=90, d1=75, d2=100)');  // outer
+      // Inner cavity: bottom = 75-8 = 67, top = 100-8 = 92.
+      expect(r.scad).toContain('cylinder(h=90, d1=67, d2=92)');
+      expect(r.scad).toContain('d=12');                            // drainage
+    }
+  });
+
+  it('all round-8 consumer shapes are deterministic + BOSL2-free', () => {
+    for (const shapeId of ['nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot']) {
+      const a = intentToScad({ shapeId, params: {} });
+      const b = intentToScad({ shapeId, params: {} });
+      expect(a.ok).toBe(true);
+      if (a.ok && b.ok) {
+        expect(a.scad).toBe(b.scad);          // determinism (defaults)
+        expect(a.scad).not.toContain('BOSL2'); // pure OpenSCAD, no library dep
+      }
+    }
+  });
 });

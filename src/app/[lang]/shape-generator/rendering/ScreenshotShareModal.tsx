@@ -5,14 +5,14 @@ import { usePathname } from 'next/navigation';
 import { captureHighRes, copyScreenshotToClipboard } from './useScreenshot';
 
 const C = {
-  bg: '#0d1117',
-  surface: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#e6edf3',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
+  bg: 'var(--nx-bg)',
+  surface: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
 };
 
 const dict = {
@@ -165,7 +165,7 @@ export default function ScreenshotShareModal({
             onClick={() => { onDownload(); }}
             style={{
               flex: 1, padding: '10px 0', borderRadius: 8,
-              border: 'none', background: C.accent, color: '#fff',
+              border: 'none', background: C.accent, color: 'var(--nx-text)',
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               transition: 'opacity 0.12s',
@@ -218,7 +218,7 @@ export default function ScreenshotShareModal({
         </div>
 
         {/* Hint */}
-        <div style={{ padding: '0 18px 14px', fontSize: 10, color: '#484f58', textAlign: 'center' }}>
+        <div style={{ padding: '0 18px 14px', fontSize: 10, color: 'var(--nx-border-strong)', textAlign: 'center' }}>
           {t.hint}
         </div>
       </div>

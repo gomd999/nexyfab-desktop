@@ -173,7 +173,7 @@ export const ar = {
 
     featKicker: 'NexyFab · Capabilities.',
     featTitle: 'أدوات شاملة للمهندسين',
-    featSub: 'صمد وحلل وحسّن واحصل على عروض أسعار — ميزات بمستوى SolidWorks مجانًا في متصفحك.',
+    featSub: 'تصميم ← عرض سعر ← طلب من شريك كوري في سلسلة واحدة. متوافق مع OpenSCAD · تعاوني · بدون تثبيت.',
     feat1Title: 'CAD ثلاثي الأبعاد بارامتري',
     feat1Desc: '16 شكلًا، من الرسم إلى البثق، تقريب الحواف، الأنماط والميزات الاحترافية.',
     feat2Title: 'التحليل الهيكلي (FEA)',
@@ -204,7 +204,7 @@ export const ar = {
     personaKicker: 'NexyFab · For You.',
     personaTitle: 'لمن هذه المنصة؟',
     persona1Title: 'مهندسو التصميم',
-    persona1Desc: 'CAD وFEA احترافي بدون SolidWorks. صمم مباشرة في متصفحك.',
+    persona1Desc: 'CAD بارامتري في المتصفح مع كود OpenSCAD ثنائي الاتجاه. مُحسَّن لتصميم القطع المعيارية وإخراج الرسومات.',
     persona1Cta: 'بدء التصميم ثلاثي الأبعاد',
     persona2Title: 'مديرو المشتريات',
     persona2Desc: 'ارفع الرسومات ← مقارنة فورية لعروض الأسعار. مصنعون موثقون فقط.',

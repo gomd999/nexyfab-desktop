@@ -11,6 +11,8 @@ import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PartnerProBadge from '@/components/nexyfab/PartnerProBadge';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { invitationsDict, type InvitationsDict } from '../_lib/dicts/invitations';
 
 interface Invitation {
   rfqId: string;
@@ -28,109 +30,30 @@ interface Invitation {
   conciergeLastAction: number;
 }
 
-// J fix: API may return a hint when the partner has no linked factory or
-// no recent invitations — surface it so the page is never just a blank
-// 'empty' card with no path forward.
 interface InvitationsResp {
   invitations: Invitation[];
   state?: 'no_factory_linked' | string;
   hint?: string;
 }
 
-type Lang = 'ko' | 'en';
-function detectLang(): Lang {
-  if (typeof window === 'undefined') return 'ko';
-  const nav = navigator.language?.toLowerCase() ?? '';
-  return nav.startsWith('ko') || nav === '' ? 'ko' : 'en';
+const CONCIERGE_STATUS_COLOR: Record<string, string> = {
+  recommended:    '#8b949e',
+  contacted:      '#d29922',
+  responded:      '#79c0ff',
+  quote_drafting: '#a371f7',
+};
+
+function conciergeLabel(s: string, t: InvitationsDict): string {
+  const key = `status_${s}` as keyof InvitationsDict;
+  const v = t[key];
+  return typeof v === 'string' ? v : s;
 }
-
-const STATUS_CHIP: Record<Lang, Record<string, { label: string; color: string }>> = {
-  ko: {
-    recommended:    { label: '추천만 받음',     color: '#8b949e' },
-    contacted:      { label: '운영팀 컨택 중',  color: '#d29922' },
-    responded:      { label: '응답 등록됨',     color: '#79c0ff' },
-    quote_drafting: { label: '견적 작성 중',    color: '#a371f7' },
-  },
-  en: {
-    recommended:    { label: 'Recommended',     color: '#8b949e' },
-    contacted:      { label: 'Ops contacting',  color: '#d29922' },
-    responded:      { label: 'Response logged', color: '#79c0ff' },
-    quote_drafting: { label: 'Drafting quote',  color: '#a371f7' },
-  },
-};
-
-const dict: Record<Lang, Record<string, string>> = {
-  ko: {
-    title: '📥 들어온 견적 요청',
-    subtitle: 'NexyFab 운영팀이 귀사를 추천한 RFQ입니다. 견적 작성 후 고객에게 즉시 전달됩니다.',
-    loading: '불러오는 중…',
-    empty: '현재 도착한 견적 요청이 없습니다.',
-    emptyHint: '새 RFQ가 들어오면 이메일·카톡으로 알려드립니다.',
-    guideTitle: '💡 NexyFab 파트너 매칭은 이렇게 진행됩니다',
-    guide1: '고객이 3D 도면과 함께 RFQ를 등록',
-    guide2: 'NexyFab 운영팀이 도면·재질·물량 보고 적합한 공장 선별',
-    guide3: '귀사가 후보에 들면 이메일·카톡으로 알려 드림',
-    guide4: '이 페이지에서 견적가·납기 입력 → 고객에게 즉시 전달',
-    guide5: '고객이 수락하면 NexyFab 에스크로를 통해 안전 거래 (수수료 8%)',
-    antiPoach: '⚠️ 파트너 약관에 따라 NexyFab 외부 채널로의 직접 거래는 24개월간 금지됩니다.',
-    viewAgreement: '약관 보기',
-    qty: '수량',
-    deadlineLabel: '희망 납기',
-    priceLabel: '견적가 (원, 부가세 별도)',
-    daysLabel: '납기 (영업일)',
-    noteLabel: '비고 (선택)',
-    notePlaceholder: '재질 가정, 표면처리, 포장 조건 등',
-    pricePlaceholder: '예: 850000',
-    daysPlaceholder: '예: 14',
-    cancel: '취소',
-    submitting: '전송 중…',
-    submitQuote: '✓ 견적 등록',
-    submitted: '✅ 견적 등록 완료. 고객에게 알림이 발송됐습니다.',
-    openForm: '💰 견적 작성 →',
-    seeExisting: '이미 작성한 견적 보기 →',
-    errPrice: '단가/총액(원)을 입력하세요',
-    errDays: '납기(영업일) 입력 필요',
-  },
-  en: {
-    title: '📥 Incoming RFQs',
-    subtitle: 'These are RFQs where NexyFab ops recommended your factory. Quotes are forwarded to the buyer immediately.',
-    loading: 'Loading…',
-    empty: 'No incoming RFQs right now.',
-    emptyHint: 'You will be notified by email/KakaoTalk when new RFQs arrive.',
-    guideTitle: '💡 How NexyFab partner matching works',
-    guide1: 'Buyer submits an RFQ with 3D drawings',
-    guide2: 'NexyFab ops review the drawings, material, volume → shortlist factories',
-    guide3: 'If your factory is shortlisted, we notify you by email/KakaoTalk',
-    guide4: 'You enter price + lead time here → instantly forwarded to the buyer',
-    guide5: 'Once the buyer accepts, settlement runs through NexyFab escrow (8% fee)',
-    antiPoach: '⚠️ Per the partner agreement, direct off-platform deals with introduced buyers are prohibited for 24 months.',
-    viewAgreement: 'View agreement',
-    qty: 'Qty',
-    deadlineLabel: 'Target delivery',
-    priceLabel: 'Quote (KRW, ex-VAT)',
-    daysLabel: 'Lead time (business days)',
-    noteLabel: 'Note (optional)',
-    notePlaceholder: 'Material assumptions, finish, packaging, etc.',
-    pricePlaceholder: 'e.g. 850000',
-    daysPlaceholder: 'e.g. 14',
-    cancel: 'Cancel',
-    submitting: 'Submitting…',
-    submitQuote: '✓ Submit quote',
-    submitted: '✅ Quote submitted. The buyer has been notified.',
-    openForm: '💰 Write quote →',
-    seeExisting: 'See submitted quotes →',
-    errPrice: 'Enter unit/total price (KRW)',
-    errDays: 'Lead time (business days) required',
-  },
-};
 
 function InvitationsInner() {
   const params = useSearchParams();
   const rfqHighlight = params?.get('rfq') ?? null;
-  const [lang, setLang] = useState<Lang>('ko');
-  const t = dict[lang];
-  const statusChip = STATUS_CHIP[lang];
-  useEffect(() => { setLang(detectLang()); }, []);
+  const lang = usePartnerLang();
+  const t = invitationsDict(lang);
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [stateHint, setStateHint] = useState<string | null>(null);
@@ -202,7 +125,10 @@ function InvitationsInner() {
     }
   }, [form, submitting, t.errPrice, t.errDays]);
 
-  const fmt = (n: number) => n.toLocaleString(lang === 'ko' ? 'ko-KR' : 'en-US');
+  const LOCALE: Record<string, string> = {
+    ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+  };
+  const fmt = (n: number) => n.toLocaleString(LOCALE[lang] ?? 'en-US');
 
   return (
     <main style={pageStyle}>
@@ -257,7 +183,8 @@ function InvitationsInner() {
         {invitations.map(inv => {
           const isOpen = openRfqId === inv.rfqId;
           const isSubmitted = submittedRfqs.has(inv.rfqId);
-          const status = statusChip[inv.conciergeStatus] ?? { label: inv.conciergeStatus, color: '#6b7280' };
+          const statusColor = CONCIERGE_STATUS_COLOR[inv.conciergeStatus] ?? '#6b7280';
+          const statusLabel = conciergeLabel(inv.conciergeStatus, t);
           const f = form[inv.rfqId] ?? { amount: '', days: '', note: '' };
           return (
             <div key={inv.rfqId} style={{
@@ -276,8 +203,8 @@ function InvitationsInner() {
                   </div>
                   {inv.note && <div style={cardNoteStyle}>📝 {inv.note}</div>}
                 </div>
-                <span style={{ ...chipStyle, background: `${status.color}22`, color: status.color }}>
-                  {status.label}
+                <span style={{ ...chipStyle, background: `${statusColor}22`, color: statusColor }}>
+                  {statusLabel}
                 </span>
               </div>
 
@@ -337,7 +264,7 @@ function InvitationsInner() {
       </div>
 
       <div style={footerLinkStyle}>
-        <Link href="/partner/quotes" style={linkStyle}>{t.seeExisting}</Link>
+        <Link href={`/partner/quotes?lang=${lang}`} style={linkStyle}>{t.seeExisting}</Link>
       </div>
     </main>
   );
@@ -345,7 +272,7 @@ function InvitationsInner() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div style={mutedStyle}>로딩 중…</div>}>
+    <Suspense fallback={<div style={mutedStyle}>…</div>}>
       <InvitationsInner />
     </Suspense>
   );

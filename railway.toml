@@ -108,3 +108,24 @@ command = "curl -s -X GET http://localhost:$PORT/api/cron/ops-digest -H 'Authori
 name = "order-delays"
 schedule = "15 */6 * * *"
 command = "curl -s -X GET http://localhost:$PORT/api/cron/order-delays -H 'Authorization: Bearer $CRON_SECRET'"
+
+# ─── New billing crons (B7-B12) ──────────────────────────────────────────
+[[cronJobs]]
+name = "fx-rates"
+schedule = "0 3 * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/cron/fx-rates -H 'x-cron-secret: $CRON_SECRET'"
+
+[[cronJobs]]
+name = "trial-reminders"
+schedule = "0 0 * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/cron/trial-reminders -H 'x-cron-secret: $CRON_SECRET'"
+
+[[cronJobs]]
+name = "metered-billing"
+schedule = "0 * * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/cron/metered-billing -H 'x-cron-secret: $CRON_SECRET'"
+
+[[cronJobs]]
+name = "cancel-winback"
+schedule = "0 1 * * *"
+command = "curl -s -X POST http://localhost:$PORT/api/cron/cancel-winback -H 'x-cron-secret: $CRON_SECRET'"

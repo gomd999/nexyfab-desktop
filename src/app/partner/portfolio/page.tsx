@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { portfolioDict } from '../_lib/dicts/portfolio';
 
 interface Partner {
   partnerId: string;
@@ -30,80 +31,49 @@ interface Contract {
   attachments?: Attachment[];
 }
 
-function won(n: number) {
-  return n?.toLocaleString('ko-KR') + '원';
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+
+const CURRENCY_FOR_LANG: Record<string, string> = {
+  ko: 'KRW', en: 'KRW', ja: 'KRW', cn: 'KRW', es: 'KRW', ar: 'KRW',
+};
+
+function fmtMoney(n: number, lang: string): string {
+  const locale = LOCALE_FOR_LANG[lang] ?? 'en-US';
+  const currency = CURRENCY_FOR_LANG[lang] ?? 'KRW';
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+  } catch {
+    return n.toLocaleString(locale) + ' KRW';
+  }
 }
 
-function formatDate(iso: string) {
+function fmtDate(iso: string, lang: string) {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
-}
-
-function amountLabel(amount: number): string {
-  if (!amount) return '비공개';
-  if (amount < 5_000_000) return '소형 프로젝트';
-  if (amount < 30_000_000) return '중소형 프로젝트';
-  if (amount < 100_000_000) return '중형 프로젝트';
-  if (amount < 500_000_000) return '대형 프로젝트';
-  return '특대형 프로젝트';
-}
-
-function Sidebar({ partner, onLogout }: { partner: Partner | null; onLogout: () => void }) {
-  const navItems = [
-    { href: '/partner/dashboard', label: '대시보드', icon: '📊' },
-    { href: '/partner/projects', label: '프로젝트', icon: '📦' },
-    { href: '/partner/quotes', label: '견적', icon: '📝' },
-    { href: '/partner/settlements', label: '정산', icon: '💰' },
-    { href: '/partner/portfolio', label: '포트폴리오', icon: '🏆' },
-    { href: '/partner/profile', label: '프로필', icon: '🏭' },
-  ];
-
-  return (
-    <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 min-h-screen">
-      <div className="px-5 py-5 border-b border-gray-100">
-        <Link href="/" prefetch={false} className="text-lg font-black text-gray-900">NexyFab</Link>
-        <p className="text-xs text-gray-400 mt-0.5">파트너 포털</p>
-      </div>
-      {partner && (
-        <div className="px-5 py-4 border-b border-gray-100">
-          <div className="text-sm font-bold text-gray-800 truncate">{partner.company || '파트너'}</div>
-          <div className="text-xs text-gray-400 truncate">{partner.email}</div>
-        </div>
-      )}
-      <nav className="flex-1 px-3 py-3 space-y-1">
-        {navItems.map(item => {
-          const isActive = typeof window !== 'undefined' && window.location.pathname === item.href;
-          return (
-            <Link key={item.href} href={item.href} prefetch={false}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
-              <span>{item.icon}</span>{item.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="px-3 py-4 border-t border-gray-100">
-        <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-          <span>🚪</span>로그아웃
-        </button>
-      </div>
-    </aside>
-  );
+  const locale = LOCALE_FOR_LANG[lang] ?? 'en-US';
+  return new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
 export default function PartnerPortfolioPage() {
   const router = useRouter();
+  const lang = usePartnerLang();
+  const t = portfolioDict(lang);
   const [partner, setPartner] = useState<Partner | null>(null);
   const [completed, setCompleted] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-  const getSession = () => localStorage.getItem('partnerSession') || '';
+  function amountLabel(amount: number): string {
+    if (!amount) return t.amountUndisclosed;
+    if (amount < 5_000_000) return t.amountSmall;
+    if (amount < 30_000_000) return t.amountMidSmall;
+    if (amount < 100_000_000) return t.amountMid;
+    if (amount < 500_000_000) return t.amountLarge;
+    return t.amountXLarge;
+  }
 
-  const logout = () => {
-    localStorage.removeItem('partnerSession');
-    localStorage.removeItem('partnerInfo');
-    router.push('/partner/login');
-  };
+  const getSession = () => localStorage.getItem('partnerSession') || '';
 
   const fetchContracts = useCallback(async (session: string) => {
     const res = await fetch('/api/partner/contracts', {
@@ -116,7 +86,7 @@ export default function PartnerPortfolioPage() {
 
   useEffect(() => {
     const session = getSession();
-    if (!session) { router.replace('/partner/login'); return; }
+    if (!session) { router.replace(`/partner/login?lang=${lang}`); return; }
 
     if (session === 'demo') {
       queueMicrotask(() => {
@@ -134,66 +104,52 @@ export default function PartnerPortfolioPage() {
     fetch(`/api/partner/auth?session=${session}`)
       .then(r => r.json())
       .then(d => {
-        if (!d.valid) { router.replace('/partner/login'); return; }
+        if (!d.valid) { router.replace(`/partner/login?lang=${lang}`); return; }
         setPartner(d.partner);
         fetchContracts(session).finally(() => setLoading(false));
       })
-      .catch(() => router.replace('/partner/login'));
-  }, [router, fetchContracts]);
+      .catch(() => router.replace(`/partner/login?lang=${lang}`));
+  }, [router, fetchContracts, lang]);
+
+  // Silence unused-var lint — partner state may be wired into a header later.
+  void partner;
 
   const totalAmount = completed.reduce((s, c) => s + (c.contractAmount || 0), 0);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">불러오는 중...</p>
+        <p className="text-gray-400 text-sm">{t.loading}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar partner={partner} onLogout={logout} />
-
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 flex items-center justify-around py-2">
-        {[
-          { href: '/partner/dashboard', label: '대시보드', icon: '📊' },
-          { href: '/partner/projects', label: '프로젝트', icon: '📦' },
-          { href: '/partner/quotes', label: '견적', icon: '📝' },
-          { href: '/partner/settlements', label: '정산', icon: '💰' },
-          { href: '/partner/profile', label: '프로필', icon: '🏭' },
-        ].map(item => (
-          <Link key={item.href} href={item.href} prefetch={false} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl ${item.href === '/partner/portfolio' ? 'text-blue-600' : 'text-gray-500'}`}>
-            <span className="text-xl leading-tight">{item.icon}</span>
-            <span className="text-[10px] font-semibold">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      <main className="flex-1 p-6 overflow-auto pb-20 md:pb-6">
+    <div className="min-h-screen bg-gray-50">
+      <main className="p-6 overflow-auto pb-20 md:pb-6">
         <div className="max-w-5xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-2xl font-black text-gray-900">포트폴리오</h1>
-            <p className="text-sm text-gray-500 mt-1">완료된 프로젝트 실적 현황</p>
+            <h1 className="text-2xl font-black text-gray-900">{t.pageTitle}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t.pageSubtitle}</p>
           </div>
 
-          {/* 내 실적 요약 */}
+          {/* Stats */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">완료 건수</p>
-              <p className="text-3xl font-black text-gray-900">{completed.length}<span className="text-lg font-semibold text-gray-500 ml-1">건</span></p>
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">{t.statsCompletedCount}</p>
+              <p className="text-3xl font-black text-gray-900">{completed.length}<span className="text-lg font-semibold text-gray-500 ml-1">{t.statsCompletedUnit}</span></p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">총 수주 금액</p>
-              <p className="text-2xl font-black text-blue-600 truncate">{won(totalAmount)}</p>
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">{t.statsTotalAmount}</p>
+              <p className="text-2xl font-black text-blue-600 truncate">{fmtMoney(totalAmount, lang)}</p>
             </div>
           </div>
 
           {completed.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 text-center text-gray-400 text-sm">
-              <p className="text-4xl mb-3">🏆</p>
-              <p>아직 완료된 프로젝트가 없습니다.</p>
-              <p className="text-xs mt-1 text-gray-300">프로젝트를 완료하면 여기에 표시됩니다.</p>
+              <p className="text-4xl mb-3" aria-hidden="true">🏆</p>
+              <p>{t.emptyTitle}</p>
+              <p className="text-xs mt-1 text-gray-300">{t.emptyHint}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -203,7 +159,7 @@ export default function PartnerPortfolioPage() {
 
                 return (
                   <div key={contract.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                    {/* 썸네일 */}
+                    {/* Thumbnail */}
                     {thumbUrl ? (
                       <div
                         className="relative w-full h-40 bg-gray-100 cursor-pointer overflow-hidden"
@@ -220,16 +176,16 @@ export default function PartnerPortfolioPage() {
                       </div>
                     ) : (
                       <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <span className="text-4xl">🏭</span>
+                        <span className="text-4xl" aria-hidden="true">🏭</span>
                       </div>
                     )}
 
-                    {/* 카드 내용 */}
+                    {/* Card body */}
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">완료</span>
+                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">{t.statusCompleted}</span>
                         {contract.completedAt && (
-                          <span className="text-xs text-gray-400">{formatDate(contract.completedAt)}</span>
+                          <span className="text-xs text-gray-400">{fmtDate(contract.completedAt, lang)}</span>
                         )}
                       </div>
                       <h3 className="text-sm font-bold text-gray-900 mb-1 truncate">{contract.projectName}</h3>
@@ -241,12 +197,12 @@ export default function PartnerPortfolioPage() {
                           {amountLabel(contract.contractAmount)}
                         </span>
                         {images.length > 1 && (
-                          <span className="text-xs text-gray-400">📎 {images.length}장</span>
+                          <span className="text-xs text-gray-400">📎 {images.length}{t.attachmentsSuffix}</span>
                         )}
                       </div>
                     </div>
 
-                    {/* 이미지 썸네일 미리보기 (여러 장) */}
+                    {/* Image thumbnail preview (multi) */}
                     {images.length > 1 && (
                       <div className="px-4 pb-4 grid grid-cols-4 gap-1">
                         {images.slice(1, 5).map(img => (
@@ -275,15 +231,18 @@ export default function PartnerPortfolioPage() {
         </div>
       </main>
 
-      {/* 라이트박스 */}
+      {/* Lightbox */}
       {lightboxUrl && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setLightboxUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.lightboxAlt}
         >
           <Image
             src={lightboxUrl}
-            alt="원본 이미지"
+            alt={t.lightboxAlt}
             width={1600}
             height={1200}
             className="max-h-[90vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
@@ -293,6 +252,7 @@ export default function PartnerPortfolioPage() {
           <button
             className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300"
             onClick={() => setLightboxUrl(null)}
+            aria-label="Close"
           >
             ✕
           </button>

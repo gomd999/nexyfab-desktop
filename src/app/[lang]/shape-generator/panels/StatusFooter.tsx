@@ -61,9 +61,11 @@ export default function StatusFooter({
           position: 'fixed', bottom: 12, right: 12, zIndex: 50,
           padding: '6px 10px', fontSize: 11, fontFamily: 'monospace',
           borderRadius: 6,
-          border: `1px solid ${occtMode ? '#10b981' : '#4b5563'}`,
-          background: occtMode ? 'rgba(16,185,129,0.15)' : 'rgba(31,41,55,0.85)',
-          color: occtMode ? '#10b981' : '#9ca3af',
+          // Light/dark theme-aware tokens. Hardcoded dark RGBs made the
+          // pill an unreadable black block under the light theme.
+          border: `1px solid ${occtMode ? 'var(--nx-ok)' : 'var(--nx-border-strong)'}`,
+          background: occtMode ? 'rgba(16,185,129,0.15)' : 'var(--nx-panel)',
+          color: occtMode ? 'var(--nx-ok)' : 'var(--nx-text-2)',
           cursor: occtInitPending ? 'wait' : 'pointer',
           opacity: occtInitPending ? 0.6 : 1,
         }}

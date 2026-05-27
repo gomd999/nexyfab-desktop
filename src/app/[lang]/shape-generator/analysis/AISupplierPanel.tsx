@@ -306,17 +306,17 @@ const CertFilterPanel = dynamic(() => import('./CertFilterPanel'), { ssr: false 
 const ChangeDetectorPanel = dynamic(() => import('./ChangeDetectorPanel'), { ssr: false });
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  purple: '#a371f7',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  purple: 'var(--nx-accent-2)',
   teal: '#39c5bb',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  text: '#c9d1d9',
-  dim: '#8b949e',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
 };
 
 interface AISupplierPanelProps {
@@ -619,7 +619,7 @@ export default function AISupplierPanel({
         <button onClick={run} disabled={loading} style={{
           padding: '8px 0', borderRadius: 6, border: 'none',
           background: loading ? C.border : `linear-gradient(135deg, ${C.teal}, ${C.accent})`,
-          color: '#fff', fontSize: 12, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
+          color: 'var(--nx-text)', fontSize: 12, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
         }}>
           {loading ? tt.aiMatching : `🎯 ${tt.reMatch}`}
         </button>
@@ -840,7 +840,7 @@ export default function AISupplierPanel({
                           style={{
                             flex: 1, padding: '8px 0', borderRadius: 6, border: 'none',
                             background: rfqResult?.ok ? C.border : `linear-gradient(135deg, ${C.teal}, ${C.accent})`,
-                            color: '#fff', fontSize: 11, fontWeight: 800,
+                            color: 'var(--nx-text)', fontSize: 11, fontWeight: 800,
                             cursor: rfqSubmittingIdx === idx || rfqResult?.ok ? 'wait' : 'pointer',
                             opacity: rfqResult?.ok ? 0.6 : 1,
                           }}

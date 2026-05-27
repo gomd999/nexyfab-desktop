@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/partners', label: '파트너 관리', group: 'partner' },
   { href: '/admin/partner-applications', label: '파트너 신청', group: 'partner' },
   { href: '/admin/partner-kpi', label: '파트너 KPI', group: 'partner' },
+  { href: '/admin/partner-cutover', label: '파트너 SSO 컷오버', group: 'partner' },
   { href: '/admin/settlements', label: '정산 관리', group: 'partner' },
   { href: '/admin/templates', label: '템플릿 관리', group: 'ops' },
   { href: '/admin/sla', label: 'SLA 모니터링', group: 'ops' },

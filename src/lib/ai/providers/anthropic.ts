@@ -45,7 +45,9 @@ export const anthropicProvider: ProviderAdapter = {
         max_tokens: req.maxTokens ?? 4096,
         temperature: req.temperature ?? 0.2,
       }),
-      signal: AbortSignal.timeout(req.timeoutMs ?? 30_000),
+      signal: req.signal
+        ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs ?? 30_000)])
+        : AbortSignal.timeout(req.timeoutMs ?? 30_000),
     });
 
     if (!res.ok) {

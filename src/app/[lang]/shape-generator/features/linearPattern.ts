@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
+import { isOcctReady, isOcctGlobalMode, occtLinearPattern } from './occtEngine';
 
 export const linearPatternFeature: FeatureDefinition = {
   type: 'linearPattern',
@@ -32,5 +33,19 @@ export const linearPatternFeature: FeatureDefinition = {
     const merged = mergeGeometries(copies);
     if (!merged) throw new Error('Linear pattern merge failed');
     return merged;
+  },
+  async applyAsync(geometry, params) {
+    if (isOcctReady() && isOcctGlobalMode()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          const r = occtLinearPattern(handle, Math.round(params.axis), Math.round(params.count), params.spacing);
+          if (r.handle) { r.geometry.userData.occtHandle = r.handle; return r.geometry; }
+        } catch (err) {
+          console.warn('[linearPattern] OCCT path failed, falling back to mesh:', err);
+        }
+      }
+    }
+    return linearPatternFeature.apply(geometry, params);
   },
 };

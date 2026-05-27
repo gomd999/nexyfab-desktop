@@ -42,16 +42,16 @@ interface CostPanelProps {
 /* ─── Palette (dark theme) ──────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  accentBright: '#58a6ff',
-  text: '#c9d1d9',
-  dim: '#8b949e',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  accentBright: 'var(--nx-accent-2)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
 };
 
 /* ─── i18n helpers ──────────────────────────────────────────────────────────── */
@@ -275,7 +275,7 @@ function CostBarChart({ estimates, lang }: { estimates: CostEstimate[]; lang: st
             <span style={{ fontSize: 10, width: 60, color: C.dim, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {PROCESS_ICONS[e.process]} {getProcessName(e.process, lang).split(' ')[0]}
             </span>
-            <div style={{ flex: 1, height: 14, background: '#0d1117', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ flex: 1, height: 14, background: 'var(--nx-bg)', borderRadius: 3, overflow: 'hidden' }}>
               <div style={{
                 width: `${pct}%`, height: '100%', borderRadius: 3,
                 background: `linear-gradient(90deg, ${C.accent}, ${C.accentBright})`,
@@ -425,17 +425,17 @@ function MaterialPriceTicker({ materialId, lang }: { materialId: string; lang: s
   const price = commodity && prices ? prices.prices?.[commodity] : null;
 
   return (
-    <div style={{ background: '#0d1117', borderRadius: 8, border: '1px solid #21262d', padding: '8px 10px' }}>
+    <div style={{ background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)', padding: '8px 10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, color: '#8b949e', fontWeight: 600 }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600 }}>
           {tt.marketPrices}
-          {commodity && <span style={{ marginLeft: 4, fontSize: 10, color: '#484f58' }}>({commodity})</span>}
+          {commodity && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--nx-border-strong)' }}>({commodity})</span>}
         </span>
         <button onClick={fetchPrices} disabled={loading}
           style={{
             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
-            border: '1px solid #30363d', background: shown ? '#21262d' : '#388bfd22',
-            color: shown ? '#8b949e' : '#388bfd',
+            border: '1px solid var(--nx-border)', background: shown ? 'var(--nx-panel-2)' : 'var(--nx-accent)22',
+            color: shown ? 'var(--nx-text-2)' : 'var(--nx-accent)',
           }}>
           {loading ? '...' : shown ? tt.hide : tt.fetch}
         </button>
@@ -446,23 +446,23 @@ function MaterialPriceTicker({ materialId, lang }: { materialId: string; lang: s
           {price ? (
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 11 }}>
-                <span style={{ color: '#484f58' }}>USD/kg </span>
-                <span style={{ color: '#e6edf3', fontWeight: 700 }}>${price.usdPerKg.toFixed(2)}</span>
+                <span style={{ color: 'var(--nx-border-strong)' }}>USD/kg </span>
+                <span style={{ color: 'var(--nx-text)', fontWeight: 700 }}>${price.usdPerKg.toFixed(2)}</span>
               </div>
               <div style={{ fontSize: 11 }}>
-                <span style={{ color: '#484f58' }}>KRW/kg </span>
-                <span style={{ color: '#3fb950', fontWeight: 700 }}>₩{price.krwPerKg.toLocaleString('ko-KR')}</span>
+                <span style={{ color: 'var(--nx-border-strong)' }}>KRW/kg </span>
+                <span style={{ color: 'var(--nx-ok)', fontWeight: 700 }}>₩{price.krwPerKg.toLocaleString('ko-KR')}</span>
               </div>
-              <div style={{ fontSize: 9, color: '#484f58', width: '100%' }}>
+              <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', width: '100%' }}>
                 {tt.updated}{price.updatedAt?.slice(0, 10) ?? '—'} · {price.source}
               </div>
             </div>
           ) : (
-            <div style={{ fontSize: 10, color: '#484f58' }}>
+            <div style={{ fontSize: 10, color: 'var(--nx-border-strong)' }}>
               {tt.noPriceData}
             </div>
           )}
-          <div style={{ marginTop: 4, fontSize: 9, color: '#484f58' }}>
+          <div style={{ marginTop: 4, fontSize: 9, color: 'var(--nx-border-strong)' }}>
             {tt.rate(prices.krwPerUsd?.toLocaleString() ?? '—')}
           </div>
         </div>
@@ -540,7 +540,7 @@ export default function CostPanel({ metrics, materialId, lang, onClose, onReques
           border: 'none', background: C.card, cursor: 'pointer', fontSize: 12, color: C.dim,
           width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#30363d'; e.currentTarget.style.color = C.text; }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.color = C.text; }}
           onMouseLeave={e => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.dim; }}
         >✕</button>
       </div>
@@ -594,7 +594,7 @@ export default function CostPanel({ metrics, materialId, lang, onClose, onReques
               style={{
                 width: 60, padding: '5px 6px', borderRadius: 5, fontSize: 11, fontWeight: 600,
                 border: `1px solid ${customQty ? C.accent : C.border}`,
-                background: '#0d1117', color: C.text, textAlign: 'center',
+                background: 'var(--nx-bg)', color: C.text, textAlign: 'center',
                 outline: 'none',
               }}
             />
@@ -767,7 +767,7 @@ export default function CostPanel({ metrics, materialId, lang, onClose, onReques
               : quoteStatus === 'error'
               ? C.red
               : `linear-gradient(135deg, ${C.accent}, #1f6feb)`,
-            color: '#fff', fontSize: 13, fontWeight: 800,
+            color: 'var(--nx-text)', fontSize: 13, fontWeight: 800,
             cursor: quoteStatus === 'sending' || quoteStatus === 'sent' ? 'default' : 'pointer',
             transition: 'opacity 0.15s',
             opacity: quoteStatus === 'sending' ? 0.7 : 1,

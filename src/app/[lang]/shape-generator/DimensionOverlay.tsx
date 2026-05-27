@@ -9,7 +9,7 @@ import { formatWithUnit, type UnitSystem } from './units';
 /**
  * Dimension line component that uses lineSegments to avoid SVG <line> conflict.
  */
-function DimLine({ points, color = '#f59e0b' }: { points: THREE.Vector3[]; color?: string }) {
+function DimLine({ points, color = 'var(--nx-warn)' }: { points: THREE.Vector3[]; color?: string }) {
   const geo = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
   return (
     <lineSegments geometry={geo}>
@@ -106,7 +106,7 @@ export default function DimensionOverlay({
                     if (e.key === 'Enter') { e.currentTarget.blur(); }
                     if (e.key === 'Escape') { setEditingDim(null); }
                   }}
-                  style={{ width: 60, padding: '2px 6px', borderRadius: 4, border: '1px solid #388bfd', background: '#1c2128', color: '#fff', fontSize: 11, outline: 'none' }}
+                  style={{ width: 60, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--nx-accent)', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 11, outline: 'none' }}
                 />
               ) : (
                 <div
@@ -126,7 +126,7 @@ export default function DimensionOverlay({
                   }}
                 >
                   {dim.label}: {formatWithUnit(dim.value, unitSystem)}
-                  {onDimClick && <span style={{ color: '#58a6ff', marginLeft: 4, fontSize: 8 }}>✏️</span>}
+                  {onDimClick && <span style={{ color: 'var(--nx-accent-2)', marginLeft: 4, fontSize: 8 }}>✏️</span>}
                 </div>
               )}
             </Html>

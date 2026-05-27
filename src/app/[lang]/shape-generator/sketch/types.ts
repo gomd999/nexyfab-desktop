@@ -34,7 +34,11 @@ export interface SketchProfile {
 export type SketchTool =
   | 'line' | 'arc' | 'circle' | 'ellipse' | 'rect' | 'polygon' | 'slot'
   | 'spline' | 'offset' | 'fillet' | 'mirror'
-  | 'trim' | 'select' | 'dimension' | 'constraint' | 'construction';
+  | 'trim' | 'select' | 'dimension' | 'constraint' | 'construction'
+  // Phase 1 — sweep path drawing. Tool registered so the ribbon button
+  // routes correctly; the canvas click handler that actually appends
+  // points to `config.sweepPath` lands in phase 2.
+  | 'sweep-path';
 
 // ─── Constraint System ──────────────────────────────────────────────────────
 
@@ -82,7 +86,19 @@ export interface SketchDimension {
   expression?: string;
 }
 
-export type ExtrudeMode = 'extrude' | 'revolve' | 'extrudeCut';
+export type ExtrudeMode = 'extrude' | 'revolve' | 'extrudeCut' | 'sweep';
+
+/** A 3-D path the profile sweeps along — series of points the geometry
+ *  builder turns into a CatmullRom curve. Coordinates are world mm; the
+ *  curve always starts at the sketch plane's origin so the profile
+ *  attaches cleanly. */
+export interface SweepPath {
+  /** ≥ 2 points; less collapses to a normal straight-axis extrude. */
+  points: { x: number; y: number; z: number }[];
+  /** Number of cross-section samples along the path. Higher = smoother
+   *  sweep, more triangles. */
+  steps?: number;
+}
 
 /** 2d = SVG flat canvas, 3d = draw on a plane in the 3D viewport, drawing = ortho projection views */
 export type SketchViewMode = '2d' | '3d' | 'drawing';
@@ -94,6 +110,10 @@ export interface SketchConfig {
   revolveAxis: 'x' | 'y'; // default 'y'
   segments: number;     // mesh resolution (default 32)
   cutDepth?: number;    // For extrude cut
+  /** Path the profile follows when mode === 'sweep'. The path-drawing UI
+   *  ships in a follow-up phase; the geometry builder already accepts a
+   *  hand-supplied path so test fixtures and AI/CAD-Copilot can use it. */
+  sweepPath?: SweepPath;
   // Tool-specific defaults (persisted so user doesn't re-enter each session)
   ellipseRx?: number;   // default 25
   ellipseRy?: number;   // default 15

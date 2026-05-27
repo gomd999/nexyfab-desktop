@@ -15,6 +15,14 @@ interface SettingsCard {
 
 const SETTINGS_CARDS: SettingsCard[] = [
   {
+    icon: '🏢',
+    titleKo: '사업자 정보',
+    titleEn: 'Business Profile',
+    descKo: '사업자등록번호 등록 및 NTS 자동 검증. Pro 사업자 플랜 / 세금계산서 / 파트너 매칭에 사용.',
+    descEn: 'BRN registration + NTS auto-verification. Required for Pro Business plan, tax invoices, partner matching.',
+    href: '/nexyfab/settings/business',
+  },
+  {
     icon: '💳',
     titleKo: '청구 설정',
     titleEn: 'Billing',

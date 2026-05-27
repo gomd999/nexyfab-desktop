@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { buildMetadata, type Lang } from '@/lib/metaHelper';
 import JsonLd from '@/components/JsonLd';
 import Header from '@/components/Header';
@@ -14,6 +15,20 @@ import ConsentScripts from '@/components/ConsentScripts';
 import { PaidBetaBanner } from '@/components/PaidBetaBanner';
 import Script from 'next/script';
 import { getAdminSettings } from '@/lib/adminSettings';
+
+const inter = Inter({
+    subsets: ['latin'],
+    weight: ['400', '500', '600', '700'],
+    variable: '--font-inter',
+    display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    weight: ['400', '500', '600'],
+    variable: '--font-jetbrains-mono',
+    display: 'swap',
+});
 
 const HTML_LANG: Record<Lang, string> = {
     kr: 'ko',
@@ -59,7 +74,7 @@ export default async function LangLayout({
     const adminSettings = getAdminSettings();
 
     return (
-        <html lang={htmlLang} dir={validLang === 'ar' ? 'rtl' : 'ltr'} suppressHydrationWarning>
+        <html lang={htmlLang} dir={validLang === 'ar' ? 'rtl' : 'ltr'} className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
             <head>
                 {/* Nexyfab N 파비콘 */}
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -67,9 +82,14 @@ export default async function LangLayout({
                 <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16" />
                 <link rel="icon" href="/favicon.ico" sizes="any" />
                 <link rel="apple-touch-icon" href="/favicon-icon.png" sizes="256x256" />
-                {/* PWA */}
-                <link rel="manifest" href="/manifest.json" />
-                <meta name="theme-color" content="#0f172a" />
+                {/* PWA — manifest.webmanifest is the canonical name (W3C);
+                    manifest.json kept for legacy clients that requested it. */}
+                <link rel="manifest" href="/manifest.webmanifest" />
+                <meta name="theme-color" content="#0c0f14" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <meta name="apple-mobile-web-app-title" content="NexyFab" />
+                <meta name="mobile-web-app-capable" content="yes" />
 
                 {adminSettings.headScripts && (
                     <div dangerouslySetInnerHTML={{ __html: adminSettings.headScripts }} />

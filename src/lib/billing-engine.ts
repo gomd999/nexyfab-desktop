@@ -440,6 +440,10 @@ export async function processSmartRetries(paymentMethodId: string): Promise<{
         invoiceId: row.invoice_id, payload: intent,
       });
 
+      // Notify user of successful recovery so they know the issue is resolved.
+      void sendDunningEmail(row.user_id, 'recovered', row.invoice_id, attemptNum)
+        .catch(err => console.warn('[dunning] recovered mail failed:', err));
+
       succeeded++;
     } catch (err) {
       // Schedule next retry or mark as permanently failed.
@@ -461,8 +465,16 @@ export async function processSmartRetries(paymentMethodId: string): Promise<{
       );
 
       if (!nextRetryAt) {
-        // No more retries → mark invoice as uncollectible
+        // No more retries → mark invoice as uncollectible.
         await db.execute("UPDATE nf_aw_invoices SET status = 'uncollectible' WHERE id = ?", row.invoice_id);
+        // Final notice — account is now at risk of downgrade.
+        void sendDunningEmail(row.user_id, 'final', row.invoice_id, attemptNum)
+          .catch(err => console.warn('[dunning] final mail failed:', err));
+      } else {
+        // Retry scheduled — keep the user informed at each attempt so they
+        // can fix the card before time runs out.
+        void sendDunningEmail(row.user_id, `attempt_${attemptNum}` as DunningStage, row.invoice_id, attemptNum, nextRetryAt)
+          .catch(err => console.warn('[dunning] attempt mail failed:', err));
       }
 
       await db.execute("UPDATE nf_aw_payment_attempts SET next_retry_at = NULL WHERE id = ?", row.id);
@@ -472,6 +484,120 @@ export async function processSmartRetries(paymentMethodId: string): Promise<{
   }
 
   return { processed: pending.length, succeeded, failed };
+}
+
+// ─── Dunning email ────────────────────────────────────────────────────────
+// Stripe Smart Retries equivalent — notify the user at each retry attempt
+// so they have a chance to fix the card before the subscription suspends.
+
+export type DunningStage = 'attempt_2' | 'attempt_3' | 'attempt_4' | 'final' | 'recovered';
+
+const DUNNING_COPY: Record<DunningStage, { subject: string; preheader: string; cta: string; tone: 'info' | 'warn' | 'error' | 'success' }> = {
+  attempt_2: {
+    subject: '[NexyFab] 결제 실패 — 카드를 확인해주세요',
+    preheader: '다음 청구 시도까지 2일 남았습니다.',
+    cta: '결제 수단 업데이트',
+    tone: 'warn',
+  },
+  attempt_3: {
+    subject: '[NexyFab] 결제 재시도 실패 — 두 번째 안내',
+    preheader: '카드를 업데이트하지 않으면 4일 후 마지막 시도가 진행됩니다.',
+    cta: '지금 카드 변경',
+    tone: 'warn',
+  },
+  attempt_4: {
+    subject: '[NexyFab] ⚠ 최종 결제 시도 안내',
+    preheader: '카드를 업데이트하지 않으면 곧 구독이 일시 중지됩니다.',
+    cta: '카드 즉시 업데이트',
+    tone: 'error',
+  },
+  final: {
+    subject: '[NexyFab] 결제 미수금 — 구독이 일시 중지되었습니다',
+    preheader: '미납 인보이스를 결제하면 즉시 복구됩니다.',
+    cta: '미납 인보이스 결제',
+    tone: 'error',
+  },
+  recovered: {
+    subject: '[NexyFab] ✓ 결제 정상 처리 — 구독이 복구되었습니다',
+    preheader: '걱정 마세요, 모든 기능이 정상 작동합니다.',
+    cta: '청구 내역 보기',
+    tone: 'success',
+  },
+};
+
+export async function sendDunningEmail(
+  userId: string,
+  stage: DunningStage,
+  invoiceId: string,
+  attemptNumber: number,
+  nextRetryAt?: number | null,
+): Promise<void> {
+  const db = getDbAdapter();
+  const user = await db.queryOne<{ email: string; name: string; language: string | null }>(
+    'SELECT email, name, language FROM nf_users WHERE id = ?',
+    userId,
+  );
+  if (!user) return;
+
+  const invoice = await db.queryOne<{ id: string; display_amount: number; currency: string; product: string }>(
+    'SELECT id, display_amount, currency, product FROM nf_aw_invoices WHERE id = ?',
+    invoiceId,
+  );
+  if (!invoice) return;
+
+  const copy = DUNNING_COPY[stage];
+  const toneColor =
+    copy.tone === 'success' ? '#10b981'
+    : copy.tone === 'error' ? '#ef4444'
+    : copy.tone === 'warn' ? '#f59e0b'
+    : '#60a5fa';
+
+  const portalUrl = (process.env.NEXT_PUBLIC_NEXYFAB_URL ?? 'https://nexyfab.com') + '/kr/nexyfab/billing';
+  const amountLabel = invoice.currency === 'KRW'
+    ? `₩${Math.round(invoice.display_amount).toLocaleString()}`
+    : `${invoice.currency} ${invoice.display_amount.toFixed(2)}`;
+  const retryLabel = nextRetryAt
+    ? new Date(nextRetryAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })
+    : null;
+
+  const html = `<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#0f0f0f;font-family:-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:12px;border:1px solid #2a2a2a;overflow:hidden;">
+        <tr><td style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:32px 40px;border-bottom:3px solid ${toneColor};">
+          <span style="font-size:22px;font-weight:700;color:#60a5fa;">NexyFab</span>
+          <span style="font-size:22px;font-weight:300;color:#94a3b8;"> — 결제 안내</span>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;">${copy.preheader}</p>
+          <h1 style="color:${toneColor};font-size:18px;font-weight:700;margin:0 0 16px;">${copy.subject.replace('[NexyFab] ', '')}</h1>
+          <p style="color:#e2e8f0;font-size:14px;line-height:1.6;margin:0 0 16px;">
+            ${user.name} 님, NexyFab ${invoice.product} 구독의 결제(${amountLabel})가 처리되지 않았습니다.
+          </p>
+          ${retryLabel ? `<p style="color:#94a3b8;font-size:13px;margin:0 0 20px;">다음 자동 재시도: <strong style="color:#e2e8f0;">${retryLabel}</strong></p>` : ''}
+          <a href="${portalUrl}" style="display:inline-block;padding:12px 24px;background:${toneColor};color:#fff;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
+            ${copy.cta} →
+          </a>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #2a2a2a;">
+          <p style="color:#475569;font-size:11px;margin:0;line-height:1.6;">
+            인보이스 ID: <span style="font-family:monospace;color:#64748b;">${invoice.id}</span><br/>
+            시도 횟수: ${attemptNumber} / 4<br/>
+            © ${new Date().getFullYear()} Nexysys Lab Co., Ltd.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  try {
+    const { sendEmail } = await import('@/lib/nexyfab-email');
+    await sendEmail(user.email, copy.subject, html);
+  } catch (err) {
+    console.error('[dunning] send failed:', err);
+  }
 }
 
 // ─── BI Analytics ─────────────────────────────────────────────────────────────

@@ -177,7 +177,7 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 6 }}>{t.unitLabel}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text)', marginBottom: 6 }}>{t.unitLabel}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[
               { v: 'mm' as const, label: t.unitMm },
@@ -187,8 +187,8 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
               <label key={o.v} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 10px', borderRadius: 6,
-                background: unit === o.v ? '#1f2937' : 'transparent',
-                border: `1px solid ${unit === o.v ? '#388bfd' : '#21262d'}`,
+                background: unit === o.v ? 'var(--nx-panel)' : 'transparent',
+                border: `1px solid ${unit === o.v ? 'var(--nx-accent)' : 'var(--nx-panel-2)'}`,
                 cursor: 'pointer', fontSize: 13,
               }}>
                 <input
@@ -203,7 +203,7 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 6 }}>{t.originLabel}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text)', marginBottom: 6 }}>{t.originLabel}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[
               { v: 'as-is' as const,         label: t.originAsIs },
@@ -213,8 +213,8 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
               <label key={o.v} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 10px', borderRadius: 6,
-                background: origin === o.v ? '#1f2937' : 'transparent',
-                border: `1px solid ${origin === o.v ? '#388bfd' : '#21262d'}`,
+                background: origin === o.v ? 'var(--nx-panel)' : 'transparent',
+                border: `1px solid ${origin === o.v ? 'var(--nx-accent)' : 'var(--nx-panel-2)'}`,
                 cursor: 'pointer', fontSize: 13,
               }}>
                 <input
@@ -228,23 +228,23 @@ export default function STLExportDialog({ open, lang = 'en', onCancel, onConfirm
           </div>
         </div>
 
-        <div style={{ fontSize: 11, color: '#6e7681', marginBottom: 16 }}>{t.hint}</div>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 16 }}>{t.hint}</div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button
             type="button" onClick={onCancel}
             style={{
               padding: '7px 14px', borderRadius: 6,
-              background: 'transparent', color: '#c9d1d9',
-              border: '1px solid #30363d', cursor: 'pointer', fontSize: 13,
+              background: 'transparent', color: 'var(--nx-text)',
+              border: '1px solid var(--nx-border)', cursor: 'pointer', fontSize: 13,
             }}
           >{t.cancel}</button>
           <button
             type="button" onClick={() => onConfirm({ unit, origin })}
             style={{
               padding: '7px 14px', borderRadius: 6,
-              background: '#388bfd', color: '#fff',
-              border: '1px solid #388bfd', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              background: 'var(--nx-accent)', color: 'var(--nx-text)',
+              border: '1px solid var(--nx-accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600,
             }}
           >{t.confirm}</button>
         </div>

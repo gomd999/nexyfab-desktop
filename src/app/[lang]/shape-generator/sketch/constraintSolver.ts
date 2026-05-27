@@ -18,58 +18,206 @@ import type { SketchPoint, SketchSegment, SketchConstraint, SketchDimension } fr
 
 // ─── Parametric expressions ─────────────────────────────────────────────────
 //
-// Dimensions can carry an `expression` string like "2*D1 + 10". We resolve them
-// once per solve (not at each Jacobian evaluation) because LM only cares about
-// the numeric target. Safe evaluation: arithmetic + variable lookup only.
-// Variables are dimension names already resolved earlier in the pass; cycles
-// degrade to fallback `value`.
+// Dimensions can carry an `expression` string like `2*D1 + 10` or
+// `sin(angle1 * DEG) * radius`. We resolve them once per solve (not per
+// Jacobian step) because LM only cares about the numeric target.
+//
+// Safety: identifiers are tokenized and matched against an allow-list
+// (user-defined dimension names + a fixed math context). Anything else
+// returns ExpressionError. We still execute via `new Function(...)` for
+// arithmetic, but the body is built from substituted tokens, never the
+// raw user string, so `process.env` / `globalThis` cannot leak in.
+//
+// Chain resolution is done via topological sort with explicit cycle
+// detection — replaces the prior 5-pass fixed-point loop, which silently
+// failed at depth > 5 and surfaced cycles as "unsatisfied" instead of
+// the real diagnostic.
 
-const SAFE_EXPR = /^[0-9+\-*/().\s\w]+$/;
+/** Allow-list of math-context identifiers callable inside expressions. */
+const MATH_FUNCS: Record<string, (...args: number[]) => number> = {
+  sin: Math.sin,
+  cos: Math.cos,
+  tan: Math.tan,
+  asin: Math.asin,
+  acos: Math.acos,
+  atan: Math.atan,
+  atan2: Math.atan2,
+  sqrt: Math.sqrt,
+  abs: Math.abs,
+  min: Math.min,
+  max: Math.max,
+  floor: Math.floor,
+  ceil: Math.ceil,
+  round: Math.round,
+  log: Math.log,
+  exp: Math.exp,
+  pow: Math.pow,
+  sign: Math.sign,
+};
 
-function evalExpression(expr: string, env: Map<string, number>): number | null {
-  if (!expr || !SAFE_EXPR.test(expr)) return null;
-  // Substitute bare identifiers with env values (case-sensitive). Longest first
-  // so "D10" replaces before "D1" would collide.
-  const keys = Array.from(env.keys()).sort((a, b) => b.length - a.length);
-  let src = expr;
-  for (const k of keys) {
-    const re = new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-    src = src.replace(re, String(env.get(k)));
-  }
-  if (/[a-zA-Z_]/.test(src)) return null; // unresolved variable
-  try {
-    const fn = new Function(`"use strict"; return (${src});`);
-    const v = fn();
-    return typeof v === 'number' && Number.isFinite(v) ? v : null;
-  } catch {
-    return null;
-  }
+const MATH_CONSTS: Record<string, number> = {
+  PI: Math.PI,
+  E: Math.E,
+  /** Multiply a degree value by DEG to get radians: `sin(30 * DEG)`. */
+  DEG: Math.PI / 180,
+  /** Multiply a radian value by RAD to get degrees. */
+  RAD: 180 / Math.PI,
+};
+
+/** Returned when an expression can't be resolved. The `value` field is
+ *  the fallback used by the solver (the dimension's hand-typed value),
+ *  while `reason` lets the UI surface why so the user can fix it. */
+export interface ExpressionEvalError {
+  reason: 'syntax' | 'unknown-identifier' | 'cycle' | 'runtime' | 'non-finite';
+  detail?: string;
 }
 
-/** Resolve parametric expressions across dimensions. Returns a map id → numeric target. */
-function resolveDimensionTargets(dimensions: SketchDimension[]): Map<string, number> {
+interface EvalContext {
+  /** dimension-name → numeric value (already resolved) */
+  vars: Map<string, number>;
+}
+
+/** Tokenize identifiers in the expression and route each to a value or
+ *  a function reference. Returns the rewritten body suitable for
+ *  `new Function`. Throws an ExpressionEvalError-shaped value on
+ *  unknown identifiers — caller catches and converts. */
+function rewriteIdentifiers(expr: string, ctx: EvalContext): string {
+  // Quick-reject early: characters that have no business in arithmetic.
+  if (!/^[\s\d+\-*/().,_A-Za-z]+$/.test(expr)) {
+    const err: ExpressionEvalError = { reason: 'syntax', detail: 'illegal characters' };
+    throw err;
+  }
+  return expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (id) => {
+    // Function-style call detection — we don't need to disambiguate, the
+    // generated body re-emits the identifier so `sin(...)` calls __f.sin.
+    if (Object.prototype.hasOwnProperty.call(MATH_FUNCS, id)) return `__f.${id}`;
+    if (Object.prototype.hasOwnProperty.call(MATH_CONSTS, id)) return String(MATH_CONSTS[id]);
+    if (ctx.vars.has(id)) return String(ctx.vars.get(id));
+    const err: ExpressionEvalError = { reason: 'unknown-identifier', detail: id };
+    throw err;
+  });
+}
+
+export function evalExpressionSafe(expr: string, ctx: EvalContext): { ok: true; value: number } | { ok: false; error: ExpressionEvalError } {
+  if (!expr || !expr.trim()) return { ok: false, error: { reason: 'syntax', detail: 'empty' } };
+  let body: string;
+  try {
+    body = rewriteIdentifiers(expr, ctx);
+  } catch (e) {
+    return { ok: false, error: e as ExpressionEvalError };
+  }
+  let v: unknown;
+  try {
+    const fn = new Function('__f', `"use strict"; return (${body});`);
+    v = fn(MATH_FUNCS);
+  } catch (e) {
+    return { ok: false, error: { reason: 'runtime', detail: (e as Error).message } };
+  }
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    return { ok: false, error: { reason: 'non-finite', detail: String(v) } };
+  }
+  return { ok: true, value: v };
+}
+
+/** Extract dimension-name dependencies referenced by an expression
+ *  (skips math constants/functions). Used to build the topological
+ *  order so chains resolve in one pass and cycles are caught explicitly. */
+function expressionDependencies(expr: string, allNames: Set<string>): string[] {
+  const out = new Set<string>();
+  const re = /[A-Za-z_][A-Za-z0-9_]*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(expr)) !== null) {
+    const id = m[0];
+    if (Object.prototype.hasOwnProperty.call(MATH_FUNCS, id)) continue;
+    if (Object.prototype.hasOwnProperty.call(MATH_CONSTS, id)) continue;
+    if (allNames.has(id)) out.add(id);
+  }
+  return Array.from(out);
+}
+
+/** Resolve parametric expressions across dimensions via topological sort.
+ *  Returns a map id → numeric target plus a per-dimension error map so
+ *  the UI can mark broken expressions. Falls back to `value` on any
+ *  unresolved expression (cycle / unknown id / syntax). */
+export function resolveDimensionTargetsWithErrors(dimensions: SketchDimension[]): {
+  targets: Map<string, number>;
+  errors: Map<string, ExpressionEvalError>;
+} {
   const targets = new Map<string, number>();
-  const env = new Map<string, number>();
-  // Seed env with all numeric values first, then re-apply expressions so they
-  // can reference peers. Up to 5 passes to let chains (D1←D2←D3) settle.
+  const errors = new Map<string, ExpressionEvalError>();
+  const vars = new Map<string, number>();
+  const allNames = new Set<string>();
   for (const d of dimensions) {
     targets.set(d.id, d.value);
-    if (d.name) env.set(d.name, d.value);
+    if (d.name) { vars.set(d.name, d.value); allNames.add(d.name); }
   }
-  for (let pass = 0; pass < 5; pass++) {
-    let changed = false;
-    for (const d of dimensions) {
-      if (!d.expression) continue;
-      const v = evalExpression(d.expression, env);
-      if (v !== null && v !== targets.get(d.id)) {
-        targets.set(d.id, v);
-        if (d.name) env.set(d.name, v);
-        changed = true;
-      }
+
+  // Build dep graph keyed by dimension id.
+  const nameToId = new Map<string, string>();
+  for (const d of dimensions) if (d.name) nameToId.set(d.name, d.id);
+  const deps = new Map<string, string[]>(); // id → list of dimension ids this one depends on
+  for (const d of dimensions) {
+    if (!d.expression) { deps.set(d.id, []); continue; }
+    const depNames = expressionDependencies(d.expression, allNames);
+    deps.set(d.id, depNames.map(n => nameToId.get(n)!).filter(Boolean));
+  }
+
+  // Topo sort (Kahn) — anything left after the queue drains is in a cycle.
+  const inDegree = new Map<string, number>();
+  for (const d of dimensions) inDegree.set(d.id, 0);
+  for (const [, ds] of deps) for (const x of ds) inDegree.set(x, (inDegree.get(x) ?? 0) + 1);
+  // We want dependencies evaluated *before* dependents, so the edge
+  // direction we want is dep → dependent. Recompute accordingly.
+  inDegree.clear();
+  for (const d of dimensions) inDegree.set(d.id, 0);
+  const reverse = new Map<string, string[]>(); // dep id → list of dependents
+  for (const d of dimensions) reverse.set(d.id, []);
+  for (const [dependentId, depIds] of deps) {
+    for (const depId of depIds) {
+      reverse.get(depId)!.push(dependentId);
+      inDegree.set(dependentId, (inDegree.get(dependentId) ?? 0) + 1);
     }
-    if (!changed) break;
   }
-  return targets;
+  const queue: string[] = [];
+  for (const [id, deg] of inDegree) if (deg === 0) queue.push(id);
+  const order: string[] = [];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    order.push(id);
+    for (const dependent of reverse.get(id) ?? []) {
+      const next = (inDegree.get(dependent) ?? 0) - 1;
+      inDegree.set(dependent, next);
+      if (next === 0) queue.push(dependent);
+    }
+  }
+  const cycleIds = new Set<string>();
+  for (const [id, deg] of inDegree) if (deg > 0) cycleIds.add(id);
+
+  // Evaluate in topo order.
+  const dimById = new Map(dimensions.map(d => [d.id, d]));
+  for (const id of order) {
+    const d = dimById.get(id);
+    if (!d || !d.expression) continue;
+    const r = evalExpressionSafe(d.expression, { vars });
+    if (r.ok) {
+      targets.set(d.id, r.value);
+      if (d.name) vars.set(d.name, r.value);
+    } else {
+      errors.set(d.id, r.error);
+    }
+  }
+  for (const id of cycleIds) {
+    const d = dimById.get(id);
+    if (d?.expression) errors.set(d.id, { reason: 'cycle', detail: d.name ?? d.id });
+  }
+
+  return { targets, errors };
+}
+
+/** Backwards-compatible wrapper — call sites that don't need the error
+ *  map keep the original Map<id, number> shape. */
+function resolveDimensionTargets(dimensions: SketchDimension[]): Map<string, number> {
+  return resolveDimensionTargetsWithErrors(dimensions).targets;
 }
 
 // ─── Public types (unchanged) ───────────────────────────────────────────────

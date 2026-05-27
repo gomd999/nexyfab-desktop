@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 interface Notification {
   id: string;
@@ -24,17 +26,19 @@ const TYPE_ICON: Record<string, string> = {
   payment: '💳',
 };
 
-function timeAgo(ts: number): string {
+function timeAgo(ts: number, t: QuotePanelsDict): string {
   const m = Math.floor((Date.now() - ts) / 60000);
-  if (m < 1) return '방금 전';
-  if (m < 60) return `${m}분 전`;
+  if (m < 1) return t.notifRelJustNow;
+  if (m < 60) return t.notifRelMinutes(m);
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
+  if (h < 24) return t.notifRelHours(h);
+  return t.notifRelDays(Math.floor(h / 24));
 }
 
 export default function PartnerNotificationBell({ session }: { session: string }) {
   const router = useRouter();
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
@@ -110,7 +114,8 @@ export default function PartnerNotificationBell({ session }: { session: string }
           cursor: 'pointer', padding: '6px 10px', borderRadius: 8,
           fontSize: 18, lineHeight: 1, color: '#6b7280',
         }}
-        title="알림"
+        title={t.notifTooltip}
+        aria-label={t.notifTooltip}
       >
         🔔
         {unread > 0 && (
@@ -135,10 +140,10 @@ export default function PartnerNotificationBell({ session }: { session: string }
           overflow: 'hidden', fontFamily: 'system-ui, sans-serif',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f3f4f6' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>알림</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{t.notifTitle}</span>
             {unread > 0 && (
               <button onClick={markAllRead} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#2563eb', fontWeight: 600 }}>
-                모두 읽음
+                {t.notifMarkAllRead}
               </button>
             )}
           </div>
@@ -146,7 +151,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
             {notifications.length === 0 ? (
               <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-                새 알림이 없습니다
+                {t.notifEmpty}
               </div>
             ) : notifications.map(n => (
               <div
@@ -174,7 +179,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
                       {previewText(n)}
                     </p>
                   )}
-                  <span style={{ fontSize: 10, color: '#9ca3af' }}>{timeAgo(createdMs(n))}</span>
+                  <span style={{ fontSize: 10, color: '#9ca3af' }}>{timeAgo(createdMs(n), t)}</span>
                 </div>
                 {isUnread(n) && (
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: 6 }} />

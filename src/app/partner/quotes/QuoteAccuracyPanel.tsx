@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { analyzeQuoteAccuracy, type QuoteEntry, type QuoteAccuracyResult, type ProcessBias, type AccuracySuggestion } from './quoteAccuracy';
+import { usePartnerLang } from '../_lib/partnerLang';
+import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 /** 입력 폼용 — draftAmount가 아직 미입력일 수 있어 null 허용 */
 interface InputEntry {
@@ -38,7 +40,7 @@ function _won(n: number | null | undefined): string {
   return n.toLocaleString('ko-KR') + '원';
 }
 
-function AccuracyGauge({ score }: { score: number }) {
+function AccuracyGauge({ score, t }: { score: number; t: QuotePanelsDict }) {
   const color = score >= 75 ? C.green : score >= 50 ? C.yellow : C.red;
   return (
     <div style={{ textAlign: 'center' }}>
@@ -56,14 +58,14 @@ function AccuracyGauge({ score }: { score: number }) {
           {score}
         </div>
       </div>
-      <p style={{ margin: 0, fontSize: 10, color: C.textMuted }}>정확도</p>
+      <p style={{ margin: 0, fontSize: 10, color: C.textMuted }}>{t.qaAccuracyLabel}</p>
     </div>
   );
 }
 
-function BiasBadge({ bias }: { bias: number }) {
+function BiasBadge({ bias, t }: { bias: number; t: QuotePanelsDict }) {
   const color = Math.abs(bias) < 5 ? C.green : Math.abs(bias) < 15 ? C.yellow : C.red;
-  const label = bias > 0 ? `+${bias}% 과대` : bias < 0 ? `${bias}% 과소` : '±0% 정확';
+  const label = bias > 0 ? t.qaBiasOver(bias) : bias < 0 ? t.qaBiasUnder(bias) : t.qaBiasExact;
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 22, fontWeight: 900, color }}>{bias > 0 ? '+' : ''}{bias}%</div>
@@ -72,7 +74,7 @@ function BiasBadge({ bias }: { bias: number }) {
   );
 }
 
-function ProcessBiasRow({ pb }: { pb: ProcessBias }) {
+function ProcessBiasRow({ pb, t }: { pb: ProcessBias; t: QuotePanelsDict }) {
   const color = Math.abs(pb.biasPercent) < 5 ? C.green : Math.abs(pb.biasPercent) < 15 ? C.yellow : C.red;
   const barW = Math.min(100, Math.abs(pb.biasPercent) * 2);
   return (
@@ -80,11 +82,11 @@ function ProcessBiasRow({ pb }: { pb: ProcessBias }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{pb.process}</span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: C.textMuted }}>{pb.sampleCount}건</span>
+          <span style={{ fontSize: 11, color: C.textMuted }}>{t.qaSampleSuffix(pb.sampleCount)}</span>
           <span style={{ fontSize: 12, fontWeight: 800, color }}>
             {pb.biasPercent > 0 ? '+' : ''}{pb.biasPercent}%
           </span>
-          <span style={{ fontSize: 10, color: C.textMuted }}>정확도 {pb.avgAccuracy}</span>
+          <span style={{ fontSize: 10, color: C.textMuted }}>{t.qaAccuracyShort(pb.avgAccuracy)}</span>
         </div>
       </div>
       {/* Bias bar */}
@@ -116,6 +118,8 @@ function SuggestionCard({ s }: { s: AccuracySuggestion }) {
 }
 
 export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props) {
+  const lang = usePartnerLang();
+  const t = quotePanelsDict(lang);
   const [entries, setEntries] = useState<InputEntry[]>([EMPTY_ENTRY()]);
   const [loading, setLoading] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
@@ -163,18 +167,21 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
       .filter(e => e.draftAmount != null && e.draftAmount > 0)
       .map(e => ({ ...e, draftAmount: e.draftAmount as number }));
     if (valid.length === 0) {
-      setError('초안 금액이 입력된 항목이 1건 이상 필요합니다.');
+      setError(t.qaErrorMinEntries);
       return;
     }
     setLoading(true);
     setError(null);
     try {
+      // 'lang' on the scoring engine is the response-language for engine
+      // narrative copy. We always request KR canonical so saved insights
+      // remain comparable; UI displays the KR strings under any lang.
       const r = await analyzeQuoteAccuracy({ entries: valid, lang: 'ko' });
       setResult(r);
       onResult?.(r.overallBiasPercent);
     } catch (e) {
       const err = e as Error & { requiresPro?: boolean };
-      setError(err.requiresPro ? 'Pro 플랜이 필요합니다.' : (err.message || '오류가 발생했습니다.'));
+      setError(err.requiresPro ? t.qaErrorPro : (err.message || t.qaErrorGeneric));
     } finally {
       setLoading(false);
     }
@@ -202,10 +209,10 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
       >
         {/* 헤더 */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #1e1a30, #1a1e30)' }}>
-          <span style={{ fontSize: 18 }}>📊</span>
+          <span style={{ fontSize: 18 }} aria-hidden="true">📊</span>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>견적 정확도 학습기</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>과거 견적 이력을 분석해 공정별 가격 편향과 보정 제안을 제공합니다.</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>{t.qaHeader}</p>
+            <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{t.qaHeaderSubtitle}</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
@@ -218,27 +225,27 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
               {autoLoading && (
                 <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', border: `2px solid ${C.accent}`, borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-                  수락된 견적을 DB에서 불러오는 중…
+                  {t.qaDbLoading}
                 </div>
               )}
               {autoLoaded && !autoLoading && (
                 <div style={{ fontSize: 11, color: C.green, marginBottom: 8, background: `${C.green}12`, border: `1px solid ${C.green}30`, borderRadius: 6, padding: '5px 10px' }}>
-                  ✅ 수락된 견적 {entries.length}건을 DB에서 불러왔습니다. 실제 원가를 추가하면 더 정확합니다.
+                  {t.qaDbLoaded(entries.length)}
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.textDim }}>견적 이력 입력</p>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.textDim }}>{t.qaInputTitle}</p>
                 <button
                   onClick={addEntry}
                   style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.accent, cursor: 'pointer', fontWeight: 700 }}
                 >
-                  + 행 추가
+                  {t.qaAddRow}
                 </button>
               </div>
 
-              {/* 헤더 행 */}
+              {/* Header row */}
               <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr 1fr 28px', gap: 5, padding: '4px 0', marginBottom: 4 }}>
-                {['공정', '초안 금액 (원)', '수락 금액 (원)', '실제 원가 (원)', ''].map((h, i) => (
+                {[t.qaColProcess, t.qaColDraft, t.qaColAccepted, t.qaColActual, ''].map((h, i) => (
                   <span key={i} style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{h}</span>
                 ))}
               </div>
@@ -250,12 +257,12 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
                       type="text"
                       value={e.process ?? ''}
                       onChange={ev => updateEntry(i, { process: ev.target.value })}
-                      placeholder="예: CNC"
+                      placeholder={t.qaPhProcess}
                       style={{ padding: '5px 7px', borderRadius: 6, fontSize: 11, background: C.bg, color: C.text, border: `1px solid ${C.border}`, outline: 'none' }}
                     />
-                    {numField(e.draftAmount, v => updateEntry(i, { draftAmount: v }), '필수 *')}
-                    {numField(e.acceptedAmount, v => updateEntry(i, { acceptedAmount: v }), '선택')}
-                    {numField(e.actualCost,     v => updateEntry(i, { actualCost: v }),     '선택')}
+                    {numField(e.draftAmount, v => updateEntry(i, { draftAmount: v }), t.qaPhRequired)}
+                    {numField(e.acceptedAmount, v => updateEntry(i, { acceptedAmount: v }), t.qaPhOptional)}
+                    {numField(e.actualCost,     v => updateEntry(i, { actualCost: v }),     t.qaPhOptional)}
                     <button
                       onClick={() => removeEntry(i)}
                       disabled={entries.length === 1}
@@ -268,7 +275,7 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
               </div>
 
               <p style={{ margin: '8px 0 0', fontSize: 10, color: C.textMuted }}>
-                💡 수락 금액 또는 실제 원가가 있어야 정확도를 계산합니다. 없는 항목은 분석에서 제외됩니다.
+                {t.qaInputHint}
               </p>
             </div>
           )}
@@ -285,13 +292,13 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
               {/* 요약 카드 */}
               <div style={{ background: C.card, borderRadius: 10, padding: '14px 16px', border: `1px solid ${C.border}` }}>
                 <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 10 }}>
-                  <AccuracyGauge score={result.overallAccuracy} />
+                  <AccuracyGauge score={result.overallAccuracy} t={t} />
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <BiasBadge bias={result.overallBiasPercent} />
+                    <BiasBadge bias={result.overallBiasPercent} t={t} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 900, color: C.accent }}>{result.entriesAnalysed}</div>
-                    <p style={{ margin: '2px 0 0', fontSize: 10, color: C.textMuted }}>분석 건수</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 10, color: C.textMuted }}>{t.qaSampleCount}</p>
                   </div>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: C.textDim, textAlign: 'center', lineHeight: 1.5 }}>
@@ -302,17 +309,17 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
               {/* 공정별 편향 */}
               {result.processBias.length > 0 && (
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>공정별 편향</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.qaProcessBiasTitle}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {result.processBias.map((pb, i) => <ProcessBiasRow key={i} pb={pb} />)}
+                    {result.processBias.map((pb, i) => <ProcessBiasRow key={i} pb={pb} t={t} />)}
                   </div>
                 </div>
               )}
 
-              {/* 보정 제안 */}
+              {/* Suggestions */}
               {result.suggestions.length > 0 && (
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>보정 제안</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.qaSuggestionsTitle}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {result.suggestions.map((s, i) => <SuggestionCard key={i} s={s} />)}
                   </div>
@@ -334,21 +341,21 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
                 color: '#fff', fontSize: 13, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
               }}
             >
-              {loading ? '분석 중...' : '📊 정확도 분석 실행'}
+              {loading ? t.qaRunning : t.qaRunBtn}
             </button>
           ) : (
             <button
               onClick={() => setResult(null)}
               style={{ flex: 1, padding: 10, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textDim, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
             >
-              🔄 다시 분석
+              {t.qaRerunBtn}
             </button>
           )}
           <button
             onClick={onClose}
             style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
-            닫기
+            {t.qaClose}
           </button>
         </div>
       </div>

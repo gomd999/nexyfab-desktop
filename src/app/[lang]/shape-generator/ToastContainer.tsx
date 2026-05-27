@@ -9,10 +9,10 @@ interface ToastContainerProps {
 }
 
 const TOAST_STYLES: Record<Toast['type'], { bg: string; accent: string; icon: string }> = {
-  success: { bg: '#0d2818', accent: '#3fb950', icon: '✓' },
-  error:   { bg: '#3d1519', accent: '#f85149', icon: '✕' },
-  warning: { bg: '#2a2013', accent: '#d29922', icon: '⚠' },
-  info:    { bg: '#1a2332', accent: '#58a6ff', icon: 'ℹ' },
+  success: { bg: '#0d2818', accent: 'var(--nx-ok)', icon: '✓' },
+  error:   { bg: '#3d1519', accent: 'var(--nx-error)', icon: '✕' },
+  warning: { bg: '#2a2013', accent: 'var(--nx-warn)', icon: '⚠' },
+  info:    { bg: 'var(--nx-panel-2)', accent: 'var(--nx-accent-2)', icon: 'ℹ' },
 };
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) {
@@ -83,7 +83,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         padding: '10px 4px 10px 0',
         fontSize: 13,
         fontWeight: 500,
-        color: '#c9d1d9',
+        color: 'var(--nx-text)',
         lineHeight: 1.4,
         wordBreak: 'break-word',
         gap: 8,
@@ -114,14 +114,14 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
           width: 32,
           border: 'none',
           background: 'transparent',
-          color: '#8b949e',
+          color: 'var(--nx-text-2)',
           cursor: 'pointer',
           fontSize: 14,
           flexShrink: 0,
           padding: 0,
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = '#8b949e'; }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; }}
       >
         ✕
       </button>
@@ -133,7 +133,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         left: 0,
         right: 0,
         height: 2,
-        background: 'rgba(255,255,255,0.05)',
+        background: 'var(--nx-glass-soft)',
       }}>
         <div style={{
           height: '100%',

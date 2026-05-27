@@ -18,7 +18,7 @@ const TABS: { id: MobileTab; icon: string; label: string }[] = [
   { id: 'export', icon: '\uD83D\uDCE4', label: 'Export' },
 ];
 
-export default function MobileToolbar({ activeTab, onTabChange, accentColor = '#388bfd' }: MobileToolbarProps) {
+export default function MobileToolbar({ activeTab, onTabChange, accentColor = 'var(--nx-accent)' }: MobileToolbarProps) {
   return (
     <div style={{
       position: 'fixed',
@@ -27,8 +27,8 @@ export default function MobileToolbar({ activeTab, onTabChange, accentColor = '#
       bottom: 0,
       zIndex: 920,
       height: 56,
-      background: '#161b22',
-      borderTop: '1px solid #30363d',
+      background: 'var(--nx-panel)',
+      borderTop: '1px solid var(--nx-border)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-around',
@@ -71,7 +71,7 @@ export default function MobileToolbar({ activeTab, onTabChange, accentColor = '#
             <span style={{
               fontSize: 9,
               fontWeight: 700,
-              color: active ? accentColor : '#8b949e',
+              color: active ? accentColor : 'var(--nx-text-2)',
               letterSpacing: '0.02em',
             }}>
               {tab.label}

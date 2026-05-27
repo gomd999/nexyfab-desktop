@@ -329,16 +329,16 @@ const dict = {
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
-  orange: '#f0883e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
+  orange: 'var(--nx-warn)',
 };
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
@@ -494,7 +494,7 @@ export default function PrintAnalysisPanel({
               onChange={e => setOverhangAngle(Number(e.target.value))}
               style={{ width: '100%', accentColor: C.accent }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#484f58' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-border-strong)' }}>
               <span>30°</span><span>45°</span><span>60°</span>
             </div>
           </div>
@@ -536,7 +536,7 @@ export default function PrintAnalysisPanel({
                     flex: 1, padding: '4px 6px', borderRadius: 4,
                     border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     background: buildDirPreset === opt.key ? C.accent : C.card,
-                    color: buildDirPreset === opt.key ? '#fff' : C.textDim,
+                    color: buildDirPreset === opt.key ? 'var(--nx-text)' : C.textDim,
                     transition: 'all 0.12s',
                   }}
                 >
@@ -548,7 +548,7 @@ export default function PrintAnalysisPanel({
               <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
                 {(['X', 'Y', 'Z'] as const).map((axis, idx) => (
                   <div key={axis} style={{ flex: 1 }}>
-                    <label style={{ fontSize: 9, color: '#484f58' }}>{axis}</label>
+                    <label style={{ fontSize: 9, color: 'var(--nx-border-strong)' }}>{axis}</label>
                     <input
                       type="number"
                       step={0.1}
@@ -560,7 +560,7 @@ export default function PrintAnalysisPanel({
                       }}
                       style={{
                         width: '100%', padding: '3px 6px', borderRadius: 4,
-                        border: `1px solid ${C.border}`, background: '#0d1117',
+                        border: `1px solid ${C.border}`, background: 'var(--nx-bg)',
                         color: C.text, fontSize: 11, fontFamily: 'monospace',
                       }}
                     />
@@ -584,7 +584,7 @@ export default function PrintAnalysisPanel({
                     flex: 1, padding: '4px 6px', borderRadius: 4,
                     border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer',
                     background: process === opt.key ? C.accent : C.card,
-                    color: process === opt.key ? '#fff' : C.textDim,
+                    color: process === opt.key ? 'var(--nx-text)' : C.textDim,
                     transition: 'all 0.12s',
                   }}
                 >
@@ -658,7 +658,7 @@ export default function PrintAnalysisPanel({
             onClick={handleAnalyze}
             style={{
               width: '100%', padding: '8px 12px', borderRadius: 6,
-              border: 'none', background: C.accent, color: '#fff',
+              border: 'none', background: C.accent, color: 'var(--nx-text)',
               fontSize: 12, fontWeight: 700, cursor: 'pointer',
               transition: 'opacity 0.12s',
             }}
@@ -725,7 +725,7 @@ export default function PrintAnalysisPanel({
                       onClick={() => onApplyOptimalOrientation(best.buildDirection)}
                       style={{
                         width: '100%', padding: '5px 8px', borderRadius: 4,
-                        border: 'none', background: C.accent, color: '#fff',
+                        border: 'none', background: C.accent, color: 'var(--nx-text)',
                         fontSize: 10, fontWeight: 700, cursor: 'pointer',
                       }}
                     >
@@ -748,7 +748,7 @@ export default function PrintAnalysisPanel({
                     <div key={idx} style={{
                       display: 'flex', alignItems: 'center', gap: 6,
                       padding: '4px 8px', borderRadius: 4,
-                      background: isBest ? '#1f2937' : 'transparent',
+                      background: isBest ? 'var(--nx-panel)' : 'transparent',
                       border: `1px solid ${isBest ? C.accent : 'transparent'}`,
                     }}>
                       <span style={{ fontSize: 9, color: C.textDim, width: 14, fontFamily: 'monospace' }}>
@@ -855,7 +855,7 @@ export default function PrintAnalysisPanel({
                         }
                       </span>
                     </div>
-                    <div style={{ height: 6, background: '#0d1117', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: 6, background: 'var(--nx-bg)', borderRadius: 3, overflow: 'hidden' }}>
                       <div style={{ width: `${score}%`, height: '100%', background: barColor, borderRadius: 3, transition: 'width 0.3s' }} />
                     </div>
                   </div>
@@ -868,7 +868,7 @@ export default function PrintAnalysisPanel({
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: 11, color: C.textDim, textTransform: 'uppercase', marginBottom: 8 }}>
                   💰 {t.secCost}
-                  <span style={{ marginLeft: 6, fontSize: 9, color: '#484f58', textTransform: 'none' }}>
+                  <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--nx-border-strong)', textTransform: 'none' }}>
                     ±{analysis.costBreakdown.confidencePct}%
                   </span>
                 </div>
@@ -913,7 +913,7 @@ export default function PrintAnalysisPanel({
                         <span style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: 'monospace' }}>
                           {row.value}
                         </span>
-                        <span style={{ fontSize: 9, color: '#484f58', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: 9, color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>
                           {row.sub}
                         </span>
                       </span>
@@ -923,7 +923,7 @@ export default function PrintAnalysisPanel({
                     <div style={{
                       marginTop: 8, paddingTop: 6,
                       borderTop: `1px solid ${C.border}`,
-                      fontSize: 9, color: '#484f58',
+                      fontSize: 9, color: 'var(--nx-border-strong)',
                     }}>
                       {t.lblProcessInline}
                       <span style={{ color: C.textDim, fontWeight: 700 }}>
@@ -947,8 +947,8 @@ export default function PrintAnalysisPanel({
                     style={{
                       width: '100%', marginTop: 10, padding: '9px 12px', borderRadius: 6,
                       border: 'none',
-                      background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                      color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                      background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                      color: 'var(--nx-text)', fontSize: 12, fontWeight: 800, cursor: 'pointer',
                       transition: 'opacity 0.12s',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
@@ -988,7 +988,7 @@ export default function PrintAnalysisPanel({
                       {issue.description}
                     </div>
                     {issue.faceIndices && (
-                      <div style={{ fontSize: 9, color: '#484f58', marginTop: 3, fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginTop: 3, fontFamily: 'monospace' }}>
                         {issue.faceIndices.length} {t.facesAffected}
                       </div>
                     )}
@@ -998,7 +998,7 @@ export default function PrintAnalysisPanel({
             </div>
 
             {/* Legend */}
-            <div style={{ marginTop: 16, padding: '10px', background: '#0d1117', borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <div style={{ marginTop: 16, padding: '10px', background: 'var(--nx-bg)', borderRadius: 8, border: `1px solid ${C.border}` }}>
               <div style={{ fontWeight: 700, fontSize: 10, color: C.textDim, marginBottom: 6 }}>
                 {t.secLegend}
               </div>
@@ -1006,8 +1006,8 @@ export default function PrintAnalysisPanel({
                 {[
                   { color: '#26bf4e', label: t.legSafe },
                   { color: '#d4c026', label: t.legModerate },
-                  { color: '#f0883e', label: t.legHigh },
-                  { color: '#f85149', label: t.legDanger },
+                  { color: 'var(--nx-warn)', label: t.legHigh },
+                  { color: 'var(--nx-error)', label: t.legDanger },
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 2, background: item.color, flexShrink: 0 }} />
@@ -1021,7 +1021,7 @@ export default function PrintAnalysisPanel({
 
         {!analysis && (
           <div style={{
-            textAlign: 'center', padding: '30px 10px', color: '#484f58',
+            textAlign: 'center', padding: '30px 10px', color: 'var(--nx-border-strong)',
           }}>
             <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>🖨</div>
             <div style={{ fontSize: 11 }}>

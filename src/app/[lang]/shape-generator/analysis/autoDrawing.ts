@@ -48,7 +48,7 @@ export interface ToleranceSpec {
 export interface DrawingConfig {
   views: ProjectionView[];
   scale: number;
-  paperSize: 'A4' | 'A3' | 'A2';
+  paperSize: 'A4' | 'A3' | 'A2' | 'A1' | 'A0';
   orientation: 'landscape' | 'portrait';
   showDimensions: boolean;
   showCenterlines: boolean;
@@ -88,7 +88,10 @@ export interface DrawingResult {
 export function computeDrawingGeometryFingerprint(geometry: THREE.BufferGeometry): string {
   geometry.computeBoundingBox();
   const bb = geometry.boundingBox;
-  if (!bb) return 'g:empty';
+  // Three.js sets bbox to ±Infinity for empty geometry rather than null,
+  // so explicit empty / un-bounded checks are required to keep the
+  // fingerprint stable and identifiably "empty".
+  if (!bb || !Number.isFinite(bb.min.x) || !Number.isFinite(bb.max.x)) return 'g:empty';
   const pos = geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
   const ix = geometry.index;
   const vCount = pos ? pos.count : 0;
@@ -112,11 +115,15 @@ export function computeDrawingGeometryFingerprint(geometry: THREE.BufferGeometry
 }
 
 /* ─── Paper sizes in mm ──────────────────────────────────────────────────── */
-
-const PAPER_SIZES: Record<string, { w: number; h: number }> = {
+// Landscape orientation, ISO 216 standard. A1 (594×841) and A0 (841×1189)
+// added for large-format assembly + plot drawings; portrait flip is done
+// by the caller in `DrawingConfig.orientation`.
+export const PAPER_SIZES: Record<string, { w: number; h: number }> = {
   A4: { w: 297, h: 210 },
   A3: { w: 420, h: 297 },
   A2: { w: 594, h: 420 },
+  A1: { w: 841, h: 594 },
+  A0: { w: 1189, h: 841 },
 };
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -162,7 +169,7 @@ interface ProjectionDef {
   normalSign: (n: THREE.Vector3) => number; // >0 means facing viewer
 }
 
-function getProjectionDef(view: ProjectionView): ProjectionDef {
+export function getProjectionDef(view: ProjectionView): ProjectionDef {
   switch (view) {
     case 'front': // XY plane, looking from +Z
       return {

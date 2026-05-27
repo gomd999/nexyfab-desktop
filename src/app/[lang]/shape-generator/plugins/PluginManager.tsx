@@ -46,16 +46,16 @@ const langMap: Record<string, keyof typeof dict> = {
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#0d1117',
-  panel: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  success: '#3fb950',
-  danger: '#f85149',
-  warn: '#d29922',
+  bg: 'var(--nx-bg)',
+  panel: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  success: 'var(--nx-ok)',
+  danger: 'var(--nx-error)',
+  warn: 'var(--nx-warn)',
 };
 
 /* ─── Component ───────────────────────────────────────────────────────────── */
@@ -92,7 +92,7 @@ export default function PluginManager({ visible, onClose, isKo }: PluginManagerP
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100,
+        position: 'fixed', inset: 0, background: 'var(--nx-glass-input)', zIndex: 1100,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
       onClick={onClose}
@@ -145,7 +145,7 @@ export default function PluginManager({ visible, onClose, isKo }: PluginManagerP
               <div style={{ fontWeight: 600 }}>
                 {t.empty}
               </div>
-              <div style={{ fontSize: 11, marginTop: 6, color: '#484f58' }}>
+              <div style={{ fontSize: 11, marginTop: 6, color: 'var(--nx-border-strong)' }}>
                 {t.autoload}
               </div>
             </div>
@@ -236,12 +236,12 @@ function PluginCard({ plugin, expanded, onToggleExpand, onToggleEnabled, onUnreg
           title={plugin.enabled ? tt.disable : tt.enable}
           style={{
             width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: plugin.enabled ? C.accent : '#484f58',
+            background: plugin.enabled ? C.accent : 'var(--nx-border-strong)',
             position: 'relative', transition: 'background 0.2s', flexShrink: 0,
           }}
         >
           <div style={{
-            width: 14, height: 14, borderRadius: '50%', background: '#fff',
+            width: 14, height: 14, borderRadius: '50%', background: 'var(--nx-text)',
             position: 'absolute', top: 3,
             left: plugin.enabled ? 19 : 3,
             transition: 'left 0.2s',

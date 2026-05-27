@@ -519,27 +519,27 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: '#161b22', border: '1px solid #30363d', borderRadius: 16,
+        background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 16,
         width: 520, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto',
         boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
         fontFamily: 'system-ui, sans-serif',
       }}>
         {/* Header */}
         <div style={{
-          padding: '20px 24px 16px', borderBottom: '1px solid #30363d',
+          padding: '20px 24px 16px', borderBottom: '1px solid var(--nx-border)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
-            <div style={{ color: '#f0f6fc', fontWeight: 700, fontSize: 18 }}>
+            <div style={{ color: 'var(--nx-text)', fontWeight: 700, fontSize: 18 }}>
               {t.title}
             </div>
-            <div style={{ color: '#8b949e', fontSize: 13, marginTop: 2 }}>
+            <div style={{ color: 'var(--nx-text-2)', fontSize: 13, marginTop: 2 }}>
               {t.subtitle}
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#8b949e', fontSize: 20, cursor: 'pointer', padding: 4 }}
+            style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', fontSize: 20, cursor: 'pointer', padding: 4 }}
           >×</button>
         </div>
 
@@ -549,18 +549,18 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
             <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: n < 3 ? 1 : 'none' }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
-                background: step > n ? '#238636' : step === n ? '#1f6feb' : '#21262d',
-                border: `2px solid ${step > n ? '#238636' : step === n ? '#388bfd' : '#30363d'}`,
+                background: step > n ? 'var(--nx-ok)' : step === n ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                border: `2px solid ${step > n ? 'var(--nx-ok)' : step === n ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: step >= n ? '#fff' : '#8b949e', fontSize: 12, fontWeight: 700,
+                color: step >= n ? 'var(--nx-text)' : 'var(--nx-text-2)', fontSize: 12, fontWeight: 700,
                 flexShrink: 0, transition: 'all 0.2s',
               }}>
                 {step > n ? '✓' : n}
               </div>
-              <span style={{ color: step === n ? '#f0f6fc' : '#8b949e', fontSize: 12, fontWeight: step === n ? 600 : 400, whiteSpace: 'nowrap' }}>
+              <span style={{ color: step === n ? 'var(--nx-text)' : 'var(--nx-text-2)', fontSize: 12, fontWeight: step === n ? 600 : 400, whiteSpace: 'nowrap' }}>
                 {stepLabel(n)}
               </span>
-              {n < 3 && <div style={{ flex: 1, height: 1, background: step > n ? '#238636' : '#30363d', transition: 'background 0.2s' }} />}
+              {n < 3 && <div style={{ flex: 1, height: 1, background: step > n ? 'var(--nx-ok)' : 'var(--nx-border)', transition: 'background 0.2s' }} />}
             </div>
           ))}
         </div>
@@ -571,7 +571,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
           {/* ── STEP 1: Category ── */}
           {step === 1 && (
             <div>
-              <div style={{ color: '#8b949e', fontSize: 13, marginBottom: 16 }}>
+              <div style={{ color: 'var(--nx-text-2)', fontSize: 13, marginBottom: 16 }}>
                 {t.step1Prompt}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -580,15 +580,15 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                     key={c.id}
                     onClick={() => setCategory(c.id)}
                     style={{
-                      background: category === c.id ? 'rgba(31,111,235,0.15)' : '#21262d',
-                      border: `2px solid ${category === c.id ? '#388bfd' : '#30363d'}`,
+                      background: category === c.id ? 'rgba(31,111,235,0.15)' : 'var(--nx-panel-2)',
+                      border: `2px solid ${category === c.id ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                       borderRadius: 10, padding: '14px 12px', cursor: 'pointer',
                       textAlign: 'left', transition: 'all 0.15s',
                     }}
                   >
                     <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
-                    <div style={{ color: '#f0f6fc', fontWeight: 600, fontSize: 14 }}>{t[c.labelKey]}</div>
-                    <div style={{ color: '#8b949e', fontSize: 11, marginTop: 2 }}>{t[c.descKey]}</div>
+                    <div style={{ color: 'var(--nx-text)', fontWeight: 600, fontSize: 14 }}>{t[c.labelKey]}</div>
+                    <div style={{ color: 'var(--nx-text-2)', fontSize: 11, marginTop: 2 }}>{t[c.descKey]}</div>
                   </button>
                 ))}
               </div>
@@ -597,9 +597,9 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                   onClick={() => category && setStep(2)}
                   disabled={!category}
                   style={{
-                    background: category ? '#1f6feb' : '#21262d',
+                    background: category ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
                     border: 'none', borderRadius: 8, padding: '10px 24px',
-                    color: category ? '#fff' : '#8b949e', fontWeight: 600, fontSize: 14,
+                    color: category ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 600, fontSize: 14,
                     cursor: category ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
                   }}
                 >
@@ -612,28 +612,28 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
           {/* ── STEP 2: Dimensions ── */}
           {step === 2 && (
             <div>
-              <div style={{ color: '#8b949e', fontSize: 13, marginBottom: 20 }}>
+              <div style={{ color: 'var(--nx-text-2)', fontSize: 13, marginBottom: 20 }}>
                 {t.step2Prompt}
               </div>
 
               {/* Material picker */}
               <div style={{ marginBottom: 20 }}>
-                <label style={{ color: '#8b949e', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 8 }}>
+                <label style={{ color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 8 }}>
                   {t.labelMaterial}
                 </label>
                 {MATERIAL_GROUPS.map(group => (
                   <div key={group.key} style={{ marginBottom: 10 }}>
-                    <div style={{ color: '#6e7681', fontSize: 11, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t[group.labelKey]}</div>
+                    <div style={{ color: 'var(--nx-text-3)', fontSize: 11, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t[group.labelKey]}</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {MATERIALS.filter(m => m.group === group.key).map(m => (
                         <button
                           key={m.id}
                           onClick={() => setMaterialId(m.id)}
                           style={{
-                            background: materialId === m.id ? 'rgba(31,111,235,0.2)' : '#21262d',
-                            border: `1px solid ${materialId === m.id ? '#388bfd' : '#30363d'}`,
+                            background: materialId === m.id ? 'rgba(31,111,235,0.2)' : 'var(--nx-panel-2)',
+                            border: `1px solid ${materialId === m.id ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                             borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
-                            color: materialId === m.id ? '#79c0ff' : '#c9d1d9', fontSize: 12,
+                            color: materialId === m.id ? 'var(--nx-accent-2)' : 'var(--nx-text)', fontSize: 12,
                             transition: 'all 0.15s',
                           }}
                         >
@@ -653,15 +653,15 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
               ]).map(({ label, val, set }) => (
                 <div key={label} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <label style={{ color: '#8b949e', fontSize: 12, fontWeight: 600 }}>{label}</label>
-                    <span style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 700 }}>{val} mm</span>
+                    <label style={{ color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600 }}>{label}</label>
+                    <span style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 700 }}>{val} mm</span>
                   </div>
                   <input
                     type="range" min={1} max={500} value={val}
                     onChange={e => set(Number(e.target.value))}
-                    style={{ width: '100%', accentColor: '#388bfd' }}
+                    style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6e7681', fontSize: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--nx-text-3)', fontSize: 10 }}>
                     <span>1mm</span><span>500mm</span>
                   </div>
                 </div>
@@ -670,15 +670,15 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
               {/* Quantity */}
               <div style={{ marginBottom: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ color: '#8b949e', fontSize: 12, fontWeight: 600 }}>{t.labelQty}</label>
-                  <span style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 700 }}>{qty} {t.unitPcs}</span>
+                  <label style={{ color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600 }}>{t.labelQty}</label>
+                  <span style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 700 }}>{qty} {t.unitPcs}</span>
                 </div>
                 <input
                   type="range" min={1} max={10000} value={qty}
                   onChange={e => setQty(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#388bfd' }}
+                  style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6e7681', fontSize: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--nx-text-3)', fontSize: 10 }}>
                   <span>1</span><span>10,000</span>
                 </div>
               </div>
@@ -687,15 +687,15 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                 <button
                   onClick={() => setStep(1)}
                   style={{
-                    background: '#21262d', border: '1px solid #30363d', borderRadius: 8,
-                    padding: '10px 20px', color: '#c9d1d9', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                    background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 8,
+                    padding: '10px 20px', color: 'var(--nx-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   }}
                 >← {t.btnBack}</button>
                 <button
                   onClick={() => setStep(3)}
                   style={{
-                    background: '#1f6feb', border: 'none', borderRadius: 8,
-                    padding: '10px 24px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                    background: 'var(--nx-accent)', border: 'none', borderRadius: 8,
+                    padding: '10px 24px', color: 'var(--nx-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   }}
                 >{t.btnNext}</button>
               </div>
@@ -705,13 +705,13 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
           {/* ── STEP 3: Summary & submit ── */}
           {step === 3 && (
             <div>
-              <div style={{ color: '#8b949e', fontSize: 13, marginBottom: 20 }}>
+              <div style={{ color: 'var(--nx-text-2)', fontSize: 13, marginBottom: 20 }}>
                 {t.step3Prompt}
               </div>
 
               {/* Summary card */}
               <div style={{
-                background: '#0d1117', border: '1px solid #30363d', borderRadius: 10,
+                background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 10,
                 padding: '16px 20px', marginBottom: 20,
               }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
@@ -728,8 +728,8 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                     },
                   ].map(({ label, value }) => (
                     <div key={label}>
-                      <div style={{ color: '#6e7681', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-                      <div style={{ color: '#f0f6fc', fontSize: 14, fontWeight: 600, marginTop: 2 }}>{value}</div>
+                      <div style={{ color: 'var(--nx-text-3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                      <div style={{ color: 'var(--nx-text)', fontSize: 14, fontWeight: 600, marginTop: 2 }}>{value}</div>
                     </div>
                   ))}
                 </div>
@@ -737,21 +737,21 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
 
               {/* Real-time price preview */}
               <div style={{
-                background: '#0d1117', border: '1px solid #30363d', borderRadius: 10,
+                background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 10,
                 padding: '14px 18px', marginBottom: 14,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ color: '#8b949e', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ color: 'var(--nx-text-2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {t.instantEstimate}
                   </div>
                   {estimateLoading && (
-                    <span style={{ color: '#8b949e', fontSize: 11 }}>
+                    <span style={{ color: 'var(--nx-text-2)', fontSize: 11 }}>
                       {t.calculating}
                     </span>
                   )}
                 </div>
                 {estimateError && (
-                  <div style={{ color: '#f85149', fontSize: 12 }}>
+                  <div style={{ color: 'var(--nx-error)', fontSize: 12 }}>
                     {t.estimateFailed}: {estimateError}
                   </div>
                 )}
@@ -761,25 +761,25 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                       <div key={est.process} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '8px 10px', borderRadius: 6,
-                        background: i === 0 ? 'rgba(46,160,67,0.1)' : '#161b22',
-                        border: `1px solid ${i === 0 ? '#2ea043' : '#30363d'}`,
+                        background: i === 0 ? 'rgba(46,160,67,0.1)' : 'var(--nx-panel)',
+                        border: `1px solid ${i === 0 ? '#2ea043' : 'var(--nx-border)'}`,
                       }}>
                         <div>
-                          <div style={{ color: '#f0f6fc', fontSize: 13, fontWeight: 600 }}>
+                          <div style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 600 }}>
                             {est.process}
                             {i === 0 && <span style={{ marginLeft: 6, color: '#2ea043', fontSize: 10 }}>
                               {t.best}
                             </span>}
                           </div>
-                          <div style={{ color: '#8b949e', fontSize: 11 }}>
+                          <div style={{ color: 'var(--nx-text-2)', fontSize: 11 }}>
                             {est.leadTime} · {t.confidence} {est.confidence}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ color: '#f0f6fc', fontWeight: 700, fontSize: 14 }}>
+                          <div style={{ color: 'var(--nx-text)', fontWeight: 700, fontSize: 14 }}>
                             ₩{est.unitCost.toLocaleString()}
                           </div>
-                          <div style={{ color: '#8b949e', fontSize: 11 }}>
+                          <div style={{ color: 'var(--nx-text-2)', fontSize: 11 }}>
                             {t.totalLabel} ₩{est.totalCost.toLocaleString()}
                           </div>
                         </div>
@@ -788,7 +788,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                   </div>
                 )}
                 {!estimateError && !estimateLoading && estimates && estimates.length === 0 && (
-                  <div style={{ color: '#8b949e', fontSize: 12 }}>
+                  <div style={{ color: 'var(--nx-text-2)', fontSize: 12 }}>
                     {t.noEstimate}
                   </div>
                 )}
@@ -798,7 +798,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
               <div style={{
                 background: 'rgba(56,139,253,0.1)', border: '1px solid rgba(56,139,253,0.3)',
                 borderRadius: 8, padding: '10px 14px', marginBottom: 20,
-                color: '#79c0ff', fontSize: 12, lineHeight: 1.5,
+                color: 'var(--nx-accent-2)', fontSize: 12, lineHeight: 1.5,
               }}>
                 {t.note}
               </div>
@@ -807,16 +807,16 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                 <button
                   onClick={() => setStep(2)}
                   style={{
-                    background: '#21262d', border: '1px solid #30363d', borderRadius: 8,
-                    padding: '10px 20px', color: '#c9d1d9', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                    background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 8,
+                    padding: '10px 20px', color: 'var(--nx-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   }}
                 >← {t.btnBack}</button>
                 <button
                   onClick={handleSubmit}
                   style={{
-                    background: 'linear-gradient(135deg, #21262d, #30363d)',
-                    border: '1px solid #30363d', borderRadius: 8, padding: '10px 20px',
-                    color: '#c9d1d9', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                    background: 'linear-gradient(135deg, var(--nx-panel-2), var(--nx-border))',
+                    border: '1px solid var(--nx-border)', borderRadius: 8, padding: '10px 20px',
+                    color: 'var(--nx-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   }}
                 >
                   {t.btnQuoteOnly}
@@ -831,7 +831,7 @@ export default function QuoteWizard({ lang, onClose, onGetQuote, initialMaterial
                   style={{
                     background: 'linear-gradient(135deg, #238636, #2ea043)',
                     border: 'none', borderRadius: 8, padding: '10px 28px',
-                    color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+                    color: 'var(--nx-text)', fontWeight: 700, fontSize: 15, cursor: 'pointer',
                     boxShadow: '0 4px 16px rgba(46,160,67,0.4)',
                     display: 'flex', alignItems: 'center', gap: 6,
                   }}

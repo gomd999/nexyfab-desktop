@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import {
@@ -25,15 +25,15 @@ import { useAnalysisStore } from '../store/analysisStore';
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  accent: '#388bfd',
-  green: '#3fb950',
-  red: '#f85149',
-  white: '#ffffff',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
+  white: 'var(--nx-text)',
 };
 
 /* ─── i18n ───────────────────────────────────────────────────────────────── */
@@ -308,6 +308,95 @@ export default function AutoDrawingPanel({
     sourceViewIdx: number;
   }>>([]);
 
+  // Phase ⑤-2 — GD&T annotations dropped on the sheet from the picker.
+  // Phase ⑤-4 adds drag-to-place and per-frame remove. Each picker insert
+  // auto-places into a stack at the top-left of the first sheet, then the
+  // user can drag any frame to its dimension callout.
+  const [gdtAnnotations, setGdtAnnotations] = useState<Array<{
+    id: string; text: string; x: number; y: number;
+    /** Phase ⑤-5 — anchor (target) point on the drawing the frame was
+     *  originally placed against. When set, a leader line is drawn from
+     *  the frame to this point so dragging the frame doesn't break the
+     *  association with the dimension it explains. */
+    anchorX?: number; anchorY?: number;
+  }>>([]);
+  const gdtDragRef = useRef<{ id: string; startMouseX: number; startMouseY: number; startAnnoX: number; startAnnoY: number } | null>(null);
+
+  /** Convert client-space pointer coords into the SVG's mm grid. The SVG
+   *  uses viewBox = (0 0 paperWidth paperHeight), so the conversion is a
+   *  uniform scale by the bounding-rect ratio. */
+  const clientToSvgMm = useCallback((clientX: number, clientY: number) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const rect = svgRef.current.getBoundingClientRect();
+    const sx = drawing ? drawing.paperWidth / rect.width : 1;
+    const sy = drawing ? drawing.paperHeight / rect.height : 1;
+    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
+  }, [drawing]);
+
+  const onGdtPointerDown = useCallback((e: React.PointerEvent, a: { id: string; x: number; y: number }) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const p = clientToSvgMm(e.clientX, e.clientY);
+    gdtDragRef.current = { id: a.id, startMouseX: p.x, startMouseY: p.y, startAnnoX: a.x, startAnnoY: a.y };
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+  }, [clientToSvgMm]);
+
+  const onGdtPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = gdtDragRef.current;
+    if (!d) return;
+    const p = clientToSvgMm(e.clientX, e.clientY);
+    const nx = d.startAnnoX + (p.x - d.startMouseX);
+    const ny = d.startAnnoY + (p.y - d.startMouseY);
+    setGdtAnnotations(prev => prev.map(a => a.id === d.id ? { ...a, x: nx, y: ny } : a));
+  }, [clientToSvgMm]);
+
+  const onGdtPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!gdtDragRef.current) return;
+    try { (e.currentTarget as Element).releasePointerCapture?.(e.pointerId); } catch { /* idem */ }
+    gdtDragRef.current = null;
+  }, []);
+
+  const removeGdt = useCallback((id: string) => {
+    setGdtAnnotations(prev => prev.filter(a => a.id !== id));
+  }, []);
+  useEffect(() => {
+    const onPick = (e: Event) => {
+      const ce = e as CustomEvent<{ text?: string }>;
+      const text = ce.detail?.text;
+      if (!text) return;
+
+      // Phase ⑤-5 — anchor the new frame next to the nearest dimension
+      // callout on the active drawing instead of the top-left stack.
+      // Walk views in order, pick the first dimension text we find, and
+      // place the frame 6 mm below it. Drag remains free (phase ⑤-4),
+      // so the user can fine-tune the position afterward.
+      const drawingState = drawing;
+      let anchor: { x: number; y: number } | null = null;
+      if (drawingState) {
+        for (const view of drawingState.views) {
+          const dim = view.texts?.find(t => t.style === 'dimension');
+          if (dim) {
+            anchor = { x: dim.x + 4, y: dim.y + 6 };
+            break;
+          }
+        }
+      }
+      setGdtAnnotations(prev => {
+        const fallbackY = 16 + prev.length * 6;
+        const x = anchor ? anchor.x : 8;
+        const y = anchor ? anchor.y + prev.length * 6 : fallbackY;
+        // Anchor the leader line at the original dimension; subsequent
+        // drag of the frame keeps the leader pointing back here.
+        const anchorX = anchor ? anchor.x : undefined;
+        const anchorY = anchor ? anchor.y - 1 : undefined;
+        return [...prev, { id: `gdt-${Date.now()}-${prev.length}`, text, x, y, anchorX, anchorY }];
+      });
+    };
+    window.addEventListener('nexyfab:gdt-pick', onPick);
+    return () => window.removeEventListener('nexyfab:gdt-pick', onPick);
+  }, [drawing]);
+  const clearGdt = useCallback(() => setGdtAnnotations([]), []);
+
   const toggleView = useCallback((v: ProjectionView) => {
     setSelectedViews((prev) => {
       const next = new Set(prev);
@@ -362,7 +451,7 @@ export default function AutoDrawingPanel({
   const handlePrintPDF = useCallback(async () => {
     if (!drawing || drawingStale) return;
     try {
-      await exportDrawingPDF(drawing, tbPartName || 'drawing');
+      await exportDrawingPDF(drawing, tbPartName || 'drawing', { gdt: gdtAnnotations });
       reportInfo('drawing_export', 'pdf_export', { format: 'pdf', partName: tbPartName || 'drawing' });
     }
     catch (e) { console.error('PDF export failed', e); alert(tt.pdfExportFail); }
@@ -372,7 +461,7 @@ export default function AutoDrawingPanel({
     void (async () => {
       if (!drawing || drawingStale) return;
       try {
-        await exportDrawingDXF(drawing, tbPartName || 'drawing');
+        await exportDrawingDXF(drawing, tbPartName || 'drawing', { gdt: gdtAnnotations });
         reportInfo('drawing_export', 'dxf_export', { format: 'dxf', partName: tbPartName || 'drawing' });
       }
       catch (e) { console.error('DXF export failed', e); alert(tt.dxfExportFail); }
@@ -460,7 +549,7 @@ export default function AutoDrawingPanel({
   const primaryBtn: React.CSSProperties = {
     ...btnStyle,
     background: C.accent,
-    color: '#fff',
+    color: 'var(--nx-text)',
   };
 
   const secondaryBtn: React.CSSProperties = {
@@ -592,7 +681,7 @@ export default function AutoDrawingPanel({
 
         {/* Preset chips — one click sets matching linear/angular/Ra together */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600 }}>{tt.presets}:</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)', fontWeight: 600 }}>{tt.presets}:</span>
           {TOL_PRESETS.map(p => {
             const active = linearTol === p.linear && angularTol === p.angular && raValue === p.ra;
             const labelKey = p.id === 'precision' ? 'presetPrec' : p.id === 'standard' ? 'presetStd' : 'presetRough';
@@ -612,14 +701,14 @@ export default function AutoDrawingPanel({
                   fontSize: 10,
                   lineHeight: 1.3,
                   cursor: 'pointer',
-                  border: active ? '1px solid #58a6ff' : '1px solid #30363d',
-                  background: active ? 'rgba(56,139,253,0.15)' : '#0d1117',
-                  color: active ? '#58a6ff' : '#c9d1d9',
+                  border: active ? '1px solid var(--nx-accent-2)' : '1px solid var(--nx-border)',
+                  background: active ? 'var(--nx-accent-soft)' : 'var(--nx-bg)',
+                  color: active ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                   transition: 'all 0.1s',
                 }}
               >
                 <span style={{ fontWeight: 700 }}>{tt[labelKey]}</span>
-                <span style={{ fontSize: 9, color: active ? '#58a6ff' : '#6e7681', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 9, color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-3)', fontFamily: 'monospace' }}>
                   {p.linear} · Ra{p.ra}
                 </span>
               </button>
@@ -685,7 +774,7 @@ export default function AutoDrawingPanel({
             background: 'rgba(240,136,62,0.12)',
             borderBottom: `1px solid ${C.border}`,
             fontSize: 12,
-            color: '#f0883e',
+            color: 'var(--nx-warn)',
             lineHeight: 1.45,
             display: 'flex',
             alignItems: 'center',
@@ -706,7 +795,7 @@ export default function AutoDrawingPanel({
               borderRadius: 8,
               border: '1px solid #f0883e',
               background: 'rgba(240,136,62,0.2)',
-              color: '#fff',
+              color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 700,
               cursor: 'pointer',
@@ -769,6 +858,8 @@ export default function AutoDrawingPanel({
             width={previewData.svgW}
             height={previewData.svgH}
             style={{ background: C.white, borderRadius: 4, display: 'block', margin: '0 auto' }}
+            onPointerMove={onGdtPointerMove}
+            onPointerUp={onGdtPointerUp}
           >
             {/* Border frame */}
             <rect
@@ -826,6 +917,75 @@ export default function AutoDrawingPanel({
                 <text fontSize={2} fill="#333" fontFamily="monospace">
                   {`${tt.generalTol}: ${tt.linearLabel} ${drawing.tolerance.linear}  ${tt.angleLabel} ${drawing.tolerance.angular}`}
                 </text>
+              </g>
+            )}
+
+            {/* Phase ⑤-5 — GD&T leader lines. Drawn first so the pills
+                cover the line ends rather than the other way around. */}
+            {gdtAnnotations.length > 0 && (
+              <g pointerEvents="none">
+                {gdtAnnotations.map(a => {
+                  if (a.anchorX === undefined || a.anchorY === undefined) return null;
+                  const w = Math.max(28, a.text.length * 1.6);
+                  // Anchor on the side of the pill closest to the target.
+                  const pillCx = a.x + w / 2;
+                  const fromX = a.anchorX < pillCx ? a.x : a.x + w;
+                  return (
+                    <line
+                      key={`lead-${a.id}`}
+                      x1={fromX} y1={a.y}
+                      x2={a.anchorX} y2={a.anchorY}
+                      stroke="#666"
+                      strokeWidth={0.2}
+                      strokeDasharray="0.8,0.6"
+                    />
+                  );
+                })}
+              </g>
+            )}
+
+            {/* Phase ⑤-4 — GD&T feature control frames. Drag the pill to
+                reposition; hover for the × remove button. */}
+            {gdtAnnotations.length > 0 && (
+              <g>
+                {gdtAnnotations.map(a => {
+                  const w = Math.max(28, a.text.length * 1.6);
+                  return (
+                    <g
+                      key={a.id}
+                      transform={`translate(${a.x}, ${a.y})`}
+                      style={{ cursor: 'move' }}
+                      onPointerDown={e => onGdtPointerDown(e, a)}
+                    >
+                      <rect
+                        x={0} y={-3.5}
+                        width={w} height={5}
+                        fill="#fff"
+                        stroke="#000"
+                        strokeWidth={0.25}
+                      />
+                      <text
+                        x={2} y={0.5}
+                        fontSize={3}
+                        fill="#000"
+                        fontFamily="monospace"
+                        style={{ userSelect: 'none', pointerEvents: 'none' }}
+                      >
+                        {a.text}
+                      </text>
+                      {/* × remove button — top-right of the pill, separate
+                          pointer target so the drag handler doesn't fire. */}
+                      <g
+                        transform={`translate(${w}, -3.5)`}
+                        style={{ cursor: 'pointer' }}
+                        onPointerDown={e => { e.stopPropagation(); removeGdt(a.id); }}
+                      >
+                        <circle r={1.6} cx={0} cy={0} fill="#fff" stroke="#888" strokeWidth={0.2} />
+                        <text x={0} y={0.7} fontSize={2.2} fill="#444" fontFamily="monospace" textAnchor="middle" style={{ userSelect: 'none', pointerEvents: 'none' }}>×</text>
+                      </g>
+                    </g>
+                  );
+                })}
               </g>
             )}
 
@@ -966,7 +1126,7 @@ export default function AutoDrawingPanel({
                   <rect
                     x={result.bounds.x} y={result.bounds.y}
                     width={result.bounds.w} height={result.bounds.h}
-                    fill="#fff" stroke="#000" strokeWidth={0.3}
+                    fill="var(--nx-text)" stroke="#000" strokeWidth={0.3}
                   />
                   {/* Hatching */}
                   {result.hatch.map((line, li) => (
@@ -994,7 +1154,7 @@ export default function AutoDrawingPanel({
           to remove the last entry. A future iteration will add inline
           editing of focal point / cut line. */}
       {drawing && (
-        <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid #21262d' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid var(--nx-panel-2)' }}>
           <button
             onClick={() => {
               const idx = detailSpecs.length;
@@ -1014,8 +1174,8 @@ export default function AutoDrawingPanel({
             }}
             style={{
               padding: '4px 10px', borderRadius: 4,
-              border: '1px solid #388bfd', background: '#388bfd22',
-              color: '#388bfd', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid var(--nx-accent)', background: 'var(--nx-accent)22',
+              color: 'var(--nx-accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
           >+ Detail View</button>
           <button
@@ -1039,8 +1199,8 @@ export default function AutoDrawingPanel({
             }}
             style={{
               padding: '4px 10px', borderRadius: 4,
-              border: '1px solid #d29922', background: '#d2992222',
-              color: '#d29922', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid var(--nx-warn)', background: 'var(--nx-warn)22',
+              color: 'var(--nx-warn)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
           >+ Section View</button>
           {(detailSpecs.length > 0 || sectionSpecs.length > 0) && (
@@ -1048,8 +1208,8 @@ export default function AutoDrawingPanel({
               onClick={() => { setDetailSpecs([]); setSectionSpecs([]); }}
               style={{
                 padding: '4px 10px', borderRadius: 4,
-                border: '1px solid #30363d', background: 'transparent',
-                color: '#8b949e', fontSize: 11, cursor: 'pointer',
+                border: '1px solid var(--nx-border)', background: 'transparent',
+                color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
               }}
             >Clear extras</button>
           )}
@@ -1080,8 +1240,8 @@ function ExplodedViewSection({
   );
 
   return (
-    <div style={{ marginTop: 16, padding: 12, background: '#0d1117', borderRadius: 6 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9', marginBottom: 8 }}>
+    <div style={{ marginTop: 16, padding: 12, background: 'var(--nx-bg)', borderRadius: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 8 }}>
         🎯 Exploded View ({parts.length} parts)
       </div>
       <AutoExplodedSVG layout={layout} width={760} height={420} />

@@ -3,9 +3,13 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
-import ModelViewer from '../components/ModelViewer';
 import { useToast } from '@/components/ToastProvider';
+
+// ModelViewer pulls in Three.js + OCCT — load only when actually rendered
+// so the rest of the portal page doesn't pay the bundle cost.
+const ModelViewer = dynamic(() => import('../components/ModelViewer'), { ssr: false });
 
 // ─── 타입 ──────────────────────────────────────────────────────────────────
 

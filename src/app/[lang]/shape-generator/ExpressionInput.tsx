@@ -225,7 +225,7 @@ export default function ExpressionInput({
   };
 
   const hasExpr = isExpression(localExpr);
-  const borderColor = error ? '#f85149' : hasExpr ? '#6366f1' : '#30363d';
+  const borderColor = error ? 'var(--nx-error)' : hasExpr ? 'var(--nx-accent)' : 'var(--nx-border)';
   const paramVars = variables.filter(v => !BUILT_IN_FUNCTION_NAMES.includes(v.name));
 
   // Hover hint showing the value in the OTHER unit system. Engineers often
@@ -256,7 +256,7 @@ export default function ExpressionInput({
             title={expressionLabel}
             style={{
               fontSize: 9, fontWeight: 800, fontStyle: 'italic',
-              color: '#a78bfa', background: '#6366f122',
+              color: 'var(--nx-accent-2)', background: 'var(--nx-accent)22',
               borderRadius: 3, padding: '1px 4px', lineHeight: 1.3,
               userSelect: 'none', flexShrink: 0,
             }}
@@ -279,9 +279,9 @@ export default function ExpressionInput({
             style={{
               flexShrink: 0, width: 14, height: 14,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: '50%', border: `1px solid ${showLinkMenu ? '#388bfd' : '#30363d'}`,
-              background: showLinkMenu ? '#388bfd22' : 'transparent',
-              color: showLinkMenu ? '#58a6ff' : '#484f58',
+              borderRadius: '50%', border: `1px solid ${showLinkMenu ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+              background: showLinkMenu ? 'var(--nx-accent)22' : 'transparent',
+              color: showLinkMenu ? 'var(--nx-accent-2)' : 'var(--nx-border-strong)',
               fontSize: 11, cursor: 'pointer', lineHeight: 1,
               transition: 'all 0.15s',
             }}
@@ -294,10 +294,10 @@ export default function ExpressionInput({
         <span
           title={t.syntaxHelp}
           style={{
-            fontSize: 10, fontWeight: 700, color: '#484f58', cursor: 'help',
+            fontSize: 10, fontWeight: 700, color: 'var(--nx-border-strong)', cursor: 'help',
             userSelect: 'none', flexShrink: 0, width: 14, height: 14,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: '50%', border: '1px solid #30363d', lineHeight: 1,
+            borderRadius: '50%', border: '1px solid var(--nx-border)', lineHeight: 1,
           }}
         >
           ?
@@ -316,18 +316,18 @@ export default function ExpressionInput({
           style={{
             width: 72, padding: '3px 6px', borderRadius: 6,
             border: `1px solid ${borderColor}`, fontSize: 12, fontWeight: 700,
-            color: error ? '#f85149' : '#6366f1', textAlign: 'right',
-            outline: 'none', background: '#0d1117',
+            color: error ? 'var(--nx-error)' : 'var(--nx-accent)', textAlign: 'right',
+            outline: 'none', background: 'var(--nx-bg)',
             fontFamily: hasExpr ? 'monospace' : 'inherit',
             transition: 'border-color 0.15s',
           }}
         />
-        <span style={{ fontSize: 10, color: '#9ca3af', minWidth: 22 }}>{unit}</span>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-2)', minWidth: 22 }}>{unit}</span>
       </div>
 
       {/* Evaluated result preview */}
       {hasExpr && evalResult !== null && !error && (
-        <div style={{ fontSize: 10, color: '#a78bfa', textAlign: 'right', paddingRight: 26, fontFamily: 'monospace' }}>
+        <div style={{ fontSize: 10, color: 'var(--nx-accent-2)', textAlign: 'right', paddingRight: 26, fontFamily: 'monospace' }}>
           = {Math.round(evalResult * 1000) / 1000}{unit ? ` ${unit}` : ''}
         </div>
       )}
@@ -335,7 +335,7 @@ export default function ExpressionInput({
       {/* Unit conversion note */}
       {unitConvertNote && (
         <div style={{
-          fontSize: 10, color: '#3fb950', textAlign: 'right', paddingRight: 26,
+          fontSize: 10, color: 'var(--nx-ok)', textAlign: 'right', paddingRight: 26,
           fontFamily: 'monospace', fontWeight: 600,
         }}>
           {unitConvertNote}
@@ -344,7 +344,7 @@ export default function ExpressionInput({
 
       {/* Error message */}
       {error && (
-        <div style={{ fontSize: 10, color: '#f85149', textAlign: 'right', paddingRight: 26, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 10, color: 'var(--nx-error)', textAlign: 'right', paddingRight: 26, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {error}
         </div>
       )}
@@ -353,10 +353,10 @@ export default function ExpressionInput({
       {showLinkMenu && paramVars.length > 0 && (
         <div style={{
           position: 'absolute', top: '100%', right: 26, zIndex: 200,
-          background: '#161b22', border: '1px solid #388bfd55', borderRadius: 6,
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-accent)55', borderRadius: 6,
           boxShadow: '0 4px 14px rgba(0,0,0,0.5)', minWidth: 130,
         }}>
-          <div style={{ padding: '4px 8px 2px', fontSize: 9, color: '#6e7681', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <div style={{ padding: '4px 8px 2px', fontSize: 9, color: 'var(--nx-text-3)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {t.insertParam}
           </div>
           {paramVars.map(v => (
@@ -365,14 +365,14 @@ export default function ExpressionInput({
               onMouseDown={(e) => { e.preventDefault(); insertParam(v.name); }}
               style={{
                 padding: '4px 10px', fontSize: 11, fontFamily: 'monospace',
-                color: '#c9d1d9', cursor: 'pointer', display: 'flex',
+                color: 'var(--nx-text)', cursor: 'pointer', display: 'flex',
                 alignItems: 'center', justifyContent: 'space-between', gap: 8,
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#21262d')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--nx-panel-2)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <span style={{ color: '#79c0ff' }}>{v.name}</span>
-              <span style={{ color: '#484f58' }}>{Math.round(v.value * 100) / 100}</span>
+              <span style={{ color: 'var(--nx-accent-2)' }}>{v.name}</span>
+              <span style={{ color: 'var(--nx-border-strong)' }}>{Math.round(v.value * 100) / 100}</span>
             </div>
           ))}
         </div>
@@ -382,7 +382,7 @@ export default function ExpressionInput({
       {showSuggestions && suggestions.length > 0 && (
         <div style={{
           position: 'absolute', top: '100%', right: 26, zIndex: 100,
-          background: '#161b22', border: '1px solid #30363d', borderRadius: 6,
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 6,
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)', maxHeight: 120, overflowY: 'auto', minWidth: 100,
         }}>
           {suggestions.map((s, i) => (
@@ -391,8 +391,8 @@ export default function ExpressionInput({
               onMouseDown={(e) => { e.preventDefault(); applySuggestion(s); }}
               style={{
                 padding: '4px 10px', fontSize: 11, fontWeight: 600, fontFamily: 'monospace',
-                color: i === suggestionIdx ? '#58a6ff' : '#c9d1d9',
-                background: i === suggestionIdx ? '#21262d' : 'transparent',
+                color: i === suggestionIdx ? 'var(--nx-accent-2)' : 'var(--nx-text)',
+                background: i === suggestionIdx ? 'var(--nx-panel-2)' : 'transparent',
                 cursor: 'pointer',
               }}
             >

@@ -57,13 +57,13 @@ export default function AsyncWorkIndicator({
       display: 'flex', alignItems: 'center', gap: 10,
       padding: '8px 6px 8px 14px', borderRadius: 999,
       background: 'rgba(22, 27, 34, 0.95)', backdropFilter: 'blur(8px)',
-      border: '1px solid #30363d', color: '#c9d1d9',
+      border: '1px solid var(--nx-border)', color: 'var(--nx-text)',
       fontSize: 12, fontWeight: 600,
       boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
     }}>
       <div style={{
         width: 14, height: 14, borderRadius: '50%',
-        border: '2px solid #30363d', borderTopColor: '#8b9cf4',
+        border: '2px solid var(--nx-border)', borderTopColor: 'var(--nx-accent-2)',
         animation: 'nf-spin 0.7s linear infinite',
       }} />
       <span>{message}</span>
@@ -75,7 +75,7 @@ export default function AsyncWorkIndicator({
         style={{
           width: 22, height: 22, borderRadius: '50%',
           border: 'none', background: 'rgba(248, 81, 73, 0.16)',
-          color: '#f85149', cursor: 'pointer',
+          color: 'var(--nx-error)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 14, lineHeight: 1, fontWeight: 700, padding: 0,
         }}

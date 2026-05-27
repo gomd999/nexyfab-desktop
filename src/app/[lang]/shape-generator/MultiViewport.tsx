@@ -9,7 +9,7 @@ import type { BomPartResult } from './ShapePreview';
 import SectionPlane from './SectionPlane';
 import { computeAssemblyWorldBounds } from './assembly/assemblyWorldBounds';
 
-const PART_COLORS = ['#8b9cf4', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
+const PART_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
 
 function ViewportMesh({
   result,
@@ -54,7 +54,7 @@ function ViewportMesh({
   return (
     <group>
       <mesh geometry={result.geometry} castShadow receiveShadow>
-        <meshStandardMaterial color="#8b9cf4" roughness={0.35} metalness={0.4} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="var(--nx-accent-2)" roughness={0.35} metalness={0.4} side={THREE.DoubleSide} />
       </mesh>
       {result.edgeGeometry && (
         <lineSegments geometry={result.edgeGeometry}>
@@ -120,9 +120,9 @@ function SingleViewport({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        border: isActive ? '2px solid #388bfd' : '1px solid #30363d',
+        border: isActive ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
         boxSizing: 'border-box',
-        background: '#0d1117',
+        background: 'var(--nx-bg)',
         cursor: 'pointer',
       }}
     >
@@ -133,7 +133,7 @@ function SingleViewport({
         left: 8,
         zIndex: 10,
         background: 'rgba(13,17,23,0.8)',
-        color: isActive ? '#388bfd' : '#8b949e',
+        color: isActive ? 'var(--nx-accent)' : 'var(--nx-text-2)',
         fontSize: '11px',
         fontWeight: 700,
         padding: '2px 8px',
@@ -166,7 +166,7 @@ function SingleViewport({
         onCreated={({ gl }) => { gl.localClippingEnabled = true; }}
         style={{ width: '100%', height: '100%' }}
       >
-        <color attach="background" args={['#0d1117']} />
+        <color attach="background" args={['var(--nx-bg)']} />
         <hemisphereLight args={['#c8d8ff', '#0a0a1a', 0.7]} />
         <ambientLight intensity={0.25} />
         <directionalLight position={[20, 30, 15]} intensity={1.4} castShadow />
@@ -198,10 +198,10 @@ function SingleViewport({
           position={[0, bottomY - 2, 0]}
           cellSize={gridCellSize}
           cellThickness={0.4}
-          cellColor="#1c2128"
+          cellColor="var(--nx-panel-2)"
           sectionSize={50}
           sectionThickness={0.8}
-          sectionColor="#30363d"
+          sectionColor="var(--nx-border)"
           fadeDistance={600}
           fadeStrength={3}
           infiniteGrid
@@ -264,10 +264,10 @@ export default function MultiViewport({
       <div style={{
         width: '100%', height: '100%', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
-        background: '#0d1117', flexDirection: 'column', gap: '8px',
+        background: 'var(--nx-bg)', flexDirection: 'column', gap: '8px',
       }}>
         <span style={{ fontSize: '32px', opacity: 0.3 }}>&#x1f9ca;</span>
-        <p style={{ color: '#484f58', fontSize: '13px' }}>Select a shape to preview</p>
+        <p style={{ color: 'var(--nx-border-strong)', fontSize: '13px' }}>Select a shape to preview</p>
       </div>
     );
   }
@@ -280,7 +280,7 @@ export default function MultiViewport({
       gridTemplateColumns: '1fr 1fr',
       gridTemplateRows: '1fr 1fr',
       gap: '1px',
-      background: '#30363d',
+      background: 'var(--nx-border)',
     }}>
       {VIEWPORTS.map((config, i) => (
         <SingleViewport

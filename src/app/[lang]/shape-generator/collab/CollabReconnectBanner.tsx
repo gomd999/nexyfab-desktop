@@ -71,8 +71,8 @@ export default function CollabReconnectBanner({ state, countdown, onRetry, lang 
         position: 'fixed', top: 56, left: '50%', transform: 'translateX(-50%)',
         zIndex: 9500, padding: '8px 14px', borderRadius: 8,
         background: isFailed ? '#7a1d1d' : '#5c3a0d',
-        color: '#fff',
-        border: `1px solid ${isFailed ? '#f85149' : '#d29922'}`,
+        color: 'var(--nx-text)',
+        border: `1px solid ${isFailed ? 'var(--nx-error)' : 'var(--nx-warn)'}`,
         boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
         display: 'flex', alignItems: 'center', gap: 10,
         fontSize: 13, fontWeight: 500,
@@ -83,7 +83,7 @@ export default function CollabReconnectBanner({ state, countdown, onRetry, lang 
       <button
         onClick={onRetry}
         style={{
-          background: '#fff', color: isFailed ? '#7a1d1d' : '#5c3a0d',
+          background: 'var(--nx-text)', color: isFailed ? '#7a1d1d' : '#5c3a0d',
           border: 'none', borderRadius: 4, padding: '3px 10px',
           cursor: 'pointer', fontSize: 11, fontWeight: 700,
         }}

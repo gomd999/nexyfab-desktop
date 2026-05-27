@@ -24,6 +24,7 @@ import {
   Uint32BufferAttribute,
 } from 'three';
 import { publicWasmUrl } from '../lib/publicWasmUrl';
+import type { EdgeSig, FaceSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
 let initPromise: Promise<void> | null = null;
@@ -208,7 +209,7 @@ function requireReplicad(): ReplicadLike & Record<string, unknown> {
 export function occtBoxBooleanWithPrimitive(
   type: OcctBooleanType,
   hostBox: { w: number; h: number; d: number; cx: number; cy: number; cz: number },
-  tool: { shape: 'box' | 'cylinder' | 'sphere'; w: number; h: number; d: number; cx: number; cy: number; cz: number; rx: number; ry: number; rz: number },
+  tool: { shape: 'box' | 'cylinder' | 'sphere' | 'cone'; w: number; h: number; d: number; cx: number; cy: number; cz: number; rx: number; ry: number; rz: number },
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
 ): OcctBooleanResult {
@@ -258,6 +259,24 @@ export function occtBoxBooleanWithPrimitive(
       [tool.cx, tool.cy - tool.h / 2, tool.cz],
       [0, 1, 0],
     );
+  } else if (tool.shape === 'cone') {
+    // Cone tool (countersink): apex DOWN, wide base UP, axis +Y, height h,
+    // base radius w/2. Built by revolving a triangle about Y, then centred at
+    // (cx,cy,cz) so its mid-height lands there (matches the mesh ConeGeometry).
+    const r = tool.w / 2;
+    const h = tool.h;
+    const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
+    if (typeof draw === 'function' && r > 0 && h > 0) {
+      const cone = draw([0, -h / 2])
+        .lineTo([r, h / 2])
+        .lineTo([0, h / 2])
+        .close()
+        .sketchOnPlane('XY')
+        .revolve([0, 1, 0]) as unknown as { translate: (v: [number, number, number]) => unknown };
+      toolSolid = cone.translate([tool.cx, tool.cy, tool.cz]);
+    } else {
+      toolSolid = undefined;
+    }
   } else {
     const r = tool.w / 2;
     const s = (rc.makeSphere as ReplicadLike['makeSphere'])(r) as {
@@ -318,15 +337,36 @@ interface MeshedShape {
   mesh: (opts?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] };
 }
 
+/** Opaque branded type for replicad's EdgeFinder.
+ *
+ *  We deliberately don't import `replicad`'s real type — it would
+ *  drag the WASM module into the type graph at compile time and
+ *  inflate cold-start. The branding still prevents callers from
+ *  passing arbitrary unknown values: only values produced by
+ *  `topologyEdgeFinder.buildEdgeFinderFromSelection` (or its multi /
+ *  loop / split variants) carry the brand.
+ *
+ *  Lifecycle:
+ *    - constructed by the topology module (branded via cast there)
+ *    - flows through pipeline params untouched
+ *    - finally handed to replicad's `fillet(radius, predicate)` /
+ *      `chamfer(distance, predicate)`, which only inspects the
+ *      builder methods, not the brand.
+ */
+declare const ReplicadEdgeFinderBrand: unique symbol;
+export type ReplicadEdgeFinder = { readonly [ReplicadEdgeFinderBrand]: 'ReplicadEdgeFinder' };
+
 interface FilletChamferShape extends MeshedShape {
-  fillet: (radius: number) => FilletChamferShape;
-  chamfer: (distance: number) => FilletChamferShape;
+  /** replicad accepts `(radius, predicate?)`; predicate is an EdgeFinder
+   *  or `(edge) => boolean`. NexyFab passes it through opaquely. */
+  fillet: (radius: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
+  chamfer: (distance: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
   translate: (v: [number, number, number]) => FilletChamferShape;
 }
 
 /** B-rep shape supporting shell + boolean cut (open-face trimming). */
 interface ShellableShape extends MeshedShape {
-  shell: (thickness: number) => ShellableShape;
+  shell: (thickness: number, finderFn?: (ff: unknown) => unknown) => ShellableShape;
   cut: (other: unknown) => ShellableShape;
   translate: (v: [number, number, number]) => ShellableShape;
 }
@@ -344,6 +384,934 @@ function meshToBufferGeometry(
   return geometry;
 }
 
+// ─── B-rep extrude (Phase 1 — make sketchExtrude the start of the B-rep chain) ─
+
+interface DrawPen {
+  lineTo: (p: [number, number]) => DrawPen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => { extrude: (dist: number) => MeshedShape } };
+}
+
+export interface OcctExtrudeResult {
+  /** Tessellated solid (for callers that want the B-rep mesh directly). */
+  geometry: BufferGeometry;
+  /** Registry handle for the replicad solid, or null if the build failed. */
+  handle: string | null;
+}
+
+/**
+ * Build a real replicad B-rep solid by extruding a closed 2D profile on the
+ * XY plane, register it, and return its handle. This is what lets a sketch
+ * extrude START the B-rep chain so downstream fillet/chamfer/hole/boolean
+ * operate on the true solid instead of a bounding box.
+ *
+ * Phase 1 scope: XY plane (with optional Z offset), straight +Z extrude. Other
+ * planes / tilted faces / revolve-sweep-loft come in later phases. Requires
+ * `isOcctReady()`; throws OcctNotReadyError via requireReplicad otherwise, so
+ * callers must guard + try/catch and fall back to the mesh path.
+ */
+export function occtExtrudeProfile(
+  points: { x: number; y: number }[],
+  depth: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+  if (typeof draw !== 'function' || points.length < 3 || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    // Drop a trailing point that duplicates the start — close() adds the
+    // closing edge itself, and a zero-length segment makes an invalid wire.
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  const sketch = pen.close().sketchOnPlane('XY', planeOffset);
+  const solid = sketch.extrude(depth);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface DrawPenOnFrame {
+  lineTo: (p: [number, number]) => DrawPenOnFrame;
+  close: () => { sketchOnPlane: (plane: unknown) => { extrude: (dist: number) => MeshedShape } };
+}
+export interface SketchFaceFrame {
+  origin: [number, number, number];
+  normal: [number, number, number];
+  uAxis: [number, number, number];
+  vAxis: [number, number, number];
+}
+
+/**
+ * Extrude a closed 2D profile that was sketched ON A SELECTED FACE — the (u,v)
+ * profile coords live in the face's frame, and the extrude runs along the face
+ * normal. This is the B-rep half of "sketch on face": a boss/pocket built on an
+ * existing face instead of a global plane. The caller fuses/cuts the result
+ * onto the host solid. Same handle/registry contract; null handle on bad input.
+ */
+export function occtExtrudeProfileOnFrame(
+  points: { x: number; y: number }[],
+  depth: number,
+  frame: SketchFaceFrame,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => DrawPenOnFrame) | undefined;
+  const PlaneCtor = rc.Plane as (new (origin: [number, number, number], xDir: [number, number, number], normal: [number, number, number]) => unknown) | undefined;
+  if (typeof draw !== 'function' || typeof PlaneCtor !== 'function' || points.length < 3 || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  // Plane(origin, xDir=uAxis, normal) → 2D (u,v) maps to origin + u·uAxis +
+  // v·(normal×uAxis) = vAxis for a right-handed frame; extrude along the normal.
+  const plane = new PlaneCtor(frame.origin, frame.uAxis, frame.normal);
+  const solid = pen.close().sketchOnPlane(plane).extrude(depth);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface RevolvePenOnFrame {
+  lineTo: (p: [number, number]) => RevolvePenOnFrame;
+  close: () => { sketchOnPlane: (plane: unknown) => { revolve: (axis?: [number, number, number]) => MeshedShape } };
+}
+
+/**
+ * Revolve variant of the on-frame builders: a profile sketched on a selected
+ * face, revolved 360° about the face's v-axis (the sketch "vertical", matching
+ * the global revolve's Y-axis convention). For an identity frame this is
+ * identical to occtRevolveProfile. Profile must sit on the u≥0 side of the axis.
+ */
+export function occtRevolveProfileOnFrame(
+  points: { x: number; y: number }[],
+  frame: SketchFaceFrame,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => RevolvePenOnFrame) | undefined;
+  const PlaneCtor = rc.Plane as (new (origin: [number, number, number], xDir: [number, number, number], normal: [number, number, number]) => unknown) | undefined;
+  if (typeof draw !== 'function' || typeof PlaneCtor !== 'function' || points.length < 3) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  const plane = new PlaneCtor(frame.origin, frame.uAxis, frame.normal);
+  const solid = pen.close().sketchOnPlane(plane).revolve(frame.vAxis);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface ExtrudedSolid extends MeshedShape {
+  translate: (v: [number, number, number]) => ExtrudedSolid;
+}
+interface CircleDraw {
+  sketchOnPlane: (plane: string, origin?: number) => { extrude: (dist: number) => ExtrudedSolid };
+}
+interface CircleDrawOnFrame {
+  sketchOnPlane: (plane: unknown) => { extrude: (dist: number) => ExtrudedSolid };
+}
+
+/**
+ * Circle variant of occtExtrudeProfileOnFrame: a circular boss/hole sketched on
+ * a selected face. The circle (face-coords cx,cy radius r) is sketched on the
+ * face plane and extruded along the normal into an EXACT cylinder (smooth side,
+ * not a faceted polygon). The (cx,cy) offset is applied along the frame's u/v
+ * axes. Same handle/registry contract.
+ */
+export function occtExtrudeCircleOnFrame(
+  radius: number,
+  cx: number,
+  cy: number,
+  depth: number,
+  frame: SketchFaceFrame,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const drawCircle = rc.drawCircle as ((r: number) => CircleDrawOnFrame) | undefined;
+  const PlaneCtor = rc.Plane as (new (origin: [number, number, number], xDir: [number, number, number], normal: [number, number, number]) => unknown) | undefined;
+  if (typeof drawCircle !== 'function' || typeof PlaneCtor !== 'function' || !(radius > 0) || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const plane = new PlaneCtor(frame.origin, frame.uAxis, frame.normal);
+  let solid = drawCircle(radius).sketchOnPlane(plane).extrude(depth);
+  if (cx !== 0 || cy !== 0) {
+    // Offset the centre along the face's in-plane axes (u·cx + v·cy).
+    const wx = cx * frame.uAxis[0] + cy * frame.vAxis[0];
+    const wy = cx * frame.uAxis[1] + cy * frame.vAxis[1];
+    const wz = cx * frame.uAxis[2] + cy * frame.vAxis[2];
+    solid = solid.translate([wx, wy, wz]);
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
+ * Extrude a circle into an EXACT cylinder B-rep (not a faceted polygon, so
+ * downstream fillet/chamfer round one smooth edge instead of N facet edges).
+ * Used for single-`circle` sketch profiles. Same handle/registry contract as
+ * occtExtrudeProfile.
+ */
+export function occtExtrudeCircle(
+  radius: number,
+  cx: number,
+  cy: number,
+  depth: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const drawCircle = rc.drawCircle as ((r: number) => CircleDraw) | undefined;
+  if (typeof drawCircle !== 'function' || !(radius > 0) || !(depth > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let solid = drawCircle(radius).sketchOnPlane('XY', planeOffset).extrude(depth);
+  if (cx !== 0 || cy !== 0) solid = solid.translate([cx, cy, 0]);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface CutShape extends MeshedShape {
+  cut: (other: unknown) => CutShape;
+}
+
+interface RevolvePen {
+  lineTo: (p: [number, number]) => RevolvePen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => { revolve: (axis?: [number, number, number]) => MeshedShape } };
+}
+
+/**
+ * Revolve a closed profile 360° around the Y axis into a real B-rep solid of
+ * revolution (shafts, bushings, turned parts). v1 scope: full 360° about Y; the
+ * profile must lie on x ≥ 0 (one side of the axis). Same handle/registry
+ * contract as occtExtrudeProfile; returns a null handle on failure so the
+ * caller can fall back to the mesh (LatheGeometry) path.
+ */
+export function occtRevolveProfile(
+  points: { x: number; y: number }[],
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
+  if (typeof draw !== 'function' || points.length < 3) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pen = draw([points[0].x, points[0].y]);
+  const last = points.length - 1;
+  for (let i = 1; i < points.length; i++) {
+    if (i === last
+      && Math.abs(points[i].x - points[0].x) < 1e-6
+      && Math.abs(points[i].y - points[0].y) < 1e-6) break;
+    pen = pen.lineTo([points[i].x, points[i].y]);
+  }
+  const solid = pen.close().sketchOnPlane('XY', planeOffset).revolve([0, 1, 0]);
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
+ * Extrude a closed outer contour and subtract one or more inner hole contours
+ * to make a real B-rep solid (e.g. a plate with bolt holes drawn in a single
+ * sketch). Holes are extruded slightly proud of the body and cut through, so
+ * the result is a clean through-hole. Same handle/registry contract as
+ * occtExtrudeProfile. Returns a null handle if the outer build fails.
+ */
+export function occtExtrudeWithHoles(
+  outer: { x: number; y: number }[],
+  holes: { x: number; y: number }[][],
+  depth: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  planeOffset = 0,
+): OcctExtrudeResult {
+  const base = occtExtrudeProfile(outer, depth, tessellation, planeOffset);
+  if (!base.handle) return { geometry: new BufferGeometry(), handle: null };
+  let solid = getShape(base.handle) as CutShape | null;
+  if (!solid || typeof solid.cut !== 'function') return base;
+  for (const hole of holes) {
+    if (!hole || hole.length < 3) continue;
+    // Extrude the hole a touch taller than the body and start it just below,
+    // so the cut is a clean through-hole (no coplanar cap faces).
+    const tool = occtExtrudeProfile(hole, depth + 0.2, tessellation, planeOffset - 0.1);
+    const toolSolid = getShape(tool.handle);
+    if (!toolSolid) continue;
+    try {
+      solid = solid.cut(toolSolid);
+    } catch {
+      /* skip a hole that fails to cut rather than abort the whole solid */
+    }
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface LoftSketch extends MeshedShape {
+  loftWith: (others: LoftSketch[], config?: { ruled?: boolean }) => RotatableShape;
+}
+interface RotatableShape extends MeshedShape {
+  rotate?: (deg: number, loc: [number, number, number], dir: [number, number, number]) => MeshedShape;
+}
+interface LoftPen {
+  lineTo: (p: [number, number]) => LoftPen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => LoftSketch };
+}
+
+/**
+ * Loft between two or more closed profiles into a real B-rep solid
+ * (transitions, ducts, blended bosses). Each profile is a closed polygon
+ * sketched on the XY plane at its own `z`; replicad blends a skin across them.
+ * Profiles must be given bottom→top and share a winding. v1 scope: polygon
+ * profiles, ruled = false (smooth).
+ *
+ * `stackAxis` controls the final orientation: 'Z' (default) keeps the loft
+ * stacked along +Z; 'Y' rotates it −90° about X so the stack runs along +Y to
+ * match THREE primitives / the mesh loftFeature (verified by bbox+centroid).
+ *
+ * Same handle/registry contract as the other B-rep builders; returns a null
+ * handle on < 2 profiles or a build failure.
+ */
+export function occtLoftProfiles(
+  profiles: { points: { x: number; y: number }[]; z: number }[],
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  stackAxis: 'Y' | 'Z' = 'Z',
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => LoftPen) | undefined;
+  if (typeof draw !== 'function' || profiles.length < 2) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const sketches: LoftSketch[] = [];
+  for (const pf of profiles) {
+    const pts = pf.points;
+    if (pts.length < 3) return { geometry: new BufferGeometry(), handle: null };
+    let pen = draw([pts[0].x, pts[0].y]);
+    const last = pts.length - 1;
+    for (let i = 1; i < pts.length; i++) {
+      if (i === last
+        && Math.abs(pts[i].x - pts[0].x) < 1e-6
+        && Math.abs(pts[i].y - pts[0].y) < 1e-6) break;
+      pen = pen.lineTo([pts[i].x, pts[i].y]);
+    }
+    sketches.push(pen.close().sketchOnPlane('XY', pf.z));
+  }
+  const [first, ...rest] = sketches;
+  const lofted = first!.loftWith(rest, { ruled: false });
+  const solid: MeshedShape = stackAxis === 'Y' && typeof lofted.rotate === 'function'
+    ? lofted.rotate(-90, [0, 0, 0], [1, 0, 0])
+    : lofted;
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface SweepSketch {
+  sweepSketch: (
+    fn: (plane: unknown, origin: unknown) => unknown,
+    config?: Record<string, unknown>,
+  ) => MeshedShape;
+}
+interface SweepPen {
+  lineTo: (p: [number, number]) => SweepPen;
+  done: () => { sketchOnPlane: (plane: string, origin?: number) => SweepSketch };
+}
+interface PlaneProfileDraw {
+  lineTo: (p: [number, number]) => PlaneProfileDraw;
+  close: () => { sketchOnPlane: (plane: unknown) => unknown };
+}
+
+/**
+ * Sweep a closed 2D profile along an open polyline path into a real B-rep solid
+ * (pipes, handles, rails, gaskets). The path is drawn in `pathPlane` (default
+ * XZ, so it rises and bends out of the ground plane); the profile is swept
+ * perpendicular to the path tangent. v1 scope: polyline path, polygon profile,
+ * profile-spine orthogonality forced for clean tube ends. Same handle/registry
+ * contract; returns a null handle on a too-short path/profile or build failure.
+ */
+export function occtSweepProfile(
+  profile: { x: number; y: number }[],
+  path: { x: number; y: number }[],
+  pathPlane = 'XZ',
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => SweepPen & PlaneProfileDraw) | undefined;
+  if (typeof draw !== 'function' || profile.length < 3 || path.length < 2) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let pathPen = draw([path[0].x, path[0].y]) as SweepPen;
+  for (let i = 1; i < path.length; i++) pathPen = pathPen.lineTo([path[i].x, path[i].y]);
+  const spine = pathPen.done().sketchOnPlane(pathPlane);
+  const last = profile.length - 1;
+  const solid = spine.sweepSketch((plane) => {
+    let pp = (draw as (p?: [number, number]) => PlaneProfileDraw)([profile[0]!.x, profile[0]!.y]);
+    for (let i = 1; i < profile.length; i++) {
+      if (i === last
+        && Math.abs(profile[i]!.x - profile[0]!.x) < 1e-6
+        && Math.abs(profile[i]!.y - profile[0]!.y) < 1e-6) break;
+      pp = pp.lineTo([profile[i]!.x, profile[i]!.y]);
+    }
+    return pp.close().sketchOnPlane(plane);
+  }, { forceProfileSpineOthogonality: true });
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
+ * Sweep a closed 2D profile along a true 3D helix into a real B-rep solid
+ * (springs, threads, augers) — the case occtSweepProfile can't reach with its
+ * planar polyline path. The helix axis is +Y to match the THREE helix sweep
+ * mesh; `height` is the total rise (turns × pitch). Same handle/registry
+ * contract; returns a null handle on bad inputs or a build failure.
+ */
+export function occtSweepHelix(
+  profile: { x: number; y: number }[],
+  pitch: number,
+  height: number,
+  radius: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const sketchHelix = rc.sketchHelix as
+    ((pitch: number, height: number, radius: number, center?: [number, number, number], dir?: [number, number, number], lefthand?: boolean) => SweepSketch) | undefined;
+  const draw = rc.draw as ((p?: [number, number]) => PlaneProfileDraw) | undefined;
+  if (typeof sketchHelix !== 'function' || typeof draw !== 'function'
+    || profile.length < 3 || !(radius > 0) || !(height > 0) || !(pitch > 0)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], [0, 1, 0]);
+  const last = profile.length - 1;
+  const solid = spine.sweepSketch((plane) => {
+    let pp = draw([profile[0]!.x, profile[0]!.y]);
+    for (let i = 1; i < profile.length; i++) {
+      if (i === last
+        && Math.abs(profile[i]!.x - profile[0]!.x) < 1e-6
+        && Math.abs(profile[i]!.y - profile[0]!.y) < 1e-6) break;
+      pp = pp.lineTo([profile[i]!.x, profile[i]!.y]);
+    }
+    return pp.close().sketchOnPlane(plane);
+  }, { forceProfileSpineOthogonality: true });
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface OcctVertexPoint { x: number; y: number; z: number; delete?: () => void }
+interface OcctTopoEdge { startPoint: OcctVertexPoint; endPoint: OcctVertexPoint; delete?: () => void }
+interface EdgeEnumerableShape { edges: OcctTopoEdge[] }
+
+/**
+ * Enumerate a registered solid's edges into geometric signatures (chord
+ * midpoint, sign-normalised direction, chord length). This is the OCCT half of
+ * topology tracking: a stored fillet selection is re-anchored by matching its
+ * signature against the CURRENT solid's edges (see edgeCorrespondence), which
+ * survives topology changes the absolute click point can't. Returns [] when the
+ * handle is unknown or the shape can't enumerate edges.
+ */
+export function occtEdgeSignatures(handle: string | null | undefined): EdgeSig[] {
+  const shape = getShape(handle) as EdgeEnumerableShape | null;
+  if (!shape) return [];
+  let edges: OcctTopoEdge[];
+  try {
+    edges = shape.edges;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(edges)) return [];
+  const sigs: EdgeSig[] = [];
+  for (const e of edges) {
+    try {
+      const s = e.startPoint, t = e.endPoint;
+      const sx = s.x, sy = s.y, sz = s.z, tx = t.x, ty = t.y, tz = t.z;
+      s.delete?.(); t.delete?.();
+      const dx = tx - sx, dy = ty - sy, dz = tz - sz;
+      const len = Math.hypot(dx, dy, dz);
+      if (len < 1e-9) continue;
+      sigs.push({
+        mid: [(sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2],
+        dir: [dx / len, dy / len, dz / len],
+        length: len,
+      });
+    } catch {
+      /* skip an edge that fails to read rather than abort enumeration */
+    } finally {
+      e.delete?.();
+    }
+  }
+  return sigs;
+}
+
+interface OcctTopoFace {
+  center: OcctVertexPoint;
+  normalAt: (loc?: unknown) => OcctVertexPoint;
+  geomType?: string;
+  delete?: () => void;
+}
+interface FaceEnumerableShape { faces: OcctTopoFace[] }
+
+/**
+ * Enumerate a registered solid's faces into geometric signatures (a surface
+ * point, the signed outward normal, and the OCCT surface type). The face half
+ * of topology tracking: a stored face selection (shell removal, sketch-on-face
+ * plane) is re-anchored by matching its signature against the CURRENT solid's
+ * faces (see matchFaceBySignature). Returns [] when the handle is unknown or
+ * the shape can't enumerate faces.
+ */
+export function occtFaceSignatures(handle: string | null | undefined): FaceSig[] {
+  const shape = getShape(handle) as FaceEnumerableShape | null;
+  if (!shape) return [];
+  let faces: OcctTopoFace[];
+  try {
+    faces = shape.faces;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(faces)) return [];
+  const sigs: FaceSig[] = [];
+  for (const f of faces) {
+    try {
+      const c = f.center;
+      const cx = c.x, cy = c.y, cz = c.z;
+      const n = f.normalAt(c);
+      const nx = n.x, ny = n.y, nz = n.z;
+      c.delete?.(); n.delete?.();
+      let geomType: string | undefined;
+      try { geomType = typeof f.geomType === 'string' ? f.geomType : undefined; } catch { geomType = undefined; }
+      sigs.push({ center: [cx, cy, cz], normal: [nx, ny, nz], geomType });
+    } catch {
+      /* skip a face that fails to read rather than abort enumeration */
+    } finally {
+      f.delete?.();
+    }
+  }
+  return sigs;
+}
+
+interface TransformableSolid extends MeshedShape {
+  clone: () => TransformableSolid;
+  translate: (v: [number, number, number]) => TransformableSolid;
+  rotate: (deg: number, center: [number, number, number], dir: [number, number, number]) => TransformableSolid;
+  mirror: (plane: string, origin?: [number, number, number]) => TransformableSolid;
+  fuse: (other: unknown) => TransformableSolid;
+}
+
+function meshAndRegister(
+  solid: MeshedShape,
+  tessellation: { tolerance?: number; angularTolerance?: number },
+): OcctExtrudeResult {
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
+ * Linear pattern as a real B-rep: fuse `count` translated copies of the host
+ * solid (handle) along axis 0/1/2 by `spacing`. Unlike the mesh pattern (which
+ * just merges disjoint geometries and loses the handle) this yields one solid
+ * that chains into fillet/chamfer. Null handle if the host can't be cloned.
+ */
+export function occtLinearPattern(
+  handle: string | null | undefined,
+  axis: number,
+  count: number,
+  spacing: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const base = getShape(handle) as TransformableSolid | null;
+  if (!base || typeof base.fuse !== 'function' || typeof base.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  let acc: TransformableSolid | null = null;
+  for (let i = 0; i < Math.max(1, count); i++) {
+    const off: [number, number, number] = [0, 0, 0];
+    off[axis] = i * spacing;
+    const copy = base.clone().translate(off);
+    acc = acc ? acc.fuse(copy) : copy;
+  }
+  if (!acc) return { geometry: new BufferGeometry(), handle: null };
+  return meshAndRegister(acc, tessellation);
+}
+
+/**
+ * Circular pattern as a real B-rep: fuse `count` copies rotated about the given
+ * axis (0=X,1=Y,2=Z, through the origin) spread over `totalAngleDeg`. Same
+ * handle-preserving contract as occtLinearPattern.
+ */
+export function occtCircularPattern(
+  handle: string | null | undefined,
+  axis: number,
+  count: number,
+  totalAngleDeg: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const base = getShape(handle) as TransformableSolid | null;
+  if (!base || typeof base.fuse !== 'function' || typeof base.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const n = Math.max(2, count);
+  const stepDeg = totalAngleDeg / n;
+  const dir: [number, number, number] = axis === 0 ? [1, 0, 0] : axis === 1 ? [0, 1, 0] : [0, 0, 1];
+  let acc: TransformableSolid | null = null;
+  for (let i = 0; i < n; i++) {
+    const copy = base.clone().rotate(i * stepDeg, [0, 0, 0], dir);
+    acc = acc ? acc.fuse(copy) : copy;
+  }
+  if (!acc) return { geometry: new BufferGeometry(), handle: null };
+  return meshAndRegister(acc, tessellation);
+}
+
+/**
+ * Rib as a real B-rep: a thin box (length × height × thickness) posed along the
+ * sketch line and fused onto the host solid, so the rib merges into the body
+ * (chainable, clean STEP) instead of a mesh-CSG approximation. Mirrors the rib
+ * mesh's pose: box centred, rotated −angleY about Y, translated to the line
+ * mid-point at the right height. Null handle if the host can't be fused.
+ */
+export function occtRib(
+  handle: string | null | undefined,
+  p: { startX: number; startZ: number; endX: number; endZ: number; thickness: number; height: number; direction: number },
+  bbMinY: number,
+  bbMaxY: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const host = getShape(handle) as TransformableSolid | null;
+  if (!host || typeof host.fuse !== 'function') return { geometry: new BufferGeometry(), handle: null };
+  const dx = p.endX - p.startX, dz = p.endZ - p.startZ;
+  const len = Math.hypot(dx, dz);
+  const thickness = Math.max(0.1, p.thickness), height = Math.max(0.5, p.height);
+  if (len < 0.5) return { geometry: new BufferGeometry(), handle: null };
+  const angleY = Math.atan2(dz, dx);
+  const midX = (p.startX + p.endX) / 2, midZ = (p.startZ + p.endZ) / 2;
+  const baseY = p.direction === 0 ? bbMinY : bbMaxY - height;
+  const ribCenterY = baseY + height / 2;
+  // makeBaseBox is centred in X/Y, z∈[0,thickness]; shift −thickness/2 to centre.
+  let box = ((rc.makeBaseBox as ReplicadLike['makeBaseBox'])(len, height, thickness) as unknown as TransformableSolid)
+    .translate([0, 0, -thickness / 2]);
+  if (Math.abs(angleY) > 1e-9) box = box.rotate(-angleY * 180 / Math.PI, [0, 0, 0], [0, 1, 0]);
+  box = box.translate([midX, ribCenterY, midZ]);
+  return meshAndRegister(host.fuse(box) as MeshedShape, tessellation);
+}
+
+/**
+ * Mirror as a real B-rep: fuse the host solid with its reflection across a
+ * principal plane (0=YZ flip X, 1=XZ flip Y, 2=XY flip Z, through the origin).
+ */
+export function occtMirror(
+  handle: string | null | undefined,
+  plane: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const base = getShape(handle) as TransformableSolid | null;
+  if (!base || typeof base.fuse !== 'function' || typeof base.mirror !== 'function' || typeof base.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const planeName = plane === 0 ? 'YZ' : plane === 1 ? 'XZ' : 'XY';
+  const mirrored = base.clone().mirror(planeName, [0, 0, 0]);
+  const fused = base.clone().fuse(mirrored);
+  return meshAndRegister(fused, tessellation);
+}
+
+/**
+ * Build a base PRIMITIVE as a real B-rep solid so the OCCT chain can start from
+ * the base (not just from a sketch). Without this, a cylinder/sphere base has
+ * no handle, so a downstream fillet falls back to its bounding BOX — wrong for
+ * non-box shapes. Box is intentionally omitted: its bbox equals the shape, so
+ * the mesh-bbox fallback already gives the correct fillet.
+ *
+ * Conventions match the THREE primitives: cylinder is +Y, centered at origin;
+ * sphere centered at origin. Returns a null handle for unsupported shapes.
+ */
+interface PrismSolid extends MeshedShape {
+  translate: (v: [number, number, number]) => PrismSolid;
+  rotate: (deg: number, loc: [number, number, number], dir: [number, number, number]) => PrismSolid;
+  cut: (other: unknown) => PrismSolid;
+  fuse: (other: unknown) => PrismSolid;
+}
+
+export function occtBaseSolid(
+  shapeId: string,
+  params: Record<string, number>,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+  let solid: MeshedShape | null = null;
+  if (shapeId === 'cylinder') {
+    const r = num(params.diameter ?? params.outerDiameter, 30) / 2;
+    const h = num(params.height ?? params.length, 50);
+    if (r > 0 && h > 0) {
+      // makeCylinder(radius, height, baseLocation, axisDir) → +Y, centered.
+      solid = (rc.makeCylinder as ReplicadLike['makeCylinder'])(r, h, [0, -h / 2, 0], [0, 1, 0]) as MeshedShape;
+    }
+  } else if (shapeId === 'sphere') {
+    const r = num(params.diameter, 30) / 2;
+    if (r > 0) solid = (rc.makeSphere as ReplicadLike['makeSphere'])(r) as MeshedShape;
+  } else if (shapeId === 'pipe') {
+    // Tube = outer cylinder minus a slightly-taller inner cylinder (clean bore).
+    // +Y, centered — matches the mesh (LatheGeometry of a rect about Y).
+    const oR = num(params.outerDiameter, 60) / 2;
+    const iR = num(params.innerDiameter, 40) / 2;
+    const h = num(params.length ?? params.height, 100);
+    if (oR > 0 && h > 0 && iR > 0 && iR < oR) {
+      const mk = rc.makeCylinder as ReplicadLike['makeCylinder'];
+      const outer = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as CutShape;
+      const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
+      if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+    }
+  } else if (shapeId === 'wedge') {
+    // Right-triangle prism, centred on the bbox (matches ExtrudeGeometry+center()).
+    const w = num(params.width, 50), h = num(params.height, 40), d = num(params.depth, 30);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (w > 0 && h > 0 && d > 0 && typeof draw === 'function') {
+      const ext = draw([-w / 2, -h / 2]).lineTo([w / 2, -h / 2]).lineTo([w / 2, h / 2])
+        .close().sketchOnPlane('XY').extrude(d) as unknown as PrismSolid;
+      solid = ext.translate([0, 0, -d / 2]);
+    }
+  } else if (shapeId === 'lBracket') {
+    // L = horizontal slab fused with a left vertical leg (boxes, depth +Z).
+    const w = num(params.width, 80), h = num(params.height, 60), t = num(params.thickness, 8), d = num(params.depth, 40);
+    const vertH = h - t;
+    if (w > 0 && h > 0 && t > 0 && d > 0 && vertH > 0) {
+      const mk = rc.makeBaseBox as ReplicadLike['makeBaseBox'];
+      // makeBaseBox is centred in X/Y but spans z∈[0,d]; shift −d/2 to centre Z
+      // (matching the centred BoxGeometry the lBracket mesh uses).
+      const horz = (mk(w, t, d) as unknown as PrismSolid).translate([0, t / 2, -d / 2]);
+      const vert = (mk(t, vertH, d) as unknown as PrismSolid).translate([-w / 2 + t / 2, t + vertH / 2, -d / 2]);
+      solid = horz.fuse(vert) as MeshedShape;
+    }
+  } else if (shapeId === 'iBeam') {
+    // I-profile extruded length L, centred on Z then rotated +90° about X so the
+    // beam runs along Y (matches the iBeam mesh).
+    const H = num(params.height, 200), BF = num(params.flangeWidth, 100);
+    const tw = num(params.webThick, 8), tf = num(params.flangeThick, 12), L = num(params.length, 1000);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (H > 0 && BF > 0 && tw > 0 && tf > 0 && L > 0 && tf < H / 2 && tw < BF && typeof draw === 'function') {
+      const hw = tw / 2, hbf = BF / 2, hH = H / 2;
+      const ext = draw([-hbf, -hH]).lineTo([hbf, -hH]).lineTo([hbf, -hH + tf]).lineTo([hw, -hH + tf])
+        .lineTo([hw, hH - tf]).lineTo([hbf, hH - tf]).lineTo([hbf, hH]).lineTo([-hbf, hH])
+        .lineTo([-hbf, hH - tf]).lineTo([-hw, hH - tf]).lineTo([-hw, -hH + tf]).lineTo([-hbf, -hH + tf])
+        .close().sketchOnPlane('XY').extrude(L) as unknown as PrismSolid;
+      const centred = ext.translate([0, 0, -L / 2]);
+      solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
+    }
+  } else if (shapeId === 'hexNut') {
+    // Hex prism with a central bore, centred on Z then rotated +90° about X
+    // (thickness along Y) — matches the hexNut mesh.
+    const af = num(params.acrossFlats, 17), t = num(params.thickness, 8), hd = num(params.nominalDia, 10) / 2;
+    const cr = (af / 2) / Math.cos(Math.PI / 6);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (af > 0 && t > 0 && hd > 0 && hd < af / 2 && typeof draw === 'function') {
+      let pen = draw([cr * Math.cos(Math.PI / 6), cr * Math.sin(Math.PI / 6)]);
+      for (let i = 1; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        pen = pen.lineTo([cr * Math.cos(a), cr * Math.sin(a)]);
+      }
+      const hex = pen.close().sketchOnPlane('XY').extrude(t) as unknown as PrismSolid;
+      const bore = (rc.makeCylinder as ReplicadLike['makeCylinder'])(hd, t + 2, [0, 0, -1], [0, 0, 1]);
+      const bored = typeof hex.cut === 'function' ? hex.cut(bore) : hex;
+      const centred = bored.translate([0, 0, -t / 2]);
+      solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
+    }
+  } else if (shapeId === 'pulley') {
+    // V-belt pulley: revolve the same numeric lathe profile about Y (matches the
+    // LatheGeometry mesh exactly — same profile, same axis).
+    const outerR = num(params.outerDiameter, 100) / 2;
+    const boreR = num(params.boreDiameter, 15) / 2;
+    const width = num(params.width, 25);
+    const grooveCount = Math.round(num(params.grooveCount, 1));
+    const grooveDepth = num(params.grooveDepth, 8);
+    const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
+    if (outerR > boreR && boreR > 0 && width > 0 && typeof draw === 'function') {
+      const halfAngle = (38 / 2) * Math.PI / 180;
+      const grooveTopWidth = 2 * grooveDepth * Math.tan(halfAngle);
+      const grooveSpacing = grooveTopWidth * 1.3;
+      const totalGrooveZone = grooveCount > 1 ? (grooveCount - 1) * grooveSpacing + grooveTopWidth : grooveTopWidth;
+      const rimWidth = Math.max((width - totalGrooveZone) / 2, 2);
+      const halfW = width / 2;
+      const pts: [number, number][] = [[boreR, -halfW], [outerR, -halfW]];
+      const grooveStartY = -halfW + rimWidth;
+      for (let g = 0; g < grooveCount; g++) {
+        const gc = grooveStartY + grooveTopWidth / 2 + g * grooveSpacing;
+        pts.push([outerR, gc - grooveTopWidth / 2]);
+        pts.push([outerR - grooveDepth, gc]);
+        pts.push([outerR, gc + grooveTopWidth / 2]);
+      }
+      pts.push([outerR, halfW], [boreR, halfW], [boreR, -halfW]);
+      let pen = draw(pts[0]);
+      const last = pts.length - 1;
+      for (let i = 1; i < pts.length; i++) {
+        if (i === last && Math.abs(pts[i][0] - pts[0][0]) < 1e-6 && Math.abs(pts[i][1] - pts[0][1]) < 1e-6) break;
+        pen = pen.lineTo(pts[i]);
+      }
+      solid = pen.close().sketchOnPlane('XY').revolve([0, 1, 0]);
+    }
+  } else if (shapeId === 'bolt') {
+    // Hex-head bolt: hex head prism fused with a cylindrical shaft below it,
+    // both +Y — matches the bolt mesh (head centred on 0, shaft hanging down).
+    const r = num(params.shaftDiameter, 10) / 2;
+    const sL = num(params.shaftLength, 60);
+    const hH = num(params.headHeight, 7);
+    const hF = num(params.headFlats, 17);
+    const cr = (hF / 2) / Math.cos(Math.PI / 6);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (r > 0 && sL > 0 && hH > 0 && hF > 0 && typeof draw === 'function') {
+      let pen = draw([cr * Math.cos(Math.PI / 6), cr * Math.sin(Math.PI / 6)]);
+      for (let i = 1; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        pen = pen.lineTo([cr * Math.cos(a), cr * Math.sin(a)]);
+      }
+      const headExt = pen.close().sketchOnPlane('XY').extrude(hH) as unknown as PrismSolid;
+      const head = headExt.translate([0, 0, -hH / 2]).rotate(90, [0, 0, 0], [1, 0, 0]);
+      const shaft = (rc.makeCylinder as ReplicadLike['makeCylinder'])(r, sL, [0, -hH / 2 - sL, 0], [0, 1, 0]);
+      solid = (head as PrismSolid).fuse(shaft) as MeshedShape;
+    }
+  } else if (shapeId === 'tSlot') {
+    // Square aluminium extrusion: outer square minus the inner cavity and a
+    // T-groove on each of the 4 faces; centred on Z then +90° about X (runs
+    // along Y) to match the tSlot mesh.
+    const S = num(params.profileSize, 40), L = num(params.length, 200);
+    const tw = num(params.wallThick, 3), sw = num(params.slotWidth, 8), sd = num(params.slotDepth, 6);
+    const draw = rc.draw as ((p?: [number, number]) => DrawPen) | undefined;
+    if (S > 0 && L > 0 && tw > 0 && tw < S / 2 && typeof draw === 'function') {
+      const half = S / 2;
+      const slotHW = sw / 2, neckHW = (sw * 0.55) / 2;
+      const contours: [number, number][][] = [
+        [[-half + tw, -half + tw], [half - tw, -half + tw], [half - tw, half - tw], [-half + tw, half - tw]], // inner cavity
+        [[-neckHW, -half], [-slotHW, -half + sd], [slotHW, -half + sd], [neckHW, -half]],                     // bottom slot
+        [[-neckHW, half], [-slotHW, half - sd], [slotHW, half - sd], [neckHW, half]],                         // top slot
+        [[-half, -neckHW], [-half + sd, -slotHW], [-half + sd, slotHW], [-half, neckHW]],                     // left slot
+        [[half, -neckHW], [half - sd, -slotHW], [half - sd, slotHW], [half, neckHW]],                         // right slot
+      ];
+      const drawFn = draw;
+      const buildExtrude = (pts: [number, number][], depth: number, zoff: number): PrismSolid => {
+        let pen = drawFn(pts[0]);
+        for (let i = 1; i < pts.length; i++) pen = pen.lineTo(pts[i]);
+        return pen.close().sketchOnPlane('XY', zoff).extrude(depth) as unknown as PrismSolid;
+      };
+      let body = buildExtrude([[-half, -half], [half, -half], [half, half], [-half, half]], L, 0);
+      for (const c of contours) {
+        if (typeof body.cut === 'function') body = body.cut(buildExtrude(c, L + 0.2, -0.1));
+      }
+      const centred = body.translate([0, 0, -L / 2]);
+      solid = typeof centred.rotate === 'function' ? centred.rotate(90, [0, 0, 0], [1, 0, 0]) : centred;
+    }
+  } else if (shapeId === 'washer') {
+    // Annular disk = outer cylinder minus inner bore, axis +Z, centred on z —
+    // matching the washer mesh (ExtrudeGeometry of a ring along Z, centred).
+    const oR = num(params.outerDia, 24) / 2;
+    const iR = num(params.innerDia, 11) / 2;
+    const t = num(params.thickness, 2.5);
+    if (oR > 0 && t > 0 && iR > 0 && iR < oR) {
+      const mk = rc.makeCylinder as ReplicadLike['makeCylinder'];
+      const outer = mk(oR, t, [0, 0, -t / 2], [0, 0, 1]) as CutShape;
+      const inner = mk(iR, t + 2, [0, 0, -t / 2 - 1], [0, 0, 1]);
+      if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+    }
+  } else if (shapeId === 'torus') {
+    // Revolve the minor circle (centered at x=R, radius r) about Y, then rotate
+    // +90° about X so the torus axis is +Z — matching THREE.TorusGeometry.
+    const R = num(params.majorDiameter, 80) / 2;
+    const r = num(params.tubeDiameter, 20) / 2;
+    const draw = rc.draw as ((p: [number, number]) => RevolvePen) | undefined;
+    if (R > r && r > 0 && typeof draw === 'function') {
+      const N = 32;
+      let pen = draw([R + r, 0]);
+      for (let i = 1; i < N; i++) {
+        const t = (i / N) * Math.PI * 2;
+        pen = pen.lineTo([R + r * Math.cos(t), r * Math.sin(t)]);
+      }
+      const yTorus = pen.close().sketchOnPlane('XY').revolve([0, 1, 0]) as
+        MeshedShape & { rotate?: (deg: number, loc: [number, number, number], dir: [number, number, number]) => MeshedShape };
+      solid = typeof yTorus.rotate === 'function'
+        ? yTorus.rotate(90, [0, 0, 0], [1, 0, 0])
+        : yTorus;
+    }
+  } else if (shapeId === 'disk') {
+    // Disk = thin cylinder (+Y, centered); with innerDia>0 it's an annular ring
+    // (outer cylinder minus a taller inner bore) — matches the LatheGeometry mesh.
+    const oR = num(params.diameter, 80) / 2;
+    const iR = num(params.innerDia, 0) / 2;
+    const h = num(params.thickness, 8);
+    if (oR > 0 && h > 0) {
+      const mk = rc.makeCylinder as ReplicadLike['makeCylinder'];
+      if (iR > 0 && iR < oR) {
+        const outer = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as CutShape;
+        const inner = mk(iR, h + 2, [0, -h / 2 - 1, 0], [0, 1, 0]);
+        if (typeof outer.cut === 'function') solid = outer.cut(inner) as MeshedShape;
+      } else {
+        solid = mk(oR, h, [0, -h / 2, 0], [0, 1, 0]) as MeshedShape;
+      }
+    }
+  } else if (shapeId === 'cone') {
+    // Revolve a trapezoid (frustum) or triangle (apex, top Ø0) profile about Y,
+    // centered at the origin — matching THREE.CylinderGeometry(rTop, rBot, h).
+    const r1 = num(params.bottomDiameter, 50) / 2;
+    const r2 = num(params.topDiameter, 0) / 2;
+    const h = num(params.height, 80);
+    const draw = rc.draw as ((p: [number, number]) => RevolvePen) | undefined;
+    if (r1 > 0 && h > 0 && typeof draw === 'function') {
+      let pen = draw([0, -h / 2]).lineTo([r1, -h / 2]);
+      if (r2 > 0) pen = pen.lineTo([r2, h / 2]);
+      pen = pen.lineTo([0, h / 2]);
+      solid = pen.close().sketchOnPlane('XY').revolve([0, 1, 0]) as MeshedShape;
+    }
+  }
+  if (!solid || typeof solid.mesh !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
 /**
  * Round every edge of a box primitive with `radius`. Phase 2c scope —
  * chained inputs fall back to the legacy mesh-based approximator because
@@ -354,6 +1322,7 @@ export function occtFilletBox(
   radius: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
+  edgeFinder?: ReplicadEdgeFinder,
 ): OcctBooleanResult {
   const rc = requireReplicad();
   const chained = getShape(hostHandle) as FilletChamferShape | null;
@@ -361,7 +1330,10 @@ export function occtFilletBox(
     const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
-  const filleted = source.fillet(radius);
+  // replicad's fillet(radius, filter) calls filter(new EdgeFinder()) and uses
+  // the returned finder, so a pre-built EdgeFinder must be handed back via a
+  // wrapper fn (not passed directly). No finder → fillet every edge.
+  const filleted = edgeFinder !== undefined ? source.fillet(radius, () => edgeFinder) : source.fillet(radius);
   const mesh = filleted.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
@@ -378,6 +1350,7 @@ export function occtChamferBox(
   distance: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
+  edgeFinder?: ReplicadEdgeFinder,
 ): OcctBooleanResult {
   const rc = requireReplicad();
   const chained = getShape(hostHandle) as FilletChamferShape | null;
@@ -385,7 +1358,7 @@ export function occtChamferBox(
     const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
-  const chamfered = source.chamfer(distance);
+  const chamfered = edgeFinder !== undefined ? source.chamfer(distance, () => edgeFinder) : source.chamfer(distance);
   const mesh = chamfered.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
@@ -402,6 +1375,7 @@ export function occtShellBox(
   openFace: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   hostHandle?: string | null,
+  faceFinder?: unknown,
 ): OcctBooleanResult {
   const rc = requireReplicad();
   const chained = getShape(hostHandle) as ShellableShape | null;
@@ -410,11 +1384,23 @@ export function occtShellBox(
     return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
   })();
 
+  // With a face finder, remove the user-selected face the proper B-rep way:
+  // replicad's shell(thickness, finderFn) opens exactly those faces. Otherwise
+  // fall back to the closed shell + openFace boolean-cut heuristic.
+  if (faceFinder !== undefined) {
+    const shelledF = source.shell(-thickness, () => faceFinder);
+    const meshF = shelledF.mesh({
+      tolerance: tessellation.tolerance ?? 0.1,
+      angularTolerance: tessellation.angularTolerance ?? 0.2,
+    });
+    return { geometry: meshToBufferGeometry(meshF), handle: registerShape(shelledF) };
+  }
+
   // Replicad shell uses a negative thickness for inward.
-  // Note: we just use .shell(-thickness) for a closed hollow shell, 
+  // Note: we just use .shell(-thickness) for a closed hollow shell,
   // and cut the open face via boolean subtraction to ensure reliability.
   let shelled = source.shell(-thickness);
-  
+
   if (openFace > 0) {
     const cutHeight = thickness * 4;
     const cutBox = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w * 3, cutHeight, hostBox.d * 3) as ShellableShape;

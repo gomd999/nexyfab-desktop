@@ -6,12 +6,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LanguageSelector from './LanguageSelector';
 import NexyfabNotificationBell from '@/app/components/NexyfabNotificationBell';
+import { toRouteLang, toIsoLang, isSupportedLang, DEFAULT_LANG, type IsoLang } from '@/lib/i18n/normalize';
 
-const dict = {
+function readLangCookie(): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(/(?:^|; )nf_lang=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+const dict: Record<IsoLang, { pricing: string; factories: string; login: string; dashboard: string; quickQuote: string; shapeGen: string; download: string; logout: string; notifications: string }> = {
     ko: { pricing: '요금', factories: '공장 찾기', login: '로그인', dashboard: '대시보드', quickQuote: '빠른 견적', shapeGen: '3D 모델링', download: '다운로드', logout: '로그아웃', notifications: '알림' },
     en: { pricing: 'Pricing', factories: 'Find Factories', login: 'Sign In', dashboard: 'Dashboard', quickQuote: 'Quick Quote', shapeGen: '3D Modeler', download: 'Download', logout: 'Sign Out', notifications: 'Notifications' },
     ja: { pricing: '料金', factories: '工場を探す', login: 'ログイン', dashboard: 'ダッシュボード', quickQuote: 'クイック見積もり', shapeGen: '3Dモデリング', download: 'ダウンロード', logout: 'ログアウト', notifications: '通知' },
-    cn: { pricing: '价格', factories: '找工厂', login: '登录', dashboard: '控制台', quickQuote: '快速报价', shapeGen: '3D建模', download: '下载', logout: '退出', notifications: '通知' },
+    zh: { pricing: '价格', factories: '找工厂', login: '登录', dashboard: '控制台', quickQuote: '快速报价', shapeGen: '3D建模', download: '下载', logout: '退出', notifications: '通知' },
     es: { pricing: 'Precios', factories: 'Fábricas', login: 'Iniciar Sesión', dashboard: 'Panel', quickQuote: 'Cotización Rápida', shapeGen: 'Modelado 3D', download: 'Descargar', logout: 'Cerrar Sesión', notifications: 'Avisos' },
     ar: { pricing: 'الأسعار', factories: 'ابحث عن مصنع', login: 'تسجيل الدخول', dashboard: 'لوحة التحكم', quickQuote: 'عرض سعر سريع', shapeGen: 'نمذجة ثلاثية الأبعاد', download: 'تنزيل', logout: 'خروج', notifications: 'إشعارات' },
 };
@@ -98,14 +105,30 @@ export default function Header() {
     }, [pathname]);
     // ─────────────────────────────────────────────────────────────────────────
 
+    // Hide marketing header on full-screen app surfaces (modeler + Hub).
     if (pathname?.includes('/shape-generator')) return null;
+    if (pathname?.includes('/nexyfab/hub')) return null;
 
     const parts = pathname?.split('/').filter(Boolean) || [];
     const isAdmin = parts[0] === 'adminlink';
-    const langCode = isAdmin ? 'kr' : (parts[0] || 'en');
-    const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
-    const langMapCode: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
-    const t = dict[langMapCode[lang] as keyof typeof dict];
+    // Route lang ('kr','en','ja','cn','es','ar') drives URL hrefs.
+    // ISO lang ('ko','en','ja','zh','es','ar') drives the dict lookup.
+    //
+    // Priority order:
+    //   1. URL first segment when it's a valid lang code (canonical source of truth for [lang]/* pages)
+    //   2. nf_lang cookie set by LanguageSelector (for pages outside [lang]/* like /dashboard, /login)
+    //   3. DEFAULT_LANG
+    //
+    // Without #2, the header on /dashboard would always render in English even
+    // if the user selected Korean — that was the visible "split language" bug.
+    const cookieLang = readLangCookie();
+    const rawFirst = isAdmin
+        ? 'kr'
+        : (parts[0] && isSupportedLang(parts[0]))
+            ? parts[0]
+            : (cookieLang || DEFAULT_LANG);
+    const lang = toRouteLang(rawFirst);
+    const t = dict[toIsoLang(rawFirst)];
 
     const isActive = (href: string) => pathname?.includes(href.replace(/\/$/, '')) ?? false;
     const isRtl = lang === 'ar';
@@ -113,7 +136,9 @@ export default function Header() {
     const _nexysysUrl = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com';
 
     const navItems = [
-        { href: `/${lang}/shape-generator/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },
+        // Routes through the Hub (project list / start screen). The Hub then
+        // launches the real /shape-generator modeler via "New Design".
+        { href: `/${lang}/nexyfab/hub/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
         { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
         { href: `/${lang}/download/`, label: t.download, icon: <IconDownload />, external: false, highlight: false as const },

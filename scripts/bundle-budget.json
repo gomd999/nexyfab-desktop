@@ -1,0 +1,6 @@
+{
+  "shared": 781651,
+  "worstFirstPaint": 781651,
+  "routes": {},
+  "note": "10% headroom over the build that created this file. Run `npm run bundle:budget -- --update` after intentional growth."
+}

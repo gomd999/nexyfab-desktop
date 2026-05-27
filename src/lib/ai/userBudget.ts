@@ -31,6 +31,9 @@ import { getDbAdapter } from '@/lib/db-adapter';
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 60_000;
 const REDIS_KEY_PREFIX = 'nf:user-budget:';
+// Map has insertion-order iteration, so evicting the first key gives us FIFO.
+// Caps unbounded growth from idle/logged-out users without needing a real LRU.
+const CACHE_MAX_ENTRIES = 10_000;
 
 interface CachedUsage {
   cents: number;
@@ -40,6 +43,14 @@ interface CachedUsage {
 }
 
 const cache = new Map<string, CachedUsage>();
+
+function setCache(userId: string, value: CachedUsage): void {
+  if (cache.size >= CACHE_MAX_ENTRIES && !cache.has(userId)) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(userId, value);
+}
 
 // ─── Redis backend (optional) ───────────────────────────────────────────────
 type RedisClient = {
@@ -195,14 +206,14 @@ export async function checkUserBudget(userId: string): Promise<UserBudgetCheck> 
   //    have just queried for this user — we get to skip the DB hit.
   const remote = await readFromRedis(userId);
   if (remote && remote.expiresAt > now) {
-    cache.set(userId, remote);  // populate local for subsequent calls
+    setCache(userId, remote);  // populate local for subsequent calls
     return buildResult(remote.cents, remote.oldestEventMs, 'cache');
   }
 
   // 3. Cold path: DB scan. Populate both caches.
   const { cents, oldestEventMs } = await loadDailyCost(userId);
   const entry: CachedUsage = { cents, oldestEventMs, expiresAt: now + CACHE_TTL_MS };
-  cache.set(userId, entry);
+  setCache(userId, entry);
   // Fire-and-forget: never block the response on a cache write.
   void writeToRedis(userId, entry);
   return buildResult(cents, oldestEventMs, 'db');

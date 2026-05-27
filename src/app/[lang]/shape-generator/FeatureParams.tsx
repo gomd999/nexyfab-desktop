@@ -21,7 +21,7 @@ export default function FeatureParams({ instance, definition, t, onParamChange }
         if (sp.options) {
           return (
             <div key={sp.key}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', display: 'block', marginBottom: 4 }}>{label}</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text)', display: 'block', marginBottom: 4 }}>{label}</label>
               <div style={{ display: 'flex', gap: 4 }}>
                 {sp.options.map(opt => {
                   const active = Math.round(val) === opt.value;
@@ -31,9 +31,9 @@ export default function FeatureParams({ instance, definition, t, onParamChange }
                       onClick={() => onParamChange(instance.id, sp.key, opt.value)}
                       style={{
                         flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                        border: active ? '2px solid #388bfd' : '1px solid #30363d',
-                        background: active ? '#388bfd22' : '#0d1117',
-                        color: active ? '#58a6ff' : '#8b949e',
+                        border: active ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                        background: active ? 'var(--nx-accent)22' : 'var(--nx-bg)',
+                        color: active ? 'var(--nx-accent-2)' : 'var(--nx-text-2)',
                         cursor: 'pointer', transition: 'all 0.15s',
                       }}
                     >
@@ -50,8 +50,8 @@ export default function FeatureParams({ instance, definition, t, onParamChange }
         return (
           <div key={sp.key}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9' }}>{label}</label>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#58a6ff' }}>{val}{sp.unit ? ` ${sp.unit}` : ''}</span>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text)' }}>{label}</label>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-accent-2)' }}>{val}{sp.unit ? ` ${sp.unit}` : ''}</span>
             </div>
             <input
               type="range"
@@ -60,9 +60,9 @@ export default function FeatureParams({ instance, definition, t, onParamChange }
               step={sp.step}
               value={val}
               onChange={e => onParamChange(instance.id, sp.key, parseFloat(e.target.value))}
-              style={{ width: '100%', accentColor: '#388bfd' }}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#484f58' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--nx-border-strong)' }}>
               <span>{sp.min}{sp.unit}</span>
               <span>{sp.max}{sp.unit}</span>
             </div>

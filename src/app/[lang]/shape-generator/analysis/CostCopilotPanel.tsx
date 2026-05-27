@@ -16,16 +16,16 @@ import { formatCost } from '../estimation/CostEstimator';
 import { askCostCopilot, type AskCopilotResult, type CopilotSuggestionWithDelta } from './costCopilot';
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
-  purple: '#a371f7',
-  gold: '#d29922',
-  green: '#3fb950',
-  red: '#f85149',
-  text: '#c9d1d9',
-  dim: '#8b949e',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
+  purple: 'var(--nx-accent-2)',
+  gold: 'var(--nx-warn)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
 };
 
 type Lang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -330,8 +330,8 @@ export default function CostCopilotPanel({
             onClick={onContinueToProcessRouter}
             style={{
               width: '100%', marginBottom: 10, padding: '10px 0', borderRadius: 8, border: 'none',
-              background: 'linear-gradient(135deg, #a371f7, #388bfd)',
-              color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--nx-accent-2), var(--nx-accent))',
+              color: 'var(--nx-text)', fontSize: 12, fontWeight: 800, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
             🧭 {tt.rerouteCta}
@@ -458,7 +458,7 @@ export default function CostCopilotPanel({
           style={{
             padding: '7px 12px', borderRadius: 6, border: 'none',
             background: loading || !input.trim() ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.accent})`,
-            color: '#fff', fontSize: 11, fontWeight: 800,
+            color: 'var(--nx-text)', fontSize: 11, fontWeight: 800,
             cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
           }}>
           {loading ? '…' : '▶'}

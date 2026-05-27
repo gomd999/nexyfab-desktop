@@ -30,6 +30,7 @@ export interface PipelineWorkerInput {
     indices?: Uint32Array;
     features: FeatureInstance[];
     occtMode?: boolean;
+    baseSpec?: { shapeId: string; params: Record<string, number> };
   };
 }
 
@@ -45,6 +46,9 @@ export interface PipelineWorkerOutput {
   indices?: Uint32Array;
   errors?: Record<string, string>;
   error?: string;
+  /** Stable topology data (plain JSON) so the main thread can tag selections
+   *  with rebuild-stable edge ids — userData itself doesn't cross the boundary. */
+  topoEdgeSignatures?: { id: string; mid: [number, number, number]; dir: [number, number, number]; length: number }[];
 }
 
 // ─── Worker handler ──────────────────────────────────────────────────────────
@@ -56,7 +60,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
   if (type !== 'RUN_PIPELINE') return;
 
   try {
-    const { positions, normals, indices, features, occtMode } = payload;
+    const { positions, normals, indices, features, occtMode, baseSpec } = payload;
 
     // Reconstruct base geometry from transferable arrays
     const baseGeo = new THREE.BufferGeometry();
@@ -79,7 +83,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
     };
 
     if (occtMode) {
-      result = await applyFeaturePipelineDetailedAsync(baseGeo, features, { occtMode: true, onProgress });
+      result = await applyFeaturePipelineDetailedAsync(baseGeo, features, { occtMode: true, onProgress, baseSpec });
     } else {
       result = applyFeaturePipelineDetailed(baseGeo, features);
     }
@@ -109,6 +113,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
       normals: outNormals,
       indices: outIndices,
       errors: result.errors,
+      topoEdgeSignatures: outGeo.userData?.topoEdgeSignatures as PipelineWorkerOutput['topoEdgeSignatures'],
     };
 
     const transferables: ArrayBuffer[] = [outPositions.buffer as ArrayBuffer];

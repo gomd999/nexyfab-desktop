@@ -261,14 +261,14 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9' }}>{t.title}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)' }}>{t.title}</span>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={handleAddCurrent} title={t.addCurrent}
-            style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: '#388bfd22', border: '1px solid #388bfd55', color: '#58a6ff', cursor: 'pointer' }}>
+            style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'var(--nx-accent)22', border: '1px solid var(--nx-accent)55', color: 'var(--nx-accent-2)', cursor: 'pointer' }}>
             + {t.current}
           </button>
           <button onClick={() => setShowShapeSelector(s => !s)} title={t.addNew}
-            style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: '#21262d', border: '1px solid #30363d', color: '#8b949e', cursor: 'pointer' }}>
+            style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text-2)', cursor: 'pointer' }}>
             + {t.pick}
           </button>
         </div>
@@ -277,13 +277,13 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
       {/* Shape selector dropdown */}
       {showShapeSelector && (
         <div style={{
-          background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 8,
           padding: 8, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 3,
         }}>
           {SHAPES.map(s => (
             <button key={s.id} onClick={() => handleAddShape(s.id)}
               title={s.id}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 0', borderRadius: 5, fontSize: 15, background: '#0d1117', border: '1px solid #30363d', cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px 0', borderRadius: 5, fontSize: 15, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', cursor: 'pointer' }}>
               {SHAPE_ICONS[s.id] || s.icon}
             </button>
           ))}
@@ -292,13 +292,13 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
 
       {/* Parts list */}
       {parts.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#484f58', fontSize: 11, padding: '12px 0' }}>{t.empty}</div>
+        <div style={{ textAlign: 'center', color: 'var(--nx-border-strong)', fontSize: 11, padding: '12px 0' }}>{t.empty}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {parts.map(part => {
             const expanded = expandedId === part.id;
             return (
-              <div key={part.id} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 7, overflow: 'hidden' }}>
+              <div key={part.id} style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 7, overflow: 'hidden' }}>
                 {/* Part row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', transition: 'background 0.15s' }}
                   onClick={() => setExpandedId(expanded ? null : part.id)}
@@ -310,37 +310,37 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                     value={part.name}
                     onChange={e => { e.stopPropagation(); updatePart(part.id, { name: e.target.value }); }}
                     onClick={e => e.stopPropagation()}
-                    style={{ flex: 1, background: 'none', border: 'none', color: '#c9d1d9', fontSize: 11, outline: 'none', minWidth: 0 }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: 'var(--nx-text)', fontSize: 11, outline: 'none', minWidth: 0 }}
                   />
                   <input type="number" min={1} max={999} value={part.qty}
                     onChange={e => { e.stopPropagation(); updatePart(part.id, { qty: Math.max(1, parseInt(e.target.value) || 1) }); }}
                     onClick={e => e.stopPropagation()}
-                    style={{ width: 36, background: '#0d1117', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 11, padding: '2px 4px', textAlign: 'center' }}
+                    style={{ width: 36, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 11, padding: '2px 4px', textAlign: 'center' }}
                   />
                   <button onClick={e => { e.stopPropagation(); handleDuplicate(part); }} title={t.duplicate}
-                    style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>⎘</button>
+                    style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>⎘</button>
                   <button onClick={e => { e.stopPropagation(); handleRemove(part.id); }} title={t.delete}
-                    style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>×</button>
-                  <span style={{ color: '#484f58', fontSize: 10, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                    style={{ background: 'none', border: 'none', color: 'var(--nx-error)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>×</button>
+                  <span style={{ color: 'var(--nx-border-strong)', fontSize: 10, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
                 </div>
 
                 {/* Expanded: position + rotation */}
                 {expanded && (
-                  <div style={{ borderTop: '1px solid #30363d', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ borderTop: '1px solid var(--nx-border)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {/* Position */}
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: '#484f58', textTransform: 'uppercase', marginBottom: 3 }}>{t.position}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-border-strong)', textTransform: 'uppercase', marginBottom: 3 }}>{t.position}</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
                         {(['X', 'Y', 'Z'] as const).map((axis, i) => (
                           <div key={axis}>
-                            <div style={{ fontSize: 9, color: '#484f58', marginBottom: 2 }}>{axis}</div>
+                            <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginBottom: 2 }}>{axis}</div>
                             <input type="number" step={1} value={part.position[i]}
                               onChange={e => {
                                 const pos: [number, number, number] = [...part.position] as [number, number, number];
                                 pos[i] = parseFloat(e.target.value) || 0;
                                 updatePart(part.id, { position: pos });
                               }}
-                              style={{ width: '100%', boxSizing: 'border-box', background: '#0d1117', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 11, padding: '3px 5px' }}
+                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 11, padding: '3px 5px' }}
                             />
                           </div>
                         ))}
@@ -348,18 +348,18 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                     </div>
                     {/* Rotation */}
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: '#484f58', textTransform: 'uppercase', marginBottom: 3 }}>{t.rotation}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-border-strong)', textTransform: 'uppercase', marginBottom: 3 }}>{t.rotation}</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
                         {(['Rx', 'Ry', 'Rz'] as const).map((axis, i) => (
                           <div key={axis}>
-                            <div style={{ fontSize: 9, color: '#484f58', marginBottom: 2 }}>{axis}</div>
+                            <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', marginBottom: 2 }}>{axis}</div>
                             <input type="number" step={5} value={part.rotation[i]}
                               onChange={e => {
                                 const rot: [number, number, number] = [...part.rotation] as [number, number, number];
                                 rot[i] = parseFloat(e.target.value) || 0;
                                 updatePart(part.id, { rotation: rot });
                               }}
-                              style={{ width: '100%', boxSizing: 'border-box', background: '#0d1117', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 11, padding: '3px 5px' }}
+                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 11, padding: '3px 5px' }}
                             />
                           </div>
                         ))}
@@ -368,13 +368,13 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                     {/* Parameters */}
                     {SHAPE_MAP[part.shapeId]?.params && SHAPE_MAP[part.shapeId].params.length > 0 && (
                       <div style={{ marginTop: 4 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: '#484f58', textTransform: 'uppercase', marginBottom: 3 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-border-strong)', textTransform: 'uppercase', marginBottom: 3 }}>
                           {langMap[seg] === 'ko' ? '파라미터' : 'Parameters'}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {SHAPE_MAP[part.shapeId].params.map(param => (
                             <div key={param.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: 10, color: '#8b949e' }}>{param.labelKey}</span>
+                              <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{param.labelKey}</span>
                               <input
                                 type="number"
                                 min={param.min}
@@ -385,7 +385,7 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                                   const newParams = { ...part.params, [param.key]: parseFloat(e.target.value) || param.default };
                                   updatePart(part.id, { params: newParams });
                                 }}
-                                style={{ width: 60, background: '#0d1117', border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9', fontSize: 11, padding: '2px 4px', textAlign: 'right' }}
+                                style={{ width: 60, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 4, color: 'var(--nx-text)', fontSize: 11, padding: '2px 4px', textAlign: 'right' }}
                               />
                             </div>
                           ))}
@@ -402,14 +402,14 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
 
       {/* BOM section */}
       {parts.length > 0 && (
-        <div style={{ borderTop: '1px solid #30363d', paddingTop: 6 }}>
+        <div style={{ borderTop: '1px solid var(--nx-border)', paddingTop: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <button onClick={() => setShowBom(s => !s)}
-              style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               {t.bom} {showBom ? '▲' : '▼'}
             </button>
             <button onClick={handleExportCSV}
-              style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: '#21262d', border: '1px solid #30363d', color: '#8b949e', cursor: 'pointer' }}>
+              style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text-2)', cursor: 'pointer' }}>
               {t.bomExport}
             </button>
           </div>
@@ -417,26 +417,26 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
                 <thead>
-                  <tr style={{ color: '#484f58', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    <th style={{ padding: '3px 4px', textAlign: 'left', borderBottom: '1px solid #30363d' }}>#</th>
-                    <th style={{ padding: '3px 4px', textAlign: 'left', borderBottom: '1px solid #30363d' }}>{t.name}</th>
-                    <th style={{ padding: '3px 4px', textAlign: 'right', borderBottom: '1px solid #30363d' }}>{t.qty}</th>
-                    <th style={{ padding: '3px 4px', textAlign: 'right', borderBottom: '1px solid #30363d' }}>{t.volume}</th>
-                    <th style={{ padding: '3px 4px', textAlign: 'right', borderBottom: '1px solid #30363d' }}>{t.mass}</th>
+                  <tr style={{ color: 'var(--nx-border-strong)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <th style={{ padding: '3px 4px', textAlign: 'left', borderBottom: '1px solid var(--nx-border)' }}>#</th>
+                    <th style={{ padding: '3px 4px', textAlign: 'left', borderBottom: '1px solid var(--nx-border)' }}>{t.name}</th>
+                    <th style={{ padding: '3px 4px', textAlign: 'right', borderBottom: '1px solid var(--nx-border)' }}>{t.qty}</th>
+                    <th style={{ padding: '3px 4px', textAlign: 'right', borderBottom: '1px solid var(--nx-border)' }}>{t.volume}</th>
+                    <th style={{ padding: '3px 4px', textAlign: 'right', borderBottom: '1px solid var(--nx-border)' }}>{t.mass}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {parts.map((p, i) => {
                     let vol = 0, _bbox = { w: 0, h: 0, d: 0 };
-                    try { const r = buildShapeResult(p.shapeId, p.params); if (r) { vol = r.volume_cm3; _bbox = r.bbox; } } catch {}
+                    try { const r = buildShapeResult(p.shapeId, p.params); if (r) { vol = r.volume_cm3; _bbox = r.bbox; } } catch (err) { console.error('[PartPlacementPanel] caught', err); }
                     const mass = vol * 7.85 * p.qty;
                     return (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #21262d' }}>
-                        <td style={{ padding: '3px 4px', color: '#484f58' }}>{i + 1}</td>
-                        <td style={{ padding: '3px 4px', color: '#c9d1d9', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</td>
-                        <td style={{ padding: '3px 4px', textAlign: 'right', color: '#c9d1d9' }}>{p.qty}</td>
-                        <td style={{ padding: '3px 4px', textAlign: 'right', color: '#58a6ff' }}>{(vol * p.qty).toFixed(1)}</td>
-                        <td style={{ padding: '3px 4px', textAlign: 'right', color: '#8b949e' }}>{mass.toFixed(0)}</td>
+                      <tr key={p.id} style={{ borderBottom: '1px solid var(--nx-panel-2)' }}>
+                        <td style={{ padding: '3px 4px', color: 'var(--nx-border-strong)' }}>{i + 1}</td>
+                        <td style={{ padding: '3px 4px', color: 'var(--nx-text)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</td>
+                        <td style={{ padding: '3px 4px', textAlign: 'right', color: 'var(--nx-text)' }}>{p.qty}</td>
+                        <td style={{ padding: '3px 4px', textAlign: 'right', color: 'var(--nx-accent-2)' }}>{(vol * p.qty).toFixed(1)}</td>
+                        <td style={{ padding: '3px 4px', textAlign: 'right', color: 'var(--nx-text-2)' }}>{mass.toFixed(0)}</td>
                       </tr>
                     );
                   })}
@@ -447,14 +447,14 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                       try {
                         const r = buildShapeResult(p.shapeId, p.params);
                         if (r) { totalVol += r.volume_cm3 * p.qty; totalMass += r.volume_cm3 * 7.85 * p.qty; }
-                      } catch {}
+                      } catch (err) { console.error('[PartPlacementPanel] caught', err); }
                     });
                     return (
-                      <tr style={{ borderTop: '1px solid #388bfd44', fontWeight: 700 }}>
-                        <td colSpan={2} style={{ padding: '3px 4px', color: '#8b949e' }}>{t.total}</td>
-                        <td style={{ padding: '3px 4px', textAlign: 'right', color: '#c9d1d9' }}>{parts.reduce((a, b) => a + b.qty, 0)}</td>
-                        <td style={{ padding: '3px 4px', textAlign: 'right', color: '#58a6ff' }}>{totalVol.toFixed(1)}</td>
-                        <td style={{ padding: '3px 4px', textAlign: 'right', color: '#8b949e' }}>{totalMass.toFixed(0)}</td>
+                      <tr style={{ borderTop: '1px solid var(--nx-accent)44', fontWeight: 700 }}>
+                        <td colSpan={2} style={{ padding: '3px 4px', color: 'var(--nx-text-2)' }}>{t.total}</td>
+                        <td style={{ padding: '3px 4px', textAlign: 'right', color: 'var(--nx-text)' }}>{parts.reduce((a, b) => a + b.qty, 0)}</td>
+                        <td style={{ padding: '3px 4px', textAlign: 'right', color: 'var(--nx-accent-2)' }}>{totalVol.toFixed(1)}</td>
+                        <td style={{ padding: '3px 4px', textAlign: 'right', color: 'var(--nx-text-2)' }}>{totalMass.toFixed(0)}</td>
                       </tr>
                     );
                   })()}

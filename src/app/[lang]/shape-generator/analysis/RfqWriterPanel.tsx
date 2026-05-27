@@ -15,16 +15,16 @@ import QuickCostPreview from './QuickCostPreview';
 import type { ProcessType } from '../estimation/CostEstimator';
 
 const C = {
-  bg: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  accent: '#388bfd',
+  bg: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  accent: 'var(--nx-accent)',
   teal: '#39c5bb',
-  gold: '#d29922',
-  green: '#3fb950',
-  red: '#f85149',
-  text: '#c9d1d9',
-  dim: '#8b949e',
+  gold: 'var(--nx-warn)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
+  text: 'var(--nx-text)',
+  dim: 'var(--nx-text-2)',
 };
 
 /* ─── i18n ───────────────────────────────────────────────────────────────── */
@@ -329,7 +329,7 @@ export default function RfqWriterPanel({
           <button onClick={run} disabled={loading} style={{
             flex: 2, padding: '4px 0', borderRadius: 4, border: 'none',
             background: loading ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.accent})`,
-            color: '#fff', fontSize: 11, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
+            color: 'var(--nx-text)', fontSize: 11, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
           }}>
             {loading ? t.drafting : `✨ ${t.regenerate}`}
           </button>
@@ -450,7 +450,7 @@ export default function RfqWriterPanel({
           <button onClick={handleSend} disabled={!draft || sending} style={{
             flex: 2, padding: '8px 0', borderRadius: 6, border: 'none',
             background: !draft || sending ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.accent})`,
-            color: '#fff', fontSize: 12, fontWeight: 800,
+            color: 'var(--nx-text)', fontSize: 12, fontWeight: 800,
             cursor: !draft || sending ? 'wait' : 'pointer',
           }}>
             {sending ? t.sending : `🚀 ${t.sendRfq}`}

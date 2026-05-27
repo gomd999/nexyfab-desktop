@@ -151,16 +151,16 @@ export interface ConfigTablePanelProps {
 // ─── Color palette ────────────────────────────────────────────────────────────
 
 const C = {
-  bg:       '#161b22',
-  surface:  '#21262d',
-  border:   '#30363d',
-  text:     '#c9d1d9',
-  muted:    '#8b949e',
-  accent:   '#1f6feb',
-  accentHv: '#388bfd',
-  danger:   '#f85149',
-  success:  '#3fb950',
-  warning:  '#d29922',
+  bg:       'var(--nx-panel)',
+  surface:  'var(--nx-panel-2)',
+  border:   'var(--nx-border)',
+  text:     'var(--nx-text)',
+  muted:    'var(--nx-text-2)',
+  accent:   'var(--nx-accent)',
+  accentHv: 'var(--nx-accent)',
+  danger:   'var(--nx-error)',
+  success:  'var(--nx-ok)',
+  warning:  'var(--nx-warn)',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -444,7 +444,7 @@ export default function ConfigTablePanel({ params, onApply, onClose, lang }: Con
     ...btnBase,
     background: C.accent,
     borderColor: C.accent,
-    color: '#fff',
+    color: 'var(--nx-text)',
   };
 
   const colWidths = { num: 28, key: 140, expr: 170, result: 90, unit: 68, del: 30 };
@@ -454,7 +454,7 @@ export default function ConfigTablePanel({ params, onApply, onClose, lang }: Con
       {/* Backdrop */}
       <div
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 8999 }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--nx-glass-input)', zIndex: 8999 }}
       />
 
       {/* Panel */}

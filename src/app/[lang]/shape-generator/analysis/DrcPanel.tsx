@@ -33,19 +33,19 @@ const dict = {
 };
 
 const SEVERITY_COLORS = {
-  error: '#f85149',
-  warning: '#d29922',
-  info: '#58a6ff',
+  error: 'var(--nx-error)',
+  warning: 'var(--nx-warn)',
+  info: 'var(--nx-accent-2)',
 };
 
 const C = {
-  bg: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  muted: '#8b949e',
-  accent: '#58a6ff',
-  green: '#3fb950',
-  red: '#f85149',
+  bg: 'var(--nx-panel)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  muted: 'var(--nx-text-2)',
+  accent: 'var(--nx-accent-2)',
+  green: 'var(--nx-ok)',
+  red: 'var(--nx-error)',
 };
 
 export default function DrcPanel({
@@ -138,8 +138,8 @@ export default function DrcPanel({
             disabled={!geometry || !ruleSet}
             style={{
               flex: 1, padding: '6px 10px', borderRadius: 4, border: 'none',
-              background: (geometry && ruleSet) ? C.green : '#374151',
-              color: '#fff', fontSize: 11, fontWeight: 700,
+              background: (geometry && ruleSet) ? C.green : 'var(--nx-border-strong)',
+              color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
               cursor: (geometry && ruleSet) ? 'pointer' : 'not-allowed',
             }}
           >{t.runBtn}</button>
@@ -176,7 +176,7 @@ export default function DrcPanel({
                 key={`${v.ruleId}-${i}`}
                 style={{
                   padding: '6px 10px', borderRadius: 4,
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--nx-glass-soft)',
                   border: `1px solid ${SEVERITY_COLORS[v.severity]}55`,
                   borderLeftWidth: 3,
                   borderLeftColor: SEVERITY_COLORS[v.severity],

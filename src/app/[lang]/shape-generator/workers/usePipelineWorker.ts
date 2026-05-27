@@ -22,6 +22,9 @@ import { trackGeometry } from '../hooks/useGeometryGC';
 
 export interface PipelineRunOptions {
   occtMode?: boolean;
+  /** Base primitive spec — lets the worker rebuild a real B-rep base solid in
+   *  its own OCCT context (the handle can't cross the worker boundary). */
+  baseSpec?: { shapeId: string; params: Record<string, number> };
 }
 
 export interface PipelineRunResult {
@@ -95,6 +98,11 @@ export function usePipelineWorker() {
 
         if (data.type === 'PIPELINE_RESULT' && data.positions) {
           const geo = deserializeGeometry(data.positions, data.normals, data.indices);
+          // Re-attach stable topology ids (userData doesn't cross the worker
+          // boundary, so the worker ships them as plain JSON alongside the mesh).
+          if (data.topoEdgeSignatures) {
+            geo.userData = { ...geo.userData, topoEdgeSignatures: data.topoEdgeSignatures };
+          }
           pending.resolve({ geometry: geo, errors: data.errors ?? {} });
         } else {
           pending.reject(new Error(data.error ?? 'Pipeline worker returned unknown error'));
@@ -178,7 +186,7 @@ export function usePipelineWorker() {
 
             const message: PipelineWorkerInput = {
               type: 'RUN_PIPELINE',
-              payload: { positions, normals, indices, features, occtMode: opts.occtMode },
+              payload: { positions, normals, indices, features, occtMode: opts.occtMode, baseSpec: opts.baseSpec },
             };
 
             const transferables: ArrayBuffer[] = [positions.buffer as ArrayBuffer];
@@ -200,7 +208,7 @@ export function usePipelineWorker() {
       // Fallback: synchronous on main thread
       const mod = await import('../features/index');
       if (opts.occtMode) {
-        return mod.applyFeaturePipelineDetailedAsync(baseGeo, features, { occtMode: true });
+        return mod.applyFeaturePipelineDetailedAsync(baseGeo, features, { occtMode: true, baseSpec: opts.baseSpec });
       }
       return mod.applyFeaturePipelineDetailed(baseGeo, features);
     },

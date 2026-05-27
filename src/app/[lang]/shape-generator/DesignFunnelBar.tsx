@@ -273,7 +273,7 @@ export default function DesignFunnelBar({
   ];
 
   return (
-    <div className="sg-autohide" style={{
+    <div className="sg-autohide" data-shell-v2-hide="funnel-bar" style={{
       background: theme.panelBg,
       borderBottom: `1px solid ${theme.border}`,
       padding: '0 12px',
@@ -290,12 +290,12 @@ export default function DesignFunnelBar({
         const isCurrent = s.n === step + 1 && !s.done;
         const isWarn = s.warn;
         const color = s.done
-          ? '#3fb950'
+          ? 'var(--nx-ok)'
           : isWarn
-            ? '#f0883e'
+            ? 'var(--nx-warn)'
             : isCurrent
-              ? '#58a6ff'
-              : '#484f58';
+              ? 'var(--nx-accent-2)'
+              : 'var(--nx-border-strong)';
 
         return (
           <React.Fragment key={s.n}>
@@ -309,7 +309,7 @@ export default function DesignFunnelBar({
                 padding: '0 6px',
                 height: '100%',
                 cursor: s.action ? 'pointer' : 'default',
-                borderBottom: isCurrent ? '2px solid #58a6ff' : isWarn ? '2px solid #f0883e' : s.done ? '2px solid #3fb950' : '2px solid transparent',
+                borderBottom: isCurrent ? '2px solid var(--nx-accent-2)' : isWarn ? '2px solid #f0883e' : s.done ? '2px solid var(--nx-ok)' : '2px solid transparent',
                 transition: 'all 0.15s',
               }}
               onClick={s.action}
@@ -329,8 +329,8 @@ export default function DesignFunnelBar({
                 <span style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#161b22',
-                  background: '#58a6ff',
+                  color: 'var(--nx-panel)',
+                  background: 'var(--nx-accent-2)',
                   borderRadius: 4,
                   padding: '1px 6px',
                   marginLeft: 2,
@@ -342,7 +342,7 @@ export default function DesignFunnelBar({
               {s.action && isWarn && (
                 <span style={{
                   fontSize: 10, fontWeight: 700,
-                  color: '#161b22', background: '#f0883e',
+                  color: 'var(--nx-panel)', background: 'var(--nx-warn)',
                   borderRadius: 4, padding: '1px 6px', marginLeft: 2,
                 }}>
                   {s.actionLabel}
@@ -352,7 +352,7 @@ export default function DesignFunnelBar({
 
             {/* 구분자 화살표 */}
             {i < steps.length - 1 && (
-              <span style={{ color: '#30363d', fontSize: 10, flexShrink: 0 }}>›</span>
+              <span style={{ color: 'var(--nx-border)', fontSize: 10, flexShrink: 0 }}>›</span>
             )}
           </React.Fragment>
         );
@@ -379,9 +379,9 @@ export default function DesignFunnelBar({
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
               padding: '2px 8px', height: 20,
-              borderRadius: 4, border: '1px solid #388bfd',
-              background: aiMenuOpen ? 'rgba(56, 139, 253, 0.15)' : 'transparent',
-              color: '#58a6ff',
+              borderRadius: 4, border: '1px solid var(--nx-accent)',
+              background: aiMenuOpen ? 'var(--nx-accent-soft)' : 'transparent',
+              color: 'var(--nx-accent-2)',
               fontSize: 11, fontWeight: 700, cursor: 'pointer',
               whiteSpace: 'nowrap', transition: 'all 0.15s'
             }}
@@ -392,7 +392,7 @@ export default function DesignFunnelBar({
           {aiMenuOpen && (
             <div style={{
               position: 'absolute', top: '100%', right: 0, marginTop: 4,
-              background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
+              background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 8,
               boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 100,
               display: 'flex', flexDirection: 'column', padding: 4, minWidth: 160
             }}>
@@ -403,7 +403,7 @@ export default function DesignFunnelBar({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '6px 8px', borderRadius: 4, border: 'none',
-                    background: 'transparent', color: '#e6edf3',
+                    background: 'transparent', color: 'var(--nx-text)',
                     fontSize: 11, fontWeight: 500, cursor: 'pointer',
                     textAlign: 'left', transition: 'background 0.15s'
                   }}
@@ -420,14 +420,14 @@ export default function DesignFunnelBar({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '6px 8px', borderRadius: 4, border: 'none',
-                    background: 'transparent', color: '#e6edf3',
+                    background: 'transparent', color: 'var(--nx-text)',
                     fontSize: 11, fontWeight: 500, cursor: 'pointer',
                     textAlign: 'left', transition: 'background 0.15s'
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 113, 247, 0.15)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <span style={{ color: '#a371f7', width: 14 }}>🧭</span> {tt.processRouter}
+                  <span style={{ color: 'var(--nx-accent-2)', width: 14 }}>🧭</span> {tt.processRouter}
                 </button>
               )}
               {onAISupplierMatch && (
@@ -437,7 +437,7 @@ export default function DesignFunnelBar({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '6px 8px', borderRadius: 4, border: 'none',
-                    background: 'transparent', color: '#e6edf3',
+                    background: 'transparent', color: 'var(--nx-text)',
                     fontSize: 11, fontWeight: 500, cursor: 'pointer',
                     textAlign: 'left', transition: 'background 0.15s'
                   }}
@@ -454,14 +454,14 @@ export default function DesignFunnelBar({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '6px 8px', borderRadius: 4, border: 'none',
-                    background: 'transparent', color: '#e6edf3',
+                    background: 'transparent', color: 'var(--nx-text)',
                     fontSize: 11, fontWeight: 500, cursor: 'pointer',
                     textAlign: 'left', transition: 'background 0.15s'
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(210, 153, 34, 0.15)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <span style={{ color: '#d29922', width: 14 }}>💰</span> {tt.costCopilot}
+                  <span style={{ color: 'var(--nx-warn)', width: 14 }}>💰</span> {tt.costCopilot}
                 </button>
               )}
               {onOpenScad && (
@@ -471,7 +471,7 @@ export default function DesignFunnelBar({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '6px 8px', borderRadius: 4, border: 'none',
-                    background: 'transparent', color: '#e6edf3',
+                    background: 'transparent', color: 'var(--nx-text)',
                     fontSize: 11, fontWeight: 500, cursor: 'pointer',
                     textAlign: 'left', transition: 'background 0.15s'
                   }}
@@ -483,7 +483,7 @@ export default function DesignFunnelBar({
               )}
               {onAIHistory && (
                 <>
-                  <div style={{ height: 1, background: '#30363d', margin: '4px 0' }} />
+                  <div style={{ height: 1, background: 'var(--nx-border)', margin: '4px 0' }} />
                   <button
                     onClick={() => { onAIHistory(); setAiMenuOpen(false); }}
                     title={tt.aiHistoryTip}
@@ -494,7 +494,7 @@ export default function DesignFunnelBar({
                       fontSize: 11, fontWeight: 500, cursor: 'pointer',
                       textAlign: 'left', transition: 'background 0.15s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-glass-soft)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <span style={{ color: theme.textMuted, width: 14 }}>📜</span> {tt.aiHistory}

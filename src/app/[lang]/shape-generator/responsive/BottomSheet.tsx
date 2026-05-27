@@ -101,7 +101,7 @@ export default function BottomSheet({ visible, onClose, title, height: initialHe
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 900,
-          background: 'rgba(0,0,0,0.4)',
+          background: 'var(--nx-glass-input)',
           transition: 'opacity 0.2s',
         }}
       />
@@ -116,7 +116,7 @@ export default function BottomSheet({ visible, onClose, title, height: initialHe
           zIndex: 910,
           height: liveHeight,
           maxHeight: `calc(100vh - ${bottomOffset}px - 44px)`,
-          background: '#161b22',
+          background: 'var(--nx-panel)',
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           boxShadow: '0 -4px 30px rgba(0,0,0,0.5)',
@@ -145,7 +145,7 @@ export default function BottomSheet({ visible, onClose, title, height: initialHe
             width: 36,
             height: 4,
             borderRadius: 2,
-            background: '#484f58',
+            background: 'var(--nx-border-strong)',
             marginBottom: title ? 8 : 0,
           }} />
           {title && (
@@ -155,12 +155,12 @@ export default function BottomSheet({ visible, onClose, title, height: initialHe
               justifyContent: 'space-between',
               width: '100%',
             }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#c9d1d9' }}>{title}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>{title}</span>
               <button
                 onClick={onClose}
                 style={{
-                  border: 'none', background: '#21262d', cursor: 'pointer', fontSize: 12,
-                  color: '#8b949e', width: 28, height: 28, borderRadius: 6,
+                  border: 'none', background: 'var(--nx-panel-2)', cursor: 'pointer', fontSize: 12,
+                  color: 'var(--nx-text-2)', width: 28, height: 28, borderRadius: 6,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >

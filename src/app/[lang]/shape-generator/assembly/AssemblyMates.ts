@@ -131,18 +131,63 @@ function solveCoincident(
   return new THREE.Matrix4().multiplyMatrices(transMat, new THREE.Matrix4().multiplyMatrices(rotMat, partB.transform));
 }
 
+/** Concentric: align the cylindrical axes implied by `faceA` and `faceB`.
+ *  The previous version aligned whole geometry centres, which only worked
+ *  when both parts happened to be centred on their cylinder axis — for a
+ *  pin in an off-centre hole this gave visibly wrong results.
+ *
+ *  Approach: treat each selected face's normal as the cylinder axis (the
+ *  user typically clicks the cap of a hole/cylinder, whose normal is the
+ *  axis direction). Rotate part B so its axis becomes parallel to A's
+ *  axis, then translate so B's axis line passes through A's axis line
+ *  at the chosen face's centroid. Axes can be anti-parallel — the
+ *  rotation `setFromUnitVectors` handles both. */
 function solveConcentric(
   partB: AssemblyPart,
   partA: AssemblyPart,
-  _mate: AssemblyMate,
+  mate: AssemblyMate,
 ): THREE.Matrix4 {
-  // Align centers of both parts
-  const centerA = getGeometryCenter(partA.geometry).applyMatrix4(partA.transform);
-  const centerB = getGeometryCenter(partB.geometry).applyMatrix4(partB.transform);
-  const offset = new THREE.Vector3().subVectors(centerA, centerB);
+  const rotA = new THREE.Matrix4().extractRotation(partA.transform);
+  const rotB = new THREE.Matrix4().extractRotation(partB.transform);
 
-  const transMat = new THREE.Matrix4().makeTranslation(offset.x, offset.y, offset.z);
-  return new THREE.Matrix4().multiplyMatrices(transMat, partB.transform);
+  // No face selection on either side → fall back to centre-on-centre so
+  // the mate still does *something* visually rather than silently no-op.
+  if (mate.faceA == null || mate.faceB == null) {
+    const centerA = getGeometryCenter(partA.geometry).applyMatrix4(partA.transform);
+    const centerB = getGeometryCenter(partB.geometry).applyMatrix4(partB.transform);
+    const offset = new THREE.Vector3().subVectors(centerA, centerB);
+    const transMat = new THREE.Matrix4().makeTranslation(offset.x, offset.y, offset.z);
+    return new THREE.Matrix4().multiplyMatrices(transMat, partB.transform);
+  }
+
+  const axisA = getFaceNormal(partA.geometry, mate.faceA).applyMatrix4(rotA).normalize();
+  const axisB = getFaceNormal(partB.geometry, mate.faceB).applyMatrix4(rotB).normalize();
+
+  // Align axes — prefer parallel (same direction) but accept anti-parallel
+  // since a pin can mate into either side of a through-hole.
+  const rotQuat = new THREE.Quaternion().setFromUnitVectors(axisB, axisA);
+  const rotMat = new THREE.Matrix4().makeRotationFromQuaternion(rotQuat);
+
+  const newTransformB = new THREE.Matrix4().multiplyMatrices(rotMat, partB.transform);
+
+  // Pick an axis point that's actually *on* the cylinder axis: the cap's
+  // face centroid sits off-axis when the cap is fan-triangulated (the
+  // first triangle's centroid is at radius/3 from the centre). The geometry
+  // bbox centre, by contrast, lies on the axis for any centred primitive.
+  // For non-primitive imports the bbox centre is still the best heuristic
+  // until proper B-Rep axis extraction lands.
+  const bboxCenterA = getGeometryCenter(partA.geometry).applyMatrix4(partA.transform);
+  const bboxCenterB = getGeometryCenter(partB.geometry).applyMatrix4(newTransformB);
+
+  // axisLineA passes through bboxCenterA in direction axisA. Project B's
+  // bbox centre onto that line, then translate by the residual perpendicular.
+  const rel = new THREE.Vector3().subVectors(bboxCenterB, bboxCenterA);
+  const along = axisA.dot(rel);
+  const closest = bboxCenterA.clone().add(axisA.clone().multiplyScalar(along));
+  const perpOffset = new THREE.Vector3().subVectors(closest, bboxCenterB);
+
+  const transMat = new THREE.Matrix4().makeTranslation(perpOffset.x, perpOffset.y, perpOffset.z);
+  return new THREE.Matrix4().multiplyMatrices(transMat, newTransformB);
 }
 
 function solveDistance(
@@ -165,6 +210,21 @@ function solveDistance(
   return new THREE.Matrix4().multiplyMatrices(transMat, partB.transform);
 }
 
+/** Angle mate: rotate partB so the angle between its face normal and
+ *  partA's face normal matches `mate.value` (degrees).
+ *
+ *  Two issues the old version had:
+ *   1. `Math.acos` returns [0, π] only — anti-parallel normals
+ *      (currentAngle = π) produced a zero cross-product axis, so the
+ *      solver bailed out with no rotation even when a half-turn was
+ *      required.
+ *   2. The cross-product axis flipped sign as B passed through alignment,
+ *      so delta swung the wrong direction and the solver oscillated
+ *      instead of converging.
+ *
+ *  Fix: when axes are degenerate (parallel or anti-parallel), choose a
+ *  stable perpendicular fallback so we can still rotate; otherwise use
+ *  the cross axis as before but normalise consistently. */
 function solveAngle(
   partB: AssemblyPart,
   partA: AssemblyPart,
@@ -173,22 +233,29 @@ function solveAngle(
   const angleDeg = mate.value ?? 90;
   const angleRad = (angleDeg * Math.PI) / 180;
 
-  const normalA = getFaceNormal(partA.geometry, mate.faceA ?? 0)
-    .applyMatrix4(new THREE.Matrix4().extractRotation(partA.transform))
-    .normalize();
+  const rotA = new THREE.Matrix4().extractRotation(partA.transform);
+  const rotB = new THREE.Matrix4().extractRotation(partB.transform);
+  const normalA = getFaceNormal(partA.geometry, mate.faceA ?? 0).applyMatrix4(rotA).normalize();
+  const normalB = getFaceNormal(partB.geometry, mate.faceB ?? 0).applyMatrix4(rotB).normalize();
 
-  // Rotate partB around the cross axis to achieve the desired angle
-  const normalB = getFaceNormal(partB.geometry, mate.faceB ?? 0)
-    .applyMatrix4(new THREE.Matrix4().extractRotation(partB.transform))
-    .normalize();
-
-  const currentAngle = Math.acos(THREE.MathUtils.clamp(normalA.dot(normalB), -1, 1));
+  const dot = THREE.MathUtils.clamp(normalA.dot(normalB), -1, 1);
+  const currentAngle = Math.acos(dot);
   const delta = angleRad - currentAngle;
 
-  if (Math.abs(delta) < 0.001) return partB.transform.clone();
+  if (Math.abs(delta) < 1e-4) return partB.transform.clone();
 
-  const axis = new THREE.Vector3().crossVectors(normalB, normalA).normalize();
-  if (axis.lengthSq() < 0.0001) return partB.transform.clone();
+  let axis = new THREE.Vector3().crossVectors(normalB, normalA);
+  if (axis.lengthSq() < 1e-8) {
+    // normalB ‖ ±normalA → pick any vector perpendicular to normalA so the
+    // rotation has a well-defined plane. World up works unless normalA is
+    // itself up, in which case fall back to world X.
+    const fallback = Math.abs(normalA.y) < 0.9
+      ? new THREE.Vector3(0, 1, 0)
+      : new THREE.Vector3(1, 0, 0);
+    axis = new THREE.Vector3().crossVectors(normalA, fallback);
+    if (axis.lengthSq() < 1e-8) return partB.transform.clone();
+  }
+  axis.normalize();
 
   const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, delta);
   const rotMat = new THREE.Matrix4().makeRotationFromQuaternion(rotQuat);
@@ -223,22 +290,55 @@ function solvePerpendicular(
   return solveAngle(partB, partA, { ...mate, value: 90 });
 }
 
+/** Tangent: surfaces touch with matching tangent plane — normals point
+ *  the SAME direction (vs. coincident, where they're opposite). Useful
+ *  for resting a cylinder on a plane or two cylinders side-by-side.
+ *
+ *  Prior version just slammed centroid B onto centroid A, which is what
+ *  coincident-without-rotation already does. This version actually
+ *  aligns the surface frames and places B on A's positive-normal side. */
 function solveTangent(
   partB: AssemblyPart,
   partA: AssemblyPart,
   mate: AssemblyMate,
 ): THREE.Matrix4 {
-  // Tangent: align faces touching (similar to coincident but without flipping normal)
-  const centroidA = getFaceCentroid(partA.geometry, mate.faceA ?? 0).applyMatrix4(partA.transform);
-  const centroidB = getFaceCentroid(partB.geometry, mate.faceB ?? 0).applyMatrix4(partB.transform);
+  const rotA = new THREE.Matrix4().extractRotation(partA.transform);
+  const rotB = new THREE.Matrix4().extractRotation(partB.transform);
 
-  const offset = new THREE.Vector3().subVectors(centroidA, centroidB);
+  const normalA = getFaceNormal(partA.geometry, mate.faceA ?? 0).applyMatrix4(rotA).normalize();
+  const normalB = getFaceNormal(partB.geometry, mate.faceB ?? 0).applyMatrix4(rotB).normalize();
+
+  // Same-direction alignment (not negated) is the tangent condition.
+  const rotQuat = new THREE.Quaternion().setFromUnitVectors(normalB, normalA);
+  const rotMat = new THREE.Matrix4().makeRotationFromQuaternion(rotQuat);
+
+  const newTransformB = new THREE.Matrix4().multiplyMatrices(rotMat, partB.transform);
+
+  // Place B's face centroid on A's face plane: project the rotated B
+  // centroid onto the plane (centroidA, normalA), then translate by the
+  // residual along-normal component.
+  const centroidA = getFaceCentroid(partA.geometry, mate.faceA ?? 0).applyMatrix4(partA.transform);
+  const centroidB = getFaceCentroid(partB.geometry, mate.faceB ?? 0).applyMatrix4(newTransformB);
+  const rel = new THREE.Vector3().subVectors(centroidB, centroidA);
+  const alongNormal = normalA.dot(rel);
+  const offset = normalA.clone().multiplyScalar(-alongNormal);
+
   const transMat = new THREE.Matrix4().makeTranslation(offset.x, offset.y, offset.z);
-  return new THREE.Matrix4().multiplyMatrices(transMat, partB.transform);
+  return new THREE.Matrix4().multiplyMatrices(transMat, newTransformB);
 }
 
 // ─── Main Solver ─────────────────────────────────────────────────────────────
 
+// Mate routing — `hinge` aligns the rotation axis (=concentric) so the
+// user sees the parts snap onto a common pivot; the residual rotational
+// DOF is held by the runtime drag manager rather than the static solver.
+// `slider` and `gear` are intentionally aliased to the closest static
+// approximation until Phase B introduces kinematic stepping:
+//   slider → distance: holds two faces a fixed gap apart but does not
+//            yet constrain the slide direction.
+//   gear   → parallel: aligns the two gear-face normals so they're
+//            mesh-ready visually; the `mate.value` ratio is not yet
+//            used to couple rotation between the two parts.
 const SOLVER_MAP: Record<MateType, (partB: AssemblyPart, partA: AssemblyPart, mate: AssemblyMate) => THREE.Matrix4> = {
   coincident: solveCoincident,
   concentric: solveConcentric,
@@ -247,7 +347,7 @@ const SOLVER_MAP: Record<MateType, (partB: AssemblyPart, partA: AssemblyPart, ma
   parallel: solveParallel,
   perpendicular: solvePerpendicular,
   tangent: solveTangent,
-  hinge: solveAngle,
+  hinge: solveConcentric,
   slider: solveDistance,
   gear: solveParallel,
 };

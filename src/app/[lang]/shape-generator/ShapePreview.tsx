@@ -3,11 +3,11 @@
 import { usePathname } from 'next/navigation';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import ErrorBoundary from '@/components/nexyfab/ErrorBoundary';
-import { OrbitControls, Grid, TransformControls, Environment, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
+import { OrbitControls, Grid, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
 import { NF_R3F_VIEWPORT_DATA_ENGINE } from '@/lib/nexyfab/viewport';
 import * as THREE from 'three';
 import type { TransformControls as TransformControlsThree } from 'three/examples/jsm/controls/TransformControls.js';
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
+import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShapeResult } from './shapes';
 import type { EditMode } from './editing/types';
@@ -58,6 +58,8 @@ import type { ArrayPattern } from './features/instanceArray';
 import { buildInstanceMatrices } from './features/instanceArray';
 import NurbsCPEditor from './editing/NurbsCPEditor';
 import SelectionMeshR3F from './editing/SelectionMesh';
+import PushPullArrow from './pushpull/PushPullArrow';
+import { useSceneStore } from './store/sceneStore';
 import FaceHighlightMesh from './editing/FaceHighlightMesh';
 import { assemblyViewportLoadBand } from '@/lib/assemblyLoadPolicy';
 import { assemblyViewportChrome } from '@/lib/assemblyViewportChrome';
@@ -113,6 +115,27 @@ function disposeObject(obj: THREE.Object3D): void {
   });
 }
 
+/** Ground-plane X/Y/Z axis indicator at the world origin.
+ *
+ * Built on `axesHelper` but with `setColors()` forcing the same iOS R/G/B
+ * the bottom-left `GizmoViewport` uses, so users see the same coordinate
+ * system in both widgets. Length kept short (30 mm) so the axis sits
+ * inside the default-sized box rather than slicing through and out the
+ * back; depth test (default `true`) makes it visible only when the
+ * camera angle clears the body. The +0.5 Y lift avoids z-fighting with
+ * the grid. */
+function WorldAxes() {
+  const ref = useRef<THREE.AxesHelper | null>(null);
+  useEffect(() => {
+    const ax = ref.current;
+    if (!ax) return;
+    // `setColors` exists on three.js r147+. The exact strings mirror
+    // GizmoViewport's axisColors array.
+    ax.setColors(new THREE.Color('#ff3b30'), new THREE.Color('#34c759'), new THREE.Color('#007aff'));
+  }, []);
+  return <axesHelper ref={ref} args={[30]} position={[0, 0.5, 0]} />;
+}
+
 /** Mounted inside <Canvas> — disposes the entire scene on unmount and on
  *  the custom 'nexyfab:scene-cleanup' event dispatched by version rollback. */
 function SceneCleanup() {
@@ -135,25 +158,32 @@ function SceneCleanup() {
 }
 
 // Colors for multi-part assembly
-const PART_COLORS = ['#8b9cf4', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
+const PART_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b', '#f4c88b', '#8bf4e0'];
 
 /** Stable empty list so CameraFitter deps do not change every render. */
 const EMPTY_SHAPE_RESULTS: ShapeResult[] = [];
 
-// Loads texture maps imperatively and applies them to a meshStandardMaterial ref
+// Loads texture maps imperatively and applies them to a meshPhysicalMaterial
+// ref. Switched from MeshStandardMaterial → MeshPhysicalMaterial so the PBR
+// extras (specular intensity / clearcoat / anisotropy) the Render right pane
+// exposes can actually affect the render. MeshPhysicalMaterial inherits all
+// MeshStandardMaterial properties so existing roughness / metalness / map
+// wiring is unchanged.
 function TexturedMeshMaterial({
   color, roughness, metalness, opacity, transparent, envMapIntensity,
   normalScale = 1, displacementScale = 1,
   normalMapUrl, roughnessMapUrl, metalnessMapUrl, aoMapUrl, displacementMapUrl,
   polygonOffset, polygonOffsetFactor, polygonOffsetUnits,
+  specular, clearcoat, anisotropy,
 }: {
   color: string; roughness: number; metalness: number; opacity: number; transparent: boolean;
   envMapIntensity: number; normalScale?: number; displacementScale?: number;
   normalMapUrl?: string; roughnessMapUrl?: string; metalnessMapUrl?: string;
   aoMapUrl?: string; displacementMapUrl?: string;
   polygonOffset?: boolean; polygonOffsetFactor?: number; polygonOffsetUnits?: number;
+  specular?: number; clearcoat?: number; anisotropy?: number;
 }) {
-  const matRef = useRef<THREE.MeshStandardMaterial>(null);
+  const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
 
   useEffect(() => {
     const mat = matRef.current;
@@ -177,7 +207,7 @@ function TexturedMeshMaterial({
   }, [normalMapUrl, roughnessMapUrl, metalnessMapUrl, aoMapUrl, displacementMapUrl, normalScale, displacementScale]);
 
   return (
-    <meshStandardMaterial
+    <meshPhysicalMaterial
       ref={matRef}
       color={color}
       roughness={roughness}
@@ -189,7 +219,96 @@ function TexturedMeshMaterial({
       polygonOffset={polygonOffset}
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}
+      // PBR extras from RenderRightPane. Undefined → omitted so the
+      // default MeshPhysicalMaterial value applies (specular 0.5, no
+      // clearcoat, no anisotropy).
+      {...(typeof specular   === 'number' ? { specularIntensity: specular } : {})}
+      {...(typeof clearcoat  === 'number' ? { clearcoat } : {})}
+      {...(typeof anisotropy === 'number' ? { anisotropy } : {})}
     />
+  );
+}
+
+// Reads the resolved `--nx-bg` CSS variable from <html> so the Three.js scene
+// background follows the theme toggle. R3F's <color attach="background" args>
+// goes through THREE.Color which doesn't understand CSS var() strings.
+function SceneBg() {
+  const [hex, setHex] = useState<string>('#0c0f14');
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const read = () => {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--nx-bg').trim();
+      if (v) setHex(v);
+    };
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    return () => mo.disconnect();
+  }, []);
+  return <color attach="background" args={[hex]} />;
+}
+
+// drei's <Environment preset> downloads HDRI maps (e.g. potsdamer_platz_1k.hdr)
+// from the pmndrs/drei-assets CDN. Offline / CDN-blocked / cold networks
+// throw, which previously bubbled up to the page-level ErrorBoundary and
+// blanked the entire viewport. Catch it here so the scene still renders
+// with the directional lights below as a fallback.
+class EnvironmentBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  override componentDidCatch(error: Error) {
+    console.warn('HDRI environment load failed — falling back to default lighting', error?.message);
+  }
+  override render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+// Procedural environment — produces an env map for PBR reflections from
+// <Lightformer> children alone, with NO HDRI file fetch. Eliminates the
+// CDN dependency that previously failed with "Could not load
+// potsdamer_platz_1k.hdr". Each preset gets a slightly different lightformer
+// layout so reflections still vary by chosen environment.
+type ProceduralEnvPreset =
+  | 'apartment' | 'city' | 'dawn' | 'forest' | 'lobby'
+  | 'night' | 'park' | 'studio' | 'sunset' | 'warehouse';
+
+const PRESET_TINTS: Record<ProceduralEnvPreset, { top: string; key: string; fill: string; rim: string }> = {
+  studio:    { top: '#ffffff', key: '#ffffff', fill: '#c8d8ff', rim: '#ffe8d0' },
+  warehouse: { top: '#e6e8ec', key: '#fff5e8', fill: '#a8b0c0', rim: '#d8c8a8' },
+  apartment: { top: '#f0e8d8', key: '#ffe0b0', fill: '#c0c8e0', rim: '#fff0d8' },
+  city:      { top: '#c8d0e0', key: '#fff0d0', fill: '#a0b8e0', rim: '#ffe0a8' },
+  dawn:      { top: '#ffd8b8', key: '#ffb070', fill: '#a8c0e8', rim: '#ffe0c0' },
+  forest:    { top: '#a8c098', key: '#c8e0a0', fill: '#80a0b0', rim: '#d8e8c0' },
+  lobby:     { top: '#ece4d4', key: '#ffe8c8', fill: '#b8c0d0', rim: '#fff8e8' },
+  night:     { top: '#1a2030', key: '#3060a0', fill: '#2030a0', rim: '#5070b0' },
+  park:      { top: '#b8d0e0', key: '#fff0d8', fill: '#a8c098', rim: '#ffe8c0' },
+  sunset:    { top: '#ff9060', key: '#ff7040', fill: '#8060a0', rim: '#ffb070' },
+};
+
+function ProceduralEnvironment({ preset }: { preset: ProceduralEnvPreset }) {
+  const tint = PRESET_TINTS[preset] ?? PRESET_TINTS.studio;
+  return (
+    <Environment background={false} resolution={256} frames={1}>
+      {/* Top dome */}
+      <Lightformer form="rect" intensity={2.0} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} color={tint.top} />
+      {/* Key light */}
+      <Lightformer form="rect" intensity={2.5} position={[3, 3, 4]} scale={[5, 5, 1]} color={tint.key} />
+      {/* Fill light */}
+      <Lightformer form="rect" intensity={1.2} position={[-4, 2, 1]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color={tint.fill} />
+      {/* Rim light */}
+      <Lightformer form="rect" intensity={1.5} position={[0, 2, -4]} scale={[8, 3, 1]} color={tint.rim} />
+      {/* Bottom bounce */}
+      <Lightformer form="rect" intensity={0.3} position={[0, -3, 0]} rotation-x={-Math.PI / 2} scale={[10, 10, 1]} color="#404040" />
+    </Environment>
   );
 }
 
@@ -202,6 +321,15 @@ function ShapeMesh({ result, displayMode, color, position, rotation, partIndex =
   const geo = result.geometry;
   const edgeGeo = result.edgeGeometry;
   const rot = rotation ? rotation.map(d => d * Math.PI / 180) as [number, number, number] : undefined;
+
+  // PBR extras (Specular/Clearcoat/Anisotropy) come from sceneStore so the
+  // Render right-pane sliders affect the live viewport, not just the
+  // photoreal capture path. Selector returns the 3 numbers as an object so
+  // a slider change doesn't re-render the whole mesh subtree.
+  const renderSettings = useSceneStore(s => s.renderSettings);
+  const matSpecular   = renderSettings?.specular;
+  const matClearcoat  = renderSettings?.clearcoat;
+  const matAnisotropy = renderSettings?.anisotropy;
 
   const matColor = override?.color ?? material?.color ?? color;
   const matRoughness = override?.roughness ?? material?.roughness ?? 0.35;
@@ -225,9 +353,10 @@ function ShapeMesh({ result, displayMode, color, position, rotation, partIndex =
               metalnessMapUrl={override?.metalnessMapUrl} aoMapUrl={override?.aoMapUrl}
               displacementMapUrl={override?.displacementMapUrl}
               polygonOffset polygonOffsetFactor={partIndex} polygonOffsetUnits={partIndex}
+              specular={matSpecular} clearcoat={matClearcoat} anisotropy={matAnisotropy}
             />
           ) : (
-            <meshStandardMaterial
+            <meshPhysicalMaterial
               color={matColor}
               roughness={matRoughness}
               metalness={matMetalness}
@@ -238,6 +367,9 @@ function ShapeMesh({ result, displayMode, color, position, rotation, partIndex =
               transparent={matTransparent}
               opacity={matOpacity}
               envMapIntensity={matEnvMapIntensity}
+              {...(typeof matSpecular   === 'number' ? { specularIntensity: matSpecular } : {})}
+              {...(typeof matClearcoat  === 'number' ? { clearcoat: matClearcoat } : {})}
+              {...(typeof matAnisotropy === 'number' ? { anisotropy: matAnisotropy } : {})}
             />
           )}
         </mesh>
@@ -656,7 +788,7 @@ function EditScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="#8b9cf4" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
 
       {editMode === 'vertex' && (
         <VertexHandles
@@ -775,7 +907,7 @@ function FaceScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="#8b9cf4" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
       <FaceHandles
         geometry={editGeometry}
         faces={faces}
@@ -805,9 +937,9 @@ function FaceScene({
             maxWidth: 300,
             padding: '8px 10px',
             borderRadius: 8,
-            background: 'rgba(13,17,23,0.95)',
+            background: 'var(--nx-glass-strong)',
             border: '1px solid rgba(34,197,94,0.65)',
-            color: '#e6edf3',
+            color: 'var(--nx-text)',
             fontSize: 11,
             lineHeight: 1.45,
             fontWeight: 500,
@@ -827,7 +959,7 @@ function FaceScene({
             marginBottom: 4,
           }}
           >
-            <div style={{ fontWeight: 800, color: '#4ade80', fontSize: 11, lineHeight: 1.3 }}>
+            <div style={{ fontWeight: 800, color: 'var(--nx-ok)', fontSize: 11, lineHeight: 1.3 }}>
               ▣ {calloutTitle}
             </div>
             <button
@@ -837,9 +969,9 @@ function FaceScene({
                 flexShrink: 0,
                 padding: '2px 8px',
                 borderRadius: 4,
-                border: '1px solid #30363d',
-                background: '#21262d',
-                color: '#8b949e',
+                border: '1px solid var(--nx-border)',
+                background: 'var(--nx-panel-2)',
+                color: 'var(--nx-text-2)',
                 fontSize: 10,
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -848,9 +980,9 @@ function FaceScene({
               {dismissLabel}
             </button>
           </div>
-          <div style={{ color: '#c9d1d9' }}>{emptySelectionCallout}</div>
+          <div style={{ color: 'var(--nx-text)' }}>{emptySelectionCallout}</div>
           {calloutTip ? (
-            <div style={{ marginTop: 6, fontSize: 10, color: '#8b949e', lineHeight: 1.35 }}>
+            <div style={{ marginTop: 6, fontSize: 10, color: 'var(--nx-text-2)', lineHeight: 1.35 }}>
               {calloutTip}
             </div>
           ) : null}
@@ -863,19 +995,19 @@ function FaceScene({
           <div style={{
             position: 'fixed', top: 84, right: 16, zIndex: 50,
             padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(13,17,23,0.92)', border: '1px solid #388bfd',
-            color: '#c9d1d9', fontSize: 12, fontWeight: 600,
+            background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-accent)',
+            color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
             fontFamily: 'system-ui, sans-serif',
             display: 'flex', alignItems: 'center', gap: 10,
             backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           }}>
-            <span style={{ color: '#58a6ff' }}>▣</span>
+            <span style={{ color: 'var(--nx-accent-2)' }}>▣</span>
             <span>{faceT.facesSelected(selectedFaceIds.size)}</span>
             <button
               onClick={clearSelection}
               style={{
-                padding: '3px 8px', borderRadius: 4, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                padding: '3px 8px', borderRadius: 4, border: '1px solid var(--nx-border)',
+                background: 'transparent', color: 'var(--nx-text-2)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
               }}
             >
               {faceT.clearSel}
@@ -963,7 +1095,7 @@ function TransformScene({
 
   return (
     <group>
-      <ShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" />
+      <ShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" />
       <mesh ref={meshRef} geometry={result.geometry} visible={false} />
       <TransformControls
         ref={transformRef}
@@ -1478,6 +1610,16 @@ export default function ShapePreview({
   // can show an explanatory banner instead of a silently dead viewport.
   const [glContextLost, setGlContextLost] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('solid');
+  // Shell-v2 ViewportChips dispatches `nexyfab:display-mode` — listen so
+  // the chips can drive the local viewport state.
+  useEffect(() => {
+    const onMode = (e: Event) => {
+      const m = (e as CustomEvent<{ mode?: DisplayMode }>).detail?.mode;
+      if (m === 'solid' || m === 'edges' || m === 'wireframe') setDisplayMode(m);
+    };
+    window.addEventListener('nexyfab:display-mode', onMode);
+    return () => window.removeEventListener('nexyfab:display-mode', onMode);
+  }, []);
   const [fitKey, setFitKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [internalAnimateMode, setInternalAnimateMode] = useState<'none' | 'turntable'>('none');
@@ -1526,6 +1668,16 @@ export default function ShapePreview({
   const dispatchView = useCallback((view: string) => {
     window.dispatchEvent(new CustomEvent('nexyfab:view', { detail: view }));
   }, []);
+
+  // Shell-v2 View ribbon tab → camera preset bridge.
+  useEffect(() => {
+    const onPreset = (e: Event) => {
+      const p = (e as CustomEvent<{ preset?: string }>).detail?.preset;
+      if (p) dispatchView(p);
+    };
+    window.addEventListener('nexyfab:camera-preset', onPreset);
+    return () => window.removeEventListener('nexyfab:camera-preset', onPreset);
+  }, [dispatchView]);
 
   // PBR material override state
   const [pbrPanelOpen, setPbrPanelOpen] = useState(false);
@@ -1738,7 +1890,7 @@ export default function ShapePreview({
 
   return (
     <>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#0d1117', borderRadius: 'inherit', overflow: 'hidden', touchAction: 'none', userSelect: 'none', position: 'relative' }}
+      <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--nx-bg)', borderRadius: 'inherit', overflow: 'hidden', touchAction: 'none', userSelect: 'none', position: 'relative' }}
         onDragStart={e => e.preventDefault()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1750,8 +1902,8 @@ export default function ShapePreview({
           <div style={{ position: 'fixed', top: radialMenu.y, left: radialMenu.x, zIndex: 99999, pointerEvents: 'none' }}>
             <div style={{ position: 'absolute', transform: `translate(-50%, -50%) scale(${radialScale})`, pointerEvents: 'auto', transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', transformOrigin: 'center center' }}>
               {/* Center Circle */}
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(36,41,47,0.95)', border: '1px solid #484f58', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setRadialMenu(null)}>
-                <span style={{ fontSize: 16, color: '#c9d1d9' }}>✕</span>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(36,41,47,0.95)', border: '1px solid var(--nx-border-strong)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setRadialMenu(null)}>
+                <span style={{ fontSize: 16, color: 'var(--nx-text)' }}>✕</span>
               </div>
               
               {/* Top Item */}
@@ -1760,7 +1912,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_line' : 'extrude'); 
                   else { onGeometryFitRequest?.(); setFitKey(k => k + 1); }
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#e6edf3', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `↗ ${t.radialLine}` : `⏫ ${t.radialExtrude}`}
                 </button>
               </div>
@@ -1771,7 +1923,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_circle' : 'fillet'); 
                   else dispatchView('iso');
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#e6edf3', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `⭕ ${t.radialCircle}` : `🔘 ${t.radialFillet}`}
                 </button>
               </div>
@@ -1782,7 +1934,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_finish' : 'cancel'); 
                   else setDisplayMode('wireframe');
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#f85149', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `✅ ${t.radialFinish}` : `❌ ${t.radialCancel}`}
                 </button>
               </div>
@@ -1793,7 +1945,7 @@ export default function ShapePreview({
                   if (onRadialCommand) onRadialCommand(isSketchMode ? 'sketch_rect' : 'sketch_start'); 
                   else setDisplayMode('solid');
                   setRadialMenu(null); 
-                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid #484f58', background: 'rgba(36,41,47,0.95)', color: '#3fb950', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#30363d'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
+                }} style={{ padding: '8px 16px', borderRadius: 24, border: '1px solid var(--nx-border-strong)', background: 'rgba(36,41,47,0.95)', color: 'var(--nx-ok)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-border)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,41,47,0.95)'}>
                   {isSketchMode ? `▱ ${t.radialRect}` : `✏️ ${t.radialSketch}`}
                 </button>
               </div>
@@ -1806,32 +1958,32 @@ export default function ShapePreview({
           <div style={{
             position: 'absolute', inset: 0, zIndex: 500,
             background: 'rgba(56,139,253,0.12)',
-            border: '2px dashed #388bfd',
+            border: '2px dashed var(--nx-accent)',
             borderRadius: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             pointerEvents: 'none',
           }}>
             <div style={{
-              background: '#161b22ee', borderRadius: 12, padding: '20px 32px',
-              border: '1px solid #388bfd',
-              color: '#58a6ff', fontSize: 16, fontWeight: 700,
+              background: 'var(--nx-panel)ee', borderRadius: 12, padding: '20px 32px',
+              border: '1px solid var(--nx-accent)',
+              color: 'var(--nx-accent-2)', fontSize: 16, fontWeight: 700,
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
             }}>
               <span style={{ fontSize: 32 }}>📂</span>
               <span>{t.drop}</span>
-              <span style={{ fontSize: 11, color: '#8b949e' }}>STEP · STL · OBJ · PLY · DXF</span>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>STEP · STL · OBJ · PLY · DXF</span>
             </div>
           </div>
         )}
 
         {/* Fusion 360-style Top Left Info */}
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ color: '#ffffff', fontSize: 13, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+          <span style={{ color: 'var(--nx-text)', fontSize: 13, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {isEditing ? (
-              <><span style={{ color: '#22c55e' }}>● </span>{t.editMode}: {editMode}</>
+              <><span style={{ color: 'var(--nx-ok)' }}>● </span>{t.editMode}: {editMode}</>
             ) : isAssembly ? (
               <>{assemblyLabel || t.assemblyShort}{' '}
-                <span data-testid="assembly-bom-count" style={{ color: '#58a6ff', fontSize: 11 }}>({bomParts!.length})</span>
+                <span data-testid="assembly-bom-count" style={{ color: 'var(--nx-accent-2)', fontSize: 11 }}>({bomParts!.length})</span>
               </>
             ) : t.preview3d}
           </span>
@@ -1846,7 +1998,7 @@ export default function ShapePreview({
                 borderRadius: 6,
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#ffffff',
+                color: 'var(--nx-text)',
                 background: assemblyLoadChrome.color,
                 border: '1px solid rgba(0,0,0,0.12)',
                 cursor: 'help',
@@ -1863,7 +2015,7 @@ export default function ShapePreview({
 
         {/* Fusion 360-style Top Right ViewCube */}
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'rgba(13,17,23,0.85)', padding: 4, borderRadius: 8, border: '1px solid #30363d', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'var(--nx-glass-strong)', padding: 4, borderRadius: 8, border: '1px solid var(--nx-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
             {([
               { label: t.top, key: '7', view: 'top' },
               { label: t.front, key: '5', view: 'front' },
@@ -1876,12 +2028,12 @@ export default function ShapePreview({
                 title={viewChromeDisabled ? t.viewWhenNoModel : `${label} [${key}]`}
                 aria-label={label}
                 style={{
-                  padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: '#ffffff',
+                  padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: 'var(--nx-text)',
                   fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                   opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}
-                onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = '#58a6ff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffffff'; }}
+                onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'var(--nx-accent-soft)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
               >
                 {label}
               </button>
@@ -1892,12 +2044,12 @@ export default function ShapePreview({
               title={viewChromeDisabled ? t.viewWhenNoModel : `${t.fitAll} [F]`}
               aria-label={t.fitAll}
               style={{
-                padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: '#ffffff',
+                padding: '6px 8px', borderRadius: 4, border: 'none', background: 'transparent', color: 'var(--nx-text)',
                 fontSize: 11, fontWeight: 700, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', gridColumn: 'span 2', whiteSpace: 'nowrap',
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'rgba(56,139,253,0.15)'; e.currentTarget.style.color = '#58a6ff'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffffff'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled) e.currentTarget.style.background = 'var(--nx-accent-soft)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nx-text)'; }}
             >
               {t.fit}
             </button>
@@ -1905,7 +2057,7 @@ export default function ShapePreview({
         </div>
 
         {/* Fusion 360-style Bottom Center Navigation Bar */}
-        <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,17,23,0.85)', padding: '4px 6px', borderRadius: 12, border: '1px solid #30363d', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', flexWrap: 'nowrap' }}>
+        <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'var(--nx-glass-strong)', padding: '4px 6px', borderRadius: 12, border: '1px solid var(--nx-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', flexWrap: 'nowrap' }}>
           <div style={{ display: 'flex', gap: 2, flexWrap: 'nowrap' }}>
             {MODES.map(({ key, label, icon }) => (
               <button
@@ -1916,13 +2068,13 @@ export default function ShapePreview({
                 style={{
                   padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                   cursor: viewChromeDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
-                  background: displayMode === key ? 'rgba(56,139,253,0.15)' : 'transparent',
-                  color: displayMode === key ? '#58a6ff' : '#ffffff',
+                  background: displayMode === key ? 'var(--nx-accent-soft)' : 'transparent',
+                  color: displayMode === key ? 'var(--nx-accent-2)' : 'var(--nx-text)',
                   border: displayMode === key ? '1px solid rgba(56,139,253,0.3)' : '1px solid transparent',
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}
-                onMouseEnter={e => { if (displayMode !== key) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
+                onMouseEnter={e => { if (displayMode !== key) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                 onMouseLeave={e => { if (displayMode !== key) { e.currentTarget.style.background = 'transparent'; } }}
               >
                 <span style={{ fontSize: 12 }}>{icon}</span>
@@ -1930,7 +2082,7 @@ export default function ShapePreview({
               </button>
             ))}
           </div>
-          <div style={{ width: 1, height: 16, background: '#30363d', margin: '0 2px' }} />
+          <div style={{ width: 1, height: 16, background: 'var(--nx-border)', margin: '0 2px' }} />
           <div style={{ display: 'flex', gap: 2, flexWrap: 'nowrap' }}>
             {onToggleSelection && (
               <button
@@ -1940,13 +2092,13 @@ export default function ShapePreview({
                 style={{
                   padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                   cursor: viewChromeDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
-                  background: selectionActive ? 'rgba(34,197,94,0.15)' : 'transparent',
-                  color: selectionActive ? '#4ade80' : '#ffffff',
-                  border: selectionActive ? '1px solid rgba(34,197,94,0.3)' : '1px solid transparent',
+                  background: selectionActive ? 'rgba(94, 234, 212, 0.15)' : 'transparent',
+                  color: selectionActive ? 'var(--nx-ok)' : 'var(--nx-text)',
+                  border: selectionActive ? '1px solid rgba(94, 234, 212, 0.45)' : '1px solid transparent',
                   display: 'flex', alignItems: 'center', gap: 4, opacity: viewChromeDisabled ? 0.45 : 1,
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}
-                onMouseEnter={e => { if (!selectionActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
+                onMouseEnter={e => { if (!selectionActive) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                 onMouseLeave={e => { if (!selectionActive) { e.currentTarget.style.background = 'transparent'; } }}
               >
                 <span style={{ fontSize: 12 }}>🖱</span>
@@ -1962,10 +2114,10 @@ export default function ShapePreview({
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
                 background: pbrPanelOpen ? 'rgba(217,119,6,0.15)' : 'transparent',
                 borderColor: pbrPanelOpen ? 'rgba(217,119,6,0.3)' : 'transparent',
-                color: pbrPanelOpen ? '#f59e0b' : '#ffffff', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                color: pbrPanelOpen ? 'var(--nx-warn)' : 'var(--nx-text)', fontSize: 13, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { if (!viewChromeDisabled && !pbrPanelOpen) e.currentTarget.style.background = 'transparent'; }}
             >🎨</button>
             <button
@@ -1975,12 +2127,12 @@ export default function ShapePreview({
               aria-label={t.dimensions}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
-                background: showDims ? 'rgba(56,139,253,0.15)' : 'transparent',
-                borderColor: showDims ? 'rgba(56,139,253,0.3)' : 'transparent',
-                color: showDims ? '#58a6ff' : '#ffffff', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                background: showDims ? 'var(--nx-accent-soft)' : 'transparent',
+                borderColor: showDims ? 'var(--nx-accent-line)' : 'transparent',
+                color: showDims ? 'var(--nx-accent-2)' : 'var(--nx-text)', fontSize: 12, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { if (!viewChromeDisabled && !showDims) e.currentTarget.style.background = 'transparent'; }}
             >📏</button>
             <button
@@ -1990,19 +2142,19 @@ export default function ShapePreview({
               aria-label={t.turntable}
               style={{
                 padding: '4px 8px', borderRadius: 8, border: '1px solid transparent',
-                background: effectiveAnimateMode === 'turntable' ? 'rgba(124,58,237,0.15)' : 'transparent',
-                borderColor: effectiveAnimateMode === 'turntable' ? 'rgba(124,58,237,0.3)' : 'transparent',
-                color: effectiveAnimateMode === 'turntable' ? '#a78bfa' : '#ffffff', fontSize: 14, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
+                background: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-soft)' : 'transparent',
+                borderColor: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-line)' : 'transparent',
+                color: effectiveAnimateMode === 'turntable' ? 'var(--nx-accent-2)' : 'var(--nx-text)', fontSize: 14, cursor: viewChromeDisabled ? 'not-allowed' : 'pointer',
                 opacity: viewChromeDisabled ? 0.45 : 1, transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
               }}
-              onMouseEnter={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { if (!viewChromeDisabled && effectiveAnimateMode !== 'turntable') e.currentTarget.style.background = 'transparent'; }}
             >⟲</button>
             <button
               type="button" onClick={toggleFullscreen} title={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
               aria-label={isFullscreen ? t.fullscreenOut : t.fullscreenIn}
-              style={{ padding: '4px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#ffffff', fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              style={{ padding: '4px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--nx-text)', fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-glass-soft)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               {isFullscreen ? '⊡' : '⛶'}
@@ -2073,24 +2225,24 @@ export default function ShapePreview({
             <div style={{
               position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
               zIndex: 20, display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(13,17,23,0.85)', borderRadius: 10,
-              border: '1px solid #30363d', padding: '4px 10px',
+              background: 'var(--nx-glass-strong)', borderRadius: 10,
+              border: '1px solid var(--nx-border)', padding: '4px 10px',
               backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', flexWrap: 'nowrap'
             }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                 {lang === 'ko' ? '스케치 평면' : 'Sketch Plane'}
               </span>
-              <div style={{ width: 1, height: 14, background: '#30363d' }} />
+              <div style={{ width: 1, height: 14, background: 'var(--nx-border)' }} />
               <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                 {(['xy', 'xz', 'yz'] as const).map(p => (
                   <button key={p} onClick={() => onSketchPlaneChange(p)} style={{
                     padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    border: sketchPlane === p ? '1px solid rgba(124,58,237,0.4)' : '1px solid transparent',
-                    background: sketchPlane === p ? 'rgba(124,58,237,0.2)' : 'transparent',
-                    color: sketchPlane === p ? '#a78bfa' : '#ffffff',
+                    border: sketchPlane === p ? '1px solid var(--nx-accent-line)' : '1px solid transparent',
+                    background: sketchPlane === p ? 'var(--nx-accent-soft)' : 'transparent',
+                    color: sketchPlane === p ? 'var(--nx-accent)' : 'var(--nx-text)',
                     transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
                   }}
-                  onMouseEnter={e => { if (sketchPlane !== p) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
+                  onMouseEnter={e => { if (sketchPlane !== p) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                   onMouseLeave={e => { if (sketchPlane !== p) { e.currentTarget.style.background = 'transparent'; } }}
                   >
                     {p.toUpperCase()}
@@ -2106,13 +2258,13 @@ export default function ShapePreview({
               <div style={{ textAlign: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
                   <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="64" height="64" rx="14" fill="#0d1117"/>
-                    <text x="10" y="50" fontFamily="'Segoe UI', Arial, sans-serif" fontWeight="700" fontSize="46" fill="#388bfd">N</text>
+                    <rect width="64" height="64" rx="14" fill="var(--nx-bg)"/>
+                    <text x="10" y="50" fontFamily="'Segoe UI', Arial, sans-serif" fontWeight="700" fontSize="46" fill="var(--nx-accent)">N</text>
                   </svg>
-                  <span style={{ fontSize: '22px', fontWeight: 700, color: '#e6edf3', letterSpacing: '-0.3px' }}>NexyFab</span>
+                  <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--nx-text)', letterSpacing: '-0.3px' }}>NexyFab</span>
                 </div>
                 <p style={{
-                  color: '#9ca3af',
+                  color: 'var(--nx-text-2)',
                   fontSize: '13px',
                   margin: 0,
                   width: '100%',
@@ -2133,19 +2285,19 @@ export default function ShapePreview({
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                     width: '140px', padding: '20px 12px', borderRadius: '12px',
-                    border: '1px solid #30363d', background: '#161b22',
-                    color: '#e6edf3', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                    color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#388bfd'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d'; (e.currentTarget as HTMLButtonElement).style.background = '#161b22'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel-2)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                 >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#388bfd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                     <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
                   </svg>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600 }}>{t.shapeLibraryTitle}</div>
-                    <div style={{ fontSize: '11px', color: '#6e7681', marginTop: '3px' }}>{t.pickShape}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--nx-text-3)', marginTop: '3px' }}>{t.pickShape}</div>
                   </div>
                 </button>
 
@@ -2156,13 +2308,13 @@ export default function ShapePreview({
                     style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                       width: '140px', padding: '20px 12px', borderRadius: '12px',
-                      border: '1px solid #30363d', background: '#161b22',
-                      color: '#e6edf3', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                      border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                      color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#3fb950'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d'; (e.currentTarget as HTMLButtonElement).style.background = '#161b22'; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-ok)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel-2)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                   >
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3fb950" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-ok)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                     </svg>
                     <div style={{ textAlign: 'center' }}>
@@ -2177,23 +2329,23 @@ export default function ShapePreview({
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                     width: '140px', padding: '20px 12px', borderRadius: '12px',
-                    border: '1px solid #30363d', background: '#161b22',
-                    color: '#e6edf3', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-panel)',
+                    color: 'var(--nx-text)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#a371f7'; (e.currentTarget as HTMLButtonElement).style.background = '#1c2333'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#30363d'; (e.currentTarget as HTMLButtonElement).style.background = '#161b22'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-accent-2)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel-2)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--nx-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--nx-panel)'; }}
                 >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a371f7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent-2)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                   </svg>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600 }}>{t.aiChatTitle}</div>
-                    <div style={{ fontSize: '11px', color: '#6e7681', marginTop: '3px' }}>{t.aiChat}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--nx-text-3)', marginTop: '3px' }}>{t.aiChat}</div>
                   </div>
                 </button>
               </div>
 
-              <p style={{ color: '#484f58', fontSize: '11px', margin: 0 }}>{t.shortcutsHint}</p>
+              <p style={{ color: 'var(--nx-border-strong)', fontSize: '11px', margin: 0 }}>{t.shortcutsHint}</p>
             </div>
           ) : (
             <>
@@ -2250,11 +2402,15 @@ export default function ShapePreview({
             >
               <SceneCleanup />
               {!viewChromeDisabled && (
-                <GizmoHelper alignment="bottom-left" margin={[80, 80]}>
+                // Smaller margin so the gizmo stays inside small viewports
+                // (3D 미리보기 thumbnail, split views) — the previous 80px
+                // pushed it out of bounds on narrow panels and made it
+                // appear to "jump" as the viewport reflowed.
+                <GizmoHelper alignment="bottom-left" margin={[56, 56]}>
                   <GizmoViewport axisColors={['#ff3b30', '#34c759', '#007aff']} labelColor="white" hideNegativeAxes />
                 </GizmoHelper>
               )}
-              <color attach="background" args={['#0d1117']} />
+              <SceneBg />
               {renderMode === 'photorealistic' && renderSettings ? (
                 <Suspense fallback={null}>
                   <RenderMode
@@ -2272,15 +2428,15 @@ export default function ShapePreview({
                 </Suspense>
               ) : (
                 <>
-                  <hemisphereLight args={['#ffffff', '#f3f4f6', 0.8]} />
+                  <hemisphereLight args={['var(--nx-text)', 'var(--nx-panel-2)', 0.8]} />
                   <ambientLight intensity={0.4} />
                   <directionalLight position={[20, 30, 15]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} />
                   <directionalLight position={[-15, 10, -10]} intensity={0.6} color="#eef2ff" />
-                  <pointLight position={[0, 50, 0]} intensity={0.3} color="#ffffff" />
+                  <pointLight position={[0, 50, 0]} intensity={0.3} color="var(--nx-text)" />
                 </>
               )}
               <Suspense fallback={null}>
-                {renderMode !== 'photorealistic' && <Environment preset={envPreset} background={false} />}
+                {renderMode !== 'photorealistic' && <EnvironmentBoundary><ProceduralEnvironment preset={envPreset} /></EnvironmentBoundary>}
                 <CameraFitter
                   results={allResults}
                   bomParts={isAssembly ? bomParts : undefined}
@@ -2381,7 +2537,7 @@ export default function ShapePreview({
                       return (
                         <mesh key={`interference_${i}`} position={[center.x, center.y, center.z]}>
                           <boxGeometry args={[size.x, size.y, size.z]} />
-                          <meshStandardMaterial color="#f85149" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
+                          <meshStandardMaterial color="var(--nx-error)" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
                         </mesh>
                       );
                     })}
@@ -2403,14 +2559,14 @@ export default function ShapePreview({
                       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
 
                       const colorMap: Record<string, string> = {
-                        coincident: '#388bfd', concentric: '#3fb950', distance: '#d29922',
-                        angle: '#f85149', parallel: '#a371f7', perpendicular: '#f778ba', tangent: '#2ea043'
+                        coincident: 'var(--nx-accent)', concentric: 'var(--nx-ok)', distance: 'var(--nx-warn)',
+                        angle: 'var(--nx-error)', parallel: 'var(--nx-accent-2)', perpendicular: '#f778ba', tangent: '#2ea043'
                       };
                       const iconMap: Record<string, string> = {
                         coincident: '═', concentric: '⊙', distance: '↔', angle: '∡', parallel: '∥', perpendicular: '⊥', tangent: '⌒'
                       };
                       
-                      const color = colorMap[mate.type] || '#8b949e';
+                      const color = colorMap[mate.type] || 'var(--nx-text-2)';
                       const icon = iconMap[mate.type] || '🔗';
                       const midPoint = new THREE.Vector3().addVectors(ptA, ptB).multiplyScalar(0.5);
 
@@ -2429,9 +2585,9 @@ export default function ShapePreview({
                           </mesh>
                           <Html position={midPoint} center style={{ pointerEvents: 'none' }}>
                             <div style={{
-                              background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                              background: 'var(--nx-glass-strong)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                               border: `1px solid ${color}88`, borderRadius: 12, padding: '2px 6px',
-                              color: '#fff', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                              color: 'var(--nx-text)', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                               boxShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap'
                             }}>
                               <span style={{ color }}>{icon}</span>
@@ -2462,7 +2618,7 @@ export default function ShapePreview({
                   <TurntableGroup active={effectiveAnimateMode === 'turntable'}>
                   <MotionMeshWrapper transforms={effectiveMotionTransforms}>
                   <>
-                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && selectionActive && onElementSelect && <SelectionMeshR3F geometry={result.geometry} onSelect={onElementSelect} />}
                     {result && highlightTriangles && highlightTriangles.length > 0 && <FaceHighlightMesh sourceGeometry={result.geometry} triangleIndices={highlightTriangles} />}
                     {ghostResult && (
@@ -2478,7 +2634,7 @@ export default function ShapePreview({
                         buildDirection={printBuildDirection as [number, number, number]}
                       />
                     )}
-                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showFEA && feaResult && (
                       <FEAOverlay
                         geometry={result.geometry}
@@ -2487,7 +2643,7 @@ export default function ShapePreview({
                         deformationScale={feaDeformationScale}
                       />
                     )}
-                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* FEA boundary-condition markers — visible during setup */}
                     {result && showFEA && feaConditions && feaConditions.length > 0 && (
                       <FEAConditionMarkers
@@ -2504,7 +2660,7 @@ export default function ShapePreview({
                         highlightedIssue={dfmHighlightedIssue}
                       />
                     )}
-                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showDraftAnalysis && draftResult && (
                       <DraftAnalysisOverlay
                         geometry={result.geometry}
@@ -2513,11 +2669,11 @@ export default function ShapePreview({
                         pullDirection={draftResult.options?.pullDirection}
                       />
                     )}
-                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="#8b9cf4" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* Instance Array overlay */}
                     {result && showArray && arrayPattern && (() => {
                       const matrices = buildInstanceMatrices(arrayPattern);
-                      const mat = new THREE.MeshStandardMaterial({ color: '#8b9cf4', roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
+                      const mat = new THREE.MeshStandardMaterial({ color: 'var(--nx-accent-2)', roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
                       return <InstanceArray geometry={result.geometry} material={mat} matrices={matrices} visible={true} />;
                     })()}
                     <OrbitControls makeDefault enableDamping dampingFactor={0.07} minDistance={1} maxDistance={5000} onStart={handleOrbitStart} onEnd={handleOrbitEnd} mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN }} touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }} />
@@ -2609,8 +2765,13 @@ export default function ShapePreview({
                   infiniteGrid
                 />
               </group>
-              {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid */}
-              <axesHelper args={[80]} position={[0, 0.5, 0]} />
+              {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid.
+                  Colors are forced to match GizmoViewport (iOS red/green/blue) so the bottom-left
+                  triad and the ground axes read as the same coordinate system. */}
+              <WorldAxes />
+              {/* Push/Pull arrow gizmo — Phase 2B (visualization only).
+                  Drag → param delta lands in phase-2C. */}
+              <PushPullArrow />
               {/* Pin Comments (Figma-style, manufacturer ↔ designer) */}
               {pinComments && onAddPinComment && onResolvePinComment && onDeletePinComment && (
                 <PinComments
@@ -2639,7 +2800,7 @@ export default function ShapePreview({
               position: 'absolute', bottom: 6, right: 8,
               background: 'rgba(13,17,23,0.75)', borderRadius: '4px',
               padding: '2px 7px', fontSize: '10px', fontWeight: 600,
-              color: isOrbiting ? '#f0883e' : '#6e7681',
+              color: isOrbiting ? 'var(--nx-warn)' : 'var(--nx-text-3)',
               pointerEvents: 'none', userSelect: 'none',
               fontFamily: 'monospace', letterSpacing: '0.02em',
               border: '1px solid rgba(48,54,61,0.6)',
@@ -2653,35 +2814,35 @@ export default function ShapePreview({
         </div>
 
         {/* Stats bar */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', background: '#161b22', borderTop: '1px solid #30363d', fontSize: '11px', flexShrink: 0, gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', background: 'var(--nx-panel)', borderTop: '1px solid var(--nx-border)', fontSize: '11px', flexShrink: 0, gap: '10px', flexWrap: 'wrap' }}>
           {stats ? (
             <>
-              <span style={{ color: '#58a6ff', fontWeight: 700 }}>
+              <span style={{ color: 'var(--nx-accent-2)', fontWeight: 700 }}>
                 {stats.w.toFixed(1)} × {stats.h.toFixed(1)} × {stats.d.toFixed(1)} mm
               </span>
-              <span style={{ color: '#30363d' }}>│</span>
-              <span style={{ color: '#6e7681' }}>Vol: {stats.vol.toFixed(2)} cm³</span>
-              <span style={{ color: '#30363d' }}>│</span>
-              <span style={{ color: '#6e7681' }}>SA: {stats.sa.toFixed(2)} cm²</span>
+              <span style={{ color: 'var(--nx-border)' }}>│</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>Vol: {stats.vol.toFixed(2)} cm³</span>
+              <span style={{ color: 'var(--nx-border)' }}>│</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>SA: {stats.sa.toFixed(2)} cm²</span>
               {isAssembly && (
                 <>
-                  <span style={{ color: '#30363d' }}>│</span>
-                  <span style={{ color: '#8b9cf4' }}>{bomParts!.length} parts</span>
+                  <span style={{ color: 'var(--nx-border)' }}>│</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{bomParts!.length} parts</span>
                 </>
               )}
               {isEditing && (
                 <>
-                  <span style={{ color: '#30363d' }}>│</span>
-                  <span style={{ color: '#22c55e' }}>Editing: {editMode}</span>
+                  <span style={{ color: 'var(--nx-border)' }}>│</span>
+                  <span style={{ color: 'var(--nx-ok)' }}>Editing: {editMode}</span>
                 </>
               )}
               {isTransforming && (
                 <>
-                  <span style={{ color: '#30363d' }}>│</span>
-                  <span style={{ color: '#f0883e' }}>Transform: {transformMode}</span>
+                  <span style={{ color: 'var(--nx-border)' }}>│</span>
+                  <span style={{ color: 'var(--nx-warn)' }}>Transform: {transformMode}</span>
                 </>
               )}
-              <span style={{ marginLeft: 'auto', color: '#484f58' }}>
+              <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>
                 {isEditing && (editMode === 'vertex' || editMode === 'edge')
                   ? t.directEditNavHint
                   : isEditing
@@ -2692,7 +2853,7 @@ export default function ShapePreview({
               </span>
             </>
           ) : (
-            <span style={{ color: '#484f58' }}>{t.defaultNavHint}</span>
+            <span style={{ color: 'var(--nx-border-strong)' }}>{t.defaultNavHint}</span>
           )}
         </div>
       </div>

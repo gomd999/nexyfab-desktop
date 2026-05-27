@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import ExpressionInput from './ExpressionInput';
+import type { ExprVariable } from './ExpressionEngine';
 
 export interface PropertyManagerProps {
   visible: boolean;
@@ -13,6 +15,10 @@ export interface PropertyManagerProps {
   onParamChange: (param: string, value: number) => void;
   onClose: () => void;
   onApply: () => void;
+  /** Optional: raw expressions per param. Enables expression editing (e.g. "d/2"). */
+  expressions?: Record<string, string>;
+  /** Optional: callback for expression text changes (separate from numeric value). */
+  onExpressionChange?: (param: string, expression: string) => void;
 }
 
 const L: Record<string, Record<string, string>> = {
@@ -62,17 +68,22 @@ const FEATURE_ICONS: Record<string, string> = {
 export default function PropertyManager({
   visible, lang, selectedFeatureId, featureName, featureType,
   featureParams, paramDefs, onParamChange, onClose, onApply,
+  expressions, onExpressionChange,
 }: PropertyManagerProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!visible || !selectedFeatureId) return null;
+
+  // Build the variable list from sibling params so expressions can reference
+  // them ("d/2" where d is another param on the same feature).
+  const variables: ExprVariable[] = Object.entries(featureParams).map(([name, value]) => ({ name, value }));
 
   const typeLabel = t(lang, featureType);
 
   return (
     <div style={{
       position: 'absolute', top: 8, right: 8, width: 260, zIndex: 50,
-      background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
+      background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 10,
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       display: 'flex', flexDirection: 'column', maxHeight: 'calc(100% - 16px)',
       overflow: 'hidden',
@@ -81,17 +92,17 @@ export default function PropertyManager({
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        padding: '10px 12px', borderBottom: '1px solid #21262d',
+        padding: '10px 12px', borderBottom: '1px solid var(--nx-panel-2)',
         background: 'rgba(56,139,253,0.06)',
       }}>
         <span style={{ fontSize: 16 }}>{FEATURE_ICONS[featureType] || '⬡'}</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#c9d1d9' }}>{featureName}</div>
-          <div style={{ fontSize: 10, color: '#6e7681' }}>{typeLabel}</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{featureName}</div>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{typeLabel}</div>
         </div>
         <button onClick={onClose} style={{
           width: 20, height: 20, borderRadius: 4, border: 'none', background: 'transparent',
-          color: '#6e7681', fontSize: 14, cursor: 'pointer',
+          color: 'var(--nx-text-3)', fontSize: 14, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>✕</button>
       </div>
@@ -100,33 +111,51 @@ export default function PropertyManager({
       <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6, cursor: 'pointer' }}
           onClick={() => setCollapsed(c => ({ ...c, params: !c.params }))}>
-          <span style={{ fontSize: 8, color: '#6e7681' }}>{collapsed.params ? '▶' : '▼'}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.params ? '▶' : '▼'}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
             {t(lang, 'params')}
           </span>
-          <div style={{ flex: 1, height: 1, background: '#21262d' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
         </div>
 
         {!collapsed.params && paramDefs.map(def => {
           const value = featureParams[def.name] ?? 0;
+          const expr = expressions?.[def.name] ?? String(value);
+          const supportsExpression = !!onExpressionChange;
           return (
             <div key={def.name} style={{ marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <label style={{ fontSize: 10, fontWeight: 600, color: '#8b949e' }}>{def.label}</label>
-                <input type="number" value={value} min={def.min} max={def.max} step={def.step ?? 1}
-                  onChange={e => onParamChange(def.name, parseFloat(e.target.value) || 0)}
-                  style={{
-                    width: 60, padding: '2px 6px', borderRadius: 4,
-                    border: '1px solid #30363d', background: '#0d1117',
-                    color: '#c9d1d9', fontSize: 11, fontWeight: 700,
-                    fontFamily: 'ui-monospace, monospace', textAlign: 'right',
-                  }}
-                />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, gap: 6 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.label}</label>
+                {supportsExpression ? (
+                  <div style={{ width: 120 }}>
+                    <ExpressionInput
+                      expression={expr}
+                      variables={variables.filter(v => v.name !== def.name)}
+                      onValueChange={v => onParamChange(def.name, v)}
+                      onExpressionChange={e => onExpressionChange!(def.name, e)}
+                      onCommit={() => { /* applied immediately on value change */ }}
+                      min={def.min ?? -Infinity}
+                      max={def.max ?? Infinity}
+                      step={def.step ?? 1}
+                      unit="mm"
+                    />
+                  </div>
+                ) : (
+                  <input type="number" value={value} min={def.min} max={def.max} step={def.step ?? 1}
+                    onChange={e => onParamChange(def.name, parseFloat(e.target.value) || 0)}
+                    style={{
+                      width: 60, padding: '2px 6px', borderRadius: 4,
+                      border: '1px solid var(--nx-border)', background: 'var(--nx-bg)',
+                      color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
+                      fontFamily: 'ui-monospace, monospace', textAlign: 'right',
+                    }}
+                  />
+                )}
               </div>
               {def.min !== undefined && def.max !== undefined && (
                 <input type="range" min={def.min} max={def.max} step={def.step ?? 1} value={value}
                   onChange={e => onParamChange(def.name, parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: '#388bfd', height: 3 }} />
+                  style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 3 }} />
               )}
             </div>
           );
@@ -135,36 +164,81 @@ export default function PropertyManager({
         {/* Info section */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 6, cursor: 'pointer' }}
           onClick={() => setCollapsed(c => ({ ...c, info: !c.info }))}>
-          <span style={{ fontSize: 8, color: '#6e7681' }}>{collapsed.info ? '▶' : '▼'}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.info ? '▶' : '▼'}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
             {t(lang, 'info')}
           </span>
-          <div style={{ flex: 1, height: 1, background: '#21262d' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
         </div>
 
         {!collapsed.info && (
-          <div style={{ padding: '4px 8px', background: '#0d1117', borderRadius: 6, fontSize: 10 }}>
+          <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-              <span style={{ color: '#6e7681' }}>ID</span>
-              <span style={{ color: '#484f58', fontFamily: 'monospace' }}>{selectedFeatureId?.slice(0, 8)}</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>ID</span>
+              <span style={{ color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>{selectedFeatureId?.slice(0, 8)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-              <span style={{ color: '#6e7681' }}>{t(lang, 'type')}</span>
-              <span style={{ color: '#484f58', fontFamily: 'monospace' }}>{featureType}</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>{t(lang, 'type')}</span>
+              <span style={{ color: 'var(--nx-border-strong)', fontFamily: 'monospace' }}>{featureType}</span>
             </div>
           </div>
+        )}
+
+        {/* APPEARANCE — mirrors mockup #14's "Inherit From body / Material" row.
+            Shows material chip if available, else placeholder text. */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 6, cursor: 'pointer' }}
+          onClick={() => setCollapsed(c => ({ ...c, appearance: !c.appearance }))}
+        >
+          <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.appearance ? '▶' : '▼'}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
+            {lang === 'ko' ? '외형' : 'Appearance'}
+          </span>
+          <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
+        </div>
+        {!collapsed.appearance && (
+          <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+              <span style={{ color: 'var(--nx-text-3)' }}>{lang === 'ko' ? '상속' : 'Inherit'}</span>
+              <span style={{ color: 'var(--nx-text)' }}>{lang === 'ko' ? '본체로부터' : 'From body'}</span>
+            </div>
+          </div>
+        )}
+
+        {/* EDGES — only meaningful for edge-based features (fillet/chamfer).
+            Shows count placeholder; deep edge-list wiring is a follow-up. */}
+        {(featureType === 'fillet' || featureType === 'chamfer') && (
+          <>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 6, cursor: 'pointer' }}
+              onClick={() => setCollapsed(c => ({ ...c, edges: !c.edges }))}
+            >
+              <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.edges ? '▶' : '▼'}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
+                {lang === 'ko' ? '엣지' : 'Edges'}
+              </span>
+              <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
+            </div>
+            {!collapsed.edges && (
+              <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10, color: 'var(--nx-text-3)', fontStyle: 'italic' }}>
+                {lang === 'ko'
+                  ? '뷰포트에서 엣지를 클릭하여 추가/제거'
+                  : 'Click edges in viewport to add / remove'}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Footer */}
-      <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid #21262d' }}>
+      <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid var(--nx-panel-2)' }}>
         <button onClick={onApply} style={{
           flex: 1, padding: '6px 0', borderRadius: 6, border: 'none',
-          background: '#388bfd', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+          background: 'var(--nx-accent)', color: 'var(--nx-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
         }}>{t(lang, 'apply')}</button>
         <button onClick={onClose} style={{
-          padding: '6px 12px', borderRadius: 6, border: '1px solid #30363d',
-          background: 'transparent', color: '#8b949e', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+          padding: '6px 12px', borderRadius: 6, border: '1px solid var(--nx-border)',
+          background: 'transparent', color: 'var(--nx-text-2)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
         }}>{t(lang, 'close')}</button>
       </div>
     </div>

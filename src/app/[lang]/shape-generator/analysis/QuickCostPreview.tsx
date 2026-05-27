@@ -105,7 +105,7 @@ export default function QuickCostPreview({
     return (
       <div style={{
         padding: '8px 10px', borderRadius: 6, background: 'rgba(110,118,129,0.1)',
-        border: '1px solid #30363d', color: '#8b949e', fontSize: 11,
+        border: '1px solid var(--nx-border)', color: 'var(--nx-text-2)', fontSize: 11,
       }}>
         {t.empty}
       </div>
@@ -122,24 +122,24 @@ export default function QuickCostPreview({
     <div style={{
       padding: '10px 12px', borderRadius: 8,
       background: 'linear-gradient(135deg, rgba(63,185,80,0.08), rgba(56,139,253,0.08))',
-      border: '1px solid #3fb950',
+      border: '1px solid var(--nx-ok)',
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: '#3fb950', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 10, color: 'var(--nx-ok)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
           {t.label}
         </span>
-        <span style={{ fontSize: 9, color: '#8b949e' }}>±30%</span>
+        <span style={{ fontSize: 9, color: 'var(--nx-text-2)' }}>±30%</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 16, fontWeight: 800, color: '#c9d1d9' }}>
+        <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--nx-text)' }}>
           {lowStr} ~ {highStr}
         </span>
-        <span style={{ fontSize: 11, color: '#8b949e' }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
           · {estimate.processName} · {estimate.leadTime}
           {quantity > 1 && ` · ${quantity}${t.pcs}`}
         </span>
       </div>
-      <div style={{ marginTop: 4, fontSize: 10, color: '#6e7681' }}>
+      <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3)' }}>
         {t.disclaimer}
       </div>
     </div>

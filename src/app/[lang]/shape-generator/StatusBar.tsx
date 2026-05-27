@@ -92,9 +92,9 @@ const dict = {
 const S = {
   root: (rtl: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 6,
-    padding: '0 12px', background: '#0d1117',
+    padding: '0 12px', background: 'var(--nx-bg)',
     borderTop: '1px solid #21262d', fontSize: 11, fontWeight: 600,
-    flexShrink: 0, height: 24, color: '#6e7681',
+    flexShrink: 0, height: 24, color: 'var(--nx-text-3)',
     fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
     direction: rtl ? 'rtl' : 'ltr',
   }),
@@ -107,24 +107,24 @@ const S = {
   }),
   modeDot: (sketch: boolean, editing: boolean): React.CSSProperties => ({
     width: 6, height: 6, borderRadius: '50%',
-    background: sketch ? '#388bfd' : editing ? '#d29922' : '#3fb950',
+    background: sketch ? '#388bfd' : editing ? 'var(--nx-warn)' : 'var(--nx-ok)',
     flexShrink: 0,
   }),
   modeLabel: (sketch: boolean): React.CSSProperties => ({
     color: sketch ? '#58a6ff' : '#8b949e', fontSize: 10,
   }),
   toolWrap: { display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
-  toolLabelKey: { color: '#d2a8ff', fontSize: 10 } as React.CSSProperties,
+  toolLabelKey: { color: 'var(--nx-accent-2)', fontSize: 10 } as React.CSSProperties,
   toolLabelVal: { color: '#c9d1d9', fontSize: 10 } as React.CSSProperties,
   coordWrap: { display: 'flex', alignItems: 'center', gap: 4, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%', minWidth: 180 } as React.CSSProperties,
   coordEmpty: { color: '#484f58' } as React.CSSProperties,
-  coordX: { color: '#f47067' } as React.CSSProperties,
-  coordY: { color: '#7ee787' } as React.CSSProperties,
-  coordZ: { color: '#79c0ff' } as React.CSSProperties,
+  coordX: { color: 'var(--nx-error)' } as React.CSSProperties,
+  coordY: { color: 'var(--nx-ok)' } as React.CSSProperties,
+  coordZ: { color: 'var(--nx-accent-2)' } as React.CSSProperties,
   coordVal: { color: '#c9d1d9', minWidth: 42, textAlign: 'right' as const } as React.CSSProperties,
   selWrap: { display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
-  selCount: { color: '#d29922' } as React.CSSProperties,
-  selLabel: { color: '#8b949e', fontSize: 10 } as React.CSSProperties,
+  selCount: { color: 'var(--nx-warn)' } as React.CSSProperties,
+  selLabel: { color: 'var(--nx-text-2)', fontSize: 10 } as React.CSSProperties,
   snapBtn: (on: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 3,
     padding: '0 6px', height: '100%',
@@ -136,20 +136,20 @@ const S = {
   sectionWrap: { display: 'flex', alignItems: 'center', gap: 4, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
   sectionAxisBtn: (active: boolean): React.CSSProperties => ({
     padding: '0 5px', borderRadius: 2, border: 'none', fontSize: 9, fontWeight: 700, cursor: 'pointer',
-    background: active ? '#388bfd' : 'transparent', color: active ? '#fff' : '#6e7681',
+    background: active ? '#388bfd' : 'transparent', color: active ? 'var(--nx-text)' : '#6e7681',
     fontFamily: 'inherit',
   }),
-  sectionPct: { fontSize: 9, color: '#6e7681', minWidth: 24 } as React.CSSProperties,
+  sectionPct: { fontSize: 9, color: 'var(--nx-text-3)', minWidth: 24 } as React.CSSProperties,
   optWrap: { display: 'flex', alignItems: 'center', gap: 4, padding: '0 6px', height: '100%' } as React.CSSProperties,
-  optBarTrack: { width: 60, height: 3, background: '#21262d', borderRadius: 2, overflow: 'hidden' } as React.CSSProperties,
-  optBarFill: (pct: number): React.CSSProperties => ({ width: `${pct}%`, height: '100%', background: '#8b5cf6', transition: 'width 0.3s' }),
-  optPct: { fontSize: 9, color: '#8b5cf6' } as React.CSSProperties,
+  optBarTrack: { width: 60, height: 3, background: 'var(--nx-panel-2)', borderRadius: 2, overflow: 'hidden' } as React.CSSProperties,
+  optBarFill: (pct: number): React.CSSProperties => ({ width: `${pct}%`, height: '100%', background: 'var(--nx-accent-2)', transition: 'width 0.3s' }),
+  optPct: { fontSize: 9, color: 'var(--nx-accent-2)' } as React.CSSProperties,
   statLabel: { color: '#484f58', fontSize: 9 } as React.CSSProperties,
-  unitBtn: { padding: '0 6px', borderRadius: 3, border: '1px solid #21262d', background: 'transparent', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', color: '#8b949e', height: 18, transition: 'all 0.12s' } as React.CSSProperties,
+  unitBtn: { padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'transparent', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', color: 'var(--nx-text-2)', height: 18, transition: 'all 0.12s' } as React.CSSProperties,
   unitMm: (on: boolean): React.CSSProperties => ({ color: on ? '#58a6ff' : undefined }),
   unitSep: { color: '#30363d', margin: '0 1px' } as React.CSSProperties,
   unitIn: (on: boolean): React.CSSProperties => ({ color: on ? '#58a6ff' : undefined }),
-  shortcutBtn: { width: 16, height: 16, borderRadius: 3, border: '1px solid #21262d', background: 'transparent', color: '#6e7681', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+  shortcutBtn: { width: 16, height: 16, borderRadius: 3, border: '1px solid var(--nx-border)', background: 'transparent', color: 'var(--nx-text-3)', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
 } as const;
 
 export default function StatusBar({
@@ -187,7 +187,7 @@ export default function StatusBar({
   const optPct = progress ? Math.round((progress.iteration / progress.maxIteration) * 100) : 0;
 
   return (
-    <div style={S.root(isRtl)}>
+    <div style={S.root(isRtl)} data-shell-v2-hide="status-bar">
       {/* Mode indicator */}
       <div style={S.modeWrap(isSketchMode)}>
         <span style={S.modeDot(isSketchMode, editMode !== 'none')} />
@@ -247,7 +247,7 @@ export default function StatusBar({
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 background: snapSize === mm ? '#388bfd' : 'transparent',
-                color: snapSize === mm ? '#fff' : '#6e7681',
+                color: snapSize === mm ? 'var(--nx-text)' : '#6e7681',
               }}
             >
               {mm}

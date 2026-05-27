@@ -51,9 +51,9 @@ export default function CadWorkspaceSwitcher({
         height: 20,
         fontSize: 10,
         fontWeight: 600,
-        color: '#8b949e',
+        color: 'var(--nx-text-2)',
         flexShrink: 0,
-        borderBottom: '1px solid #21262d',
+        borderBottom: '1px solid var(--nx-panel-2)',
       }}
     >
       <span style={{ whiteSpace: 'nowrap' }}>{heading}</span>
@@ -69,9 +69,9 @@ export default function CadWorkspaceSwitcher({
           borderRadius: 4,
           fontSize: 10,
           fontWeight: 600,
-          border: '1px solid #30363d',
-          background: readOnly ? '#161b22' : '#21262d',
-          color: readOnly ? '#6e7681' : '#c9d1d9',
+          border: '1px solid var(--nx-border)',
+          background: readOnly ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+          color: readOnly ? 'var(--nx-text-3)' : 'var(--nx-text)',
           cursor: readOnly ? 'not-allowed' : 'pointer',
           opacity: readOnly ? 0.85 : 1,
         }}

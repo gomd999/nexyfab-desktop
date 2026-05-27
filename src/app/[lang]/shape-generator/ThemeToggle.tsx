@@ -52,21 +52,21 @@ export function ThemeToggleButton() {
         height: 32,
         borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.08)',
-        background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
+        background: isDark ? 'var(--nx-glass-soft)' : 'rgba(0,0,0,0.06)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 15,
         transition: 'all 0.2s',
-        color: isDark ? '#c9d1d9' : '#24292f',
+        color: isDark ? 'var(--nx-text)' : 'var(--nx-text)',
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
+        e.currentTarget.style.background = isDark ? 'var(--nx-border)' : 'rgba(0,0,0,0.12)';
         e.currentTarget.style.transform = 'scale(1.08)';
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+        e.currentTarget.style.background = isDark ? 'var(--nx-glass-soft)' : 'rgba(0,0,0,0.06)';
         e.currentTarget.style.transform = 'scale(1)';
       }}
     >
