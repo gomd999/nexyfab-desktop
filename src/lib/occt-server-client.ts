@@ -76,13 +76,21 @@ export class ServerOcctUnavailableError extends Error {
 // ─── Per-op param shapes ────────────────────────────────────────────────────
 
 export interface ServerBooleanParams extends ChainableHost {
-  /** 0 = cylinder (default), 1 = sphere. */
-  toolShape: number;
-  r: number;
+  /** 0 = cylinder (default), 1 = sphere. Required when
+   *  toolSourceR2Key is unset; ignored otherwise. */
+  toolShape?: number;
+  /** Tool radius — required when toolSourceR2Key is unset. */
+  r?: number;
+  /** Cylinder height — primitive tool only. */
   height?: number;
   cx?: number;
   cy?: number;
   cz?: number;
+  /** Shape-vs-shape (W17 PR #24). R2 key from a previous op's
+   *  stepR2Key, used AS the tool. Mutually exclusive with primitive
+   *  tool fields (toolShape / r / height). Worker enforces XOR; the
+   *  client trusts it and just plumbs the field through. */
+  toolSourceR2Key?: string;
   type?: 'cut' | 'fuse' | 'intersect';
 }
 
@@ -376,10 +384,13 @@ export type ServerBooleanResponse = ServerOpResponse;
 
 /** True when params shape + size make server OCCT the better choice
  *  vs in-tab client OCCT. Heuristic from ADR-007 §"R2-mediated for
- *  large geometry". When sourceR2Key is used, the host volume is
- *  unknown — assume large and route to server. */
+ *  large geometry". When sourceR2Key OR toolSourceR2Key is used the
+ *  imported shape's volume is unknown — assume large and route to
+ *  server. (Shape-vs-shape can't run client-side anyway since the
+ *  tool isn't a primitive; routing it to server is the only path.) */
 export function shouldUseServerBoolean(params: ServerBooleanParams): boolean {
-  if (params.sourceR2Key) return true; // chain input → always server
+  if (params.sourceR2Key) return true;
+  if (params.toolSourceR2Key) return true;
   if (!params.host) return false;
   const v = params.host.w * params.host.h * params.host.d;
   return v >= SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3;

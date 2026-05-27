@@ -61,6 +61,15 @@ describe('shouldUseServerBoolean', () => {
       toolShape: 0, r: 1,
     })).toBe(true);
   });
+
+  it('toolSourceR2Key (W17 shape-vs-shape) → always true', () => {
+    // Only the server has the kernel to do shape-vs-shape boolean —
+    // primitive tool paths can't match an imported shape.
+    expect(shouldUseServerBoolean({
+      host: { w: 10, h: 10, d: 10 },
+      toolSourceR2Key: 'occt-ops/u1/extrude/tool.step',
+    })).toBe(true);
+  });
 });
 
 describe('serverBoolean — request shape', () => {
@@ -287,6 +296,45 @@ describe('serverBoolean — W16 chained input', () => {
     const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(body.params.sourceR2Key).toBe('occt-ops/u1/extrude/abc.step');
     expect(body.params.host).toBeUndefined();
+  });
+});
+
+describe('serverBoolean — W17 shape-vs-shape (toolSourceR2Key)', () => {
+  it('plumbs toolSourceR2Key through in the POST body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('boolean'));
+    globalThis.fetch = fetchMock;
+    await serverBoolean(
+      {
+        host: { w: 100, h: 100, d: 100 },
+        toolSourceR2Key: 'occt-ops/u1/extrude/tool.step',
+        type: 'cut',
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.toolSourceR2Key).toBe('occt-ops/u1/extrude/tool.step');
+    // Caller chose R2 tool — primitive fields should NOT be set (the
+    // worker rejects both-set with 400).
+    expect(body.params.toolShape).toBeUndefined();
+    expect(body.params.r).toBeUndefined();
+  });
+
+  it('full shape-vs-shape (host R2 + tool R2)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('boolean'));
+    globalThis.fetch = fetchMock;
+    await serverBoolean(
+      {
+        sourceR2Key: 'occt-ops/u1/extrude/host.step',
+        toolSourceR2Key: 'occt-ops/u1/extrude/tool.step',
+        type: 'cut',
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.sourceR2Key).toBeDefined();
+    expect(body.params.toolSourceR2Key).toBeDefined();
+    expect(body.params.host).toBeUndefined();
+    expect(body.params.toolShape).toBeUndefined();
   });
 });
 
