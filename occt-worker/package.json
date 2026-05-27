@@ -12,7 +12,8 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "soak": "tsx src/soak.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1025.0",

@@ -15,6 +15,7 @@
  */
 
 import { parentPort } from 'node:worker_threads';
+import v8 from 'node:v8';
 import { ensureOcctReady } from '../occt/lifecycle.js';
 import { runBoolean, type BooleanParams } from '../occt/boolean.js';
 import { runFillet, type FilletParams } from '../occt/fillet.js';
@@ -32,6 +33,22 @@ const port = parentPort;
 
 function post(msg: WorkerToParent): void {
   port.postMessage(msg);
+}
+
+/** Push a memory snapshot. Called after each op so the pool can
+ *  observe per-slot heap growth without an extra RPC. v8.getHeapStatistics
+ *  reports THIS thread's isolate (each worker has its own V8 instance).
+ *  Bytes → MB with 1-decimal precision. */
+function postMemUpdate(): void {
+  const stats = v8.getHeapStatistics();
+  const rss = process.memoryUsage().rss;
+  const mb = (b: number): number => Math.round((b / 1024 / 1024) * 10) / 10;
+  post({
+    type: 'mem',
+    heapUsedMb: mb(stats.used_heap_size),
+    heapTotalMb: mb(stats.total_heap_size),
+    rssMb: mb(rss),
+  });
 }
 
 // Boot — load OCCT WASM, then signal readiness.
@@ -84,6 +101,7 @@ port.on('message', async (raw: ParentToWorker) => {
       }
     }
     post({ type: 'result', jobId, ok: true, result });
+    postMemUpdate();
   } catch (err) {
     post({
       type: 'result',
@@ -91,5 +109,6 @@ port.on('message', async (raw: ParentToWorker) => {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
     });
+    postMemUpdate();
   }
 });

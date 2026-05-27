@@ -101,3 +101,7 @@ out2/data/factories.json
 
 # Mock/demo validation reports
 /validation-reports/
+
+# occt-worker (Railway service) build/install artifacts
+occt-worker/node_modules/
+occt-worker/dist/

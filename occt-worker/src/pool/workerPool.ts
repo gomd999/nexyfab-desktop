@@ -64,6 +64,17 @@ interface WorkerSlot {
   opsCompleted: number;
   /** Set when the slot is being torn down — no new jobs assigned. */
   draining: boolean;
+  /** Latest V8 heap / RSS snapshot pushed by the worker after its
+   *  most recent op. `null` before the first op completes. */
+  lastMem: { heapUsedMb: number; heapTotalMb: number; rssMb: number } | null;
+}
+
+export interface SlotMemSnapshot {
+  slotId: number;
+  opsCompleted: number;
+  heapUsedMb: number;
+  heapTotalMb: number;
+  rssMb: number;
 }
 
 export class QueueFullError extends Error {
@@ -111,6 +122,15 @@ export interface PoolStatus {
    *  timeouts all count). Used by soak tests to verify the rotation
    *  policy is firing as expected. */
   totalRecycles: number;
+  /** Per-slot memory snapshots (worker-pushed after each op). Empty
+   *  before any op completes. */
+  slots: SlotMemSnapshot[];
+  /** Sum of slot heapUsedMb across all live slots — quick proxy for
+   *  pool's total OCCT WASM footprint. */
+  aggregateHeapUsedMb: number;
+  /** Max single-slot heap — Sentry alert fires when this crosses
+   *  OCCT_SLOT_HEAP_ALERT_MB (default 512). */
+  maxSlotHeapUsedMb: number;
 }
 
 export class OcctWorkerPool {
@@ -177,6 +197,15 @@ export class OcctWorkerPool {
   }
 
   status(): PoolStatus {
+    const slotSnapshots: SlotMemSnapshot[] = this.slots
+      .filter(s => s.lastMem !== null)
+      .map(s => ({
+        slotId: s.id,
+        opsCompleted: s.opsCompleted,
+        heapUsedMb: s.lastMem!.heapUsedMb,
+        heapTotalMb: s.lastMem!.heapTotalMb,
+        rssMb: s.lastMem!.rssMb,
+      }));
     return {
       size: this.size,
       readyCount: this.slots.filter(s => s.ready && !s.draining).length,
@@ -185,6 +214,9 @@ export class OcctWorkerPool {
       queueCapacity: this.queueCap,
       totalOpsCompleted: this.totalOpsLifetime,
       totalRecycles: this.totalRecycles,
+      slots: slotSnapshots,
+      aggregateHeapUsedMb: slotSnapshots.reduce((n, s) => n + s.heapUsedMb, 0),
+      maxSlotHeapUsedMb: slotSnapshots.reduce((n, s) => Math.max(n, s.heapUsedMb), 0),
     };
   }
 
@@ -230,6 +262,7 @@ export class OcctWorkerPool {
       inFlight: null,
       opsCompleted: 0,
       draining: false,
+      lastMem: null,
     };
 
     slot.worker.on('message', (msg: WorkerToParent) => this.onMessage(slot, msg));
@@ -269,6 +302,14 @@ export class OcctWorkerPool {
     if (msg.type === 'ready') {
       slot.ready = true;
       this.tryDispatch();
+      return;
+    }
+    if (msg.type === 'mem') {
+      slot.lastMem = {
+        heapUsedMb: msg.heapUsedMb,
+        heapTotalMb: msg.heapTotalMb,
+        rssMb: msg.rssMb,
+      };
       return;
     }
     // msg.type === 'result'

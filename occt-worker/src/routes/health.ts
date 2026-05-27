@@ -37,6 +37,14 @@ healthRoute.get('/', (_req: Request, res: Response) => {
       // (op-count threshold, crash, timeout). Dashboards alert when
       // this climbs unexpectedly fast (kernel instability signal).
       recycles: pool.totalRecycles,
+      // W12 D3-5: per-slot V8 heap / RSS pushed by workers after
+      // each op. aggregateHeapUsedMb is the easy-to-alert scalar;
+      // maxSlotHeapUsedMb catches one-slot leaks the aggregate hides.
+      memory: {
+        aggregateHeapUsedMb: pool.aggregateHeapUsedMb,
+        maxSlotHeapUsedMb: pool.maxSlotHeapUsedMb,
+        slots: pool.slots,
+      },
     },
     uptimeSec: Math.round(process.uptime()),
   });
