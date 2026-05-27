@@ -162,4 +162,45 @@ describe('applyBooleanAsync — W16 server hook', () => {
       { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
     )).rejects.toThrow(/invalid params/);
   });
+
+  it('uses toolSourceR2Key when geometry.userData has it (W17 shape-vs-shape)', async () => {
+    const fetchMock = mockServerOk();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const geo = bigHostGeometry();
+    geo.userData.toolSourceR2Key = 'occt-ops/u1/extrude/tool.step';
+
+    await applyBooleanAsync(
+      geo,
+      // toolShape still 1 (cylinder) — toServerParams must IGNORE
+      // the primitive fields when toolSourceR2Key is on userData.
+      baseParams,
+      undefined,
+      { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
+    );
+
+    const opCall = fetchMock.mock.calls.find((c: unknown[]) =>
+      typeof c[0] === 'string' && (c[0] as string).endsWith('/occt/op/boolean'),
+    );
+    expect(opCall).toBeDefined();
+    const body = JSON.parse((opCall![1] as RequestInit).body as string);
+    expect(body.params.toolSourceR2Key).toBe('occt-ops/u1/extrude/tool.step');
+    expect(body.params.toolShape).toBeUndefined();
+    expect(body.params.r).toBeUndefined();
+  });
+
+  it('toolSourceR2Key path goes to server even with tiny host', async () => {
+    // shouldUseServerBoolean returns true when toolSourceR2Key is
+    // set regardless of host size — host=1e3 mm³ still gets routed.
+    const fetchMock = mockServerOk();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const geo = smallHostGeometry();
+    geo.userData.toolSourceR2Key = 'occt-ops/u1/extrude/tool.step';
+
+    await applyBooleanAsync(
+      geo, baseParams, undefined,
+      { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
+    );
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
 });
