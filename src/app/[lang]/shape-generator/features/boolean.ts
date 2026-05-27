@@ -2,8 +2,16 @@ import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
-import { reportWarning } from '../lib/telemetry';
+import { reportWarning, reportInfo } from '../lib/telemetry';
 import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
+import {
+  serverBoolean,
+  shouldUseServerBoolean,
+  fetchR2Bytes,
+  ServerOcctUnavailableError,
+  type ServerBooleanParams,
+} from '@/lib/occt-server-client';
+import { parseSTL } from '../io/importers';
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 
@@ -161,8 +169,117 @@ export function applyBooleanSyncSafe(
 
 // ─── Async CSG (delegates to Web Worker when possible) ──────────────────────
 
+/** Options for the server-OCCT path (W16). When omitted, applyBooleanAsync
+ *  behaves exactly as pre-W16 — worker → sync fallback chain. */
+export interface ServerOpts {
+  jwtToken: string;
+  /** Override `NEXT_PUBLIC_OCCT_WORKER_URL`. */
+  baseUrl?: string;
+  /** Override the main-app base for r2-fetch. Defaults to same-origin. */
+  appBaseUrl?: string;
+  /** Override the heuristic (default: shouldUseServerBoolean). */
+  forceServer?: boolean;
+  /** Abort the server round trip from a caller-owned controller. */
+  signal?: AbortSignal;
+}
+
+const TOOL_SHAPE_FOR_SERVER: Record<number, number> = {
+  // Worker accepts 0=cylinder, 1=sphere. Local toolShape 0=box has no
+  // direct server-side primitive — caller stays on the local path for
+  // those. We map local 1=cyl → server 0, local 2=sphere → server 1.
+  1: 0,
+  2: 1,
+};
+
+/** Map local feature params → ServerBooleanParams. Returns null when the
+ *  shape doesn't have a server-side equivalent (e.g. box tool). */
+function toServerParams(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+): ServerBooleanParams | null {
+  const toolShape = Math.round(params.toolShape);
+  const serverTool = TOOL_SHAPE_FOR_SERVER[toolShape];
+  if (serverTool === undefined) return null; // box tool — no server path yet
+
+  const host = hostBoxFromGeometry(geometry);
+  const operation = Math.round(params.operation);
+  const type = operation === 1 ? 'cut' : operation === 2 ? 'intersect' : 'fuse';
+
+  // toolWidth is the diameter for cyl/sphere on the local side; server
+  // expects radius. Halve it.
+  const r = Math.max(0.01, params.toolWidth / 2);
+
+  return {
+    host: { w: host.w, h: host.h, d: host.d },
+    toolShape: serverTool,
+    r,
+    height: toolShape === 1 ? params.toolHeight : undefined,
+    cx: params.posX,
+    cy: params.posY,
+    cz: params.posZ,
+    type,
+  };
+}
+
+/** Server path: serverBoolean → fetchR2Bytes(stl) → parseSTL. Returns
+ *  null when the caller-provided conditions don't permit the server
+ *  call (so the caller falls through to worker/sync). Throws only on
+ *  hard server failures the caller might want to surface. */
+async function tryServerBoolean(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+  opts: ServerOpts,
+): Promise<THREE.BufferGeometry | null> {
+  const serverParams = toServerParams(geometry, params);
+  if (!serverParams) return null;
+
+  const useServer = opts.forceServer ?? shouldUseServerBoolean(serverParams);
+  if (!useServer) return null;
+
+  const t0 = Date.now();
+  try {
+    const resp = await serverBoolean(serverParams, {
+      jwtToken: opts.jwtToken,
+      baseUrl: opts.baseUrl,
+      signal: opts.signal,
+    });
+    const stlBuf = await fetchR2Bytes(resp.stlR2Key, {
+      jwtToken: opts.jwtToken,
+      baseUrl: opts.appBaseUrl,
+      signal: opts.signal,
+    });
+    const geo = parseSTL(stlBuf);
+    // Stash the server's STEP key as the upstream handle so a chained
+    // boolean / fillet on this result can use sourceR2Key.
+    geo.userData.serverStepR2Key = resp.stepR2Key;
+    fillSentinelFaceId(geo);
+    reportInfo('csg', 'server_boolean_path_ok', {
+      elapsedMs: Date.now() - t0,
+      serverElapsedMs: resp.elapsedMs,
+      triangles: resp.meta.triangles,
+    });
+    return geo;
+  } catch (err) {
+    if (err instanceof ServerOcctUnavailableError && err.status === 400) {
+      // Bad params: throw — caller's fallback would also fail since
+      // the params are the same shape locally.
+      throw err;
+    }
+    // Network / 5xx / timeout: report and let the caller fall back.
+    reportWarning('csg', err, {
+      phase: 'server_boolean_fallback',
+      elapsedMs: Date.now() - t0,
+    });
+    return null;
+  }
+}
+
 /**
  * Perform a CSG boolean off the main thread via a Web Worker.
+ *
+ * W16 — also tries the server OCCT path first when `serverOpts` is
+ * provided. Fallback chain: server → worker → sync. Existing callers
+ * that omit serverOpts get unchanged behaviour.
  *
  * Accepts a `performCSG` function (from `useCsgWorker`) so this module stays
  * framework-agnostic and testable. Falls back to synchronous execution when
@@ -176,9 +293,18 @@ export async function applyBooleanAsync(
     geoA: THREE.BufferGeometry,
     geoB: THREE.BufferGeometry,
   ) => Promise<THREE.BufferGeometry>,
+  serverOpts?: ServerOpts,
 ): Promise<THREE.BufferGeometry> {
   const operation = Math.round(params.operation);
   const type = operationCodeToType(operation);
+
+  // W16 server path — non-breaking: only fires when caller supplies opts.
+  if (serverOpts?.jwtToken) {
+    const serverResult = await tryServerBoolean(geometry, params, serverOpts);
+    if (serverResult) return serverResult;
+    // Server unavailable / opted out → continue to worker / sync.
+  }
+
   const toolGeo = buildToolGeometry(params);
 
   if (workerPerformCSG) {
