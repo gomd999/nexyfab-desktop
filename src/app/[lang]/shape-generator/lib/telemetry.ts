@@ -118,6 +118,46 @@ export function reportInfo(
     url: typeof window !== 'undefined' ? window.location.pathname : undefined,
     sessionId: SESSION_ID,
   });
+  // W17 — Sentry burn-in gate (ADR-009 §5) needs specific info events
+  // to reach Sentry so the alert rules can count them. We forward only
+  // the high-signal `server_*` events; routine info stays local-only
+  // to keep Sentry quota intact.
+  forwardToSentryIfAlertable(source, message, context);
+}
+
+const ALERTABLE_INFO_PATTERNS = [
+  /^server_\w+_ok$/,
+  /^server_\w+_unavailable$/,
+  /^server_\w+_path_ok$/,
+  /^server_\w+_fallback$/,
+  /^server_\w+_network$/,
+];
+
+function isAlertableInfo(message: string): boolean {
+  for (const p of ALERTABLE_INFO_PATTERNS) if (p.test(message)) return true;
+  return false;
+}
+
+function forwardToSentryIfAlertable(
+  source: TelemetrySource,
+  message: string,
+  context?: Record<string, unknown>,
+): void {
+  if (typeof window === 'undefined') return;
+  if (!isAlertableInfo(message)) return;
+  // Dynamic import — bundle isn't pulled when Sentry's disabled or in
+  // dev sessions that drop the SDK. Same lazy load as report() below.
+  void import('@sentry/nextjs').then(sentry => {
+    sentry.captureMessage?.(`${source}.${message}`, {
+      level: 'info',
+      tags: {
+        telemetrySource: source,
+        eventName: message,
+        sessionId: SESSION_ID,
+      },
+      extra: context ? scrubContext(context) : undefined,
+    });
+  }).catch(() => { /* SDK not loaded — drop silently */ });
 }
 
 /** Subscribe to events as they arrive (e.g. to show a toast or inspector row). */
