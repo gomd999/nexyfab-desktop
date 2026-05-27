@@ -4,10 +4,20 @@
 // PBR PHYSICAL / ENVIRONMENT / CAMERA / OUTPUT four sections + Final CTA
 // matching mockup #33.
 
+import { useState } from 'react';
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck } from './';
 import { I } from '../Icons';
 import { CustomMaterialUpload } from './CustomMaterialUpload';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+// Wave 1 Phase F — emit a CustomEvent for every render-side knob so Inner
+// (or a future RendererBridge) can route to the actual three.js render
+// loop. UI keeps local state so the slider/select reflects the user's
+// input immediately; renderer integration is Wave 2 polish.
+function emitRenderSet(key: string, value: number | string | boolean): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('nexyfab:set-render', { detail: { key, value } }));
+}
 
 const RENDER_CATALOG_DICT_KO: CatalogPanelDict = {
   catalogTitle: '렌더/애니메이션 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
@@ -50,6 +60,17 @@ export function RenderRightPane({
   setSpecular, setClearcoat, setAnisotropy,
   onRenderFinal,
 }: RenderRightPaneProps) {
+  // Local state for knobs that don't have a prop yet. Each change also
+  // dispatches `nexyfab:set-render` so Inner can route to the renderer
+  // once the integration lands (Wave 2 polish).
+  const [hdriRotation, setHdriRotation] = useState(0);
+  const [groundShadow, setGroundShadow] = useState(true);
+  const [aperture, setAperture] = useState(11);
+  const [focusDist, setFocusDist] = useState(0.6);
+  const [composition, setComposition] = useState<'hero' | 'front' | 'top'>('hero');
+  const [resolution, setResolution] = useState<'4k' | '2k' | '1080'>('4k');
+  const [format, setFormat] = useState<'png16' | 'png8' | 'jpg' | 'exr'>('png16');
+
   return (
     <SidePanel
       side="right"
@@ -99,10 +120,18 @@ export function RenderRightPane({
             ]}
           />
         </PropRow>
-        <Slider label={isKo ? '회전' : 'Rotation'} value={0} min={0} max={360} step={1} onChange={() => { /* TODO */ }} />
+        <Slider
+          label={isKo ? '회전' : 'Rotation'}
+          value={hdriRotation} min={0} max={360} step={1}
+          onChange={v => { setHdriRotation(v); emitRenderSet('hdriRotation', v); }}
+        />
         <Slider label={isKo ? '노출' : 'Exposure'} value={exposure} min={0.1} max={3} step={0.05} onChange={setExposure} />
         <PropRow label={isKo ? '바닥 그림자' : 'Ground shadow'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '받기' : 'Catch'} />
+          <PropCheck
+            checked={groundShadow}
+            onChange={v => { setGroundShadow(v); emitRenderSet('groundShadow', v); }}
+            label={isKo ? '받기' : 'Catch'}
+          />
         </PropRow>
       </PropSection>
 
@@ -121,12 +150,20 @@ export function RenderRightPane({
             }}
           />
         </PropRow>
-        <Slider label={isKo ? '조리개' : 'Aperture'} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* TODO */ }} />
-        <Slider label={isKo ? '초점거리' : 'Focus dist.'} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* TODO */ }} />
+        <Slider
+          label={isKo ? '조리개' : 'Aperture'}
+          value={aperture} min={0.95} max={32} step={0.1}
+          onChange={v => { setAperture(v); emitRenderSet('aperture', v); }}
+        />
+        <Slider
+          label={isKo ? '초점거리' : 'Focus dist.'}
+          value={focusDist} min={0} max={10} step={0.1}
+          onChange={v => { setFocusDist(v); emitRenderSet('focusDist', v); }}
+        />
         <PropRow label={isKo ? '구도' : 'Composition'}>
           <PropSelect
-            value="hero"
-            onChange={() => { /* TODO */ }}
+            value={composition}
+            onChange={v => { setComposition(v as typeof composition); emitRenderSet('composition', v); }}
             options={[
               { value: 'hero', label: isKo ? '히어로 · 3/4 iso' : 'Hero · 3/4 iso' },
               { value: 'front', label: isKo ? '정면' : 'Front' },
@@ -139,8 +176,8 @@ export function RenderRightPane({
       <PropSection title={isKo ? '출력' : 'Output'}>
         <PropRow label={isKo ? '해상도' : 'Resolution'}>
           <PropSelect
-            value="4k"
-            onChange={() => { /* TODO */ }}
+            value={resolution}
+            onChange={v => { setResolution(v as typeof resolution); emitRenderSet('resolution', v); }}
             options={[
               { value: '4k', label: '3840 × 2160 · 4K' },
               { value: '2k', label: '2560 × 1440 · 2K' },
@@ -153,8 +190,8 @@ export function RenderRightPane({
         </PropRow>
         <PropRow label={isKo ? '포맷' : 'Format'}>
           <PropSelect
-            value="png16"
-            onChange={() => { /* TODO */ }}
+            value={format}
+            onChange={v => { setFormat(v as typeof format); emitRenderSet('format', v); }}
             options={[
               { value: 'png16', label: 'PNG · 16-bit' },
               { value: 'png8', label: 'PNG · 8-bit' },
