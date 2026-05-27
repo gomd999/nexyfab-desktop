@@ -141,13 +141,33 @@ describe('validateExtrudeParams', () => {
     expect(out.profile.kind).toBe('polygon');
     if (out.profile.kind === 'polygon') expect(out.profile.points).toHaveLength(4);
   });
-  it('rejects svgPath with Bezier', () => {
-    expect(() => validateExtrudeParams({
+  it('accepts svgPath with Bezier (W14 flattening)', () => {
+    const out = validateExtrudeParams({
       params: {
-        profile: { kind: 'svgPath', d: 'M 0,0 C 5,0 10,5 10,10 Z' },
+        profile: { kind: 'svgPath', d: 'M 0,0 C 0,20 40,20 40,0 L 40,-5 L 0,-5 Z' },
         height: 3,
       },
-    })).toThrow(/Bezier\/arc/);
+    });
+    expect(out.profile.kind).toBe('polygon');
+    if (out.profile.kind === 'polygon') {
+      expect(out.profile.points.length).toBeGreaterThan(5);
+    }
+  });
+  it('rejects svgPath with arc (W14 D3-5 scope)', () => {
+    expect(() => validateExtrudeParams({
+      params: {
+        profile: { kind: 'svgPath', d: 'M 0,0 A 5,5 0 0,1 10,10 Z' },
+        height: 3,
+      },
+    })).toThrow(/elliptical arc/);
+  });
+  it('rejects svgPath out-of-range tolerance', () => {
+    expect(() => validateExtrudeParams({
+      params: {
+        profile: { kind: 'svgPath', d: 'M 0,0 L 10,0 L 10,5 Z', tolerance: 0.0001 },
+        height: 3,
+      },
+    })).toThrow(/tolerance out of/);
   });
   it('rejects svgPath out-of-range vertex', () => {
     expect(() => validateExtrudeParams({

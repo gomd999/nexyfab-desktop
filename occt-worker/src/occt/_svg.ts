@@ -10,16 +10,25 @@
  *   - M / m   moveto (absolute / relative).
  *               First M starts the polygon; a second M (compound
  *               subpath) is rejected with a clean 400 — multi-loop
- *               profiles need true face boundaries and that's a W14
- *               item.
+ *               profiles need true face boundaries and that's a
+ *               follow-up item.
  *   - L / l   lineto (absolute / relative)
  *   - H / h   horizontal lineto
  *   - V / v   vertical lineto
+ *   - C / c   cubic Bezier (3 control points per segment)
+ *   - S / s   smooth cubic Bezier (reflects prev C's last control)
+ *   - Q / q   quadratic Bezier (1 control point per segment)
+ *   - T / t   smooth quadratic Bezier (reflects prev Q's control)
  *   - Z / z   closepath (REQUIRED — open paths can't extrude into a solid)
  *
- *   - C / Q / S / T / A → REJECTED with explicit "tessellate client-side"
- *     message. W14 adds Bezier flattening with configurable chord-height
- *     tolerance; arcs (A) follow that.
+ *   - A / a → REJECTED for now. Elliptical arcs need a separate
+ *     parametric-to-Bezier conversion that lands in W14 D3-5.
+ *
+ * Bezier commands flatten to line segments via recursive de Casteljau
+ * subdivision (`_bezier.ts`). Chord-height tolerance defaults to
+ * 0.1 mm — small enough for typical engineering precision, large
+ * enough that simple curves don't explode into thousands of vertices.
+ * Callers can override via `parseSvgPath(d, { tolerance })`.
  *
  * Output guarantees:
  *   - First and last points are NOT identical — the polygon validator
@@ -28,8 +37,18 @@
  *   - ≥ 3 points (otherwise downstream throws clean).
  */
 
+import { flattenCubic, flattenQuadratic, reflect, type Point } from './_bezier.js';
+
 const COMMAND_RE = /([MmLlHhVvZzCcQqSsTtAa])([^MmLlHhVvZzCcQqSsTtAa]*)/g;
 const NUMBER_RE = /[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g;
+
+const DEFAULT_TOLERANCE_MM = 0.1;
+
+export interface SvgParseOptions {
+  /** Chord-height tolerance for Bezier flattening (mm). Default 0.1.
+   *  Smaller = more vertices, finer curve approximation. */
+  tolerance?: number;
+}
 
 export interface SvgParseResult {
   points: [number, number][];
@@ -42,14 +61,29 @@ interface ParserState {
   startX: number;
   startY: number;
   started: boolean;
+  /** Previous cubic Bezier's last control point. Used by S/s to
+   *  reflect across the current position for the implicit first
+   *  control point. `null` when the previous command wasn't C/c/S/s. */
+  prevCubicCtrl: Point | null;
+  /** Previous quadratic Bezier's control point. Used by T/t for the
+   *  same reflection pattern as S. */
+  prevQuadCtrl: Point | null;
 }
 
-export function parseSvgPath(d: string): SvgParseResult {
+export function parseSvgPath(d: string, opts: SvgParseOptions = {}): SvgParseResult {
   if (typeof d !== 'string' || d.trim().length === 0) {
     throw new Error('invalid params: svgPath.d must be a non-empty string');
   }
 
-  const state: ParserState = { x: 0, y: 0, startX: 0, startY: 0, started: false };
+  const tolerance = opts.tolerance ?? DEFAULT_TOLERANCE_MM;
+  if (!Number.isFinite(tolerance) || tolerance <= 0) {
+    throw new Error('invalid params: svgPath tolerance must be a positive finite number');
+  }
+
+  const state: ParserState = {
+    x: 0, y: 0, startX: 0, startY: 0, started: false,
+    prevCubicCtrl: null, prevQuadCtrl: null,
+  };
   const points: [number, number][] = [];
   let closed = false;
 
@@ -57,14 +91,16 @@ export function parseSvgPath(d: string): SvgParseResult {
     const cmd = match[1]!;
     const args = (match[2]!.match(NUMBER_RE) ?? []).map(Number);
 
-    // Bezier / arc commands — explicit reject so callers get a clear
-    // 400 instead of an opaque OCCT failure later. W14 adds these.
-    if ('CcQqSsTtAa'.includes(cmd)) {
+    // Arc commands stay rejected — covered by W14 D3-5 follow-up.
+    if (cmd === 'A' || cmd === 'a') {
       throw new Error(
-        `invalid params: SVG command '${cmd}' (Bezier/arc) not supported yet — tessellate to line segments client-side or wait for W14`,
+        `invalid params: SVG command '${cmd}' (elliptical arc) not supported yet — tessellate to line segments client-side or wait for W14 D3-5`,
       );
     }
 
+    // Bezier commands consume the previous-control-point state, so
+    // we clear cubic/quadratic memory on every non-Bezier command
+    // (per SVG spec — see comments in cubic/smoothCubic handlers).
     switch (cmd) {
       case 'M': moveAbs(state, points, args); break;
       case 'm': moveRel(state, points, args); break;
@@ -74,17 +110,33 @@ export function parseSvgPath(d: string): SvgParseResult {
       case 'h': horizRel(state, points, args); break;
       case 'V': vertAbs(state, points, args); break;
       case 'v': vertRel(state, points, args); break;
+      case 'C': cubicAbs(state, points, args, tolerance); break;
+      case 'c': cubicRel(state, points, args, tolerance); break;
+      case 'S': smoothCubicAbs(state, points, args, tolerance); break;
+      case 's': smoothCubicRel(state, points, args, tolerance); break;
+      case 'Q': quadAbs(state, points, args, tolerance); break;
+      case 'q': quadRel(state, points, args, tolerance); break;
+      case 'T': smoothQuadAbs(state, points, args, tolerance); break;
+      case 't': smoothQuadRel(state, points, args, tolerance); break;
       case 'Z':
       case 'z': {
         closed = true;
-        // Close geometrically — but DON'T emit the start vertex as a
-        // new point; the downstream polygon validator rejects
-        // explicit first/last duplicates. close() in replicad's draw
-        // builder will weld the final segment for us.
         state.x = state.startX;
         state.y = state.startY;
+        // Z resets Bezier memory — a subsequent smooth command after
+        // closure has no previous control to reflect from.
+        state.prevCubicCtrl = null;
+        state.prevQuadCtrl = null;
         break;
       }
+    }
+
+    // Reset Bezier memory after non-Bezier commands so an S/T that
+    // follows e.g. an L falls back to "control = current point" per
+    // SVG spec.
+    if (!'CcSsQqTt'.includes(cmd)) {
+      state.prevCubicCtrl = null;
+      state.prevQuadCtrl = null;
     }
   }
 
@@ -219,5 +271,132 @@ function vertRel(state: ParserState, points: [number, number][], args: number[])
   for (const dy of args) {
     state.y += dy;
     points.push([state.x, state.y]);
+  }
+}
+
+// ─── Bezier commands ─────────────────────────────────────────────────────────
+// Each segment in C/c/Q/q consumes a fixed number of coords; multiple
+// segments can chain after a single command letter. We loop through
+// the args array, building each segment's control + endpoint points
+// in current coordinates, and call into the flattener which appends
+// the resulting polyline (excluding the starting endpoint) to `points`.
+
+function cubicAbs(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 6 !== 0) {
+    throw new Error('invalid params: C needs multiples of 6 coordinates');
+  }
+  for (let i = 0; i + 5 < args.length; i += 6) {
+    const p0: Point = [state.x, state.y];
+    const p1: Point = [args[i]!, args[i + 1]!];
+    const p2: Point = [args[i + 2]!, args[i + 3]!];
+    const p3: Point = [args[i + 4]!, args[i + 5]!];
+    flattenCubic(p0, p1, p2, p3, tol, points);
+    state.x = p3[0]; state.y = p3[1];
+    state.prevCubicCtrl = p2;
+  }
+}
+
+function cubicRel(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 6 !== 0) {
+    throw new Error('invalid params: c needs multiples of 6 coordinates');
+  }
+  for (let i = 0; i + 5 < args.length; i += 6) {
+    const p0: Point = [state.x, state.y];
+    const p1: Point = [state.x + args[i]!, state.y + args[i + 1]!];
+    const p2: Point = [state.x + args[i + 2]!, state.y + args[i + 3]!];
+    const p3: Point = [state.x + args[i + 4]!, state.y + args[i + 5]!];
+    flattenCubic(p0, p1, p2, p3, tol, points);
+    state.x = p3[0]; state.y = p3[1];
+    state.prevCubicCtrl = p2;
+  }
+}
+
+/** Smooth cubic: P1 is reflection of previous segment's P2 across the
+ *  current position. If no previous cubic, P1 = current position (per
+ *  SVG spec). Multiple segments chain — each chained one reflects the
+ *  PREVIOUS segment, not the original. */
+function smoothCubicAbs(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 4 !== 0) {
+    throw new Error('invalid params: S needs multiples of 4 coordinates');
+  }
+  for (let i = 0; i + 3 < args.length; i += 4) {
+    const p0: Point = [state.x, state.y];
+    const p1: Point = state.prevCubicCtrl ? reflect(p0, state.prevCubicCtrl) : p0;
+    const p2: Point = [args[i]!, args[i + 1]!];
+    const p3: Point = [args[i + 2]!, args[i + 3]!];
+    flattenCubic(p0, p1, p2, p3, tol, points);
+    state.x = p3[0]; state.y = p3[1];
+    state.prevCubicCtrl = p2;
+  }
+}
+
+function smoothCubicRel(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 4 !== 0) {
+    throw new Error('invalid params: s needs multiples of 4 coordinates');
+  }
+  for (let i = 0; i + 3 < args.length; i += 4) {
+    const p0: Point = [state.x, state.y];
+    const p1: Point = state.prevCubicCtrl ? reflect(p0, state.prevCubicCtrl) : p0;
+    const p2: Point = [state.x + args[i]!, state.y + args[i + 1]!];
+    const p3: Point = [state.x + args[i + 2]!, state.y + args[i + 3]!];
+    flattenCubic(p0, p1, p2, p3, tol, points);
+    state.x = p3[0]; state.y = p3[1];
+    state.prevCubicCtrl = p2;
+  }
+}
+
+function quadAbs(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 4 !== 0) {
+    throw new Error('invalid params: Q needs multiples of 4 coordinates');
+  }
+  for (let i = 0; i + 3 < args.length; i += 4) {
+    const p0: Point = [state.x, state.y];
+    const q1: Point = [args[i]!, args[i + 1]!];
+    const q2: Point = [args[i + 2]!, args[i + 3]!];
+    flattenQuadratic(p0, q1, q2, tol, points);
+    state.x = q2[0]; state.y = q2[1];
+    state.prevQuadCtrl = q1;
+  }
+}
+
+function quadRel(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 4 !== 0) {
+    throw new Error('invalid params: q needs multiples of 4 coordinates');
+  }
+  for (let i = 0; i + 3 < args.length; i += 4) {
+    const p0: Point = [state.x, state.y];
+    const q1: Point = [state.x + args[i]!, state.y + args[i + 1]!];
+    const q2: Point = [state.x + args[i + 2]!, state.y + args[i + 3]!];
+    flattenQuadratic(p0, q1, q2, tol, points);
+    state.x = q2[0]; state.y = q2[1];
+    state.prevQuadCtrl = q1;
+  }
+}
+
+function smoothQuadAbs(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 2 !== 0) {
+    throw new Error('invalid params: T needs multiples of 2 coordinates');
+  }
+  for (let i = 0; i + 1 < args.length; i += 2) {
+    const p0: Point = [state.x, state.y];
+    const q1: Point = state.prevQuadCtrl ? reflect(p0, state.prevQuadCtrl) : p0;
+    const q2: Point = [args[i]!, args[i + 1]!];
+    flattenQuadratic(p0, q1, q2, tol, points);
+    state.x = q2[0]; state.y = q2[1];
+    state.prevQuadCtrl = q1;
+  }
+}
+
+function smoothQuadRel(state: ParserState, points: [number, number][], args: number[], tol: number): void {
+  if (args.length === 0 || args.length % 2 !== 0) {
+    throw new Error('invalid params: t needs multiples of 2 coordinates');
+  }
+  for (let i = 0; i + 1 < args.length; i += 2) {
+    const p0: Point = [state.x, state.y];
+    const q1: Point = state.prevQuadCtrl ? reflect(p0, state.prevQuadCtrl) : p0;
+    const q2: Point = [state.x + args[i]!, state.y + args[i + 1]!];
+    flattenQuadratic(p0, q1, q2, tol, points);
+    state.x = q2[0]; state.y = q2[1];
+    state.prevQuadCtrl = q1;
   }
 }

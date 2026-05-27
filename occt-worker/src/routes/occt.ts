@@ -260,11 +260,25 @@ function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
     if (d.length > SVG_PATH_MAX_LENGTH) {
       throw new Error(`invalid params: svgPath.d exceeds ${SVG_PATH_MAX_LENGTH} chars`);
     }
+    // Optional Bezier flattening tolerance. 0.001..10 mm range — below
+    // 0.001 the vertex count balloons (cap hit) and above 10 the
+    // approximation is too coarse for engineering use.
+    const toleranceRaw = raw.tolerance;
+    let tolerance: number | undefined;
+    if (toleranceRaw !== undefined) {
+      if (typeof toleranceRaw !== 'number' || !Number.isFinite(toleranceRaw)) {
+        throw new Error('invalid params: svgPath.tolerance must be a finite number');
+      }
+      if (toleranceRaw < 0.001 || toleranceRaw > 10) {
+        throw new Error('invalid params: svgPath.tolerance out of [0.001, 10] mm');
+      }
+      tolerance = toleranceRaw;
+    }
     // parseSvgPath throws "invalid params: ..." on malformed input,
     // so the dispatchOp 400 mapping catches it uniformly.
-    const { points } = parseSvgPath(d);
+    const { points } = parseSvgPath(d, { tolerance });
     if (points.length > POLYGON_MAX_POINTS) {
-      throw new Error(`invalid params: svgPath produced ${points.length} vertices, exceeds ${POLYGON_MAX_POINTS}`);
+      throw new Error(`invalid params: svgPath produced ${points.length} vertices, exceeds ${POLYGON_MAX_POINTS} (raise tolerance to reduce subdivision)`);
     }
     // Range check the parsed coords with the same bounds as the
     // polygon validator above.
