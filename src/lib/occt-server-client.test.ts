@@ -9,6 +9,7 @@ import {
   shouldUseServerBoolean,
   ServerOcctUnavailableError,
   SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3,
+  fetchR2Bytes,
 } from './occt-server-client';
 
 // Reset fetch between tests so one mock doesn't bleed into the next.
@@ -186,5 +187,59 @@ describe('serverBoolean — error mapping', () => {
       expect(e).toBeInstanceOf(ServerOcctUnavailableError);
       expect((e as Error).message).toContain('fetch failed');
     }
+  });
+});
+
+describe('fetchR2Bytes', () => {
+  it('two-step: signs via main app, then fetches bytes from signedUrl', async () => {
+    const stlBytes = new Uint8Array([0x73, 0x6f, 0x6c, 0x69, 0x64]); // "solid"
+    const fetchMock = vi.fn()
+      // 1st call — sign endpoint
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ signedUrl: 'https://r2.example/sig?x=1', expiresInSeconds: 300 }),
+        { status: 200 },
+      ))
+      // 2nd call — direct R2 fetch
+      .mockResolvedValueOnce(new Response(stlBytes.buffer, { status: 200 }));
+    globalThis.fetch = fetchMock;
+
+    const buf = await fetchR2Bytes('occt-ops/u1/boolean/x.stl', {
+      jwtToken: 't', baseUrl: 'https://app.example',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstCall = fetchMock.mock.calls[0]!;
+    expect(firstCall[0]).toBe('https://app.example/api/nexyfab/r2-fetch?key=occt-ops%2Fu1%2Fboolean%2Fx.stl');
+    const firstHeaders = (firstCall[1] as RequestInit).headers as Record<string, string>;
+    expect(firstHeaders['Authorization']).toBe('Bearer t');
+
+    const secondCall = fetchMock.mock.calls[1]!;
+    expect(secondCall[0]).toBe('https://r2.example/sig?x=1');
+    // No auth header on R2 — the URL is already signed.
+    expect((secondCall[1] as RequestInit | undefined)?.headers).toBeUndefined();
+
+    expect(new Uint8Array(buf)).toEqual(stlBytes);
+  });
+
+  it('sign failure (403) maps to ServerOcctUnavailableError 403', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 }),
+    );
+    try {
+      await fetchR2Bytes('occt-ops/other-user/x.stl', { jwtToken: 't', baseUrl: 'https://a' });
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ServerOcctUnavailableError);
+      expect((e as ServerOcctUnavailableError).status).toBe(403);
+    }
+  });
+
+  it('missing JWT → ServerOcctUnavailableError without making a request', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+    await expect(
+      fetchR2Bytes('occt-ops/u1/x.stl', { jwtToken: '', baseUrl: 'https://a' }),
+    ).rejects.toBeInstanceOf(ServerOcctUnavailableError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

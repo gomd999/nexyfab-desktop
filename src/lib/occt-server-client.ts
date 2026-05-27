@@ -167,13 +167,15 @@ export async function serverBoolean(
   }
 }
 
-/** Fetch the STL bytes from R2 via the main app's signed-URL proxy.
- *  The worker writes to R2 with an internal key; clients can't read
- *  R2 directly without credentials, so the main app exposes a small
- *  `/api/nexyfab/r2-fetch` proxy that signs + streams.
- *  (Endpoint lands separately in the main app — placeholder URL
- *  pattern here so callers see the contract.) */
-export async function fetchR2Stl(
+/** Fetch R2 bytes via the main app's signed-URL endpoint. Two-step:
+ *
+ *    1. GET /api/nexyfab/r2-fetch?key=… → { signedUrl }
+ *       (path-scope checked: caller must own the key)
+ *    2. GET signedUrl → bytes (no auth header — R2 signs the query)
+ *
+ *  This avoids proxying op-output bytes through the main app's dyno;
+ *  the client redirects directly to R2 after the small JSON hop. */
+export async function fetchR2Bytes(
   r2Key: string,
   options: { jwtToken: string; baseUrl?: string; signal?: AbortSignal } = { jwtToken: '' },
 ): Promise<ArrayBuffer> {
@@ -181,16 +183,38 @@ export async function fetchR2Stl(
   if (!options.jwtToken) {
     throw new ServerOcctUnavailableError('jwtToken required for r2-fetch');
   }
-  const resp = await fetch(`${baseUrl}/api/nexyfab/r2-fetch?key=${encodeURIComponent(r2Key)}`, {
-    method: 'GET',
-    headers: { 'Authorization': `Bearer ${options.jwtToken}` },
-    signal: options.signal,
-  });
-  if (!resp.ok) {
+  // Step 1 — exchange the R2 key for a signed URL via the main app.
+  const signResp = await fetch(
+    `${baseUrl}/api/nexyfab/r2-fetch?key=${encodeURIComponent(r2Key)}`,
+    {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${options.jwtToken}` },
+      signal: options.signal,
+    },
+  );
+  if (!signResp.ok) {
     throw new ServerOcctUnavailableError(
-      `r2-fetch ${r2Key} failed with ${resp.status}`,
-      resp.status,
+      `r2-fetch sign ${r2Key} failed with ${signResp.status}`,
+      signResp.status,
     );
   }
-  return resp.arrayBuffer();
+  const { signedUrl } = (await signResp.json()) as { signedUrl: string };
+  if (!signedUrl) {
+    throw new ServerOcctUnavailableError('r2-fetch returned no signedUrl');
+  }
+
+  // Step 2 — fetch bytes directly from R2 (no main-app proxy).
+  const dataResp = await fetch(signedUrl, { signal: options.signal });
+  if (!dataResp.ok) {
+    throw new ServerOcctUnavailableError(
+      `r2 signed-url fetch failed with ${dataResp.status}`,
+      dataResp.status,
+    );
+  }
+  return dataResp.arrayBuffer();
 }
+
+/** @deprecated Renamed to `fetchR2Bytes` to reflect that the helper
+ *  is format-agnostic (STL / STEP / anything the worker wrote). Kept
+ *  as a thin alias so any pre-W10-D5 caller keeps compiling. */
+export const fetchR2Stl = fetchR2Bytes;
