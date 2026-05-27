@@ -24,18 +24,23 @@ export interface BooleanParams {
   host?: { w: number; h: number; d: number };
   /** R2 key pointing to a STEP file (chained-op input, W16 D1-2). */
   sourceR2Key?: string;
-  /** Tool primitive selector. 0 = cylinder, 1 = sphere. Matches the
-   *  main app's `toolShape` parameter so the client-side and server
-   *  paths use the same numeric protocol. */
-  toolShape: number;
-  /** Tool dimensions. r is radius for cylinder/sphere; height is the
-   *  cylinder height. */
-  r: number;
+  /** Tool primitive selector. 0 = cylinder, 1 = sphere. Required when
+   *  toolSourceR2Key is unset; ignored otherwise. */
+  toolShape?: number;
+  /** Tool radius (cylinder/sphere) — required when toolSourceR2Key
+   *  is unset; ignored otherwise. */
+  r?: number;
+  /** Cylinder height — primitive tool only. */
   height?: number;
-  /** Tool placement offset from host centre (mm). */
+  /** Tool placement offset from host centre (mm). Applies to BOTH
+   *  primitive and R2-imported tools — the R2 shape is translated by
+   *  this offset after import. */
   cx?: number;
   cy?: number;
   cz?: number;
+  /** R2 key pointing to a STEP file used AS the tool (W17 shape-vs-
+   *  shape boolean). Mutually exclusive with toolShape/r/height. */
+  toolSourceR2Key?: string;
   /** Boolean type — 'cut' subtracts the tool from the host;
    *  'fuse' unions them. */
   type?: 'cut' | 'fuse' | 'intersect';
@@ -61,11 +66,28 @@ export async function runBoolean(params: BooleanParams, ctx: OpContext): Promise
 
   const host = await resolveShape(replicad, params, ctx.userId);
 
-  // Tool: cylinder (default) or sphere. Translate to user's offset.
+  // Tool: R2-imported shape (W17) or primitive cylinder/sphere (W10).
+  // The two paths share the same translate step below.
   let tool: OcctShape;
-  if (params.toolShape === 1) {
+  if (params.toolSourceR2Key) {
+    // resolveShape's input shape is host-flavoured, but reusing it
+    // here means the per-user prefix check + STEP import already
+    // works identically. The "host:" naming is a leak we accept —
+    // future refactor can rename to resolveR2Shape if it bothers.
+    tool = await resolveShape(
+      replicad,
+      { sourceR2Key: params.toolSourceR2Key },
+      ctx.userId,
+    );
+  } else if (params.toolShape === 1) {
+    if (params.r === undefined) {
+      throw new Error('invalid params: r required for primitive tool');
+    }
     tool = replicad.makeBaseSphere(params.r) as OcctShape;
   } else {
+    if (params.r === undefined) {
+      throw new Error('invalid params: r required for primitive tool');
+    }
     const h = params.height ?? (params.host
       ? Math.max(params.host.w, params.host.h, params.host.d)
       : DEFAULT_CYLINDER_HEIGHT_MM);
