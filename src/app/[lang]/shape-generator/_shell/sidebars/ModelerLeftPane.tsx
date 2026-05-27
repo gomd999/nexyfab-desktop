@@ -9,6 +9,7 @@ import { SidePanel, Tree, type TreeNode } from './';
 import { useShellBridge, type ShellFeatureItem, type ShellBodyItem } from '../shellBridgeStore';
 import { I } from '../Icons';
 import { StandardPartsGrid } from './StandardPartsGrid';
+import { UserPartsSection } from './UserPartsSection';
 
 export interface ModelerLeftPaneProps {
   isKo: boolean;
@@ -125,7 +126,12 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
           />
         )
       )}
-      {activeTab === 'components' && <StandardPartsGrid isKo={isKo} />}
+      {activeTab === 'components' && (
+        <>
+          <UserPartsSection isKo={isKo} />
+          <StandardPartsGrid isKo={isKo} />
+        </>
+      )}
     </SidePanel>
   );
 }

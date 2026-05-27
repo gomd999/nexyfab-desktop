@@ -3392,6 +3392,30 @@ export function ShapeGeneratorInner() {
     };
   }, [setActiveBodyId, setBodies]);
 
+  // Wave 1 Phase B — Components tab events. UserPartsSection (inline in
+  // ModelerLeftPane Components tab) dispatches:
+  //   nexyfab:insert-user-part        — click on a part thumbnail
+  //   nexyfab:open-user-parts-modal   — click on Manage gear
+  // Same one-way pattern as bodies: pane reads localStorage + emits events,
+  // Inner handles them via the existing setSelectedId / setParams /
+  // setShowUserPartsPanel setters.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onInsertUserPart = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string; shapeId: string; params: Record<string, number> }>).detail;
+      if (!detail?.shapeId) return;
+      setSelectedId(detail.shapeId);
+      if (detail.params) setParams(detail.params);
+    };
+    const onOpenUserPartsModal = () => setShowUserPartsPanel(true);
+    window.addEventListener('nexyfab:insert-user-part', onInsertUserPart);
+    window.addEventListener('nexyfab:open-user-parts-modal', onOpenUserPartsModal);
+    return () => {
+      window.removeEventListener('nexyfab:insert-user-part', onInsertUserPart);
+      window.removeEventListener('nexyfab:open-user-parts-modal', onOpenUserPartsModal);
+    };
+  }, [setSelectedId, setParams, setShowUserPartsPanel]);
+
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
       ? 'sketch'
