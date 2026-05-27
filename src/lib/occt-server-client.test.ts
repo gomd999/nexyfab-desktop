@@ -11,6 +11,10 @@ import {
   serverShell,
   serverMirror,
   serverPattern,
+  serverExtrude,
+  serverRevolve,
+  serverSweep,
+  serverLoft,
   shouldUseServerBoolean,
   ServerOcctUnavailableError,
   SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3,
@@ -362,6 +366,95 @@ describe('serverPattern', () => {
     const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(body.params.kind).toBe('circular');
     expect(body.params.sourceR2Key).toBeDefined();
+  });
+});
+
+describe('serverExtrude', () => {
+  it('POSTs to /occt/op/extrude with rectangle profile', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('extrude'));
+    globalThis.fetch = fetchMock;
+    await serverExtrude(
+      {
+        profile: { kind: 'rectangle', width: 20, height2D: 10 },
+        height: 5,
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/extrude');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.profile.kind).toBe('rectangle');
+    expect(body.params.height).toBe(5);
+  });
+
+  it('accepts svgPath profile with tolerance', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('extrude'));
+    globalThis.fetch = fetchMock;
+    await serverExtrude(
+      {
+        profile: { kind: 'svgPath', d: 'M 0,0 L 10,0 L 10,5 Z', tolerance: 0.05 },
+        height: 3,
+        plane: 'YZ',
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.profile.tolerance).toBe(0.05);
+    expect(body.params.plane).toBe('YZ');
+  });
+});
+
+describe('serverRevolve', () => {
+  it('POSTs to /occt/op/revolve with circle profile and axis', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('revolve'));
+    globalThis.fetch = fetchMock;
+    await serverRevolve(
+      {
+        profile: { kind: 'circle', radius: 5 },
+        axis: 'Y',
+        angle: 360,
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/revolve');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.axis).toBe('Y');
+    expect(body.params.angle).toBe(360);
+  });
+});
+
+describe('serverSweep', () => {
+  it('POSTs to /occt/op/sweep with profile + path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('sweep'));
+    globalThis.fetch = fetchMock;
+    await serverSweep(
+      {
+        profile: { kind: 'circle', radius: 2 },
+        path: [[0, 0, 0], [10, 0, 0], [10, 10, 0]],
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/sweep');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.path).toHaveLength(3);
+  });
+});
+
+describe('serverLoft', () => {
+  it('POSTs to /occt/op/loft with ≥ 2 sections', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse('loft'));
+    globalThis.fetch = fetchMock;
+    await serverLoft(
+      {
+        sections: [
+          { profile: { kind: 'circle', radius: 5 }, offset: 0 },
+          { profile: { kind: 'circle', radius: 3 }, offset: 10 },
+        ],
+      },
+      { jwtToken: 't', baseUrl: 'https://w.x' },
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://w.x/occt/op/loft');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.params.sections).toHaveLength(2);
   });
 });
 

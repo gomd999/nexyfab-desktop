@@ -123,11 +123,80 @@ export interface ServerPatternCircularParams extends ChainableHost {
 }
 export type ServerPatternParams = ServerPatternLinearParams | ServerPatternCircularParams;
 
+// ─── Sketch-based ops (W16 D3-5) ────────────────────────────────────────────
+// Input is a 2D profile, not a 3D host. Each op uses the same
+// profile vocabulary so callers learn one shape and reuse it.
+
+export interface ServerRectangleProfile {
+  kind: 'rectangle';
+  width: number;
+  height2D: number;
+}
+export interface ServerCircleProfile {
+  kind: 'circle';
+  radius: number;
+}
+export interface ServerPolygonProfile {
+  kind: 'polygon';
+  /** Vertex list as [[x, y], ...]; ≥ 3 points, first ≠ last. */
+  points: [number, number][];
+}
+export interface ServerSvgPathProfile {
+  kind: 'svgPath';
+  d: string;
+  /** Bezier flattening chord-height tolerance, mm. Default 0.1. */
+  tolerance?: number;
+}
+export type ServerProfile =
+  | ServerRectangleProfile
+  | ServerCircleProfile
+  | ServerPolygonProfile
+  | ServerSvgPathProfile;
+
+export type ExtrudePlane = 'XY' | 'XZ' | 'YZ';
+export interface ServerExtrudeParams {
+  profile: ServerProfile;
+  /** Extrusion distance along plane normal (mm). */
+  height: number;
+  plane?: ExtrudePlane;
+}
+
+export type RevolvePlane = 'XY' | 'XZ' | 'YZ';
+export type RevolveAxis = 'X' | 'Y' | 'Z';
+export interface ServerRevolveParams {
+  profile: ServerProfile;
+  plane?: RevolvePlane;
+  axis?: RevolveAxis;
+  /** Sweep angle (degrees). Default 360. */
+  angle?: number;
+}
+
+export interface ServerSweepParams {
+  profile: ServerProfile;
+  /** 3D polyline path; ≥ 2 points. */
+  path: [number, number, number][];
+  plane?: 'XY' | 'XZ' | 'YZ';
+}
+
+export interface ServerLoftSection {
+  profile: ServerProfile;
+  /** Distance along plane normal (mm). Sections must be strictly
+   *  increasing — the worker rejects out-of-order. */
+  offset: number;
+}
+export interface ServerLoftParams {
+  /** ≥ 2 cross-sections; strictly increasing offsets. */
+  sections: ServerLoftSection[];
+  plane?: 'XY' | 'XZ' | 'YZ';
+}
+
 // ─── Generic dispatcher ─────────────────────────────────────────────────────
 // All 6 chainable ops use the same POST flow — extract to one function
 // so the error mapping + telemetry stay consistent.
 
-type OcctOpName = 'boolean' | 'fillet' | 'chamfer' | 'shell' | 'mirror' | 'pattern';
+type OcctOpName =
+  | 'boolean' | 'fillet' | 'chamfer' | 'shell' | 'mirror' | 'pattern'
+  | 'extrude' | 'revolve' | 'sweep' | 'loft';
 
 async function serverDispatch<P>(
   op: OcctOpName,
@@ -266,6 +335,38 @@ export function serverPattern(
   options: ServerDispatchOptions = { jwtToken: '' },
 ): Promise<ServerOpResponse> {
   return serverDispatch('pattern', params, options);
+}
+
+/** POST /occt/op/extrude — 2D profile → 3D solid by `height`. */
+export function serverExtrude(
+  params: ServerExtrudeParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('extrude', params, options);
+}
+
+/** POST /occt/op/revolve — 2D profile around an axis by `angle`. */
+export function serverRevolve(
+  params: ServerRevolveParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('revolve', params, options);
+}
+
+/** POST /occt/op/sweep — 2D profile along a 3D polyline path. */
+export function serverSweep(
+  params: ServerSweepParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('sweep', params, options);
+}
+
+/** POST /occt/op/loft — solid blended between ≥ 2 cross-sections. */
+export function serverLoft(
+  params: ServerLoftParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('loft', params, options);
 }
 
 /** @deprecated W16 D1-2 — boolean response shape is now the common
