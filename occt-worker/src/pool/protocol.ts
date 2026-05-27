@@ -14,8 +14,10 @@ import type { BooleanParams } from '../occt/boolean.js';
 import type { FilletParams } from '../occt/fillet.js';
 import type { ChamferParams } from '../occt/chamfer.js';
 import type { ShellParams } from '../occt/shell.js';
+import type { ExtrudeParams } from '../occt/extrude.js';
+import type { RevolveParams } from '../occt/revolve.js';
 
-export type OcctOp = 'boolean' | 'fillet' | 'chamfer' | 'shell';
+export type OcctOp = 'boolean' | 'fillet' | 'chamfer' | 'shell' | 'extrude' | 'revolve';
 
 /** Per-op param shapes; the discriminator on `op` lets the worker
  *  entry's switch narrow without casting. */
@@ -24,6 +26,8 @@ export type OcctParamsByOp = {
   fillet: FilletParams;
   chamfer: ChamferParams;
   shell: ShellParams;
+  extrude: ExtrudeParams;
+  revolve: RevolveParams;
 };
 
 export interface OcctOpRequest {

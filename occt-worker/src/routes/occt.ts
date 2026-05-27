@@ -1,9 +1,9 @@
 /**
  * /occt/op/* — OCCT operation endpoints.
  *
- * Wave 1 W11 D3-5: boolean / fillet / chamfer / shell are live.
- * The 6 remaining ops (extrude / revolve / sweep / loft / pattern /
- * mirror) return 501 until W12+.
+ * Wave 1 W11 (D3-5 + follow-up): boolean / fillet / chamfer / shell /
+ * extrude / revolve are live. The 4 remaining ops (sweep / loft /
+ * pattern / mirror) return 501 until W12+.
  *
  * Request shape (all ops follow this):
  *   POST /occt/op/{operation}
@@ -25,6 +25,8 @@ import { type BooleanParams } from '../occt/boolean.js';
 import { type FilletParams, type FilletEdgeScope } from '../occt/fillet.js';
 import { type ChamferParams, type ChamferEdgeScope } from '../occt/chamfer.js';
 import { type ShellParams, type ShellOpenFace } from '../occt/shell.js';
+import { type ExtrudeParams, type ExtrudePlane, type ExtrudeProfile } from '../occt/extrude.js';
+import { type RevolveParams, type RevolvePlane, type RevolveAxis, type RevolveProfile } from '../occt/revolve.js';
 import type { SerializedResult } from '../occt/_types.js';
 import { r2Put, r2OpKey } from '../r2.js';
 import type { AuthedRequest } from '../middleware/auth.js';
@@ -34,10 +36,10 @@ import type { OcctOp } from '../pool/protocol.js';
 
 export const occtRoute: Router = Router();
 
-// 6 ops still landing later. fillet/chamfer/shell came off this list
-// in W11 D3-5.
+// 4 ops still landing later. fillet/chamfer/shell came off in W11 D3-5;
+// extrude/revolve came off in W11 follow-up.
 const PLACEHOLDER_OPS = new Set([
-  'extrude', 'revolve', 'sweep', 'loft', 'pattern', 'mirror',
+  'sweep', 'loft', 'pattern', 'mirror',
 ]);
 
 // ─── Reusable dispatch ────────────────────────────────────────────────────────
@@ -102,6 +104,8 @@ occtRoute.post('/op/boolean', (req, res) => dispatchOp('boolean', validateBoolea
 occtRoute.post('/op/fillet',  (req, res) => dispatchOp('fillet',  validateFilletParams,  req, res));
 occtRoute.post('/op/chamfer', (req, res) => dispatchOp('chamfer', validateChamferParams, req, res));
 occtRoute.post('/op/shell',   (req, res) => dispatchOp('shell',   validateShellParams,   req, res));
+occtRoute.post('/op/extrude', (req, res) => dispatchOp('extrude', validateExtrudeParams, req, res));
+occtRoute.post('/op/revolve', (req, res) => dispatchOp('revolve', validateRevolveParams, req, res));
 
 // ─── Placeholder 501s for ops landing later ──────────────────────────────────
 occtRoute.post('/op/:operation', (req: Request, res: Response) => {
@@ -200,6 +204,59 @@ function validateShellParams(body: unknown): ShellParams {
   return { host, thickness, openFace: openFace as ShellOpenFace | undefined };
 }
 
+const EXTRUDE_PLANES: ReadonlySet<ExtrudePlane> = new Set(['XY', 'XZ', 'YZ']);
+function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
+  const raw = p.profile as Record<string, unknown> | undefined;
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid params: params.profile required');
+  }
+  const kind = raw.kind;
+  if (kind === 'rectangle') {
+    return {
+      kind: 'rectangle',
+      width: numField(raw, 'width', 0.01, 5000),
+      height2D: numField(raw, 'height2D', 0.01, 5000),
+    };
+  }
+  if (kind === 'circle') {
+    return { kind: 'circle', radius: numField(raw, 'radius', 0.01, 5000) };
+  }
+  throw new Error('invalid params: profile.kind must be rectangle | circle');
+}
+function validateExtrudeParams(body: unknown): ExtrudeParams {
+  const p = unwrapParams(body);
+  const profile = validateProfile(p);
+  const height = numField(p, 'height', 0.01, 5000);
+  const plane = p.plane;
+  if (plane !== undefined && (typeof plane !== 'string' || !EXTRUDE_PLANES.has(plane as ExtrudePlane))) {
+    throw new Error(`invalid params: plane must be one of ${[...EXTRUDE_PLANES].join(' | ')}`);
+  }
+  return { profile, height, plane: plane as ExtrudePlane | undefined };
+}
+
+const REVOLVE_PLANES: ReadonlySet<RevolvePlane> = new Set(['XY', 'XZ', 'YZ']);
+const REVOLVE_AXES: ReadonlySet<RevolveAxis> = new Set(['X', 'Y', 'Z']);
+function validateRevolveParams(body: unknown): RevolveParams {
+  const p = unwrapParams(body);
+  // Profile shapes the same as extrude — reuse validator and re-tag.
+  const profile = validateProfile(p) as RevolveProfile;
+  const plane = p.plane;
+  if (plane !== undefined && (typeof plane !== 'string' || !REVOLVE_PLANES.has(plane as RevolvePlane))) {
+    throw new Error(`invalid params: plane must be one of ${[...REVOLVE_PLANES].join(' | ')}`);
+  }
+  const axis = p.axis;
+  if (axis !== undefined && (typeof axis !== 'string' || !REVOLVE_AXES.has(axis as RevolveAxis))) {
+    throw new Error(`invalid params: axis must be one of ${[...REVOLVE_AXES].join(' | ')}`);
+  }
+  const angle = p.angle === undefined ? undefined : numField(p, 'angle', -360, 360);
+  return {
+    profile,
+    plane: plane as RevolvePlane | undefined,
+    axis: axis as RevolveAxis | undefined,
+    angle,
+  };
+}
+
 function numField(obj: Record<string, unknown>, key: string, min: number, max: number): number {
   const v = obj[key];
   if (typeof v !== 'number' || !Number.isFinite(v)) {
@@ -217,4 +274,6 @@ export const _testing = {
   validateFilletParams,
   validateChamferParams,
   validateShellParams,
+  validateExtrudeParams,
+  validateRevolveParams,
 };
