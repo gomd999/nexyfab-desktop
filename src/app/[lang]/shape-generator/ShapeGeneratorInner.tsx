@@ -1594,6 +1594,19 @@ export function ShapeGeneratorInner() {
   const occtInitPending = useUIStore(s => s.occtInitPending);
   const occtInitError = useUIStore(s => s.occtInitError);
   const setOcctMode = useUIStore(s => s.setOcctMode);
+
+  // Wave 1 W3 (ADR-003) — auto-init OCCT on shape-generator mount so users
+  // get B-rep features by default without needing to find the StatusFooter
+  // pill. Skipped only if the user has explicitly turned OCCT off in this
+  // session (occtInitError set, or a prior failed init left occtMode=false
+  // with an error). The WASM download is ~5MB; runs in background so
+  // initial paint is not blocked. Feature catches (boolean.ts:260 etc.)
+  // already fall back to mesh-CSG silently while init is pending, so the
+  // user never sees a broken state — only a delayed B-rep upgrade.
+  React.useEffect(() => {
+    if (occtMode || occtInitPending || occtInitError) return;
+    void setOcctMode(true);
+  }, [occtMode, occtInitPending, occtInitError, setOcctMode]);
   const multiView = useUIStore(s => s.multiView);
   const setMultiView = useUIStore(s => s.setMultiView);
   const showVersionPanel = useUIStore(s => s.showVersionPanel);
@@ -3333,6 +3346,110 @@ export function ShapeGeneratorInner() {
   const bridgeCloud = useShellBridge(s => s.setCloud);
   const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
   const bridgeAssemblyItems = useShellBridge(s => s.setAssemblyItems);
+  const bridgeBodyItems = useShellBridge(s => s.setBodyItems);
+
+  // Wave 1 Phase B — publish bodies to ModelerLeftPane Bodies tab. The pane
+  // dispatches `nexyfab:select-body` / `nexyfab:toggle-body-visible` custom
+  // events instead of holding handles to Inner's setters, keeping the bridge
+  // one-way (Inner writes, pane reads + emits events).
+  useEffect(() => {
+    bridgeBodyItems({
+      items: bodies.map(b => ({
+        id: b.id,
+        name: b.name,
+        color: b.color,
+        visible: b.visible,
+        locked: b.locked,
+        mergedFrom: b.mergedFrom,
+        splitFromId: b.splitFrom?.bodyId,
+      })),
+      activeId: activeBodyId,
+      selectedIds: selectedBodyIds,
+    });
+  }, [bodies, activeBodyId, selectedBodyIds, bridgeBodyItems]);
+
+  // Listen for pane-side body selection / toggle events. We can't share
+  // setters across the bridge boundary without a circular dep, so the pane
+  // dispatches CustomEvents and Inner subscribes here.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSelectBody = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (detail?.id) setActiveBodyId(detail.id);
+    };
+    const onToggleVisible = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (!detail?.id) return;
+      setBodies(prev => prev.map(b =>
+        b.id === detail.id ? { ...b, visible: !b.visible } : b,
+      ));
+    };
+    window.addEventListener('nexyfab:select-body', onSelectBody);
+    window.addEventListener('nexyfab:toggle-body-visible', onToggleVisible);
+    return () => {
+      window.removeEventListener('nexyfab:select-body', onSelectBody);
+      window.removeEventListener('nexyfab:toggle-body-visible', onToggleVisible);
+    };
+  }, [setActiveBodyId, setBodies]);
+
+  // Wave 1 Phase B — Components tab events. UserPartsSection (inline in
+  // ModelerLeftPane Components tab) dispatches:
+  //   nexyfab:insert-user-part        — click on a part thumbnail
+  //   nexyfab:open-user-parts-modal   — click on Manage gear
+  // Same one-way pattern as bodies: pane reads localStorage + emits events,
+  // Inner handles them via the existing setSelectedId / setParams /
+  // setShowUserPartsPanel setters.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onInsertUserPart = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string; shapeId: string; params: Record<string, number> }>).detail;
+      if (!detail?.shapeId) return;
+      setSelectedId(detail.shapeId);
+      if (detail.params) setParams(detail.params);
+    };
+    const onOpenUserPartsModal = () => setShowUserPartsPanel(true);
+    window.addEventListener('nexyfab:insert-user-part', onInsertUserPart);
+    window.addEventListener('nexyfab:open-user-parts-modal', onOpenUserPartsModal);
+    return () => {
+      window.removeEventListener('nexyfab:insert-user-part', onInsertUserPart);
+      window.removeEventListener('nexyfab:open-user-parts-modal', onOpenUserPartsModal);
+    };
+  }, [setSelectedId, setParams, setShowUserPartsPanel]);
+
+  // Wave 1 Phase B widget 4 — Inspector APPEARANCE Material chip.
+  // Publish materialId to bridge; listen for 'nexyfab:set-material' to
+  // route the pane's selection through the existing setMaterialId.
+  const bridgeMaterialId = useShellBridge(s => s.setMaterialId);
+  useEffect(() => {
+    bridgeMaterialId(materialId ?? null);
+  }, [materialId, bridgeMaterialId]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSetMaterial = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (detail?.id) setMaterialId(detail.id);
+    };
+    window.addEventListener('nexyfab:set-material', onSetMaterial);
+    return () => window.removeEventListener('nexyfab:set-material', onSetMaterial);
+  }, [setMaterialId]);
+
+  // Wave 1 Phase D — assembly mate list publishing for AssemblyRightPane.
+  // The internal AssemblyMate has solver-specific fields (face indices,
+  // raw partA/partB ids) that the pane doesn't need; project to a
+  // presentation-friendly ShellAssemblyMate with a readable description.
+  const bridgeAssemblyMatesList = useShellBridge(s => s.setAssemblyMatesList);
+  useEffect(() => {
+    bridgeAssemblyMatesList(
+      assemblyMates.map(m => ({
+        id: m.id,
+        type: m.type,
+        description: m.value !== undefined
+          ? `${m.value}${m.type === 'angle' ? '°' : ' mm'} · ${m.partA} ↔ ${m.partB}`
+          : `${m.partA} ↔ ${m.partB}`,
+        locked: m.locked,
+      })),
+    );
+  }, [assemblyMates, bridgeAssemblyMatesList]);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode

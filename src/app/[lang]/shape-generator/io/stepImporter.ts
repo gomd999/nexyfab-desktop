@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { reportError } from '../lib/telemetry';
+import { reportError, reportInfo } from '../lib/telemetry';
 import { publicWasmUrl } from '../lib/publicWasmUrl';
+import { healImportedMesh, type ImportHealingOptions } from '../stepImport/importHealingPipeline';
 
 interface OcctResult {
   success: boolean;
@@ -63,9 +64,35 @@ export interface StepImportResult {
   name: string;
   boundingBox: THREE.Box3;
   parts?: { geometry: THREE.BufferGeometry; name: string }[];
+  /** When `healingEnabled`, summary of weld/sew/sliver/flip operations. */
+  healingReport?: {
+    weldedVertices: number;
+    removedSliverTriangles: number;
+    sewedBoundaryEdges: number;
+    filledHoles: number;
+    flippedTriangles: number;
+    finalBoundaryEdges: number;
+    finalNonManifoldEdges: number;
+    isWatertight: boolean;
+  };
 }
 
-export async function importStepFile(buffer: ArrayBuffer): Promise<StepImportResult> {
+export interface StepImportOptions {
+  /** Run the healing pipeline (weld duplicate verts, drop slivers, sew
+   *  boundary edges, fill small holes, re-orient flipped triangles).
+   *  Default true — Wave 1 W13-14 (ADR-004) makes professional-grade
+   *  STEP imports the default. Set false to bypass and get the raw
+   *  occt-import-js output (debugging / before-after comparison). */
+  healingEnabled?: boolean;
+  /** Per-pass tuning. See ImportHealingPipeline.ts. */
+  healingOptions?: ImportHealingOptions;
+}
+
+export async function importStepFile(
+  buffer: ArrayBuffer,
+  options: StepImportOptions = {},
+): Promise<StepImportResult> {
+  const healingEnabled = options.healingEnabled ?? true;
   const occt = await getOcct() as {
     ReadStepFile: (buf: Uint8Array, params: null) => OcctResult;
   };
@@ -115,7 +142,57 @@ export async function importStepFile(buffer: ArrayBuffer): Promise<StepImportRes
   }
 
   const { mergeGeometries } = await import('three/examples/jsm/utils/BufferGeometryUtils.js');
-  const merged = mergeGeometries(geometries, false) ?? geometries[0];
+  let merged = mergeGeometries(geometries, false) ?? geometries[0];
+
+  // Wave 1 W13-14 (ADR-004) — run the healing pipeline so STEP imports
+  // from SolidWorks / Inventor / NX arrive watertight + manifold. The
+  // pipeline (stepImport/importHealingPipeline.ts) was already
+  // unit-tested + burn-in-tested but never wired into the actual
+  // importer until now. Default on; caller can opt out via
+  // options.healingEnabled === false.
+  let healingReport: StepImportResult['healingReport'];
+  if (healingEnabled && merged.index && merged.attributes.position) {
+    const posArr = Array.from(merged.attributes.position.array);
+    const idxArr = Array.from(merged.index.array);
+    try {
+      const result = healImportedMesh(posArr, idxArr, options.healingOptions);
+      const healed = new THREE.BufferGeometry();
+      healed.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(new Float32Array(result.mesh.positions), 3),
+      );
+      healed.setIndex(
+        new THREE.BufferAttribute(new Uint32Array(result.mesh.indices), 1),
+      );
+      healed.computeVertexNormals();
+      merged = healed;
+      healingReport = {
+        weldedVertices: result.report.weldedVertices,
+        removedSliverTriangles: result.report.removedSliverTriangles,
+        sewedBoundaryEdges: result.report.sewedBoundaryEdges,
+        filledHoles: result.report.filledHoles,
+        flippedTriangles: result.report.flippedTriangles,
+        finalBoundaryEdges: result.report.finalBoundaryEdges,
+        finalNonManifoldEdges: result.report.finalNonManifoldEdges,
+        isWatertight: result.report.isWatertight,
+      };
+      reportInfo('step_import', 'healing_applied', {
+        ...healingReport,
+        initialVertexCount: result.report.initialVertexCount,
+        initialTriangleCount: result.report.initialTriangleCount,
+        finalVertexCount: result.report.finalVertexCount,
+        finalTriangleCount: result.report.finalTriangleCount,
+      });
+    } catch (err) {
+      // Healing is best-effort: if it throws, return the un-healed
+      // merge so the import still succeeds. Telemetry so we can
+      // identify which inputs break the pipeline.
+      reportError('step_import', err instanceof Error ? err : new Error(String(err)), {
+        phase: 'healing',
+        byteLength: buffer.byteLength,
+      });
+    }
+  }
 
   merged.computeBoundingBox();
   const bb = merged.boundingBox ?? new THREE.Box3();
@@ -142,8 +219,9 @@ export async function importStepFile(buffer: ArrayBuffer): Promise<StepImportRes
     geometry: merged,
     meshCount: result.meshes.length,
     faceCount: totalFaces,
-    name: result.meshes[0].name ?? 'imported',
+    name: result.meshes[0]?.name ?? 'imported',
     boundingBox: merged.boundingBox ?? new THREE.Box3(),
     parts,
+    healingReport,
   };
 }

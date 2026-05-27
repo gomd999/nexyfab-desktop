@@ -3,8 +3,9 @@
 세션 누적 작업(미배포 커밋 `8d21e96`~)의 브라우저 검증용. 항목별로 ✅/❌/메모를 채워 가며 계속 수정.
 
 ## 준비
-- shape-generator 진입 → **OCCT 엔진 ON** (uiStore `occtMode`). 켜져야 아래 B-rep 경로 동작.
-- 회귀 비교용으로 OCCT OFF 상태도 함께 확인.
+- shape-generator 진입 → **OCCT 엔진은 자동으로 ON** (Wave 1 W3 / ADR-003 — `ShapeGeneratorInner` mount 시점에 `setOcctMode(true)` 자동 호출). 우상단 StatusFooter pill을 보고 `OCCT: ON` 으로 표시되는지 확인.
+- 회귀 비교용으로 OCCT OFF 상태가 필요하면 StatusFooter pill을 클릭하여 수동 토글 (디버깅용; 일반 사용자에게는 보이지 않음).
+- 이 체크리스트는 Wave 1 **W16** 시점에 본격 실행 — 그 전 단계 (W6-8 모놀리식 분리, W9-12 server OCCT)에서 변경된 동작을 모두 반영하여 검증.
 
 ## 체크리스트
 

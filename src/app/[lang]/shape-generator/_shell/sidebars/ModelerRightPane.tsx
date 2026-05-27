@@ -5,7 +5,7 @@
 // / ANALYZE sections; ANALYZE rows open the BottomDrawer with the existing
 // DFM/FEA/Cost/Variants panels via the `analyze:open` custom event.
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, PropItemRow } from './';
 import { I } from '../Icons';
 import { useShellBridge } from '../shellBridgeStore';
@@ -13,6 +13,7 @@ import { AiChatPanel } from './AiChatPanel';
 import { CommentsPanel } from './CommentsPanel';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
 import type { FeatureRoute } from '../../featureCatalog/registry';
+import { MATERIAL_PRESETS, type MaterialPreset } from '../../materials';
 
 export interface ModelerRightPaneProps {
   isKo: boolean;
@@ -176,18 +177,7 @@ function InspectorTab({
           <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '본체에서' : 'From body'} />
         </PropRow>
         <PropRow label={isKo ? '재질' : 'Material'}>
-          <button
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '2px 8px', height: 22,
-              background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
-              borderRadius: 3, fontSize: 11, color: 'var(--nx-text)',
-              cursor: 'pointer', width: '100%',
-            }}
-          >
-            <span style={{ width: 12, height: 12, borderRadius: 2, background: '#cdd2d8', flex: '0 0 12px' }} />
-            <span style={{ flex: 1, textAlign: 'left' }}>Aluminum 6061-T6</span>
-          </button>
+          <MaterialChipWithPopover isKo={isKo} />
         </PropRow>
       </PropSection>
 
@@ -314,6 +304,140 @@ function CamSection({ isKo }: { isKo: boolean }) {
         {isKo ? 'G-code 내보내기' : 'Export G-code'}
       </button>
     </>
+  );
+}
+
+// Wave 1 Phase B widget 4 — Inspector APPEARANCE Material chip with
+// inline popover. Reads materialId from the shell bridge (Inner publishes
+// from sceneStore.materialId). Click selects → dispatches
+// `nexyfab:set-material` for Inner to call setMaterialId. Click outside
+// or Esc closes the popover.
+function MaterialChipWithPopover({ isKo }: { isKo: boolean }) {
+  const materialId = useShellBridge(s => s.materialId);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const selected: MaterialPreset | undefined =
+    MATERIAL_PRESETS.find(m => m.id === materialId) ?? MATERIAL_PRESETS[0];
+  const langKey: 'ko' | 'en' = isKo ? 'ko' : 'en';
+
+  // Close on outside click + Esc.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const onPick = (id: string) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexyfab:set-material', { detail: { id } }));
+    }
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '2px 8px', height: 22,
+          background: 'var(--nx-bg)',
+          border: `1px solid ${open ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+          borderRadius: 3, fontSize: 11, color: 'var(--nx-text)',
+          cursor: 'pointer', width: '100%',
+        }}
+      >
+        <span style={{
+          width: 12, height: 12, borderRadius: 2,
+          background: selected?.color ?? '#cdd2d8',
+          flex: '0 0 12px',
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)',
+        }} />
+        <span style={{ flex: 1, textAlign: 'left' }}>
+          {selected?.name[langKey] ?? (isKo ? '재료 선택' : 'Pick material')}
+        </span>
+        <span style={{ color: 'var(--nx-text-3)', fontSize: 9 }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label={isKo ? '재료 선택기' : 'Material picker'}
+          style={{
+            position: 'absolute', top: '100%', right: 0, marginTop: 4,
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border-strong)',
+            borderRadius: 6,
+            padding: 8,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+            zIndex: 100,
+            width: 220,
+            maxHeight: 320,
+            overflowY: 'auto',
+          }}
+        >
+          <div style={{
+            fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3)',
+            textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6,
+          }}>
+            {isKo ? '재료 프리셋' : 'Material presets'}
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 4,
+          }}>
+            {MATERIAL_PRESETS.map(m => {
+              const isSel = m.id === materialId;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => onPick(m.id)}
+                  title={m.name[langKey]}
+                  style={{
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: 2, padding: 4,
+                    border: `1px solid ${isSel ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                    borderRadius: 4,
+                    background: isSel ? 'var(--nx-accent-soft)' : 'var(--nx-panel-soft)',
+                    cursor: 'pointer',
+                    fontSize: 9,
+                    color: 'var(--nx-text-2)',
+                  }}
+                >
+                  <span style={{
+                    width: '100%', aspectRatio: '1 / 1', borderRadius: 3,
+                    background: m.color,
+                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)',
+                    opacity: m.transparent ? (m.opacity ?? 0.3) : 1,
+                  }} />
+                  <span style={{
+                    width: '100%', overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    textAlign: 'center',
+                  }}>
+                    {m.name[langKey]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
