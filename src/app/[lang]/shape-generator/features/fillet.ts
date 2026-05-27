@@ -11,6 +11,8 @@ import {
   buildEdgeFinderForLoop,
   buildEdgeFinderBySignature,
 } from './topologyEdgeFinder';
+import { serverFillet, type ServerFilletParams } from '@/lib/occt-server-client';
+import { tryServerOp, getSourceR2Key, type ServerOpts } from './serverOcctHelper';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -150,6 +152,37 @@ async function applyFilletWithEdgeFinder(
     if (out) return out;
   }
   return applyFilletMeshCsg(geometry, radius, segments, ctx, wantedOcct);
+}
+
+/** W17 server-fallback variant. Tries nexyfab-occt-worker first when
+ *  `serverOpts.jwtToken` is set + host volume > threshold; falls
+ *  through to the existing OCCT/mesh chain otherwise. Non-breaking
+ *  superset of applyFilletWithEdgeFinder.
+ *
+ *  Chained input: if `geometry.userData.serverStepR2Key` is set
+ *  (previous op's output), we pass it as `sourceR2Key` so the worker
+ *  imports the prior shape instead of building a fresh box host. */
+export async function applyFilletAsyncWithServer(
+  geometry: THREE.BufferGeometry,
+  params: Record<string, number>,
+  ctx?: FeatureApplyContext,
+  serverOpts?: ServerOpts,
+): Promise<THREE.BufferGeometry> {
+  if (serverOpts?.jwtToken) {
+    const radius = params.radius!;
+    const sourceR2Key = getSourceR2Key(geometry);
+    const serverParams: ServerFilletParams = sourceR2Key
+      ? { sourceR2Key, radius, edges: 'all' }
+      : { host: hostBoxFromGeometry(geometry), radius, edges: 'all' };
+    const result = await tryServerOp(
+      'fillet',
+      geometry,
+      (opts) => serverFillet(serverParams, opts),
+      serverOpts,
+    );
+    if (result) return result;
+  }
+  return applyFilletWithEdgeFinder(geometry, params, ctx);
 }
 
 export const filletFeature: FeatureDefinition = {
