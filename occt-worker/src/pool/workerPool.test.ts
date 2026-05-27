@@ -140,3 +140,50 @@ describe('OcctWorkerPool — error classes', () => {
     expect(err.name).toBe('QueueFullError');
   });
 });
+
+describe('OcctWorkerPool — slot recycling (W12 D1-2)', () => {
+  it('rotates a slot after maxOpsPerSlot ops', async () => {
+    // 1 slot, recycle after every 2 ops. 5 sequential ops →
+    // expect 2 recycles (after op #2 and op #4).
+    const pool = makePool({ size: 1, maxOpsPerSlot: 2 });
+    for (let i = 0; i < 5; i++) {
+      await pool.execute('boolean', dummyParams);
+    }
+    // Recycle may still be settling — give the 'exit' handler a beat.
+    await new Promise(r => setTimeout(r, 100));
+    const s = pool.status();
+    expect(s.totalRecycles).toBeGreaterThanOrEqual(2);
+    expect(s.totalOpsCompleted).toBeGreaterThanOrEqual(5);
+  });
+
+  it('maxOpsPerSlot=0 disables recycling', async () => {
+    const pool = makePool({ size: 1, maxOpsPerSlot: 0 });
+    for (let i = 0; i < 5; i++) {
+      await pool.execute('boolean', dummyParams);
+    }
+    expect(pool.status().totalRecycles).toBe(0);
+  });
+
+  it('status exposes totalRecycles in PoolStatus', () => {
+    const pool = makePool({ size: 1, maxOpsPerSlot: 0 });
+    const s = pool.status();
+    expect(s.totalRecycles).toBe(0);
+    // PoolStatus shape — typecheck guard against accidental field rename.
+    expect(typeof s.totalRecycles).toBe('number');
+  });
+
+  it('respawned slot picks up subsequent ops without dropping jobs', async () => {
+    // size=1, max=1 → every op triggers a recycle. The pool must keep
+    // serving the next op through the respawn cycle.
+    const pool = makePool({ size: 1, maxOpsPerSlot: 1 });
+    const results = await Promise.all([
+      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams),
+    ]);
+    expect(results).toHaveLength(3);
+    // Wait for the trailing recycle's exit to settle so the count is final.
+    await new Promise(r => setTimeout(r, 100));
+    expect(pool.status().totalRecycles).toBeGreaterThanOrEqual(2);
+  });
+});

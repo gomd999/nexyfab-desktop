@@ -19,9 +19,12 @@
  *     the slot (its kernel state is suspect) and respawn.
  *   - drain() returns after all in-flight jobs settle + all threads
  *     terminate. Called from SIGTERM handler.
- *
- * Recycling (W12 scope, not here): after N ops a slot is rotated even
- * if healthy, to bound fragmentation. Stubs marked with TODO(W12).
+ *   - Op-count recycling (W12 D1-2): after a slot completes
+ *     OCCT_MAX_OPS_PER_SLOT (default 50) ops it is recycled — even if
+ *     healthy — so OCCT WASM heap fragmentation can't accumulate.
+ *     Recycling happens AFTER the op's result is delivered to the
+ *     caller; in-flight jobs never see the rotation. The replacement
+ *     slot is spawned eagerly so the pool capacity stays at `size`.
  */
 
 import { Worker } from 'node:worker_threads';
@@ -36,6 +39,7 @@ import type {
 const DEFAULT_POOL_SIZE = Math.max(1, Math.min(os.cpus().length - 1, 3));
 const DEFAULT_QUEUE_MULT = 4;
 const DEFAULT_OP_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_OPS_PER_SLOT = 50;
 
 interface PendingJob {
   jobId: string;
@@ -87,6 +91,10 @@ export interface PoolOptions {
   size?: number;
   queueMax?: number;
   opTimeoutMs?: number;
+  /** Op-count threshold for healthy-slot recycling. Default 50; env
+   *  OCCT_MAX_OPS_PER_SLOT. Setting to 0 disables recycling — only
+   *  use for tests / debugging since OCCT WASM heap grows unbounded. */
+  maxOpsPerSlot?: number;
   /** Override the worker entry path — tests pass a fixture. Default
    *  resolves to compiled `dist/pool/occtThreadEntry.js`. */
   entryUrl?: URL | string;
@@ -99,17 +107,27 @@ export interface PoolStatus {
   queueDepth: number;
   queueCapacity: number;
   totalOpsCompleted: number;
+  /** Number of slot recycles since pool start (op-count + crashes +
+   *  timeouts all count). Used by soak tests to verify the rotation
+   *  policy is firing as expected. */
+  totalRecycles: number;
 }
 
 export class OcctWorkerPool {
   private readonly size: number;
   private readonly queueCap: number;
   private readonly opTimeoutMs: number;
+  private readonly maxOpsPerSlot: number;
   private readonly entryUrl: URL | string;
   private slots: WorkerSlot[] = [];
   private queue: PendingJob[] = [];
   private nextSlotId = 0;
   private nextJobId = 0;
+  private totalRecycles = 0;
+  /** Lifetime op count — kept separately from per-slot opsCompleted
+   *  because slot recycling resets the per-slot counter. Soak tests
+   *  read this for "did we actually do N ops since boot?" assertions. */
+  private totalOpsLifetime = 0;
   private shuttingDown = false;
 
   constructor(opts: PoolOptions = {}) {
@@ -119,6 +137,8 @@ export class OcctWorkerPool {
       ?? parseInt(process.env.OCCT_QUEUE_MAX ?? `${this.size * DEFAULT_QUEUE_MULT}`, 10);
     this.opTimeoutMs = opts.opTimeoutMs
       ?? parseInt(process.env.OCCT_OP_TIMEOUT_MS ?? `${DEFAULT_OP_TIMEOUT_MS}`, 10);
+    this.maxOpsPerSlot = opts.maxOpsPerSlot
+      ?? parseInt(process.env.OCCT_MAX_OPS_PER_SLOT ?? `${DEFAULT_MAX_OPS_PER_SLOT}`, 10);
     // Default entry resolves to `./occtThreadEntry.js` next to this
     // file. In dev (tsx watch) tsx maps .js → .ts; in prod the file
     // is .js directly. Tests pass a fixture URL via opts.entryUrl.
@@ -163,7 +183,8 @@ export class OcctWorkerPool {
       busyCount: this.busyCount(),
       queueDepth: this.queue.length,
       queueCapacity: this.queueCap,
-      totalOpsCompleted: this.slots.reduce((n, s) => n + s.opsCompleted, 0),
+      totalOpsCompleted: this.totalOpsLifetime,
+      totalRecycles: this.totalRecycles,
     };
   }
 
@@ -264,10 +285,21 @@ export class OcctWorkerPool {
     if (job.timer) clearTimeout(job.timer);
     slot.inFlight = null;
     slot.opsCompleted++;
+    this.totalOpsLifetime++;
     if (msg.ok) {
       job.resolve(msg.result);
     } else {
       job.reject(new Error(msg.error));
+    }
+    // Op-count recycling: rotate the slot AFTER the result is delivered
+    // so the caller never sees the cycle. We check before tryDispatch
+    // so this slot won't pick up another job on its way out.
+    if (
+      this.maxOpsPerSlot > 0
+      && !slot.draining
+      && slot.opsCompleted >= this.maxOpsPerSlot
+    ) {
+      this.recycleSlot(slot, `op count threshold (${slot.opsCompleted}/${this.maxOpsPerSlot})`);
     }
     this.tryDispatch();
   }
@@ -282,14 +314,16 @@ export class OcctWorkerPool {
   }
 
   private onWorkerExit(slot: WorkerSlot, code: number): void {
-    if (slot.draining) return; // expected during drain()
     const job = slot.inFlight;
     if (job) {
       this.failJob(job, new WorkerCrashError(`slot ${slot.id} exited (code ${code}) mid-op`));
     }
-    if (this.shuttingDown) return;
-    // Remove dead slot and respawn unless we're shutting down.
+    // Remove the dead slot from the registry regardless of why it
+    // exited (crash, op-count recycle, drain). `draining` alone can't
+    // distinguish "rotate me" from "pool shutting down" — we use
+    // shuttingDown for that, set only by drain().
     this.slots = this.slots.filter(s => s !== slot);
+    if (this.shuttingDown) return;
     console.warn(`[occt-pool] slot ${slot.id} exited (code ${code}) — respawning`);
     this.spawnSlot();
   }
@@ -303,8 +337,10 @@ export class OcctWorkerPool {
   }
 
   private recycleSlot(slot: WorkerSlot, reason: string): void {
-    console.warn(`[occt-pool] recycling slot ${slot.id}: ${reason}`);
+    if (slot.draining) return; // idempotent — multiple recycle triggers OK
+    console.warn(`[occt-pool] recycling slot ${slot.id} (ops=${slot.opsCompleted}): ${reason}`);
     slot.draining = true;
+    this.totalRecycles++;
     slot.worker.terminate().catch(() => { /* already dead, fine */ });
     // The 'exit' handler removes + respawns.
   }
