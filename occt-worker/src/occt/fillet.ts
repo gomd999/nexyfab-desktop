@@ -12,20 +12,26 @@
  * signature; defensive `() => true` fallback covers replicad builds
  * that ignore the second arg.
  *
- * Scope match to W11: input is a primitive box, not yet a R2-imported
- * STEP shape. Chaining with prior op outputs (boolean → fillet) lands
- * in W12 when the worker accepts `sourceR2Key` as an alternative input.
+ * W16 D1-2: now accepts `sourceR2Key` as an alternative to `host` for
+ * chained-op workflows. When R2 input is used, the min(host)/2 radius
+ * pre-check is skipped (dimensions unknown until kernel import); a
+ * bad radius surfaces as a kernel error → 500 instead of 400, which
+ * the client-side fallback chain handles.
  */
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { resolveShape, type OpContext } from './_input.js';
 import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export type FilletEdgeScope = 'all' | 'vertical' | 'top' | 'bottom';
 
 export interface FilletParams {
-  host: { w: number; h: number; d: number };
-  /** Edge rounding radius (mm). Must be < min(host)/2 or OCCT refuses. */
+  /** Primitive box. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input). */
+  sourceR2Key?: string;
+  /** Edge rounding radius (mm). With host, must be < min(host)/2. */
   radius: number;
   edges?: FilletEdgeScope;
 }
@@ -52,29 +58,30 @@ function edgeSelector(scope: FilletEdgeScope, hostD: number): (edge: EdgeLike) =
   }
 }
 
-export async function runFillet(params: FilletParams): Promise<SerializedResult> {
+export async function runFillet(params: FilletParams, ctx: OpContext): Promise<SerializedResult> {
   await ensureOcctReady();
   const replicad = getReplicad() as ReplicadLike;
 
-  if (!replicad.makeBaseBox) {
-    throw new Error('replicad.makeBaseBox unavailable — verify WASM loaded');
-  }
-  // OCCT guards: radius must fit inside the box, else fillet fails
-  // with an opaque "edge cannot be filleted" kernel error. Pre-check
-  // gives a clean 400.
-  const minDim = Math.min(params.host.w, params.host.h, params.host.d);
-  if (params.radius >= minDim / 2) {
-    throw new Error(
-      `invalid params: radius ${params.radius} must be < min(host)/2 (${minDim / 2})`,
-    );
+  // Pre-check is only valid when host dimensions are known. R2 input
+  // shapes lose this guard — bad radius surfaces as kernel error later.
+  if (params.host) {
+    const minDim = Math.min(params.host.w, params.host.h, params.host.d);
+    if (params.radius >= minDim / 2) {
+      throw new Error(
+        `invalid params: radius ${params.radius} must be < min(host)/2 (${minDim / 2})`,
+      );
+    }
   }
 
-  const host = replicad.makeBaseBox(params.host.w, params.host.h, params.host.d) as OcctShape;
+  const host = await resolveShape(replicad, params, ctx.userId);
   if (!host.fillet) {
     throw new Error('replicad shape has no fillet() method — kernel build mismatch');
   }
   const scope = params.edges ?? 'all';
-  const selector = edgeSelector(scope, params.host.d);
+  // Selector uses host depth for the top/bottom face Z target; with
+  // R2 input we fall back to "any edge" since dimensions are unknown.
+  const hostD = params.host?.d ?? 0;
+  const selector = edgeSelector(scope, hostD);
 
   let filleted: OcctShape;
   try {

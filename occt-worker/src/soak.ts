@@ -124,7 +124,7 @@ async function main(): Promise<void> {
         r: 5 + (opCount % 5),
         type: 'cut',
       };
-      pool.execute('boolean', params)
+      pool.execute('boolean', params, 'soak-user')
         .then(() => { opCount++; })
         .catch((err: Error) => {
           failedOps++;

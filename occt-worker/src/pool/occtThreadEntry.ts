@@ -75,21 +75,25 @@ void (async () => {
 
 port.on('message', async (raw: ParentToWorker) => {
   if (raw.type !== 'op') return;
-  const { jobId, op, params } = raw;
+  const { jobId, op, params, userId } = raw;
+  // Ctx is passed only to 3D-host ops that may resolve R2 input
+  // (W16 D1-2). Pure-primitive ops ignore it. Future per-user quotas
+  // / telemetry hooks can read ctx without changing handler signatures.
+  const ctx = { userId };
   try {
     let result: unknown;
     switch (op) {
       case 'boolean':
-        result = await runBoolean(params as BooleanParams);
+        result = await runBoolean(params as BooleanParams, ctx);
         break;
       case 'fillet':
-        result = await runFillet(params as FilletParams);
+        result = await runFillet(params as FilletParams, ctx);
         break;
       case 'chamfer':
-        result = await runChamfer(params as ChamferParams);
+        result = await runChamfer(params as ChamferParams, ctx);
         break;
       case 'shell':
-        result = await runShell(params as ShellParams);
+        result = await runShell(params as ShellParams, ctx);
         break;
       case 'extrude':
         result = await runExtrude(params as ExtrudeParams);
@@ -98,10 +102,10 @@ port.on('message', async (raw: ParentToWorker) => {
         result = await runRevolve(params as RevolveParams);
         break;
       case 'mirror':
-        result = await runMirror(params as MirrorParams);
+        result = await runMirror(params as MirrorParams, ctx);
         break;
       case 'pattern':
-        result = await runPattern(params as PatternParams);
+        result = await runPattern(params as PatternParams, ctx);
         break;
       case 'sweep':
         result = await runSweep(params as SweepParams);

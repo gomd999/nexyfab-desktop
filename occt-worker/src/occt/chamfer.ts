@@ -11,12 +11,16 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { resolveShape, type OpContext } from './_input.js';
 import type { ReplicadLike, OcctShape, SerializedResult } from './_types.js';
 
 export type ChamferEdgeScope = 'all' | 'vertical' | 'top' | 'bottom';
 
 export interface ChamferParams {
-  host: { w: number; h: number; d: number };
+  /** Primitive box. Exactly one of host or sourceR2Key required. */
+  host?: { w: number; h: number; d: number };
+  /** R2 key pointing to a STEP file (chained-op input, W16 D1-2). */
+  sourceR2Key?: string;
   /** Bevel distance (mm) from the edge. */
   distance: number;
   edges?: ChamferEdgeScope;
@@ -41,26 +45,26 @@ function edgeSelector(scope: ChamferEdgeScope, hostD: number): (edge: EdgeLike) 
   }
 }
 
-export async function runChamfer(params: ChamferParams): Promise<SerializedResult> {
+export async function runChamfer(params: ChamferParams, ctx: OpContext): Promise<SerializedResult> {
   await ensureOcctReady();
   const replicad = getReplicad() as ReplicadLike;
 
-  if (!replicad.makeBaseBox) {
-    throw new Error('replicad.makeBaseBox unavailable — verify WASM loaded');
-  }
-  const minDim = Math.min(params.host.w, params.host.h, params.host.d);
-  if (params.distance >= minDim / 2) {
-    throw new Error(
-      `invalid params: distance ${params.distance} must be < min(host)/2 (${minDim / 2})`,
-    );
+  if (params.host) {
+    const minDim = Math.min(params.host.w, params.host.h, params.host.d);
+    if (params.distance >= minDim / 2) {
+      throw new Error(
+        `invalid params: distance ${params.distance} must be < min(host)/2 (${minDim / 2})`,
+      );
+    }
   }
 
-  const host = replicad.makeBaseBox(params.host.w, params.host.h, params.host.d) as OcctShape;
+  const host = await resolveShape(replicad, params, ctx.userId);
   if (!host.chamfer) {
     throw new Error('replicad shape has no chamfer() method — kernel build mismatch');
   }
   const scope = params.edges ?? 'all';
-  const selector = edgeSelector(scope, params.host.d);
+  const hostD = params.host?.d ?? 0;
+  const selector = edgeSelector(scope, hostD);
 
   let chamfered: OcctShape;
   try {

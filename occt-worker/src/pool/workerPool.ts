@@ -47,6 +47,9 @@ interface PendingJob {
   /** Params shape is op-dependent. Pool keeps it opaque — the worker
    *  entry's switch narrows by op (see protocol.OcctParamsByOp). */
   params: unknown;
+  /** Authenticated user id — threaded into the worker so 3D-host ops
+   *  can enforce per-user prefix on sourceR2Key (W16 D1-2). */
+  userId: string;
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
   enqueuedAt: number;
@@ -175,7 +178,7 @@ export class OcctWorkerPool {
   }
 
   /** Submit an op. Resolves with the worker's `result`. */
-  execute(op: OcctOp, params: unknown): Promise<unknown> {
+  execute(op: OcctOp, params: unknown, userId: string): Promise<unknown> {
     if (this.shuttingDown) {
       return Promise.reject(new Error('pool shutting down'));
     }
@@ -187,6 +190,7 @@ export class OcctWorkerPool {
         jobId: `j${++this.nextJobId}`,
         op,
         params,
+        userId,
         resolve,
         reject,
         enqueuedAt: Date.now(),
@@ -285,7 +289,13 @@ export class OcctWorkerPool {
   private dispatchToSlot(slot: WorkerSlot, job: PendingJob): void {
     slot.inFlight = job;
     job.slot = slot;
-    const req: OcctOpRequest = { type: 'op', jobId: job.jobId, op: job.op, params: job.params };
+    const req: OcctOpRequest = {
+      type: 'op',
+      jobId: job.jobId,
+      op: job.op,
+      params: job.params,
+      userId: job.userId,
+    };
     slot.worker.postMessage(req);
 
     // Per-op timeout — slot is suspect after a timeout (kernel could
