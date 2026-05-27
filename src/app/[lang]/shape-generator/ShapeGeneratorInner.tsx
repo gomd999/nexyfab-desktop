@@ -1594,6 +1594,19 @@ export function ShapeGeneratorInner() {
   const occtInitPending = useUIStore(s => s.occtInitPending);
   const occtInitError = useUIStore(s => s.occtInitError);
   const setOcctMode = useUIStore(s => s.setOcctMode);
+
+  // Wave 1 W3 (ADR-003) — auto-init OCCT on shape-generator mount so users
+  // get B-rep features by default without needing to find the StatusFooter
+  // pill. Skipped only if the user has explicitly turned OCCT off in this
+  // session (occtInitError set, or a prior failed init left occtMode=false
+  // with an error). The WASM download is ~5MB; runs in background so
+  // initial paint is not blocked. Feature catches (boolean.ts:260 etc.)
+  // already fall back to mesh-CSG silently while init is pending, so the
+  // user never sees a broken state — only a delayed B-rep upgrade.
+  React.useEffect(() => {
+    if (occtMode || occtInitPending || occtInitError) return;
+    void setOcctMode(true);
+  }, [occtMode, occtInitPending, occtInitError, setOcctMode]);
   const multiView = useUIStore(s => s.multiView);
   const setMultiView = useUIStore(s => s.setMultiView);
   const showVersionPanel = useUIStore(s => s.showVersionPanel);
