@@ -23,6 +23,7 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { buildPolygonDrawing, type PolygonProfile } from './_polygon.js';
 import type { ReplicadLike, OcctShape, DrawingLike, SerializedResult } from './_types.js';
 
 export type RevolvePlane = 'XY' | 'XZ' | 'YZ';
@@ -39,7 +40,9 @@ export interface RevolveCircleProfile {
   radius: number;
 }
 
-export type RevolveProfile = RevolveRectangleProfile | RevolveCircleProfile;
+export type RevolvePolygonProfile = PolygonProfile;
+
+export type RevolveProfile = RevolveRectangleProfile | RevolveCircleProfile | RevolvePolygonProfile;
 
 export interface RevolveParams {
   profile: RevolveProfile;
@@ -64,6 +67,9 @@ function buildProfile(replicad: ReplicadLike, profile: RevolveProfile): DrawingL
         throw new Error('replicad.drawCircle unavailable — kernel build mismatch');
       }
       return replicad.drawCircle(profile.radius);
+    }
+    case 'polygon': {
+      return buildPolygonDrawing(replicad, profile);
     }
   }
 }

@@ -16,6 +16,7 @@
 
 import { ensureOcctReady, getReplicad } from './lifecycle.js';
 import { serializeShape } from './_serialize.js';
+import { buildPolygonDrawing, type PolygonProfile } from './_polygon.js';
 import type { ReplicadLike, OcctShape, DrawingLike, SerializedResult } from './_types.js';
 
 export type ExtrudePlane = 'XY' | 'XZ' | 'YZ';
@@ -31,7 +32,12 @@ export interface ExtrudeCircleProfile {
   radius: number;
 }
 
-export type ExtrudeProfile = ExtrudeRectangleProfile | ExtrudeCircleProfile;
+/** Custom polygon profile — W13 D1-2. Vertex list builds via
+ *  draw().moveTo().lineTo()*.close(). Enables L/T/U brackets and
+ *  plate-with-cutout shapes that rectangle/circle can't express. */
+export type ExtrudePolygonProfile = PolygonProfile;
+
+export type ExtrudeProfile = ExtrudeRectangleProfile | ExtrudeCircleProfile | ExtrudePolygonProfile;
 
 export interface ExtrudeParams {
   profile: ExtrudeProfile;
@@ -54,6 +60,9 @@ function buildProfile(replicad: ReplicadLike, profile: ExtrudeProfile): DrawingL
         throw new Error('replicad.drawCircle unavailable — kernel build mismatch');
       }
       return replicad.drawCircle(profile.radius);
+    }
+    case 'polygon': {
+      return buildPolygonDrawing(replicad, profile);
     }
   }
 }
