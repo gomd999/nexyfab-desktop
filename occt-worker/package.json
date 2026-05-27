@@ -2,6 +2,7 @@
   "name": "nexyfab-occt-worker",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Server-side OCCT worker for heavy B-rep operations (Wave 1 W9-12, ADR-007).",
   "engines": {
     "node": ">=22"

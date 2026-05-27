@@ -17,6 +17,7 @@ import { healthRoute } from './routes/health.js';
 import { occtRoute } from './routes/occt.js';
 import { authMiddleware } from './middleware/auth.js';
 import { requestId } from './middleware/requestId.js';
+import { getPool, drainPool } from './pool/workerPool.js';
 
 const PORT = parseInt(process.env.PORT ?? '8080', 10);
 const NODE_ENV = process.env.NODE_ENV ?? 'production';
@@ -57,6 +58,10 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+// Eager-init the pool so WASM load latency happens during boot, not
+// on the first user request. Each slot loads OCCT independently.
+getPool();
+
 const server = app.listen(PORT, () => {
   console.log(`[occt-worker] listening on :${PORT} (NODE_ENV=${NODE_ENV})`);
 });
@@ -66,9 +71,19 @@ const server = app.listen(PORT, () => {
 // drain. Hard exit after 8 s in case OCCT WASM holds a thread.
 function shutdown(signal: string): void {
   console.log(`[occt-worker] ${signal} received, draining…`);
+  // 1. Stop accepting new HTTP connections.
+  // 2. Drain pool (rejects queued + waits for in-flight + terminates
+  //    worker threads).
+  // 3. Exit 0 if both drains finish; hard-exit on timeout so the
+  //    container doesn't hang past Railway's 10 s grace.
   server.close(() => {
-    console.log('[occt-worker] drain complete, exit 0');
-    process.exit(0);
+    drainPool().then(() => {
+      console.log('[occt-worker] drain complete, exit 0');
+      process.exit(0);
+    }).catch(err => {
+      console.error('[occt-worker] pool drain error:', err);
+      process.exit(1);
+    });
   });
   setTimeout(() => {
     console.warn('[occt-worker] drain timed out, forcing exit');
