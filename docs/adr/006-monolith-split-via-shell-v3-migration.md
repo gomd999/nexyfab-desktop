@@ -199,6 +199,40 @@ The MIGRATION.md doc records the lesson.
   environment depends on the user's D1/D2/D3 decisions in
   `docs/process/staging-setup-runbook.md`.
 
+## Addendum — 2026-05-27 investigation
+
+Reading the actual code (not just `MIGRATION.md`) reveals the
+migration is **further along than the doc's ⬜ markers suggest**:
+
+- `_shell/sidebars/ModelerLeftPane.tsx` (133 lines) is already
+  implemented and live. Features tab renders from
+  `useShellBridge.featureItems`; Bodies + Components are empty-state
+  stubs.
+- `ShapeGeneratorInner.tsx:3347` calls
+  `useShellBridge.getState().setFeatureItems(...)` — Inner is
+  already feeding the shell store. So when the shell-v2 UI is shown
+  (gated by `?shell=v2` URL flag per `ModelerShell.tsx` header),
+  Phase B's Features tab works end-to-end today.
+- `ModelerRightPane.tsx` is 397 lines — substantial implementation.
+  Inspector/AI/Comments tabs likely already wired (verify on W6 D1).
+- `_shell/MIGRATION.md` is stale (last updated Phase A.5); the legend
+  reflects the doc author's intent, not the codebase reality.
+
+This shifts the W6-8 plan from "implement Phase B-F" to **"promote
+shell-v2 to default + delete legacy LeftPanel/RightPanel render
+paths"**. The pattern referenced in `ModelerShell.tsx` header:
+> Inner's legacy chrome bars … are hidden via globals.css when
+> `body.sg-shell-v2` is on.
+
+So Phase G (dead-code removal) may be more work than Phase B-F (new
+implementation). Final estimate stable at 3 weeks; composition
+inverts.
+
+W6 D1 first task: **survey the actual code state of every
+MIGRATION.md row**, update the status legend to reflect reality.
+That survey is the input to a revised per-Phase plan; ADR-006
+update commit follows.
+
 ## References
 
 - Doc: `src/app/[lang]/shape-generator/_shell/MIGRATION.md`
