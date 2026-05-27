@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: [main, master, develop]
+  # No `branches:` filter on pull_request — runs on every PR
+  # regardless of base, so stacked PRs (wave-1/* chains) get the
+  # same validation as PRs targeting main directly. Without this,
+  # only the bottom-of-stack PR ran CI; the rest were checked only
+  # after merge auto-retargeted their base to main, leaving zero
+  # pre-merge signal on the stack.
   pull_request:
-    branches: [main, master]
 
 jobs:
   typecheck:

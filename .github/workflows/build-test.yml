@@ -1,8 +1,11 @@
 name: Build Test (PR)
 
 on:
+  # No `branches:` filter — runs on every PR regardless of base, so
+  # stacked PRs (wave-1/* chains, where a PR's base is the parent's
+  # head rather than main) get pre-merge build signal. Mirrors the
+  # ci.yml change made in the same PR.
   pull_request:
-    branches: [main]
 
 jobs:
   typecheck:
