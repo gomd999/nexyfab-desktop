@@ -11,14 +11,28 @@
  */
 
 import type { BooleanParams } from '../occt/boolean.js';
+import type { FilletParams } from '../occt/fillet.js';
+import type { ChamferParams } from '../occt/chamfer.js';
+import type { ShellParams } from '../occt/shell.js';
 
-export type OcctOp = 'boolean';
+export type OcctOp = 'boolean' | 'fillet' | 'chamfer' | 'shell';
+
+/** Per-op param shapes; the discriminator on `op` lets the worker
+ *  entry's switch narrow without casting. */
+export type OcctParamsByOp = {
+  boolean: BooleanParams;
+  fillet: FilletParams;
+  chamfer: ChamferParams;
+  shell: ShellParams;
+};
 
 export interface OcctOpRequest {
   type: 'op';
   jobId: string;
   op: OcctOp;
-  params: BooleanParams;
+  /** Pool keeps params opaque (it's just routing the bytes); each op
+   *  handler narrows via OcctParamsByOp at the worker entry. */
+  params: unknown;
 }
 
 export interface OcctReadyMessage {
