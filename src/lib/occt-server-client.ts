@@ -1,24 +1,22 @@
 /**
  * Client wrapper for the nexyfab-occt-worker service.
  *
- * Wave 1 W10 D4-5 (ADR-007). Pure HTTP boundary — converts the
- * client-side op call into the worker's REST shape and parses the
- * response. Geometry blobs travel through R2 (NOT this wrapper's
- * request body) so the wrapper itself stays light: params in, R2
- * keys out.
+ * Wave 1 W10 (boolean wrapper) + W16 (host-or-R2-key chained input +
+ * fillet / chamfer / shell / mirror / pattern wrappers).
  *
- * Integration into `features/boolean.ts` apply() is deferred to W11
- * because the current apply() is synchronous and server OCCT is
- * inherently async. Two options for the W11 refactor:
+ * Pure HTTP boundary — converts the client-side op call into the
+ * worker's REST shape and parses the response. Geometry blobs travel
+ * through R2 (NOT this wrapper's request body) so the wrapper itself
+ * stays light: params in, R2 keys out.
  *
- *   1. Promote apply() to async-aware (breaking change for the
- *      synchronous pipeline path).
- *   2. Add a pre-pass step in the pipeline that runs `serverBoolean`
- *      for ops marked as `engine === 1` and host bbox > threshold,
- *      then feeds the result back as the upstream handle to the
- *      sync apply().
+ * Chain pattern:
+ *   const a = await serverExtrude(profile, opts);          // a.stepR2Key
+ *   const b = await serverFillet({ sourceR2Key: a.stepR2Key, radius: 2 }, opts);
+ *   const c = await serverBoolean({ sourceR2Key: b.stepR2Key, … }, opts);
+ *   const d = await serverPattern({ sourceR2Key: c.stepR2Key, … }, opts);
  *
- * This module ships the wrapper + its tests; W11 picks the path.
+ * (Note: extrude wrapper is W16 D3-5 follow-up; this PR ships the 6
+ * 3D-host wrappers that match the W16 D1-2 worker-side update.)
  */
 
 import { reportError, reportInfo } from '@/app/[lang]/shape-generator/lib/telemetry';
@@ -31,21 +29,19 @@ const DEFAULT_TIMEOUT_MS = 10_000;
  *  call. Re-tune after W12 soak data. */
 export const SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3 = 1_000_000;
 
-export interface ServerBooleanParams {
-  host: { w: number; h: number; d: number };
-  /** 0 = cylinder (default), 1 = sphere. Matches main app's
-   *  `toolShape` parameter so a single numeric protocol works for
-   *  both server and client paths. */
-  toolShape: number;
-  r: number;
-  height?: number;
-  cx?: number;
-  cy?: number;
-  cz?: number;
-  type?: 'cut' | 'fuse' | 'intersect';
+// ─── Common shapes ──────────────────────────────────────────────────────────
+
+/** Host input — primitive box XOR R2 STEP key. Caller picks one;
+ *  worker validates exactly-one (W16 D1-2). */
+export interface ChainableHost {
+  host?: { w: number; h: number; d: number };
+  /** R2 key from a previous op's `stepR2Key` output. Must start with
+   *  `occt-ops/<userId>/` — worker rejects cross-user keys as 400. */
+  sourceR2Key?: string;
 }
 
-export interface ServerBooleanResponse {
+/** Standard response shape across all 6 chainable ops. */
+export interface ServerOpResponse {
   stlR2Key: string;
   stepR2Key: string;
   meta: {
@@ -59,12 +55,11 @@ export interface ServerBooleanResponse {
   requestId: string;
 }
 
-/** True when params shape + size make server OCCT the better choice
- *  vs in-tab client OCCT. Heuristic from ADR-007 §"R2-mediated for
- *  large geometry". */
-export function shouldUseServerBoolean(params: ServerBooleanParams): boolean {
-  const v = params.host.w * params.host.h * params.host.d;
-  return v >= SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3;
+export interface ServerDispatchOptions {
+  jwtToken: string;
+  baseUrl?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
 }
 
 export class ServerOcctUnavailableError extends Error {
@@ -78,12 +73,67 @@ export class ServerOcctUnavailableError extends Error {
   }
 }
 
-/** POST /occt/op/boolean. Throws on 4xx/5xx (caller's job to fall
- *  back to client OCCT). On success returns R2 keys + meta. */
-export async function serverBoolean(
-  params: ServerBooleanParams,
-  options: { jwtToken: string; baseUrl?: string; signal?: AbortSignal; timeoutMs?: number } = { jwtToken: '' },
-): Promise<ServerBooleanResponse> {
+// ─── Per-op param shapes ────────────────────────────────────────────────────
+
+export interface ServerBooleanParams extends ChainableHost {
+  /** 0 = cylinder (default), 1 = sphere. */
+  toolShape: number;
+  r: number;
+  height?: number;
+  cx?: number;
+  cy?: number;
+  cz?: number;
+  type?: 'cut' | 'fuse' | 'intersect';
+}
+
+export type FilletEdgeScope = 'all' | 'vertical' | 'top' | 'bottom';
+export interface ServerFilletParams extends ChainableHost {
+  radius: number;
+  edges?: FilletEdgeScope;
+}
+
+export type ChamferEdgeScope = 'all' | 'vertical' | 'top' | 'bottom';
+export interface ServerChamferParams extends ChainableHost {
+  distance: number;
+  edges?: ChamferEdgeScope;
+}
+
+export type ShellOpenFace = 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
+export interface ServerShellParams extends ChainableHost {
+  thickness: number;
+  openFace?: ShellOpenFace;
+}
+
+export type MirrorPlane = 'XY' | 'YZ' | 'XZ';
+export interface ServerMirrorParams extends ChainableHost {
+  plane: MirrorPlane;
+}
+
+export interface ServerPatternLinearParams extends ChainableHost {
+  kind: 'linear';
+  count: number;
+  spacing: number;
+  axis: 'X' | 'Y' | 'Z';
+}
+export interface ServerPatternCircularParams extends ChainableHost {
+  kind: 'circular';
+  count: number;
+  totalAngleDeg: number;
+  axis: 'X' | 'Y' | 'Z';
+}
+export type ServerPatternParams = ServerPatternLinearParams | ServerPatternCircularParams;
+
+// ─── Generic dispatcher ─────────────────────────────────────────────────────
+// All 6 chainable ops use the same POST flow — extract to one function
+// so the error mapping + telemetry stay consistent.
+
+type OcctOpName = 'boolean' | 'fillet' | 'chamfer' | 'shell' | 'mirror' | 'pattern';
+
+async function serverDispatch<P>(
+  op: OcctOpName,
+  params: P,
+  options: ServerDispatchOptions,
+): Promise<ServerOpResponse> {
   const baseUrl = options.baseUrl ?? process.env.NEXT_PUBLIC_OCCT_WORKER_URL ?? '';
   if (!baseUrl) {
     throw new ServerOcctUnavailableError('NEXT_PUBLIC_OCCT_WORKER_URL not configured');
@@ -100,7 +150,7 @@ export async function serverBoolean(
 
   const t0 = Date.now();
   try {
-    const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/occt/op/boolean`, {
+    const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/occt/op/${op}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -133,9 +183,9 @@ export async function serverBoolean(
       );
     }
 
-    const json = (await resp.json()) as ServerBooleanResponse;
+    const json = (await resp.json()) as ServerOpResponse;
     const elapsed = Date.now() - t0;
-    reportInfo('csg', 'server_boolean_ok', {
+    reportInfo('csg', `server_${op}_ok`, {
       elapsedMs: elapsed,
       serverElapsedMs: json.elapsedMs,
       triangles: json.meta.triangles,
@@ -145,7 +195,7 @@ export async function serverBoolean(
   } catch (err) {
     if (timer) clearTimeout(timer);
     if (err instanceof ServerOcctUnavailableError) {
-      reportInfo('csg', 'server_boolean_unavailable', {
+      reportInfo('csg', `server_${op}_unavailable`, {
         status: err.status,
         message: err.message,
         elapsedMs: Date.now() - t0,
@@ -158,7 +208,7 @@ export async function serverBoolean(
       err instanceof Error ? err.message : String(err),
     );
     reportError('csg', wrapped, {
-      phase: 'server_boolean_network',
+      phase: `server_${op}_network`,
       elapsedMs: Date.now() - t0,
     });
     throw wrapped;
@@ -166,6 +216,75 @@ export async function serverBoolean(
     if (timer) clearTimeout(timer);
   }
 }
+
+// ─── Per-op wrappers ────────────────────────────────────────────────────────
+
+/** POST /occt/op/boolean. Throws on 4xx/5xx (caller's job to fall
+ *  back to client OCCT). On success returns R2 keys + meta. */
+export function serverBoolean(
+  params: ServerBooleanParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('boolean', params, options);
+}
+
+/** POST /occt/op/fillet — edge rounding by radius. */
+export function serverFillet(
+  params: ServerFilletParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('fillet', params, options);
+}
+
+/** POST /occt/op/chamfer — edge beveling by distance. */
+export function serverChamfer(
+  params: ServerChamferParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('chamfer', params, options);
+}
+
+/** POST /occt/op/shell — hollow with one open face. */
+export function serverShell(
+  params: ServerShellParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('shell', params, options);
+}
+
+/** POST /occt/op/mirror — reflect across a principal plane. */
+export function serverMirror(
+  params: ServerMirrorParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('mirror', params, options);
+}
+
+/** POST /occt/op/pattern — linear or circular array, fused. */
+export function serverPattern(
+  params: ServerPatternParams,
+  options: ServerDispatchOptions = { jwtToken: '' },
+): Promise<ServerOpResponse> {
+  return serverDispatch('pattern', params, options);
+}
+
+/** @deprecated W16 D1-2 — boolean response shape is now the common
+ *  ServerOpResponse. Kept as an alias so callers compile during the
+ *  rename. */
+export type ServerBooleanResponse = ServerOpResponse;
+
+/** True when params shape + size make server OCCT the better choice
+ *  vs in-tab client OCCT. Heuristic from ADR-007 §"R2-mediated for
+ *  large geometry". When sourceR2Key is used, the host volume is
+ *  unknown — assume large and route to server. */
+export function shouldUseServerBoolean(params: ServerBooleanParams): boolean {
+  if (params.sourceR2Key) return true; // chain input → always server
+  if (!params.host) return false;
+  const v = params.host.w * params.host.h * params.host.d;
+  return v >= SERVER_BOOLEAN_BBOX_VOLUME_THRESHOLD_MM3;
+}
+
+// ─── R2 byte fetcher (unchanged from W10 D5) ────────────────────────────────
 
 /** Fetch R2 bytes via the main app's signed-URL endpoint. Two-step:
  *
@@ -183,7 +302,6 @@ export async function fetchR2Bytes(
   if (!options.jwtToken) {
     throw new ServerOcctUnavailableError('jwtToken required for r2-fetch');
   }
-  // Step 1 — exchange the R2 key for a signed URL via the main app.
   const signResp = await fetch(
     `${baseUrl}/api/nexyfab/r2-fetch?key=${encodeURIComponent(r2Key)}`,
     {
@@ -203,7 +321,6 @@ export async function fetchR2Bytes(
     throw new ServerOcctUnavailableError('r2-fetch returned no signedUrl');
   }
 
-  // Step 2 — fetch bytes directly from R2 (no main-app proxy).
   const dataResp = await fetch(signedUrl, { signal: options.signal });
   if (!dataResp.ok) {
     throw new ServerOcctUnavailableError(
@@ -215,6 +332,5 @@ export async function fetchR2Bytes(
 }
 
 /** @deprecated Renamed to `fetchR2Bytes` to reflect that the helper
- *  is format-agnostic (STL / STEP / anything the worker wrote). Kept
- *  as a thin alias so any pre-W10-D5 caller keeps compiling. */
+ *  is format-agnostic (STL / STEP / anything the worker wrote). */
 export const fetchR2Stl = fetchR2Bytes;
