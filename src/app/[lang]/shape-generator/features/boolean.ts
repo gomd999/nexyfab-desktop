@@ -191,19 +191,42 @@ const TOOL_SHAPE_FOR_SERVER: Record<number, number> = {
   2: 1,
 };
 
-/** Map local feature params → ServerBooleanParams. Returns null when the
- *  shape doesn't have a server-side equivalent (e.g. box tool). */
+/** Map local feature params → ServerBooleanParams. Returns null when
+ *  the shape can't be expressed for the server path. Two paths:
+ *
+ *  1. Chained tool (W17): when the geometry's userData carries a
+ *     `toolSourceR2Key` (set by an upstream UI / handler), emit the
+ *     R2 chain shape. Primitive tool fields are skipped — worker
+ *     enforces XOR.
+ *  2. Primitive tool: existing W16 path. toolShape 1/2 map to
+ *     cylinder/sphere; box (0) returns null (no server primitive). */
 function toServerParams(
   geometry: THREE.BufferGeometry,
   params: Record<string, number>,
 ): ServerBooleanParams | null {
-  const toolShape = Math.round(params.toolShape);
-  const serverTool = TOOL_SHAPE_FOR_SERVER[toolShape];
-  if (serverTool === undefined) return null; // box tool — no server path yet
-
   const host = hostBoxFromGeometry(geometry);
   const operation = Math.round(params.operation);
   const type = operation === 1 ? 'cut' : operation === 2 ? 'intersect' : 'fuse';
+
+  // Path 1 — chained shape-vs-shape. Stashed by some upstream flow:
+  // either the user picked "use imported shape as tool" from the UI,
+  // or a programmatic chain set it before calling apply.
+  const toolStepKey = geometry.userData?.toolSourceR2Key;
+  if (typeof toolStepKey === 'string' && toolStepKey.length > 0) {
+    return {
+      host: { w: host.w, h: host.h, d: host.d },
+      toolSourceR2Key: toolStepKey,
+      cx: params.posX,
+      cy: params.posY,
+      cz: params.posZ,
+      type,
+    };
+  }
+
+  // Path 2 — primitive tool.
+  const toolShape = Math.round(params.toolShape);
+  const serverTool = TOOL_SHAPE_FOR_SERVER[toolShape];
+  if (serverTool === undefined) return null; // box tool — no server primitive
 
   // toolWidth is the diameter for cyl/sphere on the local side; server
   // expects radius. Halve it.
