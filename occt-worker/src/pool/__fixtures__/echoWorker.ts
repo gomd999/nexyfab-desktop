@@ -46,4 +46,7 @@ port.on('message', (raw: ParentToWorker) => {
   }
   // Default: echo params back as the result.
   post({ type: 'result', jobId: raw.jobId, ok: true, result: { echoed: raw.params } });
+  // Mimic the real worker's post-op memory snapshot. Numbers are
+  // synthetic but deterministic enough for the aggregation test.
+  post({ type: 'mem', heapUsedMb: 1.0, heapTotalMb: 2.0, rssMb: 10.0 });
 });

@@ -141,6 +141,41 @@ describe('OcctWorkerPool — error classes', () => {
   });
 });
 
+describe('OcctWorkerPool — memory metrics (W12 D3-5)', () => {
+  it('aggregates per-slot memory snapshots after ops', async () => {
+    const pool = makePool({ size: 2, maxOpsPerSlot: 0 });
+    // 4 ops across 2 slots — each fixture op posts a {1.0, 2.0, 10.0}
+    // mem update. We expect both slots to report their latest.
+    await Promise.all([
+      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams),
+      pool.execute('boolean', dummyParams),
+    ]);
+    // Mem updates arrive in a separate message after 'result' — give
+    // the event loop one tick.
+    await new Promise(r => setTimeout(r, 50));
+    const s = pool.status();
+    expect(s.slots.length).toBeGreaterThan(0);
+    expect(s.aggregateHeapUsedMb).toBeGreaterThan(0);
+    expect(s.maxSlotHeapUsedMb).toBe(1.0);
+    // Every reported slot should carry the fixture's synthetic numbers.
+    for (const slot of s.slots) {
+      expect(slot.heapUsedMb).toBe(1.0);
+      expect(slot.heapTotalMb).toBe(2.0);
+      expect(slot.rssMb).toBe(10.0);
+    }
+  });
+
+  it('reports empty slots/zero aggregates before any op', () => {
+    const pool = makePool({ size: 2 });
+    const s = pool.status();
+    expect(s.slots).toEqual([]);
+    expect(s.aggregateHeapUsedMb).toBe(0);
+    expect(s.maxSlotHeapUsedMb).toBe(0);
+  });
+});
+
 describe('OcctWorkerPool — slot recycling (W12 D1-2)', () => {
   it('rotates a slot after maxOpsPerSlot ops', async () => {
     // 1 slot, recycle after every 2 ops. 5 sequential ops →

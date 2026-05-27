@@ -46,6 +46,17 @@ export interface OcctReadyMessage {
   loadMs: number;
 }
 
+/** Worker-pushed memory snapshot — emitted after each op completes so
+ *  the pool can track V8 heap growth per slot without an extra RPC.
+ *  All sizes in MB rounded to 1 decimal (don't need byte precision
+ *  for soak observability). */
+export interface OcctMemUpdate {
+  type: 'mem';
+  heapUsedMb: number;
+  heapTotalMb: number;
+  rssMb: number;
+}
+
 export interface OcctResultOk {
   type: 'result';
   jobId: string;
@@ -61,4 +72,4 @@ export interface OcctResultErr {
 }
 
 export type ParentToWorker = OcctOpRequest;
-export type WorkerToParent = OcctReadyMessage | OcctResultOk | OcctResultErr;
+export type WorkerToParent = OcctReadyMessage | OcctResultOk | OcctResultErr | OcctMemUpdate;
