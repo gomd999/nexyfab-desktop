@@ -19,10 +19,11 @@
  */
 
 import { Router, type Request, type Response } from 'express';
-import { runBoolean, type BooleanParams } from '../occt/boolean.js';
+import { type BooleanParams, type BooleanResult } from '../occt/boolean.js';
 import { r2Put, r2OpKey } from '../r2.js';
 import type { AuthedRequest } from '../middleware/auth.js';
 import type { RequestWithId } from '../middleware/requestId.js';
+import { getPool, QueueFullError, OpTimeoutError, WorkerCrashError } from '../pool/workerPool.js';
 
 export const occtRoute: Router = Router();
 
@@ -40,14 +41,21 @@ occtRoute.post('/op/boolean', async (req: Request, res: Response) => {
 
   try {
     const params = validateBooleanParams(req.body);
-    const result = await runBoolean(params);
+    // Dispatch through the thread pool — actual OCCT call runs in a
+    // worker thread with isolated WASM heap (W11 D1-2).
+    const result = await getPool().execute('boolean', params) as BooleanResult;
+
+    // Structured-clone across the worker-thread boundary turns Buffer
+    // into Uint8Array. r2Put accepts either, but re-wrap so log lines
+    // and content-length stay accurate.
+    const stlBytes = Buffer.isBuffer(result.stl) ? result.stl : Buffer.from(result.stl);
 
     // Persist outputs to R2. Two keys: STEP for CAD interchange, STL
     // for the client viewport. Both keys returned to the caller.
     const stlKey = r2OpKey(userId, 'boolean', 'stl');
     const stepKey = r2OpKey(userId, 'boolean', 'step');
     await Promise.all([
-      r2Put(stlKey, result.stl, 'model/stl'),
+      r2Put(stlKey, stlBytes, 'model/stl'),
       r2Put(stepKey, result.step, 'application/step'),
     ]);
 
@@ -64,18 +72,27 @@ occtRoute.post('/op/boolean', async (req: Request, res: Response) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[occt-worker] boolean ${requestId} failed: ${msg}`);
-    // Distinguish 400 (bad input) from 500 (kernel failure) so the
-    // client's fallback chain (server → client OCCT → mesh-CSG)
-    // doesn't retry on 400s.
-    const status = msg.startsWith('invalid params') ? 400 : 500;
+    // Map pool-level errors to specific HTTP codes:
+    //   400 = bad input (no retry)
+    //   503 = pool overloaded (client should back off)
+    //   504 = op timed out (kernel suspect, slot recycled)
+    //   500 = kernel/runtime failure (retry on fallback chain)
+    let status = 500;
+    if (msg.startsWith('invalid params')) status = 400;
+    else if (err instanceof QueueFullError) status = 503;
+    else if (err instanceof OpTimeoutError) status = 504;
+    else if (err instanceof WorkerCrashError) status = 500;
     res.status(status).json({ error: msg, requestId });
   }
 });
 
 // ─── Placeholder 501s for ops landing later ──────────────────────────────────
 occtRoute.post('/op/:operation', (req: Request, res: Response) => {
-  const operation = req.params.operation;
-  if (!PLACEHOLDER_OPS.has(operation)) {
+  // Express 5 types `params.operation` as `string | string[]`; we
+  // never declare a wildcard, so it's always a string in practice.
+  const operationRaw = req.params.operation;
+  const operation = Array.isArray(operationRaw) ? operationRaw[0] : operationRaw;
+  if (!operation || !PLACEHOLDER_OPS.has(operation)) {
     res.status(400).json({ error: 'unknown operation', operation });
     return;
   }
