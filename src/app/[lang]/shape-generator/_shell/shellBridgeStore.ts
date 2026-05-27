@@ -55,6 +55,18 @@ export interface ShellBodyItem {
   splitFromId?: string;
 }
 
+/** Assembly mate row for AssemblyRightPane MATES section (Wave 1 Phase D).
+ *  Subset of AssemblyMate keeping only presentation-relevant fields. */
+export interface ShellAssemblyMate {
+  id: string;
+  type: 'coincident' | 'concentric' | 'distance' | 'angle' | 'parallel' | 'perpendicular' | 'tangent' | 'hinge' | 'slider' | 'gear';
+  /** Inline description e.g. "Bracket.hole_1 ↔ Housing.boss_a" or value text for distance/angle. */
+  description: string;
+  /** Solver flagged this mate as conflicting / over-constrained. */
+  conflict?: boolean;
+  locked?: boolean;
+}
+
 export interface ShellSketchEntity {
   id: string;
   type: string;
@@ -142,6 +154,9 @@ export interface ShellBridgeState {
   // ModelerRightPane Inspector APPEARANCE chip + its popover grid.
   // Inner publishes from sceneStore.materialId via bridgeMaterialId.
   materialId: string | null;
+  // Assembly mate list (Wave 1 Phase D) — drives AssemblyRightPane MATES
+  // section. Inner publishes from assemblyMates state.
+  assemblyMatesList: ShellAssemblyMate[];
   // Sketch snapshot — published from sketch store so SketchLeftPane shows
   // real entities/constraints/dimensions instead of placeholders.
   sketchEntityList: ShellSketchEntity[];
@@ -166,6 +181,7 @@ export interface ShellBridgeState {
     selectedIds: string[];
   }) => void;
   setMaterialId: (id: string | null) => void;
+  setAssemblyMatesList: (mates: ShellAssemblyMate[]) => void;
   setSketchSnapshot: (s: {
     entities: ShellSketchEntity[];
     constraints: ShellSketchConstraint[];
@@ -206,6 +222,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   activeBodyId: null,
   selectedBodyIds: [],
   materialId: null,
+  assemblyMatesList: [],
   sketchEntityList: [],
   sketchConstraintList: [],
   sketchDimensionList: [],
@@ -227,6 +244,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
     selectedBodyIds: s.selectedIds,
   }),
   setMaterialId: (id) => set({ materialId: id }),
+  setAssemblyMatesList: (mates) => set({ assemblyMatesList: mates }),
   setSketchSnapshot: (s) => set({
     sketchEntityList: s.entities,
     sketchConstraintList: s.constraints,

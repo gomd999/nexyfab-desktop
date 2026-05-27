@@ -21,9 +21,29 @@ export interface AssemblyRightPaneProps {
   isKo: boolean;
 }
 
+const MATE_BULLET: Record<string, string> = {
+  coincident: '≡',
+  concentric: '◎',
+  distance: '↔',
+  angle: '∠',
+  parallel: '∥',
+  perpendicular: '⊥',
+  tangent: '⌒',
+  hinge: '⤴',
+  slider: '↕',
+  gear: '⚙',
+};
+
+const MATE_LABEL_KO: Record<string, string> = {
+  coincident: '일치', concentric: '동심', distance: '거리', angle: '각도',
+  parallel: '평행', perpendicular: '수직', tangent: '접선',
+  hinge: '힌지', slider: '슬라이더', gear: '기어',
+};
+
 export function AssemblyRightPane({ isKo }: AssemblyRightPaneProps) {
   const selectedLabel = useShellBridge(s => s.selectedLabel) ?? 'BRACKET_V14';
   const items = useShellBridge(s => s.assemblyItems);
+  const matesList = useShellBridge(s => s.assemblyMatesList);
   const totalCount = items.length > 0 ? items.reduce((a, i) => a + i.count, 0) : 24;
   const totalMass = items.length > 0
     ? items.reduce((a, i) => a + (i.massG ?? 0) * i.count, 0)
@@ -35,12 +55,28 @@ export function AssemblyRightPane({ isKo }: AssemblyRightPaneProps) {
       title={isKo ? `${selectedLabel} 메이트` : `MATES ON ${selectedLabel}`}
       titleIcon={<I.link size={12} />}
     >
-      <PropSection title={isKo ? '메이트' : 'Mates'}>
-        <PropItemRow bullet="◎" label="Concentric" meta="Bracket.hole_1 ↔ Housing_Bot.boss_a" />
-        <PropItemRow bullet="≡" label="Coincident" meta="Bracket.face_base ↔ Housing_Bot.face_top" />
-        <PropItemRow bullet="↔" label="Distance" meta="2.0 mm · Bracket.face_back ↔ Housing_Bot.face_wall" />
-        <PropItemRow bullet="∥" label="Parallel" meta="Bracket.axis_y ↔ Housing_Top.axis_y" />
-        <PropItemRow bullet="◎" label="Concentric" meta={isKo ? '⚠ 충돌' : '⚠ conflict'} />
+      <PropSection title={isKo ? `메이트 (${matesList.length})` : `Mates (${matesList.length})`}>
+        {matesList.length === 0 ? (
+          <div style={{
+            padding: '8px 0', fontSize: 11, color: 'var(--nx-text-3)',
+            textAlign: 'center', lineHeight: 1.4,
+          }}>
+            {isKo
+              ? '메이트 없음 — 파트의 두 면을 차례로 선택하여 추가'
+              : 'No mates — select two faces in sequence to add'}
+          </div>
+        ) : (
+          matesList.map(m => (
+            <PropItemRow
+              key={m.id}
+              bullet={MATE_BULLET[m.type] ?? '·'}
+              label={isKo ? (MATE_LABEL_KO[m.type] ?? m.type) : m.type.charAt(0).toUpperCase() + m.type.slice(1)}
+              meta={m.conflict
+                ? `${m.description} · ${isKo ? '⚠ 충돌' : '⚠ conflict'}`
+                : m.description}
+            />
+          ))
+        )}
       </PropSection>
 
       <PropSection title={isKo ? '재료 명세서' : 'Bill of Materials'}>

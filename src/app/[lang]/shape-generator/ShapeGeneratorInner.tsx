@@ -3433,6 +3433,24 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:set-material', onSetMaterial);
   }, [setMaterialId]);
 
+  // Wave 1 Phase D — assembly mate list publishing for AssemblyRightPane.
+  // The internal AssemblyMate has solver-specific fields (face indices,
+  // raw partA/partB ids) that the pane doesn't need; project to a
+  // presentation-friendly ShellAssemblyMate with a readable description.
+  const bridgeAssemblyMatesList = useShellBridge(s => s.setAssemblyMatesList);
+  useEffect(() => {
+    bridgeAssemblyMatesList(
+      assemblyMates.map(m => ({
+        id: m.id,
+        type: m.type,
+        description: m.value !== undefined
+          ? `${m.value}${m.type === 'angle' ? '°' : ' mm'} · ${m.partA} ↔ ${m.partB}`
+          : `${m.partA} ↔ ${m.partB}`,
+        locked: m.locked,
+      })),
+    );
+  }, [assemblyMates, bridgeAssemblyMatesList]);
+
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
       ? 'sketch'
