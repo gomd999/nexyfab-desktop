@@ -138,6 +138,10 @@ export interface ShellBridgeState {
   bodyItems: ShellBodyItem[];
   activeBodyId: string | null;
   selectedBodyIds: string[];
+  // PBR material preset id (Wave 1 Phase B widget 4) — drives the
+  // ModelerRightPane Inspector APPEARANCE chip + its popover grid.
+  // Inner publishes from sceneStore.materialId via bridgeMaterialId.
+  materialId: string | null;
   // Sketch snapshot — published from sketch store so SketchLeftPane shows
   // real entities/constraints/dimensions instead of placeholders.
   sketchEntityList: ShellSketchEntity[];
@@ -161,6 +165,7 @@ export interface ShellBridgeState {
     activeId: string | null;
     selectedIds: string[];
   }) => void;
+  setMaterialId: (id: string | null) => void;
   setSketchSnapshot: (s: {
     entities: ShellSketchEntity[];
     constraints: ShellSketchConstraint[];
@@ -200,6 +205,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   bodyItems: [],
   activeBodyId: null,
   selectedBodyIds: [],
+  materialId: null,
   sketchEntityList: [],
   sketchConstraintList: [],
   sketchDimensionList: [],
@@ -220,6 +226,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
     activeBodyId: s.activeId,
     selectedBodyIds: s.selectedIds,
   }),
+  setMaterialId: (id) => set({ materialId: id }),
   setSketchSnapshot: (s) => set({
     sketchEntityList: s.entities,
     sketchConstraintList: s.constraints,

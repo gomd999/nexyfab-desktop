@@ -3416,6 +3416,23 @@ export function ShapeGeneratorInner() {
     };
   }, [setSelectedId, setParams, setShowUserPartsPanel]);
 
+  // Wave 1 Phase B widget 4 — Inspector APPEARANCE Material chip.
+  // Publish materialId to bridge; listen for 'nexyfab:set-material' to
+  // route the pane's selection through the existing setMaterialId.
+  const bridgeMaterialId = useShellBridge(s => s.setMaterialId);
+  useEffect(() => {
+    bridgeMaterialId(materialId ?? null);
+  }, [materialId, bridgeMaterialId]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSetMaterial = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (detail?.id) setMaterialId(detail.id);
+    };
+    window.addEventListener('nexyfab:set-material', onSetMaterial);
+    return () => window.removeEventListener('nexyfab:set-material', onSetMaterial);
+  }, [setMaterialId]);
+
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
       ? 'sketch'
