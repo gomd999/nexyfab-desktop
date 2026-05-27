@@ -62,6 +62,9 @@ import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
 import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
+import { applyFilletAsyncWithServer } from './features/fillet';
+import { applyChamferAsyncWithServer } from './features/chamfer';
+import { applyShellAsyncWithServer } from './features/shell';
 import { useWorkerToken } from './hooks/useWorkerToken';
 import { useCsgWorker } from './workers/useCsgWorker';
 import { useFEAWorker } from './workers/useFEAWorker';
@@ -4195,20 +4198,55 @@ export function ShapeGeneratorInner() {
     addFeature: (type) => handleAddFeatureCmd(type as FeatureType),
     showToast: addToast });
 
-  // ── Async boolean via Web Worker + server OCCT (W17 hook) ──
-  // Worker token is fetched lazily inside applyBooleanAsync's server
-  // path so we don't burn a token mint on every render. If the user
-  // is signed out (getToken → null) the server path is skipped and
-  // the worker/sync fallback chain takes over — non-breaking.
+  // ── Async chainable ops via server OCCT (W17 hook) ──
+  // Worker token is fetched lazily inside each handler so we don't
+  // burn a token mint on every render. If the user is signed out
+  // (getToken → null) or NEXT_PUBLIC_OCCT_WORKER_URL is unset, the
+  // server path is skipped and each op's local fallback chain takes
+  // over — non-breaking for callers that previously used the sync
+  // FeatureDefinition.apply path.
   const { getToken: getWorkerToken } = useWorkerToken();
+
+  // Shared per-call serverOpts builder — extracted so the 4 handlers
+  // below stay 1-liners. Returns undefined when the server path is
+  // unavailable, which each downstream applyXAsyncWithServer treats
+  // as "skip server, use local".
+  const buildServerOpts = useCallback(async () => {
+    const jwtToken = await getWorkerToken().catch(() => null);
+    const baseUrl = process.env.NEXT_PUBLIC_OCCT_WORKER_URL;
+    return jwtToken && baseUrl ? { jwtToken, baseUrl } : undefined;
+  }, [getWorkerToken]);
+
   const _handleBooleanAsync = useCallback(
     async (geometry: BufferGeometry, boolParams: Record<string, number>) => {
-      const jwtToken = await getWorkerToken().catch(() => null);
-      const baseUrl = process.env.NEXT_PUBLIC_OCCT_WORKER_URL;
-      const serverOpts = jwtToken && baseUrl ? { jwtToken, baseUrl } : undefined;
+      const serverOpts = await buildServerOpts();
       return applyBooleanAsync(geometry, boolParams, performCSG, serverOpts);
     },
-    [performCSG, getWorkerToken],
+    [performCSG, buildServerOpts],
+  );
+
+  const _handleFilletAsync = useCallback(
+    async (geometry: BufferGeometry, filletParams: Record<string, number>) => {
+      const serverOpts = await buildServerOpts();
+      return applyFilletAsyncWithServer(geometry, filletParams, undefined, serverOpts);
+    },
+    [buildServerOpts],
+  );
+
+  const _handleChamferAsync = useCallback(
+    async (geometry: BufferGeometry, chamferParams: Record<string, number>) => {
+      const serverOpts = await buildServerOpts();
+      return applyChamferAsyncWithServer(geometry, chamferParams, undefined, serverOpts);
+    },
+    [buildServerOpts],
+  );
+
+  const _handleShellAsync = useCallback(
+    async (geometry: BufferGeometry, shellParams: Record<string, number>) => {
+      const serverOpts = await buildServerOpts();
+      return applyShellAsyncWithServer(geometry, shellParams, undefined, serverOpts);
+    },
+    [buildServerOpts],
   );
 
   // Build design context for AI chat (includes DFM/FEA/mass/cost for AI-aware advice)
