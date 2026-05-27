@@ -3,10 +3,20 @@
 // Sketch mode right pane — ACTIVE SELECTION / CONSTRAINTS ON SELECTION /
 // PARAMETERS / SOLVER sections matching mockup #30.
 
+import { useState } from 'react';
 import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, PropItemRow } from './';
 import { useShellBridge } from '../shellBridgeStore';
 import { I } from '../Icons';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+// Wave 1 Phase C — sketch-side events. Inner (or future SketchStoreBridge)
+// listens to route the user's input through the real sketch solver /
+// pattern engine. UI keeps local state so the input is responsive
+// immediately; deep wiring is Wave 2 polish.
+function emitSketchSet(key: string, value: number | string | boolean): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('nexyfab:set-sketch', { detail: { key, value } }));
+}
 
 const SKETCH_CATALOG_DICT_KO: CatalogPanelDict = {
   catalogTitle: '스케치 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
@@ -28,6 +38,18 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
   const solverOk = useShellBridge(s => s.sketchSolverOk);
   const solveMs = useShellBridge(s => s.sketchSolveMs);
 
+  // Local state for selection-property edits. Defaults match the mockup
+  // (4× ∅6.5 hole pattern). Each change dispatches `nexyfab:set-sketch`
+  // for Inner to subscribe to once the real sketch engine binding lands.
+  const [holeDiameter, setHoleDiameter] = useState(6.5);
+  const [patternType, setPatternType] = useState<'rect' | 'circular' | 'linear'>('rect');
+  const [spacingX, setSpacingX] = useState(50.0);
+  const [spacingY, setSpacingY] = useState(26.0);
+  const [construction, setConstruction] = useState(false);
+  const [d4, setD4] = useState(6.5);
+  const [d5, setD5] = useState(15.0);
+  const [d6, setD6] = useState(12.0);
+
   return (
     <SidePanel
       side="right"
@@ -37,16 +59,20 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
       <PropSection title={isKo ? '활성 선택' : 'Active Selection'}>
         <PropRow label={isKo ? '선택' : 'Selected'}>
           <span style={{ fontSize: 11, color: 'var(--nx-accent)' }}>
-            {isKo ? '4× ∅6.5 홀 패턴' : '4× ∅6.5 hole pattern'}
+            {isKo ? `4× ∅${holeDiameter} 홀 패턴` : `4× ∅${holeDiameter} hole pattern`}
           </span>
         </PropRow>
         <PropRow label={isKo ? '지름' : 'Diameter'}>
-          <PropNumber value={6.5} onChange={() => { /* TODO wire */ }} suffix="mm" />
+          <PropNumber
+            value={holeDiameter}
+            onChange={v => { setHoleDiameter(v); emitSketchSet('holeDiameter', v); }}
+            suffix="mm"
+          />
         </PropRow>
         <PropRow label={isKo ? '패턴' : 'Pattern'}>
           <PropSelect
-            value="rect"
-            onChange={() => { /* TODO */ }}
+            value={patternType}
+            onChange={v => { setPatternType(v as typeof patternType); emitSketchSet('patternType', v); }}
             options={[
               { value: 'rect', label: isKo ? '직사각형 · 2×2' : 'Rectangular · 2×2' },
               { value: 'circular', label: isKo ? '원형' : 'Circular' },
@@ -55,13 +81,25 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
           />
         </PropRow>
         <PropRow label={isKo ? '간격 X' : 'Spacing X'}>
-          <PropNumber value={50.0} onChange={() => { /* TODO */ }} suffix="mm" />
+          <PropNumber
+            value={spacingX}
+            onChange={v => { setSpacingX(v); emitSketchSet('spacingX', v); }}
+            suffix="mm"
+          />
         </PropRow>
         <PropRow label={isKo ? '간격 Y' : 'Spacing Y'}>
-          <PropNumber value={26.0} onChange={() => { /* TODO */ }} suffix="mm" />
+          <PropNumber
+            value={spacingY}
+            onChange={v => { setSpacingY(v); emitSketchSet('spacingY', v); }}
+            suffix="mm"
+          />
         </PropRow>
         <PropRow label={isKo ? '구성선' : 'Construction'}>
-          <PropCheck checked={false} onChange={() => { /* TODO */ }} label={isKo ? '예' : 'Yes'} />
+          <PropCheck
+            checked={construction}
+            onChange={v => { setConstruction(v); emitSketchSet('construction', v); }}
+            label={isKo ? '예' : 'Yes'}
+          />
         </PropRow>
       </PropSection>
 
@@ -73,13 +111,25 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
 
       <PropSection title={isKo ? '파라미터' : 'Parameters'}>
         <PropRow label="d4 (∅)">
-          <PropNumber value={6.5} onChange={() => { /* TODO */ }} suffix="mm" />
+          <PropNumber
+            value={d4}
+            onChange={v => { setD4(v); emitSketchSet('d4', v); }}
+            suffix="mm"
+          />
         </PropRow>
         <PropRow label="d5 (X pos)">
-          <PropNumber value={15.0} onChange={() => { /* TODO */ }} suffix="mm" />
+          <PropNumber
+            value={d5}
+            onChange={v => { setD5(v); emitSketchSet('d5', v); }}
+            suffix="mm"
+          />
         </PropRow>
         <PropRow label="d6 (Y pos)">
-          <PropNumber value={12.0} onChange={() => { /* TODO */ }} suffix="mm" />
+          <PropNumber
+            value={d6}
+            onChange={v => { setD6(v); emitSketchSet('d6', v); }}
+            suffix="mm"
+          />
         </PropRow>
         <div style={{ fontSize: 10, color: 'var(--nx-accent)', padding: '4px 0' }}>
           ⊳ d5 = (d1 − 50) / 2 · {isKo ? '연결됨' : 'linked'}
