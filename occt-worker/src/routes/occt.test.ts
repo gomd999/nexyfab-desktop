@@ -129,6 +129,34 @@ describe('validateExtrudeParams', () => {
       params: { profile: { kind: 'polygon', points: [[0, 0], [10000, 0], [0, 10]] }, height: 5 },
     })).toThrow(/out of \[/);
   });
+  it('accepts svgPath rectangle (compiles to polygon)', () => {
+    const out = validateExtrudeParams({
+      params: {
+        profile: { kind: 'svgPath', d: 'M 0,0 L 10,0 L 10,5 L 0,5 Z' },
+        height: 3,
+      },
+    });
+    // svgPath compiles down to polygon — the worker handler doesn't
+    // need a separate code path.
+    expect(out.profile.kind).toBe('polygon');
+    if (out.profile.kind === 'polygon') expect(out.profile.points).toHaveLength(4);
+  });
+  it('rejects svgPath with Bezier', () => {
+    expect(() => validateExtrudeParams({
+      params: {
+        profile: { kind: 'svgPath', d: 'M 0,0 C 5,0 10,5 10,10 Z' },
+        height: 3,
+      },
+    })).toThrow(/Bezier\/arc/);
+  });
+  it('rejects svgPath out-of-range vertex', () => {
+    expect(() => validateExtrudeParams({
+      params: {
+        profile: { kind: 'svgPath', d: 'M 0,0 L 10000,0 L 0,10 Z' },
+        height: 3,
+      },
+    })).toThrow(/out of \[/);
+  });
 });
 
 describe('validateRevolveParams', () => {

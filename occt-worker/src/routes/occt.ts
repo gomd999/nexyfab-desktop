@@ -27,6 +27,7 @@ import { type ChamferParams, type ChamferEdgeScope } from '../occt/chamfer.js';
 import { type ShellParams, type ShellOpenFace } from '../occt/shell.js';
 import { type ExtrudeParams, type ExtrudePlane, type ExtrudeProfile } from '../occt/extrude.js';
 import { type RevolveParams, type RevolvePlane, type RevolveAxis, type RevolveProfile } from '../occt/revolve.js';
+import { parseSvgPath } from '../occt/_svg.js';
 import type { SerializedResult } from '../occt/_types.js';
 import { r2Put, r2OpKey } from '../r2.js';
 import type { AuthedRequest } from '../middleware/auth.js';
@@ -207,6 +208,7 @@ function validateShellParams(body: unknown): ShellParams {
 const EXTRUDE_PLANES: ReadonlySet<ExtrudePlane> = new Set(['XY', 'XZ', 'YZ']);
 
 const POLYGON_MAX_POINTS = 1024; // Defensive — guards against payload abuse; real CAD profiles stay well below.
+const SVG_PATH_MAX_LENGTH = 65_536; // 64 KB — same defensive cap idea for SVG `d` strings.
 
 function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
   const raw = p.profile as Record<string, unknown> | undefined;
@@ -250,7 +252,31 @@ function validateProfile(p: Record<string, unknown>): ExtrudeProfile {
     });
     return { kind: 'polygon', points };
   }
-  throw new Error('invalid params: profile.kind must be rectangle | circle | polygon');
+  if (kind === 'svgPath') {
+    const d = raw.d;
+    if (typeof d !== 'string') {
+      throw new Error('invalid params: svgPath.d must be a string');
+    }
+    if (d.length > SVG_PATH_MAX_LENGTH) {
+      throw new Error(`invalid params: svgPath.d exceeds ${SVG_PATH_MAX_LENGTH} chars`);
+    }
+    // parseSvgPath throws "invalid params: ..." on malformed input,
+    // so the dispatchOp 400 mapping catches it uniformly.
+    const { points } = parseSvgPath(d);
+    if (points.length > POLYGON_MAX_POINTS) {
+      throw new Error(`invalid params: svgPath produced ${points.length} vertices, exceeds ${POLYGON_MAX_POINTS}`);
+    }
+    // Range check the parsed coords with the same bounds as the
+    // polygon validator above.
+    for (let i = 0; i < points.length; i++) {
+      const [x, y] = points[i]!;
+      if (x < -5000 || x > 5000 || y < -5000 || y > 5000) {
+        throw new Error(`invalid params: svgPath vertex ${i} out of [-5000, 5000]`);
+      }
+    }
+    return { kind: 'polygon', points };
+  }
+  throw new Error('invalid params: profile.kind must be rectangle | circle | polygon | svgPath');
 }
 function validateExtrudeParams(body: unknown): ExtrudeParams {
   const p = unwrapParams(body);
