@@ -3346,6 +3346,51 @@ export function ShapeGeneratorInner() {
   const bridgeCloud = useShellBridge(s => s.setCloud);
   const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
   const bridgeAssemblyItems = useShellBridge(s => s.setAssemblyItems);
+  const bridgeBodyItems = useShellBridge(s => s.setBodyItems);
+
+  // Wave 1 Phase B — publish bodies to ModelerLeftPane Bodies tab. The pane
+  // dispatches `nexyfab:select-body` / `nexyfab:toggle-body-visible` custom
+  // events instead of holding handles to Inner's setters, keeping the bridge
+  // one-way (Inner writes, pane reads + emits events).
+  useEffect(() => {
+    bridgeBodyItems({
+      items: bodies.map(b => ({
+        id: b.id,
+        name: b.name,
+        color: b.color,
+        visible: b.visible,
+        locked: b.locked,
+        mergedFrom: b.mergedFrom,
+        splitFromId: b.splitFrom?.bodyId,
+      })),
+      activeId: activeBodyId,
+      selectedIds: selectedBodyIds,
+    });
+  }, [bodies, activeBodyId, selectedBodyIds, bridgeBodyItems]);
+
+  // Listen for pane-side body selection / toggle events. We can't share
+  // setters across the bridge boundary without a circular dep, so the pane
+  // dispatches CustomEvents and Inner subscribes here.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSelectBody = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (detail?.id) setActiveBodyId(detail.id);
+    };
+    const onToggleVisible = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (!detail?.id) return;
+      setBodies(prev => prev.map(b =>
+        b.id === detail.id ? { ...b, visible: !b.visible } : b,
+      ));
+    };
+    window.addEventListener('nexyfab:select-body', onSelectBody);
+    window.addEventListener('nexyfab:toggle-body-visible', onToggleVisible);
+    return () => {
+      window.removeEventListener('nexyfab:select-body', onSelectBody);
+      window.removeEventListener('nexyfab:toggle-body-visible', onToggleVisible);
+    };
+  }, [setActiveBodyId, setBodies]);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode

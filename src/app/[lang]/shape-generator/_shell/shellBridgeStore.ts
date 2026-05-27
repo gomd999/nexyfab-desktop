@@ -39,6 +39,22 @@ export interface ShellAssemblyItem {
   kind?: 'part' | 'subassembly' | 'reference';
 }
 
+/** Body row for ModelerLeftPane Bodies tab (Wave 1 Phase B). Mirrors the
+ *  fields of BodyEntry from panels/BodyPanel but kept presentation-shape
+ *  so the bridge stays decoupled from the legacy panel module. */
+export interface ShellBodyItem {
+  id: string;
+  name: string;
+  /** CSS color string — drives the swatch in the row. */
+  color: string;
+  visible: boolean;
+  locked: boolean;
+  /** Body produced by merging others — show "merged" badge. */
+  mergedFrom?: string[];
+  /** Body produced by splitting another — show "split" badge. */
+  splitFromId?: string;
+}
+
 export interface ShellSketchEntity {
   id: string;
   type: string;
@@ -117,6 +133,11 @@ export interface ShellBridgeState {
   // assembly mode (parts list with mate counts + mass).
   assemblyItems: ShellAssemblyItem[];
   selectedAssemblyId: string | null;
+  // Body list — drives ModelerLeftPane Bodies tab. Inner.tsx publishes
+  // the multi-body / mergedFrom / splitFromId state via setBodyItems.
+  bodyItems: ShellBodyItem[];
+  activeBodyId: string | null;
+  selectedBodyIds: string[];
   // Sketch snapshot — published from sketch store so SketchLeftPane shows
   // real entities/constraints/dimensions instead of placeholders.
   sketchEntityList: ShellSketchEntity[];
@@ -135,6 +156,11 @@ export interface ShellBridgeState {
   setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
   setHoveredFeatureId: (id: string | null) => void;
   setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
+  setBodyItems: (s: {
+    items: ShellBodyItem[];
+    activeId: string | null;
+    selectedIds: string[];
+  }) => void;
   setSketchSnapshot: (s: {
     entities: ShellSketchEntity[];
     constraints: ShellSketchConstraint[];
@@ -171,6 +197,9 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   hoveredFeatureId: null,
   assemblyItems: [],
   selectedAssemblyId: null,
+  bodyItems: [],
+  activeBodyId: null,
+  selectedBodyIds: [],
   sketchEntityList: [],
   sketchConstraintList: [],
   sketchDimensionList: [],
@@ -186,6 +215,11 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
   setHoveredFeatureId: (id) => set({ hoveredFeatureId: id }),
   setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
+  setBodyItems: (s) => set({
+    bodyItems: s.items,
+    activeBodyId: s.activeId,
+    selectedBodyIds: s.selectedIds,
+  }),
   setSketchSnapshot: (s) => set({
     sketchEntityList: s.entities,
     sketchConstraintList: s.constraints,
