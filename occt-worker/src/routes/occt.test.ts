@@ -52,6 +52,58 @@ describe('validateBooleanParams — W16 chained input', () => {
   });
 });
 
+describe('validateBooleanParams — W17 shape-vs-shape tool', () => {
+  it('accepts toolSourceR2Key as alternative to primitive tool', () => {
+    const out = validateBooleanParams({
+      params: {
+        ...okHost,
+        toolSourceR2Key: 'occt-ops/test-user/extrude/tool.step',
+      },
+    }, 'test-user');
+    expect(out.toolSourceR2Key).toBe('occt-ops/test-user/extrude/tool.step');
+    expect(out.toolShape).toBeUndefined();
+    expect(out.r).toBeUndefined();
+  });
+
+  it('rejects both primitive tool AND toolSourceR2Key', () => {
+    expect(() => validateBooleanParams({
+      params: {
+        ...okHost,
+        toolShape: 0, r: 5,
+        toolSourceR2Key: 'occt-ops/test-user/x.step',
+      },
+    }, 'test-user')).toThrow(/cannot set both/);
+  });
+
+  it('rejects missing tool entirely', () => {
+    expect(() => validateBooleanParams({
+      params: { ...okHost },
+    }, 'test-user')).toThrow(/tool required/);
+  });
+
+  it('rejects cross-user toolSourceR2Key prefix', () => {
+    expect(() => validateBooleanParams({
+      params: {
+        ...okHost,
+        toolSourceR2Key: 'occt-ops/other-user/x.step',
+      },
+    }, 'test-user')).toThrow(/per-user scope/);
+  });
+
+  it('accepts shape-vs-shape (host R2 + tool R2)', () => {
+    const out = validateBooleanParams({
+      params: {
+        sourceR2Key: 'occt-ops/test-user/extrude/host.step',
+        toolSourceR2Key: 'occt-ops/test-user/extrude/tool.step',
+        type: 'cut',
+      },
+    }, 'test-user');
+    expect(out.sourceR2Key).toBeDefined();
+    expect(out.toolSourceR2Key).toBeDefined();
+    expect(out.host).toBeUndefined();
+  });
+});
+
 describe('validateBooleanParams', () => {
   it('accepts a minimal valid body', () => {
     const out = validateBooleanParams({ params: { ...okHost, toolShape: 0, r: 1 } }, 'test-user');

@@ -196,9 +196,47 @@ function validateHostOrR2Key(
 function validateBooleanParams(body: unknown, userId: string): BooleanParams {
   const p = unwrapParams(body);
   const input = validateHostOrR2Key(p, userId);
-  const toolShape = typeof p.toolShape === 'number' ? p.toolShape : 0;
-  const r = numField(p, 'r', 0.01, 5000);
-  const height = p.height === undefined ? undefined : numField(p, 'height', 0.01, 5000);
+
+  // W17 — tool is either primitive (toolShape + r) OR R2-imported
+  // (toolSourceR2Key). Exactly-one, validated against the same
+  // per-user prefix as the host's sourceR2Key.
+  const hasToolR2 = p.toolSourceR2Key !== undefined;
+  const hasToolPrimitive = p.toolShape !== undefined || p.r !== undefined;
+  if (hasToolR2 && hasToolPrimitive) {
+    throw new Error(
+      'invalid params: cannot set both toolSourceR2Key and primitive tool fields (toolShape/r/height)',
+    );
+  }
+  if (!hasToolR2 && !hasToolPrimitive) {
+    throw new Error(
+      'invalid params: tool required — set toolShape+r (primitive) or toolSourceR2Key (R2 STEP)',
+    );
+  }
+
+  let toolFields: Pick<BooleanParams, 'toolShape' | 'r' | 'height' | 'toolSourceR2Key'>;
+  if (hasToolR2) {
+    const key = p.toolSourceR2Key;
+    if (typeof key !== 'string' || key.length === 0 || key.length > 512) {
+      throw new Error('invalid params: toolSourceR2Key must be a string ≤ 512 chars');
+    }
+    if (key.includes('..') || key.startsWith('/')) {
+      throw new Error('invalid params: toolSourceR2Key has illegal path components');
+    }
+    const expectedPrefix = `occt-ops/${userId}/`;
+    if (!key.startsWith(expectedPrefix)) {
+      throw new Error(
+        `invalid params: toolSourceR2Key must start with ${expectedPrefix} (per-user scope)`,
+      );
+    }
+    toolFields = { toolSourceR2Key: key };
+  } else {
+    toolFields = {
+      toolShape: typeof p.toolShape === 'number' ? p.toolShape : 0,
+      r: numField(p, 'r', 0.01, 5000),
+      height: p.height === undefined ? undefined : numField(p, 'height', 0.01, 5000),
+    };
+  }
+
   const cx = p.cx === undefined ? 0 : numField(p, 'cx', -5000, 5000);
   const cy = p.cy === undefined ? 0 : numField(p, 'cy', -5000, 5000);
   const cz = p.cz === undefined ? 0 : numField(p, 'cz', -5000, 5000);
@@ -206,7 +244,7 @@ function validateBooleanParams(body: unknown, userId: string): BooleanParams {
   if (type !== undefined && type !== 'cut' && type !== 'fuse' && type !== 'intersect') {
     throw new Error('invalid params: type must be cut | fuse | intersect');
   }
-  return { ...input, toolShape, r, height, cx, cy, cz, type };
+  return { ...input, ...toolFields, cx, cy, cz, type };
 }
 
 const FILLET_SCOPES: ReadonlySet<FilletEdgeScope> = new Set(['all', 'vertical', 'top', 'bottom']);
