@@ -206,6 +206,142 @@ describe('computeHoleSectionSvg — labels', () => {
   });
 });
 
+// ─── Track C4 — counterdrill + tap rendering (W4) ──────────────────────────
+
+const TAP_M5: HoleSpec = {
+  kind: 'tap',
+  diameter: 4.2,
+  pitch: 0.8,
+  tapClass: '6H',
+  tapDepth: 10,
+  drillTipAngle: 118,
+};
+
+const PIPE_TAP_QUARTER_NPT: HoleSpec = {
+  kind: 'pipe_tap',
+  diameter: 11.4,
+  pipeStandard: 'NPT',
+  pipeSizeKey: '1/4-18',
+  engagementDepth: 9.7,
+};
+
+const TERM_BLIND_TAP: TerminationParams = {
+  kind: 'blind',
+  depth: 12,
+  bottomShape: 'conical',
+  drillTipAngle: 118,
+};
+
+describe('computeHoleSectionSvg — counterdrill (C4)', () => {
+  it('blind+conical: 3-step pocket profile + cone tip below drilled bore', () => {
+    const svg = computeHoleSectionSvg(CDRILL_M6, {
+      kind: 'blind',
+      depth: 20,
+      bottomShape: 'conical',
+      drillTipAngle: 118,
+    });
+    const holeEdges = linesByClass(svg.elements, 'hole-edge');
+    // 2 head walls + 2 head floor strips + 2 mid walls + 2 mid floor + 2 bore walls + 2 cone slants = 12
+    expect(holeEdges).toHaveLength(12);
+  });
+
+  it('counterdrill emits a top label that references the head diameter', () => {
+    const svg = computeHoleSectionSvg(CDRILL_M6, TERM_THROUGH);
+    const labels = svg.elements.filter((e) => e.kind === 'label');
+    const top = labels.find((l) => l.kind === 'label' && l.text.includes('Ø11'));
+    expect(top).toBeDefined();
+  });
+
+  it('counterdrill middle step has intermediate diameter between head and bore', () => {
+    const svg = computeHoleSectionSvg(CDRILL_M6, TERM_THROUGH);
+    const lines = svg.elements.filter(
+      (e): e is Extract<SvgElement, { kind: 'line' }> => e.kind === 'line' && e.className === 'hole-edge',
+    );
+    // The leftmost vertical line is the head wall, the rightmost vertical
+    // line in the inner region is the bore wall; the middle step lies strictly
+    // between them.
+    const verticals = lines.filter((l) => l.x1 === l.x2).map((l) => l.x1);
+    const distances = verticals.map((x) => Math.abs(x - svg.centerX));
+    distances.sort((a, b) => a - b);
+    // 3 distinct radii: bore < middle < head (each appears on both sides).
+    const distinctRadii = Array.from(new Set(distances.map((d) => d.toFixed(3))));
+    expect(distinctRadii.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('computeHoleSectionSvg — tap (C4)', () => {
+  it('emits two dashed thread-indicator lines flanking the centerline', () => {
+    const svg = computeHoleSectionSvg(TAP_M5, TERM_BLIND_TAP);
+    const threads = svg.elements.filter(
+      (e): e is Extract<SvgElement, { kind: 'line' }> => e.kind === 'line' && e.className === 'thread-indicator',
+    );
+    expect(threads).toHaveLength(2);
+    expect(threads[0].dashed).toBe(true);
+    expect(threads[1].dashed).toBe(true);
+    // Thread indicators are symmetric around the centerline.
+    expect(threads[0].x1 + threads[1].x1).toBeCloseTo(svg.centerX * 2, 6);
+  });
+
+  it('tap label combines diameter + pitch + "TAP" marker', () => {
+    const svg = computeHoleSectionSvg(TAP_M5, TERM_BLIND_TAP);
+    const labels = svg.elements.filter((e) => e.kind === 'label');
+    const tap = labels.find((l) => l.kind === 'label' && l.text.includes('TAP'));
+    expect(tap).toBeDefined();
+    if (tap?.kind === 'label') {
+      expect(tap.text).toContain('0.8'); // pitch
+      expect(tap.text).toContain('Ø4.2'); // tap-drill diameter
+    }
+  });
+
+  it('through-all tap still emits the dashed thread indicator', () => {
+    const svg = computeHoleSectionSvg(TAP_M5, TERM_THROUGH);
+    const threads = svg.elements.filter(
+      (e) => e.kind === 'line' && e.className === 'thread-indicator',
+    );
+    expect(threads.length).toBe(2);
+  });
+
+  it('thread-indicator depth is clamped to bore depth (no overshoot)', () => {
+    // Tap depth 10, blind depth 5 → indicator must not extend below the bore.
+    const svg = computeHoleSectionSvg(TAP_M5, {
+      kind: 'blind',
+      depth: 5,
+      bottomShape: 'conical',
+      drillTipAngle: 118,
+    });
+    const threads = svg.elements.filter(
+      (e): e is Extract<SvgElement, { kind: 'line' }> => e.kind === 'line' && e.className === 'thread-indicator',
+    );
+    expect(threads).toHaveLength(2);
+    // Bottom of indicator <= partBottomY (or near it)
+    expect(threads[0].y2).toBeLessThanOrEqual(svg.partBottomY + 1);
+  });
+});
+
+describe('computeHoleSectionSvg — pipe_tap (C4)', () => {
+  it('emits cosmetic dashed taper lines converging downward', () => {
+    const svg = computeHoleSectionSvg(PIPE_TAP_QUARTER_NPT, TERM_THROUGH);
+    const taper = svg.elements.filter(
+      (e): e is Extract<SvgElement, { kind: 'line' }> => e.kind === 'line' && e.className === 'thread-indicator',
+    );
+    expect(taper).toHaveLength(2);
+    // Convergence: |x2-centerX| < |x1-centerX| on both sides.
+    const left = taper[0];
+    const right = taper[1];
+    expect(Math.abs(left.x2 - svg.centerX)).toBeLessThan(Math.abs(left.x1 - svg.centerX));
+    expect(Math.abs(right.x2 - svg.centerX)).toBeLessThan(Math.abs(right.x1 - svg.centerX));
+  });
+
+  it('label carries the pipe size key + standard (e.g. "1/4-18 NPT")', () => {
+    const svg = computeHoleSectionSvg(PIPE_TAP_QUARTER_NPT, TERM_THROUGH);
+    const labels = svg.elements.filter((e) => e.kind === 'label');
+    const pipe = labels.find(
+      (l) => l.kind === 'label' && l.text.includes('1/4-18') && l.text.includes('NPT'),
+    );
+    expect(pipe).toBeDefined();
+  });
+});
+
 describe('computeHoleSectionSvg — layout invariants', () => {
   it('returns a layout with positive width/height/pxPerMm', () => {
     const svg = computeHoleSectionSvg(DRILLED_5MM, TERM_THROUGH);

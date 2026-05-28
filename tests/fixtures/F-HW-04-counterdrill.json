@@ -1,0 +1,67 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-hole-wizard-spec.md#section-2.4-counterdrill",
+  "fixtureId": "F-HW-04-counterdrill",
+  "description": "F-HW-04 — Counterdrill (3-step bore) fixture for shoulder-bolt mounting plates. Pure data: hole spec + termination + per-position metadata. Counterdrill ships the data model + SVG profile in C4; the /occt/op/hole/counterdrill endpoint is blocked until occt-worker src/ lands (Wave 1 task #31). Also exercises the TAP_BOTTOM_RISK negative case (DFM rule is scoped to tap kind — must NOT fire here).",
+  "createdBy": "wave-2 Phase 2 W4 (Track C4)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "mounting-plate",
+    "sizeMm": { "x": 100, "y": 30, "z": 100 },
+    "material": "S355"
+  },
+  "holeSpec": {
+    "series": "ISO",
+    "designation": "M8",
+    "fitClass": "normal"
+  },
+  "holeSpecDetail": {
+    "kind": "counterdrill",
+    "diameter": 9.0,
+    "headDiameter": 15.0,
+    "headDepth": 5.0,
+    "middleDiameter": 12.0,
+    "middleDepth": 12.0,
+    "drillTipAngle": 118
+  },
+  "terminationKind": "through",
+  "terminationParams": { "kind": "through" },
+  "arrayKind": "manual",
+  "arrayParams": {
+    "points": [
+      { "id": "F-HW-04#a", "x": 25, "y": 25 },
+      { "id": "F-HW-04#b", "x": 75, "y": 25 },
+      { "id": "F-HW-04#c", "x": 25, "y": 75 },
+      { "id": "F-HW-04#d", "x": 75, "y": 75 }
+    ]
+  },
+  "expectedPositions": [
+    { "id": "F-HW-04#a", "x": 25, "y": 25 },
+    { "id": "F-HW-04#b", "x": 75, "y": 25 },
+    { "id": "F-HW-04#c", "x": 25, "y": 75 },
+    { "id": "F-HW-04#d", "x": 75, "y": 75 }
+  ],
+  "expectedWorkerCall": {
+    "endpoint": "POST /occt/op/hole/counterdrill",
+    "bodyShape": {
+      "baseShapeHandle": "<shape-handle>",
+      "kind": "counterdrill",
+      "positions": "[…4 entries from expectedPositions, mapped to {id,x,z}]",
+      "drillDiameter": 9.0,
+      "cboreDiameter": 15.0,
+      "cboreDepth": 5.0,
+      "middleDiameter": 12.0,
+      "middleDepth": 12.0,
+      "drillTipAngle": 118,
+      "terminationMode": "throughAll"
+    }
+  },
+  "expectedResponseHoleCount": 4,
+  "expectedDfmFinding": null,
+  "notes": [
+    "Counterdrill step order: head (Ø15 × 5) > middle (Ø12 × 12) > drill (Ø9 through). Validated by CDRILL_STEP_ORDER rule in validateHoleArray.",
+    "Worker side (/occt/op/hole/counterdrill) is blocked in W4 — wire-up after occt-worker src/ provision (Wave 1 task #31).",
+    "Spec §2.4 + §3.1 shoulder-bolt mapping suggested. The defaults from resolveHoleSpec produce middleDiameter = (head+drill)/2, middleDepth = headDepth*1.5; this fixture uses tuned values for an M8 shoulder-bolt application.",
+    "TAP_BOTTOM_RISK explicitly NOT applicable (kind=counterdrill) — the DFM rule is scoped to tap.",
+    "The wizard's Type tab selects 'Counterdrill', Size tab picks M8 normal, Termination tab Through-all, Position tab manual with these 4 points."
+  ]
+}

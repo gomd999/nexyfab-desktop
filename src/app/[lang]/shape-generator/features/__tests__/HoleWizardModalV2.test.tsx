@@ -288,3 +288,230 @@ describe('HoleWizardModalV2 — Termination + Preview tabs (W3)', () => {
     expect(def.holeSpecDetail.headDiameter).toBeGreaterThan(def.holeSpecDetail.diameter);
   });
 });
+
+// ─── Track C4 — fromSketch + tap class + TAP_BOTTOM_RISK (W4) ──────────────
+
+const SAMPLE_SKETCHES = [
+  {
+    featureId: 'sketch-1',
+    label: 'Top face sketch',
+    points: [
+      { id: 'p1', x: 10, y: 10 },
+      { id: 'p2', x: 30, y: 10 },
+      { id: 'p3', x: 10, y: 50 },
+      { id: 'p4', x: 30, y: 50 },
+    ],
+  },
+  {
+    featureId: 'sketch-2',
+    label: 'Side face sketch',
+    points: [{ id: 'q1', x: 0, y: 0 }],
+  },
+];
+
+describe('HoleWizardModalV2 — fromSketch Position mode (W4)', () => {
+  it('renders an empty-state when no sketches are available', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-fromSketch'));
+    expect(screen.getByTestId('hole-wizard-v2-fromSketch-empty')).toBeTruthy();
+  });
+
+  it('renders a sketch picker dropdown when sketches are provided', () => {
+    render(
+      <HoleWizardModalV2
+        open
+        lang="en"
+        onClose={() => {}}
+        onApply={() => {}}
+        forceFlagOpen
+        availableSketches={SAMPLE_SKETCHES}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-fromSketch'));
+    const picker = screen.getByTestId('hole-wizard-v2-fromSketch-picker') as HTMLSelectElement;
+    expect(picker).toBeTruthy();
+    // 2 sketches + 1 empty-option
+    expect(picker.options.length).toBe(3);
+  });
+
+  it('selecting a sketch shows its point count + bounding box', () => {
+    render(
+      <HoleWizardModalV2
+        open
+        lang="en"
+        onClose={() => {}}
+        onApply={() => {}}
+        forceFlagOpen
+        availableSketches={SAMPLE_SKETCHES}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-fromSketch'));
+    const picker = screen.getByTestId('hole-wizard-v2-fromSketch-picker') as HTMLSelectElement;
+    fireEvent.change(picker, { target: { value: 'sketch-1' } });
+    expect(screen.getByTestId('hole-wizard-v2-fromSketch-pointCount').textContent).toContain('4');
+    // Bounding box: 30-10 = 20 wide, 50-10 = 40 tall.
+    expect(screen.getByTestId('hole-wizard-v2-fromSketch-bbox').textContent).toContain('20');
+    expect(screen.getByTestId('hole-wizard-v2-fromSketch-bbox').textContent).toContain('40');
+  });
+
+  it('Apply with fromSketch delivers a definition with the picked sketch id', () => {
+    const onApply = vi.fn();
+    render(
+      <HoleWizardModalV2
+        open
+        lang="en"
+        onClose={() => {}}
+        onApply={onApply}
+        forceFlagOpen
+        availableSketches={SAMPLE_SKETCHES}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-fromSketch'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-fromSketch-picker'), {
+      target: { value: 'sketch-1' },
+    });
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    const def = onApply.mock.calls[0][0];
+    expect(def.kind).toBe('fromSketch');
+    expect(def.params.kind).toBe('fromSketch');
+    expect(def.params.data.sketchFeatureId).toBe('sketch-1');
+  });
+
+  it('footer reflects the live sketch-point count for the selected sketch', () => {
+    render(
+      <HoleWizardModalV2
+        open
+        lang="en"
+        onClose={() => {}}
+        onApply={() => {}}
+        forceFlagOpen
+        availableSketches={SAMPLE_SKETCHES}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-fromSketch'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-fromSketch-picker'), {
+      target: { value: 'sketch-1' },
+    });
+    // sketch-1 has 4 points → footer should report 4 positions
+    expect(screen.getByTestId('hole-wizard-v2-count').textContent).toContain('4');
+  });
+});
+
+describe('HoleWizardModalV2 — tap class picker (W4)', () => {
+  it('tap-class panel is hidden when holeType !== tap', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    expect(screen.queryByTestId('hole-wizard-v2-tap-class-panel')).toBeNull();
+  });
+
+  it('tap-class panel appears when Type=tap and shows 4 tile buttons', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-tap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    expect(screen.getByTestId('hole-wizard-v2-tap-class-panel')).toBeTruthy();
+    for (const c of ['6H', '6G', '2B', '3B']) {
+      expect(screen.getByTestId(`hole-wizard-v2-tapclass-${c}`)).toBeTruthy();
+    }
+  });
+
+  it('Apply with tap class override carries the override into holeSpecDetail.tapClass', () => {
+    const onApply = vi.fn();
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={onApply} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-tap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tapclass-6G'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    const def = onApply.mock.calls[0][0];
+    expect(def.holeSpecDetail.kind).toBe('tap');
+    expect(def.holeSpecDetail.tapClass).toBe('6G');
+  });
+});
+
+describe('HoleWizardModalV2 — TAP_BOTTOM_RISK warning (W4)', () => {
+  it('shows the warning banner when blind+tap+tapDepth too close to drill bottom', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-tap'));
+    // Pick M6 (pitch 1.0, tap-drill 5) — default tap depth = 10 mm.
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-designation-M6'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-termination'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-termination-blind'));
+    // Drill depth 11 mm → margin 1 mm < 2 × pitch (2.0) → warning trips.
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-termination-depth'), {
+      target: { value: '11' },
+    });
+    expect(screen.getByTestId('hole-wizard-v2-tap-bottom-risk')).toBeTruthy();
+  });
+
+  it('does NOT show the warning for through-all tap (rule scoped to blind)', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-tap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-termination'));
+    // Default termination is 'through' — warning must not appear.
+    expect(screen.queryByTestId('hole-wizard-v2-tap-bottom-risk')).toBeNull();
+  });
+
+  it('does NOT show the warning for drilled hole even with same depth (rule scoped to tap)', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    // Default holeType = drilled.
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-termination'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-termination-blind'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-termination-depth'), {
+      target: { value: '5' },
+    });
+    expect(screen.queryByTestId('hole-wizard-v2-tap-bottom-risk')).toBeNull();
+  });
+
+  it('warning clears when depth grows past the 2×pitch threshold', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-tap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-designation-M6'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-termination'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-termination-blind'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-termination-depth'), {
+      target: { value: '11' },
+    });
+    expect(screen.getByTestId('hole-wizard-v2-tap-bottom-risk')).toBeTruthy();
+    // Increase depth to 20 → margin = 10 mm >> 2 mm → warning clears.
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-termination-depth'), {
+      target: { value: '20' },
+    });
+    expect(screen.queryByTestId('hole-wizard-v2-tap-bottom-risk')).toBeNull();
+  });
+});
+
+describe('HoleWizardModalV2 — counterdrill Preview (W4)', () => {
+  it('Preview summary lists middle-step diameter + depth for counterdrill', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-counterdrill'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-preview'));
+    const summary = screen.getByTestId('hole-wizard-v2-preview-summary');
+    expect(summary.textContent).toContain('Middle');
+  });
+});

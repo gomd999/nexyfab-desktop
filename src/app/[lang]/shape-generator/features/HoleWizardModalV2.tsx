@@ -46,8 +46,29 @@ import {
   type TerminationParams,
 } from './holeArray';
 import { computeHoleSectionSvg, type SvgElement } from './holeSectionSvg';
+import {
+  evaluateTapBottomRisk,
+  pointListBoundingBox,
+  type SketchPointSnapshot,
+  type TapBottomRiskFinding,
+} from './holeSketchPropagation';
 
 // ─── Public props ──────────────────────────────────────────────────────────
+
+/**
+ * A sketch the wizard can offer in the `fromSketch` position mode. Each entry
+ * carries a stable feature id + display name + the current point list. The
+ * wizard does NOT mutate these — propagation is handled by
+ * `holeSketchPropagation.ts` once the feature is committed via `onApply`.
+ */
+export interface AvailableSketch {
+  /** Stable feature id (matches the value the propagator looks up by). */
+  featureId: string;
+  /** Human-friendly name shown in the picker dropdown. */
+  label: string;
+  /** Live point list. Empty array = sketch exists but has no points yet. */
+  points: SketchPointSnapshot[];
+}
 
 interface Props {
   open: boolean;
@@ -59,6 +80,12 @@ interface Props {
    * (the next/navigation mock in tests can't easily set query params).
    */
   forceFlagOpen?: boolean;
+  /**
+   * Sketches the user can pick in the `fromSketch` position mode (W4 — C4).
+   * When undefined or empty, the fromSketch tile is still selectable but the
+   * picker shows an empty-state message.
+   */
+  availableSketches?: AvailableSketch[];
 }
 
 // ─── i18n dictionary ───────────────────────────────────────────────────────
@@ -131,6 +158,27 @@ type Dict = {
   fHeadDepth: string;
   fConeDiameter: string;
   fConeAngle: string;
+  /** C4 — fromSketch tab + tap class picker + DFM warning. */
+  fromSketchPick: string;
+  fromSketchEmpty: string;
+  fromSketchPointCount: (n: number) => string;
+  fromSketchBBox: (w: number, h: number) => string;
+  fromSketchSelectHint: string;
+  tapClassLabel: string;
+  pitchLabel: string;
+  tpiLabel: string;
+  tapDepthLabel: string;
+  tapBottomRiskTitle: string;
+  pipeStandardLabel: string;
+  pipeSizeKeyLabel: string;
+  engagementDepthLabel: string;
+  prevTapDepth: string;
+  prevPitch: string;
+  prevMiddleDiameter: string;
+  prevMiddleDepth: string;
+  prevPipeStandard: string;
+  prevPipeSizeKey: string;
+  prevEngagementDepth: string;
 };
 
 const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
@@ -195,6 +243,26 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fHeadDepth: '머리 깊이',
     fConeDiameter: '원뿔 ⌀',
     fConeAngle: '원뿔 각도 (°)',
+    fromSketchPick: '스케치 선택',
+    fromSketchEmpty: '사용할 수 있는 스케치 없음 — 먼저 스케치를 만드세요',
+    fromSketchPointCount: (n: number) => `${n}개 점`,
+    fromSketchBBox: (w: number, h: number) => `범위 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    fromSketchSelectHint: '스케치의 점이 그대로 구멍 위치가 됩니다',
+    tapClassLabel: '탭 클래스',
+    pitchLabel: '피치 (mm)',
+    tpiLabel: 'TPI',
+    tapDepthLabel: '탭 깊이 (mm)',
+    tapBottomRiskTitle: '⚠ 탭 바닥 위험',
+    pipeStandardLabel: '파이프 규격',
+    pipeSizeKeyLabel: '파이프 사이즈',
+    engagementDepthLabel: '체결 깊이 (mm)',
+    prevTapDepth: '탭 깊이',
+    prevPitch: '피치',
+    prevMiddleDiameter: '중간 ⌀',
+    prevMiddleDepth: '중간 깊이',
+    prevPipeStandard: '파이프 규격',
+    prevPipeSizeKey: '파이프 사이즈',
+    prevEngagementDepth: '체결 깊이',
   },
   en: {
     wizardTitle: 'Hole Wizard (V2)',
@@ -257,6 +325,26 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fHeadDepth: 'Head depth',
     fConeDiameter: 'Cone ⌀',
     fConeAngle: 'Cone angle (°)',
+    fromSketchPick: 'Pick sketch',
+    fromSketchEmpty: 'No sketches available — create a sketch first',
+    fromSketchPointCount: (n: number) => `${n} point${n === 1 ? '' : 's'}`,
+    fromSketchBBox: (w: number, h: number) => `bbox ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    fromSketchSelectHint: 'Sketch points become hole positions',
+    tapClassLabel: 'Tap class',
+    pitchLabel: 'Pitch (mm)',
+    tpiLabel: 'TPI',
+    tapDepthLabel: 'Tap depth (mm)',
+    tapBottomRiskTitle: '⚠ Tap-bottom risk',
+    pipeStandardLabel: 'Pipe standard',
+    pipeSizeKeyLabel: 'Pipe size',
+    engagementDepthLabel: 'Engagement depth (mm)',
+    prevTapDepth: 'Tap depth',
+    prevPitch: 'Pitch',
+    prevMiddleDiameter: 'Middle ⌀',
+    prevMiddleDepth: 'Middle depth',
+    prevPipeStandard: 'Pipe standard',
+    prevPipeSizeKey: 'Pipe size',
+    prevEngagementDepth: 'Engagement depth',
   },
   ja: {
     wizardTitle: 'ホールウィザード (V2)',
@@ -319,6 +407,26 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fHeadDepth: 'ヘッド深さ',
     fConeDiameter: 'コーン ⌀',
     fConeAngle: 'コーン角度 (°)',
+    fromSketchPick: 'スケッチを選択',
+    fromSketchEmpty: 'スケッチがありません — まずスケッチを作成してください',
+    fromSketchPointCount: (n: number) => `${n} 点`,
+    fromSketchBBox: (w: number, h: number) => `範囲 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    fromSketchSelectHint: 'スケッチ点がそのまま穴の位置になります',
+    tapClassLabel: 'タップクラス',
+    pitchLabel: 'ピッチ (mm)',
+    tpiLabel: 'TPI',
+    tapDepthLabel: 'タップ深さ (mm)',
+    tapBottomRiskTitle: '⚠ タップ底リスク',
+    pipeStandardLabel: 'パイプ規格',
+    pipeSizeKeyLabel: 'パイプサイズ',
+    engagementDepthLabel: '締結深さ (mm)',
+    prevTapDepth: 'タップ深さ',
+    prevPitch: 'ピッチ',
+    prevMiddleDiameter: '中間 ⌀',
+    prevMiddleDepth: '中間深さ',
+    prevPipeStandard: 'パイプ規格',
+    prevPipeSizeKey: 'パイプサイズ',
+    prevEngagementDepth: '締結深さ',
   },
   zh: {
     wizardTitle: '孔向导 (V2)',
@@ -381,6 +489,26 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fHeadDepth: '头部深度',
     fConeDiameter: '锥面 ⌀',
     fConeAngle: '锥面角度 (°)',
+    fromSketchPick: '选择草图',
+    fromSketchEmpty: '没有可用草图 — 请先创建草图',
+    fromSketchPointCount: (n: number) => `${n} 个点`,
+    fromSketchBBox: (w: number, h: number) => `范围 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    fromSketchSelectHint: '草图点直接作为孔位置',
+    tapClassLabel: '攻丝等级',
+    pitchLabel: '螺距 (mm)',
+    tpiLabel: 'TPI',
+    tapDepthLabel: '攻丝深度 (mm)',
+    tapBottomRiskTitle: '⚠ 攻丝底部风险',
+    pipeStandardLabel: '管螺纹规格',
+    pipeSizeKeyLabel: '管螺纹尺寸',
+    engagementDepthLabel: '啮合深度 (mm)',
+    prevTapDepth: '攻丝深度',
+    prevPitch: '螺距',
+    prevMiddleDiameter: '中间 ⌀',
+    prevMiddleDepth: '中间深度',
+    prevPipeStandard: '管螺纹规格',
+    prevPipeSizeKey: '管螺纹尺寸',
+    prevEngagementDepth: '啮合深度',
   },
   es: {
     wizardTitle: 'Asistente de Hole (V2)',
@@ -443,6 +571,26 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fHeadDepth: 'Profundidad cabeza',
     fConeDiameter: 'Cono ⌀',
     fConeAngle: 'Ángulo del cono (°)',
+    fromSketchPick: 'Elegir croquis',
+    fromSketchEmpty: 'Sin croquis disponibles — crea uno primero',
+    fromSketchPointCount: (n: number) => `${n} ${n === 1 ? 'punto' : 'puntos'}`,
+    fromSketchBBox: (w: number, h: number) => `bbox ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    fromSketchSelectHint: 'Los puntos del croquis serán las posiciones de los holes',
+    tapClassLabel: 'Clase de rosca',
+    pitchLabel: 'Paso (mm)',
+    tpiLabel: 'TPI',
+    tapDepthLabel: 'Profundidad de rosca (mm)',
+    tapBottomRiskTitle: '⚠ Riesgo de fondo de rosca',
+    pipeStandardLabel: 'Estándar de tubo',
+    pipeSizeKeyLabel: 'Tamaño de tubo',
+    engagementDepthLabel: 'Profundidad de engrane (mm)',
+    prevTapDepth: 'Profundidad de rosca',
+    prevPitch: 'Paso',
+    prevMiddleDiameter: 'Medio ⌀',
+    prevMiddleDepth: 'Profundidad media',
+    prevPipeStandard: 'Estándar de tubo',
+    prevPipeSizeKey: 'Tamaño de tubo',
+    prevEngagementDepth: 'Profundidad de engrane',
   },
   ar: {
     wizardTitle: 'معالج الفتحات (V2)',
@@ -505,6 +653,26 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fHeadDepth: 'عمق الرأس',
     fConeDiameter: 'قطر المخروط',
     fConeAngle: 'زاوية المخروط (°)',
+    fromSketchPick: 'اختر الرسم',
+    fromSketchEmpty: 'لا توجد رسومات — أنشئ رسمًا أولاً',
+    fromSketchPointCount: (n: number) => `${n} نقاط`,
+    fromSketchBBox: (w: number, h: number) => `نطاق ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    fromSketchSelectHint: 'نقاط الرسم تصبح مواضع الفتحات',
+    tapClassLabel: 'فئة الحلزون',
+    pitchLabel: 'الخطوة (mm)',
+    tpiLabel: 'TPI',
+    tapDepthLabel: 'عمق الحلزون (mm)',
+    tapBottomRiskTitle: '⚠ خطر قاع الحلزون',
+    pipeStandardLabel: 'معيار الأنبوب',
+    pipeSizeKeyLabel: 'حجم الأنبوب',
+    engagementDepthLabel: 'عمق التشابك (mm)',
+    prevTapDepth: 'عمق الحلزون',
+    prevPitch: 'الخطوة',
+    prevMiddleDiameter: 'قطر الوسط',
+    prevMiddleDepth: 'عمق الوسط',
+    prevPipeStandard: 'معيار الأنبوب',
+    prevPipeSizeKey: 'حجم الأنبوب',
+    prevEngagementDepth: 'عمق التشابك',
   },
 };
 
@@ -574,6 +742,7 @@ export default function HoleWizardModalV2({
   onClose,
   onApply,
   forceFlagOpen,
+  availableSketches,
 }: Props) {
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -652,6 +821,11 @@ export default function HoleWizardModalV2({
     setArrayDef(seeded);
   }
 
+  // ── C4 tap-class override (W4). When holeType=tap the user can flip
+  // between '6H'/'6G' (ISO) or '2B'/'3B' (UTS). Empty = use the resolver's
+  // default, which picks based on series.
+  const [tapClassOverride, setTapClassOverride] = useState<'' | '6H' | '6G' | '2B' | '3B'>('');
+
   // ── Termination tab state. ───────────────────────────────────────────────
   // We hold the termination + params separately from arrayDef so flipping
   // tabs doesn't reseed when the user comes back. The full HoleArrayDefinition
@@ -663,14 +837,18 @@ export default function HoleWizardModalV2({
 
   // Derived HoleSpec from current Type + Size selection. Resolves from the
   // catalog row whenever Type / Size / Fit changes. Pure derivation — no extra
-  // state to keep in sync.
+  // state to keep in sync. C4: apply tap-class override when applicable.
   const resolvedHoleSpec: HoleSpec = useMemo(() => {
-    return resolveHoleSpec(
+    const base = resolveHoleSpec(
       WIZARD_TO_HOLEKIND[holeType],
       currentHoleSpec,
       selectedRow as Parameters<typeof resolveHoleSpec>[2],
     );
-  }, [holeType, selectedRow, currentHoleSpec]);
+    if (base.kind === 'tap' && tapClassOverride !== '') {
+      return { ...base, tapClass: tapClassOverride };
+    }
+    return base;
+  }, [holeType, selectedRow, currentHoleSpec, tapClassOverride]);
 
   // Build the termination-params bag from the four-piece termination state.
   const terminationParams: TerminationParams = useMemo(() => {
@@ -706,9 +884,37 @@ export default function HoleWizardModalV2({
     terminationParams,
   }), [arrayDef, currentHoleSpec, resolvedHoleSpec, terminationKind, terminationParams]);
 
+  // Sketch-point provider — when the modal's host supplies `availableSketches`
+  // we hand them to `expandHoleArray` so the fromSketch position-mode shows
+  // real point counts in the live preview. Without a provider the function
+  // returns empty positions and the validator flags MISSING_SKETCH_POINTS.
+  const sketchRegistry = useMemo<Record<string, SketchPointSnapshot[]>>(() => {
+    if (!availableSketches) return {};
+    const reg: Record<string, SketchPointSnapshot[]> = {};
+    for (const s of availableSketches) reg[s.featureId] = s.points;
+    return reg;
+  }, [availableSketches]);
+
   // Live count of resolved positions — drives the "(N positions)" footer.
-  const positions = useMemo(() => expandHoleArray(effectiveDef), [effectiveDef]);
+  const positions = useMemo(
+    () =>
+      expandHoleArray(effectiveDef, {
+        resolveSketchPoints: (id) => sketchRegistry[id],
+      }),
+    [effectiveDef, sketchRegistry],
+  );
   const validation = useMemo(() => validateHoleArray(effectiveDef), [effectiveDef]);
+
+  // C4 — TAP_BOTTOM_RISK pure-logic check used by the Termination tab.
+  const tapBottomRisk: TapBottomRiskFinding | null = useMemo(() => {
+    return evaluateTapBottomRisk({
+      kind: resolvedHoleSpec.kind,
+      tapDepth: resolvedHoleSpec.kind === 'tap' ? resolvedHoleSpec.tapDepth : undefined,
+      pitch: resolvedHoleSpec.kind === 'tap' ? resolvedHoleSpec.pitch : undefined,
+      terminationKind,
+      blindDepth: terminationKind === 'blind' ? blindDepth : undefined,
+    });
+  }, [resolvedHoleSpec, terminationKind, blindDepth]);
 
   if (!open) return null;
 
@@ -971,6 +1177,39 @@ export default function HoleWizardModalV2({
                 ))}
               </div>
             </div>
+            {/* C4 — Tap class picker (visible only when holeType=tap). */}
+            {holeType === 'tap' && (
+              <div
+                data-testid="hole-wizard-v2-tap-class-panel"
+                style={{ marginTop: 8 }}
+              >
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>
+                  {t.tapClassLabel}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['6H', '6G', '2B', '3B'] as const).map((tc) => (
+                    <button
+                      key={tc}
+                      data-testid={`hole-wizard-v2-tapclass-${tc}`}
+                      onClick={() => setTapClassOverride(tc)}
+                      style={{
+                        flex: 1,
+                        padding: '6px 8px',
+                        background: tapClassOverride === tc ? '#0ea5e9' : 'var(--nx-border-strong)',
+                        color: 'var(--nx-panel-2)',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                      }}
+                    >
+                      {tc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Resolved row preview */}
             {selectedRow && (
               <div
@@ -1028,6 +1267,7 @@ export default function HoleWizardModalV2({
               onChange={setArrayDef}
               labels={t}
               inputStyle={inputStyle}
+              availableSketches={availableSketches}
             />
           </div>
         )}
@@ -1055,6 +1295,28 @@ export default function HoleWizardModalV2({
                 );
               })}
             </div>
+
+            {/* C4 — TAP_BOTTOM_RISK warning banner (only when blind+tap+too-close). */}
+            {tapBottomRisk && terminationKind === 'blind' && (
+              <div
+                data-testid="hole-wizard-v2-tap-bottom-risk"
+                style={{
+                  padding: 8,
+                  marginBottom: 8,
+                  background: tapBottomRisk.severity === 'error' ? '#7f1d1d' : '#78350f',
+                  color: '#fde68a',
+                  border: '1px solid ' + (tapBottomRisk.severity === 'error' ? '#dc2626' : '#f59e0b'),
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{t.tapBottomRiskTitle}</div>
+                <div data-testid="hole-wizard-v2-tap-bottom-risk-message">
+                  {tapBottomRisk.message}
+                </div>
+              </div>
+            )}
 
             {/* Blind sub-panel — depth + bottom shape + tip angle. */}
             {terminationKind === 'blind' && (
@@ -1265,9 +1527,10 @@ interface PositionKindEditorProps {
   onChange: (next: HoleArrayDefinition) => void;
   labels: Dict;
   inputStyle: React.CSSProperties;
+  availableSketches?: AvailableSketch[];
 }
 
-function PositionKindEditor({ def, onChange, labels, inputStyle }: PositionKindEditorProps) {
+function PositionKindEditor({ def, onChange, labels, inputStyle, availableSketches }: PositionKindEditorProps) {
   // Helper: update the kind-specific data without losing the discriminator.
   function patch<K extends HoleArrayKind>(
     kind: K,
@@ -1407,18 +1670,79 @@ function PositionKindEditor({ def, onChange, labels, inputStyle }: PositionKindE
 
   if (def.params.kind === 'fromSketch') {
     const d = def.params.data;
+    const sketches = availableSketches ?? [];
+    const selected = sketches.find((s) => s.featureId === d.sketchFeatureId);
+    const bbox = selected ? pointListBoundingBox(selected.points) : null;
     return (
-      <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-        {labels.fSketchId}
-        <input
-          type="text"
-          data-testid="hole-wizard-v2-fromSketch-sketchId"
-          value={d.sketchFeatureId}
-          onChange={(e) => patch('fromSketch', { sketchFeatureId: e.target.value })}
-          style={inputStyle}
-          placeholder="sketch-7"
-        />
-      </label>
+      <div data-testid="hole-wizard-v2-fromSketch-panel">
+        {sketches.length === 0 ? (
+          <div
+            data-testid="hole-wizard-v2-fromSketch-empty"
+            style={{
+              padding: 10,
+              background: 'var(--nx-bg)',
+              border: '1px dashed #4b5563',
+              borderRadius: 6,
+              fontSize: 12,
+              color: 'var(--nx-text-2)',
+            }}
+          >
+            {labels.fromSketchEmpty}
+          </div>
+        ) : (
+          <>
+            <label style={{ fontSize: 11, color: 'var(--nx-text-2)', display: 'block' }}>
+              {labels.fromSketchPick}
+              <select
+                data-testid="hole-wizard-v2-fromSketch-picker"
+                value={d.sketchFeatureId}
+                onChange={(e) => patch('fromSketch', { sketchFeatureId: e.target.value })}
+                style={inputStyle}
+              >
+                <option value="">— —</option>
+                {sketches.map((s) => (
+                  <option key={s.featureId} value={s.featureId}>
+                    {s.label} ({s.points.length})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div
+              data-testid="hole-wizard-v2-fromSketch-preview"
+              style={{
+                marginTop: 8,
+                padding: 10,
+                background: 'var(--nx-bg)',
+                border: '1px solid #374151',
+                borderRadius: 6,
+                fontSize: 12,
+                color: '#d1d5db',
+                fontFamily: 'monospace',
+              }}
+            >
+              {selected ? (
+                <>
+                  <div data-testid="hole-wizard-v2-fromSketch-pointCount">
+                    {labels.fromSketchPointCount(selected.points.length)}
+                  </div>
+                  {bbox && (
+                    <div data-testid="hole-wizard-v2-fromSketch-bbox">
+                      {labels.fromSketchBBox(bbox.width, bbox.height)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginTop: 4 }}>
+                    {labels.fromSketchSelectHint}
+                  </div>
+                </>
+              ) : (
+                <div style={{ color: 'var(--nx-text-2)' }}>
+                  {labels.fromSketchSelectHint}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     );
   }
 
@@ -1507,6 +1831,44 @@ function PreviewPanel({ spec, term, positionCount, labels }: PreviewPanelProps) 
       value: `${spec.coneAngle}°`,
     });
   }
+  if (spec.kind === 'counterdrill') {
+    summaryRows.push({
+      label: labels.prevMiddleDiameter,
+      value: `Ø${spec.middleDiameter} mm`,
+    });
+    summaryRows.push({
+      label: labels.prevMiddleDepth,
+      value: `${spec.middleDepth} mm`,
+    });
+  }
+  if (spec.kind === 'tap') {
+    summaryRows.push({
+      label: labels.prevPitch,
+      value: `${spec.pitch} mm`,
+    });
+    summaryRows.push({
+      label: labels.tapClassLabel,
+      value: spec.tapClass,
+    });
+    summaryRows.push({
+      label: labels.prevTapDepth,
+      value: `${spec.tapDepth} mm`,
+    });
+  }
+  if (spec.kind === 'pipe_tap') {
+    summaryRows.push({
+      label: labels.prevPipeStandard,
+      value: spec.pipeStandard,
+    });
+    summaryRows.push({
+      label: labels.prevPipeSizeKey,
+      value: spec.pipeSizeKey,
+    });
+    summaryRows.push({
+      label: labels.prevEngagementDepth,
+      value: `${spec.engagementDepth} mm`,
+    });
+  }
   summaryRows.push({
     label: labels.tabTermination,
     value:
@@ -1578,7 +1940,16 @@ function renderSvgEl(el: SvgElement, key: number): React.ReactNode {
   if (el.kind === 'line') {
     const isCenterline = el.className === 'centerline';
     const isDim = el.className === 'dim';
-    const stroke = isCenterline ? '#6b7280' : isDim ? '#9ca3af' : el.className === 'part-edge' ? '#94a3b8' : '#22d3ee';
+    const isThread = el.className === 'thread-indicator';
+    const stroke = isCenterline
+      ? '#6b7280'
+      : isDim
+        ? '#9ca3af'
+        : el.className === 'part-edge'
+          ? '#94a3b8'
+          : isThread
+            ? '#0ea5e9'
+            : '#22d3ee';
     return (
       <line
         key={key}
@@ -1588,7 +1959,7 @@ function renderSvgEl(el: SvgElement, key: number): React.ReactNode {
         y2={el.y2}
         stroke={stroke}
         strokeWidth={isCenterline ? 0.75 : 1.25}
-        strokeDasharray={isCenterline ? '3 2' : undefined}
+        strokeDasharray={isCenterline ? '3 2' : el.dashed || isThread ? '2 2' : undefined}
       />
     );
   }
