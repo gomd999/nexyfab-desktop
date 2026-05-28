@@ -74,10 +74,10 @@ export type ThreadFeatureUpdateErrorCode =
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function patchIsEmpty(patch: ThreadFeaturePatch): boolean {
-  for (const k of Object.keys(patch) as (keyof ThreadFeaturePatch)[]) {
-    if (patch[k] !== undefined) return false;
-  }
-  return true;
+  // Explicit-undefined assignment (e.g. `label: undefined` to clear label) is
+  // a real patch — must NOT be treated as empty. Use own-key presence, not
+  // defined-value count.
+  return Object.keys(patch).length === 0;
 }
 
 function isNonNegativeFinite(n: number): boolean {

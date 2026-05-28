@@ -131,7 +131,17 @@ function resolveInitialSpec(
 ): ThreadsSectionSpec {
   const series = initial?.series ?? FALLBACK_DEFAULT.series;
   const rows = allRowsInSeries(series);
-  const firstRow = rows[0]?.designation ?? FALLBACK_DEFAULT.designation;
+  // Prefer the canonical default designation (e.g. M8 for ISO_M_COARSE) when
+  // it exists in the catalog; otherwise fall through to the first row.
+  // ISO_M_COARSE was augmented in D5 (M2 / M2.5 / M7) and the row order can't
+  // be relied on for "sensible UI default".
+  const hasFallbackDesignation = rows.some(
+    r => r.designation === FALLBACK_DEFAULT.designation,
+  );
+  const firstRow =
+    (hasFallbackDesignation
+      ? FALLBACK_DEFAULT.designation
+      : rows[0]?.designation) ?? FALLBACK_DEFAULT.designation;
   const designation = initial?.designation ?? firstRow;
   const row = findThreadRow(series, designation);
   const candidates = row?.classCandidates ?? [defaultThreadClass(series)];
