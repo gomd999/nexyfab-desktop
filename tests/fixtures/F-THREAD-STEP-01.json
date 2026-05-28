@@ -1,0 +1,45 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-threads-spec.md#section-16-step-round-trip",
+  "fixtureId": "F-THREAD-STEP-01",
+  "description": "F-THREAD-STEP-01 — Golden round-trip of a ThreadFeature through STEP metadata. D8 (W8) STEP I/O regression fixture: feeds the feature in, expects the canonical blob back, then parses the blob and expects the original feature back. The blob is the JSON-encoded metadata block exactly as it appears inside the STEP AP242 PROPERTY_DEFINITION entity.",
+  "createdBy": "wave-2 Phase 2 W8 (Track D8)",
+  "createdAt": "2026-05-28",
+  "feature": {
+    "id": "feat_thread_F-THREAD-STEP-01",
+    "featureType": "thread",
+    "parentFeatureId": "feat_hole_step_01",
+    "threadKind": "internal",
+    "threadRef": { "series": "ISO_M_COARSE", "designation": "M8" },
+    "class": "6H",
+    "mode": "cosmetic",
+    "threadDirection": "right_hand",
+    "length": 20,
+    "startOffset": 0
+  },
+  "expectedBlob": "NEXYFAB_THREAD_V1:{\"kind\":\"thread\",\"version\":1,\"id\":\"feat_thread_F-THREAD-STEP-01\",\"parentFeatureId\":\"feat_hole_step_01\",\"threadKind\":\"internal\",\"series\":\"ISO_M_COARSE\",\"designation\":\"M8\",\"class\":\"6H\",\"mode\":\"cosmetic\",\"threadDirection\":\"right_hand\",\"length\":20,\"startOffset\":0,\"derived\":{\"majorDiameterMm\":8,\"minorDiameterMm\":6.6469,\"pitchMm\":1.25,\"tapDrillMm\":6.8}}",
+  "expectedMetadata": {
+    "kind": "thread",
+    "version": 1,
+    "id": "feat_thread_F-THREAD-STEP-01",
+    "parentFeatureId": "feat_hole_step_01",
+    "threadKind": "internal",
+    "series": "ISO_M_COARSE",
+    "designation": "M8",
+    "class": "6H",
+    "mode": "cosmetic",
+    "threadDirection": "right_hand",
+    "length": 20,
+    "startOffset": 0,
+    "derived": {
+      "majorDiameterMm": 8,
+      "minorDiameterMm": 6.6469,
+      "pitchMm": 1.25,
+      "tapDrillMm": 6.8
+    }
+  },
+  "notes": [
+    "Round-trip must produce a ThreadFeature object equal to the input (every field).",
+    "Blob is JSON-encoded — float precision is preserved exactly.",
+    "`derived` block is written by the serialiser and is informational; the parser still works without it (catalog lookup re-derives at parse time)."
+  ]
+}

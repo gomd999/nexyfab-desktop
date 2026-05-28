@@ -84,6 +84,28 @@ export interface ThreadsDict {
   readonly errorInvalidClass: string;
   readonly errorStartOffsetNegative: string;
   readonly errorMissingFace: string;
+
+  // ─── W8 — callout-standard names (drawing standards) ───────────
+  readonly calloutStandardIso: string;       // ISO 6410-1
+  readonly calloutStandardAsme: string;      // ASME Y14.6
+  readonly calloutStandardJis: string;       // JIS B 0205
+  readonly calloutStandardDin: string;       // DIN 13
+  readonly calloutStandardGb: string;        // GB 196
+
+  // ─── W8 — BOM column headers (THREAD OPERATIONS block) ────────
+  readonly bomColumnDesignation: string;     // 호칭
+  readonly bomColumnCount: string;           // 수량
+  readonly bomColumnTotalLength: string;     // 총 길이
+  readonly bomColumnTapDrill: string;        // 탭 드릴 Ø
+  readonly bomColumnClass: string;           // 등급
+  readonly bomColumnSeries: string;          // 계열
+  readonly bomBlockTitle: string;            // "THREAD OPERATIONS" header
+
+  // ─── W8 — drawing-rep flag toggle ─────────────────────────────
+  readonly drawingRepFlagLabel: string;      // "ISO 6410-1 simplified drawing rep"
+  readonly drawingRepFlagOn: string;
+  readonly drawingRepFlagOff: string;
+  readonly drawingRepPhase3Hint: string;     // grayed-out hint
 }
 
 // ─── Korean (canonical for the Korean market) ─────────────────────
@@ -144,6 +166,25 @@ const KO: ThreadsDict = {
   errorInvalidClass: '선택한 계열에서 사용할 수 없는 등급입니다.',
   errorStartOffsetNegative: '시작 오프셋은 0 이상이어야 합니다.',
   errorMissingFace: '대상 면이 지정되지 않았습니다.',
+
+  calloutStandardIso: 'ISO 6410-1 (기본)',
+  calloutStandardAsme: 'ASME Y14.6 (인치)',
+  calloutStandardJis: 'JIS B 0205 (일본)',
+  calloutStandardDin: 'DIN 13 (독일)',
+  calloutStandardGb: 'GB 196 (중국)',
+
+  bomColumnDesignation: '호칭',
+  bomColumnCount: '수량',
+  bomColumnTotalLength: '총 길이 (mm)',
+  bomColumnTapDrill: '탭 드릴 Ø',
+  bomColumnClass: '등급',
+  bomColumnSeries: '계열',
+  bomBlockTitle: '나사 가공',
+
+  drawingRepFlagLabel: 'ISO 6410-1 단면도 표시',
+  drawingRepFlagOn: '켜짐',
+  drawingRepFlagOff: '꺼짐',
+  drawingRepPhase3Hint: 'Phase 3 도면 모듈에서 활성화 예정',
 };
 
 // ─── English (canonical for everywhere else) ──────────────────────
@@ -204,6 +245,25 @@ const EN: ThreadsDict = {
   errorInvalidClass: 'Class is not valid for the selected series.',
   errorStartOffsetNegative: 'Start offset must be ≥ 0.',
   errorMissingFace: 'No target face selected.',
+
+  calloutStandardIso: 'ISO 6410-1 (default)',
+  calloutStandardAsme: 'ASME Y14.6 (inch)',
+  calloutStandardJis: 'JIS B 0205 (Japan)',
+  calloutStandardDin: 'DIN 13 (Germany)',
+  calloutStandardGb: 'GB 196 (China)',
+
+  bomColumnDesignation: 'Designation',
+  bomColumnCount: 'Qty',
+  bomColumnTotalLength: 'Total length (mm)',
+  bomColumnTapDrill: 'Tap drill Ø',
+  bomColumnClass: 'Class',
+  bomColumnSeries: 'Series',
+  bomBlockTitle: 'THREAD OPERATIONS',
+
+  drawingRepFlagLabel: 'ISO 6410-1 simplified drawing rep',
+  drawingRepFlagOn: 'On',
+  drawingRepFlagOff: 'Off',
+  drawingRepPhase3Hint: 'Enabled when the Phase 3 drawing module ships',
 };
 
 // ─── JA / ZH / ES / AR — partial native, English fallback ─────────
@@ -241,6 +301,25 @@ const JA: ThreadsDict = {
   hintPitch: 'ピッチ',
   hintTapDrill: 'タップ下穴',
   hintViewportMagenta: 'ビューポートにマゼンタの破線円で表示します。',
+
+  calloutStandardIso: 'ISO 6410-1 (既定)',
+  calloutStandardAsme: 'ASME Y14.6 (インチ)',
+  calloutStandardJis: 'JIS B 0205 (日本)',
+  calloutStandardDin: 'DIN 13 (ドイツ)',
+  calloutStandardGb: 'GB 196 (中国)',
+
+  bomColumnDesignation: '呼び',
+  bomColumnCount: '数量',
+  bomColumnTotalLength: '合計長さ (mm)',
+  bomColumnTapDrill: 'タップ下穴 Ø',
+  bomColumnClass: '等級',
+  bomColumnSeries: '系列',
+  bomBlockTitle: 'ねじ加工',
+
+  drawingRepFlagLabel: 'ISO 6410-1 簡略表記',
+  drawingRepFlagOn: 'オン',
+  drawingRepFlagOff: 'オフ',
+  drawingRepPhase3Hint: 'Phase 3 図面モジュールで有効化予定',
 };
 
 const ZH: ThreadsDict = {
@@ -276,6 +355,25 @@ const ZH: ThreadsDict = {
   hintPitch: '螺距',
   hintTapDrill: '攻丝底孔',
   hintViewportMagenta: '将在视口中以洋红色虚线圆显示。',
+
+  calloutStandardIso: 'ISO 6410-1 (默认)',
+  calloutStandardAsme: 'ASME Y14.6 (英制)',
+  calloutStandardJis: 'JIS B 0205 (日本)',
+  calloutStandardDin: 'DIN 13 (德国)',
+  calloutStandardGb: 'GB 196 (中国)',
+
+  bomColumnDesignation: '规格',
+  bomColumnCount: '数量',
+  bomColumnTotalLength: '总长 (mm)',
+  bomColumnTapDrill: '攻丝底孔 Ø',
+  bomColumnClass: '等级',
+  bomColumnSeries: '系列',
+  bomBlockTitle: '螺纹加工',
+
+  drawingRepFlagLabel: 'ISO 6410-1 简化表示',
+  drawingRepFlagOn: '开',
+  drawingRepFlagOff: '关',
+  drawingRepPhase3Hint: '将在 Phase 3 图纸模块中启用',
 };
 
 const ES: ThreadsDict = {
@@ -303,6 +401,23 @@ const ES: ThreadsDict = {
   modeCosmetic: 'Cosmética',
   modeGeometric: 'Geométrica',
   hintViewportMagenta: 'Se muestra como un círculo magenta a trazos en el visor.',
+
+  calloutStandardIso: 'ISO 6410-1 (predet.)',
+  calloutStandardAsme: 'ASME Y14.6 (pulgadas)',
+  calloutStandardJis: 'JIS B 0205 (Japón)',
+  calloutStandardDin: 'DIN 13 (Alemania)',
+  calloutStandardGb: 'GB 196 (China)',
+  bomColumnDesignation: 'Designación',
+  bomColumnCount: 'Cant.',
+  bomColumnTotalLength: 'Longitud total (mm)',
+  bomColumnTapDrill: 'Broca de tap Ø',
+  bomColumnClass: 'Clase',
+  bomColumnSeries: 'Serie',
+  bomBlockTitle: 'OPERACIONES DE ROSCA',
+  drawingRepFlagLabel: 'Representación ISO 6410-1',
+  drawingRepFlagOn: 'Sí',
+  drawingRepFlagOff: 'No',
+  drawingRepPhase3Hint: 'Se activa con el módulo de planos (Phase 3)',
 };
 
 const AR: ThreadsDict = {
@@ -329,6 +444,23 @@ const AR: ThreadsDict = {
   kindExternal: 'خارجي',
   modeCosmetic: 'تجميلي',
   modeGeometric: 'هندسي',
+
+  calloutStandardIso: 'ISO 6410-1 (افتراضي)',
+  calloutStandardAsme: 'ASME Y14.6 (بوصة)',
+  calloutStandardJis: 'JIS B 0205 (اليابان)',
+  calloutStandardDin: 'DIN 13 (ألمانيا)',
+  calloutStandardGb: 'GB 196 (الصين)',
+  bomColumnDesignation: 'الرمز',
+  bomColumnCount: 'الكمية',
+  bomColumnTotalLength: 'الطول الكلي (مم)',
+  bomColumnTapDrill: 'قطر الثقب Ø',
+  bomColumnClass: 'الفئة',
+  bomColumnSeries: 'السلسلة',
+  bomBlockTitle: 'عمليات اللولب',
+  drawingRepFlagLabel: 'تمثيل ISO 6410-1',
+  drawingRepFlagOn: 'مفعل',
+  drawingRepFlagOff: 'معطل',
+  drawingRepPhase3Hint: 'يفعل في وحدة الرسومات (المرحلة 3)',
 };
 
 const DICTS: Record<ThreadsLang, ThreadsDict> = {
