@@ -1,0 +1,62 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-hole-wizard-spec.md#section-2.3-countersink",
+  "fixtureId": "F-HW-02b-countersink",
+  "description": "F-HW-02b — countersink part fixture for /occt/op/hole/countersink wiring. Pure data: hole spec + termination + expected per-position metadata. Worker side is blocked in W3 (occt-worker task #31); this file pins the input/output shape for W4+ wiring.",
+  "createdBy": "wave-2 Phase 2 W3 (Track C3)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "plate",
+    "sizeMm": { "x": 60, "y": 8, "z": 60 },
+    "material": "AL6061"
+  },
+  "holeSpec": {
+    "series": "ISO",
+    "designation": "M6",
+    "fitClass": "normal"
+  },
+  "holeSpecDetail": {
+    "kind": "countersink",
+    "diameter": 6.6,
+    "coneDiameter": 13.44,
+    "coneAngle": 90,
+    "drillTipAngle": 118
+  },
+  "terminationKind": "through",
+  "terminationParams": { "kind": "through" },
+  "arrayKind": "circular",
+  "arrayParams": {
+    "centerX": 30,
+    "centerY": 30,
+    "radius": 18,
+    "count": 6,
+    "startAngle": 0
+  },
+  "expectedPositions": [
+    { "id": "F-HW-02b-countersink#circ-0", "x": 48.0,  "y": 30.0  },
+    { "id": "F-HW-02b-countersink#circ-1", "x": 39.0,  "y": 45.59 },
+    { "id": "F-HW-02b-countersink#circ-2", "x": 21.0,  "y": 45.59 },
+    { "id": "F-HW-02b-countersink#circ-3", "x": 12.0,  "y": 30.0  },
+    { "id": "F-HW-02b-countersink#circ-4", "x": 21.0,  "y": 14.41 },
+    { "id": "F-HW-02b-countersink#circ-5", "x": 39.0,  "y": 14.41 }
+  ],
+  "expectedWorkerCall": {
+    "endpoint": "POST /occt/op/hole/countersink",
+    "bodyShape": {
+      "baseShapeHandle": "<shape-handle>",
+      "kind": "countersink",
+      "positions": "[…6 entries from expectedPositions, mapped to {id,x,z}]",
+      "drillDiameter": 6.6,
+      "csDiameter": 13.44,
+      "csAngle": 90,
+      "drillTipAngle": 118,
+      "terminationMode": "throughAll"
+    }
+  },
+  "expectedResponseHoleCount": 6,
+  "notes": [
+    "Worker side (/occt/op/hole/countersink) is blocked in W3 — wire-up in W4 once occt-worker src/ exists.",
+    "ISO 10642 metric flat-head defaults to 90° cone angle (spec §2.3 + §3.1). ANSI/UTS variant of this fixture would use 82°.",
+    "coneDiameter > diameter invariant: 13.44 > 6.6 — passes CSK_SMALLER_THAN_BORE validator gate.",
+    "Funnel depth derives from coneDiameter / (2·tan(coneAngle/2)) = 13.44 / 2 = 6.72 mm; rendered cosmetically by holeSectionSvg.computeHoleSectionSvg in the wizard Preview tab."
+  ]
+}

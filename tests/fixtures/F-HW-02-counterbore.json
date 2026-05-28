@@ -1,0 +1,63 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-hole-wizard-spec.md#section-2.2-counterbore",
+  "fixtureId": "F-HW-02-counterbore",
+  "description": "F-HW-02 — counterbore part fixture for /occt/op/hole/counterbore wiring. Pure data: hole spec + termination + expected per-position metadata. Worker side is blocked in W3 (occt-worker task #31); this file pins the input/output shape for W4+ wiring.",
+  "createdBy": "wave-2 Phase 2 W3 (Track C3)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "plate",
+    "sizeMm": { "x": 80, "y": 12, "z": 80 },
+    "material": "AL6061"
+  },
+  "holeSpec": {
+    "series": "ISO",
+    "designation": "M6",
+    "fitClass": "normal"
+  },
+  "holeSpecDetail": {
+    "kind": "counterbore",
+    "diameter": 6.6,
+    "headDiameter": 11.0,
+    "headDepth": 6.5,
+    "drillTipAngle": 118
+  },
+  "terminationKind": "through",
+  "terminationParams": { "kind": "through" },
+  "arrayKind": "rect",
+  "arrayParams": {
+    "startX": 15,
+    "startY": 15,
+    "stepX": 50,
+    "stepY": 50,
+    "rows": 2,
+    "cols": 2
+  },
+  "expectedPositions": [
+    { "id": "F-HW-02-counterbore#rect-r0c0", "x": 15, "y": 15 },
+    { "id": "F-HW-02-counterbore#rect-r0c1", "x": 65, "y": 15 },
+    { "id": "F-HW-02-counterbore#rect-r1c0", "x": 15, "y": 65 },
+    { "id": "F-HW-02-counterbore#rect-r1c1", "x": 65, "y": 65 }
+  ],
+  "expectedWorkerCall": {
+    "endpoint": "POST /occt/op/hole/counterbore",
+    "bodyShape": {
+      "baseShapeHandle": "<shape-handle>",
+      "kind": "counterbore",
+      "positions": "[…4 entries from expectedPositions, mapped to {id,x,z}]",
+      "drillDiameter": 6.6,
+      "cboreDiameter": 11.0,
+      "cboreDepth": 6.5,
+      "drillTipAngle": 118,
+      "terminationMode": "throughAll",
+      "blindDepth": null,
+      "upToFaceRef": null
+    }
+  },
+  "expectedResponseHoleCount": 4,
+  "notes": [
+    "Worker side (/occt/op/hole/counterbore) is blocked in W3 — wire-up in W4 once occt-worker src/ exists.",
+    "The 11 mm head pocket × 6.5 mm depth defaults derive from ISO 4762 socket-cap-screw heights × 1.10 (spec §3.1 note).",
+    "headDiameter > diameter invariant: 11.0 > 6.6 — passes CBORE_SMALLER_THAN_BORE validator gate.",
+    "drillTipAngle is suppressed (180° flat) for through-all bores per spec §2.1 — the field is preserved so blind variants of the same fixture reuse the schema."
+  ]
+}

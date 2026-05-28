@@ -34,10 +34,18 @@ import {
   createFromSketchArrayDefaults,
   expandHoleArray,
   validateHoleArray,
+  resolveHoleSpec,
+  DEFAULT_DRILL_TIP_ANGLE,
+  type BlindBottomShape,
   type HoleArrayDefinition,
   type HoleArrayKind,
+  type HoleKind,
+  type HoleSpec,
   type HoleStandardRef,
+  type TerminationKind,
+  type TerminationParams,
 } from './holeArray';
+import { computeHoleSectionSvg, type SvgElement } from './holeSectionSvg';
 
 // ─── Public props ──────────────────────────────────────────────────────────
 
@@ -63,6 +71,8 @@ type Dict = {
   tabType: string;
   tabSize: string;
   tabPosition: string;
+  tabTermination: string;
+  tabPreview: string;
   kindDrilled: string;
   kindCbore: string;
   kindCsk: string;
@@ -97,6 +107,30 @@ type Dict = {
   fCols: string;
   fSketchId: string;
   fitClassLabel: string;
+  /** Termination tab labels. */
+  termBlind: string;
+  termThrough: string;
+  termUpToNext: string;
+  termUpToFace: string;
+  termDepth: string;
+  termBottomFlat: string;
+  termBottomConical: string;
+  termDrillTipAngle: string;
+  termFacePickerPlaceholder: string;
+  termFacePickerHint: string;
+  /** Preview tab labels. */
+  prevHeader: string;
+  prevDiameter: string;
+  prevHeadDiameter: string;
+  prevHeadDepth: string;
+  prevConeDiameter: string;
+  prevConeAngle: string;
+  prevPositions: string;
+  /** Sub-type fields (counterbore / countersink / tap). */
+  fHeadDiameter: string;
+  fHeadDepth: string;
+  fConeDiameter: string;
+  fConeAngle: string;
 };
 
 const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
@@ -105,6 +139,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     tabType: '유형',
     tabSize: '크기',
     tabPosition: '위치',
+    tabTermination: '종료',
+    tabPreview: '미리보기',
     kindDrilled: '드릴',
     kindCbore: '카운터보어',
     kindCsk: '카운터싱크',
@@ -138,12 +174,35 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fCols: '열',
     fSketchId: '스케치 ID',
     fitClassLabel: '핏 클래스',
+    termBlind: '막힘',
+    termThrough: '관통',
+    termUpToNext: '다음 면까지',
+    termUpToFace: '면 지정',
+    termDepth: '깊이 (mm)',
+    termBottomFlat: '평면 바닥',
+    termBottomConical: '원뿔 바닥',
+    termDrillTipAngle: '드릴팁 각도 (°)',
+    termFacePickerPlaceholder: '[작업자 준비 후 면 선택]',
+    termFacePickerHint: '워커 준비 시 활성화',
+    prevHeader: '단면 미리보기',
+    prevDiameter: '드릴 ⌀',
+    prevHeadDiameter: '카운터보어 ⌀',
+    prevHeadDepth: '카운터보어 깊이',
+    prevConeDiameter: '카운터싱크 ⌀',
+    prevConeAngle: '카운터싱크 각도',
+    prevPositions: '위치 수',
+    fHeadDiameter: '머리 ⌀',
+    fHeadDepth: '머리 깊이',
+    fConeDiameter: '원뿔 ⌀',
+    fConeAngle: '원뿔 각도 (°)',
   },
   en: {
     wizardTitle: 'Hole Wizard (V2)',
     tabType: 'Type',
     tabSize: 'Size',
     tabPosition: 'Position',
+    tabTermination: 'Termination',
+    tabPreview: 'Preview',
     kindDrilled: 'Drilled',
     kindCbore: 'Counterbore',
     kindCsk: 'Countersink',
@@ -177,12 +236,35 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fCols: 'Cols',
     fSketchId: 'Sketch ID',
     fitClassLabel: 'Fit class',
+    termBlind: 'Blind',
+    termThrough: 'Through all',
+    termUpToNext: 'Up to next',
+    termUpToFace: 'Up to face',
+    termDepth: 'Depth (mm)',
+    termBottomFlat: 'Flat bottom',
+    termBottomConical: 'Conical bottom',
+    termDrillTipAngle: 'Drill tip angle (°)',
+    termFacePickerPlaceholder: '[Pick face after Worker is ready]',
+    termFacePickerHint: 'Enabled once worker face-picker lands',
+    prevHeader: 'Cross-section preview',
+    prevDiameter: 'Drill ⌀',
+    prevHeadDiameter: 'Counterbore ⌀',
+    prevHeadDepth: 'Counterbore depth',
+    prevConeDiameter: 'Countersink ⌀',
+    prevConeAngle: 'Countersink angle',
+    prevPositions: 'Positions',
+    fHeadDiameter: 'Head ⌀',
+    fHeadDepth: 'Head depth',
+    fConeDiameter: 'Cone ⌀',
+    fConeAngle: 'Cone angle (°)',
   },
   ja: {
     wizardTitle: 'ホールウィザード (V2)',
     tabType: '種類',
     tabSize: 'サイズ',
     tabPosition: '位置',
+    tabTermination: '終端',
+    tabPreview: 'プレビュー',
     kindDrilled: 'ドリル',
     kindCbore: 'カウンターボア',
     kindCsk: 'カウンターシンク',
@@ -216,12 +298,35 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fCols: '列',
     fSketchId: 'スケッチ ID',
     fitClassLabel: 'フィット',
+    termBlind: '止まり',
+    termThrough: '貫通',
+    termUpToNext: '次の面まで',
+    termUpToFace: '面指定',
+    termDepth: '深さ (mm)',
+    termBottomFlat: '平面底',
+    termBottomConical: '円錐底',
+    termDrillTipAngle: 'ドリル先端角 (°)',
+    termFacePickerPlaceholder: '[ワーカー準備後に面を選択]',
+    termFacePickerHint: 'ワーカー対応後に有効化',
+    prevHeader: '断面プレビュー',
+    prevDiameter: 'ドリル ⌀',
+    prevHeadDiameter: 'カウンターボア ⌀',
+    prevHeadDepth: 'カウンターボア深さ',
+    prevConeDiameter: 'カウンターシンク ⌀',
+    prevConeAngle: 'カウンターシンク角度',
+    prevPositions: '位置数',
+    fHeadDiameter: 'ヘッド ⌀',
+    fHeadDepth: 'ヘッド深さ',
+    fConeDiameter: 'コーン ⌀',
+    fConeAngle: 'コーン角度 (°)',
   },
   zh: {
     wizardTitle: '孔向导 (V2)',
     tabType: '类型',
     tabSize: '尺寸',
     tabPosition: '位置',
+    tabTermination: '终止',
+    tabPreview: '预览',
     kindDrilled: '钻孔',
     kindCbore: '沉头扩孔',
     kindCsk: '沉头孔',
@@ -255,12 +360,35 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fCols: '列',
     fSketchId: '草图 ID',
     fitClassLabel: '配合等级',
+    termBlind: '盲孔',
+    termThrough: '通孔',
+    termUpToNext: '至下一面',
+    termUpToFace: '至指定面',
+    termDepth: '深度 (mm)',
+    termBottomFlat: '平底',
+    termBottomConical: '锥底',
+    termDrillTipAngle: '钻头角度 (°)',
+    termFacePickerPlaceholder: '[工作器就绪后选择面]',
+    termFacePickerHint: '工作器就绪后启用',
+    prevHeader: '截面预览',
+    prevDiameter: '钻孔 ⌀',
+    prevHeadDiameter: '沉头扩孔 ⌀',
+    prevHeadDepth: '沉头扩孔深度',
+    prevConeDiameter: '沉头孔 ⌀',
+    prevConeAngle: '沉头孔角度',
+    prevPositions: '位置数',
+    fHeadDiameter: '头部 ⌀',
+    fHeadDepth: '头部深度',
+    fConeDiameter: '锥面 ⌀',
+    fConeAngle: '锥面角度 (°)',
   },
   es: {
     wizardTitle: 'Asistente de Hole (V2)',
     tabType: 'Tipo',
     tabSize: 'Tamaño',
     tabPosition: 'Posición',
+    tabTermination: 'Terminación',
+    tabPreview: 'Vista previa',
     kindDrilled: 'Taladrado',
     kindCbore: 'Avellanado plano',
     kindCsk: 'Avellanado',
@@ -294,12 +422,35 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fCols: 'Columnas',
     fSketchId: 'ID de croquis',
     fitClassLabel: 'Clase de ajuste',
+    termBlind: 'Ciego',
+    termThrough: 'Pasante total',
+    termUpToNext: 'Hasta el próximo',
+    termUpToFace: 'Hasta cara',
+    termDepth: 'Profundidad (mm)',
+    termBottomFlat: 'Fondo plano',
+    termBottomConical: 'Fondo cónico',
+    termDrillTipAngle: 'Ángulo de punta (°)',
+    termFacePickerPlaceholder: '[Selecciona cara cuando Worker esté listo]',
+    termFacePickerHint: 'Activo cuando el selector de cara esté disponible',
+    prevHeader: 'Vista previa de sección',
+    prevDiameter: 'Taladro ⌀',
+    prevHeadDiameter: 'Avellanado ⌀',
+    prevHeadDepth: 'Profundidad avellanado',
+    prevConeDiameter: 'Avellanado cónico ⌀',
+    prevConeAngle: 'Ángulo avellanado',
+    prevPositions: 'Posiciones',
+    fHeadDiameter: 'Cabeza ⌀',
+    fHeadDepth: 'Profundidad cabeza',
+    fConeDiameter: 'Cono ⌀',
+    fConeAngle: 'Ángulo del cono (°)',
   },
   ar: {
     wizardTitle: 'معالج الفتحات (V2)',
     tabType: 'النوع',
     tabSize: 'الحجم',
     tabPosition: 'الموضع',
+    tabTermination: 'الإنهاء',
+    tabPreview: 'معاينة',
     kindDrilled: 'مثقوب',
     kindCbore: 'تجويف عميق',
     kindCsk: 'تجويف مخروطي',
@@ -333,17 +484,38 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     fCols: 'أعمدة',
     fSketchId: 'معرف الرسم',
     fitClassLabel: 'فئة التطابق',
+    termBlind: 'معتم',
+    termThrough: 'نافذ كامل',
+    termUpToNext: 'حتى السطح التالي',
+    termUpToFace: 'حتى وجه محدد',
+    termDepth: 'العمق (mm)',
+    termBottomFlat: 'قاع مستوٍ',
+    termBottomConical: 'قاع مخروطي',
+    termDrillTipAngle: 'زاوية رأس المثقاب (°)',
+    termFacePickerPlaceholder: '[اختر الوجه بعد تجهيز العامل]',
+    termFacePickerHint: 'يُفعل عند جاهزية مُنتقي الأوجه',
+    prevHeader: 'معاينة المقطع',
+    prevDiameter: 'قطر المثقاب',
+    prevHeadDiameter: 'قطر التجويف العميق',
+    prevHeadDepth: 'عمق التجويف العميق',
+    prevConeDiameter: 'قطر التجويف المخروطي',
+    prevConeAngle: 'زاوية التجويف المخروطي',
+    prevPositions: 'عدد المواضع',
+    fHeadDiameter: 'قطر الرأس',
+    fHeadDepth: 'عمق الرأس',
+    fConeDiameter: 'قطر المخروط',
+    fConeAngle: 'زاوية المخروط (°)',
   },
 };
 
 // ─── Tabs & sub-type catalogs ──────────────────────────────────────────────
 
-type WizardTab = 'type' | 'size' | 'position';
+type WizardTab = 'type' | 'size' | 'position' | 'termination' | 'preview';
 
 /**
- * The 6 first-class hole types from spec §2. Wave 2 W2 only exposes the
- * picker; the actual cbore/csk/cdrill/tap/pipeTap geometry lands in W3/W4.
- * `drilled` is the only one that round-trips to a worker call this week.
+ * The 6 first-class hole types from spec §2. The wizard's UI label uses
+ * camelCase / friendly names but the data-model `HoleKind` uses snake_case
+ * for `pipe_tap`. The `WIZARD_TO_HOLEKIND` table maps between them.
  */
 type WizardHoleType = 'drilled' | 'counterbore' | 'countersink' | 'counterdrill' | 'tap' | 'pipeTap';
 
@@ -354,6 +526,22 @@ const WIZARD_HOLE_TYPES: ReadonlyArray<WizardHoleType> = [
   'counterdrill',
   'tap',
   'pipeTap',
+];
+
+const WIZARD_TO_HOLEKIND: Record<WizardHoleType, HoleKind> = {
+  drilled: 'drilled',
+  counterbore: 'counterbore',
+  countersink: 'countersink',
+  counterdrill: 'counterdrill',
+  tap: 'tap',
+  pipeTap: 'pipe_tap',
+};
+
+const TERMINATION_KINDS: ReadonlyArray<TerminationKind> = [
+  'blind',
+  'through',
+  'upToNext',
+  'upToFace',
 ];
 
 const POSITION_KINDS: ReadonlyArray<HoleArrayKind> = [
@@ -464,9 +652,63 @@ export default function HoleWizardModalV2({
     setArrayDef(seeded);
   }
 
+  // ── Termination tab state. ───────────────────────────────────────────────
+  // We hold the termination + params separately from arrayDef so flipping
+  // tabs doesn't reseed when the user comes back. The full HoleArrayDefinition
+  // delivered to onApply merges these via the `effectiveDef` memo below.
+  const [terminationKind, setTerminationKind] = useState<TerminationKind>('through');
+  const [blindDepth, setBlindDepth] = useState<number>(10);
+  const [blindBottomShape, setBlindBottomShape] = useState<BlindBottomShape>('conical');
+  const [drillTipAngle, setDrillTipAngle] = useState<number>(DEFAULT_DRILL_TIP_ANGLE);
+
+  // Derived HoleSpec from current Type + Size selection. Resolves from the
+  // catalog row whenever Type / Size / Fit changes. Pure derivation — no extra
+  // state to keep in sync.
+  const resolvedHoleSpec: HoleSpec = useMemo(() => {
+    return resolveHoleSpec(
+      WIZARD_TO_HOLEKIND[holeType],
+      currentHoleSpec,
+      selectedRow as Parameters<typeof resolveHoleSpec>[2],
+    );
+  }, [holeType, selectedRow, currentHoleSpec]);
+
+  // Build the termination-params bag from the four-piece termination state.
+  const terminationParams: TerminationParams = useMemo(() => {
+    switch (terminationKind) {
+      case 'blind':
+        return {
+          kind: 'blind',
+          depth: blindDepth,
+          bottomShape: blindBottomShape,
+          drillTipAngle,
+        };
+      case 'through':
+        return { kind: 'through' };
+      case 'upToNext':
+        return { kind: 'upToNext' };
+      case 'upToFace':
+        // UI-only path: no face picker yet (worker blocked). We keep faceId
+        // empty and rely on the validator to flag UPTOFACE_FACE_MISSING. The
+        // Apply button stays disabled until the user picks blind / through /
+        // upToNext or a future face-picker fills the id.
+        return { kind: 'upToFace', faceId: '' };
+    }
+  }, [terminationKind, blindDepth, blindBottomShape, drillTipAngle]);
+
+  // The "effective" def merges the current Size + Type + Termination selections
+  // back into the position-tab def for validation + preview. arrayDef itself
+  // only changes on Position-tab edits.
+  const effectiveDef: HoleArrayDefinition = useMemo(() => ({
+    ...arrayDef,
+    holeSpec: currentHoleSpec,
+    holeSpecDetail: resolvedHoleSpec,
+    terminationKind,
+    terminationParams,
+  }), [arrayDef, currentHoleSpec, resolvedHoleSpec, terminationKind, terminationParams]);
+
   // Live count of resolved positions — drives the "(N positions)" footer.
-  const positions = useMemo(() => expandHoleArray(arrayDef), [arrayDef]);
-  const validation = useMemo(() => validateHoleArray(arrayDef), [arrayDef]);
+  const positions = useMemo(() => expandHoleArray(effectiveDef), [effectiveDef]);
+  const validation = useMemo(() => validateHoleArray(effectiveDef), [effectiveDef]);
 
   if (!open) return null;
 
@@ -483,9 +725,9 @@ export default function HoleWizardModalV2({
 
   const handleApply = () => {
     if (!validation.ok) return;
-    // Stamp the current Size selection onto the array def before handing
-    // it off — Position-tab edits don't touch holeSpec, so we set it here.
-    onApply({ ...arrayDef, holeSpec: currentHoleSpec });
+    // Hand off the effective definition (size + termination + position) — the
+    // memoized merge already carries the resolved HoleSpec + TerminationParams.
+    onApply(effectiveDef);
     onClose();
   };
 
@@ -614,6 +856,24 @@ export default function HoleWizardModalV2({
             style={tabBtnStyle(activeTab === 'position')}
           >
             {t.tabPosition}
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'termination'}
+            data-testid="hole-wizard-v2-tab-termination"
+            onClick={() => setActiveTab('termination')}
+            style={tabBtnStyle(activeTab === 'termination')}
+          >
+            {t.tabTermination}
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'preview'}
+            data-testid="hole-wizard-v2-tab-preview"
+            onClick={() => setActiveTab('preview')}
+            style={tabBtnStyle(activeTab === 'preview')}
+          >
+            {t.tabPreview}
           </button>
         </div>
 
@@ -768,6 +1028,170 @@ export default function HoleWizardModalV2({
               onChange={setArrayDef}
               labels={t}
               inputStyle={inputStyle}
+            />
+          </div>
+        )}
+
+        {/* ── Tab: Termination ──────────────────────────────────────────── */}
+        {activeTab === 'termination' && (
+          <div data-testid="hole-wizard-v2-panel-termination">
+            {/* Mode picker — 4 tile buttons matching the 4 TerminationKind values. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
+              {TERMINATION_KINDS.map((tk) => {
+                const label =
+                  tk === 'blind' ? t.termBlind
+                  : tk === 'through' ? t.termThrough
+                  : tk === 'upToNext' ? t.termUpToNext
+                  : t.termUpToFace;
+                return (
+                  <button
+                    key={tk}
+                    data-testid={`hole-wizard-v2-termination-${tk}`}
+                    onClick={() => setTerminationKind(tk)}
+                    style={tileBtnStyle(terminationKind === tk)}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Blind sub-panel — depth + bottom shape + tip angle. */}
+            {terminationKind === 'blind' && (
+              <div
+                data-testid="hole-wizard-v2-termination-blind-detail"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}
+              >
+                <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+                  {t.termDepth}
+                  <input
+                    type="number"
+                    data-testid="hole-wizard-v2-termination-depth"
+                    min={0}
+                    step={0.5}
+                    value={blindDepth}
+                    onChange={(e) => setBlindDepth(Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </label>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+                  {t.termBottomFlat} / {t.termBottomConical}
+                  <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                    {(['flat', 'conical'] as const).map((shape) => (
+                      <button
+                        key={shape}
+                        data-testid={`hole-wizard-v2-termination-bottom-${shape}`}
+                        onClick={() => setBlindBottomShape(shape)}
+                        style={{
+                          flex: 1,
+                          padding: '6px 8px',
+                          background: blindBottomShape === shape ? '#0ea5e9' : 'var(--nx-border-strong)',
+                          color: 'var(--nx-panel-2)',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                        }}
+                      >
+                        {shape === 'flat' ? t.termBottomFlat : t.termBottomConical}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {blindBottomShape === 'conical' && (
+                  <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+                    {t.termDrillTipAngle}
+                    <select
+                      data-testid="hole-wizard-v2-termination-tipangle"
+                      value={drillTipAngle}
+                      onChange={(e) => setDrillTipAngle(Number(e.target.value))}
+                      style={inputStyle}
+                    >
+                      <option value={60}>60°</option>
+                      <option value={118}>118° (std)</option>
+                      <option value={135}>135° (hard)</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+
+            {/* Through — no params, just an explanatory tag. */}
+            {terminationKind === 'through' && (
+              <div
+                data-testid="hole-wizard-v2-termination-through-detail"
+                style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: 8 }}
+              >
+                {t.termThrough}: ⌀{resolvedHoleSpec.diameter} {/* passes entire body */}
+              </div>
+            )}
+
+            {/* Up-to-next — disabled placeholder until worker face-picker lands. */}
+            {terminationKind === 'upToNext' && (
+              <div
+                data-testid="hole-wizard-v2-termination-upToNext-detail"
+                style={{ padding: 8 }}
+              >
+                <button
+                  data-testid="hole-wizard-v2-termination-upToNext-picker"
+                  disabled
+                  style={{
+                    padding: '8px 12px',
+                    background: 'var(--nx-border-strong)',
+                    color: 'var(--nx-text-2)',
+                    border: '1px dashed #4b5563',
+                    borderRadius: 6,
+                    cursor: 'not-allowed',
+                    fontSize: 12,
+                    opacity: 0.6,
+                  }}
+                >
+                  {t.termFacePickerPlaceholder}
+                </button>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 6 }}>
+                  {t.termFacePickerHint}
+                </div>
+              </div>
+            )}
+
+            {/* Up-to-face — disabled placeholder; same shape as upToNext. */}
+            {terminationKind === 'upToFace' && (
+              <div
+                data-testid="hole-wizard-v2-termination-upToFace-detail"
+                style={{ padding: 8 }}
+              >
+                <button
+                  data-testid="hole-wizard-v2-termination-upToFace-picker"
+                  disabled
+                  style={{
+                    padding: '8px 12px',
+                    background: 'var(--nx-border-strong)',
+                    color: 'var(--nx-text-2)',
+                    border: '1px dashed #4b5563',
+                    borderRadius: 6,
+                    cursor: 'not-allowed',
+                    fontSize: 12,
+                    opacity: 0.6,
+                  }}
+                >
+                  {t.termFacePickerPlaceholder}
+                </button>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 6 }}>
+                  {t.termFacePickerHint}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Preview ──────────────────────────────────────────────── */}
+        {activeTab === 'preview' && (
+          <div data-testid="hole-wizard-v2-panel-preview">
+            <PreviewPanel
+              spec={resolvedHoleSpec}
+              term={terminationParams}
+              positionCount={positions.length}
+              labels={t}
             />
           </div>
         )}
@@ -1037,4 +1461,161 @@ function PositionKindEditor({ def, onChange, labels, inputStyle }: PositionKindE
 
   // Exhaustive fallback — should be unreachable.
   return null;
+}
+
+// ─── Preview panel (Tab 5) ─────────────────────────────────────────────────
+
+interface PreviewPanelProps {
+  spec: HoleSpec;
+  term: TerminationParams;
+  positionCount: number;
+  labels: Dict;
+}
+
+/**
+ * Tab 5 — resolved-dimensions summary + 2D SVG cross-section. The SVG itself
+ * is built by `computeHoleSectionSvg` (pure function); this component just
+ * maps the primitive list onto SVG nodes.
+ *
+ * The summary block lists Drill ⌀, Counterbore ⌀×depth (if applicable),
+ * Countersink ⌀ + angle (if applicable), Termination, and Position count —
+ * matching the layout in spec §6.1.5.
+ */
+function PreviewPanel({ spec, term, positionCount, labels }: PreviewPanelProps) {
+  const svg = useMemo(() => computeHoleSectionSvg(spec, term), [spec, term]);
+
+  const summaryRows: Array<{ label: string; value: string }> = [
+    { label: labels.prevDiameter, value: `Ø${spec.diameter} mm` },
+  ];
+  if (spec.kind === 'counterbore' || spec.kind === 'counterdrill') {
+    summaryRows.push({
+      label: labels.prevHeadDiameter,
+      value: `Ø${spec.headDiameter} mm`,
+    });
+    summaryRows.push({
+      label: labels.prevHeadDepth,
+      value: `${spec.headDepth} mm`,
+    });
+  }
+  if (spec.kind === 'countersink') {
+    summaryRows.push({
+      label: labels.prevConeDiameter,
+      value: `Ø${spec.coneDiameter} mm`,
+    });
+    summaryRows.push({
+      label: labels.prevConeAngle,
+      value: `${spec.coneAngle}°`,
+    });
+  }
+  summaryRows.push({
+    label: labels.tabTermination,
+    value:
+      term.kind === 'blind'
+        ? `${labels.termBlind} ${term.depth} mm`
+        : term.kind === 'through'
+          ? labels.termThrough
+          : term.kind === 'upToNext'
+            ? labels.termUpToNext
+            : labels.termUpToFace,
+  });
+  summaryRows.push({
+    label: labels.prevPositions,
+    value: String(positionCount),
+  });
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      {/* Summary table */}
+      <div data-testid="hole-wizard-v2-preview-summary">
+        <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 6 }}>
+          {labels.prevHeader}
+        </div>
+        <div
+          style={{
+            background: 'var(--nx-bg)',
+            border: '1px solid #374151',
+            borderRadius: 6,
+            padding: 10,
+            fontFamily: 'monospace',
+            fontSize: 12,
+            color: '#d1d5db',
+          }}
+        >
+          {summaryRows.map((row) => (
+            <div
+              key={row.label}
+              style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}
+            >
+              <span>{row.label}</span>
+              <b>{row.value}</b>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SVG cross-section */}
+      <div data-testid="hole-wizard-v2-preview-svg-container">
+        <svg
+          data-testid="hole-wizard-v2-preview-svg"
+          width={svg.layout.width}
+          height={svg.layout.height}
+          viewBox={`0 0 ${svg.layout.width} ${svg.layout.height}`}
+          style={{
+            background: 'var(--nx-bg)',
+            border: '1px solid #374151',
+            borderRadius: 6,
+          }}
+        >
+          {svg.elements.map((el, i) => renderSvgEl(el, i))}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/** Map a single primitive onto its SVG node. Pure render helper. */
+function renderSvgEl(el: SvgElement, key: number): React.ReactNode {
+  if (el.kind === 'line') {
+    const isCenterline = el.className === 'centerline';
+    const isDim = el.className === 'dim';
+    const stroke = isCenterline ? '#6b7280' : isDim ? '#9ca3af' : el.className === 'part-edge' ? '#94a3b8' : '#22d3ee';
+    return (
+      <line
+        key={key}
+        x1={el.x1}
+        y1={el.y1}
+        x2={el.x2}
+        y2={el.y2}
+        stroke={stroke}
+        strokeWidth={isCenterline ? 0.75 : 1.25}
+        strokeDasharray={isCenterline ? '3 2' : undefined}
+      />
+    );
+  }
+  if (el.kind === 'polyline') {
+    const pts = el.points.map((p) => `${p.x},${p.y}`).join(' ');
+    return (
+      <polyline
+        key={key}
+        points={pts}
+        fill="none"
+        stroke="#22d3ee"
+        strokeWidth={1.25}
+      />
+    );
+  }
+  // label
+  return (
+    <text
+      key={key}
+      x={el.x}
+      y={el.y}
+      textAnchor={el.anchor}
+      fontSize={10}
+      fill={el.className === 'dim' ? '#cbd5e1' : '#e5e7eb'}
+      fontFamily="monospace"
+    >
+      {el.text}
+    </text>
+  );
 }
