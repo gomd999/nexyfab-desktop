@@ -1,0 +1,140 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-hole-wizard-spec.md#section-9.5-F-HW-AGG-01-burn-in",
+  "fixtureId": "F-HW-AGG-01-burn-in",
+  "description": "GA-gate aggregate burn-in. 50 holes across 5 arrays (one per pattern kind: linear, linear2D, circular, rect, fromSketch) with mixed terminations. Loads, expands all positions, projects holeMeta + aggregates BOM, renders the wizard, all under the 3.0 s wall-clock budget per spec §9.5.",
+  "createdBy": "wave-2 Phase 2 W6 (Track C6)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "plate",
+    "sizeMm": { "x": 500, "y": 20, "z": 500 },
+    "material": "AL6061"
+  },
+  "budgetMs": 3000,
+  "arrays": [
+    {
+      "id": "agg-linear-m3",
+      "description": "10 × M3 linear row (counterbore, blind)",
+      "kind": "linear",
+      "params": {
+        "kind": "linear",
+        "data": { "startX": 30, "startY": 30, "dx": 40, "dy": 0, "count": 10 }
+      },
+      "holeSpec": { "series": "ISO", "designation": "M3", "fitClass": "normal" },
+      "holeSpecDetail": {
+        "kind": "counterbore",
+        "diameter": 3.4,
+        "headDiameter": 6.5,
+        "headDepth": 3.3,
+        "drillTipAngle": 118
+      },
+      "terminationKind": "blind",
+      "terminationParams": { "kind": "blind", "depth": 15, "bottomShape": "conical", "drillTipAngle": 118 }
+    },
+    {
+      "id": "agg-linear2D-m4",
+      "description": "12 × M4 in a 3×4 tilted 2D grid (drilled through)",
+      "kind": "linear2D",
+      "params": {
+        "kind": "linear2D",
+        "data": {
+          "startX": 50,
+          "startY": 80,
+          "dxRow": 0,
+          "dyRow": 50,
+          "dxCol": 40,
+          "dyCol": 0,
+          "rows": 3,
+          "cols": 4
+        }
+      },
+      "holeSpec": { "series": "ISO", "designation": "M4", "fitClass": "normal" },
+      "holeSpecDetail": {
+        "kind": "drilled",
+        "diameter": 4.5,
+        "drillTipAngle": 118
+      },
+      "terminationKind": "through",
+      "terminationParams": { "kind": "through" }
+    },
+    {
+      "id": "agg-circular-m5",
+      "description": "8 × M5 tap on a 60-mm bolt circle (blind, with tap-depth)",
+      "kind": "circular",
+      "params": {
+        "kind": "circular",
+        "data": { "centerX": 250, "centerY": 250, "radius": 60, "count": 8, "startAngle": 0 }
+      },
+      "holeSpec": { "series": "ISO", "designation": "M5", "fitClass": "normal" },
+      "holeSpecDetail": {
+        "kind": "tap",
+        "diameter": 4.2,
+        "pitch": 0.8,
+        "tapClass": "6H",
+        "tapDepth": 10,
+        "drillTipAngle": 118
+      },
+      "terminationKind": "blind",
+      "terminationParams": { "kind": "blind", "depth": 15, "bottomShape": "conical", "drillTipAngle": 118 }
+    },
+    {
+      "id": "agg-rect-m6",
+      "description": "16 × M6 countersink in a 4×4 rectangular grid",
+      "kind": "rect",
+      "params": {
+        "kind": "rect",
+        "data": { "startX": 350, "startY": 50, "stepX": 30, "stepY": 30, "rows": 4, "cols": 4 }
+      },
+      "holeSpec": { "series": "ISO", "designation": "M6", "fitClass": "normal" },
+      "holeSpecDetail": {
+        "kind": "countersink",
+        "diameter": 6.6,
+        "coneDiameter": 13.4,
+        "coneAngle": 90,
+        "drillTipAngle": 118
+      },
+      "terminationKind": "through",
+      "terminationParams": { "kind": "through" }
+    },
+    {
+      "id": "agg-fromSketch-npt",
+      "description": "4 × 1/4 NPT pipe-tap driven from a 4-point sketch",
+      "kind": "fromSketch",
+      "params": {
+        "kind": "fromSketch",
+        "data": { "sketchFeatureId": "sketch-agg-01" }
+      },
+      "holeSpec": { "series": "NPT", "designation": "1/4-18" },
+      "holeSpecDetail": {
+        "kind": "pipe_tap",
+        "diameter": 11.43,
+        "pipeStandard": "NPT",
+        "pipeSizeKey": "1/4-18",
+        "engagementDepth": 12,
+        "pipeTapClass": "NPT",
+        "taperAngle": 1.7833
+      },
+      "terminationKind": "blind",
+      "terminationParams": { "kind": "blind", "depth": 18, "bottomShape": "conical", "drillTipAngle": 118 }
+    }
+  ],
+  "sketches": {
+    "sketch-agg-01": [
+      { "id": "agg-sk-1", "x": 100, "y": 400 },
+      { "id": "agg-sk-2", "x": 150, "y": 400 },
+      { "id": "agg-sk-3", "x": 100, "y": 450 },
+      { "id": "agg-sk-4", "x": 150, "y": 450 }
+    ]
+  },
+  "expected": {
+    "totalPositions": 50,
+    "arrayCount": 5,
+    "kindCount": 5,
+    "bomRowCount": 5,
+    "notes": [
+      "50 = 10 (linear) + 12 (linear2D 3×4) + 8 (circular) + 16 (rect 4×4) + 4 (fromSketch).",
+      "5 distinct (kind, designation, callout) tuples → 5 BOM rows.",
+      "All 5 hole sub-kinds represented (drilled, counterbore, countersink, tap, pipe_tap).",
+      "Wall-clock budget 3000 ms per spec §9.5 — covers parse + expand + project + aggregate."
+    ]
+  }
+}

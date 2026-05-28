@@ -86,8 +86,20 @@ interface Props {
   /**
    * When `true`, bypass the search-param flag check. Test escape hatch
    * (the next/navigation mock in tests can't easily set query params).
+   *
+   * W6 flag-flip note: V2 is now the **default** path. The escape hatch
+   * is unchanged — `forceFlagOpen={true}` still forces V2 on regardless
+   * of search params, which is the test-side ergonomic behaviour callers
+   * have already adopted. The flag-off render path is now only triggered
+   * by an explicit `?hole-wizard=v1` rollback URL.
    */
   forceFlagOpen?: boolean;
+  /**
+   * Inverse of `forceFlagOpen` — when `true`, force the V1 rollback path
+   * regardless of search params. Used by integration tests that need to
+   * exercise the V1 fallback after the W6 default flip.
+   */
+  forceFlagV1?: boolean;
   /**
    * Sketches the user can pick in the `fromSketch` position mode (W4 — C4).
    * When undefined or empty, the fromSketch tile is still selectable but the
@@ -218,6 +230,16 @@ type Dict = {
   csvBboxLine: (w: number, h: number) => string;
   csvDelimiterLine: (d: string) => string;
   csvTooManyPoints: (cap: number) => string;
+  /** W6 — DFM flag chip labels (rendered next to the validation warning). */
+  dfmTapBottomRisk: string;
+  dfmSmallDrillLargeDepth: string;
+  dfmCloseHoleSpacing: string;
+  dfmTapShallowEngagement: string;
+  dfmPipeTapClassTaperMismatch: string;
+  dfmCboreDeeperThanHole: string;
+  /** W6 — BOM aggregate panel. */
+  bomTitle: string;
+  bomTotalRow: (n: number) => string;
 };
 
 const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
@@ -245,7 +267,7 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     nPositions: (n: number) => `${n}개 위치`,
     addHoles: '구멍 추가',
     cancel: '취소',
-    flagOff: 'V2 마법사 비활성화 — ?hole-wizard=v2 플래그를 켜십시오',
+    flagOff: 'V1 롤백 경로 활성 — ?hole-wizard=v1 을 제거하면 V2로 복귀합니다',
     fStartX: '시작 X',
     fStartY: '시작 Y',
     fDx: 'dX',
@@ -329,6 +351,14 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     csvBboxLine: (w: number, h: number) => `범위 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
     csvDelimiterLine: (d: string) => `구분자: ${d === '\t' ? 'TAB' : d}`,
     csvTooManyPoints: (cap: number) => `최대 ${cap}개를 초과한 행은 무시됨`,
+    dfmTapBottomRisk: '⚠ 탭 바닥 위험',
+    dfmSmallDrillLargeDepth: '⚠ 작은 드릴 / 큰 깊이',
+    dfmCloseHoleSpacing: '⚠ 구멍 간격 좁음',
+    dfmTapShallowEngagement: '⚠ 탭 체결 깊이 부족',
+    dfmPipeTapClassTaperMismatch: '⚠ 파이프 탭 클래스 / 테이퍼 불일치',
+    dfmCboreDeeperThanHole: '⚠ 카운터보어가 구멍보다 깊음',
+    bomTitle: 'BOM 요약',
+    bomTotalRow: (n: number) => `총 ${n}개 구멍`,
   },
   en: {
     wizardTitle: 'Hole Wizard (V2)',
@@ -354,7 +384,7 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     nPositions: (n: number) => `${n} position${n === 1 ? '' : 's'}`,
     addHoles: 'Add Holes',
     cancel: 'Cancel',
-    flagOff: 'V2 wizard disabled — enable with ?hole-wizard=v2',
+    flagOff: 'V1 rollback path active — remove ?hole-wizard=v1 to return to V2',
     fStartX: 'Start X',
     fStartY: 'Start Y',
     fDx: 'dX',
@@ -438,6 +468,14 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     csvBboxLine: (w: number, h: number) => `bbox ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
     csvDelimiterLine: (d: string) => `delimiter: ${d === '\t' ? 'TAB' : d}`,
     csvTooManyPoints: (cap: number) => `Rows past ${cap} ignored`,
+    dfmTapBottomRisk: '⚠ Tap-bottom risk',
+    dfmSmallDrillLargeDepth: '⚠ Small drill at large depth',
+    dfmCloseHoleSpacing: '⚠ Hole spacing too close',
+    dfmTapShallowEngagement: '⚠ Shallow tap engagement',
+    dfmPipeTapClassTaperMismatch: '⚠ Pipe-tap class / taper mismatch',
+    dfmCboreDeeperThanHole: '⚠ Counterbore deeper than hole',
+    bomTitle: 'BOM summary',
+    bomTotalRow: (n: number) => `${n} ${n === 1 ? 'hole' : 'holes'} total`,
   },
   ja: {
     wizardTitle: 'ホールウィザード (V2)',
@@ -463,7 +501,7 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     nPositions: (n: number) => `${n} 位置`,
     addHoles: 'ホールを追加',
     cancel: 'キャンセル',
-    flagOff: 'V2 ウィザードは無効 — ?hole-wizard=v2 で有効化',
+    flagOff: 'V1 ロールバック中 — ?hole-wizard=v1 を外すと V2 に戻ります',
     fStartX: '開始 X',
     fStartY: '開始 Y',
     fDx: 'dX',
@@ -547,6 +585,14 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     csvBboxLine: (w: number, h: number) => `範囲 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
     csvDelimiterLine: (d: string) => `区切り: ${d === '\t' ? 'TAB' : d}`,
     csvTooManyPoints: (cap: number) => `${cap} 行を超える行は無視`,
+    dfmTapBottomRisk: '⚠ タップ底リスク',
+    dfmSmallDrillLargeDepth: '⚠ 小径ドリル × 深穴',
+    dfmCloseHoleSpacing: '⚠ 穴間隔が近すぎ',
+    dfmTapShallowEngagement: '⚠ タップ係合深さ不足',
+    dfmPipeTapClassTaperMismatch: '⚠ パイプタップクラス/テーパー不一致',
+    dfmCboreDeeperThanHole: '⚠ カウンターボアが穴より深い',
+    bomTitle: 'BOM 要約',
+    bomTotalRow: (n: number) => `合計 ${n} 穴`,
   },
   zh: {
     wizardTitle: '孔向导 (V2)',
@@ -572,7 +618,7 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     nPositions: (n: number) => `${n} 个位置`,
     addHoles: '添加孔',
     cancel: '取消',
-    flagOff: 'V2 向导已禁用 — 使用 ?hole-wizard=v2 启用',
+    flagOff: 'V1 回退路径已启用 — 移除 ?hole-wizard=v1 即可恢复 V2',
     fStartX: '起点 X',
     fStartY: '起点 Y',
     fDx: 'dX',
@@ -656,6 +702,14 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     csvBboxLine: (w: number, h: number) => `范围 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
     csvDelimiterLine: (d: string) => `分隔符: ${d === '\t' ? 'TAB' : d}`,
     csvTooManyPoints: (cap: number) => `超过 ${cap} 行被忽略`,
+    dfmTapBottomRisk: '⚠ 攻丝底部风险',
+    dfmSmallDrillLargeDepth: '⚠ 小钻头 × 深孔',
+    dfmCloseHoleSpacing: '⚠ 孔间距过近',
+    dfmTapShallowEngagement: '⚠ 攻丝啮合不足',
+    dfmPipeTapClassTaperMismatch: '⚠ 管螺纹等级/锥度不匹配',
+    dfmCboreDeeperThanHole: '⚠ 沉头扩孔深于钻孔',
+    bomTitle: 'BOM 摘要',
+    bomTotalRow: (n: number) => `共 ${n} 个孔`,
   },
   es: {
     wizardTitle: 'Asistente de Hole (V2)',
@@ -681,7 +735,7 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     nPositions: (n: number) => `${n} ${n === 1 ? 'posición' : 'posiciones'}`,
     addHoles: 'Añadir Holes',
     cancel: 'Cancelar',
-    flagOff: 'Asistente V2 desactivado — activa con ?hole-wizard=v2',
+    flagOff: 'Ruta V1 (rollback) activa — quita ?hole-wizard=v1 para volver a V2',
     fStartX: 'X inicial',
     fStartY: 'Y inicial',
     fDx: 'dX',
@@ -765,6 +819,14 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     csvBboxLine: (w: number, h: number) => `bbox ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
     csvDelimiterLine: (d: string) => `delimitador: ${d === '\t' ? 'TAB' : d}`,
     csvTooManyPoints: (cap: number) => `Filas después de ${cap} ignoradas`,
+    dfmTapBottomRisk: '⚠ Riesgo de fondo de rosca',
+    dfmSmallDrillLargeDepth: '⚠ Broca pequeña / profundidad excesiva',
+    dfmCloseHoleSpacing: '⚠ Holes demasiado cercanos',
+    dfmTapShallowEngagement: '⚠ Engrane de rosca insuficiente',
+    dfmPipeTapClassTaperMismatch: '⚠ Clase de rosca de tubo / cono no coinciden',
+    dfmCboreDeeperThanHole: '⚠ Avellanado más profundo que el hole',
+    bomTitle: 'Resumen BOM',
+    bomTotalRow: (n: number) => `${n} ${n === 1 ? 'hole' : 'holes'} en total`,
   },
   ar: {
     wizardTitle: 'معالج الفتحات (V2)',
@@ -790,7 +852,7 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     nPositions: (n: number) => `${n} مواضع`,
     addHoles: 'إضافة فتحات',
     cancel: 'إلغاء',
-    flagOff: 'معالج V2 معطل — فعّل عبر ?hole-wizard=v2',
+    flagOff: 'مسار التراجع V1 نشط — أزل ?hole-wizard=v1 للعودة إلى V2',
     fStartX: 'بداية X',
     fStartY: 'بداية Y',
     fDx: 'dX',
@@ -874,6 +936,14 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     csvBboxLine: (w: number, h: number) => `النطاق ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
     csvDelimiterLine: (d: string) => `المحدّد: ${d === '\t' ? 'TAB' : d}`,
     csvTooManyPoints: (cap: number) => `تم تجاهل الصفوف بعد ${cap}`,
+    dfmTapBottomRisk: '⚠ خطر قاع الحلزون',
+    dfmSmallDrillLargeDepth: '⚠ مثقاب صغير مع عمق كبير',
+    dfmCloseHoleSpacing: '⚠ تباعد الفتحات قريب جدًا',
+    dfmTapShallowEngagement: '⚠ تشابك حلزون غير كافٍ',
+    dfmPipeTapClassTaperMismatch: '⚠ عدم توافق فئة حلزون الأنبوب مع الميل',
+    dfmCboreDeeperThanHole: '⚠ التجويف العميق أعمق من الفتحة',
+    bomTitle: 'ملخص قائمة المواد (BOM)',
+    bomTotalRow: (n: number) => `إجمالي ${n} فتحات`,
   },
 };
 
@@ -938,21 +1008,48 @@ function pickLang(raw: string | undefined): keyof typeof DICT {
   return map[raw ?? 'en'] ?? 'en';
 }
 
+/** W6 — flag the RTL family (only AR for now). Modal sets `dir="rtl"` so
+ *  layout reverses naturally — the tabs reorder, footer buttons align
+ *  on the opposite edge, and labels flip without per-component overrides. */
+function isRtlLang(lang: keyof typeof DICT): boolean {
+  return lang === 'ar';
+}
+
 export default function HoleWizardModalV2({
   open,
   lang,
   onClose,
   onApply,
   forceFlagOpen,
+  forceFlagV1,
   availableSketches,
 }: Props) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
-  const t = DICT[pickLang(seg)];
+  const resolvedLang = pickLang(seg);
+  const t = DICT[resolvedLang];
+  const rtl = isRtlLang(resolvedLang);
 
-  // ── Flag gate — matches ?shell=v2 pattern from ShellGate. ─────────────────
-  const flagOn = forceFlagOpen === true || sp?.get('hole-wizard') === 'v2';
+  // ── Flag gate — W6 flag flip (spec §9 Week 4, tracker C6).
+  //
+  // BEFORE W6:  default → V1; `?hole-wizard=v2` → V2
+  // AFTER  W6:  default → V2; `?hole-wizard=v1` → V1 (rollback escape hatch)
+  //
+  // We accept the legacy `?hole-wizard=v2` URL as forward-compat (it
+  // matches the post-flip default anyway, so the URL stays meaningful).
+  // The `forceFlagOpen` / `forceFlagV1` props give tests a way to pin
+  // either side regardless of search-params (next/navigation mocks
+  // can't easily mutate URLSearchParams between renders).
+  const queryParam = sp?.get('hole-wizard');
+  const flagOn =
+    forceFlagOpen === true
+      ? true
+      : forceFlagV1 === true
+        ? false
+        : queryParam === 'v1'
+          ? false
+          : true; // default V2 (W6 flag flip)
 
   // ── Tab state. ───────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<WizardTab>('type');
@@ -1213,6 +1310,7 @@ export default function HoleWizardModalV2({
     <div
       data-testid="hole-wizard-v2-root"
       onClick={onClose}
+      dir={rtl ? 'rtl' : 'ltr'}
       style={{
         position: 'fixed',
         inset: 0,
@@ -1234,6 +1332,7 @@ export default function HoleWizardModalV2({
           maxHeight: '85vh',
           overflowY: 'auto',
           border: '1px solid #374151',
+          textAlign: rtl ? 'right' : 'left',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>

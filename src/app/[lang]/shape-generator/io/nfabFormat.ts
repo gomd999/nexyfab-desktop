@@ -26,6 +26,18 @@
  *   future Phase 2.5 or Phase 3 bump is required, treat v3 as the
  *   shared envelope and add the new field as optional so older v3
  *   documents keep loading.
+ *
+ *   Track **C6** (Hole Wizard W6) maintains its own internal axis —
+ *   `HOLE_FEATURE_SCHEMA_VERSION = 8` (see
+ *   `features/holeFeatureMigration.ts`). The hole-feature version axis
+ *   is **distinct** from the `.nfab` envelope axis: the legacy v7 → v8
+ *   migration applies to individual `featureType: 'hole'` nodes inside
+ *   `tree.nodes` and does NOT bump `NFAB_FORMAT_VERSION`. This honours
+ *   master-tracker R-2: "C uses v8 (which is the same v3 envelope for
+ *   hole features)". A future v4 envelope bump could roll the
+ *   feature-axis migration into the top-level migration chain if we
+ *   want a single-axis story; for now the axis split keeps each track
+ *   evolving its feature shape independently.
  */
 
 import type { HistoryNode, FeatureHistory } from '../useFeatureStack';
