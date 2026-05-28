@@ -1,0 +1,199 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-configurations-spec.md#section-11-week-2-perf-regression",
+  "fixtureId": "F-CONFIG-PERF-01",
+  "description": "Synthetic worst-case for ConfigurationTable.resolveActive() — 50 features, 10 configs with 5-10 overrides each, half of them in a 5-deep parent chain (to exercise root→leaf flattening). Used by ConfigurationTable.perf.test.ts to assert p95 < 50ms per master tracker Track A row W3.",
+  "createdBy": "wave-2 Phase 2 W3 (Track A3)",
+  "createdAt": "2026-05-28",
+  "featureCount": 50,
+  "configCount": 10,
+  "features": [
+    { "id": "feat-00", "type": "fillet", "params": { "radius": 1 }, "enabled": true },
+    { "id": "feat-01", "type": "fillet", "params": { "radius": 2 }, "enabled": true },
+    { "id": "feat-02", "type": "fillet", "params": { "radius": 3 }, "enabled": true },
+    { "id": "feat-03", "type": "fillet", "params": { "radius": 4 }, "enabled": true },
+    { "id": "feat-04", "type": "fillet", "params": { "radius": 5 }, "enabled": true },
+    { "id": "feat-05", "type": "chamfer", "params": { "distance": 1 }, "enabled": true },
+    { "id": "feat-06", "type": "chamfer", "params": { "distance": 2 }, "enabled": true },
+    { "id": "feat-07", "type": "chamfer", "params": { "distance": 3 }, "enabled": true },
+    { "id": "feat-08", "type": "chamfer", "params": { "distance": 4 }, "enabled": true },
+    { "id": "feat-09", "type": "chamfer", "params": { "distance": 5 }, "enabled": true },
+    { "id": "feat-10", "type": "hole", "params": { "diameter": 3, "depth": 10 }, "enabled": true },
+    { "id": "feat-11", "type": "hole", "params": { "diameter": 4, "depth": 10 }, "enabled": true },
+    { "id": "feat-12", "type": "hole", "params": { "diameter": 5, "depth": 10 }, "enabled": true },
+    { "id": "feat-13", "type": "hole", "params": { "diameter": 6, "depth": 10 }, "enabled": true },
+    { "id": "feat-14", "type": "hole", "params": { "diameter": 8, "depth": 10 }, "enabled": true },
+    { "id": "feat-15", "type": "shell", "params": { "thickness": 1 }, "enabled": true },
+    { "id": "feat-16", "type": "shell", "params": { "thickness": 2 }, "enabled": true },
+    { "id": "feat-17", "type": "shell", "params": { "thickness": 3 }, "enabled": true },
+    { "id": "feat-18", "type": "draft", "params": { "angle": 5 }, "enabled": true },
+    { "id": "feat-19", "type": "draft", "params": { "angle": 10 }, "enabled": true },
+    { "id": "feat-20", "type": "linearPattern", "params": { "count": 5, "spacing": 10 }, "enabled": true },
+    { "id": "feat-21", "type": "linearPattern", "params": { "count": 8, "spacing": 12 }, "enabled": true },
+    { "id": "feat-22", "type": "circularPattern", "params": { "count": 6, "angle": 60 }, "enabled": true },
+    { "id": "feat-23", "type": "circularPattern", "params": { "count": 8, "angle": 45 }, "enabled": true },
+    { "id": "feat-24", "type": "mirror", "params": { "plane": 0 }, "enabled": true },
+    { "id": "feat-25", "type": "mirror", "params": { "plane": 1 }, "enabled": true },
+    { "id": "feat-26", "type": "boolean", "params": { "op": 0 }, "enabled": true },
+    { "id": "feat-27", "type": "scale", "params": { "factor": 1.0 }, "enabled": true },
+    { "id": "feat-28", "type": "moveCopy", "params": { "x": 0, "y": 0, "z": 0 }, "enabled": true },
+    { "id": "feat-29", "type": "splitBody", "params": { "axis": 0 }, "enabled": true },
+    { "id": "feat-30", "type": "bend", "params": { "angle": 90, "radius": 2 }, "enabled": true },
+    { "id": "feat-31", "type": "flange", "params": { "length": 10, "angle": 90 }, "enabled": true },
+    { "id": "feat-32", "type": "hem", "params": { "length": 5 }, "enabled": true },
+    { "id": "feat-33", "type": "jog", "params": { "offset": 3 }, "enabled": true },
+    { "id": "feat-34", "type": "flatPattern", "params": { "kFactor": 0.44 }, "enabled": true },
+    { "id": "feat-35", "type": "variableFillet", "params": { "r1": 1, "r2": 3 }, "enabled": true },
+    { "id": "feat-36", "type": "boundarySurface", "params": { "tension": 0.5 }, "enabled": true },
+    { "id": "feat-37", "type": "sketchExtrude", "params": { "depth": 5 }, "enabled": true },
+    { "id": "feat-38", "type": "revolve", "params": { "angle": 360 }, "enabled": true },
+    { "id": "feat-39", "type": "sweep", "params": { "twist": 0 }, "enabled": true },
+    { "id": "feat-40", "type": "loft", "params": { "tangency": 0 }, "enabled": true },
+    { "id": "feat-41", "type": "thread", "params": { "pitch": 0.5, "depth": 8 }, "enabled": true },
+    { "id": "feat-42", "type": "thread", "params": { "pitch": 0.7, "depth": 10 }, "enabled": true },
+    { "id": "feat-43", "type": "thread", "params": { "pitch": 0.8, "depth": 12 }, "enabled": true },
+    { "id": "feat-44", "type": "thread", "params": { "pitch": 1.0, "depth": 15 }, "enabled": true },
+    { "id": "feat-45", "type": "moldTools", "params": { "shrink": 1.02 }, "enabled": true },
+    { "id": "feat-46", "type": "weldment", "params": { "size": 5 }, "enabled": true },
+    { "id": "feat-47", "type": "nurbsSurface", "params": { "uOrder": 3, "vOrder": 3 }, "enabled": true },
+    { "id": "feat-48", "type": "helix", "params": { "pitch": 2, "height": 20 }, "enabled": true },
+    { "id": "feat-49", "type": "rib", "params": { "thickness": 2, "draft": 1 }, "enabled": true }
+  ],
+  "configs": [
+    {
+      "id": "cfg-root-a",
+      "name": "Root A",
+      "overrides": {
+        "feat-00": { "params": { "radius": 1.5 } },
+        "feat-01": { "params": { "radius": 2.5 } },
+        "feat-05": { "params": { "distance": 1.5 } },
+        "feat-10": { "params": { "diameter": 3.2, "depth": 12 } },
+        "feat-20": { "params": { "count": 6, "spacing": 11 } },
+        "feat-25": { "suppressed": true }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-a-child-1",
+      "name": "A child 1",
+      "parentId": "cfg-root-a",
+      "overrides": {
+        "feat-00": { "params": { "radius": 2.0 } },
+        "feat-02": { "params": { "radius": 4.0 } },
+        "feat-11": { "params": { "diameter": 4.2 } },
+        "feat-21": { "params": { "count": 9, "spacing": 13 } },
+        "feat-30": { "params": { "angle": 95, "radius": 2.5 } }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-a-child-2",
+      "name": "A child 2",
+      "parentId": "cfg-a-child-1",
+      "overrides": {
+        "feat-01": { "params": { "radius": 3.0 } },
+        "feat-03": { "params": { "radius": 5.0 } },
+        "feat-12": { "params": { "diameter": 5.2 } },
+        "feat-22": { "params": { "count": 7, "angle": 51 } },
+        "feat-31": { "params": { "length": 11, "angle": 92 } },
+        "feat-40": { "suppressed": true }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-a-child-3",
+      "name": "A child 3",
+      "parentId": "cfg-a-child-2",
+      "overrides": {
+        "feat-00": { "params": { "radius": 2.2 } },
+        "feat-04": { "params": { "radius": 6.0 } },
+        "feat-13": { "params": { "diameter": 6.2 } },
+        "feat-23": { "params": { "count": 9, "angle": 40 } },
+        "feat-32": { "params": { "length": 6 } }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-a-child-4",
+      "name": "A child 4",
+      "parentId": "cfg-a-child-3",
+      "overrides": {
+        "feat-05": { "params": { "distance": 2.0 } },
+        "feat-14": { "params": { "diameter": 9.0 } },
+        "feat-24": { "params": { "plane": 1 } },
+        "feat-33": { "params": { "offset": 4 } },
+        "feat-41": { "params": { "pitch": 0.6, "depth": 9 } },
+        "feat-49": { "suppressed": true }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-root-b",
+      "name": "Root B",
+      "overrides": {
+        "feat-06": { "params": { "distance": 2.5 } },
+        "feat-15": { "params": { "thickness": 1.5 } },
+        "feat-26": { "params": { "op": 1 } },
+        "feat-35": { "params": { "r1": 1.5, "r2": 3.5 } },
+        "feat-44": { "params": { "pitch": 1.2, "depth": 16 } },
+        "feat-46": { "suppressed": true }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-b-child-1",
+      "name": "B child 1",
+      "parentId": "cfg-root-b",
+      "overrides": {
+        "feat-07": { "params": { "distance": 3.5 } },
+        "feat-16": { "params": { "thickness": 2.5 } },
+        "feat-27": { "params": { "factor": 1.1 } },
+        "feat-36": { "params": { "tension": 0.7 } },
+        "feat-45": { "params": { "shrink": 1.03 } }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-b-child-2",
+      "name": "B child 2",
+      "parentId": "cfg-b-child-1",
+      "overrides": {
+        "feat-08": { "params": { "distance": 4.5 } },
+        "feat-17": { "params": { "thickness": 3.5 } },
+        "feat-28": { "params": { "x": 1, "y": 2, "z": 3 } },
+        "feat-37": { "params": { "depth": 6 } },
+        "feat-47": { "params": { "uOrder": 4, "vOrder": 4 } }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-flat-1",
+      "name": "Flat 1",
+      "overrides": {
+        "feat-09": { "params": { "distance": 5.5 } },
+        "feat-18": { "params": { "angle": 7 } },
+        "feat-19": { "params": { "angle": 12 } },
+        "feat-29": { "params": { "axis": 1 } },
+        "feat-34": { "params": { "kFactor": 0.5 } },
+        "feat-42": { "params": { "pitch": 0.8, "depth": 11 } },
+        "feat-43": { "params": { "pitch": 0.9, "depth": 13 } },
+        "feat-48": { "params": { "pitch": 2.5, "height": 22 } }
+      },
+      "expressionVars": {}
+    },
+    {
+      "id": "cfg-flat-2",
+      "name": "Flat 2",
+      "overrides": {
+        "feat-00": { "params": { "radius": 1.8 } },
+        "feat-05": { "params": { "distance": 1.2 } },
+        "feat-10": { "params": { "depth": 11 } },
+        "feat-15": { "params": { "thickness": 1.2 } },
+        "feat-20": { "params": { "spacing": 9 } },
+        "feat-30": { "params": { "angle": 89 } },
+        "feat-40": { "params": { "tangency": 1 } }
+      },
+      "expressionVars": {}
+    }
+  ],
+  "activeConfigId": "cfg-a-child-4"
+}
