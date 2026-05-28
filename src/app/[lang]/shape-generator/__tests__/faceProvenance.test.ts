@@ -115,14 +115,25 @@ describe('faceProvenance — CSG preserves the attribute', () => {
   });
 });
 
+// Static map keeps Vite's dynamic-import-vars happy. Listing all 5 imports
+// explicitly is also what tree-shaking wants — a template-literal path can
+// pull every neighboring file under features/ into the test bundle.
+const FEATURE_MODS = {
+  boolean: () => import('../features/boolean'),
+  hole: () => import('../features/hole'),
+  fillet: () => import('../features/fillet'),
+  chamfer: () => import('../features/chamfer'),
+  shell: () => import('../features/shell'),
+} as const;
+
 async function runFeatureWithBase(
-  featureFile: 'boolean' | 'hole' | 'fillet' | 'chamfer' | 'shell',
+  featureFile: keyof typeof FEATURE_MODS,
   params: Record<string, number>,
   baseFeatureId = 'base-feature',
   thisFeatureId = 'this-feature',
   opts: { indexed?: boolean } = {},
 ): Promise<{ result: THREE.BufferGeometry; seenBase: boolean; seenThis: boolean }> {
-  const mod = await import(`../features/${featureFile}`);
+  const mod = await FEATURE_MODS[featureFile]() as Record<string, unknown>;
   // boolean.ts exports `booleanFeature`; the others export `<name>Feature`.
   const featureDef = (mod[`${featureFile}Feature`] ?? mod.booleanFeature) as {
     apply: (
