@@ -7,7 +7,11 @@ import {
   createRectArrayDefaults,
   createManualArrayDefaults,
   createFromSketchArrayDefaults,
+  resolveHoleSpec,
+  defaultCountersinkAngle,
+  DEFAULT_DRILL_TIP_ANGLE,
   HOLE_ARRAY_MAX_COUNT,
+  type CatalogRowLite,
   type HoleArrayDefinition,
   type HoleStandardRef,
 } from '../holeArray';
@@ -528,6 +532,354 @@ describe('F-HW-01 fixture — M3 × 4 cover plate', () => {
       [90, 10],
       [90, 50],
     ]);
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+});
+
+// ─── Track C3 — Termination tab + sub-type data model ──────────────────────
+
+const M6_ROW: CatalogRowLite = {
+  name: 'M6',
+  nominal: 6,
+  pitch: 1.0,
+  tapDrill: 5.0,
+  clearance: 6.6,
+  fits: { close: 6.4, normal: 6.6, loose: 7.0 },
+  counterboreDia: 11.0,
+  counterboreDepth: 6.5,
+  countersinkDia: 13.44,
+  countersinkAngle: 90,
+};
+
+const ANSI_QUARTER20_ROW: CatalogRowLite = {
+  name: '1/4-20',
+  nominal: 0.25,
+  tpi: 20,
+  tapDrill: 5.11,
+  clearance: 7.14,
+  fits: { close: 6.91, normal: 7.14, loose: 7.54 },
+  counterboreDia: 12.70,
+  counterboreDepth: 6.76,
+  countersinkDia: 13.08,
+  countersinkAngle: 82,
+};
+
+describe('resolveHoleSpec — defaults from catalog', () => {
+  it('drilled: uses fits.normal as diameter and default tip 118°', () => {
+    const spec = resolveHoleSpec('drilled', { series: 'ISO', designation: 'M6', fitClass: 'normal' }, M6_ROW);
+    expect(spec.kind).toBe('drilled');
+    if (spec.kind === 'drilled') {
+      expect(spec.diameter).toBe(6.6);
+      expect(spec.drillTipAngle).toBe(DEFAULT_DRILL_TIP_ANGLE);
+    }
+  });
+
+  it('drilled: close-fit yields a smaller diameter than normal', () => {
+    const close = resolveHoleSpec('drilled', { series: 'ISO', designation: 'M6', fitClass: 'close' }, M6_ROW);
+    const normal = resolveHoleSpec('drilled', { series: 'ISO', designation: 'M6', fitClass: 'normal' }, M6_ROW);
+    if (close.kind === 'drilled' && normal.kind === 'drilled') {
+      expect(close.diameter).toBeLessThan(normal.diameter);
+    }
+  });
+
+  it('counterbore: head dia/depth come from the catalog row', () => {
+    const spec = resolveHoleSpec('counterbore', { series: 'ISO', designation: 'M6', fitClass: 'normal' }, M6_ROW);
+    expect(spec.kind).toBe('counterbore');
+    if (spec.kind === 'counterbore') {
+      expect(spec.headDiameter).toBe(11);
+      expect(spec.headDepth).toBe(6.5);
+      expect(spec.diameter).toBe(6.6);
+    }
+  });
+
+  it('countersink: ISO defaults to 90° cone angle', () => {
+    const spec = resolveHoleSpec('countersink', { series: 'ISO', designation: 'M6', fitClass: 'normal' }, M6_ROW);
+    expect(spec.kind).toBe('countersink');
+    if (spec.kind === 'countersink') {
+      expect(spec.coneAngle).toBe(90);
+      expect(spec.coneDiameter).toBe(13.44);
+    }
+  });
+
+  it('countersink: ANSI defaults to 82° cone angle', () => {
+    const spec = resolveHoleSpec('countersink', { series: 'ANSI', designation: '1/4-20', fitClass: 'normal' }, ANSI_QUARTER20_ROW);
+    expect(spec.kind).toBe('countersink');
+    if (spec.kind === 'countersink') {
+      expect(spec.coneAngle).toBe(82);
+    }
+  });
+
+  it('defaultCountersinkAngle: ISO=90, ANSI=82', () => {
+    expect(defaultCountersinkAngle('ISO')).toBe(90);
+    expect(defaultCountersinkAngle('ANSI')).toBe(82);
+    expect(defaultCountersinkAngle('KSB0201')).toBe(90);
+  });
+
+  it('counterdrill: head > middle > drill diameter ordering enforced', () => {
+    const spec = resolveHoleSpec('counterdrill', { series: 'ISO', designation: 'M6', fitClass: 'normal' }, M6_ROW);
+    expect(spec.kind).toBe('counterdrill');
+    if (spec.kind === 'counterdrill') {
+      expect(spec.headDiameter).toBeGreaterThan(spec.middleDiameter);
+      expect(spec.middleDiameter).toBeGreaterThan(spec.diameter);
+    }
+  });
+
+  it('tap: pitch from catalog row, diameter from tapDrill', () => {
+    const spec = resolveHoleSpec('tap', { series: 'ISO', designation: 'M6', fitClass: 'normal' }, M6_ROW);
+    expect(spec.kind).toBe('tap');
+    if (spec.kind === 'tap') {
+      expect(spec.pitch).toBe(1.0);
+      expect(spec.diameter).toBe(5.0); // tap-drill, not clearance
+      expect(spec.tapClass).toBe('6H');
+    }
+  });
+
+  it('tap: ANSI uses tpi → pitch conversion and 2B tap class', () => {
+    const spec = resolveHoleSpec('tap', { series: 'ANSI', designation: '1/4-20', fitClass: 'normal' }, ANSI_QUARTER20_ROW);
+    expect(spec.kind).toBe('tap');
+    if (spec.kind === 'tap') {
+      expect(spec.pitch).toBeCloseTo(25.4 / 20, 2); // 1.27 mm
+      expect(spec.tapClass).toBe('2B');
+    }
+  });
+
+  it('pipe_tap: pipeSizeKey from ref.designation, NPT default', () => {
+    const spec = resolveHoleSpec(
+      'pipe_tap',
+      { series: 'NPT', designation: '1/4-18' },
+      { ...M6_ROW, tapDrill: 11.40 },
+    );
+    expect(spec.kind).toBe('pipe_tap');
+    if (spec.kind === 'pipe_tap') {
+      expect(spec.pipeStandard).toBe('NPT');
+      expect(spec.pipeSizeKey).toBe('1/4-18');
+    }
+  });
+
+  it('falls back to sensible defaults when row is undefined', () => {
+    const spec = resolveHoleSpec('drilled', { series: 'ISO', designation: 'M6' }, undefined);
+    expect(spec.kind).toBe('drilled');
+    if (spec.kind === 'drilled') {
+      expect(spec.diameter).toBe(5); // fallback default
+    }
+  });
+});
+
+describe('validateHoleArray — HoleSpec sub-type validation', () => {
+  it('accepts a default drilled HoleSpec when attached to def', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'drilled',
+        diameter: 5,
+        drillTipAngle: 118,
+      },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+
+  it('flags INVALID_DIAMETER on zero drill diameter', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: { kind: 'drilled', diameter: 0, drillTipAngle: 118 },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'INVALID_DIAMETER')).toBe(true);
+    }
+  });
+
+  it('flags INVALID_CONE_ANGLE on out-of-range drill tip angle (40°)', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: { kind: 'drilled', diameter: 5, drillTipAngle: 40 },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'INVALID_CONE_ANGLE')).toBe(true);
+    }
+  });
+
+  it('flags CBORE_SMALLER_THAN_BORE when headDiameter ≤ diameter', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'counterbore',
+        diameter: 6,
+        headDiameter: 5, // smaller than bore → invalid
+        headDepth: 3,
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'CBORE_SMALLER_THAN_BORE')).toBe(true);
+    }
+  });
+
+  it('flags CSK_SMALLER_THAN_BORE when coneDiameter ≤ diameter', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'countersink',
+        diameter: 6,
+        coneDiameter: 5,
+        coneAngle: 90,
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'CSK_SMALLER_THAN_BORE')).toBe(true);
+    }
+  });
+
+  it('flags INVALID_CONE_ANGLE on countersink with 200° cone angle', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'countersink',
+        diameter: 5,
+        coneDiameter: 10,
+        coneAngle: 200,
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'INVALID_CONE_ANGLE')).toBe(true);
+    }
+  });
+
+  it('flags CDRILL_STEP_ORDER when middle is wider than head', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'counterdrill',
+        diameter: 5,
+        middleDiameter: 12,
+        headDiameter: 10, // wrong order: head < middle
+        middleDepth: 5,
+        headDepth: 3,
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'CDRILL_STEP_ORDER')).toBe(true);
+    }
+  });
+
+  it('flags TAP_PITCH_INVALID when tap pitch is zero', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'tap',
+        diameter: 5,
+        pitch: 0,
+        tapClass: '6H',
+        tapDepth: 10,
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'TAP_PITCH_INVALID')).toBe(true);
+    }
+  });
+
+  it('flags PIPE_KEY_MISSING when pipe_tap has empty pipeSizeKey', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'pipe_tap',
+        diameter: 11.4,
+        pipeStandard: 'NPT',
+        pipeSizeKey: '',
+        engagementDepth: 9.7,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'PIPE_KEY_MISSING')).toBe(true);
+    }
+  });
+
+  it('accepts a fully populated counterbore HoleSpec', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'counterbore',
+        diameter: 6.6,
+        headDiameter: 11,
+        headDepth: 6.5,
+        drillTipAngle: 118,
+      },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+
+  it('accepts a fully populated countersink HoleSpec', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'countersink',
+        diameter: 6.6,
+        coneDiameter: 13.44,
+        coneAngle: 90,
+        drillTipAngle: 118,
+      },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+});
+
+describe('validateHoleArray — termination W3 extensions', () => {
+  it('accepts blind with bottomShape=flat (no apex required)', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      terminationKind: 'blind',
+      terminationParams: { kind: 'blind', depth: 8, bottomShape: 'flat' },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+
+  it('accepts blind with bottomShape=conical + apex=118°', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      terminationKind: 'blind',
+      terminationParams: { kind: 'blind', depth: 8, bottomShape: 'conical', drillTipAngle: 118 },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+
+  it('flags INVALID_CONE_ANGLE on blind conical with 40° apex', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      terminationKind: 'blind',
+      terminationParams: { kind: 'blind', depth: 8, bottomShape: 'conical', drillTipAngle: 40 },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'INVALID_CONE_ANGLE')).toBe(true);
+    }
+  });
+
+  it('accepts upToNext without faceId (worker resolves later)', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      terminationKind: 'upToNext',
+      terminationParams: { kind: 'upToNext' },
+    };
     expect(validateHoleArray(def).ok).toBe(true);
   });
 });

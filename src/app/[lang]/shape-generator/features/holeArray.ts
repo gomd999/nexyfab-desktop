@@ -40,21 +40,169 @@ export interface HoleStandardRef {
 }
 
 /**
+ * Hole sub-type taxonomy (spec §2). Phase 2 W3 extends the data model to
+ * carry the kind + sub-type-specific size fields. Worker endpoints for
+ * counterbore/countersink remain blocked until Wave 1 task #31 (occt-worker
+ * provision); this is the *client-side* type carrier so the wizard can
+ * round-trip a complete HoleArrayDefinition through validation + preview.
+ *
+ * `drilled`        — plain cylindrical bore (default, W2)
+ * `counterbore`    — wide flat pocket + drill (W3 UI, W4 worker)
+ * `countersink`    — conical funnel + drill (W3 UI, W4 worker)
+ * `counterdrill`   — three concentric cylinder steps (W4-W5)
+ * `tap`            — cosmetic tap at tap-drill ⌀ + thread metadata (W4-W5)
+ * `pipe_tap`       — NPT/BSP tapered tap (W4-W5)
+ */
+export type HoleKind =
+  | 'drilled'
+  | 'counterbore'
+  | 'countersink'
+  | 'counterdrill'
+  | 'tap'
+  | 'pipe_tap';
+
+/**
+ * Hole geometry spec — discriminated by `kind`. The `drilled` variant carries
+ * just the bore diameter; sub-types add their pocket/funnel/thread params.
+ *
+ * All diameters and depths are mm. The catalog (holeStandards.ts) supplies
+ * the defaults via `holeSpecDefaults(kind, standardRow)`; the wizard's Size
+ * tab populates these from the picked row + fit class, and the user can
+ * override individual fields in custom mode.
+ *
+ * Spec §2 ambiguities resolved here:
+ *   - `counterbore.headDiameter` ≡ spec `cboreDiameter` (the wide pocket ⌀)
+ *   - `counterbore.headDepth`    ≡ spec `cboreDepth`    (pocket depth from top face)
+ *   - `countersink.coneDiameter` ≡ spec `csDiameter`    (face ⌀ at top)
+ *   - `countersink.coneAngle`    ≡ spec `csAngle`       (included angle, deg)
+ *     Default: 90° for ISO (matches ISO 10642 / spec §2.3), 82° for UTS
+ *     (matches ASME flat-head, spec §2.3). Caller chooses based on `series`.
+ *   - `drillTipAngle`            ≡ spec §2.1 (118 default, 135 hard, 180 flat)
+ */
+export interface DrilledHoleSpec {
+  kind: 'drilled';
+  /** Bore diameter (mm). */
+  diameter: number;
+  /** Drill tip apex angle (deg). 118 = standard, 135 = hard, 180 = flat. */
+  drillTipAngle: number;
+}
+
+export interface CounterboreHoleSpec {
+  kind: 'counterbore';
+  /** Drill bore diameter (mm). */
+  diameter: number;
+  /** Counterbore (head pocket) diameter (mm). */
+  headDiameter: number;
+  /** Counterbore (head pocket) depth from top face (mm). */
+  headDepth: number;
+  /** Drill tip apex angle (deg) — applied to the inner drill, not the pocket. */
+  drillTipAngle: number;
+}
+
+export interface CountersinkHoleSpec {
+  kind: 'countersink';
+  /** Drill bore diameter (mm). */
+  diameter: number;
+  /** Countersink face diameter at top (mm). */
+  coneDiameter: number;
+  /** Countersink included cone angle (deg). 90 default ISO, 82 default UTS. */
+  coneAngle: number;
+  /** Drill tip apex angle (deg) — applied to the inner drill. */
+  drillTipAngle: number;
+}
+
+export interface CounterdrillHoleSpec {
+  kind: 'counterdrill';
+  /** Innermost drill diameter (mm). */
+  diameter: number;
+  /** Top step (head pocket) diameter (mm). */
+  headDiameter: number;
+  /** Top step depth from top face (mm). */
+  headDepth: number;
+  /** Middle (shoulder) diameter (mm). */
+  middleDiameter: number;
+  /** Middle step depth from top face (mm). */
+  middleDepth: number;
+  drillTipAngle: number;
+}
+
+export interface TapHoleSpec {
+  kind: 'tap';
+  /** Tap drill diameter (mm) — the boolean-cut diameter. */
+  diameter: number;
+  /** Thread pitch (mm/thread). */
+  pitch: number;
+  /** Tap class — '6H'/'6G' for ISO, '2B'/'3B' for UTS. */
+  tapClass: '6H' | '6G' | '2B' | '3B';
+  /** Usable thread depth (mm). DFM gate enforces tapDepth ≤ drillDepth − 2*pitch. */
+  tapDepth: number;
+  drillTipAngle: number;
+}
+
+export interface PipeTapHoleSpec {
+  kind: 'pipe_tap';
+  /** Minor (tap) diameter at gauging plane (mm). */
+  diameter: number;
+  /** Pipe-thread standard. */
+  pipeStandard: 'NPT' | 'BSPT' | 'BSPP';
+  /** Pipe size key, e.g. '1/4-18'. */
+  pipeSizeKey: string;
+  /** Effective thread engagement depth (mm). */
+  engagementDepth: number;
+}
+
+/** Discriminated union of all six hole-spec variants. */
+export type HoleSpec =
+  | DrilledHoleSpec
+  | CounterboreHoleSpec
+  | CountersinkHoleSpec
+  | CounterdrillHoleSpec
+  | TapHoleSpec
+  | PipeTapHoleSpec;
+
+/**
  * Termination of the drilled bore. Mirrors `HoleFeature.terminationMode`
- * from spec §4.1. Phase 2 W2 only the data shape — actual face-resolution
- * (upToNext / upToFace) is owned by the worker once that endpoint lands.
+ * from spec §4.1. Phase 2 W3 carries all four kinds in the data model; the
+ * actual face-resolution (upToNext / upToFace) is owned by the worker once
+ * that endpoint lands. UI for upToNext / upToFace renders a disabled
+ * face-picker placeholder.
  */
 export type TerminationKind = 'blind' | 'through' | 'upToNext' | 'upToFace';
+
+/**
+ * Blind-bottom shape. `flat` = the drill point is suppressed (180° tip);
+ * `conical` = the drill tip cone is preserved with the given apex angle.
+ * Spec §2.1: default 118°, 135° for hardened material, 60° for special tools.
+ */
+export type BlindBottomShape = 'flat' | 'conical';
 
 /**
  * Discriminated termination parameter bag. We keep the variants narrow so
  * `validateHoleArray` can reject "blind without depth" / "upToFace without
  * face" at the data layer instead of pushing the check into the worker.
+ *
+ * W3: blind carries `bottomShape` and the apex angle (when conical) so the
+ * Preview tab can sketch the cross-section without having to look at the
+ * top-level HoleSpec.drillTipAngle. Defaults: bottomShape='conical', apex=118.
  */
 export type TerminationParams =
-  | { kind: 'blind'; depth: number }
+  | {
+      kind: 'blind';
+      depth: number;
+      /** Bottom shape — flat or conical. Default conical. */
+      bottomShape?: BlindBottomShape;
+      /** Drill tip apex angle (deg) when bottomShape='conical'. Default 118. */
+      drillTipAngle?: number;
+    }
   | { kind: 'through' }
-  | { kind: 'upToNext' }
+  | {
+      kind: 'upToNext';
+      /**
+       * Optional resolved stop-face id, populated once worker face-picker is
+       * wired (W4). UI-only path leaves this undefined.
+       */
+      stopFaceId?: string;
+    }
   | { kind: 'upToFace'; faceId: string };
 
 // ─── Array-kind parameter bags ─────────────────────────────────────────────
@@ -118,6 +266,15 @@ export type HoleArrayKind =
  * Top-level array definition stored on the (future) `HoleFeature` node.
  * One feature → one array → N positions. Mixed-kind features are explicitly
  * out of scope (see spec §12 Q3 — "one kind per feature").
+ *
+ * W3: adds `holeSpecDetail` to carry the resolved geometry params (drill ⌀,
+ * cbore ⌀, csk angle, etc.). The legacy `holeSpec: HoleStandardRef` stays as
+ * the *catalog reference* for round-trip + library-update flows; the wizard
+ * derives `holeSpecDetail` from it via `resolveHoleSpec()`.
+ *
+ * Older callers that omit `holeSpecDetail` default to a 'drilled' kind with
+ * `diameter = 5` mm — back-compat for the W2 fixture and the C2 tests, none
+ * of which touch the new field.
  */
 export interface HoleArrayDefinition {
   id: string;
@@ -131,6 +288,12 @@ export interface HoleArrayDefinition {
     | { kind: 'manual'; data: ManualArrayParams };
   /** Library reference. Drives the diameter resolution downstream. */
   holeSpec: HoleStandardRef;
+  /**
+   * Resolved geometry spec discriminated by hole sub-type (drilled / cbore /
+   * csk / cdrill / tap / pipe_tap). Optional for back-compat; absent means
+   * "default drilled bore from `holeSpec`".
+   */
+  holeSpecDetail?: HoleSpec;
   /** Termination kind. */
   terminationKind: TerminationKind;
   /** Termination parameters (must agree with terminationKind). */
@@ -197,7 +360,14 @@ export type HoleArrayErrorCode =
   | 'TERMINATION_MISMATCH'
   | 'NEGATIVE_DEPTH'
   | 'BLIND_DEPTH_MISSING'
-  | 'UPTOFACE_FACE_MISSING';
+  | 'UPTOFACE_FACE_MISSING'
+  | 'INVALID_DIAMETER'
+  | 'INVALID_CONE_ANGLE'
+  | 'CBORE_SMALLER_THAN_BORE'
+  | 'CSK_SMALLER_THAN_BORE'
+  | 'CDRILL_STEP_ORDER'
+  | 'TAP_PITCH_INVALID'
+  | 'PIPE_KEY_MISSING';
 
 export interface ValidationError {
   code: HoleArrayErrorCode;
@@ -296,6 +466,17 @@ function validateTermination(
         field: 'terminationParams.depth',
       });
     }
+    // Conical apex must lie in (60°, 180]; flat is encoded as bottomShape='flat'
+    // *or* drillTipAngle === 180 (we accept either form).
+    if (params.bottomShape === 'conical' && params.drillTipAngle !== undefined) {
+      if (!isFiniteNumber(params.drillTipAngle) || params.drillTipAngle <= 60 || params.drillTipAngle > 180) {
+        errors.push({
+          code: 'INVALID_CONE_ANGLE',
+          message: `drillTipAngle must be in (60, 180] (got ${params.drillTipAngle})`,
+          field: 'terminationParams.drillTipAngle',
+        });
+      }
+    }
   } else if (params.kind === 'upToFace') {
     if (!params.faceId) {
       errors.push({
@@ -304,6 +485,156 @@ function validateTermination(
         field: 'terminationParams.faceId',
       });
     }
+  }
+  // upToNext: no required params; stopFaceId is set by the worker, not user.
+}
+
+function validateHoleSpecDetail(
+  errors: ValidationError[],
+  spec: HoleSpec,
+): void {
+  // Diameter must be positive + finite for every kind.
+  const diameter = spec.diameter;
+  if (!isFiniteNumber(diameter) || diameter <= 0) {
+    errors.push({
+      code: 'INVALID_DIAMETER',
+      message: `hole diameter must be > 0 (got ${diameter})`,
+      field: 'holeSpecDetail.diameter',
+    });
+  }
+
+  // Tip-angle sanity (60, 180] — only for kinds that actually carry it.
+  if (spec.kind !== 'pipe_tap') {
+    const ang = spec.drillTipAngle;
+    if (!isFiniteNumber(ang) || ang <= 60 || ang > 180) {
+      errors.push({
+        code: 'INVALID_CONE_ANGLE',
+        message: `drillTipAngle must be in (60, 180] (got ${ang})`,
+        field: 'holeSpecDetail.drillTipAngle',
+      });
+    }
+  }
+
+  switch (spec.kind) {
+    case 'counterbore': {
+      if (!isFiniteNumber(spec.headDiameter) || spec.headDiameter <= 0) {
+        errors.push({
+          code: 'INVALID_DIAMETER',
+          message: `headDiameter must be > 0 (got ${spec.headDiameter})`,
+          field: 'holeSpecDetail.headDiameter',
+        });
+      } else if (isFiniteNumber(diameter) && spec.headDiameter <= diameter) {
+        errors.push({
+          code: 'CBORE_SMALLER_THAN_BORE',
+          message: `headDiameter (${spec.headDiameter}) must exceed drill diameter (${diameter})`,
+          field: 'holeSpecDetail.headDiameter',
+        });
+      }
+      if (!isFiniteNumber(spec.headDepth) || spec.headDepth <= 0) {
+        errors.push({
+          code: 'NEGATIVE_DEPTH',
+          message: `headDepth must be > 0 (got ${spec.headDepth})`,
+          field: 'holeSpecDetail.headDepth',
+        });
+      }
+      break;
+    }
+    case 'countersink': {
+      if (!isFiniteNumber(spec.coneDiameter) || spec.coneDiameter <= 0) {
+        errors.push({
+          code: 'INVALID_DIAMETER',
+          message: `coneDiameter must be > 0 (got ${spec.coneDiameter})`,
+          field: 'holeSpecDetail.coneDiameter',
+        });
+      } else if (isFiniteNumber(diameter) && spec.coneDiameter <= diameter) {
+        errors.push({
+          code: 'CSK_SMALLER_THAN_BORE',
+          message: `coneDiameter (${spec.coneDiameter}) must exceed drill diameter (${diameter})`,
+          field: 'holeSpecDetail.coneDiameter',
+        });
+      }
+      const ang = spec.coneAngle;
+      // Spec §2.3 lists {60, 82, 90, 100, 110, 120} — accept any value in
+      // (0, 180) so custom mode survives.
+      if (!isFiniteNumber(ang) || ang <= 0 || ang >= 180) {
+        errors.push({
+          code: 'INVALID_CONE_ANGLE',
+          message: `coneAngle must be in (0, 180) (got ${ang})`,
+          field: 'holeSpecDetail.coneAngle',
+        });
+      }
+      break;
+    }
+    case 'counterdrill': {
+      // Step order: head > middle > drill.
+      const hd = spec.headDiameter, md = spec.middleDiameter, dd = spec.diameter;
+      if (!isFiniteNumber(hd) || !isFiniteNumber(md) || !isFiniteNumber(dd)) {
+        errors.push({
+          code: 'NAN_PARAM',
+          message: 'counterdrill requires finite head/middle/drill diameters',
+          field: 'holeSpecDetail',
+        });
+      } else if (!(hd > md && md > dd)) {
+        errors.push({
+          code: 'CDRILL_STEP_ORDER',
+          message: `counterdrill requires head > middle > drill (got ${hd} > ${md} > ${dd})`,
+          field: 'holeSpecDetail.middleDiameter',
+        });
+      }
+      if (!isFiniteNumber(spec.headDepth) || spec.headDepth <= 0) {
+        errors.push({
+          code: 'NEGATIVE_DEPTH',
+          message: `headDepth must be > 0 (got ${spec.headDepth})`,
+          field: 'holeSpecDetail.headDepth',
+        });
+      }
+      if (!isFiniteNumber(spec.middleDepth) || spec.middleDepth <= spec.headDepth) {
+        errors.push({
+          code: 'CDRILL_STEP_ORDER',
+          message: `middleDepth (${spec.middleDepth}) must exceed headDepth (${spec.headDepth})`,
+          field: 'holeSpecDetail.middleDepth',
+        });
+      }
+      break;
+    }
+    case 'tap': {
+      if (!isFiniteNumber(spec.pitch) || spec.pitch <= 0) {
+        errors.push({
+          code: 'TAP_PITCH_INVALID',
+          message: `tap pitch must be > 0 (got ${spec.pitch})`,
+          field: 'holeSpecDetail.pitch',
+        });
+      }
+      if (!isFiniteNumber(spec.tapDepth) || spec.tapDepth <= 0) {
+        errors.push({
+          code: 'NEGATIVE_DEPTH',
+          message: `tapDepth must be > 0 (got ${spec.tapDepth})`,
+          field: 'holeSpecDetail.tapDepth',
+        });
+      }
+      break;
+    }
+    case 'pipe_tap': {
+      if (!spec.pipeSizeKey) {
+        errors.push({
+          code: 'PIPE_KEY_MISSING',
+          message: 'pipe_tap requires a non-empty pipeSizeKey',
+          field: 'holeSpecDetail.pipeSizeKey',
+        });
+      }
+      if (!isFiniteNumber(spec.engagementDepth) || spec.engagementDepth <= 0) {
+        errors.push({
+          code: 'NEGATIVE_DEPTH',
+          message: `engagementDepth must be > 0 (got ${spec.engagementDepth})`,
+          field: 'holeSpecDetail.engagementDepth',
+        });
+      }
+      break;
+    }
+    case 'drilled':
+    default:
+      // diameter + drillTipAngle already checked above.
+      break;
   }
 }
 
@@ -446,6 +777,10 @@ export function validateHoleArray(
   }
 
   validateTermination(errors, def.terminationKind, def.terminationParams);
+
+  if (def.holeSpecDetail) {
+    validateHoleSpecDetail(errors, def.holeSpecDetail);
+  }
 
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
@@ -706,4 +1041,139 @@ export function createFromSketchArrayDefaults(
     terminationKind: 'through',
     terminationParams: { kind: 'through' },
   };
+}
+
+// ─── Hole-spec resolution helpers (W3) ─────────────────────────────────────
+
+/**
+ * Per-series default countersink cone angle (deg). Spec §2.3 + §3.2:
+ *   - ISO 10642 metric flat-head → 90°
+ *   - ASME B18.3 imperial flat-head → 82°
+ *
+ * Pipe series fall back to 90° as a placeholder — countersink on a pipe-tap
+ * is not in the spec but the default keeps the validator happy.
+ */
+export function defaultCountersinkAngle(series: HoleStandardSeries): number {
+  switch (series) {
+    case 'ANSI':
+      return 82;
+    case 'ISO':
+    case 'ISO273':
+    case 'KSB0201':
+    case 'NPT':
+    case 'BSP':
+    default:
+      return 90;
+  }
+}
+
+/**
+ * Default drill tip apex angle (deg). Spec §2.1 enumerates {118, 135, 60, 180};
+ * 118° is the workshop standard and is what fastener catalogs assume.
+ */
+export const DEFAULT_DRILL_TIP_ANGLE = 118;
+
+/**
+ * Minimal catalog-row shape we read for HoleSpec resolution. Defined as a
+ * structural type so this module stays decoupled from holeStandards.ts (no
+ * cyclic import). The wizard's resolver passes in a `findStandardRow` result.
+ */
+export interface CatalogRowLite {
+  name: string;
+  nominal: number;
+  pitch?: number;
+  tpi?: number;
+  tapDrill: number;
+  clearance: number;
+  fits?: { close: number; normal: number; loose: number };
+  counterboreDia: number;
+  counterboreDepth: number;
+  countersinkDia: number;
+  countersinkAngle: number;
+}
+
+/**
+ * Resolve a HoleSpec for a given (HoleKind, HoleStandardRef, catalog row).
+ *
+ * Returns a fully-populated `HoleSpec` variant matching `kind`. Caller is
+ * responsible for the catalog lookup (use `findStandardRow` from
+ * holeStandards.ts) — this keeps the helper pure and unit-testable.
+ *
+ * For `counterdrill`, we derive `middleDiameter = (head + drill) / 2` and
+ * `middleDepth = headDepth * 1.5` as sensible starting values; the user
+ * tunes from there in custom mode.
+ *
+ * For `tap`, we use the catalog's `tapDrill` as the bore ⌀ (matches spec
+ * §2.5: tap is cosmetic, boolean cut is at the tap drill).
+ */
+export function resolveHoleSpec(
+  kind: HoleKind,
+  ref: HoleStandardRef,
+  row: CatalogRowLite | undefined,
+): HoleSpec {
+  // Fallback diameter when no catalog row is found (e.g. custom mode pre-fill).
+  const fitClass = ref.fitClass ?? 'normal';
+  const clearance = row?.fits?.[fitClass] ?? row?.clearance ?? 5;
+  const tapDrill = row?.tapDrill ?? clearance;
+
+  switch (kind) {
+    case 'drilled':
+      return {
+        kind: 'drilled',
+        diameter: clearance,
+        drillTipAngle: DEFAULT_DRILL_TIP_ANGLE,
+      };
+    case 'counterbore':
+      return {
+        kind: 'counterbore',
+        diameter: clearance,
+        headDiameter: row?.counterboreDia ?? clearance + 4,
+        headDepth: row?.counterboreDepth ?? Math.max(2, clearance * 1.1),
+        drillTipAngle: DEFAULT_DRILL_TIP_ANGLE,
+      };
+    case 'countersink': {
+      const ang = row?.countersinkAngle ?? defaultCountersinkAngle(ref.series);
+      return {
+        kind: 'countersink',
+        diameter: clearance,
+        coneDiameter: row?.countersinkDia ?? row?.counterboreDia ?? clearance + 3,
+        coneAngle: ang,
+        drillTipAngle: DEFAULT_DRILL_TIP_ANGLE,
+      };
+    }
+    case 'counterdrill': {
+      const headD = row?.counterboreDia ?? clearance + 4;
+      const headDp = row?.counterboreDepth ?? Math.max(2, clearance * 1.1);
+      return {
+        kind: 'counterdrill',
+        diameter: clearance,
+        headDiameter: headD,
+        headDepth: headDp,
+        middleDiameter: +((headD + clearance) / 2).toFixed(2),
+        middleDepth: +(headDp * 1.5).toFixed(2),
+        drillTipAngle: DEFAULT_DRILL_TIP_ANGLE,
+      };
+    }
+    case 'tap': {
+      const pitch = row?.pitch ?? (row?.tpi ? +(25.4 / row.tpi).toFixed(3) : 1);
+      // Spec §2.5: tapDepth ≤ drillDepth − 3*pitch. We default to a small,
+      // safe tapDepth that callers can grow as needed.
+      return {
+        kind: 'tap',
+        diameter: tapDrill,
+        pitch,
+        tapClass: ref.series === 'ANSI' ? '2B' : '6H',
+        tapDepth: Math.max(2, Math.round(tapDrill * 2)),
+        drillTipAngle: DEFAULT_DRILL_TIP_ANGLE,
+      };
+    }
+    case 'pipe_tap':
+      return {
+        kind: 'pipe_tap',
+        diameter: tapDrill,
+        pipeStandard: ref.series === 'BSP' ? 'BSPP' : 'NPT',
+        pipeSizeKey: ref.designation || '1/4-18',
+        engagementDepth: Math.max(5, tapDrill * 1.5),
+      };
+  }
 }
