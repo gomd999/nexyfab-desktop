@@ -176,6 +176,9 @@ export function directEditOpToHistoryNode(
   if (k === 'rotateBody') {
     return mapRotateBody(op as unknown as RotateBodyOpShape, ctx);
   }
+  if (k === 'subtractBody') {
+    return mapSubtractBody(op as unknown as SubtractBodyOpShape, ctx);
+  }
   if (k === ("unknownTestKind" as unknown as DirectEditOp["kind"])) {
     // The W3-base placeholder has no payload — refuse the commit so the
     // user notices their stack contains a not-yet-shipped op kind.
@@ -230,6 +233,17 @@ interface RotateBodyOpShape {
   rx?: number;
   ry?: number;
   rz?: number;
+  createdAt?: number;
+}
+
+/** E4 — boolean subtract op shape mirrored on the type union. The
+ *  applier writes this into the synthetic `featureType: 'boolean'`
+ *  HistoryNode with subtype `'subtract'`. */
+interface SubtractBodyOpShape {
+  kind: 'subtractBody';
+  targetBodyId: string;
+  toolBodyId: string;
+  keepTool: boolean;
   createdAt?: number;
 }
 
@@ -341,6 +355,61 @@ function mapMoveBody(
       offsetY: op.ty,
       offsetZ: op.tz,
       operation: 0, // 0 = move (1 = copy)
+      [DIRECT_EDIT_COMMITTED_PARAM_KEY]: DIRECT_EDIT_COMMITTED_FLAG,
+    },
+    enabled: true,
+    expanded: true,
+    parentId: ctx.activeNodeId,
+    children: [],
+    editingActive: false,
+    timestamp: now(),
+    dependsOn: [ctx.activeNodeId],
+  };
+  return { ok: true, node };
+}
+
+function mapSubtractBody(
+  op: SubtractBodyOpShape,
+  ctx: CommitContext,
+): DirectEditMapResult {
+  if (!op.targetBodyId || !op.toolBodyId) {
+    return { ok: false, reason: 'unknown_op_kind' };
+  }
+  if (op.targetBodyId === op.toolBodyId) {
+    return { ok: false, reason: 'unknown_op_kind' };
+  }
+  const now = ctx.now ?? Date.now;
+  // Record target/tool body ids as hashed numeric tokens in params
+  // (HistoryNode.params is Record<string, number>). The hash is a
+  // stable string→u32 cyrb53-ish so the W8 applier can re-resolve
+  // via the same hash. Stored alongside a sentinel marking the
+  // boolean as a direct-edit commit.
+  const stableHash = (s: string): number => {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  };
+  const node: HistoryNode = {
+    id: ctx.nextNodeId(),
+    type: 'feature',
+    label: `Subtract Body (direct edit)`,
+    icon: '➖',
+    featureType: 'boolean',
+    params: {
+      // Existing boolean feature params; 1 = subtract per
+      // `features/boolean.ts` `operationCodeToType`.
+      operation: 1,
+      // Reserved keys for the W8 follow-up applier. The existing
+      // boolean applier ignores unknown keys (it reads `operation`,
+      // `toolShape`, `toolWidth/Height/Depth`, pos*, rot*, `engine`).
+      // Storing the body ids as hashes keeps the mapping reversible
+      // without bloating param keys.
+      _targetBodyHash: stableHash(op.targetBodyId),
+      _toolBodyHash: stableHash(op.toolBodyId),
+      _keepTool: op.keepTool ? 1 : 0,
       [DIRECT_EDIT_COMMITTED_PARAM_KEY]: DIRECT_EDIT_COMMITTED_FLAG,
     },
     enabled: true,

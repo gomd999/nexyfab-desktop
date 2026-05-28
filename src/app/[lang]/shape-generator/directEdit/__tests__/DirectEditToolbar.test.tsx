@@ -217,3 +217,44 @@ describe('DirectEditToolbar — E3 mode union', () => {
     expect(queryByTestId('direct-edit-rotate-body')).toBeNull();
   });
 });
+
+// ─── E4 (subtract-body) toolbar cases ────────────────────────────────────────
+
+describe('DirectEditToolbar — E4 subtract-body', () => {
+  it('renders the subtract-body button when mode prop is provided', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} />);
+    expect(getByTestId('direct-edit-subtract-body')).toBeTruthy();
+  });
+
+  it('clicking subtract-body activates subtract mode (aria-pressed flips)', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} />);
+    const btn = getByTestId('direct-edit-subtract-body');
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    act(() => { fireEvent.click(btn); });
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('subtract-body radio deactivates other modes', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} initialMode="move-body" />);
+    const move = getByTestId('direct-edit-move-body');
+    const sub = getByTestId('direct-edit-subtract-body');
+    expect(move.getAttribute('aria-pressed')).toBe('true');
+    act(() => { fireEvent.click(sub); });
+    expect(move.getAttribute('aria-pressed')).toBe('false');
+    expect(sub.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('shows the stage-1 status hint when subtract-body activates (EN)', () => {
+    const { getByTestId } = render(
+      <ModeHarness enabled={true} initialMode="subtract-body" />,
+    );
+    expect(getByTestId('direct-edit-mode-status').textContent).toContain('tool body');
+  });
+
+  it('renders Korean label for subtract-body when lang=ko', () => {
+    const { getByTestId } = render(
+      <ModeHarness enabled={true} lang="ko" />,
+    );
+    expect(getByTestId('direct-edit-subtract-body').textContent).toContain('바디 빼기');
+  });
+});

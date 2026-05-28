@@ -29,13 +29,15 @@ import {
 import { getDirectEditStrings, type DirectEditLang } from './directEditI18n';
 
 /** Full direct-edit mode union. `push-pull` is E1; `move-body` /
- *  `rotate-body` are E3 (this PR). When E2 lands the union grows to
- *  include `dynamic-fillet` / `dynamic-chamfer`. */
+ *  `rotate-body` are E3; `subtract-body` is E4 (this PR). When E2
+ *  lands the union grows to include `dynamic-fillet` /
+ *  `dynamic-chamfer`. */
 export type DirectEditMode =
   | 'off'
   | 'push-pull'
   | 'move-body'
-  | 'rotate-body';
+  | 'rotate-body'
+  | 'subtract-body';
 
 export interface DirectEditToolbarProps {
   /** Current viewer language. Defaults to 'en'. */
@@ -111,6 +113,33 @@ export function DirectEditToolbar({
     clearStack('manual');
   }, [clearStack]);
 
+  // E4 — the boolean overlay reports its stage via a custom event.
+  // The toolbar subscribes here so the status hint can switch
+  // between "pick tool" → "pick target" → "confirm" without the
+  // overlay needing a ref. Default to stage 1 when subtract mode
+  // first activates.
+  //
+  // Hooks live ABOVE the early-return below so the hook order stays
+  // stable across re-renders (react-hooks/rules-of-hooks).
+  const [subtractStage, setSubtractStage] = React.useState<
+    'pick-tool' | 'pick-target' | 'confirm'
+  >('pick-tool');
+  React.useEffect(() => {
+    if (effectiveMode !== 'subtract-body') {
+      setSubtractStage('pick-tool');
+      return;
+    }
+    const onStage = (e: Event) => {
+      const detail = (e as CustomEvent<{ stage: 'pick-tool' | 'pick-target' | 'confirm' }>)
+        .detail;
+      if (detail?.stage) setSubtractStage(detail.stage);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nfab:boolean-overlay-stage', onStage);
+      return () => window.removeEventListener('nfab:boolean-overlay-stage', onStage);
+    }
+  }, [effectiveMode]);
+
   // Flag-gated: render nothing when ?direct-edit=v1 is not set.
   if (!enabled) return null;
 
@@ -118,10 +147,11 @@ export function DirectEditToolbar({
   const isPushPull = effectiveMode === 'push-pull';
   const isMoveBody = effectiveMode === 'move-body';
   const isRotateBody = effectiveMode === 'rotate-body';
+  const isSubtractBody = effectiveMode === 'subtract-body';
   const status = opCount === 0
     ? strings.statusNone
     : strings.statusCount(opCount);
-  // Mode-specific status hint appended when a non-push-pull mode is
+  // Mode-specific status hint appended when a non-off mode is
   // active. Mirrors the SolidWorks "current tool: rotate" status bar.
   const modeStatusHint =
     effectiveMode === 'off'
@@ -130,7 +160,13 @@ export function DirectEditToolbar({
         ? strings.modeStatusPushPull
         : effectiveMode === 'move-body'
           ? strings.modeStatusMoveBody
-          : strings.modeStatusRotateBody;
+          : effectiveMode === 'rotate-body'
+            ? strings.modeStatusRotateBody
+            : subtractStage === 'pick-tool'
+              ? strings.modeStatusSubtractBodyStage1
+              : subtractStage === 'pick-target'
+                ? strings.modeStatusSubtractBodyStage2
+                : strings.modeStatusSubtractBodyStage3;
 
   // Style helpers for the mode-radio buttons.
   const radioStyle = (active: boolean): React.CSSProperties => ({
@@ -193,6 +229,16 @@ export function DirectEditToolbar({
             style={radioStyle(isRotateBody)}
           >
             {isRotateBody ? strings.rotateBodyActive : strings.rotateBody}
+          </button>
+          <button
+            type="button"
+            data-testid="direct-edit-subtract-body"
+            aria-label={strings.ariaSubtractBody}
+            aria-pressed={isSubtractBody}
+            onClick={() => handleSelectMode('subtract-body')}
+            style={radioStyle(isSubtractBody)}
+          >
+            {isSubtractBody ? strings.subtractBodyActive : strings.subtractBody}
           </button>
         </>
       )}
