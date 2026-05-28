@@ -99,3 +99,30 @@ export {
   THREADS_DICT_ES,
   THREADS_DICT_AR,
 } from './i18n';
+
+// ─── W8 (D8) — callout standard extension + drawing rep + STEP I/O ────────
+export {
+  formatThreadCalloutExt,
+  SUPPORTED_CALLOUT_STANDARDS,
+  type ThreadCalloutStandard,
+  type FormatThreadCalloutExtOptions,
+} from './formatThreadCalloutExt';
+
+export {
+  buildThreadDrawingRep,
+  shouldEmitDrawingRep,
+  PHASE_3_DRAWING_REP_ENABLED,
+  type DrawingLineSet,
+  type Line2D,
+  type ViewProjection,
+} from './threadDrawingRep';
+
+export {
+  threadFeatureToStepMetadata,
+  threadStepMetadataToBlob,
+  parseThreadStepBlob,
+  parseThreadStepMetadata,
+  roundTripThreadStep,
+  THREAD_STEP_METADATA_VERSION,
+  type ThreadStepMetadata,
+} from './threadStepIo';
