@@ -1,28 +1,30 @@
 # Phase 1 Review — CRDT Smoke Harness Runbook
 
-**Purpose:** Provide a 60-second browser check that the Phase 1 Week 2 CRDT
-prototype works end-to-end in a real browser. This is checkpoint signal #1
-of three for the Phase 1 → Phase 2 review decision (per
+**Purpose:** Provide two 60-second browser checks that the Phase 1 Week 2
+CRDT prototypes work end-to-end in a real browser. This is checkpoint
+signal #1 of three for the Phase 1 → Phase 2 review decision (per
 [ADR-010](adr/010-wave-2-b-full-collab.md)).
 
 The 161 vitest tests in `src/app/[lang]/shape-generator/collab/__tests__/`
-already exercise the API surface in node with `fake-indexeddb`. This harness
-adds the missing piece — confirming the same code path runs in a real
-browser yjs runtime.
+already exercise the API surface in node with `fake-indexeddb`. These
+harnesses add the missing piece — confirming the same code paths run in
+a real browser yjs runtime.
 
-## Route
+## Two routes (sketch + feature tree)
 
-```
-/[lang]/collab-smoke
-```
+| Route | Module under test | Topology |
+|---|---|---|
+| `/[lang]/collab-smoke` | `sketchYjs.ts` | `Y.Map<id, Y.Map>` (keyed) |
+| `/[lang]/collab-smoke-feature-tree` | `featureTreeYjs.ts` | `Y.Array<Y.Map>` (ordered) + `Y.Map<sketchId>` sibling |
 
-So locally:
+The two CRDT modules have intentionally different topologies — sketches
+are unordered (solver iterates by id-set), the feature tree is ordered
+(history → pipeline reorder). Each topology has its own convergence
+properties worth exercising independently. Run both for full signal #1
+coverage.
 
-- `http://localhost:3000/ko/collab-smoke`
-- `http://localhost:3000/en/collab-smoke`
-
-The route is **not linked from any nav** — it is only reachable by typing
-the URL. That is intentional; this is a developer tool, not a user feature.
+Both routes are **not linked from any nav** — only reachable by typing
+the URL. They are developer tools.
 
 ## What you see
 
@@ -71,6 +73,28 @@ or Red on signal #1.
 4. **Stress.** Click the `Stress: 20 concurrent` button. Op log should
    show 20 adds then two manual syncs. Status: CONVERGED, both panels
    showing 20 segments.
+
+## Feature-tree checklist (`/[lang]/collab-smoke-feature-tree`)
+
+Same shape, different ops. **All four should pass.**
+
+1. **Basic round-trip.** Auto-sync ON, click `+ Feature` on A three
+   times. Both panels show root + 3 features with identical ids,
+   types, and params. Status: CONVERGED.
+
+2. **Concurrent different-id merge.** Auto-sync OFF. `+ Feature` twice
+   on A and twice on B. `Sync A→B` then `Sync B→A`. Both panels show
+   root + 4 features. Status: CONVERGED.
+
+3. **Concurrent per-key param merge.** Auto-sync OFF: `+ Feature` on
+   A once, `Sync A→B`. Click `Edit first` on A (changes one param).
+   Click `Edit first` on B (changes another param, since edit picks
+   the first param key — but if both panels have only one param the
+   updates collide and LWW; that's expected). `Sync A→B`, `Sync B→A`.
+   Both panels converge to the same param values.
+
+4. **Stress.** `Stress: 20 concurrent` button. Both panels end with
+   root + 20 features. Status: CONVERGED.
 
 ## What this does NOT verify
 
