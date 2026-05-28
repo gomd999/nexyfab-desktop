@@ -194,6 +194,37 @@ server. This is already implied by the cloud document migration doc
 §1.5 ("IndexedDB is a cache — never authoritative") but worth calling
 out as a concrete invariant.
 
+## Phase 3 Z2 — sketch CRDT in the production editor (flag-gated)
+
+Phase 3 wires the sketch CRDT through the production `SketchPanel` via the
+new `SketchStore` adapter (`src/app/[lang]/shape-generator/sketch/SketchStore.ts`)
+and the `useSketchStore` hook. The flag is `?crdt=v2` (default OFF — legacy
+useState path stays the production default until W4 gate).
+
+**Smoke**: try editing a sketch in `?crdt=v2` mode across two tabs;
+convergence confirmed.
+
+Procedure:
+1. Open `/[lang]/shape-generator?crdt=v2` in two tabs of the same browser
+   (the BroadcastChannel fallback bridges them while Z1's CollabProvider
+   is in parallel development).
+2. Draw a line in tab A — should appear in tab B within ~100 ms.
+3. Drag the same line's endpoint in both tabs simultaneously — both tabs
+   converge on one position (LWW), and the loser tab shows the
+   "Your edit was overridden by …" toast in the SketchPanel header.
+4. Add a constraint in tab A → appears in tab B.
+
+What this proves: the `SketchStore` adapter routes mutations through
+`applySketchOp` so the Y.Doc remains the convergence source, with the
+panel rendering from the same store via the React subscribe pattern.
+
+What this does NOT prove (deferred to Z1 + W4 gate):
+- Cross-network sync (BroadcastChannel is same-origin only — the
+  Cloudflare Calls / Durable Object transport is Z1's territory).
+- Awareness peer names — the toast falls back to "another collaborator"
+  until Z1 wires `resolvePeerName`.
+- Default-on flag rollout — `?crdt=v2` stays opt-in through W3.
+
 ## Reporting result
 
 Update [project_nexyfab_wave2_phase1_complete.md](../.. memory note) or

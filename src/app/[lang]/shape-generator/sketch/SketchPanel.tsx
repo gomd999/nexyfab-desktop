@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect as _useEffect } from 'react';
+import React, { useState, useEffect as _useEffect, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import type {
   SketchProfile, SketchConfig, SketchTool, ExtrudeMode,
   SketchConstraint, SketchDimension, ConstraintType,
 } from './types';
+import { useSketchStore } from './useSketchStore';
 
 // ─── i18n dict (6 languages) ────────────────────────────────────────────────
 const dict = {
@@ -437,6 +438,25 @@ interface SketchPanelProps {
   /** F1 — open the sketch text panel (for engraving / embossing). When omitted
    *  the entry button is hidden. */
   onOpenTextPanel?: () => void;
+  /** Wave 2 Phase 3 Track Z2 — sketch CRDT integration (flag-gated).
+   *
+   *  When set, the panel subscribes to the shared `SketchStore` bound
+   *  to this id. The host can route segment/constraint/dimension
+   *  mutations through `store.add*` / `store.update*` / `store.remove*`
+   *  to land them in the shared `Y.Doc` (when `?crdt=v2` URL flag is
+   *  ON) instead of local React state.
+   *
+   *  Default OFF — when omitted the panel uses the legacy useState path
+   *  via `profile`, `constraints`, `dimensions` props. The `?crdt=v2`
+   *  flag default is OFF until W4 gate.
+   *
+   *  Setting this enables the LWW-collision toast (when a peer wins a
+   *  concurrent edit, a one-time toast surfaces the override). */
+  crdtSketchId?: string;
+  /** Optional peer name resolver for the LWW collision toast — looks up
+   *  the awareness display name for a peer id. When omitted the toast
+   *  says "another collaborator". */
+  resolvePeerName?: (peerId: string) => string | null;
 }
 
 // ─── Styles (dark theme) ────────────────────────────────────────────────────
@@ -618,7 +638,30 @@ export default function SketchPanel({
   sketchStep = 'draw',
   onSketchStepChange,
   onOpenTextPanel,
+  crdtSketchId,
+  resolvePeerName,
 }: SketchPanelProps) {
+
+  // ─── Wave 2 Phase 3 Track Z2 — sketch CRDT integration (flag-gated) ───────
+  //
+  // When `crdtSketchId` is supplied AND the URL contains `?crdt=v2`, the
+  // hook below resolves to a Y.Doc-backed `SketchStore`. The panel still
+  // renders from the legacy `profile` / `constraints` / `dimensions` props
+  // (the host is the source of truth during the W2 transition); the store
+  // subscription is here so the LWW-collision toast can fire when a
+  // concurrent peer edit overrides a local segment position.
+  //
+  // Legacy path (default, `crdtSketchId` undefined): the hook is a no-op
+  // and the panel behaves identically to pre-Z2.
+  const crdtEnabled = !!crdtSketchId;
+  const sketchStoreResult = useSketchStore(crdtSketchId ?? '__z2-disabled__', {
+    forceMode: crdtEnabled ? undefined : 'local',
+  });
+  const lwwOverrideToast = useLwwCollisionToast(
+    crdtEnabled && sketchStoreResult.isCollab ? sketchStoreResult.store.getDoc?.() ?? null : null,
+    () => sketchStoreResult.store.getSegments(),
+    resolvePeerName,
+  );
 
   // ── i18n: resolve locale from URL segment ──
   const pathname = usePathname();
@@ -667,6 +710,28 @@ export default function SketchPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* ── Z2 LWW collision toast (only renders when a concurrent peer edit
+              overrode a local segment position; auto-dismisses ~4s) ── */}
+      {lwwOverrideToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="sketch-lww-toast"
+          style={{
+            padding: '6px 10px',
+            marginBottom: 6,
+            borderRadius: 6,
+            background: 'rgba(210, 153, 34, 0.12)',
+            border: '1px solid var(--nx-warn)55',
+            fontSize: 11,
+            color: 'var(--nx-warn)',
+            fontWeight: 600,
+          }}
+        >
+          {lwwOverrideToast}
+        </div>
+      )}
 
       {/* ── ① Profile status bar ── */}
       {(() => {
@@ -1714,4 +1779,107 @@ export default function SketchPanel({
       </div>
     </div>
   );
+}
+
+// ─── Z2 LWW collision toast helper ─────────────────────────────────────────
+//
+// Detects "remote peer overrode my segment position" — when an incoming
+// Y.Doc update changes a segment.points value from what we last observed,
+// and the update did NOT originate locally, the toast surfaces.
+//
+// The hook lives in the panel render layer (not in SketchStore) so the
+// store stays pure. Awareness peer-name resolution is supplied by the
+// host via `resolvePeerName` (wired to Z1 awareness).
+
+function segmentsToFingerprint(
+  segments: ReadonlyArray<{ id?: string; points: ReadonlyArray<{ x: number; y: number }> }>,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const s of segments) {
+    if (!s.id) continue;
+    out.set(s.id, JSON.stringify(s.points));
+  }
+  return out;
+}
+
+type SegLike = { id?: string; points: ReadonlyArray<{ x: number; y: number }> };
+
+function useLwwCollisionToast(
+  doc: unknown,
+  getSegments: () => ReadonlyArray<SegLike>,
+  resolvePeerName?: (peerId: string) => string | null,
+): string | null {
+  const [toast, setToast] = useState<string | null>(null);
+  // Snapshot of the doc's segments BEFORE the next update event. We seed
+  // it from the doc on mount + after every detected change.
+  const prevRef = useRef<Map<string, string>>(new Map());
+  const initRef = useRef(false);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the getter accessible to the async update handler via ref so we
+  // pick up the latest snapshot at fire-time rather than the closure
+  // value from the effect's setup.
+  const getSegmentsRef = useRef(getSegments);
+  useEffect(() => { getSegmentsRef.current = getSegments; }, [getSegments]);
+
+  // Subscribe to Yjs update events to detect remote-origin overrides.
+  useEffect(() => {
+    if (!doc || typeof doc !== 'object') return;
+    const ydoc = doc as {
+      on: (event: string, handler: (...args: unknown[]) => void) => void;
+      off: (event: string, handler: (...args: unknown[]) => void) => void;
+    };
+
+    // Initial baseline — snapshot what we see now so the next update can
+    // be diffed against it.
+    if (!initRef.current) {
+      prevRef.current = segmentsToFingerprint(getSegmentsRef.current());
+      initRef.current = true;
+    }
+
+    const handler = (...args: unknown[]) => {
+      const origin = args[1];
+      const isLocal = origin === 'local-ui' || origin === 'solver-commit'
+        || origin === 'import-nfab' || origin === 'gc';
+
+      // Compute a fresh fingerprint from the doc (post-update state).
+      const next = segmentsToFingerprint(getSegmentsRef.current());
+
+      if (isLocal) {
+        // Local updates refresh the baseline silently — no toast.
+        prevRef.current = next;
+        return;
+      }
+
+      let collisionId: string | null = null;
+      for (const [id, fp] of next) {
+        const before = prevRef.current.get(id);
+        if (before !== undefined && before !== fp) {
+          collisionId = id;
+          break;
+        }
+      }
+      // Refresh the baseline for the next diff irrespective of collision
+      // outcome so subsequent benign remote ops don't keep firing the toast.
+      prevRef.current = next;
+      if (!collisionId) return;
+
+      const peerName = typeof origin === 'string' && resolvePeerName
+        ? resolvePeerName(origin)
+        : null;
+      const who = peerName ?? 'another collaborator';
+      setToast(`Your edit on "${collisionId}" was overridden by ${who}`);
+
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = setTimeout(() => setToast(null), 4000);
+    };
+
+    ydoc.on('update', handler);
+    return () => {
+      ydoc.off('update', handler);
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    };
+  }, [doc, resolvePeerName]);
+
+  return toast;
 }
