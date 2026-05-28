@@ -306,6 +306,36 @@ What this does NOT prove (deferred):
 - Awareness cursors over ref-geom dialog inputs — that's Z5's territory.
 - Default-on flag rollout — `?crdt=v2` stays opt-in through W3.
 
+## Phase 3 E1 — direct edit foundation (flag-gated)
+
+Wave 2 Phase 3 W3 introduces the **direct edit** modality. E1 ships
+the foundation: face-pick + push-pull math + session-only stack +
+toolbar. Flag-gated `?direct-edit=v1`; default-OFF until W11 burn-in.
+
+ADR-012 §6 lock-ins (recap):
+- Session-only Y.Array stack; **NOT** persisted by `serializeProject`.
+- History-rerun invalidates the stack with a non-blocking toast.
+- Opt-in commit-to-history is E5 (W7), out of scope for E1.
+
+60-second smoke (manual, single user):
+
+1. Open `/[lang]/shape-generator?direct-edit=v1`
+2. Generate a `box` base shape (so the +Y face exists with a known
+   `lastFeatureId` set by the pipeline).
+3. Enable the **Direct edit** toggle in the toolbar.
+4. Click a face on the box and drag along its normal — release.
+5. Check the toolbar status: "1 direct edit applied this session".
+6. Click **Undo direct edit** → status returns to "No direct edits".
+7. Push two more ops, then re-run the parametric history (toggle any
+   feature in the tree to bump `historyVersion`). Expect a toast:
+   *"Direct edits cleared — history was rerun."*
+8. Re-export the .nfab and re-open. Expect: **none** of the direct
+   edits persisted (session-only by design).
+
+Passing all 8 steps = E1 foundation Green. Failure cases (non-planar
+face on a cylinder, oversize offset, malformed faceId) are covered by
+unit tests in `src/app/[lang]/shape-generator/directEdit/__tests__/`.
+
 ## Reporting result
 
 Update [project_nexyfab_wave2_phase1_complete.md](../.. memory note) or
