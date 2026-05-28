@@ -1,0 +1,50 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-threads-spec.md#section-13.1-unit-fixtures",
+  "fixtureId": "F-THREAD-01-cosmetic",
+  "description": "F-THREAD-01 — M8 cosmetic thread on a Φ8 boss. Smoke fixture for W6 (hole-wizard threads section) + W7 (geometric-mode regression — same designation rebuilt with mode='geometric' must produce the same callout). Pure data: catalog ref + cosmetic feature shape + expected metadata.",
+  "createdBy": "wave-2 Phase 2 W5 (Track D5)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "boss",
+    "diameterMm": 8.0,
+    "lengthMm": 25.0,
+    "axis": [0, 0, 1],
+    "origin": [0, 0, 0],
+    "material": "AL6061"
+  },
+  "feature": {
+    "id": "feat_thread_F-THREAD-01",
+    "featureType": "thread",
+    "parentFeatureId": "feat_boss_F-THREAD-01",
+    "threadKind": "external",
+    "threadRef": { "series": "ISO_M_COARSE", "designation": "M8" },
+    "class": "6g",
+    "mode": "cosmetic",
+    "threadDirection": "right_hand",
+    "length": 20,
+    "startOffset": 0
+  },
+  "expected": {
+    "calloutFormatted": "M8-6g ↧ 20",
+    "rangeStart": [0, 0, 0],
+    "rangeEnd": [0, 0, 20],
+    "geometryReferenceEqual": true,
+    "catalogRow": {
+      "series": "ISO_M_COARSE",
+      "designation": "M8",
+      "nominalDia": 8,
+      "pitch": 1.25,
+      "tpi": 20.32,
+      "tapDrill": 6.8,
+      "isPipe": false,
+      "isTapered": false
+    }
+  },
+  "notes": [
+    "Cosmetic mode returns the parent geometry unchanged (reference equality) per spec §10.1.",
+    "M8 coarse pitch is 1.25 mm; the callout suppresses the pitch (ISO 6410-1) — 'M8-6g' not 'M8×1.25-6g'.",
+    "tpi = 25.4 / 1.25 = 20.32 — informational, derived from pitch.",
+    "Class '6g' is the external-thread default per spec §3.3 (this fixture is external since `threadKind = 'external'`).",
+    "W7 will rebuild the same fixture with `mode: 'geometric'` and assert callout + designation are identical."
+  ]
+}
