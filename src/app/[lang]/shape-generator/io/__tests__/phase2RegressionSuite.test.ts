@@ -61,7 +61,7 @@ const MINIMAL_SCENE: SerializeInput['scene'] = {
   isSketchMode: false,
   sketchPlane: 'xy',
   sketchProfile: { closed: false, segments: [] },
-  sketchConfig: { mode: 'extrude', depth: 10 },
+  sketchConfig: { mode: 'extrude', depth: 10, revolveAngle: 360, revolveAxis: 'y', segments: 32 },
 };
 
 const MINIMAL_HISTORY: SerializeInput['history'] = {

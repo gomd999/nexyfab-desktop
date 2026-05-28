@@ -25,9 +25,20 @@ describe('HoleWizardModalV2 — skeleton render', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders the flag-off placeholder when the flag is missing', () => {
+  // W6 flag flip — default is now V2. The flag-off placeholder only renders
+  // when `forceFlagV1` is set (or `?hole-wizard=v1` is in the URL).
+  it('renders V2 by default after the W6 flag flip (no force flags)', () => {
     render(<HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} />);
+    expect(screen.queryByTestId('hole-wizard-v2-flag-off')).toBeNull();
+    expect(screen.getByTestId('hole-wizard-v2-root')).toBeTruthy();
+  });
+
+  it('renders the flag-off placeholder when forceFlagV1 is set (rollback path)', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagV1 />,
+    );
     expect(screen.getByTestId('hole-wizard-v2-flag-off')).toBeTruthy();
+    expect(screen.queryByTestId('hole-wizard-v2-root')).toBeNull();
   });
 
   it('renders all three tabs with the EN labels', () => {
