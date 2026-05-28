@@ -1,0 +1,51 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-threads-spec.md#section-13.1-unit-fixtures",
+  "fixtureId": "F-THREAD-04-LH",
+  "description": "F-THREAD-04 — M10 × 1.5 LEFT-HAND geometric thread. Verifies that the LH flip is applied to the helix winding (sin sign inverted) and that the callout suffix carries 'LH' before the depth marker.",
+  "createdBy": "wave-2 Phase 2 W7 (Track D7)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "boss",
+    "diameterMm": 10.0,
+    "lengthMm": 20.0,
+    "axis": [0, 0, 1],
+    "origin": [0, 0, 0],
+    "material": "AL6061"
+  },
+  "feature": {
+    "id": "feat_thread_F-THREAD-04",
+    "featureType": "thread",
+    "parentFeatureId": "feat_boss_F-THREAD-04",
+    "threadKind": "external",
+    "threadRef": { "series": "ISO_M_COARSE", "designation": "M10" },
+    "class": "6g",
+    "mode": "geometric",
+    "threadDirection": "left_hand",
+    "length": 15,
+    "startOffset": 0
+  },
+  "expected": {
+    "calloutFormatted": "M10-6g LH ↧ 15",
+    "rangeStart": [0, 0, 0],
+    "rangeEnd": [0, 0, 15],
+    "turns": 10,
+    "winding": "CW-from-positive-Z",
+    "helixSinSign": -1,
+    "catalogRow": {
+      "series": "ISO_M_COARSE",
+      "designation": "M10",
+      "nominalDia": 10,
+      "pitch": 1.5,
+      "tapDrill": 8.5,
+      "isPipe": false,
+      "isTapered": false
+    }
+  },
+  "notes": [
+    "M10 coarse pitch 1.5 mm × 15 mm length = exactly 10 turns.",
+    "Left-hand → sin sign flipped in helix sample equation (helixGeometry.ts).",
+    "Looking down from +Z, the LH helix winds CW (right-hand winds CCW).",
+    "Callout 'M10-6g LH ↧ 15' — LH appears between class and depth (ISO 6410-1).",
+    "Helix z-coordinate still increases monotonically; LH does NOT reverse the axial direction."
+  ]
+}

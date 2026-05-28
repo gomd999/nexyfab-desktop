@@ -1,0 +1,51 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-threads-spec.md#section-13.1-unit-fixtures",
+  "fixtureId": "F-THREAD-03-geometric-internal",
+  "description": "F-THREAD-03 — M6 GEOMETRIC internal thread on a Φ7 host hole. D7 (W7) verifies the boolean SUBTRACT path (internal threads cut grooves into the parent rather than UNION-ing the swept tube onto it).",
+  "createdBy": "wave-2 Phase 2 W7 (Track D7)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "hole",
+    "diameterMm": 7.0,
+    "lengthMm": 20.0,
+    "axis": [0, 0, 1],
+    "origin": [0, 0, 0],
+    "material": "STEEL"
+  },
+  "feature": {
+    "id": "feat_thread_F-THREAD-03",
+    "featureType": "thread",
+    "parentFeatureId": "feat_hole_F-THREAD-03",
+    "threadKind": "internal",
+    "threadRef": { "series": "ISO_M_COARSE", "designation": "M6" },
+    "class": "6H",
+    "mode": "geometric",
+    "threadDirection": "right_hand",
+    "length": 15,
+    "startOffset": 0
+  },
+  "expected": {
+    "calloutFormatted": "M6-6H ↧ 15",
+    "rangeStart": [0, 0, 0],
+    "rangeEnd": [0, 0, 15],
+    "geometryReferenceEqual": false,
+    "turns": 15,
+    "booleanOp": "SUBTRACT",
+    "catalogRow": {
+      "series": "ISO_M_COARSE",
+      "designation": "M6",
+      "nominalDia": 6,
+      "pitch": 1.0,
+      "tapDrill": 5.0,
+      "isPipe": false,
+      "isTapered": false
+    }
+  },
+  "notes": [
+    "M6 coarse pitch is 1.0 mm; 15 mm length / 1.0 = 15 full turns.",
+    "threadKind = 'internal' → boolean SUBTRACTION (spec §7 step 5).",
+    "Φ7 host hole > Φ5.0 tap drill — pre-rebuild check passes (Φ7 is the actual tap-drilled hole, not the nominal D1).",
+    "Class '6H' is the internal-thread default (spec §3.3).",
+    "Right-handed by default. Left-hand version covered in F-THREAD-04-LH."
+  ]
+}

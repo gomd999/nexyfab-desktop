@@ -1,0 +1,47 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-threads-spec.md#section-13.1-unit-fixtures",
+  "fixtureId": "F-THREAD-05-fine",
+  "description": "F-THREAD-05 — M8 × 1 FINE-pitch geometric thread. Verifies that the ISO_M_FINE catalog row drives the helix pitch (the spec called out fine pitch as separately required because the coarse-pitch tab in the wizard hides the '×P' designator).",
+  "createdBy": "wave-2 Phase 2 W7 (Track D7)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "boss",
+    "diameterMm": 8.0,
+    "lengthMm": 25.0,
+    "axis": [0, 0, 1],
+    "origin": [0, 0, 0],
+    "material": "STEEL"
+  },
+  "feature": {
+    "id": "feat_thread_F-THREAD-05",
+    "featureType": "thread",
+    "parentFeatureId": "feat_boss_F-THREAD-05",
+    "threadKind": "external",
+    "threadRef": { "series": "ISO_M_FINE", "designation": "M8×1" },
+    "class": "6g",
+    "mode": "geometric",
+    "threadDirection": "right_hand",
+    "length": 20,
+    "startOffset": 0
+  },
+  "expected": {
+    "calloutFormatted": "M8×1-6g ↧ 20",
+    "rangeStart": [0, 0, 0],
+    "rangeEnd": [0, 0, 20],
+    "turns": 20,
+    "pitchMm": 1.0,
+    "tpi": 25.4,
+    "catalogRow": {
+      "series": "ISO_M_FINE",
+      "designation": "M8×1",
+      "nominalDia": 8,
+      "pitch": 1.0
+    }
+  },
+  "notes": [
+    "ISO M fine: M8 nominal × 1 mm pitch (vs M8 coarse = 1.25 mm pitch).",
+    "Designation uses the canonical × (U+00D7), not 'x' — same as ISO_M_FINE_TABLE in threadCatalog.ts.",
+    "20 mm / 1.0 mm pitch = 20 full turns — the highest turn count of the four fixtures, exercises the sampling-cap path.",
+    "Callout 'M8×1-6g ↧ 20' — fine pitch is ALWAYS printed (vs coarse which suppresses the ×P)."
+  ]
+}
