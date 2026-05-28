@@ -100,6 +100,63 @@ export {
   THREADS_DICT_AR,
 } from './i18n';
 
+// ─── W7 (D7) — geometric mode: helix + profile + sweep + caps + drag ──────
+export {
+  buildHelixPath,
+  buildHelixPathForThread,
+  helixTurnsForLength,
+  helixFrameAt,
+  DEFAULT_SAMPLES_PER_TURN,
+  DEFAULT_MAX_SAMPLES,
+  type Vec3,
+  type HelixDirection,
+  type HelixSpec,
+  type HelixSamplingOptions,
+} from './helixGeometry';
+
+export {
+  buildThreadProfile,
+  profileRadialExtent,
+  profileAxialExtent,
+  profileSelfIntersects,
+  DEFAULT_ROOT_RADIUS_COEFF,
+  DEFAULT_CREST_TRUNCATION_COEFF,
+  DEFAULT_ROOT_ARC_SEGMENTS,
+  type Vec2,
+  type ProfileSpec,
+} from './threadProfile';
+
+export {
+  applyThreadGeometric,
+  type ApplyThreadGeometricResult,
+  type ApplyThreadGeometricOptions,
+} from './applyThreadGeometric';
+
+export {
+  evaluateThreadCapWarnings,
+  hasBlockingWarnings,
+  warningsOfCode,
+  rowForFeature,
+  type ThreadCapWarning,
+  type ThreadCapWarningCode,
+  type ThreadCapWarningSeverity,
+  type ThreadCapWarningsInput,
+} from './threadCapWarnings';
+
+export {
+  selectThreadRenderMode,
+  dragStateStart,
+  dragStateEnd,
+  recordGeometricFrame,
+  INITIAL_DRAG_STATE,
+  INITIAL_FRAME_STATS,
+  SLOW_FRAME_THRESHOLD_MS,
+  HYSTERESIS_COOLDOWN_MS,
+  type ThreadDragState,
+  type ThreadFrameStats,
+  type SelectThreadRenderModeInput,
+} from './selectThreadRenderMode';
+
 // ─── W8 (D8) — callout standard extension + drawing rep + STEP I/O ────────
 export {
   formatThreadCalloutExt,

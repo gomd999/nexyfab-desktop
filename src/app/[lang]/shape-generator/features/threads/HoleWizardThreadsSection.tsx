@@ -277,8 +277,8 @@ export default function HoleWizardThreadsSection({
   }
 
   function setMode(next: ThreadMode): void {
-    // W6 only supports cosmetic; geometric is hint-only (W7).
-    if (next === 'geometric') return;
+    // W7 (D7) enables both modes — geometric builds real V-thread mesh via
+    // `applyThreadGeometric`. The picker no longer disables geometric.
     setSpec((s) => ({ ...s, mode: next }));
   }
 
@@ -326,7 +326,9 @@ export default function HoleWizardThreadsSection({
             fontSize: 10,
             padding: '2px 6px',
             borderRadius: 3,
-            background: spec.mode === 'cosmetic' ? '#10b981' : '#6b7280',
+            // D7: geometric mode is now active — pick a distinct accent so the
+            // user can see at a glance which path the wizard is on.
+            background: spec.mode === 'cosmetic' ? '#10b981' : '#8b5cf6',
             color: '#fff',
           }}
         >
@@ -542,24 +544,11 @@ export default function HoleWizardThreadsSection({
           <button
             data-testid="threads-mode-geometric"
             type="button"
-            disabled
-            aria-disabled="true"
-            title={dict.hintGeometricW7}
-            style={{
-              ...tabBtnStyle(false),
-              flex: 1,
-              opacity: 0.45,
-              cursor: 'not-allowed',
-            }}
+            onClick={() => setMode('geometric')}
+            style={{ ...tabBtnStyle(spec.mode === 'geometric'), flex: 1 }}
           >
             {dict.modeGeometric}
           </button>
-        </div>
-        <div
-          data-testid="threads-mode-w7-hint"
-          style={{ fontSize: 10, color: 'var(--nx-text-2)', marginTop: 4 }}
-        >
-          {dict.hintGeometricW7}
         </div>
       </div>
 
@@ -592,16 +581,21 @@ export default function HoleWizardThreadsSection({
         </div>
       )}
 
-      <div
-        style={{
-          fontSize: 10,
-          color: '#ff00ff',
-          marginTop: 6,
-          fontStyle: 'italic',
-        }}
-      >
-        {dict.hintViewportMagenta}
-      </div>
+      {/* Cosmetic-only hint — geometric mode produces a real V-cut mesh and
+          doesn't need the magenta dashed-circle viewport indicator. */}
+      {spec.mode === 'cosmetic' && (
+        <div
+          data-testid="threads-mode-cosmetic-magenta-hint"
+          style={{
+            fontSize: 10,
+            color: '#ff00ff',
+            marginTop: 6,
+            fontStyle: 'italic',
+          }}
+        >
+          {dict.hintViewportMagenta}
+        </div>
+      )}
     </div>
   );
 }

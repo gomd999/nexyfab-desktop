@@ -1,0 +1,57 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-threads-spec.md#section-13.1-unit-fixtures",
+  "fixtureId": "F-THREAD-02-geometric-external",
+  "description": "F-THREAD-02 — M8 GEOMETRIC external thread on a Φ8 boss. D7 (W7) primary geometric-mode fixture: same designation as F-THREAD-01-cosmetic but with `mode: 'geometric'` — the rebuild produces a real V-cut helical mesh and `result.geometry !== parentGeometry`. Callout / catalog row must match F-THREAD-01-cosmetic exactly (no callout regression between modes).",
+  "createdBy": "wave-2 Phase 2 W7 (Track D7)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "boss",
+    "diameterMm": 8.0,
+    "lengthMm": 25.0,
+    "axis": [0, 0, 1],
+    "origin": [0, 0, 0],
+    "material": "AL6061"
+  },
+  "feature": {
+    "id": "feat_thread_F-THREAD-02",
+    "featureType": "thread",
+    "parentFeatureId": "feat_boss_F-THREAD-02",
+    "threadKind": "external",
+    "threadRef": { "series": "ISO_M_COARSE", "designation": "M8" },
+    "class": "6g",
+    "mode": "geometric",
+    "threadDirection": "right_hand",
+    "length": 20,
+    "startOffset": 0
+  },
+  "expected": {
+    "calloutFormatted": "M8-6g ↧ 20",
+    "rangeStart": [0, 0, 0],
+    "rangeEnd": [0, 0, 20],
+    "geometryReferenceEqual": false,
+    "turns": 16,
+    "helixRadius": 3.6585,
+    "samplesPerTurn": 16,
+    "minTotalSamples": 32,
+    "maxTotalSamples": 257,
+    "catalogRow": {
+      "series": "ISO_M_COARSE",
+      "designation": "M8",
+      "nominalDia": 8,
+      "pitch": 1.25,
+      "tpi": 20.32,
+      "tapDrill": 6.8,
+      "isPipe": false,
+      "isTapered": false
+    }
+  },
+  "notes": [
+    "M8 × 1.25 pitch, 20 mm length → 16 full turns (spec §8 cost table).",
+    "Right-handed external thread (the 95% case): boolean UNION of swept body with parent cylinder.",
+    "helixRadius = (D + D1)/4 = (8 + 6.647)/4 ≈ 3.6585 mm (spec §7 step 2).",
+    "samplesPerTurn = 16 (DEFAULT_SAMPLES_PER_TURN, matches §7.3 'draft' quality budget).",
+    "Total samples are bounded by [naturalCount, maxSamples=256].",
+    "geometryReferenceEqual = false — D7 produces a NEW BufferGeometry (contrasts D5 cosmetic which preserves reference).",
+    "calloutFormatted matches F-THREAD-01-cosmetic — switching modes must NEVER change the callout string."
+  ]
+}

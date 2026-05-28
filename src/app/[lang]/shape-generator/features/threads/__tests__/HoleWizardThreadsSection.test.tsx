@@ -118,17 +118,32 @@ describe('HoleWizardThreadsSection — direction & kind toggles', () => {
   });
 });
 
-describe('HoleWizardThreadsSection — mode & W7 hint', () => {
-  it('geometric button is disabled (W7)', () => {
+describe('HoleWizardThreadsSection — mode picker (D7 enabled)', () => {
+  it('geometric button is now ENABLED (D7 un-grayed)', () => {
     render(<HoleWizardThreadsSection lang="en" />);
     const btn = screen.getByTestId('threads-mode-geometric') as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
-    expect(btn.getAttribute('aria-disabled')).toBe('true');
+    expect(btn.disabled).toBe(false);
   });
 
-  it('shows the W7 hint text', () => {
+  it('W7 grayed-out hint is no longer rendered', () => {
     render(<HoleWizardThreadsSection lang="en" />);
-    expect(screen.getByTestId('threads-mode-w7-hint').textContent).toContain('W7');
+    expect(screen.queryByTestId('threads-mode-w7-hint')).toBeNull();
+  });
+
+  it('clicking the geometric mode button switches mode to geometric', () => {
+    const onChange = vi.fn();
+    render(<HoleWizardThreadsSection lang="en" onChange={onChange} />);
+    fireEvent.click(screen.getByTestId('threads-mode-geometric'));
+    const last = onChange.mock.calls.at(-1)?.[0] as ThreadsSectionSpec;
+    expect(last.mode).toBe('geometric');
+  });
+
+  it('switching to geometric mode flips the badge text', () => {
+    render(<HoleWizardThreadsSection lang="en" />);
+    fireEvent.click(screen.getByTestId('threads-mode-geometric'));
+    expect(screen.getByTestId('hole-wizard-threads-mode-badge').textContent).toBe(
+      'geometric',
+    );
   });
 
   it('clicking the cosmetic mode button does not change mode (already cosmetic)', () => {
@@ -137,6 +152,13 @@ describe('HoleWizardThreadsSection — mode & W7 hint', () => {
     fireEvent.click(screen.getByTestId('threads-mode-cosmetic'));
     const last = onChange.mock.calls.at(-1)?.[0] as ThreadsSectionSpec;
     expect(last.mode).toBe('cosmetic');
+  });
+
+  it('magenta-circle hint disappears when geometric mode is active', () => {
+    render(<HoleWizardThreadsSection lang="en" />);
+    expect(screen.getByTestId('threads-mode-cosmetic-magenta-hint')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('threads-mode-geometric'));
+    expect(screen.queryByTestId('threads-mode-cosmetic-magenta-hint')).toBeNull();
   });
 });
 
