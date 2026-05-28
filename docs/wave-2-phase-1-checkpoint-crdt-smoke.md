@@ -498,6 +498,71 @@ Known mesh-level limitations (resolved by Phase 4 B-Rep worker):
   rather than re-stitching — the underlying corner triangles remain
   but are visually covered. B-Rep round-trip cleans this up.
 
+## Phase 3 E4 — boolean subtract body (flag-gated)
+
+Wave 2 Phase 3 W6 lands the **subtract body** direct-edit op — a
+SolidWorks-style mesh-level "Combine → Subtract" that lets the user
+pick two bodies in the viewport and remove tool from target without
+adding a parametric feature. Reuses three-bvh-csg `SUBTRACTION` for a
+synchronous boolean (ADR-012 §6 — session-only, no worker).
+
+Same flag-gating as E1/E2/E3 (`?direct-edit=v1`). Same session-only
+stack. The parametric `features/boolean.ts` is untouched — that's
+still the path for history-persisted booleans.
+
+60-second smoke (manual, single user):
+
+1. Open `/[lang]/shape-generator?direct-edit=v1`.
+2. Generate a `box` base shape and a `sphere` feature that overlaps it
+   (or two boxes via boolean-union with `keep tools` so two bodies
+   coexist in the scene).
+3. Open the direct-edit toolbar — switch to **Subtract body** mode
+   (the new radio button next to Move / Rotate).
+4. Verify the status bar reads "Subtract — pick the tool body"
+   (en) / "바디 빼기 — 도구 바디를 선택하세요" (ko).
+5. Click any body in the viewport — it should highlight RED. Status
+   advances to "Subtract — pick the target body".
+6. Click another body — it should highlight BLUE. Status advances to
+   "Subtract — click Confirm to apply" and a translucent green
+   indicator sphere appears at the bbox-midpoint between the two
+   picks.
+7. Press Enter (or click the in-overlay Confirm action) → confirm the
+   resulting geometry replaces the target. The session stack count
+   increments by 1. Press Escape at any earlier stage to cancel and
+   restart.
+8. Verify the session-stack tracking ("1 direct edit applied this
+   session"). Undo (the toolbar's Undo button) returns the scene to
+   the pre-subtract target.
+9. Verify history-rerun invalidation: bump the parametric history
+   (drag a slider on any earlier feature) → toast "Direct edits
+   cleared (1) — history was rerun." appears, the subtract is
+   reverted, and the stack shows "No direct edits".
+
+Cap-warning cases to spot-check:
+- Pick the SAME body twice → the toolbar refuses Confirm with
+  `SUBTRACT_SAME_BODY` (en) / `바디 빼기 — 도구와 대상 바디가 동일합니다` (ko).
+- Pick two disjoint bodies (move one body far from the other) →
+  warning bar shows `SUBTRACT_DISJOINT`; Confirm is allowed but the
+  subtract is a no-op (the target is returned unchanged).
+- Pick a non-manifold mesh (corrupt via dev tools) → `SUBTRACT_NON_MANIFOLD`
+  refuses Confirm.
+- Tool fully contains target → `SUBTRACT_NULL_RESULT` raised after
+  Confirm; target stays in the scene.
+
+Auto-coverage: 19 cases in `applySubtractBody.test.ts`, 21 cases in
+`booleanCapWarnings.test.ts`, 12 cases in `BooleanOverlay.test.tsx`,
+5 cases in `DirectEditToolbar.test.tsx` (E4 segment), 6 cases in
+`commitToHistory.test.ts` (E4 segment). Perf observed locally:
+applySubtractBody ~8ms (M8 cube vs ~96-tri sphere), ~76ms (500-tri
+sphere − cube), ~109ms (1000-tri sphere − sphere) — within the 30ms
+p95 budget at M8 scale per ADR-012 §8.
+
+Known limitations (resolved by Phase 4):
+- Single-body shape-generator scenes can't surface a true two-pick
+  flow yet — both clicks resolve to the same body and `SAME_BODY`
+  fires. Multi-body picking lands in Phase 4 along with chained
+  multi-tool subtract + union/intersect direct edits.
+
 ## Reporting result
 
 Update [project_nexyfab_wave2_phase1_complete.md](../.. memory note) or

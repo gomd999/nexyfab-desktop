@@ -1,5 +1,5 @@
 /**
- * directEditTypes.ts — Wave 2 Phase 3 Track E1 + E2.
+ * directEditTypes.ts — Wave 2 Phase 3 Track E1 + E2 + E3 + E4.
  *
  * Direct-edit operations live in a session-only stack (ADR-012 §6).
  *
@@ -18,8 +18,9 @@
  *
  * The type union grows over Phase 3 W3-W7:
  *   - E1 (W3) ships `pushPull`.
- *   - E2 (W4) ships `dynamicFillet` + `dynamicChamfer` (this file).
- *   - E3/E4 add body-level booleans.
+ *   - E2 (W4) ships `dynamicFillet` + `dynamicChamfer`.
+ *   - E3 (W5) ships `moveBody` + `rotateBody`.
+ *   - E4 (W6) ships `subtractBody` (this file) — mesh-level Combine→Subtract.
  */
 
 import {
@@ -80,6 +81,29 @@ export type DirectEditOp =
         angleRad: number;
         pivot: [number, number, number];
       };
+      createdAt: number;
+    }
+  | {
+      /** E4 — body-level mesh boolean subtract. SolidWorks-style
+       *  Combine → Subtract: `target − tool`.
+       *
+       *  Picking-protocol (resolved here):
+       *    The overlay collects the user's two picks in a fixed order —
+       *    Stage 1 picks the TOOL (the body being subtracted, i.e.
+       *    "consumed"), Stage 2 picks the TARGET (the body that keeps
+       *    its identity post-subtract). Stage 3 confirms. The op
+       *    records both ids and `keepTool` (default false). */
+      kind: 'subtractBody';
+      /** The body being subtracted FROM (kept). */
+      targetBodyId: string;
+      /** The body being subtracted (consumed). */
+      toolBodyId: string;
+      /** Whether to keep the tool body as a separate copy (default
+       *  false). When false (default), only the subtracted target is
+       *  produced. When true the applier returns both the subtracted
+       *  target geometry AND a clone of the tool body so the host can
+       *  keep both in the scene. */
+      keepTool: boolean;
       createdAt: number;
     };
 
@@ -171,6 +195,13 @@ export function isRotateBodyOp(
   return op.kind === 'rotateBody';
 }
 
+/** Type guard for the `subtractBody` op variant (E4). */
+export function isSubtractBodyOp(
+  op: DirectEditOp,
+): op is Extract<DirectEditOp, { kind: 'subtractBody' }> {
+  return op.kind === 'subtractBody';
+}
+
 /** Pick payload for body-level direct edits (E3). The overlay maps a
  *  body raycast hit into this shape and forwards it to the toolbar /
  *  controller. In the current single-body shape-generator scene,
@@ -197,6 +228,20 @@ export type BodyTransformValidationResult =
         | 'invalid_rotation_angle'
         | 'invalid_rotation_pivot'
         | 'translation_too_large';
+    };
+
+/** Validation outcomes for the E4 subtract-body op. The dedicated
+ *  variant lets the overlay distinguish "same body" / "empty ids" /
+ *  "invalid flag" without coupling to the body-transform reasons. */
+export type SubtractBodyValidationResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | 'invalid_targetBodyId'
+        | 'invalid_toolBodyId'
+        | 'same_body'
+        | 'invalid_keepTool_flag';
     };
 
 /** Maximum allowed translation magnitude (mm) for `moveBody`. Beyond
@@ -230,6 +275,28 @@ export function validateMoveBody(
   );
   if (mag > MOVE_BODY_MAX_TRANSLATION_MM) {
     return { ok: false, reason: 'translation_too_large' };
+  }
+  return { ok: true };
+}
+
+/** Validate a `subtractBody` op (E4). Pure check; does not touch the
+ *  mesh. Refuses on empty ids, same-body subtract, or a non-boolean
+ *  `keepTool` flag. Mesh-shape refusals (non-manifold, empty result,
+ *  disjoint) come from `booleanCapWarnings` + the applier. */
+export function validateSubtractBody(
+  op: Extract<DirectEditOp, { kind: 'subtractBody' }>,
+): SubtractBodyValidationResult {
+  if (!op.targetBodyId || typeof op.targetBodyId !== 'string') {
+    return { ok: false, reason: 'invalid_targetBodyId' };
+  }
+  if (!op.toolBodyId || typeof op.toolBodyId !== 'string') {
+    return { ok: false, reason: 'invalid_toolBodyId' };
+  }
+  if (op.targetBodyId === op.toolBodyId) {
+    return { ok: false, reason: 'same_body' };
+  }
+  if (typeof op.keepTool !== 'boolean') {
+    return { ok: false, reason: 'invalid_keepTool_flag' };
   }
   return { ok: true };
 }
@@ -310,6 +377,10 @@ export function validateDirectEditOp(op: DirectEditOp): OpValidationResult {
     }
     case 'rotateBody': {
       const r = validateRotateBody(op);
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+    }
+    case 'subtractBody': {
+      const r = validateSubtractBody(op);
       return r.ok ? { ok: true } : { ok: false, reason: r.reason };
     }
     default: {

@@ -1,5 +1,5 @@
 /**
- * directEdit/index.ts — Wave 2 Phase 3 Track E1 + E2 + E3.
+ * directEdit/index.ts — Wave 2 Phase 3 Track E1 + E2 + E3 + E4.
  *
  * Public surface for the direct-edit module. The host imports from
  * here so the underlying file layout stays an implementation detail.
@@ -40,6 +40,20 @@ export {
 } from './BodyTransformOverlay';
 
 export {
+  BooleanOverlay,
+  BOOLEAN_OVERLAY_PICK_EVENT,
+  BOOLEAN_OVERLAY_CONFIRM_EVENT,
+  BOOLEAN_OVERLAY_CANCEL_EVENT,
+  dispatchBooleanOverlayPick,
+  dispatchBooleanOverlayConfirm,
+  dispatchBooleanOverlayCancel,
+  type BooleanOverlayProps,
+  type BooleanOverlayMode,
+  type BooleanOverlayStage,
+  type BooleanOverlayHandle,
+} from './BooleanOverlay';
+
+export {
   applyPushPull,
   type ApplyContext,
   type ApplyPushPullResult,
@@ -68,6 +82,24 @@ export {
   type ApplyRotateBodyContext,
   type ApplyRotateBodyResult,
 } from './applyRotateBody';
+
+export {
+  applySubtractBody,
+  type ApplySubtractBodyContext,
+  type ApplySubtractBodyResult,
+  type ApplySubtractBodyReason,
+} from './applySubtractBody';
+
+export {
+  checkSubtractBodyCaps,
+  makeNullResultWarning,
+  isLikelyManifold,
+  bboxesOverlap,
+  BOOLEAN_CAP_WARNING_CATALOGUE,
+  type BooleanCapWarning,
+  type BooleanCapWarningCode,
+  type BooleanCapContext,
+} from './booleanCapWarnings';
 
 export {
   computePushPullOffset,
@@ -137,9 +169,11 @@ export {
   isDynamicChamferOp,
   isMoveBodyOp,
   isRotateBodyOp,
+  isSubtractBodyOp,
   validateDirectEditOp,
   validateMoveBody,
   validateRotateBody,
+  validateSubtractBody,
   MOVE_BODY_MAX_TRANSLATION_MM,
   ROTATE_BODY_MAX_ANGLE_RAD,
   type DirectEditOp,
@@ -149,6 +183,7 @@ export {
   type DirectEditBodyPick,
   type OpValidationResult,
   type BodyTransformValidationResult,
+  type SubtractBodyValidationResult,
 } from './directEditTypes';
 
 export {

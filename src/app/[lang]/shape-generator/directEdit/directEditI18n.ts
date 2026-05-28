@@ -40,6 +40,13 @@ export interface DirectEditStrings {
   modeStatusPushPull: string;
   modeStatusMoveBody: string;
   modeStatusRotateBody: string;
+  /** E4 — boolean subtract body labels + 3-stage status hints. */
+  subtractBody: string;
+  subtractBodyActive: string;
+  ariaSubtractBody: string;
+  modeStatusSubtractBodyStage1: string;
+  modeStatusSubtractBodyStage2: string;
+  modeStatusSubtractBodyStage3: string;
   // ─── E5 (W7) commit-to-history strings ───────────────────────────────────
   /** Toolbar button label that opens the commit modal. */
   commitButton: string;
@@ -88,6 +95,12 @@ const KO: DirectEditStrings = {
   modeStatusPushPull: '밀기/당기기 모드 — 면을 드래그하세요',
   modeStatusMoveBody: '이동 모드 — 기즈모로 드래그',
   modeStatusRotateBody: '회전 모드 — 기즈모로 회전',
+  subtractBody: '바디 빼기',
+  subtractBodyActive: '바디 빼기 (활성)',
+  ariaSubtractBody: '바디 빼기 모드 전환',
+  modeStatusSubtractBodyStage1: '바디 빼기 — 도구 바디를 선택하세요',
+  modeStatusSubtractBodyStage2: '바디 빼기 — 대상 바디를 선택하세요',
+  modeStatusSubtractBodyStage3: '바디 빼기 — 확인 버튼으로 적용',
   commitButton: '히스토리에 적용',
   ariaCommit: '직접편집을 히스토리에 적용',
   commitModalTitle: '직접편집을 히스토리에 적용하시겠습니까?',
@@ -125,6 +138,12 @@ const EN: DirectEditStrings = {
   modeStatusPushPull: 'Push/Pull — drag a face',
   modeStatusMoveBody: 'Move — drag the translation gizmo',
   modeStatusRotateBody: 'Rotate — drag the rotation gizmo',
+  subtractBody: 'Subtract body',
+  subtractBodyActive: 'Subtract body (active)',
+  ariaSubtractBody: 'Toggle subtract-body mode',
+  modeStatusSubtractBodyStage1: 'Subtract — pick the tool body',
+  modeStatusSubtractBodyStage2: 'Subtract — pick the target body',
+  modeStatusSubtractBodyStage3: 'Subtract — click Confirm to apply',
   commitButton: 'Commit to history',
   ariaCommit: 'Commit direct edits to history',
   commitModalTitle: 'Commit direct edits to history?',
@@ -165,6 +184,12 @@ const JA: DirectEditStrings = {
   modeStatusPushPull: 'プッシュ/プル — 面をドラッグ',
   modeStatusMoveBody: '移動モード — ギズモをドラッグ',
   modeStatusRotateBody: '回転モード — ギズモを回転',
+  subtractBody: 'ボディ減算',
+  subtractBodyActive: 'ボディ減算 (有効)',
+  ariaSubtractBody: 'ボディ減算モードの切替',
+  modeStatusSubtractBodyStage1: 'ボディ減算 — ツールボディを選択',
+  modeStatusSubtractBodyStage2: 'ボディ減算 — ターゲットボディを選択',
+  modeStatusSubtractBodyStage3: 'ボディ減算 — 確定で適用',
   commitButton: '履歴に確定',
   ariaCommit: '直接編集を履歴に確定',
   commitModalTitle: '直接編集を履歴に確定しますか?',
@@ -203,6 +228,12 @@ const CN: DirectEditStrings = {
   modeStatusPushPull: '推/拉 — 拖动面',
   modeStatusMoveBody: '移动模式 — 拖动操纵器',
   modeStatusRotateBody: '旋转模式 — 旋转操纵器',
+  subtractBody: '减去实体',
+  subtractBodyActive: '减去实体(已激活)',
+  ariaSubtractBody: '切换减去实体模式',
+  modeStatusSubtractBodyStage1: '减去实体 — 选择工具实体',
+  modeStatusSubtractBodyStage2: '减去实体 — 选择目标实体',
+  modeStatusSubtractBodyStage3: '减去实体 — 点击确认以应用',
   commitButton: '提交到历史',
   ariaCommit: '将直接编辑提交到历史',
   commitModalTitle: '将直接编辑提交到历史?',
@@ -241,6 +272,12 @@ const ES: DirectEditStrings = {
   modeStatusPushPull: 'Empujar/Tirar — arrastra una cara',
   modeStatusMoveBody: 'Mover — arrastra el manipulador',
   modeStatusRotateBody: 'Rotar — arrastra el manipulador',
+  subtractBody: 'Restar cuerpo',
+  subtractBodyActive: 'Restar cuerpo (activo)',
+  ariaSubtractBody: 'Activar / desactivar restar cuerpo',
+  modeStatusSubtractBodyStage1: 'Restar — selecciona el cuerpo herramienta',
+  modeStatusSubtractBodyStage2: 'Restar — selecciona el cuerpo destino',
+  modeStatusSubtractBodyStage3: 'Restar — pulsa Confirmar para aplicar',
   commitButton: 'Confirmar al historial',
   ariaCommit: 'Confirmar ediciones directas al historial',
   commitModalTitle: '¿Confirmar las ediciones directas en el historial?',
@@ -281,6 +318,12 @@ const AR: DirectEditStrings = {
   modeStatusPushPull: 'دفع/سحب — اسحب وجهًا',
   modeStatusMoveBody: 'وضع التحريك — اسحب أداة التحكم',
   modeStatusRotateBody: 'وضع التدوير — أدر أداة التحكم',
+  subtractBody: 'طرح الجسم',
+  subtractBodyActive: 'طرح الجسم (نشط)',
+  ariaSubtractBody: 'تبديل وضع طرح الجسم',
+  modeStatusSubtractBodyStage1: 'طرح — اختر جسم الأداة',
+  modeStatusSubtractBodyStage2: 'طرح — اختر الجسم الهدف',
+  modeStatusSubtractBodyStage3: 'طرح — اضغط تأكيد للتطبيق',
   commitButton: 'تثبيت في السجل',
   ariaCommit: 'تثبيت التحريرات المباشرة في السجل',
   commitModalTitle: 'تثبيت التحريرات المباشرة في السجل؟',

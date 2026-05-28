@@ -341,3 +341,102 @@ describe('directEditOpToHistoryNode — forward-compat E3 rotateBody', () => {
     expect(r.ok).toBe(true);
   });
 });
+
+describe('directEditOpToHistoryNode — E4 subtractBody', () => {
+  it('maps subtractBody → featureType: boolean with operation=1', () => {
+    const ctx = makeCtx();
+    const op = {
+      kind: 'subtractBody',
+      targetBodyId: 'target-A',
+      toolBodyId: 'tool-B',
+      keepTool: false,
+      createdAt: 0,
+    } as unknown as DirectEditOp;
+    const r = directEditOpToHistoryNode(op, ctx);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.node.featureType).toBe('boolean');
+    // operation=1 in the boolean feature dict = 'subtract'.
+    expect(r.node.params.operation).toBe(1);
+  });
+
+  it('records target/tool body hashes in params', () => {
+    const ctx = makeCtx();
+    const op = {
+      kind: 'subtractBody',
+      targetBodyId: 'target-X',
+      toolBodyId: 'tool-Y',
+      keepTool: false,
+      createdAt: 0,
+    } as unknown as DirectEditOp;
+    const r = directEditOpToHistoryNode(op, ctx);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(typeof r.node.params._targetBodyHash).toBe('number');
+    expect(typeof r.node.params._toolBodyHash).toBe('number');
+    // Different ids → different hashes.
+    expect(r.node.params._targetBodyHash).not.toBe(r.node.params._toolBodyHash);
+  });
+
+  it('records keepTool flag as 0 or 1', () => {
+    const ctx = makeCtx();
+    const r1 = directEditOpToHistoryNode(
+      {
+        kind: 'subtractBody',
+        targetBodyId: 't',
+        toolBodyId: 'u',
+        keepTool: true,
+      } as unknown as DirectEditOp,
+      ctx,
+    );
+    expect(r1.ok && r1.node.params._keepTool).toBe(1);
+    const r2 = directEditOpToHistoryNode(
+      {
+        kind: 'subtractBody',
+        targetBodyId: 't',
+        toolBodyId: 'u',
+        keepTool: false,
+      } as unknown as DirectEditOp,
+      ctx,
+    );
+    expect(r2.ok && r2.node.params._keepTool).toBe(0);
+  });
+
+  it('rejects subtractBody with same target/tool ids', () => {
+    const ctx = makeCtx();
+    const op = {
+      kind: 'subtractBody',
+      targetBodyId: 'same',
+      toolBodyId: 'same',
+      keepTool: false,
+    } as unknown as DirectEditOp;
+    const r = directEditOpToHistoryNode(op, ctx);
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects subtractBody with empty ids', () => {
+    const ctx = makeCtx();
+    const op = {
+      kind: 'subtractBody',
+      targetBodyId: '',
+      toolBodyId: 'u',
+      keepTool: false,
+    } as unknown as DirectEditOp;
+    const r = directEditOpToHistoryNode(op, ctx);
+    expect(r.ok).toBe(false);
+  });
+
+  it('stamps the committed-direct-edit sentinel on subtract nodes', () => {
+    const ctx = makeCtx();
+    const op = {
+      kind: 'subtractBody',
+      targetBodyId: 't',
+      toolBodyId: 'u',
+      keepTool: false,
+    } as unknown as DirectEditOp;
+    const r = directEditOpToHistoryNode(op, ctx);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.node.params._directEditCommitted).toBeGreaterThan(0);
+  });
+});
