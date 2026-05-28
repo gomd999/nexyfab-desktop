@@ -11,15 +11,25 @@
  *
  * K-factor for both is computed *locally* — the bend radius varies
  * along the path, so we sample at N points and look up K per sample
- * via `kFactorTable`. Total developed length is the integral of
- * local bend allowance.
+ * via the Schema A canonical `getKFactor` (in `features/sheetMetalTables`).
+ * Total developed length is the integral of local bend allowance.
+ *
+ * Material ids stored under the legacy Schema B dashed grade-spec
+ * (`steel-cold-rolled`, `aluminum-6061`, ...) are aliased to Schema A
+ * camelCase at the boundary via `aliasSheetMetalMaterialId`, so existing
+ * call sites and saved files keep working without churn.
  */
 
-import {
-  bendAllowance,
-  type SheetMetalMaterial,
-  type KFactorOverrides,
-} from './kFactorTable';
+import { aliasSheetMetalMaterialId } from '@/lib/migrations/sheetMetalMaterialId';
+import { getKFactor } from '../features/sheetMetalTables';
+
+/**
+ * Material id accepted by this module. Stays a permissive `string` because
+ * the alias layer collapses Schema A / B / C inputs to canonical at call
+ * time; rejecting unknowns here would force every saved file to migrate
+ * before opening.
+ */
+export type SheetMetalMaterial = string;
 
 export interface Profile {
   /** Closed polyline (mm) in the section plane. */
@@ -35,7 +45,6 @@ export interface LoftedBendInput {
   lengthMm: number;
   /** Number of intermediate samples used for blending + length calc. */
   samples?: number;
-  overrides?: KFactorOverrides;
 }
 
 export interface SweptBendInput {
@@ -44,7 +53,6 @@ export interface SweptBendInput {
   profile: Profile;
   /** 3-D centerline. */
   path: Array<[number, number, number]>;
-  overrides?: KFactorOverrides;
 }
 
 export interface LoftReport {
@@ -83,6 +91,23 @@ function profilePerimeter(p: Profile): number {
     s += Math.hypot(b[0] - a[0], b[1] - a[1]);
   }
   return s;
+}
+
+/**
+ * Local bend allowance via Schema A. `bendAngleRad` is the deflection at the
+ * sampled corner; we convert to degrees for `getKFactor`'s convention and feed
+ * the standard BA formula. Falls back to mild-steel default if the material id
+ * is not recognised by the alias map.
+ */
+function localBendAllowance(
+  materialId: string,
+  thicknessMm: number,
+  insideRadiusMm: number,
+  bendAngleRad: number,
+): number {
+  const canonical = aliasSheetMetalMaterialId(materialId);
+  const k = getKFactor(canonical, insideRadiusMm, thicknessMm);
+  return bendAngleRad * (insideRadiusMm + k * thicknessMm);
 }
 
 export function loftedBend(input: LoftedBendInput): LoftReport {
@@ -140,11 +165,7 @@ export function sweptBend(input: SweptBendInput): SweepReport {
   for (let i = 1; i < input.path.length - 1; i++) {
     const { radius, angleRad } = radiusAtCorner(input.path[i - 1]!, input.path[i]!, input.path[i + 1]!);
     if (!Number.isFinite(radius) || angleRad < 1e-6) continue;
-    const allow = bendAllowance(
-      { material: input.material, thicknessMm: input.thicknessMm, insideRadiusMm: radius },
-      angleRad,
-      input.overrides,
-    );
+    const allow = localBendAllowance(input.material, input.thicknessMm, radius, angleRad);
     segments.push({ angleRad, radiusMm: radius, allowanceMm: allow });
   }
   const segSum = segments.reduce((s, x) => s + x.allowanceMm, 0);

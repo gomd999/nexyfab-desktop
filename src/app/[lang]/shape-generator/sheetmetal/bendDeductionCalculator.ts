@@ -14,24 +14,44 @@
  * Flat length:
  *   L_flat = L1 + L2 − BD     (two-segment bend at angle α)
  *
- * Module:
- *   - Computes BD/BA/OSSB given inputs.
- *   - Provides K-factor lookup by material + thickness.
- *   - Computes flat length for a chain of bends.
- *   - Supports air-bend (radius computed from die width) vs coined.
+ * ## Phase 2 Track B Week 1 — K-factor delegation
+ *
+ * Before consolidation, this module shipped its own flat K_FACTOR_TABLE plus a
+ * hand-rolled r/t adjustment that drifted up to 0.07 from the canonical Schema
+ * A table at R/T=1.0. That drift fails the ±0.1mm unfold tolerance on a 5-bend
+ * hat section.
+ *
+ * After consolidation, K-factor lookup delegates to `getKFactor` in
+ * `features/sheetMetalTables.ts` (Schema A canonical). Material ids written
+ * under the dashed Schema C names (`mild-steel`, `aluminum-6061`, ...) are
+ * aliased to Schema A camelCase ids via `aliasSheetMetalMaterialId` so any
+ * `.nfab` file or call site that still uses the old strings continues to work
+ * with zero re-saving.
+ *
+ * The exported `K_FACTOR_TABLE` constant is kept as a documentation-only
+ * snapshot of typical K values at R/T = 2.0 (the canonical-display ratio used
+ * in shop tickets) and is no longer the source of truth.
  */
+
+import { aliasSheetMetalMaterialId } from '@/lib/migrations/sheetMetalMaterialId';
+import { getKFactor } from '../features/sheetMetalTables';
 
 export type BendType = 'air-bend' | 'coined' | 'bottom-bend';
 export type MaterialName = 'mild-steel' | 'stainless-304' | 'aluminum-5052' | 'aluminum-6061' | 'copper' | 'brass';
 
-/** Typical K-factor by material at typical r/t ratio. */
+/**
+ * Typical K-factor by material at R/T = 2.0, sampled from the canonical Schema
+ * A table. This is a *display snapshot* for shop tickets — the live K-factor
+ * lookup that drives `computeBend()` always goes through `getKFactor()` so r/t
+ * is honoured. Do not import this for math; use `getKFactor` directly.
+ */
 export const K_FACTOR_TABLE: Record<MaterialName, number> = {
-  'mild-steel': 0.44,
-  'stainless-304': 0.40,
-  'aluminum-5052': 0.43,
-  'aluminum-6061': 0.40,
-  'copper': 0.42,
-  'brass': 0.42,
+  'mild-steel': getKFactor(aliasSheetMetalMaterialId('mild-steel'), 2, 1),
+  'stainless-304': getKFactor(aliasSheetMetalMaterialId('stainless-304'), 2, 1),
+  'aluminum-5052': getKFactor(aliasSheetMetalMaterialId('aluminum-5052'), 2, 1),
+  'aluminum-6061': getKFactor(aliasSheetMetalMaterialId('aluminum-6061'), 2, 1),
+  'copper': getKFactor(aliasSheetMetalMaterialId('copper'), 2, 1),
+  'brass': getKFactor(aliasSheetMetalMaterialId('brass'), 2, 1),
 };
 
 export interface BendParams {
@@ -81,16 +101,14 @@ export function computeBend(params: BendParams): BendResult {
 function pickKFactor(params: BendParams): number {
   if (params.kFactorOverride !== undefined) return params.kFactorOverride;
   if (params.material !== undefined) {
-    const base = K_FACTOR_TABLE[params.material];
-    // Adjust for r/t ratio (Pro/E rule): K_low for r/t < 1, K_high for r/t > 3.
-    if (params.thicknessMm > 0) {
-      const rt = params.insideRadiusMm / params.thicknessMm;
-      if (rt < 1) return Math.max(0.33, base - 0.05);
-      if (rt > 3) return Math.min(0.5, base + 0.05);
-    }
-    return base;
+    // Delegate to Schema A canonical via the alias map. `getKFactor` already
+    // interpolates against the per-material r/t curve, so the hand-rolled
+    // r/t < 1 / r/t > 3 nudges that this module used to do are no longer
+    // needed (they were a coarse approximation of what the curve does
+    // exactly).
+    return getKFactor(aliasSheetMetalMaterialId(params.material), params.insideRadiusMm, params.thicknessMm);
   }
-  return 0.44; // mild-steel default
+  return 0.44; // mild-steel default — matches Schema A at R/T = 2
 }
 
 // ── Flat length for a chain of bends ──────────────────────────
