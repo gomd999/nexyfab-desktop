@@ -153,9 +153,32 @@ export {
 
 export {
   getDirectEditStrings,
+  getCommitRejectionReasonString,
   type DirectEditLang,
   type DirectEditStrings,
 } from './directEditI18n';
+
+export {
+  directEditOpToHistoryNode,
+  DIRECT_EDIT_COMMITTED_PARAM_KEY,
+  type CommitContext,
+  type CommitRejectionReason,
+  type DirectEditMapResult,
+} from './commitToHistory';
+
+export {
+  commitDirectEditStackToHistory,
+  commitPartialNodes,
+  type CommitStackResult,
+  type StackCommitCallbacks,
+} from './commitStack';
+
+export {
+  CommitToHistoryButton,
+  COMMIT_TO_HISTORY_TOAST_EVENT,
+  type CommitToHistoryButtonProps,
+  type CommitToHistoryToastDetail,
+} from './CommitToHistoryButton';
 
 /**
  * Derive a `historyVersion` proxy from the host's feature history.
