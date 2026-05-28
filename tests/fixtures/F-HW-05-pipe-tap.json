@@ -1,0 +1,68 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-hole-wizard-spec.md#section-8.5-f-hw-05",
+  "fixtureId": "F-HW-05-pipe-tap",
+  "description": "F-HW-05 — 1/4 NPT pipe-tap × 1 on a 60×60×40 block (spec §8.5). Pure data: pipe-tap holeSpec + manual single-position. Worker side (/occt/op/hole/pipe-tap) is blocked until occt-worker src/ provision (Wave 1 task #31); W5 — Track C5 ships the client-side data model + Type/Size UI extensions. The cosmetic NPT taper is rendered by the existing C4 SVG; pipeTapClass + taperAngle fields are new in W5.",
+  "createdBy": "wave-2 Phase 2 W5 (Track C5)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "manifold",
+    "sizeMm": { "x": 60, "y": 40, "z": 60 },
+    "material": "AL6061",
+    "topEdgeFillet": 5
+  },
+  "holeSpec": {
+    "series": "NPT",
+    "designation": "1/4-18"
+  },
+  "holeSpecDetail": {
+    "kind": "pipe_tap",
+    "diameter": 11.4,
+    "pipeStandard": "NPT",
+    "pipeSizeKey": "1/4-18",
+    "engagementDepth": 9.7,
+    "pipeTapClass": "NPT",
+    "taperAngle": 1.7833
+  },
+  "terminationKind": "blind",
+  "terminationParams": {
+    "kind": "blind",
+    "depth": 12,
+    "bottomShape": "conical",
+    "drillTipAngle": 118
+  },
+  "arrayKind": "manual",
+  "arrayParams": {
+    "points": [
+      { "id": "F-HW-05#a", "x": 30, "y": 30 }
+    ]
+  },
+  "expectedPositions": [
+    { "id": "F-HW-05#a", "x": 30, "y": 30 }
+  ],
+  "expectedWorkerCall": {
+    "endpoint": "POST /occt/op/hole/pipe-tap",
+    "bodyShape": {
+      "baseShapeHandle": "<shape-handle>",
+      "kind": "pipe_tap",
+      "positions": "[…1 entry from expectedPositions, mapped to {id,x,z}]",
+      "drillDiameter": 11.4,
+      "pipeStandard": "NPT",
+      "pipeSizeKey": "1/4-18",
+      "engagementDepth": 9.7,
+      "pipeTapClass": "NPT",
+      "taperAngle": 1.7833,
+      "terminationMode": "blind",
+      "blindDepth": 12
+    }
+  },
+  "expectedResponseHoleCount": 1,
+  "expectedDfmFinding": null,
+  "notes": [
+    "Spec §8.5 reference: 1/4 NPT (Ø 11.4 minor, 9.7 mm engagement) centered on the top face of a 60×60×40 block with a 5 mm fillet on the top edge.",
+    "W5 introduces pipeTapClass + taperAngle as optional fields on PipeTapHoleSpec; legacy fixtures (F-HW-01..F-HW-04) remain untouched. Default class is derived from the series (NPT → 'NPT', BSP → 'BSP_parallel'), the wizard's Size-tab class picker can override.",
+    "taperAngle 1.7833° (1°47′) is the cosmetic half-angle used by the C4 SVG renderer; the worker cut at this phase is plain cylindrical, taper is render-only per spec §8.5.",
+    "Worker endpoint /occt/op/hole/pipe-tap is blocked on Wave 1 task #31; this fixture pins the body shape so wire-up after worker provision matches the wizard's expectation.",
+    "The wizard's Type tab selects 'Pipe Tap', Size tab picks 1/4-18 from the NPT catalog, Termination Blind 12 mm, Position Manual at (30, 30).",
+    "DFM: TAP_BOTTOM_RISK rule is scoped to kind=tap; pipe_tap deliberately bypasses it (engagementDepth + bore termination governed separately by the pipe spec)."
+  ]
+}
