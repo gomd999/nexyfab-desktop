@@ -1,27 +1,81 @@
 /**
- * Standard hole specifications (ISO metric + ANSI imperial).
+ * Standard hole specifications — barrel + interface + helpers.
  *
- * Drill/tap/counterbore/countersink dimensions sourced from ISO 273 (clearance
- * holes), ISO 10642 / ISO 4762 (counterbore/countersink for socket screws),
- * and ASME B18.3 (imperial socket screws). Values are nominal — real shop
- * tolerances are tighter. Used by HoleWizardModal to pre-fill hole feature
- * params with one click.
+ * The catalog itself is split into per-standard files so the diff stays
+ * readable and so a future i18n / ops alert can pull just the table it cares
+ * about:
+ *
+ *   - holeStandards.iso.ts   — ISO 4762 (cap screw) + ISO 273 (clearance) +
+ *                              KS B 0201 (Korean ISO metric, coarse + fine)
+ *   - holeStandards.uts.ts   — UNC + UNF (ANSI/ASME inch threads)
+ *   - holeStandards.pipe.ts  — NPT (tapered) + BSP/G (parallel) pipe threads
+ *
+ * Drill/tap/counterbore/countersink dimensions sourced from ISO 273, ISO 10642,
+ * ISO 4762, KS B 0201, ASME B18.3, ASME B1.20.1, ISO 228-1. Values are
+ * nominal — real shop tolerances are tighter.
  */
+
+// ─── Core interface ─────────────────────────────────────────────────────────
 
 export type HoleStandardUnit = 'mm' | 'in';
 
+/**
+ * Issuing-body identifier for a row. Used to drive UI grouping ("KS B 0201"
+ * badge vs "ISO" badge) and to filter by standard in tests.
+ *
+ * - ISO     : ISO 4762 socket-cap-screw companion (and ISO metric generic)
+ * - ISO273  : ISO 273 clearance-only metric table
+ * - KSB0201 : KS B 0201 Korean ISO metric (coarse + fine pitch)
+ * - ANSI    : ASME/ANSI inch (UNC + UNF) — kept as single tag for tooling
+ * - NPT     : National Pipe Taper (ANSI/ASME B1.20.1)
+ * - BSP     : British Standard Pipe parallel (G-thread, ISO 228-1)
+ */
+export type HoleStandardKind = 'ISO' | 'ISO273' | 'KSB0201' | 'ANSI' | 'NPT' | 'BSP';
+
+/**
+ * Three ISO-273-style fit classes for clearance-hole sizing. Stored as the
+ * *final* hole diameter (not as an offset), so callers can use any field
+ * directly without re-resolving against `nominal`.
+ *
+ * Invariant: close < normal < loose (strict). Enforced by unit tests.
+ */
+export interface HoleFitClassOffsets {
+  close: number;
+  normal: number;
+  loose: number;
+}
+
 export interface HoleStandardSpec {
-  /** Human-readable name, e.g. "M6", "#10-32", "1/4-20". */
+  /** Human-readable name, e.g. "M6", "#10-32", "1/4-20", "NPT 1/4". */
   name: string;
+  /** Optional localized name (Korean). UI may fall back to `name`. */
+  nameKo?: string;
   unit: HoleStandardUnit;
-  /** Nominal fastener / thread major diameter (unit). */
+  /**
+   * For threaded fasteners: nominal major diameter (mm or in).
+   * For pipe threads: trade O.D. in mm (NPT 1/8 → ~10.29 mm).
+   */
   nominal: number;
+  /** Issuing-body tag (optional for back-compat with Wave 1 rows). */
+  standard?: HoleStandardKind;
+
+  // ─── Thread geometry ──────────────────────────────────────────────────────
+  /** Thread pitch in mm. Optional — only meaningful for threaded standards. */
+  pitch?: number;
+  /** Threads per inch. Optional — only meaningful for ANSI / pipe rows. */
+  tpi?: number;
 
   // ─── Drill / clearance (through-hole) ─────────────────────────────────────
-  /** Close-fit clearance hole diameter (ISO H11 / ASME normal). */
+  /**
+   * Close-fit clearance hole diameter (ISO H11 / ASME normal). Kept as a
+   * top-level field for backward compatibility with Wave 1 callers; new
+   * code should prefer `fits.normal`.
+   */
   clearance: number;
   /** Tap drill diameter for cutting an internal thread at this size. */
   tapDrill: number;
+  /** Optional three-class clearance offsets (ISO 273 / ASME B18.2.8). */
+  fits?: HoleFitClassOffsets;
 
   // ─── Counterbore (socket-cap-screw pocket) ────────────────────────────────
   counterboreDia: number;
@@ -33,41 +87,62 @@ export interface HoleStandardSpec {
   countersinkAngle: number;
 }
 
-/** ISO metric hexagon socket cap screw holes (ISO 4762 companion dimensions). */
-export const ISO_METRIC: HoleStandardSpec[] = [
-  { name: 'M3',  unit: 'mm', nominal: 3,  clearance: 3.4,  tapDrill: 2.5,  counterboreDia: 6.5,  counterboreDepth: 3.3, countersinkDia: 6.72,  countersinkAngle: 90 },
-  { name: 'M4',  unit: 'mm', nominal: 4,  clearance: 4.5,  tapDrill: 3.3,  counterboreDia: 8.0,  counterboreDepth: 4.4, countersinkDia: 8.96,  countersinkAngle: 90 },
-  { name: 'M5',  unit: 'mm', nominal: 5,  clearance: 5.5,  tapDrill: 4.2,  counterboreDia: 9.5,  counterboreDepth: 5.4, countersinkDia: 11.2,  countersinkAngle: 90 },
-  { name: 'M6',  unit: 'mm', nominal: 6,  clearance: 6.6,  tapDrill: 5.0,  counterboreDia: 11.0, counterboreDepth: 6.5, countersinkDia: 13.44, countersinkAngle: 90 },
-  { name: 'M8',  unit: 'mm', nominal: 8,  clearance: 9.0,  tapDrill: 6.8,  counterboreDia: 15.0, counterboreDepth: 8.6, countersinkDia: 17.92, countersinkAngle: 90 },
-  { name: 'M10', unit: 'mm', nominal: 10, clearance: 11.0, tapDrill: 8.5,  counterboreDia: 18.0, counterboreDepth: 10.8, countersinkDia: 22.4, countersinkAngle: 90 },
-  { name: 'M12', unit: 'mm', nominal: 12, clearance: 13.5, tapDrill: 10.2, counterboreDia: 20.0, counterboreDepth: 13.0, countersinkDia: 26.88, countersinkAngle: 90 },
-  { name: 'M16', unit: 'mm', nominal: 16, clearance: 17.5, tapDrill: 14.0, counterboreDia: 26.0, counterboreDepth: 17.5, countersinkDia: 33.6, countersinkAngle: 90 },
-  { name: 'M20', unit: 'mm', nominal: 20, clearance: 22.0, tapDrill: 17.5, counterboreDia: 33.0, counterboreDepth: 21.5, countersinkDia: 40.32, countersinkAngle: 90 },
-];
+// ─── Catalog re-exports ─────────────────────────────────────────────────────
+
+export { ISO_METRIC, KS_B_0201_METRIC, ISO_273_CLEARANCE, ISO_273_FIT_OFFSETS } from './holeStandards.iso';
+export { ANSI_IMPERIAL, UNC_INCH, UNF_INCH } from './holeStandards.uts';
+export { NPT_PIPE, BSP_PIPE } from './holeStandards.pipe';
+
+// Import for use within this file (registry + helpers)
+import { ISO_METRIC, KS_B_0201_METRIC, ISO_273_CLEARANCE } from './holeStandards.iso';
+import { ANSI_IMPERIAL, UNC_INCH, UNF_INCH } from './holeStandards.uts';
+import { NPT_PIPE, BSP_PIPE } from './holeStandards.pipe';
+
+// ─── Series registry ────────────────────────────────────────────────────────
 
 /**
- * ANSI imperial socket cap screw holes (ASME B18.3). Dimensions converted to
- * millimeters since the feature pipeline operates in mm; the original imperial
- * name is preserved in `name` for engineer familiarity.
+ * Top-level series shown in the wizard's series picker. ISO and ANSI keys
+ * exist for Wave 1 back-compat; the new keys (KSB0201, ISO273, PIPE) light
+ * up additional catalogs without breaking existing UI code.
  */
-export const ANSI_IMPERIAL: HoleStandardSpec[] = [
-  { name: '#4-40',   unit: 'in', nominal: 2.845, clearance: 3.2,  tapDrill: 2.26, counterboreDia: 5.94, counterboreDepth: 3.18, countersinkDia: 5.79, countersinkAngle: 82 },
-  { name: '#6-32',   unit: 'in', nominal: 3.505, clearance: 3.97, tapDrill: 2.69, counterboreDia: 6.88, counterboreDepth: 3.78, countersinkDia: 7.14, countersinkAngle: 82 },
-  { name: '#8-32',   unit: 'in', nominal: 4.166, clearance: 4.76, tapDrill: 3.40, counterboreDia: 7.94, counterboreDepth: 4.42, countersinkDia: 8.53, countersinkAngle: 82 },
-  { name: '#10-24',  unit: 'in', nominal: 4.826, clearance: 5.56, tapDrill: 3.80, counterboreDia: 9.53, counterboreDepth: 5.13, countersinkDia: 9.91, countersinkAngle: 82 },
-  { name: '#10-32',  unit: 'in', nominal: 4.826, clearance: 5.56, tapDrill: 4.22, counterboreDia: 9.53, counterboreDepth: 5.13, countersinkDia: 9.91, countersinkAngle: 82 },
-  { name: '1/4-20',  unit: 'in', nominal: 6.35,  clearance: 7.14, tapDrill: 5.11, counterboreDia: 12.70, counterboreDepth: 6.76, countersinkDia: 13.08, countersinkAngle: 82 },
-  { name: '5/16-18', unit: 'in', nominal: 7.94,  clearance: 8.73, tapDrill: 6.53, counterboreDia: 15.88, counterboreDepth: 8.46, countersinkDia: 16.26, countersinkAngle: 82 },
-  { name: '3/8-16',  unit: 'in', nominal: 9.525, clearance: 10.32, tapDrill: 7.94, counterboreDia: 19.05, counterboreDepth: 10.16, countersinkDia: 19.46, countersinkAngle: 82 },
-  { name: '1/2-13',  unit: 'in', nominal: 12.7,  clearance: 13.49, tapDrill: 10.72, counterboreDia: 25.40, counterboreDepth: 13.49, countersinkDia: 25.86, countersinkAngle: 82 },
-];
+export type HoleStandardSeries = 'ISO' | 'ANSI' | 'KSB0201' | 'ISO273' | 'NPT' | 'BSP';
 
-export type HoleStandardSeries = 'ISO' | 'ANSI';
 export const HOLE_STANDARD_SERIES: Record<HoleStandardSeries, HoleStandardSpec[]> = {
   ISO: ISO_METRIC,
   ANSI: ANSI_IMPERIAL,
+  KSB0201: KS_B_0201_METRIC,
+  ISO273: ISO_273_CLEARANCE,
+  NPT: NPT_PIPE,
+  BSP: BSP_PIPE,
 };
+
+/**
+ * Full catalog flat list — every row from every standard. Useful for
+ * smart-matching (smartFastener.suggestFasteners) and tests.
+ */
+export const ALL_HOLE_STANDARD_ROWS: HoleStandardSpec[] = [
+  ...ISO_METRIC,
+  ...KS_B_0201_METRIC,
+  ...ISO_273_CLEARANCE,
+  ...UNC_INCH,
+  ...UNF_INCH,
+  ...NPT_PIPE,
+  ...BSP_PIPE,
+];
+
+/**
+ * Look up a row by issuing-body + designation. Returns undefined if no row
+ * matches — callers should treat that as a programmer error (the designation
+ * came from a UI dropdown of the same catalog).
+ */
+export function findStandardRow(
+  series: HoleStandardSeries,
+  designation: string,
+): HoleStandardSpec | undefined {
+  return HOLE_STANDARD_SERIES[series].find((row) => row.name === designation);
+}
+
+// ─── Feature helpers ────────────────────────────────────────────────────────
 
 export type HoleKind = 'through' | 'tap' | 'counterbore' | 'countersink' | 'spotface';
 
@@ -78,6 +153,19 @@ export type HoleKind = 'through' | 'tap' | 'counterbore' | 'countersink' | 'spot
  */
 function spotfaceDepth(spec: HoleStandardSpec): number {
   return Math.max(0.5, +(spec.counterboreDepth * 0.3).toFixed(2));
+}
+
+/**
+ * Resolve the through-hole clearance diameter for a given fit class. Falls
+ * back to the row's flat `clearance` field when the row predates the
+ * fit-class extension (Wave 1 rows without `fits`).
+ */
+export function resolveClearance(
+  spec: HoleStandardSpec,
+  fit: 'close' | 'normal' | 'loose' = 'normal',
+): number {
+  if (spec.fits) return spec.fits[fit];
+  return spec.clearance;
 }
 
 /**
@@ -92,6 +180,7 @@ function spotfaceDepth(spec: HoleStandardSpec): number {
 export function holeParamsFromStandard(
   spec: HoleStandardSpec,
   kind: HoleKind,
+  fit: 'close' | 'normal' | 'loose' = 'normal',
 ): {
   holeType: number;
   diameter: number;
@@ -99,6 +188,7 @@ export function holeParamsFromStandard(
   counterboreDepth: number;
   countersinkAngle: number;
 } {
+  const clearance = resolveClearance(spec, fit);
   switch (kind) {
     case 'tap':
       return {
@@ -111,7 +201,7 @@ export function holeParamsFromStandard(
     case 'counterbore':
       return {
         holeType: 1,
-        diameter: spec.clearance,
+        diameter: clearance,
         counterboreDia: spec.counterboreDia,
         counterboreDepth: spec.counterboreDepth,
         countersinkAngle: spec.countersinkAngle,
@@ -121,7 +211,7 @@ export function holeParamsFromStandard(
       // casting/forging surface so the fastener head seats square.
       return {
         holeType: 1,
-        diameter: spec.clearance,
+        diameter: clearance,
         counterboreDia: spec.counterboreDia,
         counterboreDepth: spotfaceDepth(spec),
         countersinkAngle: spec.countersinkAngle,
@@ -129,7 +219,7 @@ export function holeParamsFromStandard(
     case 'countersink':
       return {
         holeType: 2,
-        diameter: spec.clearance,
+        diameter: clearance,
         counterboreDia: spec.counterboreDia,
         counterboreDepth: spec.counterboreDepth,
         countersinkAngle: spec.countersinkAngle,
@@ -138,7 +228,7 @@ export function holeParamsFromStandard(
     default:
       return {
         holeType: 0,
-        diameter: spec.clearance,
+        diameter: clearance,
         counterboreDia: spec.counterboreDia,
         counterboreDepth: spec.counterboreDepth,
         countersinkAngle: spec.countersinkAngle,
