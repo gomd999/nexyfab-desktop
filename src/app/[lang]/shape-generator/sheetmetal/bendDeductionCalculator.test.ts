@@ -7,7 +7,13 @@ import {
   summarize,
   K_FACTOR_TABLE,
   SPRINGBACK_DEG,
+  type MaterialName,
 } from './bendDeductionCalculator';
+import {
+  getKFactor,
+  type SheetMetalMaterial,
+} from '../features/sheetMetalTables';
+import { aliasSheetMetalMaterialId } from '@/lib/migrations/sheetMetalMaterialId';
 
 describe('K_FACTOR_TABLE', () => {
   it('mild steel ≈ 0.44', () => {
@@ -125,5 +131,55 @@ describe('summarize', () => {
     const s = summarize(r);
     expect(s.bendDeductionMm).toBe(r.bendDeductionMm);
     expect(s.kFactor).toBe(r.kFactor);
+  });
+});
+
+// ─── K-factor drift regression (Phase 2 Track B Week 1) ─────────────────────
+//
+// Before consolidation this module owned its own K-table that drifted up to
+// 0.07 from Schema A at R/T = 1.0, blowing the ±0.1mm unfold tolerance on a
+// 5-bend hat section. After consolidation, `computeBend` delegates to
+// `getKFactor` (Schema A canonical) via the material id alias. These tests
+// pin that delegation: K from `computeBend` must equal K from a direct
+// Schema A call to within 1e-9 across the full R/T grid.
+
+describe('K-factor drift — Schema C → Schema A delegation', () => {
+  const schemaCToA: Array<[MaterialName, SheetMetalMaterial]> = [
+    ['mild-steel', 'mildSteel'],
+    ['stainless-304', 'stainless304'],
+    ['aluminum-5052', 'aluminum5052'],
+    ['aluminum-6061', 'aluminum6061'],
+    ['copper', 'copper'],
+    ['brass', 'brass'],
+  ];
+  const rtSamples = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 10.0];
+
+  for (const [schemaC, schemaA] of schemaCToA) {
+    it(`alias resolves ${schemaC} → ${schemaA}`, () => {
+      expect(aliasSheetMetalMaterialId(schemaC)).toBe(schemaA);
+    });
+
+    it(`computeBend(${schemaC}) K === getKFactor(${schemaA}) across R/T grid (drift < 1e-9)`, () => {
+      for (const rt of rtSamples) {
+        const thicknessMm = 1.0;
+        const insideRadiusMm = rt * thicknessMm;
+        const viaComputeBend = computeBend({
+          insideRadiusMm,
+          thicknessMm,
+          angleDeg: 90,
+          material: schemaC,
+        }).kFactor;
+        const viaSchemaA = getKFactor(schemaA, insideRadiusMm, thicknessMm);
+        expect(Math.abs(viaComputeBend - viaSchemaA)).toBeLessThan(1e-9);
+      }
+    });
+  }
+
+  it('K_FACTOR_TABLE display snapshot agrees with Schema A at R/T = 2.0', () => {
+    for (const [schemaC, schemaA] of schemaCToA) {
+      const snapshot = K_FACTOR_TABLE[schemaC];
+      const canonical = getKFactor(schemaA, 2, 1);
+      expect(Math.abs(snapshot - canonical)).toBeLessThan(1e-9);
+    }
   });
 });
