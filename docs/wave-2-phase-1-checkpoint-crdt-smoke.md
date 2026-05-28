@@ -225,6 +225,46 @@ What this does NOT prove (deferred to Z1 + W4 gate):
   until Z1 wires `resolvePeerName`.
 - Default-on flag rollout — `?crdt=v2` stays opt-in through W3.
 
+## Phase 3 Z3 — feature tree CRDT integration (flag-gated)
+
+Phase 3 W3 wires the feature tree (history nodes + sketches map + meta)
+through the production editor via the new `FeatureTreeStore` adapter
+(`src/app/[lang]/shape-generator/featureTree/FeatureTreeStore.ts`) and the
+`useFeatureTreeStore` hook. The flag is `?crdt=v2` (default OFF — legacy
+`useFeatureStack` reducer path stays the production default until W4 gate).
+
+**Smoke**: try reordering a feature in `?crdt=v2` mode across two tabs;
+convergence confirmed.
+
+Procedure:
+1. Open `/[lang]/shape-generator?crdt=v2` in two tabs of the same browser
+   (the BroadcastChannel fallback bridges them while occt-collab-worker is
+   pre-deploy).
+2. Add a fillet feature in tab A → should appear in tab B within ~100 ms.
+3. Drag the fillet to reorder it in tab A → tab B reflects the new order.
+4. Edit the same fillet's `radius` param in BOTH tabs simultaneously →
+   both tabs converge on one value (LWW), and the loser tab shows the
+   "Your edit on \"F1\" was overridden by …" toast in the feature-tree
+   panel header.
+5. Toggle a feature's enabled flag in tab A → tab B mirrors the change.
+
+What this proves: the `FeatureTreeStore` adapter routes mutations through
+`applyFeatureOp` (from Phase 1 W2 `featureTreeYjs.ts`) so the Y.Doc remains
+the convergence source. The `useFeatureTreeStore` hook composes a local-mode
+store when the flag is OFF and a Yjs-mode store backed by either the Z1
+`<CollabProvider>` doc (via `<CollabDocBridge>`) or a per-`docId` BC
+fallback when the Provider isn't wrapping the call site.
+
+What this does NOT prove (deferred to Z1 wiring + W4 gate):
+- Cross-network sync (same as Z2 — BroadcastChannel is same-origin only).
+- Per-peer `editingNodeId` UI — Z3 keeps editing pointer local per peer
+  (intentional, see `FeatureTreeStore.ts` header on the spec ambiguity);
+  Z5 will surface remote peers' editing focus via awareness, not the doc.
+- `useFeatureStack` retrofit — the legacy reducer stays untouched. Opt-in
+  is via the new `useFeatureStackBridge(crdtDocId)` hook; W4 walks call
+  sites and migrates them one-by-one behind the flag.
+- Default-on flag rollout — `?crdt=v2` stays opt-in through W3.
+
 ## Reporting result
 
 Update [project_nexyfab_wave2_phase1_complete.md](../.. memory note) or
