@@ -1,5 +1,5 @@
 /**
- * directEdit/index.ts — Wave 2 Phase 3 Track E1 + E2.
+ * directEdit/index.ts — Wave 2 Phase 3 Track E1 + E2 + E3.
  *
  * Public surface for the direct-edit module. The host imports from
  * here so the underlying file layout stays an implementation detail.
@@ -19,7 +19,7 @@ export {
 export {
   DirectEditToolbar,
   type DirectEditToolbarProps,
-  type DirectEditSubMode,
+  type DirectEditMode,
 } from './DirectEditToolbar';
 
 export {
@@ -32,6 +32,12 @@ export {
   type DynamicEdgeOverlayProps,
   type DynamicEdgeMode,
 } from './DynamicEdgeOverlay';
+
+export {
+  BodyTransformOverlay,
+  type BodyTransformOverlayProps,
+  type BodyTransformMode,
+} from './BodyTransformOverlay';
 
 export {
   applyPushPull,
@@ -50,6 +56,18 @@ export {
   type ApplyDynamicChamferContext,
   type ApplyDynamicChamferResult,
 } from './applyDynamicChamfer';
+
+export {
+  applyMoveBody,
+  type ApplyMoveBodyContext,
+  type ApplyMoveBodyResult,
+} from './applyMoveBody';
+
+export {
+  applyRotateBody,
+  type ApplyRotateBodyContext,
+  type ApplyRotateBodyResult,
+} from './applyRotateBody';
 
 export {
   computePushPullOffset,
@@ -88,16 +106,49 @@ export {
 } from './edgeCapWarnings';
 
 export {
+  buildRotationMatrix3,
+  applyTranslationToPoint,
+  applyRotationToPoint,
+  applyMatrix4ToPoint,
+  composeTransforms,
+  bboxAfterTranslation,
+  bboxAfterRotation,
+  snapTranslationToGrid,
+  snapAngleToStep,
+  MOVE_BODY_EPSILON_MM,
+  ROTATE_BODY_EPSILON_RAD,
+  BODY_TRANSLATION_SNAP_MM,
+  BODY_ROTATION_SNAP_RAD,
+} from './bodyTransformMath';
+
+export {
+  checkMoveBodyCaps,
+  checkRotateBodyCaps,
+  checkBodyRequired,
+  type BodyCapWarning,
+  type BodyCapWarningCode,
+  type MoveCapContext,
+} from './bodyCapWarnings';
+
+export {
   emptyDirectEditStack,
   isPushPullOp,
   isDynamicFilletOp,
   isDynamicChamferOp,
+  isMoveBodyOp,
+  isRotateBodyOp,
   validateDirectEditOp,
+  validateMoveBody,
+  validateRotateBody,
+  MOVE_BODY_MAX_TRANSLATION_MM,
+  ROTATE_BODY_MAX_ANGLE_RAD,
   type DirectEditOp,
   type DirectEditStack,
   type DirectEditFacePick,
   type DirectEditEdgePick,
+  type DirectEditBodyPick,
   type OpValidationResult,
+  type BodyTransformValidationResult,
 } from './directEditTypes';
 
 export {
@@ -121,10 +172,6 @@ export function deriveHistoryVersionProxy(history: {
   nodes: ReadonlyArray<{ id: string }>;
   activeNodeId: string;
 }): number {
-  // Hash to a single number so the provider's useEffect dependency
-  // comparison stays O(1). We use a multiplicative hash of node count
-  // + active node id — collision probability is negligible for the
-  // monotonic-modifying-history use case.
   let h = history.nodes.length * 2654435761;
   for (let i = 0; i < history.activeNodeId.length; i++) {
     h = ((h << 5) - h + history.activeNodeId.charCodeAt(i)) | 0;

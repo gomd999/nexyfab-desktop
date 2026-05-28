@@ -17,23 +17,20 @@ import React, { useState } from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, fireEvent, act } from '@testing-library/react';
 import { DirectEditProvider, useDirectEditController } from '../DirectEditController';
-import { DirectEditToolbar, type DirectEditSubMode } from '../DirectEditToolbar';
+import { DirectEditToolbar, type DirectEditMode } from '../DirectEditToolbar';
 
 function Harness({
   enabled,
   initialMode = false,
   lang = 'en',
   prefilled = 0,
-  withSubModes = false,
 }: {
   enabled: boolean;
   initialMode?: boolean;
   lang?: string;
   prefilled?: number;
-  withSubModes?: boolean;
 }) {
   const [mode, setMode] = useState(initialMode);
-  const [subMode, setSubMode] = useState<DirectEditSubMode>('push-pull');
   return (
     <DirectEditProvider enabled={enabled} historyVersion={0}>
       <Prefill count={prefilled} />
@@ -41,8 +38,6 @@ function Harness({
         lang={lang}
         modeActive={mode}
         onModeChange={setMode}
-        subMode={withSubModes ? subMode : undefined}
-        onSubModeChange={withSubModes ? setSubMode : undefined}
       />
     </DirectEditProvider>
   );
@@ -132,75 +127,93 @@ describe('DirectEditToolbar', () => {
     const { getByTestId } = render(<Harness enabled={true} lang="ko" />);
     expect(getByTestId('direct-edit-mode-toggle').textContent).toContain('직접편집');
   });
+});
 
-  // ─── E2 sub-mode selector ────────────────────────────────────────────────
+// ─── E3 union-API tests (mode={DirectEditMode}) ─────────────────────────────
 
-  it('does NOT render sub-mode selector when onSubModeChange is absent', () => {
-    const { queryByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={false} />,
-    );
-    expect(queryByTestId('direct-edit-submode-group')).toBeNull();
+function ModeHarness({
+  enabled,
+  initialMode = 'off' as DirectEditMode,
+  lang = 'en',
+}: {
+  enabled: boolean;
+  initialMode?: DirectEditMode;
+  lang?: string;
+}) {
+  const [mode, setMode] = useState<DirectEditMode>(initialMode);
+  return (
+    <DirectEditProvider enabled={enabled} historyVersion={0}>
+      <DirectEditToolbar
+        lang={lang}
+        mode={mode}
+        onModeSelect={setMode}
+      />
+    </DirectEditProvider>
+  );
+}
+
+describe('DirectEditToolbar — E3 mode union', () => {
+  it('renders move-body + rotate-body buttons when mode prop is provided', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} />);
+    expect(getByTestId('direct-edit-move-body')).toBeTruthy();
+    expect(getByTestId('direct-edit-rotate-body')).toBeTruthy();
   });
 
-  it('does NOT render sub-mode selector when mode is inactive', () => {
-    const { queryByTestId } = render(
-      <Harness enabled={true} initialMode={false} withSubModes={true} />,
-    );
-    expect(queryByTestId('direct-edit-submode-group')).toBeNull();
+  it('clicking move-body activates move-body mode (aria-pressed flips)', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} />);
+    const btn = getByTestId('direct-edit-move-body');
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    act(() => { fireEvent.click(btn); });
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('renders the three sub-mode buttons when active + provider is set', () => {
-    const { getByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={true} />,
-    );
-    expect(getByTestId('direct-edit-submode-group')).toBeTruthy();
-    expect(getByTestId('direct-edit-submode-push-pull')).toBeTruthy();
-    expect(getByTestId('direct-edit-submode-dynamic-fillet')).toBeTruthy();
-    expect(getByTestId('direct-edit-submode-dynamic-chamfer')).toBeTruthy();
+  it('selecting one mode deactivates the others (radio semantics)', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} />);
+    const move = getByTestId('direct-edit-move-body');
+    const rot = getByTestId('direct-edit-rotate-body');
+    act(() => { fireEvent.click(move); });
+    expect(move.getAttribute('aria-pressed')).toBe('true');
+    act(() => { fireEvent.click(rot); });
+    expect(move.getAttribute('aria-pressed')).toBe('false');
+    expect(rot.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('defaults to push-pull sub-mode active', () => {
-    const { getByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={true} />,
-    );
-    expect(getByTestId('direct-edit-submode-push-pull').getAttribute('aria-checked')).toBe('true');
-    expect(getByTestId('direct-edit-submode-dynamic-fillet').getAttribute('aria-checked')).toBe('false');
-    expect(getByTestId('direct-edit-submode-dynamic-chamfer').getAttribute('aria-checked')).toBe('false');
+  it('clicking the active mode deselects (returns to off)', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} initialMode="move-body" />);
+    const move = getByTestId('direct-edit-move-body');
+    expect(move.getAttribute('aria-pressed')).toBe('true');
+    act(() => { fireEvent.click(move); });
+    expect(move.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('clicking dynamic-fillet sub-mode flips the radio group', () => {
-    const { getByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={true} />,
+  it('shows the mode status hint for move-body (EN)', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ModeHarness enabled={true} initialMode="move-body" />,
     );
-    act(() => { fireEvent.click(getByTestId('direct-edit-submode-dynamic-fillet')); });
-    expect(getByTestId('direct-edit-submode-dynamic-fillet').getAttribute('aria-checked')).toBe('true');
-    expect(getByTestId('direct-edit-submode-push-pull').getAttribute('aria-checked')).toBe('false');
+    expect(queryByTestId('direct-edit-mode-status')).not.toBeNull();
+    expect(getByTestId('direct-edit-mode-status').textContent).toContain('Move');
   });
 
-  it('clicking dynamic-chamfer flips to chamfer, leaving others inactive', () => {
-    const { getByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={true} />,
-    );
-    act(() => { fireEvent.click(getByTestId('direct-edit-submode-dynamic-chamfer')); });
-    expect(getByTestId('direct-edit-submode-dynamic-chamfer').getAttribute('aria-checked')).toBe('true');
-    expect(getByTestId('direct-edit-submode-dynamic-fillet').getAttribute('aria-checked')).toBe('false');
-    expect(getByTestId('direct-edit-submode-push-pull').getAttribute('aria-checked')).toBe('false');
+  it('renders Korean labels for E3 modes when lang=ko', () => {
+    const { getByTestId } = render(<ModeHarness enabled={true} lang="ko" />);
+    expect(getByTestId('direct-edit-move-body').textContent).toContain('바디 이동');
+    expect(getByTestId('direct-edit-rotate-body').textContent).toContain('바디 회전');
   });
 
-  it('sub-mode group has role=radiogroup with aria-label', () => {
-    const { getByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={true} />,
-    );
-    const group = getByTestId('direct-edit-submode-group');
-    expect(group.getAttribute('role')).toBe('radiogroup');
-    expect(group.getAttribute('aria-label')).toBeTruthy();
-  });
-
-  it('renders Japanese sub-mode labels when lang=ja', () => {
-    const { getByTestId } = render(
-      <Harness enabled={true} initialMode={true} withSubModes={true} lang="ja" />,
-    );
-    expect(getByTestId('direct-edit-submode-dynamic-fillet').textContent)
-      .toContain('ダイナミック');
+  it('hides the E3 mode buttons when host uses legacy boolean API (back-compat)', () => {
+    function LegacyHarness() {
+      const [active, setActive] = useState(false);
+      return (
+        <DirectEditProvider enabled={true} historyVersion={0}>
+          <DirectEditToolbar
+            modeActive={active}
+            onModeChange={setActive}
+          />
+        </DirectEditProvider>
+      );
+    }
+    const { queryByTestId } = render(<LegacyHarness />);
+    expect(queryByTestId('direct-edit-move-body')).toBeNull();
+    expect(queryByTestId('direct-edit-rotate-body')).toBeNull();
   });
 });

@@ -1,22 +1,20 @@
 /**
- * directEditI18n.ts — Wave 2 Phase 3 Track E1 / E2 / Track P3.
+ * directEditI18n.ts — Wave 2 Phase 3 Track E1 / Track P3.
  *
  * Direct-edit strings, 6-lang. Kept local to the directEdit/ folder
  * to avoid bloating the existing 1900-line constants/labels.ts during
- * Phase 3 W3-W4. The Track P4 polish pass folds these into the main
+ * Phase 3 W3. The Track P4 polish pass folds these into the main
  * label registry; for now we ship them adjacent to the feature.
  *
  * Strings come from the spec dictionary in tracker P3 (`밀기/당기기`,
- * `면 직접편집`, `다이내믹 필렛/모따기`). Ja / zh follow KR canonical
- * conventions used elsewhere in shape-generator.
+ * `면 직접편집`). Ja / zh follow KR canonical conventions used
+ * elsewhere in shape-generator.
  */
 
 export type DirectEditLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
 
 export interface DirectEditStrings {
-  /** E1 toolbar mode toggle (legacy single-mode label, preserved for
-   *  backward compatibility — E2 introduces the three-way mode
-   *  selector below). */
+  /** Toolbar mode toggle. */
   modeButton: string;
   modeButtonActive: string;
   /** Undo last direct edit. */
@@ -31,12 +29,17 @@ export interface DirectEditStrings {
   invalidatedToast: (n: number) => string;
   /** Tooltip / aria-label fallback. */
   ariaModeToggle: string;
-  /** E2 mode selector — push-pull / dynamic-fillet / dynamic-chamfer.
-   *  Radio-button-style; only one active at a time. */
-  modePushPull: string;
-  modeDynamicFillet: string;
-  modeDynamicChamfer: string;
-  ariaModeGroup: string;
+  /** E3 — body-level direct edit mode labels. */
+  moveBody: string;
+  moveBodyActive: string;
+  rotateBody: string;
+  rotateBodyActive: string;
+  ariaMoveBody: string;
+  ariaRotateBody: string;
+  /** E3 — mode status hints shown in the toolbar status bar. */
+  modeStatusPushPull: string;
+  modeStatusMoveBody: string;
+  modeStatusRotateBody: string;
 }
 
 const KO: DirectEditStrings = {
@@ -49,10 +52,15 @@ const KO: DirectEditStrings = {
   invalidatedToast: (n) =>
     `히스토리가 재실행되어 직접편집 ${n}건이 초기화되었습니다.`,
   ariaModeToggle: '직접편집 모드 전환',
-  modePushPull: '밀기/당기기',
-  modeDynamicFillet: '다이내믹 필렛',
-  modeDynamicChamfer: '다이내믹 모따기',
-  ariaModeGroup: '직접편집 모드 선택',
+  moveBody: '바디 이동',
+  moveBodyActive: '바디 이동 (활성)',
+  rotateBody: '바디 회전',
+  rotateBodyActive: '바디 회전 (활성)',
+  ariaMoveBody: '바디 이동 모드 전환',
+  ariaRotateBody: '바디 회전 모드 전환',
+  modeStatusPushPull: '밀기/당기기 모드 — 면을 드래그하세요',
+  modeStatusMoveBody: '이동 모드 — 기즈모로 드래그',
+  modeStatusRotateBody: '회전 모드 — 기즈모로 회전',
 };
 
 const EN: DirectEditStrings = {
@@ -65,10 +73,15 @@ const EN: DirectEditStrings = {
   invalidatedToast: (n) =>
     `Direct edits cleared (${n}) — history was rerun.`,
   ariaModeToggle: 'Toggle direct edit mode',
-  modePushPull: 'Push/Pull',
-  modeDynamicFillet: 'Dynamic fillet',
-  modeDynamicChamfer: 'Dynamic chamfer',
-  ariaModeGroup: 'Direct edit mode',
+  moveBody: 'Move body',
+  moveBodyActive: 'Move body (active)',
+  rotateBody: 'Rotate body',
+  rotateBodyActive: 'Rotate body (active)',
+  ariaMoveBody: 'Toggle move-body mode',
+  ariaRotateBody: 'Toggle rotate-body mode',
+  modeStatusPushPull: 'Push/Pull — drag a face',
+  modeStatusMoveBody: 'Move — drag the translation gizmo',
+  modeStatusRotateBody: 'Rotate — drag the rotation gizmo',
 };
 
 const JA: DirectEditStrings = {
@@ -81,10 +94,15 @@ const JA: DirectEditStrings = {
   invalidatedToast: (n) =>
     `履歴が再実行されたため、直接編集 ${n}件をクリアしました。`,
   ariaModeToggle: '直接編集モードの切替',
-  modePushPull: 'プッシュ/プル',
-  modeDynamicFillet: 'ダイナミックフィレット',
-  modeDynamicChamfer: 'ダイナミック面取り',
-  ariaModeGroup: '直接編集モードの選択',
+  moveBody: 'ボディ移動',
+  moveBodyActive: 'ボディ移動 (有効)',
+  rotateBody: 'ボディ回転',
+  rotateBodyActive: 'ボディ回転 (有効)',
+  ariaMoveBody: 'ボディ移動モードの切替',
+  ariaRotateBody: 'ボディ回転モードの切替',
+  modeStatusPushPull: 'プッシュ/プル — 面をドラッグ',
+  modeStatusMoveBody: '移動モード — ギズモをドラッグ',
+  modeStatusRotateBody: '回転モード — ギズモを回転',
 };
 
 const CN: DirectEditStrings = {
@@ -97,10 +115,15 @@ const CN: DirectEditStrings = {
   invalidatedToast: (n) =>
     `历史已重新执行,${n} 个直接编辑已清除。`,
   ariaModeToggle: '切换直接编辑模式',
-  modePushPull: '推/拉',
-  modeDynamicFillet: '动态圆角',
-  modeDynamicChamfer: '动态倒角',
-  ariaModeGroup: '选择直接编辑模式',
+  moveBody: '移动实体',
+  moveBodyActive: '移动实体(已激活)',
+  rotateBody: '旋转实体',
+  rotateBodyActive: '旋转实体(已激活)',
+  ariaMoveBody: '切换移动实体模式',
+  ariaRotateBody: '切换旋转实体模式',
+  modeStatusPushPull: '推/拉 — 拖动面',
+  modeStatusMoveBody: '移动模式 — 拖动操纵器',
+  modeStatusRotateBody: '旋转模式 — 旋转操纵器',
 };
 
 const ES: DirectEditStrings = {
@@ -113,10 +136,15 @@ const ES: DirectEditStrings = {
   invalidatedToast: (n) =>
     `Ediciones directas borradas (${n}) — el historial fue reejecutado.`,
   ariaModeToggle: 'Activar / desactivar edición directa',
-  modePushPull: 'Empujar/Tirar',
-  modeDynamicFillet: 'Redondeo dinámico',
-  modeDynamicChamfer: 'Chaflán dinámico',
-  ariaModeGroup: 'Modo de edición directa',
+  moveBody: 'Mover cuerpo',
+  moveBodyActive: 'Mover cuerpo (activo)',
+  rotateBody: 'Rotar cuerpo',
+  rotateBodyActive: 'Rotar cuerpo (activo)',
+  ariaMoveBody: 'Activar / desactivar mover cuerpo',
+  ariaRotateBody: 'Activar / desactivar rotar cuerpo',
+  modeStatusPushPull: 'Empujar/Tirar — arrastra una cara',
+  modeStatusMoveBody: 'Mover — arrastra el manipulador',
+  modeStatusRotateBody: 'Rotar — arrastra el manipulador',
 };
 
 const AR: DirectEditStrings = {
@@ -129,10 +157,15 @@ const AR: DirectEditStrings = {
   invalidatedToast: (n) =>
     `تم مسح التحريرات المباشرة (${n}) - أعيد تنفيذ السجل.`,
   ariaModeToggle: 'تبديل وضع التحرير المباشر',
-  modePushPull: 'دفع/سحب',
-  modeDynamicFillet: 'تدوير ديناميكي',
-  modeDynamicChamfer: 'شطف ديناميكي',
-  ariaModeGroup: 'وضع التحرير المباشر',
+  moveBody: 'تحريك الجسم',
+  moveBodyActive: 'تحريك الجسم (نشط)',
+  rotateBody: 'تدوير الجسم',
+  rotateBodyActive: 'تدوير الجسم (نشط)',
+  ariaMoveBody: 'تبديل وضع تحريك الجسم',
+  ariaRotateBody: 'تبديل وضع تدوير الجسم',
+  modeStatusPushPull: 'دفع/سحب — اسحب وجهًا',
+  modeStatusMoveBody: 'وضع التحريك — اسحب أداة التحكم',
+  modeStatusRotateBody: 'وضع التدوير — أدر أداة التحكم',
 };
 
 const ALL: Record<DirectEditLang, DirectEditStrings> = {
