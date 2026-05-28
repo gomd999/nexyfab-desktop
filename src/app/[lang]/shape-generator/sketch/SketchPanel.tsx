@@ -394,6 +394,17 @@ interface SketchPanelProps {
   onSketchPlaneChange?: (plane: 'xy' | 'xz' | 'yz') => void;
   sketchPlaneOffset?: number;
   onSketchPlaneOffsetChange?: (offset: number) => void;
+  /** Wave 2 Phase 2 Track D3 — spec §10.2. Optional list of ref-geom
+   *  planes (id + display label) that the picker offers as an extra
+   *  source. When non-empty a small "Reference plane" section appears
+   *  below the standard XY/XZ/YZ row. */
+  referenceGeometryPlanes?: ReadonlyArray<{ id: string; label: string }>;
+  /** Currently-selected ref-geom plane id, when the active sketch is on
+   *  a ref-geom plane (null = falling back to standard plane). */
+  activeReferencePlaneId?: string | null;
+  /** Callback when the user picks a ref-geom plane in the new section.
+   *  Host wires this to the ref-geom plane spec selector. */
+  onSelectReferencePlane?: (id: string | null) => void;
   sketchOperation?: 'add' | 'subtract';
   onSketchOperationChange?: (op: 'add' | 'subtract') => void;
   onAddSketchFeature?: () => void;
@@ -592,6 +603,9 @@ export default function SketchPanel({
   multiSketch, onSetActiveProfile, onAddHoleProfile, onDeleteProfile,
   sketchPlane = 'xy', onSketchPlaneChange,
   sketchPlaneOffset = 0, onSketchPlaneOffsetChange,
+  referenceGeometryPlanes,
+  activeReferencePlaneId = null,
+  onSelectReferencePlane,
   sketchOperation = 'add', onSketchOperationChange,
   onAddSketchFeature,
   showSketchHistory = false, onToggleSketchHistory,
@@ -1559,23 +1573,30 @@ export default function SketchPanel({
 
           {canGenerate ? (
             <>
-          {/* Plane selector */}
+          {/* Plane selector — spec §10.2. Standard world plane row; the
+           *  ref-geom plane row below (when populated) deselects this. */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
-            {(['xy', 'xz', 'yz'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => onSketchPlaneChange?.(p)}
-                style={{
-                  flex: 1, padding: '4px 6px', borderRadius: 5,
-                  border: sketchPlane === p ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
-                  background: sketchPlane === p ? '#0d1a2e' : 'var(--nx-panel)',
-                  color: sketchPlane === p ? 'var(--nx-accent)' : 'var(--nx-text-2)',
-                  fontWeight: 700, fontSize: 10, cursor: 'pointer',
-                }}
-              >
-                {p.toUpperCase()}
-              </button>
-            ))}
+            {(['xy', 'xz', 'yz'] as const).map(p => {
+              const isActive = sketchPlane === p && activeReferencePlaneId === null;
+              return (
+                <button
+                  key={p}
+                  onClick={() => {
+                    onSelectReferencePlane?.(null);
+                    onSketchPlaneChange?.(p);
+                  }}
+                  style={{
+                    flex: 1, padding: '4px 6px', borderRadius: 5,
+                    border: isActive ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                    background: isActive ? '#0d1a2e' : 'var(--nx-panel)',
+                    color: isActive ? 'var(--nx-accent)' : 'var(--nx-text-2)',
+                    fontWeight: 700, fontSize: 10, cursor: 'pointer',
+                  }}
+                >
+                  {p.toUpperCase()}
+                </button>
+              );
+            })}
           </div>
 
           {/* Plane offset */}
@@ -1586,6 +1607,50 @@ export default function SketchPanel({
               style={sliderStyle} />
             <span style={sliderValueStyle}>{sketchPlaneOffset}</span>
           </div>
+
+          {/* Ref-geom plane picker — spec §10.2. Shown only when the host
+           *  supplies a non-empty `referenceGeometryPlanes` list. Selecting
+           *  a row sets `activeReferencePlaneId`; the host wires this into
+           *  the sketch plane spec. */}
+          {referenceGeometryPlanes && referenceGeometryPlanes.length > 0 && (
+            <div
+              data-testid="sketch-refgeom-plane-picker"
+              style={{
+                marginBottom: 6, padding: '5px 6px', borderRadius: 5,
+                border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 9, fontWeight: 800, color: 'var(--nx-text-3)',
+                  textTransform: 'uppercase' as const, marginBottom: 4,
+                }}
+              >
+                Ref-geom plane
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                {referenceGeometryPlanes.map((rp) => {
+                  const isActive = activeReferencePlaneId === rp.id;
+                  return (
+                    <button
+                      key={rp.id}
+                      data-testid={`sketch-refgeom-plane-${rp.id}`}
+                      onClick={() => onSelectReferencePlane?.(rp.id)}
+                      style={{
+                        padding: '3px 6px', borderRadius: 4,
+                        border: isActive ? '2px solid var(--nx-accent)' : '1px solid var(--nx-border)',
+                        background: isActive ? '#0d1a2e' : 'var(--nx-panel)',
+                        color: isActive ? 'var(--nx-accent)' : 'var(--nx-text-2)',
+                        fontWeight: 700, fontSize: 10, cursor: 'pointer',
+                      }}
+                    >
+                      {rp.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Operation selector */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
