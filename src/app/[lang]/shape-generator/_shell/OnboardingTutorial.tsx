@@ -75,6 +75,20 @@ const STEPS: Step[] = [
       body: 'Click an ANALYZE row to slide the analytics drawer up. Results live alongside your model, not in a modal.',
     },
   },
+  {
+    // Wave 2 Phase 2 Track B5 — sheet metal onboarding step (spec §6.3 / §8 W5).
+    // Inserted as the final step so the user has already learned the shell
+    // before being introduced to the sheet-metal-specific right pane.
+    id: 'sheet-metal',
+    ko: {
+      title: '판금 모드',
+      body: '피처 트리에서 판금 피처를 클릭하면 우측 패널에 K-팩터 표가 나타납니다. 재료 / 두께 / 절곡 허용량을 즉시 확인하고, 자동 도면 생성으로 PDF 까지 한 번에.',
+    },
+    en: {
+      title: 'Sheet metal mode',
+      body: 'Click any sheet metal feature in the tree to see the right pane with K-factor table. Inspect material / thickness / bend allowance instantly, and run auto-drawing to PDF in one click.',
+    },
+  },
 ];
 
 export interface OnboardingTutorialProps {
