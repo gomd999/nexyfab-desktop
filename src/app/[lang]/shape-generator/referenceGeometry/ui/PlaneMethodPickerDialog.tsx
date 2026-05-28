@@ -35,6 +35,7 @@ import {
 } from '../types';
 import { REF_GEOM_METHOD_CATALOGUE } from './ReferenceGeometryDropdown';
 import { DialogShell, FormRow, fieldStyle, newReferenceId } from './dialogShell';
+import { pickRefGeomDict, planeMethodLabel, type RefGeomLang } from '../i18n';
 
 export interface PlaneMethodPickerDialogProps {
   /** Initial method shown when the dialog opens — usually the one the
@@ -42,6 +43,10 @@ export interface PlaneMethodPickerDialogProps {
   readonly initialMethod?: PlaneMethod;
   readonly onConfirm: (node: ReferencePlaneNode) => void;
   readonly onClose: () => void;
+  /** Display language for the dialog title + method-list labels +
+   *  insert/cancel buttons. Defaults to `'en'` — existing UI behaviour
+   *  preserved. W4 — spec §13.4. */
+  readonly lang?: RefGeomLang | string;
 }
 
 /** Standard plane options shown in the "Standard" method form. */
@@ -64,8 +69,17 @@ const DEFAULT_AXIS_REF: AxisRef = { kind: 'standard', id: 'x' };
 export default function PlaneMethodPickerDialog(
   props: PlaneMethodPickerDialogProps,
 ): React.ReactElement {
-  const { initialMethod = 'standard', onConfirm, onClose } = props;
+  const { initialMethod = 'standard', onConfirm, onClose, lang } = props;
   const [method, setMethod] = useState<PlaneMethod>(initialMethod);
+  const dict = React.useMemo(() => pickRefGeomDict(lang), [lang]);
+  const localizedMethods = React.useMemo(
+    () =>
+      REF_GEOM_METHOD_CATALOGUE.plane.map((m) => ({
+        method: m.method,
+        label: planeMethodLabel(dict, m.method),
+      })),
+    [dict],
+  );
 
   // Form fields per method. We keep them as a flat shape so switching
   // methods is cheap; only the active fields are read on confirm.
@@ -297,14 +311,17 @@ export default function PlaneMethodPickerDialog(
 
   return (
     <DialogShell<PlaneMethod>
-      title="New Reference Plane"
-      methods={REF_GEOM_METHOD_CATALOGUE.plane}
+      title={dict.dialogTitlePlane}
+      methods={localizedMethods}
       activeMethod={method}
       onMethodChange={setMethod}
       onClose={onClose}
       onConfirm={handleConfirm}
       confirmDisabled={!isValid()}
       testId="plane-method-picker"
+      confirmLabel={dict.insert}
+      cancelLabel={dict.cancel}
+      closeLabel={dict.close}
     >
       {renderParams()}
     </DialogShell>

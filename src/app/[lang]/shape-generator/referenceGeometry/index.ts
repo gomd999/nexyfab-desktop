@@ -21,3 +21,7 @@ export {
   DEFAULT_SIZING,
   type VizSizing,
 } from './viz';
+
+// W4 — i18n + KS conventions + Phase 3 assembly-mate API surface.
+export * from './i18n';
+export * from './ksConventions';

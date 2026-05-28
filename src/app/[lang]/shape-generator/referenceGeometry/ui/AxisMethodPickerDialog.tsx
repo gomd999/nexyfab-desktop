@@ -21,11 +21,14 @@ import {
 } from '../types';
 import { REF_GEOM_METHOD_CATALOGUE } from './ReferenceGeometryDropdown';
 import { DialogShell, FormRow, fieldStyle, newReferenceId } from './dialogShell';
+import { pickRefGeomDict, axisMethodLabel, type RefGeomLang } from '../i18n';
 
 export interface AxisMethodPickerDialogProps {
   readonly initialMethod?: AxisMethod;
   readonly onConfirm: (node: ReferenceAxisNode) => void;
   readonly onClose: () => void;
+  /** Display language. Defaults to English. W4 — spec §13.4. */
+  readonly lang?: RefGeomLang | string;
 }
 
 const STANDARD_AXIS_OPTIONS: ReadonlyArray<{ value: StandardAxisId; label: string }> = [
@@ -42,9 +45,18 @@ const DEFAULT_PLANE_REF: PlaneRef = { kind: 'standard', id: 'front' };
 export default function AxisMethodPickerDialog(
   props: AxisMethodPickerDialogProps,
 ): React.ReactElement {
-  const { initialMethod = 'standard', onConfirm, onClose } = props;
+  const { initialMethod = 'standard', onConfirm, onClose, lang } = props;
   const [method, setMethod] = useState<AxisMethod>(initialMethod);
   const [standardId, setStandardId] = useState<StandardAxisId>('x');
+  const dict = React.useMemo(() => pickRefGeomDict(lang), [lang]);
+  const localizedMethods = React.useMemo(
+    () =>
+      REF_GEOM_METHOD_CATALOGUE.axis.map((m) => ({
+        method: m.method,
+        label: axisMethodLabel(dict, m.method),
+      })),
+    [dict],
+  );
   // Pick placeholders (W3 picker bus replaces).
   const [points] = useState<readonly [PointRef, PointRef]>([
     DEFAULT_POINT_REF,
@@ -162,13 +174,16 @@ export default function AxisMethodPickerDialog(
 
   return (
     <DialogShell<AxisMethod>
-      title="New Reference Axis"
-      methods={REF_GEOM_METHOD_CATALOGUE.axis}
+      title={dict.dialogTitleAxis}
+      methods={localizedMethods}
       activeMethod={method}
       onMethodChange={setMethod}
       onClose={onClose}
       onConfirm={handleConfirm}
       testId="axis-method-picker"
+      confirmLabel={dict.insert}
+      cancelLabel={dict.cancel}
+      closeLabel={dict.close}
     >
       {renderParams()}
     </DialogShell>
