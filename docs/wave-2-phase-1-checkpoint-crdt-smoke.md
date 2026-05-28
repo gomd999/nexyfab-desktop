@@ -10,21 +10,21 @@ already exercise the API surface in node with `fake-indexeddb`. These
 harnesses add the missing piece — confirming the same code paths run in
 a real browser yjs runtime.
 
-## Two routes (sketch + feature tree)
+## Three routes (sketch + feature tree + persistence)
 
-| Route | Module under test | Topology |
+| Route | Module under test | What it proves |
 |---|---|---|
-| `/[lang]/collab-smoke` | `sketchYjs.ts` | `Y.Map<id, Y.Map>` (keyed) |
-| `/[lang]/collab-smoke-feature-tree` | `featureTreeYjs.ts` | `Y.Array<Y.Map>` (ordered) + `Y.Map<sketchId>` sibling |
+| `/[lang]/collab-smoke` | `sketchYjs.ts` | `Y.Map<id, Y.Map>` (keyed) CRDT converges in browser |
+| `/[lang]/collab-smoke-feature-tree` | `featureTreeYjs.ts` | `Y.Array<Y.Map>` (ordered) + sibling `Y.Map<sketchId>` converges |
+| `/[lang]/collab-smoke-persistence` | `offlinePersistence.ts` | Real-browser IndexedDB persistence survives close/reopen + clears cleanly |
 
-The two CRDT modules have intentionally different topologies — sketches
-are unordered (solver iterates by id-set), the feature tree is ordered
-(history → pipeline reorder). Each topology has its own convergence
-properties worth exercising independently. Run both for full signal #1
-coverage.
+The three modules have different runtime concerns — sketches are
+unordered CRDT, the feature tree is ordered, and persistence is
+browser-only IndexedDB (uncovered by node-side `fake-indexeddb`).
+Running all three is the full signal #1 coverage.
 
-Both routes are **not linked from any nav** — only reachable by typing
-the URL. They are developer tools.
+All three routes are **not linked from any nav** — only reachable by
+typing the URL. They are developer tools.
 
 ## What you see
 
@@ -95,6 +95,29 @@ Same shape, different ops. **All four should pass.**
 
 4. **Stress.** `Stress: 20 concurrent` button. Both panels end with
    root + 20 features. Status: CONVERGED.
+
+## Persistence checklist (`/[lang]/collab-smoke-persistence`)
+
+This one is browser-only — `fake-indexeddb` cannot test the same
+runtime. **All four should pass.**
+
+1. **Survival round-trip.** On a fresh page (after `Wipe + reopen` if
+   prior runs left state): click `+ Segment` three times. **Refresh
+   the browser tab.** The page loads, status badge shows
+   `READY · cycle #1 · 3 seg`, segments list shows the same 3 ids.
+   Op log shows `replayed 3 segments from cache`.
+
+2. **Close + reopen.** Click `Close + reopen`. Status flickers
+   `WAITING…` then `READY · cycle #2 · 3 seg`. Segments unchanged.
+
+3. **Wipe.** Click `Wipe + reopen`. Status returns to
+   `READY · cycle #N · 0 seg`. Segments list is empty. Op log shows
+   `DB deleted, opening fresh`.
+
+4. **Cache size sanity.** After adding 10+ segments and clicking
+   `Refresh size`, the badge should show non-zero KB (likely tens
+   of KB — origin total, may include other sites). Wipe should
+   not necessarily drop it (other origins share the budget).
 
 ## What this does NOT verify
 
