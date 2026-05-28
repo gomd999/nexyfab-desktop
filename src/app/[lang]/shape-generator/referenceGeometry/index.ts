@@ -11,3 +11,13 @@ export * from './math';
 export * from './depSolver';
 export * from './store';
 export * from './useReferenceNodesAdapter';
+export * from './evaluator';
+export * from './sketchPlaneAdapter';
+export { default as ReferenceGeometryLayer } from './ReferenceGeometryLayer';
+export type { ReferenceGeometryLayerProps } from './ReferenceGeometryLayer';
+export {
+  buildReferenceMeshes,
+  hashColor,
+  DEFAULT_SIZING,
+  type VizSizing,
+} from './viz';

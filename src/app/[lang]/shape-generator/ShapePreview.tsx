@@ -30,6 +30,7 @@ import MeasureTool from './MeasureTool';
 import SectionPlane from './SectionPlane';
 import MaterialPropertiesPanel, { type MaterialOverride, type EnvPreset } from './MaterialPropertiesPanel';
 import ConstructPlane from './ConstructPlane';
+import ReferenceGeometryLayer from './referenceGeometry/ReferenceGeometryLayer';
 import PerfMonitor from './PerfMonitor';
 import PinComments from './comments/PinComments';
 import type { UnitSystem } from './units';
@@ -2725,6 +2726,13 @@ export default function ShapePreview({
 
                 {/* Construction planes */}
                 {showPlanes && constructPlanes && <ConstructPlane planes={constructPlanes} />}
+
+                {/* Reference geometry (Wave 2 Phase 2 Track D3, spec §8) —
+                 *  subscribes to `useReferenceGeometryStore`. The layer
+                 *  no-ops when the store is empty so non-ref-geom
+                 *  projects pay zero render cost. */}
+                <ReferenceGeometryLayer />
+
 
                 {/* Center of mass indicator */}
                 {showCenterOfMass && (

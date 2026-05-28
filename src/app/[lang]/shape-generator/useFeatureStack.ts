@@ -40,6 +40,8 @@ export type HistoryNodeType =
 export interface SketchNodeData {
   profile: SketchProfile;
   config: SketchConfig;
+  /** Legacy literal — the API surface every existing consumer understands.
+   *  New code reads `planeSpec` first when present and falls back to this. */
   plane: 'xy' | 'xz' | 'yz';
   planeOffset: number;
   operation: 'add' | 'subtract';
@@ -52,6 +54,13 @@ export interface SketchNodeData {
     uAxis: [number, number, number];
     vAxis: [number, number, number];
   };
+  /** Wave 2 Phase 2 Track D3 — spec §6.3 / §10.1. When present, takes
+   *  precedence over `plane` + `planeOffset` for plane resolution. The
+   *  legacy `plane` field is kept (back-compat read for un-migrated
+   *  call sites + .nfab v2 files); new writes that target a ref-geom
+   *  plane stash the node id here while leaving `plane` as the
+   *  resolved fallback for consumers that haven't migrated yet. */
+  planeSpec?: import('./sketch/types').SketchPlaneSpec;
 }
 
 export interface HistoryNode {
@@ -495,6 +504,7 @@ export function useFeatureStack() {
     constraints?: import('./sketch/types').SketchConstraint[],
     dimensions?: import('./sketch/types').SketchDimension[],
     faceFrame?: SketchNodeData['faceFrame'],
+    planeSpec?: import('./sketch/types').SketchPlaneSpec,
   ): void => {
     const id = genId();
     const current = labelCounters.get('sketchExtrude') || 0;
@@ -518,7 +528,10 @@ export function useFeatureStack() {
       children: [],
       editingActive: false,
       timestamp: Date.now(),
-      sketchData: { profile, config, plane, planeOffset, operation, constraints, dimensions, faceFrame },
+      sketchData: {
+        profile, config, plane, planeOffset, operation, constraints, dimensions, faceFrame,
+        ...(planeSpec !== undefined ? { planeSpec } : {}),
+      },
     };
 
     setNodeMap(prev => {

@@ -125,3 +125,74 @@ export interface MultiSketchState {
   profiles: SketchProfile[];   // profiles[0] = outer contour, rest = holes
   activeProfileIndex: number;  // which profile the user is currently drawing
 }
+
+// ─── Sketch plane spec (Wave 2 Phase 2 Track D3) ────────────────────────────
+//
+// Spec §6.3 / §10. The legacy `plane: 'xy' | 'xz' | 'yz'` literal stays valid
+// as a back-compat read at every consumer that hasn't migrated yet. New
+// writes use `SketchPlaneSpec` — a discriminated union that points at a
+// standard world plane (with optional offset) OR at a reference-geometry
+// node by id.
+//
+// CRDT note: this type is a plain JS value; D3 stores it through the
+// existing `.nfab` JSON path (D2 schema, v3). Y.Doc-backed `ReferenceNode`
+// storage is deferred to D3b — see spec §15 W3 CRDT block.
+
+/** Standard world plane id. We keep the legacy `xy/xz/yz` literals because
+ *  every existing consumer understands them; the spec §6.3 alias
+ *  `front/top/right` is accepted as a future-write target by `toLegacyPlane`. */
+export type SketchStandardPlaneId = 'xy' | 'xz' | 'yz';
+
+/** Spec §6.3 — discriminated union sketches consume. The W3 version is
+ *  intentionally narrower than the full `PlaneRef` (see
+ *  `referenceGeometry/types.ts`): sketches don't yet consume `face` /
+ *  `inline` directly, those still flow through `SketchNodeData.faceFrame`. */
+export type SketchPlaneSpec =
+  | { readonly kind: 'standard'; readonly plane: SketchStandardPlaneId; readonly offset?: number }
+  | { readonly kind: 'refGeom'; readonly planeId: string };
+
+/** Adapter for call sites that only know the legacy 3-string-literal API.
+ *
+ *  Spec §10.1, §17 — the literal `'xy'/'xz'/'yz'` union stays the API
+ *  surface during the migration window. This helper collapses any
+ *  `SketchPlaneSpec` (or legacy literal) down to the legacy literal so
+ *  un-migrated consumers (Sketch3DCanvas, sceneStore, scriptApi, etc.)
+ *  keep working without a structural rewrite.
+ *
+ *  For `refGeom` specs we fall back to `'xy'` — the canvas can still
+ *  show *something* while the W3 resolver lands. Callers that care
+ *  about the actual ref-geom frame should use `resolveSketchPlane`
+ *  from `referenceGeometry` instead. */
+export function toLegacyPlane(
+  spec: SketchPlaneSpec | SketchStandardPlaneId,
+): SketchStandardPlaneId {
+  if (typeof spec === 'string') return spec;
+  if (spec.kind === 'standard') return spec.plane;
+  // refGeom — no legacy equivalent. Fall back to the world default.
+  return 'xy';
+}
+
+/** Lift the legacy literal into a `SketchPlaneSpec` for code paths that
+ *  want to unify on the new shape. Offset defaults to 0. */
+export function toSketchPlaneSpec(
+  plane: SketchStandardPlaneId,
+  offset = 0,
+): SketchPlaneSpec {
+  return offset === 0
+    ? { kind: 'standard', plane }
+    : { kind: 'standard', plane, offset };
+}
+
+/** Type guard — narrows to the standard world-plane variant. */
+export function isStandardPlaneSpec(
+  spec: SketchPlaneSpec,
+): spec is Extract<SketchPlaneSpec, { kind: 'standard' }> {
+  return spec.kind === 'standard';
+}
+
+/** Type guard — narrows to the ref-geom variant. */
+export function isRefGeomPlaneSpec(
+  spec: SketchPlaneSpec,
+): spec is Extract<SketchPlaneSpec, { kind: 'refGeom' }> {
+  return spec.kind === 'refGeom';
+}
