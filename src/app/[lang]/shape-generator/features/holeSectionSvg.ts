@@ -66,8 +66,10 @@ export interface SvgLine {
   y1: number;
   x2: number;
   y2: number;
-  /** Optional style hint. */
-  className?: 'part-edge' | 'hole-edge' | 'centerline' | 'dim';
+  /** Optional style hint. `thread-indicator` = dashed inset line for tap kinds (W4). */
+  className?: 'part-edge' | 'hole-edge' | 'centerline' | 'dim' | 'thread-indicator';
+  /** Marks the line as dashed at the SVG layer (renderer adds strokeDasharray). */
+  dashed?: boolean;
 }
 
 export interface SvgPolyline {
@@ -503,6 +505,72 @@ export function computeHoleSectionSvg(
     });
   }
 
+  // ── Tap thread-indicator lines (W4 — spec §2.5) ──────────────────────────
+  // Cosmetic: tap kind renders the bore as a drilled hole + a dashed inset
+  // line on each side at ~75% of the bore radius from the centerline, drawn
+  // from the top down to `tapDepth` (or the cylinder bottom for through-all).
+  // This is the visual signal that the hole is tapped rather than drilled,
+  // matching the spec §2.5 callout ("faint blue ring at the top").
+  if (spec.kind === 'tap') {
+    const tapDepthMm = Math.min(spec.tapDepth, boreDepthMm);
+    const tapDepthPx = mmToPx(tapDepthMm, layout);
+    const threadInsetPx = boreHalfPx * 0.75; // visible-only stylization
+    const threadBottomY = boreTopY + tapDepthPx;
+    elements.push({
+      kind: 'line',
+      x1: centerX - threadInsetPx,
+      y1: boreTopY,
+      x2: centerX - threadInsetPx,
+      y2: threadBottomY,
+      className: 'thread-indicator',
+      dashed: true,
+    });
+    elements.push({
+      kind: 'line',
+      x1: centerX + threadInsetPx,
+      y1: boreTopY,
+      x2: centerX + threadInsetPx,
+      y2: threadBottomY,
+      className: 'thread-indicator',
+      dashed: true,
+    });
+  }
+
+  // ── Pipe-tap taper-indicator line (W4 — spec §2.6) ───────────────────────
+  // NPT/BSPT taper at 1°47′ half-angle (≈ 3.5% on a side). We render the
+  // cosmetic taper as two slightly-converging dashed lines inside the bore
+  // for the engagement depth. The actual boolean cut is a plain cylinder at
+  // the minor diameter; this is render-only.
+  if (spec.kind === 'pipe_tap') {
+    const engagementMm = Math.min(spec.engagementDepth, boreDepthMm);
+    const engagementPx = mmToPx(engagementMm, layout);
+    const taperTopHalfMm = spec.diameter / 2;
+    // 1°47′ on a side ≈ 0.0308 rad; convergence per mm depth = tan(0.0308) ≈ 0.0308.
+    const taperRateMmPerMm = 0.0308;
+    const taperBottomHalfMm = Math.max(0.1, taperTopHalfMm - taperRateMmPerMm * engagementMm);
+    const taperTopHalfPx = mmToPx(taperTopHalfMm, layout);
+    const taperBottomHalfPx = mmToPx(taperBottomHalfMm, layout);
+    const taperBottomY = boreTopY + engagementPx;
+    elements.push({
+      kind: 'line',
+      x1: centerX - taperTopHalfPx,
+      y1: boreTopY,
+      x2: centerX - taperBottomHalfPx,
+      y2: taperBottomY,
+      className: 'thread-indicator',
+      dashed: true,
+    });
+    elements.push({
+      kind: 'line',
+      x1: centerX + taperTopHalfPx,
+      y1: boreTopY,
+      x2: centerX + taperBottomHalfPx,
+      y2: taperBottomY,
+      className: 'thread-indicator',
+      dashed: true,
+    });
+  }
+
   // ── Dimension annotations ─────────────────────────────────────────────────
   // Ø diameter at the top of the bore (or pocket).
   const topAnnotY = Math.max(8, partTopY - 4);
@@ -515,7 +583,11 @@ export function computeHoleSectionSvg(
         ? `Ø${spec.headDiameter} × ${spec.headDepth}`
         : spec.kind === 'countersink'
           ? `Ø${spec.coneDiameter} × ${spec.coneAngle}°`
-          : `Ø${spec.diameter}`,
+          : spec.kind === 'tap'
+            ? `Ø${spec.diameter} × ${spec.pitch} TAP`
+            : spec.kind === 'pipe_tap'
+              ? `${spec.pipeSizeKey} ${spec.pipeStandard}`
+              : `Ø${spec.diameter}`,
     anchor: 'middle',
     className: 'dim',
   });

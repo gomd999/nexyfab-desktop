@@ -842,6 +842,200 @@ describe('validateHoleArray — HoleSpec sub-type validation', () => {
   });
 });
 
+// ─── Track C4 — fromSketch + counterdrill + tap (W4) ───────────────────────
+
+describe('expandHoleArray — fromSketch (W4 C4)', () => {
+  it('returns empty when no sketch-point provider is supplied', () => {
+    const def = createFromSketchArrayDefaults('arr-1', 'sketch-1', SPEC);
+    expect(expandHoleArray(def)).toEqual([]);
+  });
+
+  it('returns empty when provider returns undefined for the sketch id', () => {
+    const def = createFromSketchArrayDefaults('arr-1', 'sketch-missing', SPEC);
+    const positions = expandHoleArray(def, {
+      resolveSketchPoints: () => undefined,
+    });
+    expect(positions).toEqual([]);
+  });
+
+  it('emits one HolePosition per sketch point, preserving the sketch-point id', () => {
+    const def = createFromSketchArrayDefaults('arr-1', 'sketch-1', SPEC);
+    const positions = expandHoleArray(def, {
+      resolveSketchPoints: () => [
+        { id: 'pt-a', x: 10, y: 20 },
+        { id: 'pt-b', x: 30, y: 40 },
+      ],
+    });
+    expect(positions).toEqual([
+      { id: 'pt-a', x: 10, y: 20, source: 'fromSketch' },
+      { id: 'pt-b', x: 30, y: 40, source: 'fromSketch' },
+    ]);
+  });
+
+  it('respects pointFilter on the params', () => {
+    const def: HoleArrayDefinition = {
+      ...createFromSketchArrayDefaults('arr-1', 'sketch-1', SPEC),
+      params: {
+        kind: 'fromSketch',
+        data: { sketchFeatureId: 'sketch-1', pointFilter: ['pt-a', 'pt-c'] },
+      },
+    };
+    const positions = expandHoleArray(def, {
+      resolveSketchPoints: () => [
+        { id: 'pt-a', x: 0, y: 0 },
+        { id: 'pt-b', x: 1, y: 1 },
+        { id: 'pt-c', x: 2, y: 2 },
+      ],
+    });
+    expect(positions.map((p) => p.id)).toEqual(['pt-a', 'pt-c']);
+  });
+
+  it('F-HW-03 fixture: 8 tap holes from a 2×4 sketch point grid', () => {
+    // Spec §8.3: 120×80×30 housing, 8 × M5 tap blind 12 mm from sketch with 8 points.
+    const def = createFromSketchArrayDefaults('F-HW-03', 'sketch-housing', SPEC);
+    const grid: Array<{ id: string; x: number; y: number }> = [];
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 4; c++) {
+        grid.push({
+          id: `sk-${r}-${c}`,
+          x: 15 + c * 30,
+          y: 20 + r * 40,
+        });
+      }
+    }
+    const positions = expandHoleArray(def, {
+      resolveSketchPoints: () => grid,
+    });
+    expect(positions).toHaveLength(8);
+    expect(positions.every((p) => p.source === 'fromSketch')).toBe(true);
+    // ids stable across re-expansion (key for spec §7.3 override tombstones).
+    const again = expandHoleArray(def, { resolveSketchPoints: () => grid });
+    expect(again.map((p) => p.id)).toEqual(positions.map((p) => p.id));
+  });
+});
+
+describe('resolveHoleSpec — C4 counterdrill + tap', () => {
+  it('counterdrill: middleDiameter is the average of head and drill (catalog row)', () => {
+    const spec = resolveHoleSpec(
+      'counterdrill',
+      { series: 'ISO', designation: 'M6', fitClass: 'normal' },
+      M6_ROW,
+    );
+    expect(spec.kind).toBe('counterdrill');
+    if (spec.kind === 'counterdrill') {
+      // diameter=6.6 (normal fit), head=11 → middle = (11+6.6)/2 = 8.8
+      expect(spec.middleDiameter).toBeCloseTo(8.8, 2);
+      // headDepth=6.5 → middleDepth = 6.5 * 1.5 = 9.75
+      expect(spec.middleDepth).toBeCloseTo(9.75, 2);
+    }
+  });
+
+  it('tap: pitch fallback works when catalog row has neither pitch nor tpi', () => {
+    const spec = resolveHoleSpec(
+      'tap',
+      { series: 'ISO', designation: 'X' },
+      { ...M6_ROW, pitch: undefined, tpi: undefined },
+    );
+    expect(spec.kind).toBe('tap');
+    if (spec.kind === 'tap') {
+      expect(spec.pitch).toBe(1); // fallback default
+    }
+  });
+
+  it('tap: tapDepth scales with tap-drill diameter (sensible default)', () => {
+    const spec = resolveHoleSpec(
+      'tap',
+      { series: 'ISO', designation: 'M6' },
+      M6_ROW,
+    );
+    if (spec.kind === 'tap') {
+      // tapDrill=5, default tapDepth = max(2, 5*2) = 10
+      expect(spec.tapDepth).toBe(10);
+    }
+  });
+});
+
+describe('validateHoleArray — counterdrill + tap (W4)', () => {
+  it('accepts a well-formed counterdrill (head > middle > drill, depths increasing)', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'counterdrill',
+        diameter: 5,
+        headDiameter: 11,
+        headDepth: 3,
+        middleDiameter: 8,
+        middleDepth: 7,
+        drillTipAngle: 118,
+      },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+
+  it('flags CDRILL_STEP_ORDER when middleDepth ≤ headDepth', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'counterdrill',
+        diameter: 5,
+        headDiameter: 11,
+        middleDiameter: 8,
+        headDepth: 5,
+        middleDepth: 5,   // not > head
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'CDRILL_STEP_ORDER')).toBe(true);
+    }
+  });
+
+  it('accepts a well-formed tap with positive pitch and tapDepth', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'tap',
+        diameter: 4.2,
+        pitch: 0.8,
+        tapClass: '6H',
+        tapDepth: 10,
+        drillTipAngle: 118,
+      },
+    };
+    expect(validateHoleArray(def).ok).toBe(true);
+  });
+
+  it('flags NEGATIVE_DEPTH on tap with non-positive tapDepth', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinearArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'tap',
+        diameter: 4.2,
+        pitch: 0.8,
+        tapClass: '6H',
+        tapDepth: -1,
+        drillTipAngle: 118,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'NEGATIVE_DEPTH')).toBe(true);
+    }
+  });
+
+  it('createFromSketchArrayDefaults: produces a valid empty pointFilter', () => {
+    const def = createFromSketchArrayDefaults('arr-1', 'sketch-1', SPEC);
+    expect(def.kind).toBe('fromSketch');
+    if (def.params.kind === 'fromSketch') {
+      expect(def.params.data.sketchFeatureId).toBe('sketch-1');
+      expect(def.params.data.pointFilter).toBeUndefined();
+    }
+  });
+});
+
 describe('validateHoleArray — termination W3 extensions', () => {
   it('accepts blind with bottomShape=flat (no apex required)', () => {
     const def: HoleArrayDefinition = {

@@ -1,0 +1,83 @@
+{
+  "$schema": "../../docs/wave-2-phase-2-hole-wizard-spec.md#section-2.5-tap",
+  "fixtureId": "F-HW-03-tap",
+  "description": "F-HW-03 — M5 tap × 8 from a sketch with 8 points (spec §8.3). Pure data: hole spec + termination + per-position metadata + expected DFM finding. Worker side (/occt/op/hole/tap) is blocked until occt-worker src/ lands (Wave 1 task #31); C4 ships the client-side data model + DFM rule.",
+  "createdBy": "wave-2 Phase 2 W4 (Track C4)",
+  "createdAt": "2026-05-28",
+  "host": {
+    "kind": "housing",
+    "sizeMm": { "x": 120, "y": 30, "z": 80 },
+    "material": "AL6061"
+  },
+  "holeSpec": {
+    "series": "ISO",
+    "designation": "M5",
+    "fitClass": "normal"
+  },
+  "holeSpecDetail": {
+    "kind": "tap",
+    "diameter": 4.2,
+    "pitch": 0.8,
+    "tapClass": "6H",
+    "tapDepth": 10,
+    "drillTipAngle": 118
+  },
+  "terminationKind": "blind",
+  "terminationParams": {
+    "kind": "blind",
+    "depth": 12,
+    "bottomShape": "conical",
+    "drillTipAngle": 118
+  },
+  "arrayKind": "fromSketch",
+  "arrayParams": {
+    "sketchFeatureId": "sketch-housing-top"
+  },
+  "sketchPoints": [
+    { "id": "pt-r0c0", "x": 15, "y": 20 },
+    { "id": "pt-r0c1", "x": 45, "y": 20 },
+    { "id": "pt-r0c2", "x": 75, "y": 20 },
+    { "id": "pt-r0c3", "x": 105, "y": 20 },
+    { "id": "pt-r1c0", "x": 15, "y": 60 },
+    { "id": "pt-r1c1", "x": 45, "y": 60 },
+    { "id": "pt-r1c2", "x": 75, "y": 60 },
+    { "id": "pt-r1c3", "x": 105, "y": 60 }
+  ],
+  "expectedPositions": [
+    { "id": "pt-r0c0", "x": 15,  "y": 20 },
+    { "id": "pt-r0c1", "x": 45,  "y": 20 },
+    { "id": "pt-r0c2", "x": 75,  "y": 20 },
+    { "id": "pt-r0c3", "x": 105, "y": 20 },
+    { "id": "pt-r1c0", "x": 15,  "y": 60 },
+    { "id": "pt-r1c1", "x": 45,  "y": 60 },
+    { "id": "pt-r1c2", "x": 75,  "y": 60 },
+    { "id": "pt-r1c3", "x": 105, "y": 60 }
+  ],
+  "expectedWorkerCall": {
+    "endpoint": "POST /occt/op/hole/tap",
+    "bodyShape": {
+      "baseShapeHandle": "<shape-handle>",
+      "kind": "tap",
+      "positions": "[…8 entries from expectedPositions, mapped to {id,x,z}]",
+      "drillDiameter": 4.2,
+      "pitch": 0.8,
+      "tapClass": "6H",
+      "tapDepth": 10,
+      "drillTipAngle": 118,
+      "terminationMode": "blind",
+      "blindDepth": 12
+    }
+  },
+  "expectedResponseHoleCount": 8,
+  "expectedDfmFinding": {
+    "code": "TAP_BOTTOM_RISK",
+    "severity": null,
+    "comment": "tapDepth=10, drillDepth=12, pitch=0.8 → margin=2 mm, threshold=1.6 mm → margin > threshold, NO warning expected (spec §8.3 reference case)."
+  },
+  "notes": [
+    "Worker side (/occt/op/hole/tap) is blocked in W4 — wire-up after occt-worker src/ provision (Wave 1 task #31).",
+    "Spec §8.3 cites this as the F-HW-03 happy path: tap-bottom-risk just barely clears (margin 2 mm > 1.6 mm threshold).",
+    "Stable position ids = sketch point ids, per spec §7.1 — re-running propagation produces identical ids so per-hole overrides survive rebuilds.",
+    "The wizard's Type tab selects 'Tap', Size tab picks M5 + 6H class, Termination tab Blind depth = 12 mm, Position tab fromSketch with this sketchFeatureId."
+  ]
+}
