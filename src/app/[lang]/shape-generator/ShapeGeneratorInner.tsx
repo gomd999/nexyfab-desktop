@@ -218,6 +218,7 @@ import ScadAgentPanel from './panels/ScadAgentPanel';
 import MobileAgentNotice from './panels/MobileAgentNotice';
 import ScadModeToggle from './panels/ScadModeToggle';
 const ConfigurationTable = dynamic(() => import('./panels/ConfigurationTable'), { ssr: false });
+const ConfigurationTableV2 = dynamic(() => import('./configurations/ui/ConfigurationTableV2'), { ssr: false });
 const DrcPanel = dynamic(() => import('./analysis/DrcPanel'), { ssr: false });
 const PlmConfigPanel = dynamic(() => import('./integrations/PlmConfigPanel'), { ssr: false });
 const SketchTextPanel = dynamic(() => import('./sketch/SketchTextPanel'), { ssr: false });
@@ -9183,8 +9184,41 @@ export function ShapeGeneratorInner() {
         onClose={() => setShowThreadHolePanel(false)}
       />
 
-      {/* ═══ F5 — Configuration Table (Excel-style multi-config) ═══ */}
-      {showConfigurationTable && (
+      {/* ═══ F5 — Configuration Table (Excel-style multi-config) ═══
+       *  A4 (W4) — when `?configs=v2` flag is on, mount the new
+       *  ConfigurationTableV2 backed by the A2/A3 runtime. The legacy
+       *  panel below is the default + safety net per the master
+       *  tracker (delete in W6).
+       */}
+      {showConfigurationTable && useConfigurationTableRuntime && configurationTableRef.current && (
+        <ConfigurationTableV2
+          table={configurationTableRef.current}
+          features={features}
+          lang={(['ko','en','ja','zh','es','ar'].includes(lang) ? lang : 'en') as 'ko'|'en'|'ja'|'zh'|'es'|'ar'}
+          onMutate={() => {
+            // Bump configurations state for the legacy panel + .nfab
+            // serialisation path. V2 owns the runtime; the legacy list
+            // gets refreshed on every mutation via toJSON().
+            const snap = configurationTableRef.current?.toJSON();
+            if (!snap) return;
+            setConfigurations(
+              snap.configs.map(c => ({
+                id: c.id,
+                name: c.name,
+                params: Object.fromEntries(
+                  Object.entries(c.expressionVars).filter(([, v]) => typeof v === 'number'),
+                ) as Record<string, number>,
+                featureEnabled: Object.fromEntries(
+                  Object.entries(c.overrides).map(([fid, ov]) => [fid, !(ov?.suppressed === true)]),
+                ),
+              })),
+            );
+            setActiveConfigurationId(snap.activeConfigId);
+          }}
+          onClose={() => setShowConfigurationTable(false)}
+        />
+      )}
+      {showConfigurationTable && !useConfigurationTableRuntime && (
         <ConfigurationTable
           configurations={configurations}
           features={features}
