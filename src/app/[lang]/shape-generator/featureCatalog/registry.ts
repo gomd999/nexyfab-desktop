@@ -1257,13 +1257,11 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
   },
 
   // Equation / configuration.
-  {
-    id: 'config.manager', name: 'Configuration Manager', category: 'modeling',
-    routes: ['modeling'], tags: ['variant', 'config', 'override'],
-    license: 'pro',
-    entryHint: 'config/configurationManager',
-    description: 'Design variant manager with parameter overrides + inheritance.',
-  },
+  // `config.manager` removed in Wave 2 Phase 2 W6 (A6) — the legacy
+  // `ConfigurationManager` class was dead code in production (the host
+  // never wired `useConfigurationManager`). The replacement is the
+  // `ConfigurationTable` runtime in `configurations/ConfigurationTable.ts`,
+  // exposed to users via `?configs=v2` and the v2 panel UI.
   {
     id: 'equations.manager', name: 'Global Equation Manager', category: 'modeling',
     routes: ['modeling'], tags: ['equation', 'global-var', 'formula'],
@@ -4008,14 +4006,13 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     entryHint: 'cam/stockProbeMacro',
     description: 'Generate Renishaw probe macros to measure stock dims + update WCS offset (G54..G59). Optional squareness diagonal probe. compareStock returns delta vs approx for stock-size verification.',
   },
-  {
-    id: 'assembly.multi-config', name: 'Assembly Multi-Configuration Part Variant', category: 'assembly',
-    routes: ['assembly'],
-    tags: ['configuration', 'variant', 'suppression', 'parameter-override', 'inheritance', 'design-table'],
-    license: 'pro-plus',
-    entryHint: 'assembly/multiConfigPartVariant',
-    description: 'Manage multiple part configurations with parent inheritance, per-feature suppression, parameter overrides. Resolves config via parent chain walk. Diff and validation (unknown feature/param, missing parent, cycle).',
-  },
+  // ── `assembly.multi-config` removed in Wave 2 Phase 2 W6 (A6 cleanup).
+  //    `multiConfigPartVariant.ts` was test-only dead code; its
+  //    `diffConfigs` + `validateModel` helpers were ported into
+  //    `configurations/ConfigurationTable.ts` (A2). The new
+  //    Configurations runtime exposes the same capability surface
+  //    through the v2 UI (`?configs=v2`) — see
+  //    `configurations/ui/ConfigurationTableV2.tsx`.
   {
     id: 'fea.bc-consistency', name: 'FEA Boundary Condition Consistency', category: 'simulation',
     routes: ['inspection'],

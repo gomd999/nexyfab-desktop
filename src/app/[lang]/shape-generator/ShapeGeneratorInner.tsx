@@ -60,11 +60,6 @@ import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
 import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
 import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
 import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
-import {
-  captureMasterSnapshot,
-  restoreMasterSnapshotOps,
-  type MasterSnapshot,
-} from './configurations/masterSnapshot';
 import { ConfigurationTable as ConfigurationTableRuntime } from './configurations/ConfigurationTable';
 import { migrateFromV1 as migrateConfigsFromV1 } from './configurations/migrateFromV1';
 import { ConfigStore, migrateToYjs as migrateConfigStoreToYjs, type ConfigStore as ConfigStoreType } from './configurations/ConfigStore';
@@ -1395,14 +1390,24 @@ export function ShapeGeneratorInner() {
 
   // ── A3 (W3) flag-gated runtime — `?configs=v2` opts into the new
   // ConfigurationTable pipeline integration. When OFF (default), behaviour
-  // is unchanged: the legacy state-mutating handlers + masterSnapshot
-  // defensive layer below stay as the authoritative path. When ON, a
-  // stable `ConfigurationTable` instance backs the same state — handlers
+  // is unchanged: the legacy state-mutating handlers stay as the
+  // authoritative path (kept for back-compat until v2 graduates from
+  // flag-gated to default in a later PR). When ON, a stable
+  // `ConfigurationTable` instance backs the same state — handlers
   // dual-write so the panel UI (which still reads `configurations`) stays
   // in sync, but the pipeline re-evaluates through `applyFeatureContext`
   // → `ConfigurationTable.resolveActive` instead of through scene-store
-  // mutation. The legacy masterSnapshot path stays mounted in parallel
-  // for back-compat soak; removal lands in W6 (master tracker Track A).
+  // mutation.
+  //
+  // **W6 (Track A6) cleanup** — the in-session `masterSceneSnapshotRef`
+  // defensive layer (PR #42) was removed in this PR. A3 + A5 are the
+  // production path: the v2 runtime never mutates the master tree, and
+  // soak burn-in + CRDT divergence tests (W5) have validated that. The
+  // legacy mutation branch below is still here for users on the
+  // `?configs=v1`/default path; it remains the documented "save while a
+  // non-master config is active to lose your original master" footgun
+  // (configurations-spec §13.5), which users escape by switching to
+  // `?configs=v2`.
   const useConfigurationTableRuntime = searchParams?.get('configs') === 'v2';
   const configurationTableRef = useRef<ConfigurationTableRuntime | null>(null);
   if (useConfigurationTableRuntime && configurationTableRef.current === null) {
@@ -1453,25 +1458,10 @@ export function ShapeGeneratorInner() {
     };
   }, [useConfigurationTableRuntime]);
 
-  // ── Defensive: in-session master tree snapshot.
-  // See src/app/[lang]/shape-generator/configurations/masterSnapshot.ts and
-  // docs/wave-2-phase-2-configurations-spec.md §5. Captured on the first
-  // activate (null → non-null). Restored on deactivate (→ null). Phase 2
-  // routes the pipeline through ConfigurationTable so this whole patch
-  // becomes obsolete and gets deleted.
-  //
-  // NB: this layer is intentionally kept ALSO when the v2 runtime is
-  // active — the v2 path doesn't mutate scene-store so the snapshot
-  // simply never gets captured (the v2 `handleConfigurationSelect`
-  // below skips the legacy mutate block). The two paths are mutually
-  // exclusive at the mutation-site level, so the snapshot stays safe.
-  const masterSceneSnapshotRef = useRef<MasterSnapshot | null>(null);
-
   const getConfigurationsBlock = useCallback(
     () => ({
       configurations,
       activeConfigurationId,
-      masterSnapshot: masterSceneSnapshotRef.current,
     }),
     [configurations, activeConfigurationId],
   );
@@ -1480,10 +1470,6 @@ export function ShapeGeneratorInner() {
     (configs: NfabConfigurationV1[] | undefined, activeId: string | null | undefined) => {
       setConfigurations(configs ?? []);
       setActiveConfigurationId(activeId ?? null);
-      // Reset the snapshot ref — a fresh .nfab load wipes prior-session
-      // state. If the file came in with activeId !== null we cannot recover
-      // its true master (see masterSnapshot.ts "What this does NOT fix").
-      masterSceneSnapshotRef.current = null;
     },
     [],
   );
@@ -1502,33 +1488,18 @@ export function ShapeGeneratorInner() {
         return;
       }
 
-      // ── Legacy path (default) — unchanged from prior behaviour. ──
-      // Capture master at the null → non-null transition, exactly once per session.
-      // Reads from activeConfigurationId via closure — safe because handler
-      // is rebuilt when activeConfigurationId changes.
-      if (id !== null && activeConfigurationId === null && masterSceneSnapshotRef.current === null) {
-        const sc = useSceneStore.getState();
-        masterSceneSnapshotRef.current = captureMasterSnapshot(
-          { params: sc.params, paramExpressions: sc.paramExpressions },
-          featureHistory ?? { nodes: [], rootId: '' },
-        );
-      }
-
+      // ── Legacy path (default) — scene-store mutation. ──
+      // Users staying on the default (`?configs=v1`) path keep the
+      // pre-W6 behaviour. The defensive masterSnapshot layer that used
+      // to wrap this branch was removed in W6 (A6) cleanup; users who
+      // need master-tree protection are expected to migrate to the v2
+      // runtime by opting into `?configs=v2`.
       setActiveConfigurationId(id);
 
-      // Deactivate path: restore master values to sceneStore + each node.
+      // Deactivate path: drop back to working master (caller's
+      // sceneStore is left as-is; legacy path has no in-session master
+      // snapshot to restore from).
       if (id == null) {
-        const snap = masterSceneSnapshotRef.current;
-        if (snap && featureHistory) {
-          const ops = restoreMasterSnapshotOps(snap, featureHistory);
-          useSceneStore.setState({
-            params: { ...ops.scene.params },
-            paramExpressions: { ...ops.scene.paramExpressions },
-          });
-          for (const o of ops.enabledOverrides) {
-            updateNode(o.id, { enabled: o.enabled });
-          }
-        }
         return;
       }
 
@@ -1553,7 +1524,7 @@ export function ShapeGeneratorInner() {
         updateNode(n.id, { enabled: true });
       }
     },
-    [activeConfigurationId, configurations, featureHistory, getOrderedNodes, updateNode, useConfigurationTableRuntime],
+    [configurations, featureHistory, getOrderedNodes, updateNode, useConfigurationTableRuntime],
   );
 
   const handleConfigurationAdd = useCallback(

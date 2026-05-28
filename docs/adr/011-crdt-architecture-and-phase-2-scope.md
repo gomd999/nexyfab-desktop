@@ -541,3 +541,104 @@ Total reversal cost from end of Phase 5: ~11.5 eng-weeks (architecture
   envelope) — superset commitment this ADR operationalises.
 - ADR-009 (Wave 1 GA gate, occt-worker pool) — Wave 1 evidence procedure
   preserved unchanged.
+
+---
+
+## Phase 2 Status — Track A (Configurations) shipped W6 · 2026-05-28
+
+Closing entry for Track A (Configurations). Tracks B–E remain in flight
+per `docs/wave-2-phase-2-master-task-tracker.md`.
+
+### Track A end-state (W1–W6 complete)
+
+| Wk | Task | Status | Evidence |
+|---|---|---|---|
+| W1 | A1 — corruption fix + .nfab v3 schema | **shipped** | PR #42 (defensive `masterSnapshot` capture/restore + v3 bump landed via D2) |
+| W2 | A2 — `ConfigurationTable` class + diff/validate ports | **shipped** | `configurations/ConfigurationTable.ts` + `diffConfigs.ts` + `validateModel.ts` + 30+ unit tests green |
+| W3 | A3 — pipeline integration flag `?configs=v2` | **shipped** | `featureContext.applyFeatureContext` routes through `ConfigurationTable.resolveActive` when the runtime is registered; perf p95 ≤ 50ms on F-CONFIG-PERF-01 |
+| W4 | A4 — UI Excel v2 + ExpressionVarsPanel + Family Export + CSV BOM | **shipped** | `configurations/ui/ConfigurationTableV2.tsx`, `ExpressionVarsPanel.tsx`, `FamilyExportButton.tsx`, `ConfigCsvBomButton.tsx`; i18n dict at `configurations/ui/dict.ts` |
+| W5 | A5 — Y.Map-backed `ConfigStore` + CRDT divergence soak | **shipped** | `configurations/ConfigStore.ts` + `configStoreYjs.ts`; `configStoreYjs.divergence.test.ts` + `configStoreSoak.test.ts` |
+| **W6** | **A6 — cleanup deletes + final fixture regression + this status update** | **shipped (this PR)** | see below |
+
+### W6 (A6) — what landed
+
+- **`ConfigurationTable` + `ConfigStore` are now the production runtime** for
+  any user opening NexyFab with `?configs=v2`. The legacy flag-off path
+  remains operational for back-compat (default `?configs=v1`) — the v2
+  graduation to default is a follow-up PR, deliberately separated to keep
+  this cleanup at Low risk per master tracker.
+- **`masterSnapshot` defensive layer removed in this PR (A6).** The
+  in-session capture/restore patch (PR #42) is gone end-to-end:
+  - `configurations/masterSnapshot.ts` + its test deleted.
+  - `ShapeGeneratorInner.tsx` no longer imports `captureMasterSnapshot` /
+    `restoreMasterSnapshotOps`. The `masterSceneSnapshotRef` ref + the
+    capture-on-activate / restore-on-deactivate blocks were removed.
+  - `useNfabFileIO.buildSerializeInput` no longer substitutes master
+    values into the serialized scene — the `useMasterForSave` branch is
+    gone. Users on the legacy path who save while a non-master config is
+    active still lose their master (configurations-spec §13.5); the
+    migration path is to switch to `?configs=v2` where the runtime never
+    mutates the master in the first place.
+- **Legacy `ConfigurationManager` + `ConfigurationPanel.tsx` deleted.**
+  `useConfigurationManager` hook deleted (it was never called from any
+  host — verified by repeated grep through Phase 1 and Phase 2 W1–W5).
+  `features/featureContext.ts` no longer carries the `ConfigurationManager`
+  slot; `applyFeatureContext` resolves only through `ConfigurationTable`
+  + `EquationManager`. The `EquationManager` class is preserved (spec
+  §11 W4 explicit: "EquationManager class stays; only the hook is
+  removed").
+- **Legacy `multiConfigPartVariant.{ts,test.ts}` deleted.** Test-only dead
+  code; its `diffConfigs` and `validateModel` helpers were ported into
+  the A2 `ConfigurationTable` class in W2. The corresponding
+  `featureCatalog/registry.ts` entry (`assembly.multi-config`) and the
+  `featureLoaders.ts` loader were removed.
+- **v1 panel UI (`panels/ConfigurationTable.tsx`) remains as fallback for
+  `?configs=v1`.** The v2 UI (`configurations/ui/ConfigurationTableV2.tsx`)
+  is the new default for users opting in; deletion of v1 is deferred to
+  the v2-graduation PR.
+- **Final fixture regression suite** at
+  `src/app/[lang]/shape-generator/io/__tests__/phase2RegressionSuite.test.ts`
+  round-trips every accumulated Phase 2 fixture
+  (`F-CONFIG-PERF-01` + `F-HW-01..05` + `F-THREAD-01`) through
+  `serializeProject` → `parseProject` and asserts deep equality on every
+  persisted field plus `NFAB_FORMAT_VERSION === 3` agreement. The
+  reference-geometry side is covered by
+  `referenceGeometry/__tests__/fixtures{,Extended}.test.ts` (in-source
+  TS fixtures 01–10) which run alongside this suite.
+
+### CRDT-architecture envelope status — Track A subtree
+
+`docs/wave-2-crdt-architecture.md` §2.1 lists `configurations` as a
+top-level Y.Doc key. As of W5 (A5), the subtree shape is:
+
+```
+configurations: Y.Map<configId, Y.Map<
+  'id' | 'name' | 'parentId' | 'paramOverrides' | 'suppressed' | 'expressionVars',
+  …
+>>
+activeConfigId: Y.Text (single-cell stringified id or 'null')
+globalVars: Y.Map<varName, Y.Text>
+```
+
+Each mutation flows through `applyConfigOp` (defined in
+`configStoreYjs.ts`) which wraps the whole logical edit in one
+`doc.transact()`. Convergence under concurrent edits is enforced by
+`configStoreYjs.divergence.test.ts` (synthetic 2-client divergence + heal
+suite) and `configStoreSoak.test.ts` (3-client × 5-config × 10-min
+synthetic soak). These two tests are the **CRDT divergence + soak
+burn-in evidence** referenced by `docs/adr/011-...md` decision review.
+
+### Open follow-ups for v2 graduation (separate PR, post-A6)
+
+- Flip `useConfigurationTableRuntime` default from `?configs=v2` opt-in
+  to always-on.
+- Delete the legacy `handleConfigurationSelect` scene-store mutation
+  branch in `ShapeGeneratorInner.tsx`.
+- Delete `panels/ConfigurationTable.tsx` (legacy v1 UI).
+- Drop the `cfgBlock` configurations path through `useNfabFileIO`
+  serialize — once the v2 runtime is canonical, the file-format slot
+  fills itself from the `ConfigurationTable` snapshot.
+
+These are deferred to keep A6 at Low risk; the tracker's W6 row is
+"Cleanup deletes (spec §11 W4 last block)" and the legacy path removal
+is a separate decision.
