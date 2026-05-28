@@ -10,20 +10,24 @@ already exercise the API surface in node with `fake-indexeddb`. These
 harnesses add the missing piece — confirming the same code paths run in
 a real browser yjs runtime.
 
-## Three routes (sketch + feature tree + persistence)
+## Four routes (sketch + feature tree + persistence + configs)
 
 | Route | Module under test | What it proves |
 |---|---|---|
 | `/[lang]/collab-smoke` | `sketchYjs.ts` | `Y.Map<id, Y.Map>` (keyed) CRDT converges in browser |
 | `/[lang]/collab-smoke-feature-tree` | `featureTreeYjs.ts` | `Y.Array<Y.Map>` (ordered) + sibling `Y.Map<sketchId>` converges |
 | `/[lang]/collab-smoke-persistence` | `offlinePersistence.ts` | Real-browser IndexedDB persistence survives close/reopen + clears cleanly |
+| `/[lang]/collab-smoke-configs` | `configStoreYjs.ts` (Phase 2 W5 / A5) | `Y.Map<configId, Y.Map>` + flat per-key params Y.Map converges; LWW on rename / setActive / setParent |
 
-The three modules have different runtime concerns — sketches are
-unordered CRDT, the feature tree is ordered, and persistence is
-browser-only IndexedDB (uncovered by node-side `fake-indexeddb`).
-Running all three is the full signal #1 coverage.
+The four modules have different runtime concerns — sketches are
+unordered CRDT, the feature tree is ordered, persistence is
+browser-only IndexedDB (uncovered by node-side `fake-indexeddb`), and
+configurations have the flattened-params topology that prevents the
+two-peer-creates-disjoint-Y.Map merge anomaly found during A5
+implementation. Running all four is the full signal #1 coverage for
+Phase 1 + Phase 2 W5.
 
-All three routes are **not linked from any nav** — only reachable by
+All four routes are **not linked from any nav** — only reachable by
 typing the URL. They are developer tools.
 
 ## What you see
@@ -118,6 +122,39 @@ runtime. **All four should pass.**
    `Refresh size`, the badge should show non-zero KB (likely tens
    of KB — origin total, may include other sites). Wipe should
    not necessarily drop it (other origins share the budget).
+
+## Configurations checklist (`/[lang]/collab-smoke-configs`) — Phase 2 A5
+
+Companion to the three Phase 1 routes. Same two-panel pattern; ops
+are configurations CRDT primitives (`addConfig`, `setOverride`,
+`renameConfig`, `removeConfig`). **All four should pass.**
+
+1. **Basic round-trip.** Auto-sync ON, click `+ Config` on A three
+   times. Both panels show master + 3 configs with identical ids,
+   names, and (empty) overrides. Status: CONVERGED.
+
+2. **Concurrent different-id merge.** Auto-sync OFF. `+ Config` twice
+   on A and twice on B. `Sync A→B` then `Sync B→A`. Both panels show
+   master + 4 configs. Status: CONVERGED.
+
+3. **Concurrent override merge.** Auto-sync OFF: `+ Config` on A once
+   then `Sync A→B`. Click `Override first` on A. Click `Override first`
+   on B (same target, same param key — LWW). `Sync A→B`, `Sync B→A`.
+   Both panels converge to the same param value (whichever peer's
+   clock won). The flat per-key params topology guarantees that
+   disjoint-key concurrent overrides BOTH survive — not exercised by
+   the UI (which only edits the `radius` key) but covered by
+   `configStoreYjs.divergence.test.ts` case #8.
+
+4. **Stress.** `Stress: 40 concurrent` button — 10 adds + 10 overrides
+   on each panel. Both panels end with master + 20 configs. Status:
+   CONVERGED.
+
+The node-side soak (`__tests__/configStoreSoak.test.ts`) runs
+3 peers × 150 random ops × 6 seeds with assertions that all peers
+converge after each op — that's the heavy CI signal. The browser
+harness only verifies the same code path runs under React + jsdom
+client bundling.
 
 ## What this does NOT verify
 
