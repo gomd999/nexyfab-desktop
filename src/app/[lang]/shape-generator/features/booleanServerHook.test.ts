@@ -227,4 +227,45 @@ describe('applyBooleanAsync — W16 server hook', () => {
     );
     expect(fetchMock).toHaveBeenCalled();
   });
+
+  it('uses sourceR2Key when geometry.userData has serverStepR2Key (chained boolean)', async () => {
+    // Previous server op stashed its STEP key. The next boolean
+    // should chain via sourceR2Key, not round-trip through mesh bbox.
+    // Pre-fix W17 toServerParams always emitted host:{w,h,d} regardless.
+    const fetchMock = mockServerOk();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const geo = bigHostGeometry();
+    geo.userData.serverStepR2Key = 'occt-ops/u1/extrude/prev.step';
+    await applyBooleanAsync(
+      geo, baseParams, undefined,
+      { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
+    );
+    const opCall = fetchMock.mock.calls.find((c: unknown[]) =>
+      typeof c[0] === 'string' && (c[0] as string).endsWith('/occt/op/boolean'),
+    );
+    expect(opCall).toBeDefined();
+    const body = JSON.parse((opCall![1] as RequestInit).body as string);
+    expect(body.params.sourceR2Key).toBe('occt-ops/u1/extrude/prev.step');
+    expect(body.params.host).toBeUndefined();
+  });
+
+  it('chained host AND chained tool together → both R2 keys in body', async () => {
+    const fetchMock = mockServerOk();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const geo = bigHostGeometry();
+    geo.userData.serverStepR2Key = 'occt-ops/u1/extrude/host.step';
+    geo.userData.toolSourceR2Key = 'occt-ops/u1/extrude/tool.step';
+    await applyBooleanAsync(
+      geo, baseParams, undefined,
+      { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
+    );
+    const opCall = fetchMock.mock.calls.find((c: unknown[]) =>
+      typeof c[0] === 'string' && (c[0] as string).endsWith('/occt/op/boolean'),
+    );
+    const body = JSON.parse((opCall![1] as RequestInit).body as string);
+    expect(body.params.sourceR2Key).toBe('occt-ops/u1/extrude/host.step');
+    expect(body.params.toolSourceR2Key).toBe('occt-ops/u1/extrude/tool.step');
+    expect(body.params.host).toBeUndefined();
+    expect(body.params.toolShape).toBeUndefined();
+  });
 });
