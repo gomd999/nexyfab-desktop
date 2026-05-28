@@ -263,6 +263,47 @@ What this does NOT prove (deferred to Z1 wiring + W4 gate):
 - `useFeatureStack` retrofit — the legacy reducer stays untouched. Opt-in
   is via the new `useFeatureStackBridge(crdtDocId)` hook; W4 walks call
   sites and migrates them one-by-one behind the flag.
+
+## Phase 3 Z4 — reference geometry CRDT in the production editor (flag-gated)
+
+Phase 3 Z4 wires the reference-geometry CRDT through the production editor
+via the new `RefGeomStore` adapter
+(`src/app/[lang]/shape-generator/referenceGeometry/RefGeomStore.ts`) and the
+`useRefGeomStore` hook. The flag is `?crdt=v2` (default OFF — the existing
+Zustand `useReferenceGeometryStore` stays the production default until W4
+gate).
+
+**Smoke**: try creating ref-geom planes in `?crdt=v2` across two tabs;
+cycle detection across peers verified.
+
+Procedure:
+1. Open `/[lang]/shape-generator?crdt=v2` in two tabs of the same browser
+   (the BroadcastChannel fallback bridges them while Z1's CollabProvider
+   wiring is parallel).
+2. Add a reference plane (e.g. an offset plane parented to Front) in
+   tab A — it should appear in tab B within ~100 ms.
+3. Edit the plane's offset distance in both tabs concurrently — the
+   JSON-LWW resolves; both tabs converge on one value, and the loser tab
+   shows the "Your ref-geom edit was overridden by …" toast via the
+   `useRefGeomLwwCollisionToast` hook.
+4. Cross-peer cycle case: in tab A add plane X depending on plane Y; in
+   tab B (disconnected — disable auto-sync if available, or do this very
+   quickly) add plane Y depending on plane X. When the sync runs, BOTH
+   tabs surface the `useRefGeomCycleWarning` banner showing the cycle
+   path X→Y→X. The cycle is NOT auto-broken; the user breaks it by
+   editing one of the deps (e.g. changing X to method='standard').
+
+What this proves: the `RefGeomStore` adapter routes mutations through
+`applyRefGeomOp` so the Y.Doc remains the convergence source, with the
+`useRefGeomCycleWarning` hook running `findAllCycles` on every update so
+the merged-graph cycle case (which neither peer's `wouldCreateCycle`
+local check rejected) surfaces in the UI.
+
+What this does NOT prove (deferred):
+- Cross-network sync (BroadcastChannel is same-origin only).
+- Awareness peer names on the LWW toast — falls back to
+  "another collaborator" until Z1 wires `resolvePeerName`.
+- Awareness cursors over ref-geom dialog inputs — that's Z5's territory.
 - Default-on flag rollout — `?crdt=v2` stays opt-in through W3.
 
 ## Reporting result

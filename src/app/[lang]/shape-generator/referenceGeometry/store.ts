@@ -147,3 +147,19 @@ export const useReferenceGeometryStore = create<ReferenceGeometryStore>((set, ge
 export function _resetReferenceGeometryStore(): void {
   useReferenceGeometryStore.setState({ nodes: [] });
 }
+
+// ─── Z4 (Wave 2 Phase 3 W4) — CRDT opt-in seam ────────────────────────────
+//
+// Hosts that want CRDT-backed ref-geom call `useRefGeomStore(crdtDocId)`
+// from `./useRefGeomStore.ts` instead of this Zustand hook. The Zustand
+// hook stays the !v2 default and is unchanged by Z4.
+//
+// Re-export for convenience so a single import covers both modes:
+//
+//   import { useReferenceGeometryStore, useRefGeomStore } from './referenceGeometry';
+//
+// The hook variant is in `useRefGeomStore.ts` to keep this file's
+// Zustand surface free of React + Yjs imports (a constraint several
+// existing call-sites rely on for tree-shaking).
+//
+// See ADR-012 §3 for the Phase 3 awareness scope.
