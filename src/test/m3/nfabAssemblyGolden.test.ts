@@ -12,8 +12,8 @@ describe('M3 golden nfab (assembly)', () => {
     const json = readFileSync(path, 'utf8');
     const p = parseProject(json);
     expect(p.magic).toBe('nfab');
-    // Golden v1 file is auto-migrated to v2 by the parser.
-    expect(p.version).toBe(2);
+    // Golden v1 file is auto-migrated to v3 by the parser.
+    expect(p.version).toBe(3);
     expect(p.name).toContain('M3 golden');
     expect(p.assembly).toBeDefined();
     expect(p.assembly!.placedParts).toHaveLength(2);

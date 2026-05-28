@@ -13,9 +13,9 @@ describe('M0 golden nfab', () => {
     const json = readFileSync(path, 'utf8');
     const p = parseProject(json);
     expect(p.magic).toBe('nfab');
-    // Golden file is v1; parser auto-migrates to v2 (current). Assert
+    // Golden file is v1; parser auto-migrates to v3 (current). Assert
     // post-migration version so this test stays stable across schema bumps.
-    expect(p.version).toBe(2);
+    expect(p.version).toBe(3);
     expect(p.scene.selectedId).toBe('box');
     expect(p.tree.rootId).toBe('m0-root-node');
     expect(p.name).toContain('M0 golden');
