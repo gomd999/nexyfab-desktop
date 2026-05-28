@@ -65,6 +65,9 @@ import {
   restoreMasterSnapshotOps,
   type MasterSnapshot,
 } from './configurations/masterSnapshot';
+import { ConfigurationTable as ConfigurationTableRuntime } from './configurations/ConfigurationTable';
+import { migrateFromV1 as migrateConfigsFromV1 } from './configurations/migrateFromV1';
+import { setConfigurationTable as setPipelineConfigurationTable } from './features/featureContext';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
 import { useCsgWorker } from './workers/useCsgWorker';
@@ -1387,12 +1390,52 @@ export function ShapeGeneratorInner() {
   const [configurations, setConfigurations] = useState<NfabConfigurationV1[]>([]);
   const [activeConfigurationId, setActiveConfigurationId] = useState<string | null>(null);
 
+  // ── A3 (W3) flag-gated runtime — `?configs=v2` opts into the new
+  // ConfigurationTable pipeline integration. When OFF (default), behaviour
+  // is unchanged: the legacy state-mutating handlers + masterSnapshot
+  // defensive layer below stay as the authoritative path. When ON, a
+  // stable `ConfigurationTable` instance backs the same state — handlers
+  // dual-write so the panel UI (which still reads `configurations`) stays
+  // in sync, but the pipeline re-evaluates through `applyFeatureContext`
+  // → `ConfigurationTable.resolveActive` instead of through scene-store
+  // mutation. The legacy masterSnapshot path stays mounted in parallel
+  // for back-compat soak; removal lands in W6 (master tracker Track A).
+  const useConfigurationTableRuntime = searchParams?.get('configs') === 'v2';
+  const configurationTableRef = useRef<ConfigurationTableRuntime | null>(null);
+  if (useConfigurationTableRuntime && configurationTableRef.current === null) {
+    // Lazy init — hot-swap from the legacy state so a mid-session flag
+    // flip preserves the user's variants.
+    configurationTableRef.current = migrateConfigsFromV1(configurations, activeConfigurationId);
+  }
+
+  // Register / unregister the pipeline seam slot. This is the single
+  // wire that makes `applyFeatureContext` route through the new table
+  // (see features/featureContext.ts). The flag-off branch explicitly
+  // nulls the slot so a tab opened in v2 then refreshed without the
+  // flag drops back to the legacy path cleanly.
+  useEffect(() => {
+    if (useConfigurationTableRuntime && configurationTableRef.current) {
+      setPipelineConfigurationTable(configurationTableRef.current);
+    } else {
+      setPipelineConfigurationTable(null);
+    }
+    return () => {
+      setPipelineConfigurationTable(null);
+    };
+  }, [useConfigurationTableRuntime]);
+
   // ── Defensive: in-session master tree snapshot.
   // See src/app/[lang]/shape-generator/configurations/masterSnapshot.ts and
   // docs/wave-2-phase-2-configurations-spec.md §5. Captured on the first
   // activate (null → non-null). Restored on deactivate (→ null). Phase 2
   // routes the pipeline through ConfigurationTable so this whole patch
   // becomes obsolete and gets deleted.
+  //
+  // NB: this layer is intentionally kept ALSO when the v2 runtime is
+  // active — the v2 path doesn't mutate scene-store so the snapshot
+  // simply never gets captured (the v2 `handleConfigurationSelect`
+  // below skips the legacy mutate block). The two paths are mutually
+  // exclusive at the mutation-site level, so the snapshot stays safe.
   const masterSceneSnapshotRef = useRef<MasterSnapshot | null>(null);
 
   const getConfigurationsBlock = useCallback(
@@ -1418,6 +1461,19 @@ export function ShapeGeneratorInner() {
 
   const handleConfigurationSelect = useCallback(
     (id: string | null) => {
+      // ── A3 v2 path — flag on: route through ConfigurationTable, do
+      //    NOT mutate sceneStore / node.enabled. The pipeline picks up
+      //    the change via `applyFeatureContext` on the next re-eval,
+      //    which `configurationsSig` (below) triggers when activeId
+      //    changes. The list UI still reads `configurations`, so we
+      //    only need to update activeConfigurationId.
+      if (useConfigurationTableRuntime && configurationTableRef.current) {
+        configurationTableRef.current.activate(id);
+        setActiveConfigurationId(id);
+        return;
+      }
+
+      // ── Legacy path (default) — unchanged from prior behaviour. ──
       // Capture master at the null → non-null transition, exactly once per session.
       // Reads from activeConfigurationId via closure — safe because handler
       // is rebuilt when activeConfigurationId changes.
@@ -1468,7 +1524,7 @@ export function ShapeGeneratorInner() {
         updateNode(n.id, { enabled: true });
       }
     },
-    [activeConfigurationId, configurations, featureHistory, getOrderedNodes, updateNode],
+    [activeConfigurationId, configurations, featureHistory, getOrderedNodes, updateNode, useConfigurationTableRuntime],
   );
 
   const handleConfigurationAdd = useCallback(
@@ -1495,22 +1551,59 @@ export function ShapeGeneratorInner() {
         ...(Object.keys(pe).length > 0 ? { paramExpressions: { ...pe } } : {}),
         featureEnabled,
       };
+
+      // ── A3 v2 path — mirror into the ConfigurationTable runtime so
+      //    the pipeline seam has the new entry. We still update the
+      //    legacy `configurations` state because the panel UI binds
+      //    to it; the table is the canonical source for the pipeline.
+      if (useConfigurationTableRuntime && configurationTableRef.current) {
+        const table = configurationTableRef.current;
+        // `migrateFromV1` is the canonical mapper. We piggy-back on
+        // it for a single-entry add so the mapping stays in one place.
+        const subTable = migrateConfigsFromV1([newCfg], id);
+        const entry = subTable.get(id);
+        if (entry) {
+          table.add(entry.name, { id: entry.id });
+          for (const [featureId, slot] of Object.entries(entry.overrides)) {
+            if (slot.suppressed) {
+              table.setSuppressed(id, featureId, true);
+            }
+          }
+          for (const [varName, value] of Object.entries(entry.expressionVars)) {
+            table.setExpressionVar(id, varName, value);
+          }
+        }
+        table.activate(id);
+      }
+
       setConfigurations(prev => [...prev, newCfg]);
       setActiveConfigurationId(id);
     },
-    [featureHistory, getOrderedNodes],
+    [featureHistory, getOrderedNodes, useConfigurationTableRuntime],
   );
 
-  const handleConfigurationRename = useCallback((configId: string, name: string) => {
-    const n = name.trim();
-    if (!n) return;
-    setConfigurations(prev => prev.map(c => (c.id === configId ? { ...c, name: n } : c)));
-  }, []);
+  const handleConfigurationRename = useCallback(
+    (configId: string, name: string) => {
+      const n = name.trim();
+      if (!n) return;
+      if (useConfigurationTableRuntime && configurationTableRef.current) {
+        configurationTableRef.current.rename(configId, n);
+      }
+      setConfigurations(prev => prev.map(c => (c.id === configId ? { ...c, name: n } : c)));
+    },
+    [useConfigurationTableRuntime],
+  );
 
-  const handleConfigurationDelete = useCallback((id: string) => {
-    setConfigurations(prev => prev.filter(c => c.id !== id));
-    setActiveConfigurationId(cur => (cur === id ? null : cur));
-  }, []);
+  const handleConfigurationDelete = useCallback(
+    (id: string) => {
+      if (useConfigurationTableRuntime && configurationTableRef.current) {
+        configurationTableRef.current.remove(id);
+      }
+      setConfigurations(prev => prev.filter(c => c.id !== id));
+      setActiveConfigurationId(cur => (cur === id ? null : cur));
+    },
+    [useConfigurationTableRuntime],
+  );
 
   const configurationsSig = useMemo(
     () => JSON.stringify(configurations) + String(activeConfigurationId),
