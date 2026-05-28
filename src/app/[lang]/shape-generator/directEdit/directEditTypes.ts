@@ -28,7 +28,13 @@ import {
 } from './pushPullMath';
 
 /** All direct-edit ops are scoped to a single picked face (E1), a
- *  picked edge (E2), or a set thereof (E2+). */
+ *  picked edge (E2 — dynamic fillet/chamfer), or a whole body (E3 —
+ *  move/rotate). The union grows over Phase 3 W3-W7.
+ *
+ *  E2 (Track E Week 4) ops: `dynamicFillet` + `dynamicChamfer`.
+ *  E3 (Track E Week 5) ops: `moveBody` + `rotateBody`.
+ *  Both land here additively — edge-id ops and body-id ops do not
+ *  collide. */
 export type DirectEditOp =
   | {
       kind: 'pushPull';
@@ -45,33 +51,35 @@ export type DirectEditOp =
     }
   | {
       /** Wave 2 Phase 3 Track E2 — dynamic (mesh-level) fillet on a
-       *  picked edge. Distinct from the parametric `features/fillet.ts`
-       *  feature: this is a session-only direct edit, not persisted in
-       *  the .nfab, and operates on the displayed mesh — not on the
-       *  upstream B-Rep. See ADR-012 §6.
-       *
-       *  `edgeId` is the canonical mesh-edge id computed by
-       *  `dynamicEdgeMath.encodeEdgeId(startVert, endVert)` — a
-       *  position-based signature so the same picked edge stays
-       *  resolvable through a `pushOp` undo / re-apply cycle (the
-       *  applier walks the mesh and matches edges by quantised
-       *  endpoint). Strictly stable inside a session, NOT across
-       *  history re-runs (which clear the stack anyway). */
+       *  picked edge. */
       kind: 'dynamicFillet';
       edgeId: string;
-      /** Fillet radius in mm. Must be > 0 and finite. */
       radiusMm: number;
       createdAt: number;
     }
   | {
-      /** Wave 2 Phase 3 Track E2 — dynamic (mesh-level) chamfer on a
-       *  picked edge. Same scope / lock-ins as `dynamicFillet`. */
+      /** Wave 2 Phase 3 Track E2 — dynamic chamfer on a picked edge. */
       kind: 'dynamicChamfer';
       edgeId: string;
-      /** Chamfer setback distance from the corner along each adjacent
-       *  face, in mm. Symmetric chamfer (a 45° bevel for a 90° edge);
-       *  asymmetric / angle-variant chamfer is a Phase 4 B-Rep job. */
       distanceMm: number;
+      createdAt: number;
+    }
+  | {
+      /** E3 — body-level translation. */
+      kind: 'moveBody';
+      bodyId: string;
+      translation: [number, number, number];
+      createdAt: number;
+    }
+  | {
+      /** E3 — body-level rotation. */
+      kind: 'rotateBody';
+      bodyId: string;
+      rotation: {
+        axis: [number, number, number];
+        angleRad: number;
+        pivot: [number, number, number];
+      };
       createdAt: number;
     };
 
@@ -135,21 +143,138 @@ export function isPushPullOp(
   return op.kind === 'pushPull';
 }
 
-/** Type guard for the `dynamicFillet` op variant. */
+/** Type guard for the `dynamicFillet` op variant (E2). */
 export function isDynamicFilletOp(
   op: DirectEditOp,
 ): op is Extract<DirectEditOp, { kind: 'dynamicFillet' }> {
   return op.kind === 'dynamicFillet';
 }
 
-/** Type guard for the `dynamicChamfer` op variant. */
+/** Type guard for the `dynamicChamfer` op variant (E2). */
 export function isDynamicChamferOp(
   op: DirectEditOp,
 ): op is Extract<DirectEditOp, { kind: 'dynamicChamfer' }> {
   return op.kind === 'dynamicChamfer';
 }
 
-// ─── Op-level validation (per-kind, cheap; mesh-level validation
+/** Type guard for the `moveBody` op variant (E3). */
+export function isMoveBodyOp(
+  op: DirectEditOp,
+): op is Extract<DirectEditOp, { kind: 'moveBody' }> {
+  return op.kind === 'moveBody';
+}
+
+/** Type guard for the `rotateBody` op variant (E3). */
+export function isRotateBodyOp(
+  op: DirectEditOp,
+): op is Extract<DirectEditOp, { kind: 'rotateBody' }> {
+  return op.kind === 'rotateBody';
+}
+
+/** Pick payload for body-level direct edits (E3). The overlay maps a
+ *  body raycast hit into this shape and forwards it to the toolbar /
+ *  controller. In the current single-body shape-generator scene,
+ *  picking any face on the displayed mesh selects "the body" — which
+ *  is interpreted as the entire mesh. Multi-body picking is Phase 4
+ *  territory; this payload is forward-compatible. */
+export interface DirectEditBodyPick {
+  bodyId: string;
+  /** World-space click point on the body (mm) — used to seed the
+   *  rotation gizmo position so it spawns at the click site. */
+  hitPoint: [number, number, number];
+}
+
+/** Validation outcomes for body-transform ops. Mirrors the
+ *  push-pull validation shape so the overlay can branch uniformly. */
+export type BodyTransformValidationResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | 'invalid_bodyId'
+        | 'invalid_translation'
+        | 'invalid_rotation_axis'
+        | 'invalid_rotation_angle'
+        | 'invalid_rotation_pivot'
+        | 'translation_too_large';
+    };
+
+/** Maximum allowed translation magnitude (mm) for `moveBody`. Beyond
+ *  this we assume the user typed a wrong unit (m vs mm) and refuse
+ *  early. Tuned to the same M8-scale fixture used by push-pull. */
+export const MOVE_BODY_MAX_TRANSLATION_MM = 100_000;
+
+/** Maximum allowed |angle| (rad) for `rotateBody`. Beyond this the user
+ *  is almost certainly confusing degrees for radians. */
+export const ROTATE_BODY_MAX_ANGLE_RAD = 2 * Math.PI;
+
+/** Validate a `moveBody` op. Pure check; does not touch the mesh. */
+export function validateMoveBody(
+  op: Extract<DirectEditOp, { kind: 'moveBody' }>,
+): BodyTransformValidationResult {
+  if (!op.bodyId || typeof op.bodyId !== 'string') {
+    return { ok: false, reason: 'invalid_bodyId' };
+  }
+  if (!op.translation || op.translation.length !== 3) {
+    return { ok: false, reason: 'invalid_translation' };
+  }
+  for (const v of op.translation) {
+    if (!Number.isFinite(v)) {
+      return { ok: false, reason: 'invalid_translation' };
+    }
+  }
+  const mag = Math.hypot(
+    op.translation[0],
+    op.translation[1],
+    op.translation[2],
+  );
+  if (mag > MOVE_BODY_MAX_TRANSLATION_MM) {
+    return { ok: false, reason: 'translation_too_large' };
+  }
+  return { ok: true };
+}
+
+/** Validate a `rotateBody` op. Pure check; does not touch the mesh. */
+export function validateRotateBody(
+  op: Extract<DirectEditOp, { kind: 'rotateBody' }>,
+): BodyTransformValidationResult {
+  if (!op.bodyId || typeof op.bodyId !== 'string') {
+    return { ok: false, reason: 'invalid_bodyId' };
+  }
+  if (!op.rotation) {
+    return { ok: false, reason: 'invalid_rotation_axis' };
+  }
+  const { axis, angleRad, pivot } = op.rotation;
+  if (!axis || axis.length !== 3) {
+    return { ok: false, reason: 'invalid_rotation_axis' };
+  }
+  for (const v of axis) {
+    if (!Number.isFinite(v)) {
+      return { ok: false, reason: 'invalid_rotation_axis' };
+    }
+  }
+  const axisLen = Math.hypot(axis[0], axis[1], axis[2]);
+  if (axisLen < 1e-9) {
+    return { ok: false, reason: 'invalid_rotation_axis' };
+  }
+  if (!Number.isFinite(angleRad)) {
+    return { ok: false, reason: 'invalid_rotation_angle' };
+  }
+  if (Math.abs(angleRad) > ROTATE_BODY_MAX_ANGLE_RAD) {
+    return { ok: false, reason: 'invalid_rotation_angle' };
+  }
+  if (!pivot || pivot.length !== 3) {
+    return { ok: false, reason: 'invalid_rotation_pivot' };
+  }
+  for (const v of pivot) {
+    if (!Number.isFinite(v)) {
+      return { ok: false, reason: 'invalid_rotation_pivot' };
+    }
+  }
+  return { ok: true };
+}
+
+// ─── E2 op-level validation (per-kind, cheap; mesh-level validation
 //     happens in the appliers + dynamicEdgeMath.validateDynamicFillet) ───
 
 export type OpValidationResult =
@@ -157,13 +282,8 @@ export type OpValidationResult =
   | { ok: false; reason: string };
 
 /** Lightweight per-op invariant check called BEFORE the controller
- *  records the op into the stack. Keeps obviously-bad ops (NaN, sign
- *  flips, oversize) out of the session stack so undo doesn't lose its
- *  alignment to the user's mental model.
- *
- *  The mesh appliers (`applyPushPull` / `applyDynamicFillet` /
- *  `applyDynamicChamfer`) still re-validate against the actual mesh
- *  state — this helper is a pre-flight gate, not the source of truth. */
+ *  records the op into the stack. Covers E2's edge ops; E3 body ops
+ *  use the dedicated `validateMoveBody` / `validateRotateBody` above. */
 export function validateDirectEditOp(op: DirectEditOp): OpValidationResult {
   switch (op.kind) {
     case 'pushPull':
@@ -184,8 +304,15 @@ export function validateDirectEditOp(op: DirectEditOp): OpValidationResult {
       if (op.distanceMm > PUSH_PULL_MAX_OFFSET_MM) return { ok: false, reason: 'too_large' };
       if (!op.edgeId) return { ok: false, reason: 'missing_edgeId' };
       return { ok: true };
+    case 'moveBody': {
+      const r = validateMoveBody(op);
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+    }
+    case 'rotateBody': {
+      const r = validateRotateBody(op);
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+    }
     default: {
-      // Exhaustiveness check — TS errors here if a kind is unhandled.
       const _exhaustive: never = op;
       return { ok: false, reason: `unknown_op_kind:${String((_exhaustive as { kind?: string })?.kind)}` };
     }

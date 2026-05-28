@@ -1,28 +1,24 @@
 'use client';
 
 /**
- * DirectEditToolbar.tsx — Wave 2 Phase 3 Track E1 + E2.
+ * DirectEditToolbar.tsx — Wave 2 Phase 3 Track E1.
  *
- * Direct-edit UI:
- *   - Mode-toggle button (active/inactive) — gated on `?direct-edit=v1`.
- *     When active, a sub-mode selector chooses between
- *     `push-pull` / `dynamic-fillet` / `dynamic-chamfer` (E2 §6).
- *   - Undo last direct edit.
- *   - Clear all direct edits.
- *   - Status: "N direct edits applied this session".
+ * Minimal direct-edit UI:
+ *   - Mode-toggle button (gated on `?direct-edit=v1`)
+ *   - Undo last direct edit
+ *   - Clear all direct edits
+ *   - Status: "N direct edits applied this session"
  *
  * The button visibility is gated by the controller's `enabled` flag,
  * which the host sets from `searchParams.get('direct-edit') === 'v1'`.
  * When OFF, the toolbar renders nothing — zero footprint for users
  * not on the flag.
  *
- * Mode semantics:
- *   - Only one sub-mode is active at a time (radio-button-style).
- *   - When `modeActive` is false, sub-mode buttons are hidden — the
- *     toolbar collapses to the single Direct-edit toggle.
- *   - The host controls both `modeActive` AND `subMode` via callbacks,
- *     so the toolbar is fully controlled (mirrors E1's stateless
- *     contract for `modeActive`).
+ * The toolbar is intentionally self-contained: it owns its own mode
+ * toggle state (passed up via onModeChange to the overlay). The
+ * controller owns the stack, the toolbar owns the "am I active?"
+ * UI state. Mirrors the same separation used by `SectionPlane` /
+ * `CSGPanel`.
  */
 
 import React, { useCallback } from 'react';
@@ -32,28 +28,30 @@ import {
 } from './DirectEditController';
 import { getDirectEditStrings, type DirectEditLang } from './directEditI18n';
 
-/** Toolbar sub-modes — radio-button-style; only one active at a time.
- *  Phase 3 W3 (E1) shipped `push-pull` only. W4 (E2) adds the two
- *  dynamic edge modes. */
-export type DirectEditSubMode =
+/** Full direct-edit mode union. `push-pull` is E1; `move-body` /
+ *  `rotate-body` are E3 (this PR). When E2 lands the union grows to
+ *  include `dynamic-fillet` / `dynamic-chamfer`. */
+export type DirectEditMode =
+  | 'off'
   | 'push-pull'
-  | 'dynamic-fillet'
-  | 'dynamic-chamfer';
+  | 'move-body'
+  | 'rotate-body';
 
 export interface DirectEditToolbarProps {
   /** Current viewer language. Defaults to 'en'. */
   lang?: string;
-  /** Whether direct-edit mode is currently the active pointer mode
-   *  in the viewport. Owned by the host. */
-  modeActive: boolean;
-  /** Host-side mode setter. Toggled by the mode button. */
-  onModeChange: (active: boolean) => void;
-  /** Currently active sub-mode. Defaults to `push-pull` for
-   *  backward compatibility with E1 callers that haven't migrated. */
-  subMode?: DirectEditSubMode;
-  /** Sub-mode setter. Optional — if absent, the sub-mode selector is
-   *  hidden (E1-style single-mode operation). */
-  onSubModeChange?: (mode: DirectEditSubMode) => void;
+  /** Legacy boolean API (E1) — when true, push-pull mode is on. The
+   *  toolbar still accepts this for back-compat with the host that
+   *  hasn't migrated to the union yet. When `mode` is provided it
+   *  takes precedence. */
+  modeActive?: boolean;
+  /** Legacy boolean setter — paired with `modeActive`. */
+  onModeChange?: (active: boolean) => void;
+  /** New union API (E3) — explicit mode. When provided, supersedes
+   *  the legacy boolean. */
+  mode?: DirectEditMode;
+  /** Setter for the union mode. Required when `mode` is provided. */
+  onModeSelect?: (mode: DirectEditMode) => void;
   /** Optional CSS class for parent containers that want to slot
    *  the toolbar into a specific layout cell. */
   className?: string;
@@ -63,17 +61,47 @@ export function DirectEditToolbar({
   lang = 'en',
   modeActive,
   onModeChange,
-  subMode = 'push-pull',
-  onSubModeChange,
+  mode,
+  onModeSelect,
   className,
 }: DirectEditToolbarProps): React.ReactElement | null {
   const enabled = useDirectEditEnabled();
   const { stack, popOp, clearStack } = useDirectEditController();
   const strings = getDirectEditStrings(lang);
 
+  // Resolve the effective mode. When the new union API is provided
+  // it wins; otherwise we derive it from the legacy boolean (true =
+  // push-pull, false = off).
+  const effectiveMode: DirectEditMode = mode ?? (modeActive ? 'push-pull' : 'off');
+
+  // Legacy boolean fallback for the push-pull mode-toggle button —
+  // preserves the E1 behaviour (one toggle button) when the host has
+  // not yet migrated to the union API.
   const handleToggle = useCallback(() => {
-    onModeChange(!modeActive);
-  }, [modeActive, onModeChange]);
+    if (onModeSelect) {
+      onModeSelect(effectiveMode === 'push-pull' ? 'off' : 'push-pull');
+      return;
+    }
+    if (onModeChange) onModeChange(!modeActive);
+  }, [effectiveMode, modeActive, onModeChange, onModeSelect]);
+
+  // Radio-style mode selectors for the new union API. Each mode
+  // button calls `onModeSelect`; clicking the active mode again
+  // deselects (returns to 'off').
+  const handleSelectMode = useCallback(
+    (next: DirectEditMode) => {
+      if (onModeSelect) {
+        onModeSelect(effectiveMode === next ? 'off' : next);
+        return;
+      }
+      // Fallback through legacy boolean — only 'push-pull' / 'off'
+      // round-trip correctly. Move + rotate require the union API.
+      if (onModeChange) {
+        onModeChange(next === 'push-pull');
+      }
+    },
+    [effectiveMode, onModeChange, onModeSelect],
+  );
 
   const handleUndo = useCallback(() => {
     popOp();
@@ -87,13 +115,34 @@ export function DirectEditToolbar({
   if (!enabled) return null;
 
   const opCount = stack.ops.length;
+  const isPushPull = effectiveMode === 'push-pull';
+  const isMoveBody = effectiveMode === 'move-body';
+  const isRotateBody = effectiveMode === 'rotate-body';
   const status = opCount === 0
     ? strings.statusNone
     : strings.statusCount(opCount);
+  // Mode-specific status hint appended when a non-push-pull mode is
+  // active. Mirrors the SolidWorks "current tool: rotate" status bar.
+  const modeStatusHint =
+    effectiveMode === 'off'
+      ? null
+      : effectiveMode === 'push-pull'
+        ? strings.modeStatusPushPull
+        : effectiveMode === 'move-body'
+          ? strings.modeStatusMoveBody
+          : strings.modeStatusRotateBody;
 
-  // Sub-mode selector visible only when mode is active AND the host
-  // provided the setter. Keeps the E1 single-mode harness working.
-  const showSubModes = modeActive && typeof onSubModeChange === 'function';
+  // Style helpers for the mode-radio buttons.
+  const radioStyle = (active: boolean): React.CSSProperties => ({
+    padding: '4px 10px',
+    background: active ? 'var(--nx-accent-1, #22d3ee)' : 'transparent',
+    color: active ? '#000' : 'var(--nx-text-1, #fff)',
+    border: '1px solid var(--nx-accent-1, #22d3ee)',
+    borderRadius: 3,
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+  });
 
   return (
     <div
@@ -114,49 +163,38 @@ export function DirectEditToolbar({
         type="button"
         data-testid="direct-edit-mode-toggle"
         aria-label={strings.ariaModeToggle}
-        aria-pressed={modeActive}
-        onClick={handleToggle}
-        style={{
-          padding: '4px 10px',
-          background: modeActive
-            ? 'var(--nx-accent-1, #22d3ee)'
-            : 'transparent',
-          color: modeActive ? '#000' : 'var(--nx-text-1, #fff)',
-          border: '1px solid var(--nx-accent-1, #22d3ee)',
-          borderRadius: 3,
-          cursor: 'pointer',
-          fontSize: 12,
-          fontWeight: 600,
-        }}
+        aria-pressed={isPushPull}
+        onClick={mode !== undefined ? () => handleSelectMode('push-pull') : handleToggle}
+        style={radioStyle(isPushPull)}
       >
-        {modeActive ? strings.modeButtonActive : strings.modeButton}
+        {isPushPull ? strings.modeButtonActive : strings.modeButton}
       </button>
-      {showSubModes && (
-        <div
-          role="radiogroup"
-          aria-label={strings.ariaModeGroup}
-          data-testid="direct-edit-submode-group"
-          style={{ display: 'flex', gap: 4 }}
-        >
-          <SubModeButton
-            active={subMode === 'push-pull'}
-            testid="direct-edit-submode-push-pull"
-            label={strings.modePushPull}
-            onClick={() => onSubModeChange?.('push-pull')}
-          />
-          <SubModeButton
-            active={subMode === 'dynamic-fillet'}
-            testid="direct-edit-submode-dynamic-fillet"
-            label={strings.modeDynamicFillet}
-            onClick={() => onSubModeChange?.('dynamic-fillet')}
-          />
-          <SubModeButton
-            active={subMode === 'dynamic-chamfer'}
-            testid="direct-edit-submode-dynamic-chamfer"
-            label={strings.modeDynamicChamfer}
-            onClick={() => onSubModeChange?.('dynamic-chamfer')}
-          />
-        </div>
+      {/* E3 mode buttons — only rendered when the host opts into the
+       *  union API by passing `mode`. The legacy boolean API gets the
+       *  E1 single-button experience to avoid a sudden UI churn. */}
+      {mode !== undefined && (
+        <>
+          <button
+            type="button"
+            data-testid="direct-edit-move-body"
+            aria-label={strings.ariaMoveBody}
+            aria-pressed={isMoveBody}
+            onClick={() => handleSelectMode('move-body')}
+            style={radioStyle(isMoveBody)}
+          >
+            {isMoveBody ? strings.moveBodyActive : strings.moveBody}
+          </button>
+          <button
+            type="button"
+            data-testid="direct-edit-rotate-body"
+            aria-label={strings.ariaRotateBody}
+            aria-pressed={isRotateBody}
+            onClick={() => handleSelectMode('rotate-body')}
+            style={radioStyle(isRotateBody)}
+          >
+            {isRotateBody ? strings.rotateBodyActive : strings.rotateBody}
+          </button>
+        </>
       )}
       <button
         type="button"
@@ -206,41 +244,20 @@ export function DirectEditToolbar({
       >
         {status}
       </span>
+      {modeStatusHint && (
+        <span
+          data-testid="direct-edit-mode-status"
+          style={{
+            color: 'var(--nx-accent-1, #22d3ee)',
+            fontSize: 11,
+            marginLeft: 4,
+            fontStyle: 'italic',
+          }}
+        >
+          {modeStatusHint}
+        </span>
+      )}
     </div>
-  );
-}
-
-function SubModeButton({
-  active,
-  testid,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  testid: string;
-  label: string;
-  onClick: () => void;
-}): React.ReactElement {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={active}
-      data-testid={testid}
-      onClick={onClick}
-      style={{
-        padding: '3px 8px',
-        background: active ? 'var(--nx-accent-2, #fbbf24)' : 'transparent',
-        color: active ? '#000' : 'var(--nx-text-1, #fff)',
-        border: '1px solid var(--nx-border, #2d3138)',
-        borderRadius: 3,
-        cursor: 'pointer',
-        fontSize: 11,
-        fontWeight: active ? 600 : 400,
-      }}
-    >
-      {label}
-    </button>
   );
 }
 
