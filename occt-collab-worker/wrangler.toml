@@ -1,0 +1,95 @@
+# ─── occt-collab-worker — Cloudflare Workers + Durable Objects ───────────────
+#
+# Hosts Yjs WebSocket sync for NexyFab collaborative CAD editing.
+# Each documentId → exactly one Durable Object instance (room).
+# Snapshots are persisted to KV every 30s for cold-start recovery.
+
+name = "occt-collab-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production custom domain → collab.nexyfab.com
+# Route configured via dashboard or `wrangler deploy --routes`.
+workers_dev = true
+
+# ─── Durable Object binding ──────────────────────────────────────────────────
+# CollabRoom holds one Y.Doc per document. Awareness state is in-memory only.
+
+[[durable_objects.bindings]]
+name = "COLLAB_ROOM"
+class_name = "CollabRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CollabRoom"]
+
+# ─── KV namespace for snapshots ──────────────────────────────────────────────
+# Persist Y.Doc state every 30s so DO eviction does not lose document state.
+# Create via:
+#   wrangler kv:namespace create COLLAB_SNAPSHOTS
+#   wrangler kv:namespace create COLLAB_SNAPSHOTS --preview
+# Then paste the returned ids below.
+
+[[kv_namespaces]]
+binding = "COLLAB_SNAPSHOTS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_KV_PREVIEW_NAMESPACE_ID"
+
+# ─── Plain env vars (non-secret) ─────────────────────────────────────────────
+
+[vars]
+SNAPSHOT_INTERVAL_MS = "30000"
+IDLE_TIMEOUT_MS = "1800000"      # 30 minutes
+MAX_CLIENTS_PER_ROOM = "20"
+ALLOWED_ORIGINS = "https://nexyfab.com,https://www.nexyfab.com,https://staging.nexyfab.com,http://localhost:3000"
+
+# ─── Secrets (set via `wrangler secret put …`) ───────────────────────────────
+# JWT_SECRET — same HS256 secret used by the Next.js app at src/lib/jwt.ts.
+#   wrangler secret put JWT_SECRET
+#
+# Do NOT commit secrets to wrangler.toml.
+
+# ─── Environments ────────────────────────────────────────────────────────────
+
+[env.staging]
+name = "occt-collab-worker-staging"
+
+[env.staging.vars]
+SNAPSHOT_INTERVAL_MS = "30000"
+IDLE_TIMEOUT_MS = "600000"       # 10 min in staging for faster cycles
+MAX_CLIENTS_PER_ROOM = "20"
+ALLOWED_ORIGINS = "https://staging.nexyfab.com,http://localhost:3000"
+
+[[env.staging.durable_objects.bindings]]
+name = "COLLAB_ROOM"
+class_name = "CollabRoom"
+
+[[env.staging.kv_namespaces]]
+binding = "COLLAB_SNAPSHOTS"
+id = "REPLACE_WITH_STAGING_KV_ID"
+
+[env.production]
+name = "occt-collab-worker"
+
+[env.production.vars]
+SNAPSHOT_INTERVAL_MS = "30000"
+IDLE_TIMEOUT_MS = "1800000"
+MAX_CLIENTS_PER_ROOM = "20"
+ALLOWED_ORIGINS = "https://nexyfab.com,https://www.nexyfab.com"
+
+[[env.production.durable_objects.bindings]]
+name = "COLLAB_ROOM"
+class_name = "CollabRoom"
+
+[[env.production.kv_namespaces]]
+binding = "COLLAB_SNAPSHOTS"
+id = "REPLACE_WITH_PRODUCTION_KV_ID"
+
+# Optional: route binding for production custom domain.
+# routes = [
+#   { pattern = "collab.nexyfab.com/*", zone_name = "nexyfab.com" }
+# ]
+
+[observability]
+enabled = true
