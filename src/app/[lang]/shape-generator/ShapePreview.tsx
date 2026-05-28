@@ -31,6 +31,9 @@ import SectionPlane from './SectionPlane';
 import MaterialPropertiesPanel, { type MaterialOverride, type EnvPreset } from './MaterialPropertiesPanel';
 import ConstructPlane from './ConstructPlane';
 import ReferenceGeometryLayer from './referenceGeometry/ReferenceGeometryLayer';
+// === D6 THREADS BOUNDARY START ===
+import ThreadCosmeticIndicator from './features/threads/ThreadCosmeticIndicator';
+// === D6 THREADS BOUNDARY END ===
 import PerfMonitor from './PerfMonitor';
 import PinComments from './comments/PinComments';
 import type { UnitSystem } from './units';
@@ -2733,6 +2736,14 @@ export default function ShapePreview({
                  *  projects pay zero render cost. */}
                 <ReferenceGeometryLayer />
 
+                {/* === D6 THREADS BOUNDARY START ===
+                 *  Cosmetic-thread viewport hint (Wave 2 Phase 2 Track D6,
+                 *  spec §8). Renders nothing when no cosmetic threads exist
+                 *  — mirrors the ReferenceGeometryLayer zero-cost idiom.
+                 *  Threads source wires up in W8 (feature-tree CRDT).
+                 */}
+                <ThreadCosmeticIndicator threads={[]} />
+                {/* === D6 THREADS BOUNDARY END === */}
 
                 {/* Center of mass indicator */}
                 {showCenterOfMass && (

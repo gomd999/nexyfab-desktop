@@ -60,6 +60,9 @@ import {
   type SketchPointSnapshot,
   type TapBottomRiskFinding,
 } from './holeSketchPropagation';
+// === D6 THREADS BOUNDARY START ===
+import HoleWizardThreadsSection from './threads/HoleWizardThreadsSection';
+// === D6 THREADS BOUNDARY END ===
 
 // ─── Public props ──────────────────────────────────────────────────────────
 
@@ -1601,6 +1604,11 @@ export default function HoleWizardModalV2({
                 )}
               </div>
             )}
+            {/* === D6 THREADS BOUNDARY START === */}
+            {(holeType === 'tap' || holeType === 'pipeTap') && (
+              <HoleWizardThreadsSection lang={seg} hideKindToggle />
+            )}
+            {/* === D6 THREADS BOUNDARY END === */}
           </div>
         )}
 
