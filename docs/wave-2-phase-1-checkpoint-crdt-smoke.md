@@ -401,6 +401,55 @@ What this does NOT prove (deferred):
 - Production wiring of `<CollabProvider>` around `ShapeGeneratorInner`
   — that wiring is W6+ Z6. Z5 components are written to be safe (via
   `<CollabSafe>`) even when no Provider is mounted.
+## Phase 3 Z6 — branching foundation (flag-gated)
+
+Wave 2 Phase 3 W6 introduces the **document-level branching primitive**
+(ADR-012 §4). Z6 ships fork + switch + delete + list only; manual merge
+UI is deferred to Wave 3, auto-merge is explicitly out of scope.
+
+ADR-012 §4 lock-ins (recap):
+- Per-doc, **named**, **fork-on-write** Y.Doc clone.
+- Manual merge only — Z6 has no merge code path at all.
+- Branches are siblings of the same doc, not separate storage tiers.
+
+Resolved ambiguities:
+- **Name uniqueness scope** — per-parent-branch (siblings). Two branches
+  at different points in the tree may share a name. Enforced in
+  `branchRegistryYjs.applyBranchOp` via `nameCollidesUnderParent`.
+- **Parent-delete behaviour** — **protect**, not cascade. Removing a
+  branch with children returns `{ ok: false, reason: 'has_children' }`.
+  User must delete children first.
+
+60-second smoke (manual, two-tab):
+
+1. Open `/[lang]/shape-generator?crdt=v2` in two tabs of the same
+   browser. The BroadcastChannel fallback bridges them.
+2. In tab A, click the branch picker (the `⎇` button in the toolbar /
+   shell). Click **+ New branch**. Type `feature-fillet`, click
+   **Create**. The picker switches to the new branch.
+3. In tab B, click the branch picker — the new `feature-fillet` row
+   appears within ~100 ms with creator name + relative time.
+4. In tab A (on `feature-fillet`), add a sketch / feature. Switch the
+   picker in tab A back to the original branch — the sketch/feature
+   disappears (you're viewing the original branch's state).
+5. In tab B, switch to `feature-fillet` — the sketch/feature appears.
+6. Try to create a second branch named `feature-fillet` in tab A — the
+   modal shows "A sibling branch already has this name".
+7. Try to delete the original branch — refused (it has the
+   `feature-fillet` child). Delete `feature-fillet` first, then the
+   original. The picker shows an empty state.
+
+What this proves: per-doc Y.Doc clone via `forkDoc` produces independent
+histories (mutations don't leak between branches), the workspace-scoped
+registry converges across tabs, sibling name uniqueness is enforced,
+parent-protect deletion semantics hold.
+
+What this does NOT prove (deferred):
+- Cross-network sync (BroadcastChannel is same-origin only).
+- Merge — there is none. Wave 3.
+- Awareness peer names on the branch list — falls back to "anonymous"
+  until the host wires `resolveCreatorName` via CollabProvider awareness.
+- Default-on flag rollout — `?crdt=v2` stays opt-in through W6.
 
 ## Reporting result
 
