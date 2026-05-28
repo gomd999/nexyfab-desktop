@@ -182,7 +182,8 @@ export const ASSEMBLY_LOADERS: Record<string, ModuleLoader> = {
   'assembly.part-replacement': () => import('../assembly/partReplacementDiff'),
   'assembly.torque-reach': () => import('../assembly/torqueToolReachCheck'),
   'assembly.thread-fit': () => import('../assembly/threadFitValidator'),
-  'assembly.multi-config': () => import('../assembly/multiConfigPartVariant'),
+  // `assembly.multi-config` loader removed in W6 (A6 cleanup) — module
+  // deleted; the corresponding registry entry was also removed.
   'assembly.mate-pinning': () => import('../assembly/matePinningKit'),
   'assembly.washer-pattern': () => import('../assembly/washerPatternPicker'),
   'assembly.modular-split': () => import('../assembly/modularSectionSplit'),

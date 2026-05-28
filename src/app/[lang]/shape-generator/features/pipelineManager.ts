@@ -83,14 +83,17 @@ export function runPipeline(
   return runLoopSync(baseGeometry, features, featureMap, 'mesh');
 }
 
-/** Variant that resolves a ConfigurationManager's active config first. */
+/** Variant that resolves an active configuration first via a duck-typed
+ *  applier. Pass any object with an `applyConfig` method (the Phase 2
+ *  `ConfigurationTable` qualifies). Pass `null` / `undefined` to skip
+ *  resolution. */
 export function runPipelineWithConfig(
   baseGeometry: THREE.BufferGeometry,
   features: FeatureInstance[],
   featureMap: FeatureMap,
-  configManager: { applyConfig(baseFeatures: FeatureInstance[]): FeatureInstance[] } | null | undefined,
+  configApplier: { applyConfig(baseFeatures: FeatureInstance[]): FeatureInstance[] } | null | undefined,
 ): PipelineResult {
-  const resolved = configManager ? configManager.applyConfig(features) : features;
+  const resolved = configApplier ? configApplier.applyConfig(features) : features;
   return runPipeline(baseGeometry, resolved, featureMap);
 }
 

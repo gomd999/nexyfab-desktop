@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ConfigurationManager } from '../config/configurationManager';
 import { ConfigurationTable } from '../configurations/ConfigurationTable';
 import { EquationManager } from '../equations/equationManager';
 import {
-  setConfigurationManager,
-  getConfigurationManager,
   setConfigurationTable,
   getConfigurationTable,
   setEquationManager,
@@ -18,19 +15,19 @@ beforeEach(() => resetFeatureContext());
 
 describe('featureContext singletons', () => {
   it('starts empty', () => {
-    expect(getConfigurationManager()).toBeNull();
+    expect(getConfigurationTable()).toBeNull();
     expect(getEquationManager()).toBeNull();
   });
 
   it('stores and clears managers', () => {
-    const cm = new ConfigurationManager();
+    const t = new ConfigurationTable();
     const em = new EquationManager();
-    setConfigurationManager(cm);
+    setConfigurationTable(t);
     setEquationManager(em);
-    expect(getConfigurationManager()).toBe(cm);
+    expect(getConfigurationTable()).toBe(t);
     expect(getEquationManager()).toBe(em);
     resetFeatureContext();
-    expect(getConfigurationManager()).toBeNull();
+    expect(getConfigurationTable()).toBeNull();
     expect(getEquationManager()).toBeNull();
   });
 });
@@ -48,17 +45,6 @@ describe('applyFeatureContext', () => {
     expect(applyFeatureContext(features)).toEqual(features);
   });
 
-  it('applies ConfigurationManager overrides', () => {
-    const cm = new ConfigurationManager();
-    cm.add({ id: 'small', name: 'Small' });
-    cm.setOverride('small', 'a', 'depth', 5);
-    cm.activate('small');
-    setConfigurationManager(cm);
-    const features = [makeFeature('a', { depth: 10 })];
-    const r = applyFeatureContext(features);
-    expect(r[0]!.params.depth).toBe(5);
-  });
-
   it('resolves EquationManager expressions', () => {
     const em = new EquationManager();
     em.set('thickness', '2.5');
@@ -66,21 +52,6 @@ describe('applyFeatureContext', () => {
     const features = [makeFeature('a', { depth: 'thickness * 4' })];
     const r = applyFeatureContext(features);
     expect(r[0]!.params.depth).toBe(10);
-  });
-
-  it('applies config first, equations second (config can reference a const, equations resolve)', () => {
-    const cm = new ConfigurationManager();
-    const em = new EquationManager();
-    cm.add({ id: 'cfg', name: 'X' });
-    cm.setOverride('cfg', 'a', 'depth', 7);
-    cm.activate('cfg');
-    em.set('k', '3');
-    setConfigurationManager(cm);
-    setEquationManager(em);
-    const features = [makeFeature('a', { depth: 10 }), makeFeature('b', { depth: 'k * 2' })];
-    const r = applyFeatureContext(features);
-    expect(r[0]!.params.depth).toBe(7);  // config override wins
-    expect(r[1]!.params.depth).toBe(6);  // equation resolved
   });
 });
 
@@ -119,25 +90,6 @@ describe('applyFeatureContext — ConfigurationTable (A3)', () => {
     setConfigurationTable(t);
     const r = applyFeatureContext([makeFeature('a', { depth: 10 })]);
     expect(r[0]!.params.depth).toBe(10);
-  });
-
-  it('prefers ConfigurationTable over ConfigurationManager when both are set', () => {
-    // Mutually exclusive in practice (host wires only one), but the
-    // seam must be deterministic when a test bench sets both.
-    const cm = new ConfigurationManager();
-    cm.add({ id: 'leg', name: 'Legacy' });
-    cm.setOverride('leg', 'a', 'depth', 99);
-    cm.activate('leg');
-    setConfigurationManager(cm);
-
-    const t = new ConfigurationTable();
-    t.add('New', { id: 'new' });
-    t.setOverride('new', 'a', 'depth', 7);
-    t.activate('new');
-    setConfigurationTable(t);
-
-    const r = applyFeatureContext([makeFeature('a', { depth: 10 })]);
-    expect(r[0]!.params.depth).toBe(7);
   });
 
   it('chains EquationManager AFTER ConfigurationTable resolution', () => {

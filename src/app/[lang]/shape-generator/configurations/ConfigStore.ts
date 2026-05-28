@@ -228,8 +228,8 @@ class YjsConfigStore implements ConfigStore {
   //
   // Cheap at sketch scale (50 configs × tens of features). We deliberately
   // do NOT cache here — caching invalidation under concurrent Y updates is
-  // the same class of bug as the configurations corruption fix from
-  // masterSnapshot.ts. Recompute is the safe default.
+  // the same class of bug as the W1 configurations corruption fix.
+  // Recompute is the safe default.
 
   private snapshotTable(): ConfigurationTable {
     return ConfigurationTable.fromJSON({

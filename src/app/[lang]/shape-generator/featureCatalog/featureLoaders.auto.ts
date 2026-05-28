@@ -119,7 +119,7 @@ export const AUTO_WIRED_LOADERS: Record<string, ModuleLoader> = {
   "openscad.emit-stage2": () => import("../openscad/emitScadStage2"),
   "openscad.parse": () => import("../openscad/parseScadToFeatures"),
   "quality.tolerance-1d": () => import("../tolerance/toleranceStackup"),
-  "config.manager": () => import("../config/configurationManager"),
+  // "config.manager" loader removed in W6 (A6 cleanup) — module deleted.
   "equations.manager": () => import("../equations/equationManager"),
   "xr.ar-placement": () => import("../xr/arPlacement"),
   "dfm.cost-quick": () => import("../analysis/manufacturingPipeline"),

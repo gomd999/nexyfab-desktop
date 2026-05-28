@@ -148,19 +148,31 @@ them.
 
 ## 3. Weekly Breakdown — Per Track
 
-### Track A — Configurations (8-week, ship by W6)
+### Track A — Configurations (8-week, ship by W6) — **SHIPPED 2026-05-28**
 
-| Week | Tasks (spec ref) | Hours | Risk | Tests? |
-|------|---|---|---|---|
-| W1 | **A1.** Remove `handleConfigurationSelect` mutation (spec §3, §4.1). `.nfab` v2→v3 schema + `migrateV2ToV3` (spec §11 W1). Fixture round-trip. | 14 | **HIGH** (regression on existing files) | Yes — 6 fixtures |
-| W2 | **A2.** Implement `ConfigurationTable` class. Port `diffConfigs` / `validateModel` from `multiConfigPartVariant.ts`. Cycle detection, resolution order tests. | 16 | Med | Yes — 30+ unit |
-| W3 | **A3.** Replace `ExpressionEngine` with `positionDrivers`. Wire `useConfigurationTable` in host. Pipeline integration (spec §11 W2). Perf p95 ≤ 50ms. | 18 | Med (perf cliff possible) | Yes — perf regression |
-| W4 | **A4.** UI Excel table v2 (spec §11 W3). Expression cells, parent dropdown, `react-window`. ExpressionVarsPanel + Family Export + CSV BOM + i18n 6-lang. | 22 | Low (UI only) | Yes — Playwright |
-| W5 | **A5.** Y-backed `ConfigStore` (spec §11 W4). Multi-client soak 3×5×10 min. CRDT divergence test. | 18 | **HIGH** (CRDT subtle bugs) | Yes — soak run |
-| W6 | **A6.** Cleanup deletes (spec §11 W4 last block). CRDT arch doc update. Final fixture regression. | 8 | Low | Yes — final regression |
+| Week | Tasks (spec ref) | Hours | Risk | Tests? | Status |
+|------|---|---|---|---|---|
+| W1 | **A1.** Remove `handleConfigurationSelect` mutation (spec §3, §4.1). `.nfab` v2→v3 schema + `migrateV2ToV3` (spec §11 W1). Fixture round-trip. | 14 | **HIGH** (regression on existing files) | Yes — 6 fixtures | ✅ shipped (PR #42 — defensive `masterSnapshot` capture/restore; v3 bump shared with D2) |
+| W2 | **A2.** Implement `ConfigurationTable` class. Port `diffConfigs` / `validateModel` from `multiConfigPartVariant.ts`. Cycle detection, resolution order tests. | 16 | Med | Yes — 30+ unit | ✅ shipped (`configurations/ConfigurationTable.ts` + diff/validate ports) |
+| W3 | **A3.** Replace `ExpressionEngine` with `positionDrivers`. Wire `useConfigurationTable` in host. Pipeline integration (spec §11 W2). Perf p95 ≤ 50ms. | 18 | Med (perf cliff possible) | Yes — perf regression | ✅ shipped (flag `?configs=v2`; `featureContext` seam; `ConfigurationTable.perf.test.ts` p95 ≤ 50ms on F-CONFIG-PERF-01) |
+| W4 | **A4.** UI Excel table v2 (spec §11 W3). Expression cells, parent dropdown, `react-window`. ExpressionVarsPanel + Family Export + CSV BOM + i18n 6-lang. | 22 | Low (UI only) | Yes — Playwright | ✅ shipped (`configurations/ui/ConfigurationTableV2.tsx` + ExpressionVarsPanel + Family Export + CSV BOM + e2e `configurations-v2.spec.ts`) |
+| W5 | **A5.** Y-backed `ConfigStore` (spec §11 W4). Multi-client soak 3×5×10 min. CRDT divergence test. | 18 | **HIGH** (CRDT subtle bugs) | Yes — soak run | ✅ shipped (`ConfigStore.ts` + `configStoreYjs.ts` + `configStoreYjs.divergence.test.ts` + `configStoreSoak.test.ts`) |
+| W6 | **A6.** Cleanup deletes (spec §11 W4 last block). CRDT arch doc update. Final fixture regression. | 8 | Low | Yes — final regression | ✅ **shipped this PR** — `masterSnapshot.ts` + `configurationManager.ts` + `ConfigurationPanel.tsx` + `multiConfigPartVariant.ts` + `useFeatureManagers.ts` deleted; `featureContext.ts` legacy slot removed; ADR-011 Phase 2 Status section added; `io/__tests__/phase2RegressionSuite.test.ts` covers F-CONFIG-PERF-01 + F-HW-01..05 + F-THREAD-01 |
 
 **Track A total: ~96 hours** (configurations spec stated 80h at ½ time;
 the +16h is the corruption-fix safety pass that the spec underestimates).
+
+**Track A end-state notes (A6 / W6):**
+- The defensive `masterSnapshot` from W1 was always documented as W6
+  cleanup ("Phase 2 deletes this whole branch"). It is gone end-to-end.
+- The legacy `?configs=v1` mutation branch in `handleConfigurationSelect`
+  is **preserved** in A6 — the spec §11 W4 last block lists files to
+  delete but does not require flipping v2 to default. Graduation of v2
+  to default + removal of the legacy panel UI is a follow-up PR (see
+  ADR-011 "Open follow-ups for v2 graduation").
+- All 5 sub-deliverables (A1-A5) plus the W6 cleanup are merged. Track A
+  is dormant in this tracker from this point forward; regression
+  coverage moves to Track E.
 
 ### Track B — Sheet Metal (5-week, ship by W5)
 

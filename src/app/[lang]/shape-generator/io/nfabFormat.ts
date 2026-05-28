@@ -17,19 +17,15 @@
  *                     point/csys entities). Pre-v3 files load as
  *                     `referenceGeometry: []` via `migrateV2ToV3`.
  *
- * ⚠ Version-3 conflict surface (Wave 2 Phase 2 master tracker, D2 row):
- *   the v3 bump is **shared** with Track A1 (Configurations refactor). Track
- *   D2 is the first track to ship v3; Track A1 will land additional v3-only
- *   semantics for configurations (currently A1 only has a defensive
- *   `masterSnapshot` patch — see `configurations/masterSnapshot.ts` — and
- *   has NOT yet bumped LATEST_VERSION). When A1 ships, it should:
- *     1. Co-evolve v3 in-place (no v4 bump for an A1-only field).
- *     2. Add its new field as optional so D2-only files keep loading.
- *     3. Update this comment block + add A1 entries to `migrateV2ToV3`.
- *   The two field namespaces are disjoint: D2 owns `referenceGeometry`, A1
- *   owns whatever the Configurations-v3 shape settles on (likely
- *   `configurationsMaster` or an evolved `configurations[]` schema).
- *   Reserve v3 for shared use; don't claim ref-geom-only semantic.
+ * ⚠ Version-3 envelope (Wave 2 Phase 2):
+ *   Track D2 ships ref-geom (`referenceGeometry`) under v3. Track A's
+ *   Phase 2 Configurations refactor (A1–A6) deliberately did NOT bump
+ *   beyond v3; the `NfabConfigurationV1` schema is unchanged at the file
+ *   level (the new `ConfigurationTable` runtime is wire-compatible with
+ *   the existing `configurations: NfabConfigurationV1[]` array). If a
+ *   future Phase 2.5 or Phase 3 bump is required, treat v3 as the
+ *   shared envelope and add the new field as optional so older v3
+ *   documents keep loading.
  */
 
 import type { HistoryNode, FeatureHistory } from '../useFeatureStack';

@@ -1,51 +1,42 @@
 /**
  * featureContext.ts — Module-level context for cross-cutting feature managers.
  *
- * ConfigurationManager (design variants) and EquationManager (global
- * parameter table) sit *between* the feature list and the pipeline.
+ * `ConfigurationTable` (Wave 2 Phase 2 A2 runtime) and `EquationManager`
+ * (global parameter table) sit *between* the feature list and the pipeline.
  * They are needed both from React UI (panels) and from non-React
  * pipeline call-sites — having a single module-level slot avoids
  * threading them through every signature.
  *
  * Lifecycle:
- *   1. Panel (or app init) calls `setConfigurationManager(m)` once.
- *   2. Pipeline (`applyFeaturePipelineDetailed`) calls `getConfigurationManager()`
- *      and applies the active config + equation overrides on every run.
+ *   1. Host (`ShapeGeneratorInner`) calls `setConfigurationTable(t)` when
+ *      the v2 runtime is enabled (`?configs=v2`). `null` clears.
+ *   2. Pipeline (`applyFeaturePipelineDetailed`) calls
+ *      `getConfigurationTable()` (and `getEquationManager()`) and applies
+ *      the active config + equation overrides on every run.
  *   3. Tests reset via `resetFeatureContext()`.
  *
  * The slot is "one per tab" — multiple project tabs would each have
  * their own JS module instance.
  *
- * **W3 / A3 addition — `ConfigurationTable` slot.** Wave 2 Phase 2 W3
- * wires the new A2 `ConfigurationTable` runtime through this seam
- * UNDER A FLAG (`?configs=v2`). When a `ConfigurationTable` instance is
- * registered, `applyFeatureContext` prefers it over the legacy
- * `ConfigurationManager` path. The two paths are mutually exclusive
- * by design — the host wires up exactly one at a time depending on
- * the flag. The legacy path stays for back-compat soak until W6
- * cleanup (see master tracker Track A row "W6").
+ * **Wave 2 Phase 2 W6 (Track A6) cleanup** — the legacy `ConfigurationManager`
+ * runtime slot and its `applyConfig` fallback were removed in this PR.
+ * That class was never wired in the host (`useConfigurationManager()` was
+ * dead code, see configurations-spec §1.1.B). The legacy non-flag
+ * configuration path in `ShapeGeneratorInner` keeps working through direct
+ * scene-store mutation — it does NOT go through this seam.
  */
 
-import type { ConfigurationManager } from '../config/configurationManager';
 import type { ConfigurationTable } from '../configurations/ConfigurationTable';
 import type { EquationManager } from '../equations/equationManager';
 import type { FeatureInstance } from './types';
 
-let configManager: ConfigurationManager | null = null;
 let configurationTable: ConfigurationTable | null = null;
 let equationManager: EquationManager | null = null;
 
-export function setConfigurationManager(m: ConfigurationManager | null): void {
-  configManager = m;
-}
-
-export function getConfigurationManager(): ConfigurationManager | null {
-  return configManager;
-}
-
 /** A3 — register the new `ConfigurationTable` runtime. Pass `null` to
- *  clear (flag flipped off, tab closed, etc.). When a table is set it
- *  TAKES PRECEDENCE over `ConfigurationManager` in `applyFeatureContext`. */
+ *  clear (flag flipped off, tab closed, etc.). When a table is set
+ *  AND has an active configuration, `applyFeatureContext` resolves
+ *  through it; otherwise features pass through unchanged. */
 export function setConfigurationTable(t: ConfigurationTable | null): void {
   configurationTable = t;
 }
@@ -63,7 +54,6 @@ export function getEquationManager(): EquationManager | null {
 }
 
 export function resetFeatureContext(): void {
-  configManager = null;
   configurationTable = null;
   equationManager = null;
 }
@@ -72,14 +62,10 @@ export function resetFeatureContext(): void {
  *  immediately before pipeline evaluation. Idempotent when managers
  *  are null.
  *
- *  Resolution priority (A3):
+ *  Resolution priority:
  *    1. `ConfigurationTable.resolveActive` when a table is registered
- *       AND has an active configuration. The table is canonical when
- *       set — it does NOT chain into `ConfigurationManager`. Equation
- *       resolution still runs afterwards (string-param expressions in
- *       the resolved feature list).
- *    2. Else `ConfigurationManager.applyConfig` for legacy callers.
- *    3. Else features pass through unchanged.
+ *       AND has an active configuration.
+ *    2. Else features pass through unchanged.
  *
  *  EquationManager always runs last (when present) so configs can emit
  *  expression-typed param overrides that resolve against the global
@@ -88,8 +74,6 @@ export function applyFeatureContext(features: FeatureInstance[]): FeatureInstanc
   let out = features;
   if (configurationTable && configurationTable.getActiveId() !== null) {
     out = configurationTable.resolveActive(out);
-  } else if (configManager) {
-    out = configManager.applyConfig(out);
   }
   if (equationManager) {
     // EquationManager only operates on string params; cast widens the
