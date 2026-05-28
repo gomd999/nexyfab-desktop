@@ -67,7 +67,9 @@ import {
 } from './configurations/masterSnapshot';
 import { ConfigurationTable as ConfigurationTableRuntime } from './configurations/ConfigurationTable';
 import { migrateFromV1 as migrateConfigsFromV1 } from './configurations/migrateFromV1';
+import { ConfigStore, migrateToYjs as migrateConfigStoreToYjs, type ConfigStore as ConfigStoreType } from './configurations/ConfigStore';
 import { setConfigurationTable as setPipelineConfigurationTable } from './features/featureContext';
+import type * as Y from 'yjs';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
 import { useCsgWorker } from './workers/useCsgWorker';
@@ -1407,6 +1409,32 @@ export function ShapeGeneratorInner() {
     // Lazy init — hot-swap from the legacy state so a mid-session flag
     // flip preserves the user's variants.
     configurationTableRef.current = migrateConfigsFromV1(configurations, activeConfigurationId);
+  }
+
+  // ── A5 (W5) — ConfigStore adapter ────────────────────────────────────────
+  // When a Y.Doc is available (collab session), we wrap the
+  // ConfigurationTable in a Yjs-backed adapter so mutations route through
+  // applyConfigOp + transact. The pipeline still reads through
+  // `setPipelineConfigurationTable` because A2's ConfigurationTable is the
+  // single resolver. In Yjs mode the adapter rebuilds the table from the
+  // doc on every Y update.
+  //
+  // The doc itself is null today — A5 only ships the adapter; the future
+  // collab session bridge (W7+) will populate this ref via useCollab once
+  // the host carries a Y.Doc. The adapter falls back to local mode and
+  // the behaviour is identical to the A3 path.
+  const configCollabDocRef = useRef<Y.Doc | null>(null);
+  const configStoreRef = useRef<ConfigStoreType | null>(null);
+  if (useConfigurationTableRuntime && configurationTableRef.current && configStoreRef.current === null) {
+    const doc = configCollabDocRef.current;
+    if (doc) {
+      // Collab pipeline — mutations route through applyConfigOp.
+      const localBootstrap = ConfigStore.local(configurationTableRef.current);
+      configStoreRef.current = migrateConfigStoreToYjs(localBootstrap, doc);
+    } else {
+      // Single-user — wraps the same ConfigurationTable instance.
+      configStoreRef.current = ConfigStore.local(configurationTableRef.current);
+    }
   }
 
   // Register / unregister the pipeline seam slot. This is the single
