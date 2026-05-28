@@ -204,17 +204,27 @@ function toServerParams(
   geometry: THREE.BufferGeometry,
   params: Record<string, number>,
 ): ServerBooleanParams | null {
-  const host = hostBoxFromGeometry(geometry);
   const operation = Math.round(params.operation);
   const type = operation === 1 ? 'cut' : operation === 2 ? 'intersect' : 'fuse';
 
-  // Path 1 — chained shape-vs-shape. Stashed by some upstream flow:
-  // either the user picked "use imported shape as tool" from the UI,
-  // or a programmatic chain set it before calling apply.
+  // Host resolution: prefer chained input (userData.serverStepR2Key
+  // set by a previous server op) over rebuilding from geometry bbox.
+  // Going through the bbox loses kernel precision — the result mesh
+  // gets re-imported as a fresh box, throwing away the previous op's
+  // topology. The chained path keeps the actual STEP shape.
+  const upstreamStepKey = geometry.userData?.serverStepR2Key;
+  type HostShape =
+    | { sourceR2Key: string }
+    | { host: { w: number; h: number; d: number } };
+  const hostShape: HostShape = typeof upstreamStepKey === 'string' && upstreamStepKey.length > 0
+    ? { sourceR2Key: upstreamStepKey }
+    : { host: hostBoxFromGeometry(geometry) };
+
+  // Tool resolution — same chained-vs-primitive split (W17 PR #26).
   const toolStepKey = geometry.userData?.toolSourceR2Key;
   if (typeof toolStepKey === 'string' && toolStepKey.length > 0) {
     return {
-      host: { w: host.w, h: host.h, d: host.d },
+      ...hostShape,
       toolSourceR2Key: toolStepKey,
       cx: params.posX,
       cy: params.posY,
@@ -223,7 +233,7 @@ function toServerParams(
     };
   }
 
-  // Path 2 — primitive tool.
+  // Primitive tool path.
   const toolShape = Math.round(params.toolShape);
   const serverTool = TOOL_SHAPE_FOR_SERVER[toolShape];
   if (serverTool === undefined) return null; // box tool — no server primitive
@@ -233,7 +243,7 @@ function toServerParams(
   const r = Math.max(0.01, params.toolWidth / 2);
 
   return {
-    host: { w: host.w, h: host.h, d: host.d },
+    ...hostShape,
     toolShape: serverTool,
     r,
     height: toolShape === 1 ? params.toolHeight : undefined,
