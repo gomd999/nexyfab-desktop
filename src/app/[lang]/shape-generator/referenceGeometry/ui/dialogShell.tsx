@@ -40,6 +40,13 @@ export interface DialogShellProps<M extends string> {
   readonly children: React.ReactNode;
   /** Test hook. */
   readonly testId?: string;
+  /** Optional localised label for the primary action button. Defaults to
+   *  `'Insert'` so existing English UI renders identically. W4 — spec §13.4. */
+  readonly confirmLabel?: string;
+  /** Optional localised label for the cancel button. Defaults to `'Cancel'`. */
+  readonly cancelLabel?: string;
+  /** Optional localised aria-label for the close (×) button. Defaults to `'Close'`. */
+  readonly closeLabel?: string;
 }
 
 const styles = {
@@ -156,6 +163,9 @@ export function DialogShell<M extends string>(props: DialogShellProps<M>): React
     confirmDisabled = false,
     children,
     testId,
+    confirmLabel = 'Insert',
+    cancelLabel = 'Cancel',
+    closeLabel = 'Close',
   } = props;
 
   // Escape to close (spec §13.2 — table-stakes for a modal).
@@ -188,7 +198,7 @@ export function DialogShell<M extends string>(props: DialogShellProps<M>): React
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={closeLabel}
             style={styles.close}
             data-testid="method-picker-close"
           >
@@ -220,7 +230,7 @@ export function DialogShell<M extends string>(props: DialogShellProps<M>): React
             style={styles.btn('ghost', false)}
             data-testid="method-picker-cancel"
           >
-            Cancel
+            {cancelLabel}
           </button>
           <button
             type="button"
@@ -229,7 +239,7 @@ export function DialogShell<M extends string>(props: DialogShellProps<M>): React
             style={styles.btn('primary', confirmDisabled)}
             data-testid="method-picker-confirm"
           >
-            Insert
+            {confirmLabel}
           </button>
         </div>
       </div>

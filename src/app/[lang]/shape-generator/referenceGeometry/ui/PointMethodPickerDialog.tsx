@@ -22,11 +22,14 @@ import {
 } from '../types';
 import { REF_GEOM_METHOD_CATALOGUE } from './ReferenceGeometryDropdown';
 import { DialogShell, FormRow, fieldStyle, newReferenceId } from './dialogShell';
+import { pickRefGeomDict, pointMethodLabel, type RefGeomLang } from '../i18n';
 
 export interface PointMethodPickerDialogProps {
   readonly initialMethod?: PointMethod;
   readonly onConfirm: (node: ReferencePointNode) => void;
   readonly onClose: () => void;
+  /** Display language. Defaults to English. W4 — spec §13.4. */
+  readonly lang?: RefGeomLang | string;
 }
 
 const DEFAULT_PLANE_REF: PlaneRef = { kind: 'standard', id: 'front' };
@@ -43,8 +46,17 @@ const DEFAULT_VERTEX_REF: VertexRef = {
 export default function PointMethodPickerDialog(
   props: PointMethodPickerDialogProps,
 ): React.ReactElement {
-  const { initialMethod = 'byCoordinates', onConfirm, onClose } = props;
+  const { initialMethod = 'byCoordinates', onConfirm, onClose, lang } = props;
   const [method, setMethod] = useState<PointMethod>(initialMethod);
+  const dict = React.useMemo(() => pickRefGeomDict(lang), [lang]);
+  const localizedMethods = React.useMemo(
+    () =>
+      REF_GEOM_METHOD_CATALOGUE.point.map((m) => ({
+        method: m.method,
+        label: pointMethodLabel(dict, m.method),
+      })),
+    [dict],
+  );
 
   // byCoordinates fields.
   const [px, setPx] = useState<number>(0);
@@ -208,14 +220,17 @@ export default function PointMethodPickerDialog(
 
   return (
     <DialogShell<PointMethod>
-      title="New Reference Point"
-      methods={REF_GEOM_METHOD_CATALOGUE.point}
+      title={dict.dialogTitlePoint}
+      methods={localizedMethods}
       activeMethod={method}
       onMethodChange={setMethod}
       onClose={onClose}
       onConfirm={handleConfirm}
       confirmDisabled={!isValid()}
       testId="point-method-picker"
+      confirmLabel={dict.insert}
+      cancelLabel={dict.cancel}
+      closeLabel={dict.close}
     >
       {renderParams()}
     </DialogShell>

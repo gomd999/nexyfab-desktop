@@ -21,11 +21,14 @@ import {
 } from '../types';
 import { REF_GEOM_METHOD_CATALOGUE } from './ReferenceGeometryDropdown';
 import { DialogShell, FormRow, fieldStyle, newReferenceId } from './dialogShell';
+import { pickRefGeomDict, csysMethodLabel, type RefGeomLang } from '../i18n';
 
 export interface CsysMethodPickerDialogProps {
   readonly initialMethod?: CsysMethod;
   readonly onConfirm: (node: ReferenceCsysNode) => void;
   readonly onClose: () => void;
+  /** Display language. Defaults to English. W4 — spec §13.4. */
+  readonly lang?: RefGeomLang | string;
 }
 
 const DEFAULT_POINT_REF: PointRef = { kind: 'inline', position: [0, 0, 0] };
@@ -43,8 +46,17 @@ const DEFAULT_EDGE_REF: EdgeRef = { kind: 'edge', bodyId: '_pending_', edgeId: '
 export default function CsysMethodPickerDialog(
   props: CsysMethodPickerDialogProps,
 ): React.ReactElement {
-  const { initialMethod = 'world', onConfirm, onClose } = props;
+  const { initialMethod = 'world', onConfirm, onClose, lang } = props;
   const [method, setMethod] = useState<CsysMethod>(initialMethod);
+  const dict = React.useMemo(() => pickRefGeomDict(lang), [lang]);
+  const localizedMethods = React.useMemo(
+    () =>
+      REF_GEOM_METHOD_CATALOGUE.csys.map((m) => ({
+        method: m.method,
+        label: csysMethodLabel(dict, m.method),
+      })),
+    [dict],
+  );
 
   // Pick placeholders (W3 picker bus replaces).
   const [origin] = useState<PointRef>(DEFAULT_POINT_REF);
@@ -139,13 +151,16 @@ export default function CsysMethodPickerDialog(
 
   return (
     <DialogShell<CsysMethod>
-      title="New Coordinate System"
-      methods={REF_GEOM_METHOD_CATALOGUE.csys}
+      title={dict.dialogTitleCsys}
+      methods={localizedMethods}
       activeMethod={method}
       onMethodChange={setMethod}
       onClose={onClose}
       onConfirm={handleConfirm}
       testId="csys-method-picker"
+      confirmLabel={dict.insert}
+      cancelLabel={dict.cancel}
+      closeLabel={dict.close}
     >
       {renderParams()}
     </DialogShell>

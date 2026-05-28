@@ -27,6 +27,12 @@
 import React from 'react';
 import { useReferenceGeometryStore } from '../store';
 import { useReferenceNodesAdapter } from '../useReferenceNodesAdapter';
+import { pickRefGeomDict, type RefGeomLang } from '../i18n';
+import {
+  buildKsDatumLabels,
+  formatKsDatumDisplay,
+  DEFAULT_USE_KS_CONVENTIONS,
+} from '../ksConventions';
 import type { ReferenceNode } from '../types';
 
 const KIND_ICON: Record<ReferenceNode['kind'], string> = {
@@ -42,6 +48,15 @@ export interface ReferenceGeometryTreeSectionProps {
   onEdit?: (node: ReferenceNode) => void;
   /** Optional override for "no items yet" copy — used in tests. */
   emptyLabel?: string;
+  /** Display language for headers/empty copy/tooltips. Defaults to `'en'`
+   *  so the existing English UI renders identically when the host
+   *  doesn't thread a lang through. W4 — spec §13.4. */
+  lang?: RefGeomLang | string;
+  /** When true, each row's label is prefixed with its KS datum letter
+   *  (`A`, `B'`, `c`, `[D]` — see ksConventions). Default is the project
+   *  policy default (`true` for the Korean market). Per W4 task spec,
+   *  toggling this off restores the prior English-only display. */
+  useKsConventions?: boolean;
 }
 
 const styles = {
@@ -111,10 +126,27 @@ const styles = {
 export default function ReferenceGeometryTreeSection(
   props: ReferenceGeometryTreeSectionProps,
 ): React.ReactElement {
-  const { onEdit, emptyLabel = 'No reference geometry yet.' } = props;
+  const {
+    onEdit,
+    emptyLabel: emptyLabelOverride,
+    lang,
+    useKsConventions = DEFAULT_USE_KS_CONVENTIONS,
+  } = props;
   const { orderedNodes, issues } = useReferenceNodesAdapter();
   const remove = useReferenceGeometryStore((s) => s.remove);
   const update = useReferenceGeometryStore((s) => s.update);
+
+  // i18n dict — defaults to English to preserve existing UI.
+  const dict = React.useMemo(() => pickRefGeomDict(lang), [lang]);
+  const emptyLabel = emptyLabelOverride ?? dict.emptyLabel;
+
+  // Pre-compute KS datum letters (kind-scoped, creation-order). Empty
+  // map when the convention is disabled so the renderer skips the
+  // prefix without paying the alphabet-cost.
+  const ksLabels = React.useMemo(
+    () => (useKsConventions ? buildKsDatumLabels(orderedNodes) : new Map<string, string>()),
+    [useKsConventions, orderedNodes],
+  );
 
   // Build a per-node issue counter so the row knows whether to flag.
   const issueCount = React.useMemo(() => {
@@ -126,7 +158,7 @@ export default function ReferenceGeometryTreeSection(
   return (
     <div style={styles.section} data-testid="ref-geom-tree-section">
       <div style={styles.header}>
-        <span>Reference geometry</span>
+        <span>{dict.groupLabel}</span>
         <span style={{ color: 'var(--nx-text-3)', fontSize: 10 }}>
           {orderedNodes.length}
         </span>
@@ -136,19 +168,22 @@ export default function ReferenceGeometryTreeSection(
       ) : (
         orderedNodes.map((n) => {
           const errs = issueCount.get(n.id) ?? 0;
+          const ksLetter = ksLabels.get(n.id) ?? null;
+          const display = formatKsDatumDisplay(ksLetter, n.label);
           return (
             <div
               key={n.id}
               style={styles.row(errs > 0)}
               onClick={() => onEdit?.(n)}
               data-testid={`ref-geom-tree-row-${n.id}`}
+              data-ks-letter={ksLetter ?? undefined}
               role="button"
             >
               <span style={styles.icon} aria-hidden>
                 {KIND_ICON[n.kind]}
               </span>
-              <span style={styles.label} title={n.label}>
-                {n.label}
+              <span style={styles.label} title={display}>
+                {display}
               </span>
               {errs > 0 ? <span style={styles.badge}>!</span> : null}
               <button
@@ -157,7 +192,7 @@ export default function ReferenceGeometryTreeSection(
                   e.stopPropagation();
                   update(n.id, { hidden: !n.hidden });
                 }}
-                title={n.hidden ? 'Show' : 'Hide'}
+                title={n.hidden ? dict.fieldShow : dict.fieldHide}
                 style={styles.iconBtn}
                 data-testid={`ref-geom-tree-hide-${n.id}`}
               >
@@ -169,7 +204,7 @@ export default function ReferenceGeometryTreeSection(
                   e.stopPropagation();
                   remove(n.id);
                 }}
-                title="Delete"
+                title={dict.fieldDelete}
                 style={styles.iconBtn}
                 data-testid={`ref-geom-tree-delete-${n.id}`}
               >

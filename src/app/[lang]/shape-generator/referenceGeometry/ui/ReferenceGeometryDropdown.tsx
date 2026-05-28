@@ -23,7 +23,7 @@
  * matches Onshape/Fusion's "Construct" menu.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AxisMethod,
   CsysMethod,
@@ -31,6 +31,14 @@ import type {
   PointMethod,
   ReferenceKind,
 } from '../types';
+import {
+  pickRefGeomDict,
+  planeMethodLabel,
+  axisMethodLabel,
+  pointMethodLabel,
+  csysMethodLabel,
+  type RefGeomLang,
+} from '../i18n';
 
 export type AnyMethod = PlaneMethod | AxisMethod | PointMethod | CsysMethod;
 
@@ -42,6 +50,9 @@ export interface ReferenceGeometryDropdownProps {
   disabled?: boolean;
   /** Optional className for layout integration. */
   className?: string;
+  /** Display language. Defaults to English so the existing UI renders
+   *  identically. W4 — spec §13.4. */
+  lang?: RefGeomLang | string;
 }
 
 // ─── Method catalogues per kind ──────────────────────────────────────────
@@ -183,10 +194,55 @@ const CATEGORIES: readonly CategoryDef[] = [
 export default function ReferenceGeometryDropdown(
   props: ReferenceGeometryDropdownProps,
 ): React.ReactElement {
-  const { onPick, disabled = false, className } = props;
+  const { onPick, disabled = false, className, lang } = props;
   const [open, setOpen] = useState(false);
   const [hoverKind, setHoverKind] = useState<ReferenceKind | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const dict = useMemo(() => pickRefGeomDict(lang), [lang]);
+
+  // Localised category + method catalogue. Falls back to the English
+  // catalogue when `lang` is undefined so existing UI renders identically.
+  const localizedCategories: readonly CategoryDef[] = useMemo(
+    () => [
+      {
+        kind: 'plane',
+        label: dict.kindPlane,
+        hotkey: 'P',
+        methods: PLANE_METHODS.map((m) => ({
+          method: m.method,
+          label: planeMethodLabel(dict, m.method),
+        })),
+      },
+      {
+        kind: 'axis',
+        label: dict.kindAxis,
+        hotkey: 'X',
+        methods: AXIS_METHODS.map((m) => ({
+          method: m.method,
+          label: axisMethodLabel(dict, m.method),
+        })),
+      },
+      {
+        kind: 'point',
+        label: dict.kindPoint,
+        hotkey: '.',
+        methods: POINT_METHODS.map((m) => ({
+          method: m.method,
+          label: pointMethodLabel(dict, m.method),
+        })),
+      },
+      {
+        kind: 'csys',
+        label: dict.kindCsys,
+        hotkey: 'C',
+        methods: CSYS_METHODS.map((m) => ({
+          method: m.method,
+          label: csysMethodLabel(dict, m.method),
+        })),
+      },
+    ],
+    [dict],
+  );
 
   // Close on outside click. Listener attached only when menu is open.
   useEffect(() => {
@@ -236,11 +292,11 @@ export default function ReferenceGeometryDropdown(
         aria-expanded={open}
         data-testid="ref-geom-dropdown-trigger"
       >
-        Reference geometry <span aria-hidden>▾</span>
+        {dict.groupLabel} <span aria-hidden>▾</span>
       </button>
       {open ? (
         <div role="menu" style={styles.menu}>
-          {CATEGORIES.map((c) => (
+          {localizedCategories.map((c) => (
             <div
               key={c.kind}
               role="menuitem"
