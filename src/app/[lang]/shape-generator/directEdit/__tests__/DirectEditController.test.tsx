@@ -262,3 +262,126 @@ describe('hooks outside provider', () => {
     expect(harness.enabled).toBe(false);
   });
 });
+
+// ─── E5 (W7) — shiftOps + beginCommitFlow ───────────────────────────────────
+
+describe('DirectEditProvider — E5 shiftOps', () => {
+  it('removes the first N ops from the stack', () => {
+    const harness = makeHarness();
+    render(
+      <DirectEditProvider enabled={true} historyVersion={0}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    act(() => harness.api.pushOp(sampleOp('a')));
+    act(() => harness.api.pushOp(sampleOp('b')));
+    act(() => harness.api.pushOp(sampleOp('c')));
+    act(() => harness.api.shiftOps(2));
+    expect(harness.stack.ops).toHaveLength(1);
+    expect((harness.stack.ops[0] as { faceId: string }).faceId).toBe('c');
+  });
+
+  it('no-op when count <= 0', () => {
+    const harness = makeHarness();
+    render(
+      <DirectEditProvider enabled={true} historyVersion={0}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    act(() => harness.api.pushOp(sampleOp('a')));
+    act(() => harness.api.shiftOps(0));
+    expect(harness.stack.ops).toHaveLength(1);
+    act(() => harness.api.shiftOps(-1));
+    expect(harness.stack.ops).toHaveLength(1);
+  });
+
+  it('clamps count to the current stack length', () => {
+    const harness = makeHarness();
+    render(
+      <DirectEditProvider enabled={true} historyVersion={0}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    act(() => harness.api.pushOp(sampleOp('a')));
+    act(() => harness.api.shiftOps(99));
+    expect(harness.stack.ops).toEqual([]);
+  });
+});
+
+describe('DirectEditProvider — E5 beginCommitFlow suppresses toast', () => {
+  let toasts: DirectEditInvalidatedDetail[] = [];
+  beforeEach(() => {
+    toasts = [];
+    const listener = (e: Event) => {
+      toasts.push((e as CustomEvent<DirectEditInvalidatedDetail>).detail);
+    };
+    window.addEventListener(DIRECT_EDIT_INVALIDATED_EVENT, listener);
+    return () => window.removeEventListener(DIRECT_EDIT_INVALIDATED_EVENT, listener);
+  });
+
+  it('history-version bump during a commit flow does NOT emit toast', () => {
+    const harness = makeHarness();
+    const { rerender } = render(
+      <DirectEditProvider enabled={true} historyVersion={1}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    act(() => harness.api.pushOp(sampleOp('a')));
+    expect(harness.stack.ops).toHaveLength(1);
+    // Open a commit flow before the bump.
+    let release: () => void = () => {};
+    act(() => { release = harness.api.beginCommitFlow(); });
+    rerender(
+      <DirectEditProvider enabled={true} historyVersion={2}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    // Stack is cleared but no toast fired.
+    expect(harness.stack.ops).toEqual([]);
+    expect(toasts).toEqual([]);
+    act(() => release());
+  });
+
+  it('history-version bump AFTER releasing the commit flow DOES emit toast', () => {
+    const harness = makeHarness();
+    const { rerender } = render(
+      <DirectEditProvider enabled={true} historyVersion={1}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    let release: () => void = () => {};
+    act(() => { release = harness.api.beginCommitFlow(); });
+    act(() => release());
+    act(() => harness.api.pushOp(sampleOp('a')));
+    rerender(
+      <DirectEditProvider enabled={true} historyVersion={2}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    expect(toasts).toHaveLength(1);
+  });
+
+  it('release is idempotent (calling twice does not over-decrement)', () => {
+    const harness = makeHarness();
+    const { rerender } = render(
+      <DirectEditProvider enabled={true} historyVersion={1}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    let r1: () => void = () => {};
+    let r2: () => void = () => {};
+    act(() => { r1 = harness.api.beginCommitFlow(); });
+    act(() => { r2 = harness.api.beginCommitFlow(); });
+    act(() => r1());
+    act(() => r1()); // duplicate release
+    // Counter still > 0 because r2 not yet released.
+    act(() => harness.api.pushOp(sampleOp('a')));
+    rerender(
+      <DirectEditProvider enabled={true} historyVersion={2}>
+        <harness.Reader />
+      </DirectEditProvider>,
+    );
+    expect(toasts).toEqual([]);
+    act(() => r2());
+  });
+});

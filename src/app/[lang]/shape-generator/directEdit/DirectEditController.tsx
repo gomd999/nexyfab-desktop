@@ -51,6 +51,16 @@ export interface DirectEditControllerApi {
   popOp: () => void;
   /** Clear all ops (e.g. on history-rerun invalidation). */
   clearStack: (reason?: 'manual' | 'historyRerun') => void;
+  /** Remove the first `count` ops from the front of the stack — used
+   *  by the partial-commit path (E5). Order of the remaining ops is
+   *  preserved. */
+  shiftOps: (count: number) => void;
+  /** E5 (W7) — mark a region of code as "this is a commit-to-history
+   *  flow", which causes the next history-version bump to NOT fire the
+   *  invalidation toast. Returns a `release` callback the caller must
+   *  call once the bump has settled. Implemented as a counter so
+   *  nested commits don't accidentally re-enable the toast early. */
+  beginCommitFlow: () => () => void;
   /** Whether the controller is active (flag ON). When false, push
    *  emits a warning and is otherwise no-op. */
   enabled: boolean;
@@ -104,6 +114,20 @@ export function DirectEditProvider({
 }: DirectEditProviderProps): React.ReactElement {
   const [stack, setStack] = useState<DirectEditStack>(() => emptyDirectEditStack());
 
+  // E5 (W7) — counter that suppresses the invalidation toast while a
+  // commit-to-history flow is in progress. The flow is "user clicks
+  // commit → controller appends N history nodes → host bumps
+  // historyVersion → the useEffect below sees the mismatch and would
+  // normally fire the toast". The commit caller raises the counter
+  // BEFORE the bump and releases it AFTER, so the useEffect skips the
+  // toast for exactly that one transition. Implementation note: we
+  // also need to clear the stack on commit (which we do directly via
+  // `clearStack('manual')`) so the historyVersion-bump branch is
+  // already a no-op (stack.ops.length === 0) under normal flow. The
+  // counter is a belt-and-braces guard for race conditions where the
+  // host bumps the version BEFORE the stack-clear React state settles.
+  const commitFlowCountRef = useRef<number>(0);
+
   // History-rerun invalidation. Compare the provider's current
   // `historyVersion` to whatever the stack recorded on first push.
   // We use a ref to track the "last seen" version so we only fire
@@ -113,12 +137,19 @@ export function DirectEditProvider({
   useEffect(() => {
     const prev = lastVersionRef.current;
     if (prev !== historyVersion && stack.ops.length > 0) {
-      const clearedCount = stack.ops.length;
-      setStack(emptyDirectEditStack());
-      emitInvalidatedToast({
-        clearedCount,
-        newHistoryVersion: historyVersion,
-      });
+      // Suppress the toast when the bump is caused by THIS controller
+      // committing direct edits (E5). The stack will be cleared by the
+      // commit flow itself; we just swallow the would-be toast here.
+      if (commitFlowCountRef.current > 0) {
+        setStack(emptyDirectEditStack());
+      } else {
+        const clearedCount = stack.ops.length;
+        setStack(emptyDirectEditStack());
+        emitInvalidatedToast({
+          clearedCount,
+          newHistoryVersion: historyVersion,
+        });
+      }
     }
     lastVersionRef.current = historyVersion;
   }, [historyVersion, stack.ops.length]);
@@ -160,13 +191,34 @@ export function DirectEditProvider({
     });
   }, []);
 
+  const shiftOps = useCallback((count: number) => {
+    if (count <= 0) return;
+    setStack(prev => {
+      if (prev.ops.length === 0) return prev;
+      const n = Math.min(count, prev.ops.length);
+      return { ...prev, ops: prev.ops.slice(n) };
+    });
+  }, []);
+
+  const beginCommitFlow = useCallback(() => {
+    commitFlowCountRef.current += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      commitFlowCountRef.current = Math.max(0, commitFlowCountRef.current - 1);
+    };
+  }, []);
+
   const api = useMemo<DirectEditControllerApi>(() => ({
     stack,
     pushOp,
     popOp,
     clearStack,
+    shiftOps,
+    beginCommitFlow,
     enabled,
-  }), [stack, pushOp, popOp, clearStack, enabled]);
+  }), [stack, pushOp, popOp, clearStack, shiftOps, beginCommitFlow, enabled]);
 
   return (
     <DirectEditContext.Provider value={api}>
@@ -185,6 +237,8 @@ const NULL_API: DirectEditControllerApi = {
   },
   popOp: () => {},
   clearStack: () => {},
+  shiftOps: () => {},
+  beginCommitFlow: () => () => {},
   enabled: false,
 };
 
