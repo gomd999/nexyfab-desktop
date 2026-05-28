@@ -168,7 +168,13 @@ export async function applyFilletAsyncWithServer(
   ctx?: FeatureApplyContext,
   serverOpts?: ServerOpts,
 ): Promise<THREE.BufferGeometry> {
-  if (serverOpts?.jwtToken) {
+  // W17 — respect engine=0 (mesh-csg) choice; server is OCCT, so
+  // routing there would override the user's explicit "mesh, please"
+  // setting. Same gate as the local OCCT path uses below.
+  const engine = Math.round(params.engine ?? 0);
+  const wantsOcct = engine === 1 || isOcctGlobalMode();
+
+  if (wantsOcct && serverOpts?.jwtToken) {
     const radius = params.radius!;
     const sourceR2Key = getSourceR2Key(geometry);
     const serverParams: ServerFilletParams = sourceR2Key

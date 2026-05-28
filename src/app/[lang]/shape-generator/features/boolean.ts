@@ -320,9 +320,16 @@ export async function applyBooleanAsync(
 ): Promise<THREE.BufferGeometry> {
   const operation = Math.round(params.operation);
   const type = operationCodeToType(operation);
+  const engine = Math.round(params.engine ?? 0);
+  // W17 fix — respect the user's explicit engine choice. Server OCCT
+  // is the same kernel as in-tab OCCT (replicad on top of OpenCascade);
+  // if the user picked engine=0 they wanted mesh-CSG specifically (faster,
+  // less accurate), so routing them to server OCCT would silently
+  // override their choice. Only attempt server when OCCT was wanted.
+  const wantsOcct = engine === 1 || isOcctGlobalMode();
 
-  // W16 server path — non-breaking: only fires when caller supplies opts.
-  if (serverOpts?.jwtToken) {
+  // W16 server path — gated on engine choice + caller supplying opts.
+  if (wantsOcct && serverOpts?.jwtToken) {
     const serverResult = await tryServerBoolean(geometry, params, serverOpts);
     if (serverResult) return serverResult;
     // Server unavailable / opted out → continue to worker / sync.

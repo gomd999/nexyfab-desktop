@@ -203,4 +203,28 @@ describe('applyBooleanAsync — W16 server hook', () => {
 
     expect(fetchMock).toHaveBeenCalled();
   });
+
+  it('skips server when engine=0 (mesh-csg explicitly chosen)', async () => {
+    // Server is OCCT — routing engine=0 there would override the
+    // user's explicit "I want mesh-csg" choice. W17 bug fix.
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const params = { ...baseParams, engine: 0 };
+    await applyBooleanAsync(
+      bigHostGeometry(), params, undefined,
+      { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('uses server when engine=1 (OCCT explicitly chosen)', async () => {
+    const fetchMock = mockServerOk();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const params = { ...baseParams, engine: 1 };
+    await applyBooleanAsync(
+      bigHostGeometry(), params, undefined,
+      { jwtToken: 'jwt', baseUrl: 'https://worker.example' },
+    );
+    expect(fetchMock).toHaveBeenCalled();
+  });
 });

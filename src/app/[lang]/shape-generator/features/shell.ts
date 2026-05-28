@@ -191,7 +191,11 @@ export async function applyShellAsyncWithServer(
   ctx?: FeatureApplyContext,
   serverOpts?: ServerOpts,
 ): Promise<THREE.BufferGeometry> {
-  if (serverOpts?.jwtToken) {
+  // W17 — respect engine choice (see fillet.ts). Server is OCCT.
+  const engine = Math.round(params.engine ?? 0);
+  const wantsOcct = engine === 1 || isOcctGlobalMode();
+
+  if (wantsOcct && serverOpts?.jwtToken) {
     const thickness = params.wallThickness!;
     const openFaceNum = Math.round(params.openFace ?? 0);
     const openFace = OPEN_FACE_MAP[openFaceNum] ?? 'top';
