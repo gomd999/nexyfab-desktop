@@ -12,6 +12,24 @@
  *   v2 (2026-05-07) — adds optional aiHistory + scadIntents for traceability
  *                     of AI-driven shape generation. Backward-compat: v1 files
  *                     auto-migrate (new fields default to empty).
+ *   v3 (2026-05-28) — adds optional `referenceGeometry: ReferenceNode[]` for
+ *                     Wave 2 Phase 2 Track D (reference-geometry plane/axis/
+ *                     point/csys entities). Pre-v3 files load as
+ *                     `referenceGeometry: []` via `migrateV2ToV3`.
+ *
+ * ⚠ Version-3 conflict surface (Wave 2 Phase 2 master tracker, D2 row):
+ *   the v3 bump is **shared** with Track A1 (Configurations refactor). Track
+ *   D2 is the first track to ship v3; Track A1 will land additional v3-only
+ *   semantics for configurations (currently A1 only has a defensive
+ *   `masterSnapshot` patch — see `configurations/masterSnapshot.ts` — and
+ *   has NOT yet bumped LATEST_VERSION). When A1 ships, it should:
+ *     1. Co-evolve v3 in-place (no v4 bump for an A1-only field).
+ *     2. Add its new field as optional so D2-only files keep loading.
+ *     3. Update this comment block + add A1 entries to `migrateV2ToV3`.
+ *   The two field namespaces are disjoint: D2 owns `referenceGeometry`, A1
+ *   owns whatever the Configurations-v3 shape settles on (likely
+ *   `configurationsMaster` or an evolved `configurations[]` schema).
+ *   Reserve v3 for shared use; don't claim ref-geom-only semantic.
  */
 
 import type { HistoryNode, FeatureHistory } from '../useFeatureStack';
@@ -19,14 +37,17 @@ import type { SketchProfile, SketchConfig } from '../sketch/types';
 import type { PlacedPart } from '../assembly/PartPlacementPanel';
 import type { AssemblyMate } from '../assembly/AssemblyMates';
 import type { BodyEntry } from '../panels/BodyPanel';
+import type { ReferenceNode } from '../referenceGeometry/types';
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
 
-export const NFAB_FORMAT_VERSION = 2 as const;
+/** Current schema version. v3 lands with Wave 2 Phase 2 Track D2
+ *  (reference geometry). New writes always use this value. */
+export const NFAB_FORMAT_VERSION = 3 as const;
 export const NFAB_MIME = 'application/x-nexyfab-project+json';
 export const NFAB_EXTENSION = '.nfab';
 
-export type NfabFileVersion = 1 | 2;
+export type NfabFileVersion = 1 | 2 | 3;
 
 /** AI conversation entry persisted in v2 — lets users replay how a part was designed. */
 export interface NfabAiHistoryEntry {
@@ -131,7 +152,29 @@ export interface NfabProjectV1 {
   aiHistory?: NfabAiHistoryEntry[];
   /** Per-feature-node SCAD intents — lets the server regenerate STL deterministically. */
   scadIntents?: NfabScadIntentMap;
+
+  // ─── v3 additions (optional; absent on legacy v1/v2 files) ─────────────────
+  /** Wave 2 Phase 2 Track D — reference-geometry entities (planes / axes /
+   *  points / coord-systems). Stored in insertion order; the dep solver
+   *  toposorts on load. Topology refs (`face`/`edge`/`vertex` kinds inside
+   *  params) hold worker-side ids; they'll round-trip stably for files
+   *  saved and reopened by the same build, but inter-build stability is a
+   *  W4 topology-naming concern.
+   *
+   *  Absent or empty on v1/v2 documents and on v3 documents the user
+   *  never authored ref geom into. New writes emit `[]` only when the
+   *  user has actually authored ref geom (keeps file size minimal). */
+  referenceGeometry?: ReferenceNode[];
 }
+
+/** Alias for clarity at call-sites that handle v3 specifically. The
+ *  runtime type is identical to `NfabProjectV1` (which has v2 + v3 fields
+ *  as optional) — we keep the V1 name as the in-memory shape and use the
+ *  V3 alias when documenting the *current* schema. */
+export type NfabProjectV3 = NfabProjectV1;
+/** Alias used internally during migration — a v2 document is structurally
+ *  a `NfabProjectV1` with `version: 2`. */
+export type NfabProjectV2 = NfabProjectV1;
 
 /** All state needed to reproduce the manufacturing workflow without re-clicking. */
 export interface NfabManufacturing {
@@ -200,6 +243,10 @@ export interface SerializeInput {
   meta?: Record<string, unknown>;
   configurations?: NfabConfigurationV1[];
   activeConfigurationId?: string | null;
+  /** v3 — reference-geometry nodes (Wave 2 Phase 2 Track D). Omit or pass
+   *  `[]` for documents with no ref-geom; the serializer drops the field
+   *  in that case so a v2-equivalent file stays slim. */
+  referenceGeometry?: ReferenceNode[];
 }
 
 export function serializeProject(input: SerializeInput): NfabProjectV1 {
@@ -235,6 +282,10 @@ export function serializeProject(input: SerializeInput): NfabProjectV1 {
     // v2 fields — only emit when populated to keep file size minimal.
     ...(input.aiHistory && input.aiHistory.length > 0 ? { aiHistory: input.aiHistory } : {}),
     ...(input.scadIntents && Object.keys(input.scadIntents).length > 0 ? { scadIntents: input.scadIntents } : {}),
+    // v3 fields — same "emit only when populated" rule.
+    ...(input.referenceGeometry && input.referenceGeometry.length > 0
+      ? { referenceGeometry: input.referenceGeometry }
+      : {}),
   };
 }
 
@@ -279,12 +330,16 @@ function migrate(raw: unknown): NfabProjectV1 {
 
   const version = typeof obj.version === 'number' ? obj.version : 0;
 
-  // Migration chain. Each step takes the previous version's object and returns
-  // the next version. `migrateV1ToV2` adds empty optional fields and bumps
-  // `version`. New writes always use `NFAB_FORMAT_VERSION` (currently 2).
+  // Migration chain. Each step takes the previous version's object and
+  // returns the next version. We walk the chain explicitly so a v1 file
+  // goes v1 → v2 → v3 in one parse pass. New writes always use
+  // `NFAB_FORMAT_VERSION` (currently 3).
   let current = obj;
   if (version === 1) {
     current = migrateV1ToV2(current);
+    current = migrateV2ToV3(current);
+  } else if (version === 2) {
+    current = migrateV2ToV3(current);
   } else if (version > NFAB_FORMAT_VERSION) {
     // Forward-compat: file is from a newer build. Tell the user to upgrade
     // instead of failing with a cryptic "unsupported version" message —
@@ -301,7 +356,8 @@ function migrate(raw: unknown): NfabProjectV1 {
     );
   } else if (version !== NFAB_FORMAT_VERSION) {
     throw new NfabParseError(
-      `Unsupported .nfab version: ${version} (this build understands v1, v${NFAB_FORMAT_VERSION})`,
+      `Unsupported .nfab version: ${version} ` +
+      `(this build understands v1, v2, v${NFAB_FORMAT_VERSION})`,
       raw,
     );
   }
@@ -317,6 +373,24 @@ function migrateV1ToV2(v1: Record<string, unknown>): Record<string, unknown> {
     version: 2,
     aiHistory: Array.isArray(v1.aiHistory) ? v1.aiHistory : [],
     scadIntents: v1.scadIntents && typeof v1.scadIntents === 'object' ? v1.scadIntents : {},
+  };
+}
+
+/** v2 → v3 migration (Wave 2 Phase 2 Track D2).
+ *
+ *  Adds the `referenceGeometry` field (defaulted to `[]` for pre-v3 files)
+ *  and bumps `version` to 3. All existing v2 fields are preserved exactly.
+ *
+ *  Note: this is the **first track-shared v3 migration**. When Track A1
+ *  (Configurations refactor) lands its v3 semantics, it should *extend*
+ *  this function rather than introduce a v4 bump — see the conflict-
+ *  surface block at the top of this file.
+ */
+export function migrateV2ToV3(v2: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...v2,
+    version: 3,
+    referenceGeometry: Array.isArray(v2.referenceGeometry) ? v2.referenceGeometry : [],
   };
 }
 
@@ -338,6 +412,13 @@ function validateProject(obj: Record<string, unknown>) {
   }
   if (obj.scadIntents !== undefined && (typeof obj.scadIntents !== 'object' || obj.scadIntents === null || Array.isArray(obj.scadIntents))) {
     throw new NfabParseError('scadIntents must be an object', obj);
+  }
+  // v3 — referenceGeometry, when present, must be an array. We don't deep-
+  // validate node shapes here (the ref-geom subsystem's load path runs
+  // `findAllCycles` + per-node validation; we just gate on the outer
+  // type so a malformed file fails fast).
+  if (obj.referenceGeometry !== undefined && !Array.isArray(obj.referenceGeometry)) {
+    throw new NfabParseError('referenceGeometry must be an array', obj);
   }
 }
 
