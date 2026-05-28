@@ -1,0 +1,4 @@
+# Local dev secrets — copy to `.dev.vars` (NOT committed).
+# Wrangler auto-loads .dev.vars during `wrangler dev`.
+# Must match src/lib/jwt.ts SECRET in the main Next.js app.
+JWT_SECRET=nexyfab-dev-secret-change-in-production
