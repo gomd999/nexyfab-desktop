@@ -63,6 +63,15 @@ interface Deps {
   getConfigurationsBlock?: () => {
     configurations: NfabConfigurationV1[];
     activeConfigurationId: string | null;
+    /** Session-only master snapshot from
+     *  src/app/[lang]/shape-generator/configurations/masterSnapshot.ts.
+     *  When `activeConfigurationId !== null` AND this is set, the save
+     *  path serializes scene.params + paramExpressions + node.enabled
+     *  from the snapshot instead of the (config-mutated) live state. */
+    masterSnapshot?: {
+      scene: { params: Record<string, number>; paramExpressions: Record<string, string> };
+      featureEnabled: Record<string, boolean>;
+    } | null;
   };
   restoreConfigurationsSnapshot?: (
     configurations: NfabConfigurationV1[] | undefined,
@@ -117,13 +126,40 @@ export function useNfabFileIO(deps: Deps) {
     const sceneSnapshot = useSceneStore.getState();
     const studioView = getStudioViewSnapshot?.();
     const cfgBlock = getConfigurationsBlock?.();
+
+    // ── Master tree protection (session-only defensive layer).
+    // When a non-master config is active AND a master snapshot was
+    // captured this session, serialize the MASTER values into scene.params,
+    // paramExpressions, and history.nodes[*].enabled — not the live
+    // (config-mutated) values. This prevents the .nfab on disk from
+    // silently replacing master with the active overlay. Phase 2 deletes
+    // this whole branch (pipeline will route through ConfigurationTable
+    // and master is never mutated to begin with).
+    const useMasterForSave =
+      cfgBlock?.activeConfigurationId != null && cfgBlock.masterSnapshot != null;
+    const masterScene = useMasterForSave ? cfgBlock.masterSnapshot!.scene : null;
+    const masterEnabled = useMasterForSave ? cfgBlock.masterSnapshot!.featureEnabled : null;
+
+    const historyForSave = masterEnabled
+      ? {
+          ...featureHistory,
+          nodes: featureHistory.nodes.map(n => {
+            if (n.id === featureHistory.rootId) return n;
+            if (n.type === 'baseShape') return n;
+            return Object.prototype.hasOwnProperty.call(masterEnabled, n.id)
+              ? { ...n, enabled: masterEnabled[n.id]! }
+              : n;
+          }),
+        }
+      : featureHistory;
+
     return {
       name: sceneSnapshot.selectedId || 'nexyfab-project',
-      history: featureHistory,
+      history: historyForSave,
       scene: {
         selectedId: sceneSnapshot.selectedId,
-        params: sceneSnapshot.params,
-        paramExpressions: sceneSnapshot.paramExpressions,
+        params: masterScene ? { ...masterScene.params } : sceneSnapshot.params,
+        paramExpressions: masterScene ? { ...masterScene.paramExpressions } : sceneSnapshot.paramExpressions,
         materialId: sceneSnapshot.materialId,
         color: sceneSnapshot.color,
         isSketchMode: sceneSnapshot.isSketchMode,
