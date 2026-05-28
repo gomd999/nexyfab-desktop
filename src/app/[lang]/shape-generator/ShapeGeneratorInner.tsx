@@ -60,6 +60,11 @@ import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
 import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
 import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
 import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
+import {
+  captureMasterSnapshot,
+  restoreMasterSnapshotOps,
+  type MasterSnapshot,
+} from './configurations/masterSnapshot';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
 import { useCsgWorker } from './workers/useCsgWorker';
@@ -1382,8 +1387,20 @@ export function ShapeGeneratorInner() {
   const [configurations, setConfigurations] = useState<NfabConfigurationV1[]>([]);
   const [activeConfigurationId, setActiveConfigurationId] = useState<string | null>(null);
 
+  // ── Defensive: in-session master tree snapshot.
+  // See src/app/[lang]/shape-generator/configurations/masterSnapshot.ts and
+  // docs/wave-2-phase-2-configurations-spec.md §5. Captured on the first
+  // activate (null → non-null). Restored on deactivate (→ null). Phase 2
+  // routes the pipeline through ConfigurationTable so this whole patch
+  // becomes obsolete and gets deleted.
+  const masterSceneSnapshotRef = useRef<MasterSnapshot | null>(null);
+
   const getConfigurationsBlock = useCallback(
-    () => ({ configurations, activeConfigurationId }),
+    () => ({
+      configurations,
+      activeConfigurationId,
+      masterSnapshot: masterSceneSnapshotRef.current,
+    }),
     [configurations, activeConfigurationId],
   );
 
@@ -1391,14 +1408,46 @@ export function ShapeGeneratorInner() {
     (configs: NfabConfigurationV1[] | undefined, activeId: string | null | undefined) => {
       setConfigurations(configs ?? []);
       setActiveConfigurationId(activeId ?? null);
+      // Reset the snapshot ref — a fresh .nfab load wipes prior-session
+      // state. If the file came in with activeId !== null we cannot recover
+      // its true master (see masterSnapshot.ts "What this does NOT fix").
+      masterSceneSnapshotRef.current = null;
     },
     [],
   );
 
   const handleConfigurationSelect = useCallback(
     (id: string | null) => {
+      // Capture master at the null → non-null transition, exactly once per session.
+      // Reads from activeConfigurationId via closure — safe because handler
+      // is rebuilt when activeConfigurationId changes.
+      if (id !== null && activeConfigurationId === null && masterSceneSnapshotRef.current === null) {
+        const sc = useSceneStore.getState();
+        masterSceneSnapshotRef.current = captureMasterSnapshot(
+          { params: sc.params, paramExpressions: sc.paramExpressions },
+          featureHistory ?? { nodes: [], rootId: '' },
+        );
+      }
+
       setActiveConfigurationId(id);
-      if (id == null) return;
+
+      // Deactivate path: restore master values to sceneStore + each node.
+      if (id == null) {
+        const snap = masterSceneSnapshotRef.current;
+        if (snap && featureHistory) {
+          const ops = restoreMasterSnapshotOps(snap, featureHistory);
+          useSceneStore.setState({
+            params: { ...ops.scene.params },
+            paramExpressions: { ...ops.scene.paramExpressions },
+          });
+          for (const o of ops.enabledOverrides) {
+            updateNode(o.id, { enabled: o.enabled });
+          }
+        }
+        return;
+      }
+
+      // Activate path: apply the config (unchanged from prior behavior).
       const cfg = configurations.find(c => c.id === id);
       if (!cfg) return;
       useSceneStore.setState(s => ({
@@ -1419,7 +1468,7 @@ export function ShapeGeneratorInner() {
         updateNode(n.id, { enabled: true });
       }
     },
-    [configurations, featureHistory, getOrderedNodes, updateNode],
+    [activeConfigurationId, configurations, featureHistory, getOrderedNodes, updateNode],
   );
 
   const handleConfigurationAdd = useCallback(
