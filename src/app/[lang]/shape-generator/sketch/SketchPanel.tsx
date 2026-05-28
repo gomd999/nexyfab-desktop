@@ -7,6 +7,8 @@ import type {
   SketchConstraint, SketchDimension, ConstraintType,
 } from './types';
 import { useSketchStore } from './useSketchStore';
+// Z5 — sketch peer-cursor overlay; mounted unconditionally and gracefully no-ops without a <CollabProvider>.
+import SketchPeerCursors from './SketchPeerCursors';
 
 // ─── i18n dict (6 languages) ────────────────────────────────────────────────
 const dict = {
@@ -710,6 +712,9 @@ export default function SketchPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* ── Z5 sketch peer-cursor mount-point (single boundary-marked line). Renders nothing in solo / non-crdt mode; consumer of `useCollabPresence` ── */}
+      <SketchPeerCursors />
 
       {/* ── Z2 LWW collision toast (only renders when a concurrent peer edit
               overrode a local segment position; auto-dismisses ~4s) ── */}

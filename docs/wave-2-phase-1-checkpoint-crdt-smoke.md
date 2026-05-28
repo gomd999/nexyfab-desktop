@@ -336,6 +336,72 @@ Passing all 8 steps = E1 foundation Green. Failure cases (non-planar
 face on a cylinder, oversize offset, malformed faceId) are covered by
 unit tests in `src/app/[lang]/shape-generator/directEdit/__tests__/`.
 
+## Phase 3 Z5 — awareness UI (presence panel + cursors + tree highlight)
+
+Phase 3 W5 wires the awareness-UI layer that Z1's CollabProvider has been
+emitting data for. No new infra, no new transports — purely client-side
+renders of `useCollabPresence()` output.
+
+The components delivered:
+
+- `collab/PresencePanel.tsx` — corner panel listing online peers
+- `sketch/SketchPeerCursors.tsx` — sketch viewport peer cursor overlay
+- `featureTree/FeatureTreePeerHighlight.tsx` — pill per remote peer on a
+  tree node, plus `<FeatureTreePeerOverlay>` for legacy generic-tree hosts
+- `collab/EditingFocusIndicator.tsx` — colored border + tooltip around
+  modal form inputs when a remote peer's `selection` includes the field id
+- `collab/awarenessThrottle.ts` — `useThrottledCursorBroadcast` hook;
+  default 50ms (≤ 20 ops/sec per ADR-012 §8 awareness budget)
+- `collab/CollabSafe.tsx` — ErrorBoundary used internally by each Z5
+  component so dropping them into a host that lacks a `<CollabProvider>`
+  ancestor renders nothing instead of throwing
+
+**Smoke**: open two tabs with `?crdt=v2`, set a name in each, see peer
+cursor + presence panel + tree highlight.
+
+Procedure (manual, 60-second):
+
+1. Open `/[lang]/shape-generator?crdt=v2` in **two tabs** of the same
+   browser. The BroadcastChannel transport bridges them while
+   `occt-collab-worker` is pre-deploy.
+2. In each tab, give yourself a distinct name (Z1's update-presence
+   handle — pass `initialName` to the `CollabProvider` in the host wiring,
+   or set it via the in-app account picker once wired).
+3. Hover the sketch surface in tab A → tab B's `<SketchPeerCursors>`
+   overlay shows a labeled arrow at tab A's mouse position. The cursor
+   updates at ~20Hz (50ms throttle); CSS transition smooths the steps
+   into a continuous glide.
+4. Click any feature in the feature tree of tab A → tab B's
+   `<PeerNodePill>` next to that node row shows a color dot keyed to
+   tab A's peer color.
+5. Open `<PresencePanel>` (top-right corner). It auto-hides until tab B
+   sees tab A. With two peers it should show both peers, the local one
+   tagged with a star.
+6. Click the "Copy invite link" button in the panel. Clipboard now
+   contains the current doc URL; paste into a third tab → it joins the
+   same Y.Doc.
+7. Open `<HoleWizardModalV2>` in tab A and focus the "Diameter" input.
+   Tab B's `<EditingFocusIndicator>` wraps that same input with a colored
+   border + "Editing by @TabA" tooltip.
+
+What this proves: Z5 surfaces every awareness signal Z1's Provider emits:
+`cursor` (sketch overlay), `activeNodeId` (tree pill + presence panel
+status), `selection` (form-input indicator), `name`/`color` (everything).
+The throttle keeps awareness traffic under the ADR-012 §8 budget.
+
+What this does NOT prove (deferred):
+
+- 3D viewport camera presence — ADR-012 §3 deliberately omits this for
+  P5 (Durable Object CPU cost).
+- Multi-cursor selection ranges in sketch — that's W6+ scope; W5 ships
+  the editing-focus indicator at the form-field grain only.
+- Cross-network sync — BroadcastChannel is same-origin only; the
+  cross-network case lights up when `occt-collab-worker` lands
+  (P0 backlog #31).
+- Production wiring of `<CollabProvider>` around `ShapeGeneratorInner`
+  — that wiring is W6+ Z6. Z5 components are written to be safe (via
+  `<CollabSafe>`) even when no Provider is mounted.
+
 ## Reporting result
 
 Update [project_nexyfab_wave2_phase1_complete.md](../.. memory note) or
