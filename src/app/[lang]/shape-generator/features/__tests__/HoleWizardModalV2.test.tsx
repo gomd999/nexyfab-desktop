@@ -515,3 +515,201 @@ describe('HoleWizardModalV2 — counterdrill Preview (W4)', () => {
     expect(summary.textContent).toContain('Middle');
   });
 });
+
+// ─── W5 — Track C5: linear2D + CSV paste + pipe-tap class picker ───────────
+
+describe('HoleWizardModalV2 — linear2D Position mode (W5)', () => {
+  it('renders a linear2D tile in the position-kind picker', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    expect(screen.getByTestId('hole-wizard-v2-position-linear2D')).toBeTruthy();
+  });
+
+  it('switching to linear2D shows row/col + dxRow/dyRow/dxCol/dyCol inputs', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-linear2D'));
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-panel')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-rows')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-cols')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-dxRow')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-dyRow')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-dxCol')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-linear2D-dyCol')).toBeTruthy();
+  });
+
+  it('Apply with linear2D delivers a definition kind=linear2D', () => {
+    const onApply = vi.fn();
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={onApply} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-linear2D'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    const def = onApply.mock.calls[0][0];
+    expect(def.kind).toBe('linear2D');
+    expect(def.params.kind).toBe('linear2D');
+  });
+
+  it('count footer reflects 2×3=6 positions for default linear2D', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-linear2D'));
+    // Default rows=2, cols=3 → 6 positions
+    expect(screen.getByTestId('hole-wizard-v2-count').textContent).toContain('6');
+  });
+});
+
+describe('HoleWizardModalV2 — circular partialAngle + direction (W5)', () => {
+  it('renders partialAngle + direction inputs for circular position kind', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-circular'));
+    expect(screen.getByTestId('hole-wizard-v2-circular-partialAngle')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-circular-direction-ccw')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-circular-direction-cw')).toBeTruthy();
+  });
+
+  it('setting direction=CW updates the live position count without breaking it', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-circular'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-circular-direction-cw'));
+    // Full circle still produces count=6 positions for the default factory.
+    expect(screen.getByTestId('hole-wizard-v2-count').textContent).toContain('6');
+  });
+});
+
+describe('HoleWizardModalV2 — CSV paste sub-mode (W5)', () => {
+  it('manual mode shows Edit + CSV sub-mode toggle buttons', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-manual'));
+    expect(screen.getByTestId('hole-wizard-v2-manual-submode-edit')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-manual-submode-csv')).toBeTruthy();
+  });
+
+  it('CSV sub-mode renders a textarea + Parse button', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-manual'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-manual-submode-csv'));
+    expect(screen.getByTestId('hole-wizard-v2-csv-textarea')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-csv-parse')).toBeTruthy();
+  });
+
+  it('pasting + parsing valid CSV shows a preview with the parsed point count', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-manual'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-manual-submode-csv'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-csv-textarea'), {
+      target: { value: '10, 20\n30, 40\n50, 60' },
+    });
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-csv-parse'));
+    expect(screen.getByTestId('hole-wizard-v2-csv-preview')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-csv-parsed-count').textContent).toContain('3');
+  });
+
+  it('Use-as-Manual swaps the parsed points into the manual mode table', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-manual'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-manual-submode-csv'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-csv-textarea'), {
+      target: { value: '10, 20\n30, 40' },
+    });
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-csv-parse'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-csv-use'));
+    // After commit, we flip back to edit mode and see the manual table.
+    expect(screen.getByTestId('hole-wizard-v2-manual-table')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-manual-x-0')).toBeTruthy();
+    expect(screen.getByTestId('hole-wizard-v2-manual-x-1')).toBeTruthy();
+  });
+
+  it('malformed CSV row is reported with line number', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-position'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-position-manual'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-manual-submode-csv'));
+    fireEvent.change(screen.getByTestId('hole-wizard-v2-csv-textarea'), {
+      target: { value: '10, 20\nfoo, bar\n30, 40' },
+    });
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-csv-parse'));
+    expect(screen.getByTestId('hole-wizard-v2-csv-errors')).toBeTruthy();
+    // Error message mentions "line 2"
+    expect(screen.getByTestId('hole-wizard-v2-csv-error-0').textContent).toContain('line 2');
+  });
+});
+
+describe('HoleWizardModalV2 — pipe-tap class picker (W5)', () => {
+  it('pipe-tap class panel is hidden when holeType !== pipeTap', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    expect(screen.queryByTestId('hole-wizard-v2-pipetap-class-panel')).toBeNull();
+  });
+
+  it('pipe-tap class panel appears when Type=pipeTap with 4 buttons', () => {
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-pipeTap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    expect(screen.getByTestId('hole-wizard-v2-pipetap-class-panel')).toBeTruthy();
+    for (const pc of ['NPT', 'NPSM', 'BSP_taper', 'BSP_parallel']) {
+      expect(screen.getByTestId(`hole-wizard-v2-pipetapclass-${pc}`)).toBeTruthy();
+    }
+  });
+
+  it('Apply with pipe-tap NPSM override carries pipeTapClass=NPSM + taperAngle=0', () => {
+    const onApply = vi.fn();
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={onApply} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-pipeTap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-size'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-pipetapclass-NPSM'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    const def = onApply.mock.calls[0][0];
+    expect(def.holeSpecDetail.kind).toBe('pipe_tap');
+    expect(def.holeSpecDetail.pipeTapClass).toBe('NPSM');
+    expect(def.holeSpecDetail.taperAngle).toBe(0);
+  });
+
+  it('default pipe-tap Apply (no override) carries pipeTapClass=NPT + taperAngle≈1.7833', () => {
+    const onApply = vi.fn();
+    render(
+      <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={onApply} forceFlagOpen />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-type-pipeTap'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-apply'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    const def = onApply.mock.calls[0][0];
+    expect(def.holeSpecDetail.pipeTapClass).toBe('NPT');
+    expect(def.holeSpecDetail.taperAngle).toBeCloseTo(1.7833, 4);
+  });
+});

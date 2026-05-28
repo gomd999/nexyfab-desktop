@@ -28,6 +28,7 @@ import {
 } from './holeStandards';
 import {
   createLinearArrayDefaults,
+  createLinear2DArrayDefaults,
   createCircularArrayDefaults,
   createRectArrayDefaults,
   createManualArrayDefaults,
@@ -42,9 +43,16 @@ import {
   type HoleKind,
   type HoleSpec,
   type HoleStandardRef,
+  type PipeTapHoleSpec,
   type TerminationKind,
   type TerminationParams,
 } from './holeArray';
+import {
+  CSV_PASTE_MAX_POINTS,
+  csvPointsToManualPoints,
+  parseCsvPaste,
+  type CsvParseResult,
+} from './csvPaste';
 import { computeHoleSectionSvg, type SvgElement } from './holeSectionSvg';
 import {
   evaluateTapBottomRisk,
@@ -179,6 +187,37 @@ type Dict = {
   prevPipeStandard: string;
   prevPipeSizeKey: string;
   prevEngagementDepth: string;
+  /** W5 — linear2D pattern. */
+  positionKindLinear2D: string;
+  fDxRow: string;
+  fDyRow: string;
+  fDxCol: string;
+  fDyCol: string;
+  /** W5 — circular partialAngle + direction. */
+  fPartialAngle: string;
+  fDirection: string;
+  directionCw: string;
+  directionCcw: string;
+  /** W5 — pipe-tap class picker + taper. */
+  pipeTapClassLabel: string;
+  pipeTapClassNPT: string;
+  pipeTapClassNPSM: string;
+  pipeTapClassBSPTaper: string;
+  pipeTapClassBSPParallel: string;
+  taperAngleLabel: string;
+  prevTaperAngle: string;
+  prevPipeTapClass: string;
+  /** W5 — CSV paste sub-mode. */
+  positionSubModeManualEdit: string;
+  positionSubModeCsvPaste: string;
+  csvPlaceholder: string;
+  csvParseBtn: string;
+  csvUseAsManualBtn: string;
+  csvParsedSummary: (n: number) => string;
+  csvErrorCount: (n: number) => string;
+  csvBboxLine: (w: number, h: number) => string;
+  csvDelimiterLine: (d: string) => string;
+  csvTooManyPoints: (cap: number) => string;
 };
 
 const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
@@ -263,6 +302,33 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     prevPipeStandard: '파이프 규격',
     prevPipeSizeKey: '파이프 사이즈',
     prevEngagementDepth: '체결 깊이',
+    positionKindLinear2D: '2D 격자',
+    fDxRow: '행 dX',
+    fDyRow: '행 dY',
+    fDxCol: '열 dX',
+    fDyCol: '열 dY',
+    fPartialAngle: '부분 각도 (°)',
+    fDirection: '방향',
+    directionCw: '시계',
+    directionCcw: '반시계',
+    pipeTapClassLabel: '파이프 탭 클래스',
+    pipeTapClassNPT: 'NPT (테이퍼)',
+    pipeTapClassNPSM: 'NPSM (평행)',
+    pipeTapClassBSPTaper: 'BSP 테이퍼',
+    pipeTapClassBSPParallel: 'BSP 평행',
+    taperAngleLabel: '테이퍼 반각 (°)',
+    prevTaperAngle: '테이퍼 반각',
+    prevPipeTapClass: '파이프 탭 클래스',
+    positionSubModeManualEdit: '직접 편집',
+    positionSubModeCsvPaste: 'CSV 붙여넣기',
+    csvPlaceholder: 'x, y[, 직경, 라벨]\n예: 10, 20, 5, A1\n     30, 40\n     50, 60, 6',
+    csvParseBtn: '파싱',
+    csvUseAsManualBtn: '수동 모드로 사용',
+    csvParsedSummary: (n: number) => `${n}개 점 파싱됨`,
+    csvErrorCount: (n: number) => `${n}개 오류`,
+    csvBboxLine: (w: number, h: number) => `범위 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    csvDelimiterLine: (d: string) => `구분자: ${d === '\t' ? 'TAB' : d}`,
+    csvTooManyPoints: (cap: number) => `최대 ${cap}개를 초과한 행은 무시됨`,
   },
   en: {
     wizardTitle: 'Hole Wizard (V2)',
@@ -345,6 +411,33 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     prevPipeStandard: 'Pipe standard',
     prevPipeSizeKey: 'Pipe size',
     prevEngagementDepth: 'Engagement depth',
+    positionKindLinear2D: 'Linear 2D',
+    fDxRow: 'Row dX',
+    fDyRow: 'Row dY',
+    fDxCol: 'Col dX',
+    fDyCol: 'Col dY',
+    fPartialAngle: 'Partial angle (°)',
+    fDirection: 'Direction',
+    directionCw: 'CW',
+    directionCcw: 'CCW',
+    pipeTapClassLabel: 'Pipe-tap class',
+    pipeTapClassNPT: 'NPT (taper)',
+    pipeTapClassNPSM: 'NPSM (parallel)',
+    pipeTapClassBSPTaper: 'BSP taper',
+    pipeTapClassBSPParallel: 'BSP parallel',
+    taperAngleLabel: 'Taper half-angle (°)',
+    prevTaperAngle: 'Taper half-angle',
+    prevPipeTapClass: 'Pipe-tap class',
+    positionSubModeManualEdit: 'Edit',
+    positionSubModeCsvPaste: 'CSV paste',
+    csvPlaceholder: 'x, y[, diameter, label]\nex:  10, 20, 5, A1\n     30, 40\n     50, 60, 6',
+    csvParseBtn: 'Parse',
+    csvUseAsManualBtn: 'Use as Manual',
+    csvParsedSummary: (n: number) => `${n} point${n === 1 ? '' : 's'} parsed`,
+    csvErrorCount: (n: number) => `${n} error${n === 1 ? '' : 's'}`,
+    csvBboxLine: (w: number, h: number) => `bbox ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    csvDelimiterLine: (d: string) => `delimiter: ${d === '\t' ? 'TAB' : d}`,
+    csvTooManyPoints: (cap: number) => `Rows past ${cap} ignored`,
   },
   ja: {
     wizardTitle: 'ホールウィザード (V2)',
@@ -427,6 +520,33 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     prevPipeStandard: 'パイプ規格',
     prevPipeSizeKey: 'パイプサイズ',
     prevEngagementDepth: '締結深さ',
+    positionKindLinear2D: '2D 格子',
+    fDxRow: '行 dX',
+    fDyRow: '行 dY',
+    fDxCol: '列 dX',
+    fDyCol: '列 dY',
+    fPartialAngle: '部分角 (°)',
+    fDirection: '方向',
+    directionCw: '時計回り',
+    directionCcw: '反時計回り',
+    pipeTapClassLabel: 'パイプタップクラス',
+    pipeTapClassNPT: 'NPT (テーパー)',
+    pipeTapClassNPSM: 'NPSM (平行)',
+    pipeTapClassBSPTaper: 'BSP テーパー',
+    pipeTapClassBSPParallel: 'BSP 平行',
+    taperAngleLabel: 'テーパー半角 (°)',
+    prevTaperAngle: 'テーパー半角',
+    prevPipeTapClass: 'パイプタップクラス',
+    positionSubModeManualEdit: '編集',
+    positionSubModeCsvPaste: 'CSV 貼付',
+    csvPlaceholder: 'x, y[, 直径, ラベル]\n例: 10, 20, 5, A1\n     30, 40\n     50, 60, 6',
+    csvParseBtn: '解析',
+    csvUseAsManualBtn: '手動モードへ',
+    csvParsedSummary: (n: number) => `${n} 点 解析済`,
+    csvErrorCount: (n: number) => `${n} エラー`,
+    csvBboxLine: (w: number, h: number) => `範囲 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    csvDelimiterLine: (d: string) => `区切り: ${d === '\t' ? 'TAB' : d}`,
+    csvTooManyPoints: (cap: number) => `${cap} 行を超える行は無視`,
   },
   zh: {
     wizardTitle: '孔向导 (V2)',
@@ -509,6 +629,33 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     prevPipeStandard: '管螺纹规格',
     prevPipeSizeKey: '管螺纹尺寸',
     prevEngagementDepth: '啮合深度',
+    positionKindLinear2D: '2D 网格',
+    fDxRow: '行 dX',
+    fDyRow: '行 dY',
+    fDxCol: '列 dX',
+    fDyCol: '列 dY',
+    fPartialAngle: '局部角度 (°)',
+    fDirection: '方向',
+    directionCw: '顺时针',
+    directionCcw: '逆时针',
+    pipeTapClassLabel: '管螺纹等级',
+    pipeTapClassNPT: 'NPT (锥形)',
+    pipeTapClassNPSM: 'NPSM (平行)',
+    pipeTapClassBSPTaper: 'BSP 锥形',
+    pipeTapClassBSPParallel: 'BSP 平行',
+    taperAngleLabel: '锥度半角 (°)',
+    prevTaperAngle: '锥度半角',
+    prevPipeTapClass: '管螺纹等级',
+    positionSubModeManualEdit: '编辑',
+    positionSubModeCsvPaste: 'CSV 粘贴',
+    csvPlaceholder: 'x, y[, 直径, 标签]\n例: 10, 20, 5, A1\n     30, 40\n     50, 60, 6',
+    csvParseBtn: '解析',
+    csvUseAsManualBtn: '使用为手动',
+    csvParsedSummary: (n: number) => `${n} 个点已解析`,
+    csvErrorCount: (n: number) => `${n} 个错误`,
+    csvBboxLine: (w: number, h: number) => `范围 ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    csvDelimiterLine: (d: string) => `分隔符: ${d === '\t' ? 'TAB' : d}`,
+    csvTooManyPoints: (cap: number) => `超过 ${cap} 行被忽略`,
   },
   es: {
     wizardTitle: 'Asistente de Hole (V2)',
@@ -591,6 +738,33 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     prevPipeStandard: 'Estándar de tubo',
     prevPipeSizeKey: 'Tamaño de tubo',
     prevEngagementDepth: 'Profundidad de engrane',
+    positionKindLinear2D: 'Lineal 2D',
+    fDxRow: 'Fila dX',
+    fDyRow: 'Fila dY',
+    fDxCol: 'Col dX',
+    fDyCol: 'Col dY',
+    fPartialAngle: 'Ángulo parcial (°)',
+    fDirection: 'Dirección',
+    directionCw: 'CW',
+    directionCcw: 'CCW',
+    pipeTapClassLabel: 'Clase de rosca de tubo',
+    pipeTapClassNPT: 'NPT (cónico)',
+    pipeTapClassNPSM: 'NPSM (paralelo)',
+    pipeTapClassBSPTaper: 'BSP cónico',
+    pipeTapClassBSPParallel: 'BSP paralelo',
+    taperAngleLabel: 'Semiángulo cónico (°)',
+    prevTaperAngle: 'Semiángulo cónico',
+    prevPipeTapClass: 'Clase de rosca de tubo',
+    positionSubModeManualEdit: 'Editar',
+    positionSubModeCsvPaste: 'Pegar CSV',
+    csvPlaceholder: 'x, y[, diámetro, etiqueta]\nej: 10, 20, 5, A1\n     30, 40\n     50, 60, 6',
+    csvParseBtn: 'Parsear',
+    csvUseAsManualBtn: 'Usar como manual',
+    csvParsedSummary: (n: number) => `${n} ${n === 1 ? 'punto' : 'puntos'} parseados`,
+    csvErrorCount: (n: number) => `${n} ${n === 1 ? 'error' : 'errores'}`,
+    csvBboxLine: (w: number, h: number) => `bbox ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    csvDelimiterLine: (d: string) => `delimitador: ${d === '\t' ? 'TAB' : d}`,
+    csvTooManyPoints: (cap: number) => `Filas después de ${cap} ignoradas`,
   },
   ar: {
     wizardTitle: 'معالج الفتحات (V2)',
@@ -673,6 +847,33 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     prevPipeStandard: 'معيار الأنبوب',
     prevPipeSizeKey: 'حجم الأنبوب',
     prevEngagementDepth: 'عمق التشابك',
+    positionKindLinear2D: 'شبكة ثنائية',
+    fDxRow: 'صف dX',
+    fDyRow: 'صف dY',
+    fDxCol: 'عمود dX',
+    fDyCol: 'عمود dY',
+    fPartialAngle: 'زاوية جزئية (°)',
+    fDirection: 'الاتجاه',
+    directionCw: 'باتجاه الساعة',
+    directionCcw: 'عكس عقارب الساعة',
+    pipeTapClassLabel: 'فئة حلزون الأنبوب',
+    pipeTapClassNPT: 'NPT (مخروطي)',
+    pipeTapClassNPSM: 'NPSM (موازٍ)',
+    pipeTapClassBSPTaper: 'BSP مخروطي',
+    pipeTapClassBSPParallel: 'BSP موازٍ',
+    taperAngleLabel: 'نصف زاوية الميل (°)',
+    prevTaperAngle: 'نصف زاوية الميل',
+    prevPipeTapClass: 'فئة حلزون الأنبوب',
+    positionSubModeManualEdit: 'تحرير',
+    positionSubModeCsvPaste: 'لصق CSV',
+    csvPlaceholder: 'x, y[, القطر, تسمية]\n10, 20, 5, A1\n30, 40\n50, 60, 6',
+    csvParseBtn: 'تحليل',
+    csvUseAsManualBtn: 'استخدم كيدوي',
+    csvParsedSummary: (n: number) => `${n} نقطة محللة`,
+    csvErrorCount: (n: number) => `${n} خطأ`,
+    csvBboxLine: (w: number, h: number) => `النطاق ${w.toFixed(1)} × ${h.toFixed(1)} mm`,
+    csvDelimiterLine: (d: string) => `المحدّد: ${d === '\t' ? 'TAB' : d}`,
+    csvTooManyPoints: (cap: number) => `تم تجاهل الصفوف بعد ${cap}`,
   },
 };
 
@@ -714,6 +915,7 @@ const TERMINATION_KINDS: ReadonlyArray<TerminationKind> = [
 
 const POSITION_KINDS: ReadonlyArray<HoleArrayKind> = [
   'linear',
+  'linear2D',
   'circular',
   'rect',
   'fromSketch',
@@ -805,6 +1007,9 @@ export default function HoleWizardModalV2({
       case 'linear':
         seeded = createLinearArrayDefaults('wizard-array', currentHoleSpec);
         break;
+      case 'linear2D':
+        seeded = createLinear2DArrayDefaults('wizard-array', currentHoleSpec);
+        break;
       case 'circular':
         seeded = createCircularArrayDefaults('wizard-array', currentHoleSpec);
         break;
@@ -825,6 +1030,11 @@ export default function HoleWizardModalV2({
   // between '6H'/'6G' (ISO) or '2B'/'3B' (UTS). Empty = use the resolver's
   // default, which picks based on series.
   const [tapClassOverride, setTapClassOverride] = useState<'' | '6H' | '6G' | '2B' | '3B'>('');
+
+  // ── W5 — pipe-tap class override. When holeType=pipeTap the user can flip
+  // between NPT (tapered), NPSM (parallel), BSP taper, BSP parallel. Empty
+  // = inherit from the resolver, which picks from series.
+  const [pipeTapClassOverride, setPipeTapClassOverride] = useState<'' | NonNullable<PipeTapHoleSpec['pipeTapClass']>>('');
 
   // ── Termination tab state. ───────────────────────────────────────────────
   // We hold the termination + params separately from arrayDef so flipping
@@ -847,8 +1057,19 @@ export default function HoleWizardModalV2({
     if (base.kind === 'tap' && tapClassOverride !== '') {
       return { ...base, tapClass: tapClassOverride };
     }
+    if (base.kind === 'pipe_tap' && pipeTapClassOverride !== '') {
+      // Derive a taper angle from the chosen class — parallel classes get 0,
+      // tapered classes inherit the 1°47′ default unless the resolver already
+      // produced a different value.
+      const taperAngle =
+        pipeTapClassOverride === 'BSP_parallel' ||
+        pipeTapClassOverride === 'NPSM'
+          ? 0
+          : base.taperAngle ?? 1.7833;
+      return { ...base, pipeTapClass: pipeTapClassOverride, taperAngle };
+    }
     return base;
-  }, [holeType, selectedRow, currentHoleSpec, tapClassOverride]);
+  }, [holeType, selectedRow, currentHoleSpec, tapClassOverride, pipeTapClassOverride]);
 
   // Build the termination-params bag from the four-piece termination state.
   const terminationParams: TerminationParams = useMemo(() => {
@@ -981,6 +1202,7 @@ export default function HoleWizardModalV2({
 
   const positionKindLabels: Record<HoleArrayKind, string> = {
     linear: t.positionKindLinear,
+    linear2D: t.positionKindLinear2D,
     circular: t.positionKindCircular,
     rect: t.positionKindRect,
     fromSketch: t.positionKindFromSketch,
@@ -1210,6 +1432,45 @@ export default function HoleWizardModalV2({
               </div>
             )}
 
+            {/* W5 — Pipe-tap class picker (visible only when holeType=pipeTap). */}
+            {holeType === 'pipeTap' && (
+              <div
+                data-testid="hole-wizard-v2-pipetap-class-panel"
+                style={{ marginTop: 8 }}
+              >
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>
+                  {t.pipeTapClassLabel}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                  {(['NPT', 'NPSM', 'BSP_taper', 'BSP_parallel'] as const).map((pc) => {
+                    const label =
+                      pc === 'NPT' ? t.pipeTapClassNPT
+                      : pc === 'NPSM' ? t.pipeTapClassNPSM
+                      : pc === 'BSP_taper' ? t.pipeTapClassBSPTaper
+                      : t.pipeTapClassBSPParallel;
+                    return (
+                      <button
+                        key={pc}
+                        data-testid={`hole-wizard-v2-pipetapclass-${pc}`}
+                        onClick={() => setPipeTapClassOverride(pc)}
+                        style={{
+                          padding: '6px 4px',
+                          background: pipeTapClassOverride === pc ? '#0ea5e9' : 'var(--nx-border-strong)',
+                          color: 'var(--nx-panel-2)',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontSize: 11,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Resolved row preview */}
             {selectedRow && (
               <div
@@ -1248,7 +1509,7 @@ export default function HoleWizardModalV2({
         {activeTab === 'position' && (
           <div data-testid="hole-wizard-v2-panel-position">
             {/* Position-kind picker */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, marginBottom: 10 }}>
               {POSITION_KINDS.map((pk) => (
                 <button
                   key={pk}
@@ -1611,26 +1872,122 @@ function PositionKindEditor({ def, onChange, labels, inputStyle, availableSketch
   if (def.params.kind === 'circular') {
     const d = def.params.data;
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+          <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fCenterX}
+            <input type="number" data-testid="hole-wizard-v2-circular-centerX" value={d.centerX} onChange={(e) => patch('circular', { centerX: Number(e.target.value) })} style={inputStyle} />
+          </label>
+          <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fCenterY}
+            <input type="number" data-testid="hole-wizard-v2-circular-centerY" value={d.centerY} onChange={(e) => patch('circular', { centerY: Number(e.target.value) })} style={inputStyle} />
+          </label>
+          <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fRadius}
+            <input type="number" data-testid="hole-wizard-v2-circular-radius" value={d.radius} onChange={(e) => patch('circular', { radius: Number(e.target.value) })} style={inputStyle} />
+          </label>
+          <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fStartAngle}
+            <input type="number" data-testid="hole-wizard-v2-circular-startAngle" value={d.startAngle} step={0.1} onChange={(e) => patch('circular', { startAngle: Number(e.target.value) })} style={inputStyle} />
+          </label>
+          <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fCount}
+            <input type="number" data-testid="hole-wizard-v2-circular-count" min={1} step={1} value={d.count} onChange={(e) => patch('circular', { count: Number(e.target.value) })} style={inputStyle} />
+          </label>
+        </div>
+        {/* W5 — partial-arc sweep + direction. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 8 }}>
+          <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fPartialAngle}
+            <input
+              type="number"
+              data-testid="hole-wizard-v2-circular-partialAngle"
+              value={d.partialAngle ?? 0}
+              min={0}
+              max={360}
+              step={5}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                patch('circular', {
+                  partialAngle: v <= 0 || v >= 360 ? undefined : v,
+                });
+              }}
+              style={inputStyle}
+            />
+          </label>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+            {labels.fDirection}
+            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+              {(['ccw', 'cw'] as const).map((dir) => (
+                <button
+                  key={dir}
+                  data-testid={`hole-wizard-v2-circular-direction-${dir}`}
+                  type="button"
+                  onClick={() => patch('circular', { direction: dir })}
+                  style={{
+                    flex: 1,
+                    padding: '6px 8px',
+                    background: (d.direction ?? 'ccw') === dir ? '#0ea5e9' : 'var(--nx-border-strong)',
+                    color: 'var(--nx-panel-2)',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                  }}
+                >
+                  {dir === 'ccw' ? labels.directionCcw : labels.directionCw}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (def.params.kind === 'linear2D') {
+    const d = def.params.data;
+    return (
+      <div data-testid="hole-wizard-v2-linear2D-panel" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
         <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-          {labels.fCenterX}
-          <input type="number" data-testid="hole-wizard-v2-circular-centerX" value={d.centerX} onChange={(e) => patch('circular', { centerX: Number(e.target.value) })} style={inputStyle} />
+          {labels.fStartX}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-startX" value={d.startX}
+            onChange={(e) => patch('linear2D', { startX: Number(e.target.value) })} style={inputStyle} />
         </label>
         <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-          {labels.fCenterY}
-          <input type="number" data-testid="hole-wizard-v2-circular-centerY" value={d.centerY} onChange={(e) => patch('circular', { centerY: Number(e.target.value) })} style={inputStyle} />
+          {labels.fStartY}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-startY" value={d.startY}
+            onChange={(e) => patch('linear2D', { startY: Number(e.target.value) })} style={inputStyle} />
         </label>
         <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-          {labels.fRadius}
-          <input type="number" data-testid="hole-wizard-v2-circular-radius" value={d.radius} onChange={(e) => patch('circular', { radius: Number(e.target.value) })} style={inputStyle} />
+          {labels.fRows}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-rows" min={1} step={1} value={d.rows}
+            onChange={(e) => patch('linear2D', { rows: Number(e.target.value) })} style={inputStyle} />
         </label>
         <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-          {labels.fStartAngle}
-          <input type="number" data-testid="hole-wizard-v2-circular-startAngle" value={d.startAngle} step={0.1} onChange={(e) => patch('circular', { startAngle: Number(e.target.value) })} style={inputStyle} />
+          {labels.fCols}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-cols" min={1} step={1} value={d.cols}
+            onChange={(e) => patch('linear2D', { cols: Number(e.target.value) })} style={inputStyle} />
         </label>
         <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-          {labels.fCount}
-          <input type="number" data-testid="hole-wizard-v2-circular-count" min={1} step={1} value={d.count} onChange={(e) => patch('circular', { count: Number(e.target.value) })} style={inputStyle} />
+          {labels.fDxRow}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-dxRow" value={d.dxRow}
+            onChange={(e) => patch('linear2D', { dxRow: Number(e.target.value) })} style={inputStyle} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+          {labels.fDyRow}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-dyRow" value={d.dyRow}
+            onChange={(e) => patch('linear2D', { dyRow: Number(e.target.value) })} style={inputStyle} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+          {labels.fDxCol}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-dxCol" value={d.dxCol}
+            onChange={(e) => patch('linear2D', { dxCol: Number(e.target.value) })} style={inputStyle} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+          {labels.fDyCol}
+          <input type="number" data-testid="hole-wizard-v2-linear2D-dyCol" value={d.dyCol}
+            onChange={(e) => patch('linear2D', { dyCol: Number(e.target.value) })} style={inputStyle} />
         </label>
       </div>
     );
@@ -1746,45 +2103,215 @@ function PositionKindEditor({ def, onChange, labels, inputStyle, availableSketch
     );
   }
 
-  // Manual — render a compact table. Wave 2 W2 ships read-only with a
-  // single seed row; the full add/remove + CSV paste UI lands in W4 polish.
+  // Manual — render compact table + CSV-paste sub-mode (W5 — C5).
   if (def.params.kind === 'manual') {
-    const d = def.params.data;
     return (
-      <div data-testid="hole-wizard-v2-manual-table" style={{ fontFamily: 'monospace', fontSize: 12 }}>
-        {d.points.map((pt, i) => (
-          <div key={pt.id ?? i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-            <span style={{ minWidth: 24, color: 'var(--nx-text-2)' }}>#{i + 1}</span>
-            <input
-              type="number"
-              data-testid={`hole-wizard-v2-manual-x-${i}`}
-              value={pt.x}
-              onChange={(e) => {
-                const next = [...d.points];
-                next[i] = { ...next[i], x: Number(e.target.value) };
-                patch('manual', { points: next });
-              }}
-              style={inputStyle}
-            />
-            <input
-              type="number"
-              data-testid={`hole-wizard-v2-manual-y-${i}`}
-              value={pt.y}
-              onChange={(e) => {
-                const next = [...d.points];
-                next[i] = { ...next[i], y: Number(e.target.value) };
-                patch('manual', { points: next });
-              }}
-              style={inputStyle}
-            />
-          </div>
-        ))}
-      </div>
+      <ManualEditor
+        def={def}
+        labels={labels}
+        inputStyle={inputStyle}
+        onPatch={(points) => patch('manual', { points })}
+      />
     );
   }
 
   // Exhaustive fallback — should be unreachable.
   return null;
+}
+
+// ─── Manual editor + CSV paste sub-mode (W5 — C5) ──────────────────────────
+
+interface ManualEditorProps {
+  def: Extract<HoleArrayDefinition, { kind: 'manual' }> | HoleArrayDefinition;
+  labels: Dict;
+  inputStyle: React.CSSProperties;
+  onPatch: (points: Array<{ id?: string; x: number; y: number }>) => void;
+}
+
+function ManualEditor({ def, labels, inputStyle, onPatch }: ManualEditorProps) {
+  const [subMode, setSubMode] = useState<'edit' | 'csv'>('edit');
+  const [csvText, setCsvText] = useState('');
+  const [parsed, setParsed] = useState<CsvParseResult | null>(null);
+
+  if (def.params.kind !== 'manual') return null;
+  const d = def.params.data;
+
+  const subModeBtnStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: '6px 10px',
+    background: active ? '#0ea5e9' : 'var(--nx-border-strong)',
+    color: 'var(--nx-panel-2)',
+    border: 'none',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: 12,
+  });
+
+  return (
+    <div data-testid="hole-wizard-v2-manual-panel">
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        <button
+          data-testid="hole-wizard-v2-manual-submode-edit"
+          type="button"
+          onClick={() => setSubMode('edit')}
+          style={subModeBtnStyle(subMode === 'edit')}
+        >
+          {labels.positionSubModeManualEdit}
+        </button>
+        <button
+          data-testid="hole-wizard-v2-manual-submode-csv"
+          type="button"
+          onClick={() => setSubMode('csv')}
+          style={subModeBtnStyle(subMode === 'csv')}
+        >
+          {labels.positionSubModeCsvPaste}
+        </button>
+      </div>
+
+      {subMode === 'edit' && (
+        <div data-testid="hole-wizard-v2-manual-table" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+          {d.points.map((pt, i) => (
+            <div key={pt.id ?? i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+              <span style={{ minWidth: 24, color: 'var(--nx-text-2)' }}>#{i + 1}</span>
+              <input
+                type="number"
+                data-testid={`hole-wizard-v2-manual-x-${i}`}
+                value={pt.x}
+                onChange={(e) => {
+                  const next = [...d.points];
+                  next[i] = { ...next[i], x: Number(e.target.value) };
+                  onPatch(next);
+                }}
+                style={inputStyle}
+              />
+              <input
+                type="number"
+                data-testid={`hole-wizard-v2-manual-y-${i}`}
+                value={pt.y}
+                onChange={(e) => {
+                  const next = [...d.points];
+                  next[i] = { ...next[i], y: Number(e.target.value) };
+                  onPatch(next);
+                }}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {subMode === 'csv' && (
+        <div data-testid="hole-wizard-v2-csv-panel">
+          <textarea
+            data-testid="hole-wizard-v2-csv-textarea"
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            placeholder={labels.csvPlaceholder}
+            rows={6}
+            style={{
+              ...inputStyle,
+              fontFamily: 'monospace',
+              fontSize: 12,
+              minHeight: 110,
+              resize: 'vertical',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button
+              data-testid="hole-wizard-v2-csv-parse"
+              type="button"
+              onClick={() => setParsed(parseCsvPaste(csvText))}
+              style={{
+                padding: '6px 10px',
+                background: 'var(--nx-border-strong)',
+                color: 'var(--nx-panel-2)',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              {labels.csvParseBtn}
+            </button>
+            <button
+              data-testid="hole-wizard-v2-csv-use"
+              type="button"
+              disabled={!parsed || parsed.points.length === 0}
+              onClick={() => {
+                if (!parsed) return;
+                const manualPts = csvPointsToManualPoints(def.id, parsed.points);
+                onPatch(manualPts);
+                setSubMode('edit');
+              }}
+              style={{
+                padding: '6px 10px',
+                background:
+                  parsed && parsed.points.length > 0
+                    ? 'var(--nx-accent)'
+                    : 'var(--nx-border-strong)',
+                color: 'var(--nx-text)',
+                border: 'none',
+                borderRadius: 4,
+                cursor:
+                  parsed && parsed.points.length > 0 ? 'pointer' : 'not-allowed',
+                fontSize: 12,
+                opacity: parsed && parsed.points.length > 0 ? 1 : 0.6,
+              }}
+            >
+              {labels.csvUseAsManualBtn}
+            </button>
+          </div>
+          {parsed && (
+            <div
+              data-testid="hole-wizard-v2-csv-preview"
+              style={{
+                marginTop: 8,
+                padding: 10,
+                background: 'var(--nx-bg)',
+                border: '1px solid #374151',
+                borderRadius: 6,
+                fontSize: 12,
+                color: '#d1d5db',
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              <div data-testid="hole-wizard-v2-csv-parsed-count">
+                {labels.csvParsedSummary(parsed.points.length)}
+              </div>
+              {parsed.bbox && (
+                <div data-testid="hole-wizard-v2-csv-bbox">
+                  {labels.csvBboxLine(
+                    parsed.bbox.maxX - parsed.bbox.minX,
+                    parsed.bbox.maxY - parsed.bbox.minY,
+                  )}
+                </div>
+              )}
+              <div data-testid="hole-wizard-v2-csv-delimiter">
+                {labels.csvDelimiterLine(parsed.delimiter)}
+              </div>
+              {parsed.errors.length > 0 && (
+                <div data-testid="hole-wizard-v2-csv-errors" style={{ marginTop: 6 }}>
+                  <div style={{ color: '#fbbf24' }}>
+                    {labels.csvErrorCount(parsed.errors.length)}
+                  </div>
+                  {parsed.errors.slice(0, 10).map((err, idx) => (
+                    <div
+                      key={idx}
+                      data-testid={`hole-wizard-v2-csv-error-${idx}`}
+                      style={{ color: '#fcd34d', fontSize: 11 }}
+                    >
+                      line {err.line}: {err.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Preview panel (Tab 5) ─────────────────────────────────────────────────
@@ -1868,6 +2395,18 @@ function PreviewPanel({ spec, term, positionCount, labels }: PreviewPanelProps) 
       label: labels.prevEngagementDepth,
       value: `${spec.engagementDepth} mm`,
     });
+    if (spec.pipeTapClass) {
+      summaryRows.push({
+        label: labels.prevPipeTapClass,
+        value: spec.pipeTapClass,
+      });
+    }
+    if (spec.taperAngle !== undefined) {
+      summaryRows.push({
+        label: labels.prevTaperAngle,
+        value: `${spec.taperAngle}°`,
+      });
+    }
   }
   summaryRows.push({
     label: labels.tabTermination,

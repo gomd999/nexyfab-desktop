@@ -25,6 +25,12 @@
  */
 
 import type { HoleStandardSeries } from './holeStandards';
+import {
+  expandLinearPattern,
+  expandLinear2DPattern,
+  expandCircularPattern,
+  expandRectPattern,
+} from './patternHelpers';
 
 // ─── Reference shapes ──────────────────────────────────────────────────────
 
@@ -143,12 +149,28 @@ export interface PipeTapHoleSpec {
   kind: 'pipe_tap';
   /** Minor (tap) diameter at gauging plane (mm). */
   diameter: number;
-  /** Pipe-thread standard. */
+  /** Pipe-thread standard (legacy/canonical). */
   pipeStandard: 'NPT' | 'BSPT' | 'BSPP';
   /** Pipe size key, e.g. '1/4-18'. */
   pipeSizeKey: string;
   /** Effective thread engagement depth (mm). */
   engagementDepth: number;
+  /**
+   * W5 — Optional pipe-tap class. Co-exists with `pipeStandard` for the
+   * future cases that want to distinguish parallel (NPSM / BSPP) from
+   * tapered (NPT / BSPT) explicitly. Wizards default this from the
+   * pipeStandard so existing fixtures stay unchanged.
+   */
+  pipeTapClass?: 'NPT' | 'NPSM' | 'BSP_taper' | 'BSP_parallel';
+  /**
+   * W5 — Optional taper half-angle (degrees, half-angle of the cone the
+   * SVG renders). Default values per standard:
+   *   - NPT / NPSM     → 1.7833 deg (1°47′)
+   *   - BSPT / BSPP    → 1.7833 deg (1°47′) for taper; 0 for parallel
+   * Pure data — worker uses this for cosmetic taper rendering once the
+   * /occt/op/hole/pipe-tap endpoint lands (Wave 1 task #31).
+   */
+  taperAngle?: number;
 }
 
 /** Discriminated union of all six hole-spec variants. */
@@ -220,6 +242,11 @@ export interface LinearArrayParams {
  * Circular pattern: count holes on a circle of `radius` around (centerX,
  * centerY). `startAngle` is the angle (radians) of position 0; subsequent
  * positions step by `2π / count` counterclockwise (right-handed XY).
+ *
+ * W5 — optional `partialAngle` (degrees) lets the caller author a partial
+ * arc (e.g. 270°) instead of a full circle. When set, the first and last
+ * position land on the arc endpoints. `direction` flips the sign of the
+ * angular step (default 'ccw' matches the legacy behaviour).
  */
 export interface CircularArrayParams {
   centerX: number;
@@ -227,6 +254,31 @@ export interface CircularArrayParams {
   radius: number;
   count: number;
   startAngle: number;
+  /** Optional sweep magnitude (degrees). Omit/0/360 → full revolution. */
+  partialAngle?: number;
+  /** Step sign. Default 'ccw' (right-handed XY). */
+  direction?: 'cw' | 'ccw';
+}
+
+/**
+ * Linear-2D pattern (W5): rows × cols grid driven by two independent step
+ * vectors. The (r, c) position is:
+ *   x = startX + c * dxCol + r * dxRow
+ *   y = startY + c * dyCol + r * dyRow
+ *
+ * Distinct from `rect`, which is the axis-aligned single-step-per-axis case.
+ * Useful when the wizard wants a sheared / rotated grid without baking a
+ * rotation into the surrounding feature graph.
+ */
+export interface Linear2DArrayParams {
+  startX: number;
+  startY: number;
+  dxRow: number;
+  dyRow: number;
+  dxCol: number;
+  dyCol: number;
+  rows: number;
+  cols: number;
 }
 
 /**
@@ -254,9 +306,10 @@ export interface ManualArrayParams {
   points: Array<{ id?: string; x: number; y: number }>;
 }
 
-/** Discriminator type for the five supported kinds. */
+/** Discriminator type for the supported kinds. */
 export type HoleArrayKind =
   | 'linear'
+  | 'linear2D'
   | 'circular'
   | 'rect'
   | 'fromSketch'
@@ -282,6 +335,7 @@ export interface HoleArrayDefinition {
   /** Parameters discriminate by `kind`. Caller-side narrowing required. */
   params:
     | { kind: 'linear'; data: LinearArrayParams }
+    | { kind: 'linear2D'; data: Linear2DArrayParams }
     | { kind: 'circular'; data: CircularArrayParams }
     | { kind: 'rect'; data: RectArrayParams }
     | { kind: 'fromSketch'; data: FromSketchArrayParams }
@@ -680,6 +734,46 @@ export function validateHoleArray(
       }
       break;
     }
+    case 'linear2D': {
+      const p = def.params.data;
+      assertFinite(errors, p.startX, 'params.startX');
+      assertFinite(errors, p.startY, 'params.startY');
+      assertFinite(errors, p.dxRow, 'params.dxRow');
+      assertFinite(errors, p.dyRow, 'params.dyRow');
+      assertFinite(errors, p.dxCol, 'params.dxCol');
+      assertFinite(errors, p.dyCol, 'params.dyCol');
+      validateCount(errors, p.rows, 'params.rows');
+      validateCount(errors, p.cols, 'params.cols');
+      if (
+        Number.isInteger(p.rows) &&
+        Number.isInteger(p.cols) &&
+        p.rows > 0 &&
+        p.cols > 0 &&
+        p.rows * p.cols > HOLE_ARRAY_MAX_COUNT
+      ) {
+        errors.push({
+          code: 'EXCESSIVE_COUNT',
+          message: `rows×cols = ${p.rows * p.cols} exceeds soft cap ${HOLE_ARRAY_MAX_COUNT}`,
+          field: 'params.rows',
+        });
+      }
+      // Degenerate: multi-position grid with both step vectors at the origin
+      // stacks every hole at (startX, startY).
+      if (
+        p.rows * p.cols > 1 &&
+        p.dxRow === 0 &&
+        p.dyRow === 0 &&
+        p.dxCol === 0 &&
+        p.dyCol === 0
+      ) {
+        errors.push({
+          code: 'NEGATIVE_SPACING',
+          message: 'linear2D array with multiple positions has zero row and column step',
+          field: 'params.dxCol',
+        });
+      }
+      break;
+    }
     case 'circular': {
       const p = def.params.data;
       assertFinite(errors, p.centerX, 'params.centerX');
@@ -800,70 +894,71 @@ function clamp(
   );
 }
 
+// Math-kind expansion delegates to the `patternHelpers/` modules (W5 refactor).
+// The thin wrappers here adapt the C2 array-param shapes to the new helper
+// param shapes (kind discriminator added) and preserve the legacy id rule so
+// existing F-HW-01..F-HW-04 fixtures observe identical position lists.
+
 function expandLinear(
   arrayId: string,
   p: LinearArrayParams,
 ): HolePosition[] {
-  const out: HolePosition[] = [];
-  // Defensive: if any param is bad the array short-circuits to empty. The
-  // validator catches this case separately; expansion stays pure.
-  if (!Number.isInteger(p.count) || p.count <= 0) return out;
-  for (let i = 0; i < p.count; i++) {
-    out.push({
-      id: `${arrayId}#lin-${i}`,
-      x: p.startX + i * p.dx,
-      y: p.startY + i * p.dy,
-      source: 'linear',
-    });
-  }
-  return out;
+  return expandLinearPattern(arrayId, {
+    kind: 'linear',
+    startX: p.startX,
+    startY: p.startY,
+    dx: p.dx,
+    dy: p.dy,
+    count: p.count,
+  });
+}
+
+function expandLinear2D(
+  arrayId: string,
+  p: Linear2DArrayParams,
+): HolePosition[] {
+  return expandLinear2DPattern(arrayId, {
+    kind: 'linear2D',
+    startX: p.startX,
+    startY: p.startY,
+    dxRow: p.dxRow,
+    dyRow: p.dyRow,
+    dxCol: p.dxCol,
+    dyCol: p.dyCol,
+    rows: p.rows,
+    cols: p.cols,
+  });
 }
 
 function expandCircular(
   arrayId: string,
   p: CircularArrayParams,
 ): HolePosition[] {
-  const out: HolePosition[] = [];
-  if (!Number.isInteger(p.count) || p.count <= 0) return out;
-  // Step is full revolution / count — gives evenly spaced positions.
-  const step = (2 * Math.PI) / p.count;
-  for (let i = 0; i < p.count; i++) {
-    const theta = p.startAngle + i * step;
-    out.push({
-      id: `${arrayId}#circ-${i}`,
-      x: p.centerX + p.radius * Math.cos(theta),
-      y: p.centerY + p.radius * Math.sin(theta),
-      source: 'circular',
-    });
-  }
-  return out;
+  return expandCircularPattern(arrayId, {
+    kind: 'circular',
+    centerX: p.centerX,
+    centerY: p.centerY,
+    radius: p.radius,
+    count: p.count,
+    startAngle: p.startAngle,
+    partialAngle: p.partialAngle,
+    direction: p.direction,
+  });
 }
 
 function expandRect(
   arrayId: string,
   p: RectArrayParams,
 ): HolePosition[] {
-  const out: HolePosition[] = [];
-  if (
-    !Number.isInteger(p.rows) ||
-    !Number.isInteger(p.cols) ||
-    p.rows <= 0 ||
-    p.cols <= 0
-  ) {
-    return out;
-  }
-  // Row-major: outer = row (Y), inner = col (X). Id suffix `r{row}c{col}`.
-  for (let r = 0; r < p.rows; r++) {
-    for (let c = 0; c < p.cols; c++) {
-      out.push({
-        id: `${arrayId}#rect-r${r}c${c}`,
-        x: p.startX + c * p.stepX,
-        y: p.startY + r * p.stepY,
-        source: 'rect',
-      });
-    }
-  }
-  return out;
+  return expandRectPattern(arrayId, {
+    kind: 'rect',
+    startX: p.startX,
+    startY: p.startY,
+    stepX: p.stepX,
+    stepY: p.stepY,
+    rows: p.rows,
+    cols: p.cols,
+  });
 }
 
 function expandFromSketch(
@@ -920,6 +1015,9 @@ export function expandHoleArray(
     case 'linear':
       positions = expandLinear(def.id, def.params.data);
       break;
+    case 'linear2D':
+      positions = expandLinear2D(def.id, def.params.data);
+      break;
     case 'circular':
       positions = expandCircular(def.id, def.params.data);
       break;
@@ -963,6 +1061,37 @@ export function createLinearArrayDefaults(
     params: {
       kind: 'linear',
       data: { startX: 0, startY: 0, dx: 10, dy: 0, count: 4 },
+    },
+    holeSpec,
+    terminationKind: 'through',
+    terminationParams: { kind: 'through' },
+  };
+}
+
+/**
+ * Default 2D-linear array factory (W5). 2×3 grid with axis-aligned row +
+ * column step vectors — the caller can tilt the grid later by giving
+ * dxRow / dyCol non-zero values.
+ */
+export function createLinear2DArrayDefaults(
+  id: string,
+  holeSpec: HoleStandardRef,
+): HoleArrayDefinition {
+  return {
+    id,
+    kind: 'linear2D',
+    params: {
+      kind: 'linear2D',
+      data: {
+        startX: 0,
+        startY: 0,
+        dxRow: 0,
+        dyRow: 20,
+        dxCol: 20,
+        dyCol: 0,
+        rows: 2,
+        cols: 3,
+      },
     },
     holeSpec,
     terminationKind: 'through',
@@ -1167,13 +1296,28 @@ export function resolveHoleSpec(
         drillTipAngle: DEFAULT_DRILL_TIP_ANGLE,
       };
     }
-    case 'pipe_tap':
+    case 'pipe_tap': {
+      // W5 — derive a pipeTapClass + taperAngle from the catalog series. The
+      // resolver's pipeStandard column is narrower than pipeTapClass (no
+      // NPSM there), so the picker UI can override pipeTapClass to the
+      // parallel variants without re-routing the pipeStandard field.
+      const isBSP = ref.series === 'BSP';
+      const pipeStandard: PipeTapHoleSpec['pipeStandard'] = isBSP ? 'BSPP' : 'NPT';
+      const pipeTapClass: NonNullable<PipeTapHoleSpec['pipeTapClass']> = isBSP
+        ? 'BSP_parallel'
+        : 'NPT';
+      // NPT is tapered 1°47′; BSPP (parallel) gets 0. UI override via the
+      // pipe-tap-class picker may flip this on the fly.
+      const taperAngle = pipeTapClass === 'NPT' ? 1.7833 : 0;
       return {
         kind: 'pipe_tap',
         diameter: tapDrill,
-        pipeStandard: ref.series === 'BSP' ? 'BSPP' : 'NPT',
+        pipeStandard,
         pipeSizeKey: ref.designation || '1/4-18',
         engagementDepth: Math.max(5, tapDrill * 1.5),
+        pipeTapClass,
+        taperAngle,
       };
+    }
   }
 }

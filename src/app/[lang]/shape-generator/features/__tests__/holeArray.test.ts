@@ -3,6 +3,7 @@ import {
   expandHoleArray,
   validateHoleArray,
   createLinearArrayDefaults,
+  createLinear2DArrayDefaults,
   createCircularArrayDefaults,
   createRectArrayDefaults,
   createManualArrayDefaults,
@@ -1075,5 +1076,196 @@ describe('validateHoleArray — termination W3 extensions', () => {
       terminationParams: { kind: 'upToNext' },
     };
     expect(validateHoleArray(def).ok).toBe(true);
+  });
+});
+
+// ─── W5 — linear2D + circular partialAngle + pipe-tap extensions ───────────
+
+describe('expandHoleArray — linear2D (W5)', () => {
+  it('emits rows×cols positions in row-major order', () => {
+    const def = createLinear2DArrayDefaults('arr-1', SPEC);
+    // Defaults: rows=2 cols=3 dxRow=0 dyRow=20 dxCol=20 dyCol=0
+    const pts = expandHoleArray(def);
+    expect(pts).toHaveLength(6);
+    expect(pts.map((p) => [p.x, p.y])).toEqual([
+      [0, 0], [20, 0], [40, 0],
+      [0, 20], [20, 20], [40, 20],
+    ]);
+  });
+
+  it('honours stable linear2D id format', () => {
+    const def = createLinear2DArrayDefaults('arr-1', SPEC);
+    const ids = expandHoleArray(def).map((p) => p.id);
+    expect(ids).toContain('arr-1#lin2d-r0c0');
+    expect(ids).toContain('arr-1#lin2d-r1c2');
+  });
+
+  it('supports a sheared linear2D grid (dxRow != 0)', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinear2DArrayDefaults('arr-1', SPEC),
+      params: {
+        kind: 'linear2D',
+        data: { startX: 0, startY: 0, dxRow: 2, dyRow: 10, dxCol: 10, dyCol: 0, rows: 2, cols: 2 },
+      },
+    };
+    const pts = expandHoleArray(def);
+    expect(pts.map((p) => [p.x, p.y])).toEqual([
+      [0, 0], [10, 0],
+      [2, 10], [12, 10],
+    ]);
+  });
+
+  it('returns empty list when rows=0', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinear2DArrayDefaults('arr-1', SPEC),
+      params: {
+        kind: 'linear2D',
+        data: { startX: 0, startY: 0, dxRow: 0, dyRow: 10, dxCol: 10, dyCol: 0, rows: 0, cols: 3 },
+      },
+    };
+    expect(expandHoleArray(def)).toEqual([]);
+  });
+});
+
+describe('validateHoleArray — linear2D (W5)', () => {
+  it('accepts a default linear2D array', () => {
+    const def = createLinear2DArrayDefaults('arr-1', SPEC);
+    expect(validateHoleArray(def)).toEqual({ ok: true });
+  });
+
+  it('flags ZERO_COUNT on rows=0', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinear2DArrayDefaults('arr-1', SPEC),
+      params: {
+        kind: 'linear2D',
+        data: { startX: 0, startY: 0, dxRow: 0, dyRow: 10, dxCol: 10, dyCol: 0, rows: 0, cols: 3 },
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'ZERO_COUNT')).toBe(true);
+    }
+  });
+
+  it('flags NEGATIVE_SPACING when row + col step are all zero', () => {
+    const def: HoleArrayDefinition = {
+      ...createLinear2DArrayDefaults('arr-1', SPEC),
+      params: {
+        kind: 'linear2D',
+        data: { startX: 0, startY: 0, dxRow: 0, dyRow: 0, dxCol: 0, dyCol: 0, rows: 2, cols: 2 },
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'NEGATIVE_SPACING')).toBe(true);
+    }
+  });
+});
+
+describe('expandHoleArray — circular partialAngle (W5)', () => {
+  it('partialAngle=270 + count=4 lands first + last on arc endpoints', () => {
+    const def: HoleArrayDefinition = {
+      ...createCircularArrayDefaults('arr-1', SPEC),
+      params: {
+        kind: 'circular',
+        data: { centerX: 0, centerY: 0, radius: 10, count: 4, startAngle: 0, partialAngle: 270 },
+      },
+    };
+    const pts = expandHoleArray(def);
+    expect(pts[0].x).toBeCloseTo(10, 6);
+    expect(pts[3].x).toBeCloseTo(0, 6);
+    expect(pts[3].y).toBeCloseTo(-10, 6);
+  });
+
+  it('direction=cw flips the angular step', () => {
+    const def: HoleArrayDefinition = {
+      ...createCircularArrayDefaults('arr-1', SPEC),
+      params: {
+        kind: 'circular',
+        data: { centerX: 0, centerY: 0, radius: 10, count: 4, startAngle: 0, direction: 'cw' },
+      },
+    };
+    const pts = expandHoleArray(def);
+    expect(pts[1].y).toBeCloseTo(-10, 6);
+  });
+});
+
+describe('resolveHoleSpec — pipe-tap class + taperAngle (W5)', () => {
+  it('NPT series resolves to pipeTapClass=NPT + taper=1.7833°', () => {
+    const ref: HoleStandardRef = { series: 'NPT', designation: '1/4-18' };
+    const row: CatalogRowLite = {
+      name: '1/4-18', nominal: 0.25, pitch: undefined, tpi: 18, tapDrill: 11.1,
+      clearance: 11.4, counterboreDia: 18, counterboreDepth: 5,
+      countersinkDia: 18, countersinkAngle: 90,
+    };
+    const spec = resolveHoleSpec('pipe_tap', ref, row);
+    expect(spec.kind).toBe('pipe_tap');
+    if (spec.kind === 'pipe_tap') {
+      expect(spec.pipeStandard).toBe('NPT');
+      expect(spec.pipeTapClass).toBe('NPT');
+      expect(spec.taperAngle).toBeCloseTo(1.7833, 4);
+    }
+  });
+
+  it('BSP series resolves to pipeTapClass=BSP_parallel + taper=0', () => {
+    const ref: HoleStandardRef = { series: 'BSP', designation: 'G1/4' };
+    const spec = resolveHoleSpec('pipe_tap', ref, undefined);
+    expect(spec.kind).toBe('pipe_tap');
+    if (spec.kind === 'pipe_tap') {
+      expect(spec.pipeStandard).toBe('BSPP');
+      expect(spec.pipeTapClass).toBe('BSP_parallel');
+      expect(spec.taperAngle).toBe(0);
+    }
+  });
+
+  it('engagementDepth still defaults to max(5, tapDrill*1.5)', () => {
+    const ref: HoleStandardRef = { series: 'NPT', designation: '1/4-18' };
+    const row: CatalogRowLite = {
+      name: '1/4-18', nominal: 0.25, tpi: 18, tapDrill: 11.4,
+      clearance: 11.4, counterboreDia: 18, counterboreDepth: 5,
+      countersinkDia: 18, countersinkAngle: 90,
+    };
+    const spec = resolveHoleSpec('pipe_tap', ref, row);
+    if (spec.kind === 'pipe_tap') {
+      expect(spec.engagementDepth).toBeCloseTo(17.1, 1);
+    }
+  });
+});
+
+describe('validateHoleArray — pipe-tap holeSpecDetail (W5)', () => {
+  it('accepts pipe_tap with all fields populated', () => {
+    const def: HoleArrayDefinition = {
+      ...createManualArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'pipe_tap',
+        diameter: 11.4,
+        pipeStandard: 'NPT',
+        pipeSizeKey: '1/4-18',
+        engagementDepth: 9.7,
+        pipeTapClass: 'NPT',
+        taperAngle: 1.7833,
+      },
+    };
+    expect(validateHoleArray(def)).toEqual({ ok: true });
+  });
+
+  it('flags PIPE_KEY_MISSING when pipeSizeKey is empty', () => {
+    const def: HoleArrayDefinition = {
+      ...createManualArrayDefaults('arr-1', SPEC),
+      holeSpecDetail: {
+        kind: 'pipe_tap',
+        diameter: 11.4,
+        pipeStandard: 'NPT',
+        pipeSizeKey: '',
+        engagementDepth: 9.7,
+      },
+    };
+    const res = validateHoleArray(def);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.some((e) => e.code === 'PIPE_KEY_MISSING')).toBe(true);
+    }
   });
 });
