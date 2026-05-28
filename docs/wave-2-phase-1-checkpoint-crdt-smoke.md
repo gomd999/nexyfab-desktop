@@ -451,6 +451,53 @@ What this does NOT prove (deferred):
   until the host wires `resolveCreatorName` via CollabProvider awareness.
 - Default-on flag rollout — `?crdt=v2` stays opt-in through W6.
 
+## Phase 3 E2 — dynamic fillet + chamfer (flag-gated)
+
+Wave 2 Phase 3 W4 layers **dynamic edge editing** on top of the E1
+foundation. E2 ships:
+- Mesh-level dynamic fillet on a picked edge (cap radius live-drags).
+- Mesh-level dynamic chamfer on a picked edge (setback distance live-drags).
+- Toolbar sub-mode selector (`push-pull` / `dynamic-fillet` / `dynamic-chamfer`).
+
+Same flag-gating as E1 (`?direct-edit=v1`). Same session-only stack
+(ADR-012 §6 lock-ins). The parametric `features/fillet.ts` and
+`features/chamfer.ts` are untouched — those are still the path for
+history-based fillets / chamfers (commit-to-history lives in E5/W7).
+
+60-second smoke (manual, single user):
+
+1. Open `/[lang]/shape-generator?direct-edit=v1`.
+2. Generate a `box` base shape.
+3. Enable the **Direct edit** toggle. The sub-mode selector appears.
+4. Click **Dynamic fillet**. Cursor is in edge-pick mode.
+5. Pick a corner edge on the box and drag perpendicular to it.
+   - Expected: a translucent yellow line previews the picked edge.
+   - On release: the box's edge is rounded (mesh-level cap added).
+6. Status: "1 direct edit applied this session".
+7. Switch sub-mode to **Dynamic chamfer**. Pick a different edge and
+   drag along it. Release: a flat bevel is added.
+8. Status: "2 direct edits applied this session".
+9. Click **Undo direct edit** → status: "1 direct edit applied this session".
+10. Re-run the parametric history (toggle any feature node). Expected
+    toast: *"Direct edits cleared — history was rerun."*
+11. Re-export .nfab and re-open. Expected: NONE of the dynamic
+    fillet/chamfer ops persisted (session-only by design).
+
+Passing all 11 steps = E2 dynamic edges Green. Failure cases (curved
+edges on a cylinder shell, oversize radius / over-round, boundary
+edges) are covered by unit tests in
+`src/app/[lang]/shape-generator/directEdit/__tests__/applyDynamicFillet.test.ts`
+and `applyDynamicChamfer.test.ts`.
+
+Known mesh-level limitations (resolved by Phase 4 B-Rep worker):
+- Curved edges on cylinders / non-planar adjacent faces refuse with
+  `[directEdit] applyDynamicFillet: adjacent faces are non-planar ... B-Rep round-trip pending (Phase 4)`.
+- Boundary edges (single adjacent face) refuse with a similar
+  `boundary` warning.
+- The mesh-level cap ADDS triangles on top of the existing surface
+  rather than re-stitching — the underlying corner triangles remain
+  but are visually covered. B-Rep round-trip cleans this up.
+
 ## Reporting result
 
 Update [project_nexyfab_wave2_phase1_complete.md](../.. memory note) or

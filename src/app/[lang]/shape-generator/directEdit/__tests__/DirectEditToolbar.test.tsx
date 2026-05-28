@@ -17,20 +17,23 @@ import React, { useState } from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, fireEvent, act } from '@testing-library/react';
 import { DirectEditProvider, useDirectEditController } from '../DirectEditController';
-import { DirectEditToolbar } from '../DirectEditToolbar';
+import { DirectEditToolbar, type DirectEditSubMode } from '../DirectEditToolbar';
 
 function Harness({
   enabled,
   initialMode = false,
   lang = 'en',
   prefilled = 0,
+  withSubModes = false,
 }: {
   enabled: boolean;
   initialMode?: boolean;
   lang?: string;
   prefilled?: number;
+  withSubModes?: boolean;
 }) {
   const [mode, setMode] = useState(initialMode);
+  const [subMode, setSubMode] = useState<DirectEditSubMode>('push-pull');
   return (
     <DirectEditProvider enabled={enabled} historyVersion={0}>
       <Prefill count={prefilled} />
@@ -38,6 +41,8 @@ function Harness({
         lang={lang}
         modeActive={mode}
         onModeChange={setMode}
+        subMode={withSubModes ? subMode : undefined}
+        onSubModeChange={withSubModes ? setSubMode : undefined}
       />
     </DirectEditProvider>
   );
@@ -126,5 +131,76 @@ describe('DirectEditToolbar', () => {
   it('renders Korean label when lang=ko', () => {
     const { getByTestId } = render(<Harness enabled={true} lang="ko" />);
     expect(getByTestId('direct-edit-mode-toggle').textContent).toContain('직접편집');
+  });
+
+  // ─── E2 sub-mode selector ────────────────────────────────────────────────
+
+  it('does NOT render sub-mode selector when onSubModeChange is absent', () => {
+    const { queryByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={false} />,
+    );
+    expect(queryByTestId('direct-edit-submode-group')).toBeNull();
+  });
+
+  it('does NOT render sub-mode selector when mode is inactive', () => {
+    const { queryByTestId } = render(
+      <Harness enabled={true} initialMode={false} withSubModes={true} />,
+    );
+    expect(queryByTestId('direct-edit-submode-group')).toBeNull();
+  });
+
+  it('renders the three sub-mode buttons when active + provider is set', () => {
+    const { getByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={true} />,
+    );
+    expect(getByTestId('direct-edit-submode-group')).toBeTruthy();
+    expect(getByTestId('direct-edit-submode-push-pull')).toBeTruthy();
+    expect(getByTestId('direct-edit-submode-dynamic-fillet')).toBeTruthy();
+    expect(getByTestId('direct-edit-submode-dynamic-chamfer')).toBeTruthy();
+  });
+
+  it('defaults to push-pull sub-mode active', () => {
+    const { getByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={true} />,
+    );
+    expect(getByTestId('direct-edit-submode-push-pull').getAttribute('aria-checked')).toBe('true');
+    expect(getByTestId('direct-edit-submode-dynamic-fillet').getAttribute('aria-checked')).toBe('false');
+    expect(getByTestId('direct-edit-submode-dynamic-chamfer').getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('clicking dynamic-fillet sub-mode flips the radio group', () => {
+    const { getByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={true} />,
+    );
+    act(() => { fireEvent.click(getByTestId('direct-edit-submode-dynamic-fillet')); });
+    expect(getByTestId('direct-edit-submode-dynamic-fillet').getAttribute('aria-checked')).toBe('true');
+    expect(getByTestId('direct-edit-submode-push-pull').getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('clicking dynamic-chamfer flips to chamfer, leaving others inactive', () => {
+    const { getByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={true} />,
+    );
+    act(() => { fireEvent.click(getByTestId('direct-edit-submode-dynamic-chamfer')); });
+    expect(getByTestId('direct-edit-submode-dynamic-chamfer').getAttribute('aria-checked')).toBe('true');
+    expect(getByTestId('direct-edit-submode-dynamic-fillet').getAttribute('aria-checked')).toBe('false');
+    expect(getByTestId('direct-edit-submode-push-pull').getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('sub-mode group has role=radiogroup with aria-label', () => {
+    const { getByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={true} />,
+    );
+    const group = getByTestId('direct-edit-submode-group');
+    expect(group.getAttribute('role')).toBe('radiogroup');
+    expect(group.getAttribute('aria-label')).toBeTruthy();
+  });
+
+  it('renders Japanese sub-mode labels when lang=ja', () => {
+    const { getByTestId } = render(
+      <Harness enabled={true} initialMode={true} withSubModes={true} lang="ja" />,
+    );
+    expect(getByTestId('direct-edit-submode-dynamic-fillet').textContent)
+      .toContain('ダイナミック');
   });
 });
