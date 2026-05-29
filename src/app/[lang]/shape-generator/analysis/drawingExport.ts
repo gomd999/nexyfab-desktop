@@ -45,7 +45,10 @@ function svgTextAnchor(anchor: DrawingText['anchor']): string {
  * Single SVG document (mm user space) — for tests, archives, and server-side previews.
  * Does not require a DOM (unlike `AutoDrawingPanel` serializer path).
  */
-export function buildDrawingSvgString(drawing: DrawingResult): string {
+export function buildDrawingSvgString(
+  drawing: DrawingResult,
+  datums: readonly DatumFrameOverlay[] = [],
+): string {
   const pw = drawing.paperWidth;
   const ph = drawing.paperHeight;
   const chunks: string[] = [];
@@ -133,13 +136,36 @@ export function buildDrawingSvgString(drawing: DrawingResult): string {
       `${escapeXml(`Date: ${tb.date || ''}`)}</text>`,
   );
 
+  // Datum reference frames — small rect + centered label + optional leader stub.
+  // Drawn last so they layer on top of view lines / dimensions.
+  for (const d of datums) {
+    const w = DATUM_FRAME_WIDTH;
+    const h = DATUM_FRAME_HEIGHT;
+    chunks.push(
+      `<rect x="${d.x}" y="${d.y}" width="${w}" height="${h}" fill="none" stroke="#000000" stroke-width="0.3"/>`,
+    );
+    chunks.push(
+      `<text x="${d.x + w / 2}" y="${d.y + h / 2 + 1.4}" text-anchor="middle" font-size="3.5" fill="#000000" font-family="monospace,Consolas,monospace">${escapeXml(d.label)}</text>`,
+    );
+    if (d.leaderDir) {
+      const p = datumLeaderEndpoint(d.x, d.y, d.leaderDir);
+      chunks.push(
+        `<line x1="${p.sx}" y1="${p.sy}" x2="${p.ex}" y2="${p.ey}" stroke="#000000" stroke-width="0.25" fill="none"/>`,
+      );
+    }
+  }
+
   chunks.push('</svg>');
   return chunks.join('');
 }
 
 /** Browser / Tauri — same bytes as `buildDrawingSvgString`, triggers download. */
-export async function exportDrawingSVG(drawing: DrawingResult, fileName: string): Promise<void> {
-  const svg = buildDrawingSvgString(drawing);
+export async function exportDrawingSVG(
+  drawing: DrawingResult,
+  fileName: string,
+  opts?: { datums?: readonly DatumFrameOverlay[] },
+): Promise<void> {
+  const svg = buildDrawingSvgString(drawing, opts?.datums ?? []);
   const safeName = (fileName || 'drawing').replace(/[^\w\-.]+/g, '_');
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
   await downloadBlob(`${safeName}.svg`, blob);
@@ -171,6 +197,43 @@ export interface GdtAnnotationOverlay {
   y: number;
 }
 
+/** GD&T datum reference frame symbol (e.g. ▭A) — placed on the part surface
+ *  to anchor the datum reference letter that FCFs cite. Position is in
+ *  paper-mm, top-left origin (PDF page system) to match GdtAnnotationOverlay. */
+export interface DatumFrameOverlay {
+  id: string;
+  label: string;
+  /** Paper-space mm, top-left origin (PDF page system) */
+  x: number;
+  y: number;
+  /** Direction the leader line points from the symbol — N/E/S/W. */
+  leaderDir?: 'N' | 'E' | 'S' | 'W';
+}
+
+/** Datum frame is 8 mm wide × 6 mm tall, label centered. Tweaking these here
+ *  propagates to all 3 export paths (SVG/PDF/DXF) to keep visuals consistent. */
+const DATUM_FRAME_WIDTH = 8;
+const DATUM_FRAME_HEIGHT = 6;
+/** Leader stub length (mm) — short, just enough to imply attachment direction. */
+const DATUM_LEADER_LENGTH = 5;
+
+/** Compute leader stub endpoint relative to the frame's top-left (x, y).
+ *  Stub originates from the midpoint of the relevant edge. */
+function datumLeaderEndpoint(
+  x: number,
+  y: number,
+  dir: 'N' | 'E' | 'S' | 'W',
+): { sx: number; sy: number; ex: number; ey: number } {
+  const cx = x + DATUM_FRAME_WIDTH / 2;
+  const cy = y + DATUM_FRAME_HEIGHT / 2;
+  switch (dir) {
+    case 'N': return { sx: cx, sy: y,                       ex: cx,                       ey: y - DATUM_LEADER_LENGTH };
+    case 'S': return { sx: cx, sy: y + DATUM_FRAME_HEIGHT,  ex: cx,                       ey: y + DATUM_FRAME_HEIGHT + DATUM_LEADER_LENGTH };
+    case 'E': return { sx: x + DATUM_FRAME_WIDTH, sy: cy,   ex: x + DATUM_FRAME_WIDTH + DATUM_LEADER_LENGTH, ey: cy };
+    case 'W': return { sx: x,  sy: cy,                      ex: x - DATUM_LEADER_LENGTH,  ey: cy };
+  }
+}
+
 /** Render the GD&T overlay frames onto the PDF page. Pill is 5 mm tall,
  *  width scales with text length; ASCII pill border + monochrome text. */
 function drawGdtOverlayPDF(doc: jsPDF, frames: readonly GdtAnnotationOverlay[]): void {
@@ -186,7 +249,37 @@ function drawGdtOverlayPDF(doc: jsPDF, frames: readonly GdtAnnotationOverlay[]):
   }
 }
 
-async function createDrawingJsPdf(drawing: DrawingResult, gdt: readonly GdtAnnotationOverlay[] = []): Promise<jsPDF> {
+/** Render datum reference frames onto the PDF page: an 8×6 mm box, the
+ *  label centered, optionally a short leader stub. Coordinates in paper-mm,
+ *  top-left origin (matches jsPDF page system, no flip needed). */
+function drawDatumOverlayPDF(doc: jsPDF, datums: readonly DatumFrameOverlay[]): void {
+  if (datums.length === 0) return;
+  doc.setLineDashPattern([], 0);
+  doc.setDrawColor(0, 0, 0);
+  doc.setTextColor(0, 0, 0);
+  for (const d of datums) {
+    doc.setLineWidth(0.3);
+    doc.rect(d.x, d.y, DATUM_FRAME_WIDTH, DATUM_FRAME_HEIGHT);
+    doc.setFontSize(8);
+    doc.text(
+      d.label,
+      d.x + DATUM_FRAME_WIDTH / 2,
+      d.y + DATUM_FRAME_HEIGHT / 2 + 1.4,
+      { align: 'center' },
+    );
+    if (d.leaderDir) {
+      const p = datumLeaderEndpoint(d.x, d.y, d.leaderDir);
+      doc.setLineWidth(0.25);
+      doc.line(p.sx, p.sy, p.ex, p.ey);
+    }
+  }
+}
+
+async function createDrawingJsPdf(
+  drawing: DrawingResult,
+  gdt: readonly GdtAnnotationOverlay[] = [],
+  datums: readonly DatumFrameOverlay[] = [],
+): Promise<jsPDF> {
   const { default: JsPDF } = await import('jspdf');
   const isLandscape = drawing.paperWidth > drawing.paperHeight;
   const doc = new JsPDF({
@@ -215,17 +308,26 @@ async function createDrawingJsPdf(drawing: DrawingResult, gdt: readonly GdtAnnot
 
   drawTitleBlockPDF(doc, drawing);
   drawGdtOverlayPDF(doc, gdt);
+  drawDatumOverlayPDF(doc, datums);
   return doc;
 }
 
 /** For tests / headless verification — same bytes as download, without triggering save. */
-export async function buildDrawingPdfArrayBuffer(drawing: DrawingResult, gdt: readonly GdtAnnotationOverlay[] = []): Promise<ArrayBuffer> {
-  const doc = await createDrawingJsPdf(drawing, gdt);
+export async function buildDrawingPdfArrayBuffer(
+  drawing: DrawingResult,
+  gdt: readonly GdtAnnotationOverlay[] = [],
+  datums: readonly DatumFrameOverlay[] = [],
+): Promise<ArrayBuffer> {
+  const doc = await createDrawingJsPdf(drawing, gdt, datums);
   return doc.output('arraybuffer') as ArrayBuffer;
 }
 
-export async function exportDrawingPDF(drawing: DrawingResult, fileName: string, opts?: { gdt?: readonly GdtAnnotationOverlay[] }): Promise<void> {
-  const doc = await createDrawingJsPdf(drawing, opts?.gdt ?? []);
+export async function exportDrawingPDF(
+  drawing: DrawingResult,
+  fileName: string,
+  opts?: { gdt?: readonly GdtAnnotationOverlay[]; datums?: readonly DatumFrameOverlay[] },
+): Promise<void> {
+  const doc = await createDrawingJsPdf(drawing, opts?.gdt ?? [], opts?.datums ?? []);
   const safeName = (fileName || 'drawing').replace(/[^\w\-.]+/g, '_');
   doc.save(`${safeName}.pdf`);
 }
@@ -308,6 +410,7 @@ const DXF_LAYERS = [
   { name: 'DIMENSION', color: 1 },   // red
   { name: 'TEXT',      color: 7 },
   { name: 'TITLE',     color: 7 },
+  { name: 'DATUM',     color: 7 },   // GD&T datum reference frames
 ];
 
 function layerFor(type: DrawingLine['type']): string {
@@ -341,7 +444,11 @@ function dxfText(layer: string, x: number, y: number, height: number, text: stri
 }
 
 /** R12 ASCII DXF (mm). Exposed for CI; `exportDrawingDXF` wraps this + download. */
-export function buildDrawingDxfString(drawing: DrawingResult, gdt: readonly GdtAnnotationOverlay[] = []): string {
+export function buildDrawingDxfString(
+  drawing: DrawingResult,
+  gdt: readonly GdtAnnotationOverlay[] = [],
+  datums: readonly DatumFrameOverlay[] = [],
+): string {
   let dxf = '';
 
   dxf += '0\nSECTION\n2\nHEADER\n';
@@ -422,12 +529,46 @@ export function buildDrawingDxfString(drawing: DrawingResult, gdt: readonly GdtA
     dxf += dxfText('GDT', a.x + 2, yUp - 1,  3, a.text);
   }
 
+  // Datum reference frames — 4-line box + centered TEXT (+ optional leader
+  // line if leaderDir is given). DXF uses Y-up, so we flip from paper-mm
+  // (top-left origin) the same way the GD&T overlay above does.
+  for (const d of datums) {
+    const x = d.x;
+    const yUpTop    = drawing.paperHeight - d.y;                     // top edge (paper y → DXF y-up)
+    const yUpBottom = drawing.paperHeight - (d.y + DATUM_FRAME_HEIGHT);
+    const xRight    = x + DATUM_FRAME_WIDTH;
+    // Frame box — 4 LINEs.
+    dxf += dxfLine('DATUM', x,      yUpTop,    xRight, yUpTop);
+    dxf += dxfLine('DATUM', xRight, yUpTop,    xRight, yUpBottom);
+    dxf += dxfLine('DATUM', xRight, yUpBottom, x,      yUpBottom);
+    dxf += dxfLine('DATUM', x,      yUpBottom, x,      yUpTop);
+    // Label — centered horizontally inside the frame, baseline ~mid.
+    dxf += dxfText(
+      'DATUM',
+      x + DATUM_FRAME_WIDTH / 2 - 1,
+      yUpTop - DATUM_FRAME_HEIGHT / 2 - 1,
+      3,
+      d.label,
+    );
+    // Optional leader stub.
+    if (d.leaderDir) {
+      const p = datumLeaderEndpoint(d.x, d.y, d.leaderDir);
+      const sy = drawing.paperHeight - p.sy;
+      const ey = drawing.paperHeight - p.ey;
+      dxf += dxfLine('DATUM', p.sx, sy, p.ex, ey);
+    }
+  }
+
   dxf += '0\nENDSEC\n0\nEOF\n';
   return dxf;
 }
 
-export async function exportDrawingDXF(drawing: DrawingResult, fileName: string, opts?: { gdt?: readonly GdtAnnotationOverlay[] }): Promise<void> {
-  const dxf = buildDrawingDxfString(drawing, opts?.gdt ?? []);
+export async function exportDrawingDXF(
+  drawing: DrawingResult,
+  fileName: string,
+  opts?: { gdt?: readonly GdtAnnotationOverlay[]; datums?: readonly DatumFrameOverlay[] },
+): Promise<void> {
+  const dxf = buildDrawingDxfString(drawing, opts?.gdt ?? [], opts?.datums ?? []);
   const safeName = (fileName || 'drawing').replace(/[^\w\-.]+/g, '_');
   const blob = new Blob([dxf], { type: 'application/dxf' });
   await downloadBlob(`${safeName}.dxf`, blob);
