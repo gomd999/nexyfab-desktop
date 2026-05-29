@@ -51,6 +51,11 @@ CAD_COMMERCIAL_COMPLETION_ROADMAP §Phase C2 요구: "PDF/DXF/SVG 일관성
 이 회귀는 Vitest로 가능 — `drawingExport.ts` 함수들을 호출해 결과
 문자열/바이트를 비교한다.
 
+**상태:** ✅ `src/test/m4/phaseC2ConsistencyMatrix.test.ts` (8 cases,
+2026-05-29). partName / Rev label / Material / Scale / Drawn / Date /
+General Tol / dimension text set / projection label / PDF header +
+size 변경 민감도까지 cover.
+
 ---
 
 ## 4. 양방향 흡수 시점 (Phase D candidate)
