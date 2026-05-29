@@ -192,6 +192,9 @@ import AsyncWorkIndicator from './panels/AsyncWorkIndicator';
 import TopBanners from './panels/TopBanners';
 import OnboardingDock from './panels/OnboardingDock';
 import Phase4PanelDock from './panels/Phase4PanelDock';
+import { DirectEditHostBridge, type DirectEditSceneAdapter } from './directEdit/DirectEditHostBridge';
+import { AssemblyExportBridge } from './io/AssemblyExportBridge';
+import { ConfigurationsExportBridge } from './configurations/ConfigurationsExportBridge';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
@@ -9305,6 +9308,84 @@ export function ShapeGeneratorInner() {
         captureFrame={() => captureRef.current?.() ?? null}
         onUserPartLoaded={(name) => addToast('success', lt.partLoaded(name))}
       />
+
+      {/* ═══ Phase 5 bridges (flag-gated, minimal-invasive host wire) ═══
+         All three bridges are render-trees rendered next to Phase4PanelDock
+         and gated by URL search params so they're invisible unless explicitly
+         opted in. Adapters use the single-body shape-generator scene model
+         (one primary body, geometry = effectiveResult.geometry). */}
+      {(() => {
+        const directEditOn = searchParams?.get('direct-edit') === 'v1';
+        const assemblyExportOn = searchParams?.get('assembly-export') === 'v1';
+        const configExportOn = searchParams?.get('config-export') === 'v1';
+        if (!directEditOn && !assemblyExportOn && !configExportOn) return null;
+
+        const sceneAdapter: DirectEditSceneAdapter = {
+          getActiveBodyId: () => '__primary',
+          getTargetGeometry: () => effectiveResultRef.current?.geometry ?? null,
+          replaceBodyGeometry: (_bodyId, _next) => {
+            // v1: direct-edit op result lands in a transient stack; the
+            // visible viewport geometry stays parametric until the user
+            // promotes via commit-to-history. Full geometry-swap path is
+            // Phase 5b follow-up. For now we only notify so the user sees
+            // the op was recorded.
+            addToast('info', '직접편집 op 기록됨 (commit-to-history로 확정)');
+          },
+          removeBodyFromScene: (_bodyId) => {
+            // No-op in the single-body scene (subtract tool body isn't
+            // separately tracked yet — Phase 5b extends sceneAdapter to
+            // a multi-body resolver).
+          },
+          notify: (level, msg) => addToast(level === 'warn' ? 'warning' : level, msg),
+        };
+
+        return (
+          <>
+            {directEditOn && (
+              <div style={{ position: 'absolute', top: 64, left: 16, zIndex: 30 }}>
+                <DirectEditHostBridge lang={lang} sceneAdapter={sceneAdapter} />
+              </div>
+            )}
+            {assemblyExportOn && (
+              <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 30, maxWidth: 420 }}>
+                <AssemblyExportBridge
+                  lang={lang}
+                  availableParts={[{ id: '__primary', label: 'Primary' }]}
+                  resolvePartStepText={async (partId) => {
+                    if (partId !== '__primary') return null;
+                    const geo = effectiveResultRef.current?.geometry;
+                    if (!geo) return null;
+                    const { exportToStepAsync } = await import('./io/stepExporter');
+                    return await exportToStepAsync(geo, 'Primary');
+                  }}
+                  onDiagnostics={(d) => {
+                    if (d.length > 0) addToast('warning', `Assembly export: ${d.length} part(s) skipped`);
+                  }}
+                />
+              </div>
+            )}
+            {configExportOn && (
+              <div style={{ position: 'absolute', bottom: 96, right: 16, zIndex: 30, maxWidth: 420 }}>
+                <ConfigurationsExportBridge
+                  lang={lang}
+                  partName={selectedId || 'part'}
+                  configs={[{ id: 'default', name: 'default' }]}
+                  exportConfigStep={async (_id) => {
+                    const geo = effectiveResultRef.current?.geometry;
+                    if (!geo) return null;
+                    const { exportToStepAsync } = await import('./io/stepExporter');
+                    return await exportToStepAsync(geo, selectedId || 'part');
+                  }}
+                  onBundleReady={(r) => {
+                    const m = r.manifest as { configCount: number };
+                    addToast('success', `Bundle: ${m.configCount} config(s)`);
+                  }}
+                />
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* ═══ Collab Reconnect Banner (Phase 3 — offline/reconnect UX) ═══ */}
       <CollabReconnectBanner
