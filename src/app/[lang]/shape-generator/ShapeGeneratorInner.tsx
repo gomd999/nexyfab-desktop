@@ -200,6 +200,8 @@ import { generateDrawingsForConfigs } from './configurations/perConfigDrawing';
 import { runPipeline } from './features/pipelineManager';
 import { FEATURE_MAP } from './features';
 import type { DrawingConfig } from './analysis/autoDrawing';
+import { generateAssemblyDrawing, type AssemblyDrawingPart } from './analysis/assemblyDrawing';
+import { buildDrawingSvgString } from './analysis/drawingExport';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
@@ -9392,6 +9394,47 @@ export function ShapeGeneratorInner() {
                     lang={lang}
                     availableParts={realParts}
                     partTransforms={partTransforms}
+                    resolveAssemblyDrawing={() => {
+                      // Phase 5j — generate a multi-view assembly drawing
+                      // (per-part iso views + BOM) from the live placedParts.
+                      // Empty assembly → null (bridge downloads bare .step).
+                      if (placedParts.length === 0) return null;
+                      const drawingParts: AssemblyDrawingPart[] = [];
+                      for (const p of placedParts) {
+                        const built = buildShapeResult(p.shapeId, p.params);
+                        if (!built?.geometry) continue;
+                        drawingParts.push({
+                          id: p.id,
+                          label: p.name || p.id,
+                          qty: p.qty,
+                          geometry: built.geometry,
+                          transform: partTransforms[p.id],
+                        });
+                      }
+                      if (drawingParts.length === 0) return null;
+                      try {
+                        const result = generateAssemblyDrawing(drawingParts, {
+                          views: ['front', 'top', 'right'],
+                          scale: 1,
+                          paperSize: 'A3',
+                          orientation: 'landscape',
+                          showDimensions: true,
+                          showCenterlines: true,
+                          titleBlock: {
+                            partName: 'Assembly',
+                            material: 'Mixed',
+                            drawnBy: '',
+                            date: new Date().toISOString().slice(0, 10),
+                            scale: '1:1',
+                            revision: 'A',
+                          },
+                          perPartView: 'iso',
+                        });
+                        return buildDrawingSvgString(result);
+                      } catch {
+                        return null;
+                      }
+                    }}
                     resolvePartStepText={async (partId) => {
                       const { exportToStepAsync } = await import('./io/stepExporter');
                       if (partId === '__primary') {

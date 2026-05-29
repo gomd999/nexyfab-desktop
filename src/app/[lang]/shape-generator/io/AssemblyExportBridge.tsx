@@ -226,6 +226,20 @@ export interface AssemblyExportBridgeProps {
    * the leaf's own transform survives unchanged.
    */
   readonly partTransforms?: Readonly<Record<string, THREE.Matrix4>>;
+  /**
+   * Optional 2D assembly drawing SVG. When provided, the bridge
+   * downloads a `.zip` containing both `<asmName>.step` and
+   * `<asmName>.svg` instead of the bare STEP. Use case: host has
+   * generated a multi-view assembly drawing via
+   * `analysis/assemblyDrawing.generateAssemblyDrawing` +
+   * `analysis/drawingExport.buildDrawingSvgString` and wants both
+   * deliverables packed for vendor handoff.
+   *
+   * Accepts a sync string OR an async resolver — the latter lets
+   * the host defer the (cheap but non-trivial) SVG generation until
+   * the user actually clicks Export.
+   */
+  readonly resolveAssemblyDrawing?: () => Promise<string | null> | string | null;
   /** Asm name default for the file. */
   readonly defaultAsmName?: string;
   readonly testId?: string;
@@ -265,6 +279,7 @@ export function AssemblyExportBridge(
     resolvePartStepText,
     onDiagnostics,
     partTransforms,
+    resolveAssemblyDrawing,
     defaultAsmName,
     testId = 'assembly-export-bridge',
     testHandleRef,
@@ -341,11 +356,39 @@ export function AssemblyExportBridge(
       for (const d of result.diagnostics) diags.push(d);
 
       const safeName = asmName.replace(/[^a-zA-Z0-9_\-.]/g, '_') || 'Assembly';
-      const filename = `${safeName}.step`;
-      await downloadBlob(
-        filename,
-        new Blob([result.stepText], { type: 'application/octet-stream' }),
-      );
+
+      // Phase 5j — if the host provided an assembly drawing resolver,
+      // pack STEP + SVG into a zip. Otherwise download the bare STEP
+      // (preserves the v1 behaviour for callers that don't supply
+      // resolveAssemblyDrawing).
+      let drawingSvg: string | null = null;
+      if (resolveAssemblyDrawing) {
+        try {
+          drawingSvg = await Promise.resolve(resolveAssemblyDrawing());
+        } catch (err) {
+          diags.push({
+            partId: '__assembly_drawing__',
+            warning: `resolveAssemblyDrawing threw: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+
+      if (drawingSvg) {
+        const { zipSync, strToU8 } = await import('fflate');
+        const zipBytes = zipSync({
+          [`${safeName}/${safeName}.step`]: strToU8(result.stepText),
+          [`${safeName}/${safeName}.svg`]: strToU8(drawingSvg),
+        });
+        await downloadBlob(
+          `${safeName}.zip`,
+          new Blob([new Uint8Array(zipBytes)], { type: 'application/zip' }),
+        );
+      } else {
+        await downloadBlob(
+          `${safeName}.step`,
+          new Blob([result.stepText], { type: 'application/octet-stream' }),
+        );
+      }
 
       setLastResult({ ok: result.partCount, failed: diags.length });
       if (diags.length > 0) onDiagnostics?.(diags);
@@ -358,6 +401,8 @@ export function AssemblyExportBridge(
     isExporting,
     leafLocations,
     onDiagnostics,
+    partTransforms,
+    resolveAssemblyDrawing,
     resolvePartStepText,
     root,
   ]);
