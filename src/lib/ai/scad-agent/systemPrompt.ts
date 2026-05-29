@@ -62,6 +62,10 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 5. \`add_feature_intent\` — Use NexyFab's deterministic shape catalog. Faster than writing SCAD by hand for known shapes.
    args: { intent: { shapeId: string, params: { ... }, features?: [...] } }
 
+5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions against the actual measured bbox. If a mismatch is reported (e.g. "expected 50mm, measured 5mm"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes** — it's the cheapest way to catch a dropped digit or unit confusion before shipping the design.
+   args: {}
+   Returns: critique text + meta { passed, mismatchCount, expected, measured }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 

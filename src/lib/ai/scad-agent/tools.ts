@@ -51,6 +51,7 @@ import type {
 } from './types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
+import { verifyAgainstSpec, formatSpecCritique } from './specVerification';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -248,6 +249,9 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     // Invalidate render — caller must render again to get fresh stats.
     session.render = { ok: null, errors: [] };
     session.geometry = {};
+    // X1 — raw write breaks the intent↔SCAD coupling; spec verification
+    // would compare against a stale intent and emit nonsense critique.
+    session.lastIntent = undefined;
     return {
       ok: true,
       output: `OK. SCAD source replaced (${a.code.length} bytes). Call render to verify.`,
@@ -264,6 +268,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       session.scadSource = next;
       session.render = { ok: null, errors: [] };
       session.geometry = {};
+      // X1 — diff edits invalidate intent-derived expectations.
+      session.lastIntent = undefined;
       return {
         ok: true,
         output: `OK. Diff applied (source now ${next.length} bytes). Call render to verify.`,
@@ -373,10 +379,48 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     session.scadSource = result.scad;
     session.render = { ok: null, errors: [] };
     session.geometry = {};
+    // X1 — remember the intent so verify_spec can compare measured bbox
+    // against the closed-form expected bbox derived from these params.
+    session.lastIntent = a.intent;
     return {
       ok: true,
       output: `OK. SCAD generated from intent (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}). Call render to verify.`,
       meta: { warnings: result.warnings },
+    };
+  };
+
+  // X1 — Compare last intent's expected bbox against the measured bbox.
+  // Reads `session.lastIntent` (populated by add_feature_intent) and
+  // `session.geometry.bbox` (populated by get_geometry). Emits a
+  // structured critique the agent uses to self-correct param values.
+  const verify_spec: ToolExecutor = async (_args, session) => {
+    if (!session.lastIntent) {
+      return {
+        ok: false,
+        error: 'verify_spec requires a prior add_feature_intent call (session has no lastIntent).',
+        code: 'NO_INTENT',
+      };
+    }
+    const bbox = session.geometry?.bbox;
+    if (!bbox) {
+      return {
+        ok: false,
+        error: 'verify_spec requires a measured bbox. Call render → get_geometry first.',
+        code: 'NO_BBOX',
+      };
+    }
+    const result = verifyAgainstSpec(session.lastIntent, bbox);
+    const critique = formatSpecCritique(result);
+    return {
+      ok: true,
+      output: critique,
+      meta: {
+        verifiable: result.verifiable,
+        passed: result.ok,
+        mismatchCount: result.mismatches.length,
+        expected: result.expected,
+        measured: result.measured,
+      },
     };
   };
 
@@ -1958,6 +2002,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     fea_stress,
     // Stage 4 U — sheet metal multi-bend unfold
     sheet_metal_unfold,
+    // X1 — spec verification (intent vs measured bbox)
+    verify_spec,
   };
 }
 

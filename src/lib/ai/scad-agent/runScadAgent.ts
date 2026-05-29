@@ -146,7 +146,7 @@ async function executeToolCall(
   if (!fn) {
     return {
       ok: false,
-      error: `Unknown tool "${call.name}". Valid: write_scad, apply_diff, render, get_geometry, add_feature_intent, search_bosl2, read_dfm.`,
+      error: `Unknown tool "${call.name}". Valid: write_scad, apply_diff, render, get_geometry, add_feature_intent, verify_spec, search_bosl2, read_dfm.`,
       code: 'UNKNOWN_TOOL',
     };
   }

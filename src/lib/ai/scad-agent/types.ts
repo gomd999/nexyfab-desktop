@@ -126,7 +126,9 @@ export type ToolName =
   | 'fea_solve'
   | 'fea_stress'
   // ─── U (Stage 4) — sheet metal unfold (multi-bend) ───────────────────
-  | 'sheet_metal_unfold';
+  | 'sheet_metal_unfold'
+  // ─── X1 — spec verification (intent vs measured bbox) ───────────────
+  | 'verify_spec';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */
@@ -853,6 +855,13 @@ export interface AgentSession {
    * runs in legacy immediate-mode (current behavior).
    */
   featureTree?: import('./featureTree').FeatureTree;
+  /**
+   * X1 — Most recent IntentInput passed through add_feature_intent. The
+   * verify_spec tool reads this against the latest measured bbox to
+   * detect param-level mismatches (e.g. AI emitted width=5 when the user
+   * said 50). Cleared when write_scad / apply_diff replace the source.
+   */
+  lastIntent?: import('../../openscad-render/intentToScad').IntentInput;
   /** Conversation messages, including tool_call / tool_result envelopes. */
   history: AgentMessage[];
   render: RenderState;
