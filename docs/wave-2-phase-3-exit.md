@@ -211,6 +211,9 @@ of focused work + 3-hour wall-clock soak.
 4. **Awareness latency Playwright spec** — single E2E spec that opens
    two browser contexts on the same `?crdt=v2` doc, measures
    peer-cursor sync time. Target: p95 ≤ 200 ms.
+   **Spec shipped**: `e2e/collab-awareness-latency.spec.ts` (2026-05-29).
+   **Runbook**: `docs/wave-2-phase-3-awareness-latency-runbook.md`
+   — manual run procedure with build flags + failure triage.
 
 When all four are clean, draft the flag graduation PR (§6) and ship as
 the formal Phase 3 close.
