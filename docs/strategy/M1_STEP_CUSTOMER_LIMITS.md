@@ -25,7 +25,7 @@
 | 박스 보내기 (AP214 B-rep, 인스턴트) | OCCT 라운드트립 검증됨 | `BoxGeometry`는 즉시 B-rep export |
 | 비-박스 보내기 (OCCT 핸들 보유) | AP214/AP242 B-rep | OCCT 피처(extrude/revolve/fillet 등) 결과는 즉시 B-rep |
 | 비-박스 보내기 (메시만 보유, OCCT 브리지) | AP214/AP242 B-rep | 임포트된 메시도 `meshToOcctShapeHandle` 브리지로 B-rep export 가능 (변환 ~100-300 ms, cold start ~1 s; UI에서 "Converting via OCCT…" 표시) |
-| 어셈블리 STEP 보내기 (멀티바디 단일 파일) | **미지원** | 파트별 개별 STEP로 분리 다운로드 권장 (Phase 후속) |
+| 어셈블리 STEP 보내기 (멀티바디 단일 파일) | **지원** (v1, 단일-PRODUCT) | `exportAssemblyToStepAsync` 가 OCCT compound 로 묶어서 단일 STEP export. 파트별 transform (translate + rotate) 적용. 적절한 NEXT_ASSEMBLY_USAGE_OCCURRENCE 계층은 후속 |
 | FreeCAD/SOLIDWORKS 출처 STEP | OCCT WASM이 파싱 가능한 범위까지 | AP203/AP214/AP242 일반 지원; AP242 BIM/Edition 2는 일부 entity 거부 가능 |
 
 ## 가져올 때 자주 보는 실패 패턴
@@ -44,7 +44,7 @@
 |---|---|---|
 | 비-박스 객체 export가 느림 | OCCT 브리지 경로 (cold start 1 s, hot 100-300 ms) | 정상 — UI "Converting via OCCT…" 진행 표시 활용 |
 | 비-박스 객체가 메시(AP242 tessellated)로 나옴 | Route A WASM 로드 실패로 legacy emitter 경로로 fallback | 페이지 reload 후 재시도; 지속 시 지원팀에 worker job id 전달 |
-| 어셈블리 보내기에 단일 STEP 옵션 없음 | 정상 — 멀티바디 단일 파일 미지원 | 파트별 STEP 일괄 다운로드 사용 |
+| 어셈블리 단일 STEP export가 일부 파트만 포함 | 일부 파트의 OCCT 브리지 실패 | 반환된 diagnostics 배열의 partId 확인; 메시가 non-manifold/degenerate면 modeling 단계에서 healing 후 재시도 |
 | 받는 측이 단위가 다르다고 함 | STEP UNIT은 mm로 고정 | 받는 측 CAD에서 import 시 mm로 지정 |
 
 ## 문제가 생기면
@@ -56,6 +56,6 @@
 ## 후속 로드맵 (Phase C·D)
 
 - ~~**비-박스 solid B-rep export**~~ — 2026-05-29 OCCT 브리지로 완료. Route A 회귀: `src/app/[lang]/shape-generator/io/__tests__/stepExporterRouting.test.ts`
-- **어셈블리 단일 STEP** — 멀티바디 묶음 출력 (작업 중)
+- ~~**어셈블리 단일 STEP**~~ — 2026-05-29 멀티바디 단일-PRODUCT v1 완료. `exportAssemblyToStepAsync` + 11 회귀: `src/app/[lang]/shape-generator/io/__tests__/assemblyStepExport.test.ts`. NEXT_ASSEMBLY_USAGE_OCCURRENCE 계층 (per-instance) 은 Phase D+
 - **AP242 BIM 풀 호환** — entity 화이트리스트 확장 (Phase D)
 - **STEP 라운드트립 가시화** — import → re-export → diff 리포트 (Phase D)
