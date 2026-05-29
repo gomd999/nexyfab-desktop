@@ -409,7 +409,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         code: 'NO_BBOX',
       };
     }
-    const result = verifyAgainstSpec(session.lastIntent, bbox);
+    // X2 — pull the topological genus stashed by the geometry adapter
+    // and let verifyAgainstSpec compare against the intent's hole count.
+    const detectedGenus = session.geometry?.genus;
+    const result = verifyAgainstSpec(session.lastIntent, bbox, { detectedGenus });
     const critique = formatSpecCritique(result);
     return {
       ok: true,
@@ -420,6 +423,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         mismatchCount: result.mismatches.length,
         expected: result.expected,
         measured: result.measured,
+        holeCount: result.holeCount,
       },
     };
   };

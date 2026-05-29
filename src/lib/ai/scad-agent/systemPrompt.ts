@@ -62,9 +62,9 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 5. \`add_feature_intent\` — Use NexyFab's deterministic shape catalog. Faster than writing SCAD by hand for known shapes.
    args: { intent: { shapeId: string, params: { ... }, features?: [...] } }
 
-5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions against the actual measured bbox. If a mismatch is reported (e.g. "expected 50mm, measured 5mm"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes** — it's the cheapest way to catch a dropped digit or unit confusion before shipping the design.
+5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions **and through-hole count** against the actual measured bbox + mesh genus. If a mismatch is reported (e.g. "width: expected 50mm, measured 5mm" or "through-holes: expected 2, detected 1"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes that include hole features** — catches dropped digits, unit confusion, and dropped/duplicated holes before shipping. Topology check (genus) is skipped automatically when the mesh isn't a single closed manifold.
    args: {}
-   Returns: critique text + meta { passed, mismatchCount, expected, measured }
+   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount }
 
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }

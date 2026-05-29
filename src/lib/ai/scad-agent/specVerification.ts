@@ -58,6 +58,18 @@ export interface SpecVerificationResult {
   expected?: ExpectedBbox;
   measured?: { wMm: number; hMm: number; dMm: number };
   mismatches: SpecMismatch[];
+  /**
+   * X2 — through-hole count check. Populated when the caller passed a
+   * detectedGenus (from faceInspection.countThroughHoles) AND the intent
+   * declares at least one `hole` feature. Null when not checked.
+   */
+  holeCount?: {
+    expected: number;
+    /** Detected genus / through-hole count. Null when the mesh isn't
+     *  a single closed manifold — in that case `mismatch` stays null too. */
+    detected: number | null;
+    mismatch: { delta: number } | null;
+  };
 }
 
 /** Features that change the bounding box in ways the v1 helper can't
@@ -226,6 +238,30 @@ export function compareBbox(
 }
 
 /**
+ * Count `type: 'hole'` features in an intent. Through-hole detection
+ * via genus catches these but not blind holes (depth < parent size) —
+ * the v1 emitter (applyHole in intentToScad) defaults depth=1000 mm
+ * which is "through" for any plausible part, so for v1 we assume every
+ * declared hole is a through-hole. Phase X3 will need to distinguish.
+ */
+export function countIntentHoles(intent: IntentInput): number {
+  if (!Array.isArray(intent.features)) return 0;
+  return intent.features.filter((f): f is IntentFeature => !!f && f.type === 'hole').length;
+}
+
+/**
+ * Optional inputs for verifyAgainstSpec — extends the bbox check with
+ * X2 through-hole counting when the caller has run faceInspection.
+ */
+export interface VerifyAgainstSpecOptions {
+  tolMm?: number;
+  tolPct?: number;
+  /** From faceInspection.countThroughHoles; null when mesh isn't a
+   *  single closed manifold (callee skips the hole-count check then). */
+  detectedGenus?: number | null;
+}
+
+/**
  * One-shot verify: derives expected bbox from intent, compares against
  * measured. Returns a structured result the tool layer can hand back
  * to the agent.
@@ -233,9 +269,9 @@ export function compareBbox(
 export function verifyAgainstSpec(
   intent: IntentInput,
   measured: MeasuredBbox,
-  tolMm?: number,
-  tolPct?: number,
+  opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
+  const { tolMm, tolPct, detectedGenus } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -246,8 +282,29 @@ export function verifyAgainstSpec(
     };
   }
   const mismatches = compareBbox(expected, measured, tolMm, tolPct);
+
+  // X2 — hole count check (only when caller provided detection AND
+  // intent declares at least one hole feature).
+  let holeCount: SpecVerificationResult['holeCount'];
+  const expectedHoles = countIntentHoles(intent);
+  if (expectedHoles > 0 && detectedGenus !== undefined) {
+    if (detectedGenus === null) {
+      // Mesh wasn't a single closed manifold — don't flag a mismatch
+      // we can't substantiate.
+      holeCount = { expected: expectedHoles, detected: null, mismatch: null };
+    } else {
+      const delta = detectedGenus - expectedHoles;
+      holeCount = {
+        expected: expectedHoles,
+        detected: detectedGenus,
+        mismatch: delta === 0 ? null : { delta },
+      };
+    }
+  }
+
+  const ok = mismatches.length === 0 && !holeCount?.mismatch;
   return {
-    ok: mismatches.length === 0,
+    ok,
     verifiable: true,
     expected,
     measured: {
@@ -256,6 +313,7 @@ export function verifyAgainstSpec(
       dMm: measured.max[2] - measured.min[2],
     },
     mismatches,
+    ...(holeCount ? { holeCount } : {}),
   };
 }
 
@@ -270,13 +328,23 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
   }
   if (result.ok) {
     const m = result.measured!;
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.`;
+    const holeLine = result.holeCount && result.holeCount.detected !== null
+      ? ` Through-holes: ${result.holeCount.detected} (matches intent).`
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
     const sign = m.deltaMm >= 0 ? '+' : '';
     lines.push(
       `  ${m.axis}: expected ${m.expectedMm.toFixed(2)} mm, measured ${m.actualMm.toFixed(2)} mm (${sign}${m.deltaMm.toFixed(2)} mm, ${sign}${m.deltaPct.toFixed(1)}%).`,
+    );
+  }
+  if (result.holeCount?.mismatch) {
+    const { expected, detected } = result.holeCount;
+    const sign = result.holeCount.mismatch.delta >= 0 ? '+' : '';
+    lines.push(
+      `  through-holes: expected ${expected}, detected ${detected} (${sign}${result.holeCount.mismatch.delta}).`,
     );
   }
   lines.push('Re-emit intent with corrected params to fix.');

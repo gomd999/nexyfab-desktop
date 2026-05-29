@@ -252,3 +252,61 @@ describe('formatSpecCritique', () => {
     expect(formatSpecCritique(r)).toMatch(/gear/);
   });
 });
+
+describe('Phase X2 — hole count check', () => {
+  const boxIntent = (holeCount: number): IntentInput => ({
+    shapeId: 'box',
+    params: { width: 50, height: 50, depth: 50 },
+    features: Array.from({ length: holeCount }, () => ({
+      type: 'hole',
+      params: { diameter: 5 },
+    } as never)),
+  });
+
+  it('passes when expected hole count matches detected genus', () => {
+    const r = verifyAgainstSpec(boxIntent(2), bboxFromSize(50, 50, 50), { detectedGenus: 2 });
+    expect(r.ok).toBe(true);
+    expect(r.holeCount).toEqual({ expected: 2, detected: 2, mismatch: null });
+    expect(formatSpecCritique(r)).toMatch(/Through-holes: 2/);
+  });
+
+  it('flags mismatch when AI drilled fewer holes than requested', () => {
+    const r = verifyAgainstSpec(boxIntent(3), bboxFromSize(50, 50, 50), { detectedGenus: 1 });
+    expect(r.ok).toBe(false);
+    expect(r.holeCount).toEqual({ expected: 3, detected: 1, mismatch: { delta: -2 } });
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/through-holes.*expected 3.*detected 1.*-2/);
+  });
+
+  it('flags mismatch when AI drilled too many', () => {
+    const r = verifyAgainstSpec(boxIntent(1), bboxFromSize(50, 50, 50), { detectedGenus: 3 });
+    expect(r.ok).toBe(false);
+    expect(r.holeCount?.mismatch?.delta).toBe(2);
+  });
+
+  it('skips hole check when detectedGenus is null (mesh not single closed manifold)', () => {
+    const r = verifyAgainstSpec(boxIntent(2), bboxFromSize(50, 50, 50), { detectedGenus: null });
+    expect(r.holeCount).toEqual({ expected: 2, detected: null, mismatch: null });
+    expect(r.ok).toBe(true); // bbox ok, hole check suppressed
+  });
+
+  it('skips hole check entirely when intent has no hole features', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), { detectedGenus: 1 });
+    // No hole features → no holeCount field at all (avoids "matches intent" line)
+    expect(r.holeCount).toBeUndefined();
+  });
+
+  it('skips hole check when detectedGenus omitted', () => {
+    const r = verifyAgainstSpec(boxIntent(2), bboxFromSize(50, 50, 50));
+    expect(r.holeCount).toBeUndefined();
+  });
+
+  it('bbox mismatch + hole mismatch both surface in the critique', () => {
+    const r = verifyAgainstSpec(boxIntent(2), bboxFromSize(75, 50, 50), { detectedGenus: 1 });
+    expect(r.ok).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/width.*expected 50/);
+    expect(text).toMatch(/through-holes.*expected 2.*detected 1/);
+  });
+});

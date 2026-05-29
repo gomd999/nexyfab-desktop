@@ -751,6 +751,13 @@ export interface GeometryStats {
   /** Layer-1 verification critique when the geometry has problems (gaps,
    *  inside-out normals, fragments). Undefined/empty when the model is clean. */
   issues?: string;
+  /**
+   * X2 — Topological genus = number of through-holes for a single-body
+   * closed manifold. Null when the mesh isn't a clean closed single body
+   * (multi-body, open boundary, non-manifold). verify_spec uses this to
+   * count through-holes against the intent's `hole` feature count.
+   */
+  genus?: number | null;
 }
 
 export interface BudgetState {
