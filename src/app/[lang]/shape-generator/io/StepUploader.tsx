@@ -28,6 +28,8 @@ const dict = {
     errType: '지원하지 않는 파일 형식입니다 (.step .stp .iges .igs 허용)',
     maxSize: '파일 크기 제한: 50 MB',
     parts: '파트', assembly: '전체 어셈블리', partList: '파트 트리 (개별 검사)',
+    showDetails: '상세 보기', hideDetails: '상세 숨기기',
+    colCategory: '카테고리', colType: '엔티티 타입', colCount: '개수',
   },
   en: {
     dropZone: 'Drag & drop a STEP / STP / IGES file, or click to browse',
@@ -41,6 +43,8 @@ const dict = {
     errType: 'Unsupported file type (.step .stp .iges .igs allowed)',
     maxSize: 'File size limit: 50 MB',
     parts: 'Parts', assembly: 'Whole Assembly', partList: 'Part Tree (Inspect Individual)',
+    showDetails: 'Show details', hideDetails: 'Hide details',
+    colCategory: 'Category', colType: 'Entity Type', colCount: 'Count',
   },
   ja: {
     dropZone: 'STEP / STP / IGES ファイルをドラッグするかクリックして選択',
@@ -54,6 +58,8 @@ const dict = {
     errType: 'サポートされていないファイル形式です (.step .stp .iges .igs のみ許可)',
     maxSize: 'ファイルサイズ制限: 50 MB',
     parts: 'パーツ', assembly: '全体アセンブリ', partList: 'パーツツリー (個別検査)',
+    showDetails: '詳細を表示', hideDetails: '詳細を隠す',
+    colCategory: 'カテゴリ', colType: 'エンティティ', colCount: '件数',
   },
   zh: {
     dropZone: '拖放 STEP / STP / IGES 文件，或点击浏览',
@@ -67,6 +73,8 @@ const dict = {
     errType: '不支持的文件类型（仅允许 .step .stp .iges .igs）',
     maxSize: '文件大小限制: 50 MB',
     parts: '零件', assembly: '整个装配体', partList: '零件树（单独检查）',
+    showDetails: '显示详情', hideDetails: '隐藏详情',
+    colCategory: '类别', colType: '实体类型', colCount: '数量',
   },
   es: {
     dropZone: 'Arrastra un archivo STEP / STP / IGES o haz clic para examinar',
@@ -80,6 +88,8 @@ const dict = {
     errType: 'Tipo de archivo no soportado (.step .stp .iges .igs permitidos)',
     maxSize: 'Límite de tamaño: 50 MB',
     parts: 'Partes', assembly: 'Ensamblaje Completo', partList: 'Árbol de partes (Inspección individual)',
+    showDetails: 'Ver detalles', hideDetails: 'Ocultar detalles',
+    colCategory: 'Categoría', colType: 'Tipo de entidad', colCount: 'Recuento',
   },
   ar: {
     dropZone: 'اسحب وأفلت ملف STEP / STP / IGES أو انقر للاستعراض',
@@ -93,6 +103,8 @@ const dict = {
     errType: 'نوع الملف غير مدعوم (.step .stp .iges .igs مسموح بها)',
     maxSize: 'حد حجم الملف: 50 MB',
     parts: 'أجزاء', assembly: 'التجميع بأكمله', partList: 'شجرة الأجزاء',
+    showDetails: 'عرض التفاصيل', hideDetails: 'إخفاء التفاصيل',
+    colCategory: 'الفئة', colType: 'نوع الكيان', colCount: 'العدد',
   },
 };
 
@@ -134,30 +146,67 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Per-category color used in the details table chip + table column.
+ *  Mirrors the seven `EntityCategory` values. Keep in sync with
+ *  `entityClassifier.ts::EntityCategory`. */
+const CATEGORY_COLORS: Record<string, string> = {
+  core: '#3fb950',         // green
+  tessellated: '#388bfd',  // blue
+  pmi: '#a371f7',          // purple
+  units: '#8b949e',        // gray
+  style: '#e3b341',        // yellow
+  bim: '#f85149',          // red
+  unknown: '#d29922',      // orange (amber)
+};
+
+interface BannerStrings {
+  showDetails: string;
+  hideDetails: string;
+  colCategory: string;
+  colType: string;
+  colCount: string;
+}
+
 /** Phase D follow-up — pre-flight entity classification banner shown
  *  during OCCT parse. Three colors:
  *    green  — importable (core geometry + no BIM blockers)
  *    amber  — importable but has unknown entities (>0)
- *    red    — bim-blocked or no geometry (importable=false) */
-function ClassificationBanner({ classification }: { classification: ClassifyStepEntitiesResult }) {
+ *    red    — bim-blocked or no geometry (importable=false)
+ *
+ *  Expandable "Show details" reveals the full `byType` table (sorted
+ *  by count desc — already sorted by classifier). Local state, not
+ *  hoisted because no consumer cares about open/close. */
+function ClassificationBanner({
+  classification,
+  strings,
+}: {
+  classification: ClassifyStepEntitiesResult;
+  strings: BannerStrings;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
   const isBlocked = !classification.importable;
   const hasUnknown = classification.byCategory.unknown > 0;
   const color = isBlocked ? '#f85149' : hasUnknown ? '#d29922' : '#3fb950';
   const bgColor = isBlocked ? 'rgba(248,81,73,0.08)' : hasUnknown ? 'rgba(210,153,34,0.08)' : 'rgba(63,185,80,0.08)';
   const borderColor = isBlocked ? 'rgba(248,81,73,0.3)' : hasUnknown ? 'rgba(210,153,34,0.3)' : 'rgba(63,185,80,0.3)';
 
+  const hasRows = classification.byType.length > 0;
+
   return (
-    <div style={{
-      marginTop: 8,
-      padding: '8px 12px',
-      background: bgColor,
-      border: `1px solid ${borderColor}`,
-      borderRadius: 6,
-      fontSize: 11,
-      color: 'var(--nx-text-2)',
-      lineHeight: 1.6,
-      fontVariantNumeric: 'tabular-nums',
-    }}>
+    <div
+      data-testid="classification-banner"
+      style={{
+        marginTop: 8,
+        padding: '8px 12px',
+        background: bgColor,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 6,
+        fontSize: 11,
+        color: 'var(--nx-text-2)',
+        lineHeight: 1.6,
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
       <div style={{ color, fontWeight: 700, marginBottom: 2 }}>
         {formatClassifySummary(classification)}
       </div>
@@ -169,6 +218,114 @@ function ClassificationBanner({ classification }: { classification: ClassifyStep
       {hasUnknown && classification.unknownTypes.length > 0 && (
         <div>Unknown: {classification.unknownTypes.slice(0, 3).join(', ')}
           {classification.unknownTypes.length > 3 && ` (+${classification.unknownTypes.length - 3})`}
+        </div>
+      )}
+
+      {hasRows && (
+        <button
+          type="button"
+          data-testid="classification-details-toggle"
+          aria-expanded={showDetails}
+          onClick={() => setShowDetails(s => !s)}
+          style={{
+            marginTop: 6,
+            padding: '2px 6px',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--nx-accent-2)',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              transition: 'transform 0.15s',
+              transform: showDetails ? 'rotate(90deg)' : 'rotate(0deg)',
+            }}
+          >
+            ▶
+          </span>
+          {showDetails ? strings.hideDetails : strings.showDetails}
+        </button>
+      )}
+
+      {hasRows && showDetails && (
+        <div
+          data-testid="classification-details-table-wrap"
+          style={{
+            marginTop: 6,
+            maxHeight: 300,
+            overflowY: 'auto',
+            border: '1px solid var(--nx-panel-2)',
+            borderRadius: 4,
+            background: 'var(--nx-bg)',
+          }}
+        >
+          <table
+            data-testid="classification-details-table"
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: 11,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            <thead style={{
+              position: 'sticky',
+              top: 0,
+              background: 'var(--nx-panel-2)',
+              color: 'var(--nx-text-2)',
+            }}>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 600 }}>
+                  {strings.colCategory}
+                </th>
+                <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 600 }}>
+                  {strings.colType}
+                </th>
+                <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 600 }}>
+                  {strings.colCount}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {classification.byType.map(row => {
+                const categoryColor = CATEGORY_COLORS[row.category] ?? 'var(--nx-text-2)';
+                return (
+                  <tr
+                    key={row.entityType}
+                    data-testid={`classification-details-row-${row.entityType}`}
+                    data-category={row.category}
+                    style={{ borderTop: '1px solid var(--nx-panel-2)' }}
+                  >
+                    <td
+                      data-testid={`classification-details-category-${row.entityType}`}
+                      data-category={row.category}
+                      style={{
+                        padding: '3px 8px',
+                        color: categoryColor,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {row.category}
+                    </td>
+                    <td style={{ padding: '3px 8px', color: 'var(--nx-text)' }}>
+                      {row.entityType}
+                    </td>
+                    <td style={{ padding: '3px 8px', textAlign: 'right', color: 'var(--nx-text)' }}>
+                      {row.count.toLocaleString()}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -374,7 +531,16 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
             <p style={{ fontSize: 11, color: 'var(--nx-border-strong)', marginTop: 8 }}>{fileName}</p>
           )}
           {classification && (
-            <ClassificationBanner classification={classification} />
+            <ClassificationBanner
+              classification={classification}
+              strings={{
+                showDetails: T.showDetails,
+                hideDetails: T.hideDetails,
+                colCategory: T.colCategory,
+                colType: T.colType,
+                colCount: T.colCount,
+              }}
+            />
           )}
           <button onClick={handleCancel} style={{
             marginTop: 12, padding: '5px 14px', borderRadius: 6,
