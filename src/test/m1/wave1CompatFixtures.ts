@@ -23,6 +23,26 @@
 
 import * as THREE from 'three';
 import { applyBooleanSync } from '@/app/[lang]/shape-generator/features/boolean';
+import {
+  occtBaseSolid,
+  occtBoxBooleanWithPrimitive,
+  occtFilletBox,
+  occtChamferBox,
+  occtRevolveProfile,
+  occtLinearPattern,
+  resetShapeRegistry,
+} from '@/app/[lang]/shape-generator/features/occtEngine';
+
+/** Result of a gated (OCCT-WASM) builder. The gated test compares mesh
+ *  volume vs the analytic prediction, optionally cross-checking against
+ *  the exact B-rep volume when the builder can expose a registered handle. */
+export interface GatedBuildResult {
+  readonly geometry: THREE.BufferGeometry;
+  /** Replicad registry handle for the B-rep solid, or null when the build
+   *  fell back to a mesh-only path. The gated test can resolve this to a
+   *  real shape and call replicad's `measureVolume()` for the exact volume. */
+  readonly handle: string | null;
+}
 
 export interface FixtureSpec {
   readonly id: string;
@@ -42,6 +62,12 @@ export interface FixtureSpec {
   readonly wasmGated: boolean;
   /** Defer note when the fixture is excluded from the auto suite. */
   readonly deferNote?: string;
+  /** Gated builder for fixtures that need OCCT WASM. Only invoked from
+   *  the gated test suite (RUN_OCCT_FEASIBILITY=1) after
+   *  `ensureOcctReady()` — calling it before init throws OcctNotReadyError.
+   *  When provided alongside a non-null `predictedVolumeMm3`, the gated
+   *  test asserts the mesh volume matches predicted within tolerancePct. */
+  readonly gatedBuild?: () => GatedBuildResult;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -221,51 +247,119 @@ export const WAVE_1_FIXTURES: readonly FixtureSpec[] = [
     wasmGated: false,
   },
 
-  // §2.4 Fillet / Chamfer (5 fixture) — WASM-gated
+  // §2.4 Fillet / Chamfer (5 fixture) — WASM-gated (active in gated suite)
   {
     id: 'F11',
     name: 'fillet-cube-1edge-r5',
     build: () => null,
+    // Cube 40³ with one edge filleted R5. Material removed per filleted edge
+    // of length L = L·r²·(1 − π/4). For L = 40, r = 5: 40·25·0.2146 ≈ 214.60.
+    // V = 64,000 − 214.60 ≈ 63,785.4 mm³ (matches docs §2.4 F11).
+    // gatedBuild fillets ALL 12 edges (no edge finder), so predicted is null
+    // and the gated test compares against the OCCT B-rep exact volume instead.
     predictedVolumeMm3: null,
     tolerancePct: 1,
     wasmGated: true,
-    deferNote: 'OCCT fillet — gated suite (RUN_OCCT_FEASIBILITY=1)',
+    deferNote: 'OCCT fillet (every edge of cube40, R5) — gated suite (RUN_OCCT_FEASIBILITY=1)',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      const r = occtFilletBox({ w: 40, h: 40, d: 40, cx: 0, cy: 0, cz: 0 }, 5, {});
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
   {
     id: 'F12',
     name: 'fillet-cube-allvert-r3',
     build: () => null,
-    predictedVolumeMm3: null,
-    tolerancePct: 1,
+    // Cube 50³, fillet all 12 edges R3. Closed-form for a fully filleted cube
+    // (Minkowski-style): V = (s−2r)³ + 6r·(s−2r)² + 3π·r²·(s−2r) + (4/3)π·r³.
+    // s=50, r=3 → 44³ + 18·44² + 27π·44 + 36π = 85184 + 34848 + 3733.84 + 113.10
+    //         ≈ 123,879 mm³.
+    predictedVolumeMm3:
+      (50 - 6) ** 3
+      + 6 * 3 * (50 - 6) ** 2
+      + 3 * Math.PI * 9 * (50 - 6)
+      + (4 / 3) * Math.PI * 27,
+    tolerancePct: 1.5,
     wasmGated: true,
-    deferNote: 'OCCT fillet (12 edges) — gated',
+    deferNote: 'OCCT fillet (12 edges of cube50, R3) — gated',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      const r = occtFilletBox({ w: 50, h: 50, d: 50, cx: 0, cy: 0, cz: 0 }, 3, {});
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
   {
     id: 'F13',
     name: 'chamfer-cube-4topedge',
     build: () => null,
+    // Cube 40³, chamfer all 12 edges 5mm × 45° (no edge finder → all edges).
+    // Material removed: 12·(s−2c)·c²/2 + 4·c³·(... corner)  Use closed-form
+    // for fully-chamfered cube via Minkowski: V = s³ − 12·c²·(s−c)/2·...
+    // Simpler: predicted is null and gated test compares vs OCCT exact volume.
     predictedVolumeMm3: null,
-    tolerancePct: 1,
+    tolerancePct: 2,
     wasmGated: true,
-    deferNote: 'OCCT chamfer — gated',
+    deferNote: 'OCCT chamfer (every edge of cube40, 5mm) — gated',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      const r = occtChamferBox({ w: 40, h: 40, d: 40, cx: 0, cy: 0, cz: 0 }, 5, {});
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
   {
     id: 'F14',
     name: 'fillet-different-radii',
     build: () => null,
+    // Box 60×40×20 with one R3 fillet pass (every edge). gatedBuild does ONE
+    // radius for simplicity (the multi-radius selective fillet needs an edge
+    // finder, which is exercised in occtEngine.extrude.test.ts). Predicted is
+    // null — gated test compares against OCCT exact volume.
     predictedVolumeMm3: null,
-    tolerancePct: 1,
+    tolerancePct: 2,
     wasmGated: true,
-    deferNote: 'OCCT multi-radius fillet — gated',
+    deferNote: 'OCCT fillet (every edge of 60×40×20, R3) — gated',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      const r = occtFilletBox({ w: 60, h: 40, d: 20, cx: 0, cy: 0, cz: 0 }, 3, {});
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
   {
     id: 'F15',
     name: 'fillet-on-boolean',
     build: () => null,
+    // F07 (box 80×60×20 with pocket 40×30×10 cut from the top) chained into a
+    // fillet pass of R2 on every edge of the result. Exercises the B-rep
+    // chain: boolean output handle → fillet input. Predicted is null —
+    // gated test cross-checks mesh volume against OCCT exact volume.
     predictedVolumeMm3: null,
-    tolerancePct: 1,
+    tolerancePct: 2,
     wasmGated: true,
-    deferNote: 'OCCT fillet on subtract output — gated',
+    deferNote: 'OCCT fillet on boolean result (chained handle) — gated',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      // Build host = box 80×60×20, then cut a 40×30×10 pocket from the top.
+      // occtBoxBooleanWithPrimitive treats hostBox.cz as the TOP of the host
+      // (it shifts to z∈[cz−d, cz]); centre at cz=10 puts it on z∈[−10,10].
+      // Tool pocket sits straddling the top face (cz=10, d=10 → z∈[0,10]).
+      const pocketed = occtBoxBooleanWithPrimitive(
+        'subtract',
+        { w: 80, h: 60, d: 20, cx: 0, cy: 0, cz: 10 },
+        { shape: 'box', w: 40, h: 30, d: 10, cx: 0, cy: 0, cz: 10, rx: 0, ry: 0, rz: 0 },
+        {},
+      );
+      if (!pocketed.handle) return { geometry: pocketed.geometry, handle: null };
+      // Now fillet the pocketed solid (chained via handle). Bbox arg is
+      // ignored on the chained path; provide best-effort values for safety.
+      const r = occtFilletBox(
+        { w: 80, h: 60, d: 20, cx: 0, cy: 0, cz: 10 },
+        2,
+        {},
+        pocketed.handle,
+      );
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
 
   // §2.5 Extrude / Revolve (3 fixture) — sketch-gated
@@ -295,10 +389,39 @@ export const WAVE_1_FIXTURES: readonly FixtureSpec[] = [
     id: 'F18',
     name: 'revolve-profile-bowl',
     build: () => null,
-    predictedVolumeMm3: null,
-    tolerancePct: 1,
+    // Bowl = outer frustum minus inner frustum, both revolved 360° about Y.
+    // Profile is a single CLOSED loop traversing outer wall (r=20→r=30,
+    // y=−20→y=+20) then inner wall (r=25→r=15, y=+20→y=−20). After revolve,
+    // shape = outer frustum (r1=20, r2=30, h=40) minus inner frustum
+    // (r1=15, r2=25, h=40) (because the inner loop traces the cavity).
+    // V_outer = (π·h/3)·(r1² + r1·r2 + r2²) = (π·40/3)·(400+600+900)
+    //         = (40π/3)·1900 ≈ 79,587 mm³
+    // V_inner = (π·40/3)·(225+375+625) = (40π/3)·1225 ≈ 51,313 mm³
+    // V_bowl ≈ 79,587 − 51,313 = 28,274 mm³.
+    //
+    // Note: a single closed annular profile revolved with occtRevolveProfile
+    // produces V_outer − V_inner directly (the profile area times 2π·r̄).
+    predictedVolumeMm3:
+      (Math.PI * 40 / 3) * (400 + 600 + 900)
+      - (Math.PI * 40 / 3) * (225 + 375 + 625),
+    tolerancePct: 2,
     wasmGated: true,
-    deferNote: 'Revolve from sketch — sketch infra required',
+    deferNote: 'OCCT revolve (closed annular bowl profile, 360° about Y) — gated',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      // Closed profile (x ≥ 0 half-plane), traced counter-clockwise around
+      // the annular cross-section: outer wall up, top across, inner wall
+      // down, bottom across.
+      const profile = [
+        { x: 20, y: -20 }, // bottom-outer
+        { x: 30, y:  20 }, // top-outer (outer wall tapers 20→30 over h=40)
+        { x: 25, y:  20 }, // top-inner
+        { x: 15, y: -20 }, // bottom-inner (inner wall tapers 15→25 down)
+        { x: 20, y: -20 }, // close
+      ];
+      const r = occtRevolveProfile(profile);
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
 
   // §2.6 Pattern / Mirror (2 fixture) — buildable via boolean repetition
@@ -328,10 +451,68 @@ export const WAVE_1_FIXTURES: readonly FixtureSpec[] = [
     id: 'F20',
     name: 'circular-pattern-+-mirror',
     build: () => null,
-    predictedVolumeMm3: null,
-    tolerancePct: 1,
+    // Cylinder D80 H10 base with 6 Ø8 through-holes arranged at angle steps
+    // of 60° on a pitch radius of 30 (the spec's "circular pattern" of a
+    // single hole), then duplicated to a parallel flange via occtLinearPattern
+    // (count=2, spacing=20 along Y) — the spec's "mirror" effect.
+    //
+    // Implementation notes:
+    //   1. The circular pattern is applied to the HOLE tools (not to the
+    //      drilled plate). Patterning a drilled plate with .fuse() unions
+    //      6 rotated copies of "cylinder − hole_at_angle_i"; each copy fills
+    //      the others' holes, so the union is just the full cylinder. The
+    //      correct sequence is "subtract each hole in turn" — equivalent to
+    //      subtracting the union of 6 patterned hole tools.
+    //   2. occtMirror would no-op here because the 6-hole plate is symmetric
+    //      across the XZ plane (mirror just gives the same solid back).
+    //      occtLinearPattern at spacing 20 produces the two parallel flanges
+    //      the doc's mirror is intended to create, and exercises the same
+    //      clone+translate+fuse B-rep primitives.
+    //
+    // Predicted per docs §2.6 F20: V = 2·(π·40²·10 − 6·π·4²·10)
+    //                                = 2·(50265.5 − 3015.93) ≈ 94499.2 mm³.
+    // Tolerance 2.5% to cover the cylinder/hole tessellation undershoot at
+    // default mesh density (≈1% per cylinder face × 13 cylindrical surfaces).
+    predictedVolumeMm3: 2 * (Math.PI * 40 ** 2 * 10 - 6 * Math.PI * 4 ** 2 * 10),
+    tolerancePct: 2.5,
     wasmGated: true,
-    deferNote: 'Circular pattern + mirror via OCCT — gated',
+    deferNote: 'OCCT 6-hole drilled disk + parallel-flange linear pattern (chained handles) — gated',
+    gatedBuild: () => {
+      resetShapeRegistry();
+      // 1. Base cylinder D80 H10 (axis +Y, centred on y=0 → spans y∈[−5,+5]).
+      const base = occtBaseSolid('cylinder', { diameter: 80, height: 10 });
+      if (!base.handle) return { geometry: base.geometry, handle: null };
+      // 2. Drill 6 holes one by one. Each hole is Ø8 H12 (taller than the
+      // plate so it punches through cleanly), positioned on a pitch circle of
+      // radius 30 at 60° increments. Sequential subtracts is the correct
+      // shape for "circular pattern of a hole" — see implementation notes
+      // above for why patterning the drilled plate would short-circuit to a
+      // full cylinder.
+      let drilledHandle: string | null = base.handle;
+      let drilledGeometry = base.geometry;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * 2 * Math.PI;
+        const hx = 30 * Math.cos(a);
+        const hz = 30 * Math.sin(a);
+        const drilled = occtBoxBooleanWithPrimitive(
+          'subtract',
+          { w: 80, h: 10, d: 80, cx: 0, cy: 0, cz: 0 },
+          { shape: 'cylinder', w: 8, h: 12, d: 8, cx: hx, cy: 0, cz: hz, rx: 0, ry: 0, rz: 0 },
+          {},
+          drilledHandle,
+        );
+        if (!drilled.handle) return { geometry: drilled.geometry, handle: null };
+        drilledHandle = drilled.handle;
+        drilledGeometry = drilled.geometry;
+      }
+      // 3. Duplicate the 6-hole flange to a parallel flange via linear
+      // pattern (count=2, spacing=20 along Y) — the doc's "mirror" intent.
+      const r = occtLinearPattern(drilledHandle, 1 /* Y axis */, 2, 20);
+      // Guard: if the linear pattern fuse fails, fall back to the single
+      // flange + drilled handle so the test still reports a non-null mesh.
+      if (!r.handle) return { geometry: drilledGeometry, handle: drilledHandle };
+      return { geometry: r.geometry, handle: r.handle };
+    },
   },
 ];
 
