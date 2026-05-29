@@ -9346,43 +9346,65 @@ export function ShapeGeneratorInner() {
                 <DirectEditHostBridge lang={lang} sceneAdapter={sceneAdapter} />
               </div>
             )}
-            {assemblyExportOn && (
-              <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 30, maxWidth: 420 }}>
-                <AssemblyExportBridge
-                  lang={lang}
-                  availableParts={[{ id: '__primary', label: 'Primary' }]}
-                  resolvePartStepText={async (partId) => {
-                    if (partId !== '__primary') return null;
-                    const geo = effectiveResultRef.current?.geometry;
-                    if (!geo) return null;
-                    const { exportToStepAsync } = await import('./io/stepExporter');
-                    return await exportToStepAsync(geo, 'Primary');
-                  }}
-                  onDiagnostics={(d) => {
-                    if (d.length > 0) addToast('warning', `Assembly export: ${d.length} part(s) skipped`);
-                  }}
-                />
-              </div>
-            )}
-            {configExportOn && (
-              <div style={{ position: 'absolute', bottom: 96, right: 16, zIndex: 30, maxWidth: 420 }}>
-                <ConfigurationsExportBridge
-                  lang={lang}
-                  partName={selectedId || 'part'}
-                  configs={[{ id: 'default', name: 'default' }]}
-                  exportConfigStep={async (_id) => {
-                    const geo = effectiveResultRef.current?.geometry;
-                    if (!geo) return null;
-                    const { exportToStepAsync } = await import('./io/stepExporter');
-                    return await exportToStepAsync(geo, selectedId || 'part');
-                  }}
-                  onBundleReady={(r) => {
-                    const m = r.manifest as { configCount: number };
-                    addToast('success', `Bundle: ${m.configCount} config(s)`);
-                  }}
-                />
-              </div>
-            )}
+            {assemblyExportOn && (() => {
+              // Real adapter: availableParts ← placedParts. Empty assembly
+              // falls back to the single-body __primary placeholder so the
+              // bridge still has something to walk. Geometry resolution per
+              // part: v1 uses the current viewport geometry for every part
+              // (single-pipeline scene). Per-shape resolution lands in
+              // Phase 5c when the shape catalog + params replay path wires.
+              const realParts = placedParts.length > 0
+                ? placedParts.map((p) => ({ id: p.id, label: p.name }))
+                : [{ id: '__primary', label: 'Primary' }];
+              return (
+                <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 30, maxWidth: 420 }}>
+                  <AssemblyExportBridge
+                    lang={lang}
+                    availableParts={realParts}
+                    resolvePartStepText={async (_partId) => {
+                      const geo = effectiveResultRef.current?.geometry;
+                      if (!geo) return null;
+                      const { exportToStepAsync } = await import('./io/stepExporter');
+                      return await exportToStepAsync(geo, 'Primary');
+                    }}
+                    onDiagnostics={(d) => {
+                      if (d.length > 0) addToast('warning', `Assembly export: ${d.length} part(s) skipped`);
+                    }}
+                  />
+                </div>
+              );
+            })()}
+            {configExportOn && (() => {
+              // Real adapter: configs ← configurations state. Empty list
+              // falls back to a 'default' placeholder so the bundle still
+              // ships. Per-config geometry resolution: v1 uses the current
+              // viewport geometry for every config (the parametric replay
+              // path that applies each config's params/featureEnabled lands
+              // in Phase 5c). The bundle layout + manifest are correct now;
+              // only the geometry payload is identical across configs.
+              const realConfigs = configurations.length > 0
+                ? configurations.map((c) => ({ id: c.id, name: c.name }))
+                : [{ id: 'default', name: 'default' }];
+              return (
+                <div style={{ position: 'absolute', bottom: 96, right: 16, zIndex: 30, maxWidth: 420 }}>
+                  <ConfigurationsExportBridge
+                    lang={lang}
+                    partName={selectedId || 'part'}
+                    configs={realConfigs}
+                    exportConfigStep={async (_id) => {
+                      const geo = effectiveResultRef.current?.geometry;
+                      if (!geo) return null;
+                      const { exportToStepAsync } = await import('./io/stepExporter');
+                      return await exportToStepAsync(geo, selectedId || 'part');
+                    }}
+                    onBundleReady={(r) => {
+                      const m = r.manifest as { configCount: number };
+                      addToast('success', `Bundle: ${m.configCount} config(s)`);
+                    }}
+                  />
+                </div>
+              );
+            })()}
           </>
         );
       })()}
