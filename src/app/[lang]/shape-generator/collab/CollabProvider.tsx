@@ -174,6 +174,19 @@ export function CollabProvider(props: CollabProviderProps) {
   const [doc] = useState(() => new Y.Doc());
   const [awareness] = useState(() => new Awareness(doc));
 
+  // E2E debug hook — Playwright spec collab-awareness-latency.spec.ts
+  // measures emit→observe round-trip via setLocalStateField + getStates.
+  // Exposed only when NEXT_PUBLIC_NEXYFAB_COLLAB_DEBUG === '1' so prod
+  // bundles don't leak the awareness object to page scripts.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (process.env.NEXT_PUBLIC_NEXYFAB_COLLAB_DEBUG !== '1') return;
+    (window as unknown as { __nexyfabAwareness?: Awareness }).__nexyfabAwareness = awareness;
+    return () => {
+      delete (window as unknown as { __nexyfabAwareness?: Awareness }).__nexyfabAwareness;
+    };
+  }, [awareness]);
+
   // Local peer identity. Stable across re-renders within one mount.
   const localPeerIdRef = useRef<string>(initialPeerId ?? generatePeerId());
   const localPeerNameRef = useRef<string>(
