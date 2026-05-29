@@ -9330,13 +9330,29 @@ export function ShapeGeneratorInner() {
         const sceneAdapter: DirectEditSceneAdapter = {
           getActiveBodyId: () => '__primary',
           getTargetGeometry: () => effectiveResultRef.current?.geometry ?? null,
-          replaceBodyGeometry: (_bodyId, _next) => {
-            // v1: direct-edit op result lands in a transient stack; the
-            // visible viewport geometry stays parametric until the user
-            // promotes via commit-to-history. Full geometry-swap path is
-            // Phase 5b follow-up. For now we only notify so the user sees
-            // the op was recorded.
-            addToast('info', '직접편집 op 기록됨 (commit-to-history로 확정)');
+          replaceBodyGeometry: (_bodyId, nextGeo) => {
+            // Phase 5h — real viewport swap. Direct-edit op output lands
+            // in `result` so the viewport renders the edited mesh
+            // immediately. Edge geometry is rebuilt because direct-edit
+            // changes the mesh topology (push-pull moves vertices, fillet
+            // adds new ones). Volume / surface / bbox stay at the
+            // previous parametric values — they'll re-compute on the
+            // next parametric rebuild. Acceptable because direct-edit is
+            // session-only per ADR-012; the next param change naturally
+            // restores the parametric result.
+            const prev = effectiveResultRef.current;
+            if (!prev) return;
+            try {
+              const newEdges = makeEdges(nextGeo, 20);
+              setResult({
+                ...prev,
+                geometry: nextGeo,
+                edgeGeometry: newEdges,
+              });
+              addToast('info', '직접편집 적용 (commit-to-history로 영구화)');
+            } catch (err) {
+              addToast('error', `viewport swap failed: ${err instanceof Error ? err.message : String(err)}`);
+            }
           },
           removeBodyFromScene: (_bodyId) => {
             // No-op in the single-body scene (subtract tool body isn't
