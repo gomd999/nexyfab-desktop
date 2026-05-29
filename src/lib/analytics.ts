@@ -123,4 +123,21 @@ export const analytics = {
   /** Ribbon / Fusion-style workspace switch (design, simulation, render, …). */
   shapeGeneratorWorkspace: (workspace: string) =>
     trackEvent('shape_generator_workspace', { workspace }),
+  /** Phase D follow-up — STEP entity classifier ran on a dropped file.
+   *  We send the aggregate counts + top-N unknown / bim type names
+   *  (comma-joined, ≤ 5 entries) so backlog can prioritize which
+   *  unknown entities to whitelist next. Schema (FILE_SCHEMA token)
+   *  helps differentiate AP214 vs AP242 vs AP242-BIM customer mix. */
+  stepClassify: (p: {
+    schema: string;
+    total: number;
+    core: number;
+    tessellated: number;
+    pmi: number;
+    bim: number;
+    unknown: number;
+    importable: boolean;
+    topUnknown?: string;
+    topBim?: string;
+  }) => trackEvent('step_classify', p),
 };

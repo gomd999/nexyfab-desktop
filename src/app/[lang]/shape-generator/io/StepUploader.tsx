@@ -12,6 +12,7 @@ import {
   formatClassifySummary,
   type ClassifyStepEntitiesResult,
 } from '../stepImport/entityClassifier';
+import { analytics } from '@/lib/analytics';
 
 
 const dict = {
@@ -235,7 +236,22 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
       // Cheap (≤50ms on a 5MB file); never throws.
       try {
         const stepText = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
-        setClassification(classifyStepEntities(stepText));
+        const cls = classifyStepEntities(stepText);
+        setClassification(cls);
+        // Fire-and-forget telemetry — top-N unknown/bim type names
+        // help backlog prioritize the next whitelist additions.
+        analytics.stepClassify({
+          schema: cls.schema ?? 'unknown',
+          total: cls.totalEntities,
+          core: cls.byCategory.core,
+          tessellated: cls.byCategory.tessellated,
+          pmi: cls.byCategory.pmi,
+          bim: cls.byCategory.bim,
+          unknown: cls.byCategory.unknown,
+          importable: cls.importable,
+          topUnknown: cls.unknownTypes.slice(0, 5).join(','),
+          topBim: cls.bimTypes.slice(0, 5).join(','),
+        });
       } catch {
         // Classifier failure is non-fatal — fall through to OCCT.
       }
