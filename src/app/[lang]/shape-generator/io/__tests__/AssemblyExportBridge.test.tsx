@@ -422,3 +422,67 @@ describe('AssemblyExportBridge — defensive', () => {
     expect(downloads[0].name).toBe('My_Bad_Name_.step');
   });
 });
+
+describe('AssemblyExportBridge — partTransforms (Phase 5e)', () => {
+  it('partTransforms omitted → leaf identity transform survives unchanged', async () => {
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        initialRoot={seededRootWithLeaves(['bracket'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    // Identity-only — destination AXIS2_PLACEMENT_3D point is at origin.
+    expect(downloads[0].text).toContain("CARTESIAN_POINT('',(0.000000,0.000000,0.000000))");
+  });
+
+  it('partTransforms with translation → leaf transform overridden, destination point reflects translation', async () => {
+    const t = new THREE.Matrix4().compose(
+      new THREE.Vector3(12, 34, 56),
+      new THREE.Quaternion(),
+      new THREE.Vector3(1, 1, 1),
+    );
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        partTransforms={{ bracket: t }}
+        initialRoot={seededRootWithLeaves(['bracket'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    // Stitcher writes the translated destination point into
+    // AXIS2_PLACEMENT_3D for the part's ITEM_DEFINED_TRANSFORMATION.
+    expect(downloads[0].text).toContain("CARTESIAN_POINT('',(12.000000,34.000000,56.000000))");
+  });
+
+  it('partTransforms only applies to matching partId — others stay identity', async () => {
+    const t = new THREE.Matrix4().compose(
+      new THREE.Vector3(99, 0, 0),
+      new THREE.Quaternion(),
+      new THREE.Vector3(1, 1, 1),
+    );
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        partTransforms={{ bracket: t }} // gear NOT in map
+        initialRoot={seededRootWithLeaves(['bracket', 'gear'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    const stp = downloads[0].text;
+    expect(stp).toContain("CARTESIAN_POINT('',(99.000000,0.000000,0.000000))"); // bracket
+    expect(stp).toContain("CARTESIAN_POINT('',(0.000000,0.000000,0.000000))");  // gear identity
+  });
+});

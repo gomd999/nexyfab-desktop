@@ -9353,17 +9353,40 @@ export function ShapeGeneratorInner() {
               //
               // Phase 5c per-part replay: each PlacedPart has shapeId +
               // params, so we run `buildShapeResult(shapeId, params)` per
-              // part to get the part-specific geometry (instead of reusing
-              // the viewport mesh for every part). __primary fallback uses
-              // the current viewport geometry as before.
+              // part to get the part-specific geometry.
+              //
+              // Phase 5e per-part transforms: PlacedPart.position (mm) +
+              // PlacedPart.rotation (deg, XYZ Euler) → Matrix4 per part.
+              // Bridge applies these to leaf nodes via partTransforms prop
+              // so the exported NAUO STEP has each part placed at its
+              // assembly position (not all stacked at origin).
               const realParts = placedParts.length > 0
                 ? placedParts.map((p) => ({ id: p.id, label: p.name }))
                 : [{ id: '__primary', label: 'Primary' }];
+              const partTransforms: Record<string, Matrix4> = {};
+              for (const p of placedParts) {
+                const m = new Matrix4();
+                const q = new Quaternion().setFromEuler(
+                  new Euler(
+                    (p.rotation[0] * Math.PI) / 180,
+                    (p.rotation[1] * Math.PI) / 180,
+                    (p.rotation[2] * Math.PI) / 180,
+                    'XYZ',
+                  ),
+                );
+                m.compose(
+                  new Vector3(p.position[0], p.position[1], p.position[2]),
+                  q,
+                  new Vector3(1, 1, 1),
+                );
+                partTransforms[p.id] = m;
+              }
               return (
                 <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 30, maxWidth: 420 }}>
                   <AssemblyExportBridge
                     lang={lang}
                     availableParts={realParts}
+                    partTransforms={partTransforms}
                     resolvePartStepText={async (partId) => {
                       const { exportToStepAsync } = await import('./io/stepExporter');
                       if (partId === '__primary') {

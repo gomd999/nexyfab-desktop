@@ -156,6 +156,25 @@ function withLeafStepText(
   return { ...root, children: nextChildren };
 }
 
+/** Inject per-partId transforms into every matching leaf, overriding
+ *  any existing leaf.transform. Use case: host has authoritative
+ *  per-part positions/rotations (e.g. PlacedPart.position +
+ *  PlacedPart.rotation) and wants those to win over the leaf's own
+ *  identity transform stamped by emptyLeaf. Returns a structurally
+ *  cloned tree. */
+function injectPartTransforms(
+  root: AssemblySubNode,
+  partTransforms: Readonly<Record<string, THREE.Matrix4>>,
+): AssemblySubNode {
+  if (root.kind === 'part') {
+    const next = partTransforms[root.partId];
+    if (!next) return root;
+    return { ...root, transform: next };
+  }
+  const nextChildren = root.children.map((c) => injectPartTransforms(c, partTransforms));
+  return { ...root, children: nextChildren };
+}
+
 /** Prune leaves whose path is in `skipPaths` (Set of path-as-string).
  *  Empty sub-assemblies that result are also pruned. Returns null if
  *  the entire tree becomes empty. */
@@ -198,6 +217,15 @@ export interface AssemblyExportBridgeProps {
   readonly onDiagnostics?: (
     diags: ReadonlyArray<{ partId: string; warning: string }>,
   ) => void;
+  /**
+   * Per-partId transforms applied right before stitching. Override
+   * whatever transform the leaf node carries (e.g. the identity
+   * Matrix4 stamped by AssemblyTreeEditor.emptyLeaf). Use case:
+   * host has authoritative PlacedPart.position/rotation and wants
+   * those positions baked into the exported NAUO STEP. When omitted,
+   * the leaf's own transform survives unchanged.
+   */
+  readonly partTransforms?: Readonly<Record<string, THREE.Matrix4>>;
   /** Asm name default for the file. */
   readonly defaultAsmName?: string;
   readonly testId?: string;
@@ -236,6 +264,7 @@ export function AssemblyExportBridge(
     availableParts,
     resolvePartStepText,
     onDiagnostics,
+    partTransforms,
     defaultAsmName,
     testId = 'assembly-export-bridge',
     testHandleRef,
@@ -300,8 +329,15 @@ export function AssemblyExportBridge(
       //    stitcher's diagnostic surface focused on real STEP parse issues).
       const pruned = pruneSkippedLeaves(rootWithStep, skipPaths) ?? rootWithStep;
 
+      // 4b. Inject per-partId transforms (e.g. PlacedPart.position/
+      //     rotation) into the matching leaves. No-op when partTransforms
+      //     prop is omitted.
+      const withTransforms = partTransforms
+        ? injectPartTransforms(pruned, partTransforms)
+        : pruned;
+
       // 5. Stitch + download. Stitcher diagnostics are appended.
-      const result = stitchNestedAssemblyHierarchy(pruned, asmName);
+      const result = stitchNestedAssemblyHierarchy(withTransforms, asmName);
       for (const d of result.diagnostics) diags.push(d);
 
       const safeName = asmName.replace(/[^a-zA-Z0-9_\-.]/g, '_') || 'Assembly';
