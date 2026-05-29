@@ -269,3 +269,270 @@ export function stitchAssemblyHierarchy(
     diagnostics,
   };
 }
+
+// ─── v2.1 Nested sub-assemblies ─────────────────────────────────────────────
+//
+// Extends v2 from flat root→leaves to arbitrary depth: root → sub-asm →
+// (sub-asm | leaf), recursively. Internally still calls the same
+// renumber-stitch helpers; the new wrapper emits one PRODUCT per
+// sub-assembly node + NAUO linking each parent_def → child_def.
+//
+// API shape: a recursive node tree. Leaves carry per-part STEP text;
+// interior nodes carry a label + transform + children.
+
+export type AssemblySubNode =
+  | {
+      readonly kind: 'part';
+      readonly partId: string;
+      readonly label?: string;
+      readonly transform?: THREE.Matrix4;
+      /** Self-contained ISO-10303-21 STEP for this leaf. */
+      readonly stepText: string;
+    }
+  | {
+      readonly kind: 'subAssembly';
+      /** Stable id used in NAUO `name` field + diagnostics. */
+      readonly subAsmId: string;
+      readonly label?: string;
+      readonly transform?: THREE.Matrix4;
+      readonly children: readonly AssemblySubNode[];
+    };
+
+export interface NestedAssemblyResult {
+  readonly stepText: string;
+  /** Total leaf part count across all sub-assemblies. */
+  readonly partCount: number;
+  /** Total interior sub-assembly node count (excludes root). */
+  readonly subAssemblyCount: number;
+  /** Max depth from root to deepest leaf (root depth = 0, direct leaf = 1). */
+  readonly maxDepth: number;
+  readonly diagnostics: ReadonlyArray<{ partId: string; warning: string }>;
+}
+
+interface LeafPlan {
+  partId: string;
+  label: string;
+  offset: number;
+  dataLines: string[];
+  /** Per-leaf renumbered PRODUCT_DEFINITION id. */
+  partDefId: number;
+  transform: THREE.Matrix4;
+}
+
+interface NodePlan {
+  /** Sub-assembly's own renumbered PRODUCT_DEFINITION id (assigned in wrapper range). */
+  defId: number;
+  label: string;
+  transform: THREE.Matrix4;
+  /** Refs to children's defIds (interior + leaf). */
+  childDefIds: number[];
+  /** Per-child transform for the occurrence (matches childDefIds index). */
+  childTransforms: THREE.Matrix4[];
+  /** Per-child occurrence name (NAUO 'name' field). */
+  childOccNames: string[];
+}
+
+function isPartNode(n: AssemblySubNode): n is Extract<AssemblySubNode, { kind: 'part' }> {
+  return n.kind === 'part';
+}
+
+/** Recursive plan walk: assigns per-leaf offsets and per-sub-asm defIds.
+ *  Wrapper defIds live in [10..999]; leaves get renumbered from 1000+. */
+function planNode(
+  node: AssemblySubNode,
+  ctx: {
+    diagnostics: { partId: string; warning: string }[];
+    leaves: LeafPlan[];
+    nodes: NodePlan[];
+    nextLeafOffset: { value: number };
+    nextWrapperDefId: { value: number };
+    depth: { max: number };
+  },
+  currentDepth: number,
+): { defId: number } | null {
+  ctx.depth.max = Math.max(ctx.depth.max, currentDepth);
+
+  if (isPartNode(node)) {
+    const localPartDefId = findPartDefinitionId(node.stepText);
+    if (localPartDefId == null) {
+      ctx.diagnostics.push({ partId: node.partId, warning: 'no PRODUCT_DEFINITION found in part STEP' });
+      return null;
+    }
+    const dataLines = extractDataLines(node.stepText);
+    if (dataLines.length === 0) {
+      ctx.diagnostics.push({ partId: node.partId, warning: 'empty DATA section' });
+      return null;
+    }
+    const partMax = maxEntityId(node.stepText);
+    const offset = ctx.nextLeafOffset.value;
+    ctx.nextLeafOffset.value = offset + partMax + 100;
+
+    ctx.leaves.push({
+      partId: node.partId,
+      label: (node.label ?? node.partId).replace(/'/g, ''),
+      offset,
+      dataLines: dataLines.map((l) => shiftEntityIds(l, offset)),
+      partDefId: localPartDefId + offset,
+      transform: node.transform ?? new THREE.Matrix4().identity(),
+    });
+
+    return { defId: localPartDefId + offset };
+  }
+
+  // Sub-assembly node — recurse into children, then allocate wrapper defId.
+  const childDefIds: number[] = [];
+  const childTransforms: THREE.Matrix4[] = [];
+  const childOccNames: string[] = [];
+  let i = 0;
+  for (const child of node.children) {
+    const result = planNode(child, ctx, currentDepth + 1);
+    if (result) {
+      childDefIds.push(result.defId);
+      const childTx = isPartNode(child)
+        ? (child.transform ?? new THREE.Matrix4().identity())
+        : (child.transform ?? new THREE.Matrix4().identity());
+      childTransforms.push(childTx);
+      const childTag = isPartNode(child) ? child.partId : child.subAsmId;
+      childOccNames.push(`${node.subAsmId}__${childTag}_${i + 1}`);
+    }
+    i++;
+  }
+
+  if (childDefIds.length === 0) {
+    ctx.diagnostics.push({ partId: node.subAsmId, warning: 'sub-assembly has no usable children' });
+    return null;
+  }
+
+  const myDefId = ctx.nextWrapperDefId.value++;
+  ctx.nodes.push({
+    defId: myDefId,
+    label: (node.label ?? node.subAsmId).replace(/'/g, ''),
+    transform: node.transform ?? new THREE.Matrix4().identity(),
+    childDefIds,
+    childTransforms,
+    childOccNames,
+  });
+
+  return { defId: myDefId };
+}
+
+/**
+ * Compose a nested assembly tree into a single STEP file.
+ *
+ * @param root  Tree root. Must be a sub-assembly node (a single leaf has
+ *              no parent → use stitchAssemblyHierarchy instead).
+ * @param asmName  File header + root PRODUCT name override.
+ *                 Defaults to root.label ?? root.subAsmId.
+ *
+ * Throws on empty tree, no parseable leaves, or root being a leaf
+ * (use the flat stitcher for single-part / flat cases).
+ */
+export function stitchNestedAssemblyHierarchy(
+  root: AssemblySubNode,
+  asmName?: string,
+): NestedAssemblyResult {
+  if (isPartNode(root)) {
+    throw new Error('stitchNestedAssemblyHierarchy: root must be a sub-assembly node (use stitchAssemblyHierarchy for single parts)');
+  }
+  if (root.children.length === 0) {
+    throw new Error('stitchNestedAssemblyHierarchy: root sub-assembly has no children');
+  }
+
+  const ctx = {
+    diagnostics: [] as { partId: string; warning: string }[],
+    leaves: [] as LeafPlan[],
+    nodes: [] as NodePlan[],
+    nextLeafOffset: { value: 1000 },
+    nextWrapperDefId: { value: 100 }, // sub-asm PRODUCT_DEFINITION ids live in 100..999
+    depth: { max: 0 },
+  };
+
+  const rootPlan = planNode(root, ctx, 0);
+  if (!rootPlan) {
+    throw new Error('stitchNestedAssemblyHierarchy: root sub-assembly could not be planned (all children failed)');
+  }
+
+  const safeName = (asmName ?? root.label ?? root.subAsmId).replace(/'/g, '');
+  const timestamp = new Date().toISOString().slice(0, 19);
+
+  // ── Wrapper emission ────────────────────────────────────────────────────
+  const lines: string[] = [];
+  let id = 1;
+
+  lines.push('ISO-10303-21;');
+  lines.push('HEADER;');
+  lines.push(`FILE_DESCRIPTION(('NexyFab Assembly v2.1 (nested) - ${safeName}'),'2;1');`);
+  lines.push(`FILE_NAME('${safeName}.step','${timestamp}',('NexyFab'),('nexyfab.com'),'NexyFab Assembly v2.1 1.0','','');`);
+  lines.push("FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));");
+  lines.push('ENDSEC;');
+  lines.push('DATA;');
+
+  // Shared application context entities
+  const appCtxId = id++;
+  lines.push(`#${appCtxId}=APPLICATION_CONTEXT('mechanical design');`);
+  const appProtoId = id++;
+  lines.push(`#${appProtoId}=APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2003,#${appCtxId});`);
+  const prodCtxId = id++;
+  lines.push(`#${prodCtxId}=PRODUCT_CONTEXT('',#${appCtxId},'mechanical');`);
+  const prodDefCtxId = id++;
+  lines.push(`#${prodDefCtxId}=PRODUCT_DEFINITION_CONTEXT('part definition',#${appCtxId},'design');`);
+
+  // One PRODUCT + FORMATION + DEFINITION per sub-asm node (ctx.nodes ordered
+  // bottom-up by the recursive walk → emit in reverse so the root appears
+  // last and is easy to spot in the file).
+  for (const sub of ctx.nodes) {
+    const prodId = id++;
+    lines.push(`#${prodId}=PRODUCT('${sub.label}','${sub.label}','',(#${prodCtxId}));`);
+    const formId = id++;
+    lines.push(`#${formId}=PRODUCT_DEFINITION_FORMATION('','',#${prodId});`);
+    // The sub-asm's defId was allocated by planNode in the wrapper range;
+    // we emit the entity here using that id (we trust no collision because
+    // the wrapper range [100..999] is reserved and id counter starts at 1).
+    lines.push(`#${sub.defId}=PRODUCT_DEFINITION('design','',#${formId},#${prodDefCtxId});`);
+  }
+
+  // Per sub-asm, emit NAUO + ITEM_DEFINED_TRANSFORMATION for each child.
+  for (const sub of ctx.nodes) {
+    for (let cIdx = 0; cIdx < sub.childDefIds.length; cIdx++) {
+      const childDef = sub.childDefIds[cIdx];
+      const childXfm = sub.childTransforms[cIdx];
+      const occName = sub.childOccNames[cIdx];
+
+      const nauoId = id++;
+      lines.push(
+        `#${nauoId}=NEXT_ASSEMBLY_USAGE_OCCURRENCE(` +
+        `'${occName}','${occName}','',` +
+        `#${sub.defId},#${childDef},$);`,
+      );
+
+      const { origin, zAxis, xAxis } = decomposeForAxisPlacement(childXfm);
+      const srcPtId = id++; lines.push(`#${srcPtId}=CARTESIAN_POINT('',(0.0,0.0,0.0));`);
+      const srcZId = id++; lines.push(`#${srcZId}=DIRECTION('',(0.0,0.0,1.0));`);
+      const srcXId = id++; lines.push(`#${srcXId}=DIRECTION('',(1.0,0.0,0.0));`);
+      const srcFrame = id++; lines.push(`#${srcFrame}=AXIS2_PLACEMENT_3D('',#${srcPtId},#${srcZId},#${srcXId});`);
+      const dstPtId = id++; lines.push(`#${dstPtId}=CARTESIAN_POINT('',(${fmt(origin[0])},${fmt(origin[1])},${fmt(origin[2])}));`);
+      const dstZId = id++; lines.push(`#${dstZId}=DIRECTION('',(${fmt(zAxis[0])},${fmt(zAxis[1])},${fmt(zAxis[2])}));`);
+      const dstXId = id++; lines.push(`#${dstXId}=DIRECTION('',(${fmt(xAxis[0])},${fmt(xAxis[1])},${fmt(xAxis[2])}));`);
+      const dstFrame = id++; lines.push(`#${dstFrame}=AXIS2_PLACEMENT_3D('',#${dstPtId},#${dstZId},#${dstXId});`);
+      const idtId = id++; lines.push(`#${idtId}=ITEM_DEFINED_TRANSFORMATION('${occName}_xfm','',#${srcFrame},#${dstFrame});`);
+    }
+  }
+
+  // ── Per-leaf renumbered entities ────────────────────────────────────────
+  lines.push('/* === Per-leaf bodies (renumbered) === */');
+  for (const leaf of ctx.leaves) {
+    lines.push(`/* leaf: ${leaf.partId} (${leaf.label}) offset=${leaf.offset} */`);
+    for (const ln of leaf.dataLines) lines.push(ln);
+  }
+
+  lines.push('ENDSEC;');
+  lines.push('END-ISO-10303-21;');
+
+  return {
+    stepText: lines.join('\n'),
+    partCount: ctx.leaves.length,
+    subAssemblyCount: ctx.nodes.length - 1, // exclude root from count (root is the asm itself)
+    maxDepth: ctx.depth.max,
+    diagnostics: ctx.diagnostics,
+  };
+}

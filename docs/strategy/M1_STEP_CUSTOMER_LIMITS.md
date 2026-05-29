@@ -26,7 +26,8 @@
 | 비-박스 보내기 (OCCT 핸들 보유) | AP214/AP242 B-rep | OCCT 피처(extrude/revolve/fillet 등) 결과는 즉시 B-rep |
 | 비-박스 보내기 (메시만 보유, OCCT 브리지) | AP214/AP242 B-rep | 임포트된 메시도 `meshToOcctShapeHandle` 브리지로 B-rep export 가능 (변환 ~100-300 ms, cold start ~1 s; UI에서 "Converting via OCCT…" 표시) |
 | 어셈블리 STEP 보내기 (멀티바디 단일 파일, v1) | **지원** | `exportAssemblyToStepAsync` 가 OCCT compound 로 묶어서 단일 STEP export. 파트별 transform (translate + rotate). 단일 PRODUCT 'Compound'. 파브리케이션 CAM (Mastercam/Fusion) 호환 |
-| 어셈블리 STEP 계층 (v2, NAUO) | **지원** | `stitchAssemblyHierarchy` 가 per-part STEP을 stitching → 1 root PRODUCT + per-part NEXT_ASSEMBLY_USAGE_OCCURRENCE + ITEM_DEFINED_TRANSFORMATION. SolidWorks / Onshape / Fusion 어셈블리 트리 재구성 가능. 서브어셈블리 (root→sub→leaf) 는 Phase D+ |
+| 어셈블리 STEP 계층 (v2, NAUO) | **지원** | `stitchAssemblyHierarchy` 가 per-part STEP을 stitching → 1 root PRODUCT + per-part NEXT_ASSEMBLY_USAGE_OCCURRENCE + ITEM_DEFINED_TRANSFORMATION. SolidWorks / Onshape / Fusion 어셈블리 트리 재구성 가능 |
+| 어셈블리 STEP 서브어셈블리 (v2.1, nested) | **지원** | `stitchNestedAssemblyHierarchy` — root → sub-asm → (sub-asm \| leaf) recursion. 임의 깊이, 서브어셈블리 자체에 transform 적용 가능, 부분 실패 diagnostics |
 | FreeCAD/SOLIDWORKS 출처 STEP | OCCT WASM이 파싱 가능한 범위까지 | AP203/AP214/AP242 일반 지원; AP242 BIM/Edition 2는 일부 entity 거부 가능 |
 
 ## 가져올 때 자주 보는 실패 패턴
