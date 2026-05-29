@@ -884,6 +884,36 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
   // Catalogs the agent can query when the user says "use a 6204 bearing"
   // or "1/4-20 bolt" — returns dimensional + load data so the agent can
   // size the geometry without inventing numbers.
+
+  // X #5 — Metric ISO fastener catalog (M3-M16). Agents MUST call this
+  // before sizing a metric bolt/nut/tap hole so clearance/tap drill +
+  // hex AF match the ISO 261 standard instead of being invented.
+  const lookup_metric_fastener: ToolExecutor = async (args) => {
+    const { lookupMetric } = await import('../../openscad-render/isoFasteners');
+    const a = args as { size?: unknown };
+    const size = typeof a.size === 'string' ? a.size.toUpperCase() : '';
+    if (!size) {
+      return { ok: false, error: 'lookup_metric_fastener requires { size: e.g. "M8" }', code: 'BAD_ARGS' };
+    }
+    const f = lookupMetric(size);
+    if (!f) {
+      return { ok: false, error: `unknown metric fastener "${size}". Supported: M3, M4, M5, M6, M8, M10, M12, M14, M16.`, code: 'NOT_FOUND' };
+    }
+    const lines = [
+      `${size} (ISO 261 coarse): nominal Ø${f.d} mm, pitch ${f.pitch} mm`,
+      `  Clearance hole (medium fit): Ø${f.clearanceHole} mm`,
+      `  Tap drill (~75% thread):    Ø${f.tapHole} mm`,
+      `  Hex across-flats (DIN 934 nut / DIN 933 bolt head): ${f.hexAcrossFlats} mm`,
+      `  Hex socket cap drive (ISO 4762): ${f.hexSocketDrive} mm`,
+      `  Source: ISO 261 (metric thread series), DIN 934/933, ISO 4762`,
+    ];
+    return {
+      ok: true,
+      output: lines.join('\n'),
+      meta: { fastener: f, standard: 'ISO 261' },
+    };
+  };
+
   const lookup_imperial_fastener: ToolExecutor = async (args) => {
     const { lookupImperial } = await import('../../openscad-render/standardsLibrary');
     const a = args as { designation?: unknown };
@@ -1918,6 +1948,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     tree_summary,
     tree_set_param,
     tree_remove_node,
+    lookup_metric_fastener,
     lookup_imperial_fastener,
     select_bearing,
     select_key,

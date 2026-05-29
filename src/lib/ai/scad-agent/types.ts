@@ -76,6 +76,7 @@ export type ToolName =
   | 'tree_set_param'
   | 'tree_remove_node'
   // ─── Z4 — Standards library lookups ──────────────────────────────────
+  | 'lookup_metric_fastener'
   | 'lookup_imperial_fastener'
   | 'select_bearing'
   | 'select_key'
