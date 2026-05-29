@@ -16,6 +16,7 @@ import {
 } from './autoDrawing';
 import { DRAWING_TITLE_REVISION_LABEL, exportDrawingPDF, exportDrawingDXF } from './drawingExport';
 import { bumpDrawingRevision } from './drawingRevisionPolicy';
+import { saveDrawingTemplatePrefs } from './drawingTemplatePrefs';
 import { reportInfo } from '../lib/telemetry';
 import { autoExplodedDrawing } from '../assembly/autoExplodedDrawing';
 import AutoExplodedSVG from '../assembly/AutoExplodedSVG';
@@ -60,6 +61,9 @@ const dict = {
     exportNeedsRegen: '도면이 최신 3D와 맞지 않습니다. 먼저「도면 생성」을 누르세요.',
     bumpRevision: '리비전 올리기',
     bumpRevisionTitle: '표제란 리비전만 증가합니다. 이후「도면 생성」으로 형상을 반영하세요.',
+    saveAsDefault: '기본값으로 저장',
+    saveAsDefaultTitle: '현재 도면 설정(뷰/축척/공차/표제란)을 기본값으로 저장합니다. 이후 어셈블리·구성 STEP export 시 자동 적용됩니다.',
+    savedAsDefaultToast: '도면 기본값 저장됨',
   },
   en: {
     title: 'Auto Drawing', views: 'Views',
@@ -82,6 +86,9 @@ const dict = {
     exportNeedsRegen: 'Drawing is out of date with the 3D model. Click Generate before exporting.',
     bumpRevision: 'Bump revision',
     bumpRevisionTitle: 'Increments the title-block revision only — click Generate to refresh views from the latest 3D.',
+    saveAsDefault: 'Save as default',
+    saveAsDefaultTitle: 'Persists the current drawing settings (views/scale/tolerance/title block) as the default. Assembly and configuration STEP exports will reuse them automatically.',
+    savedAsDefaultToast: 'Drawing default saved',
   },
   ja: {
     title: '自動図面生成', views: 'ビュー',
@@ -104,6 +111,9 @@ const dict = {
     exportNeedsRegen: '図面が3Dと一致しません。エクスポート前に「生成」してください。',
     bumpRevision: 'リビジョンを上げる',
     bumpRevisionTitle: '表題欄のリビジョンのみ進めます。その後「生成」で3Dを反映してください。',
+    saveAsDefault: 'デフォルトとして保存',
+    saveAsDefaultTitle: '現在の図面設定（ビュー/スケール/公差/表題欄）をデフォルトとして保存します。以降のアセンブリ・構成STEPエクスポートに自動適用されます。',
+    savedAsDefaultToast: '図面デフォルトを保存しました',
   },
   zh: {
     title: '自动工程图', views: '视图',
@@ -126,6 +136,9 @@ const dict = {
     exportNeedsRegen: '图纸与三维不同步。导出前请先点击「生成」。',
     bumpRevision: '提升版本',
     bumpRevisionTitle: '仅递增标题栏版本号；请点击「生成」以反映最新三维模型。',
+    saveAsDefault: '保存为默认',
+    saveAsDefaultTitle: '将当前图纸设置（视图/比例/公差/标题栏）保存为默认值。后续装配体与配置 STEP 导出将自动应用。',
+    savedAsDefaultToast: '已保存图纸默认值',
   },
   es: {
     title: 'Dibujo Auto', views: 'Vistas',
@@ -148,6 +161,9 @@ const dict = {
     exportNeedsRegen: 'El dibujo no coincide con el 3D. Pulse Generar antes de exportar.',
     bumpRevision: 'Subir revisión',
     bumpRevisionTitle: 'Solo incrementa la revisión del cartucho; pulse Generar para actualizar la geometría 3D.',
+    saveAsDefault: 'Guardar como predeterminado',
+    saveAsDefaultTitle: 'Guarda los ajustes actuales del dibujo (vistas/escala/tolerancia/cartucho) como predeterminado. Las exportaciones STEP de ensamblaje y configuración los reutilizarán automáticamente.',
+    savedAsDefaultToast: 'Predeterminado de dibujo guardado',
   },
   ar: {
     title: 'رسم تلقائي', views: 'المناظر',
@@ -170,6 +186,9 @@ const dict = {
     exportNeedsRegen: 'الرسم غير متزامن مع النموذج ثلاثي الأبعاد. اضغط «توليد» قبل التصدير.',
     bumpRevision: 'رفع المراجعة',
     bumpRevisionTitle: 'يزيد رقم المراجعة في كتلة العنوان فقط — اضغط «توليد» لمزامنة الشكل ثلاثي الأبعاد.',
+    saveAsDefault: 'حفظ كافتراضي',
+    saveAsDefaultTitle: 'يحفظ إعدادات الرسم الحالية (المناظر/المقياس/التسامح/كتلة العنوان) كافتراضي. ستعيد عمليات تصدير STEP للتجميع والتكوينات استخدامها تلقائياً.',
+    savedAsDefaultToast: 'تم حفظ الافتراضي للرسم',
   },
 } as const;
 
@@ -406,30 +425,44 @@ export default function AutoDrawingPanel({
     });
   }, []);
 
+  const buildCurrentConfig = useCallback((): DrawingConfig => ({
+    views: Array.from(selectedViews),
+    scale: scaleVal,
+    paperSize,
+    orientation,
+    showDimensions,
+    showCenterlines,
+    tolerance: { linear: linearTol, angular: angularTol },
+    roughness: [{ ra: raValue, nx: 0.85, ny: 0.15 }],
+    titleBlock: {
+      partName: tbPartName,
+      material: tbMaterial,
+      drawnBy: tbDrawnBy,
+      date: tbDate,
+      scale: `${scaleVal}:1`,
+      revision: tbRevision,
+    },
+  }), [selectedViews, scaleVal, paperSize, orientation, showDimensions, showCenterlines, linearTol, angularTol, raValue, tbPartName, tbMaterial, tbDrawnBy, tbDate, tbRevision]);
+
   const handleGenerate = useCallback(() => {
     if (!geometry) return;
-    const config: DrawingConfig = {
-      views: Array.from(selectedViews),
-      scale: scaleVal,
-      paperSize,
-      orientation,
-      showDimensions,
-      showCenterlines,
-      tolerance: { linear: linearTol, angular: angularTol },
-      roughness: [{ ra: raValue, nx: 0.85, ny: 0.15 }],
-      titleBlock: {
-        partName: tbPartName,
-        material: tbMaterial,
-        drawnBy: tbDrawnBy,
-        date: tbDate,
-        scale: `${scaleVal}:1`,
-        revision: tbRevision,
-      },
-    };
+    const config = buildCurrentConfig();
     const result = generateDrawing(geometry, config);
     setDrawing(result);
     setFpAtLastGenerate(computeDrawingGeometryFingerprint(geometry));
-  }, [geometry, selectedViews, scaleVal, paperSize, orientation, showDimensions, showCenterlines, linearTol, angularTol, raValue, tbPartName, tbMaterial, tbDrawnBy, tbDate, tbRevision]);
+  }, [geometry, buildCurrentConfig]);
+
+  const [savedDefaultAt, setSavedDefaultAt] = useState<number | null>(null);
+  const handleSavePrefs = useCallback(() => {
+    saveDrawingTemplatePrefs(buildCurrentConfig());
+    reportInfo('drawing_export', 'save_default_template', { partName: tbPartName || 'drawing' });
+    setSavedDefaultAt(Date.now());
+  }, [buildCurrentConfig, tbPartName]);
+  useEffect(() => {
+    if (savedDefaultAt == null) return;
+    const id = window.setTimeout(() => setSavedDefaultAt(null), 2000);
+    return () => window.clearTimeout(id);
+  }, [savedDefaultAt]);
 
   const currentFp = geometry ? computeDrawingGeometryFingerprint(geometry) : null;
   const drawingStale =
@@ -807,8 +840,26 @@ export default function AutoDrawingPanel({
       )}
 
       {/* Actions */}
-      <div style={{ ...sectionStyle, display: 'flex', gap: 8 }}>
+      <div style={{ ...sectionStyle, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" data-testid="auto-drawing-generate" style={primaryBtn} onClick={handleGenerate}>{tt.generate}</button>
+        <button
+          type="button"
+          data-testid="auto-drawing-save-default"
+          title={tt.saveAsDefaultTitle}
+          style={secondaryBtn}
+          onClick={handleSavePrefs}
+        >
+          💾 {tt.saveAsDefault}
+        </button>
+        {savedDefaultAt != null && (
+          <span
+            role="status"
+            data-testid="auto-drawing-save-default-toast"
+            style={{ fontSize: 11, color: C.green, fontWeight: 600 }}
+          >
+            ✓ {tt.savedAsDefaultToast}
+          </span>
+        )}
         {drawing && (
           <>
             <button
