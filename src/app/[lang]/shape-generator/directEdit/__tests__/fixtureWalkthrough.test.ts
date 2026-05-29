@@ -36,6 +36,7 @@ import { applyPushPull } from '../applyPushPull';
 import { applyDynamicFillet } from '../applyDynamicFillet';
 import { applyMoveBody } from '../applyMoveBody';
 import { applyRotateBody } from '../applyRotateBody';
+import { applySubtractBody } from '../applySubtractBody';
 import { emptyDirectEditStack, type DirectEditOp } from '../directEditTypes';
 import { commitDirectEditStackToHistory } from '../commitStack';
 import type { CommitContext } from '../commitToHistory';
@@ -219,20 +220,37 @@ describe('F-DE-03 — move + rotate body', () => {
   });
 });
 
-// ─── F-DE-04: subtract body (SKIPPED — E4 was folded into earlier patches) ─
+// ─── F-DE-04: subtract body (E4 — now wired via applySubtractBody) ─────────
 
-describe.skip('F-DE-04 — subtract body (E4 folded, no discrete applier)', () => {
-  it('placeholder — re-enable when applySubtractBody.ts ships', () => {
-    // Per docs/wave-2-phase-3-exit.md §2 Track E table:
-    //   E4 | (subtract body — folded into earlier patches) | shipped pre-W6
-    //
-    // The semantic E4 op (boolean subtract of body B from body A by
-    // face-pick) currently rides on the existing boolean.ts feature
-    // applier and does NOT have a direct-edit session-stack variant.
-    // When a discrete applySubtractBody.ts lands, this fixture should:
-    //   - pick face on body A
-    //   - subtract body B
-    //   - verify A's mesh shrinks + verify body B is removed
+describe('F-DE-04 — subtract body', () => {
+  function makeCenteredBox(size: number): THREE.BufferGeometry {
+    const g = new THREE.BoxGeometry(size, size, size);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  it('overlapping target + tool → applied=true with consumedToolBodyId', () => {
+    const target = makeCenteredBox(10);
+    const tool = makeCenteredBox(5);
+    const result = applySubtractBody(
+      target,
+      { kind: 'subtractBody', targetBodyId: 'A', toolBodyId: 'B', createdAt: 0 },
+      { lookupToolGeometry: (id) => (id === 'B' ? tool : null) },
+    );
+    expect(result.applied).toBe(true);
+    expect(result.consumedToolBodyId).toBe('B');
+    expect(result.geometry).not.toBe(target);
+  });
+
+  it('tool not found → applied=false with tool_not_found reason', () => {
+    const target = makeCenteredBox(10);
+    const result = applySubtractBody(
+      target,
+      { kind: 'subtractBody', targetBodyId: 'A', toolBodyId: 'gone', createdAt: 0 },
+      { lookupToolGeometry: () => null, warn: vi.fn() },
+    );
+    expect(result.applied).toBe(false);
+    expect(result.rejectionReason).toBe('tool_not_found');
   });
 });
 
