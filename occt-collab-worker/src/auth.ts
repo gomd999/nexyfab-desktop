@@ -19,14 +19,6 @@ export interface JWTPayload {
 
 // ─── Base64url helpers ───────────────────────────────────────────────────────
 
-function base64urlEncode(data: Uint8Array | string): string {
-  const str =
-    typeof data === 'string'
-      ? data
-      : String.fromCharCode(...Array.from(data));
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
 function base64urlDecode(str: string): Uint8Array {
   const padded = str.replace(/-/g, '+').replace(/_/g, '/');
   const pad = (4 - (padded.length % 4)) % 4;
