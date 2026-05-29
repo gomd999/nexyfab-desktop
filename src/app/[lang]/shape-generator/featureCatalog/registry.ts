@@ -364,7 +364,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     id: 'weld.structural', name: 'Weldments Structural Members', category: 'standard-parts',
     routes: ['modeling'], tags: ['w-beam', 'channel', 'angle', 'cut-list', 'stock-pack'],
     license: 'pro',
-    entryHint: 'weldments/structuralMembers',
+    entryHint: 'welding/structuralMembers',
     description: 'W-beam / C-channel / L-angle / HSS catalog + cut list + stock packing.',
   },
   {
@@ -2374,7 +2374,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     routes: ['drawing', 'modeling'],
     tags: ['weldment', 'cut-list', 'fabrication', 'bom', 'bin-packing', 'first-fit-decreasing', 'kerf', 'stock-length'],
     license: 'pro',
-    entryHint: 'weldments/cutListReport',
+    entryHint: 'welding/cutListReport',
     description: 'Generate cut-list from structural members: profile + material + length grouping with tolerance, mass + miter capture, optional 1D first-fit-decreasing bin packing against stock length with kerf, utilization report.',
   },
   {
