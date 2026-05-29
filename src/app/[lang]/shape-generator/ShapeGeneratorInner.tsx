@@ -196,8 +196,10 @@ import { DirectEditHostBridge, type DirectEditSceneAdapter } from './directEdit/
 import { AssemblyExportBridge } from './io/AssemblyExportBridge';
 import { ConfigurationsExportBridge } from './configurations/ConfigurationsExportBridge';
 import { applyFeatureEnabledMap } from './configurations/featureSuppression';
+import { generateDrawingsForConfigs } from './configurations/perConfigDrawing';
 import { runPipeline } from './features/pipelineManager';
 import { FEATURE_MAP } from './features';
+import type { DrawingConfig } from './analysis/autoDrawing';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
@@ -9429,12 +9431,50 @@ export function ShapeGeneratorInner() {
               const realConfigs = configurations.length > 0
                 ? configurations.map((c) => ({ id: c.id, name: c.name }))
                 : [{ id: 'default', name: 'default' }];
+              // Phase 5i — per-config drawing SVGs alongside STEP in the
+              // bundle. Default DrawingConfig template (3-view + dims +
+              // centerlines) is plenty for vendor handoff; the user can
+              // still open AutoDrawingPanel for finer control before the
+              // next export. Geometry resolver mirrors exportConfigStep's
+              // base-shape path (per-config params, no feature replay —
+              // drawings are projection-based; feature suppression is
+              // baked into the STEP separately and would over-clutter the
+              // 2D view here).
+              const drawingTemplate: DrawingConfig = {
+                views: ['front', 'top', 'right'],
+                scale: 1,
+                paperSize: 'A4',
+                orientation: 'landscape',
+                showDimensions: true,
+                showCenterlines: true,
+                tolerance: { linear: '±0.1', angular: '±1°' },
+                titleBlock: {
+                  partName: selectedId || 'part',
+                  material: 'TBD',
+                  drawnBy: '',
+                  date: new Date().toISOString().slice(0, 10),
+                  scale: '1:1',
+                  revision: 'A',
+                },
+              };
+              const drawingsByConfigId = selectedId && configurations.length > 0
+                ? generateDrawingsForConfigs({
+                    configs: realConfigs,
+                    resolveGeometry: (configId) => {
+                      const cfg = configurations.find((c) => c.id === configId);
+                      if (!cfg) return null;
+                      return buildShapeResult(selectedId, cfg.params, cfg.paramExpressions)?.geometry ?? null;
+                    },
+                    drawingConfigTemplate: drawingTemplate,
+                  }).drawingsByConfigId
+                : {};
               return (
                 <div style={{ position: 'absolute', bottom: 96, right: 16, zIndex: 30, maxWidth: 420 }}>
                   <ConfigurationsExportBridge
                     lang={lang}
                     partName={selectedId || 'part'}
                     configs={realConfigs}
+                    resolveConfigDrawing={(id) => drawingsByConfigId[id] ?? null}
                     exportConfigStep={async (configId) => {
                       const { exportToStepAsync } = await import('./io/stepExporter');
                       // Default placeholder → current viewport geometry.
