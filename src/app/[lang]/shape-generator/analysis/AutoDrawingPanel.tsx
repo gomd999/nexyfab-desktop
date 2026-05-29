@@ -16,7 +16,7 @@ import {
 } from './autoDrawing';
 import { DRAWING_TITLE_REVISION_LABEL, exportDrawingPDF, exportDrawingDXF } from './drawingExport';
 import { bumpDrawingRevision } from './drawingRevisionPolicy';
-import { saveDrawingTemplatePrefs } from './drawingTemplatePrefs';
+import { loadDrawingTemplatePrefs, saveDrawingTemplatePrefs } from './drawingTemplatePrefs';
 import { reportInfo } from '../lib/telemetry';
 import { autoExplodedDrawing } from '../assembly/autoExplodedDrawing';
 import AutoExplodedSVG from '../assembly/AutoExplodedSVG';
@@ -451,6 +451,34 @@ export default function AutoDrawingPanel({
     setDrawing(result);
     setFpAtLastGenerate(computeDrawingGeometryFingerprint(geometry));
   }, [geometry, buildCurrentConfig]);
+
+  // Phase 6e — hydrate template-level state from saved prefs on mount.
+  // Per-part fields (tbPartName, tbMaterial) and tbDate stay prop/today
+  // so users don't see a stale part name on a fresh open.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    const prefs = loadDrawingTemplatePrefs();
+    if (prefs.views && prefs.views.length > 0) {
+      setSelectedViews(new Set<ProjectionView>(prefs.views));
+    }
+    if (typeof prefs.scale === 'number' && prefs.scale > 0) setScaleVal(prefs.scale);
+    if (prefs.paperSize === 'A4' || prefs.paperSize === 'A3' || prefs.paperSize === 'A2') {
+      setPaperSize(prefs.paperSize);
+    }
+    if (prefs.orientation === 'landscape' || prefs.orientation === 'portrait') {
+      setOrientation(prefs.orientation);
+    }
+    if (typeof prefs.showDimensions === 'boolean') setShowDimensions(prefs.showDimensions);
+    if (typeof prefs.showCenterlines === 'boolean') setShowCenterlines(prefs.showCenterlines);
+    if (prefs.tolerance?.linear) setLinearTol(prefs.tolerance.linear);
+    if (prefs.tolerance?.angular) setAngularTol(prefs.tolerance.angular);
+    const ra = prefs.roughness?.[0]?.ra;
+    if (typeof ra === 'number' && ra > 0) setRaValue(ra);
+    if (prefs.titleBlock?.drawnBy) setTbDrawnBy(prefs.titleBlock.drawnBy);
+    if (prefs.titleBlock?.revision) setTbRevision(prefs.titleBlock.revision);
+  }, []);
 
   const [savedDefaultAt, setSavedDefaultAt] = useState<number | null>(null);
   const handleSavePrefs = useCallback(() => {
