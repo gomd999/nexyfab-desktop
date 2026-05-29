@@ -7,6 +7,11 @@ import { useStepWorker } from '../workers/useStepWorker';
 import type { StepAnalysisStats } from '../workers/stepWorker';
 import { useLocalActiveGeometries } from '../hooks/useGeometryGC';
 import StepReversePanel from './StepReversePanel';
+import {
+  classifyStepEntities,
+  formatClassifySummary,
+  type ClassifyStepEntitiesResult,
+} from '../stepImport/entityClassifier';
 
 
 const dict = {
@@ -128,6 +133,47 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Phase D follow-up — pre-flight entity classification banner shown
+ *  during OCCT parse. Three colors:
+ *    green  — importable (core geometry + no BIM blockers)
+ *    amber  — importable but has unknown entities (>0)
+ *    red    — bim-blocked or no geometry (importable=false) */
+function ClassificationBanner({ classification }: { classification: ClassifyStepEntitiesResult }) {
+  const isBlocked = !classification.importable;
+  const hasUnknown = classification.byCategory.unknown > 0;
+  const color = isBlocked ? '#f85149' : hasUnknown ? '#d29922' : '#3fb950';
+  const bgColor = isBlocked ? 'rgba(248,81,73,0.08)' : hasUnknown ? 'rgba(210,153,34,0.08)' : 'rgba(63,185,80,0.08)';
+  const borderColor = isBlocked ? 'rgba(248,81,73,0.3)' : hasUnknown ? 'rgba(210,153,34,0.3)' : 'rgba(63,185,80,0.3)';
+
+  return (
+    <div style={{
+      marginTop: 8,
+      padding: '8px 12px',
+      background: bgColor,
+      border: `1px solid ${borderColor}`,
+      borderRadius: 6,
+      fontSize: 11,
+      color: 'var(--nx-text-2)',
+      lineHeight: 1.6,
+      fontVariantNumeric: 'tabular-nums',
+    }}>
+      <div style={{ color, fontWeight: 700, marginBottom: 2 }}>
+        {formatClassifySummary(classification)}
+      </div>
+      {classification.bimTypes.length > 0 && (
+        <div>BIM entities: {classification.bimTypes.slice(0, 5).join(', ')}
+          {classification.bimTypes.length > 5 && ` (+${classification.bimTypes.length - 5})`}
+        </div>
+      )}
+      {hasUnknown && classification.unknownTypes.length > 0 && (
+        <div>Unknown: {classification.unknownTypes.slice(0, 3).join(', ')}
+          {classification.unknownTypes.length > 3 && ` (+${classification.unknownTypes.length - 3})`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPartSelect, lang = 'en' }: StepUploaderProps) {
@@ -136,6 +182,11 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
   const [isLoadingGeo, setIsLoadingGeo] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [result, setResult] = useState<StepAnalysisResult | null>(null);
+  /** Pre-flight entity classification (Phase D follow-up). Set right after
+   *  the buffer is read, before OCCT WASM parse runs. Surfaces BIM
+   *  warnings + entity counts so the user can abort a ~30s parse on a
+   *  file we already know won't import cleanly. */
+  const [classification, setClassification] = useState<ClassifyStepEntitiesResult | null>(null);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -169,6 +220,7 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
 
     setError(null);
     setResult(null);
+    setClassification(null);
     setFileName(file.name);
     fileRef.current = file;
     setIsUploading(true);
@@ -177,8 +229,19 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
     try {
       setUploadProgress(20); // 20% when read starts
       const buffer = await file.arrayBuffer();
+
+      // Pre-flight entity classification — runs before OCCT WASM parse so
+      // a BIM/IFC file gets caught with a banner before users wait 30s.
+      // Cheap (≤50ms on a 5MB file); never throws.
+      try {
+        const stepText = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+        setClassification(classifyStepEntities(stepText));
+      } catch {
+        // Classifier failure is non-fatal — fall through to OCCT.
+      }
+
       setUploadProgress(60); // 60% when parsing starts in worker
-      
+
       const workerResult = await parseStep(buffer, file.name);
       setUploadProgress(100);
 
@@ -218,6 +281,7 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
 
   const handleReset = () => {
     setResult(null);
+    setClassification(null);
     setError(null);
     setFileName(null);
     setUploadProgress(0);
@@ -292,6 +356,9 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
           </div>
           {fileName && (
             <p style={{ fontSize: 11, color: 'var(--nx-border-strong)', marginTop: 8 }}>{fileName}</p>
+          )}
+          {classification && (
+            <ClassificationBanner classification={classification} />
           )}
           <button onClick={handleCancel} style={{
             marginTop: 12, padding: '5px 14px', borderRadius: 6,
