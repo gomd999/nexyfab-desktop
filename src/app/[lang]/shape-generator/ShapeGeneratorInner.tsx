@@ -9349,10 +9349,13 @@ export function ShapeGeneratorInner() {
             {assemblyExportOn && (() => {
               // Real adapter: availableParts ← placedParts. Empty assembly
               // falls back to the single-body __primary placeholder so the
-              // bridge still has something to walk. Geometry resolution per
-              // part: v1 uses the current viewport geometry for every part
-              // (single-pipeline scene). Per-shape resolution lands in
-              // Phase 5c when the shape catalog + params replay path wires.
+              // bridge still has something to walk.
+              //
+              // Phase 5c per-part replay: each PlacedPart has shapeId +
+              // params, so we run `buildShapeResult(shapeId, params)` per
+              // part to get the part-specific geometry (instead of reusing
+              // the viewport mesh for every part). __primary fallback uses
+              // the current viewport geometry as before.
               const realParts = placedParts.length > 0
                 ? placedParts.map((p) => ({ id: p.id, label: p.name }))
                 : [{ id: '__primary', label: 'Primary' }];
@@ -9361,11 +9364,17 @@ export function ShapeGeneratorInner() {
                   <AssemblyExportBridge
                     lang={lang}
                     availableParts={realParts}
-                    resolvePartStepText={async (_partId) => {
-                      const geo = effectiveResultRef.current?.geometry;
-                      if (!geo) return null;
+                    resolvePartStepText={async (partId) => {
                       const { exportToStepAsync } = await import('./io/stepExporter');
-                      return await exportToStepAsync(geo, 'Primary');
+                      if (partId === '__primary') {
+                        const geo = effectiveResultRef.current?.geometry;
+                        return geo ? await exportToStepAsync(geo, 'Primary') : null;
+                      }
+                      const part = placedParts.find((p) => p.id === partId);
+                      if (!part) return null;
+                      const built = buildShapeResult(part.shapeId, part.params);
+                      if (!built?.geometry) return null;
+                      return await exportToStepAsync(built.geometry, part.name || partId);
                     }}
                     onDiagnostics={(d) => {
                       if (d.length > 0) addToast('warning', `Assembly export: ${d.length} part(s) skipped`);
@@ -9375,13 +9384,16 @@ export function ShapeGeneratorInner() {
               );
             })()}
             {configExportOn && (() => {
-              // Real adapter: configs ← configurations state. Empty list
-              // falls back to a 'default' placeholder so the bundle still
-              // ships. Per-config geometry resolution: v1 uses the current
-              // viewport geometry for every config (the parametric replay
-              // path that applies each config's params/featureEnabled lands
-              // in Phase 5c). The bundle layout + manifest are correct now;
-              // only the geometry payload is identical across configs.
+              // Real adapter: configs ← configurations state.
+              //
+              // Phase 5c per-config replay: each NfabConfigurationV1 carries
+              // its own params + paramExpressions, so we run `buildShapeResult
+              // (selectedId, config.params, config.paramExpressions)` per
+              // config. Each entry in the zip now ships its OWN geometry —
+              // the v1 stub of "same mesh for every config" is gone.
+              // featureEnabled (suppression) lives on the feature stack and
+              // isn't applied here (Phase 5d follow-up — needs the feature
+              // pipeline rerun, not just the base shape rebuild).
               const realConfigs = configurations.length > 0
                 ? configurations.map((c) => ({ id: c.id, name: c.name }))
                 : [{ id: 'default', name: 'default' }];
@@ -9391,11 +9403,18 @@ export function ShapeGeneratorInner() {
                     lang={lang}
                     partName={selectedId || 'part'}
                     configs={realConfigs}
-                    exportConfigStep={async (_id) => {
-                      const geo = effectiveResultRef.current?.geometry;
-                      if (!geo) return null;
+                    exportConfigStep={async (configId) => {
                       const { exportToStepAsync } = await import('./io/stepExporter');
-                      return await exportToStepAsync(geo, selectedId || 'part');
+                      // Default placeholder → current viewport geometry.
+                      if (configId === 'default' && configurations.length === 0) {
+                        const geo = effectiveResultRef.current?.geometry;
+                        return geo ? await exportToStepAsync(geo, selectedId || 'part') : null;
+                      }
+                      const cfg = configurations.find((c) => c.id === configId);
+                      if (!cfg || !selectedId) return null;
+                      const built = buildShapeResult(selectedId, cfg.params, cfg.paramExpressions);
+                      if (!built?.geometry) return null;
+                      return await exportToStepAsync(built.geometry, `${selectedId}_${cfg.name}`);
                     }}
                     onBundleReady={(r) => {
                       const m = r.manifest as { configCount: number };
