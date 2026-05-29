@@ -58,4 +58,4 @@
 - ~~**비-박스 solid B-rep export**~~ — 2026-05-29 OCCT 브리지로 완료. Route A 회귀: `src/app/[lang]/shape-generator/io/__tests__/stepExporterRouting.test.ts`
 - ~~**어셈블리 단일 STEP**~~ — 2026-05-29 멀티바디 단일-PRODUCT v1 완료. `exportAssemblyToStepAsync` + 11 회귀: `src/app/[lang]/shape-generator/io/__tests__/assemblyStepExport.test.ts`. NEXT_ASSEMBLY_USAGE_OCCURRENCE 계층 (per-instance) 은 Phase D+
 - **AP242 BIM 풀 호환** — entity 화이트리스트 확장 (Phase D)
-- **STEP 라운드트립 가시화** — import → re-export → diff 리포트 (Phase D)
+- ~~**STEP 라운드트립 가시화**~~ — 2026-05-29 `stepRoundtripReport.ts` 완료. `computeRoundtripDrift` (pure math) + `runStepRoundtripReport` (WASM chain). verdict 4단계: clean (<0.5%) / minor (<2%) / lossy (<10%) / broken. 회귀 13/13.
