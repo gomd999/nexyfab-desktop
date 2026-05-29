@@ -30,6 +30,7 @@ import {
   type DocumentRow,
   type DocAccess,
 } from '@/lib/cloudDoc/access';
+import { assertIfMatchDocVersion } from '@/lib/cloudDoc/versionConflict';
 
 const SIGNED_URL_TTL_SEC = 600;     // 10 min, per spec §4.3
 const MAX_NAME_LEN = 200;
@@ -169,9 +170,38 @@ export async function PUT(
     );
   }
 
-  let body: { name?: unknown; workspaceId?: unknown; thumbnailKey?: unknown };
+  let body: { name?: unknown; workspaceId?: unknown; thumbnailKey?: unknown; ifMatchVersion?: unknown };
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
+
+  // D1 (PDM) optimistic concurrency — clients that observed an older
+  // version receive 409 instead of silently overwriting a concurrent
+  // metadata change (rename, workspace move, thumbnail swap).
+  if (body.ifMatchVersion !== undefined) {
+    if (typeof body.ifMatchVersion !== 'number' || !Number.isFinite(body.ifMatchVersion)) {
+      return NextResponse.json(
+        { error: 'ifMatchVersion must be a finite number', code: 'validation.ifMatchVersion' },
+        { status: 400 },
+      );
+    }
+    const check = assertIfMatchDocVersion(access.row.version, body.ifMatchVersion);
+    if (!check.ok) {
+      logAudit({
+        userId, action: 'document.update_conflict', resourceId: id,
+        ip: getTrustedClientIpOrUndefined(req.headers),
+        metadata: { clientExpected: check.clientExpected, serverVersion: check.serverVersion },
+      });
+      return NextResponse.json(
+        {
+          error: check.message,
+          code: 'document.version_conflict',
+          serverVersion: check.serverVersion,
+          clientExpected: check.clientExpected,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   let nextName: string | undefined;
   if (body.name !== undefined) {
@@ -227,6 +257,7 @@ export async function PUT(
        name             = COALESCE(?, name),
        workspace_id     = CASE WHEN ? = 1 THEN ? ELSE workspace_id END,
        thumbnail_r2_key = CASE WHEN ? = 1 THEN ? ELSE thumbnail_r2_key END,
+       version          = version + 1,
        updated_at       = ?,
        last_edited_by   = ?
      WHERE id = ?`,
