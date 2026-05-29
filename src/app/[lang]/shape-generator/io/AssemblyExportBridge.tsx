@@ -240,6 +240,19 @@ export interface AssemblyExportBridgeProps {
    * the user actually clicks Export.
    */
   readonly resolveAssemblyDrawing?: () => Promise<string | null> | string | null;
+  /**
+   * Optional assembly mates manifest as a JSON string. When
+   * provided, the bridge adds `<asmName>.mates.json` to the zip
+   * alongside the STEP + SVG. Use case: host serializes
+   * `assemblyMates` (AssemblyMate[]) so vendor CAMs can re-create
+   * constraints. Phase 6a — JSON manifest is more practical than
+   * real AP242 KINEMATIC_PAIR (most CAMs don't parse those).
+   *
+   * Triggers the zip path independently of resolveAssemblyDrawing,
+   * so a host that provides mates BUT not SVG still gets a zip with
+   * STEP + mates.json. Sync or async resolver accepted.
+   */
+  readonly resolveAssemblyMatesJson?: () => Promise<string | null> | string | null;
   /** Asm name default for the file. */
   readonly defaultAsmName?: string;
   readonly testId?: string;
@@ -280,6 +293,7 @@ export function AssemblyExportBridge(
     onDiagnostics,
     partTransforms,
     resolveAssemblyDrawing,
+    resolveAssemblyMatesJson,
     defaultAsmName,
     testId = 'assembly-export-bridge',
     testHandleRef,
@@ -357,10 +371,11 @@ export function AssemblyExportBridge(
 
       const safeName = asmName.replace(/[^a-zA-Z0-9_\-.]/g, '_') || 'Assembly';
 
-      // Phase 5j — if the host provided an assembly drawing resolver,
-      // pack STEP + SVG into a zip. Otherwise download the bare STEP
-      // (preserves the v1 behaviour for callers that don't supply
-      // resolveAssemblyDrawing).
+      // Phase 5j + 6a — gather optional bundle companions:
+      //   - drawing SVG (5j)
+      //   - mates manifest JSON (6a)
+      // If EITHER is present, switch to zip download (STEP + companions).
+      // Otherwise download bare STEP (v1 behaviour preserved).
       let drawingSvg: string | null = null;
       if (resolveAssemblyDrawing) {
         try {
@@ -372,13 +387,26 @@ export function AssemblyExportBridge(
           });
         }
       }
+      let matesJson: string | null = null;
+      if (resolveAssemblyMatesJson) {
+        try {
+          matesJson = await Promise.resolve(resolveAssemblyMatesJson());
+        } catch (err) {
+          diags.push({
+            partId: '__assembly_mates__',
+            warning: `resolveAssemblyMatesJson threw: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
 
-      if (drawingSvg) {
+      if (drawingSvg || matesJson) {
         const { zipSync, strToU8 } = await import('fflate');
-        const zipBytes = zipSync({
+        const files: Record<string, Uint8Array> = {
           [`${safeName}/${safeName}.step`]: strToU8(result.stepText),
-          [`${safeName}/${safeName}.svg`]: strToU8(drawingSvg),
-        });
+        };
+        if (drawingSvg) files[`${safeName}/${safeName}.svg`] = strToU8(drawingSvg);
+        if (matesJson) files[`${safeName}/${safeName}.mates.json`] = strToU8(matesJson);
+        const zipBytes = zipSync(files);
         await downloadBlob(
           `${safeName}.zip`,
           new Blob([new Uint8Array(zipBytes)], { type: 'application/zip' }),
@@ -403,6 +431,7 @@ export function AssemblyExportBridge(
     onDiagnostics,
     partTransforms,
     resolveAssemblyDrawing,
+    resolveAssemblyMatesJson,
     resolvePartStepText,
     root,
   ]);

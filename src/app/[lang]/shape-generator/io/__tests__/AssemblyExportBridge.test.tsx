@@ -514,6 +514,88 @@ describe('AssemblyExportBridge — resolveAssemblyDrawing (Phase 5j)', () => {
   });
 });
 
+describe('AssemblyExportBridge — resolveAssemblyMatesJson (Phase 6a)', () => {
+  it('matesJson alone → .zip with .step + .mates.json (no svg)', async () => {
+    const matesJson = JSON.stringify([
+      { id: 'm1', type: 'concentric', partA: 'a', partB: 'b' },
+    ]);
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        resolveAssemblyMatesJson={() => matesJson}
+        defaultAsmName="WithMates"
+        initialRoot={seededRootWithLeaves(['bracket'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0].name).toBe('WithMates.zip');
+    // Zip magic-bytes check (PK\x03\x04) + non-empty.
+    expect(downloads[0].size).toBeGreaterThan(64);
+    expect(downloads[0].bytes[0]).toBe(0x50); // 'P'
+    expect(downloads[0].bytes[1]).toBe(0x4b); // 'K'
+  });
+
+  it('matesJson + drawing → .zip with all three', async () => {
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        resolveAssemblyDrawing={() => '<svg/>'}
+        resolveAssemblyMatesJson={() => '[]'}
+        defaultAsmName="Full"
+        initialRoot={seededRootWithLeaves(['bracket'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0].name).toBe('Full.zip');
+    expect(downloads[0].size).toBeGreaterThan(100);
+  });
+
+  it('matesJson null → no mates entry, falls back to bare .step when drawing also absent', async () => {
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        resolveAssemblyMatesJson={() => null}
+        initialRoot={seededRootWithLeaves(['bracket'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0].name).toMatch(/\.step$/);
+  });
+
+  it('matesJson resolver throws → diagnostic + falls back to bare .step (when drawing also absent)', async () => {
+    const onDiag = vi.fn();
+    render(
+      <AssemblyExportBridge
+        availableParts={AVAIL}
+        resolvePartStepText={(id) => mockPartStep(7, id)}
+        resolveAssemblyMatesJson={() => { throw new Error('mates fail'); }}
+        onDiagnostics={onDiag}
+        initialRoot={seededRootWithLeaves(['bracket'])}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('assembly-export-bridge-export'));
+    });
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0].name).toMatch(/\.step$/);
+    expect(onDiag).toHaveBeenCalled();
+    const diags = onDiag.mock.calls[onDiag.mock.calls.length - 1][0] as ReadonlyArray<{ partId: string }>;
+    expect(diags.some((d) => d.partId === '__assembly_mates__')).toBe(true);
+  });
+});
+
 describe('AssemblyExportBridge — partTransforms (Phase 5e)', () => {
   it('partTransforms omitted → leaf identity transform survives unchanged', async () => {
     render(

@@ -9431,6 +9431,21 @@ export function ShapeGeneratorInner() {
                     lang={lang}
                     availableParts={realParts}
                     partTransforms={partTransforms}
+                    resolveAssemblyMatesJson={() => {
+                      // Phase 6a — bundle the live assemblyMates as a
+                      // JSON manifest alongside the STEP + drawing.
+                      // Empty mates list → null (no extra file). Format
+                      // is the AssemblyMate[] shape verbatim — vendor
+                      // CAMs can re-create the constraints by id +
+                      // (partA, partB, type, faceA, faceB, value).
+                      if (assemblyMates.length === 0) return null;
+                      return JSON.stringify({
+                        schema: 'nexyfab.assemblyMates.v1',
+                        partName: selectedId || 'assembly',
+                        generatedAt: new Date().toISOString(),
+                        mates: assemblyMates,
+                      }, null, 2);
+                    }}
                     resolveAssemblyDrawing={() => {
                       // Phase 5j — generate a multi-view assembly drawing
                       // (per-part iso views + BOM) from the live placedParts.
