@@ -72,6 +72,87 @@ describe('categorizeEntityType — direct lookup', () => {
   });
 });
 
+describe('categorizeEntityType — AP242/AP203 spec extensions', () => {
+  it('classifies extended CORE curves', () => {
+    expect(categorizeEntityType('OFFSET_CURVE_3D')).toBe('core');
+    expect(categorizeEntityType('INTERSECTION_CURVE')).toBe('core');
+    expect(categorizeEntityType('PCURVE')).toBe('core');
+    expect(categorizeEntityType('COMPOSITE_CURVE')).toBe('core');
+    expect(categorizeEntityType('SEAM_CURVE')).toBe('core');
+  });
+
+  it('classifies extended CORE surfaces', () => {
+    expect(categorizeEntityType('SWEPT_SURFACE')).toBe('core');
+    expect(categorizeEntityType('ELEMENTARY_SURFACE')).toBe('core');
+    expect(categorizeEntityType('DEGENERATE_TOROIDAL_SURFACE')).toBe('core');
+    expect(categorizeEntityType('RECTANGULAR_TRIMMED_SURFACE')).toBe('core');
+  });
+
+  it('classifies extended CORE topology', () => {
+    expect(categorizeEntityType('LOOP')).toBe('core');
+    expect(categorizeEntityType('PATH')).toBe('core');
+    expect(categorizeEntityType('VERTEX')).toBe('core');
+    expect(categorizeEntityType('EDGE')).toBe('core');
+    expect(categorizeEntityType('FACE')).toBe('core');
+    expect(categorizeEntityType('POLY_LOOP')).toBe('core');
+    expect(categorizeEntityType('VERTEX_LOOP')).toBe('core');
+    expect(categorizeEntityType('SUBEDGE')).toBe('core');
+    expect(categorizeEntityType('SUBFACE')).toBe('core');
+  });
+
+  it('classifies CORE geometric representation contexts/items', () => {
+    expect(categorizeEntityType('GEOMETRIC_REPRESENTATION_CONTEXT')).toBe('core');
+    expect(categorizeEntityType('GEOMETRIC_REPRESENTATION_ITEM')).toBe('core');
+    expect(categorizeEntityType('REPRESENTATION_CONTEXT')).toBe('core');
+    expect(categorizeEntityType('REPRESENTATION_ITEM')).toBe('core');
+    expect(categorizeEntityType('GEOMETRICALLY_BOUNDED_SURFACE_SHAPE_REPRESENTATION')).toBe('core');
+    expect(categorizeEntityType('EDGE_BASED_WIREFRAME_SHAPE_REPRESENTATION')).toBe('core');
+  });
+
+  it('classifies CORE product-structure entities', () => {
+    expect(categorizeEntityType('PRODUCT_CATEGORY')).toBe('core');
+    expect(categorizeEntityType('PRODUCT_CATEGORY_RELATIONSHIP')).toBe('core');
+    expect(categorizeEntityType('SECURITY_CLASSIFICATION')).toBe('core');
+    expect(categorizeEntityType('APPROVAL')).toBe('core');
+    expect(categorizeEntityType('APPROVAL_STATUS')).toBe('core');
+    expect(categorizeEntityType('DATE_AND_TIME')).toBe('core');
+    expect(categorizeEntityType('CALENDAR_DATE')).toBe('core');
+    expect(categorizeEntityType('ORGANIZATION')).toBe('core');
+    expect(categorizeEntityType('PERSON')).toBe('core');
+    expect(categorizeEntityType('PERSON_AND_ORGANIZATION')).toBe('core');
+  });
+
+  it('classifies extended UNITS', () => {
+    expect(categorizeEntityType('MASS_UNIT')).toBe('units');
+    expect(categorizeEntityType('TIME_UNIT')).toBe('units');
+    expect(categorizeEntityType('ELECTRIC_CURRENT_UNIT')).toBe('units');
+    expect(categorizeEntityType('CONTEXT_DEPENDENT_UNIT')).toBe('units');
+    expect(categorizeEntityType('DERIVED_UNIT')).toBe('units');
+    expect(categorizeEntityType('DERIVED_UNIT_ELEMENT')).toBe('units');
+  });
+
+  it('classifies extended STYLE', () => {
+    expect(categorizeEntityType('SURFACE_STYLE_USAGE')).toBe('style');
+    expect(categorizeEntityType('SURFACE_SIDE_STYLE')).toBe('style');
+    expect(categorizeEntityType('SURFACE_STYLE_FILL_AREA')).toBe('style');
+    expect(categorizeEntityType('FILL_AREA_STYLE_HATCHING')).toBe('style');
+    expect(categorizeEntityType('CURVE_STYLE_FONT')).toBe('style');
+  });
+
+  it('classifies extended PMI prefixes (TOLERANCE_VALUE, MEASURE_*)', () => {
+    expect(categorizeEntityType('TOLERANCE_VALUE')).toBe('pmi');
+    expect(categorizeEntityType('MEASURE_REPRESENTATION_ITEM')).toBe('pmi');
+    expect(categorizeEntityType('MEASURE_WITH_UNIT')).toBe('pmi');
+  });
+
+  it('LENGTH_MEASURE_WITH_UNIT stays in UNITS despite MEASURE_ PMI prefix (priority CORE > UNITS, but LENGTH_ does not match MEASURE_ prefix)', () => {
+    // PMI prefix is 'MEASURE_' which only matches strings starting with
+    // it; LENGTH_MEASURE_WITH_UNIT starts with LENGTH_, so it stays UNITS.
+    expect(categorizeEntityType('LENGTH_MEASURE_WITH_UNIT')).toBe('units');
+    expect(categorizeEntityType('PLANE_ANGLE_MEASURE_WITH_UNIT')).toBe('units');
+  });
+});
+
 describe('classifyStepEntities — schema + counts', () => {
   it('extracts AP214 schema token from FILE_SCHEMA', () => {
     const r = classifyStepEntities(headerAp214());
