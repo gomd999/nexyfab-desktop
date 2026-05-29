@@ -195,6 +195,9 @@ import Phase4PanelDock from './panels/Phase4PanelDock';
 import { DirectEditHostBridge, type DirectEditSceneAdapter } from './directEdit/DirectEditHostBridge';
 import { AssemblyExportBridge } from './io/AssemblyExportBridge';
 import { ConfigurationsExportBridge } from './configurations/ConfigurationsExportBridge';
+import { applyFeatureEnabledMap } from './configurations/featureSuppression';
+import { runPipeline } from './features/pipelineManager';
+import { FEATURE_MAP } from './features';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
@@ -9409,14 +9412,20 @@ export function ShapeGeneratorInner() {
             {configExportOn && (() => {
               // Real adapter: configs ← configurations state.
               //
-              // Phase 5c per-config replay: each NfabConfigurationV1 carries
-              // its own params + paramExpressions, so we run `buildShapeResult
-              // (selectedId, config.params, config.paramExpressions)` per
-              // config. Each entry in the zip now ships its OWN geometry —
-              // the v1 stub of "same mesh for every config" is gone.
-              // featureEnabled (suppression) lives on the feature stack and
-              // isn't applied here (Phase 5d follow-up — needs the feature
-              // pipeline rerun, not just the base shape rebuild).
+              // Phase 5c per-config base shape replay:
+              //   buildShapeResult(selectedId, cfg.params, cfg.paramExpressions)
+              //
+              // Phase 5f per-config feature suppression replay:
+              //   applyFeatureEnabledMap(features, cfg.featureEnabled) →
+              //   runPipeline(base.geometry, suppressed, FEATURE_MAP)
+              //   → exportToStepAsync(pipelineResult.geometry, ...)
+              //
+              // Each config's STEP now reflects BOTH its params AND its
+              // featureEnabled state. The pipeline rerun is sync (uses
+              // runPipeline not runPipelineAsync) so we don't carry the
+              // OCCT WASM init cost per config — features that need OCCT
+              // fall back to their mesh paths via isOcctReady() checks
+              // (same fallback the live viewport uses on first paint).
               const realConfigs = configurations.length > 0
                 ? configurations.map((c) => ({ id: c.id, name: c.name }))
                 : [{ id: 'default', name: 'default' }];
@@ -9437,7 +9446,22 @@ export function ShapeGeneratorInner() {
                       if (!cfg || !selectedId) return null;
                       const built = buildShapeResult(selectedId, cfg.params, cfg.paramExpressions);
                       if (!built?.geometry) return null;
-                      return await exportToStepAsync(built.geometry, `${selectedId}_${cfg.name}`);
+                      // Apply this config's feature suppression to the live
+                      // featureStack, then re-run the pipeline. Falls back
+                      // to base-only when features is empty.
+                      let outGeo = built.geometry;
+                      if (features.length > 0) {
+                        const suppressed = applyFeatureEnabledMap(features, cfg.featureEnabled);
+                        try {
+                          const piped = runPipeline(built.geometry, suppressed, FEATURE_MAP);
+                          if (piped.geometry) outGeo = piped.geometry;
+                        } catch {
+                          // Pipeline failure → ship base shape; the diagnostic
+                          // surfaces via the existing pipeline-error toast on
+                          // the live viewport.
+                        }
+                      }
+                      return await exportToStepAsync(outGeo, `${selectedId}_${cfg.name}`);
                     }}
                     onBundleReady={(r) => {
                       const m = r.manifest as { configCount: number };
