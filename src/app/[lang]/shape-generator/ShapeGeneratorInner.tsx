@@ -9327,37 +9327,58 @@ export function ShapeGeneratorInner() {
         const configExportOn = searchParams?.get('config-export') === 'v1';
         if (!directEditOn && !assemblyExportOn && !configExportOn) return null;
 
+        // Phase 5l — multi-body scene resolver. The host's `bodies`
+        // state (BodyEntry[]) + `bodyGeosRef` (Map<id, {geometry,
+        // edgeGeometry}>) is the multi-body registry; when bodies is
+        // empty the scene is single-body and we fall back to the
+        // parametric `result` slot. This lets direct-edit ops (E1-E4)
+        // target a specific body in a split scene + lets subtract
+        // actually remove the tool body from the registry.
+        const isMultiBody = bodies.length > 0;
         const sceneAdapter: DirectEditSceneAdapter = {
-          getActiveBodyId: () => '__primary',
-          getTargetGeometry: () => effectiveResultRef.current?.geometry ?? null,
-          replaceBodyGeometry: (_bodyId, nextGeo) => {
-            // Phase 5h — real viewport swap. Direct-edit op output lands
-            // in `result` so the viewport renders the edited mesh
-            // immediately. Edge geometry is rebuilt because direct-edit
-            // changes the mesh topology (push-pull moves vertices, fillet
-            // adds new ones). Volume / surface / bbox stay at the
-            // previous parametric values — they'll re-compute on the
-            // next parametric rebuild. Acceptable because direct-edit is
-            // session-only per ADR-012; the next param change naturally
-            // restores the parametric result.
-            const prev = effectiveResultRef.current;
-            if (!prev) return;
+          getActiveBodyId: () => {
+            if (isMultiBody && activeBodyId) return activeBodyId;
+            return '__primary';
+          },
+          getTargetGeometry: (bodyId) => {
+            if (bodyId === '__primary' || !isMultiBody) {
+              return effectiveResultRef.current?.geometry ?? null;
+            }
+            return bodyGeosRef.current.get(bodyId)?.geometry ?? null;
+          },
+          replaceBodyGeometry: (bodyId, nextGeo) => {
+            // Phase 5h + 5l — real viewport swap.
+            // Multi-body branch: update bodyGeosRef + force a setBodies
+            // re-render so bodyBomParts useMemo picks up the change.
+            // Single-body branch (legacy): setResult swap as before.
             try {
               const newEdges = makeEdges(nextGeo, 20);
-              setResult({
-                ...prev,
-                geometry: nextGeo,
-                edgeGeometry: newEdges,
-              });
+              if (isMultiBody && bodyId !== '__primary' && bodyGeosRef.current.has(bodyId)) {
+                bodyGeosRef.current.set(bodyId, { geometry: nextGeo, edgeGeometry: newEdges });
+                setBodies((prev) => [...prev]); // shallow-clone to trigger re-render
+                addToast('info', `직접편집 → '${bodyId}' (commit-to-history로 영구화)`);
+                return;
+              }
+              const prev = effectiveResultRef.current;
+              if (!prev) return;
+              setResult({ ...prev, geometry: nextGeo, edgeGeometry: newEdges });
               addToast('info', '직접편집 적용 (commit-to-history로 영구화)');
             } catch (err) {
               addToast('error', `viewport swap failed: ${err instanceof Error ? err.message : String(err)}`);
             }
           },
-          removeBodyFromScene: (_bodyId) => {
-            // No-op in the single-body scene (subtract tool body isn't
-            // separately tracked yet — Phase 5b extends sceneAdapter to
-            // a multi-body resolver).
+          removeBodyFromScene: (bodyId) => {
+            // Phase 5l — real removal. Only applies in the multi-body
+            // branch (single-body has no "tool body" to remove).
+            if (!isMultiBody || bodyId === '__primary') return;
+            if (!bodyGeosRef.current.has(bodyId)) return;
+            bodyGeosRef.current.delete(bodyId);
+            setBodies((prev) => prev.filter((b) => b.id !== bodyId));
+            // If the removed body was active, fall back to the first
+            // remaining body (or null).
+            if (activeBodyId === bodyId) {
+              setActiveBodyId(bodies.find((b) => b.id !== bodyId)?.id ?? null);
+            }
           },
           notify: (level, msg) => addToast(level === 'warn' ? 'warning' : level, msg),
         };
