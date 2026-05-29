@@ -26,13 +26,17 @@
 
 [CAD_COMMERCIAL_COMPLETION_ROADMAP.md](./CAD_COMMERCIAL_COMPLETION_ROADMAP.md) Phase **C1** 기준으로, v0와의 **의도적 갭**을 한곳에 둔다.
 
-| 항목 | v0 (현재) | C1 목표 |
-|------|-----------|---------|
-| 입력 | 단일 파트 기하 지문(`computeDrawingGeometryFingerprint`) | **어셈블리·BOM** 기준 조합 도면 최소 1케이스 + 지문 정책 |
-| 리비전·표제란 | UI/보내기에 기본 필드 | **리비전 블록·스케일 정책**을 문서·코드에서 단일 소스로 고정 |
-| 회귀 | `npm run m4` 스모크 | 조립 도면 시나리오 Vitest(또는 E2E) **1건 이상** 추가 — 지문 최소 회귀: `src/test/m4/phaseC1GeometryFingerprint.test.ts` |
+| 항목 | v0 (현재) | C1 목표 | 상태 |
+|------|-----------|---------|------|
+| 입력 | 단일 파트 기하 지문(`computeDrawingGeometryFingerprint`) | **어셈블리·BOM** 기준 조합 도면 최소 1케이스 + 지문 정책 | ✅ `analysis/assemblyDrawing.ts` 의 `generateAssemblyDrawing` + `computeAssemblyFingerprint` (2026-05-29) |
+| 리비전·표제란 | UI/보내기에 기본 필드 | **리비전 블록·스케일 정책**을 문서·코드에서 단일 소스로 고정 | ⏳ Phase C2 (GD&T와 묶음) |
+| 회귀 | `npm run m4` 스모크 | 조립 도면 시나리오 Vitest(또는 E2E) **1건 이상** | ✅ `src/test/m4/assemblyDrawingC1.test.ts` (7 cases) + 지문 최소 회귀 `phaseC1GeometryFingerprint.test.ts` |
 
-구현 시 `autoDrawing.ts`의 `generateDrawing` 시그니처·`drawingExport.ts`와 M3 `placedParts`/BOM 경로를 함께 설계한다.
+C1 v1 구현: `assemblyDrawing.ts` 가 `generateDrawing` 을 재호출해
+per-part view + BOM 행 + 복합 지문을 묶는다. v1 한계 (section view·
+exploded view·auto-balloon 없음, 단일 sheet) 는 파일 상단 docstring
+참고. M3 `placedParts`/BOM 경로 연결은 후속 PR (UI panel에서
+`useAssemblyState`→`AssemblyDrawingPart[]` 어댑터).
 
 ## 수동 (인쇄·협업 품질)
 
