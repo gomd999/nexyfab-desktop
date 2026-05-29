@@ -28,6 +28,7 @@
 | 어셈블리 STEP 보내기 (멀티바디 단일 파일, v1) | **지원** | `exportAssemblyToStepAsync` 가 OCCT compound 로 묶어서 단일 STEP export. 파트별 transform (translate + rotate). 단일 PRODUCT 'Compound'. 파브리케이션 CAM (Mastercam/Fusion) 호환 |
 | 어셈블리 STEP 계층 (v2, NAUO) | **지원** | `stitchAssemblyHierarchy` 가 per-part STEP을 stitching → 1 root PRODUCT + per-part NEXT_ASSEMBLY_USAGE_OCCURRENCE + ITEM_DEFINED_TRANSFORMATION. SolidWorks / Onshape / Fusion 어셈블리 트리 재구성 가능 |
 | 어셈블리 STEP 서브어셈블리 (v2.1, nested) | **지원** | `stitchNestedAssemblyHierarchy` — root → sub-asm → (sub-asm \| leaf) recursion. 임의 깊이, 서브어셈블리 자체에 transform 적용 가능, 부분 실패 diagnostics |
+| 어셈블리 mates manifest (JSON v1) | **지원** | `<asm>.mates.json` (zip 동봉) — real AP242 KINEMATIC_PAIR 대신 vendor CAM이 parsing하기 쉬운 JSON. Schema [ASSEMBLY_MATES_MANIFEST_v1.md](./ASSEMBLY_MATES_MANIFEST_v1.md) |
 | FreeCAD/SOLIDWORKS 출처 STEP | OCCT WASM이 파싱 가능한 범위까지 | AP203/AP214/AP242 일반 지원; AP242 BIM/Edition 2는 일부 entity 거부 가능 |
 
 ## 가져올 때 자주 보는 실패 패턴
