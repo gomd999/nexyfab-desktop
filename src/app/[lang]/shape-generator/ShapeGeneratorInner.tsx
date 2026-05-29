@@ -202,6 +202,7 @@ import { FEATURE_MAP } from './features';
 import type { DrawingConfig } from './analysis/autoDrawing';
 import { generateAssemblyDrawing, type AssemblyDrawingPart } from './analysis/assemblyDrawing';
 import { buildDrawingSvgString } from './analysis/drawingExport';
+import { useDrawingTemplatePrefs } from './analysis/drawingTemplatePrefs';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
@@ -1826,6 +1827,11 @@ export function ShapeGeneratorInner() {
   const { items: cartItems, addItem: addCartItem, removeItem: removeCartItem, clearCart } = useShapeCart();
   const { toasts, addToast, removeToast } = useToast();
   useEffect(() => { collabAddToastRef.current = addToast; }, [addToast]);
+
+  // Phase 6c — drawing template prefs (single user pref shared by
+  // the assembly + configurations export bridges below). localStorage-
+  // backed; default is the 3-view A4 landscape "cookbook" template.
+  const [drawingTemplatePrefs] = useDrawingTemplatePrefs();
 
   const paletteCommands = useMemo<Command[]>(
     () => [
@@ -9465,20 +9471,19 @@ export function ShapeGeneratorInner() {
                       }
                       if (drawingParts.length === 0) return null;
                       try {
+                        // Phase 6c — derive the assembly drawing config
+                        // from the user prefs (shared with the configs
+                        // export branch). Assembly-specific overrides:
+                        // paperSize bumped to A3 (more parts → more
+                        // views), partName labelled "Assembly",
+                        // perPartView 'iso' for the per-leaf miniatures.
                         const result = generateAssemblyDrawing(drawingParts, {
-                          views: ['front', 'top', 'right'],
-                          scale: 1,
+                          ...drawingTemplatePrefs,
                           paperSize: 'A3',
-                          orientation: 'landscape',
-                          showDimensions: true,
-                          showCenterlines: true,
                           titleBlock: {
+                            ...drawingTemplatePrefs.titleBlock,
                             partName: 'Assembly',
                             material: 'Mixed',
-                            drawnBy: '',
-                            date: new Date().toISOString().slice(0, 10),
-                            scale: '1:1',
-                            revision: 'A',
                           },
                           perPartView: 'iso',
                         });
@@ -9535,21 +9540,14 @@ export function ShapeGeneratorInner() {
               // drawings are projection-based; feature suppression is
               // baked into the STEP separately and would over-clutter the
               // 2D view here).
+              // Phase 6c — use user prefs (localStorage-backed) as the
+              // template base; only the partName is overridden to match
+              // the current selectedId so it shows in the titleBlock.
               const drawingTemplate: DrawingConfig = {
-                views: ['front', 'top', 'right'],
-                scale: 1,
-                paperSize: 'A4',
-                orientation: 'landscape',
-                showDimensions: true,
-                showCenterlines: true,
-                tolerance: { linear: '±0.1', angular: '±1°' },
+                ...drawingTemplatePrefs,
                 titleBlock: {
-                  partName: selectedId || 'part',
-                  material: 'TBD',
-                  drawnBy: '',
-                  date: new Date().toISOString().slice(0, 10),
-                  scale: '1:1',
-                  revision: 'A',
+                  ...drawingTemplatePrefs.titleBlock,
+                  partName: selectedId || drawingTemplatePrefs.titleBlock.partName,
                 },
               };
               const drawingsByConfigId = selectedId && configurations.length > 0
