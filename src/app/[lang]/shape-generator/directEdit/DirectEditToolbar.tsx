@@ -28,13 +28,21 @@ import {
 } from './DirectEditController';
 import { getDirectEditStrings, type DirectEditLang } from './directEditI18n';
 
-/** Full direct-edit mode union. `push-pull` is E1; `move-body` /
+/** Full direct-edit mode union. `push-pull` is E1; `fillet-edge` /
+ *  `chamfer-edge` are E2 (dynamic edge ops); `move-body` /
  *  `rotate-body` are E3; `subtract-body` is E4 (2-body picker).
- *  When E2 lands the union grows to include `dynamic-fillet` /
- *  `dynamic-chamfer`. */
+ *
+ *  Note on E2 modes (`fillet-edge` / `chamfer-edge`): the union entries
+ *  are present so the bridge's dispatch table can route edge picks to
+ *  the dynamic appliers, but the toolbar button row stays a no-op for
+ *  these modes — the dedicated `DynamicEdgeOverlay` (when wired into
+ *  the host) owns the radius/distance HUD. The bridge accepts the mode
+ *  via `setMode` / `initialMode` for tests + the future toolbar pass. */
 export type DirectEditMode =
   | 'off'
   | 'push-pull'
+  | 'fillet-edge'
+  | 'chamfer-edge'
   | 'move-body'
   | 'rotate-body'
   | 'subtract-body';
@@ -126,6 +134,10 @@ export function DirectEditToolbar({
     : strings.statusCount(opCount);
   // Mode-specific status hint appended when a non-push-pull mode is
   // active. Mirrors the SolidWorks "current tool: rotate" status bar.
+  // `fillet-edge` / `chamfer-edge` (E2) currently fall back to the
+  // push-pull hint copy — the dedicated DynamicEdgeOverlay (when wired
+  // into the host) provides the live HUD; the toolbar string is a
+  // placeholder until the Track P4 polish pass adds dedicated copy.
   const modeStatusHint =
     effectiveMode === 'off'
       ? null
@@ -135,7 +147,9 @@ export function DirectEditToolbar({
           ? strings.modeStatusMoveBody
           : effectiveMode === 'rotate-body'
             ? strings.modeStatusRotateBody
-            : strings.modeStatusSubtractBody;
+            : effectiveMode === 'subtract-body'
+              ? strings.modeStatusSubtractBody
+              : null;
 
   // Style helpers for the mode-radio buttons.
   const radioStyle = (active: boolean): React.CSSProperties => ({
