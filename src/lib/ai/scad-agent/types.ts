@@ -137,7 +137,11 @@ export type ToolName =
   // ─── Track B — Cost estimation ──────────────────────────────────────
   | 'estimate_cost'
   // ─── Track G — AI process selection ─────────────────────────────────
-  | 'suggest_process';
+  | 'suggest_process'
+  // ─── Track M — AI material recommendation ───────────────────────────
+  | 'suggest_material'
+  // ─── Track N — BOM auto-generation ──────────────────────────────────
+  | 'generate_bom';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */

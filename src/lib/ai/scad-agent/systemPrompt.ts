@@ -87,6 +87,14 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    args: { intent: { shapeId, params, features? }, measured?: { volumeMm3?, bboxMm?, minWallMm?, holeCount?, chamferEdgeCount? }, quantityHint?: number, materialHint?: 'metal'|'plastic'|'any', returnAll?: boolean }
    Returns: ranked list text + meta { scores: [{ process, score, reason, blockers[], warnings[] }] }
 
+5g. \`suggest_material\` — AI material recommendation. Scores all 6 materials (aluminum_6061, steel_a36, steel_4140, stainless_304, pla, abs) against the part's intended process + service environment + mechanical loading + budget tier + production quantity. Each material starts at 50 and accumulates +/- modifiers; hard incompatibilities zero the score AND surface as blockers (metal on fdm/sla = blocked; plastic on die_cast = blocked; PLA in high_temp = blocked; non-{304SS,PLA,ABS} in food env = blocked). Call AFTER the user describes the part's use case (load, environment, budget) and BEFORE estimate_cost when material is undecided. Skip when material_default is already set in user prefs. All args optional — empty call returns a sensible default ranking (aluminum_6061 first, then 304SS, then PLA).
+   args: { process?: 'fdm'|'sla'|'cnc_mill'|'sheet'|'injection_molding'|'die_cast', environment?: 'indoor'|'outdoor'|'food'|'high_temp'|'marine', loading?: 'cosmetic'|'light'|'structural', budget?: 'cheap'|'standard'|'premium', quantityHint?: number }
+   Returns: ranked list text + meta { scores: [{ material, score, reason, blockers[], warnings[], pricePerKgUsd }] }
+
+5h. \`generate_bom\` — Bill-of-materials auto-generator. Aggregates session.modules + composition into one line per unique part with quantity, optional material, optional unit + line cost. Call AFTER compose_assembly for any multi-part design. Pair with estimate_cost via the optional costLookup arg for a quoted total (e.g. \`{ bracket: { unitCostUsd: 12, material: 'aluminum_6061' }, bolt: { unitCostUsd: 0.5 } }\`). The CSV in meta.csv is paste-ready for a spreadsheet. Empty session (no modules) returns an ok hint ("call compose_assembly first") rather than an error. Prefer the explicit partsList arg (same array you passed to compose_assembly) over relying on the composition-string scan — exact and avoids regex edge cases.
+   args: { partsList?: [{ moduleName: string, count?: number }], costLookup?: { [moduleName]: { unitCostUsd: number, material?: 'aluminum_6061'|'steel_a36'|'steel_4140'|'stainless_304'|'pla'|'abs' } } }
+   Returns: human-readable report + meta { report: { lines[], totalPartCount, uniquePartCount, totalCostUsd?, hasCosts, notes[] }, csv: string }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 

@@ -55,6 +55,8 @@ import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './spe
 import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
 import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, type EstimateCostOptions } from './costEstimation';
 import { suggestProcessForPart, formatProcessScores, type SuggestProcessOptions, type ProcessScore } from './processSelection';
+import { suggestMaterialForPart, formatMaterialScores, type SuggestMaterialOptions, type MaterialScore } from './materialRecommendation';
+import { generateBom, formatBomReport, bomToCSV, type GenerateBomOptions, type BomReport } from './bomGenerator';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -770,6 +772,141 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       ok: true,
       output: formatProcessScores(scores),
       meta: { scores },
+    };
+  };
+
+  // ─── Track M — AI material recommendation ─────────────────────────────
+  // Heuristic ranking of all 6 materials against the part's intended
+  // process / environment / loading / budget / quantity. Each material
+  // starts at 50 and accumulates +/- modifiers; hard incompatibilities
+  // (metal on FDM, plastic on die_cast, PLA at high_temp, non-food-safe
+  // in 'food' env) zero the score AND surface as blockers. Returns the
+  // full 6-material list (sorted descending) so the agent has a visible
+  // trade-off table even when only the top recommendation is surfaced.
+  const VALID_ENVIRONMENTS: NonNullable<SuggestMaterialOptions['environment']>[] = ['indoor', 'outdoor', 'food', 'high_temp', 'marine'];
+  const VALID_LOADING: NonNullable<SuggestMaterialOptions['loading']>[] = ['cosmetic', 'light', 'structural'];
+  const VALID_BUDGET: NonNullable<SuggestMaterialOptions['budget']>[] = ['cheap', 'standard', 'premium'];
+  const VALID_PROCESSES_MAT: ProcessForDfm[] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+
+  const suggest_material: ToolExecutor = async (args) => {
+    // All args optional — caller may pass {} to get the default ranking.
+    if (args !== undefined && args !== null && typeof args !== 'object') {
+      return { ok: false, error: 'suggest_material requires an args object (all fields optional)', code: 'BAD_ARGS' };
+    }
+    const a = (args ?? {}) as {
+      process?: unknown;
+      environment?: unknown;
+      loading?: unknown;
+      budget?: unknown;
+      quantityHint?: unknown;
+    };
+    const opts: SuggestMaterialOptions = {};
+    if (typeof a.process === 'string' && (VALID_PROCESSES_MAT as string[]).includes(a.process)) {
+      opts.process = a.process as ProcessForDfm;
+    }
+    if (typeof a.environment === 'string' && (VALID_ENVIRONMENTS as string[]).includes(a.environment)) {
+      opts.environment = a.environment as SuggestMaterialOptions['environment'];
+    }
+    if (typeof a.loading === 'string' && (VALID_LOADING as string[]).includes(a.loading)) {
+      opts.loading = a.loading as SuggestMaterialOptions['loading'];
+    }
+    if (typeof a.budget === 'string' && (VALID_BUDGET as string[]).includes(a.budget)) {
+      opts.budget = a.budget as SuggestMaterialOptions['budget'];
+    }
+    if (typeof a.quantityHint === 'number' && a.quantityHint > 0) {
+      opts.quantityHint = a.quantityHint;
+    }
+    let scores: MaterialScore[];
+    try {
+      scores = suggestMaterialForPart(opts);
+    } catch (e) {
+      return { ok: false, error: `suggest_material threw: ${(e as Error).message}`, code: 'MATERIAL_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatMaterialScores(scores),
+      meta: { scores },
+    };
+  };
+
+  // ─── Track N — BOM auto-generation ────────────────────────────────────
+  // Aggregates session.modules + composition into a structured BOM with
+  // optional cost wiring. Prefers an explicit partsList (the same array
+  // the agent passed to compose_assembly) for accuracy; falls back to a
+  // composition-string scan for legacy / hand-written compositions.
+  // Surfaces CSV + human-readable output so the user can paste straight
+  // into a spreadsheet or read in chat.
+  const generate_bom: ToolExecutor = async (args, session) => {
+    if (args !== undefined && args !== null && typeof args !== 'object') {
+      return { ok: false, error: 'generate_bom requires an args object (all fields optional)', code: 'BAD_ARGS' };
+    }
+    const a = (args ?? {}) as {
+      partsList?: unknown;
+      costLookup?: unknown;
+    };
+    const opts: GenerateBomOptions = {
+      session: { modules: session.modules, composition: session.composition },
+    };
+    if (Array.isArray(a.partsList)) {
+      const cleaned: Array<{ moduleName: string; count?: number }> = [];
+      for (const raw of a.partsList) {
+        if (!raw || typeof raw !== 'object') continue;
+        const r = raw as { moduleName?: unknown; count?: unknown };
+        if (typeof r.moduleName !== 'string' || !r.moduleName.trim()) continue;
+        const entry: { moduleName: string; count?: number } = { moduleName: r.moduleName };
+        if (typeof r.count === 'number' && r.count > 0) entry.count = Math.round(r.count);
+        cleaned.push(entry);
+      }
+      if (cleaned.length > 0) opts.partsList = cleaned;
+    }
+    if (a.costLookup && typeof a.costLookup === 'object' && !Array.isArray(a.costLookup)) {
+      const cleanedLookup: Record<string, { unitCostUsd: number; material?: import('./costEstimation').Material }> = {};
+      for (const [k, v] of Object.entries(a.costLookup as Record<string, unknown>)) {
+        if (!v || typeof v !== 'object') continue;
+        const e = v as { unitCostUsd?: unknown; material?: unknown };
+        if (typeof e.unitCostUsd !== 'number' || !(e.unitCostUsd >= 0)) continue;
+        const entry: { unitCostUsd: number; material?: import('./costEstimation').Material } = {
+          unitCostUsd: e.unitCostUsd,
+        };
+        if (typeof e.material === 'string'
+            && ['aluminum_6061', 'steel_a36', 'steel_4140', 'stainless_304', 'pla', 'abs'].includes(e.material)) {
+          entry.material = e.material as import('./costEstimation').Material;
+        }
+        cleanedLookup[k] = entry;
+      }
+      if (Object.keys(cleanedLookup).length > 0) opts.costLookup = cleanedLookup;
+    }
+
+    // Empty session: return ok with a hint instead of an error so the
+    // agent isn't punished for asking before compose_assembly ran.
+    if (Object.keys(session.modules).length === 0 && (!opts.partsList || opts.partsList.length === 0)) {
+      return {
+        ok: true,
+        output: 'No assembly yet — call compose_assembly first (or pass partsList directly to generate_bom).',
+        meta: {
+          report: {
+            lines: [],
+            totalPartCount: 0,
+            uniquePartCount: 0,
+            hasCosts: false,
+            notes: ['no modules in session'],
+          } as BomReport,
+          csv: 'Part,Quantity,Material,Cost (USD)',
+        },
+      };
+    }
+
+    let report: BomReport;
+    try {
+      report = generateBom(opts);
+    } catch (e) {
+      return { ok: false, error: `generate_bom threw: ${(e as Error).message}`, code: 'BOM_THREW' };
+    }
+    const csv = bomToCSV(report);
+    return {
+      ok: true,
+      output: formatBomReport(report),
+      meta: { report, csv },
     };
   };
 
@@ -2392,6 +2529,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     estimate_cost,
     // Track G — AI process selection
     suggest_process,
+    // Track M — AI material recommendation
+    suggest_material,
+    // Track N — BOM auto-generation
+    generate_bom,
   };
 }
 
