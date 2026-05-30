@@ -53,11 +53,23 @@ export interface MeshTopology {
   nonManifoldEdgeCount: number;
   /**
    * Number of connected components (bodies) found via BFS over shared
-   * edges. Genus is only meaningful for a single body; multi-body parts
-   * report `genus: null` with `componentCount > 1` so callers can detect
-   * the case and route to Phase X3 component-aware counting.
+   * edges. For multi-body parts, see `perComponentGenus` and `totalGenus`
+   * for the per-body / aggregate through-hole counts (X4).
    */
   componentCount: number;
+  /**
+   * X4 — Genus per connected component, in the order components are
+   * discovered by BFS. null entries flag components that aren't closed
+   * orientable manifolds (open boundary, non-manifold edges). Empty when
+   * the mesh has no triangles.
+   */
+  perComponentGenus: Array<number | null>;
+  /**
+   * X4 — Sum of per-component genera = total number of through-holes
+   * across all bodies. null when at least one component's genus is null
+   * (the aggregate would be misleading then).
+   */
+  totalGenus: number | null;
 }
 
 /**
@@ -134,6 +146,8 @@ export function computeMeshTopology(
       boundaryEdgeCount: 0,
       nonManifoldEdgeCount: 0,
       componentCount: 0,
+      perComponentGenus: [],
+      totalGenus: null,
     };
   }
 
@@ -215,8 +229,11 @@ export function computeMeshTopology(
   const manifoldClosed = boundaryEdgeCount === 0 && nonManifoldEdgeCount === 0;
 
   // BFS connected components over triangle adjacency. Two triangles are
-  // adjacent if they share at least one edge.
+  // adjacent if they share at least one edge. While we walk each
+  // component we also tally its own V/E/F so we can compute per-body
+  // genus (X4 multi-body support).
   let componentCount = 0;
+  const perComponentGenus: Array<number | null> = [];
   {
     const seen = new Uint8Array(faceCount);
     for (let t0 = 0; t0 < faceCount; t0++) {
@@ -224,16 +241,27 @@ export function computeMeshTopology(
       componentCount++;
       const stack = [t0];
       seen[t0] = 1;
+      const compVerts = new Set<number>();
+      const compEdges = new Set<string>();
+      let compFaces = 0;
+      let compHasBoundary = false;
+      let compHasNonManifold = false;
       while (stack.length > 0) {
         const t = stack.pop()!;
+        compFaces++;
         const a = triangles[t * 3 + 0]!;
         const b = triangles[t * 3 + 1]!;
         const c = triangles[t * 3 + 2]!;
+        compVerts.add(a); compVerts.add(b); compVerts.add(c);
         const pairs: Array<[number, number]> = [
           [a, b], [b, c], [a, c],
         ];
         for (const [u, v] of pairs) {
           const key = u < v ? `${u}-${v}` : `${v}-${u}`;
+          compEdges.add(key);
+          const sharedBy = edgeUseCount.get(key) ?? 0;
+          if (sharedBy === 1) compHasBoundary = true;
+          else if (sharedBy > 2) compHasNonManifold = true;
           const neighbors = edgeToTris.get(key);
           if (!neighbors) continue;
           for (const n of neighbors) {
@@ -244,17 +272,32 @@ export function computeMeshTopology(
           }
         }
       }
+      // Per-component χ + genus.
+      let compGenus: number | null = null;
+      if (!compHasBoundary && !compHasNonManifold) {
+        const compChi = compVerts.size - compEdges.size + compFaces;
+        const raw = (2 - compChi) / 2;
+        if (Number.isInteger(raw) && raw >= 0) compGenus = raw;
+      }
+      perComponentGenus.push(compGenus);
     }
   }
 
-  // Genus only well-defined for a *single-body* closed orientable
-  // manifold. Multi-body or open meshes → null so callers don't act on
-  // a nonsense number.
+  // Backwards-compatible single-body genus (X2 callers).
   let genus: number | null = null;
   if (manifoldClosed && componentCount === 1) {
     const raw = (2 - eulerChar) / 2;
     if (Number.isInteger(raw) && raw >= 0) genus = raw;
   }
+
+  // X4 — Total genus = sum of per-component genera. null if any
+  // component's genus is null (we don't want to silently under-count).
+  let totalGenus: number | null = 0;
+  for (const g of perComponentGenus) {
+    if (g === null) { totalGenus = null; break; }
+    totalGenus += g;
+  }
+  if (perComponentGenus.length === 0) totalGenus = null;
 
   return {
     vertexCount: uniqueVerts,
@@ -266,15 +309,19 @@ export function computeMeshTopology(
     boundaryEdgeCount,
     nonManifoldEdgeCount,
     componentCount,
+    perComponentGenus,
+    totalGenus,
   };
 }
 
 /**
- * Convenience: estimate through-hole count from genus. Returns null if
- * the mesh isn't a clean closed manifold (blind-hole detection is X3).
+ * Convenience: estimate the TOTAL through-hole count across all bodies.
+ * X4 — returns the sum of per-component genera so a multi-body assembly
+ * still gets a meaningful answer (where X2 would have returned null).
+ * Returns null only when at least one component isn't a closed manifold.
  */
 export function countThroughHoles(geometry: THREE.BufferGeometry, tolMm?: number): number | null {
-  return computeMeshTopology(geometry, tolMm).genus;
+  return computeMeshTopology(geometry, tolMm).totalGenus;
 }
 
 export interface HoleCountMismatch {

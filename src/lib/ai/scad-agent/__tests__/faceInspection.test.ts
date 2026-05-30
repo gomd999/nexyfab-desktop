@@ -126,6 +126,72 @@ describe('computeMeshTopology — torus / genus ≥ 1', () => {
   });
 });
 
+describe('Phase X4 — per-component / total genus (multi-body)', () => {
+  function mergeGeoms(geoms: THREE.BufferGeometry[]): THREE.BufferGeometry {
+    const arrays = geoms.map(g => g.attributes.position.array as Float32Array);
+    const total = arrays.reduce((s, a) => s + a.length, 0);
+    const combined = new Float32Array(total);
+    let off = 0;
+    for (const a of arrays) { combined.set(a, off); off += a.length; }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(combined, 3));
+    return out;
+  }
+
+  it('single cube: perComponentGenus=[0], totalGenus=0', () => {
+    const t = computeMeshTopology(new THREE.BoxGeometry(10, 10, 10).toNonIndexed());
+    expect(t.perComponentGenus).toEqual([0]);
+    expect(t.totalGenus).toBe(0);
+  });
+
+  it('single torus: perComponentGenus=[1], totalGenus=1', () => {
+    const t = computeMeshTopology(new THREE.TorusGeometry(10, 3, 16, 32).toNonIndexed());
+    expect(t.perComponentGenus).toEqual([1]);
+    expect(t.totalGenus).toBe(1);
+  });
+
+  it('two disjoint tori → perComponentGenus=[1,1], totalGenus=2', () => {
+    const a = new THREE.TorusGeometry(10, 3, 16, 32).toNonIndexed();
+    const b = new THREE.TorusGeometry(5, 1, 16, 32).toNonIndexed();
+    b.applyMatrix4(new THREE.Matrix4().makeTranslation(50, 0, 0));
+    const t = computeMeshTopology(mergeGeoms([a, b]));
+    expect(t.componentCount).toBe(2);
+    expect(t.perComponentGenus).toEqual([1, 1]);
+    expect(t.totalGenus).toBe(2);
+    // Single-body `genus` field stays null for backwards-compat.
+    expect(t.genus).toBeNull();
+  });
+
+  it('cube + torus → perComponentGenus=[0,1], totalGenus=1', () => {
+    const a = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
+    const b = new THREE.TorusGeometry(10, 3, 16, 32).toNonIndexed();
+    b.applyMatrix4(new THREE.Matrix4().makeTranslation(50, 0, 0));
+    const t = computeMeshTopology(mergeGeoms([a, b]));
+    expect(t.componentCount).toBe(2);
+    // Order depends on BFS discovery — sort for stable assertion.
+    expect([...t.perComponentGenus].sort()).toEqual([0, 1]);
+    expect(t.totalGenus).toBe(1);
+  });
+
+  it('cube + open triangle → totalGenus=null (one component bad)', () => {
+    const cube = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
+    const tri = geomFromTris([100, 100, 100, 101, 100, 100, 100, 101, 100]);
+    const t = computeMeshTopology(mergeGeoms([cube, tri]));
+    expect(t.componentCount).toBe(2);
+    // One component (the triangle) is open → its genus is null → total
+    // is null so callers don't act on an under-count.
+    expect(t.perComponentGenus.some(g => g === null)).toBe(true);
+    expect(t.totalGenus).toBeNull();
+  });
+
+  it('countThroughHoles now reflects totalGenus (multi-body aware)', () => {
+    const a = new THREE.TorusGeometry(10, 3, 16, 32).toNonIndexed();
+    const b = new THREE.TorusGeometry(5, 1, 16, 32).toNonIndexed();
+    b.applyMatrix4(new THREE.Matrix4().makeTranslation(50, 0, 0));
+    expect(countThroughHoles(mergeGeoms([a, b]))).toBe(2);
+  });
+});
+
 describe('computeMeshTopology — non-manifold / open meshes', () => {
   it('a single triangle is not closed → genus=null', () => {
     const tris = [
