@@ -140,6 +140,13 @@ const dict = {
     jsonParseError: '의도 JSON을 파싱할 수 없습니다. 형식을 확인하세요.',
     routeFailed: '검증 요청 실패',
     verifyFromAgent: '마지막 에이전트 실행 결과',
+    sliderHeader: '─── 슬라이더 ───',
+    sliderAutoVerify: '자동 검증',
+    sliderApply: 'JSON에 반영',
+    sliderReset: '초기화',
+    sliderDebounceHint: '🔄 자동 검증 활성화 (800ms 지연)',
+    sliderWas: '원본',
+    sliderEmpty: '슬라이더로 조정할 수치 파라미터가 없습니다.',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -263,6 +270,13 @@ const dict = {
     jsonParseError: 'Intent JSON could not be parsed. Check the syntax.',
     routeFailed: 'Verification request failed',
     verifyFromAgent: 'from last agent run',
+    sliderHeader: '─── Sliders ───',
+    sliderAutoVerify: 'Auto-verify',
+    sliderApply: 'Apply to JSON',
+    sliderReset: 'Reset',
+    sliderDebounceHint: '🔄 auto-verify on (800ms debounce)',
+    sliderWas: 'was',
+    sliderEmpty: 'No numeric parameters to adjust with sliders.',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -386,6 +400,13 @@ const dict = {
     jsonParseError: '意図 JSON を解析できません。書式を確認してください。',
     routeFailed: '検証リクエスト失敗',
     verifyFromAgent: '最後のエージェント実行結果',
+    sliderHeader: '─── スライダー ───',
+    sliderAutoVerify: '自動検証',
+    sliderApply: 'JSON に反映',
+    sliderReset: 'リセット',
+    sliderDebounceHint: '🔄 自動検証オン (800ms デバウンス)',
+    sliderWas: '元値',
+    sliderEmpty: 'スライダーで調整できる数値パラメータがありません。',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -508,6 +529,13 @@ const dict = {
     jsonParseError: '无法解析意图 JSON。请检查格式。',
     routeFailed: '验证请求失败',
     verifyFromAgent: '来自上次智能体运行',
+    sliderHeader: '─── 滑块 ───',
+    sliderAutoVerify: '自动验证',
+    sliderApply: '应用到 JSON',
+    sliderReset: '重置',
+    sliderDebounceHint: '🔄 自动验证已开启 (800ms 防抖)',
+    sliderWas: '原始',
+    sliderEmpty: '没有可用滑块调整的数值参数。',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -631,6 +659,13 @@ const dict = {
     jsonParseError: 'No se pudo analizar el JSON de intención. Revisa la sintaxis.',
     routeFailed: 'La solicitud de verificación falló',
     verifyFromAgent: 'desde la última ejecución del agente',
+    sliderHeader: '─── Deslizadores ───',
+    sliderAutoVerify: 'Auto-verificar',
+    sliderApply: 'Aplicar al JSON',
+    sliderReset: 'Restablecer',
+    sliderDebounceHint: '🔄 auto-verificación activada (800 ms de espera)',
+    sliderWas: 'original',
+    sliderEmpty: 'No hay parámetros numéricos para ajustar con deslizadores.',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -754,6 +789,13 @@ const dict = {
     jsonParseError: 'تعذر تحليل JSON النية. تحقق من الصياغة.',
     routeFailed: 'فشل طلب التحقق',
     verifyFromAgent: 'من آخر تشغيل للوكيل',
+    sliderHeader: '─── شرائط التمرير ───',
+    sliderAutoVerify: 'تحقق تلقائي',
+    sliderApply: 'تطبيق على JSON',
+    sliderReset: 'إعادة تعيين',
+    sliderDebounceHint: '🔄 التحقق التلقائي مفعّل (تأخير 800 مللي ثانية)',
+    sliderWas: 'الأصلي',
+    sliderEmpty: 'لا توجد معاملات رقمية لضبطها بشرائط التمرير.',
   },
 } as const;
 
@@ -839,6 +881,96 @@ function openScadApiErrorMessage(
   return err || t.scadError;
 }
 
+/* ─── Slider helpers (extract / apply / serialise) ─────────────────────────
+ * Walk `intent.params` + each `intent.features[i].params` for NUMERIC values
+ * and produce a flat list of slider-able rows with dotted-path tokens like
+ * `params.width` or `features[0].params.diameter`.
+ *
+ * Range policy = [max(0.1, default * 0.1), default * 5] · step 0.1mm. The
+ * lower bound is clamped to 0.1 so dimensions never collapse to zero/negative
+ * (which crashes most SCAD primitives). Defaults of 0 fall back to a small
+ * exploratory range (0.1..5).
+ */
+interface NumericPath {
+  path: string;
+  value: number;
+  minRange: number;
+  maxRange: number;
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function rangeForDefault(def: number): { minRange: number; maxRange: number } {
+  if (!Number.isFinite(def) || def <= 0) return { minRange: 0.1, maxRange: 5 };
+  return { minRange: Math.max(0.1, def * 0.1), maxRange: def * 5 };
+}
+
+export function extractNumericPaths(intent: unknown): NumericPath[] {
+  if (!isPlainObject(intent)) return [];
+  const out: NumericPath[] = [];
+  const params = intent.params;
+  if (isPlainObject(params)) {
+    for (const [k, v] of Object.entries(params)) {
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        out.push({ path: `params.${k}`, value: v, ...rangeForDefault(v) });
+      }
+    }
+  }
+  const features = intent.features;
+  if (Array.isArray(features)) {
+    features.forEach((feat, i) => {
+      if (!isPlainObject(feat)) return;
+      const fparams = feat.params;
+      if (!isPlainObject(fparams)) return;
+      for (const [k, v] of Object.entries(fparams)) {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          out.push({ path: `features[${i}].params.${k}`, value: v, ...rangeForDefault(v) });
+        }
+      }
+    });
+  }
+  return out;
+}
+
+/**
+ * Plug current slider values back into a deep-cloned intent. Paths are the
+ * exact tokens emitted by `extractNumericPaths`. Unknown paths are silently
+ * skipped (defensive — the user may have edited the JSON between extracts).
+ */
+export function applySliderValuesToIntent(
+  originalIntent: unknown,
+  sliderValues: ReadonlyMap<string, number>,
+): unknown {
+  if (!isPlainObject(originalIntent)) return originalIntent;
+  // Shallow-typed deep clone via JSON round-trip — intent JSON is plain data.
+  const clone: Record<string, unknown> = JSON.parse(JSON.stringify(originalIntent));
+  for (const [path, val] of sliderValues) {
+    if (path.startsWith('params.')) {
+      const key = path.slice('params.'.length);
+      if (!isPlainObject(clone.params)) clone.params = {};
+      (clone.params as Record<string, unknown>)[key] = val;
+      continue;
+    }
+    const featMatch = /^features\[(\d+)\]\.params\.(.+)$/.exec(path);
+    if (featMatch) {
+      const idx = Number(featMatch[1]);
+      const key = featMatch[2];
+      if (!Array.isArray(clone.features)) continue;
+      const feat = clone.features[idx];
+      if (!isPlainObject(feat)) continue;
+      if (!isPlainObject(feat.params)) feat.params = {};
+      (feat.params as Record<string, unknown>)[key] = val;
+    }
+  }
+  return clone;
+}
+
+export function intentToJsonString(intent: unknown): string {
+  return JSON.stringify(intent, null, 2);
+}
+
 export default function OpenScadPanel({ onGeometryReady, selectedElement, currentShape }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -885,6 +1017,15 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyResult, setVerifyResult] = useState<SpecVerificationResult | null>(null);
+
+  /** Live-preview sliders — one row per numeric param in the last-parsed
+   *  intent. Only built AFTER a successful verify (verifiable === true). */
+  const [sliderRows, setSliderRows] = useState<NumericPath[]>([]);
+  const [sliderValues, setSliderValues] = useState<Map<string, number>>(new Map());
+  const [sliderSnapshot, setSliderSnapshot] = useState<Map<string, number>>(new Map());
+  const [sliderIntent, setSliderIntent] = useState<unknown>(null);
+  const [sliderJsonAtBuild, setSliderJsonAtBuild] = useState<string>('');
+  const [autoVerifyOn, setAutoVerifyOn] = useState(true);
 
   // Auto-feed: the ScadAgentPanel writes here whenever an agent run emits
   // a verify_spec tool_result. We prefer the manual button result when
@@ -1420,15 +1561,19 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
    * Parse failures short-circuit with a localized error — the route is
    * never called with a malformed intent.
    */
-  const runVerify = useCallback(async () => {
+  const runVerify = useCallback(async (overrideIntent?: unknown) => {
     if (!scadSource.trim() || verifyBusy) return;
     setVerifyErr('');
     let intent: unknown;
-    try {
-      intent = JSON.parse(verifyIntentJson);
-    } catch {
-      setVerifyErr(t.jsonParseError);
-      return;
+    if (overrideIntent !== undefined) {
+      intent = overrideIntent;
+    } else {
+      try {
+        intent = JSON.parse(verifyIntentJson);
+      } catch {
+        setVerifyErr(t.jsonParseError);
+        return;
+      }
     }
     if (!intent || typeof intent !== 'object' || Array.isArray(intent)) {
       setVerifyErr(t.jsonParseError);
@@ -1447,13 +1592,104 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
         setVerifyErr(msg);
         return;
       }
-      if (data.result) setVerifyResult(data.result);
+      if (data.result) {
+        setVerifyResult(data.result);
+        // Build / refresh slider rows when verifiable. Snapshot is captured
+        // only on the FIRST build for a given textarea-JSON so "Reset" goes
+        // back to what the user originally typed, not the most recent
+        // auto-verify roundtrip.
+        if (data.result.verifiable) {
+          const rows = extractNumericPaths(intent);
+          setSliderRows(rows);
+          setSliderIntent(intent);
+          const nextValues = new Map<string, number>();
+          for (const r of rows) nextValues.set(r.path, r.value);
+          setSliderValues(nextValues);
+          // If this verify was invoked from the textarea (no override), the
+          // textarea is the new canonical source — capture a fresh snapshot.
+          if (overrideIntent === undefined) {
+            setSliderSnapshot(new Map(nextValues));
+            setSliderJsonAtBuild(verifyIntentJson);
+          }
+        }
+      }
     } catch (e: unknown) {
       setVerifyErr(e instanceof Error ? e.message : t.routeFailed);
     } finally {
       setVerifyBusy(false);
     }
   }, [scadSource, verifyIntentJson, verifyBusy, t]);
+
+  /** Slider change handler — updates the local working copy + marks the
+   *  change. The auto-verify effect picks up sliderValues changes. */
+  const handleSliderChange = useCallback((path: string, val: number) => {
+    setSliderValues(prev => {
+      const next = new Map(prev);
+      next.set(path, val);
+      return next;
+    });
+  }, []);
+
+  /** Apply current slider values back to the textarea JSON — makes the
+   *  round-trip visible to the user. After this, the textarea is in sync
+   *  with the sliders again. */
+  const applySlidersToJson = useCallback(() => {
+    if (!sliderIntent) return;
+    const updated = applySliderValuesToIntent(sliderIntent, sliderValues);
+    const jsonStr = intentToJsonString(updated);
+    setVerifyIntentJson(jsonStr);
+    setSliderIntent(updated);
+    setSliderJsonAtBuild(jsonStr);
+    // After apply, snapshot now reflects the new "saved" baseline so a
+    // subsequent Reset goes back to what's now in the textarea.
+    setSliderSnapshot(new Map(sliderValues));
+  }, [sliderIntent, sliderValues]);
+
+  /** Reset sliders to the snapshot taken when the rows were first built
+   *  (or when "Apply to JSON" was last clicked). */
+  const resetSliders = useCallback(() => {
+    setSliderValues(new Map(sliderSnapshot));
+  }, [sliderSnapshot]);
+
+  /** Invalidate the slider working copy when the user manually edits the
+   *  textarea JSON — the textarea is the canonical source, sliders are a
+   *  derived view that must be rebuilt on the next verify. */
+  useEffect(() => {
+    if (!sliderJsonAtBuild) return;
+    if (verifyIntentJson !== sliderJsonAtBuild) {
+      // User typed in the textarea after sliders were built; hide sliders
+      // until they Re-run verify.
+      setSliderRows([]);
+      setSliderValues(new Map());
+      setSliderSnapshot(new Map());
+      setSliderIntent(null);
+      setSliderJsonAtBuild('');
+    }
+  }, [verifyIntentJson, sliderJsonAtBuild]);
+
+  /** Debounced auto-verify: when sliders move AND autoVerifyOn, re-run
+   *  /verify-spec after 800ms idle with the slider-modified intent. */
+  useEffect(() => {
+    if (!autoVerifyOn) return;
+    if (sliderRows.length === 0) return;
+    if (!sliderIntent) return;
+    // Skip when the current sliderValues exactly match the snapshot — no
+    // user-driven change to debounce on (e.g. immediately after row build).
+    let changed = false;
+    for (const [k, v] of sliderValues) {
+      if (sliderSnapshot.get(k) !== v) { changed = true; break; }
+    }
+    if (!changed) return;
+    const handle = setTimeout(() => {
+      const updated = applySliderValuesToIntent(sliderIntent, sliderValues);
+      void runVerify(updated);
+    }, 800);
+    return () => { clearTimeout(handle); };
+  }, [sliderValues, sliderSnapshot, sliderIntent, sliderRows.length, autoVerifyOn, runVerify]);
+
+  /** Sliders visible only when intent JSON parsed cleanly AND verify ran
+   *  at least once with verifiable=true (which sets sliderRows). */
+  const slidersVisible = sliderRows.length > 0 && verifyResult !== null && verifyResult.verifiable;
 
   const hasCode = !!code;
   const hasSelectedFace = selectedElement?.type === 'face';
@@ -1953,6 +2189,82 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                     >
                       <span>🤖</span>
                       <span>{t.verifyFromAgent ?? 'from last agent run'}</span>
+                    </div>
+                  )}
+                  {/* Live-preview sliders. Gated on: verifyResult.verifiable
+                      === true AND intent had ≥1 numeric param. */}
+                  {slidersVisible && (
+                    <div
+                      data-testid="verify-sliders-section"
+                      className="flex flex-col gap-2 border border-violet-700/30 rounded p-2.5 bg-violet-950/20"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-violet-200/90 font-medium font-mono">
+                          {t.sliderHeader}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] text-violet-100/80 inline-flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              data-testid="verify-slider-auto-toggle"
+                              checked={autoVerifyOn}
+                              onChange={e => setAutoVerifyOn(e.target.checked)}
+                              className="accent-violet-500"
+                            />
+                            <span>{t.sliderAutoVerify}</span>
+                          </label>
+                          <button
+                            type="button"
+                            data-testid="verify-slider-apply"
+                            onClick={applySlidersToJson}
+                            className="text-[11px] px-2 py-0.5 bg-violet-600 hover:bg-violet-500 text-white rounded"
+                          >
+                            {t.sliderApply}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="verify-slider-reset"
+                            onClick={resetSliders}
+                            className="text-[11px] px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded"
+                          >
+                            {t.sliderReset}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {sliderRows.map(row => {
+                          const cur = sliderValues.get(row.path) ?? row.value;
+                          const snap = sliderSnapshot.get(row.path) ?? row.value;
+                          return (
+                            <div key={row.path} className="flex flex-col gap-0.5">
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-gray-200 font-mono">{row.path}</span>
+                                <span className="text-violet-300 font-mono">
+                                  {cur.toFixed(1)} mm{' '}
+                                  <span className="text-gray-500">
+                                    ({t.sliderWas} {snap.toFixed(1)})
+                                  </span>
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                data-testid={`verify-slider-${row.path}`}
+                                min={row.minRange}
+                                max={row.maxRange}
+                                step={0.1}
+                                value={cur}
+                                onChange={e => handleSliderChange(row.path, parseFloat(e.target.value))}
+                                className="w-full accent-violet-500 h-1.5"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {autoVerifyOn && (
+                        <p className="text-[10px] text-violet-300/70 self-end">
+                          {t.sliderDebounceHint}
+                        </p>
+                      )}
                     </div>
                   )}
                   <VerifySpecPanel lang={seg} result={effectiveVerifyResult} />
