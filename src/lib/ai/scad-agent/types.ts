@@ -133,7 +133,11 @@ export type ToolName =
   // ─── X1 (B-rep parallel) — spec verification for B-rep flows ────────
   | 'verify_spec_brep'
   // ─── GD&T tolerance suggester (DimXpert / Auto-dim equivalent) ──────
-  | 'suggest_gdt_for_intent';
+  | 'suggest_gdt_for_intent'
+  // ─── Track B — Cost estimation ──────────────────────────────────────
+  | 'estimate_cost'
+  // ─── Track G — AI process selection ─────────────────────────────────
+  | 'suggest_process';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */

@@ -53,6 +53,8 @@ import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
 import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
+import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, type EstimateCostOptions } from './costEstimation';
+import { suggestProcessForPart, formatProcessScores, type SuggestProcessOptions, type ProcessScore } from './processSelection';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -645,6 +647,129 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       ok: true,
       output: formatSuggestions(suggestions),
       meta: { suggestions },
+    };
+  };
+
+  // ─── Track B — Cost estimation ────────────────────────────────────────
+  // Order-of-magnitude part-cost estimator. Pulls density × volume for
+  // material cost, fixed machine-hour rate for process time, and amortizes
+  // a per-job setup fee over the requested quantity. Confidence label
+  // tells the caller whether to trust the figure ('medium' when measured
+  // volume + supported process; 'low' when bbox-only; 'rough' for sheet
+  // metal or degenerate inputs).
+  const VALID_PROCESSES_COST: ProcessForDfm[] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+  const VALID_MATERIALS: Material[] = ['aluminum_6061', 'steel_a36', 'steel_4140', 'stainless_304', 'pla', 'abs'];
+
+  const estimate_cost: ToolExecutor = async (args) => {
+    const a = args as {
+      process?: unknown;
+      material?: unknown;
+      quantity?: unknown;
+      measuredVolumeMm3?: unknown;
+      bboxMm?: unknown;
+    };
+    if (typeof a.process !== 'string' || !(VALID_PROCESSES_COST as string[]).includes(a.process)) {
+      return {
+        ok: false,
+        error: `estimate_cost requires process ∈ {${VALID_PROCESSES_COST.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    if (typeof a.material !== 'string' || !(VALID_MATERIALS as string[]).includes(a.material)) {
+      return {
+        ok: false,
+        error: `estimate_cost requires material ∈ {${VALID_MATERIALS.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    const opts: EstimateCostOptions = {
+      process: a.process as ProcessForDfm,
+      material: a.material as Material,
+      quantity: typeof a.quantity === 'number' && a.quantity > 0 ? a.quantity : 1,
+    };
+    if (typeof a.measuredVolumeMm3 === 'number' && a.measuredVolumeMm3 > 0) {
+      opts.measuredVolumeMm3 = a.measuredVolumeMm3;
+    }
+    if (a.bboxMm && typeof a.bboxMm === 'object') {
+      const b = a.bboxMm as { wMm?: unknown; hMm?: unknown; dMm?: unknown };
+      if (typeof b.wMm === 'number' && typeof b.hMm === 'number' && typeof b.dMm === 'number') {
+        opts.bboxMm = { wMm: b.wMm, hMm: b.hMm, dMm: b.dMm };
+      }
+    }
+    let cost: CostBreakdown;
+    try {
+      cost = estimateCost(opts);
+    } catch (e) {
+      return { ok: false, error: `estimate_cost threw: ${(e as Error).message}`, code: 'COST_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatCostBreakdown(opts, cost),
+      meta: { cost },
+    };
+  };
+
+  // ─── Track G — AI process selection ───────────────────────────────────
+  // Heuristic ranking of manufacturing processes for a given intent.
+  // Each process starts at 50 and gets +/- modifiers from material /
+  // quantity / wall thickness / bbox / hole count. Blockers force the
+  // score to 0. Returns top 3 by default (or all 6 when returnAll=true).
+  const suggest_process: ToolExecutor = async (args) => {
+    const a = args as {
+      intent?: unknown;
+      measured?: unknown;
+      quantityHint?: unknown;
+      materialHint?: unknown;
+      returnAll?: unknown;
+    };
+    if (!a.intent || typeof a.intent !== 'object') {
+      return {
+        ok: false,
+        error: 'suggest_process requires { intent: { shapeId, params, features? }, measured?, quantityHint?, materialHint? }',
+        code: 'BAD_ARGS',
+      };
+    }
+    const intentObj = a.intent as { shapeId?: unknown };
+    if (typeof intentObj.shapeId !== 'string') {
+      return { ok: false, error: 'intent.shapeId must be a string', code: 'BAD_ARGS' };
+    }
+    const opts: SuggestProcessOptions = {
+      intent: a.intent as import('../../openscad-render/intentToScad').IntentInput,
+    };
+    if (typeof a.quantityHint === 'number' && a.quantityHint > 0) {
+      opts.quantityHint = a.quantityHint;
+    }
+    if (a.materialHint === 'metal' || a.materialHint === 'plastic' || a.materialHint === 'any') {
+      opts.materialHint = a.materialHint;
+    }
+    if (a.returnAll === true) opts.returnAll = true;
+    if (a.measured && typeof a.measured === 'object') {
+      const m = a.measured as Record<string, unknown>;
+      const measured: NonNullable<SuggestProcessOptions['measured']> = {};
+      if (typeof m.volumeMm3 === 'number') measured.volumeMm3 = m.volumeMm3;
+      if (m.bboxMm && typeof m.bboxMm === 'object') {
+        const b = m.bboxMm as { wMm?: unknown; hMm?: unknown; dMm?: unknown };
+        if (typeof b.wMm === 'number' && typeof b.hMm === 'number' && typeof b.dMm === 'number') {
+          measured.bboxMm = { wMm: b.wMm, hMm: b.hMm, dMm: b.dMm };
+        }
+      }
+      if (typeof m.minWallMm === 'number' || m.minWallMm === null) {
+        measured.minWallMm = m.minWallMm as number | null;
+      }
+      if (typeof m.holeCount === 'number') measured.holeCount = m.holeCount;
+      if (typeof m.chamferEdgeCount === 'number') measured.chamferEdgeCount = m.chamferEdgeCount;
+      opts.measured = measured;
+    }
+    let scores: ProcessScore[];
+    try {
+      scores = suggestProcessForPart(opts);
+    } catch (e) {
+      return { ok: false, error: `suggest_process threw: ${(e as Error).message}`, code: 'PROCESS_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatProcessScores(scores),
+      meta: { scores },
     };
   };
 
@@ -2263,6 +2388,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     verify_spec_brep,
     // GD&T tolerance suggester (DimXpert / Auto-dim equivalent)
     suggest_gdt_for_intent,
+    // Track B — cost estimation
+    estimate_cost,
+    // Track G — AI process selection
+    suggest_process,
   };
 }
 

@@ -79,6 +79,14 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    Returns: human-readable summary + meta { suggestions: [{ source, featureRef, symbol, toleranceMm, datumRefs?, reason }] }
    \`grade: 'precision'\` halves the tolerances, \`'rough'\` doubles them. Empty list when the intent has no functional features AND the shape isn't a planar/axis primary (sphere, torus) — that's fine, just skip GD&T.
 
+5e. \`estimate_cost\` — Order-of-magnitude part cost estimator. Computes material cost (density × volume × $/kg), machine-time cost (per-process rates: $100/hr blended CNC, $3/hr FDM, $8/hr SLA, $0.5/part IM cycle, $1/part die-cast cycle, $5 placeholder for sheet metal), and setup cost amortized over quantity ($30 CNC, $5 FDM, $10 SLA, $2000 IM tooling, $5000 die tooling, $20 sheet). Call AFTER verify_spec passes so you can pass the measured volume — that bumps confidence from 'low' to 'medium'. Always include process + material; omit quantity for one-off (defaults to 1). Returns 'rough' confidence + a "FOR REFERENCE ONLY" note for sheet metal (perimeter cuts can't be priced from volume alone) and incompatible material/process pairs (e.g. metal on FDM).
+   args: { process: 'fdm'|'sla'|'cnc_mill'|'sheet'|'injection_molding'|'die_cast', material: 'aluminum_6061'|'steel_a36'|'steel_4140'|'stainless_304'|'pla'|'abs', quantity?: number, measuredVolumeMm3?: number, bboxMm?: { wMm, hMm, dMm } }
+   Returns: human-readable breakdown + meta { cost: { materialUsd, machineUsd, setupUsd, totalUsd, breakdown[], confidence } }
+
+5f. \`suggest_process\` — AI process selection. Scores all 6 manufacturing processes against the intent + user hints; returns top 3 (or all 6 with returnAll). Each process starts at 50 and gets +/- modifiers from material/quantity/wall thickness/bbox/hole count; blockers force score to 0. Call BEFORE add_feature_intent when the user hasn't specified a process — gives them a guided choice. Skip when default_process is already set in user prefs. Modifiers worth remembering: metal + fdm/sla = blocked; min wall < 0.6mm + cnc/IM/die_cast = blocked; quantity ≥ 1000 + IM = +25 (sweet spot); quantity < 50 + IM = -30 (setup dominates); part > 200mm + sla = -20 (build volume); >20 holes + IM = -15 (mold complexity); chamfers + sheet = blocked.
+   args: { intent: { shapeId, params, features? }, measured?: { volumeMm3?, bboxMm?, minWallMm?, holeCount?, chamferEdgeCount? }, quantityHint?: number, materialHint?: 'metal'|'plastic'|'any', returnAll?: boolean }
+   Returns: ranked list text + meta { scores: [{ process, score, reason, blockers[], warnings[] }] }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 
