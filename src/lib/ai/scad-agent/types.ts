@@ -145,7 +145,9 @@ export type ToolName =
   // ─── Track E — AI mate inference for 2-part pairs ────────────────────
   | 'suggest_mates'
   // ─── Track H — Version diff between checkpoints ──────────────────────
-  | 'diff_checkpoints';
+  | 'diff_checkpoints'
+  // ─── Image-to-CAD — extract intent from a photo/sketch via vision ────
+  | 'intent_from_image';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */
@@ -728,6 +730,16 @@ export interface ViewRenderArgs {
   prompt?: string;
   /** Subset of camera angles. Defaults to iso + front + right side. */
   views?: ('iso' | 'front' | 'right' | 'left' | 'top' | 'back')[];
+}
+
+/** Args for `intent_from_image`: vision-driven CAD-intent extraction. */
+export interface IntentFromImageArgs {
+  /** Raw base64 or data URL (data URL preferred). */
+  imageBase64: string;
+  /** Optional MIME type — inferred from data URL when present. */
+  mimeType?: 'image/png' | 'image/jpeg' | 'image/webp';
+  /** Optional NL hint paired with the image ("the bracket is 50mm wide"). */
+  hintText?: string;
 }
 
 // ─── Session state ──────────────────────────────────────────────────────────

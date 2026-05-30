@@ -1259,6 +1259,89 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
   };
 
+  // ─── Image-to-CAD — extract IntentInput from a photo/sketch ──────────
+  //
+  // Mirrors the POST /api/nexyfab/intent-from-image route, but for the agent
+  // loop. Vision is expensive — the agent must call this AT MOST ONCE per
+  // upload. Result populates session.lastIntent + scadSource so the next
+  // turn can chain into render → verify_spec without an extra
+  // add_feature_intent call. Pair with verify_spec to confirm the extracted
+  // intent matches the user's description.
+  const intent_from_image: ToolExecutor = async (args, session) => {
+    if (!host.vision) {
+      return {
+        ok: false,
+        error: 'intent_from_image is unavailable in this environment (no vision adapter).',
+        code: 'NO_VISION',
+      };
+    }
+    const a = args as unknown as import('./types').IntentFromImageArgs;
+    if (typeof a.imageBase64 !== 'string' || !a.imageBase64.trim()) {
+      return {
+        ok: false,
+        error: 'intent_from_image requires { imageBase64: string (data URL or raw base64), mimeType?, hintText? }',
+        code: 'BAD_ARGS',
+      };
+    }
+    // Vision budget — share the same cap as view_render so a wedged model
+    // that loops on image extraction can't bankrupt the user.
+    if (session.budget.visionCallsUsed >= session.budget.visionCallsCap) {
+      return {
+        ok: false,
+        error: `intent_from_image budget exhausted (${session.budget.visionCallsUsed}/${session.budget.visionCallsCap}). `
+          + 'Hand back to the user or use the text-only add_feature_intent path.',
+        code: 'BUDGET_VISION',
+      };
+    }
+    const { decodeImageBase64, extractIntentFromImage } = await import('../imageIntentExtractor');
+    const decoded = decodeImageBase64(a.imageBase64);
+    if (!decoded) {
+      return {
+        ok: false,
+        error: 'imageBase64 could not be decoded (expected data URL or valid base64)',
+        code: 'IMAGE_DECODE_FAILED',
+      };
+    }
+    const mimeType = a.mimeType ?? decoded.mimeType ?? 'image/png';
+    try {
+      const result = await extractIntentFromImage({
+        imageBytes: decoded.bytes,
+        mimeType,
+        hintText: typeof a.hintText === 'string' ? a.hintText : undefined,
+      });
+      if (!result.ok) {
+        return { ok: false, error: result.message, code: result.code };
+      }
+      // Charge vision budget on success only — failed calls don't burn credits.
+      if (!result.cached) {
+        session.budget = { ...session.budget, visionCallsUsed: session.budget.visionCallsUsed + 1 };
+      }
+      // Mirror add_feature_intent's session writes so the next turn can
+      // chain straight into render → verify_spec.
+      session.scadSource = result.scad;
+      session.render = { ok: null, errors: [] };
+      session.geometry = {};
+      session.lastIntent = result.intent;
+      const summaryLine = result.summary ? `\n${result.summary}` : '';
+      return {
+        ok: true,
+        output:
+          `OK. Extracted intent from image (shape: ${result.intent.shapeId}, `
+          + `${result.scad.length} bytes SCAD${result.cached ? ', cached' : ''}).${summaryLine}\n`
+          + `Call render → verify_spec to confirm the extracted intent matches what the user wanted.`,
+        meta: {
+          intent: result.intent,
+          scad: result.scad,
+          summary: result.summary,
+          cached: result.cached,
+          warnings: result.warnings,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `intent_from_image threw: ${(e as Error).message}`, code: 'IMAGE_INTENT_THREW' };
+    }
+  };
+
   // ─── Ω3 — Design pattern retrieval (RAG-lite for seeds) ────────────────
   //
   // Returns relevant past designs as starter prompts. Agent extends the
@@ -2680,6 +2763,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     suggest_mates,
     // Track H — Version diff between checkpoints
     diff_checkpoints,
+    // Image-to-CAD — vision → IntentInput
+    intent_from_image,
   };
 }
 

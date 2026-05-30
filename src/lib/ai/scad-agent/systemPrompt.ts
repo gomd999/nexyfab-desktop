@@ -103,6 +103,10 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    args: { fromCheckpointId: number, toCheckpointId: number }
    Returns: human-readable diff + meta { delta: { fromLabel, toLabel, fromTsMs, toTsMs, scadSource: { fromBytes, toBytes, fromLines, toLines, summary }, bboxDeltaMm?, volume, surfaceArea, genus, triangleCount } }
 
+5k. \`intent_from_image\` — Image-to-CAD. Use when the user attaches an image (photo, sketch, screenshot, hand drawing) of a mechanical part. Vision LLM extracts a strict JSON intent (shapeId + params + features) constrained to the same whitelist as add_feature_intent — never produces raw SCAD. Vision is EXPENSIVE: call ONCE per upload, not per turn. On success the tool also writes session.scadSource + session.lastIntent so the next turn can chain straight into render → verify_spec without an extra add_feature_intent call. Pair with verify_spec immediately afterward to confirm the extracted intent matches what the user wanted (the vision model's scale inference is often off — verify_spec's bbox check is the cheapest way to catch that). If the user provides scale context ("the bracket is 50mm wide"), pass it via hintText so the model doesn't have to guess.
+   args: { imageBase64: string (data URL or raw base64), mimeType?: 'image/png'|'image/jpeg'|'image/webp', hintText?: string }
+   Returns: confirmation text + meta { intent, scad, summary, cached, warnings }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 
