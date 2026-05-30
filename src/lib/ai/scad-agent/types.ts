@@ -772,6 +772,13 @@ export interface GeometryStats {
     voteCount: number;
   }>;
   /**
+   * X11 — Minimum wall thickness sampled across the mesh (mm). null when
+   * the shape is a convex solid (no inward hits — sphere, single cube)
+   * or the mesh was empty. verify_spec uses this against the declared
+   * manufacturing process's minimum to fail "wall too thin to print/mill".
+   */
+  minWallThicknessMm?: number | null;
+  /**
    * X8 — dihedral angle stats for fillet verification. sharpEdgeCount ≈ 0
    * indicates a part where every sharp corner has been replaced with a
    * smooth fillet transition.

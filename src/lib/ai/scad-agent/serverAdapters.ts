@@ -29,7 +29,7 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   const { verifyGeneratedModel, formatVerificationCritique } = await import(
     '../../../app/[lang]/shape-generator/analysis/verifyGeneratedModel'
   );
-  const { countThroughHoles, computeSurfaceArea, detectAllAxisAlignedHoles, computeDihedralStats } = await import('./faceInspection');
+  const { countThroughHoles, computeSurfaceArea, detectAllAxisAlignedHoles, computeDihedralStats, computeMinWallThickness } = await import('./faceInspection');
   const geo = await parseStlBufferToGeometry(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
   const result = verifyGeneratedModel(geo);
   const watertight = result.checks.find(c => c.id === 'watertight')?.pass ?? false;
@@ -50,6 +50,10 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   );
   // X8 — dihedral stats so verify_spec can confirm fillet application.
   const dihedralStats = computeDihedralStats(geo);
+  // X11 — minimum wall thickness sampled via inward raycasts; null when
+  // the mesh is a convex solid (no opposing wall to register a hit).
+  const wallStats = await computeMinWallThickness(geo);
+  const minWallThicknessMm = wallStats.minMm === Infinity ? null : wallStats.minMm;
   return {
     triangleCount: result.metrics.triangleCount,
     volume_mm3: result.metrics.volumeMm3,
@@ -60,6 +64,7 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
     genus,
     detectedHoles,
     dihedralStats,
+    minWallThicknessMm,
     ...(bb ? { bbox: { min: [bb.min.x, bb.min.y, bb.min.z] as [number, number, number], max: [bb.max.x, bb.max.y, bb.max.z] as [number, number, number] } } : {}),
     ...(critique ? { issues: critique } : {}),
   };

@@ -28,6 +28,38 @@
 import type { IntentInput, IntentFeature } from '../../openscad-render/intentToScad';
 import { METRIC_FASTENERS } from '../../openscad-render/isoFasteners';
 
+/**
+ * X11 — Manufacturing processes we know wall-thickness minimums for.
+ * Mirrors the §5b prompt table the agent reads:
+ *   fdm 0.8, sla 0.6, cnc_mill 2.0, sheet 0 (skip), injection_molding 1.0, die_cast 1.5.
+ */
+export type ProcessForDfm =
+  | 'fdm'
+  | 'sla'
+  | 'cnc_mill'
+  | 'sheet'
+  | 'injection_molding'
+  | 'die_cast';
+
+/**
+ * X11 — Per-process minimum wall thickness in mm. `sheet` is 0 because the
+ * wall thickness equals the sheet gauge by definition — the check is
+ * skipped to avoid false positives on flat shells. Override per-call with
+ * `processWallMinOverrideMm` if a tighter / looser supplier limit applies.
+ */
+export const PROCESS_WALL_MIN_MM: Record<ProcessForDfm, number> = {
+  fdm: 0.8,
+  sla: 0.6,
+  cnc_mill: 2.0,
+  sheet: 0,
+  injection_molding: 1.0,
+  die_cast: 1.5,
+};
+
+/** Slack applied to the per-process minimum (mm). 5% of 0.8 ≈ 0.04 — we
+ *  round up to 0.05 so the boundary case (0.78 vs 0.80 fdm floor) passes. */
+const WALL_THICKNESS_SLACK_MM = 0.05;
+
 export interface ExpectedBbox {
   /** Whether the bbox is centered at origin (cube center=true semantics). */
   centered: boolean;
@@ -151,6 +183,27 @@ export interface SpecVerificationResult {
     }>;
     /** True iff every thread is either ISO-compliant or non-standard. */
     allOk: boolean;
+  };
+  /**
+   * X11 — Wall thickness DFM gate. Populated when the caller passes both
+   * `detectedMinWallMm` (from computeMinWallThickness) AND `processForDfm`
+   * (typically pulled from session.userPrefs.default_process). When the
+   * shape is a convex solid (sampleCount=0 ⇒ minDetectedMm=null) the
+   * block still appears with `pass: true` and `note` so the agent sees
+   * the check was attempted but skipped.
+   */
+  wallThickness?: {
+    /** Sampled minimum wall thickness in mm; null when no inward hit
+     *  (convex solid — there is no wall to measure). */
+    minDetectedMm: number | null;
+    /** The process minimum the check applied. */
+    processMinMm: number;
+    /** Which process the table matched (echoed verbatim from `processForDfm`). */
+    processMatched: ProcessForDfm;
+    /** True when minDetectedMm >= processMinMm - 5% slack, OR check was skipped. */
+    pass: boolean;
+    /** Reason the check was skipped (only set when minDetectedMm === null). */
+    note?: string;
   };
   /**
    * X10 — intent self-consistency. Pure intent-side check that runs
@@ -938,6 +991,18 @@ export interface VerifyAgainstSpecOptions {
   /** Sharp-edge tolerance for the fillet check (default 2 — allow 2
    *  borderline edges before declaring "fillet not applied"). */
   filletSharpEdgeTolerance?: number;
+  /** X11 — sampled minimum wall thickness in mm. null when the mesh
+   *  produced no inward hits (convex solid). When undefined, the entire
+   *  wall-thickness check is skipped. */
+  detectedMinWallMm?: number | null;
+  /** X11 — process whose minimum wall thickness we check against. When
+   *  omitted, the wall-thickness check is skipped entirely (no false
+   *  positives without a declared process). */
+  processForDfm?: ProcessForDfm;
+  /** X11 — Override the per-process minimum (mm). Wins over the table
+   *  default — use when a specific supplier has a tighter / looser
+   *  capability than the generic process. */
+  processWallMinOverrideMm?: number;
 }
 
 /**
@@ -950,7 +1015,7 @@ export function verifyAgainstSpec(
   measured: MeasuredBbox,
   opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
-  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm, detectedDihedralStats, filletSharpEdgeTolerance } = opts;
+  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm, detectedDihedralStats, filletSharpEdgeTolerance, detectedMinWallMm, processForDfm, processWallMinOverrideMm } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -1149,6 +1214,34 @@ export function verifyAgainstSpec(
     }
   }
 
+  // X11 — Wall thickness DFM gate. Skips entirely when either input is
+  // missing OR the process minimum is 0 (sheet metal — wall = sheet gauge
+  // by definition, nothing to check from the mesh).
+  let wallThickness: SpecVerificationResult['wallThickness'];
+  if (detectedMinWallMm !== undefined && processForDfm !== undefined) {
+    const processMinMm = processWallMinOverrideMm ?? PROCESS_WALL_MIN_MM[processForDfm];
+    if (processMinMm > 0) {
+      if (detectedMinWallMm === null) {
+        // Convex solid — no inward hits, no shell to measure.
+        wallThickness = {
+          minDetectedMm: null,
+          processMinMm,
+          processMatched: processForDfm,
+          pass: true,
+          note: 'wall thickness check skipped: convex solid (no opposing wall to sample).',
+        };
+      } else {
+        const pass = detectedMinWallMm >= processMinMm - WALL_THICKNESS_SLACK_MM;
+        wallThickness = {
+          minDetectedMm: detectedMinWallMm,
+          processMinMm,
+          processMatched: processForDfm,
+          pass,
+        };
+      }
+    }
+  }
+
   // X10 — intent self-consistency. Always runs (pure intent inspection,
   // no detection prerequisite). When the intent has no hole features
   // the issue lists come back empty and ok=true.
@@ -1161,6 +1254,7 @@ export function verifyAgainstSpec(
     && (holePositions ? holePositions.allMatched : true)
     && (fillet ? fillet.applied : true)
     && (threads ? threads.allOk : true)
+    && (wallThickness ? wallThickness.pass : true)
     && intentIssues.ok;
   return {
     ok,
@@ -1178,6 +1272,7 @@ export function verifyAgainstSpec(
     ...(holePositions ? { holePositions } : {}),
     ...(fillet ? { fillet } : {}),
     ...(threads ? { threads } : {}),
+    ...(wallThickness ? { wallThickness } : {}),
     ...(intentIssues.ok ? {} : { intentIssues }),
   };
 }
@@ -1211,7 +1306,12 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const threadLine = result.threads
       ? ` Threads: ${result.threads.perThread.length} thread(s) verified against ISO 261.`
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}${threadLine}`;
+    const wallLine = result.wallThickness
+      ? (result.wallThickness.minDetectedMm === null
+          ? ` Wall thickness: skipped (convex solid, no shell to sample).`
+          : ` Wall thickness: ${result.wallThickness.minDetectedMm.toFixed(2)} mm (≥ ${result.wallThickness.processMinMm.toFixed(1)} for ${result.wallThickness.processMatched}).`)
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}${threadLine}${wallLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -1284,6 +1384,12 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
         `  thread: Ø${t.diameter}mm thread uses pitch ${t.requestedPitch}mm, but ISO 261 coarse pitch for ${t.isoStandard} is ${t.expectedPitch}mm. Either fix the pitch or change diameter.`,
       );
     }
+  }
+  if (result.wallThickness && !result.wallThickness.pass && result.wallThickness.minDetectedMm !== null) {
+    const { minDetectedMm, processMinMm, processMatched } = result.wallThickness;
+    lines.push(
+      `  wall thickness: detected ${minDetectedMm.toFixed(2)} mm at the thinnest point — below the ${processMinMm.toFixed(1)} mm minimum for ${processMatched}. Add material or change process.`,
+    );
   }
   if (result.intentIssues) {
     for (const dup of result.intentIssues.duplicateHoles) {

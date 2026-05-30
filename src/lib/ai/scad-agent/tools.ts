@@ -51,7 +51,7 @@ import type {
 } from './types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
-import { verifyAgainstSpec, formatSpecCritique } from './specVerification';
+import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -418,12 +418,20 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     const detectedSurfaceAreaMm2 = session.geometry?.surfaceArea_mm2;
     const detectedHoles = session.geometry?.detectedHoles;
     const detectedDihedralStats = session.geometry?.dihedralStats;
+    // X11 — wall thickness DFM gate. minWallThicknessMm comes from the
+    // geometry adapter (raycast sampling); processForDfm from the user
+    // prefs Y3 stored on the session. Both are optional — verifyAgainstSpec
+    // skips the check when either is missing.
+    const detectedMinWallMm = session.geometry?.minWallThicknessMm;
+    const processForDfm = mapUserPrefToProcess(session.userPrefs?.default_process);
     const result = verifyAgainstSpec(session.lastIntent, bbox, {
       detectedGenus,
       detectedVolumeMm3,
       detectedSurfaceAreaMm2,
       detectedHoles,
       detectedDihedralStats,
+      detectedMinWallMm,
+      processForDfm,
     });
     const critique = formatSpecCritique(result);
     return {
@@ -441,6 +449,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         holePositions: result.holePositions,
         fillet: result.fillet,
         threads: result.threads,
+        wallThickness: result.wallThickness,
         intentIssues: result.intentIssues,
       },
     };
@@ -2136,6 +2145,51 @@ function mapCameraViews(labels?: ('iso' | 'front' | 'right' | 'left' | 'top' | '
     if (out.length >= 4) break;
   }
   return out.length > 0 ? out : undefined;
+}
+
+/**
+ * X11 — Map the user-pref `default_process` string (Y3 multi-turn) to the
+ * ProcessForDfm key used by verifyAgainstSpec's wall-thickness gate.
+ * Returns undefined when the pref is missing or doesn't resolve — the
+ * verify layer then skips the wall-thickness check entirely.
+ *
+ * Accepts both the canonical token ("fdm", "cnc_mill") and the friendlier
+ * synonyms the model tends to emit ("3d_printing", "cnc_milling",
+ * "injection-molding"). Unknown strings → undefined (skip).
+ */
+function mapUserPrefToProcess(pref: string | undefined): ProcessForDfm | undefined {
+  if (!pref) return undefined;
+  const k = pref.trim().toLowerCase().replace(/[-\s]+/g, '_');
+  switch (k) {
+    case 'fdm':
+    case '3d_printing':
+    case '3d_print':
+    case 'fff':
+      return 'fdm';
+    case 'sla':
+    case 'msla':
+    case 'resin':
+      return 'sla';
+    case 'cnc_mill':
+    case 'cnc_milling':
+    case 'cnc':
+    case 'milling':
+      return 'cnc_mill';
+    case 'sheet':
+    case 'sheet_metal':
+    case 'laser_cut':
+      return 'sheet';
+    case 'injection_molding':
+    case 'injection_mold':
+    case 'injection':
+      return 'injection_molding';
+    case 'die_cast':
+    case 'die_casting':
+    case 'casting':
+      return 'die_cast';
+    default:
+      return undefined;
+  }
 }
 
 function emitPlacement(p: AssemblyPlacement): string {
