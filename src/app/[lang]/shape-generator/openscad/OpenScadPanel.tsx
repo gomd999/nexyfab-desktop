@@ -10,6 +10,7 @@ import { extractParams, updateParam, type JscadParam } from './jscadParams';
 import type { ElementSelectionInfo, FaceSelectionInfo } from '../editing/selectionInfo';
 import { downloadBlob } from '@/lib/platform';
 import VerifySpecPanel from './VerifySpecPanel';
+import { useAnalysisStore } from '../store/analysisStore';
 import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification';
 
 function errorMessageFromUnknown(e: unknown): string {
@@ -138,6 +139,7 @@ const dict = {
     verifying: '검증 중…',
     jsonParseError: '의도 JSON을 파싱할 수 없습니다. 형식을 확인하세요.',
     routeFailed: '검증 요청 실패',
+    verifyFromAgent: '마지막 에이전트 실행 결과',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -260,6 +262,7 @@ const dict = {
     verifying: 'Verifying…',
     jsonParseError: 'Intent JSON could not be parsed. Check the syntax.',
     routeFailed: 'Verification request failed',
+    verifyFromAgent: 'from last agent run',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -382,6 +385,7 @@ const dict = {
     verifying: '検証中…',
     jsonParseError: '意図 JSON を解析できません。書式を確認してください。',
     routeFailed: '検証リクエスト失敗',
+    verifyFromAgent: '最後のエージェント実行結果',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -503,6 +507,7 @@ const dict = {
     verifying: '验证中…',
     jsonParseError: '无法解析意图 JSON。请检查格式。',
     routeFailed: '验证请求失败',
+    verifyFromAgent: '来自上次智能体运行',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -625,6 +630,7 @@ const dict = {
     verifying: 'Verificando…',
     jsonParseError: 'No se pudo analizar el JSON de intención. Revisa la sintaxis.',
     routeFailed: 'La solicitud de verificación falló',
+    verifyFromAgent: 'desde la última ejecución del agente',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -747,6 +753,7 @@ const dict = {
     verifying: 'جارٍ التحقق…',
     jsonParseError: 'تعذر تحليل JSON النية. تحقق من الصياغة.',
     routeFailed: 'فشل طلب التحقق',
+    verifyFromAgent: 'من آخر تشغيل للوكيل',
   },
 } as const;
 
@@ -878,6 +885,14 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyResult, setVerifyResult] = useState<SpecVerificationResult | null>(null);
+
+  // Auto-feed: the ScadAgentPanel writes here whenever an agent run emits
+  // a verify_spec tool_result. We prefer the manual button result when
+  // present (most recent user action), else fall back to the agent's.
+  const agentVerifyResult = useAnalysisStore(s => s.latestVerifySpecResult);
+  const agentVerifyAtMs = useAnalysisStore(s => s.latestVerifySpecAtMs);
+  const effectiveVerifyResult = verifyResult ?? agentVerifyResult;
+  const verifyResultFromAgent = verifyResult === null && agentVerifyResult !== null;
 
   useEffect(() => {
     if (!scadNlBudgetLockUntil || scadNlBudgetLockUntil <= Date.now()) {
@@ -1930,7 +1945,17 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                       {verifyErr}
                     </div>
                   )}
-                  <VerifySpecPanel lang={seg} result={verifyResult} />
+                  {verifyResultFromAgent && (
+                    <div
+                      data-testid="verify-from-agent-badge"
+                      className="text-[11px] text-blue-300/90 bg-blue-950/30 border border-blue-800/40 rounded px-2 py-1 inline-flex items-center gap-1.5"
+                      title={agentVerifyAtMs ? new Date(agentVerifyAtMs).toLocaleString() : undefined}
+                    >
+                      <span>🤖</span>
+                      <span>{t.verifyFromAgent ?? 'from last agent run'}</span>
+                    </div>
+                  )}
+                  <VerifySpecPanel lang={seg} result={effectiveVerifyResult} />
                 </div>
               )}
             </div>

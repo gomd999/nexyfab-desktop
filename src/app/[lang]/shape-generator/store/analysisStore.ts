@@ -13,6 +13,7 @@ import type { ModalResult } from '../analysis/modalAnalysis'
 import type { ThermalResult } from '../analysis/thermalFEA'
 import type { StackupResult, MonteCarloResult } from '../analysis/toleranceStackup'
 import type { PipelineResult } from '../analysis/manufacturingPipeline'
+import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification'
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,15 @@ interface AnalysisState {
   dimensionAnnotations: DimensionAnnotation[]
   showCenterOfMass: [number, number, number] | null
   autoDrawingResult: DrawingResult | null
+  /**
+   * Most recent verify_spec result observed in the SCAD-agent SSE stream.
+   * ScadAgentPanel sets this when a verify_spec tool_result arrives;
+   * OpenScadPanel reads it so the user sees the last agent verification
+   * without having to manually re-paste the intent JSON.
+   */
+  latestVerifySpecResult: SpecVerificationResult | null
+  /** Wall-clock ms when latestVerifySpecResult was captured (for "stale" badge). */
+  latestVerifySpecAtMs: number | null
   sweepResult: SweepResult | null
   sweepResult2: SweepResult | null
   sweepSensitivity: SensitivityEntry[]
@@ -62,6 +72,7 @@ interface AnalysisActions {
   setDimensionAnnotations: (annotations: DimensionAnnotation[]) => void
   setShowCenterOfMass: (pos: [number, number, number] | null) => void
   setAutoDrawingResult: (result: DrawingResult | null) => void
+  setLatestVerifySpecResult: (result: SpecVerificationResult | null) => void
   setSweepResult: (result: SweepResult | null) => void
   setSweepResult2: (result: SweepResult | null) => void
   setSweepSensitivity: (entries: SensitivityEntry[]) => void
@@ -101,6 +112,8 @@ export const useAnalysisStore = create<AnalysisStore>()(
     dimensionAnnotations: [],
     showCenterOfMass: null,
     autoDrawingResult: null,
+    latestVerifySpecResult: null,
+    latestVerifySpecAtMs: null,
     sweepResult: null,
     sweepResult2: null,
     sweepSensitivity: [],
@@ -191,6 +204,12 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.autoDrawingResult = result
       }),
 
+    setLatestVerifySpecResult: (result) =>
+      set((state) => {
+        state.latestVerifySpecResult = result
+        state.latestVerifySpecAtMs = result === null ? null : Date.now()
+      }),
+
     setSweepResult: (result) =>
       set((state) => {
         state.sweepResult = result
@@ -244,6 +263,8 @@ export const useAnalysisStore = create<AnalysisStore>()(
         state.dimensionAnnotations = []
         state.feaConditions = []
         state.autoDrawingResult = null
+        state.latestVerifySpecResult = null
+        state.latestVerifySpecAtMs = null
         state.sweepResult = null
         state.sweepResult2 = null
         state.sweepSensitivity = []
