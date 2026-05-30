@@ -411,8 +411,11 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     // X2 — pull the topological genus stashed by the geometry adapter
     // and let verifyAgainstSpec compare against the intent's hole count.
+    // X3 — also pull measured volume so blind holes / wrong-diameter
+    // holes (which preserve genus + bbox) are caught.
     const detectedGenus = session.geometry?.genus;
-    const result = verifyAgainstSpec(session.lastIntent, bbox, { detectedGenus });
+    const detectedVolumeMm3 = session.geometry?.volume_mm3;
+    const result = verifyAgainstSpec(session.lastIntent, bbox, { detectedGenus, detectedVolumeMm3 });
     const critique = formatSpecCritique(result);
     return {
       ok: true,
@@ -424,6 +427,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         expected: result.expected,
         measured: result.measured,
         holeCount: result.holeCount,
+        volume: result.volume,
       },
     };
   };

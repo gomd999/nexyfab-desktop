@@ -11,6 +11,8 @@ import {
   compareBbox,
   verifyAgainstSpec,
   formatSpecCritique,
+  expectedVolumeFromIntent,
+  compareVolume,
   type MeasuredBbox,
 } from '../specVerification';
 import type { IntentInput } from '../../../openscad-render/intentToScad';
@@ -308,5 +310,174 @@ describe('Phase X2 — hole count check', () => {
     const text = formatSpecCritique(r);
     expect(text).toMatch(/width.*expected 50/);
     expect(text).toMatch(/through-holes.*expected 2.*detected 1/);
+  });
+});
+
+describe('Phase X3 — expectedVolumeFromIntent', () => {
+  it('box: w × h × d', () => {
+    const v = expectedVolumeFromIntent({ shapeId: 'box', params: { width: 50, height: 50, depth: 50 } });
+    expect(v?.baseVolumeMm3).toBeCloseTo(125000, 1);
+    expect(v?.holeVolumeMm3).toBe(0);
+    expect(v?.expectedTotalMm3).toBeCloseTo(125000, 1);
+  });
+
+  it('cylinder: π × r² × h', () => {
+    const v = expectedVolumeFromIntent({ shapeId: 'cylinder', params: { diameter: 20, height: 50 } });
+    expect(v?.baseVolumeMm3).toBeCloseTo(Math.PI * 100 * 50, 1);
+  });
+
+  it('sphere: (4/3) × π × r³', () => {
+    const v = expectedVolumeFromIntent({ shapeId: 'sphere', params: { diameter: 10 } });
+    expect(v?.baseVolumeMm3).toBeCloseTo((4 / 3) * Math.PI * 125, 1);
+  });
+
+  it('pipe: hollow cylinder', () => {
+    const v = expectedVolumeFromIntent({ shapeId: 'pipe', params: { outerDiameter: 30, innerDiameter: 20, length: 100 } });
+    const expected = Math.PI * (225 - 100) * 100;
+    expect(v?.baseVolumeMm3).toBeCloseTo(expected, 1);
+  });
+
+  it('hexNut: (√3/2) × afs² × t - bore', () => {
+    const v = expectedVolumeFromIntent({ shapeId: 'hexNut', params: { acrossFlats: 13, thickness: 8, nominalDiameter: 8 } });
+    const hex = (Math.sqrt(3) / 2) * 169 * 8;
+    const bore = Math.PI * 16 * 8;
+    expect(v?.baseVolumeMm3).toBeCloseTo(hex - bore, 1);
+  });
+
+  it('torus: 2π² × R × r²', () => {
+    const v = expectedVolumeFromIntent({ shapeId: 'torus', params: { majorDiameter: 60, tubeDiameter: 10 } });
+    const expected = 2 * Math.PI * Math.PI * 30 * 25;
+    expect(v?.baseVolumeMm3).toBeCloseTo(expected, 1);
+  });
+
+  it('box with 1 through-hole subtracts π × r² × parent_depth', () => {
+    const v = expectedVolumeFromIntent({
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10 } } as never],
+    });
+    const holeVol = Math.PI * 25 * 50;
+    expect(v?.holeVolumeMm3).toBeCloseTo(holeVol, 1);
+    expect(v?.expectedTotalMm3).toBeCloseTo(125000 - holeVol, 1);
+    expect(v?.holeBreakdown[0].through).toBe(true);
+  });
+
+  it('box with blind hole (depth < parent) subtracts only the blind depth', () => {
+    const v = expectedVolumeFromIntent({
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10, depth: 20 } } as never],
+    });
+    const holeVol = Math.PI * 25 * 20;
+    expect(v?.holeVolumeMm3).toBeCloseTo(holeVol, 1);
+    expect(v?.holeBreakdown[0].through).toBe(false);
+    expect(v?.holeBreakdown[0].depth).toBe(20);
+  });
+
+  it('returns null for unsupported shapes', () => {
+    expect(expectedVolumeFromIntent({ shapeId: 'gear', params: {} })).toBeNull();
+    expect(expectedVolumeFromIntent({ shapeId: 'lBracket', params: {} })).toBeNull();
+  });
+
+  it('returns null when distorting feature present', () => {
+    const r = expectedVolumeFromIntent({
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'scale', x: 2 } as never],
+    });
+    expect(r).toBeNull();
+  });
+});
+
+describe('compareVolume', () => {
+  it('passes within max(50 mm³, 3%) tolerance', () => {
+    // 125000 mm³, 3% = 3750 mm³. A 3000 mm³ deviation should pass.
+    expect(compareVolume(125000, 128000)).toBeNull();
+  });
+
+  it('flags excess deviation', () => {
+    const m = compareVolume(125000, 100000);
+    expect(m).not.toBeNull();
+    expect(m?.deltaMm3).toBe(-25000);
+    expect(m?.deltaPct).toBeCloseTo(-20, 1);
+  });
+
+  it('honors absolute floor (50 mm³)', () => {
+    // 1000 mm³ × 3% = 30 mm³ — but absolute floor is 50.
+    expect(compareVolume(1000, 1040)).toBeNull(); // 40 mm³ < 50 mm³ floor
+    expect(compareVolume(1000, 1100)).not.toBeNull(); // 100 mm³ > 50 mm³ floor
+  });
+
+  it('skips when expected <= 0', () => {
+    expect(compareVolume(0, 100)).toBeNull();
+    expect(compareVolume(-10, 100)).toBeNull();
+  });
+});
+
+describe('Phase X3 — verifyAgainstSpec volume integration', () => {
+  it('passes when measured volume matches intent (with through-hole)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10 } } as never],
+    };
+    const expectedVol = 125000 - Math.PI * 25 * 50;
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedGenus: 1,
+      detectedVolumeMm3: expectedVol, // exact match
+    });
+    expect(r.ok).toBe(true);
+    expect(r.volume?.mismatch).toBeNull();
+  });
+
+  it('catches missing blind hole (genus + bbox pass, volume catches it)', () => {
+    // Intent declares a Ø20×40mm blind hole → expects -12566 mm³ (10% of part).
+    // AI forgot to drill it → measured = full 125000. > 3% tolerance, mismatch.
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 20, depth: 40 } } as never],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedGenus: 0, // no through-hole — correct for blind hole
+      detectedVolumeMm3: 125000, // full volume → hole missing
+    });
+    expect(r.ok).toBe(false);
+    expect(r.volume?.mismatch).not.toBeNull();
+    expect(r.volume?.mismatch?.deltaMm3).toBeGreaterThan(0); // measured > expected
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/volume.*expected.*measured/);
+    expect(text).toMatch(/intent hole subtraction.*Ø20.*blind/);
+  });
+
+  it('catches wrong hole diameter (genus matches but volume off)', () => {
+    // Intent: 1 through-hole Ø10. AI drilled Ø20 instead.
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10 } } as never],
+    };
+    const expectedVol = 125000 - Math.PI * 25 * 50;     // ~121,073
+    const actualVol  = 125000 - Math.PI * 100 * 50;     // ~109,292 — bigger hole
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedGenus: 1, // through-hole present
+      detectedVolumeMm3: actualVol,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.holeCount?.mismatch).toBeNull(); // count matches
+    expect(r.volume?.mismatch).not.toBeNull();
+    expect(r.volume?.mismatch?.deltaMm3).toBeLessThan(0); // less material than expected
+  });
+
+  it('skips volume check when shape unsupported (gear)', () => {
+    const intent: IntentInput = { shapeId: 'gear', params: { teeth: 20, module: 2 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(40, 40, 8), { detectedVolumeMm3: 1000 });
+    expect(r.volume).toBeUndefined();
+  });
+
+  it('skips volume check when detectedVolumeMm3 omitted', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
+    expect(r.volume).toBeUndefined();
   });
 });

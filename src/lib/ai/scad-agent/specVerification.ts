@@ -70,6 +70,19 @@ export interface SpecVerificationResult {
     detected: number | null;
     mismatch: { delta: number } | null;
   };
+  /**
+   * X3 — volume check. Populated when caller provided detectedVolumeMm3
+   * AND the shape's expected volume can be derived from intent. Catches
+   * blind holes (don't change genus), wrong hole diameter, missing
+   * solid features that don't shift bbox.
+   */
+  volume?: {
+    expectedMm3: number;
+    actualMm3: number;
+    /** Breakdown of expected hole subtraction for diagnostics. */
+    holeBreakdown: ExpectedVolume['holeBreakdown'];
+    mismatch: VolumeMismatch | null;
+  };
 }
 
 /** Features that change the bounding box in ways the v1 helper can't
@@ -240,13 +253,195 @@ export function compareBbox(
 /**
  * Count `type: 'hole'` features in an intent. Through-hole detection
  * via genus catches these but not blind holes (depth < parent size) —
- * the v1 emitter (applyHole in intentToScad) defaults depth=1000 mm
- * which is "through" for any plausible part, so for v1 we assume every
- * declared hole is a through-hole. Phase X3 will need to distinguish.
+ * X3's volume check complements by also flagging the blind-hole case.
  */
 export function countIntentHoles(intent: IntentInput): number {
   if (!Array.isArray(intent.features)) return 0;
   return intent.features.filter((f): f is IntentFeature => !!f && f.type === 'hole').length;
+}
+
+// ─── Phase X3 — Expected volume from intent ────────────────────────────────
+
+export interface ExpectedVolume {
+  /** Base (parent) volume in mm³, before hole subtraction. */
+  baseVolumeMm3: number;
+  /** Total volume removed by hole features (through + blind). */
+  holeVolumeMm3: number;
+  /** Net expected volume = base - holes. Clamped to 0 if holes exceed base. */
+  expectedTotalMm3: number;
+  /** Per-hole volume contributions for diagnostic output. */
+  holeBreakdown: Array<{ diameter: number; depth: number; volume: number; through: boolean }>;
+}
+
+/**
+ * Volume of one hole feature given the parent's z-extent. The intent
+ * emitter (applyHole in intentToScad) defaults depth=1000 mm so any
+ * hole whose feature.depth ≥ parent_dMm is treated as a through-hole
+ * along the parent's depth axis.
+ */
+function holeVolume(
+  feature: IntentFeature,
+  parentDepthMm: number,
+): { diameter: number; depth: number; volume: number; through: boolean } | null {
+  if (!feature || feature.type !== 'hole') return null;
+  const params = (feature as { params?: Record<string, unknown> }).params ?? {};
+  const dia = num(params.diameter ?? params.holeDiameter, 0);
+  if (dia <= 0) return null;
+  const requestedDepth = num(params.depth, 1000); // emitter default = "through"
+  const through = requestedDepth >= parentDepthMm;
+  const effectiveDepth = through ? parentDepthMm : requestedDepth;
+  const r = dia / 2;
+  return {
+    diameter: dia,
+    depth: effectiveDepth,
+    volume: Math.PI * r * r * effectiveDepth,
+    through,
+  };
+}
+
+/**
+ * Closed-form volume for the supported shape catalog. Returns null when
+ * the shape's volume isn't a simple formula in v1, or when a distorting
+ * feature (scale/mirror/pattern/twist/rotate) would invalidate the
+ * estimate. Hole features are subtracted from the base volume.
+ */
+export function expectedVolumeFromIntent(intent: IntentInput): ExpectedVolume | null {
+  if (!intent || typeof intent !== 'object') return null;
+
+  // Same distorting-feature gate as bbox prediction.
+  if (Array.isArray(intent.features)) {
+    for (const f of intent.features) {
+      if (f && typeof f === 'object' && BBOX_DISTORTING_FEATURES.has(f.type)) {
+        return null;
+      }
+    }
+  }
+
+  const p = (intent.params ?? {}) as Record<string, unknown>;
+
+  /** Local helper — base solid volume by shape, or null if unsupported. */
+  function baseVolume(): { volume: number; parentDepth: number } | null {
+    switch (intent.shapeId) {
+      case 'box':
+      case 'roundedBox': {
+        const w = num(p.width ?? p.w, 50);
+        const h = num(p.height ?? p.h, 50);
+        const d = num(p.depth ?? p.d, 50);
+        return { volume: w * h * d, parentDepth: d };
+      }
+      case 'cylinder': {
+        const dia = num(p.diameter ?? p.outerDiameter, 30);
+        const h = num(p.height ?? p.length, 50);
+        return { volume: Math.PI * (dia / 2) ** 2 * h, parentDepth: h };
+      }
+      case 'sphere': {
+        const dia = num(p.diameter, 30);
+        const r = dia / 2;
+        return { volume: (4 / 3) * Math.PI * r ** 3, parentDepth: dia };
+      }
+      case 'cone': {
+        const r1 = num(p.bottomDiameter ?? p.diameter, 40) / 2;
+        const r2 = num(p.topDiameter, 0) / 2;
+        const h = num(p.height, 50);
+        return { volume: (Math.PI * h * (r1 * r1 + r1 * r2 + r2 * r2)) / 3, parentDepth: h };
+      }
+      case 'pipe': {
+        const od = num(p.outerDiameter, 30);
+        const id = num(p.innerDiameter, 20);
+        const h = num(p.length ?? p.height, 50);
+        return { volume: Math.PI * ((od / 2) ** 2 - (id / 2) ** 2) * h, parentDepth: h };
+      }
+      case 'disk': {
+        const dia = num(p.diameter, 60);
+        const t = num(p.thickness, 5);
+        return { volume: Math.PI * (dia / 2) ** 2 * t, parentDepth: t };
+      }
+      case 'washer': {
+        const od = num(p.outerDiameter, 20);
+        const id = num(p.innerDiameter, 8);
+        const t = num(p.thickness, 1.6);
+        return { volume: Math.PI * ((od / 2) ** 2 - (id / 2) ** 2) * t, parentDepth: t };
+      }
+      case 'hexNut': {
+        // Regular hexagon area with across-flats afs: (√3 / 2) × afs².
+        const afs = num(p.acrossFlats, 13);
+        const t = num(p.thickness ?? p.nutThickness, 8);
+        const boreR = num(p.nominalDiameter ?? p.boreDiameter, 8) / 2;
+        const hexArea = (Math.sqrt(3) / 2) * afs * afs;
+        const bore = Math.PI * boreR * boreR * t;
+        return { volume: hexArea * t - bore, parentDepth: t };
+      }
+      case 'wedge': {
+        // Triangular prism: 0.5 × w × h × d.
+        const w = num(p.width, 50);
+        const h = num(p.height, 50);
+        const d = num(p.depth, 50);
+        return { volume: 0.5 * w * h * d, parentDepth: d };
+      }
+      case 'torus': {
+        const major = num(p.majorDiameter, 60) / 2;
+        const tube = num(p.tubeDiameter ?? p.minorDiameter, 10) / 2;
+        return { volume: 2 * Math.PI * Math.PI * major * tube * tube, parentDepth: tube * 2 };
+      }
+      default:
+        return null;
+    }
+  }
+
+  const base = baseVolume();
+  if (!base) return null;
+
+  const holeBreakdown: ExpectedVolume['holeBreakdown'] = [];
+  let holeVolumeMm3 = 0;
+  if (Array.isArray(intent.features)) {
+    for (const f of intent.features) {
+      const hv = holeVolume(f, base.parentDepth);
+      if (hv) {
+        holeBreakdown.push(hv);
+        holeVolumeMm3 += hv.volume;
+      }
+    }
+  }
+
+  const expectedTotalMm3 = Math.max(0, base.volume - holeVolumeMm3);
+  return {
+    baseVolumeMm3: base.volume,
+    holeVolumeMm3,
+    expectedTotalMm3,
+    holeBreakdown,
+  };
+}
+
+export interface VolumeMismatch {
+  expectedMm3: number;
+  actualMm3: number;
+  deltaMm3: number;
+  deltaPct: number;
+}
+
+/**
+ * Compare expected vs actual volume. Tolerance defaults to max(50 mm³,
+ * 3%) — looser than bbox because (a) facet count affects measured
+ * volume (e.g. $fn=64 cylinder under-measures vs analytic), and (b)
+ * minor features (fillets, chamfers) shift volume by a percent or two
+ * without warranting a "mismatch" flag.
+ */
+export function compareVolume(
+  expectedMm3: number,
+  actualMm3: number,
+  tolMm3: number = 50,
+  tolPct: number = 3,
+): VolumeMismatch | null {
+  if (expectedMm3 <= 0) return null;
+  const tol = Math.max(tolMm3, (expectedMm3 * tolPct) / 100);
+  const delta = actualMm3 - expectedMm3;
+  if (Math.abs(delta) <= tol) return null;
+  return {
+    expectedMm3,
+    actualMm3,
+    deltaMm3: delta,
+    deltaPct: (delta / expectedMm3) * 100,
+  };
 }
 
 /**
@@ -259,6 +454,12 @@ export interface VerifyAgainstSpecOptions {
   /** From faceInspection.countThroughHoles; null when mesh isn't a
    *  single closed manifold (callee skips the hole-count check then). */
   detectedGenus?: number | null;
+  /** X3 — measured mesh volume in mm³ (from STL verification). When
+   *  omitted, the volume check is skipped. */
+  detectedVolumeMm3?: number;
+  /** Volume-check tolerance overrides (defaults max(50 mm³, 3%)). */
+  volumeTolMm3?: number;
+  volumeTolPct?: number;
 }
 
 /**
@@ -271,7 +472,7 @@ export function verifyAgainstSpec(
   measured: MeasuredBbox,
   opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
-  const { tolMm, tolPct, detectedGenus } = opts;
+  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -302,7 +503,23 @@ export function verifyAgainstSpec(
     }
   }
 
-  const ok = mismatches.length === 0 && !holeCount?.mismatch;
+  // X3 — volume check (only when caller provided measured volume AND
+  // shape has a closed-form expected volume).
+  let volume: SpecVerificationResult['volume'];
+  if (typeof detectedVolumeMm3 === 'number' && detectedVolumeMm3 > 0) {
+    const exp = expectedVolumeFromIntent(intent);
+    if (exp) {
+      const mismatch = compareVolume(exp.expectedTotalMm3, detectedVolumeMm3, volumeTolMm3, volumeTolPct);
+      volume = {
+        expectedMm3: exp.expectedTotalMm3,
+        actualMm3: detectedVolumeMm3,
+        holeBreakdown: exp.holeBreakdown,
+        mismatch,
+      };
+    }
+  }
+
+  const ok = mismatches.length === 0 && !holeCount?.mismatch && !volume?.mismatch;
   return {
     ok,
     verifiable: true,
@@ -314,6 +531,7 @@ export function verifyAgainstSpec(
     },
     mismatches,
     ...(holeCount ? { holeCount } : {}),
+    ...(volume ? { volume } : {}),
   };
 }
 
@@ -331,7 +549,10 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const holeLine = result.holeCount && result.holeCount.detected !== null
       ? ` Through-holes: ${result.holeCount.detected} (matches intent).`
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}`;
+    const volLine = result.volume
+      ? ` Volume: ${result.volume.actualMm3.toFixed(0)} mm³ (expected ${result.volume.expectedMm3.toFixed(0)}, within tolerance).`
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -346,6 +567,20 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     lines.push(
       `  through-holes: expected ${expected}, detected ${detected} (${sign}${result.holeCount.mismatch.delta}).`,
     );
+  }
+  if (result.volume?.mismatch) {
+    const { expectedMm3, actualMm3, deltaMm3, deltaPct } = result.volume.mismatch;
+    const sign = deltaMm3 >= 0 ? '+' : '';
+    lines.push(
+      `  volume: expected ${expectedMm3.toFixed(0)} mm³, measured ${actualMm3.toFixed(0)} mm³ (${sign}${deltaMm3.toFixed(0)} mm³, ${sign}${deltaPct.toFixed(1)}%).`,
+    );
+    // Diagnostic: which holes the intent claims to have subtracted.
+    if (result.volume.holeBreakdown.length > 0) {
+      const summary = result.volume.holeBreakdown
+        .map(h => `Ø${h.diameter}×${h.depth.toFixed(1)}${h.through ? '(through)' : '(blind)'}=${h.volume.toFixed(0)}mm³`)
+        .join(', ');
+      lines.push(`    intent hole subtraction: ${summary}`);
+    }
   }
   lines.push('Re-emit intent with corrected params to fix.');
   return lines.join('\n');

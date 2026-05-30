@@ -62,9 +62,9 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 5. \`add_feature_intent\` — Use NexyFab's deterministic shape catalog. Faster than writing SCAD by hand for known shapes.
    args: { intent: { shapeId: string, params: { ... }, features?: [...] } }
 
-5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions **and through-hole count** against the actual measured bbox + mesh genus. If a mismatch is reported (e.g. "width: expected 50mm, measured 5mm" or "through-holes: expected 2, detected 1"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes that include hole features** — catches dropped digits, unit confusion, and dropped/duplicated holes before shipping. Topology check (genus) is skipped automatically when the mesh isn't a single closed manifold.
+5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions, **through-hole count, AND total volume** against the actual measured bbox / mesh genus / volume. If a mismatch is reported ("width: expected 50mm, measured 5mm" / "through-holes: expected 2, detected 1" / "volume: expected 121000mm³, measured 125000mm³"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes that include hole features** — catches dropped digits, unit confusion, dropped/duplicated holes, AND wrong-diameter or missing-blind-hole cases that bbox + genus alone don't catch. Each sub-check is skipped automatically when its detection prerequisite isn't met (open/multi-body mesh skips genus; unsupported shape skips volume).
    args: {}
-   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount }
+   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume }
 
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
