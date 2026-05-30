@@ -9,6 +9,8 @@ import { loadHistory, saveToHistory, deleteFromHistory, type JscadHistoryItem } 
 import { extractParams, updateParam, type JscadParam } from './jscadParams';
 import type { ElementSelectionInfo, FaceSelectionInfo } from '../editing/selectionInfo';
 import { downloadBlob } from '@/lib/platform';
+import VerifySpecPanel from './VerifySpecPanel';
+import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification';
 
 function errorMessageFromUnknown(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -129,6 +131,13 @@ const dict = {
     scadNlEmpty: '프롬프트를 입력하세요.',
     scadNlBudgetReached: '오늘 AI 사용 예산을 모두 썼어요. 24시간 후 자동 초기화됩니다.',
     scadNlBudgetWarn: 'AI 일일 예산 사용량이 임계치에 근접했습니다',
+    verifyToggle: '🔍 사양 검증',
+    intentJsonLabel: '의도 JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: '검증 실행',
+    verifying: '검증 중…',
+    jsonParseError: '의도 JSON을 파싱할 수 없습니다. 형식을 확인하세요.',
+    routeFailed: '검증 요청 실패',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -244,6 +253,13 @@ const dict = {
     scadNlEmpty: 'Enter a prompt first.',
     scadNlBudgetReached: 'Daily AI spend cap reached. Resets in 24h.',
     scadNlBudgetWarn: 'Approaching daily AI budget limit',
+    verifyToggle: '🔍 Verify spec',
+    intentJsonLabel: 'Intent JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: 'Run verify',
+    verifying: 'Verifying…',
+    jsonParseError: 'Intent JSON could not be parsed. Check the syntax.',
+    routeFailed: 'Verification request failed',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -359,6 +375,13 @@ const dict = {
     scadNlEmpty: 'プロンプトを入力してください。',
     scadNlBudgetReached: '本日のAI予算上限に達しました。24時間後にリセットされます。',
     scadNlBudgetWarn: '本日のAI予算上限に近づいています',
+    verifyToggle: '🔍 仕様検証',
+    intentJsonLabel: '意図 JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: '検証実行',
+    verifying: '検証中…',
+    jsonParseError: '意図 JSON を解析できません。書式を確認してください。',
+    routeFailed: '検証リクエスト失敗',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -473,6 +496,13 @@ const dict = {
     scadNlEmpty: '请先输入提示词。',
     scadNlBudgetReached: '今日 AI 用量已达上限,24 小时后自动重置。',
     scadNlBudgetWarn: '今日 AI 用量接近上限',
+    verifyToggle: '🔍 规格验证',
+    intentJsonLabel: '意图 JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: '运行验证',
+    verifying: '验证中…',
+    jsonParseError: '无法解析意图 JSON。请检查格式。',
+    routeFailed: '验证请求失败',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -588,6 +618,13 @@ const dict = {
     scadNlEmpty: 'Introduce un prompt primero.',
     scadNlBudgetReached: 'Límite diario de IA alcanzado. Se restablece en 24 h.',
     scadNlBudgetWarn: 'Acercándose al límite diario de IA',
+    verifyToggle: '🔍 Verificar especificación',
+    intentJsonLabel: 'Intent JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: 'Ejecutar verificación',
+    verifying: 'Verificando…',
+    jsonParseError: 'No se pudo analizar el JSON de intención. Revisa la sintaxis.',
+    routeFailed: 'La solicitud de verificación falló',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -703,6 +740,13 @@ const dict = {
     apiRateLimit: 'طلبات كثيرة جدًا. حاول بعد قليل.',
     apiScadRequired: 'مصدر scad فارغ.',
     apiOutputTooLarge: 'الشبكة تتجاوز حد الاستجابة المضمنة. بسِّط النموذج أو استخدم العرض غير المتزامن.',
+    verifyToggle: '🔍 التحقق من المواصفات',
+    intentJsonLabel: 'JSON النية (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: 'تشغيل التحقق',
+    verifying: 'جارٍ التحقق…',
+    jsonParseError: 'تعذر تحليل JSON النية. تحقق من الصياغة.',
+    routeFailed: 'فشل طلب التحقق',
   },
 } as const;
 
@@ -827,6 +871,13 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [scadNlBudgetAdvisory, setScadNlBudgetAdvisory] = useState<{ fraction: number; limitUsd: number | null } | null>(null);
   const scadNlBudgetAdvisoryShownRef = useRef(false);
   const [scadNlBudgetNow, setScadNlBudgetNow] = useState(() => Date.now());
+
+  /** Spec-verify panel state — collapsed until the user toggles it open. */
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyIntentJson, setVerifyIntentJson] = useState('');
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyErr, setVerifyErr] = useState('');
+  const [verifyResult, setVerifyResult] = useState<SpecVerificationResult | null>(null);
 
   useEffect(() => {
     if (!scadNlBudgetLockUntil || scadNlBudgetLockUntil <= Date.now()) {
@@ -1345,6 +1396,50 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       }
     }
   }, [scadResultB64, scadArtifactUrl, t.scadError]);
+
+  /**
+   * Run spec verification: parse the intent JSON locally, then POST it
+   * together with the current SCAD textarea to /api/nexyfab/verify-spec.
+   * Result is stored in `verifyResult` and rendered by VerifySpecPanel.
+   *
+   * Parse failures short-circuit with a localized error — the route is
+   * never called with a malformed intent.
+   */
+  const runVerify = useCallback(async () => {
+    if (!scadSource.trim() || verifyBusy) return;
+    setVerifyErr('');
+    let intent: unknown;
+    try {
+      intent = JSON.parse(verifyIntentJson);
+    } catch {
+      setVerifyErr(t.jsonParseError);
+      return;
+    }
+    if (!intent || typeof intent !== 'object' || Array.isArray(intent)) {
+      setVerifyErr(t.jsonParseError);
+      return;
+    }
+    setVerifyBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/verify-spec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scad: scadSource, intent }),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; result?: SpecVerificationResult }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.routeFailed} (${res.status})`;
+        setVerifyErr(msg);
+        return;
+      }
+      if (data.result) setVerifyResult(data.result);
+    } catch (e: unknown) {
+      setVerifyErr(e instanceof Error ? e.message : t.routeFailed);
+    } finally {
+      setVerifyBusy(false);
+    }
+  }, [scadSource, verifyIntentJson, verifyBusy, t]);
+
   const hasCode = !!code;
   const hasSelectedFace = selectedElement?.type === 'face';
   const face = hasSelectedFace ? (selectedElement as FaceSelectionInfo) : null;
@@ -1790,6 +1885,53 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                 <p className="text-[11px] text-gray-500">{t.scadImportHint}</p>
               ) : (
                 <p className="text-[11px] text-amber-200/80">{t.scadStoredRemoteHint}</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Spec verification (collapsible) ── */}
+          {scadSource.trim() && (
+            <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+              <button
+                type="button"
+                data-testid="verify-spec-toggle"
+                onClick={() => setVerifyOpen(v => !v)}
+                className="self-start text-xs px-3 py-1.5 bg-violet-700/70 hover:bg-violet-600 text-white rounded font-medium border border-violet-500/40"
+              >
+                {t.verifyToggle} {verifyOpen ? '▲' : '▼'}
+              </button>
+              {verifyOpen && (
+                <div className="flex flex-col gap-2" data-testid="verify-spec-section">
+                  <label className="text-[11px] text-gray-400 font-medium">{t.intentJsonLabel}</label>
+                  <textarea
+                    value={verifyIntentJson}
+                    onChange={e => setVerifyIntentJson(e.target.value)}
+                    spellCheck={false}
+                    placeholder={t.intentJsonPlaceholder}
+                    rows={6}
+                    disabled={verifyBusy}
+                    data-testid="verify-intent-json"
+                    className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 font-mono resize-y focus:outline-none focus:border-violet-500/60"
+                  />
+                  <button
+                    type="button"
+                    data-testid="verify-run-button"
+                    onClick={() => void runVerify()}
+                    disabled={verifyBusy || !scadSource.trim()}
+                    className="self-start text-xs px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded font-medium"
+                  >
+                    {verifyBusy ? t.verifying : t.runVerify}
+                  </button>
+                  {verifyErr && (
+                    <div
+                      data-testid="verify-error"
+                      className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                    >
+                      {verifyErr}
+                    </div>
+                  )}
+                  <VerifySpecPanel lang={seg} result={verifyResult} />
+                </div>
               )}
             </div>
           )}
