@@ -147,6 +147,13 @@ const dict = {
     sliderDebounceHint: '🔄 자동 검증 활성화 (800ms 지연)',
     sliderWas: '원본',
     sliderEmpty: '슬라이더로 조정할 수치 파라미터가 없습니다.',
+    imageIntentToggle: '📷 이미지에서 CAD 추출 (Pro)',
+    imageHintLabel: '힌트 (선택) — 크기·재질 등',
+    imageHintPlaceholder: '예: 가로 50mm 알루미늄 bracket',
+    extractIntent: '의도 추출',
+    extracting: '추출 중…',
+    applyToVerify: '↓ 검증 섹션에 적용',
+    imageRouteFailed: '이미지에서 의도 추출 실패',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -277,6 +284,13 @@ const dict = {
     sliderDebounceHint: '🔄 auto-verify on (800ms debounce)',
     sliderWas: 'was',
     sliderEmpty: 'No numeric parameters to adjust with sliders.',
+    imageIntentToggle: '📷 Image-to-CAD (Pro)',
+    imageHintLabel: 'Hint (optional) — describe the part, size, material',
+    imageHintPlaceholder: 'e.g. aluminum bracket, ~50mm wide',
+    extractIntent: 'Extract intent',
+    extracting: 'Extracting…',
+    applyToVerify: '↓ Apply to verify section',
+    imageRouteFailed: 'Image-to-CAD extraction failed',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -407,6 +421,13 @@ const dict = {
     sliderDebounceHint: '🔄 自動検証オン (800ms デバウンス)',
     sliderWas: '元値',
     sliderEmpty: 'スライダーで調整できる数値パラメータがありません。',
+    imageIntentToggle: '📷 画像から CAD (Pro)',
+    imageHintLabel: 'ヒント (任意) — サイズ・素材など',
+    imageHintPlaceholder: '例: 幅 50mm のアルミ bracket',
+    extractIntent: '意図を抽出',
+    extracting: '抽出中…',
+    applyToVerify: '↓ 検証セクションに適用',
+    imageRouteFailed: '画像からの意図抽出に失敗しました',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -536,6 +557,13 @@ const dict = {
     sliderDebounceHint: '🔄 自动验证已开启 (800ms 防抖)',
     sliderWas: '原始',
     sliderEmpty: '没有可用滑块调整的数值参数。',
+    imageIntentToggle: '📷 图像生成 CAD (Pro)',
+    imageHintLabel: '提示（可选）— 描述部件、尺寸、材质',
+    imageHintPlaceholder: '例如：宽 50mm 的铝制 bracket',
+    extractIntent: '提取意图',
+    extracting: '提取中…',
+    applyToVerify: '↓ 应用到验证区',
+    imageRouteFailed: '从图像提取意图失败',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -666,6 +694,13 @@ const dict = {
     sliderDebounceHint: '🔄 auto-verificación activada (800 ms de espera)',
     sliderWas: 'original',
     sliderEmpty: 'No hay parámetros numéricos para ajustar con deslizadores.',
+    imageIntentToggle: '📷 Imagen a CAD (Pro)',
+    imageHintLabel: 'Pista (opcional) — describe la pieza, tamaño, material',
+    imageHintPlaceholder: 'p. ej. bracket de aluminio, ~50 mm de ancho',
+    extractIntent: 'Extraer intención',
+    extracting: 'Extrayendo…',
+    applyToVerify: '↓ Aplicar a la sección de verificación',
+    imageRouteFailed: 'Fallo al extraer intención de la imagen',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -796,6 +831,13 @@ const dict = {
     sliderDebounceHint: '🔄 التحقق التلقائي مفعّل (تأخير 800 مللي ثانية)',
     sliderWas: 'الأصلي',
     sliderEmpty: 'لا توجد معاملات رقمية لضبطها بشرائط التمرير.',
+    imageIntentToggle: '📷 من صورة إلى CAD (Pro)',
+    imageHintLabel: 'تلميح (اختياري) — صف القطعة والحجم والمادة',
+    imageHintPlaceholder: 'مثال: bracket ألومنيوم بعرض 50 مم',
+    extractIntent: 'استخراج النية',
+    extracting: 'جارٍ الاستخراج…',
+    applyToVerify: '↓ تطبيق على قسم التحقق',
+    imageRouteFailed: 'فشل استخراج النية من الصورة',
   },
 } as const;
 
@@ -1017,6 +1059,17 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyResult, setVerifyResult] = useState<SpecVerificationResult | null>(null);
+
+  /** Image-to-CAD panel state — Pro+ feature, collapsed until toggled.
+   *  imageDataUrl is stored as a data URL so we can re-display the preview
+   *  AND POST the same string to the route without a second FileReader. */
+  const [imageIntentOpen, setImageIntentOpen] = useState(false);
+  const [imageDataUrl, setImageDataUrl] = useState<string>('');
+  const [imageHint, setImageHint] = useState('');
+  const [extractBusy, setExtractBusy] = useState(false);
+  const [imageErr, setImageErr] = useState('');
+  const [extractedIntent, setExtractedIntent] = useState<unknown>(null);
+  const [extractedSummary, setExtractedSummary] = useState('');
 
   /** Live-preview sliders — one row per numeric param in the last-parsed
    *  intent. Only built AFTER a successful verify (verifiable === true). */
@@ -1620,6 +1673,73 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     }
   }, [scadSource, verifyIntentJson, verifyBusy, t]);
 
+  /** Read a user-picked file into a data URL so we can preview it AND
+   *  POST it to /api/nexyfab/intent-from-image. We cap at ~7MB raw
+   *  (~5MB decoded base64 after multipart bloat) to mirror the route's
+   *  413 gate — better to surface here than after an upload round-trip. */
+  const handleImageFile = useCallback((file: File | null) => {
+    setImageErr('');
+    setExtractedIntent(null);
+    setExtractedSummary('');
+    if (!file) { setImageDataUrl(''); return; }
+    if (file.size > 7 * 1024 * 1024) {
+      setImageErr(`${t.imageRouteFailed}: file too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max 5 MB after decode)`);
+      setImageDataUrl('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') setImageDataUrl(result);
+    };
+    reader.onerror = () => {
+      setImageErr(`${t.imageRouteFailed}: file read failed`);
+    };
+    reader.readAsDataURL(file);
+  }, [t]);
+
+  /** POST the data URL + optional hint to /api/nexyfab/intent-from-image
+   *  and stash the extracted intent + summary on success. The result has
+   *  an "Apply to verify section" button that copies the JSON into the
+   *  existing verifyIntentJson textarea. */
+  const extractIntentFromImage = useCallback(async () => {
+    if (!imageDataUrl || extractBusy) return;
+    setImageErr('');
+    setExtractedIntent(null);
+    setExtractedSummary('');
+    setExtractBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/intent-from-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: imageDataUrl, hintText: imageHint.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; intent?: unknown; summary?: string }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.imageRouteFailed} (${res.status})`;
+        setImageErr(msg);
+        return;
+      }
+      if (data.intent && typeof data.intent === 'object') {
+        setExtractedIntent(data.intent);
+      }
+      if (typeof data.summary === 'string') setExtractedSummary(data.summary);
+    } catch (e: unknown) {
+      setImageErr(e instanceof Error ? e.message : t.imageRouteFailed);
+    } finally {
+      setExtractBusy(false);
+    }
+  }, [imageDataUrl, imageHint, extractBusy, t]);
+
+  /** Copy the extracted intent JSON into the verify-spec textarea and
+   *  reveal the verify section. The user can then click "Run verify" or
+   *  adjust sliders without retyping the intent. */
+  const applyExtractedToVerify = useCallback(() => {
+    if (!extractedIntent) return;
+    setVerifyIntentJson(JSON.stringify(extractedIntent, null, 2));
+    setVerifyOpen(true);
+  }, [extractedIntent]);
+
   /** Slider change handler — updates the local working copy + marks the
    *  change. The auto-verify effect picks up sliderValues changes. */
   const handleSliderChange = useCallback((path: string, val: number) => {
@@ -2139,6 +2259,88 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               )}
             </div>
           )}
+
+          {/* ── Image-to-CAD (Pro+ collapsible) ── */}
+          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+            <button
+              type="button"
+              data-testid="image-intent-toggle"
+              onClick={() => setImageIntentOpen(v => !v)}
+              className="self-start text-xs px-3 py-1.5 bg-pink-700/70 hover:bg-pink-600 text-white rounded font-medium border border-pink-500/40"
+            >
+              {t.imageIntentToggle} {imageIntentOpen ? '▲' : '▼'}
+            </button>
+            {imageIntentOpen && (
+              <div className="flex flex-col gap-2" data-testid="image-intent-section">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  data-testid="image-intent-file"
+                  onChange={e => handleImageFile(e.target.files?.[0] ?? null)}
+                  disabled={extractBusy}
+                  className="text-xs text-gray-300 file:mr-2 file:px-2 file:py-1 file:bg-pink-700/70 file:hover:bg-pink-600 file:text-white file:border-0 file:rounded file:cursor-pointer file:text-[11px]"
+                />
+                {imageDataUrl && (
+                  <img
+                    src={imageDataUrl}
+                    alt="upload preview"
+                    data-testid="image-intent-preview"
+                    style={{ maxWidth: 150, maxHeight: 150 }}
+                    className="rounded border border-gray-700 object-contain"
+                  />
+                )}
+                <label className="text-[11px] text-gray-400 font-medium">{t.imageHintLabel}</label>
+                <input
+                  type="text"
+                  value={imageHint}
+                  onChange={e => setImageHint(e.target.value)}
+                  placeholder={t.imageHintPlaceholder}
+                  disabled={extractBusy}
+                  data-testid="image-intent-hint"
+                  maxLength={500}
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none focus:border-pink-500/60"
+                />
+                <button
+                  type="button"
+                  data-testid="image-intent-extract"
+                  onClick={() => void extractIntentFromImage()}
+                  disabled={extractBusy || !imageDataUrl}
+                  className="self-start text-xs px-3 py-1.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white rounded font-medium"
+                >
+                  {extractBusy ? t.extracting : t.extractIntent}
+                </button>
+                {imageErr && (
+                  <div
+                    data-testid="image-intent-error"
+                    className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                  >
+                    {imageErr}
+                  </div>
+                )}
+                {extractedIntent !== null && (
+                  <div className="flex flex-col gap-1.5" data-testid="image-intent-result">
+                    {extractedSummary && (
+                      <p className="text-[11px] text-pink-200/90 italic">{extractedSummary}</p>
+                    )}
+                    <pre
+                      data-testid="image-intent-json"
+                      className="text-[11px] text-gray-100 bg-gray-950 border border-gray-700 rounded p-2 font-mono max-h-48 overflow-auto whitespace-pre-wrap"
+                    >
+                      {JSON.stringify(extractedIntent, null, 2)}
+                    </pre>
+                    <button
+                      type="button"
+                      data-testid="image-intent-apply"
+                      onClick={applyExtractedToVerify}
+                      className="self-start text-xs px-3 py-1.5 bg-violet-700/70 hover:bg-violet-600 text-white rounded font-medium border border-violet-500/40"
+                    >
+                      {t.applyToVerify}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Spec verification (collapsible) ── */}
           {scadSource.trim() && (
