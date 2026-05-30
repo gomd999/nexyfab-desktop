@@ -15,6 +15,9 @@ import {
   compareHoleCount,
   computeSurfaceArea,
   detectZAxisHoles,
+  detectAxisAlignedHoles,
+  detectAllAxisAlignedHoles,
+  holeAxisToWorld,
 } from '../faceInspection';
 
 /** Build a degenerate-stripped non-indexed BufferGeometry from a list
@@ -458,5 +461,121 @@ describe('Phase X6 — detectZAxisHoles', () => {
       normalToleranceDeg: 15,
     });
     expect(loose.length).toBeGreaterThanOrEqual(strict.length);
+  });
+
+  it('detected hole carries axis="z" field (X7 schema)', () => {
+    const shell = cylinderShellGeom(0, 0, 5, 20, 32, true);
+    const holes = detectZAxisHoles(shell, {
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    expect(holes.length).toBeGreaterThan(0);
+    expect(holes[0].axis).toBe('z');
+  });
+});
+
+describe('Phase X7 — multi-axis hole detection', () => {
+  /** Build a cylinder shell along an arbitrary axis by rotating the
+   *  Z-aligned one. Returns a non-indexed BufferGeometry. */
+  function cylShellAxis(
+    axis: 'x' | 'y' | 'z',
+    cA: number, cB: number, radius: number, height: number, segments = 32,
+  ): THREE.BufferGeometry {
+    // Build Z-aligned at origin, then rotate to target axis, then translate.
+    const positions: number[] = [];
+    const halfH = height / 2;
+    for (let i = 0; i < segments; i++) {
+      const a0 = (i / segments) * 2 * Math.PI;
+      const a1 = ((i + 1) / segments) * 2 * Math.PI;
+      const x0 = radius * Math.cos(a0);
+      const y0 = radius * Math.sin(a0);
+      const x1 = radius * Math.cos(a1);
+      const y1 = radius * Math.sin(a1);
+      // Inward-normal winding (hole interior)
+      positions.push(x0, y0, -halfH, x0, y0, halfH, x1, y1, -halfH);
+      positions.push(x1, y1, -halfH, x0, y0, halfH, x1, y1, halfH);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(positions), 3));
+
+    // Rotate Z → target axis. For X-axis: rotate Z to X means rotate -90° around Y.
+    // For Y-axis: rotate Z to Y means rotate 90° around X.
+    if (axis === 'x') g.applyMatrix4(new THREE.Matrix4().makeRotationY(-Math.PI / 2));
+    if (axis === 'y') g.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+
+    // After rotation, translate so (cA, cB) maps to the perpendicular plane center.
+    // Z-axis: perp plane = (X, Y), so translate by (cA, cB, 0)
+    // X-axis: perp plane = (Y, Z), so translate by (0, cA, cB)
+    // Y-axis: perp plane = (X, Z), so translate by (cA, 0, cB)
+    const dx = axis === 'z' || axis === 'y' ? cA : 0;
+    const dy = axis === 'z' ? cB : axis === 'x' ? cA : 0;
+    const dz = axis === 'x' ? cB : axis === 'y' ? cB : 0;
+    g.applyMatrix4(new THREE.Matrix4().makeTranslation(dx, dy, dz));
+    return g;
+  }
+
+  it('X-axis cylinder: detectAxisAlignedHoles({axis:"x"}) finds it', () => {
+    const shell = cylShellAxis('x', 0, 0, 5, 20, 32);
+    const holes = detectAxisAlignedHoles(shell, {
+      axis: 'x',
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    expect(holes.length).toBeGreaterThan(0);
+    expect(holes[0].axis).toBe('x');
+    // For X-axis: cx=worldY, cy=worldZ. Should be near (0, 0).
+    expect(Math.abs(holes[0].cx)).toBeLessThan(1.5);
+    expect(Math.abs(holes[0].cy)).toBeLessThan(1.5);
+  });
+
+  it('Y-axis cylinder: detected with axis="y"', () => {
+    const shell = cylShellAxis('y', 0, 0, 5, 20, 32);
+    const holes = detectAxisAlignedHoles(shell, {
+      axis: 'y',
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    expect(holes.length).toBeGreaterThan(0);
+    expect(holes[0].axis).toBe('y');
+  });
+
+  it('detectAllAxisAlignedHoles finds a Z-axis cylinder via the Z scan', () => {
+    const shell = cylShellAxis('z', 5, -3, 4, 20, 32);
+    const all = detectAllAxisAlignedHoles(shell, {
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    const zHoles = all.filter(h => h.axis === 'z');
+    expect(zHoles.length).toBeGreaterThan(0);
+    expect(Math.abs(zHoles[0].cx - 5)).toBeLessThan(1.5);
+    expect(Math.abs(zHoles[0].cy - (-3))).toBeLessThan(1.5);
+  });
+
+  it('X-axis scan does NOT report a Z-axis cylinder as a hole', () => {
+    const zShell = cylShellAxis('z', 0, 0, 5, 20, 32);
+    const xHoles = detectAxisAlignedHoles(zShell, {
+      axis: 'x',
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    // A Z-aligned cylinder's wall normals all have |nx| typically large
+    // (since they point radially in XY). Scan along X axis requires
+    // |nx| small — should not hit the cylinder walls. Some borderline
+    // triangles may slip through; allow up to 1 false peak.
+    expect(xHoles.length).toBeLessThanOrEqual(1);
+  });
+
+  it('detectZAxisHoles is a back-compat wrapper for axis="z"', () => {
+    const shell = cylShellAxis('z', 0, 0, 5, 20, 32);
+    const fromWrapper = detectZAxisHoles(shell, {
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    const fromGeneral = detectAxisAlignedHoles(shell, {
+      axis: 'z',
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    expect(fromWrapper.length).toBe(fromGeneral.length);
+    expect(fromWrapper[0].axis).toBe('z');
+  });
+
+  it('holeAxisToWorld maps perpendicular-plane coords back to world', () => {
+    expect(holeAxisToWorld({ axis: 'z', cx: 10, cy: 20, diameter: 5, voteCount: 0 })).toEqual([10, 20, 0]);
+    expect(holeAxisToWorld({ axis: 'x', cx: 10, cy: 20, diameter: 5, voteCount: 0 })).toEqual([0, 10, 20]);
+    expect(holeAxisToWorld({ axis: 'y', cx: 10, cy: 20, diameter: 5, voteCount: 0 })).toEqual([10, 0, 20]);
   });
 });

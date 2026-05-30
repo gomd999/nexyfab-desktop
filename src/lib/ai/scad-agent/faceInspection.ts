@@ -324,10 +324,19 @@ export function countThroughHoles(geometry: THREE.BufferGeometry, tolMm?: number
   return computeMeshTopology(geometry, tolMm).totalGenus;
 }
 
-// ─── Phase X6 — Hole position detection (Z-axis v1) ───────────────────────
+// ─── Phase X6/X7 — Axis-aligned hole position detection ──────────────────
+
+export type HoleAxis = 'x' | 'y' | 'z';
 
 export interface DetectedHole {
-  /** Cylinder axis location in the XY plane (world coords). */
+  /** Which axis the cylinder is aligned to. */
+  axis: HoleAxis;
+  /** Cylinder axis location in the perpendicular plane (world coords).
+   *  Z-axis: (cx, cy) = (worldX, worldY).
+   *  X-axis: (cx, cy) = (worldY, worldZ).
+   *  Y-axis: (cx, cy) = (worldX, worldZ).
+   *
+   *  Use `holeAxisToWorld(hole)` to get a [x, y, z] representative point. */
   cx: number;
   cy: number;
   /** Estimated hole diameter in mm (mean cylindrical radius × 2). */
@@ -336,16 +345,28 @@ export interface DetectedHole {
   voteCount: number;
 }
 
-export interface DetectZAxisHolesOptions {
+/** Convert a detected hole's (cx, cy) to a representative world point.
+ *  The "height" axis (along the cylinder) is set to 0 — callers that
+ *  need a specific Z for a Z-axis hole should ignore this coordinate. */
+export function holeAxisToWorld(h: DetectedHole): [number, number, number] {
+  switch (h.axis) {
+    case 'z': return [h.cx, h.cy, 0];
+    case 'x': return [0, h.cx, h.cy];
+    case 'y': return [h.cx, 0, h.cy];
+  }
+}
+
+export interface DetectAxisAlignedHolesOptions {
+  /** Cylinder axis to scan for. Default 'z' (matches intent emitter). */
+  axis?: HoleAxis;
   /** Bounding box in world coords. Computed from geometry if omitted. */
   bbox?: { min: [number, number, number]; max: [number, number, number] };
   /** Hough grid cell size in mm. Smaller = more precise but slower. */
   cellSizeMm?: number;
-  /** A triangle qualifies as "perpendicular to Z" when |nz|/|n| is
-   *  below sin(this angle). Default 8° handles facet noise. */
+  /** A triangle qualifies as "perpendicular to axis" when |n·axis|/|n|
+   *  is below sin(this angle). Default 8° handles facet noise. */
   normalToleranceDeg?: number;
-  /** Sample radii (mm) at which each triangle's normal-line votes.
-   *  Cover the expected hole-radius range for the geometry. */
+  /** Sample radii (mm) at which each triangle's normal-line votes. */
   radiiSamples?: number[];
   /** Minimum vote count for a grid cell to qualify as a peak. */
   minVotes?: number;
@@ -353,25 +374,77 @@ export interface DetectZAxisHolesOptions {
   peakRatioOfMax?: number;
 }
 
+/** @deprecated use DetectAxisAlignedHolesOptions */
+export type DetectZAxisHolesOptions = Omit<DetectAxisAlignedHolesOptions, 'axis'>;
+
 const DEFAULT_RADII: number[] = [1, 2, 3, 5, 8, 12, 18, 25, 35, 50];
 
+/** Plane / height axis indices per cylinder direction.
+ *  perpAxes = [i, j] gives the two coordinate indices for the perpendicular
+ *  plane; axisIdx is the coordinate parallel to the cylinder axis. */
+function axisIndices(axis: HoleAxis): { perpAxes: [number, number]; axisIdx: number } {
+  switch (axis) {
+    case 'z': return { perpAxes: [0, 1], axisIdx: 2 };
+    case 'x': return { perpAxes: [1, 2], axisIdx: 0 };
+    case 'y': return { perpAxes: [0, 2], axisIdx: 1 };
+  }
+}
+
 /**
- * v1 — detect cylindrical holes whose axis is parallel to Z.
+ * v2 — detect cylindrical holes whose axis is parallel to one of the
+ * coordinate axes (X, Y, or Z, set via `opts.axis`, default Z).
  *
- * The intent emitter (`applyHole` in intentToScad) always cuts holes
- * along the Z axis, so v1 covers the common case. For each triangle
- * whose normal is roughly perpendicular to Z, project rays at sampled
- * radii in both ±normal directions and vote in a 2D XY grid. Peaks
+ * The intent emitter (`applyHole` in intentToScad) cuts holes along Z
+ * by convention. v2 also supports X/Y for the general case (custom
+ * write_scad sources, multi-axis assemblies).
+ *
+ * For each triangle whose normal is roughly perpendicular to the
+ * selected axis, project rays at sampled radii in both ±normal
+ * directions and vote in a 2D grid (the perpendicular plane). Peaks
  * in the grid correspond to cylinder axis positions.
  *
  * Limitations:
- *   - Only Z-aligned cylinders detected.
+ *   - Only axis-aligned cylinders detected (no oblique angles).
  *   - Highly curved surfaces (sphere, torus) may emit false peaks.
  *   - Holes smaller than `cellSizeMm` won't separate cleanly.
  */
+export function detectAxisAlignedHoles(
+  geometry: THREE.BufferGeometry,
+  opts: DetectAxisAlignedHolesOptions = {},
+): DetectedHole[] {
+  const axis: HoleAxis = opts.axis ?? 'z';
+  const { perpAxes, axisIdx } = axisIndices(axis);
+  return detectHolesAlongAxis(geometry, axis, perpAxes, axisIdx, opts);
+}
+
+/** v1 alias — kept for backwards compatibility with X6 callers. */
 export function detectZAxisHoles(
   geometry: THREE.BufferGeometry,
   opts: DetectZAxisHolesOptions = {},
+): DetectedHole[] {
+  return detectAxisAlignedHoles(geometry, { ...opts, axis: 'z' });
+}
+
+/** Convenience: scan all 3 coordinate axes and return the union. Useful
+ *  for arbitrary-geometry analysis where the agent doesn't know in
+ *  advance which axis a hole was cut along. */
+export function detectAllAxisAlignedHoles(
+  geometry: THREE.BufferGeometry,
+  opts: Omit<DetectAxisAlignedHolesOptions, 'axis'> = {},
+): DetectedHole[] {
+  return [
+    ...detectAxisAlignedHoles(geometry, { ...opts, axis: 'x' }),
+    ...detectAxisAlignedHoles(geometry, { ...opts, axis: 'y' }),
+    ...detectAxisAlignedHoles(geometry, { ...opts, axis: 'z' }),
+  ];
+}
+
+function detectHolesAlongAxis(
+  geometry: THREE.BufferGeometry,
+  axis: HoleAxis,
+  perpAxes: [number, number],
+  axisIdx: number,
+  opts: DetectAxisAlignedHolesOptions,
 ): DetectedHole[] {
   const positions = geometry.attributes.position;
   if (!positions) return [];
@@ -394,10 +467,12 @@ export function detectZAxisHoles(
   const minVotes = opts.minVotes ?? 12;
   const peakRatio = opts.peakRatioOfMax ?? 0.5;
 
-  const minX = bb.min[0], minY = bb.min[1];
-  const maxX = bb.max[0], maxY = bb.max[1];
-  const wCells = Math.max(1, Math.ceil((maxX - minX) / cellSize));
-  const hCells = Math.max(1, Math.ceil((maxY - minY) / cellSize));
+  // Plane min/max for the perpendicular plane (a, b) coordinates.
+  const [pi, pj] = perpAxes;
+  const minA = bb.min[pi], minB = bb.min[pj];
+  const maxA = bb.max[pi], maxB = bb.max[pj];
+  const wCells = Math.max(1, Math.ceil((maxA - minA) / cellSize));
+  const hCells = Math.max(1, Math.ceil((maxB - minB) / cellSize));
 
   // Cap grid size so a pathological bbox doesn't OOM (500×500 = 250k cells).
   if (wCells > 500 || hCells > 500) return [];
@@ -423,40 +498,44 @@ export function detectZAxisHoles(
       i1 = t * 9 + 3;
       i2 = t * 9 + 6;
     }
-    const ax = posArr[i0]!,    ay = posArr[i0 + 1]!, az = posArr[i0 + 2]!;
-    const bx = posArr[i1]!,    by = posArr[i1 + 1]!, bz = posArr[i1 + 2]!;
-    const cx = posArr[i2]!,    cy = posArr[i2 + 1]!, cz = posArr[i2 + 2]!;
-    // Normal = (b-a) × (c-a)
-    const ux = bx - ax, uy = by - ay, uz = bz - az;
-    const vx = cx - ax, vy = cy - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy;
-    const ny = uz * vx - ux * vz;
-    const nz = ux * vy - uy * vx;
-    const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    // Vertex coords as [x, y, z] triples.
+    const a: [number, number, number] = [posArr[i0]!, posArr[i0 + 1]!, posArr[i0 + 2]!];
+    const b: [number, number, number] = [posArr[i1]!, posArr[i1 + 1]!, posArr[i1 + 2]!];
+    const c: [number, number, number] = [posArr[i2]!, posArr[i2 + 1]!, posArr[i2 + 2]!];
+    // Normal = (b-a) × (c-a), full 3D
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const n: [number, number, number] = [
+      uy * vz - uz * vy,
+      uz * vx - ux * vz,
+      ux * vy - uy * vx,
+    ];
+    const nLen = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
     if (nLen === 0) continue;
 
-    // Perpendicular-to-Z gate
-    if (Math.abs(nz) / nLen > normalToleranceSin) continue;
+    // Perpendicular-to-axis gate: the axial component must be small.
+    if (Math.abs(n[axisIdx]) / nLen > normalToleranceSin) continue;
 
-    // XY normal, renormalized so |n_xy| = 1
-    const nXy = Math.sqrt(nx * nx + ny * ny);
-    if (nXy === 0) continue;
-    const nxN = nx / nXy;
-    const nyN = ny / nXy;
+    // In-plane normal, renormalized.
+    const nA = n[pi], nB = n[pj];
+    const nPlaneLen = Math.sqrt(nA * nA + nB * nB);
+    if (nPlaneLen === 0) continue;
+    const nAn = nA / nPlaneLen;
+    const nBn = nB / nPlaneLen;
 
-    const centX = (ax + bx + cx) / 3;
-    const centY = (ay + by + cy) / 3;
+    const centA = (a[pi] + b[pi] + c[pi]) / 3;
+    const centB = (a[pj] + b[pj] + c[pj]) / 3;
 
-    candidates.push({ cx: centX, cy: centY, nx: nxN, ny: nyN });
+    candidates.push({ cx: centA, cy: centB, nx: nAn, ny: nBn });
 
     // Vote at each sample radius in both ± normal directions
     for (let ri = 0; ri < radii.length; ri++) {
       const r = radii[ri]!;
       for (let sign = -1; sign <= 1; sign += 2) {
-        const px = centX + sign * r * nxN;
-        const py = centY + sign * r * nyN;
-        const col = Math.floor((px - minX) / cellSize);
-        const row = Math.floor((py - minY) / cellSize);
+        const pa = centA + sign * r * nAn;
+        const pb = centB + sign * r * nBn;
+        const col = Math.floor((pa - minA) / cellSize);
+        const row = Math.floor((pb - minB) / cellSize);
         if (col >= 0 && col < wCells && row >= 0 && row < hCells) {
           grid[row * wCells + col]++;
         }
@@ -491,8 +570,8 @@ export function detectZAxisHoles(
       }
       if (!isPeak) continue;
       peaks.push({
-        cx: minX + (col + 0.5) * cellSize,
-        cy: minY + (row + 0.5) * cellSize,
+        cx: minA + (col + 0.5) * cellSize,
+        cy: minB + (row + 0.5) * cellSize,
         voteCount: v,
       });
       // Suppress a 5×5 neighborhood (2-cell radius) to deduplicate.
@@ -529,6 +608,7 @@ export function detectZAxisHoles(
     }
     if (inlierCount >= 6) {
       results.push({
+        axis,
         cx: peak.cx,
         cy: peak.cy,
         diameter: 2 * (radiusSum / inlierCount),

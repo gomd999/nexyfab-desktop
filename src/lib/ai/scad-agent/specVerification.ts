@@ -102,13 +102,15 @@ export interface SpecVerificationResult {
    */
   holePositions?: {
     matches: Array<{
+      /** Which axis the intent hole was cut along. */
+      axis: 'x' | 'y' | 'z';
       intent: { x: number; y: number; diameter: number };
       detected: { cx: number; cy: number; diameter: number } | null;
       distMm: number;
       withinTolerance: boolean;
     }>;
     /** Detected peaks that didn't match any intent hole (extras the AI drilled). */
-    extras: Array<{ cx: number; cy: number; diameter: number }>;
+    extras: Array<{ axis: 'x' | 'y' | 'z'; cx: number; cy: number; diameter: number }>;
     /** True iff every intent hole matched a detected peak within tolerance. */
     allMatched: boolean;
   };
@@ -701,10 +703,12 @@ export interface VerifyAgainstSpecOptions {
   /** Surface-area tolerance overrides (defaults max(20 mm², 5%)). */
   surfaceTolMm2?: number;
   surfaceTolPct?: number;
-  /** X6 — detected Z-axis hole peaks (from detectZAxisHoles). When omitted
-   *  OR when the intent has no hole features, the position check is
-   *  skipped. */
-  detectedHoles?: Array<{ cx: number; cy: number; diameter: number }>;
+  /** X6/X7 — detected axis-aligned hole peaks (from detectAxisAlignedHoles
+   *  or detectAllAxisAlignedHoles). When omitted OR when the intent has no
+   *  hole features, the position check is skipped. Each peak carries the
+   *  axis it was detected along; the match step only considers peaks whose
+   *  axis matches the intent hole's declared axis (default 'z'). */
+  detectedHoles?: Array<{ axis?: 'x' | 'y' | 'z'; cx: number; cy: number; diameter: number }>;
   /** Position-match tolerance in mm (default 2 mm). */
   holePosTolMm?: number;
 }
@@ -782,7 +786,11 @@ export function verifyAgainstSpec(
     }
   }
 
-  // X6 — hole position check (intent holes vs detected Z-axis peaks).
+  // X6 / X7 — hole position check (intent holes vs detected axis-aligned peaks).
+  // For each intent hole, we look up its declared axis (defaults to 'z' for
+  // backwards compatibility with the v1 applyHole emitter) and only
+  // consider detected peaks along that axis. Peaks without an `axis`
+  // field are treated as Z-axis (back-compat with X6 test fixtures).
   let holePositions: SpecVerificationResult['holePositions'];
   if (Array.isArray(detectedHoles) && Array.isArray(intent.features)) {
     const intentHoles = intent.features.filter((f): f is IntentFeature => !!f && f.type === 'hole');
@@ -792,15 +800,32 @@ export function verifyAgainstSpec(
       const matches: NonNullable<SpecVerificationResult['holePositions']>['matches'] = [];
       for (const h of intentHoles) {
         const params = (h as { params?: Record<string, unknown> }).params ?? {};
-        const ix = num(params.x ?? params.posX, 0);
-        const iy = num(params.y ?? params.posY, 0);
+        const axisHint = params.axis;
+        const intentAxis: 'x' | 'y' | 'z' = (axisHint === 'x' || axisHint === 'y') ? axisHint : 'z';
+        // Intent's "in-plane" coords depend on the axis. Conventions:
+        //   z-axis hole: in-plane = (x, y)
+        //   x-axis hole: in-plane = (y, z)
+        //   y-axis hole: in-plane = (x, z)
+        let ix: number, iy: number;
+        if (intentAxis === 'z') {
+          ix = num(params.x ?? params.posX, 0);
+          iy = num(params.y ?? params.posY, 0);
+        } else if (intentAxis === 'x') {
+          ix = num(params.y ?? params.posY, 0);
+          iy = num(params.z ?? params.posZ, 0);
+        } else {
+          ix = num(params.x ?? params.posX, 0);
+          iy = num(params.z ?? params.posZ, 0);
+        }
         const idia = num(params.diameter ?? params.holeDiameter, 0);
-        // Find closest still-unused detected peak.
+        // Find closest still-unused detected peak along the same axis.
         let bestIdx = -1;
         let bestDist = Infinity;
         for (let di = 0; di < detectedHoles.length; di++) {
           if (usedDetectedIdx.has(di)) continue;
           const d = detectedHoles[di]!;
+          const dAxis = d.axis ?? 'z';
+          if (dAxis !== intentAxis) continue;
           const dist = Math.hypot(d.cx - ix, d.cy - iy);
           if (dist < bestDist) { bestDist = dist; bestIdx = di; }
         }
@@ -808,6 +833,7 @@ export function verifyAgainstSpec(
           usedDetectedIdx.add(bestIdx);
           const d = detectedHoles[bestIdx]!;
           matches.push({
+            axis: intentAxis,
             intent: { x: ix, y: iy, diameter: idia },
             detected: { cx: d.cx, cy: d.cy, diameter: d.diameter },
             distMm: bestDist,
@@ -815,6 +841,7 @@ export function verifyAgainstSpec(
           });
         } else {
           matches.push({
+            axis: intentAxis,
             intent: { x: ix, y: iy, diameter: idia },
             detected: bestIdx >= 0 ? {
               cx: detectedHoles[bestIdx]!.cx,
@@ -828,7 +855,7 @@ export function verifyAgainstSpec(
       }
       const extras = detectedHoles
         .filter((_, i) => !usedDetectedIdx.has(i))
-        .map(d => ({ cx: d.cx, cy: d.cy, diameter: d.diameter }));
+        .map(d => ({ axis: (d.axis ?? 'z') as 'x' | 'y' | 'z', cx: d.cx, cy: d.cy, diameter: d.diameter }));
       holePositions = {
         matches,
         extras,

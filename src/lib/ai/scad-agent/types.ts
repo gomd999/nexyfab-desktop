@@ -759,11 +759,18 @@ export interface GeometryStats {
    */
   genus?: number | null;
   /**
-   * X6 — Z-axis cylindrical hole peaks (from Hough-style XY voting on
-   * perpendicular-to-Z triangles). verify_spec matches each intent
-   * hole's (x, y) against the closest detected peak.
+   * X6/X7 — axis-aligned cylindrical hole peaks across X/Y/Z. Each peak
+   * carries its detection axis so verify_spec can match intent holes
+   * along the right axis. (cx, cy) is in the perpendicular plane
+   * (Z: world XY, X: world YZ, Y: world XZ).
    */
-  detectedHoles?: Array<{ cx: number; cy: number; diameter: number; voteCount: number }>;
+  detectedHoles?: Array<{
+    axis: 'x' | 'y' | 'z';
+    cx: number;
+    cy: number;
+    diameter: number;
+    voteCount: number;
+  }>;
 }
 
 export interface BudgetState {

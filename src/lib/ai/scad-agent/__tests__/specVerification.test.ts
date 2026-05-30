@@ -704,3 +704,58 @@ describe('Phase X6 — hole position matching', () => {
     expect(loose.holePositions?.allMatched).toBe(true);
   });
 });
+
+describe('Phase X7 — multi-axis hole position matching', () => {
+  it('intent X-axis hole matches detected X-axis peak (in-plane = y,z)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      // For X-axis hole, in-plane coords are (y, z). Intent uses params.y/z.
+      features: [{ type: 'hole', params: { diameter: 10, axis: 'x', y: 5, z: -3 } } as never],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ axis: 'x', cx: 5, cy: -3, diameter: 10 }],
+    });
+    expect(r.holePositions?.allMatched).toBe(true);
+    expect(r.holePositions?.matches[0].axis).toBe('x');
+  });
+
+  it('intent Z-axis hole does NOT match X-axis detected peak (different axis)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10, x: 10, y: 10 } } as never],
+    };
+    // Peak at the same (cx,cy) but along X axis — wrong axis, no match.
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ axis: 'x', cx: 10, cy: 10, diameter: 10 }],
+    });
+    expect(r.holePositions?.allMatched).toBe(false);
+    expect(r.holePositions?.matches[0].detected).toBeNull();
+    expect(r.holePositions?.extras.length).toBe(1);
+  });
+
+  it('back-compat: detected peak without axis field is treated as Z', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10, x: 10, y: 10 } } as never],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 10, cy: 10, diameter: 10 }], // no axis → defaults to 'z'
+    });
+    expect(r.holePositions?.allMatched).toBe(true);
+  });
+
+  it('intent Y-axis hole matches Y-axis detected peak (in-plane = x,z)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 8, axis: 'y', x: -10, z: 5 } } as never],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ axis: 'y', cx: -10, cy: 5, diameter: 8 }],
+    });
+    expect(r.holePositions?.allMatched).toBe(true);
+  });
+});
