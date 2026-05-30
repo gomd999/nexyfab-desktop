@@ -440,6 +440,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         surfaceArea: result.surfaceArea,
         holePositions: result.holePositions,
         fillet: result.fillet,
+        threads: result.threads,
       },
     };
   };

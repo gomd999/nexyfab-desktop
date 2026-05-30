@@ -819,3 +819,79 @@ describe('Phase X8 — fillet application check', () => {
     expect(strict.fillet?.applied).toBe(false);
   });
 });
+
+describe('Phase X9 — thread spec self-check', () => {
+  const threadIntent = (diameter: number, pitch?: number): IntentInput => ({
+    shapeId: 'box',
+    params: { width: 50, height: 50, depth: 50 },
+    features: [{
+      type: 'thread',
+      params: pitch !== undefined ? { diameter, pitch } : { diameter },
+    } as never],
+  });
+
+  it('M8 with ISO coarse pitch 1.25 → pitchOk', () => {
+    const r = verifyAgainstSpec(threadIntent(8, 1.25), bboxFromSize(50, 50, 50));
+    expect(r.threads?.allOk).toBe(true);
+    expect(r.threads?.perThread[0].isoStandard).toBe('M8');
+    expect(r.threads?.perThread[0].expectedPitch).toBe(1.25);
+  });
+
+  it('M8 with wrong pitch 0.5 → flagged', () => {
+    const r = verifyAgainstSpec(threadIntent(8, 0.5), bboxFromSize(50, 50, 50));
+    expect(r.threads?.allOk).toBe(false);
+    expect(r.ok).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/thread.*Ø8mm.*pitch 0\.5mm.*M8 is 1\.25mm/);
+  });
+
+  it('non-standard diameter (e.g. 7mm) → no expectation enforced', () => {
+    const r = verifyAgainstSpec(threadIntent(7, 0.5), bboxFromSize(50, 50, 50));
+    expect(r.threads?.perThread[0].isoStandard).toBeNull();
+    expect(r.threads?.perThread[0].expectedPitch).toBeNull();
+    expect(r.threads?.allOk).toBe(true);
+  });
+
+  it('default pitch derived from applyThread default (dia ≥ 6 → 1.0) doesn\'t match ISO for M8', () => {
+    // applyThread default: pitch = dia >= 6 ? 1.0 : 0.5. For M8, ISO is
+    // 1.25. So omitting pitch on M8 yields a mismatch — useful warning.
+    const r = verifyAgainstSpec(threadIntent(8), bboxFromSize(50, 50, 50));
+    expect(r.threads?.perThread[0].pitchOk).toBe(false);
+    expect(r.threads?.perThread[0].requestedPitch).toBe(1.0);
+  });
+
+  it('M6 with default pitch 1.0 matches ISO coarse', () => {
+    const r = verifyAgainstSpec(threadIntent(6), bboxFromSize(50, 50, 50));
+    expect(r.threads?.perThread[0].pitchOk).toBe(true);
+    expect(r.threads?.perThread[0].requestedPitch).toBe(1.0);
+    expect(r.threads?.perThread[0].expectedPitch).toBe(1.0);
+  });
+
+  it('M16 with ISO pitch 2.0', () => {
+    const r = verifyAgainstSpec(threadIntent(16, 2.0), bboxFromSize(50, 50, 50));
+    expect(r.threads?.perThread[0].isoStandard).toBe('M16');
+    expect(r.threads?.allOk).toBe(true);
+  });
+
+  it('skips thread check when intent has no thread feature', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
+    expect(r.threads).toBeUndefined();
+  });
+
+  it('multiple threads: one ok, one not → allOk=false', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'thread', params: { diameter: 8, pitch: 1.25 } } as never,
+        { type: 'thread', params: { diameter: 10, pitch: 0.5 } } as never, // wrong: M10 is 1.5
+      ],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
+    expect(r.threads?.allOk).toBe(false);
+    expect(r.threads?.perThread).toHaveLength(2);
+    expect(r.threads?.perThread[0].pitchOk).toBe(true);
+    expect(r.threads?.perThread[1].pitchOk).toBe(false);
+  });
+});

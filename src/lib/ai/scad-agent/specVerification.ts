@@ -26,6 +26,7 @@
  */
 
 import type { IntentInput, IntentFeature } from '../../openscad-render/intentToScad';
+import { METRIC_FASTENERS } from '../../openscad-render/isoFasteners';
 
 export interface ExpectedBbox {
   /** Whether the bbox is centered at origin (cube center=true semantics). */
@@ -131,6 +132,25 @@ export interface SpecVerificationResult {
     /** True when sharpEdgeCount is at or below the threshold expected
      *  for a successfully-filleted part. */
     applied: boolean;
+  };
+  /**
+   * X9 — thread spec self-check (intent-side, no mesh needed).
+   * Populated when intent declares at least one `thread` feature.
+   * Each thread's pitch is compared to the ISO 261 coarse-thread pitch
+   * for its nominal diameter when the diameter matches an ISO size.
+   */
+  threads?: {
+    perThread: Array<{
+      diameter: number;
+      requestedPitch: number;
+      isoStandard: 'M3' | 'M4' | 'M5' | 'M6' | 'M8' | 'M10' | 'M12' | 'M14' | 'M16' | null;
+      expectedPitch: number | null;
+      /** True iff pitch matches ISO coarse to within 0.02 mm, OR the
+       *  diameter is non-standard (no expectation). */
+      pitchOk: boolean;
+    }>;
+    /** True iff every thread is either ISO-compliant or non-standard. */
+    allOk: boolean;
   };
 }
 
@@ -892,6 +912,47 @@ export function verifyAgainstSpec(
     }
   }
 
+  // X9 — thread spec self-check. Pure intent-side; no mesh data needed.
+  let threads: SpecVerificationResult['threads'];
+  if (Array.isArray(intent.features)) {
+    const threadFeatures = intent.features.filter(
+      (f): f is IntentFeature => !!f && f.type === 'thread',
+    );
+    if (threadFeatures.length > 0) {
+      const perThread: NonNullable<SpecVerificationResult['threads']>['perThread'] = [];
+      for (const t of threadFeatures) {
+        const params = (t as { params?: Record<string, unknown> }).params ?? {};
+        const dia = num(params.diameter ?? params.nominalDiameter, 8);
+        // applyThread default: pitch = dia >= 6 ? 1.0 : 0.5
+        const requestedPitch = num(params.pitch, dia >= 6 ? 1.0 : 0.5);
+        // Match diameter to ISO catalog (within 0.05 mm).
+        let isoStandard: typeof perThread[number]['isoStandard'] = null;
+        let expectedPitch: number | null = null;
+        for (const [key, spec] of Object.entries(METRIC_FASTENERS)) {
+          if (Math.abs(spec.d - dia) <= 0.05) {
+            isoStandard = key as typeof perThread[number]['isoStandard'];
+            expectedPitch = spec.pitch;
+            break;
+          }
+        }
+        const pitchOk = expectedPitch === null
+          ? true // non-standard → don't enforce
+          : Math.abs(requestedPitch - expectedPitch) <= 0.02;
+        perThread.push({
+          diameter: dia,
+          requestedPitch,
+          isoStandard,
+          expectedPitch,
+          pitchOk,
+        });
+      }
+      threads = {
+        perThread,
+        allOk: perThread.every(t => t.pitchOk),
+      };
+    }
+  }
+
   // X8 — fillet application check.
   let fillet: SpecVerificationResult['fillet'];
   if (detectedDihedralStats && Array.isArray(intent.features)) {
@@ -914,7 +975,8 @@ export function verifyAgainstSpec(
     && !volume?.mismatch
     && !surfaceArea?.mismatch
     && (holePositions ? holePositions.allMatched : true)
-    && (fillet ? fillet.applied : true);
+    && (fillet ? fillet.applied : true)
+    && (threads ? threads.allOk : true);
   return {
     ok,
     verifiable: true,
@@ -930,6 +992,7 @@ export function verifyAgainstSpec(
     ...(surfaceArea ? { surfaceArea } : {}),
     ...(holePositions ? { holePositions } : {}),
     ...(fillet ? { fillet } : {}),
+    ...(threads ? { threads } : {}),
   };
 }
 
@@ -959,7 +1022,10 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const filletLine = result.fillet
       ? ` Fillet: applied (sharp edges ${result.fillet.sharpEdgeCount}, max dihedral ${result.fillet.maxDihedralDeg.toFixed(1)}°).`
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}`;
+    const threadLine = result.threads
+      ? ` Threads: ${result.threads.perThread.length} thread(s) verified against ISO 261.`
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}${threadLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -1024,6 +1090,14 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     lines.push(
       `  fillet: intent declares ${result.fillet.expectedFilletCount} fillet feature(s) but the mesh still has ${result.fillet.sharpEdgeCount} sharp edges (max dihedral ${result.fillet.maxDihedralDeg.toFixed(1)}°). The fillet operation likely didn't take effect (radius too small, or feature was overwritten by a later op).`,
     );
+  }
+  if (result.threads && !result.threads.allOk) {
+    for (const t of result.threads.perThread) {
+      if (t.pitchOk) continue;
+      lines.push(
+        `  thread: Ø${t.diameter}mm thread uses pitch ${t.requestedPitch}mm, but ISO 261 coarse pitch for ${t.isoStandard} is ${t.expectedPitch}mm. Either fix the pitch or change diameter.`,
+      );
+    }
   }
   lines.push('Re-emit intent with corrected params to fix.');
   return lines.join('\n');
