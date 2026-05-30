@@ -27,6 +27,8 @@ export const CadAuditAction = {
   MESH_EXPORT: 'cad.mesh.export',
   /** SCAD coding agent multi-turn run (one user prompt = one audit row). */
   SCAD_AGENT_RUN: 'cad.scad_agent.run',
+  /** Image-to-CAD intent extraction (photo/sketch → IntentInput via vision). */
+  IMAGE_INTENT_EXTRACTED: 'cad.image_intent.extracted',
 } as const;
 
 export function logCadPipelineAudit(opts: {

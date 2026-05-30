@@ -33,6 +33,7 @@ interface Snapshot {
 }
 
 const GOLDEN: Record<string, Snapshot> = {
+  // NexyFab core
   'shape-chat':                  { version: '1.0.0', templateHash: '5ae3a7a77dd63ba53099733999b03f958b8bcbf6be072069132a48e9a72c81a6' },
   'scad-intent-from-nl':         { version: '1.2.0', templateHash: 'c613ab48e72d3d4035a6c1a8d2da28e49ccc6e4acff0d4068113af2e790c8388' },
   'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: 'c613ab48e72d3d4035a6c1a8d2da28e49ccc6e4acff0d4068113af2e790c8388' },
@@ -44,6 +45,22 @@ const GOLDEN: Record<string, Snapshot> = {
   'compose':                     { version: '1.0.0', templateHash: 'fb1aee0a582ddf6d0c5b196b003be76ae8744cda41eb653f08be407c18a0a628' },
   'intake-from-text':            { version: '1.0.0', templateHash: 'ba5e4374bb700373c2a23cf7887478d1c2105a0202eeb2f074ba4ec50322def7' },
   'shape-to-jscad':              { version: '1.0.0', templateHash: 'e7caa19c70d6d8305fcd7a4d11d8fb258d007ba9111813b259d17632a968b8ce' },
+  'imageIntentFromSketch.v1':    { version: '1.0.0', templateHash: 'efaf093c745ef9463fac77d509a89e54b96148a4373a28661222aa88442f9955' },
+  // Marketplace / RFQ / advisor prompts (added in earlier rounds without
+  // snapshot updates — this block fixes the prior debt while landing
+  // imageIntentFromSketch.v1).
+  'ai-advisor':                  { version: '1.0.0', templateHash: '795f6500a1528ff2a6824b4172d4947f21001eb3800c4ae98cc5f33539bc9fdd' },
+  'capacity-match':              { version: '1.0.0', templateHash: 'd0e329e57b8a2e1b40eeb036febbf79cad0a32bd66d27aed04164209a86437e9' },
+  'cert-filter':                 { version: '1.0.0', templateHash: 'ae6bb41ef60f32a36dea2e2a7fa7ee8303e1cc8f36d5f706b77f37a6a225a84c' },
+  'change-detector':             { version: '1.0.0', templateHash: '47afdc38244b64c309696fa720450392e5477ece34064bdbcb67d16376fb797e' },
+  'cost-copilot':                { version: '1.0.0', templateHash: '375fb465eb388bc4e351022a13d3810b5ef190de10f8026d7ea6136911da30c5' },
+  'cost-copilot:tighter':        { version: '1.1.0', templateHash: '375fb465eb388bc4e351022a13d3810b5ef190de10f8026d7ea6136911da30c5' },
+  'dfm-explainer':               { version: '1.0.0', templateHash: '7663140acfddeeeb2141da55c86fc0a7a4457b9d5e8fa7e1bbe5e48a77b12c0d' },
+  'order-priority':              { version: '1.0.0', templateHash: 'bcc70c456ef1bc51941a61de5a84e230f7bd08016b63e4b8fbe4bf786e2d460b' },
+  'process-router':              { version: '1.0.0', templateHash: '976bc40f50f39ac9100c4269633bcfc83ff65766312d3ae843a9783d34745c03' },
+  'quote-accuracy':              { version: '1.0.0', templateHash: 'df8a6610b03d9693f41e34f2d693075a7ffd7eb049e676fc75cdbf3e0f54c6a3' },
+  'quote-negotiator':            { version: '1.0.0', templateHash: 'f1a8345e8db426d89e8adff60e95c2076f200dacfa7156cfd00a8cc4d66275c1' },
+  'rfq-responder':               { version: '1.0.0', templateHash: '7856eff85f61c33df6ac8b83c8e06de7083a354f4b61bd16d629ba0a1a3dbf28' },
 };
 
 describe('prompt golden snapshots', () => {
