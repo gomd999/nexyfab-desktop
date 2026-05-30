@@ -18,6 +18,7 @@ import {
   detectAxisAlignedHoles,
   detectAllAxisAlignedHoles,
   holeAxisToWorld,
+  computeDihedralStats,
 } from '../faceInspection';
 
 /** Build a degenerate-stripped non-indexed BufferGeometry from a list
@@ -577,5 +578,65 @@ describe('Phase X7 — multi-axis hole detection', () => {
     expect(holeAxisToWorld({ axis: 'z', cx: 10, cy: 20, diameter: 5, voteCount: 0 })).toEqual([10, 20, 0]);
     expect(holeAxisToWorld({ axis: 'x', cx: 10, cy: 20, diameter: 5, voteCount: 0 })).toEqual([0, 10, 20]);
     expect(holeAxisToWorld({ axis: 'y', cx: 10, cy: 20, diameter: 5, voteCount: 0 })).toEqual([10, 0, 20]);
+  });
+});
+
+describe('Phase X8 — computeDihedralStats', () => {
+  it('cube: 12 sharp edges (90° corners), 6 flat edges (per-face diagonals)', () => {
+    const cube = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
+    const stats = computeDihedralStats(cube);
+    expect(stats.totalManifoldEdges).toBe(18); // 12 cube edges + 6 face diagonals
+    expect(stats.sharpEdgeCount).toBe(12);
+    expect(stats.flatEdgeCount).toBe(6); // coplanar pairs across each face's diagonal
+    expect(stats.maxDihedralDeg).toBeCloseTo(90, 1);
+  });
+
+  it('sphere: nearly all curved, no sharp 90° corners', () => {
+    const sphere = new THREE.SphereGeometry(5, 32, 16).toNonIndexed();
+    const stats = computeDihedralStats(sphere);
+    expect(stats.sharpEdgeCount).toBe(0);
+    expect(stats.curvedEdgeCount).toBeGreaterThan(0);
+    expect(stats.maxDihedralDeg).toBeLessThan(30);
+  });
+
+  it('cylinder: 2 sharp edges (top/bottom rim transitions) + curved sides', () => {
+    const cyl = new THREE.CylinderGeometry(5, 5, 20, 32).toNonIndexed();
+    const stats = computeDihedralStats(cyl);
+    // The rim where the cap meets the side wall is sharp (90°).
+    // 32 rim edges per cap × 2 caps = 64 sharp edges.
+    expect(stats.sharpEdgeCount).toBeGreaterThan(50);
+    expect(stats.curvedEdgeCount).toBeGreaterThan(0); // along the side wall
+  });
+
+  it('tetrahedron: 6 edges, sharp at each (~70.5° interior dihedral)', () => {
+    const a: [number, number, number] = [1, 1, 1];
+    const b: [number, number, number] = [-1, -1, 1];
+    const c: [number, number, number] = [-1, 1, -1];
+    const d: [number, number, number] = [1, -1, -1];
+    const tris = [
+      ...a, ...b, ...c,
+      ...a, ...d, ...b,
+      ...a, ...c, ...d,
+      ...b, ...d, ...c,
+    ];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(tris), 3));
+    const stats = computeDihedralStats(g);
+    expect(stats.totalManifoldEdges).toBe(6);
+    expect(stats.sharpEdgeCount).toBe(6);
+  });
+
+  it('respects flat/sharp thresholds', () => {
+    const cyl = new THREE.CylinderGeometry(5, 5, 20, 32).toNonIndexed();
+    const lenient = computeDihedralStats(cyl, { sharpThresholdDeg: 80 });
+    const strict = computeDihedralStats(cyl, { sharpThresholdDeg: 5 });
+    // Strict threshold (5°) reclassifies many curved edges as sharp.
+    expect(strict.sharpEdgeCount).toBeGreaterThanOrEqual(lenient.sharpEdgeCount);
+  });
+
+  it('empty geometry returns zeros', () => {
+    const stats = computeDihedralStats(new THREE.BufferGeometry());
+    expect(stats.totalManifoldEdges).toBe(0);
+    expect(stats.sharpEdgeCount).toBe(0);
   });
 });

@@ -622,6 +622,156 @@ function detectHolesAlongAxis(
   return results;
 }
 
+// ─── Phase X8 — Dihedral angle / fillet edge stats ────────────────────────
+
+export interface DihedralStats {
+  /** Edges shared by exactly 2 triangles (manifold edges only). */
+  totalManifoldEdges: number;
+  /** Edges with dihedral angle > sharpThresholdDeg (sharp corners). */
+  sharpEdgeCount: number;
+  /** Edges with dihedral in (flatThresholdDeg, sharpThresholdDeg) — the
+   *  curvature signature of a fillet/rounded transition. */
+  curvedEdgeCount: number;
+  /** Edges with dihedral < flatThresholdDeg (coplanar neighbors). */
+  flatEdgeCount: number;
+  /** Maximum dihedral observed across all manifold edges, in degrees. */
+  maxDihedralDeg: number;
+  /** Mean dihedral, in degrees (weighted equally across edges). */
+  meanDihedralDeg: number;
+}
+
+export interface ComputeDihedralStatsOptions {
+  /** Vertex dedup tolerance (mm). Default 1 µm — same as topology. */
+  tolMm?: number;
+  /** Below this, an edge is "flat" (coplanar). Default 3°. */
+  flatThresholdDeg?: number;
+  /** Above this, an edge is "sharp" (90°-ish corner). Default 30°. */
+  sharpThresholdDeg?: number;
+}
+
+/**
+ * v1 — dihedral angle statistics across manifold edges.
+ *
+ * Used to verify that a `fillet` feature was actually applied: a part
+ * with a fillet replaces all sharp 90° corners with smooth curved
+ * transitions (small dihedrals between many small triangles). A
+ * filleted box has sharpEdgeCount = 0 and many curvedEdges; an
+ * un-filleted box has sharpEdgeCount = 12 (one per cube edge).
+ *
+ * Convention: dihedral = angle between the two triangle outward normals.
+ *   0°    — coplanar (flat surface)
+ *   90°   — sharp orthogonal corner
+ *   180°  — fold-back (impossible for orientable manifold)
+ */
+export function computeDihedralStats(
+  geometry: THREE.BufferGeometry,
+  opts: ComputeDihedralStatsOptions = {},
+): DihedralStats {
+  const positions = geometry.attributes.position;
+  if (!positions) {
+    return {
+      totalManifoldEdges: 0,
+      sharpEdgeCount: 0,
+      curvedEdgeCount: 0,
+      flatEdgeCount: 0,
+      maxDihedralDeg: 0,
+      meanDihedralDeg: 0,
+    };
+  }
+  const posArr = positions.array as ArrayLike<number>;
+  const indexAttr = geometry.index;
+  const tolMm = opts.tolMm ?? DEFAULT_DEDUP_TOL_MM;
+  const flatThr = opts.flatThresholdDeg ?? 3;
+  const sharpThr = opts.sharpThresholdDeg ?? 30;
+
+  // Dedup vertices so triangles that "share" a position via float-equal
+  // verts are recognised as edge-adjacent.
+  const triCount = indexAttr
+    ? Math.floor(indexAttr.count / 3)
+    : Math.floor(posArr.length / 9);
+
+  // Per-original-vertex → deduped-id
+  const map = new Map<string, number>();
+  let nextId = 0;
+  const vertCount = posArr.length / 3;
+  const vertId = new Int32Array(vertCount);
+  for (let i = 0; i < vertCount; i++) {
+    const x = Math.round(posArr[i * 3 + 0]! / tolMm);
+    const y = Math.round(posArr[i * 3 + 1]! / tolMm);
+    const z = Math.round(posArr[i * 3 + 2]! / tolMm);
+    const key = `${x},${y},${z}`;
+    let id = map.get(key);
+    if (id === undefined) { id = nextId++; map.set(key, id); }
+    vertId[i] = id;
+  }
+
+  // For each edge (sorted pair of deduped vertex ids), record the
+  // adjacent triangles' outward normals.
+  const edgeNormals = new Map<string, Array<[number, number, number]>>();
+
+  for (let t = 0; t < triCount; t++) {
+    let i0: number, i1: number, i2: number;
+    if (indexAttr) {
+      const idxArr = indexAttr.array as ArrayLike<number>;
+      i0 = idxArr[t * 3 + 0]!;
+      i1 = idxArr[t * 3 + 1]!;
+      i2 = idxArr[t * 3 + 2]!;
+    } else {
+      i0 = t * 3 + 0;
+      i1 = t * 3 + 1;
+      i2 = t * 3 + 2;
+    }
+    const va = vertId[i0]!;
+    const vb = vertId[i1]!;
+    const vc = vertId[i2]!;
+    if (va === vb || vb === vc || va === vc) continue;
+
+    const ax = posArr[i0 * 3]!,    ay = posArr[i0 * 3 + 1]!, az = posArr[i0 * 3 + 2]!;
+    const bx = posArr[i1 * 3]!,    by = posArr[i1 * 3 + 1]!, bz = posArr[i1 * 3 + 2]!;
+    const cx = posArr[i2 * 3]!,    cy = posArr[i2 * 3 + 1]!, cz = posArr[i2 * 3 + 2]!;
+    const ux = bx - ax, uy = by - ay, uz = bz - az;
+    const vx = cx - ax, vy = cy - ay, vz = cz - az;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (nLen === 0) continue;
+    const normal: [number, number, number] = [nx / nLen, ny / nLen, nz / nLen];
+
+    const pairs: Array<[number, number]> = [[va, vb], [vb, vc], [va, vc]];
+    for (const [u, v] of pairs) {
+      const key = u < v ? `${u}-${v}` : `${v}-${u}`;
+      const list = edgeNormals.get(key);
+      if (list) list.push(normal);
+      else edgeNormals.set(key, [normal]);
+    }
+  }
+
+  let total = 0, sharp = 0, curved = 0, flat = 0;
+  let maxDeg = 0, sumDeg = 0;
+  for (const list of edgeNormals.values()) {
+    if (list.length !== 2) continue; // skip boundary / non-manifold
+    total++;
+    const [n1, n2] = list as [[number, number, number], [number, number, number]];
+    const dot = Math.max(-1, Math.min(1, n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2]));
+    const angleDeg = Math.acos(dot) * 180 / Math.PI;
+    sumDeg += angleDeg;
+    if (angleDeg > maxDeg) maxDeg = angleDeg;
+    if (angleDeg >= sharpThr) sharp++;
+    else if (angleDeg >= flatThr) curved++;
+    else flat++;
+  }
+
+  return {
+    totalManifoldEdges: total,
+    sharpEdgeCount: sharp,
+    curvedEdgeCount: curved,
+    flatEdgeCount: flat,
+    maxDihedralDeg: maxDeg,
+    meanDihedralDeg: total > 0 ? sumDeg / total : 0,
+  };
+}
+
 /**
  * X5 — compute mesh surface area (sum of triangle areas, mm²).
  *

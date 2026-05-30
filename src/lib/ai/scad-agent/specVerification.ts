@@ -114,6 +114,24 @@ export interface SpecVerificationResult {
     /** True iff every intent hole matched a detected peak within tolerance. */
     allMatched: boolean;
   };
+  /**
+   * X8 — fillet application check. Populated when caller passed
+   * detectedDihedralStats AND the intent declares at least one `fillet`
+   * feature. Reports whether the mesh has the expected smoothed-corner
+   * signature (low sharpEdgeCount) for the fillet to have actually
+   * taken effect.
+   */
+  fillet?: {
+    /** Number of fillet features in the intent. */
+    expectedFilletCount: number;
+    /** Edges in the mesh classified as sharp (≥ sharpThresholdDeg). */
+    sharpEdgeCount: number;
+    /** Max dihedral observed (degrees). */
+    maxDihedralDeg: number;
+    /** True when sharpEdgeCount is at or below the threshold expected
+     *  for a successfully-filleted part. */
+    applied: boolean;
+  };
 }
 
 /** Features that change the bounding box in ways the v1 helper can't
@@ -711,6 +729,16 @@ export interface VerifyAgainstSpecOptions {
   detectedHoles?: Array<{ axis?: 'x' | 'y' | 'z'; cx: number; cy: number; diameter: number }>;
   /** Position-match tolerance in mm (default 2 mm). */
   holePosTolMm?: number;
+  /** X8 — dihedral statistics (from computeDihedralStats). When omitted
+   *  OR when the intent has no `fillet` feature, the fillet check is
+   *  skipped. */
+  detectedDihedralStats?: {
+    sharpEdgeCount: number;
+    maxDihedralDeg: number;
+  };
+  /** Sharp-edge tolerance for the fillet check (default 2 — allow 2
+   *  borderline edges before declaring "fillet not applied"). */
+  filletSharpEdgeTolerance?: number;
 }
 
 /**
@@ -723,7 +751,7 @@ export function verifyAgainstSpec(
   measured: MeasuredBbox,
   opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
-  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm } = opts;
+  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm, detectedDihedralStats, filletSharpEdgeTolerance } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -864,11 +892,29 @@ export function verifyAgainstSpec(
     }
   }
 
+  // X8 — fillet application check.
+  let fillet: SpecVerificationResult['fillet'];
+  if (detectedDihedralStats && Array.isArray(intent.features)) {
+    const expectedFilletCount = intent.features.filter(
+      (f): f is IntentFeature => !!f && f.type === 'fillet',
+    ).length;
+    if (expectedFilletCount > 0) {
+      const tol = filletSharpEdgeTolerance ?? 2;
+      fillet = {
+        expectedFilletCount,
+        sharpEdgeCount: detectedDihedralStats.sharpEdgeCount,
+        maxDihedralDeg: detectedDihedralStats.maxDihedralDeg,
+        applied: detectedDihedralStats.sharpEdgeCount <= tol,
+      };
+    }
+  }
+
   const ok = mismatches.length === 0
     && !holeCount?.mismatch
     && !volume?.mismatch
     && !surfaceArea?.mismatch
-    && (holePositions ? holePositions.allMatched : true);
+    && (holePositions ? holePositions.allMatched : true)
+    && (fillet ? fillet.applied : true);
   return {
     ok,
     verifiable: true,
@@ -883,6 +929,7 @@ export function verifyAgainstSpec(
     ...(volume ? { volume } : {}),
     ...(surfaceArea ? { surfaceArea } : {}),
     ...(holePositions ? { holePositions } : {}),
+    ...(fillet ? { fillet } : {}),
   };
 }
 
@@ -909,7 +956,10 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const posLine = result.holePositions
       ? ` Hole positions: ${result.holePositions.matches.length} hole(s) verified at the intended (x, y).`
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}`;
+    const filletLine = result.fillet
+      ? ` Fillet: applied (sharp edges ${result.fillet.sharpEdgeCount}, max dihedral ${result.fillet.maxDihedralDeg.toFixed(1)}°).`
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -969,6 +1019,11 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
         `  unexpected hole: detected at (${e.cx.toFixed(1)}, ${e.cy.toFixed(1)}) Ø${e.diameter.toFixed(1)} — intent does not declare this.`,
       );
     }
+  }
+  if (result.fillet && !result.fillet.applied) {
+    lines.push(
+      `  fillet: intent declares ${result.fillet.expectedFilletCount} fillet feature(s) but the mesh still has ${result.fillet.sharpEdgeCount} sharp edges (max dihedral ${result.fillet.maxDihedralDeg.toFixed(1)}°). The fillet operation likely didn't take effect (radius too small, or feature was overwritten by a later op).`,
+    );
   }
   lines.push('Re-emit intent with corrected params to fix.');
   return lines.join('\n');

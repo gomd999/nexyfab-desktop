@@ -759,3 +759,63 @@ describe('Phase X7 — multi-axis hole position matching', () => {
     expect(r.holePositions?.allMatched).toBe(true);
   });
 });
+
+describe('Phase X8 — fillet application check', () => {
+  const filletIntent = (radius = 2): IntentInput => ({
+    shapeId: 'box',
+    params: { width: 50, height: 50, depth: 50 },
+    features: [{ type: 'fillet', params: { radius } } as never],
+  });
+
+  it('passes when sharpEdgeCount is at or below tolerance', () => {
+    const r = verifyAgainstSpec(filletIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 0, maxDihedralDeg: 25 },
+    });
+    expect(r.fillet?.applied).toBe(true);
+    expect(r.ok).toBe(true);
+  });
+
+  it('flags un-filleted geometry (12 sharp edges from cube corners)', () => {
+    const r = verifyAgainstSpec(filletIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 12, maxDihedralDeg: 90 },
+    });
+    expect(r.fillet?.applied).toBe(false);
+    expect(r.ok).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/fillet.*intent declares 1 fillet feature.*still has 12 sharp edges/);
+  });
+
+  it('borderline 2 sharp edges (default tol) still counts as applied', () => {
+    const r = verifyAgainstSpec(filletIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 2, maxDihedralDeg: 80 },
+    });
+    expect(r.fillet?.applied).toBe(true);
+  });
+
+  it('skips fillet check when intent has no fillet feature', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 12, maxDihedralDeg: 90 },
+    });
+    expect(r.fillet).toBeUndefined();
+  });
+
+  it('skips fillet check when detectedDihedralStats omitted', () => {
+    const r = verifyAgainstSpec(filletIntent(), bboxFromSize(50, 50, 50));
+    expect(r.fillet).toBeUndefined();
+  });
+
+  it('custom filletSharpEdgeTolerance', () => {
+    const lenient = verifyAgainstSpec(filletIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 5, maxDihedralDeg: 80 },
+      filletSharpEdgeTolerance: 8,
+    });
+    expect(lenient.fillet?.applied).toBe(true);
+
+    const strict = verifyAgainstSpec(filletIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 5, maxDihedralDeg: 80 },
+      filletSharpEdgeTolerance: 0,
+    });
+    expect(strict.fillet?.applied).toBe(false);
+  });
+});

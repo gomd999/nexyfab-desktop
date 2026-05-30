@@ -771,6 +771,19 @@ export interface GeometryStats {
     diameter: number;
     voteCount: number;
   }>;
+  /**
+   * X8 — dihedral angle stats for fillet verification. sharpEdgeCount ≈ 0
+   * indicates a part where every sharp corner has been replaced with a
+   * smooth fillet transition.
+   */
+  dihedralStats?: {
+    totalManifoldEdges: number;
+    sharpEdgeCount: number;
+    curvedEdgeCount: number;
+    flatEdgeCount: number;
+    maxDihedralDeg: number;
+    meanDihedralDeg: number;
+  };
 }
 
 export interface BudgetState {

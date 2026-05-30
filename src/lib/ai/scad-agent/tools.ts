@@ -417,11 +417,13 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     const detectedVolumeMm3 = session.geometry?.volume_mm3;
     const detectedSurfaceAreaMm2 = session.geometry?.surfaceArea_mm2;
     const detectedHoles = session.geometry?.detectedHoles;
+    const detectedDihedralStats = session.geometry?.dihedralStats;
     const result = verifyAgainstSpec(session.lastIntent, bbox, {
       detectedGenus,
       detectedVolumeMm3,
       detectedSurfaceAreaMm2,
       detectedHoles,
+      detectedDihedralStats,
     });
     const critique = formatSpecCritique(result);
     return {
@@ -437,6 +439,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         volume: result.volume,
         surfaceArea: result.surfaceArea,
         holePositions: result.holePositions,
+        fillet: result.fillet,
       },
     };
   };
