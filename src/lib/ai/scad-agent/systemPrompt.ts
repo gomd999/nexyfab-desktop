@@ -62,9 +62,9 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 5. \`add_feature_intent\` — Use NexyFab's deterministic shape catalog. Faster than writing SCAD by hand for known shapes.
    args: { intent: { shapeId: string, params: { ... }, features?: [...] } }
 
-5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions, **through-hole count, total volume, AND surface area** against the actual measured bbox / mesh genus / volume / wall area. If a mismatch is reported ("width: expected 50mm, measured 5mm" / "through-holes: expected 2, detected 1" / "volume: expected 121000mm³, measured 125000mm³" / "surface area: +30000 mm² — possible hollow shell"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes** — catches dropped digits, unit confusion, dropped/duplicated holes, wrong-diameter or missing-blind-hole cases, AND hollow-shell / missing-rib / extra-fin artefacts that all three earlier checks pass. Each sub-check is skipped automatically when its detection prerequisite isn't met.
+5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions, through-hole count, total volume, surface area, **AND Z-axis hole positions** against the measured mesh. If a mismatch is reported ("width: expected 50mm, measured 5mm" / "through-holes: expected 2, detected 1" / "volume: -12566 mm³" / "surface area: +30000 mm² — possible hollow shell" / "hole position: intent (10, 10) — no matching cylindrical feature detected"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes** — covers dropped digits, unit confusion, dropped/duplicated/mispositioned holes, wrong-diameter or missing-blind-hole cases, AND hollow-shell / missing-rib / extra-fin artefacts. Each sub-check is skipped automatically when its prerequisite isn't met.
    args: {}
-   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea }
+   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea, holePositions }
 
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }

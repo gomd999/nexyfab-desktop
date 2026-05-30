@@ -416,10 +416,12 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     const detectedGenus = session.geometry?.genus;
     const detectedVolumeMm3 = session.geometry?.volume_mm3;
     const detectedSurfaceAreaMm2 = session.geometry?.surfaceArea_mm2;
+    const detectedHoles = session.geometry?.detectedHoles;
     const result = verifyAgainstSpec(session.lastIntent, bbox, {
       detectedGenus,
       detectedVolumeMm3,
       detectedSurfaceAreaMm2,
+      detectedHoles,
     });
     const critique = formatSpecCritique(result);
     return {
@@ -434,6 +436,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         holeCount: result.holeCount,
         volume: result.volume,
         surfaceArea: result.surfaceArea,
+        holePositions: result.holePositions,
       },
     };
   };

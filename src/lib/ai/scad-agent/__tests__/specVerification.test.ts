@@ -607,3 +607,100 @@ describe('Phase X5 — verifyAgainstSpec surface area integration', () => {
     expect(r.surfaceArea).toBeUndefined();
   });
 });
+
+describe('Phase X6 — hole position matching', () => {
+  const boxWithHoleAt = (x: number, y: number, dia = 10): IntentInput => ({
+    shapeId: 'box',
+    params: { width: 50, height: 50, depth: 50 },
+    features: [{ type: 'hole', params: { diameter: dia, x, y } } as never],
+  });
+
+  it('matches detected peak to intent hole within tolerance', () => {
+    const r = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 10.2, cy: 9.8, diameter: 10.1 }],
+    });
+    expect(r.holePositions?.allMatched).toBe(true);
+    expect(r.holePositions?.matches[0].withinTolerance).toBe(true);
+    expect(r.holePositions?.matches[0].distMm).toBeLessThan(1);
+    expect(r.ok).toBe(true);
+  });
+
+  it('flags hole that AI placed at the wrong location', () => {
+    const r = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: -10, cy: 10, diameter: 10 }],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.holePositions?.allMatched).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/hole position.*intent \(10\.0, 10\.0\).*closest detected at \(-10\.0/);
+  });
+
+  it('flags hole the AI never drilled', () => {
+    const r = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [], // empty
+    });
+    expect(r.holePositions?.allMatched).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/no matching cylindrical feature/);
+  });
+
+  it('flags extra hole AI drilled beyond intent', () => {
+    const r = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [
+        { cx: 10, cy: 10, diameter: 10 },
+        { cx: -10, cy: -10, diameter: 5 }, // unexpected
+      ],
+    });
+    expect(r.holePositions?.allMatched).toBe(false);
+    expect(r.holePositions?.extras.length).toBe(1);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/unexpected hole.*detected at \(-10\.0, -10\.0\)/);
+  });
+
+  it('matches multiple holes greedily (closest first)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: -10, y: -10 } } as never,
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+      ],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedHoles: [
+        { cx: 10.5, cy: 10.5, diameter: 5 },
+        { cx: -9.8, cy: -10.2, diameter: 5 },
+      ],
+    });
+    expect(r.holePositions?.allMatched).toBe(true);
+    expect(r.holePositions?.matches).toHaveLength(2);
+    expect(r.holePositions?.extras).toHaveLength(0);
+  });
+
+  it('skips position check when intent has no hole features', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 0, cy: 0, diameter: 5 }],
+    });
+    expect(r.holePositions).toBeUndefined();
+  });
+
+  it('skips position check when detectedHoles omitted', () => {
+    const r = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50));
+    expect(r.holePositions).toBeUndefined();
+  });
+
+  it('honors custom tolerance via holePosTolMm', () => {
+    // 3mm off → fails default 2mm, passes 5mm.
+    const tight = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 13, cy: 10, diameter: 10 }],
+    });
+    expect(tight.holePositions?.allMatched).toBe(false);
+
+    const loose = verifyAgainstSpec(boxWithHoleAt(10, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 13, cy: 10, diameter: 10 }],
+      holePosTolMm: 5,
+    });
+    expect(loose.holePositions?.allMatched).toBe(true);
+  });
+});

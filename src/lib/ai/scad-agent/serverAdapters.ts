@@ -29,7 +29,7 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   const { verifyGeneratedModel, formatVerificationCritique } = await import(
     '../../../app/[lang]/shape-generator/analysis/verifyGeneratedModel'
   );
-  const { countThroughHoles, computeSurfaceArea } = await import('./faceInspection');
+  const { countThroughHoles, computeSurfaceArea, detectZAxisHoles } = await import('./faceInspection');
   const geo = await parseStlBufferToGeometry(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
   const result = verifyGeneratedModel(geo);
   const watertight = result.checks.find(c => c.id === 'watertight')?.pass ?? false;
@@ -41,6 +41,13 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   const genus = countThroughHoles(geo);
   // X5 — surface area for the wall-count / fin / hollow-shell catch.
   const surfaceArea_mm2 = computeSurfaceArea(geo);
+  // X6 — Z-axis hole peaks for the position check.
+  const detectedHoles = detectZAxisHoles(geo,
+    bb ? { bbox: {
+      min: [bb.min.x, bb.min.y, bb.min.z],
+      max: [bb.max.x, bb.max.y, bb.max.z],
+    }} : undefined,
+  );
   return {
     triangleCount: result.metrics.triangleCount,
     volume_mm3: result.metrics.volumeMm3,
@@ -49,6 +56,7 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
     watertight,
     componentCount: result.metrics.componentCount,
     genus,
+    detectedHoles,
     ...(bb ? { bbox: { min: [bb.min.x, bb.min.y, bb.min.z] as [number, number, number], max: [bb.max.x, bb.max.y, bb.max.z] as [number, number, number] } } : {}),
     ...(critique ? { issues: critique } : {}),
   };

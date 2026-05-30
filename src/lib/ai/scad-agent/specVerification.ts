@@ -95,6 +95,23 @@ export interface SpecVerificationResult {
     holeBreakdown: ExpectedSurfaceArea['holeBreakdown'];
     mismatch: SurfaceAreaMismatch | null;
   };
+  /**
+   * X6 — hole position check. Populated when caller provided
+   * detectedHoles (from faceInspection.detectZAxisHoles). Compares each
+   * intent hole's (x, y) against the closest detected peak.
+   */
+  holePositions?: {
+    matches: Array<{
+      intent: { x: number; y: number; diameter: number };
+      detected: { cx: number; cy: number; diameter: number } | null;
+      distMm: number;
+      withinTolerance: boolean;
+    }>;
+    /** Detected peaks that didn't match any intent hole (extras the AI drilled). */
+    extras: Array<{ cx: number; cy: number; diameter: number }>;
+    /** True iff every intent hole matched a detected peak within tolerance. */
+    allMatched: boolean;
+  };
 }
 
 /** Features that change the bounding box in ways the v1 helper can't
@@ -684,6 +701,12 @@ export interface VerifyAgainstSpecOptions {
   /** Surface-area tolerance overrides (defaults max(20 mm², 5%)). */
   surfaceTolMm2?: number;
   surfaceTolPct?: number;
+  /** X6 — detected Z-axis hole peaks (from detectZAxisHoles). When omitted
+   *  OR when the intent has no hole features, the position check is
+   *  skipped. */
+  detectedHoles?: Array<{ cx: number; cy: number; diameter: number }>;
+  /** Position-match tolerance in mm (default 2 mm). */
+  holePosTolMm?: number;
 }
 
 /**
@@ -696,7 +719,7 @@ export function verifyAgainstSpec(
   measured: MeasuredBbox,
   opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
-  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct } = opts;
+  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -759,10 +782,66 @@ export function verifyAgainstSpec(
     }
   }
 
+  // X6 — hole position check (intent holes vs detected Z-axis peaks).
+  let holePositions: SpecVerificationResult['holePositions'];
+  if (Array.isArray(detectedHoles) && Array.isArray(intent.features)) {
+    const intentHoles = intent.features.filter((f): f is IntentFeature => !!f && f.type === 'hole');
+    if (intentHoles.length > 0) {
+      const tol = holePosTolMm ?? 2;
+      const usedDetectedIdx = new Set<number>();
+      const matches: NonNullable<SpecVerificationResult['holePositions']>['matches'] = [];
+      for (const h of intentHoles) {
+        const params = (h as { params?: Record<string, unknown> }).params ?? {};
+        const ix = num(params.x ?? params.posX, 0);
+        const iy = num(params.y ?? params.posY, 0);
+        const idia = num(params.diameter ?? params.holeDiameter, 0);
+        // Find closest still-unused detected peak.
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        for (let di = 0; di < detectedHoles.length; di++) {
+          if (usedDetectedIdx.has(di)) continue;
+          const d = detectedHoles[di]!;
+          const dist = Math.hypot(d.cx - ix, d.cy - iy);
+          if (dist < bestDist) { bestDist = dist; bestIdx = di; }
+        }
+        if (bestIdx >= 0 && bestDist <= tol) {
+          usedDetectedIdx.add(bestIdx);
+          const d = detectedHoles[bestIdx]!;
+          matches.push({
+            intent: { x: ix, y: iy, diameter: idia },
+            detected: { cx: d.cx, cy: d.cy, diameter: d.diameter },
+            distMm: bestDist,
+            withinTolerance: true,
+          });
+        } else {
+          matches.push({
+            intent: { x: ix, y: iy, diameter: idia },
+            detected: bestIdx >= 0 ? {
+              cx: detectedHoles[bestIdx]!.cx,
+              cy: detectedHoles[bestIdx]!.cy,
+              diameter: detectedHoles[bestIdx]!.diameter,
+            } : null,
+            distMm: bestDist === Infinity ? Number.POSITIVE_INFINITY : bestDist,
+            withinTolerance: false,
+          });
+        }
+      }
+      const extras = detectedHoles
+        .filter((_, i) => !usedDetectedIdx.has(i))
+        .map(d => ({ cx: d.cx, cy: d.cy, diameter: d.diameter }));
+      holePositions = {
+        matches,
+        extras,
+        allMatched: matches.every(m => m.withinTolerance) && extras.length === 0,
+      };
+    }
+  }
+
   const ok = mismatches.length === 0
     && !holeCount?.mismatch
     && !volume?.mismatch
-    && !surfaceArea?.mismatch;
+    && !surfaceArea?.mismatch
+    && (holePositions ? holePositions.allMatched : true);
   return {
     ok,
     verifiable: true,
@@ -776,6 +855,7 @@ export function verifyAgainstSpec(
     ...(holeCount ? { holeCount } : {}),
     ...(volume ? { volume } : {}),
     ...(surfaceArea ? { surfaceArea } : {}),
+    ...(holePositions ? { holePositions } : {}),
   };
 }
 
@@ -799,7 +879,10 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const areaLine = result.surfaceArea
       ? ` Surface area: ${result.surfaceArea.actualMm2.toFixed(0)} mm² (expected ${result.surfaceArea.expectedMm2.toFixed(0)}, within tolerance).`
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}`;
+    const posLine = result.holePositions
+      ? ` Hole positions: ${result.holePositions.matches.length} hole(s) verified at the intended (x, y).`
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -839,6 +922,25 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
       lines.push('    (more wall area than expected — possible hollow shell, extra ribs/fins, or duplicated geometry.)');
     } else {
       lines.push('    (less wall area than expected — possible missing wall, missing rib, or merged feature.)');
+    }
+  }
+  if (result.holePositions && !result.holePositions.allMatched) {
+    for (const m of result.holePositions.matches) {
+      if (m.withinTolerance) continue;
+      if (m.detected) {
+        lines.push(
+          `  hole position: intent (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) Ø${m.intent.diameter} — closest detected at (${m.detected.cx.toFixed(1)}, ${m.detected.cy.toFixed(1)}) Ø${m.detected.diameter.toFixed(1)}, off by ${m.distMm.toFixed(2)} mm.`,
+        );
+      } else {
+        lines.push(
+          `  hole position: intent (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) Ø${m.intent.diameter} — no matching cylindrical feature detected in the mesh.`,
+        );
+      }
+    }
+    for (const e of result.holePositions.extras) {
+      lines.push(
+        `  unexpected hole: detected at (${e.cx.toFixed(1)}, ${e.cy.toFixed(1)}) Ø${e.diameter.toFixed(1)} — intent does not declare this.`,
+      );
     }
   }
   lines.push('Re-emit intent with corrected params to fix.');

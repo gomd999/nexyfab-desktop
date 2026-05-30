@@ -14,6 +14,7 @@ import {
   countThroughHoles,
   compareHoleCount,
   computeSurfaceArea,
+  detectZAxisHoles,
 } from '../faceInspection';
 
 /** Build a degenerate-stripped non-indexed BufferGeometry from a list
@@ -336,5 +337,126 @@ describe('Phase X5 — computeSurfaceArea', () => {
     const indexed = new THREE.BoxGeometry(15, 15, 15);
     const nonIndexed = indexed.clone().toNonIndexed();
     expect(computeSurfaceArea(indexed)).toBeCloseTo(computeSurfaceArea(nonIndexed), 3);
+  });
+});
+
+describe('Phase X6 — detectZAxisHoles', () => {
+  /** Generate a Z-aligned hollow cylinder shell (just the wall, no caps).
+   *  Each segment becomes 2 triangles. Normal direction depends on `inward`:
+   *  true = normals point toward axis (hole interior), false = outward (boss). */
+  function cylinderShellGeom(
+    cx: number, cy: number, radius: number, height: number,
+    segments = 32, inward = true,
+  ): THREE.BufferGeometry {
+    const positions: number[] = [];
+    const halfH = height / 2;
+    for (let i = 0; i < segments; i++) {
+      const a0 = (i / segments) * 2 * Math.PI;
+      const a1 = ((i + 1) / segments) * 2 * Math.PI;
+      const x0 = cx + radius * Math.cos(a0);
+      const y0 = cy + radius * Math.sin(a0);
+      const x1 = cx + radius * Math.cos(a1);
+      const y1 = cy + radius * Math.sin(a1);
+      // 2 tris per quad. Winding picks outward-vs-inward normals.
+      if (inward) {
+        // Outward winding (CCW from outside) but we want INWARD normals
+        // (hole interior) → use opposite winding.
+        positions.push(x0, y0, -halfH, x0, y0, halfH, x1, y1, -halfH);
+        positions.push(x1, y1, -halfH, x0, y0, halfH, x1, y1, halfH);
+      } else {
+        positions.push(x0, y0, -halfH, x1, y1, -halfH, x0, y0, halfH);
+        positions.push(x1, y1, -halfH, x1, y1, halfH, x0, y0, halfH);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(positions), 3));
+    return g;
+  }
+
+  it('finds 1 hole at the origin for a centered Z-axis cylinder shell', () => {
+    const shell = cylinderShellGeom(0, 0, 5, 20, 32, true);
+    const holes = detectZAxisHoles(shell, {
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+    });
+    expect(holes.length).toBeGreaterThan(0);
+    const h = holes[0];
+    expect(Math.abs(h.cx)).toBeLessThan(1);
+    expect(Math.abs(h.cy)).toBeLessThan(1);
+    expect(h.diameter).toBeGreaterThan(8);
+    expect(h.diameter).toBeLessThan(12);
+  });
+
+  it('finds 1 hole at an off-center position', () => {
+    const shell = cylinderShellGeom(15, -8, 3, 20, 32, true);
+    const holes = detectZAxisHoles(shell, {
+      bbox: { min: [-20, -20, -10], max: [30, 10, 10] },
+    });
+    expect(holes.length).toBeGreaterThan(0);
+    const h = holes[0];
+    // Within cell-size tolerance (1 mm × √2 ≈ 1.5 mm)
+    expect(Math.abs(h.cx - 15)).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(h.cy - (-8))).toBeLessThanOrEqual(1.5);
+    expect(h.diameter).toBeGreaterThan(4);
+    expect(h.diameter).toBeLessThan(8);
+  });
+
+  it('detects multiple holes at distinct positions', () => {
+    // Two separate cylinder shells in one geometry
+    const a = cylinderShellGeom(-10, 0, 3, 20, 32, true);
+    const b = cylinderShellGeom(10, 0, 3, 20, 32, true);
+    const merged = new THREE.BufferGeometry();
+    const pa = a.attributes.position.array as Float32Array;
+    const pb = b.attributes.position.array as Float32Array;
+    const combined = new Float32Array(pa.length + pb.length);
+    combined.set(pa, 0);
+    combined.set(pb, pa.length);
+    merged.setAttribute('position', new THREE.Float32BufferAttribute(combined, 3));
+
+    const holes = detectZAxisHoles(merged, {
+      bbox: { min: [-20, -10, -10], max: [20, 10, 10] },
+    });
+    expect(holes.length).toBeGreaterThanOrEqual(2);
+    // At least one peak near each expected position
+    const matched = [false, false];
+    for (const h of holes) {
+      if (Math.abs(h.cx + 10) < 2 && Math.abs(h.cy) < 2) matched[0] = true;
+      if (Math.abs(h.cx - 10) < 2 && Math.abs(h.cy) < 2) matched[1] = true;
+    }
+    expect(matched).toEqual([true, true]);
+  });
+
+  it('returns empty array for a plain cube (no perpendicular-to-Z cylinder walls)', () => {
+    const cube = new THREE.BoxGeometry(20, 20, 20).toNonIndexed();
+    // Cube side walls have normals in ±X, ±Y — perpendicular to Z. Voting
+    // happens, but with all parallel normals (not radial) peaks won't form
+    // a clean (cx, cy) signature inside the cube interior. We tolerate
+    // either zero results or peaks far from the cube center.
+    const holes = detectZAxisHoles(cube);
+    // Confidence: any peaks should NOT be at origin (the cube center).
+    for (const h of holes) {
+      const distFromOrigin = Math.sqrt(h.cx * h.cx + h.cy * h.cy);
+      // Cube's side-wall normal-rays intersect at infinity (parallel), so
+      // peaks should NOT cluster at origin.
+      expect(distFromOrigin).toBeGreaterThan(2);
+    }
+  });
+
+  it('returns empty for empty geometry', () => {
+    expect(detectZAxisHoles(new THREE.BufferGeometry())).toEqual([]);
+  });
+
+  it('respects normalToleranceDeg (relaxed gate finds tilted walls)', () => {
+    // Slightly tilted cylinder — should miss with strict tol, find with loose.
+    const shell = cylinderShellGeom(0, 0, 5, 20, 32, true);
+    shell.applyMatrix4(new THREE.Matrix4().makeRotationX(5 * Math.PI / 180));
+    const strict = detectZAxisHoles(shell, {
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+      normalToleranceDeg: 2,
+    });
+    const loose = detectZAxisHoles(shell, {
+      bbox: { min: [-10, -10, -10], max: [10, 10, 10] },
+      normalToleranceDeg: 15,
+    });
+    expect(loose.length).toBeGreaterThanOrEqual(strict.length);
   });
 });

@@ -324,6 +324,224 @@ export function countThroughHoles(geometry: THREE.BufferGeometry, tolMm?: number
   return computeMeshTopology(geometry, tolMm).totalGenus;
 }
 
+// ─── Phase X6 — Hole position detection (Z-axis v1) ───────────────────────
+
+export interface DetectedHole {
+  /** Cylinder axis location in the XY plane (world coords). */
+  cx: number;
+  cy: number;
+  /** Estimated hole diameter in mm (mean cylindrical radius × 2). */
+  diameter: number;
+  /** Vote count from the Hough accumulator — proxy for confidence. */
+  voteCount: number;
+}
+
+export interface DetectZAxisHolesOptions {
+  /** Bounding box in world coords. Computed from geometry if omitted. */
+  bbox?: { min: [number, number, number]; max: [number, number, number] };
+  /** Hough grid cell size in mm. Smaller = more precise but slower. */
+  cellSizeMm?: number;
+  /** A triangle qualifies as "perpendicular to Z" when |nz|/|n| is
+   *  below sin(this angle). Default 8° handles facet noise. */
+  normalToleranceDeg?: number;
+  /** Sample radii (mm) at which each triangle's normal-line votes.
+   *  Cover the expected hole-radius range for the geometry. */
+  radiiSamples?: number[];
+  /** Minimum vote count for a grid cell to qualify as a peak. */
+  minVotes?: number;
+  /** A peak must be ≥ this fraction of the grid maximum. */
+  peakRatioOfMax?: number;
+}
+
+const DEFAULT_RADII: number[] = [1, 2, 3, 5, 8, 12, 18, 25, 35, 50];
+
+/**
+ * v1 — detect cylindrical holes whose axis is parallel to Z.
+ *
+ * The intent emitter (`applyHole` in intentToScad) always cuts holes
+ * along the Z axis, so v1 covers the common case. For each triangle
+ * whose normal is roughly perpendicular to Z, project rays at sampled
+ * radii in both ±normal directions and vote in a 2D XY grid. Peaks
+ * in the grid correspond to cylinder axis positions.
+ *
+ * Limitations:
+ *   - Only Z-aligned cylinders detected.
+ *   - Highly curved surfaces (sphere, torus) may emit false peaks.
+ *   - Holes smaller than `cellSizeMm` won't separate cleanly.
+ */
+export function detectZAxisHoles(
+  geometry: THREE.BufferGeometry,
+  opts: DetectZAxisHolesOptions = {},
+): DetectedHole[] {
+  const positions = geometry.attributes.position;
+  if (!positions) return [];
+  const posArr = positions.array as ArrayLike<number>;
+  const indexAttr = geometry.index;
+
+  // Resolve bbox
+  let bb = opts.bbox;
+  if (!bb) {
+    const cloned = geometry.clone();
+    cloned.computeBoundingBox();
+    const b = cloned.boundingBox;
+    if (!b) return [];
+    bb = { min: [b.min.x, b.min.y, b.min.z], max: [b.max.x, b.max.y, b.max.z] };
+  }
+
+  const cellSize = opts.cellSizeMm ?? 1;
+  const normalToleranceSin = Math.sin((opts.normalToleranceDeg ?? 8) * Math.PI / 180);
+  const radii = opts.radiiSamples ?? DEFAULT_RADII;
+  const minVotes = opts.minVotes ?? 12;
+  const peakRatio = opts.peakRatioOfMax ?? 0.5;
+
+  const minX = bb.min[0], minY = bb.min[1];
+  const maxX = bb.max[0], maxY = bb.max[1];
+  const wCells = Math.max(1, Math.ceil((maxX - minX) / cellSize));
+  const hCells = Math.max(1, Math.ceil((maxY - minY) / cellSize));
+
+  // Cap grid size so a pathological bbox doesn't OOM (500×500 = 250k cells).
+  if (wCells > 500 || hCells > 500) return [];
+
+  const grid = new Int32Array(wCells * hCells);
+
+  // Collect candidates so we can compute radius after finding peaks.
+  const candidates: Array<{ cx: number; cy: number; nx: number; ny: number }> = [];
+
+  const triCount = indexAttr
+    ? Math.floor(indexAttr.count / 3)
+    : Math.floor(posArr.length / 9);
+
+  for (let t = 0; t < triCount; t++) {
+    let i0: number, i1: number, i2: number;
+    if (indexAttr) {
+      const idxArr = indexAttr.array as ArrayLike<number>;
+      i0 = idxArr[t * 3 + 0]! * 3;
+      i1 = idxArr[t * 3 + 1]! * 3;
+      i2 = idxArr[t * 3 + 2]! * 3;
+    } else {
+      i0 = t * 9;
+      i1 = t * 9 + 3;
+      i2 = t * 9 + 6;
+    }
+    const ax = posArr[i0]!,    ay = posArr[i0 + 1]!, az = posArr[i0 + 2]!;
+    const bx = posArr[i1]!,    by = posArr[i1 + 1]!, bz = posArr[i1 + 2]!;
+    const cx = posArr[i2]!,    cy = posArr[i2 + 1]!, cz = posArr[i2 + 2]!;
+    // Normal = (b-a) × (c-a)
+    const ux = bx - ax, uy = by - ay, uz = bz - az;
+    const vx = cx - ax, vy = cy - ay, vz = cz - az;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (nLen === 0) continue;
+
+    // Perpendicular-to-Z gate
+    if (Math.abs(nz) / nLen > normalToleranceSin) continue;
+
+    // XY normal, renormalized so |n_xy| = 1
+    const nXy = Math.sqrt(nx * nx + ny * ny);
+    if (nXy === 0) continue;
+    const nxN = nx / nXy;
+    const nyN = ny / nXy;
+
+    const centX = (ax + bx + cx) / 3;
+    const centY = (ay + by + cy) / 3;
+
+    candidates.push({ cx: centX, cy: centY, nx: nxN, ny: nyN });
+
+    // Vote at each sample radius in both ± normal directions
+    for (let ri = 0; ri < radii.length; ri++) {
+      const r = radii[ri]!;
+      for (let sign = -1; sign <= 1; sign += 2) {
+        const px = centX + sign * r * nxN;
+        const py = centY + sign * r * nyN;
+        const col = Math.floor((px - minX) / cellSize);
+        const row = Math.floor((py - minY) / cellSize);
+        if (col >= 0 && col < wCells && row >= 0 && row < hCells) {
+          grid[row * wCells + col]++;
+        }
+      }
+    }
+  }
+
+  // Find global max for the ratio threshold
+  let globalMax = 0;
+  for (let i = 0; i < grid.length; i++) if (grid[i]! > globalMax) globalMax = grid[i]!;
+  const effectiveMin = Math.max(minVotes, Math.ceil(globalMax * peakRatio));
+
+  // Local-maxima scan: a cell qualifies if its vote ≥ effectiveMin AND it's
+  // ≥ each of its 8 (or fewer at edges) neighbors. Suppress neighbors within
+  // a 3-cell radius after emitting a peak so a noisy cluster yields one hole.
+  const peaks: Array<{ cx: number; cy: number; voteCount: number }> = [];
+  const suppressed = new Uint8Array(wCells * hCells);
+  for (let row = 0; row < hCells; row++) {
+    for (let col = 0; col < wCells; col++) {
+      const idx = row * wCells + col;
+      if (suppressed[idx]) continue;
+      const v = grid[idx]!;
+      if (v < effectiveMin) continue;
+      let isPeak = true;
+      for (let dr = -1; dr <= 1 && isPeak; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const r2 = row + dr, c2 = col + dc;
+          if (r2 < 0 || r2 >= hCells || c2 < 0 || c2 >= wCells) continue;
+          if (grid[r2 * wCells + c2]! > v) { isPeak = false; break; }
+        }
+      }
+      if (!isPeak) continue;
+      peaks.push({
+        cx: minX + (col + 0.5) * cellSize,
+        cy: minY + (row + 0.5) * cellSize,
+        voteCount: v,
+      });
+      // Suppress a 5×5 neighborhood (2-cell radius) to deduplicate.
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const r2 = row + dr, c2 = col + dc;
+          if (r2 < 0 || r2 >= hCells || c2 < 0 || c2 >= wCells) continue;
+          suppressed[r2 * wCells + c2] = 1;
+        }
+      }
+    }
+  }
+
+  // Estimate radius per peak: inlier-distance mean. An inlier is a
+  // candidate triangle whose normal-line passes within ±cellSize of the
+  // peak point (perpendicular distance) AND whose distance from the peak
+  // is within the radii-sample range.
+  const results: DetectedHole[] = [];
+  for (const peak of peaks) {
+    let radiusSum = 0;
+    let inlierCount = 0;
+    for (const c of candidates) {
+      // Perpendicular distance from peak to the normal-line through c.
+      // Line passes through (c.cx, c.cy) with direction (c.nx, c.ny);
+      // perpendicular distance = |(peak - c) × direction|.
+      const dx = peak.cx - c.cx;
+      const dy = peak.cy - c.cy;
+      const cross = Math.abs(dx * c.ny - dy * c.nx);
+      if (cross > cellSize) continue;
+      const along = Math.sqrt(dx * dx + dy * dy);
+      if (along < 0.5 || along > radii[radii.length - 1]! + cellSize) continue;
+      radiusSum += along;
+      inlierCount++;
+    }
+    if (inlierCount >= 6) {
+      results.push({
+        cx: peak.cx,
+        cy: peak.cy,
+        diameter: 2 * (radiusSum / inlierCount),
+        voteCount: peak.voteCount,
+      });
+    }
+  }
+
+  // Sort peaks by vote descending for stable output.
+  results.sort((a, b) => b.voteCount - a.voteCount);
+  return results;
+}
+
 /**
  * X5 — compute mesh surface area (sum of triangle areas, mm²).
  *

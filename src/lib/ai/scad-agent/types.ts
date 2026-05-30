@@ -758,6 +758,12 @@ export interface GeometryStats {
    * count through-holes against the intent's `hole` feature count.
    */
   genus?: number | null;
+  /**
+   * X6 — Z-axis cylindrical hole peaks (from Hough-style XY voting on
+   * perpendicular-to-Z triangles). verify_spec matches each intent
+   * hole's (x, y) against the closest detected peak.
+   */
+  detectedHoles?: Array<{ cx: number; cy: number; diameter: number; voteCount: number }>;
 }
 
 export interface BudgetState {
