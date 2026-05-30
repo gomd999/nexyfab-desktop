@@ -131,7 +131,9 @@ export type ToolName =
   // ─── X1 — spec verification (intent vs measured bbox) ───────────────
   | 'verify_spec'
   // ─── X1 (B-rep parallel) — spec verification for B-rep flows ────────
-  | 'verify_spec_brep';
+  | 'verify_spec_brep'
+  // ─── GD&T tolerance suggester (DimXpert / Auto-dim equivalent) ──────
+  | 'suggest_gdt_for_intent';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */

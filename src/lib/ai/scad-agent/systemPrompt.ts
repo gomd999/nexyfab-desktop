@@ -74,6 +74,11 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    Returns: same critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea, holePositions, fillet, chamfer, threads, wallThickness, intentIssues, brepHandle, brepKind, triangleCount }
    Returns NO_BREP_MESH if the server's B-rep adapter hasn't wired mesh extraction; in that case fall back to brep_to_mesh + the visual review path.
 
+5d. \`suggest_gdt_for_intent\` — Heuristic GD&T tolerance suggester (SolidWorks DimXpert / Fusion 360 Auto-dim equivalent). Given an intent it proposes a sensible default set of frames: a datum seed (A/B/C order), position tolerance on every hole (Ø scaled by process — cnc_mill 0.1mm, fdm 0.3mm, sla 0.15mm, etc.), cylindricity on tapped holes, flatness on the obvious top/end face, perpendicularity between cylinder axis and end face, and parallelism for multi-hole patterns. Call this once after \`add_feature_intent\` for parts headed to manufacturing — review the suggestions with the user, then materialize via add_datum_target + add_gdt_frame. The tool itself does NOT mutate session.gdtFrames — it's a planning step.
+   args: { intent: { shapeId, params, features? }, processForDfm?: 'fdm'|'sla'|'cnc_mill'|'sheet'|'injection_molding'|'die_cast', grade?: 'rough'|'standard'|'precision' }
+   Returns: human-readable summary + meta { suggestions: [{ source, featureRef, symbol, toleranceMm, datumRefs?, reason }] }
+   \`grade: 'precision'\` halves the tolerances, \`'rough'\` doubles them. Empty list when the intent has no functional features AND the shape isn't a planar/axis primary (sphere, torus) — that's fine, just skip GD&T.
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 

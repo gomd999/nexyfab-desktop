@@ -52,6 +52,7 @@ import type {
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
+import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -597,6 +598,53 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         brepKind: entry.kind,
         triangleCount: meshOut.triangleCount,
       },
+    };
+  };
+
+  // ─── GD&T tolerance suggester ─────────────────────────────────────────
+  // Heuristic v1 — given an intent, propose a sensible default set of
+  // GD&T frames (datum seed + position on holes + flatness on top face +
+  // perpendicularity on cylinder axes, etc.). Pure helper; the agent
+  // reviews suggestions with the user, then materializes via
+  // add_datum_target + add_gdt_frame.
+  const suggest_gdt_for_intent: ToolExecutor = async (args) => {
+    const a = args as {
+      intent?: unknown;
+      processForDfm?: unknown;
+      grade?: unknown;
+    };
+    if (!a.intent || typeof a.intent !== 'object') {
+      return {
+        ok: false,
+        error: 'suggest_gdt_for_intent requires { intent: { shapeId, params, features? }, processForDfm?, grade? }',
+        code: 'BAD_ARGS',
+      };
+    }
+    const intentObj = a.intent as { shapeId?: unknown };
+    if (typeof intentObj.shapeId !== 'string') {
+      return { ok: false, error: 'intent.shapeId must be a string', code: 'BAD_ARGS' };
+    }
+    const opts: SuggestGdtOptions = {};
+    if (typeof a.processForDfm === 'string') {
+      const allowed: SuggestGdtOptions['processForDfm'][] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+      if ((allowed as string[]).includes(a.processForDfm)) {
+        opts.processForDfm = a.processForDfm as SuggestGdtOptions['processForDfm'];
+      }
+    }
+    if (typeof a.grade === 'string') {
+      const allowedGrade: SuggestGdtOptions['grade'][] = ['rough', 'standard', 'precision'];
+      if ((allowedGrade as string[]).includes(a.grade)) {
+        opts.grade = a.grade as SuggestGdtOptions['grade'];
+      }
+    }
+    const suggestions: SuggestedGdtFrame[] = suggestGdtForIntent(
+      a.intent as import('../../openscad-render/intentToScad').IntentInput,
+      opts,
+    );
+    return {
+      ok: true,
+      output: formatSuggestions(suggestions),
+      meta: { suggestions },
     };
   };
 
@@ -2213,6 +2261,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     verify_spec,
     // X1 (B-rep parallel) — same 10-layer chain driven from a B-rep handle
     verify_spec_brep,
+    // GD&T tolerance suggester (DimXpert / Auto-dim equivalent)
+    suggest_gdt_for_intent,
   };
 }
 
