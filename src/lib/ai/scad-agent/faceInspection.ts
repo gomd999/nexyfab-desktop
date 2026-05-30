@@ -827,6 +827,185 @@ export interface HoleCountMismatch {
   delta: number;
 }
 
+// ─── Phase X11 — Minimum wall thickness sampling (DFM gate) ───────────────
+
+export interface MinWallThicknessStats {
+  /** Smallest wall thickness (mm) sampled across the mesh. Infinity when
+   *  no sample produced an inward hit (e.g. convex solid like a sphere). */
+  minMm: number;
+  /** Mean wall thickness across samples that DID have an inward hit. */
+  meanMm: number;
+  /** How many triangle centroids were sampled. Capped per `opts.maxSamples`. */
+  sampleCount: number;
+  /** Fraction (0..1) of samples that produced any inward intersection.
+   *  Low values indicate a mostly-convex shape (no opposing inner wall). */
+  inlierFraction: number;
+}
+
+export interface ComputeMinWallThicknessOptions {
+  /** Hard cap on triangle samples; mesh is strided when larger. Default 2000. */
+  maxSamples?: number;
+  /** Inward offset (mm) used when seeding the ray to avoid self-hit.
+   *  Default 1e-4 mm — well under any practical CAD wall. */
+  rayOffsetMm?: number;
+}
+
+const DEFAULT_MAX_WALL_SAMPLES = 2000;
+const DEFAULT_WALL_RAY_OFFSET_MM = 1e-4;
+
+/**
+ * v1 — sample the local wall thickness across the mesh by casting an inward
+ * ray from each triangle centroid. The first intersection distance is the
+ * local wall thickness at that point. Used to gate "wall too thin for the
+ * declared manufacturing process" (e.g. 0.3 mm walls on an FDM print where
+ * the floor is 0.8 mm).
+ *
+ * Strategy:
+ *   1. Stride triangles down to ≤ maxSamples so a huge mesh doesn't OOM.
+ *   2. Per sample: compute centroid + outward face normal (skip degenerate).
+ *   3. Cast ray from (centroid - normal * offset) along -normal against the
+ *      SAME mesh using three-mesh-bvh (or THREE.Raycaster fallback).
+ *   4. First hit distance = local wall thickness.
+ *   5. Aggregate: min, mean, sample count, fraction-of-samples-with-a-hit.
+ *
+ * Convex shapes never produce an inward hit → all samples miss, returns
+ * { minMm: Infinity, meanMm: 0, sampleCount: 0, inlierFraction: 0 }. The
+ * verify check treats that as "skipped — no shell to measure".
+ *
+ * three-mesh-bvh is preferred for speed (O(log n) ray queries); when it
+ * isn't loadable the function falls back to plain THREE.Raycaster which
+ * is correct but O(n) per sample.
+ */
+export async function computeMinWallThickness(
+  geometry: THREE.BufferGeometry,
+  opts: ComputeMinWallThicknessOptions = {},
+): Promise<MinWallThicknessStats> {
+  const positions = geometry.attributes.position;
+  if (!positions || positions.count < 3) {
+    return { minMm: Infinity, meanMm: 0, sampleCount: 0, inlierFraction: 0 };
+  }
+
+  const THREE = await import('three');
+  const indexAttr = geometry.index;
+  const posArr = positions.array as ArrayLike<number>;
+  const triCount = indexAttr
+    ? Math.floor(indexAttr.count / 3)
+    : Math.floor(posArr.length / 9);
+  if (triCount === 0) {
+    return { minMm: Infinity, meanMm: 0, sampleCount: 0, inlierFraction: 0 };
+  }
+
+  const maxSamples = Math.max(1, opts.maxSamples ?? DEFAULT_MAX_WALL_SAMPLES);
+  const offset = opts.rayOffsetMm ?? DEFAULT_WALL_RAY_OFFSET_MM;
+  const stride = Math.max(1, Math.ceil(triCount / maxSamples));
+
+  // Try three-mesh-bvh for fast raycasting; fall back to THREE.Raycaster.
+  // Using a Mesh wrapper lets us drive either backend through the same
+  // raycaster.intersectObject(mesh) entry point.
+  type IntersectionLite = { distance: number };
+  let target: THREE.Mesh;
+  let useBvh = false;
+  try {
+    const bvhMod = await import('three-mesh-bvh') as {
+      MeshBVH?: new (g: THREE.BufferGeometry) => unknown;
+      acceleratedRaycast?: (
+        this: THREE.Mesh,
+        raycaster: THREE.Raycaster,
+        intersects: THREE.Intersection[],
+      ) => void;
+    };
+    if (bvhMod.MeshBVH && bvhMod.acceleratedRaycast) {
+      // Attach BVH + accelerated raycast to a clone so we don't mutate caller's geometry.
+      const g = geometry.clone();
+      const bvh = new bvhMod.MeshBVH(g);
+      (g as unknown as { boundsTree: unknown }).boundsTree = bvh;
+      // DoubleSide material so the raycaster reports hits regardless of
+      // which side of the triangle the ray strikes (inward rays from a
+      // centroid hit the BACK of the opposite face — front-only culling
+      // would silently drop every sample).
+      const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      target = new THREE.Mesh(g, mat);
+      (target as unknown as { raycast: typeof bvhMod.acceleratedRaycast }).raycast = bvhMod.acceleratedRaycast;
+      useBvh = true;
+    } else {
+      const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      target = new THREE.Mesh(geometry, mat);
+    }
+  } catch {
+    const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    target = new THREE.Mesh(geometry, mat);
+  }
+  void useBvh;
+  const raycaster = new THREE.Raycaster();
+  // Raycaster only checks far/near against parameter `far`; leave default.
+
+  let minMm = Infinity;
+  let hitSum = 0;
+  let hitCount = 0;
+  let sampleCount = 0;
+
+  const tmpA = new THREE.Vector3();
+  const tmpB = new THREE.Vector3();
+  const tmpC = new THREE.Vector3();
+  const edge1 = new THREE.Vector3();
+  const edge2 = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  const centroid = new THREE.Vector3();
+  const origin = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const hitBuf: IntersectionLite[] = [];
+
+  for (let t = 0; t < triCount; t += stride) {
+    let i0: number, i1: number, i2: number;
+    if (indexAttr) {
+      const idxArr = indexAttr.array as ArrayLike<number>;
+      i0 = idxArr[t * 3 + 0]! * 3;
+      i1 = idxArr[t * 3 + 1]! * 3;
+      i2 = idxArr[t * 3 + 2]! * 3;
+    } else {
+      i0 = t * 9;
+      i1 = t * 9 + 3;
+      i2 = t * 9 + 6;
+    }
+    tmpA.set(posArr[i0]!, posArr[i0 + 1]!, posArr[i0 + 2]!);
+    tmpB.set(posArr[i1]!, posArr[i1 + 1]!, posArr[i1 + 2]!);
+    tmpC.set(posArr[i2]!, posArr[i2 + 1]!, posArr[i2 + 2]!);
+    edge1.subVectors(tmpB, tmpA);
+    edge2.subVectors(tmpC, tmpA);
+    normal.crossVectors(edge1, edge2);
+    const nLen = normal.length();
+    if (nLen === 0) continue; // degenerate triangle
+    normal.divideScalar(nLen);
+
+    centroid.copy(tmpA).add(tmpB).add(tmpC).divideScalar(3);
+    // Step inward by offset to avoid registering the source triangle itself.
+    origin.copy(centroid).addScaledVector(normal, -offset);
+    direction.copy(normal).multiplyScalar(-1);
+
+    sampleCount++;
+    raycaster.ray.origin.copy(origin);
+    raycaster.ray.direction.copy(direction);
+    hitBuf.length = 0;
+    const hits = raycaster.intersectObject(target, false, hitBuf as THREE.Intersection[]) as IntersectionLite[];
+    if (hits.length === 0) continue;
+    // first hit is the nearest because three.js / three-mesh-bvh sort by distance.
+    const d = hits[0]!.distance;
+    if (!Number.isFinite(d) || d <= 0) continue;
+    if (d < minMm) minMm = d;
+    hitSum += d;
+    hitCount++;
+  }
+
+  const meanMm = hitCount > 0 ? hitSum / hitCount : 0;
+  const inlierFraction = sampleCount > 0 ? hitCount / sampleCount : 0;
+  return {
+    minMm: hitCount > 0 ? minMm : Infinity,
+    meanMm,
+    sampleCount,
+    inlierFraction,
+  };
+}
+
 /**
  * Compare expected through-hole count (from intent) against detected
  * (from mesh genus). Returns null when detection isn't possible —
