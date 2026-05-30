@@ -83,6 +83,18 @@ export interface SpecVerificationResult {
     holeBreakdown: ExpectedVolume['holeBreakdown'];
     mismatch: VolumeMismatch | null;
   };
+  /**
+   * X5 — surface area check. Populated when caller provided
+   * detectedSurfaceAreaMm2 AND the shape's expected area is closed-form.
+   * Catches hollow-shell artefacts, missing ribs, extra fins — anything
+   * that adds/removes wall area without shifting bbox or volume much.
+   */
+  surfaceArea?: {
+    expectedMm2: number;
+    actualMm2: number;
+    holeBreakdown: ExpectedSurfaceArea['holeBreakdown'];
+    mismatch: SurfaceAreaMismatch | null;
+  };
 }
 
 /** Features that change the bounding box in ways the v1 helper can't
@@ -419,6 +431,213 @@ export interface VolumeMismatch {
   deltaPct: number;
 }
 
+// ─── Phase X5 — Expected surface area ──────────────────────────────────────
+
+export interface ExpectedSurfaceArea {
+  /** Base outer surface area in mm² (the parent before holes). */
+  baseAreaMm2: number;
+  /**
+   * Net contribution from hole features:
+   *   delta = inner cylindrical wall added − two end-cap disks removed.
+   * For a THROUGH hole: removes 2 end-cap disks (top + bottom face)
+   *   and adds the inner cylinder wall (2πr × d).
+   * For a BLIND hole: removes 1 end-cap disk and adds the inner wall
+   *   plus the cylindrical floor end (1 disk).
+   *
+   * Net delta can be positive (blind) or negative (small through-hole
+   * relative to wall), so the helper just returns the algebraic sum.
+   */
+  holeAreaDeltaMm2: number;
+  /** Net expected area = base + hole delta, clamped to >= 0. */
+  expectedTotalMm2: number;
+  /** Per-hole area contributions for diagnostic output. */
+  holeBreakdown: Array<{
+    diameter: number;
+    depth: number;
+    through: boolean;
+    /** Surface area change this hole contributes to the part total. */
+    deltaMm2: number;
+  }>;
+}
+
+/**
+ * Closed-form surface area for the supported shape catalog. Returns null
+ * when the shape isn't covered or a distorting feature is present.
+ *
+ * Hole adjustment math:
+ *   Through-hole (depth ≥ parent_z): -2 × πr² (cap removal) + 2πr × parent_z (inner wall)
+ *   Blind hole  (depth < parent_z):  -1 × πr² (one cap removed) + 2πr × depth + πr² (floor inside) = 2πr × depth
+ *
+ * (Through case removes BOTH caps because the hole pierces the part.
+ *  Blind case removes ONE cap (the entrance) and the cylinder's internal
+ *  closed end contributes a flat disk that cancels nothing.)
+ */
+export function expectedSurfaceAreaFromIntent(intent: IntentInput): ExpectedSurfaceArea | null {
+  if (!intent || typeof intent !== 'object') return null;
+
+  // Same distorting-feature gate.
+  if (Array.isArray(intent.features)) {
+    for (const f of intent.features) {
+      if (f && typeof f === 'object' && BBOX_DISTORTING_FEATURES.has(f.type)) {
+        return null;
+      }
+    }
+  }
+
+  const p = (intent.params ?? {}) as Record<string, unknown>;
+
+  function baseArea(): { area: number; parentDepth: number } | null {
+    switch (intent.shapeId) {
+      case 'box':
+      case 'roundedBox': {
+        const w = num(p.width ?? p.w, 50);
+        const h = num(p.height ?? p.h, 50);
+        const d = num(p.depth ?? p.d, 50);
+        // 2 × (wh + hd + dw)
+        return { area: 2 * (w * h + h * d + d * w), parentDepth: d };
+      }
+      case 'cylinder': {
+        const dia = num(p.diameter ?? p.outerDiameter, 30);
+        const h = num(p.height ?? p.length, 50);
+        const r = dia / 2;
+        // 2πr × h side + 2 × πr² caps
+        return { area: 2 * Math.PI * r * h + 2 * Math.PI * r * r, parentDepth: h };
+      }
+      case 'sphere': {
+        const dia = num(p.diameter, 30);
+        const r = dia / 2;
+        return { area: 4 * Math.PI * r * r, parentDepth: dia };
+      }
+      case 'cone': {
+        const r1 = num(p.bottomDiameter ?? p.diameter, 40) / 2;
+        const r2 = num(p.topDiameter, 0) / 2;
+        const h = num(p.height, 50);
+        const slant = Math.sqrt((r1 - r2) ** 2 + h * h);
+        // Frustum lateral: π(r1+r2)·slant. Caps: π(r1²+r2²).
+        const lateral = Math.PI * (r1 + r2) * slant;
+        const caps = Math.PI * (r1 * r1 + r2 * r2);
+        return { area: lateral + caps, parentDepth: h };
+      }
+      case 'pipe': {
+        const od = num(p.outerDiameter, 30);
+        const id = num(p.innerDiameter, 20);
+        const h = num(p.length ?? p.height, 50);
+        const rOut = od / 2, rIn = id / 2;
+        // Outer wall + inner wall + 2 ring end-caps
+        return {
+          area: 2 * Math.PI * rOut * h + 2 * Math.PI * rIn * h + 2 * Math.PI * (rOut * rOut - rIn * rIn),
+          parentDepth: h,
+        };
+      }
+      case 'disk': {
+        const dia = num(p.diameter, 60);
+        const t = num(p.thickness, 5);
+        const r = dia / 2;
+        return { area: 2 * Math.PI * r * t + 2 * Math.PI * r * r, parentDepth: t };
+      }
+      case 'washer': {
+        const od = num(p.outerDiameter, 20);
+        const id = num(p.innerDiameter, 8);
+        const t = num(p.thickness, 1.6);
+        const rOut = od / 2, rIn = id / 2;
+        return {
+          area: 2 * Math.PI * rOut * t + 2 * Math.PI * rIn * t + 2 * Math.PI * (rOut * rOut - rIn * rIn),
+          parentDepth: t,
+        };
+      }
+      case 'wedge': {
+        // Triangular prism with right-angle cross-section (w × h × d).
+        // Surface = 2 × (0.5 × w × h) triangular caps + (w + h + hypot(w,h)) × d sides
+        const w = num(p.width, 50);
+        const h = num(p.height, 50);
+        const d = num(p.depth, 50);
+        const hyp = Math.sqrt(w * w + h * h);
+        return { area: w * h + (w + h + hyp) * d, parentDepth: d };
+      }
+      case 'torus': {
+        const major = num(p.majorDiameter, 60) / 2;
+        const tube = num(p.tubeDiameter ?? p.minorDiameter, 10) / 2;
+        // 4π² R r
+        return { area: 4 * Math.PI * Math.PI * major * tube, parentDepth: tube * 2 };
+      }
+      default:
+        return null;
+    }
+  }
+
+  const base = baseArea();
+  if (!base) return null;
+
+  const holeBreakdown: ExpectedSurfaceArea['holeBreakdown'] = [];
+  let holeAreaDeltaMm2 = 0;
+  if (Array.isArray(intent.features)) {
+    for (const f of intent.features) {
+      if (!f || f.type !== 'hole') continue;
+      const params = (f as { params?: Record<string, unknown> }).params ?? {};
+      const dia = num(params.diameter ?? params.holeDiameter, 0);
+      if (dia <= 0) continue;
+      const requestedDepth = num(params.depth, 1000);
+      const through = requestedDepth >= base.parentDepth;
+      const r = dia / 2;
+      let delta: number;
+      if (through) {
+        // -2 caps + inner cylinder wall
+        delta = -2 * Math.PI * r * r + 2 * Math.PI * r * base.parentDepth;
+      } else {
+        // -1 cap + inner wall (the closed end inside contributes +πr², which
+        // exactly cancels the cap that wasn't removed at the entrance)
+        delta = 2 * Math.PI * r * requestedDepth;
+      }
+      holeAreaDeltaMm2 += delta;
+      holeBreakdown.push({
+        diameter: dia,
+        depth: through ? base.parentDepth : requestedDepth,
+        through,
+        deltaMm2: delta,
+      });
+    }
+  }
+
+  const expectedTotalMm2 = Math.max(0, base.area + holeAreaDeltaMm2);
+  return {
+    baseAreaMm2: base.area,
+    holeAreaDeltaMm2,
+    expectedTotalMm2,
+    holeBreakdown,
+  };
+}
+
+export interface SurfaceAreaMismatch {
+  expectedMm2: number;
+  actualMm2: number;
+  deltaMm2: number;
+  deltaPct: number;
+}
+
+/**
+ * Compare expected vs actual surface area. Default tolerance is wider
+ * than volume (max(20 mm², 5%)) because mesh discretization affects
+ * surface area more strongly — a $fn=64 cylinder under-counts area
+ * by ~4% relative to analytic.
+ */
+export function compareSurfaceArea(
+  expectedMm2: number,
+  actualMm2: number,
+  tolMm2: number = 20,
+  tolPct: number = 5,
+): SurfaceAreaMismatch | null {
+  if (expectedMm2 <= 0) return null;
+  const tol = Math.max(tolMm2, (expectedMm2 * tolPct) / 100);
+  const delta = actualMm2 - expectedMm2;
+  if (Math.abs(delta) <= tol) return null;
+  return {
+    expectedMm2,
+    actualMm2,
+    deltaMm2: delta,
+    deltaPct: (delta / expectedMm2) * 100,
+  };
+}
+
 /**
  * Compare expected vs actual volume. Tolerance defaults to max(50 mm³,
  * 3%) — looser than bbox because (a) facet count affects measured
@@ -460,6 +679,11 @@ export interface VerifyAgainstSpecOptions {
   /** Volume-check tolerance overrides (defaults max(50 mm³, 3%)). */
   volumeTolMm3?: number;
   volumeTolPct?: number;
+  /** X5 — measured mesh surface area in mm². Omit to skip the check. */
+  detectedSurfaceAreaMm2?: number;
+  /** Surface-area tolerance overrides (defaults max(20 mm², 5%)). */
+  surfaceTolMm2?: number;
+  surfaceTolPct?: number;
 }
 
 /**
@@ -472,7 +696,7 @@ export function verifyAgainstSpec(
   measured: MeasuredBbox,
   opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
-  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct } = opts;
+  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -519,7 +743,26 @@ export function verifyAgainstSpec(
     }
   }
 
-  const ok = mismatches.length === 0 && !holeCount?.mismatch && !volume?.mismatch;
+  // X5 — surface area check (only when caller provided measured area AND
+  // shape has a closed-form expected area).
+  let surfaceArea: SpecVerificationResult['surfaceArea'];
+  if (typeof detectedSurfaceAreaMm2 === 'number' && detectedSurfaceAreaMm2 > 0) {
+    const exp = expectedSurfaceAreaFromIntent(intent);
+    if (exp) {
+      const mismatch = compareSurfaceArea(exp.expectedTotalMm2, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct);
+      surfaceArea = {
+        expectedMm2: exp.expectedTotalMm2,
+        actualMm2: detectedSurfaceAreaMm2,
+        holeBreakdown: exp.holeBreakdown,
+        mismatch,
+      };
+    }
+  }
+
+  const ok = mismatches.length === 0
+    && !holeCount?.mismatch
+    && !volume?.mismatch
+    && !surfaceArea?.mismatch;
   return {
     ok,
     verifiable: true,
@@ -532,6 +775,7 @@ export function verifyAgainstSpec(
     mismatches,
     ...(holeCount ? { holeCount } : {}),
     ...(volume ? { volume } : {}),
+    ...(surfaceArea ? { surfaceArea } : {}),
   };
 }
 
@@ -552,7 +796,10 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const volLine = result.volume
       ? ` Volume: ${result.volume.actualMm3.toFixed(0)} mm³ (expected ${result.volume.expectedMm3.toFixed(0)}, within tolerance).`
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}`;
+    const areaLine = result.surfaceArea
+      ? ` Surface area: ${result.surfaceArea.actualMm2.toFixed(0)} mm² (expected ${result.surfaceArea.expectedMm2.toFixed(0)}, within tolerance).`
+      : '';
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -580,6 +827,18 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
         .map(h => `Ø${h.diameter}×${h.depth.toFixed(1)}${h.through ? '(through)' : '(blind)'}=${h.volume.toFixed(0)}mm³`)
         .join(', ');
       lines.push(`    intent hole subtraction: ${summary}`);
+    }
+  }
+  if (result.surfaceArea?.mismatch) {
+    const { expectedMm2, actualMm2, deltaMm2, deltaPct } = result.surfaceArea.mismatch;
+    const sign = deltaMm2 >= 0 ? '+' : '';
+    lines.push(
+      `  surface area: expected ${expectedMm2.toFixed(0)} mm², measured ${actualMm2.toFixed(0)} mm² (${sign}${deltaMm2.toFixed(0)} mm², ${sign}${deltaPct.toFixed(1)}%).`,
+    );
+    if (deltaMm2 > 0) {
+      lines.push('    (more wall area than expected — possible hollow shell, extra ribs/fins, or duplicated geometry.)');
+    } else {
+      lines.push('    (less wall area than expected — possible missing wall, missing rib, or merged feature.)');
     }
   }
   lines.push('Re-emit intent with corrected params to fix.');

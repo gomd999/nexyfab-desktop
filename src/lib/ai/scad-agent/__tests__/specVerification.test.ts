@@ -13,6 +13,8 @@ import {
   formatSpecCritique,
   expectedVolumeFromIntent,
   compareVolume,
+  expectedSurfaceAreaFromIntent,
+  compareSurfaceArea,
   type MeasuredBbox,
 } from '../specVerification';
 import type { IntentInput } from '../../../openscad-render/intentToScad';
@@ -479,5 +481,129 @@ describe('Phase X3 — verifyAgainstSpec volume integration', () => {
     const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
     const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
     expect(r.volume).toBeUndefined();
+  });
+});
+
+describe('Phase X5 — expectedSurfaceAreaFromIntent', () => {
+  it('box 50³: 2 × (50² + 50² + 50²) = 15000 mm²', () => {
+    const a = expectedSurfaceAreaFromIntent({ shapeId: 'box', params: { width: 50, height: 50, depth: 50 } });
+    expect(a?.baseAreaMm2).toBeCloseTo(15000, 1);
+    expect(a?.holeAreaDeltaMm2).toBe(0);
+    expect(a?.expectedTotalMm2).toBeCloseTo(15000, 1);
+  });
+
+  it('cylinder Ø20 × 50: 2πrh + 2πr² = π(20·50 + 200)', () => {
+    const a = expectedSurfaceAreaFromIntent({ shapeId: 'cylinder', params: { diameter: 20, height: 50 } });
+    const expected = 2 * Math.PI * 10 * 50 + 2 * Math.PI * 100;
+    expect(a?.baseAreaMm2).toBeCloseTo(expected, 1);
+  });
+
+  it('sphere Ø10: 4πr² = 100π', () => {
+    const a = expectedSurfaceAreaFromIntent({ shapeId: 'sphere', params: { diameter: 10 } });
+    expect(a?.baseAreaMm2).toBeCloseTo(100 * Math.PI, 1);
+  });
+
+  it('through-hole adds 2πr × parent_depth, removes 2 × πr² caps', () => {
+    // Box 50³ with Ø10 through-hole along z (parent_depth = 50)
+    // delta = -2π × 25 + 2π × 5 × 50 = -50π + 500π = 450π
+    const a = expectedSurfaceAreaFromIntent({
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10 } } as never],
+    });
+    expect(a?.holeAreaDeltaMm2).toBeCloseTo(450 * Math.PI, 1);
+    expect(a?.holeBreakdown[0].through).toBe(true);
+    expect(a?.expectedTotalMm2).toBeCloseTo(15000 + 450 * Math.PI, 1);
+  });
+
+  it('blind hole: delta = 2πr × depth (the floor cancels the missing entrance cap)', () => {
+    const a = expectedSurfaceAreaFromIntent({
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { diameter: 10, depth: 20 } } as never],
+    });
+    expect(a?.holeBreakdown[0].through).toBe(false);
+    expect(a?.holeAreaDeltaMm2).toBeCloseTo(2 * Math.PI * 5 * 20, 1);
+  });
+
+  it('returns null for unsupported shape (lBracket)', () => {
+    expect(expectedSurfaceAreaFromIntent({ shapeId: 'lBracket', params: {} })).toBeNull();
+  });
+
+  it('returns null when distorting feature present', () => {
+    const a = expectedSurfaceAreaFromIntent({
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'mirror', axis: 'x' } as never],
+    });
+    expect(a).toBeNull();
+  });
+});
+
+describe('compareSurfaceArea', () => {
+  it('passes within max(20 mm², 5%) tolerance', () => {
+    expect(compareSurfaceArea(15000, 15500)).toBeNull(); // 3.3% < 5%
+  });
+
+  it('flags excess deviation', () => {
+    const m = compareSurfaceArea(15000, 30000);
+    expect(m).not.toBeNull();
+    expect(m?.deltaMm2).toBe(15000);
+    expect(m?.deltaPct).toBeCloseTo(100, 1);
+  });
+
+  it('honors absolute floor (20 mm²)', () => {
+    // 100 mm² × 5% = 5 mm² → floor 20 wins
+    expect(compareSurfaceArea(100, 115)).toBeNull(); // 15 mm² < 20 floor
+    expect(compareSurfaceArea(100, 130)).not.toBeNull(); // 30 mm² > 20 floor
+  });
+});
+
+describe('Phase X5 — verifyAgainstSpec surface area integration', () => {
+  it('passes when measured area matches intent', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedSurfaceAreaMm2: 15000,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.surfaceArea?.mismatch).toBeNull();
+  });
+
+  it('catches hollow-shell artifact: bbox+volume look right but area is 2×', () => {
+    // 50³ cube with all 6 inner walls accidentally generated → 30000 mm²
+    // (almost 2× expected 15000).
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedSurfaceAreaMm2: 30000,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.surfaceArea?.mismatch).not.toBeNull();
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/surface area.*\+15000.*mm²/);
+    expect(text).toMatch(/hollow shell|extra ribs|duplicated/);
+  });
+
+  it('catches missing-wall: area significantly less than expected', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedSurfaceAreaMm2: 10000,
+    });
+    expect(r.ok).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/missing wall|missing rib|merged feature/);
+  });
+
+  it('skips area check when shape unsupported', () => {
+    const intent: IntentInput = { shapeId: 'gear', params: {} };
+    const r = verifyAgainstSpec(intent, bboxFromSize(40, 40, 8), {
+      detectedSurfaceAreaMm2: 5000,
+    });
+    expect(r.surfaceArea).toBeUndefined();
+  });
+
+  it('skips area check when detectedSurfaceAreaMm2 omitted', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
+    expect(r.surfaceArea).toBeUndefined();
   });
 });

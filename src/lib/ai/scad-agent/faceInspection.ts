@@ -324,6 +324,55 @@ export function countThroughHoles(geometry: THREE.BufferGeometry, tolMm?: number
   return computeMeshTopology(geometry, tolMm).totalGenus;
 }
 
+/**
+ * X5 — compute mesh surface area (sum of triangle areas, mm²).
+ *
+ * Used by spec verification to catch errors that bbox + volume + genus
+ * all pass: missing ribs, extra fins, wrong wall counts in a hollow
+ * enclosure. A 50mm cube has expected area 15000 mm²; if the AI
+ * accidentally made a hollow shell (6 outer + 6 inner faces), area
+ * jumps to ~30000 mm² while bbox and volume look almost identical.
+ *
+ * Works on indexed or non-indexed BufferGeometry. Cost O(F).
+ */
+export function computeSurfaceArea(geometry: THREE.BufferGeometry): number {
+  const positions = geometry.attributes.position;
+  if (!positions) return 0;
+  const posArr = positions.array as ArrayLike<number>;
+  const indexAttr = geometry.index;
+
+  let total = 0;
+  const triCount = indexAttr
+    ? Math.floor(indexAttr.count / 3)
+    : Math.floor(posArr.length / 9);
+
+  for (let t = 0; t < triCount; t++) {
+    let i0: number, i1: number, i2: number;
+    if (indexAttr) {
+      const idxArr = indexAttr.array as ArrayLike<number>;
+      i0 = idxArr[t * 3 + 0]! * 3;
+      i1 = idxArr[t * 3 + 1]! * 3;
+      i2 = idxArr[t * 3 + 2]! * 3;
+    } else {
+      i0 = t * 9;
+      i1 = t * 9 + 3;
+      i2 = t * 9 + 6;
+    }
+    const ax = posArr[i0]!,    ay = posArr[i0 + 1]!, az = posArr[i0 + 2]!;
+    const bx = posArr[i1]!,    by = posArr[i1 + 1]!, bz = posArr[i1 + 2]!;
+    const cx = posArr[i2]!,    cy = posArr[i2 + 1]!, cz = posArr[i2 + 2]!;
+    // Edges
+    const ux = bx - ax, uy = by - ay, uz = bz - az;
+    const vx = cx - ax, vy = cy - ay, vz = cz - az;
+    // Cross product magnitude / 2 = triangle area
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    total += 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz);
+  }
+  return total;
+}
+
 export interface HoleCountMismatch {
   expected: number;
   detected: number;

@@ -415,7 +415,12 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     // holes (which preserve genus + bbox) are caught.
     const detectedGenus = session.geometry?.genus;
     const detectedVolumeMm3 = session.geometry?.volume_mm3;
-    const result = verifyAgainstSpec(session.lastIntent, bbox, { detectedGenus, detectedVolumeMm3 });
+    const detectedSurfaceAreaMm2 = session.geometry?.surfaceArea_mm2;
+    const result = verifyAgainstSpec(session.lastIntent, bbox, {
+      detectedGenus,
+      detectedVolumeMm3,
+      detectedSurfaceAreaMm2,
+    });
     const critique = formatSpecCritique(result);
     return {
       ok: true,
@@ -428,6 +433,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         measured: result.measured,
         holeCount: result.holeCount,
         volume: result.volume,
+        surfaceArea: result.surfaceArea,
       },
     };
   };

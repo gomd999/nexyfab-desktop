@@ -29,7 +29,7 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   const { verifyGeneratedModel, formatVerificationCritique } = await import(
     '../../../app/[lang]/shape-generator/analysis/verifyGeneratedModel'
   );
-  const { countThroughHoles } = await import('./faceInspection');
+  const { countThroughHoles, computeSurfaceArea } = await import('./faceInspection');
   const geo = await parseStlBufferToGeometry(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
   const result = verifyGeneratedModel(geo);
   const watertight = result.checks.find(c => c.id === 'watertight')?.pass ?? false;
@@ -39,9 +39,12 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   // X2 — Euler-characteristic through-hole count (null if mesh isn't
   // a single closed manifold; verify_spec suppresses the check then).
   const genus = countThroughHoles(geo);
+  // X5 — surface area for the wall-count / fin / hollow-shell catch.
+  const surfaceArea_mm2 = computeSurfaceArea(geo);
   return {
     triangleCount: result.metrics.triangleCount,
     volume_mm3: result.metrics.volumeMm3,
+    surfaceArea_mm2,
     manifold: watertight && manifoldClean,
     watertight,
     componentCount: result.metrics.componentCount,

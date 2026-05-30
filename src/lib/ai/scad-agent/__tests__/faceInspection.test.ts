@@ -13,6 +13,7 @@ import {
   computeMeshTopology,
   countThroughHoles,
   compareHoleCount,
+  computeSurfaceArea,
 } from '../faceInspection';
 
 /** Build a degenerate-stripped non-indexed BufferGeometry from a list
@@ -296,5 +297,44 @@ describe('countThroughHoles + compareHoleCount', () => {
   it('compareHoleCount reports mismatch with delta', () => {
     expect(compareHoleCount(2, 1)).toEqual({ expected: 2, detected: 1, delta: -1 });
     expect(compareHoleCount(1, 3)).toEqual({ expected: 1, detected: 3, delta: 2 });
+  });
+});
+
+describe('Phase X5 — computeSurfaceArea', () => {
+  it('cube 10³ → 600 mm² (6 × 10²)', () => {
+    const cube = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
+    expect(computeSurfaceArea(cube)).toBeCloseTo(600, 3);
+  });
+
+  it('cube 20³ → 2400 mm²', () => {
+    const cube = new THREE.BoxGeometry(20, 20, 20).toNonIndexed();
+    expect(computeSurfaceArea(cube)).toBeCloseTo(2400, 3);
+  });
+
+  it('cylinder approximates 2πrh + 2πr² (within faceting tolerance)', () => {
+    const cyl = new THREE.CylinderGeometry(5, 5, 20, 64).toNonIndexed();
+    const analytic = 2 * Math.PI * 5 * 20 + 2 * Math.PI * 25;
+    const computed = computeSurfaceArea(cyl);
+    // $fn=64 cylinder undercounts side area by ~2%
+    expect(computed).toBeGreaterThan(analytic * 0.96);
+    expect(computed).toBeLessThan(analytic * 1.02);
+  });
+
+  it('sphere approximates 4πr²', () => {
+    const sph = new THREE.SphereGeometry(5, 32, 16).toNonIndexed();
+    const analytic = 4 * Math.PI * 25;
+    const computed = computeSurfaceArea(sph);
+    expect(computed).toBeGreaterThan(analytic * 0.95);
+    expect(computed).toBeLessThan(analytic * 1.02);
+  });
+
+  it('empty geometry returns 0', () => {
+    expect(computeSurfaceArea(new THREE.BufferGeometry())).toBe(0);
+  });
+
+  it('indexed and non-indexed give the same area', () => {
+    const indexed = new THREE.BoxGeometry(15, 15, 15);
+    const nonIndexed = indexed.clone().toNonIndexed();
+    expect(computeSurfaceArea(indexed)).toBeCloseTo(computeSurfaceArea(nonIndexed), 3);
   });
 });
