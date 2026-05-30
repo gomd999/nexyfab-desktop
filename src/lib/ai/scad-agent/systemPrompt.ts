@@ -64,7 +64,8 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 
 5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions, through-hole count, volume, surface area, multi-axis hole positions, fillet application, AND thread ISO compliance against the measured mesh + intent. If any mismatch is reported ("width: expected 50mm, measured 5mm" / "through-holes: expected 2, detected 1" / "volume: -12566 mm³" / "surface area: +30000 mm² — possible hollow shell" / "hole position: intent (10, 10) — no matching cylindrical feature detected" / "fillet: 12 sharp edges remain" / "thread: Ø8mm uses pitch 0.5mm, ISO 261 coarse for M8 is 1.25mm"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes** — covers all the common failure modes the AI silently produces. Each sub-check is skipped automatically when its prerequisite isn't met.
    args: {}
-   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea, holePositions, fillet, threads }
+   Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea, holePositions, fillet, threads, intentIssues }
+   Note: the \`intentIssues\` sub-check (duplicate / overlapping / obliterating holes) runs even without a mesh — so verify_spec is also useful to call BEFORE render when you've just emitted a new intent and want to fail fast on a logic error.
 
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }

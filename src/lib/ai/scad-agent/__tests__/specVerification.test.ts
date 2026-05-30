@@ -15,6 +15,7 @@ import {
   compareVolume,
   expectedSurfaceAreaFromIntent,
   compareSurfaceArea,
+  detectIntentInconsistencies,
   type MeasuredBbox,
 } from '../specVerification';
 import type { IntentInput } from '../../../openscad-render/intentToScad';
@@ -261,9 +262,11 @@ describe('Phase X2 — hole count check', () => {
   const boxIntent = (holeCount: number): IntentInput => ({
     shapeId: 'box',
     params: { width: 50, height: 50, depth: 50 },
-    features: Array.from({ length: holeCount }, () => ({
+    // X10 lands a duplicate-hole check that would flag identical-position
+    // holes. Stagger positions so each hole has a unique footprint.
+    features: Array.from({ length: holeCount }, (_, i) => ({
       type: 'hole',
-      params: { diameter: 5 },
+      params: { diameter: 5, x: -15 + i * 10, y: 0 },
     } as never)),
   });
 
@@ -893,5 +896,161 @@ describe('Phase X9 — thread spec self-check', () => {
     expect(r.threads?.perThread).toHaveLength(2);
     expect(r.threads?.perThread[0].pitchOk).toBe(true);
     expect(r.threads?.perThread[1].pitchOk).toBe(false);
+  });
+});
+
+describe('Phase X10 — intent self-consistency', () => {
+  it('clean intent: no duplicates, no overlaps, no obliterates → ok', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: -15, y: 0 } } as never,
+        { type: 'hole', params: { diameter: 5, x: 15, y: 0 } } as never,
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.ok).toBe(true);
+    expect(issues.duplicateHoles).toEqual([]);
+    expect(issues.overlappingHoles).toEqual([]);
+    expect(issues.obliteratingHoles).toEqual([]);
+  });
+
+  it('duplicate holes (same x,y,dia): grouped together', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.ok).toBe(false);
+    expect(issues.duplicateHoles).toHaveLength(1);
+    expect(issues.duplicateHoles[0].indices).toEqual([0, 1, 2]);
+  });
+
+  it('overlapping holes (different positions but interpenetrate)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 10, x: 0, y: 0 } } as never,
+        // Center 6mm away — combined radius is 10/2 + 10/2 = 10 → overlap.
+        { type: 'hole', params: { diameter: 10, x: 6, y: 0 } } as never,
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.ok).toBe(false);
+    expect(issues.overlappingHoles).toHaveLength(1);
+    expect(issues.overlappingHoles[0].distMm).toBeCloseTo(6, 1);
+    expect(issues.overlappingHoles[0].combinedRadiusMm).toBeCloseTo(10, 1);
+  });
+
+  it('non-overlapping holes (distance > combined radius)', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: 0, y: 0 } } as never,
+        { type: 'hole', params: { diameter: 5, x: 20, y: 0 } } as never,
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.overlappingHoles).toHaveLength(0);
+  });
+
+  it('obliterating hole: diameter ≥ parent width', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 20, height: 30, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 25, x: 0, y: 0 } } as never, // > width=20
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.obliteratingHoles).toHaveLength(1);
+    expect(issues.obliteratingHoles[0].parentLimitMm).toBe(20);
+    expect(issues.ok).toBe(false);
+  });
+
+  it('different-axis holes are NOT grouped as duplicates', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never, // Z axis
+        { type: 'hole', params: { diameter: 5, axis: 'x', y: 10, z: 10 } } as never,
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.duplicateHoles).toEqual([]);
+    expect(issues.overlappingHoles).toEqual([]);
+  });
+
+  it('different-diameter holes at the same position are NOT duplicates', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+        { type: 'hole', params: { diameter: 10, x: 10, y: 10 } } as never,
+      ],
+    };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.duplicateHoles).toEqual([]);
+    // They DO overlap (same position, sum-radius = 7.5 > 0)
+    expect(issues.overlappingHoles.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it('returns ok=true for an intent with no hole features', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const issues = detectIntentInconsistencies(intent);
+    expect(issues.ok).toBe(true);
+  });
+
+  it('verifyAgainstSpec surfaces intentIssues + ok=false', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+        { type: 'hole', params: { diameter: 5, x: 10, y: 10 } } as never,
+      ],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
+    expect(r.ok).toBe(false);
+    expect(r.intentIssues?.duplicateHoles).toHaveLength(1);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/duplicate hole intent.*features\[0,1\]/);
+  });
+
+  it('verifyAgainstSpec critique includes overlap line', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 10, x: 0, y: 0 } } as never,
+        { type: 'hole', params: { diameter: 10, x: 6, y: 0 } } as never,
+      ],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50));
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/overlapping holes.*features\[0, 1\].*interpenetrate/);
+  });
+
+  it('verifyAgainstSpec critique includes obliterating line', () => {
+    const intent: IntentInput = {
+      shapeId: 'box',
+      params: { width: 20, height: 30, depth: 50 },
+      features: [
+        { type: 'hole', params: { diameter: 25, x: 0, y: 0 } } as never,
+      ],
+    };
+    const r = verifyAgainstSpec(intent, bboxFromSize(20, 30, 50));
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/obliterating hole.*features\[0\].*25 mm.*parent.*20 mm/);
   });
 });

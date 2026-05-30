@@ -441,6 +441,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         holePositions: result.holePositions,
         fillet: result.fillet,
         threads: result.threads,
+        intentIssues: result.intentIssues,
       },
     };
   };

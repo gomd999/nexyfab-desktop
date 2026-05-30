@@ -152,6 +152,37 @@ export interface SpecVerificationResult {
     /** True iff every thread is either ISO-compliant or non-standard. */
     allOk: boolean;
   };
+  /**
+   * X10 — intent self-consistency. Pure intent-side check that runs
+   * before render and catches the AI emitting nonsensical combinations:
+   * duplicate hole positions, overlapping holes, a hole that obliterates
+   * the parent body, thread features without a matching hole footprint.
+   */
+  intentIssues?: {
+    duplicateHoles: Array<{
+      /** Indices into intent.features (filtered to type='hole') of duplicate set. */
+      indices: number[];
+      axis: 'x' | 'y' | 'z';
+      x: number;
+      y: number;
+      diameter: number;
+    }>;
+    overlappingHoles: Array<{
+      indices: [number, number];
+      axis: 'x' | 'y' | 'z';
+      distMm: number;
+      combinedRadiusMm: number;
+    }>;
+    /** Holes whose diameter ≥ parent's smallest in-plane dimension. */
+    obliteratingHoles: Array<{
+      index: number;
+      diameter: number;
+      parentLimitMm: number;
+    }>;
+    /** True iff every check passed (no duplicates, no overlaps, no
+     *  obliterating holes). */
+    ok: boolean;
+  };
 }
 
 /** Features that change the bounding box in ways the v1 helper can't
@@ -327,6 +358,154 @@ export function compareBbox(
 export function countIntentHoles(intent: IntentInput): number {
   if (!Array.isArray(intent.features)) return 0;
   return intent.features.filter((f): f is IntentFeature => !!f && f.type === 'hole').length;
+}
+
+// ─── Phase X10 — Intent self-consistency ──────────────────────────────────
+
+/** Two holes are considered "duplicates" when their centers coincide
+ *  within this tolerance AND the diameters are within 0.1 mm. */
+const DUPLICATE_HOLE_POS_TOL_MM = 0.5;
+const DUPLICATE_HOLE_DIA_TOL_MM = 0.1;
+
+/** Helper: extract a hole's (axis, x, y, diameter) for self-consistency
+ *  checks. Axis convention same as X7 — defaults 'z'. */
+function holeFootprint(f: IntentFeature): { axis: 'x' | 'y' | 'z'; x: number; y: number; diameter: number } | null {
+  if (f.type !== 'hole') return null;
+  const params = (f as { params?: Record<string, unknown> }).params ?? {};
+  const axisHint = params.axis;
+  const axis: 'x' | 'y' | 'z' = (axisHint === 'x' || axisHint === 'y') ? axisHint : 'z';
+  let x: number, y: number;
+  if (axis === 'z') {
+    x = num(params.x ?? params.posX, 0);
+    y = num(params.y ?? params.posY, 0);
+  } else if (axis === 'x') {
+    x = num(params.y ?? params.posY, 0);
+    y = num(params.z ?? params.posZ, 0);
+  } else {
+    x = num(params.x ?? params.posX, 0);
+    y = num(params.z ?? params.posZ, 0);
+  }
+  const diameter = num(params.diameter ?? params.holeDiameter, 0);
+  return { axis, x, y, diameter };
+}
+
+/** Parent's in-plane "min dimension" by shape — the smallest extent the
+ *  hole sits inside before it punches through. Returns null for shapes
+ *  whose parent footprint isn't a simple rectangle/disk. */
+function parentInPlaneMinMm(intent: IntentInput): number | null {
+  const p = (intent.params ?? {}) as Record<string, unknown>;
+  switch (intent.shapeId) {
+    case 'box':
+    case 'roundedBox': {
+      const w = num(p.width ?? p.w, 50);
+      const h = num(p.height ?? p.h, 50);
+      return Math.min(w, h);
+    }
+    case 'cylinder':
+    case 'disk':
+    case 'pipe':
+    case 'washer':
+    case 'flange': {
+      const dia = num(p.diameter ?? p.outerDiameter, 30);
+      return dia;
+    }
+    case 'sphere': {
+      return num(p.diameter, 30);
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Pre-render intent validation. Catches AI errors that would otherwise
+ * waste render budget: duplicate hole positions, overlapping holes, and
+ * holes that would obliterate the parent. All pure intent inspection —
+ * no mesh required.
+ */
+export function detectIntentInconsistencies(intent: IntentInput): NonNullable<SpecVerificationResult['intentIssues']> {
+  const duplicateHoles: NonNullable<SpecVerificationResult['intentIssues']>['duplicateHoles'] = [];
+  const overlappingHoles: NonNullable<SpecVerificationResult['intentIssues']>['overlappingHoles'] = [];
+  const obliteratingHoles: NonNullable<SpecVerificationResult['intentIssues']>['obliteratingHoles'] = [];
+
+  if (!Array.isArray(intent.features)) {
+    return { duplicateHoles, overlappingHoles, obliteratingHoles, ok: true };
+  }
+  const holes = intent.features
+    .map((f, idx) => ({ f, idx, fp: f ? holeFootprint(f) : null }))
+    .filter((x): x is { f: IntentFeature; idx: number; fp: NonNullable<ReturnType<typeof holeFootprint>> } => !!x.fp);
+
+  // Duplicate detection — union-find style grouping.
+  const groupedAsDuplicate = new Set<number>();
+  for (let i = 0; i < holes.length; i++) {
+    if (groupedAsDuplicate.has(i)) continue;
+    const dups: number[] = [holes[i]!.idx];
+    for (let j = i + 1; j < holes.length; j++) {
+      if (groupedAsDuplicate.has(j)) continue;
+      const a = holes[i]!.fp, b = holes[j]!.fp;
+      if (a.axis !== b.axis) continue;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const diaDelta = Math.abs(a.diameter - b.diameter);
+      if (dist <= DUPLICATE_HOLE_POS_TOL_MM && diaDelta <= DUPLICATE_HOLE_DIA_TOL_MM) {
+        dups.push(holes[j]!.idx);
+        groupedAsDuplicate.add(j);
+      }
+    }
+    if (dups.length >= 2) {
+      groupedAsDuplicate.add(i);
+      duplicateHoles.push({
+        indices: dups,
+        axis: holes[i]!.fp.axis,
+        x: holes[i]!.fp.x,
+        y: holes[i]!.fp.y,
+        diameter: holes[i]!.fp.diameter,
+      });
+    }
+  }
+
+  // Overlap detection (pairs not classified as duplicates) — distance
+  // less than the sum of the two radii means the cylinders interpenetrate.
+  for (let i = 0; i < holes.length; i++) {
+    if (groupedAsDuplicate.has(i)) continue;
+    for (let j = i + 1; j < holes.length; j++) {
+      if (groupedAsDuplicate.has(j)) continue;
+      const a = holes[i]!.fp, b = holes[j]!.fp;
+      if (a.axis !== b.axis) continue;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const combinedR = (a.diameter + b.diameter) / 2;
+      // dist == 0 is the duplicate case (handled above). Overlap is
+      // strictly 0 < dist < combinedR.
+      if (dist > DUPLICATE_HOLE_POS_TOL_MM && dist < combinedR) {
+        overlappingHoles.push({
+          indices: [holes[i]!.idx, holes[j]!.idx],
+          axis: a.axis,
+          distMm: dist,
+          combinedRadiusMm: combinedR,
+        });
+      }
+    }
+  }
+
+  // Obliterating-hole detection — hole diameter ≥ parent's in-plane min.
+  const parentMin = parentInPlaneMinMm(intent);
+  if (parentMin !== null) {
+    for (const { fp, idx } of holes) {
+      if (fp.diameter >= parentMin) {
+        obliteratingHoles.push({
+          index: idx,
+          diameter: fp.diameter,
+          parentLimitMm: parentMin,
+        });
+      }
+    }
+  }
+
+  return {
+    duplicateHoles,
+    overlappingHoles,
+    obliteratingHoles,
+    ok: duplicateHoles.length === 0 && overlappingHoles.length === 0 && obliteratingHoles.length === 0,
+  };
 }
 
 // ─── Phase X3 — Expected volume from intent ────────────────────────────────
@@ -970,13 +1149,19 @@ export function verifyAgainstSpec(
     }
   }
 
+  // X10 — intent self-consistency. Always runs (pure intent inspection,
+  // no detection prerequisite). When the intent has no hole features
+  // the issue lists come back empty and ok=true.
+  const intentIssues = detectIntentInconsistencies(intent);
+
   const ok = mismatches.length === 0
     && !holeCount?.mismatch
     && !volume?.mismatch
     && !surfaceArea?.mismatch
     && (holePositions ? holePositions.allMatched : true)
     && (fillet ? fillet.applied : true)
-    && (threads ? threads.allOk : true);
+    && (threads ? threads.allOk : true)
+    && intentIssues.ok;
   return {
     ok,
     verifiable: true,
@@ -993,6 +1178,7 @@ export function verifyAgainstSpec(
     ...(holePositions ? { holePositions } : {}),
     ...(fillet ? { fillet } : {}),
     ...(threads ? { threads } : {}),
+    ...(intentIssues.ok ? {} : { intentIssues }),
   };
 }
 
@@ -1096,6 +1282,23 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
       if (t.pitchOk) continue;
       lines.push(
         `  thread: Ø${t.diameter}mm thread uses pitch ${t.requestedPitch}mm, but ISO 261 coarse pitch for ${t.isoStandard} is ${t.expectedPitch}mm. Either fix the pitch or change diameter.`,
+      );
+    }
+  }
+  if (result.intentIssues) {
+    for (const dup of result.intentIssues.duplicateHoles) {
+      lines.push(
+        `  duplicate hole intent: features[${dup.indices.join(',')}] all declare Ø${dup.diameter} at axis-${dup.axis} (${dup.x.toFixed(1)}, ${dup.y.toFixed(1)}). Keep one.`,
+      );
+    }
+    for (const ov of result.intentIssues.overlappingHoles) {
+      lines.push(
+        `  overlapping holes: features[${ov.indices[0]}, ${ov.indices[1]}] interpenetrate (axis-${ov.axis} centers ${ov.distMm.toFixed(2)} mm apart, combined radius ${ov.combinedRadiusMm.toFixed(2)} mm). Move or merge.`,
+      );
+    }
+    for (const ob of result.intentIssues.obliteratingHoles) {
+      lines.push(
+        `  obliterating hole: features[${ob.index}] diameter ${ob.diameter} mm ≥ parent's min in-plane dimension ${ob.parentLimitMm} mm. The hole consumes the parent body.`,
       );
     }
   }
