@@ -448,6 +448,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         surfaceArea: result.surfaceArea,
         holePositions: result.holePositions,
         fillet: result.fillet,
+        chamfer: result.chamfer,
         threads: result.threads,
         wallThickness: result.wallThickness,
         intentIssues: result.intentIssues,

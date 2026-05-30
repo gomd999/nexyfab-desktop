@@ -166,6 +166,19 @@ export interface SpecVerificationResult {
     applied: boolean;
   };
   /**
+   * X12 — chamfer application check. Populated when caller passed
+   * detectedDihedralStats AND the intent declares at least one `chamfer`
+   * feature. A chamfered part has many edges at ~45° dihedrals (flat
+   * angled faces replacing 90° corners) AND low sharpEdgeCount.
+   */
+  chamfer?: {
+    expectedChamferCount: number;
+    sharpEdgeCount: number;
+    chamferEdgeCount: number;
+    /** True when sharpEdgeCount ≤ tol AND chamferEdgeCount ≥ minChamferEdges. */
+    applied: boolean;
+  };
+  /**
    * X9 — thread spec self-check (intent-side, no mesh needed).
    * Populated when intent declares at least one `thread` feature.
    * Each thread's pitch is compared to the ISO 261 coarse-thread pitch
@@ -981,16 +994,22 @@ export interface VerifyAgainstSpecOptions {
   detectedHoles?: Array<{ axis?: 'x' | 'y' | 'z'; cx: number; cy: number; diameter: number }>;
   /** Position-match tolerance in mm (default 2 mm). */
   holePosTolMm?: number;
-  /** X8 — dihedral statistics (from computeDihedralStats). When omitted
-   *  OR when the intent has no `fillet` feature, the fillet check is
-   *  skipped. */
+  /** X8 / X12 — dihedral statistics (from computeDihedralStats). When
+   *  omitted OR when the intent has no fillet/chamfer features, the
+   *  matching sub-check is skipped. */
   detectedDihedralStats?: {
     sharpEdgeCount: number;
     maxDihedralDeg: number;
+    /** X12 — edges with dihedral in the chamfer range (default 35-55°). */
+    chamferEdgeCount?: number;
   };
   /** Sharp-edge tolerance for the fillet check (default 2 — allow 2
    *  borderline edges before declaring "fillet not applied"). */
   filletSharpEdgeTolerance?: number;
+  /** X12 — minimum chamfer-range edges required before the chamfer is
+   *  considered "applied" (default 4 — one per cube edge produces 12,
+   *  but minkowski-with-cube adds many extras). */
+  chamferMinEdges?: number;
   /** X11 — sampled minimum wall thickness in mm. null when the mesh
    *  produced no inward hits (convex solid). When undefined, the entire
    *  wall-thickness check is skipped. */
@@ -1015,7 +1034,7 @@ export function verifyAgainstSpec(
   measured: MeasuredBbox,
   opts: VerifyAgainstSpecOptions = {},
 ): SpecVerificationResult {
-  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm, detectedDihedralStats, filletSharpEdgeTolerance, detectedMinWallMm, processForDfm, processWallMinOverrideMm } = opts;
+  const { tolMm, tolPct, detectedGenus, detectedVolumeMm3, volumeTolMm3, volumeTolPct, detectedSurfaceAreaMm2, surfaceTolMm2, surfaceTolPct, detectedHoles, holePosTolMm, detectedDihedralStats, filletSharpEdgeTolerance, chamferMinEdges, detectedMinWallMm, processForDfm, processWallMinOverrideMm } = opts;
   const expected = expectedBboxFromIntent(intent);
   if (!expected) {
     return {
@@ -1214,6 +1233,29 @@ export function verifyAgainstSpec(
     }
   }
 
+  // X12 — chamfer application check. Distinct from fillet: looks for a
+  // density of dihedrals in the chamfer range (~45°) instead of smoothed
+  // curves. Skipped without dihedral stats OR without a chamfer feature.
+  let chamfer: SpecVerificationResult['chamfer'];
+  if (detectedDihedralStats && Array.isArray(intent.features)) {
+    const expectedChamferCount = intent.features.filter(
+      (f): f is IntentFeature => !!f && f.type === 'chamfer',
+    ).length;
+    if (expectedChamferCount > 0) {
+      const sharpTol = filletSharpEdgeTolerance ?? 2;
+      const minChamferEdges = chamferMinEdges ?? 4;
+      const chamferEdgeCount = detectedDihedralStats.chamferEdgeCount ?? 0;
+      chamfer = {
+        expectedChamferCount,
+        sharpEdgeCount: detectedDihedralStats.sharpEdgeCount,
+        chamferEdgeCount,
+        applied:
+          detectedDihedralStats.sharpEdgeCount <= sharpTol
+          && chamferEdgeCount >= minChamferEdges,
+      };
+    }
+  }
+
   // X11 — Wall thickness DFM gate. Skips entirely when either input is
   // missing OR the process minimum is 0 (sheet metal — wall = sheet gauge
   // by definition, nothing to check from the mesh).
@@ -1253,6 +1295,7 @@ export function verifyAgainstSpec(
     && !surfaceArea?.mismatch
     && (holePositions ? holePositions.allMatched : true)
     && (fillet ? fillet.applied : true)
+    && (chamfer ? chamfer.applied : true)
     && (threads ? threads.allOk : true)
     && (wallThickness ? wallThickness.pass : true)
     && intentIssues.ok;
@@ -1271,6 +1314,7 @@ export function verifyAgainstSpec(
     ...(surfaceArea ? { surfaceArea } : {}),
     ...(holePositions ? { holePositions } : {}),
     ...(fillet ? { fillet } : {}),
+    ...(chamfer ? { chamfer } : {}),
     ...(threads ? { threads } : {}),
     ...(wallThickness ? { wallThickness } : {}),
     ...(intentIssues.ok ? {} : { intentIssues }),
@@ -1303,6 +1347,9 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
     const filletLine = result.fillet
       ? ` Fillet: applied (sharp edges ${result.fillet.sharpEdgeCount}, max dihedral ${result.fillet.maxDihedralDeg.toFixed(1)}°).`
       : '';
+    const chamferLine = result.chamfer
+      ? ` Chamfer: applied (${result.chamfer.chamferEdgeCount} chamfer-range edges, ${result.chamfer.sharpEdgeCount} sharp).`
+      : '';
     const threadLine = result.threads
       ? ` Threads: ${result.threads.perThread.length} thread(s) verified against ISO 261.`
       : '';
@@ -1311,7 +1358,7 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
           ? ` Wall thickness: skipped (convex solid, no shell to sample).`
           : ` Wall thickness: ${result.wallThickness.minDetectedMm.toFixed(2)} mm (≥ ${result.wallThickness.processMinMm.toFixed(1)} for ${result.wallThickness.processMatched}).`)
       : '';
-    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}${threadLine}${wallLine}`;
+    return `spec ok: measured ${m.wMm.toFixed(2)} × ${m.hMm.toFixed(2)} × ${m.dMm.toFixed(2)} mm matches intent within tolerance.${holeLine}${volLine}${areaLine}${posLine}${filletLine}${chamferLine}${threadLine}${wallLine}`;
   }
   const lines: string[] = ['spec mismatch:'];
   for (const m of result.mismatches) {
@@ -1375,6 +1422,11 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
   if (result.fillet && !result.fillet.applied) {
     lines.push(
       `  fillet: intent declares ${result.fillet.expectedFilletCount} fillet feature(s) but the mesh still has ${result.fillet.sharpEdgeCount} sharp edges (max dihedral ${result.fillet.maxDihedralDeg.toFixed(1)}°). The fillet operation likely didn't take effect (radius too small, or feature was overwritten by a later op).`,
+    );
+  }
+  if (result.chamfer && !result.chamfer.applied) {
+    lines.push(
+      `  chamfer: intent declares ${result.chamfer.expectedChamferCount} chamfer feature(s) but the mesh shows only ${result.chamfer.chamferEdgeCount} chamfer-range edges and ${result.chamfer.sharpEdgeCount} sharp edges remain. Chamfer likely didn't take effect (distance too small, or overwritten).`,
     );
   }
   if (result.threads && !result.threads.allOk) {

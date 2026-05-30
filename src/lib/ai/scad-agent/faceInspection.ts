@@ -634,6 +634,16 @@ export interface DihedralStats {
   curvedEdgeCount: number;
   /** Edges with dihedral < flatThresholdDeg (coplanar neighbors). */
   flatEdgeCount: number;
+  /**
+   * X12 — Edges with dihedral in [chamferMinDeg, chamferMaxDeg]
+   * (default 35-55°). A chamfer replaces a sharp 90° corner with a
+   * single flat angled face, producing exactly this dihedral signature.
+   * Distinguishes from fillet (many small curved dihedrals) at the
+   * verify_spec layer. Note: this range overlaps with the default
+   * curved bucket (3-30°) only when callers tighten sharpThresholdDeg;
+   * by default 35-55° is its own bucket beyond curved.
+   */
+  chamferEdgeCount: number;
   /** Maximum dihedral observed across all manifold edges, in degrees. */
   maxDihedralDeg: number;
   /** Mean dihedral, in degrees (weighted equally across edges). */
@@ -647,6 +657,10 @@ export interface ComputeDihedralStatsOptions {
   flatThresholdDeg?: number;
   /** Above this, an edge is "sharp" (90°-ish corner). Default 30°. */
   sharpThresholdDeg?: number;
+  /** X12 — Chamfer dihedral lower bound (default 35°). */
+  chamferMinDeg?: number;
+  /** X12 — Chamfer dihedral upper bound (default 55°). */
+  chamferMaxDeg?: number;
 }
 
 /**
@@ -674,6 +688,7 @@ export function computeDihedralStats(
       sharpEdgeCount: 0,
       curvedEdgeCount: 0,
       flatEdgeCount: 0,
+      chamferEdgeCount: 0,
       maxDihedralDeg: 0,
       meanDihedralDeg: 0,
     };
@@ -683,6 +698,8 @@ export function computeDihedralStats(
   const tolMm = opts.tolMm ?? DEFAULT_DEDUP_TOL_MM;
   const flatThr = opts.flatThresholdDeg ?? 3;
   const sharpThr = opts.sharpThresholdDeg ?? 30;
+  const chamferMin = opts.chamferMinDeg ?? 35;
+  const chamferMax = opts.chamferMaxDeg ?? 55;
 
   // Dedup vertices so triangles that "share" a position via float-equal
   // verts are recognised as edge-adjacent.
@@ -747,7 +764,7 @@ export function computeDihedralStats(
     }
   }
 
-  let total = 0, sharp = 0, curved = 0, flat = 0;
+  let total = 0, sharp = 0, curved = 0, flat = 0, chamfer = 0;
   let maxDeg = 0, sumDeg = 0;
   for (const list of edgeNormals.values()) {
     if (list.length !== 2) continue; // skip boundary / non-manifold
@@ -760,6 +777,10 @@ export function computeDihedralStats(
     if (angleDeg >= sharpThr) sharp++;
     else if (angleDeg >= flatThr) curved++;
     else flat++;
+    // X12 — chamfer signature lives in a narrow band (default 35-55°);
+    // independent bucket from sharp/curved so callers can read it
+    // directly without re-classifying.
+    if (angleDeg >= chamferMin && angleDeg <= chamferMax) chamfer++;
   }
 
   return {
@@ -767,6 +788,7 @@ export function computeDihedralStats(
     sharpEdgeCount: sharp,
     curvedEdgeCount: curved,
     flatEdgeCount: flat,
+    chamferEdgeCount: chamfer,
     maxDihedralDeg: maxDeg,
     meanDihedralDeg: total > 0 ? sumDeg / total : 0,
   };

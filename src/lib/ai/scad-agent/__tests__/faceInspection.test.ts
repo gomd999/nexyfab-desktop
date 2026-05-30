@@ -638,5 +638,43 @@ describe('Phase X8 — computeDihedralStats', () => {
     const stats = computeDihedralStats(new THREE.BufferGeometry());
     expect(stats.totalManifoldEdges).toBe(0);
     expect(stats.sharpEdgeCount).toBe(0);
+    expect(stats.chamferEdgeCount).toBe(0);
+  });
+
+  it('X12 — cube has no chamfer-range edges (90° corners, not 45°)', () => {
+    const cube = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
+    const stats = computeDihedralStats(cube);
+    expect(stats.chamferEdgeCount).toBe(0); // all sharps are 90°
+  });
+
+  it('X12 — synthetic 45° edge counts as chamfer', () => {
+    // Two triangles sharing edge (0,0,0)-(1,0,0), with normals 45° apart.
+    // Triangle 1: (0,0,0),(1,0,0),(0,1,0) → u=(1,0,0) v=(0,1,0) → n=(0,0,1).
+    // Triangle 2: (0,0,0),(0,-c,s),(1,0,0) — reversed winding so the cross
+    //   product yields n=(0,s,c). dot(n1,n2)=c=cos45° → dihedral=45°.
+    const c = Math.cos(45 * Math.PI / 180);
+    const s = Math.sin(45 * Math.PI / 180);
+    const tris = [
+      0, 0, 0,  1, 0, 0,  0, 1, 0,
+      0, 0, 0,  0, -c, s,  1, 0, 0,
+    ];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(tris), 3));
+    const stats = computeDihedralStats(g);
+    expect(stats.chamferEdgeCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('X12 — custom chamferMinDeg/chamferMaxDeg range', () => {
+    const c = Math.cos(45 * Math.PI / 180);
+    const s = Math.sin(45 * Math.PI / 180);
+    const tris = [
+      0, 0, 0,  1, 0, 0,  0, 1, 0,
+      0, 0, 0,  0, -c, s,  1, 0, 0,
+    ];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(tris), 3));
+    // Tighter range that excludes 45° — should miss the chamfer edge.
+    const tightStats = computeDihedralStats(g, { chamferMinDeg: 50, chamferMaxDeg: 60 });
+    expect(tightStats.chamferEdgeCount).toBe(0);
   });
 });

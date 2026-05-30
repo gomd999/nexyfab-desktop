@@ -1054,3 +1054,73 @@ describe('Phase X10 — intent self-consistency', () => {
     expect(text).toMatch(/obliterating hole.*features\[0\].*25 mm.*parent.*20 mm/);
   });
 });
+
+describe('Phase X12 — chamfer application check', () => {
+  const chamferIntent = (distance = 1.5): IntentInput => ({
+    shapeId: 'box',
+    params: { width: 50, height: 50, depth: 50 },
+    features: [{ type: 'chamfer', params: { distance } } as never],
+  });
+
+  it('passes when sharpEdgeCount ≤ tol AND chamferEdgeCount ≥ minChamferEdges', () => {
+    const r = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 0, maxDihedralDeg: 50, chamferEdgeCount: 20 },
+    });
+    expect(r.chamfer?.applied).toBe(true);
+    expect(r.ok).toBe(true);
+  });
+
+  it('flags un-chamfered (12 sharp 90° corners, 0 chamfer edges)', () => {
+    const r = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 12, maxDihedralDeg: 90, chamferEdgeCount: 0 },
+    });
+    expect(r.chamfer?.applied).toBe(false);
+    expect(r.ok).toBe(false);
+    const text = formatSpecCritique(r);
+    expect(text).toMatch(/chamfer.*intent declares 1 chamfer feature.*0 chamfer-range edges/);
+  });
+
+  it('flags borderline: sharp count ok but too few chamfer edges', () => {
+    // Sharp ≤ 2 but only 2 chamfer edges → still fails (minChamferEdges default 4)
+    const r = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 1, maxDihedralDeg: 50, chamferEdgeCount: 2 },
+    });
+    expect(r.chamfer?.applied).toBe(false);
+  });
+
+  it('skips chamfer check when intent has no chamfer feature', () => {
+    const intent: IntentInput = { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } };
+    const r = verifyAgainstSpec(intent, bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 12, maxDihedralDeg: 90, chamferEdgeCount: 0 },
+    });
+    expect(r.chamfer).toBeUndefined();
+  });
+
+  it('skips chamfer check when detectedDihedralStats omitted', () => {
+    const r = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50));
+    expect(r.chamfer).toBeUndefined();
+  });
+
+  it('custom chamferMinEdges threshold', () => {
+    // 3 chamfer edges — fails default 4, passes when lowered to 2
+    const lenient = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 0, maxDihedralDeg: 50, chamferEdgeCount: 3 },
+      chamferMinEdges: 2,
+    });
+    expect(lenient.chamfer?.applied).toBe(true);
+
+    const strict = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 0, maxDihedralDeg: 50, chamferEdgeCount: 3 },
+      chamferMinEdges: 10,
+    });
+    expect(strict.chamfer?.applied).toBe(false);
+  });
+
+  it('omitted chamferEdgeCount field defaults to 0', () => {
+    const r = verifyAgainstSpec(chamferIntent(), bboxFromSize(50, 50, 50), {
+      detectedDihedralStats: { sharpEdgeCount: 0, maxDihedralDeg: 50 },
+    });
+    expect(r.chamfer?.chamferEdgeCount).toBe(0);
+    expect(r.chamfer?.applied).toBe(false);
+  });
+});
