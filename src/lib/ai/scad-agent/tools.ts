@@ -57,6 +57,19 @@ import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, t
 import { suggestProcessForPart, formatProcessScores, type SuggestProcessOptions, type ProcessScore } from './processSelection';
 import { suggestMaterialForPart, formatMaterialScores, type SuggestMaterialOptions, type MaterialScore } from './materialRecommendation';
 import { generateBom, formatBomReport, bomToCSV, type GenerateBomOptions, type BomReport } from './bomGenerator';
+import {
+  suggestMatesForPair,
+  formatMateSuggestions,
+  type SuggestedMate,
+  type PartFingerprint,
+  type SuggestMatesOptions,
+} from './mateInference';
+import {
+  diffCheckpoints,
+  formatCheckpointDelta,
+  type CheckpointDelta,
+  type CheckpointWithStats,
+} from './checkpointDiff';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -907,6 +920,136 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       ok: true,
       output: formatBomReport(report),
       meta: { report, csv },
+    };
+  };
+
+  // ─── Track E — AI mate inference for 2-part pairs ──────────────────────
+  // Proposes mate candidates (face_touch / face_offset / concentric /
+  // hole_pattern_align / axis_align / mirror) for a pair of parts based
+  // on their intent + measured bbox + optional detected holes. Each
+  // suggestion carries a confidence 0..100, a concrete numeric hint, and
+  // any hard blockers. Pair with add_mate to materialize the chosen one.
+  const suggest_mates: ToolExecutor = async (args) => {
+    if (!args || typeof args !== 'object') {
+      return { ok: false, error: 'suggest_mates requires { partA, partB } objects', code: 'BAD_ARGS' };
+    }
+    const a = args as {
+      partA?: unknown;
+      partB?: unknown;
+      relativePositionMm?: unknown;
+      toleranceMm?: unknown;
+    };
+    function coerceFingerprint(raw: unknown, side: 'A' | 'B'): { ok: true; fp: PartFingerprint } | { ok: false; error: string } {
+      if (!raw || typeof raw !== 'object') return { ok: false, error: `part${side} must be an object with { intent, bbox, holes? }` };
+      const r = raw as { intent?: unknown; bbox?: unknown; holes?: unknown };
+      if (!r.intent || typeof r.intent !== 'object') {
+        return { ok: false, error: `part${side}.intent is required (with shapeId + params)` };
+      }
+      const intent = r.intent as { shapeId?: unknown; params?: unknown };
+      if (typeof intent.shapeId !== 'string') {
+        return { ok: false, error: `part${side}.intent.shapeId is required (string)` };
+      }
+      if (!r.bbox || typeof r.bbox !== 'object') {
+        return { ok: false, error: `part${side}.bbox is required ({ min: [x,y,z], max: [x,y,z] })` };
+      }
+      const bbox = r.bbox as { min?: unknown; max?: unknown };
+      if (!Array.isArray(bbox.min) || bbox.min.length !== 3 || !Array.isArray(bbox.max) || bbox.max.length !== 3) {
+        return { ok: false, error: `part${side}.bbox.min and .max must be length-3 number arrays` };
+      }
+      if ((bbox.min as unknown[]).some(v => typeof v !== 'number') || (bbox.max as unknown[]).some(v => typeof v !== 'number')) {
+        return { ok: false, error: `part${side}.bbox coords must all be numbers` };
+      }
+      const fp: PartFingerprint = {
+        intent: r.intent as PartFingerprint['intent'],
+        bbox: { min: bbox.min as [number, number, number], max: bbox.max as [number, number, number] },
+      };
+      if (Array.isArray(r.holes)) {
+        const holes: NonNullable<PartFingerprint['holes']> = [];
+        for (const h of r.holes) {
+          if (!h || typeof h !== 'object') continue;
+          const hh = h as { axis?: unknown; cx?: unknown; cy?: unknown; diameter?: unknown };
+          if ((hh.axis !== 'x' && hh.axis !== 'y' && hh.axis !== 'z')
+              || typeof hh.cx !== 'number' || typeof hh.cy !== 'number' || typeof hh.diameter !== 'number') continue;
+          holes.push({ axis: hh.axis, cx: hh.cx, cy: hh.cy, diameter: hh.diameter });
+        }
+        if (holes.length > 0) fp.holes = holes;
+      }
+      return { ok: true, fp };
+    }
+    const A = coerceFingerprint(a.partA, 'A');
+    if (!A.ok) return { ok: false, error: A.error, code: 'BAD_ARGS' };
+    const B = coerceFingerprint(a.partB, 'B');
+    if (!B.ok) return { ok: false, error: B.error, code: 'BAD_ARGS' };
+    const opts: SuggestMatesOptions = { partA: A.fp, partB: B.fp };
+    if (Array.isArray(a.relativePositionMm) && a.relativePositionMm.length === 3
+        && a.relativePositionMm.every(v => typeof v === 'number')) {
+      opts.relativePositionMm = a.relativePositionMm as [number, number, number];
+    }
+    if (typeof a.toleranceMm === 'number' && a.toleranceMm > 0) {
+      opts.toleranceMm = a.toleranceMm;
+    }
+    let suggestions: SuggestedMate[];
+    try {
+      suggestions = suggestMatesForPair(opts);
+    } catch (e) {
+      return { ok: false, error: `suggest_mates threw: ${(e as Error).message}`, code: 'MATES_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatMateSuggestions(suggestions),
+      meta: { suggestions },
+    };
+  };
+
+  // ─── Track H — Version diff between checkpoints ────────────────────────
+  // Compares two named checkpoints, surfacing SCAD source delta (byte +
+  // line counts + qualitative summary) and geometry deltas (bbox per axis,
+  // volume, surface area, through-hole count, triangle count) when both
+  // sides carry GeometryStats snapshots. Useful for code review or
+  // rollback decision. Checkpoints without stats just get null geometry
+  // deltas — the diff still shows the scadSource part.
+  const diff_checkpoints: ToolExecutor = async (args, session) => {
+    if (!args || typeof args !== 'object') {
+      return { ok: false, error: 'diff_checkpoints requires { fromCheckpointId: number, toCheckpointId: number }', code: 'BAD_ARGS' };
+    }
+    const a = args as { fromCheckpointId?: unknown; toCheckpointId?: unknown };
+    // Accept number or numeric string for convenience.
+    const fromId = typeof a.fromCheckpointId === 'number'
+      ? a.fromCheckpointId
+      : (typeof a.fromCheckpointId === 'string' ? parseInt(a.fromCheckpointId, 10) : NaN);
+    const toId = typeof a.toCheckpointId === 'number'
+      ? a.toCheckpointId
+      : (typeof a.toCheckpointId === 'string' ? parseInt(a.toCheckpointId, 10) : NaN);
+    if (!Number.isFinite(fromId) || !Number.isFinite(toId)) {
+      return { ok: false, error: 'diff_checkpoints requires both fromCheckpointId and toCheckpointId as positive integers', code: 'BAD_ARGS' };
+    }
+    const fromCp = session.checkpoints.find(c => c.index === fromId);
+    const toCp = session.checkpoints.find(c => c.index === toId);
+    if (!fromCp || !toCp) {
+      const avail = session.checkpoints.map(c => c.index).join(', ') || '(none)';
+      const missing: number[] = [];
+      if (!fromCp) missing.push(fromId);
+      if (!toCp) missing.push(toId);
+      return {
+        ok: false,
+        error: `checkpoint(s) not found: #${missing.join(', #')}. Available: ${avail}`,
+        code: 'NOT_FOUND',
+      };
+    }
+    const aSide: CheckpointWithStats = { checkpoint: fromCp };
+    if (fromCp.stats) aSide.stats = fromCp.stats;
+    const bSide: CheckpointWithStats = { checkpoint: toCp };
+    if (toCp.stats) bSide.stats = toCp.stats;
+    let delta: CheckpointDelta;
+    try {
+      delta = diffCheckpoints(aSide, bSide);
+    } catch (e) {
+      return { ok: false, error: `diff_checkpoints threw: ${(e as Error).message}`, code: 'DIFF_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatCheckpointDelta(delta),
+      meta: { delta },
     };
   };
 
@@ -2533,6 +2676,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     suggest_material,
     // Track N — BOM auto-generation
     generate_bom,
+    // Track E — AI mate inference for 2-part pairs
+    suggest_mates,
+    // Track H — Version diff between checkpoints
+    diff_checkpoints,
   };
 }
 

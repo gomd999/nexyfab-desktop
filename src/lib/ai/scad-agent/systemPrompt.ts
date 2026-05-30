@@ -95,6 +95,14 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    args: { partsList?: [{ moduleName: string, count?: number }], costLookup?: { [moduleName]: { unitCostUsd: number, material?: 'aluminum_6061'|'steel_a36'|'steel_4140'|'stainless_304'|'pla'|'abs' } } }
    Returns: human-readable report + meta { report: { lines[], totalPartCount, uniquePartCount, totalCostUsd?, hasCosts, notes[] }, csv: string }
 
+5i. \`suggest_mates\` — AI mate inference for 2-part pairs. Proposes mate candidates (face_touch / face_offset / concentric / hole_pattern_align / axis_align / mirror) between two parts based on intent + measured bbox + optional detected holes. Each suggestion carries a confidence 0..100, a concrete numeric hint (axis, distance, translation, diameter), and any hard blockers. Call BEFORE add_mate when you have 2 parts and want the AI to propose mate types. Pair with add_mate to materialize the chosen suggestion (the hint's axis/x/y/diameter map directly onto add_mate args). Hole-pattern suggestions only surface when both parts pass \`holes\` (from detectAllAxisAlignedHoles via verify_spec); concentric works on cylindrical primitives even without hole data. Relative position lifts the face_offset confidence when consistent.
+   args: { partA: { intent: { shapeId, params }, bbox: { min: [x,y,z], max: [x,y,z] }, holes?: [{ axis: 'x'|'y'|'z', cx, cy, diameter }] }, partB: { same shape }, relativePositionMm?: [x, y, z], toleranceMm?: number }
+   Returns: ranked list text + meta { suggestions: [{ type, reason, confidence, hint, blockers[] }] }
+
+5j. \`diff_checkpoints\` — Version diff between two named checkpoints. Surfaces SCAD source delta (byte + line counts + qualitative summary: identical / small_edit / moderate_edit / rewritten / truncated / expanded) plus geometry deltas (bbox per axis, volume + %, surface area + %, through-hole count, triangle count) when both sides carry GeometryStats snapshots. Call to compare two named checkpoints — useful for code review or rollback decision. Most useful when the two checkpoints were captured with geometry stats. Checkpoints without stats just get null geometry deltas — the scadSource summary still works.
+   args: { fromCheckpointId: number, toCheckpointId: number }
+   Returns: human-readable diff + meta { delta: { fromLabel, toLabel, fromTsMs, toTsMs, scadSource: { fromBytes, toBytes, fromLines, toLines, summary }, bboxDeltaMm?, volume, surfaceArea, genus, triangleCount } }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 

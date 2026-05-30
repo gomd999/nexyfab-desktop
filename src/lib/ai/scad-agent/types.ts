@@ -141,7 +141,11 @@ export type ToolName =
   // ─── Track M — AI material recommendation ───────────────────────────
   | 'suggest_material'
   // ─── Track N — BOM auto-generation ──────────────────────────────────
-  | 'generate_bom';
+  | 'generate_bom'
+  // ─── Track E — AI mate inference for 2-part pairs ────────────────────
+  | 'suggest_mates'
+  // ─── Track H — Version diff between checkpoints ──────────────────────
+  | 'diff_checkpoints';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */
@@ -704,6 +708,15 @@ export interface Checkpoint {
   modules: Record<string, string>;
   composition: string | null;
   designPlan: string | null;
+  /**
+   * Track H — Optional GeometryStats snapshot captured WITH this
+   * checkpoint. Future checkpoint-capture sites (after a successful
+   * render + geometry parse) can populate this so `diff_checkpoints`
+   * can surface bbox / volume / surface area / genus deltas in addition
+   * to the SCAD source delta. Existing checkpoints without stats simply
+   * yield null deltas — the diff still works for the scadSource part.
+   */
+  stats?: GeometryStats;
 }
 
 export type ListCheckpointsArgs = Record<string, never>;
