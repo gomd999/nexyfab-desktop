@@ -112,6 +112,20 @@ export interface BrepAdapter {
   chamfer(args: import('./types').BrepChamferArgs): Promise<BrepResult>;
   shell(args: import('./types').BrepShellArgs): Promise<BrepResult>;
   toMesh(args: import('./types').BrepToMeshArgs): Promise<Ok<{ triangleCount: number; bbox?: { min: [number, number, number]; max: [number, number, number] } }> | Err>;
+  /**
+   * X1 (B-rep parallel) — Extract the tessellated mesh positions for a
+   * B-rep handle so the verify_spec_brep tool can run the full mesh-side
+   * inspection chain (genus, surface area, dihedrals, hole peaks, min
+   * wall thickness). Optional — adapters that don't implement it cause
+   * verify_spec_brep to return NO_BREP_MESH rather than failing the
+   * whole agent loop. Positions follow the THREE.BufferGeometry "flat
+   * triangles" convention: each triangle = 9 consecutive floats
+   * (x0,y0,z0,x1,y1,z1,x2,y2,z2).
+   */
+  toMeshGeometry?(args: { handle: string; tolerance?: number }): Promise<
+    | { ok: true; positions: Float32Array; triangleCount: number; bbox: { min: [number, number, number]; max: [number, number, number] } }
+    | { ok: false; reason: string }
+  >;
   exportStep(args: import('./types').BrepExportStepArgs): Promise<Ok<{ bytes: number }> | Err>;
   // ─── G (Stage 4) — sweep / loft / draft / helix ───────────────────────
   sweep?(args: import('./types').BrepSweepArgs): Promise<BrepResult>;
@@ -452,6 +466,136 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         threads: result.threads,
         wallThickness: result.wallThickness,
         intentIssues: result.intentIssues,
+      },
+    };
+  };
+
+  // X1 (B-rep parallel) — verify_spec_brep mirrors verify_spec for the
+  // OCCT B-rep flow. Where verify_spec consumes whatever the SCAD render
+  // path stored in session.geometry, this tool drives the same 10-layer
+  // SpecVerificationResult chain straight from a B-rep handle: it asks
+  // the host's BrepAdapter to tessellate the handle (toMeshGeometry),
+  // builds a THREE.BufferGeometry from the returned positions, then runs
+  // countThroughHoles / computeSurfaceArea / computeMinWallThickness /
+  // detectAllAxisAlignedHoles / computeDihedralStats and feeds the
+  // measurements into verifyAgainstSpec.
+  //
+  // Adapters that don't implement toMeshGeometry (e.g. older mocks) cause
+  // this tool to return NO_BREP_MESH cleanly rather than throwing, so
+  // existing flows aren't disturbed. The result `meta` shape mirrors
+  // verify_spec so the SSE bridge in ScadAgentPanel auto-feeds the
+  // critique to OpenScadPanel without per-tool wiring.
+  const verify_spec_brep: ToolExecutor = async (args, session) => {
+    const guard = brepGuard(session); if (guard) return guard;
+    const a = args as {
+      brepHandle?: unknown;
+      intent?: unknown;
+      processForDfm?: unknown;
+    };
+    const brepHandle = typeof a.brepHandle === 'string' ? a.brepHandle : '';
+    if (!brepHandle) {
+      return { ok: false, error: 'verify_spec_brep requires { brepHandle: string, intent: IntentInput, processForDfm? }', code: 'BAD_ARGS' };
+    }
+    const intent = a.intent;
+    if (!intent || typeof intent !== 'object') {
+      return { ok: false, error: 'verify_spec_brep requires { intent: { shapeId, params, features? } }', code: 'BAD_ARGS' };
+    }
+    const intentShapeId = (intent as { shapeId?: unknown }).shapeId;
+    if (typeof intentShapeId !== 'string') {
+      return { ok: false, error: 'intent.shapeId must be a string', code: 'BAD_ARGS' };
+    }
+    const entry = session.brepEntries.find(e => e.handle === brepHandle);
+    if (!entry) {
+      return {
+        ok: false,
+        error: `B-rep handle "${brepHandle}" not found in session. Call brep_primitive / brep_boolean / etc. first, or check the handle.`,
+        code: 'NO_BREP',
+      };
+    }
+    if (!host.brep!.toMeshGeometry) {
+      return {
+        ok: false,
+        error: 'verify_spec_brep needs BrepAdapter.toMeshGeometry, which this server has not wired yet. Skip the check or use the SCAD verify_spec path via brep_to_mesh → render-side stats.',
+        code: 'NO_BREP_MESH',
+      };
+    }
+    let meshOut: Awaited<ReturnType<NonNullable<BrepAdapter['toMeshGeometry']>>>;
+    try {
+      await host.brep!.ensureReady();
+      meshOut = await host.brep!.toMeshGeometry({ handle: brepHandle });
+    } catch (e) {
+      return { ok: false, error: `toMeshGeometry threw: ${(e as Error).message}`, code: 'BREP_THREW' };
+    }
+    if (!meshOut.ok) {
+      return { ok: false, error: `B-rep tessellation failed: ${meshOut.reason}`, code: 'NO_BREP_MESH' };
+    }
+    if (meshOut.positions.length < 9 || meshOut.triangleCount <= 0) {
+      return { ok: false, error: 'B-rep tessellation produced an empty mesh (no triangles).', code: 'EMPTY_MESH' };
+    }
+    // Build a non-indexed THREE.BufferGeometry directly from positions.
+    const THREE = await import('three');
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(meshOut.positions, 3));
+
+    // Run the full inspection pipeline. computeMinWallThickness is the
+    // only async one (it lazy-imports three-mesh-bvh for fast raycasts).
+    const { countThroughHoles, computeSurfaceArea, computeMinWallThickness, detectAllAxisAlignedHoles, computeDihedralStats } = await import('./faceInspection');
+    const detectedGenus = countThroughHoles(geometry);
+    const detectedSurfaceAreaMm2 = computeSurfaceArea(geometry);
+    const detectedHoles = detectAllAxisAlignedHoles(geometry, { bbox: meshOut.bbox });
+    const detectedDihedralStats = computeDihedralStats(geometry);
+    let detectedMinWallMm: number | null;
+    try {
+      const wallStats = await computeMinWallThickness(geometry);
+      detectedMinWallMm = wallStats.minMm === Infinity ? null : wallStats.minMm;
+    } catch {
+      detectedMinWallMm = null;
+    }
+    // Volume from the triangle mesh (signed-tetra sum) so verify_spec can
+    // run the X3 volume check. Cheap O(F); avoids re-walking the
+    // positions buffer twice.
+    const detectedVolumeMm3 = computeMeshVolume(meshOut.positions);
+
+    // processForDfm: explicit override beats the session pref, mirroring
+    // the SCAD-path executor's mapUserPrefToProcess fallback.
+    let processForDfm: ProcessForDfm | undefined;
+    if (typeof a.processForDfm === 'string') {
+      processForDfm = mapUserPrefToProcess(a.processForDfm);
+    } else {
+      processForDfm = mapUserPrefToProcess(session.userPrefs?.default_process);
+    }
+
+    const result = verifyAgainstSpec(intent as import('../../openscad-render/intentToScad').IntentInput, meshOut.bbox, {
+      detectedGenus,
+      detectedVolumeMm3,
+      detectedSurfaceAreaMm2,
+      detectedHoles,
+      detectedDihedralStats,
+      detectedMinWallMm,
+      processForDfm,
+    });
+    const critique = formatSpecCritique(result);
+    return {
+      ok: true,
+      output: critique,
+      meta: {
+        verifiable: result.verifiable,
+        passed: result.ok,
+        mismatchCount: result.mismatches.length,
+        expected: result.expected,
+        measured: result.measured,
+        holeCount: result.holeCount,
+        volume: result.volume,
+        surfaceArea: result.surfaceArea,
+        holePositions: result.holePositions,
+        fillet: result.fillet,
+        chamfer: result.chamfer,
+        threads: result.threads,
+        wallThickness: result.wallThickness,
+        intentIssues: result.intentIssues,
+        brepHandle,
+        brepKind: entry.kind,
+        triangleCount: meshOut.triangleCount,
       },
     };
   };
@@ -2067,6 +2211,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     sheet_metal_unfold,
     // X1 — spec verification (intent vs measured bbox)
     verify_spec,
+    // X1 (B-rep parallel) — same 10-layer chain driven from a B-rep handle
+    verify_spec_brep,
   };
 }
 
@@ -2146,6 +2292,31 @@ function mapCameraViews(labels?: ('iso' | 'front' | 'right' | 'left' | 'top' | '
     if (out.length >= 4) break;
   }
   return out.length > 0 ? out : undefined;
+}
+
+/**
+ * Signed tetrahedron volume sum for a non-indexed triangle soup. Each
+ * triangle (p0, p1, p2) contributes (p0 · (p1 × p2)) / 6 to the volume;
+ * for a closed orientable manifold the sum equals the enclosed volume in
+ * the same units as the positions (mm³ here). Returns the absolute
+ * value so winding-order quirks in a B-rep tessellator don't flip the
+ * sign on us. Cost: O(F).
+ */
+function computeMeshVolume(positions: Float32Array): number {
+  let sum = 0;
+  const triCount = Math.floor(positions.length / 9);
+  for (let t = 0; t < triCount; t++) {
+    const i = t * 9;
+    const ax = positions[i]!,     ay = positions[i + 1]!, az = positions[i + 2]!;
+    const bx = positions[i + 3]!, by = positions[i + 4]!, bz = positions[i + 5]!;
+    const cx = positions[i + 6]!, cy = positions[i + 7]!, cz = positions[i + 8]!;
+    // p0 · (p1 × p2)
+    const crossX = by * cz - bz * cy;
+    const crossY = bz * cx - bx * cz;
+    const crossZ = bx * cy - by * cx;
+    sum += (ax * crossX + ay * crossY + az * crossZ) / 6;
+  }
+  return Math.abs(sum);
 }
 
 /**

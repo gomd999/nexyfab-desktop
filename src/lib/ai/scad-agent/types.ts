@@ -129,7 +129,9 @@ export type ToolName =
   // ─── U (Stage 4) — sheet metal unfold (multi-bend) ───────────────────
   | 'sheet_metal_unfold'
   // ─── X1 — spec verification (intent vs measured bbox) ───────────────
-  | 'verify_spec';
+  | 'verify_spec'
+  // ─── X1 (B-rep parallel) — spec verification for B-rep flows ────────
+  | 'verify_spec_brep';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */

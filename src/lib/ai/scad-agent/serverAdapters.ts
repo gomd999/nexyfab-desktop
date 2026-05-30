@@ -332,6 +332,63 @@ export const serverBrepAdapter: BrepAdapter = {
     }
   },
 
+  /**
+   * X1 (B-rep parallel) — Tessellate to a flat positions buffer so
+   * verify_spec_brep can run the full mesh-side inspection chain
+   * (genus, hole peaks, dihedrals, wall thickness) without re-rendering
+   * through OpenSCAD. Each triangle expands into 9 floats (the OCCT
+   * mesh ships indexed; we explode here so the result matches the
+   * non-indexed convention faceInspection.ts expects from STLLoader).
+   */
+  async toMeshGeometry(args) {
+    try {
+      const { getShape } = await import('../../../app/[lang]/shape-generator/features/occtEngine');
+      const host = getShape(args.handle) as { mesh?: (opts?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[] } };
+      if (!host || typeof host.mesh !== 'function') {
+        return { ok: false, reason: `handle ${args.handle} cannot be tessellated` };
+      }
+      const mesh = host.mesh({ tolerance: args.tolerance ?? 0.1, angularTolerance: 0.2 });
+      const vertices = mesh.vertices ?? [];
+      const indices = mesh.triangles ?? [];
+      const triangleCount = Math.floor(indices.length / 3);
+      if (triangleCount === 0 || vertices.length < 9) {
+        return { ok: false, reason: 'OCCT mesh produced no triangles' };
+      }
+      // Explode indexed → flat positions (3 verts × 3 coords per triangle).
+      const positions = new Float32Array(triangleCount * 9);
+      let mnx = Infinity, mny = Infinity, mnz = Infinity;
+      let mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      for (let t = 0; t < triangleCount; t++) {
+        for (let v = 0; v < 3; v++) {
+          const vi = indices[t * 3 + v]! * 3;
+          const x = vertices[vi]!;
+          const y = vertices[vi + 1]!;
+          const z = vertices[vi + 2]!;
+          positions[t * 9 + v * 3 + 0] = x;
+          positions[t * 9 + v * 3 + 1] = y;
+          positions[t * 9 + v * 3 + 2] = z;
+          if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+          if (y < mny) mny = y; if (y > mxy) mxy = y;
+          if (z < mnz) mnz = z; if (z > mxz) mxz = z;
+        }
+      }
+      if (!Number.isFinite(mnx)) {
+        return { ok: false, reason: 'tessellated mesh has no finite vertices' };
+      }
+      return {
+        ok: true,
+        positions,
+        triangleCount,
+        bbox: {
+          min: [mnx, mny, mnz] as [number, number, number],
+          max: [mxx, mxy, mxz] as [number, number, number],
+        },
+      };
+    } catch (e) {
+      return { ok: false, reason: (e as Error).message };
+    }
+  },
+
   async exportStep(args) {
     try {
       const { exportOcctStep } = await import('../../../app/[lang]/shape-generator/features/occtEngine');

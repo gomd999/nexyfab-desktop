@@ -69,6 +69,11 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    The \`wallThickness\` sub-check uses the per-process minimum (fdm 0.8 / sla 0.6 / cnc_mill 2.0 / injection_molding 1.0 / die_cast 1.5 mm; sheet metal is skipped because the wall equals the sheet gauge by definition). The check is **skipped entirely when no process is set** in user prefs (\`default_process\`) — set it via \`set_user_pref\` so this gate engages.
    Note: the \`intentIssues\` sub-check (duplicate / overlapping / obliterating holes) runs even without a mesh — so verify_spec is also useful to call BEFORE render when you've just emitted a new intent and want to fail fast on a logic error.
 
+5c. \`verify_spec_brep\` — Parallel of \`verify_spec\` for the B-rep flow (brep_primitive → brep_boolean → brep_fillet/chamfer/shell). Use this AFTER any brep_* sequence when you can express the part as an intent (shapeId + params + features) — it tessellates the handle, runs the same 10-layer chain (bbox / through-holes / volume / surface area / hole positions / fillet / chamfer / threads / wall thickness / intent issues), and returns the same critique + meta shape as verify_spec. Skip when the part has no closed-form intent equivalent (e.g. arbitrary sweeps, lofted blades).
+   args: { brepHandle: string, intent: { shapeId, params, features? }, processForDfm?: 'fdm'|'sla'|'cnc_mill'|'sheet'|'injection_molding'|'die_cast' }
+   Returns: same critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea, holePositions, fillet, chamfer, threads, wallThickness, intentIssues, brepHandle, brepKind, triangleCount }
+   Returns NO_BREP_MESH if the server's B-rep adapter hasn't wired mesh extraction; in that case fall back to brep_to_mesh + the visual review path.
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 
