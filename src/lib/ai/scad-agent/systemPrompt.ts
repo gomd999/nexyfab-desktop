@@ -107,6 +107,10 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    args: { imageBase64: string (data URL or raw base64), mimeType?: 'image/png'|'image/jpeg'|'image/webp', hintText?: string }
    Returns: confirmation text + meta { intent, scad, summary, cached, warnings }
 
+5l. \`reverse_engineer_mesh\` — Mesh reverse-engineering. Use when the user uploads a scanned STL or an imported part with no source intent. Heuristic shape classifier (no AI call) reads bbox / volume / surface area / genus / dihedral edge counts via the existing faceInspection helpers and proposes the most likely IntentInput. v1 coverage: box / cylinder / sphere / pipe / disk / washer + simple fillet/chamfer secondary features. Multi-body assemblies short-circuit to a low-confidence "assembly" placeholder (real assembly RE is an X-track follow-up). Review the proposed intent with the user BEFORE applying — RE is best-guess, not authoritative. On success the top candidate is written to session.scadSource + session.lastIntent so the next turn can chain into render → verify_spec to confirm the round-trip.
+   args: { stlBase64: string (data URL or raw base64, ≤ 8 MB decoded) }
+   Returns: candidate-list text + meta { candidates: [{ intent, confidence, summary, evidence[], counterEvidence[] }], observedStats }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 

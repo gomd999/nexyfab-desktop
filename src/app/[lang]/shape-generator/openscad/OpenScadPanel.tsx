@@ -154,6 +154,11 @@ const dict = {
     extracting: '추출 중…',
     applyToVerify: '↓ 검증 섹션에 적용',
     imageRouteFailed: '이미지에서 의도 추출 실패',
+    reToggle: '🔬 역설계 (STL → 의도)',
+    analyze: '분석',
+    analyzing: '분석 중…',
+    applyCandidate: '↓ 검증 섹션에 적용',
+    reRouteFailed: '메시 역설계 실패',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -291,6 +296,11 @@ const dict = {
     extracting: 'Extracting…',
     applyToVerify: '↓ Apply to verify section',
     imageRouteFailed: 'Image-to-CAD extraction failed',
+    reToggle: '🔬 Reverse engineer (STL → intent)',
+    analyze: 'Analyze',
+    analyzing: 'Analyzing…',
+    applyCandidate: '↓ Apply to verify section',
+    reRouteFailed: 'Mesh reverse engineering failed',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -428,6 +438,11 @@ const dict = {
     extracting: '抽出中…',
     applyToVerify: '↓ 検証セクションに適用',
     imageRouteFailed: '画像からの意図抽出に失敗しました',
+    reToggle: '🔬 リバースエンジニア (STL → 意図)',
+    analyze: '解析',
+    analyzing: '解析中…',
+    applyCandidate: '↓ 検証セクションに適用',
+    reRouteFailed: 'メッシュのリバースエンジニアに失敗しました',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -564,6 +579,11 @@ const dict = {
     extracting: '提取中…',
     applyToVerify: '↓ 应用到验证区',
     imageRouteFailed: '从图像提取意图失败',
+    reToggle: '🔬 逆向工程 (STL → 意图)',
+    analyze: '分析',
+    analyzing: '分析中…',
+    applyCandidate: '↓ 应用到验证区',
+    reRouteFailed: '网格逆向工程失败',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -701,6 +721,11 @@ const dict = {
     extracting: 'Extrayendo…',
     applyToVerify: '↓ Aplicar a la sección de verificación',
     imageRouteFailed: 'Fallo al extraer intención de la imagen',
+    reToggle: '🔬 Ingeniería inversa (STL → intención)',
+    analyze: 'Analizar',
+    analyzing: 'Analizando…',
+    applyCandidate: '↓ Aplicar a la sección de verificación',
+    reRouteFailed: 'Fallo al hacer ingeniería inversa de la malla',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -838,6 +863,11 @@ const dict = {
     extracting: 'جارٍ الاستخراج…',
     applyToVerify: '↓ تطبيق على قسم التحقق',
     imageRouteFailed: 'فشل استخراج النية من الصورة',
+    reToggle: '🔬 الهندسة العكسية (STL ← نية)',
+    analyze: 'تحليل',
+    analyzing: 'جارٍ التحليل…',
+    applyCandidate: '↓ تطبيق على قسم التحقق',
+    reRouteFailed: 'فشل الهندسة العكسية للشبكة',
   },
 } as const;
 
@@ -1070,6 +1100,22 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [imageErr, setImageErr] = useState('');
   const [extractedIntent, setExtractedIntent] = useState<unknown>(null);
   const [extractedSummary, setExtractedSummary] = useState('');
+
+  /** Mesh reverse-engineering panel state — Pro+ feature, collapsed until
+   *  toggled. The classifier returns multiple candidates; the user picks one
+   *  and the "Apply" button copies the intent into the verify section. */
+  const [reOpen, setReOpen] = useState(false);
+  const [reStlBase64, setReStlBase64] = useState<string>('');
+  const [reStlName, setReStlName] = useState<string>('');
+  const [reBusy, setReBusy] = useState(false);
+  const [reErr, setReErr] = useState('');
+  const [reCandidates, setReCandidates] = useState<Array<{
+    intent: unknown;
+    confidence: number;
+    summary: string;
+    evidence: string[];
+    counterEvidence: string[];
+  }>>([]);
 
   /** Live-preview sliders — one row per numeric param in the last-parsed
    *  intent. Only built AFTER a successful verify (verifiable === true). */
@@ -1740,6 +1786,76 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     setVerifyOpen(true);
   }, [extractedIntent]);
 
+  /** FileReader for the reverse-engineer STL upload. Same shape as the
+   *  image upload handler — we stash the data URL so it can be POSTed
+   *  straight to the route without a second decode pass. */
+  const handleReStlFile = useCallback((file: File | null) => {
+    setReErr('');
+    setReCandidates([]);
+    if (!file) { setReStlBase64(''); setReStlName(''); return; }
+    if (file.size > 9 * 1024 * 1024) {
+      setReErr(`${t.reRouteFailed}: file too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max 8 MB after decode)`);
+      setReStlBase64(''); setReStlName('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        setReStlBase64(result);
+        setReStlName(file.name);
+      }
+    };
+    reader.onerror = () => {
+      setReErr(`${t.reRouteFailed}: file read failed`);
+    };
+    reader.readAsDataURL(file);
+  }, [t]);
+
+  /** POST the STL data URL to /api/nexyfab/reverse-engineer and stash the
+   *  ranked candidate list. Each candidate has its own "Apply" button that
+   *  copies the proposed intent into the verify section. */
+  const analyzeReverseMesh = useCallback(async () => {
+    if (!reStlBase64 || reBusy) return;
+    setReErr('');
+    setReCandidates([]);
+    setReBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/reverse-engineer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stlBase64: reStlBase64 }),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; candidates?: unknown[] }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.reRouteFailed} (${res.status})`;
+        setReErr(msg);
+        return;
+      }
+      if (Array.isArray(data.candidates)) {
+        setReCandidates(data.candidates as Array<{
+          intent: unknown;
+          confidence: number;
+          summary: string;
+          evidence: string[];
+          counterEvidence: string[];
+        }>);
+      }
+    } catch (e: unknown) {
+      setReErr(e instanceof Error ? e.message : t.reRouteFailed);
+    } finally {
+      setReBusy(false);
+    }
+  }, [reStlBase64, reBusy, t]);
+
+  /** Copy a chosen candidate's intent into the verify-spec textarea and
+   *  reveal the verify section so the user can immediately round-trip. */
+  const applyCandidateToVerify = useCallback((intent: unknown) => {
+    if (!intent) return;
+    setVerifyIntentJson(JSON.stringify(intent, null, 2));
+    setVerifyOpen(true);
+  }, []);
+
   /** Slider change handler — updates the local working copy + marks the
    *  change. The auto-verify effect picks up sliderValues changes. */
   const handleSliderChange = useCallback((path: string, val: number) => {
@@ -2259,6 +2375,97 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               )}
             </div>
           )}
+
+          {/* ── Reverse engineer (Pro+ collapsible) ── */}
+          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+            <button
+              type="button"
+              data-testid="reverse-engineer-toggle"
+              onClick={() => setReOpen(v => !v)}
+              className="self-start text-xs px-3 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 text-white rounded font-medium border border-emerald-500/40"
+            >
+              {t.reToggle} {reOpen ? '▲' : '▼'}
+            </button>
+            {reOpen && (
+              <div className="flex flex-col gap-2" data-testid="reverse-engineer-section">
+                <input
+                  type="file"
+                  accept=".stl"
+                  data-testid="reverse-engineer-file"
+                  onChange={e => handleReStlFile(e.target.files?.[0] ?? null)}
+                  disabled={reBusy}
+                  className="text-xs text-gray-300 file:mr-2 file:px-2 file:py-1 file:bg-emerald-700/70 file:hover:bg-emerald-600 file:text-white file:border-0 file:rounded file:cursor-pointer file:text-[11px]"
+                />
+                {reStlName && (
+                  <p className="text-[11px] text-emerald-200/80" data-testid="reverse-engineer-filename">
+                    {reStlName}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  data-testid="reverse-engineer-analyze"
+                  onClick={() => void analyzeReverseMesh()}
+                  disabled={reBusy || !reStlBase64}
+                  className="self-start text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded font-medium"
+                >
+                  {reBusy ? t.analyzing : t.analyze}
+                </button>
+                {reErr && (
+                  <div
+                    data-testid="reverse-engineer-error"
+                    className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                  >
+                    {reErr}
+                  </div>
+                )}
+                {reCandidates.length > 0 && (
+                  <div className="flex flex-col gap-2" data-testid="reverse-engineer-results">
+                    {reCandidates.map((c, idx) => {
+                      const intentObj = c.intent as { shapeId?: string } | null;
+                      const shapeId = intentObj?.shapeId ?? '?';
+                      // Clamp the confidence bar at 100% so an over-eager
+                      // rule (theoretically possible since rules are float)
+                      // doesn't visually overflow the container.
+                      const widthPct = Math.min(100, Math.max(0, c.confidence)).toFixed(0);
+                      return (
+                        <div
+                          key={`${shapeId}-${idx}`}
+                          data-testid={`reverse-engineer-candidate-${idx}`}
+                          className="flex flex-col gap-1.5 border border-emerald-700/30 rounded p-2 bg-emerald-950/20"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-emerald-100 font-mono">{c.summary}</span>
+                            <span className="text-[11px] text-emerald-300 font-mono">{c.confidence.toFixed(0)}%</span>
+                          </div>
+                          <div className="w-full h-1 bg-gray-800 rounded overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500"
+                              style={{ width: `${widthPct}%` }}
+                            />
+                          </div>
+                          {c.evidence.length > 0 && (
+                            <ul className="text-[10px] text-emerald-200/70 list-disc list-inside">
+                              {c.evidence.slice(0, 3).map((ev, i) => (
+                                <li key={i}>{ev}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <button
+                            type="button"
+                            data-testid={`reverse-engineer-apply-${idx}`}
+                            onClick={() => applyCandidateToVerify(c.intent)}
+                            className="self-start text-[11px] px-2.5 py-1 bg-violet-700/70 hover:bg-violet-600 text-white rounded font-medium border border-violet-500/40"
+                          >
+                            {t.applyCandidate}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Image-to-CAD (Pro+ collapsible) ── */}
           <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">

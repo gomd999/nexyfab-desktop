@@ -1342,6 +1342,90 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
   };
 
+  // ─── Mesh reverse-engineering — STL → proposed IntentInput ────────────
+  //
+  // Heuristic shape classifier driven by the existing faceInspection helpers.
+  // Used when the user uploads a scanned STL or imported part with no source
+  // intent. Pure CPU — no AI call. Result populates session.lastIntent +
+  // scadSource (top candidate) so the next turn can chain into render →
+  // verify_spec to confirm the proposed intent matches what the user wanted.
+  //
+  // v1 coverage: box / cylinder / sphere / pipe / disk / washer + simple
+  // fillet/chamfer secondary features. Multi-body assemblies short-circuit
+  // to a single low-confidence "assembly" candidate (X-track follow-up).
+  const reverse_engineer_mesh: ToolExecutor = async (args, session) => {
+    const a = args as unknown as import('./types').ReverseEngineerMeshArgs;
+    if (typeof a.stlBase64 !== 'string' || !a.stlBase64.trim()) {
+      return {
+        ok: false,
+        error: 'reverse_engineer_mesh requires { stlBase64: string (data URL or raw base64) }',
+        code: 'BAD_ARGS',
+      };
+    }
+    // Decode — accept data URLs or bare base64. Same shape as the route's
+    // decodeStlBase64 but kept inline so the tool has no route dep.
+    let payload = a.stlBase64;
+    const m = /^data:[^;]*;base64,(.*)$/.exec(a.stlBase64);
+    if (m) payload = m[1]!;
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(payload, 'base64');
+    } catch {
+      return { ok: false, error: 'stlBase64 could not be decoded', code: 'STL_DECODE_FAILED' };
+    }
+    if (buffer.length === 0) {
+      return { ok: false, error: 'stlBase64 decoded to zero bytes', code: 'STL_DECODE_FAILED' };
+    }
+    // Same 8 MB cap as the route — agent loop shouldn't burn more memory
+    // than a user upload would.
+    if (buffer.length > 8 * 1024 * 1024) {
+      return { ok: false, error: `STL exceeds 8 MB (got ${buffer.length} bytes)`, code: 'STL_TOO_LARGE' };
+    }
+    try {
+      const { parseStlBufferToGeometry } = await import('./renderToGeometry');
+      const { reverseEngineerWithWallThickness, formatProposedIntents } = await import('./reverseEngineer');
+      const geometry = await parseStlBufferToGeometry(
+        new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength),
+      );
+      const result = await reverseEngineerWithWallThickness({ geometry });
+      if (result.candidates.length === 0) {
+        return {
+          ok: false,
+          error: 'classifier produced no candidates — mesh is likely empty or unreadable',
+          code: 'NO_CANDIDATES',
+        };
+      }
+      const top = result.candidates[0]!;
+      // Mirror add_feature_intent's session writes so the next turn can
+      // chain straight into render → verify_spec. Only the top candidate's
+      // SCAD is materialized; the rest stay in meta for the user to review.
+      const conv = intentToScad(top.intent);
+      if (conv.ok) {
+        session.scadSource = conv.scad;
+        session.render = { ok: null, errors: [] };
+        session.geometry = {};
+        session.lastIntent = top.intent;
+      }
+      return {
+        ok: true,
+        output:
+          `${formatProposedIntents(result)}\n\n`
+          + `Applied the top candidate (${top.intent.shapeId}) as session.scadSource + lastIntent. `
+          + `Review with the user before render — reverse engineering is best-guess, not authoritative.`,
+        meta: {
+          candidates: result.candidates,
+          observedStats: result.observedStats,
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        error: `reverse_engineer_mesh threw: ${(e as Error).message}`,
+        code: 'REVERSE_ENGINEER_THREW',
+      };
+    }
+  };
+
   // ─── Ω3 — Design pattern retrieval (RAG-lite for seeds) ────────────────
   //
   // Returns relevant past designs as starter prompts. Agent extends the
@@ -2765,6 +2849,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     diff_checkpoints,
     // Image-to-CAD — vision → IntentInput
     intent_from_image,
+    // Mesh reverse-engineering — STL → proposed IntentInput
+    reverse_engineer_mesh,
   };
 }
 

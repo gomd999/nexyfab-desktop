@@ -147,7 +147,9 @@ export type ToolName =
   // ─── Track H — Version diff between checkpoints ──────────────────────
   | 'diff_checkpoints'
   // ─── Image-to-CAD — extract intent from a photo/sketch via vision ────
-  | 'intent_from_image';
+  | 'intent_from_image'
+  // ─── Mesh reverse-engineering — STL → proposed IntentInput via heuristic ─
+  | 'reverse_engineer_mesh';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */
@@ -740,6 +742,12 @@ export interface IntentFromImageArgs {
   mimeType?: 'image/png' | 'image/jpeg' | 'image/webp';
   /** Optional NL hint paired with the image ("the bracket is 50mm wide"). */
   hintText?: string;
+}
+
+/** Args for `reverse_engineer_mesh`: heuristic shape classifier over an STL. */
+export interface ReverseEngineerMeshArgs {
+  /** Raw base64 or data URL (data URL preferred). */
+  stlBase64: string;
 }
 
 // ─── Session state ──────────────────────────────────────────────────────────
