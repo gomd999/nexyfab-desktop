@@ -7331,6 +7331,24 @@ export function ShapeGeneratorInner() {
                           : `${opLabel} failed: ${detail}`);
                       }
                     }}
+                    onFaceOperationStatus={(status, op, detail) => {
+                      // Mirror of onEdgeOperationStatus for the FaceContextPanel.
+                      // success → "d=2.0mm" / "t=2.0mm × top"
+                      // error   → "NO_GEOMETRY" | "OFFSET_INVALID" | "THICKNESS_INVALID"
+                      //           | "OCCT_FAILED" | raw error text
+                      const opLabel = op === 'offset'
+                        ? (lang === 'ko' ? '면 오프셋' : 'Face Offset')
+                        : (lang === 'ko' ? '쉘' : 'Shell');
+                      if (status === 'success') {
+                        addToast('success', lang === 'ko'
+                          ? `${opLabel} 적용 (${detail})`
+                          : `${opLabel} applied (${detail})`);
+                      } else {
+                        addToast('error', lang === 'ko'
+                          ? `${opLabel} 실패: ${detail}`
+                          : `${opLabel} failed: ${detail}`);
+                      }
+                    }}
                     faceEditViewportCallout={lt.faceEditViewportCallout}
                     faceEditViewportCalloutTitle={lt.faceEditViewportCalloutTitle}
                     faceEditViewportCalloutTip={lt.faceEditViewportCalloutTip}

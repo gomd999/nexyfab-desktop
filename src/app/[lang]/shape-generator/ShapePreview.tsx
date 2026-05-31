@@ -20,6 +20,9 @@ import type { AssemblyState } from './assembly/matesSolver';
 import StandardPartDropHandler, { type StandardPartDropEvent } from './library/StandardPartDropHandler';
 import FaceHandles from './editing/FaceHandles';
 import EdgeContextPanel from './editing/EdgeContextPanel';
+import FaceContextPanel from './editing/FaceContextPanel';
+import { offsetFace as offsetFaceOp, shellWhole as shellWholeOp, type ShellOpenFace } from './editing/applyFaceOps';
+import type { UniqueFace } from './editing/useFaceEditing';
 import { useLOD } from './lod/useLOD';
 import VertexHandles from './editing/VertexHandles';
 import EdgeHandles from './editing/EdgeHandles';
@@ -857,6 +860,7 @@ function FaceScene({
   onDragStateChange,
   onGeometryApply,
   onFaceSketch,
+  onFaceSelectionChange,
   emptySelectionCallout,
   emptySelectionCalloutTitle,
   emptySelectionCalloutTip,
@@ -867,6 +871,14 @@ function FaceScene({
   onDragStateChange?: (d: boolean) => void;
   onGeometryApply?: (geo: THREE.BufferGeometry) => void;
   onFaceSketch?: (faceId: number) => void;
+  /** Emits the currently selected face (or null) so the parent host can mount
+   *  a sibling DOM-overlay panel (FaceContextPanel) for numeric ops. The
+   *  panel is rendered *outside* the R3F Canvas, so it cannot live inside
+   *  this scene — but the selection state does. This callback bridges the two. */
+  onFaceSelectionChange?: (
+    face: UniqueFace | null,
+    workingGeometry: THREE.BufferGeometry | null,
+  ) => void;
   /** Shown until a face is selected — keeps Push/Pull steps visible on the canvas. */
   emptySelectionCallout?: string;
   emptySelectionCalloutTitle?: string;
@@ -897,6 +909,18 @@ function FaceScene({
       return next;
     });
   }, [setSelectedFaceId]);
+
+  // Bridge: emit the primary selection up to the host so FaceContextPanel can
+  // mount as a sibling DOM overlay. Skip multi-selection (panel is single-face).
+  useEffect(() => {
+    if (!onFaceSelectionChange) return;
+    if (selectedFaceId === null) {
+      onFaceSelectionChange(null, editGeometry);
+      return;
+    }
+    const face = faces.find((f) => f.id === selectedFaceId) ?? null;
+    onFaceSelectionChange(face, editGeometry);
+  }, [selectedFaceId, faces, editGeometry, onFaceSelectionChange]);
 
   const clearSelection = useCallback(() => {
     setSelectedFaceId(null);
@@ -1360,6 +1384,16 @@ interface ShapePreviewProps {
     op: 'fillet' | 'chamfer',
     detail: string,
   ) => void;
+  /** Status callback for face-context offset/shell operations. Mirrors
+   *  `onEdgeOperationStatus`. Detail payload is one of:
+   *    success → "d=2.0mm" / "t=2.0mm × open=top"
+   *    error   → "NO_GEOMETRY" | "OFFSET_INVALID" | "THICKNESS_INVALID"
+   *              | "OCCT_FAILED" | "IMPORT_FAILED: …" | raw error text */
+  onFaceOperationStatus?: (
+    status: 'success' | 'error',
+    op: 'offset' | 'shell',
+    detail: string,
+  ) => void;
   lang?: string;
   /** Called when a supported CAD/mesh file is dropped onto the viewport */
   onFileImport?: (file: File) => void;
@@ -1563,6 +1597,7 @@ export default function ShapePreview({
   onFaceSketch,
   onDimClick,
   onEdgeOperationStatus,
+  onFaceOperationStatus,
   lang = 'ko',
   onFileImport,
   snapEnabled: _snapEnabled = false,
@@ -1722,6 +1757,21 @@ export default function ShapePreview({
   // Edge context panel state (for fillet/chamfer on selected edges — multi-select)
   const [selectedEdgesForPanel, setSelectedEdgesForPanel] = useState<import('./editing/types').UniqueEdge[]>([]);
   const selectedEdgeIdsForPanel = useMemo(() => new Set(selectedEdgesForPanel.map(e => e.id)), [selectedEdgesForPanel]);
+
+  // Face context panel state (single-face, for face offset / shell). FaceScene
+  // emits the current primary selection via onFaceSelectionChange so we can
+  // mount the panel as a sibling overlay outside the R3F Canvas. The working
+  // geometry comes from FaceScene's edit ref so the panel's operations land
+  // on the same vertex set the user sees highlighted.
+  const [selectedFaceForPanel, setSelectedFaceForPanel] = useState<UniqueFace | null>(null);
+  const [faceEditGeometry, setFaceEditGeometry] = useState<THREE.BufferGeometry | null>(null);
+  const handleFaceSelectionChange = useCallback(
+    (face: UniqueFace | null, workingGeometry: THREE.BufferGeometry | null) => {
+      setSelectedFaceForPanel(face);
+      setFaceEditGeometry(workingGeometry);
+    },
+    [],
+  );
 
   const handleEdgeSelect = useCallback((edge: import('./editing/types').UniqueEdge, additive: boolean) => {
     setSelectedEdgesForPanel(prev => {
@@ -2371,6 +2421,90 @@ export default function ShapePreview({
             </>
           )}
 
+          {/* Face context panel — mirrors the EdgeContextPanel wiring above.
+           * Mount conditions: face edit mode + a single primary face selected +
+           * working geometry available. The FaceScene above emits the selection
+           * via onFaceSelectionChange so this DOM-overlay panel (outside the
+           * Canvas) can dispatch deterministic offset/shell ops without
+           * round-tripping through the AI chat.
+           *
+           * Why a sibling panel instead of extending SelectionInfoBadge?
+           * Phase 1.2/1.3 constraint pinned SelectionInfoBadge as "do not modify".
+           * The existing `faceOffset` chip there sends an AI hint string — that
+           * UX stays; this panel is the deterministic numeric-input alternative.
+           *
+           * The sibling overlay marker carries data-testid="face-context-panel-
+           * overlay" so regression tests can assert mount lifecycle independent
+           * of the panel's internal markup (mirrors the edge-context-panel-
+           * overlay pattern). */}
+          {editMode === 'face' && selectedFaceForPanel && faceEditGeometry && (
+            <>
+              <span
+                data-testid="face-context-panel-overlay"
+                style={{ display: 'none' }}
+                aria-hidden="true"
+              />
+              <FaceContextPanel
+                selectedFace={selectedFaceForPanel}
+                geometry={faceEditGeometry}
+                lang={lang}
+                onApplyOffset={(distance) => {
+                  const face = selectedFaceForPanel;
+                  const geo = faceEditGeometry;
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onFaceOperationStatus?.('error', 'offset', 'NO_GEOMETRY');
+                    return;
+                  }
+                  if (!Number.isFinite(distance) || distance === 0) {
+                    onFaceOperationStatus?.('error', 'offset', 'OFFSET_INVALID');
+                    return;
+                  }
+                  try {
+                    const newGeo = offsetFaceOp(geo, face, distance);
+                    onGeometryApply?.(newGeo);
+                    onFaceOperationStatus?.('success', 'offset', `d=${distance.toFixed(1)}mm`);
+                  } catch (err) {
+                    const detail = err instanceof Error ? err.message : String(err);
+                    onFaceOperationStatus?.('error', 'offset', detail.slice(0, 120));
+                  }
+                }}
+                onApplyShell={(thickness, openFace) => {
+                  const geo = faceEditGeometry;
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onFaceOperationStatus?.('error', 'shell', 'NO_GEOMETRY');
+                    return;
+                  }
+                  if (!(thickness > 0)) {
+                    onFaceOperationStatus?.('error', 'shell', 'THICKNESS_INVALID');
+                    return;
+                  }
+                  const safeOpen: ShellOpenFace =
+                    openFace === 1 ? 1 : openFace === 2 ? 2 : 0;
+                  void shellWholeOp(geo, thickness, safeOpen)
+                    .then((newGeo) => {
+                      onGeometryApply?.(newGeo);
+                      const openLabel = safeOpen === 1 ? 'top' : safeOpen === 2 ? 'bottom' : 'closed';
+                      onFaceOperationStatus?.(
+                        'success',
+                        'shell',
+                        `t=${thickness.toFixed(1)}mm × ${openLabel}`,
+                      );
+                    })
+                    .catch((err: unknown) => {
+                      const detail = err instanceof Error ? err.message : String(err);
+                      const code = /requires.*4 vertices|requires indexed/i.test(detail)
+                        ? 'NO_GEOMETRY'
+                        : /occt/i.test(detail)
+                          ? 'OCCT_FAILED'
+                          : detail.slice(0, 120);
+                      onFaceOperationStatus?.('error', 'shell', code);
+                    });
+                }}
+                onClose={() => setSelectedFaceForPanel(null)}
+              />
+            </>
+          )}
+
           {/* Sketch plane selector overlay */}
           {onSketchPlaneChange && sketchPlane && (
             <div style={{
@@ -2610,6 +2744,7 @@ export default function ShapePreview({
                     onDragStateChange={onDragStateChange}
                     onGeometryApply={onGeometryApply}
                     onFaceSketch={onFaceSketch}
+                    onFaceSelectionChange={handleFaceSelectionChange}
                     emptySelectionCallout={faceEditViewportCallout}
                     emptySelectionCalloutTitle={faceEditViewportCalloutTitle}
                     emptySelectionCalloutTip={faceEditViewportCalloutTip}
