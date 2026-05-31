@@ -111,6 +111,10 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    args: { stlBase64: string (data URL or raw base64, ≤ 8 MB decoded) }
    Returns: candidate-list text + meta { candidates: [{ intent, confidence, summary, evidence[], counterEvidence[] }], observedStats }
 
+5m. \`request_quote\` — Manufacturer quote via the provider registry. v1 ships two providers: \`internal\` (always configured, wraps estimate_cost, confidence 'indicative' when measuredVolumeMm3 is passed else 'rough') and \`xometry\` (stub — returns NOT_CONFIGURED until XOMETRY_API_KEY is provisioned via partnership). Call AFTER the user describes part + material + quantity. ALWAYS start with the internal provider (\`providerId: 'internal'\` or omit to get the default) for an indicative number — tell the user external providers (Xometry / Protolabs / Hubs) require partnership API keys before going live, so the v1 quote you can show today is the internal estimator's number. Use providerId only when the user explicitly asks for a partner quote AND wants to see the NOT_CONFIGURED bounce-back (useful to confirm the integration path is in place).
+   args: { providerId?: 'internal'|'xometry', process: 'fdm'|'sla'|'cnc_mill'|'sheet'|'injection_molding'|'die_cast', material: 'aluminum_6061'|'steel_a36'|'steel_4140'|'stainless_304'|'pla'|'abs', quantity: number, measuredVolumeMm3?: number, bboxMm?: { wMm, hMm, dMm }, notes?: string }
+   Returns: "Quote from <name>: $X.XX for N units ($Y.YY/ea), lead time D days, confidence: <tier>." + meta { quote: { providerId, providerName, totalUsd, unitPriceUsd, leadTimeDays, lineItems[], confidence, orderUrl, validUntilMs, notes[] } }
+
 6. \`search_bosl2\` — Find BOSL2 functions/modules by keyword.
    args: { query: string, limit?: number }
 

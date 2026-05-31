@@ -1426,6 +1426,100 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
   };
 
+  // ─── Manufacturer quoting — pricing via internal or partner provider ───
+  //
+  // Wraps the QuoteProvider registry so the agent doesn't need to know
+  // whether a partner (Xometry/Hubs/Protolabs) API key is configured.
+  // Defaults to the internal estimator — always returns something. Partner
+  // stubs return NOT_CONFIGURED until their key is provisioned.
+  //
+  // Call AFTER the user describes part + material + quantity. Always start
+  // with the internal provider for an indicative number — tell the user
+  // external quotes need a partnership API key before going live.
+  const request_quote: ToolExecutor = async (args) => {
+    const a = args as {
+      providerId?: unknown;
+      process?: unknown;
+      material?: unknown;
+      quantity?: unknown;
+      measuredVolumeMm3?: unknown;
+      bboxMm?: unknown;
+      notes?: unknown;
+    };
+    const VALID_PROC: ProcessForDfm[] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+    const VALID_MAT: Material[] = ['aluminum_6061', 'steel_a36', 'steel_4140', 'stainless_304', 'pla', 'abs'];
+    if (typeof a.process !== 'string' || !(VALID_PROC as string[]).includes(a.process)) {
+      return {
+        ok: false,
+        error: `request_quote requires process ∈ {${VALID_PROC.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    if (typeof a.material !== 'string' || !(VALID_MAT as string[]).includes(a.material)) {
+      return {
+        ok: false,
+        error: `request_quote requires material ∈ {${VALID_MAT.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    const quantity = typeof a.quantity === 'number' && a.quantity > 0
+      ? Math.max(1, Math.floor(a.quantity))
+      : 1;
+    const { getDefaultProvider, getProvider } = await import('../../quoting/registry');
+    const providerId = typeof a.providerId === 'string' ? a.providerId : '';
+    const provider = providerId ? getProvider(providerId) : getDefaultProvider();
+    if (!provider) {
+      return {
+        ok: false,
+        error: `unknown quote provider "${providerId}". Available: internal, xometry.`,
+        code: 'UNKNOWN_PROVIDER',
+      };
+    }
+    const reqArgs: import('../../quoting/types').QuoteRequest = {
+      process: a.process as ProcessForDfm,
+      material: a.material as Material,
+      quantity,
+    };
+    if (typeof a.measuredVolumeMm3 === 'number' && a.measuredVolumeMm3 > 0) {
+      reqArgs.measuredVolumeMm3 = a.measuredVolumeMm3;
+    }
+    if (a.bboxMm && typeof a.bboxMm === 'object') {
+      const b = a.bboxMm as { wMm?: unknown; hMm?: unknown; dMm?: unknown };
+      if (typeof b.wMm === 'number' && typeof b.hMm === 'number' && typeof b.dMm === 'number'
+          && b.wMm > 0 && b.hMm > 0 && b.dMm > 0) {
+        reqArgs.bboxMm = { wMm: b.wMm, hMm: b.hMm, dMm: b.dMm };
+      }
+    }
+    if (typeof a.notes === 'string') reqArgs.notes = a.notes.slice(0, 1000);
+
+    let result: import('../../quoting/types').QuoteResult;
+    try {
+      result = await provider.getQuote(reqArgs);
+    } catch (e) {
+      return { ok: false, error: `quote provider threw: ${(e as Error).message}`, code: 'PROVIDER_THREW' };
+    }
+    if (!result.ok) {
+      // NOT_CONFIGURED is the most common stub path — surface the reason
+      // verbatim so the agent tells the user "Xometry needs an API key,
+      // try the internal estimator instead".
+      return {
+        ok: false,
+        error: `Quote from ${provider.name} failed (${result.code}): ${result.reason}`,
+        code: result.code,
+      };
+    }
+    const q = result.quote;
+    const summary =
+      `Quote from ${q.providerName}: $${q.totalUsd.toFixed(2)} for ${quantity} unit(s) `
+      + `($${q.unitPriceUsd.toFixed(2)}/ea), lead time ${q.leadTimeDays} days, `
+      + `confidence: ${q.confidence}.`;
+    return {
+      ok: true,
+      output: summary,
+      meta: { quote: q },
+    };
+  };
+
   // ─── Ω3 — Design pattern retrieval (RAG-lite for seeds) ────────────────
   //
   // Returns relevant past designs as starter prompts. Agent extends the
@@ -2851,6 +2945,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     intent_from_image,
     // Mesh reverse-engineering — STL → proposed IntentInput
     reverse_engineer_mesh,
+    // Manufacturer quoting — internal estimator or partner provider
+    request_quote,
   };
 }
 

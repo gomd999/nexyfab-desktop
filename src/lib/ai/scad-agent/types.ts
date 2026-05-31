@@ -149,7 +149,9 @@ export type ToolName =
   // ─── Image-to-CAD — extract intent from a photo/sketch via vision ────
   | 'intent_from_image'
   // ─── Mesh reverse-engineering — STL → proposed IntentInput via heuristic ─
-  | 'reverse_engineer_mesh';
+  | 'reverse_engineer_mesh'
+  // ─── Manufacturer quoting — internal estimator or partner provider ──────
+  | 'request_quote';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */

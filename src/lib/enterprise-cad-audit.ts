@@ -31,6 +31,8 @@ export const CadAuditAction = {
   IMAGE_INTENT_EXTRACTED: 'cad.image_intent.extracted',
   /** Mesh reverse-engineering (STL → proposed IntentInput via heuristic shape classifier). */
   MESH_REVERSE_ENGINEERED: 'cad.mesh.reverse_engineered',
+  /** Manufacturer quote requested via /api/nexyfab/request-quote (internal or partner provider). */
+  QUOTE_REQUESTED: 'cad.quote.requested',
 } as const;
 
 export function logCadPipelineAudit(opts: {
