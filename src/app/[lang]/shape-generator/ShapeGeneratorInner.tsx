@@ -5648,10 +5648,29 @@ export function ShapeGeneratorInner() {
       closeContextMenu();
       return;
     }
-    const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
+    // selectedType threads the cursor-time selection into geometry items so
+    // face/edge/vertex right-clicks surface element-specific ops (offset,
+    // fillet, chamfer, mate…) at the top of the menu. Without this the
+    // selection-aware branch in getContextItemsGeometry was dead code.
+    // `selectedElement.type` is currently 'face' | 'edge' | 'multi' in the
+    // union, but the canvas (VertexHandles / smartSnap) already produces
+    // vertex selections that future widening will surface here. Read via
+    // a string to stay forward-compatible without breaking strict typing.
+    const selType = selectedElement?.type as string | undefined;
+    const selKind: 'face' | 'edge' | 'vertex' | 'body' | null =
+      selType === 'face' ? 'face'
+      : selType === 'edge' ? 'edge'
+      : selType === 'vertex' ? 'vertex'
+      : highlightedPartId ? 'body'
+      : null;
+    const geomOpts = {
+      hasAssembly: bomParts.length >= 2,
+      hasHighlightedPart: !!highlightedPartId,
+      selectedType: selKind,
+    };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
     openContextMenu(e.clientX, e.clientY, items);
-  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, openContextMenu, closeContextMenu, openSketchRadial]);
+  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, selectedElement, openContextMenu, closeContextMenu, openSketchRadial]);
 
   const handleContextSelect = useCallback((id: string) => {
     closeContextMenu();
@@ -5747,6 +5766,63 @@ export function ShapeGeneratorInner() {
       case 'sketch-undo': handleSketchUndo(); break;
       case 'sketch-clear': handleSketchClear(); break;
       case 'edit-feature': if (selectedFeatureId) startEditing(selectedFeatureId); break;
+      // ── selection-aware right-click items (face/edge/vertex) ─────────
+      // The deterministic numeric panels (FaceContextPanel / EdgeContextPanel)
+      // auto-mount in face/edge edit mode whenever a selection exists, so the
+      // user can drive precise values there. These menu entries are the
+      // discoverable AI-hint shortcut alongside that panel — clicking them
+      // primes the AI chat with the same intent.
+      case 'face-offset': {
+        setPendingChatMsg(`Offset the selected face by 2mm`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-shell': {
+        setPendingChatMsg(`Shell this body with 2mm wall thickness, opening on the selected face`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-pushpull': {
+        setPendingChatMsg(`Push/pull the selected face by 10mm along its normal`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-sketch-from': {
+        setPendingChatMsg(`Start a sketch on the selected face`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-create-mate': {
+        // Same flow SelectionInfoBadge uses for "Create Mate": arm the first
+        // face, then the next face-pick on a different part triggers the
+        // MatePickerOverlay (`pendingMate` in selection store).
+        if (selectedElement && selectedElement.type === 'face') {
+          setMateFaceA(selectedElement as FaceSelectionInfo);
+          addToast(
+            'info',
+            (lt as { mateSelectSecondFace?: string }).mateSelectSecondFace
+              ?? 'Pick a second face on a different part to mate to. (Esc cancels)',
+          );
+        }
+        break;
+      }
+      case 'edge-chamfer': {
+        setPendingChatMsg(`Add a 2mm chamfer to the selected edge`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'vertex-move': {
+        setPendingChatMsg(`Move the selected vertex (specify direction and distance)`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'vertex-snap-grid': {
+        // No deterministic vertex-snap API yet — route via AI hint so the
+        // intent surfaces in chat and the user gets a parametric proposal.
+        setPendingChatMsg(`Snap the selected vertex to the nearest grid point (1mm grid)`);
+        openAIAssistant('chat');
+        break;
+      }
       case 'mate-coincident':
       case 'mate-coaxial':
       case 'mate-distance': {
@@ -5772,7 +5848,7 @@ export function ShapeGeneratorInner() {
         break;
       }
     }
-  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial]);
+  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial, selectedElement, setMateFaceA, setPendingChatMsg, openAIAssistant, lt]);
 
   const handleExportDrawingPDF = useCallback(async () => {
     if (!effectiveResult) return;
@@ -5808,10 +5884,25 @@ export function ShapeGeneratorInner() {
       closeContextMenu();
       return;
     }
-    const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
+    // `selectedElement.type` is currently 'face' | 'edge' | 'multi' in the
+    // union, but the canvas (VertexHandles / smartSnap) already produces
+    // vertex selections that future widening will surface here. Read via
+    // a string to stay forward-compatible without breaking strict typing.
+    const selType = selectedElement?.type as string | undefined;
+    const selKind: 'face' | 'edge' | 'vertex' | 'body' | null =
+      selType === 'face' ? 'face'
+      : selType === 'edge' ? 'edge'
+      : selType === 'vertex' ? 'vertex'
+      : highlightedPartId ? 'body'
+      : null;
+    const geomOpts = {
+      hasAssembly: bomParts.length >= 2,
+      hasHighlightedPart: !!highlightedPartId,
+      selectedType: selKind,
+    };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
     openContextMenu(x, y, items);
-  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, openContextMenu, closeContextMenu, openSketchRadial]);
+  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, selectedElement, openContextMenu, closeContextMenu, openSketchRadial]);
   const touchGestureHandlers = useTouchGestures({ onLongPress: isMobile ? handleLongPress : undefined });
 
   // ══════════════════════════════════════════════════════════════════════════
