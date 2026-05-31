@@ -1333,6 +1333,15 @@ interface ShapePreviewProps {
   onGeometryApply?: (geo: THREE.BufferGeometry) => void;
   onFaceSketch?: (faceId: number) => void;
   onDimClick?: (dim: 'w' | 'h' | 'd', currentValue: number) => void;
+  /** Status callback for edge-context fillet/chamfer operations. Host wires this
+   *  to addToast so success ("Fillet applied (r=3mm)") and specific errors
+   *  ("OCCT_FAILED", "NO_GEOMETRY") surface to the user instead of being
+   *  silently swallowed. Optional — when absent, errors still log to console. */
+  onEdgeOperationStatus?: (
+    status: 'success' | 'error',
+    op: 'fillet' | 'chamfer',
+    detail: string,
+  ) => void;
   lang?: string;
   /** Called when a supported CAD/mesh file is dropped onto the viewport */
   onFileImport?: (file: File) => void;
@@ -1533,6 +1542,7 @@ export default function ShapePreview({
   onGeometryApply,
   onFaceSketch,
   onDimClick,
+  onEdgeOperationStatus,
   lang = 'ko',
   onFileImport,
   snapEnabled: _snapEnabled = false,
@@ -2195,33 +2205,149 @@ export default function ShapePreview({
           onMouseDown={e => e.preventDefault()}
           onWheel={e => e.stopPropagation()}>
 
-          {/* Edge context panel (fillet/chamfer — multi-select) */}
+          {/* ════════ Edge context panel (fillet/chamfer — multi-select) ════════
+           *
+           * BACKEND CHOICE: direct feature pipeline (filletFeature / chamferFeature
+           * via applyAsync). Trade-off vs alternatives:
+           *
+           *   - Picked: applyAsync path uses real per-edge OCCT when a B-rep handle
+           *     is attached to the geometry, falling back to the mesh approximator
+           *     otherwise. Edge selections from the viewport are forwarded as
+           *     EdgeSelectionInfo[] via ctx.edgeSelections so the OCCT EdgeFinder
+           *     can target the clicked edges instead of rounding the whole body.
+           *
+           *   - Rejected: AI-agent (brep_fillet via prompt). Adds latency,
+           *     non-determinism, and a server roundtrip for a one-click viewport
+           *     operation. The deterministic feature pipeline already does what
+           *     the agent would do — there is no reason to route through AI here.
+           *
+           *   - Rejected: SCAD minkowski-wrap whole-body. Misleading (user picked
+           *     an edge but everything rounds). Worse UX than calling the existing
+           *     OCCT-backed feature.
+           *
+           * The sibling overlay marker carries data-testid="edge-context-panel-overlay"
+           * so regression tests can assert mount lifecycle independent of the
+           * panel's internal markup (mirrors the csg-panel-overlay pattern).
+           */}
           {editMode === 'edge' && selectedEdgesForPanel.length > 0 && result && (
-            <EdgeContextPanel
-              selectedEdges={selectedEdgesForPanel}
-              geometry={result.geometry}
-              lang={lang}
-              onApplyFillet={(radius, segments) => {
-                import('./features/fillet').then(({ filletFeature }) => {
-                  try {
-                    const newGeo = filletFeature.apply(result.geometry, { radius, segments });
-                    onGeometryApply?.(newGeo);
-                  } catch { /* ignore */ }
-                });
-                setSelectedEdgesForPanel([]);
-              }}
-              onApplyChamfer={(distance) => {
-                import('./features/chamfer').then(({ chamferFeature }) => {
-                  try {
-                    const newGeo = chamferFeature.apply(result.geometry, { distance });
-                    onGeometryApply?.(newGeo);
-                  } catch { /* ignore */ }
-                });
-                setSelectedEdgesForPanel([]);
-              }}
-              onClose={() => setSelectedEdgesForPanel([])}
-              onClearSelection={() => setSelectedEdgesForPanel([])}
-            />
+            <>
+              <span
+                data-testid="edge-context-panel-overlay"
+                style={{ display: 'none' }}
+                aria-hidden="true"
+              />
+              <EdgeContextPanel
+                selectedEdges={selectedEdgesForPanel}
+                geometry={result.geometry}
+                lang={lang}
+                onApplyFillet={(radius, segments) => {
+                  const geo = result.geometry;
+                  // Validate before dispatching (specific reasons surface to toast)
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onEdgeOperationStatus?.('error', 'fillet', 'NO_GEOMETRY');
+                    setSelectedEdgesForPanel([]);
+                    return;
+                  }
+                  if (!(radius > 0)) {
+                    onEdgeOperationStatus?.('error', 'fillet', 'RADIUS_INVALID');
+                    return;
+                  }
+                  // Build per-edge selection context so the OCCT path can target
+                  // the clicked edges via EdgeFinder. Position = midpoint;
+                  // length = |A-B|; normal is omitted (the finder tolerates it).
+                  const edgeSelections = selectedEdgesForPanel.map((edge) => {
+                    const [mx, my, mz] = edge.midpoint;
+                    return {
+                      type: 'edge' as const,
+                      position: [mx, my, mz] as [number, number, number],
+                      length: 0,
+                      normal: [0, 0, 1] as [number, number, number],
+                    };
+                  });
+                  const captured = selectedEdgesForPanel.slice();
+                  setSelectedEdgesForPanel([]);
+                  void import('./features/fillet').then(async ({ filletFeature }) => {
+                    try {
+                      const apply = filletFeature.applyAsync ?? (async (g, p, c) => filletFeature.apply(g, p, c));
+                      const newGeo = await apply(
+                        geo,
+                        { radius, segments, engine: 1 },
+                        { featureId: 'edge-context-fillet', edgeSelections },
+                      );
+                      onGeometryApply?.(newGeo);
+                      onEdgeOperationStatus?.(
+                        'success',
+                        'fillet',
+                        `r=${radius}mm × ${captured.length}`,
+                      );
+                    } catch (err) {
+                      const detail = err instanceof Error ? err.message : String(err);
+                      const code = /requires.*4 vertices|requires indexed/i.test(detail)
+                        ? 'NO_GEOMETRY'
+                        : /occt/i.test(detail)
+                          ? 'OCCT_FAILED'
+                          : detail.slice(0, 120);
+                      onEdgeOperationStatus?.('error', 'fillet', code);
+                    }
+                  }).catch((err: unknown) => {
+                    const detail = err instanceof Error ? err.message : String(err);
+                    onEdgeOperationStatus?.('error', 'fillet', `IMPORT_FAILED: ${detail}`);
+                  });
+                }}
+                onApplyChamfer={(distance) => {
+                  const geo = result.geometry;
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onEdgeOperationStatus?.('error', 'chamfer', 'NO_GEOMETRY');
+                    setSelectedEdgesForPanel([]);
+                    return;
+                  }
+                  if (!(distance > 0)) {
+                    onEdgeOperationStatus?.('error', 'chamfer', 'DISTANCE_INVALID');
+                    return;
+                  }
+                  const edgeSelections = selectedEdgesForPanel.map((edge) => {
+                    const [mx, my, mz] = edge.midpoint;
+                    return {
+                      type: 'edge' as const,
+                      position: [mx, my, mz] as [number, number, number],
+                      length: 0,
+                      normal: [0, 0, 1] as [number, number, number],
+                    };
+                  });
+                  const captured = selectedEdgesForPanel.slice();
+                  setSelectedEdgesForPanel([]);
+                  void import('./features/chamfer').then(async ({ chamferFeature }) => {
+                    try {
+                      const apply = chamferFeature.applyAsync ?? (async (g, p, c) => chamferFeature.apply(g, p, c));
+                      const newGeo = await apply(
+                        geo,
+                        { distance, engine: 1 },
+                        { featureId: 'edge-context-chamfer', edgeSelections },
+                      );
+                      onGeometryApply?.(newGeo);
+                      onEdgeOperationStatus?.(
+                        'success',
+                        'chamfer',
+                        `d=${distance}mm × ${captured.length}`,
+                      );
+                    } catch (err) {
+                      const detail = err instanceof Error ? err.message : String(err);
+                      const code = /requires.*4 vertices|requires indexed/i.test(detail)
+                        ? 'NO_GEOMETRY'
+                        : /occt/i.test(detail)
+                          ? 'OCCT_FAILED'
+                          : detail.slice(0, 120);
+                      onEdgeOperationStatus?.('error', 'chamfer', code);
+                    }
+                  }).catch((err: unknown) => {
+                    const detail = err instanceof Error ? err.message : String(err);
+                    onEdgeOperationStatus?.('error', 'chamfer', `IMPORT_FAILED: ${detail}`);
+                  });
+                }}
+                onClose={() => setSelectedEdgesForPanel([])}
+                onClearSelection={() => setSelectedEdgesForPanel([])}
+              />
+            </>
           )}
 
           {/* Sketch plane selector overlay */}

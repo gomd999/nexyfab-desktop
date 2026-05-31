@@ -7277,6 +7277,25 @@ export function ShapeGeneratorInner() {
                     sketchPlane={isSketchMode ? (sketchPlane as 'xy' | 'xz' | 'yz') : undefined}
                     onSketchPlaneChange={isSketchMode ? setSketchPlane : undefined}
                     onGeometryApply={handleGeometryApply}
+                    onEdgeOperationStatus={(status, op, detail) => {
+                      // Surface viewport edge fillet/chamfer outcomes as toasts so
+                      // failures stop being silent. The detail payload is one of:
+                      //   success → "r=3mm × 2" / "d=2mm × 1"
+                      //   error   → "NO_GEOMETRY" | "RADIUS_INVALID" | "OCCT_FAILED"
+                      //             | "IMPORT_FAILED: …" | raw error text
+                      const opLabel = op === 'fillet'
+                        ? (lang === 'ko' ? '필렛' : 'Fillet')
+                        : (lang === 'ko' ? '챔퍼' : 'Chamfer');
+                      if (status === 'success') {
+                        addToast('success', lang === 'ko'
+                          ? `${opLabel} 적용 (${detail})`
+                          : `${opLabel} applied (${detail})`);
+                      } else {
+                        addToast('error', lang === 'ko'
+                          ? `${opLabel} 실패: ${detail}`
+                          : `${opLabel} failed: ${detail}`);
+                      }
+                    }}
                     faceEditViewportCallout={lt.faceEditViewportCallout}
                     faceEditViewportCalloutTitle={lt.faceEditViewportCalloutTitle}
                     faceEditViewportCalloutTip={lt.faceEditViewportCalloutTip}
