@@ -294,6 +294,7 @@ import type { BreadcrumbItem } from './BreadcrumbNav';
 import SelectionFilterBar from './SelectionFilterBar';
 import type { SelectionFilter } from './SelectionFilterBar';
 import SelectionInfoBadge from './editing/SelectionInfoBadge';
+import MatePickerOverlay from './editing/MatePickerOverlay';
 import AIAssistantSidebar from './analysis/AIAssistantSidebar';
 const IntakeWizard = dynamic(() => import('./intake/IntakeWizard'), { ssr: false });
 const ComposeResultPanel = dynamic(() => import('./intake/ComposeResultPanel'), { ssr: false });
@@ -2037,6 +2038,24 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // ── Esc clears in-flight mate selection (Phase F click-to-mate UX) ──
+  // When the user has armed mate mode (mateFaceA set) or has the picker
+  // overlay open (pendingMate set) Escape bails out of the workflow.
+  // Skipped while an input is focused so dialog text editing isn't hijacked.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const tag = (document.activeElement?.tagName ?? '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) return;
+      const st = useSelectionStore.getState();
+      if (!st.mateFaceA && !st.pendingMate) return;
+      st.setMateFaceA(null);
+      st.setPendingMate(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   // ── Demo signup request — open auth modal in signup mode ──
   // useNfabFileIO dispatches this when an unsigned user tries to cloud-save.
   // We open the auth modal; the pending-intent stash is set in the hook,
@@ -2213,6 +2232,10 @@ export function ShapeGeneratorInner() {
   const setSelectedElement = useSelectionStore(s => s.setSelectedElement);
   const mateFaceA          = useSelectionStore(s => s.mateFaceA);
   const setMateFaceA       = useSelectionStore(s => s.setMateFaceA);
+  // Phase F (click-to-mate UX): pending pair surfaces the MatePickerOverlay.
+  // Owned by the selection store so the canvas, the overlay, and the host
+  // share a single source of truth.
+  const pendingMate        = useSelectionStore(s => s.pendingMate);
   const [selectionActive, setSelectionActive] = React.useState(false);
   // ── Idea-to-Design Intake Wizard (L1→L5 composition) ──
   const [showIntakeWizard, setShowIntakeWizard] = React.useState(false);
@@ -7033,11 +7056,22 @@ export function ShapeGeneratorInner() {
   // MainWorkspace component reads them directly without prop-drilling.
   // All hook calls MUST live above the mobile-gate early return so React
   // hook order stays stable across remounts.
-  const { onElementSelect: canvasOnElementSelect, highlightTriangles: canvasHighlightTriangles } =
-    useCanvasSelectionHandlers({
+  const {
+    onElementSelect: canvasOnElementSelect,
+    highlightTriangles: canvasHighlightTriangles,
+    commitPendingMate: canvasCommitPendingMate,
+    cancelPendingMate: canvasCancelPendingMate,
+  } = useCanvasSelectionHandlers({
       generateMateId,
       setSelectionActive,
-      labels: { mateCoincident: lt.mateCoincident, mateConcentric: lt.mateConcentric },
+      labels: {
+        mateCoincident: lt.mateCoincident,
+        mateConcentric: lt.mateConcentric,
+        mateDistance: lt.mateDistance,
+        // mateParallel is a Phase F addition — fallback string preserves
+        // the build if a lang dict is mid-migration.
+        mateParallel: (lt as { mateParallel?: string }).mateParallel ?? 'Parallel',
+      },
       onMateCreated: (mate, partA, partB, mateLabel) => {
         setAssemblyMates(prev => [...prev, mate]);
         setShowAssemblyPanel(true);
@@ -8784,7 +8818,11 @@ export function ShapeGeneratorInner() {
                   onSendToChat={(info, actionHint) => {
                     if (actionHint === 'mate_start' && info.type === 'face') {
                       setMateFaceA(info as import('./editing/selectionInfo').FaceSelectionInfo);
-                      addToast('info', 'Select a second face on a different part to create a mate.');
+                      addToast(
+                        'info',
+                        (lt as { mateSelectSecondFace?: string }).mateSelectSecondFace
+                          ?? 'Pick a second face on a different part to mate to. (Esc cancels)',
+                      );
                       setSelectedElement(null);
                       return;
                     }
@@ -8807,6 +8845,29 @@ export function ShapeGeneratorInner() {
                     setSelectedElement(null);
                     setSelectionActive(false);
                   }}
+                />
+                {/* Mate Picker Overlay — Phase F click-to-mate.
+                    Auto-mounts when `pendingMate` is set (after the user picks
+                    the second face on a different part). Apply commits via
+                    the same onMateCreated callback the auto-flow used. */}
+                <MatePickerOverlay
+                  pending={pendingMate}
+                  labels={{
+                    title: (lt as { matePickerTitle?: string }).matePickerTitle ?? 'Choose Mate Type',
+                    apply: (lt as { matePickerApply?: string }).matePickerApply ?? 'Apply',
+                    cancel: (lt as { matePickerCancel?: string }).matePickerCancel ?? 'Cancel',
+                    suggested: (lt as { matePickerSuggested?: string }).matePickerSuggested ?? 'Suggested',
+                    flipHint: (lt as { matePickerFlipHint?: string }).matePickerFlipHint
+                      ?? 'Both faces point the same way — Coincident may flip one part.',
+                    type: {
+                      coincident: lt.mateCoincident ?? 'Coincident',
+                      concentric: lt.mateConcentric ?? 'Concentric',
+                      distance:   lt.mateDistance   ?? 'Distance',
+                      parallel:   (lt as { mateParallel?: string }).mateParallel ?? 'Parallel',
+                    },
+                  }}
+                  onApply={canvasCommitPendingMate}
+                  onCancel={canvasCancelPendingMate}
                 />
                 {/* Canvas gizmo overlays (gizmo + dimension lines + DFM badges) */}
                 <CanvasGizmoOverlays
