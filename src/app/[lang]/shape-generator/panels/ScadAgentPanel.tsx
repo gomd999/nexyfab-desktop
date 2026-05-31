@@ -21,6 +21,7 @@ import ScadAgentCheckpointTimeline from './ScadAgentCheckpointTimeline';
 import ScadAgentTemplateGallery from './ScadAgentTemplateGallery';
 import ScadAgentPresence from './ScadAgentPresence';
 import ScadAgentAssemblyTree from './ScadAgentAssemblyTree';
+import ScadAgentFeatureTree from './ScadAgentFeatureTree';
 import BetaBanner from '@/components/nexyfab/BetaBanner';
 import { useAnalysisStore } from '../store/analysisStore';
 import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification';
@@ -508,6 +509,16 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           session={session}
           onQuery={(p) => { setInput(p); }}
         />
+        {/* Z1 — Parametric feature tree visualization (SolidWorks
+            FeatureManager equivalent). Read-only in this mount —
+            inline param edit + delete callbacks are a follow-up that
+            will route through tree_set_param / tree_remove_node. */}
+        {session?.featureTree && Object.keys(session.featureTree.nodes).length > 0 && (
+          <ScadAgentFeatureTree
+            lang={lang}
+            tree={session.featureTree}
+          />
+        )}
         <button onClick={handleNewSession}
           disabled={busy && !abortRef.current}
           style={btnSecondary}>

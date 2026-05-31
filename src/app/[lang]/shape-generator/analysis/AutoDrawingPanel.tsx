@@ -1295,6 +1295,102 @@ export default function AutoDrawingPanel({
         </div>
       )}
 
+      {/* Polish — per-spec editor rows so the user can refine the
+          default placement instead of being stuck with the
+          quick-add defaults. Same look + feel as the GD&T row list. */}
+      {drawing && sectionSpecs.length > 0 && (
+        <div style={{ padding: '4px 12px 8px', borderTop: '1px solid var(--nx-panel-2)', fontSize: 11 }}>
+          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>Section views</div>
+          {sectionSpecs.map((spec, i) => (
+            <div key={`sec-edit-${i}`} data-testid={`section-edit-${i}`} style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4,
+            }}>
+              <span style={{ fontWeight: 700, color: 'var(--nx-warn)', minWidth: 14 }}>{spec.label}</span>
+              <select
+                value={spec.sourceViewIdx}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setSectionSpecs(prev => prev.map((s, j) => j === i ? { ...s, sourceViewIdx: v } : s));
+                }}
+                style={{ fontSize: 10, padding: '1px 4px' }}
+              >
+                {drawing.views.map((v, j) => <option key={j} value={j}>{v.projection}</option>)}
+              </select>
+              {(['x1', 'y1', 'x2', 'y2'] as const).map(k => (
+                <label key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--nx-text-2)' }}>
+                  {k}<input
+                    type="number" step={1} value={spec[k]}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!Number.isFinite(v)) return;
+                      setSectionSpecs(prev => prev.map((s, j) => j === i ? { ...s, [k]: v } : s));
+                    }}
+                    style={{ width: 50, fontSize: 10, padding: '1px 4px' }}
+                  />
+                </label>
+              ))}
+              <button
+                onClick={() => setSectionSpecs(prev => prev.filter((_, j) => j !== i))}
+                data-testid={`section-delete-${i}`}
+                title="delete this section view"
+                style={{
+                  marginLeft: 4, padding: '1px 6px', borderRadius: 3,
+                  border: '1px solid var(--nx-border)', background: 'transparent',
+                  color: 'var(--nx-text-2)', fontSize: 10, cursor: 'pointer',
+                }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {drawing && detailSpecs.length > 0 && (
+        <div style={{ padding: '4px 12px 8px', borderTop: '1px solid var(--nx-panel-2)', fontSize: 11 }}>
+          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>Detail views</div>
+          {detailSpecs.map((spec, i) => (
+            <div key={`det-edit-${i}`} data-testid={`detail-edit-${i}`} style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4,
+            }}>
+              <span style={{ fontWeight: 700, color: 'var(--nx-accent)', minWidth: 14 }}>{spec.label}</span>
+              <select
+                value={spec.sourceViewIdx}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setDetailSpecs(prev => prev.map((s, j) => j === i ? { ...s, sourceViewIdx: v } : s));
+                }}
+                style={{ fontSize: 10, padding: '1px 4px' }}
+              >
+                {drawing.views.map((v, j) => <option key={j} value={j}>{v.projection}</option>)}
+              </select>
+              {(['centerX', 'centerY', 'radius', 'magnification'] as const).map(k => (
+                <label key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--nx-text-2)' }}>
+                  {k === 'magnification' ? 'mag' : k.replace('center', 'c')}
+                  <input
+                    type="number" step={k === 'magnification' ? 0.5 : 1} value={spec[k]}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!Number.isFinite(v) || v <= 0 && k !== 'centerX' && k !== 'centerY') return;
+                      setDetailSpecs(prev => prev.map((s, j) => j === i ? { ...s, [k]: v } : s));
+                    }}
+                    style={{ width: 48, fontSize: 10, padding: '1px 4px' }}
+                  />
+                </label>
+              ))}
+              <button
+                onClick={() => setDetailSpecs(prev => prev.filter((_, j) => j !== i))}
+                data-testid={`detail-delete-${i}`}
+                title="delete this detail view"
+                style={{
+                  marginLeft: 4, padding: '1px 6px', borderRadius: 3,
+                  border: '1px solid var(--nx-border)', background: 'transparent',
+                  color: 'var(--nx-text-2)', fontSize: 10, cursor: 'pointer',
+                }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* G8 — Exploded view section. Renders BOM-numbered balloons over the
           assembly's projected centres so the panel can double as an
           assembly-instruction sheet. Only shown when the host passes
