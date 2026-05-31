@@ -29,6 +29,8 @@ export const CadAuditAction = {
   SCAD_AGENT_RUN: 'cad.scad_agent.run',
   /** Image-to-CAD intent extraction (photo/sketch → IntentInput via vision). */
   IMAGE_INTENT_EXTRACTED: 'cad.image_intent.extracted',
+  /** Mesh reverse-engineering (STL → proposed IntentInput via heuristic shape classifier). */
+  MESH_REVERSE_ENGINEERED: 'cad.mesh.reverse_engineered',
 } as const;
 
 export function logCadPipelineAudit(opts: {
