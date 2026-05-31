@@ -747,6 +747,7 @@ function EditScene({
   displayMode,
   onDragStateChange,
   snapGrid,
+  smartSnapEnabled = false,
   selectedEdgeIds,
   onEdgeSelect,
 }: {
@@ -755,11 +756,13 @@ function EditScene({
   displayMode: DisplayMode;
   onDragStateChange?: (dragging: boolean) => void;
   snapGrid?: number;
+  smartSnapEnabled?: boolean;
   selectedEdgeIds?: Set<number>;
   onEdgeSelect?: (edge: import('./editing/types').UniqueEdge, additive: boolean) => void;
 }) {
   const { editGeometry, vertices, edges, moveVertex, moveEdge } = useEditableGeometry(sourceGeometry);
   const [isDragging, setIsDragging] = useState(false);
+  const [smartSnap, setSmartSnap] = useState<import('./editing/smartSnap').SnapCandidate | null>(null);
 
   /** OrbitControls default LEFT=rotate steals clicks from vertex/edge handles; disable left binding. */
   const vertexEdgeOrbitMouse = useMemo(
@@ -802,6 +805,9 @@ function EditScene({
           onDragEnd={handleDragEnd}
           snapGrid={snapGrid}
           size={2.4}
+          smartSnapEnabled={smartSnapEnabled}
+          smartSnapGeometry={editGeometry}
+          onSmartSnapChange={setSmartSnap}
         />
       )}
 
@@ -816,6 +822,18 @@ function EditScene({
           selectedEdgeIds={selectedEdgeIds}
           onEdgeSelect={onEdgeSelect}
         />
+      )}
+
+      {/* Smart-snap visual indicator: small glowing sphere at the snap target */}
+      {smartSnap && (
+        <mesh
+          position={smartSnap.point}
+          renderOrder={999}
+          userData={{ 'data-testid': 'smart-snap-indicator' }}
+        >
+          <sphereGeometry args={[0.8, 12, 8]} />
+          <meshBasicMaterial color="#22d3ee" transparent opacity={0.85} depthTest={false} />
+        </mesh>
       )}
 
       <OrbitControls
@@ -1347,6 +1365,8 @@ interface ShapePreviewProps {
   onFileImport?: (file: File) => void;
   /** Whether snap is enabled (shows snap guides) */
   snapEnabled?: boolean;
+  /** Smart-snap (edge-to-edge) toggle. Wires through to vertex handles. */
+  smartSnapEnabled?: boolean;
   /** Ghost (preview) result — shown semi-transparent alongside the main shape */
   ghostResult?: ShapeResult | null;
   /** Turntable animation mode: 'turntable' rotates the shape automatically */
@@ -1546,6 +1566,7 @@ export default function ShapePreview({
   lang = 'ko',
   onFileImport,
   snapEnabled: _snapEnabled = false,
+  smartSnapEnabled = false,
   ghostResult = null,
   animateMode = 'none',
   motionPartTransforms = null,
@@ -2601,6 +2622,7 @@ export default function ShapePreview({
                     displayMode={displayMode}
                     onDragStateChange={onDragStateChange}
                     snapGrid={snapGrid}
+                    smartSnapEnabled={smartSnapEnabled}
                     selectedEdgeIds={selectedEdgeIdsForPanel}
                     onEdgeSelect={handleEdgeSelect}
                   />

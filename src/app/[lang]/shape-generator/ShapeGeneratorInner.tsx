@@ -1144,6 +1144,7 @@ export function ShapeGeneratorInner() {
     transformMatrix, setTransformMatrix,
     snapEnabled, setSnapEnabled,
     snapSize, setSnapSize,
+    smartSnapEnabled, setSmartSnapEnabled,
     unitSystem, setUnitSystem } = useViewportState();
 
   // ── Selection filters (depends on editMode from viewport) ──
@@ -7363,6 +7364,7 @@ export function ShapeGeneratorInner() {
                       }
                     }}
                     snapEnabled={snapEnabled}
+                    smartSnapEnabled={smartSnapEnabled}
                     ghostResult={isPreviewMode ? previewResult : null}
                     motionPartTransforms={motionPartTransforms}
                     nurbsCPEdit={canvasNurbsCPEdit}
@@ -9048,6 +9050,8 @@ export function ShapeGeneratorInner() {
             onToggleSnap={() => setSnapEnabled(v => !v)}
             snapSize={snapSize}
             onSnapSizeChange={setSnapSize}
+            smartSnapEnabled={smartSnapEnabled}
+            onToggleSmartSnap={() => setSmartSnapEnabled(v => !v)}
             sectionActive={sectionActive}
             sectionAxis={sectionAxis}
             sectionOffset={sectionOffset}

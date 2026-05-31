@@ -5,6 +5,7 @@ import { useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { UniqueVertex } from './types';
 import { snapVector3 } from './snap';
+import { findBestEdgeSnap, type SnapCandidate } from './smartSnap';
 
 const MAX_HANDLES = 1000;
 
@@ -27,6 +28,20 @@ interface VertexHandlesProps {
   color?: string;
   size?: number;
   snapGrid?: number;
+  /**
+   * When true, while dragging a vertex we scan `smartSnapGeometry` for nearby
+   * edges and snap the dragged vertex onto the closest edge within
+   * `smartSnapDistMm` (default 2 mm). The grid snap is applied AFTER smart
+   * snap — so if smart-snap fires it wins, otherwise grid takes over.
+   */
+  smartSnapEnabled?: boolean;
+  smartSnapGeometry?: THREE.BufferGeometry | null;
+  smartSnapDistMm?: number;
+  /**
+   * Fires every drag frame with the active snap target (or null when no
+   * smart snap is engaged). The host can render a marker at this point.
+   */
+  onSmartSnapChange?: (snap: SnapCandidate | null) => void;
 }
 
 export default function VertexHandles({
@@ -37,6 +52,10 @@ export default function VertexHandles({
   color = 'var(--nx-text)',
   size = 1.5,
   snapGrid,
+  smartSnapEnabled = false,
+  smartSnapGeometry = null,
+  smartSnapDistMm = 2,
+  onSmartSnapChange,
 }: VertexHandlesProps) {
   const { camera, gl } = useThree();
   const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -154,16 +173,51 @@ export default function VertexHandles({
       const hit = _raycaster.ray.intersectPlane(_plane, _intersection);
 
       if (hit) {
-        const pos = snapGrid ? snapVector3(_intersection, snapGrid) : _intersection;
-        onVertexMove(vertex.id, [pos.x, pos.y, pos.z]);
-        if (snapGrid) {
+        let posX = _intersection.x;
+        let posY = _intersection.y;
+        let posZ = _intersection.z;
+
+        // Smart snap (edge-to-edge) runs BEFORE grid snap so a near edge
+        // wins over the grid lattice. If no edge is within tolerance, we
+        // fall through to grid snap or raw intersection.
+        let smartHit: SnapCandidate | null = null;
+        if (smartSnapEnabled && smartSnapGeometry) {
+          smartHit = findBestEdgeSnap(
+            [posX, posY, posZ],
+            smartSnapGeometry,
+            { maxDistMm: smartSnapDistMm },
+          );
+          if (smartHit) {
+            posX = smartHit.point[0];
+            posY = smartHit.point[1];
+            posZ = smartHit.point[2];
+          }
+        }
+
+        if (!smartHit && snapGrid) {
+          const g = snapVector3(
+            _intersection.set(posX, posY, posZ),
+            snapGrid,
+          );
+          posX = g.x;
+          posY = g.y;
+          posZ = g.z;
+        }
+
+        onVertexMove(vertex.id, [posX, posY, posZ]);
+        onSmartSnapChange?.(smartHit);
+
+        if (snapGrid || smartHit) {
           window.dispatchEvent(new CustomEvent('nexyfab:snap-pos', {
-            detail: { x: pos.x, y: pos.y, z: pos.z, active: true },
+            detail: { x: posX, y: posY, z: posZ, active: true },
           }));
         }
       }
     },
-    [draggingIdx, displayVertices, camera, gl, onVertexMove, snapGrid],
+    [
+      draggingIdx, displayVertices, camera, gl, onVertexMove, snapGrid,
+      smartSnapEnabled, smartSnapGeometry, smartSnapDistMm, onSmartSnapChange,
+    ],
   );
 
   const handlePointerUp = useCallback(
@@ -174,12 +228,13 @@ export default function VertexHandles({
       isDragging.current = false;
       setDraggingIdx(null);
       window.dispatchEvent(new CustomEvent('nexyfab:snap-pos', { detail: { active: false } }));
+      onSmartSnapChange?.(null);
 
       (e.nativeEvent.target as HTMLElement)?.releasePointerCapture?.(e.nativeEvent.pointerId);
 
       onDragEnd();
     },
-    [onDragEnd],
+    [onDragEnd, onSmartSnapChange],
   );
 
   const handlePointerOut = useCallback(() => {
