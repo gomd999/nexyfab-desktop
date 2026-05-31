@@ -7640,6 +7640,14 @@ export function ShapeGeneratorInner() {
       )}
 
       {/* ════════ CSG + Body Manager dock ════════ */}
+      {/* The CSGPanel mounts via BodyCsgDock when showCSGPanel === true. A sibling
+       *  zero-size marker carries data-testid="csg-panel-overlay" so regression
+       *  tests can assert overlay visibility without depending on the dynamically
+       *  imported panel's internal markup. The marker is only rendered when the
+       *  panel is open, matching the panel's mount lifecycle. */}
+      {showCSGPanel && (
+        <span data-testid="csg-panel-overlay" style={{ display: 'none' }} aria-hidden="true" />
+      )}
       <BodyCsgDock
         lang={lang}
         showCSGPanel={showCSGPanel}
@@ -8074,7 +8082,19 @@ export function ShapeGeneratorInner() {
                     </button>
                   ))}
                   <button
+                    data-testid="toolbar-boolean-button"
                     onClick={() => {
+                      // Toggle: re-clicking the button when the panel is open should close it.
+                      if (showCSGPanel) {
+                        setShowCSGPanel(false);
+                        return;
+                      }
+                      if (!effectiveResult) {
+                        // Discoverability: surface the gating reason instead of silently opening
+                        // an apply-disabled panel. handleCSGApply early-returns on no geometry.
+                        addToast('info', lt.booleanNoGeometry);
+                        return;
+                      }
                       setShowCSGPanel(true);
                       addToast('info', lt.booleanPanelOpened);
                     }}
