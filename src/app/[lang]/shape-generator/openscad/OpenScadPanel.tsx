@@ -159,6 +159,12 @@ const dict = {
     analyzing: '분석 중…',
     applyCandidate: '↓ 검증 섹션에 적용',
     reRouteFailed: '메시 역설계 실패',
+    quoteToggle: '💰 견적 요청',
+    quoteProcessLabel: '공정',
+    quoteMaterialLabel: '재질',
+    quoteQuantityLabel: '수량',
+    getQuote: '견적 받기',
+    quoteRouteFailed: '견적 요청 실패',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -301,6 +307,12 @@ const dict = {
     analyzing: 'Analyzing…',
     applyCandidate: '↓ Apply to verify section',
     reRouteFailed: 'Mesh reverse engineering failed',
+    quoteToggle: '💰 Request quote',
+    quoteProcessLabel: 'Process',
+    quoteMaterialLabel: 'Material',
+    quoteQuantityLabel: 'Quantity',
+    getQuote: 'Get quote',
+    quoteRouteFailed: 'Quote request failed',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -443,6 +455,12 @@ const dict = {
     analyzing: '解析中…',
     applyCandidate: '↓ 検証セクションに適用',
     reRouteFailed: 'メッシュのリバースエンジニアに失敗しました',
+    quoteToggle: '💰 見積依頼',
+    quoteProcessLabel: '工程',
+    quoteMaterialLabel: '材質',
+    quoteQuantityLabel: '数量',
+    getQuote: '見積を取得',
+    quoteRouteFailed: '見積依頼に失敗しました',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -584,6 +602,12 @@ const dict = {
     analyzing: '分析中…',
     applyCandidate: '↓ 应用到验证区',
     reRouteFailed: '网格逆向工程失败',
+    quoteToggle: '💰 申请报价',
+    quoteProcessLabel: '工艺',
+    quoteMaterialLabel: '材料',
+    quoteQuantityLabel: '数量',
+    getQuote: '获取报价',
+    quoteRouteFailed: '报价请求失败',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -726,6 +750,12 @@ const dict = {
     analyzing: 'Analizando…',
     applyCandidate: '↓ Aplicar a la sección de verificación',
     reRouteFailed: 'Fallo al hacer ingeniería inversa de la malla',
+    quoteToggle: '💰 Solicitar cotización',
+    quoteProcessLabel: 'Proceso',
+    quoteMaterialLabel: 'Material',
+    quoteQuantityLabel: 'Cantidad',
+    getQuote: 'Obtener cotización',
+    quoteRouteFailed: 'Fallo en la solicitud de cotización',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -868,6 +898,12 @@ const dict = {
     analyzing: 'جارٍ التحليل…',
     applyCandidate: '↓ تطبيق على قسم التحقق',
     reRouteFailed: 'فشل الهندسة العكسية للشبكة',
+    quoteToggle: '💰 طلب عرض سعر',
+    quoteProcessLabel: 'العملية',
+    quoteMaterialLabel: 'المادة',
+    quoteQuantityLabel: 'الكمية',
+    getQuote: 'الحصول على عرض السعر',
+    quoteRouteFailed: 'فشل طلب عرض السعر',
   },
 } as const;
 
@@ -1100,6 +1136,31 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [imageErr, setImageErr] = useState('');
   const [extractedIntent, setExtractedIntent] = useState<unknown>(null);
   const [extractedSummary, setExtractedSummary] = useState('');
+
+  /** Request-quote panel state — FREE-accessible conversion funnel. Defaults
+   *  to the internal estimator (always configured); user can pin a partner
+   *  provider via the dropdown to see the NOT_CONFIGURED bounce-back. The
+   *  quote section sits above reverse-engineer so it's visible without
+   *  scrolling past every other Pro+ feature. */
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteProcess, setQuoteProcess] = useState<'fdm' | 'sla' | 'cnc_mill' | 'sheet' | 'injection_molding' | 'die_cast'>('cnc_mill');
+  const [quoteMaterial, setQuoteMaterial] = useState<'aluminum_6061' | 'steel_a36' | 'steel_4140' | 'stainless_304' | 'pla' | 'abs'>('aluminum_6061');
+  const [quoteQuantity, setQuoteQuantity] = useState<number>(1);
+  const [quoteProviderId, setQuoteProviderId] = useState<'internal' | 'xometry'>('internal');
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteErr, setQuoteErr] = useState('');
+  interface QuoteUiResponse {
+    providerId: string;
+    providerName: string;
+    totalUsd: number;
+    unitPriceUsd: number;
+    leadTimeDays: number;
+    confidence: 'binding' | 'indicative' | 'rough';
+    lineItems: Array<{ label: string; amountUsd: number; unit?: string }>;
+    notes: string[];
+    orderUrl: string | null;
+  }
+  const [quoteResult, setQuoteResult] = useState<QuoteUiResponse | null>(null);
 
   /** Mesh reverse-engineering panel state — Pro+ feature, collapsed until
    *  toggled. The classifier returns multiple candidates; the user picks one
@@ -1848,6 +1909,55 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     }
   }, [reStlBase64, reBusy, t]);
 
+  /** POST to /api/nexyfab/request-quote with the selected provider +
+   *  process + material + quantity. We prefill measuredVolumeMm3 / bboxMm
+   *  from the most recent verifyResult when available so the internal
+   *  estimator bumps confidence from 'rough' to 'indicative'. */
+  const requestQuote = useCallback(async () => {
+    if (quoteBusy) return;
+    setQuoteErr('');
+    setQuoteResult(null);
+    setQuoteBusy(true);
+    try {
+      const body: Record<string, unknown> = {
+        providerId: quoteProviderId,
+        process: quoteProcess,
+        material: quoteMaterial,
+        quantity: quoteQuantity,
+      };
+      // Prefill measured geometry from the last verify result when present
+      // — improves internal estimator confidence + lets the partner provider
+      // (when wired) skip an extra round-trip.
+      const lastVerified = verifyResult ?? agentVerifyResult;
+      if (lastVerified?.measured) {
+        const m = lastVerified.measured as { wMm: number; hMm: number; dMm: number };
+        if (typeof m.wMm === 'number' && typeof m.hMm === 'number' && typeof m.dMm === 'number'
+            && m.wMm > 0 && m.hMm > 0 && m.dMm > 0) {
+          body.bboxMm = { wMm: m.wMm, hMm: m.hMm, dMm: m.dMm };
+        }
+      }
+      if (lastVerified?.volume?.actualMm3 && lastVerified.volume.actualMm3 > 0) {
+        body.measuredVolumeMm3 = lastVerified.volume.actualMm3;
+      }
+      const res = await fetch('/api/nexyfab/request-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; quote?: QuoteUiResponse }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.quoteRouteFailed} (${res.status})`;
+        setQuoteErr(msg);
+        return;
+      }
+      if (data.quote) setQuoteResult(data.quote);
+    } catch (e: unknown) {
+      setQuoteErr(e instanceof Error ? e.message : t.quoteRouteFailed);
+    } finally {
+      setQuoteBusy(false);
+    }
+  }, [quoteBusy, quoteProviderId, quoteProcess, quoteMaterial, quoteQuantity, verifyResult, agentVerifyResult, t]);
+
   /** Copy a chosen candidate's intent into the verify-spec textarea and
    *  reveal the verify section so the user can immediately round-trip. */
   const applyCandidateToVerify = useCallback((intent: unknown) => {
@@ -2375,6 +2485,148 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               )}
             </div>
           )}
+
+          {/* ── Request quote (FREE-accessible collapsible) ── */}
+          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+            <button
+              type="button"
+              data-testid="quote-toggle"
+              onClick={() => setQuoteOpen(v => !v)}
+              className="self-start text-xs px-3 py-1.5 bg-amber-700/70 hover:bg-amber-600 text-white rounded font-medium border border-amber-500/40"
+            >
+              {t.quoteToggle} {quoteOpen ? '▲' : '▼'}
+            </button>
+            {quoteOpen && (
+              <div className="flex flex-col gap-2" data-testid="quote-section">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    {t.quoteProcessLabel}
+                    <select
+                      value={quoteProcess}
+                      onChange={e => setQuoteProcess(e.target.value as typeof quoteProcess)}
+                      disabled={quoteBusy}
+                      data-testid="quote-process"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    >
+                      <option value="fdm">FDM</option>
+                      <option value="sla">SLA</option>
+                      <option value="cnc_mill">CNC mill</option>
+                      <option value="sheet">Sheet metal</option>
+                      <option value="injection_molding">Injection molding</option>
+                      <option value="die_cast">Die cast</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    {t.quoteMaterialLabel}
+                    <select
+                      value={quoteMaterial}
+                      onChange={e => setQuoteMaterial(e.target.value as typeof quoteMaterial)}
+                      disabled={quoteBusy}
+                      data-testid="quote-material"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    >
+                      <option value="aluminum_6061">Aluminum 6061</option>
+                      <option value="steel_a36">Steel A36</option>
+                      <option value="steel_4140">Steel 4140</option>
+                      <option value="stainless_304">Stainless 304</option>
+                      <option value="pla">PLA</option>
+                      <option value="abs">ABS</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    {t.quoteQuantityLabel}
+                    <input
+                      type="number"
+                      min={1}
+                      max={100_000}
+                      step={1}
+                      value={quoteQuantity}
+                      onChange={e => {
+                        const v = parseInt(e.target.value, 10);
+                        setQuoteQuantity(Number.isFinite(v) && v > 0 ? v : 1);
+                      }}
+                      disabled={quoteBusy}
+                      data-testid="quote-quantity"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    Provider
+                    <select
+                      value={quoteProviderId}
+                      onChange={e => setQuoteProviderId(e.target.value as typeof quoteProviderId)}
+                      disabled={quoteBusy}
+                      data-testid="quote-provider"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    >
+                      <option value="internal">NexyFab internal · Configured</option>
+                      <option value="xometry">Xometry · Not configured</option>
+                    </select>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  data-testid="quote-submit"
+                  onClick={() => void requestQuote()}
+                  disabled={quoteBusy}
+                  className="self-start text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded font-medium"
+                >
+                  {quoteBusy ? t.quoteRouteFailed.replace(/failed.*$/i, '...') : t.getQuote}
+                </button>
+                {quoteErr && (
+                  <div
+                    data-testid="quote-error"
+                    className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                  >
+                    {quoteErr}
+                  </div>
+                )}
+                {quoteResult && (
+                  <div
+                    data-testid="quote-result"
+                    className="flex flex-col gap-1.5 border border-amber-700/30 rounded p-2 bg-amber-950/20"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-amber-100 font-mono">{quoteResult.providerName}</span>
+                      <span
+                        data-testid="quote-confidence"
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                          quoteResult.confidence === 'binding'
+                            ? 'text-green-300 border-green-700/40 bg-green-950/40'
+                            : quoteResult.confidence === 'indicative'
+                              ? 'text-amber-300 border-amber-700/40 bg-amber-950/40'
+                              : 'text-gray-300 border-gray-700/40 bg-gray-950/40'
+                        }`}
+                      >
+                        {quoteResult.confidence}
+                      </span>
+                    </div>
+                    <div className="text-sm text-amber-200 font-mono">
+                      ${quoteResult.totalUsd.toFixed(2)}{' '}
+                      <span className="text-[11px] text-amber-300/70">
+                        (${quoteResult.unitPriceUsd.toFixed(2)} / unit · lead {quoteResult.leadTimeDays}d)
+                      </span>
+                    </div>
+                    {quoteResult.lineItems.length > 0 && (
+                      <ul className="text-[10px] text-amber-200/80 font-mono">
+                        {quoteResult.lineItems.map((li, i) => (
+                          <li key={i}>
+                            {li.label}: ${li.amountUsd.toFixed(2)}
+                            {li.unit ? ` (${li.unit})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {quoteResult.notes.length > 0 && (
+                      <p className="text-[10px] text-amber-300/70 italic">
+                        {quoteResult.notes.join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Reverse engineer (Pro+ collapsible) ── */}
           <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
