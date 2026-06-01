@@ -18,9 +18,17 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import SolverSketchEditor, { type SolverSketchEditorProps } from './SolverSketchEditor';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
+
+// StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
+// Sketch editor bundle small for users who never click Extrude.
+const StlViewer = dynamic(() => import('./StlViewer'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>,
+});
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -94,6 +102,8 @@ const dict: Record<Lang, Dict> = {
 interface RenderResult {
   scad: string;
   pngs: { label: string; base64: string }[];
+  /** Binary STL bytes as base64 (Phase 2.A.4 — Three.js viewer). */
+  stl?: string;
 }
 
 type RenderState =
@@ -109,7 +119,11 @@ interface ExtrudeFetcher {
     draftDegrees?: number;
     direction: ExtrudeDirection;
     mode: ExtrudeMode;
-  }): Promise<{ ok: true; scad: string; pngs: { label: string; base64: string }[] } | { ok: false; code: string; message: string }>;
+    includeStl?: boolean;
+  }): Promise<
+    | { ok: true; scad: string; pngs: { label: string; base64: string }[]; stl?: string }
+    | { ok: false; code: string; message: string }
+  >;
 }
 
 const defaultFetcher: ExtrudeFetcher = async (req) => {
@@ -172,9 +186,10 @@ export default function SolverSketchEditorWithExtrude(
         draftDegrees: Number.isFinite(draftN) && draftN !== 0 ? draftN : undefined,
         direction,
         mode,
+        includeStl: true,
       });
       if (res.ok) {
-        setRender({ status: 'ok', result: { scad: res.scad, pngs: res.pngs } });
+        setRender({ status: 'ok', result: { scad: res.scad, pngs: res.pngs, stl: res.stl } });
       } else {
         setRender({ status: 'error', message: `${t.errorPrefix}: ${res.message}` });
       }

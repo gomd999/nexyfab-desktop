@@ -32,6 +32,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extrudeFromSketch } from '@/lib/sketch/extrudeFromSketch';
 import { renderScadToPng } from '@/lib/openscad-render/renderPng';
+import { renderScadToStl } from '@/lib/openscad-render/renderStl';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 
 export const runtime = 'nodejs';
@@ -44,6 +45,9 @@ interface ExtrudeRenderBody {
   direction?: 'one_sided' | 'two_sided' | 'midplane';
   mode?: 'add' | 'cut';
   views?: { label: string; camera: string }[];
+  /** When true, also include binary STL bytes in the response (base64).
+   *  Powers the interactive Three.js viewer (StlViewer). */
+  includeStl?: boolean;
 }
 
 const MAX_POINTS = 5000;
@@ -118,10 +122,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  let stlBase64: string | undefined;
+  if (body.includeStl) {
+    const stl = await renderScadToStl({ scadSource: pipeline.scad });
+    if (stl.ok) {
+      stlBase64 = stl.bytes.toString('base64');
+    }
+    // STL failure isn't fatal — caller still gets PNG previews.
+  }
+
   return NextResponse.json({
     ok: true,
     scad: pipeline.scad,
     danglingLines: pipeline.danglingLines,
     pngs: render.views.map((v) => ({ label: v.label, base64: v.bytes.toString('base64') })),
+    ...(stlBase64 ? { stl: stlBase64 } : {}),
   });
 }
