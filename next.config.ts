@@ -145,6 +145,10 @@ const nextConfig: NextConfig = {
         fs: false,
         path: false,
         crypto: false,
+        // planegcs WASM (Emscripten output) uses require('url').fileURLToPath
+        // for Node-side initialization; never runs in the browser, but
+        // webpack tries to resolve it during bundling.
+        url: false,
       };
     }
     // Tauri 빌드 시 API 디렉토리는 scripts/tauri-build.mjs가 임시 이동 처리합니다.
