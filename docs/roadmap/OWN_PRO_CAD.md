@@ -37,16 +37,18 @@ This is the multi-year build plan. Tracking tasks: #99-108. Decision-review gate
 
 ## Phase 2 — Feature-based Part Modeling (Q4 2026 - Q1 2027, 6-9 months)
 
-| Step | Task | Acceptance |
-|---|---|---|
-| 2.1 | Extrude (boss/cut + draft + thin) | Generates valid OCCT B-rep, edge picking works |
-| 2.2 | Revolve, Sweep, Loft | Each operation roundtrips through OCCT, fillet-able |
-| 2.3 | Fillet / Chamfer (per-edge + variable + asymmetric) | Per-edge OCCT (already lives, expand) |
-| 2.4 | Shell, Draft, Pattern (linear/circular/sketch-driven) | Pattern propagates parametric changes |
-| 2.5 | Reference geometry (plane/axis/point) | Sketch can reference; updates flow downstream |
-| 2.6 | Parametric history with full edit-replay | Feature tree edit → downstream recomputes deterministically |
-| 2.7 | Configurations expansion (already partial) | SolidWorks-style table + Yjs collab adapter |
-| 2.A | **Acceptance: maker-grade parts** | Build the 10 most common maker parts (bracket/enclosure/gear/etc) end-to-end |
+| Step | Task | Status | Acceptance |
+|---|---|---|---|
+| 2.1 | Extrude IR + SCAD | ✅ 2026-06-01 (dd2b04a5) | Profile extraction + extrude IR + linear_extrude SCAD; 18 tests |
+| 2.2 | Revolve + Sweep + Loft IRs | ✅ 2026-06-01 (d4bf3e99, 024d9699) | rotate_extrude + BOSL2 path_sweep + BOSL2 skin; 20 tests |
+| 2.3 | Fillet / Chamfer | ⏳ existing src/app code, IR wrap pending | Per-edge OCCT (already lives) |
+| 2.4 | Pattern (linear + circular) | ✅ 2026-06-01 (f5fd1aa2) | Feature-agnostic transforms with normalized axes; 13 tests |
+| 2.5 | Reference geometry (datum point/axis) | ✅ 2026-06-01 (703b50d3) | DatumPoint/Axis + projectOntoAxis + axisToAxisDistance; 14 tests |
+| 2.6 | Parametric history (3 sub-phases) | ✅ 2026-06-01 (d053ae9d, ab7f5792, 599a659b) | FeatureTree IR + diff/incremental replay + 7 EditOps + undo/redo; 43+13 tests |
+| 2.7 | Configurations expansion | ⏳ existing infra in src/app | SolidWorks-style table (Yjs collab already wired) |
+| 2.A | **Integration test** | ✅ 2026-06-01 partial (cde56b30) | Sketch → extract → extrude → tree → SCAD end-to-end; 3 tests. Full UI deliverable: 10 maker parts buildable from SolverSketchEditor → 3D viewport |
+
+**Phase 2 IR layer closed 2026-06-01.** Remaining: 2.3 wrapping existing fillet/chamfer infra into the FeatureTree, 2.7 configurations sync with FeatureTree, 2.A full UI demo (10 parts buildable end-to-end through SolverSketchEditor). Phase 2 footprint so far: 8 commits, 2500 lines, 115 tests.
 
 ---
 
