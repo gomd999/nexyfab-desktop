@@ -130,13 +130,13 @@ describe('iterativeSolve — coincident point/point', () => {
 });
 
 describe('iterativeSolve — over-constrained warning', () => {
-  it('reports unsupported mate kinds via residuals.supported=false', () => {
+  it('tangent mate (not yet analytically supported) is flagged supported=false', () => {
     const fixed = makePart('f', { fixed: true });
     const free = makePart('g');
     const state: AssemblyState = {
       parts: [fixed, free],
       mates: [
-        { id: 'par', kind: 'parallel', a: ref('f', 'f1', 'face'), b: ref('g', 'f2', 'face') } as Mate,
+        { id: 'tan', kind: 'tangent', a: ref('f', 'f1', 'face'), b: ref('g', 'f2', 'face') } as Mate,
       ],
     };
     const refs = new Map<string, { partId: string; refId: string; local: ResolvedGeometry }>([

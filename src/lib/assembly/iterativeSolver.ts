@@ -207,11 +207,26 @@ export function iterativeSolve(
 function isAnalyticallySupported(mate: Mate): boolean {
   if (mate.kind === 'concentric') return true;
   if (mate.kind === 'coincident') {
-    // Only point/point and plane/plane analytical so far.
     return (
       (mate.a.refKind === 'point' && mate.b.refKind === 'point') ||
       (mate.a.refKind === 'plane' && mate.b.refKind === 'plane')
     );
+  }
+  if (mate.kind === 'parallel' || mate.kind === 'perpendicular') {
+    // Supported when both sides are planes or both axes (or face/plane mix).
+    const norms: ReadonlyArray<string> = ['plane', 'face', 'axis'];
+    return norms.includes(mate.a.refKind) && norms.includes(mate.b.refKind);
+  }
+  if (mate.kind === 'distance') {
+    // Supported when both sides are points or both are planes.
+    return (
+      (mate.a.refKind === 'point' && mate.b.refKind === 'point') ||
+      (mate.a.refKind === 'plane' && mate.b.refKind === 'plane')
+    );
+  }
+  if (mate.kind === 'angle') {
+    return ['plane', 'face', 'axis'].includes(mate.a.refKind) &&
+      ['plane', 'face', 'axis'].includes(mate.b.refKind);
   }
   return false;
 }
@@ -270,7 +285,110 @@ function applyAnalyticalPlacement(
     return { position: add(curPos, perp), orientation: newOri };
   }
 
+  // ── parallel: align directions (no translation) ─────────────────────
+  if (mate.kind === 'parallel') {
+    const a = directionOf(movedG);
+    const b = directionOf(fixedG);
+    if (!a || !b) return null;
+    const rot = quatFromTo(a, b);
+    return { position: curPos, orientation: quatNormalize(quatMul(rot, curOri)) };
+  }
+
+  // ── perpendicular: rotate moved direction to perp(target) ────────────
+  if (mate.kind === 'perpendicular') {
+    const a = directionOf(movedG);
+    const b = directionOf(fixedG);
+    if (!a || !b) return null;
+    const cos = clamp(dot(a, b), -1, 1);
+    const currentAngle = Math.acos(cos);
+    // Axis (a × b) — positive rotation around this rotates a toward b
+    // (right-hand rule). To get from currentAngle to π/2 we move AWAY
+    // from b when currentAngle < π/2 → negative delta.
+    const axis = normalizeSafe(crossVec(a, b));
+    if (!axis) return null;
+    const delta = currentAngle - Math.PI / 2;
+    const rot = quatAxisAngle(axis, delta);
+    return { position: curPos, orientation: quatNormalize(quatMul(rot, curOri)) };
+  }
+
+  // ── distance point/point: translate along separation axis to target ──
+  if (mate.kind === 'distance' && movedG.kind === 'point' && fixedG.kind === 'point') {
+    const target = mate.value;
+    const diff = sub(movedG.world, fixedG.world);
+    const currentDist = lengthAndDir(diff);
+    if (!currentDist) return null;
+    // Place moved at fixed + (target * unit-direction-from-fixed-to-moved).
+    const newMovedWorld = add(fixedG.world, scale(currentDist.unit, target));
+    const shift = sub(newMovedWorld, movedG.world);
+    return { position: add(curPos, shift), orientation: curOri };
+  }
+  // ── distance plane/plane: translate along normal to target gap ───────
+  if (mate.kind === 'distance' && movedG.kind === 'plane' && fixedG.kind === 'plane') {
+    const target = mate.value;
+    // Signed perpendicular distance from fixed plane to moved plane.
+    const currentSigned = dot(sub(movedG.world.origin, fixedG.world.origin), fixedG.world.normal);
+    const targetSigned = currentSigned >= 0 ? target : -target;
+    const adjust = targetSigned - currentSigned;
+    return { position: add(curPos, scale(fixedG.world.normal, adjust)), orientation: curOri };
+  }
+
+  // ── angle: rotate moved direction to target angle from fixed direction ──
+  if (mate.kind === 'angle') {
+    const a = directionOf(movedG);
+    const b = directionOf(fixedG);
+    if (!a || !b) return null;
+    const targetRad = (mate.value * Math.PI) / 180;
+    const cos = clamp(dot(a, b), -1, 1);
+    const currentAngle = Math.acos(cos);
+    const axis = normalizeSafe(crossVec(a, b));
+    if (!axis) return null;
+    // Same right-hand-rule convention as perpendicular: positive rotation
+    // around (a × b) reduces the angle. Negate to move from currentAngle
+    // to targetAngle.
+    const delta = currentAngle - targetRad;
+    const rot = quatAxisAngle(axis, delta);
+    return { position: curPos, orientation: quatNormalize(quatMul(rot, curOri)) };
+  }
+
   return null;
+}
+
+// ─── small helpers for the analytical block above ────────────────────────
+
+function directionOf(g: ResolvedGeometry): Vec3 | null {
+  if (g.kind === 'axis') return g.world.direction;
+  if (g.kind === 'plane') return g.world.normal;
+  return null;
+}
+
+function crossVec(a: Vec3, b: Vec3): Vec3 {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+
+function normalizeSafe(v: Vec3): Vec3 | null {
+  const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  if (len < 1e-9) return null;
+  return { x: v.x / len, y: v.y / len, z: v.z / len };
+}
+
+function lengthAndDir(v: Vec3): { length: number; unit: Vec3 } | null {
+  const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  if (len < 1e-9) return null;
+  return { length: len, unit: { x: v.x / len, y: v.y / len, z: v.z / len } };
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function quatAxisAngle(axis: Vec3, angle: number): Quat {
+  const h = angle / 2;
+  const s = Math.sin(h);
+  return { x: axis.x * s, y: axis.y * s, z: axis.z * s, w: Math.cos(h) };
 }
 
 function computeResidual(
@@ -289,14 +407,43 @@ function computeResidual(
     return lengthOf(sub(ag.world, bg.world));
   }
   if (mate.kind === 'coincident' && ag.kind === 'plane' && bg.kind === 'plane') {
-    // Residual = perpendicular gap between planes.
     return Math.abs(dot(sub(bg.world.origin, ag.world.origin), ag.world.normal));
   }
   if (mate.kind === 'distance' && ag.kind === 'point' && bg.kind === 'point') {
     return Math.abs(lengthOf(sub(bg.world, ag.world)) - mate.value);
   }
-  // Unsupported mate kinds: residual undefined → report 0 so solver
-  // doesn't false-alarm on them. Caller sees them in supported=false flags.
+  if (mate.kind === 'distance' && ag.kind === 'plane' && bg.kind === 'plane') {
+    const signed = dot(sub(bg.world.origin, ag.world.origin), ag.world.normal);
+    return Math.abs(Math.abs(signed) - mate.value);
+  }
+  if (mate.kind === 'parallel') {
+    const aDir = directionOf(ag);
+    const bDir = directionOf(bg);
+    if (!aDir || !bDir) return 0;
+    // Parallel iff |a × b| ≈ 0. Sin of the angle between them.
+    return Math.hypot(
+      aDir.y * bDir.z - aDir.z * bDir.y,
+      aDir.z * bDir.x - aDir.x * bDir.z,
+      aDir.x * bDir.y - aDir.y * bDir.x,
+    );
+  }
+  if (mate.kind === 'perpendicular') {
+    const aDir = directionOf(ag);
+    const bDir = directionOf(bg);
+    if (!aDir || !bDir) return 0;
+    // Perp iff a · b ≈ 0.
+    return Math.abs(aDir.x * bDir.x + aDir.y * bDir.y + aDir.z * bDir.z);
+  }
+  if (mate.kind === 'angle') {
+    const aDir = directionOf(ag);
+    const bDir = directionOf(bg);
+    if (!aDir || !bDir) return 0;
+    const cos = Math.max(-1, Math.min(1, aDir.x * bDir.x + aDir.y * bDir.y + aDir.z * bDir.z));
+    const angleRad = Math.acos(cos);
+    const targetRad = (mate.value * Math.PI) / 180;
+    return Math.abs(angleRad - targetRad);
+  }
+  // Tangent: not yet supported analytically; residual undefined.
   return 0;
 }
 
