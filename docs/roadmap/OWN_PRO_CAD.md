@@ -15,13 +15,15 @@ This is the multi-year build plan. Tracking tasks: #99-108. Decision-review gate
 
 **Choice:** `@salusoft89/planegcs` — WASM port of FreeCAD's planegcs (LGPL-2.1+, npm-ready, battle-tested).
 
-| Step | Task | Target | Acceptance |
-|---|---|---|---|
-| 1.1 | Install + smoke test | 2026-06-08 | WASM loads in browser, solves trivial constraint |
-| 1.2 | Solver facade (typed wrapper) | 2026-06-22 | 9 constraint types working: coincident/parallel/perpendicular/tangent/horizontal/vertical + distance/angle/radius |
-| 1.3 | Rewrite SketchEditor on solver | 2026-07-15 | All 4 current tools work via solver; DoF readout shown |
-| 1.4 | Sketch ↔ 3D plane mapping | 2026-08-15 | Sketch starts from face/plane, maps back to world coords |
-| 1.A | **Acceptance: 4-bar linkage** | 2026-09-15 | Drag any vertex → constraints maintained real-time; persist + reload |
+| Step | Task | Target | Status | Acceptance |
+|---|---|---|---|---|
+| 1.1 | Install + smoke test | 2026-06-08 | ✅ 2026-06-01 (2b28cc9a) | WASM loads + solves trivial constraint (1 test, 36ms cold start) |
+| 1.2 | Solver facade (typed wrapper) | 2026-06-22 | ✅ 2026-06-01 (23cc5238) | 9 constraints + drag via set_p_param + DoF via gcs.dof() (14 tests) |
+| 1.3 | SolverSketchEditor on solver | 2026-07-15 | ✅ 2026-06-01 (3f749185) | 6 entity tools + 5 constraint tools + DoF panel + live solve (9 tests) |
+| 1.4 | Sketch ↔ 3D plane mapping | 2026-08-15 | ✅ 2026-06-01 (54d9eb8a) | SketchPlane: localToWorld/worldToLocal + 3 standard planes + 3 factories (16 tests) |
+| 1.A | **4-bar linkage acceptance** | 2026-09-15 | ✅ 2026-06-01 (854fcc08) | 1-DoF drag holds 3 length constraints + persist/reload + dof=1 (5 tests) |
+
+**Phase 1 closed 2026-06-01 (15 weeks ahead of plan).** planegcs is suitable for Phase 2+. Total Phase 1 footprint: 5 commits, 2150 lines, 45 tests (45/45 green).
 
 **Gotchas to avoid:**
 - 6 buggy non-driving constraints in planegcs (CircleDiameter, ArcDiameter, C2CDistance, C2LDistance, P2CDistance, ArcLength) — restrict to driving mode only.

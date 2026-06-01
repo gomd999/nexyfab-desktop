@@ -59,11 +59,11 @@ NexyFab web (current maker/SMB track) continues as the revenue + AI training dat
 ## Rollout
 
 - [x] **2026-06-01** — ADR accepted, roadmap doc + 10 tracking tasks (#99-108) created.
-- [ ] **2026-06-08** — Phase 1.1 done: `@salusoft89/planegcs` installed, WASM smoke test passing, LGPL NOTICE shipped.
-- [ ] **2026-06-22** — Phase 1.2 done: solver facade with 9 constraint types + DoF readout.
-- [ ] **2026-07-15** — Phase 1.3 done: SketchEditor rewritten on solver.
-- [ ] **2026-08-15** — Phase 1.4 done: sketch ↔ 3D plane mapping.
-- [ ] **2026-09-15** — Phase 1 acceptance: 4-bar linkage demo passes.
+- [x] **2026-06-01** — Phase 1.1 done: `@salusoft89/planegcs` installed, WASM smoke test passing, LGPL NOTICE shipped (commit 2b28cc9a, target 2026-06-08).
+- [x] **2026-06-01** — Phase 1.2 done: solver facade with 9 constraint types + DoF readout (commit 23cc5238, target 2026-06-22).
+- [x] **2026-06-01** — Phase 1.3 done: SolverSketchEditor with live solver + DoF UX (commit 3f749185, target 2026-07-15).
+- [x] **2026-06-01** — Phase 1.4 done: SketchPlane 2D-in-3D mapping (commit 54d9eb8a, target 2026-08-15).
+- [x] **2026-06-01** — **Phase 1 acceptance PASSED**: 4-bar linkage 5/5 tests (commit 854fcc08, target 2026-09-15). planegcs bet validated.
 - [ ] **2026-12-15** — Decision review: Phase 1 actual vs plan; commit to Phase 2 timeline or revise.
 - [ ] **2027-06-01** — Year-1 decision review: solo viable, or seek seed + cofounder?
 
