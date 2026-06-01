@@ -36,7 +36,10 @@ export type EditOp =
   | { type: 'set_payload'; nodeId: string; payload: FeatureNode['payload'] }
   | { type: 'set_name'; nodeId: string; name: string }
   | { type: 'set_suppressed'; nodeId: string; suppressed: boolean }
-  | { type: 'set_dependencies'; nodeId: string; dependencies: ReadonlyArray<string> };
+  | { type: 'set_dependencies'; nodeId: string; dependencies: ReadonlyArray<string> }
+  | { type: 'insert_node'; node: FeatureNode; atIndex?: number }
+  | { type: 'remove_node'; nodeId: string }
+  | { type: 'move_node'; nodeId: string; toIndex: number };
 
 export class FeatureTreeEditError extends Error {
   constructor(message: string) {
@@ -47,9 +50,19 @@ export class FeatureTreeEditError extends Error {
 
 /**
  * Apply a single edit op, returning a NEW tree. Original tree unchanged.
- * Throws on missing node id.
+ * Throws on missing node id, or invalid structural op (e.g., insert id
+ * that already exists, remove a node that's a dep of another).
  */
 export function applyEdit(tree: FeatureTree, op: EditOp): FeatureTree {
+  if (op.type === 'insert_node') {
+    return applyInsert(tree, op);
+  }
+  if (op.type === 'remove_node') {
+    return applyRemove(tree, op);
+  }
+  if (op.type === 'move_node') {
+    return applyMove(tree, op);
+  }
   const idx = tree.nodes.findIndex((n) => n.id === op.nodeId);
   if (idx < 0) {
     throw new FeatureTreeEditError(`applyEdit: node ${op.nodeId} not found`);
@@ -75,11 +88,121 @@ export function applyEdit(tree: FeatureTree, op: EditOp): FeatureTree {
   return { nodes };
 }
 
+function applyInsert(
+  tree: FeatureTree,
+  op: { type: 'insert_node'; node: FeatureNode; atIndex?: number },
+): FeatureTree {
+  if (tree.nodes.some((n) => n.id === op.node.id)) {
+    throw new FeatureTreeEditError(`insert_node: id ${op.node.id} already exists`);
+  }
+  const idx = op.atIndex ?? tree.nodes.length;
+  if (idx < 0 || idx > tree.nodes.length) {
+    throw new FeatureTreeEditError(
+      `insert_node: atIndex ${idx} out of range [0, ${tree.nodes.length}]`,
+    );
+  }
+  // Verify deps exist BEFORE the insertion point (preserves topo invariant).
+  for (const dep of op.node.dependencies) {
+    const depIdx = tree.nodes.findIndex((n) => n.id === dep);
+    if (depIdx < 0) {
+      throw new FeatureTreeEditError(
+        `insert_node: dependency ${dep} does not exist in tree`,
+      );
+    }
+    if (depIdx >= idx) {
+      throw new FeatureTreeEditError(
+        `insert_node: dependency ${dep} appears at index ${depIdx} which is >= insertion index ${idx}`,
+      );
+    }
+  }
+  const nodes = tree.nodes.slice();
+  nodes.splice(idx, 0, op.node);
+  return { nodes };
+}
+
+function applyRemove(
+  tree: FeatureTree,
+  op: { type: 'remove_node'; nodeId: string },
+): FeatureTree {
+  const idx = tree.nodes.findIndex((n) => n.id === op.nodeId);
+  if (idx < 0) {
+    throw new FeatureTreeEditError(`remove_node: id ${op.nodeId} not found`);
+  }
+  // Reject if any other node depends on this one (would dangle).
+  for (const n of tree.nodes) {
+    if (n.id === op.nodeId) continue;
+    if (n.dependencies.includes(op.nodeId)) {
+      throw new FeatureTreeEditError(
+        `remove_node: ${op.nodeId} is depended on by ${n.id} — remove dependents first`,
+      );
+    }
+  }
+  const nodes = tree.nodes.slice();
+  nodes.splice(idx, 1);
+  return { nodes };
+}
+
+function applyMove(
+  tree: FeatureTree,
+  op: { type: 'move_node'; nodeId: string; toIndex: number },
+): FeatureTree {
+  const idx = tree.nodes.findIndex((n) => n.id === op.nodeId);
+  if (idx < 0) {
+    throw new FeatureTreeEditError(`move_node: id ${op.nodeId} not found`);
+  }
+  if (op.toIndex < 0 || op.toIndex >= tree.nodes.length) {
+    throw new FeatureTreeEditError(
+      `move_node: toIndex ${op.toIndex} out of range [0, ${tree.nodes.length - 1}]`,
+    );
+  }
+  if (op.toIndex === idx) return tree;
+  const node = tree.nodes[idx]!;
+  // Validate: at the new index, every dep must still be earlier in the list.
+  // We simulate the move first, then check.
+  const nodes = tree.nodes.slice();
+  nodes.splice(idx, 1);
+  nodes.splice(op.toIndex, 0, node);
+  // Now verify topo invariant for the moved node + everything after it
+  // (only the moved node and its dependents are affected by reorder).
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i]!;
+    for (const dep of n.dependencies) {
+      const depIdx = nodes.findIndex((m) => m.id === dep);
+      if (depIdx < 0 || depIdx >= i) {
+        throw new FeatureTreeEditError(
+          `move_node: would violate topology — ${n.id} depends on ${dep} which is no longer earlier`,
+        );
+      }
+    }
+  }
+  return { nodes };
+}
+
 /**
  * Capture the inverse of an edit op — applying `op` then `inverseOp(tree, op)`
  * should restore the original tree state. Used by the undo stack.
+ *
+ * `tree` is the state BEFORE `op` is applied.
  */
 export function inverseOp(tree: FeatureTree, op: EditOp): EditOp {
+  if (op.type === 'insert_node') {
+    return { type: 'remove_node', nodeId: op.node.id };
+  }
+  if (op.type === 'remove_node') {
+    const idx = tree.nodes.findIndex((n) => n.id === op.nodeId);
+    const node = tree.nodes[idx];
+    if (!node) {
+      throw new FeatureTreeEditError(`inverseOp(remove_node): ${op.nodeId} not found`);
+    }
+    return { type: 'insert_node', node, atIndex: idx };
+  }
+  if (op.type === 'move_node') {
+    const idx = tree.nodes.findIndex((n) => n.id === op.nodeId);
+    if (idx < 0) {
+      throw new FeatureTreeEditError(`inverseOp(move_node): ${op.nodeId} not found`);
+    }
+    return { type: 'move_node', nodeId: op.nodeId, toIndex: idx };
+  }
   const node = tree.nodes.find((n) => n.id === op.nodeId);
   if (!node) {
     throw new FeatureTreeEditError(`inverseOp: node ${op.nodeId} not found`);
