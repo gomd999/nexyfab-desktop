@@ -63,11 +63,37 @@ export interface SolverSketchEditorProps {
   width?: number;
   height?: number;
   onClose?: () => void;
+  /**
+   * Fires whenever the sketch's points or lines change. Used by wrapper
+   * components (e.g., SolverSketchEditorWithExtrude) that need a mirror
+   * of the current geometry without poking at internal state.
+   */
+  onSketchChange?: (state: {
+    points: ReadonlyArray<{ id: string; x: number; y: number }>;
+    lines: ReadonlyArray<{ id: string; p1: string; p2: string }>;
+  }) => void;
 }
 
 // ─── i18n (6 langs) ───────────────────────────────────────────────────────
 
-const dict = {
+interface Dict {
+  title: string;
+  select: string; line: string; circle: string; arc: string; rect: string; dimension: string;
+  horizontal: string; vertical: string; perpendicular: string; parallel: string; coincident: string;
+  close: string;
+  loading: string;
+  error: string;
+  dofUnder: string; dofFull: string; dofOver: string;
+  dofLabel: string;
+  statusReady: string;
+  statusSolving: string;
+  statusConflict: string;
+  statusRedundant: string;
+  promptDistance: string;
+  hint: string;
+}
+
+const dict: Record<EditorLang, Dict> = {
   ko: {
     title: '솔버 스케치',
     select: '선택', line: '선', circle: '원', arc: '호', rect: '사각형', dimension: '치수',
@@ -164,7 +190,7 @@ const dict = {
     promptDistance: 'المسافة (مم):',
     hint: 'اختر أداة وانقر على اللوحة',
   },
-} as const;
+};
 
 // ─── view-side entity model (mirrors solver state for SVG render) ─────────
 
@@ -195,11 +221,11 @@ type ViewEntity = ViewPoint | ViewLine | ViewCircle;
 
 interface EntityToolDef {
   id: EntityTool;
-  label: (t: typeof dict.en) => string;
+  label: (t: Dict) => string;
 }
 interface ConstraintToolDef {
   id: ConstraintTool;
-  label: (t: typeof dict.en) => string;
+  label: (t: Dict) => string;
   /** How many entities of which kind (in order) are required. */
   requires: ReadonlyArray<EntityKind>;
 }
@@ -295,6 +321,7 @@ const DEFAULT_HEIGHT = 600;
 
 export default function SolverSketchEditor({
   lang = 'en',
+  onSketchChange,
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   onClose,
@@ -625,6 +652,15 @@ export default function SolverSketchEditor({
     () => entities.filter((e): e is ViewLine => e.kind === 'line'),
     [entities],
   );
+
+  // ─── notify parent of geometry changes (Phase 2.A extrude wrapper hook) ──
+  useEffect(() => {
+    if (!onSketchChange) return;
+    onSketchChange({
+      points: renderPoints.map((p) => ({ id: p.id as string, x: p.x, y: p.y })),
+      lines: renderLines.map((l) => ({ id: l.id as string, p1: l.p1 as string, p2: l.p2 as string })),
+    });
+  }, [renderPoints, renderLines, onSketchChange]);
   const renderCircles = useMemo(
     () => entities.filter((e): e is ViewCircle => e.kind === 'circle'),
     [entities],
