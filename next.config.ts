@@ -150,6 +150,24 @@ const nextConfig: NextConfig = {
         // webpack tries to resolve it during bundling.
         url: false,
       };
+      // planegcs's Emscripten output (planegcs.js) is a single huge
+      // self-contained module that confuses webpack's static analyzer
+      // with literal './' strings and Node-only require() calls. Tell
+      // webpack to skip parsing it entirely — treat it as pre-bundled
+      // opaque blob. The browser will evaluate it at runtime via the
+      // dynamic import chunk where the Emscripten loader detects the
+      // browser env via importScripts/window checks.
+      const existingNoParse = config.module?.noParse;
+      const noParseList = existingNoParse
+        ? (Array.isArray(existingNoParse) ? existingNoParse : [existingNoParse])
+        : [];
+      config.module = {
+        ...config.module,
+        noParse: [
+          ...noParseList,
+          /@salusoft89[\\/]planegcs[\\/]dist[\\/]planegcs_dist[\\/]planegcs\.js$/,
+        ],
+      };
     }
     // Tauri 빌드 시 API 디렉토리는 scripts/tauri-build.mjs가 임시 이동 처리합니다.
     return config;
