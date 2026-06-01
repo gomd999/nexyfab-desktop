@@ -24,14 +24,38 @@
  *   (p2l_distance, c2c_distance also flagged in README — use driving only.)
  */
 
-import { createGcsWrapper, GcsWrapper } from './planegcs';
-import { SolveStatus, Algorithm } from '@salusoft89/planegcs';
+import { createGcsWrapper, type GcsWrapper } from './planegcs';
 import type {
   SketchPoint,
   SketchLine,
   SketchCircle,
   SketchArc,
 } from '@salusoft89/planegcs';
+
+/**
+ * Locally-defined enums mirroring `@salusoft89/planegcs`'s SolveStatus +
+ * Algorithm. Re-defined here so this module never statically imports the
+ * planegcs package (which would drag its Emscripten WASM through
+ * webpack's static analyzer and break the browser build — see
+ * planegcs.ts comment for the full story).
+ *
+ * Values are 1:1 with planegcs's enums (verified against
+ * node_modules/@salusoft89/planegcs/dist/planegcs_dist/enums.js).
+ * If planegcs ever renumbers them, both sides need updating — flagged
+ * by the runtime smoke test which checks Success == 0.
+ */
+export enum SolveStatus {
+  Success = 0,
+  Converged = 1,
+  Failed = 2,
+  SuccessfulSolutionInvalid = 3,
+}
+
+export enum Algorithm {
+  BFGS = 0,
+  LevenbergMarquardt = 1,
+  DogLeg = 2,
+}
 
 // ---------- public types ----------
 
