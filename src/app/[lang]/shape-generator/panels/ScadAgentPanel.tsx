@@ -517,6 +517,18 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           <ScadAgentFeatureTree
             lang={lang}
             tree={session.featureTree}
+            onParamChange={(nodeId, key, newValue) => {
+              // Routes through the agent so tree_set_param fires inside
+              // the same session context (single source of truth — no
+              // direct client-side mutation that would drift from server).
+              const valueStr = typeof newValue === 'string'
+                ? JSON.stringify(newValue)
+                : String(newValue);
+              void handleSend(`Call tree_set_param with nodeId=${nodeId} key=${key} value=${valueStr}`);
+            }}
+            onRemove={(nodeId) => {
+              void handleSend(`Call tree_remove_node with nodeId=${nodeId}`);
+            }}
           />
         )}
         <button onClick={handleNewSession}
