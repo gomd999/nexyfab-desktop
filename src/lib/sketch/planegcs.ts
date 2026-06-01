@@ -7,33 +7,43 @@
  * LGPL compliance: see NOTICE at repo root. The WASM is dynamically loaded
  * via npm package import, satisfying the dynamic-linking exemption.
  *
- * Why dynamic import (not top-level `import`)?
- *   planegcs's Emscripten output contains `require('fs')`, `require('path')`,
- *   `require('url')` calls for Node-side init. Webpack's static analyzer
- *   walks those even though they never execute in the browser, and fails to
- *   resolve them despite the next.config.ts fallbacks (the `./` literal
- *   inside `da="./this.program"` confuses the resolver). Dynamic import
- *   puts planegcs in its own async chunk, which webpack tolerates: the
- *   bundle compiles and the chunk loads lazily at runtime, in the
- *   browser, where it works correctly via fetch + WASM streaming.
+ * Why webpack-magic-comment dynamic import (not even `import type`)?
+ *   planegcs's Emscripten output contains require('fs')/require('path')/
+ *   require('url') calls for Node init. Webpack's static module graph
+ *   builder follows EVERY import — even TS `import type` lines and
+ *   `typeof import('...')` type positions get traced for build-graph
+ *   purposes (Next.js + webpack 5 behavior). The Emscripten file then
+ *   trips webpack on a literal './' inside its bootstrap.
+ *
+ *   The fix: import via webpackChunkName + webpackIgnore=false dynamic
+ *   import expression that webpack treats as fully async (separate chunk)
+ *   AND avoid any compile-time type reference to the package elsewhere
+ *   in this module — use `any` / `unknown` returns and let callers use
+ *   structural types. Type safety is enforced by the higher-level
+ *   `SketchSolver` facade (solver.ts).
  */
 
-import type { GcsWrapper as GcsWrapperType } from '@salusoft89/planegcs';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-type PlanegcsModule = typeof import('@salusoft89/planegcs');
-type GcsModule = Awaited<ReturnType<PlanegcsModule['init_planegcs_module']>>;
+let planegcsModulePromise: Promise<any> | null = null;
+let wasmInitPromise: Promise<any> | null = null;
 
-let planegcsModulePromise: Promise<PlanegcsModule> | null = null;
-let wasmInitPromise: Promise<GcsModule> | null = null;
-
-async function loadPlanegcsPackage(): Promise<PlanegcsModule> {
+/**
+ * Dynamically imports the planegcs npm package. Webpack treats this as
+ * an async chunk because the specifier is a string literal and the
+ * surrounding code has no static reference to the module name. Callers
+ * get an opaque `any` — the SketchSolver facade narrows it.
+ */
+async function loadPlanegcsPackage(): Promise<any> {
   if (!planegcsModulePromise) {
-    planegcsModulePromise = import('@salusoft89/planegcs');
+    planegcsModulePromise = import(
+      /* webpackChunkName: "planegcs" */ '@salusoft89/planegcs'
+    );
   }
   return planegcsModulePromise;
 }
 
-export async function loadPlanegcsModule(): Promise<GcsModule> {
+export async function loadPlanegcsModule(): Promise<any> {
   if (!wasmInitPromise) {
     wasmInitPromise = (async () => {
       const pkg = await loadPlanegcsPackage();
@@ -43,11 +53,20 @@ export async function loadPlanegcsModule(): Promise<GcsModule> {
   return wasmInitPromise;
 }
 
-export async function createGcsWrapper(): Promise<GcsWrapperType> {
+/**
+ * Returns a `GcsWrapper` instance (structurally — see
+ * `@salusoft89/planegcs`'s exported type for the shape). Untyped here
+ * to avoid pulling planegcs into the static module graph.
+ */
+export async function createGcsWrapper(): Promise<any> {
   const pkg = await loadPlanegcsPackage();
   const mod = await loadPlanegcsModule();
   const gcs = new mod.GcsSystem();
   return new pkg.GcsWrapper(gcs);
 }
 
-export type { GcsWrapperType as GcsWrapper, GcsModule };
+/** Opaque type alias — the actual shape is from `@salusoft89/planegcs`'s
+ *  `GcsWrapper`, but we don't reference it statically to keep webpack
+ *  from tracing into the package. */
+export type GcsWrapper = any;
+export type GcsModule = any;

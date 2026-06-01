@@ -25,12 +25,20 @@
  */
 
 import { createGcsWrapper, type GcsWrapper } from './planegcs';
-import type {
-  SketchPoint,
-  SketchLine,
-  SketchCircle,
-  SketchArc,
-} from '@salusoft89/planegcs';
+
+ 
+// Structural shapes for planegcs primitives. We deliberately don't import
+// the real types from '@salusoft89/planegcs' here because even `import type`
+// triggers webpack to trace the Emscripten WASM module (see planegcs.ts).
+// Values are 1:1 with the package's interfaces; if upstream changes, the
+// runtime smoke test catches the drift.
+interface SketchPoint { id: string; type: 'point'; x: number; y: number; fixed: boolean }
+interface SketchLine { id: string; type: 'line'; p1_id: string; p2_id: string }
+interface SketchCircle { id: string; type: 'circle'; c_id: string; radius: number }
+interface SketchArc {
+  id: string; type: 'arc'; c_id: string; start_id: string; end_id: string;
+  radius: number; start_angle: number; end_angle: number;
+}
 
 /**
  * Locally-defined enums mirroring `@salusoft89/planegcs`'s SolveStatus +
