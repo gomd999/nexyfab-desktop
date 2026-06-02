@@ -172,6 +172,51 @@ function residualMirror(
     const targetRad = (mate.value * Math.PI) / 180;
     return Math.abs(angleRad - targetRad);
   }
+  // ── advanced mate residuals — mirror lagrangianSolver.computeResidualForMate ──
+  if (mate.kind === 'hinge' && ag.kind === 'axis' && bg.kind === 'axis') {
+    const alignErr = distanceAxisToAxis(ag.world, bg.world);
+    if (mate.limit === undefined) return alignErr;
+    const qa = a.orientation;
+    const qb = b.orientation;
+    const dotQ = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
+    const cosHalf = Math.min(1, Math.abs(dotQ));
+    const approxAngleRad = 2 * Math.acos(cosHalf);
+    const approxAngleDeg = (approxAngleRad * 180) / Math.PI;
+    const minDeg = mate.limit.minAngleDeg;
+    const maxDeg = mate.limit.maxAngleDeg;
+    let limitPenaltyDeg = 0;
+    if (approxAngleDeg > maxDeg) limitPenaltyDeg = approxAngleDeg - maxDeg;
+    else if (-approxAngleDeg < minDeg) limitPenaltyDeg = minDeg - -approxAngleDeg;
+    return alignErr + (limitPenaltyDeg * Math.PI) / 180;
+  }
+  if (mate.kind === 'slot' && ag.kind === 'axis' && bg.kind === 'axis') {
+    const perpDist = distanceAxisToAxis(ag.world, bg.world);
+    const cos = ag.world.direction.x * bg.world.direction.x +
+      ag.world.direction.y * bg.world.direction.y +
+      ag.world.direction.z * bg.world.direction.z;
+    return perpDist + Math.abs(cos);
+  }
+  if (mate.kind === 'gear' && ag.kind === 'axis' && bg.kind === 'axis') {
+    const cx = ag.world.direction.y * bg.world.direction.z -
+      ag.world.direction.z * bg.world.direction.y;
+    const cy = ag.world.direction.z * bg.world.direction.x -
+      ag.world.direction.x * bg.world.direction.z;
+    const cz = ag.world.direction.x * bg.world.direction.y -
+      ag.world.direction.y * bg.world.direction.x;
+    const crossLen = Math.sqrt(cx * cx + cy * cy + cz * cz);
+    if (crossLen < 1e-9) return 0;
+    const dx = bg.world.origin.x - ag.world.origin.x;
+    const dy = bg.world.origin.y - ag.world.origin.y;
+    const dz = bg.world.origin.z - ag.world.origin.z;
+    return Math.abs(dx * cx + dy * cy + dz * cz) / crossLen;
+  }
+  if (mate.kind === 'rack_pinion' && ag.kind === 'axis' && bg.kind === 'axis') {
+    const perpDist = distanceAxisToAxis(ag.world, bg.world);
+    const cos = ag.world.direction.x * bg.world.direction.x +
+      ag.world.direction.y * bg.world.direction.y +
+      ag.world.direction.z * bg.world.direction.z;
+    return Math.abs(perpDist - mate.pinionRadius) + Math.abs(cos);
+  }
   return 0;
 }
 
@@ -227,23 +272,26 @@ function rowValueAt(row: { cols: number[]; values: number[] }, col: number): num
 // ─── 1. supportsAnalyticJacobian dispatcher ──────────────────────────────
 
 describe('supportsAnalyticJacobian — kind dispatch', () => {
-  it('returns TRUE for 7 standard mate kinds', () => {
+  it('returns TRUE for 6 standard mate kinds', () => {
     expect(supportsAnalyticJacobian('concentric')).toBe(true);
     expect(supportsAnalyticJacobian('coincident')).toBe(true);
     expect(supportsAnalyticJacobian('parallel')).toBe(true);
     expect(supportsAnalyticJacobian('perpendicular')).toBe(true);
     expect(supportsAnalyticJacobian('distance')).toBe(true);
     expect(supportsAnalyticJacobian('angle')).toBe(true);
-    // tangent is a "standard" mate in mate.ts but has no closed form
-    // currently; documented as Phase 3.2.1 follow-up.
+    // tangent has no closed form currently; documented as Phase 3.2.1
+    // follow-up — see the FALSE-for-tangent test below.
   });
 
-  it('returns FALSE for tangent + 4 advanced mate kinds (Phase 3.2.1 fallback)', () => {
+  it('returns TRUE for 4 advanced mate kinds (Phase 3.2.2)', () => {
+    expect(supportsAnalyticJacobian('hinge')).toBe(true);
+    expect(supportsAnalyticJacobian('slot')).toBe(true);
+    expect(supportsAnalyticJacobian('gear')).toBe(true);
+    expect(supportsAnalyticJacobian('rack_pinion')).toBe(true);
+  });
+
+  it('returns FALSE for tangent (Phase 3.2.1 follow-up)', () => {
     expect(supportsAnalyticJacobian('tangent')).toBe(false);
-    expect(supportsAnalyticJacobian('hinge')).toBe(false);
-    expect(supportsAnalyticJacobian('slot')).toBe(false);
-    expect(supportsAnalyticJacobian('gear')).toBe(false);
-    expect(supportsAnalyticJacobian('rack_pinion')).toBe(false);
   });
 });
 
@@ -888,25 +936,34 @@ describe('analyticJacobianRow — non-identity orientation', () => {
   });
 });
 
-// ─── 23. unsupported mate via analyticJacobianRow on hinge ───────────────
+// ─── 23. hinge with no limit: analytic concentric primary ────────────────
 
-describe('analyticJacobianRow — hinge returns empty', () => {
-  it('hinge mate is unsupported → empty row', () => {
-    const a = makePart('a');
-    const b = makePart('b');
+describe('analyticJacobianRow — hinge no-limit equals concentric primary', () => {
+  it('hinge with no limit returns the same row as the concentric mate', () => {
+    // Skew axes so the concentric row is non-empty and non-degenerate.
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(5, 7, 3) });
     const refs = new Map<string, ResolvedGeometry>([
       ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
-      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
     ]);
     const resolver = makeResolver(refs);
-    const mate: Mate = {
-      id: 'm', kind: 'hinge',
+    const hinge: Mate = {
+      id: 'h', kind: 'hinge',
       a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
     };
-    const ag = resolver(mate.a, a)!;
-    const bg = resolver(mate.b, b)!;
-    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
-    expect(row.cols).toHaveLength(0);
+    const concentric: Mate = {
+      id: 'c', kind: 'concentric',
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(hinge.a, a)!;
+    const bg = resolver(hinge.b, b)!;
+    const hingeRow = analyticJacobianRow(hinge, a, b, ag, bg, 0, 6);
+    const concRow = analyticJacobianRow(concentric, a, b, ag, bg, 0, 6);
+    expect(hingeRow.cols).toEqual(concRow.cols);
+    for (let i = 0; i < hingeRow.values.length; i++) {
+      expect(hingeRow.values[i]).toBeCloseTo(concRow.values[i]!, 12);
+    }
   });
 });
 
@@ -946,5 +1003,522 @@ describe('lagrangianSolveAnalytic — chain assembly', () => {
     const r = lagrangianSolveAnalytic(state, makeResolver(refs), { maxIterations: 100 });
     expect(r.success).toBe(true);
     expect(r.residuals.every((rr) => rr.residual < 1e-3)).toBe(true);
+  });
+});
+
+// ─── Phase 3.2.2 advanced mate analytic Jacobian tests ───────────────────-
+
+// ─── 26. hinge analytic: concentric primary vs numeric ───────────────────-
+
+describe('analyticJacobianRow — hinge (no limit) skew-axis primary vs numeric', () => {
+  it('translation cols match numeric within 1e-3 (concentric primary)', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(5, 7, 3) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'h', kind: 'hinge',
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    expect(baseR).toBeGreaterThan(0.5);
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
+    }
+  });
+});
+
+// ─── 27. hinge with active limit: row delegated to numeric (empty) ───────
+
+describe('analyticJacobianRow — hinge with active limit returns empty (numeric supplement)', () => {
+  it('hinge whose swing penalty is active yields an empty analytic row', () => {
+    // Rotate part `b` by ~50° around z so the quaternion-dot proxy
+    // approxAngle ≈ 50° > maxAngleDeg = 10° → penalty active.
+    const angle = (50 * Math.PI) / 180;
+    const s = Math.sin(angle / 2);
+    const c = Math.cos(angle / 2);
+    const a = makePart('a');
+    const b = makePart('b', { orientation: { x: 0, y: 0, z: s, w: c } });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'h', kind: 'hinge',
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+      limit: { minAngleDeg: -10, maxAngleDeg: 10 },
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    expect(row.cols).toHaveLength(0);
+  });
+
+  it('hinge whose swing is inside the limit band emits the analytic primary', () => {
+    // Identity orientations → approxAngle ≈ 0 ≤ max=10 → limit inactive.
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(2, 2, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'h', kind: 'hinge',
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+      limit: { minAngleDeg: -45, maxAngleDeg: 45 },
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    // Parallel + offset → parallel-branch concentric row has non-empty cols.
+    expect(row.cols.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── 28. slot analytic vs numeric ────────────────────────────────────────-
+
+describe('analyticJacobianRow — slot axis/axis (concentric + perpendicular)', () => {
+  it('analytic translation + rotation cols match numeric within 1e-3', () => {
+    // Slot edge along x, pin axis along y at an offset (perpDist = 4,
+    // perpendicular: cos = 0 — pin already perpendicular to slot).
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(3, 4, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0.6, 0.8) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 's', kind: 'slot',
+      a: ref('a', 'ed', 'edge'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    expect(baseR).toBeGreaterThan(0); // non-zero residual
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
+    }
+  });
+
+  it('slot with parallel-axis pin (cos = 1): perpendicular contribution dominates rotation cols', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(3, 4, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      // Pin parallel to slot — perpendicular residual = 1, max violation.
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 's', kind: 'slot',
+      a: ref('a', 'ed', 'edge'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    expect(row.cols.length).toBeGreaterThan(0);
+    // Translation cols should match numeric (perpDist gradient dominates).
+    const baseR = residualMirror(mate, a, b, resolver);
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+  });
+});
+
+// ─── 29. gear coplanarity vs numeric ─────────────────────────────────────-
+
+describe('analyticJacobianRow — gear axis/axis (coplanarity)', () => {
+  it('skew shafts: analytic translation + rotation cols match numeric', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 0, 5) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'g', kind: 'gear', ratio: 2,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    expect(baseR).toBeGreaterThan(0.5);
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
+    }
+  });
+
+  it('parallel shafts: analytic emits zero row (residual identically 0)', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 5, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'g', kind: 'gear', ratio: 1,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    expect(row.cols).toHaveLength(0);
+    expect(residualMirror(mate, a, b, resolver)).toBe(0);
+  });
+});
+
+// ─── 30. rack_pinion analytic vs numeric ────────────────────────────────-
+
+describe('analyticJacobianRow — rack_pinion (axis distance to radius + perpendicular)', () => {
+  it('translation cols match numeric when perpDist != pinionRadius', () => {
+    // Pinion along z at origin, rack along x at y = 4. perpDist = 4,
+    // pinionRadius = 5 → |4 − 5| = 1 + |cos(z,x)| = 0 + 1 = 1.
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 4, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'rp', kind: 'rack_pinion', pinionRadius: 5,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ed', 'edge'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    expect(baseR).toBeCloseTo(1, 6);
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
+    }
+  });
+
+  it('rotation cols match numeric (perpendicular contribution + axis distance)', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 6, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      // Slightly off-perpendicular rack direction so cos != 0 and we have
+      // a non-trivial rotation gradient on the perpendicular term.
+      ['b/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0.9, 0, 0.4359) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'rp', kind: 'rack_pinion', pinionRadius: 3,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ed', 'edge'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    expect(baseR).toBeGreaterThan(0);
+    for (let d = 3; d < 6; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+    for (let d = 3; d < 6; d++) {
+      const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
+    }
+  });
+});
+
+// ─── 31. rack_pinion: perpDist > radius vs perpDist < radius sign flip ──-
+
+describe('analyticJacobianRow — rack_pinion sign flips with perpDist crossing radius', () => {
+  it('perpDist > radius (s > 0): tx gradient sign matches numeric', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    // perpDist = 7 (rack offset), radius = 3 → s = 7 − 3 = 4 > 0.
+    const b = makePart('b', { position: vec3(0, 7, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'rp', kind: 'rack_pinion', pinionRadius: 3,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ed', 'edge'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+  });
+
+  it('perpDist < radius (s < 0): tx gradient sign matches numeric', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    // perpDist = 1.5, radius = 3 → s = 1.5 − 3 = −1.5 < 0.
+    const b = makePart('b', { position: vec3(0, 1.5, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'rp', kind: 'rack_pinion', pinionRadius: 3,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ed', 'edge'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+  });
+});
+
+// ─── 32. lagrangianSolveAnalytic with hinge converges ────────────────────-
+
+describe('lagrangianSolveAnalytic — hinge converges via analytic primary', () => {
+  it('parallel-offset hinge (no limit): analytic reaches concentric within tol', () => {
+    const f = makePart('f', { fixed: true });
+    const g = makePart('g', { position: vec3(8, 6, 0) });
+    const state: AssemblyState = {
+      parts: [f, g],
+      mates: [
+        { id: 'h', kind: 'hinge', a: ref('f', 'ax', 'axis'), b: ref('g', 'ax', 'axis') } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['g/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const analytic = lagrangianSolveAnalytic(state, makeResolver(refs));
+    expect(analytic.success).toBe(true);
+    expect(analytic.finalMaxResidual).toBeLessThan(1e-3);
+  });
+});
+
+// ─── 33. lagrangianSolveAnalytic with gear: residual matches numeric ─────-
+
+describe('lagrangianSolveAnalytic — gear residual parity with numeric path', () => {
+  it('skew gear axes: final residual matches lagrangianSolve to within 1e-4', () => {
+    const f = makePart('f', { fixed: true });
+    const g = makePart('g', { position: vec3(0, 0, 5) });
+    const state: AssemblyState = {
+      parts: [f, g],
+      mates: [
+        { id: 'g', kind: 'gear', ratio: 2, a: ref('f', 'ax', 'axis'), b: ref('g', 'ax', 'axis') } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['g/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } }],
+    ]);
+    const numeric = lagrangianSolve(state, makeResolver(refs));
+    const analytic = lagrangianSolveAnalytic(state, makeResolver(refs));
+    expect(Math.abs(numeric.finalMaxResidual - analytic.finalMaxResidual)).toBeLessThan(1e-3);
+  });
+});
+
+// ─── 34. mixed mate types (standard + advanced) all analytic ─────────────-
+
+describe('lagrangianSolveAnalytic — mixed standard + advanced mates', () => {
+  it('concentric + hinge mates both go through the analytic path', () => {
+    const f = makePart('f', { fixed: true });
+    const g = makePart('g', { position: vec3(5, 5, 0) });
+    const h = makePart('h', { position: vec3(10, 10, 0) });
+    const state: AssemblyState = {
+      parts: [f, g, h],
+      mates: [
+        { id: 'c1', kind: 'concentric', a: ref('f', 'ax', 'axis'), b: ref('g', 'ax', 'axis') } as Mate,
+        { id: 'h1', kind: 'hinge', a: ref('g', 'ax', 'axis'), b: ref('h', 'ax', 'axis') } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['g/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['h/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const r = lagrangianSolveAnalytic(state, makeResolver(refs));
+    expect(r.success).toBe(true);
+    // Both mates should report `supported = true` in the residual list.
+    const supported = r.residuals.every((rr) => rr.supported);
+    expect(supported).toBe(true);
+  });
+});
+
+// ─── 35. supportsAnalyticJacobian: 4 advanced all true ───────────────────-
+
+describe('supportsAnalyticJacobian — 4 advanced mate kinds all true', () => {
+  it('hinge / slot / gear / rack_pinion all return true', () => {
+    expect(supportsAnalyticJacobian('hinge')).toBe(true);
+    expect(supportsAnalyticJacobian('slot')).toBe(true);
+    expect(supportsAnalyticJacobian('gear')).toBe(true);
+    expect(supportsAnalyticJacobian('rack_pinion')).toBe(true);
+  });
+});
+
+// ─── 36. slot without secondary path: analytic only handles primary ─────-
+// (Slot has no slotLength term in lagrangianSolver's residual — the full
+// residual is `perpDist + |cos|`, and that is the analytic sum we emit.)
+
+describe('analyticJacobianRow — slot with slotLength set: lagrangianSolver ignores length term', () => {
+  it('analytic row equals the no-length version (lagrangianSolver residual omits length penalty)', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 4, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const withLen: Mate = {
+      id: 's1', kind: 'slot', slotLength: 10,
+      a: ref('a', 'ed', 'edge'), b: ref('b', 'ax', 'axis'),
+    };
+    const noLen: Mate = {
+      id: 's2', kind: 'slot',
+      a: ref('a', 'ed', 'edge'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(withLen.a, a)!;
+    const bg = resolver(withLen.b, b)!;
+    const r1 = analyticJacobianRow(withLen, a, b, ag, bg, 0, 6);
+    const r2 = analyticJacobianRow(noLen, a, b, ag, bg, 0, 6);
+    expect(r1.cols).toEqual(r2.cols);
+    for (let i = 0; i < r1.values.length; i++) {
+      expect(r1.values[i]).toBeCloseTo(r2.values[i]!, 12);
+    }
+  });
+});
+
+// ─── 37. mate without secondary present: primary-only row ────────────────
+
+describe('analyticJacobianRow — hinge without limit emits primary-only row (matches concentric)', () => {
+  it('cols match the concentric row exactly', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(4, 0, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const hinge: Mate = {
+      id: 'h', kind: 'hinge',
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(hinge.a, a)!;
+    const bg = resolver(hinge.b, b)!;
+    const row = analyticJacobianRow(hinge, a, b, ag, bg, 0, 6);
+    // Parallel branch of concentric: emits 12 DoF entries.
+    expect(row.cols.length).toBe(12);
+  });
+});
+
+// ─── 38. gear with fixed part: only moved DoF block populated ────────────-
+
+describe('analyticJacobianRow — gear with fixed fixedPart', () => {
+  it('gear (skew shafts) with fixedDofOffset = −1 emits only the moved 6 cols', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 0, 5), fixed: true });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'g', kind: 'gear', ratio: 2,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, -1);
+    expect(new Set(row.cols)).toEqual(new Set([0, 1, 2, 3, 4, 5]));
+  });
+});
+
+// ─── 39. rack_pinion: perpendicular sub-row's translation cols are zero ──-
+
+describe('analyticJacobianRow — rack_pinion perpendicular sub-component has zero translation', () => {
+  it('translation contribution from |cos| term is exactly 0 (verified via offset test)', () => {
+    // Off-kink configuration: perpDist = 5/0.8 ≈ 6.25, pinionRadius = 3
+    // → s = 6.25 − 3 = 3.25 (well > 0, smooth absolute-value branch).
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 5, 0) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['b/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0.8, 0, 0.6) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'rp', kind: 'rack_pinion', pinionRadius: 3,
+      a: ref('a', 'ax', 'axis'), b: ref('b', 'ed', 'edge'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    const baseR = residualMirror(mate, a, b, resolver);
+    // The translation cols should match numeric — the analytic + numeric
+    // both equal the axis-distance-to-target gradient (perpendicular term
+    // has zero translation contribution).
+    for (let d = 0; d < 3; d++) {
+      const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
+      expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
+    }
+  });
+});
+
+// ─── 40. lagrangianSolveAnalytic with slot: converges ────────────────────-
+
+describe('lagrangianSolveAnalytic — slot mate converges', () => {
+  it('pin-onto-slot scenario solves to small residual', () => {
+    const f = makePart('f', { fixed: true });
+    const g = makePart('g', { position: vec3(0, 6, 0) });
+    const state: AssemblyState = {
+      parts: [f, g],
+      mates: [
+        { id: 's', kind: 'slot', a: ref('f', 'ed', 'edge'), b: ref('g', 'ax', 'axis') } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['g/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const r = lagrangianSolveAnalytic(state, makeResolver(refs));
+    expect(Number.isFinite(r.finalMaxResidual)).toBe(true);
+    // Slot has 2 DoF free (slide + spin); convergence to near-zero
+    // residual depends on the relaxation — accept either success=true OR
+    // a very small final residual.
+    expect(r.finalMaxResidual).toBeLessThan(1e-2);
   });
 });

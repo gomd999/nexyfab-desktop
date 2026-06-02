@@ -43,12 +43,42 @@
  *   │ angle              │ |acos(dot(a, b)) − target_rad|               │
  *   └────────────────────┴──────────────────────────────────────────────┘
  *
+ * Coverage (Phase 3.2.2 — 4 advanced mate kinds):
+ *
+ *   ┌────────────────────┬──────────────────────────────────────────────┐
+ *   │ mate kind          │ residual decomposition (per lagrangianSolver)│
+ *   ├────────────────────┼──────────────────────────────────────────────┤
+ *   │ hinge              │ primary = concentric (axis/axis skew dist).  │
+ *   │                    │ secondary = limit penalty (proxy, numeric).  │
+ *   │ slot               │ primary = concentric (perpDist) + perpendic. │
+ *   │ gear               │ primary = coplanarity (skew dist; parallel→0)│
+ *   │ rack_pinion        │ primary = |perpDist - pinionRadius| + |cos|  │
+ *   └────────────────────┴──────────────────────────────────────────────┘
+ *
+ *   The advanced residuals defined in `lagrangianSolver.computeResidualForMate`
+ *   are SCALAR-SUMMED into a single row (one row per mate, matching the
+ *   existing API). The analytic row sums the derivative of every term in
+ *   the sum that has a closed form.
+ *
+ *   Secondary terms that fall back to numeric forward differences (when
+ *   present in the mate IR — currently only HingeMate.limit is summed
+ *   into the lagrangianSolver residual; slot/gear/rack_pinion ignore
+ *   their length/backlash/travel options at the lagrangian level):
+ *
+ *     - HingeMate.limit (Phase 1 unsigned quaternion-dot proxy):
+ *         when an active limit penalty contributes a non-zero secondary,
+ *         analyticJacobianRow returns an EMPTY row to delegate to the
+ *         per-row numeric fallback in lagrangianSolveAnalytic. This keeps
+ *         the analytic path strictly correct: a partial analytic row
+ *         mixed with numeric perturbations would silently misalign the
+ *         Jacobian columns. When limit is absent OR the swing sits inside
+ *         the allowed band (penalty = 0), the primary-only row is exact.
+ *
  * Not yet analytic (Phase 3.2.1 follow-up):
  *
- *   tangent / hinge / slot / gear / rack_pinion → supportsAnalyticJacobian
- *   returns FALSE for these. lagrangianSolveAnalytic falls back to the
- *   numeric forward-difference path on a per-mate basis so a single
- *   advanced mate in an otherwise standard assembly still gets the
+ *   tangent → supportsAnalyticJacobian returns FALSE. lagrangianSolveAnalytic
+ *   falls back to the numeric forward-difference path on a per-mate basis so
+ *   a single tangent mate in an otherwise standard assembly still gets the
  *   analytic speed-up on the rest of the rows.
  *
  * The two surfaced functions:
@@ -62,7 +92,7 @@
  */
 
 import type { PartInstance } from './assemblyState';
-import type { Mate, MateKind } from './mate';
+import type { HingeMate, Mate, MateKind } from './mate';
 import type { ResolvedGeometry } from './iterativeSolver';
 import { type Vec3, sub, dot, lengthOf } from '@/lib/sketch/sketchPlane';
 
@@ -94,12 +124,13 @@ export function supportsAnalyticJacobian(kind: MateKind): boolean {
     case 'perpendicular':
     case 'distance':
     case 'angle':
-      return true;
-    case 'tangent':
+    // ── Phase 3.2.2 advanced mate analytic coverage ──────────────────────
     case 'hinge':
     case 'slot':
     case 'gear':
     case 'rack_pinion':
+      return true;
+    case 'tangent':
       return false;
   }
 }
@@ -211,6 +242,89 @@ export function analyticJacobianRow(
     const bDir = directionOf(fixedResolved);
     if (!aDir || !bDir) return EMPTY_ROW();
     return angleRow(aDir, bDir, mate.value, movedDofOffset, fixedDofOffset);
+  }
+
+  // ── hinge ────────────────────────────────────────────────────────────
+  // Primary residual = concentric (axis/axis skew distance), reusing
+  // concentricRow verbatim. When the mate carries a `limit` AND the
+  // current swing has an active penalty (proxy form in lagrangianSolver),
+  // the residual sum contains a quaternion-derivative term that we leave
+  // to the numeric per-row fallback — emitting an empty row signals that
+  // to lagrangianSolveAnalytic.
+  if (mate.kind === 'hinge') {
+    if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      if (hingeLimitActive(mate, movedPart, fixedPart)) {
+        // Defer to numeric (caller falls back when row is empty).
+        return EMPTY_ROW();
+      }
+      return concentricRow(
+        movedPart, fixedPart,
+        movedResolved.world.origin, movedResolved.world.direction,
+        fixedResolved.world.origin, fixedResolved.world.direction,
+        movedDofOffset, fixedDofOffset,
+      );
+    }
+    return EMPTY_ROW();
+  }
+
+  // ── slot ─────────────────────────────────────────────────────────────
+  // Residual = perpDist(slot edge line, pin axis line)  +  |cos(d_slot, d_pin)|.
+  // First term = concentric row; second term = perpendicular row. Sum the
+  // two analytic rows column by column.
+  if (mate.kind === 'slot') {
+    if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      const cRow = concentricRow(
+        movedPart, fixedPart,
+        movedResolved.world.origin, movedResolved.world.direction,
+        fixedResolved.world.origin, fixedResolved.world.direction,
+        movedDofOffset, fixedDofOffset,
+      );
+      const pRow = perpendicularRow(
+        movedResolved.world.direction, fixedResolved.world.direction,
+        movedDofOffset, fixedDofOffset,
+      );
+      return sumRows(cRow, pRow);
+    }
+    return EMPTY_ROW();
+  }
+
+  // ── gear ─────────────────────────────────────────────────────────────
+  // Residual = coplanarity error between shaft axes. The skew branch is
+  // exactly the concentric skew formula; the parallel branch in
+  // computeResidualForMate returns 0 (parallel shafts always coplanar) —
+  // so we emit a ZERO row in that case (no gradient to follow).
+  if (mate.kind === 'gear') {
+    if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      return gearCoplanarityRow(
+        movedPart, fixedPart,
+        movedResolved.world.origin, movedResolved.world.direction,
+        fixedResolved.world.origin, fixedResolved.world.direction,
+        movedDofOffset, fixedDofOffset,
+      );
+    }
+    return EMPTY_ROW();
+  }
+
+  // ── rack_pinion ──────────────────────────────────────────────────────
+  // Residual = |perpDist(pinion, rack) - pinionRadius|  +  |cos(d_pinion, d_rack)|.
+  // First term = a distance-to-target on axis/axis (new pattern, derived
+  // from the concentric skew formula); second term = perpendicular row.
+  if (mate.kind === 'rack_pinion') {
+    if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      const dRow = axisDistanceTargetRow(
+        movedPart, fixedPart,
+        movedResolved.world.origin, movedResolved.world.direction,
+        fixedResolved.world.origin, fixedResolved.world.direction,
+        mate.pinionRadius,
+        movedDofOffset, fixedDofOffset,
+      );
+      const pRow = perpendicularRow(
+        movedResolved.world.direction, fixedResolved.world.direction,
+        movedDofOffset, fixedDofOffset,
+      );
+      return sumRows(dRow, pRow);
+    }
+    return EMPTY_ROW();
   }
 
   return EMPTY_ROW();
@@ -813,4 +927,195 @@ function angleRow(
   pushPartContribution(row, mOff, { x: 0, y: 0, z: 0 }, rM);
   pushPartContribution(row, fOff, { x: 0, y: 0, z: 0 }, rF);
   return row;
+}
+
+// ─── Phase 3.2.2 advanced-mate row builders ─────────────────────────────-
+
+/**
+ * Sum two sparse rows column-wise. Cols may overlap (slot + rack_pinion
+ * combine a concentric/distance row with a perpendicular row that touches
+ * the SAME 6N×2 rotation columns), so we merge into a Map keyed by col
+ * and emit one entry per unique col with the summed value.
+ *
+ * Zero entries that survive after summing are kept (matching the
+ * convention of the other row builders: rows expose all DoF blocks they
+ * touched even if one component happens to be zero).
+ */
+function sumRows(a: AnalyticJacobianRow, b: AnalyticJacobianRow): AnalyticJacobianRow {
+  const acc = new Map<number, number>();
+  for (let i = 0; i < a.cols.length; i++) {
+    const c = a.cols[i]!;
+    acc.set(c, (acc.get(c) ?? 0) + a.values[i]!);
+  }
+  for (let i = 0; i < b.cols.length; i++) {
+    const c = b.cols[i]!;
+    acc.set(c, (acc.get(c) ?? 0) + b.values[i]!);
+  }
+  // Preserve column ordering (smaller first) so test inspection is stable
+  // and matches the order produced by pushPartContribution.
+  const cols = [...acc.keys()].sort((x, y) => x - y);
+  const values = cols.map((c) => acc.get(c)!);
+  return { cols, values };
+}
+
+/**
+ * Decide whether a hinge mate carries an active limit penalty at the
+ * given orientations. Mirrors the Phase 1 unsigned-proxy branch used in
+ * `lagrangianSolver.computeResidualForMate`:
+ *   approxAngleRad = 2·acos(|dot(q_a, q_b)|)
+ *   approxAngleDeg = approxAngleRad · 180/π
+ *   active = approxAngleDeg > max  OR  −approxAngleDeg < min
+ *
+ * Returns false when the mate has no limit at all (the residual is then
+ * purely concentric and the analytic row is exact).
+ */
+function hingeLimitActive(mate: HingeMate, a: PartInstance, b: PartInstance): boolean {
+  if (mate.limit === undefined) return false;
+  const qa = a.orientation;
+  const qb = b.orientation;
+  const dotQ = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
+  const cosHalf = Math.min(1, Math.abs(dotQ));
+  const approxAngleRad = 2 * Math.acos(cosHalf);
+  const approxAngleDeg = (approxAngleRad * 180) / Math.PI;
+  const minDeg = mate.limit.minAngleDeg;
+  const maxDeg = mate.limit.maxAngleDeg;
+  if (approxAngleDeg > maxDeg) return true;
+  if (-approxAngleDeg < minDeg) return true;
+  return false;
+}
+
+/**
+ * gear coplanarity row — residual = skew distance between the two shaft
+ * axes when the cross-product `|d_a × d_b|` ≥ 1e-9; 0 (parallel branch)
+ * otherwise.
+ *
+ * In the skew branch the formula matches the skew-axis branch of the
+ * concentric residual exactly, so the gradient is the same. In the
+ * parallel branch the residual is constant 0 — we emit an empty row.
+ *
+ * (Concentric in the parallel branch would emit a point-to-line distance
+ * gradient — that is WRONG for gear, which says parallel shafts are
+ * always coplanar regardless of offset. Don't reuse concentricRow.)
+ */
+function gearCoplanarityRow(
+  movedPart: PartInstance, fixedPart: PartInstance,
+  oA: Vec3, dA: Vec3,
+  oB: Vec3, dB: Vec3,
+  mOff: number, fOff: number,
+): AnalyticJacobianRow {
+  const row = EMPTY_ROW();
+  const c: Vec3 = {
+    x: dA.y * dB.z - dA.z * dB.y,
+    y: dA.z * dB.x - dA.x * dB.z,
+    z: dA.x * dB.y - dA.y * dB.x,
+  };
+  const cLen = lengthOf(c);
+  if (cLen < 1e-9) {
+    // Parallel/anti-parallel: residual is identically 0. Zero gradient.
+    return row;
+  }
+
+  // Skew branch: identical derivation to concentricRow's skew branch.
+  const n: Vec3 = { x: c.x / cLen, y: c.y / cLen, z: c.z / cLen };
+  const wob = sub(oB, oA);
+  const s = dot(wob, n);
+  const sgn = signSafe(s);
+
+  const wobPerp: Vec3 = {
+    x: wob.x - s * n.x,
+    y: wob.y - s * n.y,
+    z: wob.z - s * n.z,
+  };
+  const invCLen = 1 / cLen;
+
+  const movedRelO = sub(oA, movedPart.position);
+  const rotGmO = rotationalGradient(movedRelO);
+  const tM: Vec3 = { x: -sgn * n.x, y: -sgn * n.y, z: -sgn * n.z };
+  const ex_dA: Vec3 = { x: 0, y: -dA.z, z: dA.y };
+  const ey_dA: Vec3 = { x: dA.z, y: 0, z: -dA.x };
+  const ez_dA: Vec3 = { x: -dA.y, y: dA.x, z: 0 };
+  const dirRotMx = crossScalar(ex_dA, dB);
+  const dirRotMy = crossScalar(ey_dA, dB);
+  const dirRotMz = crossScalar(ez_dA, dB);
+  const rM: Vec3 = {
+    x: -sgn * dot(rotGmO.ex, n) + sgn * invCLen * dot(wobPerp, dirRotMx),
+    y: -sgn * dot(rotGmO.ey, n) + sgn * invCLen * dot(wobPerp, dirRotMy),
+    z: -sgn * dot(rotGmO.ez, n) + sgn * invCLen * dot(wobPerp, dirRotMz),
+  };
+  pushPartContribution(row, mOff, tM, rM);
+
+  const fixedRelO = sub(oB, fixedPart.position);
+  const rotGfO = rotationalGradient(fixedRelO);
+  const ex_dB: Vec3 = { x: 0, y: -dB.z, z: dB.y };
+  const ey_dB: Vec3 = { x: dB.z, y: 0, z: -dB.x };
+  const ez_dB: Vec3 = { x: -dB.y, y: dB.x, z: 0 };
+  const dirRotFx = crossScalar(dA, ex_dB);
+  const dirRotFy = crossScalar(dA, ey_dB);
+  const dirRotFz = crossScalar(dA, ez_dB);
+  const tF: Vec3 = { x: sgn * n.x, y: sgn * n.y, z: sgn * n.z };
+  const rF: Vec3 = {
+    x: sgn * dot(rotGfO.ex, n) + sgn * invCLen * dot(wobPerp, dirRotFx),
+    y: sgn * dot(rotGfO.ey, n) + sgn * invCLen * dot(wobPerp, dirRotFy),
+    z: sgn * dot(rotGfO.ez, n) + sgn * invCLen * dot(wobPerp, dirRotFz),
+  };
+  pushPartContribution(row, fOff, tF, rF);
+  return row;
+}
+
+/**
+ * axis-distance-to-target row — residual = |distanceAxisToAxis − target|.
+ *
+ * Used by rack_pinion (target = pinionRadius). Chain rule of the absolute
+ * value outer wrapper:
+ *   d = distanceAxisToAxis(a, b)   (already unsigned)
+ *   s = d − target
+ *   r = |s| = |d − target|
+ *   dr/dq = sgn(s) · dd/dq
+ *
+ * The unsigned skew distance `d` is the same residual as the concentric
+ * mate, so dd/dq is the concentricRow's gradient (NOT the |d − target|
+ * version — we scale by sgn(s) instead of sgn(d), the latter is always
+ * positive). We compute the row via concentricRow and then scale every
+ * value by sgn(s).
+ *
+ * Parallel branch: concentricRow falls back to point-to-line distance,
+ * which is also unsigned and ≥ 0 — same scaling treatment applies.
+ */
+function axisDistanceTargetRow(
+  movedPart: PartInstance, fixedPart: PartInstance,
+  oA: Vec3, dA: Vec3,
+  oB: Vec3, dB: Vec3,
+  target: number,
+  mOff: number, fOff: number,
+): AnalyticJacobianRow {
+  const concentric = concentricRow(movedPart, fixedPart, oA, dA, oB, dB, mOff, fOff);
+  // Recompute `d` so we can derive sgn(s = d − target).
+  const c: Vec3 = {
+    x: dA.y * dB.z - dA.z * dB.y,
+    y: dA.z * dB.x - dA.x * dB.z,
+    z: dA.x * dB.y - dA.y * dB.x,
+  };
+  const cLen = lengthOf(c);
+  let d: number;
+  if (cLen < 1e-9) {
+    // Parallel: point-to-line distance from oA to the (oB, dB) line.
+    const w = sub(oA, oB);
+    const along = dot(w, dB);
+    const p: Vec3 = {
+      x: w.x - dB.x * along,
+      y: w.y - dB.y * along,
+      z: w.z - dB.z * along,
+    };
+    d = lengthOf(p);
+  } else {
+    const n: Vec3 = { x: c.x / cLen, y: c.y / cLen, z: c.z / cLen };
+    d = Math.abs(dot(sub(oB, oA), n));
+  }
+  const sgn = signSafe(d - target);
+  if (sgn === 1) return concentric;
+  // sgn(s) = −1 → flip every value in the row.
+  return {
+    cols: concentric.cols,
+    values: concentric.values.map((v) => -v),
+  };
 }
