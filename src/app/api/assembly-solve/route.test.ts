@@ -413,3 +413,343 @@ describe('POST /api/assembly-solve — real-solve phase', () => {
     expect(data.message).toMatch(/solverOptions/i);
   });
 });
+
+// ─── Phase 3.2 solver-selection tests ────────────────────────────────────
+//
+// These tests exercise the solver dispatch + 'auto' decision tree. Rather
+// than mocking the solver modules (which would couple the tests to the
+// import topology), we run end-to-end on small fixtures and assert the
+// `solverUsed` field the route reports.
+
+/** Build a chain of N free parts pinned to a fixed base by N concentric
+ *  mates on z_axis. Used to drive the 'auto' size threshold. */
+function buildChain(n: number): { state: AssemblyState; trees: Record<string, FeatureTree> } {
+  const parts = [
+    {
+      id: 'p0',
+      name: 'P0',
+      partTemplateId: 'tpl',
+      position: { x: 0, y: 0, z: 0 },
+      orientation: IDENTITY_QUAT,
+      fixed: true,
+    },
+    ...Array.from({ length: n - 1 }, (_, i) => ({
+      id: `p${i + 1}`,
+      name: `P${i + 1}`,
+      partTemplateId: 'tpl',
+      position: { x: (i + 1) * 2, y: (i + 1) * 1, z: 0 },
+      orientation: IDENTITY_QUAT,
+    })),
+  ];
+  const mates = Array.from({ length: n - 1 }, (_, i) => ({
+    id: `m${i}`,
+    kind: 'concentric' as const,
+    a: { partId: `p${i}`, refId: 'z_axis', refKind: 'axis' as const },
+    b: { partId: `p${i + 1}`, refId: 'z_axis', refKind: 'axis' as const },
+  }));
+  const trees: Record<string, FeatureTree> = {};
+  for (const p of parts) trees[p.id] = { nodes: [] };
+  return { state: { parts, mates }, trees };
+}
+
+describe('POST /api/assembly-solve — solver selection', () => {
+  // Shared 2-part / 1-mate concentric fixture for "small system" tests.
+  function twoPart(): { state: AssemblyState; trees: Record<string, FeatureTree> } {
+    return {
+      state: {
+        parts: [
+          {
+            id: 'p_base',
+            name: 'Base',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_pin',
+            name: 'Pin',
+            partTemplateId: 'tpl',
+            position: { x: 5, y: 3, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'c1',
+            kind: 'concentric',
+            a: { partId: 'p_base', refId: 'z_axis', refKind: 'axis' },
+            b: { partId: 'p_pin', refId: 'z_axis', refKind: 'axis' },
+          },
+        ],
+      },
+      trees: { p_base: { nodes: [] }, p_pin: { nodes: [] } },
+    };
+  }
+
+  it("solver='gauss_seidel' runs iterativeSolve and reports solverUsed", async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'gauss_seidel' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('real');
+    expect(data.solverUsed).toBe('gauss_seidel');
+    expect(data.success).toBe(true);
+    expect(data.finalMaxResidual).toBeLessThan(1e-4);
+    // Gauss-Seidel snaps the concentric in a single analytical sweep.
+    expect(data.iterations).toBeLessThanOrEqual(2);
+  });
+
+  it("solver='lagrangian' runs lagrangianSolve and reports solverUsed", async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'lagrangian' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('lagrangian');
+    expect(data.success).toBe(true);
+    expect(data.finalMaxResidual).toBeLessThan(1e-4);
+    // Newton-LM needs ≥ 1 actual Newton step for a non-trivial start;
+    // distinguishes it from the Gauss-Seidel 1-shot.
+    expect(data.iterations).toBeGreaterThanOrEqual(1);
+  });
+
+  it("solver='adaptive' runs lagrangianSolveAdaptive and reports solverUsed", async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'adaptive' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('adaptive');
+    expect(data.success).toBe(true);
+    expect(data.finalMaxResidual).toBeLessThan(1e-4);
+  });
+
+  it("solver='auto' on a 2-part single-concentric → resolves to 'gauss_seidel'", async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'auto' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    // recommendSolver returns 'gauss_seidel' (parts < 5, mates < 10, all
+    // analytical, well-constrained) and the auto wrapper doesn't upgrade
+    // (parts < 10, not over-constrained).
+    expect(data.solverUsed).toBe('gauss_seidel');
+    expect(data.success).toBe(true);
+  });
+
+  it("solver='auto' on a 10-part chain → upgrades to 'adaptive'", async () => {
+    const { state, trees } = buildChain(10);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'auto' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('adaptive');
+  });
+
+  it("solver='auto' on an over-constrained triangle → upgrades to 'adaptive'", async () => {
+    // 3 cubes joined by a 3-mate cycle (a-b, b-c, c-a). One mate is
+    // redundant given the other two → approximate DoF ≤ 0 → over-constrained.
+    const state: AssemblyState = {
+      parts: [
+        {
+          id: 'a',
+          name: 'A',
+          partTemplateId: 'tpl',
+          position: { x: 0, y: 0, z: 0 },
+          orientation: IDENTITY_QUAT,
+          fixed: true,
+        },
+        {
+          id: 'b',
+          name: 'B',
+          partTemplateId: 'tpl',
+          position: { x: 5, y: 3, z: 0 },
+          orientation: IDENTITY_QUAT,
+        },
+        {
+          id: 'c',
+          name: 'C',
+          partTemplateId: 'tpl',
+          position: { x: -4, y: 2, z: 0 },
+          orientation: IDENTITY_QUAT,
+        },
+      ],
+      mates: [
+        // 6 concentric mates on every axis pair so the DoF heuristic drops
+        // below zero with only 3 parts — guaranteed over-constrained.
+        { id: 'ab_z', kind: 'concentric',
+          a: { partId: 'a', refId: 'z_axis', refKind: 'axis' },
+          b: { partId: 'b', refId: 'z_axis', refKind: 'axis' } },
+        { id: 'bc_z', kind: 'concentric',
+          a: { partId: 'b', refId: 'z_axis', refKind: 'axis' },
+          b: { partId: 'c', refId: 'z_axis', refKind: 'axis' } },
+        { id: 'ca_z', kind: 'concentric',
+          a: { partId: 'c', refId: 'z_axis', refKind: 'axis' },
+          b: { partId: 'a', refId: 'z_axis', refKind: 'axis' } },
+        { id: 'ab_x', kind: 'concentric',
+          a: { partId: 'a', refId: 'x_axis', refKind: 'axis' },
+          b: { partId: 'b', refId: 'x_axis', refKind: 'axis' } },
+        { id: 'bc_x', kind: 'concentric',
+          a: { partId: 'b', refId: 'x_axis', refKind: 'axis' },
+          b: { partId: 'c', refId: 'x_axis', refKind: 'axis' } },
+        { id: 'ca_x', kind: 'concentric',
+          a: { partId: 'c', refId: 'x_axis', refKind: 'axis' },
+          b: { partId: 'a', refId: 'x_axis', refKind: 'axis' } },
+      ],
+    };
+    const trees: Record<string, FeatureTree> = {
+      a: { nodes: [] }, b: { nodes: [] }, c: { nodes: [] },
+    };
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'auto' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    // parts = 3 (< 10) but DoF ≤ 0 with mates > 0 → 'adaptive' upgrade.
+    expect(data.solverUsed).toBe('adaptive');
+  });
+
+  it('omitting solver defaults to gauss_seidel (back-compat)', async () => {
+    const { state, trees } = twoPart();
+    // No `solver` field at all — matches the pre-Phase-3.2 client contract.
+    const r = await POST(makeReq({ state, featureTrees: trees }) as never);
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('real');
+    expect(data.solverUsed).toBe('gauss_seidel');
+    expect(data.success).toBe(true);
+  });
+
+  it('response always includes the solverUsed field (real phase)', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(makeReq({ state, featureTrees: trees }) as never);
+    const data = await r.json();
+    expect(Object.prototype.hasOwnProperty.call(data, 'solverUsed')).toBe(true);
+    expect(typeof data.solverUsed).toBe('string');
+    expect(['gauss_seidel', 'lagrangian', 'adaptive']).toContain(data.solverUsed);
+  });
+
+  it('response includes solverUsed on the stub phase too (echo of request)', async () => {
+    const state: AssemblyState = {
+      parts: [
+        {
+          id: 'p_base',
+          name: 'Base',
+          partTemplateId: 'tpl',
+          position: { x: 0, y: 0, z: 0 },
+          orientation: IDENTITY_QUAT,
+          fixed: true,
+        },
+      ],
+      mates: [],
+    };
+    const r = await POST(makeReq({ state, solver: 'lagrangian' }) as never);
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('stub');
+    expect(data.solverUsed).toBe('lagrangian');
+  });
+
+  it('rejects an unknown solver value with BAD_REQUEST', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'newton_raphson' }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.code).toBe('BAD_REQUEST');
+    expect(data.message).toMatch(/solver/i);
+  });
+
+  it('rejects a non-string solver value with BAD_REQUEST', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 42 }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.code).toBe('BAD_REQUEST');
+    expect(data.message).toMatch(/solver/i);
+  });
+
+  it("solver='auto' on a 6-part chain → resolves to 'lagrangian' (no adaptive upgrade)", async () => {
+    // recommendSolver picks 'lagrangian' for ≥ 5 unfixed parts. buildChain(6)
+    // has 1 fixed + 5 free = 5 unfixed → trips the size threshold. The auto
+    // wrapper does NOT upgrade to 'adaptive' until total parts ≥ 10 OR
+    // over-constrained — 6 parts well-constrained passes through as
+    // 'lagrangian'.
+    const { state, trees } = buildChain(6);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'auto' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('lagrangian');
+  });
+
+  it("solver='auto' with advanced mate kind (gear) → resolves to 'lagrangian'", async () => {
+    // recommendSolver returns 'lagrangian' for any mate kind outside the
+    // Gauss-Seidel-analytical set (gear is one such kind). Auto wrapper
+    // doesn't upgrade because parts < 10 and not over-constrained.
+    const state: AssemblyState = {
+      parts: [
+        {
+          id: 'p_base',
+          name: 'Base',
+          partTemplateId: 'tpl',
+          position: { x: 0, y: 0, z: 0 },
+          orientation: IDENTITY_QUAT,
+          fixed: true,
+        },
+        {
+          id: 'p_gear',
+          name: 'Gear',
+          partTemplateId: 'tpl',
+          position: { x: 5, y: 0, z: 0 },
+          orientation: IDENTITY_QUAT,
+        },
+      ],
+      mates: [
+        {
+          id: 'g1',
+          kind: 'gear',
+          a: { partId: 'p_base', refId: 'z_axis', refKind: 'axis' },
+          b: { partId: 'p_gear', refId: 'z_axis', refKind: 'axis' },
+          ratio: 2,
+        },
+      ],
+    };
+    const trees: Record<string, FeatureTree> = {
+      p_base: { nodes: [] }, p_gear: { nodes: [] },
+    };
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, solver: 'auto' }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('lagrangian');
+  });
+
+  it('passes solverOptions through to the lagrangian solver (maxIterations cap)', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({
+        state,
+        featureTrees: trees,
+        solver: 'lagrangian',
+        solverOptions: { maxIterations: 1 },
+      }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('lagrangian');
+    expect(data.iterations).toBeLessThanOrEqual(1);
+  });
+});
