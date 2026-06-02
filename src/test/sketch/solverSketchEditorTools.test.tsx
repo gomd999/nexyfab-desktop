@@ -44,11 +44,47 @@ describe('SolverSketchEditor — modification tools', () => {
     }
   });
 
-  it('trim: clicking a line with trim tool removes that line entity', async () => {
+  it('trim: clicking past the intersection moves that endpoint to the intersection (SW-style)', async () => {
     await mountReady();
-    // Draw two lines so we can verify only the clicked one disappears.
-    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
     const canvas = screen.getByTestId('solver-sketch-canvas');
+
+    // Line A: horizontal (100,100) → (300,100). p1, p2 are the first 2 points.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 300, 100);
+
+    // Line B: vertical (200, 50) → (200, 200). Crosses A at (200,100).
+    clickAt(canvas, 200, 50);
+    clickAt(canvas, 200, 200);
+
+    await waitFor(() => expect(getLines().length).toBe(2));
+    expect(getPoints().length).toBe(4);
+
+    // Click line A on the p2 side of the intersection (x=250 > 200 = intersection).
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-trim'));
+    fireEvent.click(getLines()[0]!, { clientX: 250, clientY: 100 });
+
+    // Both lines must still exist (no entity removed; just endpoint moved).
+    await waitFor(() => expect(getLines().length).toBe(2));
+    // The 2nd point (p2 of line A) should now be at (200, 100).
+    await waitFor(() => {
+      const p2 = getPoints()[1]!;
+      expect(Math.abs(Number(p2.getAttribute('cx')) - 200)).toBeLessThan(1);
+      expect(Math.abs(Number(p2.getAttribute('cy')) - 100)).toBeLessThan(1);
+    });
+    // p1 of line A must be unchanged (still at 100,100).
+    const p1 = getPoints()[0]!;
+    expect(Math.abs(Number(p1.getAttribute('cx')) - 100)).toBeLessThan(1);
+    expect(Math.abs(Number(p1.getAttribute('cy')) - 100)).toBeLessThan(1);
+  });
+
+  it('trim: no intersection found falls back to removing the whole line (legacy)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await mountReady();
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+
+    // Two parallel horizontal lines — no intersection.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
     clickAt(canvas, 100, 100);
     clickAt(canvas, 200, 100);
     clickAt(canvas, 100, 200);
@@ -56,12 +92,67 @@ describe('SolverSketchEditor — modification tools', () => {
 
     await waitFor(() => expect(getLines().length).toBe(2));
 
-    // Activate trim and click the first line.
     fireEvent.click(screen.getByTestId('solver-sketch-tool-trim'));
-    const firstLine = getLines()[0]!;
-    fireEvent.click(firstLine, { clientX: 150, clientY: 100 });
+    // Click middle of first line.
+    fireEvent.click(getLines()[0]!, { clientX: 150, clientY: 100 });
 
     await waitFor(() => expect(getLines().length).toBe(1));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no intersection'));
+    warnSpy.mockRestore();
+  });
+
+  it('trim: multiple intersections → trims to the one nearest the click', async () => {
+    await mountReady();
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+
+    // Line A: horizontal (50,100) → (400,100). Points 0, 1.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    clickAt(canvas, 50, 100);
+    clickAt(canvas, 400, 100);
+
+    // Line B: vertical at x=150 (50→200). Crosses A at (150,100). Points 2, 3.
+    clickAt(canvas, 150, 50);
+    clickAt(canvas, 150, 200);
+
+    // Line C: vertical at x=300 (50→200). Crosses A at (300,100). Points 4, 5.
+    clickAt(canvas, 300, 50);
+    clickAt(canvas, 300, 200);
+
+    await waitFor(() => expect(getLines().length).toBe(3));
+
+    // Click line A at x=350 (past x=300 intersection, on the p2 side).
+    // Nearest intersection to the click is (300,100), so p2 should snap there.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-trim'));
+    fireEvent.click(getLines()[0]!, { clientX: 350, clientY: 100 });
+
+    await waitFor(() => {
+      const p2 = getPoints()[1]!;
+      expect(Math.abs(Number(p2.getAttribute('cx')) - 300)).toBeLessThan(1);
+      expect(Math.abs(Number(p2.getAttribute('cy')) - 100)).toBeLessThan(1);
+    });
+    // All 3 lines remain.
+    expect(getLines().length).toBe(3);
+  });
+
+  it('trim: clicking on a circle is a no-op (Phase 1 supports lines only)', async () => {
+    await mountReady();
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+
+    // Draw a circle: center (200,200), edge at (250,200) → r=50.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-circle'));
+    clickAt(canvas, 200, 200);
+    clickAt(canvas, 250, 200);
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-testid^="solver-sketch-entity-c"]').length).toBe(1);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-trim'));
+    const circleEl = document.querySelectorAll('[data-testid^="solver-sketch-entity-c"]')[0]!;
+    fireEvent.click(circleEl, { clientX: 250, clientY: 200 });
+
+    // Circle still exists, untouched.
+    expect(document.querySelectorAll('[data-testid^="solver-sketch-entity-c"]').length).toBe(1);
   });
 
   it('trim: clicking a point with trim tool is a no-op (only lines are trimmable)', async () => {

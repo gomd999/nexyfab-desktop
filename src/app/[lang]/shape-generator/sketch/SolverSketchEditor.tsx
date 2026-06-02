@@ -544,22 +544,95 @@ export default function SolverSketchEditor({
     [solver, entities, solveAndApply],
   );
 
-  // ─── modification tool: trim (Phase 1 simplification = remove line entity) ───
-  // SW-style "trim to next intersection" is Phase 2. Here we drop the line
-  // primitive from the view model. The underlying solver line stays declared
-  // (planegcs has no remove API exposed yet) but it has no view surface, so
-  // DoF readout drops to zero contribution from it on next solve.
+  // ─── modification tool: trim (Phase 2 — SW-style "trim to nearest intersection") ───
+  // Click a line; find the nearest intersection (segment-segment, not infinite-line)
+  // to the click point; move the endpoint on the click side to that intersection,
+  // collapsing the click-side stub. If no intersection exists the legacy behavior
+  // (remove the whole line) kicks in. Phase 1 limitation: a click that falls
+  // between two intersections still removes one whole side — true split (one
+  // line → two lines, dropping the middle) is deferred.
+  const TRIM_TOLERANCE = 10; // sketch units; matches task spec
   const commitTrim = useCallback(
-    (lineId: string): void => {
+    (lineId: string, clickPoint: { x: number; y: number }): void => {
+      if (!solver) return;
       const ent = entities.find((e) => e.id === lineId);
+      // Phase 1 supports lines only; clicks on circles/arcs/points are no-ops.
       if (!ent || ent.kind !== 'line') return;
-      const next = entities.filter((e) => e.id !== lineId);
-      // No new solver primitives — re-solve with the existing solver state
-      // so DoF readout stays consistent (the dropped view entity is purely
-      // a UI deletion in Phase 1).
-      solveAndApply(next);
+
+      const p1 = entities.find((e) => e.id === ent.p1);
+      const p2 = entities.find((e) => e.id === ent.p2);
+      if (!p1 || !p2 || p1.kind !== 'point' || p2.kind !== 'point') return;
+
+      const a1 = { x: p1.x, y: p1.y };
+      const a2 = { x: p2.x, y: p2.y };
+      const dxA = a2.x - a1.x;
+      const dyA = a2.y - a1.y;
+      const lenSq = dxA * dxA + dyA * dyA;
+      if (lenSq < 1e-9) return; // zero-length line
+
+      // Project click onto the line. tClick in [0,1] = within segment.
+      const tClick = ((clickPoint.x - a1.x) * dxA + (clickPoint.y - a1.y) * dyA) / lenSq;
+      const perpX = clickPoint.x - (a1.x + dxA * tClick);
+      const perpY = clickPoint.y - (a1.y + dyA * tClick);
+      const perpDist = Math.hypot(perpX, perpY);
+      // Too far from the line, or click effectively at an endpoint → no-op.
+      if (perpDist > TRIM_TOLERANCE) return;
+      if (tClick < 0.02 || tClick > 0.98) return;
+
+      // Find all OTHER lines that intersect this one as a true segment-segment
+      // intersection. Use lineLineIntersection (returns `t` along a1→a2); also
+      // re-derive the param `u` along the other line to confirm 0<u<1.
+      const otherLines = entities.filter(
+        (e): e is ViewLine => e.kind === 'line' && e.id !== ent.id,
+      );
+      const hits: Array<{ t: number; x: number; y: number }> = [];
+      for (const other of otherLines) {
+        const ob1 = entities.find((e) => e.id === other.p1);
+        const ob2 = entities.find((e) => e.id === other.p2);
+        if (!ob1 || !ob2 || ob1.kind !== 'point' || ob2.kind !== 'point') continue;
+        const hit = lineLineIntersection(a1, a2, { x: ob1.x, y: ob1.y }, { x: ob2.x, y: ob2.y });
+        if (!hit) continue; // parallel
+        // Verify hit is within the clicked segment.
+        if (hit.t <= 0 || hit.t >= 1) continue;
+        // Re-derive u along the other line — must also be within (0,1) for a
+        // true crossing (skip when the other segment doesn't reach this line).
+        const dxB = ob2.x - ob1.x;
+        const dyB = ob2.y - ob1.y;
+        const lenSqB = dxB * dxB + dyB * dyB;
+        if (lenSqB < 1e-9) continue;
+        const u = ((hit.x - ob1.x) * dxB + (hit.y - ob1.y) * dyB) / lenSqB;
+        if (u <= 0 || u >= 1) continue;
+        hits.push({ t: hit.t, x: hit.x, y: hit.y });
+      }
+
+      if (hits.length === 0) {
+        // No intersection → legacy behavior: drop the whole line entity.
+        console.warn(
+          `[SolverSketchEditor.trim] no intersection found on line ${lineId}; removing whole line`,
+        );
+        const next = entities.filter((e) => e.id !== lineId);
+        solveAndApply(next);
+        return;
+      }
+
+      // Pick the intersection nearest to the click (in parameter space — same
+      // order as Euclidean distance on a straight segment).
+      let nearest = hits[0]!;
+      for (const h of hits) {
+        if (Math.abs(h.t - tClick) < Math.abs(nearest.t - tClick)) nearest = h;
+      }
+      // Move whichever endpoint sits on the click side of the intersection.
+      // tClick > tNearest → click is on the p2 side → collapse p2 to intersection.
+      const moveTargetId = tClick > nearest.t ? ent.p2 : ent.p1;
+      try {
+        solver.movePoint(moveTargetId as PointId, nearest.x, nearest.y);
+        solveAndApply();
+      } catch {
+        // Endpoint is fixed (e.g. dimension-pinned) — skip silently; better UX
+        // than throwing in the middle of a click handler.
+      }
     },
-    [entities, solveAndApply],
+    [solver, entities, solveAndApply],
   );
 
   // ─── modification tool: extend (move endpoint to nearest line intersection) ───
@@ -753,7 +826,8 @@ export default function SolverSketchEditor({
         return;
       }
       if (tool === 'trim') {
-        commitTrim(id);
+        const pt = eventToSvgPoint(evt as React.MouseEvent<SVGElement>, svgRef.current);
+        commitTrim(id, pt);
         return;
       }
       if (tool === 'extend') {
