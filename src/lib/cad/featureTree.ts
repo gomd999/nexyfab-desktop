@@ -38,6 +38,10 @@ import type { LinearPatternFeature, CircularPatternFeature } from './pattern';
 import { linearPatternToScad, circularPatternToScad } from './pattern';
 import type { HoleFeature } from './holeProfile';
 import { holeToScad } from './holeProfile';
+import type { FilletFeature } from './filletProfile';
+import { filletToScad } from './filletProfile';
+import type { ChamferFeature } from './chamferProfile';
+import { chamferToScad } from './chamferProfile';
 
 // ─── IR ───────────────────────────────────────────────────────────────────
 
@@ -48,7 +52,9 @@ export type FeatureKind =
   | 'loft'
   | 'linear_pattern'
   | 'circular_pattern'
-  | 'hole';
+  | 'hole'
+  | 'fillet'
+  | 'chamfer';
 
 export type FeaturePayload =
   | ExtrudeFeature
@@ -57,7 +63,9 @@ export type FeaturePayload =
   | LoftFeature
   | LinearPatternFeature
   | CircularPatternFeature
-  | HoleFeature;
+  | HoleFeature
+  | FilletFeature
+  | ChamferFeature;
 
 export interface FeatureNode {
   /** Stable id within the tree. Used for dependency refs + UI selection. */
@@ -172,6 +180,10 @@ function renderNode(node: FeatureNode): string {
       return circularPatternToScad(p);
     case 'hole':
       return holeToScad(p);
+    case 'fillet':
+      return filletToScad(p);
+    case 'chamfer':
+      return chamferToScad(p);
   }
 }
 
