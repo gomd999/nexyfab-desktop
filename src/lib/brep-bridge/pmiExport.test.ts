@@ -2,7 +2,11 @@
  * pmiExport — AP242 PMI fragment writer tests (Phase 5.3 Phase 1).
  */
 import { describe, it, expect } from 'vitest';
-import { writePmiFragment } from './pmiExport';
+import {
+  writePmiFragment,
+  writePmiFragmentWithSavedView,
+  __internal,
+} from './pmiExport';
 import type { Sheet } from '@/lib/drawing/sheet';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 
@@ -349,5 +353,288 @@ describe('writePmiFragment — header comment', () => {
     expect(res.source).toContain('/* PMI from sheet sheet-1');
     expect(res.source).toContain('1 dimensions');
     expect(res.source).toContain('2 GD&T');
+  });
+});
+
+// ─── Phase 2: saved-view + datum-target tests ─────────────────────────────
+
+describe('writePmiFragmentWithSavedView — DRAUGHTING_MODEL container', () => {
+  it('empty sheet → DRAUGHTING_MODEL with empty items list', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100);
+    expect(res.source).toContain('DRAUGHTING_MODEL(');
+    // empty items list — exact form is "DRAUGHTING_MODEL('Default PMI View',(),#N)".
+    expect(res.source).toMatch(/DRAUGHTING_MODEL\('Default PMI View',\(\),#\d+\)/);
+    // saved_view mapping must be populated even for empty sheets.
+    expect(res.mapping.get('saved_view')).toBeDefined();
+    expect(res.mapping.get('saved_view')).toBeGreaterThanOrEqual(100);
+  });
+
+  it('1 dim → DRAUGHTING_MODEL.items contains the dim ref', () => {
+    const sheet = makeSheet({ dimensions: [linearDim({ id: 'd1' })] });
+    const res = writePmiFragmentWithSavedView(sheet, 100);
+    const dimId = res.mapping.get('d1');
+    expect(dimId).toBeDefined();
+    // DRAUGHTING_MODEL items list must include `#<dimId>` exactly.
+    const dmMatch = res.source.match(/DRAUGHTING_MODEL\('[^']*',\(([^)]*)\),#\d+\)/);
+    expect(dmMatch).not.toBeNull();
+    const items = dmMatch![1].split(',').filter((s) => s.length > 0);
+    expect(items).toContain(`#${dimId}`);
+  });
+
+  it('5 items (3 dim + 2 gdt) → DRAUGHTING_MODEL.items length 5', () => {
+    const sheet = makeSheet({
+      dimensions: [
+        linearDim({ id: 'd1' }),
+        radialDim({ id: 'd2' }),
+        angularDim({ id: 'd3' }),
+      ],
+      gdtCallouts: [
+        flatnessGdt({ id: 'g1' }),
+        flatnessGdt({ id: 'g2', kind: 'cylindricity' }),
+      ],
+    });
+    const res = writePmiFragmentWithSavedView(sheet, 100);
+    const dmMatch = res.source.match(/DRAUGHTING_MODEL\('[^']*',\(([^)]*)\),#\d+\)/);
+    expect(dmMatch).not.toBeNull();
+    const items = dmMatch![1].split(',').filter((s) => s.length > 0);
+    expect(items).toHaveLength(5);
+    // Each PMI id from the mapping (other than 'saved_view') must appear.
+    for (const [key, id] of res.mapping) {
+      if (key === 'saved_view') continue;
+      if (key.startsWith('datum_target:')) continue;
+      expect(items).toContain(`#${id}`);
+    }
+  });
+
+  it('viewName option → DRAUGHTING_MODEL.name uses it verbatim', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      viewName: 'My Inspection View',
+    });
+    expect(res.source).toContain("DRAUGHTING_MODEL('My Inspection View'");
+  });
+
+  it('mapping has saved_view key with the correct entity id', () => {
+    const sheet = makeSheet({ dimensions: [linearDim()] });
+    const res = writePmiFragmentWithSavedView(sheet, 200);
+    const id = res.mapping.get('saved_view');
+    expect(id).toBeDefined();
+    // The id must point at the DRAUGHTING_MODEL line in source.
+    expect(res.source).toContain(`#${id}=DRAUGHTING_MODEL(`);
+  });
+
+  it('emits a REPRESENTATION mirroring DRAUGHTING_MODEL items', () => {
+    const sheet = makeSheet({ dimensions: [linearDim()] });
+    const res = writePmiFragmentWithSavedView(sheet, 100);
+    // Both DRAUGHTING_MODEL and REPRESENTATION present.
+    expect(res.source).toContain('DRAUGHTING_MODEL(');
+    expect(res.source).toMatch(/=REPRESENTATION\('[^']*',/);
+  });
+
+  it('emits PROPERTY_DEFINITION + PROPERTY_DEFINITION_REPRESENTATION', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100);
+    expect(res.source).toContain('PROPERTY_DEFINITION(');
+    expect(res.source).toContain('PROPERTY_DEFINITION_REPRESENTATION(');
+  });
+
+  it('default viewName is "Default PMI View"', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100);
+    expect(res.source).toContain("DRAUGHTING_MODEL('Default PMI View'");
+  });
+});
+
+describe('writePmiFragmentWithSavedView — datum targets', () => {
+  it('3 targets [point, line, area] → 3 PLACED_DATUM_TARGET_FEATURE entities', () => {
+    const sheet = makeSheet({
+      gdtCallouts: [
+        flatnessGdt({
+          id: 'gdt-pos-1',
+          kind: 'position',
+          datums: ['A', 'B', 'C'],
+        }),
+      ],
+    });
+    const res = writePmiFragmentWithSavedView(sheet, 100, {
+      datumTargets: [
+        { name: 'A', targetType: 'point' },
+        { name: 'B', targetType: 'line' },
+        { name: 'C', targetType: 'area', size: 5 },
+      ],
+    });
+    const placed = res.source.match(/=PLACED_DATUM_TARGET_FEATURE\(/g) ?? [];
+    expect(placed.length).toBe(3);
+    expect(res.mapping.get('datum_target:A')).toBeDefined();
+    expect(res.mapping.get('datum_target:B')).toBeDefined();
+    expect(res.mapping.get('datum_target:C')).toBeDefined();
+  });
+
+  it("DATUM_TARGET links to DATUM by name match (GdtCallout.datums = ['A'])", () => {
+    const sheet = makeSheet({
+      gdtCallouts: [
+        flatnessGdt({
+          id: 'gdt-pos-1',
+          kind: 'position',
+          datums: ['A'],
+        }),
+      ],
+    });
+    const res = writePmiFragmentWithSavedView(sheet, 100, {
+      datumTargets: [{ name: 'A', targetType: 'point' }],
+    });
+    // Find the DATUM('A',...) entity id.
+    const datumMatch = res.source.match(/#(\d+)=DATUM\('A'/);
+    expect(datumMatch).not.toBeNull();
+    const datumId = datumMatch![1];
+    // PLACED_DATUM_TARGET_FEATURE's last arg must be `#<datumId>` (not `$`).
+    // Use a per-line match anchored to the start of the line to avoid the
+    // greedy `[^)]*` getting confused by earlier `)` in source.
+    const placedLine = res.source
+      .split('\n')
+      .find((l) => l.includes('=PLACED_DATUM_TARGET_FEATURE('));
+    expect(placedLine).toBeDefined();
+    const placedMatch = placedLine!.match(
+      /=PLACED_DATUM_TARGET_FEATURE\([^)]*,(#\d+|\$)\)/,
+    );
+    expect(placedMatch).not.toBeNull();
+    expect(placedMatch![1]).toBe(`#${datumId}`);
+  });
+
+  it('unmatched datum target name → parent_datum slot is $', () => {
+    // No GD&T callouts → no DATUM entities → target 'Z' has no parent.
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      datumTargets: [{ name: 'Z', targetType: 'point' }],
+    });
+    const placedLine = res.source
+      .split('\n')
+      .find((l) => l.includes('=PLACED_DATUM_TARGET_FEATURE('));
+    expect(placedLine).toBeDefined();
+    const placedMatch = placedLine!.match(
+      /=PLACED_DATUM_TARGET_FEATURE\([^)]*,(#\d+|\$)\)/,
+    );
+    expect(placedMatch).not.toBeNull();
+    expect(placedMatch![1]).toBe('$');
+  });
+
+  it('area datum target with size > 0 → CIRCULAR_AREA(..., size)', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      datumTargets: [{ name: 'A', targetType: 'area', size: 7.5 }],
+    });
+    expect(res.source).toContain('CIRCULAR_AREA(');
+    // Size 7.5 → `fmt(7.5)` = `'7.5.'` (trailing `.` for STEP REAL literal).
+    expect(res.source).toMatch(/CIRCULAR_AREA\('A\.1',#\d+,7\.5\.\)/);
+  });
+
+  it("point target → CARTESIAN_POINT (no LINE / no CIRCULAR_AREA)", () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      datumTargets: [{ name: 'A', targetType: 'point' }],
+    });
+    expect(res.source).toContain('CARTESIAN_POINT(');
+    expect(res.source).not.toContain('LINE(');
+    expect(res.source).not.toContain('CIRCULAR_AREA(');
+  });
+
+  it("line target → LINE entity emitted", () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      datumTargets: [{ name: 'A', targetType: 'line' }],
+    });
+    expect(res.source).toMatch(/=LINE\('A\.1'/);
+    expect(res.source).toContain('VECTOR(');
+    expect(res.source).toContain('DIRECTION(');
+  });
+
+  it('area target with missing/zero size → CIRCULAR_AREA(..., 0.)', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      datumTargets: [{ name: 'A', targetType: 'area' }],
+    });
+    expect(res.source).toMatch(/CIRCULAR_AREA\('A\.1',#\d+,0\.\)/);
+  });
+});
+
+describe('writePmiFragmentWithSavedView — non-regression', () => {
+  it('writePmiFragment output is unchanged when called directly', () => {
+    // Sanity: snapshot a non-trivial output, then call the saved-view wrapper
+    // with the same inputs and confirm the body prefix matches byte-for-byte.
+    const sheet = makeSheet({
+      dimensions: [linearDim({ id: 'd1' }), angularDim({ id: 'd2' })],
+      gdtCallouts: [flatnessGdt({ id: 'g1', datums: [] })],
+    });
+    const bare = writePmiFragment(sheet, 100);
+    const wrapped = writePmiFragmentWithSavedView(sheet, 100);
+    expect(wrapped.source.startsWith(bare.source)).toBe(true);
+    // Bare mapping entries must survive verbatim.
+    for (const [k, v] of bare.mapping) {
+      expect(wrapped.mapping.get(k)).toBe(v);
+    }
+  });
+
+  it('entity ids monotonically increase through the saved-view tail', () => {
+    const sheet = makeSheet({
+      dimensions: [linearDim({ id: 'd1' })],
+      gdtCallouts: [flatnessGdt({ id: 'g1' })],
+    });
+    const res = writePmiFragmentWithSavedView(sheet, 500, {
+      datumTargets: [{ name: 'A', targetType: 'area', size: 2 }],
+    });
+    const idMatches = res.source.match(/#(\d+)/g) ?? [];
+    expect(idMatches.length).toBeGreaterThan(0);
+    for (const m of idMatches) {
+      const n = Number.parseInt(m.slice(1), 10);
+      expect(n).toBeGreaterThanOrEqual(500);
+      expect(n).toBeLessThanOrEqual(res.lastEntityId);
+    }
+    // saved_view id must be > every dim/gdt id (it's emitted after body).
+    const savedId = res.mapping.get('saved_view')!;
+    expect(savedId).toBeGreaterThan(res.mapping.get('d1')!);
+    expect(savedId).toBeGreaterThan(res.mapping.get('g1')!);
+  });
+
+  it('saved_view id is strictly greater than every dim/gdt mapping id', () => {
+    const sheet = makeSheet({
+      dimensions: [
+        linearDim({ id: 'd1' }),
+        radialDim({ id: 'd2' }),
+        angularDim({ id: 'd3' }),
+      ],
+      gdtCallouts: [
+        flatnessGdt({ id: 'g1' }),
+        flatnessGdt({ id: 'g2', kind: 'position', datums: ['A'] }),
+      ],
+    });
+    const res = writePmiFragmentWithSavedView(sheet, 100);
+    const savedId = res.mapping.get('saved_view')!;
+    for (const [k, v] of res.mapping) {
+      if (k === 'saved_view') continue;
+      expect(v).toBeLessThan(savedId);
+    }
+  });
+
+  it('lastEntityId is the highest #N actually written', () => {
+    const sheet = makeSheet({ dimensions: [linearDim()] });
+    const res = writePmiFragmentWithSavedView(sheet, 100, {
+      datumTargets: [{ name: 'A', targetType: 'line' }],
+    });
+    const idMatches = res.source.match(/#(\d+)/g) ?? [];
+    const maxId = Math.max(...idMatches.map((m) => Number.parseInt(m.slice(1), 10)));
+    expect(res.lastEntityId).toBe(maxId);
+  });
+
+  it('startEntityId validation still throws on invalid input', () => {
+    // The wrapper delegates to writePmiFragment, which validates the seed.
+    expect(() => writePmiFragmentWithSavedView(makeSheet(), 0)).toThrow();
+    expect(() => writePmiFragmentWithSavedView(makeSheet(), -1)).toThrow();
+    expect(() => writePmiFragmentWithSavedView(makeSheet(), 1.5)).toThrow();
+  });
+
+  it('parseDatumIdsByName ignores DATUM_REFERENCE / DATUM_SYSTEM / DATUM_TARGET', () => {
+    // Build a faux source that has all four constructs; only DATUM('A',...)
+    // should be captured.
+    const fake =
+      "#10=DATUM('A','A','',.T.,'A');\n" +
+      "#11=DATUM_REFERENCE(1,#10);\n" +
+      "#12=DATUM_SYSTEM('s',(#11));\n" +
+      "#13=DATUM('B','B','',.T.,'B');\n";
+    const out = __internal.parseDatumIdsByName(fake);
+    expect(out.get('A')).toBe(10);
+    expect(out.get('B')).toBe(13);
+    expect(out.size).toBe(2);
   });
 });

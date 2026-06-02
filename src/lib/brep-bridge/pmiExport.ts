@@ -478,6 +478,256 @@ function refToId(ref: string): number {
   return id;
 }
 
+/** Build a `#N` ref string from a positive integer id (inverse of refToId). */
+function idToRef(id: number): string {
+  if (!Number.isInteger(id) || id < 1) {
+    throw new Error(`pmiExport: invalid entity id ${id}`);
+  }
+  return `#${id}`;
+}
+
+// ─── DATUM_TARGET (AP242) ─────────────────────────────────────────────────
+
+/**
+ * A datum target is a precisely-located point / line / area on a real
+ * datum feature that establishes the datum in physical inspection. AP242
+ * encodes them as PLACED_DATUM_TARGET_FEATURE referencing the parent DATUM.
+ *
+ * Names match the letter labels used in `GdtCallout.datums[]`; the matcher
+ * in `writePmiFragmentWithSavedView` links each PLACED_DATUM_TARGET_FEATURE
+ * back to the DATUM emitted with the same `name` from the FCF.
+ */
+export interface DatumTargetSpec {
+  /** Datum letter label this target belongs to ('A', 'B', 'C', ...). */
+  name: string;
+  /** Geometric form of the target zone. */
+  targetType: 'point' | 'line' | 'area';
+  /**
+   * For 'area' targets — the zone diameter (CIRCULAR_AREA) in mm. Ignored
+   * for 'point' / 'line'. When omitted / non-positive for an area target
+   * the AP242 CIRCULAR_AREA is emitted with a sentinel `0.` magnitude.
+   */
+  size?: number;
+}
+
+// ─── saved-view (DRAUGHTING_MODEL) container ──────────────────────────────
+
+export interface WritePmiSavedViewOptions {
+  /**
+   * Human-readable name attached to the DRAUGHTING_MODEL / REPRESENTATION
+   * (and surfaced in AP242 viewers as the saved-view label). Defaults to
+   * `'Default PMI View'`.
+   */
+  viewName?: string;
+  /**
+   * Datum targets to emit as PLACED_DATUM_TARGET_FEATURE entities. Each
+   * target is linked to the DATUM emitted from `GdtCallout.datums[]` whose
+   * letter label matches `name`. Targets with no matching DATUM are still
+   * emitted (so inspection-only targets can ride along) but their
+   * `target_feature` slot stays `$`.
+   */
+  datumTargets?: ReadonlyArray<DatumTargetSpec>;
+}
+
+export interface WritePmiSavedViewResult extends WritePmiFragmentResult {
+  /**
+   * Same mapping as `writePmiFragment` PLUS two reserved keys:
+   *   - `'saved_view'` → entity id of the DRAUGHTING_MODEL container.
+   *   - `'datum_target:<name>'` → entity id of the PLACED_DATUM_TARGET_FEATURE
+   *     emitted for the named datum (one entry per spec in
+   *     `opts.datumTargets`, in input order).
+   */
+  mapping: Map<string, number>;
+}
+
+/**
+ * Wrap `writePmiFragment`'s output in an AP242 DRAUGHTING_MODEL saved-view
+ * container so PMI viewers (NIST STEP File Analyzer, KISTERS 3DViewStation,
+ * etc.) recognise the items as a discoverable saved view bound to the part
+ * shape via PROPERTY_DEFINITION_REPRESENTATION.
+ *
+ * Layout (in the order emitted):
+ *
+ *   1. The body fragment from {@link writePmiFragment} (unchanged).
+ *   2. A `REPRESENTATION_CONTEXT` for the saved-view + a
+ *      `DRAUGHTING_MODEL(name, items, context)` listing every PMI item.
+ *   3. A `REPRESENTATION` mirroring the same items / context.
+ *   4. `PROPERTY_DEFINITION` + `PROPERTY_DEFINITION_REPRESENTATION` binding
+ *      the model to the part shape (slot left as `$` until Phase 2 OCCT
+ *      plumbing resolves the actual product_definition_shape).
+ *   5. (Optional) `DATUM_TARGET` + `PLACED_DATUM_TARGET_FEATURE` rows for
+ *      each spec in `opts.datumTargets`, with shape variants:
+ *        - 'point' → POINT('A.1',(...))
+ *        - 'line'  → LINE('A.1',$,$)
+ *        - 'area'  → CIRCULAR_AREA('A.1',$,${size})
+ *      Each PLACED_DATUM_TARGET_FEATURE references the matching DATUM in
+ *      slot `4` (the AP242 `target_feature` slot when the parent datum is
+ *      known); unmatched targets pass `$`.
+ *
+ * The original `writePmiFragment` API is NOT modified — Phase-1 callers
+ * keep their behaviour, while AP242-viewer callers opt into the wrapper
+ * via this new function.
+ */
+export function writePmiFragmentWithSavedView(
+  sheet: Sheet,
+  startEntityId: number,
+  opts: WritePmiSavedViewOptions = {},
+): WritePmiSavedViewResult {
+  // Re-use the existing fragment writer for the body. This guarantees
+  // every entity ref already produced by Phase 1 is preserved bit-for-bit.
+  const body = writePmiFragment(sheet, startEntityId);
+
+  const viewName = opts.viewName ?? 'Default PMI View';
+  const datumTargets = opts.datumTargets ?? [];
+
+  // The saved-view container always emits — even for an empty sheet — so
+  // viewers see a (possibly empty) DRAUGHTING_MODEL bound to the part.
+  // `body.lastEntityId + 1` is the next free id; if the body was empty
+  // (`body.source === ''`) we still continue from `startEntityId`, which
+  // is exactly what `body.lastEntityId` is in that case.
+  const continueFrom = body.source === '' ? startEntityId : body.lastEntityId + 1;
+  const b = new PmiBuilder(continueFrom);
+
+  // ── 1. saved-view header comment ───────────────────────────────────────
+  b.comment(`saved view '${esc(viewName)}' — ${body.mapping.size} PMI items`);
+
+  // ── 2. context for the saved-view ──────────────────────────────────────
+  // GEOMETRIC_REPRESENTATION_CONTEXT is the minimum AP242 requires for a
+  // DRAUGHTING_MODEL to be parser-valid. We use a 3D context so PMI in 3D
+  // viewers resolves to model coordinates rather than 2D paper space.
+  const repContext = b.add(
+    `( GEOMETRIC_REPRESENTATION_CONTEXT(3) REPRESENTATION_CONTEXT('${esc(sheet.id)}','3D') )`,
+  );
+
+  // ── 3. assemble item refs (everything writePmiFragment registered) ─────
+  // Mapping order is insertion order (Map semantics) — same as the order
+  // emitDimension / emitGdt were called → matches input order.
+  const itemRefs: string[] = [];
+  const newMapping = new Map<string, number>(body.mapping);
+  for (const id of body.mapping.values()) {
+    itemRefs.push(idToRef(id));
+  }
+  const itemsList = itemRefs.length > 0 ? itemRefs.join(',') : '';
+
+  // ── 4. DRAUGHTING_MODEL — the saved view itself ────────────────────────
+  const savedViewRef = b.add(
+    `DRAUGHTING_MODEL('${esc(viewName)}',(${itemsList}),${repContext})`,
+  );
+  newMapping.set('saved_view', refToId(savedViewRef));
+
+  // ── 5. mirror REPRESENTATION (some viewers walk this instead) ──────────
+  b.add(
+    `REPRESENTATION('${esc(viewName)}',(${itemsList}),${repContext})`,
+  );
+
+  // ── 6. PROPERTY_DEFINITION + PROPERTY_DEFINITION_REPRESENTATION ────────
+  // Binds the model to the part shape so the saved view is discoverable
+  // from the product tree. The shape-definition slot stays `$` until OCCT
+  // plumbing resolves the actual product_definition_shape (Phase 2).
+  const propDef = b.add(
+    `PROPERTY_DEFINITION('pmi','PMI annotations for ${esc(sheet.id)}',$)`,
+  );
+  b.add(
+    `PROPERTY_DEFINITION_REPRESENTATION(${propDef},${savedViewRef})`,
+  );
+
+  // ── 7. datum targets ───────────────────────────────────────────────────
+  // Match-by-name against the DATUM(...) lines already emitted by
+  // `emitGdt`. We parse them out of `body.source` because emitGdt creates
+  // DATUM entities on the fly without registering them in `mapping`.
+  if (datumTargets.length > 0) {
+    const datumByName = parseDatumIdsByName(body.source);
+    for (const t of datumTargets) {
+      const shapeRef = emitDatumTargetShape(b, t);
+      const parentDatumId = datumByName.get(t.name);
+      const parentDatumRef =
+        typeof parentDatumId === 'number' ? idToRef(parentDatumId) : '$';
+      // PLACED_DATUM_TARGET_FEATURE(
+      //   name,                  -- '<letter>.1' convention
+      //   description,           -- target type tag
+      //   target_id,             -- short id, here just '1'
+      //   target_feature,        -- ref to DATUM_TARGET shape (POINT/LINE/AREA)
+      //   parent_datum,          -- ref to DATUM (or $ if unmatched)
+      // )
+      const placedRef = b.add(
+        `PLACED_DATUM_TARGET_FEATURE('${esc(t.name)}.1','${esc(t.targetType)}','1',${shapeRef},${parentDatumRef})`,
+      );
+      newMapping.set(`datum_target:${t.name}`, refToId(placedRef));
+    }
+  }
+
+  // ── 8. concatenate body + container ────────────────────────────────────
+  const tail = b.serialize();
+  const combined = body.source + tail;
+
+  return {
+    source: combined,
+    lastEntityId: b.peekNext() - 1,
+    mapping: newMapping,
+  };
+}
+
+/**
+ * Emit the AP242 shape entity for a datum target. POINT for 'point', LINE
+ * for 'line', CIRCULAR_AREA for 'area'. Returns the entity ref.
+ */
+function emitDatumTargetShape(b: PmiBuilder, t: DatumTargetSpec): string {
+  const labelName = `${esc(t.name)}.1`;
+  switch (t.targetType) {
+    case 'point': {
+      // POINT('A.1', (0., 0., 0.)) — origin point as a Phase-1 placeholder;
+      // the inspection coordinates would be resolved against the parent
+      // datum in Phase 2 once OCCT face plumbing is wired up.
+      const cartesian = b.add(`CARTESIAN_POINT('${labelName}',(0.,0.,0.))`);
+      return cartesian;
+    }
+    case 'line': {
+      // LINE('A.1', pnt, dir) — start at origin along +X.
+      const origin = b.add(`CARTESIAN_POINT('${labelName} origin',(0.,0.,0.))`);
+      const dirVec = b.add(`DIRECTION('${labelName} dir',(1.,0.,0.))`);
+      const vector = b.add(`VECTOR('${labelName} vec',${dirVec},1.)`);
+      return b.add(`LINE('${labelName}',${origin},${vector})`);
+    }
+    case 'area': {
+      // CIRCULAR_AREA('A.1', placement, diameter).
+      const size = typeof t.size === 'number' && t.size > 0 ? t.size : 0;
+      const origin = b.add(`CARTESIAN_POINT('${labelName} center',(0.,0.,0.))`);
+      const axis = b.add(`DIRECTION('${labelName} axis',(0.,0.,1.))`);
+      const refDir = b.add(`DIRECTION('${labelName} refdir',(1.,0.,0.))`);
+      const placement = b.add(`AXIS2_PLACEMENT_3D('${labelName} placement',${origin},${axis},${refDir})`);
+      return b.add(`CIRCULAR_AREA('${labelName}',${placement},${fmt(size)})`);
+    }
+  }
+}
+
+/**
+ * Walk a writePmiFragment source string and extract `<name> → #id` for
+ * every `DATUM(...)` line emitted by `emitGdt`. The emit form is:
+ *
+ *   #42=DATUM('A','A','',.T.,'A');
+ *
+ * The first quoted argument is the datum identifier — exactly the letter
+ * that appears in `GdtCallout.datums[]`. We scan with a non-greedy regex
+ * keyed on `=DATUM(` (to skip DATUM_REFERENCE / DATUM_SYSTEM / DATUM_TARGET
+ * substrings) and bail on the first match for each name (the FCF rarely
+ * defines the same letter twice, but if it does the first wins).
+ */
+function parseDatumIdsByName(source: string): Map<string, number> {
+  const out = new Map<string, number>();
+  // Anchor with `=DATUM(` so we don't accidentally match DATUM_REFERENCE /
+  // DATUM_SYSTEM / DATUM_TARGET. Capture id + the first quoted argument.
+  const re = /#(\d+)=DATUM\('([^']*)'/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source)) !== null) {
+    const id = Number.parseInt(m[1], 10);
+    const name = m[2];
+    if (!out.has(name) && Number.isInteger(id) && id >= 1) {
+      out.set(name, id);
+    }
+  }
+  return out;
+}
+
 // ─── escape-hatch exports for tests ───────────────────────────────────────
 
 /** Internal API surface — not stable; exposed for unit tests + Phase 2. */
@@ -491,4 +741,6 @@ export const __internal = {
   materialConditionEnum,
   fmt,
   esc,
+  parseDatumIdsByName,
+  emitDatumTargetShape,
 };
