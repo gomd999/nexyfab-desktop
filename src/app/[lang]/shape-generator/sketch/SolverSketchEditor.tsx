@@ -546,6 +546,43 @@ export default function SolverSketchEditor({
     [solver, refreshFromSolver],
   );
 
+  // ─── debounced re-solve for bulk property panel edits ─────────────────
+  //
+  // The property panel fires onChange/onDelete *synchronously, once per
+  // selected entity* in bulk mode. With a 3-point bulk x-edit the panel
+  // would otherwise produce 3 back-to-back solver.solve() calls inside the
+  // same task — wasted work, and (more importantly) the intermediate
+  // solves operate on a half-mutated state that may briefly look
+  // over-constrained until the last call lands.
+  //
+  // `scheduleSolveAndApply` collapses any number of calls within the same
+  // macrotask into a single solve. The window is intentionally tiny — a
+  // 0ms timeout — because all we want is "after every currently-queued
+  // synchronous mutate has run". 0ms suffices for the panel's
+  // `for (const p of points) onChange(p.id, ...)` loop.
+  //
+  // Mutations that need an immediate solve (e.g. line drawing) keep using
+  // `solveAndApply` directly — debouncing only matters when there's a
+  // burst of callers.
+  const pendingSolveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleSolveAndApply = useCallback((): void => {
+    if (pendingSolveRef.current) return; // already scheduled within this tick
+    pendingSolveRef.current = setTimeout(() => {
+      pendingSolveRef.current = null;
+      solveAndApply();
+    }, 0);
+  }, [solveAndApply]);
+  // Clean up any pending solve when the component unmounts so we don't
+  // touch a destroyed solver from the timer callback.
+  useEffect(() => {
+    return () => {
+      if (pendingSolveRef.current) {
+        clearTimeout(pendingSolveRef.current);
+        pendingSolveRef.current = null;
+      }
+    };
+  }, []);
+
   // ─── tool switching ───
   const changeTool = useCallback((next: EntityTool): void => {
     setTool(next);
@@ -875,6 +912,11 @@ export default function SolverSketchEditor({
         enableGrid,
         enablePointSnap,
         enableIntersection,
+        // Phase 2 snaps (arc / perpendicular foot) require dedicated toolbar
+        // toggles before they ship in the editor; keep them off here so the
+        // 3 user-visible toggles map 1:1 to behavior.
+        enableArc: false,
+        enablePerpendicular: false,
       });
     },
     [isDrawingTool, tool, snapOpts, snapEntities],
@@ -1471,6 +1513,13 @@ export default function SolverSketchEditor({
   // mirror the change into the view-side `entities` array so the SVG and
   // the panel both reflect the new value immediately (the re-solve will
   // refine point positions if constraints disagree).
+  //
+  // Bulk-edit awareness: the panel may call this synchronously, once per
+  // selected entity (a 3-point x-edit fires this 3 times in a row inside
+  // the same task). The solver mutations land immediately so the next
+  // call in the burst sees the updated state, but the re-solve itself is
+  // deferred via `scheduleSolveAndApply` so we only solve once at the end
+  // of the burst.
   const handlePanelChange = useCallback(
     (id: string, field: PanelEntityField, value: PanelEntityFieldValue): void => {
       if (!solver) return;
@@ -1496,7 +1545,7 @@ export default function SolverSketchEditor({
               e.id === id && e.kind === 'point' ? { ...e, fixed: value } : e
             )));
           }
-          solveAndApply();
+          scheduleSolveAndApply();
           return;
         }
         // ── line ──────────────────────────────────────────────────────
@@ -1517,7 +1566,7 @@ export default function SolverSketchEditor({
             if (e.id === ent.p2 && e.kind === 'point') return { ...e, x: nx2, y: ny2 };
             return e;
           }));
-          solveAndApply();
+          scheduleSolveAndApply();
           return;
         }
         // ── circle ────────────────────────────────────────────────────
@@ -1540,7 +1589,7 @@ export default function SolverSketchEditor({
               e.id === id && e.kind === 'circle' ? { ...e, radius: value } : e
             )));
           }
-          solveAndApply();
+          scheduleSolveAndApply();
           return;
         }
       } catch {
@@ -1548,9 +1597,13 @@ export default function SolverSketchEditor({
         // swallow; the next solve cycle's status pill will surface it.
       }
     },
-    [solver, entities, solveAndApply],
+    [solver, entities, scheduleSolveAndApply],
   );
 
+  // Bulk-delete aware: panel fires onDelete once per selected entity in
+  // sequence. Solver removes happen immediately, view + selection prune
+  // immediately, but the solve is debounced so a 3-point bulk delete
+  // collapses to 1 solver.solve() call.
   const handlePanelDelete = useCallback(
     (id: string): void => {
       if (!solver) return;
@@ -1567,9 +1620,9 @@ export default function SolverSketchEditor({
       // would orphan downstream lines — the user can clean those up next.
       setEntities((prev) => prev.filter((e) => e.id !== id));
       setSelection((prev) => prev.filter((r) => r.id !== id));
-      solveAndApply();
+      scheduleSolveAndApply();
     },
-    [solver, entities, solveAndApply],
+    [solver, entities, scheduleSolveAndApply],
   );
 
   if (loadError) {
