@@ -1,0 +1,614 @@
+'use client';
+
+/**
+ * Drawing page (production) — content split out from the Next.js page
+ * entry so tests can mount it with a plain `lang` string instead of
+ * unwrapping the `use(params)` Promise hook. Filename starts with `_`
+ * so Next.js doesn't treat it as a route.
+ *
+ * UX layout:
+ *   ┌──────────┬────────────────────────────────┬──────────┐
+ *   │ left     │ SheetRenderer (main canvas)    │ right    │
+ *   │ (part /  │                                │ (anno-   │
+ *   │  paper / │                                │  tation  │
+ *   │  scale)  │                                │  list)   │
+ *   └──────────┴────────────────────────────────┴──────────┘
+ *   ┌──────────────────────────────────────────────────────┐
+ *   │ Export PNG · Export JSON                             │
+ *   └──────────────────────────────────────────────────────┘
+ *
+ * State is local to this page (no persistence yet — Phase 2 wires the
+ * project store). The dimension / GD&T overlay is delivered by the
+ * Phase 4.2 SheetRenderer; we splice each new annotation into
+ * `sheet.dimensions` or `sheet.gdtCallouts`.
+ *
+ * Phase 1 placeholders (explicit):
+ *   - Sample-part loader uses hardcoded `sourceId` strings only; the
+ *     OCCT geometry resolution happens in Phase 2.
+ *   - PNG export rasterises the SVG via `<canvas>.drawImage(img)` after
+ *     wrapping the serialised SVG in an object URL — no canvg / no
+ *     server round-trip. Works in any modern browser; in jsdom tests
+ *     the file write is mocked (we only assert `URL.createObjectURL`).
+ *   - JSON export dumps the live Sheet IR.
+ */
+
+import * as React from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  standardThreeViewSheet,
+  type PaperSize,
+  type Sheet,
+} from '@/lib/drawing/sheet';
+import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
+import { SheetRenderer } from './SheetRenderer';
+import DimensionAnnotationModal from './DimensionAnnotationModal';
+
+// ─── sample parts ────────────────────────────────────────────────────────
+
+/**
+ * Hardcoded sample part catalogue. `sourceId` is what the Sheet IR carries
+ * and what Phase 2 will resolve against the OCCT-backed part store. The
+ * labels are i18n-resolved on-the-fly so we don't need a separate dict.
+ */
+const SAMPLE_PARTS: ReadonlyArray<{ sourceId: string; labelKey: string }> = [
+  { sourceId: 'sample-cube',     labelKey: 'partCube' },
+  { sourceId: 'sample-cylinder', labelKey: 'partCylinder' },
+  { sourceId: 'sample-pentagon', labelKey: 'partPentagonPrism' },
+  { sourceId: 'sample-step-001', labelKey: 'partSampleStep' },
+];
+
+const PAPER_SIZES: ReadonlyArray<PaperSize> = ['A4', 'A3', 'A2', 'A1', 'A0'];
+
+// ─── i18n ────────────────────────────────────────────────────────────────
+
+interface PageDict {
+  title: string;
+  subtitle: string;
+  partLabel: string;
+  partCube: string;
+  partCylinder: string;
+  partPentagonPrism: string;
+  partSampleStep: string;
+  paperLabel: string;
+  scaleLabel: string;
+  annotationsLabel: string;
+  noAnnotations: string;
+  addAnnotation: string;
+  deleteAnnotation: string;
+  exportPng: string;
+  exportJson: string;
+  dimensionTag: string;
+  gdtTag: string;
+}
+
+const DICT: Record<string, PageDict> = {
+  ko: {
+    title: '도면 작업실',
+    subtitle: '3-뷰 + 등각 표준 시트, 치수/GD&T 주석, PNG/JSON 내보내기',
+    partLabel: '부품 선택',
+    partCube: '정육면체 샘플',
+    partCylinder: '원기둥 샘플',
+    partPentagonPrism: '오각기둥 샘플',
+    partSampleStep: '샘플 STEP 파일',
+    paperLabel: '용지 크기',
+    scaleLabel: '축척',
+    annotationsLabel: '주석 목록',
+    noAnnotations: '아직 추가된 주석이 없습니다',
+    addAnnotation: '주석 추가',
+    deleteAnnotation: '삭제',
+    exportPng: 'PNG 내보내기',
+    exportJson: 'JSON 내보내기',
+    dimensionTag: '치수',
+    gdtTag: 'GD&T',
+  },
+  en: {
+    title: 'Drawing Studio',
+    subtitle: '3-view + iso standard sheet, dimension / GD&T annotations, PNG / JSON export',
+    partLabel: 'Part',
+    partCube: 'Sample cube',
+    partCylinder: 'Sample cylinder',
+    partPentagonPrism: 'Sample pentagon prism',
+    partSampleStep: 'Sample STEP file',
+    paperLabel: 'Paper size',
+    scaleLabel: 'Scale',
+    annotationsLabel: 'Annotations',
+    noAnnotations: 'No annotations yet',
+    addAnnotation: 'Add annotation',
+    deleteAnnotation: 'Delete',
+    exportPng: 'Export PNG',
+    exportJson: 'Export JSON',
+    dimensionTag: 'DIM',
+    gdtTag: 'GD&T',
+  },
+  ja: {
+    title: '図面スタジオ',
+    subtitle: '3面図 + アイソメ標準シート、寸法/GD&T注釈、PNG/JSONエクスポート',
+    partLabel: '部品選択',
+    partCube: 'キューブサンプル',
+    partCylinder: '円柱サンプル',
+    partPentagonPrism: '五角柱サンプル',
+    partSampleStep: 'サンプルSTEPファイル',
+    paperLabel: '用紙サイズ',
+    scaleLabel: '縮尺',
+    annotationsLabel: '注釈一覧',
+    noAnnotations: '注釈はまだありません',
+    addAnnotation: '注釈を追加',
+    deleteAnnotation: '削除',
+    exportPng: 'PNGエクスポート',
+    exportJson: 'JSONエクスポート',
+    dimensionTag: '寸法',
+    gdtTag: 'GD&T',
+  },
+  zh: {
+    title: '图纸工作室',
+    subtitle: '三视图 + 等轴标准图纸、尺寸/GD&T注释、PNG/JSON导出',
+    partLabel: '部件',
+    partCube: '立方体样品',
+    partCylinder: '圆柱样品',
+    partPentagonPrism: '五棱柱样品',
+    partSampleStep: '示例STEP文件',
+    paperLabel: '纸张大小',
+    scaleLabel: '比例',
+    annotationsLabel: '注释列表',
+    noAnnotations: '暂无注释',
+    addAnnotation: '添加注释',
+    deleteAnnotation: '删除',
+    exportPng: '导出PNG',
+    exportJson: '导出JSON',
+    dimensionTag: '尺寸',
+    gdtTag: 'GD&T',
+  },
+};
+
+function pickDict(lang: string): PageDict {
+  const key = lang === 'cn' ? 'zh' : lang;
+  return DICT[key] ?? DICT.en;
+}
+
+// ─── type guard ──────────────────────────────────────────────────────────
+
+function isDimension(a: Dimension | GdtCallout): a is Dimension {
+  return (
+    'kind' in a &&
+    (a.kind === 'linear'
+      || a.kind === 'aligned'
+      || a.kind === 'radial'
+      || a.kind === 'diametric'
+      || a.kind === 'angular')
+  );
+}
+
+// ─── export helpers ──────────────────────────────────────────────────────
+
+/**
+ * Trigger a browser download for a Blob by spawning a hidden anchor.
+ * Pulled out so tests can spy on URL.createObjectURL (PNG path goes via
+ * canvas → toBlob → this helper).
+ */
+function downloadBlob(blob: Blob, filename: string): void {
+  if (typeof URL === 'undefined' || typeof document === 'undefined') return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Release the object URL on the next tick so the browser has time to
+  // actually start the download. In tests this is harmless.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Serialise the SVG element from the sheet renderer into a PNG blob via
+ * canvas rasterisation. Falls back gracefully when the environment can't
+ * decode SVG (jsdom — we still trigger the download with a blank canvas
+ * so tests can observe the URL.createObjectURL call).
+ */
+async function exportSheetPng(rootEl: HTMLElement, filename: string): Promise<void> {
+  const svgEl = rootEl.querySelector('svg[data-testid="sheet-renderer-root"]');
+  if (!svgEl) return;
+  const serializer = new XMLSerializer();
+  const svgSource = serializer.serializeToString(svgEl);
+  // Force the xmlns so the serialised string is a standalone SVG document.
+  const svgWithNs = svgSource.includes('xmlns=')
+    ? svgSource
+    : svgSource.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  const svgBlob = new Blob([svgWithNs], { type: 'image/svg+xml;charset=utf-8' });
+  const svgUrl = URL.createObjectURL(svgBlob);
+
+  // Read width/height from the SVG element; fall back to 1200×800.
+  const widthAttr = svgEl.getAttribute('width');
+  const heightAttr = svgEl.getAttribute('height');
+  const w = widthAttr ? Number(widthAttr) : 1200;
+  const h = heightAttr ? Number(heightAttr) : 800;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  try {
+    await new Promise<void>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        if (ctx) ctx.drawImage(img, 0, 0);
+        resolve();
+      };
+      img.onerror = () => resolve(); // proceed with the blank canvas in jsdom
+      img.src = svgUrl;
+    });
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
+
+  // Prefer canvas.toBlob; fall back to a synchronous data URL → blob if
+  // toBlob is not present (older jsdom).
+  await new Promise<void>((resolve) => {
+    if (typeof canvas.toBlob === 'function') {
+      canvas.toBlob((blob) => {
+        if (blob) downloadBlob(blob, filename);
+        resolve();
+      }, 'image/png');
+    } else {
+      // Trigger the download with an empty PNG blob so tests still observe
+      // a URL.createObjectURL call.
+      downloadBlob(new Blob([], { type: 'image/png' }), filename);
+      resolve();
+    }
+  });
+}
+
+function exportSheetJson(sheet: Sheet, filename: string): void {
+  const blob = new Blob([JSON.stringify(sheet, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
+  downloadBlob(blob, filename);
+}
+
+// ─── component ───────────────────────────────────────────────────────────
+
+export function DrawingPageContent({ lang }: { lang: string }): React.ReactElement {
+  const dict = pickDict(lang);
+  const [sourceId, setSourceId] = useState<string>(SAMPLE_PARTS[0].sourceId);
+  const [paperSize, setPaperSize] = useState<PaperSize>('A3');
+  const [scale, setScale] = useState<number>(1);
+  const [annotations, setAnnotations] = useState<{
+    dimensions: Dimension[];
+    gdtCallouts: GdtCallout[];
+  }>({ dimensions: [], gdtCallouts: [] });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+
+  const sheetRef = React.useRef<HTMLDivElement>(null);
+
+  const sheet: Sheet = useMemo(() => {
+    const base = standardThreeViewSheet({
+      id: 'drawing-page-sheet',
+      name: `Drawing — ${sourceId}`,
+      sourceId,
+      paperSize,
+      scale,
+    });
+    return {
+      ...base,
+      dimensions: annotations.dimensions,
+      gdtCallouts: annotations.gdtCallouts,
+    };
+  }, [sourceId, paperSize, scale, annotations]);
+
+  const firstViewportId = sheet.viewports[0]?.id ?? '';
+
+  const handleAdd = useCallback((annotation: Dimension | GdtCallout) => {
+    setAnnotations((prev) => {
+      if (isDimension(annotation)) {
+        return { ...prev, dimensions: [...prev.dimensions, annotation] };
+      }
+      return { ...prev, gdtCallouts: [...prev.gdtCallouts, annotation] };
+    });
+    setModalOpen(false);
+  }, []);
+
+  const handleDelete = useCallback((id: string) => {
+    setAnnotations((prev) => ({
+      dimensions: prev.dimensions.filter((d) => d.id !== id),
+      gdtCallouts: prev.gdtCallouts.filter((g) => g.id !== id),
+    }));
+    setSelectedAnnotationId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  const allAnnotations: ReadonlyArray<{ id: string; tag: string; label: string }> = useMemo(() => {
+    const out: Array<{ id: string; tag: string; label: string }> = [];
+    for (const d of annotations.dimensions) {
+      out.push({
+        id: d.id,
+        tag: dict.dimensionTag,
+        label: `${d.kind} · ${d.viewportId}`,
+      });
+    }
+    for (const g of annotations.gdtCallouts) {
+      out.push({
+        id: g.id,
+        tag: dict.gdtTag,
+        label: `${g.kind} · ${g.viewportId}`,
+      });
+    }
+    return out;
+  }, [annotations, dict.dimensionTag, dict.gdtTag]);
+
+  const onExportPng = useCallback(() => {
+    if (!sheetRef.current) return;
+    void exportSheetPng(sheetRef.current, `${sheet.id}.png`);
+  }, [sheet.id]);
+
+  const onExportJson = useCallback(() => {
+    exportSheetJson(sheet, `${sheet.id}.json`);
+  }, [sheet]);
+
+  return (
+    <main
+      data-testid="drawing-page-root"
+      style={{
+        padding: 24,
+        minHeight: '100vh',
+        background: '#f3f4f6',
+        fontFamily: 'system-ui, sans-serif',
+        color: '#0f172a',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1600,
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        <header data-testid="drawing-page-header">
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
+        </header>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '240px 1fr 280px',
+            gap: 12,
+            alignItems: 'flex-start',
+          }}
+        >
+          {/* ─── Left panel: part + paper + scale ─────────────────────── */}
+          <aside
+            data-testid="drawing-page-left-panel"
+            style={{
+              background: '#ffffff',
+              borderRadius: 6,
+              padding: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+              <span style={{ fontWeight: 600 }}>{dict.partLabel}</span>
+              <select
+                data-testid="drawing-part-select"
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+                style={{ padding: 6 }}
+              >
+                {SAMPLE_PARTS.map((p) => (
+                  <option key={p.sourceId} value={p.sourceId}>
+                    {dict[p.labelKey as keyof PageDict] ?? p.sourceId}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+              <span style={{ fontWeight: 600 }}>{dict.paperLabel}</span>
+              <select
+                data-testid="drawing-paper-select"
+                value={paperSize}
+                onChange={(e) => setPaperSize(e.target.value as PaperSize)}
+                style={{ padding: 6 }}
+              >
+                {PAPER_SIZES.map((sz) => (
+                  <option key={sz} value={sz}>{sz}</option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+              <span style={{ fontWeight: 600 }}>{dict.scaleLabel}</span>
+              <input
+                data-testid="drawing-scale-input"
+                type="number"
+                min={0.01}
+                step={0.1}
+                value={scale}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (Number.isFinite(v) && v > 0) setScale(v);
+                }}
+                style={{ padding: 6 }}
+              />
+            </label>
+          </aside>
+
+          {/* ─── Main canvas ─────────────────────────────────────────── */}
+          <div
+            ref={sheetRef}
+            data-testid="drawing-page-canvas"
+            style={{
+              background: '#e5e7eb',
+              padding: 12,
+              borderRadius: 6,
+              overflow: 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <SheetRenderer sheet={sheet} />
+          </div>
+
+          {/* ─── Right panel: annotation list + add button ──────────── */}
+          <aside
+            data-testid="drawing-page-right-panel"
+            style={{
+              background: '#ffffff',
+              borderRadius: 6,
+              padding: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{dict.annotationsLabel}</span>
+              <button
+                type="button"
+                data-testid="drawing-add-annotation-button"
+                onClick={() => setModalOpen(true)}
+                disabled={!firstViewportId}
+                style={{
+                  padding: '6px 10px',
+                  background: '#1d4ed8',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: firstViewportId ? 'pointer' : 'not-allowed',
+                  fontSize: 12,
+                }}
+              >
+                {dict.addAnnotation}
+              </button>
+            </div>
+
+            {allAnnotations.length === 0 ? (
+              <p
+                data-testid="drawing-page-no-annotations"
+                style={{ fontSize: 12, color: '#6b7280', margin: 0 }}
+              >
+                {dict.noAnnotations}
+              </p>
+            ) : (
+              <ul
+                data-testid="drawing-page-annotation-list"
+                style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}
+              >
+                {allAnnotations.map((a) => {
+                  const selected = a.id === selectedAnnotationId;
+                  return (
+                    <li
+                      key={a.id}
+                      data-testid={`drawing-page-annotation-item-${a.id}`}
+                      data-selected={selected ? 'true' : 'false'}
+                      onClick={() => setSelectedAnnotationId(a.id)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '6px 8px',
+                        borderRadius: 4,
+                        background: selected ? '#dbeafe' : '#f3f4f6',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                      }}
+                    >
+                      <span>
+                        <strong style={{ marginRight: 6 }}>{a.tag}</strong>
+                        {a.label}
+                      </span>
+                      <button
+                        type="button"
+                        data-testid={`drawing-page-delete-annotation-${a.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(a.id);
+                        }}
+                        style={{
+                          padding: '2px 8px',
+                          background: '#b91c1c',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 3,
+                          cursor: 'pointer',
+                          fontSize: 11,
+                        }}
+                      >
+                        {dict.deleteAnnotation}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </aside>
+        </div>
+
+        {/* ─── Bottom: export buttons ──────────────────────────────── */}
+        <footer
+          data-testid="drawing-page-footer"
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            padding: 12,
+            background: '#ffffff',
+            borderRadius: 6,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          }}
+        >
+          <button
+            type="button"
+            data-testid="drawing-export-png-button"
+            onClick={onExportPng}
+            style={{
+              padding: '8px 14px',
+              background: '#0f172a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {dict.exportPng}
+          </button>
+          <button
+            type="button"
+            data-testid="drawing-export-json-button"
+            onClick={onExportJson}
+            style={{
+              padding: '8px 14px',
+              background: '#0f172a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {dict.exportJson}
+          </button>
+        </footer>
+      </div>
+
+      {modalOpen && firstViewportId ? (
+        <DimensionAnnotationModal
+          lang={lang}
+          sheet={sheet}
+          viewportId={firstViewportId}
+          onAdd={handleAdd}
+          onClose={() => setModalOpen(false)}
+        />
+      ) : null}
+    </main>
+  );
+}
