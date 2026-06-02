@@ -17,7 +17,7 @@
  *   solver-extrude-error.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import SolverSketchEditor, { type SolverSketchEditorProps } from './SolverSketchEditor';
 import RevolveModal, { type RevolveFetcher, type RevolveLang } from './RevolveModal';
@@ -49,6 +49,7 @@ interface Dict {
   scadHeading: string;
   pngHeading: string;
   errorPrefix: string;
+  errorDepthInvalid: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -59,6 +60,7 @@ const dict: Record<Lang, Dict> = {
     submit: '돌출', cancel: '취소',
     rendering: '렌더링 중...', scadHeading: 'SCAD 소스', pngHeading: '미리보기',
     errorPrefix: '오류',
+    errorDepthInvalid: '깊이는 0보다 커야 합니다',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
@@ -67,6 +69,7 @@ const dict: Record<Lang, Dict> = {
     submit: 'Extrude', cancel: 'Cancel',
     rendering: 'Rendering...', scadHeading: 'SCAD source', pngHeading: 'Preview',
     errorPrefix: 'Error',
+    errorDepthInvalid: 'depth must be > 0',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
@@ -75,6 +78,7 @@ const dict: Record<Lang, Dict> = {
     submit: '押し出し', cancel: 'キャンセル',
     rendering: 'レンダリング中...', scadHeading: 'SCADソース', pngHeading: 'プレビュー',
     errorPrefix: 'エラー',
+    errorDepthInvalid: '深さは 0 より大きい必要があります',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
@@ -83,6 +87,7 @@ const dict: Record<Lang, Dict> = {
     submit: '拉伸', cancel: '取消',
     rendering: '渲染中...', scadHeading: 'SCAD源', pngHeading: '预览',
     errorPrefix: '错误',
+    errorDepthInvalid: '深度必须大于 0',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
@@ -91,6 +96,7 @@ const dict: Record<Lang, Dict> = {
     submit: 'Extruir', cancel: 'Cancelar',
     rendering: 'Renderizando...', scadHeading: 'Fuente SCAD', pngHeading: 'Vista previa',
     errorPrefix: 'Error',
+    errorDepthInvalid: 'la profundidad debe ser > 0',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
@@ -99,6 +105,7 @@ const dict: Record<Lang, Dict> = {
     submit: 'بثق', cancel: 'إلغاء',
     rendering: 'جارٍ التصيير...', scadHeading: 'مصدر SCAD', pngHeading: 'معاينة',
     errorPrefix: 'خطأ',
+    errorDepthInvalid: 'يجب أن يكون العمق أكبر من 0',
   },
 };
 
@@ -129,11 +136,21 @@ interface ExtrudeFetcher {
   >;
 }
 
+/**
+ * Module-level WeakMap so the wrapper can attach an optional AbortSignal to
+ * any fetcher call without changing the public ExtrudeFetcher signature
+ * (tests inject mock fetchers that ignore the signal — fine, abort is then
+ * best-effort and we just suppress the late setState via the same signal).
+ */
+const fetcherSignals = new WeakMap<ExtrudeFetcher, AbortSignal>();
+
 const defaultFetcher: ExtrudeFetcher = async (req) => {
+  const signal = fetcherSignals.get(defaultFetcher);
   const res = await fetch('/api/extrude-render', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(req),
+    signal,
   });
   return res.json();
 };
@@ -165,6 +182,10 @@ export default function SolverSketchEditorWithExtrude(
   const [draftDegrees, setDraftDegrees] = useState<string>('0');
   const [render, setRender] = useState<RenderState>({ status: 'idle' });
 
+  // Tracks the in-flight fetch's AbortController so cancel/unmount can abort
+  // it AND so we can suppress late setState after the controller is aborted.
+  const abortRef = useRef<AbortController | null>(null);
+
   // Keep a stable callback to avoid re-renders inside the wrapped editor.
   const handleSketchChange = useCallback((s: SolverViewState) => {
     setSketch(s);
@@ -186,10 +207,19 @@ export default function SolverSketchEditorWithExtrude(
   const onSubmit = useCallback(async () => {
     const d = Number(depth);
     if (!Number.isFinite(d) || d <= 0) {
-      setRender({ status: 'error', message: `${t.errorPrefix}: depth must be > 0` });
+      setRender({ status: 'error', message: `${t.errorPrefix}: ${t.errorDepthInvalid}` });
       return;
     }
     const draftN = Number(draftDegrees);
+
+    // Abort any previous in-flight request before starting a new one.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    // Attach signal for defaultFetcher to pick up. Test-injected fetchers
+    // ignore this entry (they aren't the defaultFetcher reference).
+    fetcherSignals.set(extrudeFetcher, controller.signal);
+
     setRender({ status: 'loading' });
     try {
       const res = await extrudeFetcher({
@@ -200,22 +230,41 @@ export default function SolverSketchEditorWithExtrude(
         mode,
         includeStl: true,
       });
+      if (controller.signal.aborted) return;
       if (res.ok) {
         setRender({ status: 'ok', result: { scad: res.scad, pngs: res.pngs, stl: res.stl } });
       } else {
         setRender({ status: 'error', message: `${t.errorPrefix}: ${res.message}` });
       }
     } catch (e) {
+      if (controller.signal.aborted) return;
       setRender({ status: 'error', message: `${t.errorPrefix}: ${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
+      fetcherSignals.delete(extrudeFetcher);
     }
-  }, [depth, draftDegrees, direction, mode, sketch, extrudeFetcher, t.errorPrefix]);
+  }, [depth, draftDegrees, direction, mode, sketch, extrudeFetcher, t.errorPrefix, t.errorDepthInvalid]);
 
-  // Reset preview when modal closes.
+  // Reset preview when modal closes; also abort any in-flight fetch so a
+  // late setState after the user clicked Cancel does NOT land on a closed
+  // modal (React act() warning) or leak the response.
   useEffect(() => {
     if (!modalOpen) {
+      abortRef.current?.abort();
+      abortRef.current = null;
       setRender({ status: 'idle' });
     }
   }, [modalOpen]);
+
+  // Abort on unmount to avoid setState-after-unmount.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -410,6 +459,12 @@ export default function SolverSketchEditorWithExtrude(
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+                {render.result.stl !== undefined && (
+                  <div data-testid="solver-extrude-stl-viewer-host">
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>3D</div>
+                    <StlViewer stlBase64={render.result.stl} width={400} height={300} />
                   </div>
                 )}
               </div>
