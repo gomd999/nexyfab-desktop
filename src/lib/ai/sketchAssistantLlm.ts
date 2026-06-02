@@ -1,5 +1,5 @@
 /**
- * sketchAssistantLlm — Phase 6.2 of NexyFab Pro own-CAD (ADR-013).
+ * sketchAssistantLlm — Phase 6.2 / 6.3 of NexyFab Pro own-CAD (ADR-013).
  *
  * LLM-backed sketch assistant. Wraps the existing chatCompletion provider
  * chain (DeepSeek → OpenAI → local fallback) with a structured prompt
@@ -10,25 +10,42 @@
  *   - The LLM responds but fails JSON validation.
  *   - The caller passes `useStub: true` explicitly.
  *
- * Scope (Phase 6.2 minimal):
+ * Scope:
  *   - Same input / output types as the stub (interchangeable).
- *   - Single-turn (no conversation memory).
+ *   - Phase 6.3: optional multi-turn conversation memory via
+ *     `AssistantRequest.history` (capped at MAX_HISTORY_TURNS pairs).
+ *     The stub still ignores history (rule-based, single-turn by design).
  *   - 1000-token output cap (suggestions are short).
  *
- * Out of scope (Phase 6.3+):
+ * Out of scope (later phases):
  *   - Streaming partial suggestions while the model thinks
- *   - Multi-turn refinement ("make it shorter", "rotate that 90°")
  *   - Voice transcription wrapper (Whisper + this module)
  *   - Function-calling / tool-use API (OpenAI / Anthropic native)
  */
 
 import { interpretSketchCommand, type AssistantRequest, type AssistantResponse, type Suggestion, type SuggestedSketchOp } from './sketchAssistant';
 
+/**
+ * A single turn of conversation memory passed alongside the current prompt.
+ * Callers maintain this list across user requests; the wrapper trims it
+ * down to `MAX_HISTORY_TURNS` pairs before sending to the model.
+ */
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Maximum number of user/assistant *pairs* (i.e. 2 messages each) retained
+ * from history. Older turns are dropped to bound token usage.
+ */
+export const MAX_HISTORY_TURNS = 3;
+
 export interface LlmAssistantOptions {
   /** Force stub mode (skip LLM call). Useful for tests + offline. */
   useStub?: boolean;
   /** Override the chatCompletion entry — injectable for tests. */
-  chatFn?: (req: { messages: Array<{ role: 'system' | 'user'; content: string }>; maxTokens?: number; task?: string }) => Promise<{ text: string }>;
+  chatFn?: (req: { messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>; maxTokens?: number; task?: string }) => Promise<{ text: string }>;
 }
 
 export async function interpretSketchCommandLlm(
@@ -56,13 +73,15 @@ export async function interpretSketchCommandLlm(
 
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(req);
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemPrompt },
+    ...trimHistory(req.history),
+    { role: 'user', content: userPrompt },
+  ];
   let raw: string;
   try {
     const res = await chat({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
+      messages,
       maxTokens: 1000,
       task: 'pro-sketch-assistant',
     });
@@ -74,6 +93,44 @@ export async function interpretSketchCommandLlm(
   const parsed = parseSuggestions(raw);
   if (parsed === null) return interpretSketchCommand(req);
   return { suggestions: parsed, matched: parsed.length > 0 };
+}
+
+// ─── history helpers ─────────────────────────────────────────────────────
+
+/**
+ * Keep only the last `MAX_HISTORY_TURNS` user/assistant pairs (i.e. up to
+ * `MAX_HISTORY_TURNS * 2` messages). If the trimmed window starts on an
+ * assistant turn (orphaned), drop that leading message so the conversation
+ * still alternates user → assistant → user → ... cleanly.
+ */
+function trimHistory(history: ReadonlyArray<ChatTurn> | undefined): ChatTurn[] {
+  if (!history || history.length === 0) return [];
+  const maxMessages = MAX_HISTORY_TURNS * 2;
+  const trimmed = history.slice(-maxMessages);
+  if (trimmed.length > 0 && trimmed[0]!.role === 'assistant') {
+    return trimmed.slice(1);
+  }
+  return trimmed;
+}
+
+/**
+ * Convenience for callers maintaining a rolling conversation log. Appends
+ * the just-issued user prompt plus a synthesized assistant turn whose
+ * content summarizes the suggestion list (joined `rationale` fields).
+ *
+ * Returns a NEW array — does not mutate the input. Caller is responsible
+ * for retaining the result; trimming happens later at send-time.
+ */
+export function appendToHistory(
+  history: ReadonlyArray<ChatTurn>,
+  userPrompt: string,
+  suggestionsRationaleString: string,
+): ChatTurn[] {
+  return [
+    ...history,
+    { role: 'user', content: userPrompt },
+    { role: 'assistant', content: suggestionsRationaleString },
+  ];
 }
 
 // ─── prompt construction ─────────────────────────────────────────────────
