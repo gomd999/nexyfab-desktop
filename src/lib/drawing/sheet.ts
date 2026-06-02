@@ -165,12 +165,23 @@ export interface Viewport {
 
 // ─── sheet ────────────────────────────────────────────────────────────────
 
+import type { Dimension, GdtCallout } from './dimension';
+import { validateDimension, validateGdt } from './dimension';
+
 export interface Sheet {
   id: string;
   name: string;
   paperSize: PaperSize;
   customPaper?: CustomPaper;
   viewports: ReadonlyArray<Viewport>;
+  /**
+   * Phase 4.2 annotations. Dimensions reference a viewport by id via
+   * `Dimension.viewportId`; the renderer projects each into that viewport.
+   * Backward-compat: missing field is treated as an empty array.
+   */
+  dimensions?: ReadonlyArray<Dimension>;
+  /** Phase 4.2 GD&T callouts; same viewportId resolution as dimensions. */
+  gdtCallouts?: ReadonlyArray<GdtCallout>;
 }
 
 // ─── validation ──────────────────────────────────────────────────────────
@@ -275,6 +286,48 @@ export function validateSheet(sheet: Sheet): void {
       if (vp.projection.radius <= 0) {
         throw new SheetValidationError(`viewport ${vp.id} (detail): radius must be positive`);
       }
+    }
+  }
+
+  // ─── annotations (Phase 4.2): dimensions + GD&T ─────────────────────────
+  const dimensions = sheet.dimensions ?? [];
+  const dimIds = new Set<string>();
+  for (const d of dimensions) {
+    try {
+      validateDimension(d);
+    } catch (err) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: dimension ${d.id} invalid — ${(err as Error).message}`,
+      );
+    }
+    if (dimIds.has(d.id)) {
+      throw new SheetValidationError(`sheet ${sheet.id}: duplicate dimension id ${d.id}`);
+    }
+    dimIds.add(d.id);
+    if (!ids.has(d.viewportId)) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: dimension ${d.id} references unknown viewport ${d.viewportId}`,
+      );
+    }
+  }
+  const gdtCallouts = sheet.gdtCallouts ?? [];
+  const gdtIds = new Set<string>();
+  for (const g of gdtCallouts) {
+    try {
+      validateGdt(g);
+    } catch (err) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: GD&T ${g.id} invalid — ${(err as Error).message}`,
+      );
+    }
+    if (gdtIds.has(g.id)) {
+      throw new SheetValidationError(`sheet ${sheet.id}: duplicate GD&T id ${g.id}`);
+    }
+    gdtIds.add(g.id);
+    if (!ids.has(g.viewportId)) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: GD&T ${g.id} references unknown viewport ${g.viewportId}`,
+      );
     }
   }
 }

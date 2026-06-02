@@ -10,15 +10,21 @@
  * view) and renders it via SheetRenderer. Phase-1 viewport contents are
  * intentionally empty rectangles — the OCCT HLR projection wires in at
  * Phase 2.
+ *
+ * Phase 4.2 demo: an "Add annotation" button opens DimensionAnnotationModal;
+ * the result is spliced into the sheet's dimensions / gdtCallouts so it
+ * renders immediately.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   standardThreeViewSheet,
   type Sheet,
   type Viewport,
 } from '@/lib/drawing/sheet';
+import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { SheetRenderer } from '../SheetRenderer';
+import DimensionAnnotationModal from '../DimensionAnnotationModal';
 
 function buildDemoSheet(): Sheet {
   const base = standardThreeViewSheet({
@@ -61,33 +67,63 @@ function buildDemoSheet(): Sheet {
   };
 }
 
-const HEADING_DICT: Record<string, { title: string; subtitle: string }> = {
+const HEADING_DICT: Record<string, { title: string; subtitle: string; addAnnotation: string }> = {
   ko: {
     title: '도면 시트 미리보기 (Phase 1)',
     subtitle: 'Sheet IR → SVG 렌더링. 뷰포트 콘텐츠는 Phase 2에서 OCCT HLR 연결',
+    addAnnotation: '주석 추가',
   },
   en: {
     title: 'Drawing Sheet Preview (Phase 1)',
     subtitle: 'Sheet IR → SVG render. Viewport contents wire in at Phase 2 (OCCT HLR)',
+    addAnnotation: 'Add annotation',
   },
   ja: {
     title: '図面シートプレビュー (Phase 1)',
     subtitle: 'Sheet IR → SVGレンダリング。ビューポート内容はPhase 2でOCCT HLR接続',
+    addAnnotation: '注釈を追加',
   },
   zh: {
     title: '图纸预览 (Phase 1)',
     subtitle: 'Sheet IR → SVG渲染。视口内容将在Phase 2接入OCCT HLR',
+    addAnnotation: '添加注释',
   },
 };
 
-function pickHeading(lang: string): { title: string; subtitle: string } {
+function pickHeading(lang: string): { title: string; subtitle: string; addAnnotation: string } {
   const key = lang === 'cn' ? 'zh' : lang;
   return HEADING_DICT[key] ?? HEADING_DICT.en;
 }
 
+function isDimension(a: Dimension | GdtCallout): a is Dimension {
+  return 'kind' in a && (
+    a.kind === 'linear' || a.kind === 'aligned' || a.kind === 'radial'
+    || a.kind === 'diametric' || a.kind === 'angular'
+  );
+}
+
 export function SheetPreviewPageContent({ lang }: { lang: string }): React.ReactElement {
-  const sheet = useMemo(() => buildDemoSheet(), []);
+  const [sheet, setSheet] = useState<Sheet>(() => buildDemoSheet());
+  const [modalOpen, setModalOpen] = useState(false);
   const heading = pickHeading(lang);
+  const firstViewportId = useMemo(() => sheet.viewports[0]?.id ?? '', [sheet.viewports]);
+
+  function handleAdd(annotation: Dimension | GdtCallout): void {
+    setSheet((prev) => {
+      if (isDimension(annotation)) {
+        return {
+          ...prev,
+          dimensions: [...(prev.dimensions ?? []), annotation],
+        };
+      }
+      return {
+        ...prev,
+        gdtCallouts: [...(prev.gdtCallouts ?? []), annotation],
+      };
+    });
+    setModalOpen(false);
+  }
+
   return (
     <main
       style={{
@@ -99,9 +135,27 @@ export function SheetPreviewPageContent({ lang }: { lang: string }): React.React
       data-testid="sheet-preview-page-root"
     >
       <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <header>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{heading.title}</h1>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{heading.subtitle}</p>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{heading.title}</h1>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{heading.subtitle}</p>
+          </div>
+          <button
+            type="button"
+            data-testid="sheet-preview-add-annotation"
+            onClick={() => setModalOpen(true)}
+            disabled={!firstViewportId}
+            style={{
+              padding: '8px 14px',
+              background: '#1d4ed8',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {heading.addAnnotation}
+          </button>
         </header>
         <div
           style={{
@@ -116,6 +170,15 @@ export function SheetPreviewPageContent({ lang }: { lang: string }): React.React
           <SheetRenderer sheet={sheet} />
         </div>
       </div>
+      {modalOpen && firstViewportId ? (
+        <DimensionAnnotationModal
+          lang={lang}
+          sheet={sheet}
+          viewportId={firstViewportId}
+          onAdd={handleAdd}
+          onClose={() => setModalOpen(false)}
+        />
+      ) : null}
     </main>
   );
 }

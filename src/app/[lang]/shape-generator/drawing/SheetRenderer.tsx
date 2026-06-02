@@ -33,6 +33,8 @@ import * as React from 'react';
 import type { Sheet, Viewport } from '@/lib/drawing/sheet';
 import { paperDimensions, effectiveSectionType } from '@/lib/drawing/sheet';
 import { viewportSheetBox } from '@/lib/drawing/dxfExport';
+import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
+import { formatGdt, formatTolerance } from '@/lib/drawing/dimension';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -47,6 +49,10 @@ const DETAIL_CIRCLE_COLOR = '#1d4ed8';
 const TITLE_BLOCK_STROKE = '#222';
 const TITLE_BLOCK_WIDTH_MM = 60;
 const TITLE_BLOCK_HEIGHT_MM = 40;
+const DIM_STROKE = '#0f172a';
+const DIM_TEXT_COLOR = '#0f172a';
+const GDT_STROKE = '#1e3a8a';
+const GDT_BG = '#eff6ff';
 
 // ─── props ───────────────────────────────────────────────────────────────
 
@@ -130,6 +136,37 @@ export function SheetRenderer({
           detailLetter={letterForIndex(idx)}
         />
       ))}
+
+      {/* Dimensions (Phase 4.2). Each dimension is rendered as a placeholder
+          horizontal call across the target viewport's box — the real refs
+          measurement requires OCCT and lands in Phase 2. */}
+      {(sheet.dimensions ?? []).map((d, idx) => {
+        const targetVp = sheet.viewports.find((vp) => vp.id === d.viewportId);
+        if (!targetVp) return null;
+        return (
+          <DimensionLayer
+            key={d.id}
+            dimension={d}
+            box={resolveViewportBox(targetVp, dim.height)}
+            index={idx}
+          />
+        );
+      })}
+
+      {/* GD&T callouts (Phase 4.2). Rendered as a textual feature-control
+          frame box anchored just outside the target viewport. */}
+      {(sheet.gdtCallouts ?? []).map((g, idx) => {
+        const targetVp = sheet.viewports.find((vp) => vp.id === g.viewportId);
+        if (!targetVp) return null;
+        return (
+          <GdtLayer
+            key={g.id}
+            gdt={g}
+            box={resolveViewportBox(targetVp, dim.height)}
+            index={idx}
+          />
+        );
+      })}
 
       {/* Title block placeholder (bottom-right). */}
       <TitleBlock paperWidthMm={dim.width} paperHeightMm={dim.height} />
@@ -494,6 +531,135 @@ function DetailCircle({ viewport, box, letter }: DetailCircleProps): React.React
         textAnchor="start"
       >
         {letter}
+      </text>
+    </g>
+  );
+}
+
+// ─── dimensions (Phase 4.2 — placeholder placement) ─────────────────────
+
+interface DimensionLayerProps {
+  dimension: Dimension;
+  box: ResolvedBox;
+  index: number;
+}
+
+/**
+ * Renders a dimension as a placeholder horizontal call across the middle
+ * of its target viewport. The actual measurement of refs against
+ * projected geometry requires OCCT (Phase 2); for now we stack each
+ * dimension vertically inside the viewport so multiple are visible at
+ * once.
+ *
+ * Visual layout:
+ *   ├─── nominal · tolerance ───┤
+ */
+function DimensionLayer({ dimension, box, index }: DimensionLayerProps): React.ReactElement {
+  const arrowSize = Math.max(1.5, box.h * 0.02);
+  const fontSize = Math.max(2.5, box.h * 0.04);
+  // Stack dimensions vertically inside the viewport box.
+  const rowStride = fontSize * 2.4;
+  const rowOffset = (index % 3) * rowStride;
+  const midY = box.y + box.h / 2 + rowOffset - rowStride;
+  // Horizontal extents of the dim line — a bit inset from the viewport edges.
+  const inset = Math.min(box.w * 0.1, 4);
+  const x1 = box.x + inset;
+  const x2 = box.x + box.w - inset;
+  const nominal =
+    dimension.valueOverride !== undefined
+      ? dimension.valueOverride.toString()
+      : `<${dimension.kind}>`;
+  const tolerance = dimension.tolerance ? formatTolerance(dimension.tolerance) : '';
+  const label = `${dimension.prefix ?? ''}${nominal}${tolerance}${dimension.suffix ?? ''}`;
+
+  return (
+    <g
+      data-testid={`sheet-renderer-dim-${index}`}
+      data-dim-id={dimension.id}
+      data-dim-kind={dimension.kind}
+      data-dim-viewport={dimension.viewportId}
+      stroke={DIM_STROKE}
+      strokeWidth={0.3}
+      fill={DIM_STROKE}
+    >
+      {/* dim line */}
+      <line x1={x1} y1={midY} x2={x2} y2={midY} />
+      {/* left arrowhead (pointing right) */}
+      <polygon
+        points={`${x1},${midY} ${x1 + arrowSize},${midY - arrowSize / 2} ${x1 + arrowSize},${midY + arrowSize / 2}`}
+      />
+      {/* right arrowhead (pointing left) */}
+      <polygon
+        points={`${x2},${midY} ${x2 - arrowSize},${midY - arrowSize / 2} ${x2 - arrowSize},${midY + arrowSize / 2}`}
+      />
+      {/* extension witnesses */}
+      <line x1={x1} y1={midY - arrowSize * 1.5} x2={x1} y2={midY + arrowSize * 1.5} />
+      <line x1={x2} y1={midY - arrowSize * 1.5} x2={x2} y2={midY + arrowSize * 1.5} />
+      {/* label above the dim line */}
+      <text
+        x={(x1 + x2) / 2}
+        y={midY - arrowSize - 0.5}
+        fontSize={fontSize}
+        fontFamily="system-ui, sans-serif"
+        fill={DIM_TEXT_COLOR}
+        textAnchor="middle"
+        stroke="none"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+// ─── GD&T callouts (Phase 4.2) ───────────────────────────────────────────
+
+interface GdtLayerProps {
+  gdt: GdtCallout;
+  box: ResolvedBox;
+  index: number;
+}
+
+/**
+ * Renders a GD&T feature control frame as a bordered textbox above the
+ * top-right corner of the target viewport. Each callout in a sheet is
+ * offset vertically so multiple stack cleanly.
+ */
+function GdtLayer({ gdt, box, index }: GdtLayerProps): React.ReactElement {
+  const fontSize = Math.max(2.5, box.h * 0.04);
+  const padding = fontSize * 0.4;
+  const text = formatGdt(gdt);
+  // Approximate box width from text length (monospace-ish heuristic).
+  const boxW = Math.max(20, text.length * fontSize * 0.55 + padding * 2);
+  const boxH = fontSize + padding * 2;
+  // Anchor: top-right of viewport, stacked downward by index.
+  const x = box.x + box.w - boxW;
+  const y = box.y - boxH - 1 + index * (boxH + 1);
+
+  return (
+    <g
+      data-testid={`sheet-renderer-gdt-${index}`}
+      data-gdt-id={gdt.id}
+      data-gdt-kind={gdt.kind}
+      data-gdt-viewport={gdt.viewportId}
+    >
+      <rect
+        x={x}
+        y={y}
+        width={boxW}
+        height={boxH}
+        fill={GDT_BG}
+        stroke={GDT_STROKE}
+        strokeWidth={0.3}
+      />
+      <text
+        x={x + padding}
+        y={y + boxH / 2}
+        fontSize={fontSize}
+        fontFamily="ui-monospace, SFMono-Regular, monospace"
+        fill={GDT_STROKE}
+        dominantBaseline="middle"
+      >
+        {text}
       </text>
     </g>
   );
