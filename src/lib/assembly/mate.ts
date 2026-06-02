@@ -57,7 +57,12 @@ export type MateKind =
   | 'angle'
   | 'parallel'
   | 'perpendicular'
-  | 'tangent';
+  | 'tangent'
+  // ── Phase 3.2.5 advanced mate IR (no analytical solver yet) ──────────
+  | 'hinge'
+  | 'slot'
+  | 'gear'
+  | 'rack_pinion';
 
 /**
  * Allowed (refKindA, refKindB) combinations for each mate kind. Used by
@@ -110,6 +115,25 @@ const ALLOWED_REF_COMBOS: Record<MateKind, ReadonlyArray<readonly [MateRefKind, 
     // edge tangent to face (e.g., circular edge tangent to a plane)
     ['edge', 'face'],
   ],
+  // ── advanced mates ───────────────────────────────────────────────────
+  // hinge: composite coincident+concentric on a shared axis. Both sides
+  // are axes (the axis the hinge rotates around).
+  hinge: [
+    ['axis', 'axis'],
+  ],
+  // slot: slot edge on part A + pin axis on part B. Pin slides along the
+  // slot (1 DoF), and is free to spin around its own axis (1 DoF).
+  slot: [
+    ['edge', 'axis'],
+  ],
+  // gear: two rotation axes whose angular velocities are coupled by ratio.
+  gear: [
+    ['axis', 'axis'],
+  ],
+  // rack & pinion: pinion rotation axis + rack edge (translation direction).
+  rack_pinion: [
+    ['axis', 'edge'],
+  ],
 };
 
 // ─── Mate IR ──────────────────────────────────────────────────────────────
@@ -138,6 +162,75 @@ export interface ParallelMate extends BaseMate { kind: 'parallel' }
 export interface PerpendicularMate extends BaseMate { kind: 'perpendicular' }
 export interface TangentMate extends BaseMate { kind: 'tangent' }
 
+// ── Advanced mates (Phase 3.2.5 IR only — analytical solver TBD) ────────
+
+/** Optional [min, max] angle limits for a hinge in degrees. */
+export interface HingeLimit {
+  /** Minimum allowed angle in degrees. */
+  minAngleDeg: number;
+  /** Maximum allowed angle in degrees. Must be ≥ minAngleDeg. */
+  maxAngleDeg: number;
+}
+
+/**
+ * Hinge — composite coincident + concentric on a shared axis. The two
+ * parts share an axis line and may rotate relative to each other around
+ * that axis. Optional angular limits clamp the rotation range.
+ *
+ * Combined coincident+concentric: removes 5 DoF (only 1 rotational DoF
+ * remains around the shared axis).
+ */
+export interface HingeMate extends BaseMate {
+  kind: 'hinge';
+  /** Optional angular range — undefined = unlimited (full 360° spin). */
+  limit?: HingeLimit;
+}
+
+/**
+ * Slot — a pin (cylindrical axis) constrained to ride along a slot edge.
+ * The pin axis remains perpendicular to the slot's host face (implicit in
+ * the slot edge's geometry); pin slides along the slot's length (1 DoF)
+ * and is free to spin around its own axis (1 DoF). Removes 4 DoF.
+ */
+export interface SlotMate extends BaseMate {
+  kind: 'slot';
+  /** Slot edge ref (refKind: 'edge'). */
+  a: MateRef;
+  /** Pin axis ref (refKind: 'axis'). */
+  b: MateRef;
+}
+
+/**
+ * Gear — couples the rotations of two axes by a fixed ratio. e.g.,
+ * ratio = 2 means side A turns 2x for every turn of side B (2:1 reduction).
+ * Removes 1 DoF (the relative spin is no longer free). Does NOT physically
+ * collocate the axes — pair with a concentric/coincident hinge in the
+ * usual case where the gears sit on parallel shafts at a fixed offset.
+ */
+export interface GearMate extends BaseMate {
+  kind: 'gear';
+  /** Ratio of (rotation_a / rotation_b). Must be > 0. e.g., 2 = 2:1. */
+  ratio: number;
+  /** When true, the gears rotate in opposite senses (default: external
+   *  gear mesh = opposite; internal mesh = same direction). */
+  reverse?: boolean;
+}
+
+/**
+ * Rack & pinion — couples a pinion's angular rotation around its axis to
+ * a rack's linear translation along its edge. Removes 1 DoF.
+ */
+export interface RackPinionMate extends BaseMate {
+  kind: 'rack_pinion';
+  /** Pinion rotation axis (refKind: 'axis'). */
+  a: MateRef;
+  /** Rack edge defining the translation direction (refKind: 'edge'). */
+  b: MateRef;
+  /** Pinion pitch-circle radius in mm. Must be > 0. The linear/angular
+   *  coupling is: linear_displacement = pinionRadius × angular_radians. */
+  pinionRadius: number;
+}
+
 export type Mate =
   | CoincidentMate
   | ConcentricMate
@@ -145,7 +238,11 @@ export type Mate =
   | AngleMate
   | ParallelMate
   | PerpendicularMate
-  | TangentMate;
+  | TangentMate
+  | HingeMate
+  | SlotMate
+  | GearMate
+  | RackPinionMate;
 
 // ─── validation ───────────────────────────────────────────────────────────
 
@@ -183,6 +280,31 @@ export function validateMate(mate: Mate): void {
   if (mate.kind === 'angle') {
     if (!Number.isFinite(mate.value) || mate.value < -180 || mate.value > 180) {
       throw new MateValidationError(`angle mate ${mate.id}: value must be in [-180, 180]`);
+    }
+  }
+  if (mate.kind === 'hinge' && mate.limit !== undefined) {
+    const { minAngleDeg, maxAngleDeg } = mate.limit;
+    if (!Number.isFinite(minAngleDeg) || !Number.isFinite(maxAngleDeg)) {
+      throw new MateValidationError(
+        `hinge mate ${mate.id}: limit angles must be finite`,
+      );
+    }
+    if (minAngleDeg > maxAngleDeg) {
+      throw new MateValidationError(
+        `hinge mate ${mate.id}: limit min (${minAngleDeg}) > max (${maxAngleDeg})`,
+      );
+    }
+  }
+  if (mate.kind === 'gear') {
+    if (!Number.isFinite(mate.ratio) || mate.ratio <= 0) {
+      throw new MateValidationError(`gear mate ${mate.id}: ratio must be > 0`);
+    }
+  }
+  if (mate.kind === 'rack_pinion') {
+    if (!Number.isFinite(mate.pinionRadius) || mate.pinionRadius <= 0) {
+      throw new MateValidationError(
+        `rack_pinion mate ${mate.id}: pinionRadius must be > 0`,
+      );
     }
   }
 }
@@ -234,6 +356,24 @@ export function approxDofReduction(mate: Mate): number {
     case 'angle':
       return 1;
     case 'tangent':
+      return 1;
+    case 'hinge':
+      // coincident + concentric on a shared axis: pins down 3 translations
+      // and 2 of 3 rotations (only the axial spin is free) → 5 DoF removed.
+      return 5;
+    case 'slot':
+      // pin axis must align with slot's local normal (2) + pin must lie on
+      // the slot line, 2 in-plane translations minus 1 free slide along the
+      // slot = 1 fixed translation, leaving (slide along slot + pin spin)
+      // free overall. Net DoF removed: 4 (3 trans pinned to a 1-D path is
+      // 2 DoF removed, plus 2 rotational alignments to the slot face) — 4
+      // total, matching SW's documented slot mate.
+      return 4;
+    case 'gear':
+      // couples one scalar DoF (relative spin) between the two axes.
+      return 1;
+    case 'rack_pinion':
+      // couples pinion rotation to rack translation, one scalar constraint.
       return 1;
   }
 }
