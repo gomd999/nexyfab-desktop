@@ -22,11 +22,28 @@
  *   arc    : cx, cy, radius, startAngle (°), endAngle (°)
  *            (radius>0; angles displayed in degrees)
  *
- * Multi-select (Phase 1.B):
- *   - 2+ entities → "Multiple selection (N entities)" placeholder only.
- *     Bulk property editing is out of scope for Phase 1.B (would require
- *     a tri-state UI and matching solver primitives — Phase 2+).
+ * Multi-select (Phase 2):
  *   - 0 entities → "Select an entity to view properties" hint.
+ *   - 2+ entities of the SAME kind → bulk-edit UI exposes the kind's
+ *     simple scalar fields. Currently only "point" (x, y, isFixed) is
+ *     wired; other same-kind selections (lines, circles, arcs) show a
+ *     "no common fields available" hint because their natural fields
+ *     (endpoints, radius, angles) are usually per-instance — bulk-editing
+ *     them would collapse distinct geometry into one (Phase 3+).
+ *     Tri-state UI rules:
+ *       - All values equal → single value displayed, edit fires
+ *         onChange once per selected entity (same value for all).
+ *       - Values differ → input shows "Multiple" placeholder; typing a
+ *         new value still fires onChange for every selected entity.
+ *       - Booleans (isFixed): all-true → checked, all-false → unchecked,
+ *         mixed → indeterminate. Clicking the checkbox normalises every
+ *         entity to a single target value (mixed → true, all-true →
+ *         false, all-false → true).
+ *   - 2+ entities of MIXED kinds → "Mixed selection — convert to same
+ *     kind or use individual edit" message, no bulk fields.
+ *   - Delete button in bulk mode fires onDelete for every selected id
+ *     after a window.confirm() guard (skipped when the guard returns
+ *     false). The guard is skippable in tests by stubbing window.confirm.
  *
  * Debouncing:
  *   - All numeric inputs are debounced 300ms before firing onChange.
@@ -46,12 +63,15 @@
  * Test surface (data-testids):
  *   solver-entity-property-panel
  *   solver-entity-property-empty
- *   solver-entity-property-multi
- *   solver-entity-property-${field}-input      (point.x/y, line.x1..., circle.cx/cy/radius, arc.*)
+ *   solver-entity-property-multi                (bulk wrapper, replaces Phase 1.B placeholder)
+ *   solver-entity-property-mixed                (mixed-kind hint)
+ *   solver-entity-property-${field}-input       (point.x/y, line.x1..., circle.cx/cy/radius, arc.*)
  *   solver-entity-property-isFixed-checkbox
  *   solver-entity-property-length-readout
  *   solver-entity-property-angle-readout
  *   solver-entity-delete-button
+ *   solver-entity-bulk-${field}                 (Phase 2 bulk inputs: x / y / isFixed)
+ *   solver-entity-bulk-delete                   (Phase 2 bulk delete)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -155,6 +175,14 @@ interface Dict {
   // units
   degrees: string;
   invalid: string;
+  // Phase 2 bulk edit
+  bulkEditTitle: (kindLabel: string, n: number) => string;
+  mixedSelection: string;
+  sameValueLabel: string;
+  multipleValuesPlaceholder: string;
+  noBulkFields: string;
+  deleteSelected: (n: number) => string;
+  confirmBulkDelete: (n: number) => string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -176,6 +204,13 @@ const dict: Record<EditorLang, Dict> = {
     isFixed: '고정',
     degrees: '°',
     invalid: '잘못된 값',
+    bulkEditTitle: (kind, n) => `${kind} 일괄 편집 (${n}개)`,
+    mixedSelection: '혼합 선택 — 같은 종류로 변환하거나 개별 편집을 사용하세요',
+    sameValueLabel: '동일',
+    multipleValuesPlaceholder: '다중',
+    noBulkFields: '이 종류는 일괄 편집 가능한 공통 필드가 없습니다 — 개별 편집을 사용하세요',
+    deleteSelected: (n) => `${n}개 삭제`,
+    confirmBulkDelete: (n) => `선택한 ${n}개 엔티티를 삭제하시겠습니까?`,
   },
   en: {
     panelLabel: 'Entity properties',
@@ -195,6 +230,13 @@ const dict: Record<EditorLang, Dict> = {
     isFixed: 'Fixed',
     degrees: '°',
     invalid: 'Invalid value',
+    bulkEditTitle: (kind, n) => `Bulk edit ${kind} (${n})`,
+    mixedSelection: 'Mixed selection — convert to same kind or use individual edit',
+    sameValueLabel: 'Same',
+    multipleValuesPlaceholder: 'Multiple',
+    noBulkFields: 'No common bulk-editable fields for this kind — use individual edit',
+    deleteSelected: (n) => `Delete ${n}`,
+    confirmBulkDelete: (n) => `Delete ${n} selected entities?`,
   },
   ja: {
     panelLabel: 'エンティティのプロパティ',
@@ -214,6 +256,13 @@ const dict: Record<EditorLang, Dict> = {
     isFixed: '固定',
     degrees: '°',
     invalid: '無効な値',
+    bulkEditTitle: (kind, n) => `${kind}の一括編集 (${n}個)`,
+    mixedSelection: '混在選択 — 同じ種類に変換するか、個別編集を使用してください',
+    sameValueLabel: '同じ',
+    multipleValuesPlaceholder: '複数',
+    noBulkFields: 'この種類には一括編集可能な共通フィールドがありません — 個別編集を使用してください',
+    deleteSelected: (n) => `${n}個を削除`,
+    confirmBulkDelete: (n) => `選択した${n}個のエンティティを削除しますか？`,
   },
   zh: {
     panelLabel: '实体属性',
@@ -233,6 +282,13 @@ const dict: Record<EditorLang, Dict> = {
     isFixed: '固定',
     degrees: '°',
     invalid: '无效值',
+    bulkEditTitle: (kind, n) => `批量编辑${kind} (${n}个)`,
+    mixedSelection: '混合选择 — 请转换为相同类型或使用单独编辑',
+    sameValueLabel: '相同',
+    multipleValuesPlaceholder: '多个',
+    noBulkFields: '此类型没有可批量编辑的公共字段 — 请使用单独编辑',
+    deleteSelected: (n) => `删除 ${n} 个`,
+    confirmBulkDelete: (n) => `要删除选定的 ${n} 个实体吗？`,
   },
   es: {
     panelLabel: 'Propiedades de la entidad',
@@ -252,6 +308,13 @@ const dict: Record<EditorLang, Dict> = {
     isFixed: 'Fijo',
     degrees: '°',
     invalid: 'Valor no válido',
+    bulkEditTitle: (kind, n) => `Edición masiva de ${kind} (${n})`,
+    mixedSelection: 'Selección mixta — convierta al mismo tipo o use edición individual',
+    sameValueLabel: 'Igual',
+    multipleValuesPlaceholder: 'Múltiple',
+    noBulkFields: 'No hay campos comunes editables en masa para este tipo — use edición individual',
+    deleteSelected: (n) => `Eliminar ${n}`,
+    confirmBulkDelete: (n) => `¿Eliminar las ${n} entidades seleccionadas?`,
   },
   ar: {
     panelLabel: 'خصائص الكيان',
@@ -271,6 +334,13 @@ const dict: Record<EditorLang, Dict> = {
     isFixed: 'مثبت',
     degrees: '°',
     invalid: 'قيمة غير صالحة',
+    bulkEditTitle: (kind, n) => `تحرير جماعي لـ ${kind} (${n})`,
+    mixedSelection: 'تحديد مختلط — قم بالتحويل إلى نفس النوع أو استخدم التحرير الفردي',
+    sameValueLabel: 'متطابق',
+    multipleValuesPlaceholder: 'متعدد',
+    noBulkFields: 'لا توجد حقول مشتركة قابلة للتحرير الجماعي لهذا النوع — استخدم التحرير الفردي',
+    deleteSelected: (n) => `حذف ${n}`,
+    confirmBulkDelete: (n) => `هل تريد حذف ${n} كيانات محددة؟`,
   },
 };
 
@@ -366,10 +436,22 @@ function PanelBody({ t, selection, entityData, onChange, onDelete, debounceMs }:
     );
   }
   if (selection.length > 1) {
+    // Resolve refs → concrete entity snapshots (drop refs with no matching
+    // data: a stale selection should not blow up bulk edit).
+    const resolved: EntityData[] = [];
+    for (const ref of selection) {
+      const e = entityData.find((d) => d.id === ref.id && d.kind === ref.kind);
+      if (e) resolved.push(e);
+    }
     return (
-      <p data-testid="solver-entity-property-multi" style={hintStyle}>
-        {t.multiSelection(selection.length)}
-      </p>
+      <BulkEditor
+        t={t}
+        entities={resolved}
+        selectionCount={selection.length}
+        onChange={onChange}
+        onDelete={onDelete}
+        debounceMs={debounceMs}
+      />
     );
   }
   const ref = selection[0]!;
@@ -388,6 +470,330 @@ function PanelBody({ t, selection, entityData, onChange, onDelete, debounceMs }:
       onChange={onChange}
       onDelete={onDelete}
       debounceMs={debounceMs}
+    />
+  );
+}
+
+// ─── Phase 2 bulk editor ──────────────────────────────────────────────────
+
+interface BulkEditorProps {
+  t: Dict;
+  /** Selected entities resolved against entityData. May be shorter than
+   *  selectionCount if some refs were stale. */
+  entities: ReadonlyArray<EntityData>;
+  /** Original selection length, used for header / placeholder labels. */
+  selectionCount: number;
+  onChange: (id: string, field: EntityField, value: EntityFieldValue) => void;
+  onDelete?: (id: string) => void;
+  debounceMs: number;
+}
+
+/**
+ * Common-field derivation algorithm:
+ *   1. Bucket entities by kind. If >1 kind present → mixed selection
+ *      (no common scalar fields). Render the mixed hint + bulk delete.
+ *   2. Same kind:
+ *      - point  → editable common fields: x, y, isFixed
+ *      - line / circle / arc → no editable common fields in Phase 2
+ *        (endpoints / radius / angles are typically per-instance; bulk
+ *        editing them would collapse distinct geometry into one).
+ *        Phase 3 wishlist: opt-in bulk for `radius` (circle/arc) and
+ *        `cx/cy` shifts via a "move all" delta input.
+ *   3. For each common scalar field compute the value-set:
+ *      - all-equal (Number.EPSILON tolerance on floats) → single value
+ *      - else → "Multiple" placeholder.
+ *      For booleans (isFixed): all-true / all-false / mixed (tri-state).
+ *
+ * Why no "free union" of fields across kinds: even if point.x and
+ * line.x1 look alike, they belong to different solver primitives and
+ * conflating them would surprise users. Conversion (line → 2 points,
+ * arc → 3 points, etc.) is Phase 3.
+ */
+function BulkEditor({
+  t, entities, selectionCount, onChange, onDelete, debounceMs,
+}: BulkEditorProps): React.JSX.Element {
+  // Hooks first (rules-of-hooks: no conditional early-return before useCallback).
+  const handleBulkDelete = useCallback(() => {
+    if (!onDelete) return;
+    // window.confirm is the only standard cross-browser guard available
+    // without dragging in a modal lib. Tests stub it.
+    const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
+      ? window.confirm(t.confirmBulkDelete(entities.length))
+      : true;
+    if (!ok) return;
+    for (const e of entities) onDelete(e.id);
+  }, [onDelete, entities, t]);
+
+  // Stale or fully-unresolved selection — render the original placeholder
+  // so we don't claim a bulk UI we can't fill.
+  if (entities.length === 0) {
+    return (
+      <p data-testid="solver-entity-property-multi" style={hintStyle}>
+        {t.multiSelection(selectionCount)}
+      </p>
+    );
+  }
+
+  const kinds = new Set(entities.map((e) => e.kind));
+  const mixed = kinds.size > 1;
+  const kind = mixed ? null : entities[0]!.kind;
+
+  // Keep the canonical "Multiple selection (N)" string in the header so
+  // the Phase 1.B contract (other suites grep on that text) is preserved.
+  // The kind-specific "Bulk edit Point" label appears as a subtitle.
+  const subtitle = mixed
+    ? null
+    : t.bulkEditTitle(kindLabel(t, kind!), entities.length);
+
+  return (
+    <div
+      data-testid="solver-entity-property-multi"
+      style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+    >
+      <header style={headerStyle}>
+        <span style={{ fontWeight: 600, fontSize: 13 }}>
+          {t.multiSelection(selectionCount)}
+          {subtitle ? (
+            <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: 6 }}>
+              · {subtitle}
+            </span>
+          ) : null}
+        </span>
+        {onDelete ? (
+          <button
+            type="button"
+            data-testid="solver-entity-bulk-delete"
+            onClick={handleBulkDelete}
+            aria-label={t.deleteSelected(entities.length)}
+            title={t.deleteSelected(entities.length)}
+            style={deleteButtonStyle}
+          >
+            {t.deleteSelected(entities.length)}
+          </button>
+        ) : null}
+      </header>
+
+      {mixed ? (
+        <p data-testid="solver-entity-property-mixed" style={hintStyle}>
+          {t.mixedSelection}
+        </p>
+      ) : kind === 'point' ? (
+        <PointBulkFields
+          t={t}
+          points={entities as ReadonlyArray<PointEntityData>}
+          onChange={onChange}
+          debounceMs={debounceMs}
+        />
+      ) : (
+        <p style={hintStyle}>{t.noBulkFields}</p>
+      )}
+    </div>
+  );
+}
+
+function kindLabel(t: Dict, kind: SketchEntityKind): string {
+  switch (kind) {
+    case 'point': return t.point;
+    case 'line': return t.line;
+    case 'circle': return t.circle;
+    case 'arc': return t.arc;
+  }
+}
+
+// ─── point bulk fields ────────────────────────────────────────────────────
+
+interface PointBulkFieldsProps {
+  t: Dict;
+  points: ReadonlyArray<PointEntityData>;
+  onChange: (id: string, field: EntityField, value: EntityFieldValue) => void;
+  debounceMs: number;
+}
+
+function PointBulkFields({ t, points, onChange, debounceMs }: PointBulkFieldsProps): React.JSX.Element {
+  const xCommon = commonNumber(points.map((p) => p.x));
+  const yCommon = commonNumber(points.map((p) => p.y));
+  const fixedCommon = commonBool(points.map((p) => !!p.isFixed));
+
+  // A unique key so the field's internal draft state resets whenever the
+  // *set* of selected ids changes — otherwise a stale draft from a previous
+  // selection would leak across.
+  const selKey = points.map((p) => p.id).join('|');
+
+  const fireAll = (field: EntityField) => (v: number) => {
+    for (const p of points) onChange(p.id, field, v);
+  };
+
+  const handleFixedToggle = () => {
+    // Mixed → unify to true. All-true → false. All-false → true.
+    const target = fixedCommon === true ? false : true;
+    for (const p of points) onChange(p.id, 'isFixed', target);
+  };
+
+  return (
+    <>
+      <BulkNumberField
+        testid="solver-entity-bulk-x"
+        label={t.x}
+        common={xCommon}
+        placeholder={t.multipleValuesPlaceholder}
+        onCommit={fireAll('x')}
+        debounceMs={debounceMs}
+        resetKey={`bulk:x:${selKey}`}
+      />
+      <BulkNumberField
+        testid="solver-entity-bulk-y"
+        label={t.y}
+        common={yCommon}
+        placeholder={t.multipleValuesPlaceholder}
+        onCommit={fireAll('y')}
+        debounceMs={debounceMs}
+        resetKey={`bulk:y:${selKey}`}
+      />
+      <label style={checkboxRowStyle}>
+        <TriStateCheckbox
+          testid="solver-entity-bulk-isFixed"
+          state={fixedCommon}
+          onClick={handleFixedToggle}
+        />
+        <span style={{ fontSize: 12 }}>{t.isFixed}</span>
+      </label>
+    </>
+  );
+}
+
+/** Result of the all-equal check for a numeric field across a selection. */
+type CommonNumber =
+  | { kind: 'same'; value: number }
+  | { kind: 'mixed' };
+
+function commonNumber(values: ReadonlyArray<number>): CommonNumber {
+  if (values.length === 0) return { kind: 'mixed' };
+  const first = values[0]!;
+  if (!Number.isFinite(first)) return { kind: 'mixed' };
+  for (let i = 1; i < values.length; i++) {
+    const v = values[i]!;
+    if (!Number.isFinite(v)) return { kind: 'mixed' };
+    // Float-tolerant equality: snap differences smaller than ~1e-9 to
+    // "same" so e.g. solver re-solves don't flip the display to Multiple
+    // because of round-off.
+    if (Math.abs(v - first) > 1e-9) return { kind: 'mixed' };
+  }
+  return { kind: 'same', value: first };
+}
+
+/** Tri-state outcome for boolean fields. true / false / null (mixed). */
+function commonBool(values: ReadonlyArray<boolean>): boolean | null {
+  if (values.length === 0) return null;
+  const first = values[0]!;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] !== first) return null;
+  }
+  return first;
+}
+
+// ─── bulk number field (Multiple placeholder + debounce) ─────────────────
+
+interface BulkNumberFieldProps {
+  testid: string;
+  label: string;
+  common: CommonNumber;
+  placeholder: string;
+  onCommit: (v: number) => void;
+  debounceMs: number;
+  resetKey: string;
+}
+
+function BulkNumberField({
+  testid, label, common, placeholder, onCommit, debounceMs, resetKey,
+}: BulkNumberFieldProps): React.JSX.Element {
+  const initial = common.kind === 'same' ? fmtNum(common.value) : '';
+  const [draft, setDraft] = useState<string>(initial);
+  const [invalid, setInvalid] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCommitRef = useRef(onCommit);
+
+  useEffect(() => { onCommitRef.current = onCommit; }, [onCommit]);
+
+  // Reset draft + cancel pending timer when selection or common value
+  // shifts (e.g. solver re-solved or user added another entity).
+  useEffect(() => {
+    setDraft(common.kind === 'same' ? fmtNum(common.value) : '');
+    setInvalid(false);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey, common.kind === 'same' ? common.value : null]);
+
+  const handleChange = useCallback((raw: string) => {
+    setDraft(raw);
+    if (!isValidNumber(raw)) {
+      setInvalid(true);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+    setInvalid(false);
+    const n = Number(raw);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      onCommitRef.current(n);
+    }, debounceMs);
+  }, [debounceMs]);
+
+  const isMultiple = common.kind === 'mixed' && draft === '';
+
+  return (
+    <label style={fieldRowStyle}>
+      <span style={fieldLabelStyle}>{label}</span>
+      <input
+        type="number"
+        step="any"
+        data-testid={testid}
+        value={draft}
+        placeholder={isMultiple ? placeholder : undefined}
+        onChange={(e) => handleChange(e.target.value)}
+        aria-invalid={invalid || undefined}
+        data-bulk-state={common.kind}
+        style={{
+          ...inputStyle,
+          border: `1px solid ${invalid ? '#dc2626' : '#d1d5db'}`,
+        }}
+      />
+    </label>
+  );
+}
+
+// ─── tri-state checkbox ───────────────────────────────────────────────────
+
+interface TriStateCheckboxProps {
+  testid: string;
+  /** true → checked, false → unchecked, null → indeterminate (mixed). */
+  state: boolean | null;
+  onClick: () => void;
+}
+
+function TriStateCheckbox({ testid, state, onClick }: TriStateCheckboxProps): React.JSX.Element {
+  const ref = useRef<HTMLInputElement | null>(null);
+  // The `indeterminate` flag is a DOM property only — React doesn't expose
+  // it via JSX, so we sync it manually after every render.
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = state === null;
+  }, [state]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      data-testid={testid}
+      checked={state === true}
+      data-indeterminate={state === null || undefined}
+      onChange={onClick}
     />
   );
 }

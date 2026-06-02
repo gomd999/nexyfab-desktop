@@ -364,3 +364,270 @@ describe('SketchEntityPropertyPanel', () => {
     expect(screen.getByTestId('solver-entity-property-empty')).toBeInTheDocument();
   });
 });
+
+// ─── Phase 2 bulk edit tests ─────────────────────────────────────────────
+
+describe('SketchEntityPropertyPanel — Phase 2 bulk edit', () => {
+  it('3 points with identical x/y → bulk x/y inputs show the single value', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2'), refPoint('p3')],
+      entityData: [
+        pointEntity('p1', { x: 5, y: 7 }),
+        pointEntity('p2', { x: 5, y: 7 }),
+        pointEntity('p3', { x: 5, y: 7 }),
+      ],
+    });
+    const x = screen.getByTestId('solver-entity-bulk-x') as HTMLInputElement;
+    const y = screen.getByTestId('solver-entity-bulk-y') as HTMLInputElement;
+    expect(x.value).toBe('5');
+    expect(y.value).toBe('7');
+    // Per-entity single-edit testids must NOT appear in bulk mode.
+    expect(screen.queryByTestId('solver-entity-property-x-input')).toBeNull();
+  });
+
+  it('3 points with differing x → bulk x shows empty value + Multiple placeholder', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2'), refPoint('p3')],
+      entityData: [
+        pointEntity('p1', { x: 1, y: 7 }),
+        pointEntity('p2', { x: 2, y: 7 }),
+        pointEntity('p3', { x: 3, y: 7 }),
+      ],
+    });
+    const x = screen.getByTestId('solver-entity-bulk-x') as HTMLInputElement;
+    const y = screen.getByTestId('solver-entity-bulk-y') as HTMLInputElement;
+    expect(x.value).toBe('');
+    expect(x.placeholder).toMatch(/Multiple/);
+    // y is still common so it stays populated.
+    expect(y.value).toBe('7');
+  });
+
+  it('editing bulk x fires onChange once per selected point with the same value', async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    mount({
+      selection: [refPoint('p1'), refPoint('p2'), refPoint('p3')],
+      entityData: [
+        pointEntity('p1', { x: 0 }),
+        pointEntity('p2', { x: 0 }),
+        pointEntity('p3', { x: 0 }),
+      ],
+      onChange,
+    });
+    const x = screen.getByTestId('solver-entity-bulk-x') as HTMLInputElement;
+    fireEvent.change(x, { target: { value: '9' } });
+    await act(async () => { vi.advanceTimersByTime(PROPERTY_DEBOUNCE_MS + 5); });
+    expect(onChange).toHaveBeenCalledTimes(3);
+    expect(onChange).toHaveBeenCalledWith('p1', 'x', 9);
+    expect(onChange).toHaveBeenCalledWith('p2', 'x', 9);
+    expect(onChange).toHaveBeenCalledWith('p3', 'x', 9);
+  });
+
+  it('editing bulk x when values are mixed still propagates to all selected', async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    mount({
+      selection: [refPoint('p1'), refPoint('p2')],
+      entityData: [
+        pointEntity('p1', { x: 1 }),
+        pointEntity('p2', { x: 99 }),
+      ],
+      onChange,
+    });
+    fireEvent.change(screen.getByTestId('solver-entity-bulk-x'), {
+      target: { value: '4' },
+    });
+    await act(async () => { vi.advanceTimersByTime(PROPERTY_DEBOUNCE_MS + 5); });
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenCalledWith('p1', 'x', 4);
+    expect(onChange).toHaveBeenCalledWith('p2', 'x', 4);
+  });
+
+  it('isFixed mixed (some true, some false) → checkbox is indeterminate and unchecked', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2'), refPoint('p3')],
+      entityData: [
+        pointEntity('p1', { isFixed: true }),
+        pointEntity('p2', { isFixed: false }),
+        pointEntity('p3', { isFixed: true }),
+      ],
+    });
+    const cb = screen.getByTestId('solver-entity-bulk-isFixed') as HTMLInputElement;
+    expect(cb.checked).toBe(false);
+    expect(cb.indeterminate).toBe(true);
+  });
+
+  it('isFixed all true → checkbox is checked and not indeterminate', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2')],
+      entityData: [
+        pointEntity('p1', { isFixed: true }),
+        pointEntity('p2', { isFixed: true }),
+      ],
+    });
+    const cb = screen.getByTestId('solver-entity-bulk-isFixed') as HTMLInputElement;
+    expect(cb.checked).toBe(true);
+    expect(cb.indeterminate).toBe(false);
+  });
+
+  it('isFixed all false → checkbox is unchecked and not indeterminate', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2')],
+      entityData: [
+        pointEntity('p1', { isFixed: false }),
+        pointEntity('p2', { isFixed: false }),
+      ],
+    });
+    const cb = screen.getByTestId('solver-entity-bulk-isFixed') as HTMLInputElement;
+    expect(cb.checked).toBe(false);
+    expect(cb.indeterminate).toBe(false);
+  });
+
+  it('clicking isFixed checkbox in mixed state normalises every point to true', () => {
+    const onChange = vi.fn();
+    mount({
+      selection: [refPoint('p1'), refPoint('p2'), refPoint('p3')],
+      entityData: [
+        pointEntity('p1', { isFixed: true }),
+        pointEntity('p2', { isFixed: false }),
+        pointEntity('p3', { isFixed: true }),
+      ],
+      onChange,
+    });
+    fireEvent.click(screen.getByTestId('solver-entity-bulk-isFixed'));
+    expect(onChange).toHaveBeenCalledTimes(3);
+    expect(onChange).toHaveBeenCalledWith('p1', 'isFixed', true);
+    expect(onChange).toHaveBeenCalledWith('p2', 'isFixed', true);
+    expect(onChange).toHaveBeenCalledWith('p3', 'isFixed', true);
+  });
+
+  it('clicking isFixed when all-true toggles to false for all points', () => {
+    const onChange = vi.fn();
+    mount({
+      selection: [refPoint('p1'), refPoint('p2')],
+      entityData: [
+        pointEntity('p1', { isFixed: true }),
+        pointEntity('p2', { isFixed: true }),
+      ],
+      onChange,
+    });
+    fireEvent.click(screen.getByTestId('solver-entity-bulk-isFixed'));
+    expect(onChange).toHaveBeenCalledWith('p1', 'isFixed', false);
+    expect(onChange).toHaveBeenCalledWith('p2', 'isFixed', false);
+  });
+
+  it('mixed kind selection (point + line) shows the mixed-selection message', () => {
+    mount({
+      selection: [refPoint('p1'), refLine('L1')],
+      entityData: [pointEntity('p1'), lineEntity('L1')],
+    });
+    const mixed = screen.getByTestId('solver-entity-property-mixed');
+    expect(mixed).toBeInTheDocument();
+    expect(mixed.textContent).toMatch(/Mixed selection/);
+    // No bulk inputs in mixed mode.
+    expect(screen.queryByTestId('solver-entity-bulk-x')).toBeNull();
+    expect(screen.queryByTestId('solver-entity-bulk-isFixed')).toBeNull();
+  });
+
+  it('3 lines bulk selection shows no editable common fields (Phase 2 limit)', () => {
+    mount({
+      selection: [refLine('L1'), refLine('L2'), refLine('L3')],
+      entityData: [lineEntity('L1'), lineEntity('L2'), lineEntity('L3')],
+    });
+    // Phase 2 deliberately exposes no bulk fields for lines / circles / arcs.
+    expect(screen.queryByTestId('solver-entity-bulk-x')).toBeNull();
+    expect(screen.queryByTestId('solver-entity-bulk-y')).toBeNull();
+    expect(screen.queryByTestId('solver-entity-bulk-isFixed')).toBeNull();
+    // Per-entity (single-edit) inputs also must not leak through.
+    expect(screen.queryByTestId('solver-entity-property-x1-input')).toBeNull();
+    expect(screen.queryByTestId('solver-entity-property-length-readout')).toBeNull();
+    // Wrapper testid is still present.
+    expect(screen.getByTestId('solver-entity-property-multi')).toBeInTheDocument();
+  });
+
+  it('bulk delete button fires onDelete for each selected id after confirm', () => {
+    const onDelete = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      mount({
+        selection: [refPoint('p1'), refPoint('p2'), refPoint('p3')],
+        entityData: [pointEntity('p1'), pointEntity('p2'), pointEntity('p3')],
+        onDelete,
+      });
+      fireEvent.click(screen.getByTestId('solver-entity-bulk-delete'));
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(onDelete).toHaveBeenCalledTimes(3);
+      expect(onDelete).toHaveBeenCalledWith('p1');
+      expect(onDelete).toHaveBeenCalledWith('p2');
+      expect(onDelete).toHaveBeenCalledWith('p3');
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it('bulk delete cancelled (confirm returns false) does not fire onDelete', () => {
+    const onDelete = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    try {
+      mount({
+        selection: [refPoint('p1'), refPoint('p2')],
+        entityData: [pointEntity('p1'), pointEntity('p2')],
+        onDelete,
+      });
+      fireEvent.click(screen.getByTestId('solver-entity-bulk-delete'));
+      expect(onDelete).not.toHaveBeenCalled();
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it('bulk delete button is hidden when onDelete is not provided', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2')],
+      entityData: [pointEntity('p1'), pointEntity('p2')],
+    });
+    expect(screen.queryByTestId('solver-entity-bulk-delete')).toBeNull();
+  });
+
+  it('mixed kind selection still exposes bulk delete (multi-delete is kind-agnostic)', () => {
+    const onDelete = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      mount({
+        selection: [refPoint('p1'), refLine('L1')],
+        entityData: [pointEntity('p1'), lineEntity('L1')],
+        onDelete,
+      });
+      fireEvent.click(screen.getByTestId('solver-entity-bulk-delete'));
+      expect(onDelete).toHaveBeenCalledTimes(2);
+      expect(onDelete).toHaveBeenCalledWith('p1');
+      expect(onDelete).toHaveBeenCalledWith('L1');
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it('mixed selection message is localised (ko)', () => {
+    mount({
+      lang: 'ko',
+      selection: [refPoint('p1'), refLine('L1')],
+      entityData: [pointEntity('p1'), lineEntity('L1')],
+    });
+    expect(screen.getByTestId('solver-entity-property-mixed').textContent)
+      .toMatch(/혼합 선택/);
+  });
+
+  it('floating-point near-equality treats values within ~1e-9 as the same', () => {
+    mount({
+      selection: [refPoint('p1'), refPoint('p2')],
+      entityData: [
+        pointEntity('p1', { x: 1.0 }),
+        // Differs by ~1e-12 — solver round-off, should still display "same".
+        pointEntity('p2', { x: 1.0 + 1e-12 }),
+      ],
+    });
+    const x = screen.getByTestId('solver-entity-bulk-x') as HTMLInputElement;
+    expect(x.value).toBe('1');
+    expect(x.placeholder).toBe('');
+  });
+});
