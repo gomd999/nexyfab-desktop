@@ -61,6 +61,12 @@ import SketchConstraintOverlay, {
   type DisplayConstraint,
   type Pt as OverlayPt,
 } from './SketchConstraintOverlay';
+import SketchSnapIndicator from './SketchSnapIndicator';
+import {
+  findSnapTarget,
+  type SnapEntities,
+  type SnapTarget,
+} from '@/lib/sketch/sketchSnap';
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -119,6 +125,10 @@ interface Dict {
   promptDistance: string;
   promptOffset: string;
   hint: string;
+  snapLabel: string;
+  snapGrid: string;
+  snapPoint: string;
+  snapIntersection: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -139,6 +149,10 @@ const dict: Record<EditorLang, Dict> = {
     promptDistance: '거리 (mm):',
     promptOffset: '간격복사 거리 (mm):',
     hint: '도구를 선택하고 캔버스를 클릭하세요',
+    snapLabel: '스냅',
+    snapGrid: '격자',
+    snapPoint: '점',
+    snapIntersection: '교차',
   },
   en: {
     title: 'Solver Sketch',
@@ -157,6 +171,10 @@ const dict: Record<EditorLang, Dict> = {
     promptDistance: 'Distance (mm):',
     promptOffset: 'Offset distance (mm):',
     hint: 'Pick a tool and click the canvas',
+    snapLabel: 'Snap',
+    snapGrid: 'Grid',
+    snapPoint: 'Point',
+    snapIntersection: 'Int',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -175,6 +193,10 @@ const dict: Record<EditorLang, Dict> = {
     promptDistance: '距離 (mm):',
     promptOffset: 'オフセット距離 (mm):',
     hint: 'ツールを選びキャンバスをクリック',
+    snapLabel: 'スナップ',
+    snapGrid: 'グリッド',
+    snapPoint: '点',
+    snapIntersection: '交差',
   },
   zh: {
     title: '求解器草图',
@@ -193,6 +215,10 @@ const dict: Record<EditorLang, Dict> = {
     promptDistance: '距离 (mm):',
     promptOffset: '偏移距离 (mm):',
     hint: '选择工具并点击画布',
+    snapLabel: '捕捉',
+    snapGrid: '网格',
+    snapPoint: '点',
+    snapIntersection: '交点',
   },
   es: {
     title: 'Boceto con solver',
@@ -211,6 +237,10 @@ const dict: Record<EditorLang, Dict> = {
     promptDistance: 'Distancia (mm):',
     promptOffset: 'Distancia de desfase (mm):',
     hint: 'Elige herramienta y haz clic',
+    snapLabel: 'Snap',
+    snapGrid: 'Rejilla',
+    snapPoint: 'Punto',
+    snapIntersection: 'Int',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -229,6 +259,10 @@ const dict: Record<EditorLang, Dict> = {
     promptDistance: 'المسافة (مم):',
     promptOffset: 'مسافة الإزاحة (مم):',
     hint: 'اختر أداة وانقر على اللوحة',
+    snapLabel: 'محاذاة',
+    snapGrid: 'شبكة',
+    snapPoint: 'نقطة',
+    snapIntersection: 'تقاطع',
   },
 };
 
@@ -467,6 +501,25 @@ export default function SolverSketchEditor({
   >([]);
   const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
 
+  // ─── snap state (Phase 1.4) ───
+  // Snap options control which families of candidates `findSnapTarget` will
+  // consider. Defaults are chosen so an "out-of-the-box" sketch session feels
+  // responsive (grid + point + intersection all on) — the user can toggle any
+  // family off if it gets in the way. When all three are off snap is a no-op
+  // and the raw cursor is used (zero regression vs. v1.lite behavior).
+  const [snapOpts, setSnapOpts] = useState<{
+    enableGrid: boolean;
+    enablePointSnap: boolean;
+    enableIntersection: boolean;
+    gridSpacing: number;
+  }>({
+    enableGrid: true,
+    enablePointSnap: true,
+    enableIntersection: true,
+    gridSpacing: GRID_MINOR,
+  });
+  const [snapTarget, setSnapTarget] = useState<SnapTarget | null>(null);
+
   // ─── helper: refresh view entities from solver after a solve ───
   const refreshFromSolver = useCallback((s: SketchSolver, current: ViewEntity[]): ViewEntity[] => {
     return current.map((ent) => {
@@ -497,6 +550,9 @@ export default function SolverSketchEditor({
   const changeTool = useCallback((next: EntityTool): void => {
     setTool(next);
     setPending(null);
+    // Drop any stale snap indicator the previous tool may have left behind.
+    // Re-computed on the next mousemove if the new tool is a drawing tool.
+    setSnapTarget(null);
     if (next !== 'select') setSelection([]);
   }, []);
 
@@ -760,11 +816,82 @@ export default function SolverSketchEditor({
     [solver, entities, solveAndApply, t.promptOffset],
   );
 
+  // ─── snap helpers (declared before click handler — used by both
+  //     handleCanvasClick and handleCanvasMove) ───
+  const isDrawingTool = useCallback(
+    (t: EntityTool): boolean =>
+      t === 'line' || t === 'circle' || t === 'arc' || t === 'rect',
+    [],
+  );
+
+  // Build the SnapEntities snapshot — same projection the editor uses to
+  // render geometry, but flattened into the shape `findSnapTarget` expects.
+  const snapEntities = useMemo<SnapEntities>(() => {
+    const ptMap = new Map<PointId, ViewPoint>();
+    for (const e of entities) if (e.kind === 'point') ptMap.set(e.id, e);
+    const points = entities
+      .filter((e): e is ViewPoint => e.kind === 'point')
+      .map((p) => ({ id: p.id as string, x: p.x, y: p.y }));
+    const lines = entities
+      .filter((e): e is ViewLine => e.kind === 'line')
+      .map((l) => {
+        const a = ptMap.get(l.p1);
+        const b = ptMap.get(l.p2);
+        if (!a || !b) return null;
+        return {
+          id: l.id as string,
+          p1: { x: a.x, y: a.y },
+          p2: { x: b.x, y: b.y },
+        };
+      })
+      .filter((x): x is { id: string; p1: { x: number; y: number }; p2: { x: number; y: number } } => x !== null);
+    const circles = entities
+      .filter((e): e is ViewCircle => e.kind === 'circle')
+      .map((c) => {
+        const ctr = ptMap.get(c.center);
+        if (!ctr) return null;
+        return {
+          id: c.id as string,
+          center: { x: ctr.x, y: ctr.y },
+          radius: c.radius,
+        };
+      })
+      .filter((x): x is { id: string; center: { x: number; y: number }; radius: number } => x !== null);
+    return { points, lines, circles };
+  }, [entities]);
+
+  // Compute a snap target for the cursor under the current options. Returns
+  // null when the active tool isn't a drawing tool OR when every option is
+  // disabled (so the host falls back to the raw cursor). Kept as a pure
+  // helper so the click handlers can re-call it on the click-final position
+  // without depending on the indicator state ordering.
+  const computeSnapAt = useCallback(
+    (pt: { x: number; y: number }): SnapTarget | null => {
+      if (!isDrawingTool(tool)) return null;
+      const { enableGrid, enablePointSnap, enableIntersection, gridSpacing } = snapOpts;
+      if (!enableGrid && !enablePointSnap && !enableIntersection) return null;
+      return findSnapTarget(pt, snapEntities, {
+        gridSpacing,
+        enableGrid,
+        enablePointSnap,
+        enableIntersection,
+      });
+    },
+    [isDrawingTool, tool, snapOpts, snapEntities],
+  );
+
   // ─── canvas click ───
   const handleCanvasClick = useCallback(
     (evt: React.MouseEvent<SVGSVGElement>): void => {
       if (!solver) return;
-      const pt = eventToSvgPoint(evt, svgRef.current);
+      const rawPt = eventToSvgPoint(evt, svgRef.current);
+      // When a drawing tool is active, snap the click position to the best
+      // candidate under the current snap options. Recomputed at click time
+      // (rather than reusing `snapTarget` state) so the solver gets the
+      // exact coordinate that matches the final click — no race with the
+      // last mousemove. Falls back to raw cursor when snap returns null.
+      const snap = computeSnapAt(rawPt);
+      const pt = snap ? snap.pos : rawPt;
 
       if (tool === 'select') {
         // Empty-canvas click clears selection (when no modifier held).
@@ -806,25 +933,31 @@ export default function SolverSketchEditor({
       // arc: not yet wired — Phase 1.4 placeholder.
       // dimension: needs entity selection; canvas-empty click does nothing.
     },
-    [solver, tool, pending, commitLine, commitCircle, commitRect],
+    [solver, tool, pending, commitLine, commitCircle, commitRect, computeSnapAt],
   );
 
-  // ─── canvas move (preview + drag) ───
+  // ─── canvas move (preview + drag + snap) ───
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+
   const handleCanvasMove = useCallback(
     (evt: React.MouseEvent<SVGSVGElement>): void => {
       const pt = eventToSvgPoint(evt, svgRef.current);
       setCursor(pt);
+      // Update snap target indicator. Drag wins over snap (the user is moving
+      // a real point, not previewing a new one), so we skip snap during drag.
       if (drag && solver) {
+        setSnapTarget(null);
         try {
           solver.movePoint(drag.pointId, pt.x, pt.y);
           solveAndApply();
         } catch {
           /* fixed point or solver not ready */
         }
+        return;
       }
+      setSnapTarget(computeSnapAt(pt));
     },
-    [drag, solver, solveAndApply],
+    [drag, solver, solveAndApply, computeSnapAt],
   );
 
   const handleCanvasMouseUp = useCallback((): void => {
@@ -1091,6 +1224,17 @@ export default function SolverSketchEditor({
         setSelection([]);
         setPending(null);
       }
+    },
+    [],
+  );
+
+  // ─── snap option toggles ───
+  // Each toggle is independent — disabling all three turns snap off entirely
+  // (callers see `findSnapTarget` return null, indicator stays unmounted, and
+  // clicks fall back to raw cursor positions).
+  const toggleSnap = useCallback(
+    (key: 'enableGrid' | 'enablePointSnap' | 'enableIntersection'): void => {
+      setSnapOpts((prev) => ({ ...prev, [key]: !prev[key] }));
     },
     [],
   );
@@ -1491,8 +1635,8 @@ export default function SolverSketchEditor({
         </div>
       </div>
 
-      {/* Entity toolbar */}
-      <div role="toolbar" aria-label="entity tools" style={{ display: 'flex', gap: 4 }}>
+      {/* Entity toolbar + snap toggles */}
+      <div role="toolbar" aria-label="entity tools" style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
         {ENTITY_TOOLS.map((b) => {
           const active = tool === b.id;
           return (
@@ -1513,6 +1657,44 @@ export default function SolverSketchEditor({
               }}
             >
               {b.label(t)}
+            </button>
+          );
+        })}
+
+        {/* Snap toggles — small pill buttons that sit visually grouped after
+            the entity tools. Each is independent; aria-pressed reflects the
+            current option. Disabling all three turns snap off entirely. */}
+        <span
+          aria-hidden="true"
+          style={{ width: 1, height: 18, background: '#e5e7eb', margin: '0 6px' }}
+        />
+        <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginRight: 2 }}>
+          {t.snapLabel}:
+        </span>
+        {([
+          { key: 'enableGrid', id: 'grid', label: t.snapGrid },
+          { key: 'enablePointSnap', id: 'point', label: t.snapPoint },
+          { key: 'enableIntersection', id: 'intersection', label: t.snapIntersection },
+        ] as const).map((s) => {
+          const active = snapOpts[s.key];
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => toggleSnap(s.key)}
+              data-testid={`solver-snap-toggle-${s.id}`}
+              aria-pressed={active}
+              style={{
+                padding: '4px 8px',
+                fontSize: 11,
+                background: active ? '#0e7490' : '#fff',
+                color: active ? '#fff' : '#374151',
+                border: '1px solid ' + (active ? '#0e7490' : '#d1d5db'),
+                borderRadius: 12,
+                cursor: 'pointer',
+              }}
+            >
+              {s.label}
             </button>
           );
         })}
@@ -1671,6 +1853,11 @@ export default function SolverSketchEditor({
           const h = Math.abs(cursor.y - pending.corner.y);
           return <rect x={x} y={y} width={w} height={h} fill="none" stroke="#9ca3af" strokeWidth={1.4} strokeDasharray="4 3" />;
         })()}
+
+        {/* Snap indicator — drawn last so it sits visually above geometry +
+            in-progress previews. The indicator is null when snap is off or
+            when the active tool isn't a drawing tool (see computeSnapAt). */}
+        <SketchSnapIndicator snap={snapTarget} />
       </svg>
 
       {/*
