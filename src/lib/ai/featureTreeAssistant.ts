@@ -34,6 +34,13 @@ export interface SuggestedTreeOp {
 export interface TreeAssistantRequest {
   prompt: string;
   tree: FeatureTree;
+  /**
+   * Optional multi-turn conversation memory (Phase 6.3). The LLM wrapper
+   * trims this to the last `MAX_HISTORY_TURNS` user/assistant pairs and
+   * inserts them between the system prompt and the current user prompt.
+   * The deterministic stub ignores history.
+   */
+  history?: ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 export interface TreeAssistantResponse {

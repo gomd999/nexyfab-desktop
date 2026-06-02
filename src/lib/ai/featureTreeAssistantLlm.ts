@@ -1,5 +1,5 @@
 /**
- * featureTreeAssistantLlm — Phase 6.2 LLM wrapper for the feature-tree
+ * featureTreeAssistantLlm — Phase 6.2 / 6.3 LLM wrapper for the feature-tree
  * assistant. Mirror of sketchAssistantLlm.ts for FeatureTree edit ops.
  *
  * Same architecture:
@@ -7,6 +7,14 @@
  *   - otherwise → chatCompletion provider chain (DeepSeek → OpenAI → local)
  *   - any failure (no provider, throw, invalid JSON, non-array) → falls
  *     back to the stub gracefully
+ *   - Phase 6.3: optional multi-turn conversation memory via
+ *     `TreeAssistantRequest.history` (capped at MAX_HISTORY_TURNS pairs).
+ *     The stub still ignores history (rule-based, single-turn by design).
+ *
+ * `ChatTurn`, `MAX_HISTORY_TURNS`, and `appendToHistory` are re-exported
+ * from sketchAssistantLlm so callers can use a single import surface
+ * regardless of which assistant they are talking to — the conversation
+ * memory shape is identical.
  *
  * Output `Suggestion` shape matches the stub exactly — call sites are
  * interchangeable.
@@ -19,10 +27,20 @@ import {
   type TreeAssistantResponse,
 } from './featureTreeAssistant';
 import type { EditOp } from '@/lib/cad/featureTreeEdit';
+import {
+  appendToHistory,
+  MAX_HISTORY_TURNS,
+  type ChatTurn,
+} from './sketchAssistantLlm';
+
+// Re-export the shared conversation-memory surface so consumers can import
+// everything from this module without needing to know which assistant
+// underlies the chat (sketch vs tree).
+export { appendToHistory, MAX_HISTORY_TURNS, type ChatTurn };
 
 export interface TreeLlmAssistantOptions {
   useStub?: boolean;
-  chatFn?: (req: { messages: Array<{ role: 'system' | 'user'; content: string }>; maxTokens?: number; task?: string }) => Promise<{ text: string }>;
+  chatFn?: (req: { messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>; maxTokens?: number; task?: string }) => Promise<{ text: string }>;
 }
 
 export async function interpretTreeCommandLlm(
@@ -47,13 +65,15 @@ export async function interpretTreeCommandLlm(
 
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(req);
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemPrompt },
+    ...trimHistory(req.history),
+    { role: 'user', content: userPrompt },
+  ];
   let raw: string;
   try {
     const res = await chat({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
+      messages,
       maxTokens: 1000,
       task: 'pro-tree-assistant',
     });
@@ -65,6 +85,27 @@ export async function interpretTreeCommandLlm(
   const parsed = parseSuggestions(raw);
   if (parsed === null) return interpretTreeCommand(req);
   return { suggestions: parsed, matched: parsed.length > 0 };
+}
+
+// ─── history helpers ─────────────────────────────────────────────────────
+
+/**
+ * Keep only the last `MAX_HISTORY_TURNS` user/assistant pairs (i.e. up to
+ * `MAX_HISTORY_TURNS * 2` messages). If the trimmed window starts on an
+ * assistant turn (orphaned), drop that leading message so the conversation
+ * still alternates user → assistant → user → ... cleanly.
+ *
+ * Kept local (not re-exported) so the trimming policy can diverge from the
+ * sketch assistant later if needed; the inputs/outputs match exactly today.
+ */
+function trimHistory(history: ReadonlyArray<ChatTurn> | undefined): ChatTurn[] {
+  if (!history || history.length === 0) return [];
+  const maxMessages = MAX_HISTORY_TURNS * 2;
+  const trimmed = history.slice(-maxMessages);
+  if (trimmed.length > 0 && trimmed[0]!.role === 'assistant') {
+    return trimmed.slice(1);
+  }
+  return trimmed;
 }
 
 // ─── prompt construction ─────────────────────────────────────────────────
