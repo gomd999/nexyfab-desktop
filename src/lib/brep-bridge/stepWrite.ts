@@ -50,15 +50,76 @@ const NEXYFAB_APPLICATION = 'NEXYFAB-PRO';
 /** AP214 schema string — same FILE_SCHEMA value used by existing imports. */
 const AP214_SCHEMA = 'AUTOMOTIVE_DESIGN { 1 0 10303 214 3 1 1 1 }';
 
-/** Numeric formatting matches OCCT / NX style: trailing `.` on whole numbers. */
+/**
+ * Numeric formatting matches OCCT / NX style for STEP / AP214 REAL literals.
+ *
+ * Output rules:
+ *   - Integers (whole numbers): emit `N.` with a single trailing dot to mark
+ *     the literal as REAL — e.g. `1` → `'1.'`, `-2` → `'-2.'`, `100` → `'100.'`.
+ *     (Without the dot, conformant parsers may interpret the token as INTEGER.)
+ *   - Non-integers: emit the decimal form with trailing zeros trimmed and a
+ *     single embedded `.` — e.g. `1.5` → `'1.5'`, `-0.529999` → `'-0.529999'`.
+ *     There must NOT be a stray dot at the end after the trailing-zero trim
+ *     (the previous implementation produced `'-0.529999.'`, which `stepImport`
+ *     had to strip defensively — see `stepImport.parseSingleArg`).
+ *   - Zero (incl. `-0`): emit `'0.'`.
+ *   - Sub-resolution magnitudes that would collapse to `'0.'` under 6-decimal
+ *     fixed formatting (|n| < 5e-7) are emitted in STEP exponential form,
+ *     e.g. `1e-7` → `'1.E-7'`. STEP's Part 21 grammar accepts this and the
+ *     existing UNCERTAINTY_MEASURE_WITH_UNIT row uses the same notation.
+ *   - Values whose magnitude is too large for plain decimal at 6 decimals
+ *     (|n| ≥ 1e15) also use exponential form for the same reason.
+ *   - NaN / ±Infinity throw.
+ */
 function fmt(n: number): string {
   if (!Number.isFinite(n)) throw new Error(`stepWrite: non-finite number ${n}`);
   if (n === 0) return '0.';
-  // Up to 6 significant decimals; strip trailing zeros but keep a trailing '.'
-  // so STEP parsers recognize the REAL literal (e.g. "10." not "10").
+  const abs = Math.abs(n);
+
+  // Sub-resolution: 6-decimal toFixed would round to 0 and silently lose the
+  // value. Fall back to STEP exponential form so the literal survives a
+  // round-trip. (Threshold = 0.5 ULP at 6 decimals.)
+  if (abs < 5e-7 || abs >= 1e15) {
+    return toStepExponential(n);
+  }
+
   const fixed = n.toFixed(6);
-  const trimmed = fixed.replace(/0+$/, '').replace(/\.$/, '.');
-  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+  if (!fixed.includes('.')) {
+    // Defensive: toFixed(6) always includes a '.', but guard anyway so a
+    // future refactor can't reintroduce the missing-dot regression.
+    return `${fixed}.`;
+  }
+  // Strip trailing zeros from the fractional part.
+  const trimmed = fixed.replace(/0+$/, '');
+  // If everything after the '.' was zero, `trimmed` now ends with '.' — the
+  // value is an integer and we keep the single trailing dot (REAL marker).
+  // Otherwise (genuine fractional component) `trimmed` already ends in a
+  // non-zero digit and MUST NOT have any dot appended.
+  return trimmed;
+}
+
+/**
+ * Convert a number to STEP Part 21 exponential REAL literal, e.g.
+ * `1.E-7`, `-3.5E+12`. Mantissa always contains exactly one `.` and the
+ * trailing-dot REAL marker, matching the existing `1.E-7` literal hard-
+ * coded in the uncertainty entity.
+ */
+function toStepExponential(n: number): string {
+  // toExponential always emits "d[.ddd]e±dd".
+  const e = n.toExponential();
+  const [mantRaw, expRaw] = e.split('e');
+  const exp = Number.parseInt(expRaw!, 10);
+  let mant = mantRaw!;
+  if (!mant.includes('.')) {
+    // Single-digit mantissa (e.g. "1"): append '.' so the literal is
+    // unambiguously REAL ("1.E-7", not "1E-7").
+    mant = `${mant}.`;
+  } else {
+    // Multi-digit mantissa (e.g. "1.5"): strip trailing fractional zeros —
+    // a bare trailing '.' is fine as a REAL marker.
+    mant = mant.replace(/0+$/, '');
+  }
+  return `${mant}E${exp >= 0 ? '+' : ''}${exp}`;
 }
 
 /** Escape a STEP string literal — single quote doubled, control chars stripped. */
