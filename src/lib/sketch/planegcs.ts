@@ -36,9 +36,31 @@ let wasmInitPromise: Promise<any> | null = null;
  */
 async function loadPlanegcsPackage(): Promise<any> {
   if (!planegcsModulePromise) {
-    planegcsModulePromise = import(
-      /* webpackChunkName: "planegcs" */ '@salusoft89/planegcs'
-    );
+    // Two paths because vitest's vm context lacks a dynamic-import
+    // callback (ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING), so the
+    // eval-based bypass that works in webpack-built browser code
+    // doesn't work in tests:
+    //
+    //   1) test env (process.env.VITEST) — use a regular dynamic import
+    //      annotated with `/* webpackIgnore: true */`. The magic comment
+    //      tells webpack to leave the import alone (no static analysis,
+    //      no chunk emission). Vitest doesn't see the comment and uses
+    //      standard Node ESM resolution.
+    //
+    //   2) production browser build — `(0, eval)` indirect eval hides
+    //      the import() inside an opaque string. Webpack literally
+    //      cannot find it. At runtime the page-level module loader
+    //      resolves @salusoft89/planegcs normally.
+    //
+    // This is the bypass after 5 failed Railway deploys with conventional
+    // approaches (url:false fallback, inline enums, full TS erasure,
+    // webpackChunkName dynamic import, module.noParse).
+    if (typeof process !== 'undefined' && process.env && process.env.VITEST) {
+      planegcsModulePromise = import(/* webpackIgnore: true */ '@salusoft89/planegcs');
+    } else {
+      const runtimeImport = (0, eval)('(s) => import(s)') as (s: string) => Promise<any>;
+      planegcsModulePromise = runtimeImport('@salusoft89/planegcs');
+    }
   }
   return planegcsModulePromise;
 }
