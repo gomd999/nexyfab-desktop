@@ -312,6 +312,37 @@ export class SketchSolver {
     return { x: p.x, y: p.y, fixed: p.fixed };
   }
 
+  /** Read-only structural lookup of a line (returns its endpoint point IDs). */
+  line(id: LineId): { p1: PointId; p2: PointId } {
+    if (!this.lines.has(id)) throw new Error(`Expected line id, got: ${id}`);
+    const l = this.gcs.sketch_index.get_primitive_or_fail(id) as SketchLine;
+    return { p1: l.p1_id as PointId, p2: l.p2_id as PointId };
+  }
+
+  /** Read-only structural lookup of a circle. */
+  circle(id: CircleId): { center: PointId; radius: number } {
+    if (!this.circles.has(id)) throw new Error(`Expected circle id, got: ${id}`);
+    const c = this.gcs.sketch_index.get_primitive_or_fail(id) as SketchCircle;
+    return { center: c.c_id as PointId, radius: c.radius };
+  }
+
+  /** Read-only structural lookup of an arc. */
+  arc(id: ArcId): {
+    center: PointId; start: PointId; end: PointId;
+    radius: number; startAngle: number; endAngle: number;
+  } {
+    if (!this.arcs.has(id)) throw new Error(`Expected arc id, got: ${id}`);
+    const a = this.gcs.sketch_index.get_primitive_or_fail(id) as SketchArc;
+    return {
+      center: a.c_id as PointId,
+      start: a.start_id as PointId,
+      end: a.end_id as PointId,
+      radius: a.radius,
+      startAngle: a.start_angle,
+      endAngle: a.end_angle,
+    };
+  }
+
   // ----- mutation (for drag UX in Phase 1.3) -----
 
   /**
@@ -338,6 +369,168 @@ export class SketchSolver {
     }
     this.gcs.gcs.set_p_param(pos, x, false);
     this.gcs.gcs.set_p_param(pos + 1, y, false);
+  }
+
+  // ----- single-field setters (Phase 1.B property panel) -----
+
+  /**
+   * Set just the X coord of a point. Equivalent to movePoint(id, x, currentY).
+   * Same fixed-point semantics as movePoint.
+   */
+  setPointX(id: PointId, x: number): void {
+    this.assertPoint(id);
+    const cur = this.point(id);
+    this.movePoint(id, x, cur.y);
+  }
+
+  /** Set just the Y coord of a point. Mirror of setPointX. */
+  setPointY(id: PointId, y: number): void {
+    this.assertPoint(id);
+    const cur = this.point(id);
+    this.movePoint(id, cur.x, y);
+  }
+
+  /**
+   * Toggle the "fixed" flag on a point. Mutates both the JS-side record AND
+   * the planegcs primitive so a subsequent solve respects the new state.
+   *
+   * Note: planegcs uses the `fixed` flag at primitive-push time to decide
+   * whether to allocate driving params. Toggling after push is a soft
+   * update — the next solve still runs against the original param layout,
+   * but movePoint() will refuse if rec.fixed=true. For a hard-fix that the
+   * solver itself enforces, callers should additionally pin the point
+   * (e.g. via two dimension constraints) — Phase 2.
+   */
+  setPointFixed(id: PointId, fixed: boolean): void {
+    this.assertPoint(id);
+    const rec = this.points.get(id);
+    if (rec) rec.fixed = fixed;
+    // Best-effort: also update the primitive's `fixed` flag if pushed already.
+    try {
+      const p = this.gcs.sketch_index.get_primitive_or_fail(id) as SketchPoint;
+      p.fixed = fixed;
+    } catch {
+      // Not yet pushed — find it in pending and update there.
+      for (const prim of this.pending) {
+        const pp = prim as SketchPoint;
+        if (pp.id === id && pp.type === 'point') {
+          pp.fixed = fixed;
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * Set a circle's radius. Mutates the primitive's stored radius so renders
+   * pick up the change immediately. If the circle has been pinned via
+   * addRadius() the next solve will reconcile (existing pin wins unless
+   * the caller separately removes/updates it).
+   *
+   * Phase 1.B limitation: doesn't add or replace a radius constraint. Use
+   * addRadius() if you want the solver to enforce the new value across
+   * subsequent re-solves involving constraints that depend on it.
+   */
+  setCircleRadius(id: CircleId, radius: number): void {
+    if (!this.circles.has(id)) throw new Error(`Expected circle id, got: ${id}`);
+    if (!Number.isFinite(radius) || radius <= 0) {
+      throw new Error(`setCircleRadius: radius must be > 0, got ${radius}`);
+    }
+    try {
+      const c = this.gcs.sketch_index.get_primitive_or_fail(id) as SketchCircle;
+      c.radius = radius;
+    } catch {
+      for (const prim of this.pending) {
+        const pp = prim as SketchCircle;
+        if (pp.id === id && pp.type === 'circle') {
+          pp.radius = radius;
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * Set a line's two endpoints in one call by movePoint-ing each endpoint.
+   * Each endpoint's fixed-ness is respected (fixed endpoints are left alone).
+   */
+  setLineEndpoints(
+    id: LineId,
+    x1: number, y1: number,
+    x2: number, y2: number,
+  ): void {
+    const { p1, p2 } = this.line(id);
+    const rec1 = this.points.get(p1);
+    const rec2 = this.points.get(p2);
+    if (!rec1?.fixed) this.movePoint(p1, x1, y1);
+    if (!rec2?.fixed) this.movePoint(p2, x2, y2);
+  }
+
+  /**
+   * Mutate one or more fields of an arc. Each field is optional. Center
+   * coords route through movePoint (respecting fixed); radius/angles are
+   * direct primitive mutations (see setCircleRadius caveat).
+   */
+  setArc(
+    id: ArcId,
+    fields: Partial<{
+      cx: number; cy: number;
+      radius: number;
+      startAngle: number; endAngle: number;
+    }>,
+  ): void {
+    const cur = this.arc(id);
+    if (fields.cx !== undefined || fields.cy !== undefined) {
+      const cx = fields.cx ?? this.point(cur.center).x;
+      const cy = fields.cy ?? this.point(cur.center).y;
+      const rec = this.points.get(cur.center);
+      if (!rec?.fixed) this.movePoint(cur.center, cx, cy);
+    }
+    if (fields.radius !== undefined) {
+      if (!Number.isFinite(fields.radius) || fields.radius <= 0) {
+        throw new Error(`setArc: radius must be > 0, got ${fields.radius}`);
+      }
+    }
+    try {
+      const a = this.gcs.sketch_index.get_primitive_or_fail(id) as SketchArc;
+      if (fields.radius !== undefined) a.radius = fields.radius;
+      if (fields.startAngle !== undefined) a.start_angle = fields.startAngle;
+      if (fields.endAngle !== undefined) a.end_angle = fields.endAngle;
+    } catch {
+      for (const prim of this.pending) {
+        const pp = prim as SketchArc;
+        if (pp.id === id && pp.type === 'arc') {
+          if (fields.radius !== undefined) pp.radius = fields.radius;
+          if (fields.startAngle !== undefined) pp.start_angle = fields.startAngle;
+          if (fields.endAngle !== undefined) pp.end_angle = fields.endAngle;
+          break;
+        }
+      }
+    }
+  }
+
+  // ----- view-side removal (Phase 1.B property panel delete) -----
+  //
+  // planegcs has no public delete-primitive API exposed by the GcsWrapper
+  // we use, so these methods only drop the entity from our internal
+  // tracking sets — the underlying primitive becomes orphaned in
+  // sketch_index but no constraint or render references it anymore. This
+  // matches the existing trim behavior. Hard delete is Phase 2.
+
+  removePoint(id: PointId): void {
+    this.points.delete(id);
+  }
+
+  removeLine(id: LineId): void {
+    this.lines.delete(id);
+  }
+
+  removeCircle(id: CircleId): void {
+    this.circles.delete(id);
+  }
+
+  removeArc(id: ArcId): void {
+    this.arcs.delete(id);
   }
 
   // ----- lifecycle -----

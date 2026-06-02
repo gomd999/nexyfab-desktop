@@ -50,6 +50,11 @@ import SketchConstraintToolbar, {
   type SketchEntityKind,
   type Constraint as ToolbarConstraint,
 } from './SketchConstraintToolbar';
+import SketchEntityPropertyPanel, {
+  type EntityData as PanelEntityData,
+  type EntityField as PanelEntityField,
+  type EntityFieldValue as PanelEntityFieldValue,
+} from './SketchEntityPropertyPanel';
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -1131,6 +1136,169 @@ export default function SolverSketchEditor({
     return m;
   }, [renderPoints]);
 
+  // ─── SketchEntityPropertyPanel bridge ──────────────────────────────────
+  //
+  // Derive an EntityData snapshot of the currently selected entities so the
+  // standalone property panel can render them. The panel itself never sees
+  // the solver — it only sees a structural snapshot plus typed callbacks.
+  //
+  // For each selected ref:
+  //   - point → x, y, isFixed from view + solver record
+  //   - line  → x1, y1 / x2, y2 / derived length + angle (radians)
+  //   - circle → cx, cy, radius
+  //   - arc   → not exposed in this editor (no arc tool wired), but kept
+  //             defensively in case a future code path injects one.
+  const panelEntityData = useMemo<PanelEntityData[]>(() => {
+    const out: PanelEntityData[] = [];
+    for (const ref of selection) {
+      const ent = entities.find((e) => e.id === ref.id);
+      if (!ent) continue;
+      if (ent.kind === 'point' && ref.kind === 'point') {
+        out.push({
+          kind: 'point',
+          id: ent.id as string,
+          x: ent.x,
+          y: ent.y,
+          isFixed: ent.fixed,
+        });
+        continue;
+      }
+      if (ent.kind === 'line' && ref.kind === 'line') {
+        const a = pointById.get(ent.p1);
+        const b = pointById.get(ent.p2);
+        if (!a || !b) continue;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        out.push({
+          kind: 'line',
+          id: ent.id as string,
+          x1: a.x, y1: a.y,
+          x2: b.x, y2: b.y,
+          length: Math.hypot(dx, dy),
+          angle: Math.atan2(dy, dx),
+        });
+        continue;
+      }
+      if (ent.kind === 'circle' && ref.kind === 'circle') {
+        const ctr = pointById.get(ent.center);
+        if (!ctr) continue;
+        out.push({
+          kind: 'circle',
+          id: ent.id as string,
+          cx: ctr.x, cy: ctr.y,
+          radius: ent.radius,
+        });
+      }
+    }
+    return out;
+  }, [selection, entities, pointById]);
+
+  // Route the panel's field edits into the solver, then re-solve. We map
+  // each field of each entity kind to the matching solver setter, then
+  // mirror the change into the view-side `entities` array so the SVG and
+  // the panel both reflect the new value immediately (the re-solve will
+  // refine point positions if constraints disagree).
+  const handlePanelChange = useCallback(
+    (id: string, field: PanelEntityField, value: PanelEntityFieldValue): void => {
+      if (!solver) return;
+      const ent = entities.find((e) => e.id === id);
+      if (!ent) return;
+
+      try {
+        // ── point ─────────────────────────────────────────────────────
+        if (ent.kind === 'point') {
+          if (field === 'x' && typeof value === 'number') {
+            solver.setPointX(ent.id, value);
+            setEntities((prev) => prev.map((e) => (
+              e.id === id && e.kind === 'point' ? { ...e, x: value } : e
+            )));
+          } else if (field === 'y' && typeof value === 'number') {
+            solver.setPointY(ent.id, value);
+            setEntities((prev) => prev.map((e) => (
+              e.id === id && e.kind === 'point' ? { ...e, y: value } : e
+            )));
+          } else if (field === 'isFixed' && typeof value === 'boolean') {
+            solver.setPointFixed(ent.id, value);
+            setEntities((prev) => prev.map((e) => (
+              e.id === id && e.kind === 'point' ? { ...e, fixed: value } : e
+            )));
+          }
+          solveAndApply();
+          return;
+        }
+        // ── line ──────────────────────────────────────────────────────
+        if (ent.kind === 'line') {
+          const a = entities.find((e) => e.id === ent.p1);
+          const b = entities.find((e) => e.id === ent.p2);
+          if (!a || a.kind !== 'point' || !b || b.kind !== 'point') return;
+          if (typeof value !== 'number') return;
+          let nx1 = a.x, ny1 = a.y, nx2 = b.x, ny2 = b.y;
+          if (field === 'x1') nx1 = value;
+          else if (field === 'y1') ny1 = value;
+          else if (field === 'x2') nx2 = value;
+          else if (field === 'y2') ny2 = value;
+          else return; // length/angle are read-only in the panel
+          solver.setLineEndpoints(ent.id, nx1, ny1, nx2, ny2);
+          setEntities((prev) => prev.map((e) => {
+            if (e.id === ent.p1 && e.kind === 'point') return { ...e, x: nx1, y: ny1 };
+            if (e.id === ent.p2 && e.kind === 'point') return { ...e, x: nx2, y: ny2 };
+            return e;
+          }));
+          solveAndApply();
+          return;
+        }
+        // ── circle ────────────────────────────────────────────────────
+        if (ent.kind === 'circle') {
+          if (typeof value !== 'number') return;
+          if (field === 'cx' || field === 'cy') {
+            const ctr = entities.find((e) => e.id === ent.center);
+            if (!ctr || ctr.kind !== 'point') return;
+            const nx = field === 'cx' ? value : ctr.x;
+            const ny = field === 'cy' ? value : ctr.y;
+            try { solver.movePoint(ent.center, nx, ny); }
+            catch { /* fixed point — ignore */ }
+            setEntities((prev) => prev.map((e) => (
+              e.id === ent.center && e.kind === 'point' ? { ...e, x: nx, y: ny } : e
+            )));
+          } else if (field === 'radius') {
+            if (value <= 0) return;
+            solver.setCircleRadius(ent.id, value);
+            setEntities((prev) => prev.map((e) => (
+              e.id === id && e.kind === 'circle' ? { ...e, radius: value } : e
+            )));
+          }
+          solveAndApply();
+          return;
+        }
+      } catch {
+        // Solver rejected (fixed point, over-constrained, etc.) —
+        // swallow; the next solve cycle's status pill will surface it.
+      }
+    },
+    [solver, entities, solveAndApply],
+  );
+
+  const handlePanelDelete = useCallback(
+    (id: string): void => {
+      if (!solver) return;
+      const ent = entities.find((e) => e.id === id);
+      if (!ent) return;
+      try {
+        if (ent.kind === 'point') solver.removePoint(ent.id);
+        else if (ent.kind === 'line') solver.removeLine(ent.id);
+        else if (ent.kind === 'circle') solver.removeCircle(ent.id);
+      } catch { /* tracking-set delete is best-effort */ }
+      // Drop from view + selection. We deliberately do NOT cascade-delete
+      // point ↔ line dependencies: deleting a line keeps its endpoints
+      // (they may be shared with other entities); deleting a shared point
+      // would orphan downstream lines — the user can clean those up next.
+      setEntities((prev) => prev.filter((e) => e.id !== id));
+      setSelection((prev) => prev.filter((r) => r.id !== id));
+      solveAndApply();
+    },
+    [solver, entities, solveAndApply],
+  );
+
   if (loadError) {
     return (
       <div data-testid="solver-sketch-editor" data-state="error" style={{ padding: 12, color: '#dc2626' }}>
@@ -1258,7 +1426,11 @@ export default function SolverSketchEditor({
         disabled={!solver}
       />
 
-      {/* Canvas */}
+      {/* Canvas + property panel (Phase 1.B: side-by-side layout) */}
+      <div
+        data-testid="solver-sketch-canvas-row"
+        style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}
+      >
       <svg
         ref={svgRef}
         data-testid="solver-sketch-canvas"
@@ -1353,6 +1525,33 @@ export default function SolverSketchEditor({
           return <rect x={x} y={y} width={w} height={h} fill="none" stroke="#9ca3af" strokeWidth={1.4} strokeDasharray="4 3" />;
         })()}
       </svg>
+
+      {/*
+        Property panel sidebar — sticky next to the canvas. Width is fixed
+        so the canvas + panel together feel like a single design tool. The
+        wrapper div lets us pin alignment + apply position:sticky later if
+        the editor lives inside a scrollable container.
+      */}
+      <aside
+        data-testid="solver-sketch-property-sidebar"
+        style={{
+          flex: '0 0 auto',
+          minWidth: 240,
+          maxWidth: 280,
+          position: 'sticky',
+          top: 0,
+          alignSelf: 'flex-start',
+        }}
+      >
+        <SketchEntityPropertyPanel
+          lang={lang}
+          selection={selection}
+          entityData={panelEntityData}
+          onChange={handlePanelChange}
+          onDelete={handlePanelDelete}
+        />
+      </aside>
+      </div>
 
       {/* status bar */}
       <div
