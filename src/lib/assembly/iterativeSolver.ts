@@ -463,6 +463,16 @@ function normalizeSafe(v: Vec3): Vec3 | null {
   return { x: v.x / len, y: v.y / len, z: v.z / len };
 }
 
+/** Project `v` onto the plane perpendicular to unit `axis`. */
+function projectPerp(v: Vec3, axis: Vec3): Vec3 {
+  const along = v.x * axis.x + v.y * axis.y + v.z * axis.z;
+  return {
+    x: v.x - axis.x * along,
+    y: v.y - axis.y * along,
+    z: v.z - axis.z * along,
+  };
+}
+
 function lengthAndDir(v: Vec3): { length: number; unit: Vec3 } | null {
   const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
   if (len < 1e-9) return null;
@@ -534,20 +544,65 @@ function computeResidual(
   // ── hinge: same as concentric (axes collinear) + optional limit ──────
   // Total residual = primary (axis alignment) + secondary (limit penalty).
   //
-  // Phase 1 approximation for the limit term: we have no body-frame
-  // "zero-angle" reference vector on either side of the hinge, so we
-  // approximate the current swing angle as the FULL relative rotation
-  // between the two parts' orientation quaternions. Concretely:
-  //   dot(q_a, q_b) = cos(θ/2)  where θ = angle between the two frames
-  //   approxAngle = 2·acos(|dot|)
-  // Sign is unresolved (we only get magnitude), so we treat the bounds
-  // symmetrically: any |approxAngle| > max(|min|, |max|) gets a penalty.
-  // Phase 2 will wire a proper "up vector" on each hinge side to get a
-  // signed swing angle around the hinge axis.
+  // Branch on whether the mate provides a Phase 2 body-frame zero-angle
+  // reference:
+  //
+  //   Phase 1 (mate.zeroAngleRef === undefined) — UNSIGNED PROXY:
+  //     We approximate the current swing angle as the FULL relative
+  //     rotation between the two parts' orientation quaternions:
+  //       dot(q_a, q_b) = cos(θ/2)  where θ = angle between the two frames
+  //       approxAngle = 2·acos(|dot|)
+  //     Sign is unresolved (magnitude only), so the bounds are treated
+  //     symmetrically: any |approxAngle| outside `[min, max]` is
+  //     penalised. mm-vs-rad unit mixing is the documented trade-off.
+  //
+  //   Phase 2 (mate.zeroAngleRef provided) — SIGNED SWING:
+  //     Each side supplies a body-frame unit vector lying in the swing
+  //     plane (perpendicular to that side's hinge axis). Transformed to
+  //     world frame:
+  //       A_world = rotateVec(ref.a, q_a)
+  //       B_world = rotateVec(ref.b, q_b)
+  //     The hinge axis in world is taken from ag.world.direction (the
+  //     side-A resolved axis; concentric residual already ensures the
+  //     two sides agree to within `alignErr`). The signed swing angle:
+  //       swing = atan2((A × B) · axis, A · B)
+  //     Limit residual = max(0, min - swing, swing - max), converted to
+  //     radians.
+  //
+  // Edge case: when the two world axes are not yet aligned (concentric
+  // residual > 0), the Phase 2 swing still computes (it just measures the
+  // signed angle from A to B around the side-A axis — graceful, not NaN).
   if (mate.kind === 'hinge' && ag.kind === 'axis' && bg.kind === 'axis') {
     const alignErr = distanceAxisToAxis(ag.world, bg.world);
-    if (mate.limit === undefined) return alignErr;
-    // Phase 1 swing-angle proxy from quaternion dot product.
+    if (mate.limit === undefined && mate.zeroAngleRef === undefined) {
+      return alignErr;
+    }
+    // ── Phase 2 signed swing branch ───────────────────────────────────
+    if (mate.zeroAngleRef !== undefined) {
+      const ref = mate.zeroAngleRef;
+      const aWorld = rotateVec(ref.a, a.orientation);
+      const bWorld = rotateVec(ref.b, b.orientation);
+      // Use the side-A world axis as the swing axis (concentric residual
+      // bounds the disagreement). Normalize defensively in case the
+      // resolver hands back a non-unit direction.
+      const axis = normalizeSafe(ag.world.direction) ?? ag.world.direction;
+      // Project A and B onto the plane perpendicular to axis so atan2
+      // measures only the swing component (not any tilt out of plane).
+      const aPerp = projectPerp(aWorld, axis);
+      const bPerp = projectPerp(bWorld, axis);
+      const cosSwing = dot(aPerp, bPerp);
+      const crossAB = crossVec(aPerp, bPerp);
+      const sinSwing = dot(crossAB, axis);
+      const swingRad = Math.atan2(sinSwing, cosSwing);
+      if (mate.limit === undefined) return alignErr;
+      const minRad = (mate.limit.minAngleDeg * Math.PI) / 180;
+      const maxRad = (mate.limit.maxAngleDeg * Math.PI) / 180;
+      let limitPenaltyRad = 0;
+      if (swingRad > maxRad) limitPenaltyRad = swingRad - maxRad;
+      else if (swingRad < minRad) limitPenaltyRad = minRad - swingRad;
+      return alignErr + limitPenaltyRad;
+    }
+    // ── Phase 1 unsigned proxy branch (back-compat) ───────────────────
     const qa = a.orientation;
     const qb = b.orientation;
     const dotQ = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
@@ -556,8 +611,8 @@ function computeResidual(
     const approxAngleDeg = (approxAngleRad * 180) / Math.PI;
     // Symmetric bound: penalty triggered when |angle| exceeds either
     // limit endpoint's absolute value.
-    const minDeg = mate.limit.minAngleDeg;
-    const maxDeg = mate.limit.maxAngleDeg;
+    const minDeg = mate.limit!.minAngleDeg;
+    const maxDeg = mate.limit!.maxAngleDeg;
     let limitPenaltyDeg = 0;
     if (approxAngleDeg > maxDeg) {
       limitPenaltyDeg = approxAngleDeg - maxDeg;

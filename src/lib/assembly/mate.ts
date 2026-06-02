@@ -30,6 +30,8 @@
  *   - Interference check (Phase 3.4 — separate analysis pass)
  */
 
+import type { Vec3 } from '@/lib/sketch/sketchPlane';
+
 // ─── reference kinds ──────────────────────────────────────────────────────
 
 /**
@@ -173,17 +175,63 @@ export interface HingeLimit {
 }
 
 /**
+ * Phase 2 zero-reference vectors that define the hinge's signed swing
+ * angle (0° = "closed door" position).
+ *
+ * Each side carries:
+ *   - `a` / `b`: body-frame unit vector lying in the hinge's swing plane
+ *     (i.e., perpendicular to the hinge axis on that side). When both
+ *     parts are in their resolved world frame, the signed swing angle is
+ *     computed as `atan2((A × B) · axis, A · B)` where A and B are these
+ *     vectors after orientation rotation.
+ *   - `axisA` / `axisB`: body-frame hinge axis direction (unit). Required
+ *     so validateMate can locally check the perpendicularity invariant
+ *     `dot(a, axisA) ≈ 0` and `dot(b, axisB) ≈ 0` without consulting the
+ *     geometry resolver (the IR layer has no resolver access).
+ *
+ * When `zeroAngleRef` is omitted, the Phase 1 unsigned quaternion-dot
+ * proxy is used instead (back-compat). Phase 1 callers don't need to
+ * supply any extra data.
+ */
+export interface HingeZeroAngleRef {
+  /** Body-frame zero-angle reference vector on part A (⊥ axisA). */
+  a: Vec3;
+  /** Body-frame zero-angle reference vector on part B (⊥ axisB). */
+  b: Vec3;
+  /** Body-frame hinge axis direction on part A (unit). */
+  axisA: Vec3;
+  /** Body-frame hinge axis direction on part B (unit). */
+  axisB: Vec3;
+}
+
+/**
  * Hinge — composite coincident + concentric on a shared axis. The two
  * parts share an axis line and may rotate relative to each other around
  * that axis. Optional angular limits clamp the rotation range.
  *
  * Combined coincident+concentric: removes 5 DoF (only 1 rotational DoF
  * remains around the shared axis).
+ *
+ * Phase 1 vs Phase 2 swing angle measurement:
+ *   - Phase 1 (no `zeroAngleRef`): swing magnitude is approximated as the
+ *     unsigned quaternion-dot proxy `2·acos(|dot(q_a, q_b)|)`. Symmetric
+ *     bounds only. Documented mm-vs-rad mixing in the residual.
+ *   - Phase 2 (with `zeroAngleRef`): each side provides a body-frame
+ *     "zero" vector perpendicular to the hinge axis. The current swing
+ *     is measured signed via `atan2((A × B) · axis, A · B)` and bounded
+ *     against `limit.minAngleDeg / maxAngleDeg` (a true signed clamp).
  */
 export interface HingeMate extends BaseMate {
   kind: 'hinge';
   /** Optional angular range — undefined = unlimited (full 360° spin). */
   limit?: HingeLimit;
+  /**
+   * Optional Phase 2 body-frame zero-angle reference. When provided, the
+   * hinge residual uses a proper signed swing-angle measurement instead
+   * of the Phase 1 unsigned quaternion-dot proxy. See HingeZeroAngleRef
+   * for invariants.
+   */
+  zeroAngleRef?: HingeZeroAngleRef;
 }
 
 /**
@@ -330,6 +378,9 @@ export function validateMate(mate: Mate): void {
       );
     }
   }
+  if (mate.kind === 'hinge' && mate.zeroAngleRef !== undefined) {
+    validateHingeZeroAngleRef(mate.id, mate.zeroAngleRef);
+  }
   if (mate.kind === 'slot' && mate.slotLength !== undefined) {
     if (!Number.isFinite(mate.slotLength) || mate.slotLength <= 0) {
       throw new MateValidationError(
@@ -369,6 +420,59 @@ export function validateMate(mate: Mate): void {
       }
     }
   }
+}
+
+/**
+ * Validate a HingeZeroAngleRef:
+ *   - all four vectors finite + non-degenerate (length > eps)
+ *   - reference vector on side A is perpendicular to axis A (|dot| < eps)
+ *   - reference vector on side B is perpendicular to axis B (|dot| < eps)
+ *
+ * The perpendicularity check uses UNIT-NORMALIZED dot; vectors are auto-
+ * normalized before the test so callers may pass vectors of any
+ * positive magnitude. eps = 1e-6 in absolute cosine.
+ */
+function validateHingeZeroAngleRef(mateId: string, ref: HingeZeroAngleRef): void {
+  const EPS = 1e-6;
+  const named: ReadonlyArray<readonly [string, Vec3]> = [
+    ['zeroAngleRef.a', ref.a],
+    ['zeroAngleRef.b', ref.b],
+    ['zeroAngleRef.axisA', ref.axisA],
+    ['zeroAngleRef.axisB', ref.axisB],
+  ];
+  for (const [name, v] of named) {
+    if (!Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z)) {
+      throw new MateValidationError(
+        `hinge mate ${mateId}: ${name} must be finite`,
+      );
+    }
+    const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (len < EPS) {
+      throw new MateValidationError(
+        `hinge mate ${mateId}: ${name} must be non-zero`,
+      );
+    }
+  }
+  const cosA = unitDot(ref.a, ref.axisA);
+  if (Math.abs(cosA) > EPS) {
+    throw new MateValidationError(
+      `hinge mate ${mateId}: zeroAngleRef.a must be perpendicular to axisA ` +
+        `(|cos| = ${Math.abs(cosA).toExponential(2)})`,
+    );
+  }
+  const cosB = unitDot(ref.b, ref.axisB);
+  if (Math.abs(cosB) > EPS) {
+    throw new MateValidationError(
+      `hinge mate ${mateId}: zeroAngleRef.b must be perpendicular to axisB ` +
+        `(|cos| = ${Math.abs(cosB).toExponential(2)})`,
+    );
+  }
+}
+
+function unitDot(a: Vec3, b: Vec3): number {
+  const la = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+  const lb = Math.sqrt(b.x * b.x + b.y * b.y + b.z * b.z);
+  return (a.x * b.x + a.y * b.y + a.z * b.z) / (la * lb);
 }
 
 function isAllowedCombo(kind: MateKind, a: MateRefKind, b: MateRefKind): boolean {

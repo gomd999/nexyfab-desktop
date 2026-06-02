@@ -23,7 +23,7 @@ import {
   type PartInstance,
   type Quat,
 } from './assemblyState';
-import type { Mate, MateRef } from './mate';
+import { validateMate, MateValidationError, type Mate, type MateRef, type HingeMate } from './mate';
 import { vec3 } from '@/lib/sketch/sketchPlane';
 import { rotateVec } from './mateSolver';
 
@@ -628,5 +628,260 @@ describe('iterativeSolve — advanced mate edge cases', () => {
     expect(r.residuals[0]!.supported).toBe(true);
     // Intersecting axes are coplanar → residual = 0.
     expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+});
+
+// ─── Phase 2: signed-swing hinge (body-frame zero reference) ─────────────
+//
+// These cover the Phase 2 upgrade documented in mate.ts's HingeZeroAngleRef.
+// When the mate provides `zeroAngleRef`, the residual measures swing as
+// `atan2((A × B) · axis, A · B)` (signed). Phase 1 unsigned proxy is
+// retained as the fallback — covered by the existing tests above.
+describe('iterativeSolve — Phase 2 hinge with signed-swing zeroAngleRef', () => {
+  // Local helper: build a fixed/free pair sharing a +z hinge axis at world
+  // origin. The free part's orientation around +z is set by `freeYawRad`.
+  // Body-frame zero-vectors on both sides are +x (perpendicular to +z axis).
+  function buildSignedHingeFixture(opts: {
+    freeYawRad: number;
+    limit?: { minAngleDeg: number; maxAngleDeg: number };
+    withZeroRef?: boolean;
+  }): { state: AssemblyState; resolver: GeometryResolver } {
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', {
+      position: vec3(0, 0, 0),
+      fixed: true, // freeze placement so we measure ORIENTATION-driven residual
+      orientation: quatAxisAngle(0, 0, 1, opts.freeYawRad),
+    });
+    const mate: HingeMate = {
+      id: 'h_signed',
+      kind: 'hinge',
+      a: ref('f', 'ax_f', 'axis'),
+      b: ref('g', 'ax_g', 'axis'),
+      ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
+      ...(opts.withZeroRef ?? true
+        ? {
+            zeroAngleRef: {
+              a: vec3(1, 0, 0),
+              b: vec3(1, 0, 0),
+              axisA: vec3(0, 0, 1),
+              axisB: vec3(0, 0, 1),
+            },
+          }
+        : {}),
+    };
+    const state: AssemblyState = { parts: [fixed, free], mates: [mate] };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    return { state, resolver: makeResolver(refs) };
+  }
+
+  it('swing = 0° with limit [-90°, 90°] → limit residual ≈ 0', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: 0,
+      limit: { minAngleDeg: -90, maxAngleDeg: 90 },
+    });
+    const r = iterativeSolve(state, resolver);
+    expect(r.residuals).toHaveLength(1);
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('swing = 45° within [-90°, 90°] → limit residual ≈ 0', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (45 * Math.PI) / 180,
+      limit: { minAngleDeg: -90, maxAngleDeg: 90 },
+    });
+    const r = iterativeSolve(state, resolver);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('swing = +120° outside [-90°, 90°] → limit residual ≈ 30° (~0.524 rad)', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (120 * Math.PI) / 180,
+      limit: { minAngleDeg: -90, maxAngleDeg: 90 },
+    });
+    const r = iterativeSolve(state, resolver);
+    const expectedRad = (30 * Math.PI) / 180;
+    expect(r.residuals[0]!.residual).toBeGreaterThan(expectedRad - 1e-3);
+    expect(r.residuals[0]!.residual).toBeLessThan(expectedRad + 1e-3);
+  });
+
+  it('swing = -120° outside [-90°, 90°] → limit residual ≈ 30° (signed clamp on neg side)', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (-120 * Math.PI) / 180,
+      limit: { minAngleDeg: -90, maxAngleDeg: 90 },
+    });
+    const r = iterativeSolve(state, resolver);
+    const expectedRad = (30 * Math.PI) / 180;
+    expect(r.residuals[0]!.residual).toBeGreaterThan(expectedRad - 1e-3);
+    expect(r.residuals[0]!.residual).toBeLessThan(expectedRad + 1e-3);
+  });
+
+  it('signed swing distinguishes CW vs CCW (asymmetric limit [0°, 90°])', () => {
+    // +30° is inside → residual ≈ 0.
+    const ccw = buildSignedHingeFixture({
+      freeYawRad: (30 * Math.PI) / 180,
+      limit: { minAngleDeg: 0, maxAngleDeg: 90 },
+    });
+    const rCcw = iterativeSolve(ccw.state, ccw.resolver);
+    expect(rCcw.residuals[0]!.residual).toBeLessThan(1e-4);
+
+    // -30° is OUTSIDE the [0°, 90°] window → residual ≈ 30° in radians.
+    const cw = buildSignedHingeFixture({
+      freeYawRad: (-30 * Math.PI) / 180,
+      limit: { minAngleDeg: 0, maxAngleDeg: 90 },
+    });
+    const rCw = iterativeSolve(cw.state, cw.resolver);
+    const expectedRad = (30 * Math.PI) / 180;
+    expect(rCw.residuals[0]!.residual).toBeGreaterThan(expectedRad - 1e-3);
+    expect(rCw.residuals[0]!.residual).toBeLessThan(expectedRad + 1e-3);
+  });
+
+  it('validateMate throws when zeroAngleRef.a is not perpendicular to axisA', () => {
+    const m: HingeMate = {
+      id: 'h_bad_a',
+      kind: 'hinge',
+      a: ref('p1', 'ax1', 'axis'),
+      b: ref('p2', 'ax2', 'axis'),
+      zeroAngleRef: {
+        // a is NOT perpendicular to axisA (has a +z component along axisA)
+        a: vec3(1, 0, 1),
+        b: vec3(1, 0, 0),
+        axisA: vec3(0, 0, 1),
+        axisB: vec3(0, 0, 1),
+      },
+    };
+    expect(() => validateMate(m)).toThrow(MateValidationError);
+    expect(() => validateMate(m)).toThrow(/perpendicular/);
+  });
+
+  it('validateMate throws when zeroAngleRef.b is not perpendicular to axisB', () => {
+    const m: HingeMate = {
+      id: 'h_bad_b',
+      kind: 'hinge',
+      a: ref('p1', 'ax1', 'axis'),
+      b: ref('p2', 'ax2', 'axis'),
+      zeroAngleRef: {
+        a: vec3(1, 0, 0),
+        // b has a component along axisB
+        b: vec3(0, 1, 1),
+        axisA: vec3(0, 0, 1),
+        axisB: vec3(0, 0, 1),
+      },
+    };
+    expect(() => validateMate(m)).toThrow(MateValidationError);
+    expect(() => validateMate(m)).toThrow(/perpendicular/);
+  });
+
+  it('validateMate throws when any zeroAngleRef vector is zero-length', () => {
+    const m: HingeMate = {
+      id: 'h_zero',
+      kind: 'hinge',
+      a: ref('p1', 'ax1', 'axis'),
+      b: ref('p2', 'ax2', 'axis'),
+      zeroAngleRef: {
+        a: vec3(0, 0, 0),
+        b: vec3(1, 0, 0),
+        axisA: vec3(0, 0, 1),
+        axisB: vec3(0, 0, 1),
+      },
+    };
+    expect(() => validateMate(m)).toThrow(/non-zero/);
+  });
+
+  it('validateMate accepts perpendicular zeroAngleRef (no throw)', () => {
+    const m: HingeMate = {
+      id: 'h_ok',
+      kind: 'hinge',
+      a: ref('p1', 'ax1', 'axis'),
+      b: ref('p2', 'ax2', 'axis'),
+      limit: { minAngleDeg: -90, maxAngleDeg: 90 },
+      zeroAngleRef: {
+        a: vec3(1, 0, 0),
+        b: vec3(0, 1, 0),
+        axisA: vec3(0, 0, 1),
+        axisB: vec3(0, 0, 1),
+      },
+    };
+    expect(() => validateMate(m)).not.toThrow();
+  });
+
+  it('Phase 1 proxy still in effect when zeroAngleRef is absent (back-compat)', () => {
+    // Same fixture as the existing "h_over" test but assert sentinel
+    // values directly here to lock the Phase 1 branch in place.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', {
+      position: vec3(0, 0, 0),
+      fixed: true,
+      orientation: quatAxisAngle(0, 0, 1, (60 * Math.PI) / 180),
+    });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'h_phase1',
+          kind: 'hinge',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          limit: { minAngleDeg: -30, maxAngleDeg: 30 },
+          // zeroAngleRef intentionally OMITTED → Phase 1 unsigned proxy.
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    // Same proxy behavior as the older test: ~30° beyond limit → ~0.524 rad.
+    expect(r.residuals[0]!.residual).toBeGreaterThan(0.4);
+    expect(r.residuals[0]!.residual).toBeLessThan(0.7);
+  });
+
+  it('signed swing computes gracefully when concentric residual > 0 (axes misaligned)', () => {
+    // Side-A axis is +z; side-B axis is +y (90° misaligned). Free part has
+    // an additional 45° yaw around its own +z (= world +y after solver
+    // alignment would normally rotate the part, but here we freeze it).
+    // The Phase 2 swing path uses the side-A world axis as the swing
+    // axis (ag.world.direction), so the swing remains a finite measure
+    // of A_world vs B_world's angle around side-A's axis — graceful, not
+    // NaN. We just assert finite residual + supported=true.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', {
+      position: vec3(0, 0, 0),
+      fixed: true,
+      orientation: IDENTITY_QUAT,
+    });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'h_misaligned',
+          kind: 'hinge',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          limit: { minAngleDeg: -180, maxAngleDeg: 180 },
+          zeroAngleRef: {
+            a: vec3(1, 0, 0),
+            b: vec3(1, 0, 0),
+            axisA: vec3(0, 0, 1),
+            axisB: vec3(1, 0, 0), // matches side-B local axis
+          },
+        } as HingeMate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      // side-B axis in world is +y → genuinely misaligned with side-A's +z.
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    // Residual must be finite; the concentric alignErr dominates here
+    // (perpendicular axes intersecting at origin → align distance 0, but
+    // the part can't be moved because it's fixed; key check is "no NaN").
+    expect(Number.isFinite(r.residuals[0]!.residual)).toBe(true);
   });
 });
