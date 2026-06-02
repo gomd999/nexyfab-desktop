@@ -26,13 +26,19 @@ interface MountOpts {
   selectedConstraintId?: string;
   onSelect?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onValueChange?: (id: string, value: number) => void;
   dimensionOffset?: number;
   angleArcRadius?: number;
 }
 
-function mount(opts: MountOpts = {}): { onSelect?: (id: string) => void; onDelete?: (id: string) => void } {
+function mount(opts: MountOpts = {}): {
+  onSelect?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onValueChange?: (id: string, value: number) => void;
+} {
   const onSelect = opts.onSelect ?? vi.fn();
   const onDelete = opts.onDelete ?? vi.fn();
+  const onValueChange = opts.onValueChange;
   render(
     // The overlay returns a <g>; wrap it in a real <svg> so jsdom is happy.
     <svg data-testid="host-svg" width={400} height={400}>
@@ -41,12 +47,13 @@ function mount(opts: MountOpts = {}): { onSelect?: (id: string) => void; onDelet
         selectedConstraintId={opts.selectedConstraintId}
         onSelect={onSelect}
         onDelete={onDelete}
+        onValueChange={onValueChange}
         dimensionOffset={opts.dimensionOffset}
         angleArcRadius={opts.angleArcRadius}
       />
     </svg>,
   );
-  return { onSelect, onDelete };
+  return { onSelect, onDelete, onValueChange };
 }
 
 const dist = (
@@ -318,6 +325,166 @@ describe('SketchConstraintOverlay', () => {
     expect(screen.getByTestId('solver-constraint-overlay-h1').getAttribute('data-constraint-kind')).toBe('horizontal');
     expect(screen.getByTestId('solver-constraint-overlay-a1').getAttribute('data-constraint-kind')).toBe('angle');
     expect(screen.getByTestId('solver-constraint-overlay-eq1').getAttribute('data-constraint-kind')).toBe('equal_radius');
+  });
+
+  // ─── Phase 1.B inline edit ─────────────────────────────────────────────
+
+  describe('inline value edit (double-click)', () => {
+    it('distance: double-clicking the label swaps to a number input', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [dist('d-edit', { x: 0, y: 0 }, { x: 100, y: 0 }, 50)],
+        onValueChange,
+      });
+      // Pre: label visible, no input yet.
+      expect(screen.getByTestId('solver-constraint-overlay-d-edit-label')).toBeInTheDocument();
+      expect(screen.queryByTestId('solver-constraint-overlay-d-edit-edit-input')).toBeNull();
+      // Trigger edit.
+      const label = screen.getByTestId('solver-constraint-overlay-d-edit-label');
+      fireEvent.doubleClick(label);
+      // Post: input present, seeded with current value.
+      const input = screen.getByTestId('solver-constraint-overlay-d-edit-edit-input') as HTMLInputElement;
+      expect(input).toBeInTheDocument();
+      expect(input.value).toBe('50');
+      expect(input.type).toBe('number');
+      // onValueChange not fired yet (no commit).
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('distance: entering a new value + Enter fires onValueChange and exits edit', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [dist('d-enter', { x: 0, y: 0 }, { x: 100, y: 0 }, 50)],
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-d-enter-label'));
+      const input = screen.getByTestId('solver-constraint-overlay-d-enter-edit-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '75' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledWith('d-enter', 75);
+      // Input gone, label back.
+      expect(screen.queryByTestId('solver-constraint-overlay-d-enter-edit-input')).toBeNull();
+    });
+
+    it('distance: Esc cancels the edit without firing onValueChange', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [dist('d-esc', { x: 0, y: 0 }, { x: 100, y: 0 }, 50)],
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-d-esc-label'));
+      const input = screen.getByTestId('solver-constraint-overlay-d-esc-edit-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '999' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('solver-constraint-overlay-d-esc-edit-input')).toBeNull();
+    });
+
+    it('angle: double-clicking the label swaps to a number input seeded in degrees', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [
+          angle(
+            'a-edit',
+            [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+            [{ x: 0, y: 0 }, { x: 0, y: 100 }],
+            Math.PI / 2,
+          ),
+        ],
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-a-edit-label'));
+      const input = screen.getByTestId('solver-constraint-overlay-a-edit-edit-input') as HTMLInputElement;
+      expect(input).toBeInTheDocument();
+      // 90° (π/2 rad) → input shows "90".
+      expect(Number(input.value)).toBeCloseTo(90, 5);
+    });
+
+    it('angle: entering degrees + Enter fires onValueChange with degree value', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [
+          angle(
+            'a-commit',
+            [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+            [{ x: 0, y: 0 }, { x: 0, y: 100 }],
+            Math.PI / 2,
+          ),
+        ],
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-a-commit-label'));
+      const input = screen.getByTestId('solver-constraint-overlay-a-commit-edit-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '45' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledWith('a-commit', 45);
+    });
+
+    it('horizontal: double-clicking the badge does NOT swap to an input (no editable value)', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [badge('h-edit', 'horizontal', [{ x: 0, y: 0 }, { x: 100, y: 0 }])],
+        onValueChange,
+      });
+      const badgeEl = screen.getByTestId('solver-constraint-overlay-h-edit-badge');
+      fireEvent.doubleClick(badgeEl);
+      expect(screen.queryByTestId('solver-constraint-overlay-h-edit-edit-input')).toBeNull();
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('vertical: double-click on badge is a no-op', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [badge('v-edit', 'vertical', [{ x: 0, y: 0 }, { x: 0, y: 100 }])],
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-v-edit-badge'));
+      expect(screen.queryByTestId('solver-constraint-overlay-v-edit-edit-input')).toBeNull();
+    });
+
+    it('inline edit is disabled when onValueChange is not provided', () => {
+      mount({
+        // No onValueChange — back-compat path.
+        constraints: [dist('d-noop', { x: 0, y: 0 }, { x: 100, y: 0 }, 50)],
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-d-noop-label'));
+      // No input swapped in.
+      expect(screen.queryByTestId('solver-constraint-overlay-d-noop-edit-input')).toBeNull();
+    });
+
+    it('Enter with NaN input cancels (does not call onValueChange)', () => {
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [dist('d-nan', { x: 0, y: 0 }, { x: 100, y: 0 }, 50)],
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-d-nan-label'));
+      const input = screen.getByTestId('solver-constraint-overlay-d-nan-edit-input') as HTMLInputElement;
+      // Browser <input type=number> coerces "abc" → empty string. Set the
+      // underlying value via the native HTMLInputElement setter so jsdom
+      // doesn't strip it on a "change" event.
+      Object.defineProperty(input, 'value', { writable: true, value: 'not-a-number' });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('double-click on label does not bubble into the group onSelect handler', () => {
+      const onSelect = vi.fn();
+      const onValueChange = vi.fn();
+      mount({
+        constraints: [dist('d-bubble', { x: 0, y: 0 }, { x: 100, y: 0 }, 50)],
+        onSelect,
+        onValueChange,
+      });
+      fireEvent.doubleClick(screen.getByTestId('solver-constraint-overlay-d-bubble-label'));
+      // onSelect listens to single-clicks; double-click stopPropagation
+      // ensures we don't trigger constraint selection while opening the editor.
+      expect(onSelect).not.toHaveBeenCalled();
+      // Input is mounted.
+      expect(screen.getByTestId('solver-constraint-overlay-d-bubble-edit-input')).toBeInTheDocument();
+    });
   });
 
   it('vertical distance: arrows still emit and label is to the side of the segment', () => {

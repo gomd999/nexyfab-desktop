@@ -391,6 +391,253 @@ describe('SolverSketchEditor + SketchConstraintOverlay integration', () => {
     await waitFor(() => expect(getOverlayChildren()[0]!.getAttribute('data-selected')).toBe('false'));
   });
 
+  // ─── Phase 1.B inline edit integration ─────────────────────────────────
+
+  it('distance label double-click → input → Enter updates the solver value', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 140, 100);
+    await waitFor(() => expect(getPoints().length).toBe(2));
+
+    await selectTwoPoints();
+    fireEvent.click(constraintBtn('distance'));
+    const input = await screen.findByTestId('solver-constraint-distance-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '40' } });
+    fireEvent.click(screen.getByTestId('solver-constraint-distance-submit'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const group = getOverlayChildren()[0]!;
+    const cid = group.getAttribute('data-testid')!.replace('solver-constraint-overlay-', '');
+
+    // Double-click the label → input appears, seeded with current value.
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    const editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    expect(editInput.value).toBe('40');
+    fireEvent.change(editInput, { target: { value: '90' } });
+    fireEvent.keyDown(editInput, { key: 'Enter' });
+
+    // Label re-renders with the new value; solver re-solved.
+    await waitFor(() => {
+      const lbl = screen.getByTestId(`solver-constraint-overlay-${cid}-label`);
+      expect(lbl.textContent).toBe('90');
+    });
+    // Point separation should now reflect the new distance (≈90 px on canvas).
+    const pts = getPoints();
+    const cx0 = Number(pts[0]!.getAttribute('cx'));
+    const cx1 = Number(pts[1]!.getAttribute('cx'));
+    const cy0 = Number(pts[0]!.getAttribute('cy'));
+    const cy1 = Number(pts[1]!.getAttribute('cy'));
+    expect(Math.hypot(cx1 - cx0, cy1 - cy0)).toBeCloseTo(90, 1);
+  });
+
+  it('Esc cancels the inline edit without changing the solver value', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 150, 100);
+    await waitFor(() => expect(getPoints().length).toBe(2));
+
+    await selectTwoPoints();
+    fireEvent.click(constraintBtn('distance'));
+    const input = await screen.findByTestId('solver-constraint-distance-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '50' } });
+    fireEvent.click(screen.getByTestId('solver-constraint-distance-submit'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    const editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    fireEvent.change(editInput, { target: { value: '999' } });
+    fireEvent.keyDown(editInput, { key: 'Escape' });
+
+    // Label unchanged.
+    await waitFor(() => {
+      const lbl = screen.getByTestId(`solver-constraint-overlay-${cid}-label`);
+      expect(lbl.textContent).toBe('50');
+    });
+    expect(screen.queryByTestId(`solver-constraint-overlay-${cid}-edit-input`)).toBeNull();
+  });
+
+  it('angle label inline edit updates the solver in radians (degrees on the wire)', async () => {
+    await mountReady();
+    await drawLine(100, 100, 200, 100); // horizontal-ish
+    await drawLine(100, 100, 200, 200); // 45° to first
+
+    await selectTwoLines();
+    fireEvent.click(constraintBtn('angle'));
+    const input = await screen.findByTestId('solver-constraint-angle-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '30' } });
+    fireEvent.click(screen.getByTestId('solver-constraint-angle-submit'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    const editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    // Seeded in degrees — close to 30 (formatter trims to integer when whole).
+    expect(Number(editInput.value)).toBeCloseTo(30, 0);
+    fireEvent.change(editInput, { target: { value: '60' } });
+    fireEvent.keyDown(editInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      const lbl = screen.getByTestId(`solver-constraint-overlay-${cid}-label`);
+      // Solver should have re-solved at 60° (formatter strips ".0").
+      expect(lbl.textContent).toMatch(/^60(\.\d+)?°$/);
+    });
+  });
+
+  it('horizontal badge double-click does NOT open an inline editor', async () => {
+    await mountReady();
+    await drawLine(100, 100, 200, 140);
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-select'));
+    fireEvent.click(getLines()[0]!);
+    fireEvent.click(constraintBtn('horizontal'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-badge`));
+    expect(screen.queryByTestId(`solver-constraint-overlay-${cid}-edit-input`)).toBeNull();
+  });
+
+  it('inline edit rejecting a negative distance leaves the value untouched', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 140, 100);
+    await waitFor(() => expect(getPoints().length).toBe(2));
+
+    await selectTwoPoints();
+    fireEvent.click(constraintBtn('distance'));
+    const input = await screen.findByTestId('solver-constraint-distance-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '40' } });
+    fireEvent.click(screen.getByTestId('solver-constraint-distance-submit'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    const editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    fireEvent.change(editInput, { target: { value: '-5' } });
+    fireEvent.keyDown(editInput, { key: 'Enter' });
+
+    // Editor closes regardless (commit attempt was made), but the solver
+    // rejection means the label value stays unchanged.
+    await waitFor(() => {
+      expect(screen.queryByTestId(`solver-constraint-overlay-${cid}-edit-input`)).toBeNull();
+    });
+    const lbl = screen.getByTestId(`solver-constraint-overlay-${cid}-label`);
+    expect(lbl.textContent).toBe('40');
+  });
+
+  it('inline edit rejecting NaN leaves the value untouched (Esc-like cancel)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 140, 100);
+    await waitFor(() => expect(getPoints().length).toBe(2));
+
+    await selectTwoPoints();
+    fireEvent.click(constraintBtn('distance'));
+    const input = await screen.findByTestId('solver-constraint-distance-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '40' } });
+    fireEvent.click(screen.getByTestId('solver-constraint-distance-submit'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    const editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    Object.defineProperty(editInput, 'value', { writable: true, value: 'not-a-number' });
+    fireEvent.keyDown(editInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(`solver-constraint-overlay-${cid}-edit-input`)).toBeNull();
+    });
+    const lbl = screen.getByTestId(`solver-constraint-overlay-${cid}-label`);
+    expect(lbl.textContent).toBe('40');
+  });
+
+  it('parallel badge double-click is a no-op (no editor opens)', async () => {
+    await mountReady();
+    await drawLine(100, 100, 200, 110);
+    await drawLine(100, 200, 200, 260);
+
+    await selectTwoLines();
+    fireEvent.click(constraintBtn('parallel'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-badge`));
+    expect(screen.queryByTestId(`solver-constraint-overlay-${cid}-edit-input`)).toBeNull();
+  });
+
+  it('inline edit, then re-edit: the input re-seeds with the updated value', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 130, 100);
+    await waitFor(() => expect(getPoints().length).toBe(2));
+
+    await selectTwoPoints();
+    fireEvent.click(constraintBtn('distance'));
+    const input = await screen.findByTestId('solver-constraint-distance-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '20' } });
+    fireEvent.click(screen.getByTestId('solver-constraint-distance-submit'));
+
+    await waitFor(() => expect(getOverlay().getAttribute('data-count')).toBe('1'));
+    const cid = getOverlayChildren()[0]!.getAttribute('data-testid')!.replace(
+      'solver-constraint-overlay-', '',
+    );
+
+    // First edit: 20 → 55
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    let editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    fireEvent.change(editInput, { target: { value: '55' } });
+    fireEvent.keyDown(editInput, { key: 'Enter' });
+    await waitFor(() => {
+      expect(screen.getByTestId(`solver-constraint-overlay-${cid}-label`).textContent).toBe('55');
+    });
+
+    // Second edit should re-seed with 55, not 20.
+    fireEvent.doubleClick(screen.getByTestId(`solver-constraint-overlay-${cid}-label`));
+    editInput = await screen.findByTestId(
+      `solver-constraint-overlay-${cid}-edit-input`,
+    ) as HTMLInputElement;
+    expect(editInput.value).toBe('55');
+    fireEvent.keyDown(editInput, { key: 'Escape' });
+  });
+
   // ─── rect tool auto-adds 4 H/V constraints — overlay surfaces them ─────
   it('rect tool adds 4 H/V constraints and the overlay renders all 4 badges', async () => {
     await mountReady();

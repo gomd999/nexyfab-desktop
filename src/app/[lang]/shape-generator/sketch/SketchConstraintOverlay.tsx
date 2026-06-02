@@ -147,6 +147,24 @@ export interface SketchConstraintOverlayProps {
   onSelect?: (id: string) => void;
   onDelete?: (id: string) => void;
   /**
+   * Inline edit hook (Phase 1.B). When provided, double-clicking a
+   * distance / angle label swaps the label for an `<input type=number>`
+   * with the current value (distance in sketch mm; angle in degrees —
+   * to match what the user reads on the label). Enter commits the new
+   * value via `onValueChange`; Esc cancels without firing.
+   *
+   * Geometric constraints (horizontal/vertical/parallel/perpendicular/
+   * coincident/tangent/equal_length/equal_radius/fix) have no editable
+   * value and ignore the double-click. When `onValueChange` is not
+   * provided, double-click is also a no-op (back-compat with the
+   * original Phase 1.B overlay).
+   *
+   * For angle constraints, the input value is interpreted as **degrees**
+   * (matching the on-screen label). The caller is responsible for the
+   * deg → rad conversion if their solver speaks radians.
+   */
+  onValueChange?: (id: string, value: number) => void;
+  /**
    * Perpendicular offset (sketch units) of the distance dim-line from
    * the measured segment. Default 20 — readable at ~2 px/mm.
    */
@@ -270,6 +288,115 @@ interface RenderCtx {
   labelFill: string;
   onSelect?: (id: string) => void;
   onDelete?: (id: string) => void;
+  /** Whether inline value editing is wired (i.e. onValueChange provided). */
+  editable: boolean;
+  /** True if this constraint is currently being edited (label hidden, input shown). */
+  editing: boolean;
+  onBeginEdit?: (id: string) => void;
+  /**
+   * Commit a parsed new value. Callers (DistancePart/AnglePart) handle
+   * the unit conversion (angle = degrees on the wire) so this just
+   * receives a finite number ready for the solver.
+   */
+  onCommitValue?: (id: string, value: number) => void;
+  onCancelEdit?: () => void;
+}
+
+// ─── inline editor ───────────────────────────────────────────────────────
+
+interface InlineEditProps {
+  id: string;
+  /** Initial value to seed the input (already in the unit shown on screen). */
+  initial: number;
+  /** Screen-space anchor for the foreignObject wrapper. */
+  x: number;
+  y: number;
+  /** "mm" for distance, "°" for angle — purely cosmetic, prepended as placeholder. */
+  unit: string;
+  ctx: RenderCtx;
+}
+
+/**
+ * SVG-foreignObject-hosted <input type=number> for inline label edit.
+ *
+ * Lifecycle:
+ *   - Mounts seeded with `initial`. Auto-focus + select so the user can
+ *     type the new value immediately.
+ *   - Enter        → parse → ctx.onCommitValue(id, parsed) → editor stops.
+ *   - Esc          → ctx.onCancelEdit() (no commit).
+ *   - Blur         → soft-cancel (no commit). This matches the typical
+ *                    spreadsheet UX where clicking elsewhere abandons the
+ *                    edit without applying a partial number.
+ *
+ * Validation: defers parsing rejection to the caller. We only ensure the
+ * value is finite before calling onCommitValue. Distance < 0 / NaN are
+ * caught in the solver setter (setConstraintValue throws), which the
+ * editor's handler catches and silently no-ops.
+ */
+function InlineEdit({ id, initial, x, y, unit, ctx }: InlineEditProps): React.ReactElement {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  React.useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      const raw = inputRef.current?.value ?? '';
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        ctx.onCommitValue?.(id, parsed);
+      } else {
+        // Non-finite input → drop the edit without firing onValueChange.
+        ctx.onCancelEdit?.();
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      ctx.onCancelEdit?.();
+    }
+  };
+
+  // 78 × 22 px input — wide enough for "123.45" + the placeholder unit
+  // without clipping. Centered on (x, y).
+  const W = 78;
+  const H = 22;
+  return (
+    <foreignObject
+      x={x - W / 2}
+      y={y - H / 2}
+      width={W}
+      height={H}
+      data-testid={`solver-constraint-overlay-${id}-edit`}
+    >
+      <input
+        ref={inputRef}
+        type="number"
+        defaultValue={String(initial)}
+        placeholder={unit}
+        step="any"
+        onKeyDown={handleKeyDown}
+        onBlur={() => ctx.onCancelEdit?.()}
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`solver-constraint-overlay-${id}-edit-input`}
+        style={{
+          width: '100%',
+          height: '100%',
+          boxSizing: 'border-box',
+          fontSize: 11,
+          padding: '2px 4px',
+          border: `1px solid ${COLOR_SELECTED}`,
+          borderRadius: 3,
+          background: COLOR_BADGE_BG,
+          color: COLOR_LABEL,
+          fontFamily: 'system-ui, sans-serif',
+          outline: 'none',
+        }}
+      />
+    </foreignObject>
+  );
 }
 
 interface DistanceProps {
@@ -281,8 +408,25 @@ interface DistanceProps {
 function DistancePart({ c, ctx, offset }: DistanceProps): React.ReactElement {
   const seg = sub(c.p2, c.p1);
   const segLen = length(seg);
+  const handleLabelDouble = (evt: React.MouseEvent<SVGTextElement>): void => {
+    if (!ctx.editable) return;
+    evt.stopPropagation();
+    ctx.onBeginEdit?.(c.id);
+  };
   // Degenerate segment (p1 === p2): just render the label at the point.
   if (segLen < 1e-6) {
+    if (ctx.editing) {
+      return (
+        <InlineEdit
+          id={c.id}
+          initial={c.value}
+          x={c.p1.x}
+          y={c.p1.y - 6}
+          unit="mm"
+          ctx={ctx}
+        />
+      );
+    }
     return (
       <text
         x={c.p1.x}
@@ -291,6 +435,8 @@ function DistancePart({ c, ctx, offset }: DistanceProps): React.ReactElement {
         textAnchor="middle"
         fill={ctx.labelFill}
         stroke="none"
+        style={ctx.editable ? { cursor: 'text' } : undefined}
+        onDoubleClick={handleLabelDouble}
         data-testid={`solver-constraint-overlay-${c.id}-label`}
       >
         {formatDistance(c.value)}
@@ -348,19 +494,32 @@ function DistancePart({ c, ctx, offset }: DistanceProps): React.ReactElement {
         stroke="none"
         data-testid={`solver-constraint-overlay-${c.id}-arrow-b`}
       />
-      {/* numeric label */}
-      <text
-        x={labelPos.x}
-        y={labelPos.y}
-        fontSize={FONT_SIZE}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={ctx.labelFill}
-        stroke="none"
-        data-testid={`solver-constraint-overlay-${c.id}-label`}
-      >
-        {formatDistance(c.value)}
-      </text>
+      {/* numeric label or inline input (double-click to edit) */}
+      {ctx.editing ? (
+        <InlineEdit
+          id={c.id}
+          initial={c.value}
+          x={labelPos.x}
+          y={labelPos.y}
+          unit="mm"
+          ctx={ctx}
+        />
+      ) : (
+        <text
+          x={labelPos.x}
+          y={labelPos.y}
+          fontSize={FONT_SIZE}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={ctx.labelFill}
+          stroke="none"
+          style={ctx.editable ? { cursor: 'text' } : undefined}
+          onDoubleClick={handleLabelDouble}
+          data-testid={`solver-constraint-overlay-${c.id}-label`}
+        >
+          {formatDistance(c.value)}
+        </text>
+      )}
     </>
   );
 }
@@ -378,6 +537,14 @@ function AnglePart({ c, ctx, arcRadius }: AngleProps): React.ReactElement {
   // Choose a "center" anchor: prefer intersection; fall back to mean of
   // all midpoints when parallel (so we still surface a constraint badge).
   const center: Pt = inter ?? midpoint(midpoint(a1, a2), midpoint(b1, b2));
+  const handleLabelDouble = (evt: React.MouseEvent<SVGTextElement>): void => {
+    if (!ctx.editable) return;
+    evt.stopPropagation();
+    ctx.onBeginEdit?.(c.id);
+  };
+  // Angle label is shown in degrees, so the inline editor seeds with
+  // degrees too. Callers convert back to radians in their commit handler.
+  const angleDeg = (c.value * 180) / Math.PI;
 
   // Direction unit vectors away from the center along each line. We pick
   // whichever endpoint of each line is farther from the center so the arc
@@ -388,6 +555,18 @@ function AnglePart({ c, ctx, arcRadius }: AngleProps): React.ReactElement {
   const d2 = normalize(sub(d2Raw, center));
   // If either direction is degenerate, draw label only.
   if (length(d1) < 1e-9 || length(d2) < 1e-9) {
+    if (ctx.editing) {
+      return (
+        <InlineEdit
+          id={c.id}
+          initial={angleDeg}
+          x={center.x}
+          y={center.y - 6}
+          unit="°"
+          ctx={ctx}
+        />
+      );
+    }
     return (
       <text
         x={center.x}
@@ -396,6 +575,8 @@ function AnglePart({ c, ctx, arcRadius }: AngleProps): React.ReactElement {
         textAnchor="middle"
         fill={ctx.labelFill}
         stroke="none"
+        style={ctx.editable ? { cursor: 'text' } : undefined}
+        onDoubleClick={handleLabelDouble}
         data-testid={`solver-constraint-overlay-${c.id}-label`}
       >
         {formatAngleDeg(c.value)}
@@ -432,18 +613,31 @@ function AnglePart({ c, ctx, arcRadius }: AngleProps): React.ReactElement {
         strokeDasharray="4 3"
         data-testid={`solver-constraint-overlay-${c.id}-arc`}
       />
-      <text
-        x={labelPos.x}
-        y={labelPos.y}
-        fontSize={FONT_SIZE}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={ctx.labelFill}
-        stroke="none"
-        data-testid={`solver-constraint-overlay-${c.id}-label`}
-      >
-        {formatAngleDeg(c.value)}
-      </text>
+      {ctx.editing ? (
+        <InlineEdit
+          id={c.id}
+          initial={angleDeg}
+          x={labelPos.x}
+          y={labelPos.y}
+          unit="°"
+          ctx={ctx}
+        />
+      ) : (
+        <text
+          x={labelPos.x}
+          y={labelPos.y}
+          fontSize={FONT_SIZE}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={ctx.labelFill}
+          stroke="none"
+          style={ctx.editable ? { cursor: 'text' } : undefined}
+          onDoubleClick={handleLabelDouble}
+          data-testid={`solver-constraint-overlay-${c.id}-label`}
+        >
+          {formatAngleDeg(c.value)}
+        </text>
+      )}
     </>
   );
 }
@@ -519,6 +713,12 @@ interface RowProps {
   selected: boolean;
   onSelect?: (id: string) => void;
   onDelete?: (id: string) => void;
+  /** Inline-edit fields — see SketchConstraintOverlayProps.onValueChange. */
+  editable: boolean;
+  editing: boolean;
+  onBeginEdit?: (id: string) => void;
+  onCommitValue?: (id: string, value: number) => void;
+  onCancelEdit?: () => void;
   dimensionOffset: number;
   angleArcRadius: number;
 }
@@ -566,13 +766,30 @@ function ConstraintRow({
   selected,
   onSelect,
   onDelete,
+  editable,
+  editing,
+  onBeginEdit,
+  onCommitValue,
+  onCancelEdit,
   dimensionOffset,
   angleArcRadius,
 }: RowProps): React.ReactElement {
   const stroke = selected ? COLOR_SELECTED : COLOR_BASE;
   const strokeWidth = selected ? STROKE_SELECTED : STROKE_BASE;
   const labelFill = selected ? COLOR_LABEL_SELECTED : COLOR_LABEL;
-  const ctx: RenderCtx = { selected, stroke, strokeWidth, labelFill, onSelect, onDelete };
+  const ctx: RenderCtx = {
+    selected,
+    stroke,
+    strokeWidth,
+    labelFill,
+    onSelect,
+    onDelete,
+    editable,
+    editing,
+    onBeginEdit,
+    onCommitValue,
+    onCancelEdit,
+  };
 
   const handleClick = (evt: React.MouseEvent<SVGGElement>): void => {
     evt.stopPropagation();
@@ -641,9 +858,46 @@ export default function SketchConstraintOverlay({
   selectedConstraintId,
   onSelect,
   onDelete,
+  onValueChange,
   dimensionOffset = 20,
   angleArcRadius = 24,
 }: SketchConstraintOverlayProps): React.ReactElement {
+  // Local-only edit state. We deliberately don't lift this — the parent
+  // doesn't need to know which constraint is being edited, only the final
+  // committed value via `onValueChange`. ESC / blur / Enter all converge
+  // on the same "clear editing id" path.
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const editable = typeof onValueChange === 'function';
+
+  // If the constraint being edited gets removed from the constraints list
+  // (e.g. delete fired from elsewhere), drop the editing state so we don't
+  // strand an invisible input.
+  React.useEffect(() => {
+    if (editingId === null) return;
+    const stillExists = constraints.some((c) => c.id === editingId);
+    if (!stillExists) setEditingId(null);
+  }, [constraints, editingId]);
+
+  const handleBeginEdit = React.useCallback(
+    (id: string): void => {
+      if (!editable) return;
+      setEditingId(id);
+    },
+    [editable],
+  );
+  const handleCommitValue = React.useCallback(
+    (id: string, value: number): void => {
+      setEditingId(null);
+      // The InlineEdit guarantees finite; the host (and ultimately the
+      // solver) is responsible for any further validation (e.g. distance > 0).
+      onValueChange?.(id, value);
+    },
+    [onValueChange],
+  );
+  const handleCancelEdit = React.useCallback((): void => {
+    setEditingId(null);
+  }, []);
+
   return (
     <g data-testid="solver-constraint-overlay" data-count={constraints.length}>
       {constraints.map((c) => (
@@ -653,6 +907,11 @@ export default function SketchConstraintOverlay({
           selected={c.id === selectedConstraintId}
           onSelect={onSelect}
           onDelete={onDelete}
+          editable={editable}
+          editing={editable && editingId === c.id}
+          onBeginEdit={handleBeginEdit}
+          onCommitValue={handleCommitValue}
+          onCancelEdit={handleCancelEdit}
           dimensionOffset={dimensionOffset}
           angleArcRadius={angleArcRadius}
         />

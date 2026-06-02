@@ -1495,6 +1495,37 @@ export default function SolverSketchEditor({
     [solver, solveAndApply],
   );
 
+  // ─── inline value edit (Phase 1.B overlay double-click) ──────────────
+  //
+  // The overlay seeds its <input> with the on-screen value (distance =
+  // sketch mm, angle = degrees) so the user reads + edits the same units.
+  // We convert back to the solver's internal units (radians for angle)
+  // here before pushing to setConstraintValue.
+  //
+  // Validation: setConstraintValue throws on non-finite / non-positive
+  // distances. We catch silently — keeping the constraint at the previous
+  // value rather than rejecting in a way that pops UI noise mid-edit.
+  // The status pill will surface any post-solve conflicts.
+  const handleConstraintValueChange = useCallback(
+    (id: string, newValue: number): void => {
+      if (!solver) return;
+      const rec = constraintSnapshot.find((c) => c.id === id);
+      if (!rec) return;
+      // Angle is stored in radians on the solver side but the overlay
+      // shows degrees — convert before dispatch.
+      const solverValue = rec.kind === 'angle' ? (newValue * Math.PI) / 180 : newValue;
+      try {
+        const updated = solver.setConstraintValue(id as ConstraintId, solverValue);
+        if (!updated) return; // unknown id or non-dimensional kind
+        solveAndApply();
+      } catch {
+        // Invalid value (non-finite / non-positive distance) — swallow.
+        // The label stays at its previous solved value; user can re-try.
+      }
+    },
+    [solver, constraintSnapshot, solveAndApply],
+  );
+
   // ─── SketchEntityPropertyPanel bridge ──────────────────────────────────
   //
   // Derive an EntityData snapshot of the currently selected entities so the
@@ -1938,6 +1969,7 @@ export default function SolverSketchEditor({
           selectedConstraintId={selectedConstraintId ?? undefined}
           onSelect={handleConstraintSelect}
           onDelete={handleConstraintDelete}
+          onValueChange={handleConstraintValueChange}
         />
 
         {/* in-progress preview */}

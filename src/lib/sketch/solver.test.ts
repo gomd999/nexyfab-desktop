@@ -201,6 +201,97 @@ describe('SketchSolver — mutation', () => {
   });
 });
 
+describe('SketchSolver — setConstraintValue (Phase 1.B inline edit)', () => {
+  it('updates a distance constraint and the next solve respects the new value', async () => {
+    solver = await createSketchSolver();
+    const p1 = solver.addPoint(0, 0, { fixed: true });
+    const p2 = solver.addPoint(10, 0);
+    const k = solver.addDistance(p1, p2, 10);
+    solver.solve();
+    expect(solver.point(p2).x).toBeCloseTo(10, 4);
+
+    const ok = solver.setConstraintValue(k, 25);
+    expect(ok).toBe(true);
+    const r = solver.solve();
+    expect(r.success).toBe(true);
+    const b = solver.point(p2);
+    expect(Math.hypot(b.x, b.y)).toBeCloseTo(25, 3);
+  });
+
+  it('updates an angle constraint and the next solve respects the new angle', async () => {
+    solver = await createSketchSolver();
+    const o = solver.addPoint(0, 0, { fixed: true });
+    const xEnd = solver.addPoint(10, 0, { fixed: true });
+    const l1 = solver.addLine(o, xEnd);
+    const free = solver.addPoint(5, 2);
+    const l2 = solver.addLine(o, free);
+    const k = solver.addAngle(l1, l2, Math.PI / 4);
+    solver.solve();
+
+    const ok = solver.setConstraintValue(k, Math.PI / 6); // 30°
+    expect(ok).toBe(true);
+    const r = solver.solve();
+    expect(r.success).toBe(true);
+    const f = solver.point(free);
+    expect(Math.abs(Math.abs(Math.atan2(f.y, f.x)) - Math.PI / 6)).toBeLessThan(1e-3);
+  });
+
+  it('rejects non-finite values with a thrown error', async () => {
+    solver = await createSketchSolver();
+    const p1 = solver.addPoint(0, 0, { fixed: true });
+    const p2 = solver.addPoint(10, 0);
+    const k = solver.addDistance(p1, p2, 10);
+    expect(() => solver!.setConstraintValue(k, NaN)).toThrow(/finite/);
+    expect(() => solver!.setConstraintValue(k, Infinity)).toThrow(/finite/);
+  });
+
+  it('rejects non-positive distance values', async () => {
+    solver = await createSketchSolver();
+    const p1 = solver.addPoint(0, 0, { fixed: true });
+    const p2 = solver.addPoint(10, 0);
+    const k = solver.addDistance(p1, p2, 10);
+    expect(() => solver!.setConstraintValue(k, -5)).toThrow(/> 0/);
+    expect(() => solver!.setConstraintValue(k, 0)).toThrow(/> 0/);
+  });
+
+  it('is a silent no-op for unknown constraint ids', async () => {
+    solver = await createSketchSolver();
+    // No constraints added; arbitrary id is unknown.
+    const ok = solver.setConstraintValue(
+      'k-nope' as unknown as Parameters<SketchSolver['setConstraintValue']>[0],
+      42,
+    );
+    expect(ok).toBe(false);
+  });
+
+  it('is a silent no-op for non-dimensional constraints (horizontal/parallel)', async () => {
+    solver = await createSketchSolver();
+    const p1 = solver.addPoint(0, 0, { fixed: true });
+    const p2 = solver.addPoint(10, 3);
+    const l = solver.addLine(p1, p2);
+    const kH = solver.addHorizontal(l);
+
+    const ok = solver.setConstraintValue(kH, 999);
+    expect(ok).toBe(false);
+    // Constraint snapshot still reflects horizontal kind, untouched.
+    const snap = solver.getConstraints();
+    expect(snap.find((c) => c.id === kH)?.kind).toBe('horizontal');
+    expect(snap.find((c) => c.id === kH)?.value).toBeUndefined();
+  });
+
+  it('reflects new value in getConstraints() snapshot immediately (pre-solve)', async () => {
+    solver = await createSketchSolver();
+    const p1 = solver.addPoint(0, 0, { fixed: true });
+    const p2 = solver.addPoint(10, 0);
+    const k = solver.addDistance(p1, p2, 10);
+    solver.solve();
+    solver.setConstraintValue(k, 33);
+    const snap = solver.getConstraints();
+    const rec = snap.find((c) => c.id === k);
+    expect(rec?.value).toBe(33);
+  });
+});
+
 describe('SketchSolver — lifecycle', () => {
   it('throws after destroy', async () => {
     solver = await createSketchSolver();

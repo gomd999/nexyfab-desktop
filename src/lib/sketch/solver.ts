@@ -499,6 +499,91 @@ export class SketchSolver {
   }
 
   /**
+   * Update the numeric value of an existing dimensional constraint
+   * (distance / angle / radius). Mutates both the JS-side `ConstraintRecord`
+   * (so the overlay snapshot sees the new value) AND the primitive that
+   * was pushed to planegcs (so the next solve reconciles geometry against
+   * the new target). Other kinds are silent no-ops — geometric constraints
+   * (horizontal/vertical/parallel/perpendicular/coincident/tangent) have
+   * no editable value.
+   *
+   * Phase 1.B inline-edit hook: SketchConstraintOverlay double-clicks a
+   * distance/angle label, prompts the user for a new number, and routes
+   * the result here. The editor then calls solve() to refresh point
+   * positions + dof + status.
+   *
+   * Validation policy: rejects non-finite values and (for distance/radius)
+   * non-positive values. Throws on invalid input rather than silently
+   * ignoring — caller can catch + re-display the prompt.
+   *
+   * Returns `true` if a record/primitive was updated, `false` if the id
+   * was unknown OR refers to a non-dimensional constraint.
+   */
+  setConstraintValue(id: ConstraintId, value: number): boolean {
+    this.assertAlive();
+    const rec = this.constraints.get(id);
+    if (!rec) return false;
+    // Only dimensional kinds have editable values.
+    if (rec.kind !== 'distance' && rec.kind !== 'angle' && rec.kind !== 'radius') {
+      return false;
+    }
+    if (!Number.isFinite(value)) {
+      throw new Error(`setConstraintValue: value must be finite, got ${value}`);
+    }
+    if ((rec.kind === 'distance' || rec.kind === 'radius') && value <= 0) {
+      throw new Error(`setConstraintValue: ${rec.kind} must be > 0, got ${value}`);
+    }
+    // Update tracking record first so getConstraints() snapshot reflects
+    // the new value even if the primitive update below skips (e.g.
+    // primitive not yet flushed).
+    rec.value = value;
+    // Update the primitive's value field so re-pushes / snapshots stay
+    // consistent. Field name depends on kind:
+    //   distance → 'distance'
+    //   angle    → 'angle'
+    //   radius   → 'radius'
+    const field =
+      rec.kind === 'distance' ? 'distance' : rec.kind === 'angle' ? 'angle' : 'radius';
+    let primFound = false;
+    try {
+      const prim = this.gcs.sketch_index.get_primitive_or_fail(id) as Record<string, unknown>;
+      prim[field] = value;
+      primFound = true;
+    } catch {
+      // Not yet flushed — find in pending queue.
+      for (const p of this.pending) {
+        const pp = p as Record<string, unknown>;
+        if (pp.id === id) {
+          pp[field] = value;
+          primFound = true;
+          break;
+        }
+      }
+    }
+    void primFound;
+    // If the constraint has already been pushed to planegcs, its numeric
+    // value lives as a (driving=true → fixed) p-param indexed by the
+    // constraint id. Mutating the JS-side primitive alone is NOT enough —
+    // planegcs's C++ GCS holds the value in its params vector and consults
+    // that on every solve. We must write the new value through the param
+    // index so the next solve sees the new target.
+    //
+    // For Phase 1.2 driving constraints (distance/angle/radius), exactly
+    // one numeric value is pushed per constraint, at the address returned
+    // by `p_param_index.get(c.id)`. We use the GcsSystem's set_p_param
+    // (same path movePoint uses). When the index lacks the id (constraint
+    // not yet flushed), we skip — the next solve flushes the updated
+    // primitive from this.pending and the new value lands then.
+    const addr = this.gcs.p_param_index.get(id);
+    if (addr !== undefined) {
+      // `set_p_param(addr, value, fixed)` — keep fixed=true so the solver
+      // treats the value as a hard target (same as initial push).
+      this.gcs.gcs.set_p_param(addr, value, true);
+    }
+    return true;
+  }
+
+  /**
    * Set a circle's radius. Mutates the primitive's stored radius so renders
    * pick up the change immediately. If the circle has been pinned via
    * addRadius() the next solve will reconcile (existing pin wins unless
