@@ -16,19 +16,26 @@
  *     character-level merges (CRDT-style line edits, etc.) but gives us
  *     guaranteed structural integrity for typed IRs like FeatureTree /
  *     AssemblyState whose invariants are not field-local.
- *   - Awareness piggybacks on the Y.Doc — its own Y.Map keyed by user id —
- *     so we don't pull in y-protocols just for cursor sharing in Phase 1.
+ *   - Awareness piggybacks on the Y.Doc.
+ *     - 'memory' transport: a private in-process broadcast keyed by user id
+ *       (no y-protocols dependency on the local hub path).
+ *     - 'websocket' transport: y-protocols/awareness, wired into the
+ *       y-websocket provider so cursors flow over the same socket as edits.
  *
  * Transports:
  *   - 'memory': single process. The Y.Doc is local-only; updates produced by
  *     this doc are broadcast to every other in-process doc that joined the
  *     same docId via the shared MemoryHub. Test/SSR friendly.
- *   - 'websocket': stub. We retain the wsUrl on the config so the caller can
- *     verify their wiring, but the actual y-websocket provider is not bound
- *     until Phase 2 (needs a server — see report).
+ *   - 'websocket': real provider via y-websocket. Constructs a
+ *     WebsocketProvider against `wsUrl` + `docId`, attaches a
+ *     y-protocols/awareness instance, and surfaces `isConnected` via the
+ *     provider's `wsconnected` flag (+ 'status' / 'sync' events). Tests can
+ *     inject a fake provider through the internal `_websocketProviderFactory`
+ *     option — keeps unit tests offline while exercising real wiring.
  *
  * Out of scope (Phase 2+):
- *   - Real websocket provider (y-websocket → /api/collab/ws)
+ *   - Server impl + auth: WebsocketProvider opens against `wsUrl` but we
+ *     don't ship a hosted endpoint yet (see report).
  *   - Persistence provider (y-indexeddb on the client, IndexedDb shim for SSR)
  *   - Auth / room ACLs (must reuse nfProjectAccess)
  *   - Conflict resolution beyond JSON snapshot replace (Y.Array / Y.Map nodes
@@ -36,6 +43,8 @@
  */
 
 import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
+import * as awarenessProtocol from 'y-protocols/awareness';
 import type { FeatureTree } from '../cad/featureTree';
 import type { AssemblyState } from '../assembly/assemblyState';
 
@@ -80,23 +89,65 @@ export interface CrdtDoc<T> {
   update(mutator: (draft: T) => void): void;
   /** Awareness sub-document for presence / cursors. */
   readonly awareness: Awareness;
-  /** Tear down. Unsubscribes all listeners, detaches from the hub, frees the
-   *  Y.Doc. Calling this twice is a no-op. */
+  /** Transport-aware liveness flag.
+   *  - 'memory'   → always true while the doc is alive.
+   *  - 'websocket'→ mirrors the WebsocketProvider's wsconnected. False until
+   *    the first 'connected' status event, true after, and back to false on
+   *    'disconnected'. */
+  readonly isConnected: boolean;
+  /** Subscribe to transport connection changes. Memory: only ever fires
+   *  `false` on destroy (true is implicit on construction). Websocket: fires
+   *  on every 'connected'/'disconnected' status event from the provider.
+   *  Returns unsubscribe fn. */
+  onConnectionChange(cb: (connected: boolean) => void): () => void;
+  /** Tear down. Unsubscribes all listeners, detaches from the hub, destroys
+   *  the WebsocketProvider (if any), frees the Y.Doc. Calling this twice is a
+   *  no-op. */
   destroy(): void;
 }
 
 export type CrdtTransport = 'memory' | 'websocket';
 
+/** Test/extension hook: injectable provider factory. Production callers leave
+ *  this undefined; the adapter then instantiates a real WebsocketProvider.
+ *  Mock providers must satisfy a tiny subset of the WebsocketProvider surface
+ *  (wsconnected, awareness, on/off, destroy). Underscored to discourage
+ *  domain callers from depending on it. */
+export type WebsocketProviderFactory = (args: {
+  wsUrl: string;
+  docId: string;
+  ydoc: Y.Doc;
+  awareness: awarenessProtocol.Awareness;
+}) => WebsocketProviderLike;
+
+/** Minimal contract the adapter relies on from a websocket provider. Matches
+ *  the production `WebsocketProvider` from y-websocket and lets us mock with
+ *  a few-line stub in tests. */
+export interface WebsocketProviderLike {
+  wsconnected: boolean;
+  awareness: awarenessProtocol.Awareness;
+  on(event: 'status', cb: (e: { status: 'connected' | 'disconnected' | 'connecting' }) => void): void;
+  on(event: 'sync', cb: (synced: boolean) => void): void;
+  on(event: 'connection-close', cb: (e: unknown) => void): void;
+  off(event: 'status', cb: (e: { status: 'connected' | 'disconnected' | 'connecting' }) => void): void;
+  off(event: 'sync', cb: (synced: boolean) => void): void;
+  off(event: 'connection-close', cb: (e: unknown) => void): void;
+  destroy(): void;
+}
+
 export interface CrdtConfig<T> {
   docId: string;
   initialState: T;
   transport: CrdtTransport;
-  /** WebSocket endpoint. Required when transport === 'websocket'. Stored
-   *  but not yet connected (Phase 2). */
+  /** WebSocket endpoint. Required when transport === 'websocket'. Passed to
+   *  the WebsocketProvider (or to the injected factory). */
   wsUrl?: string;
   /** Client identifier for awareness (cursor ownership). Defaults to a random
    *  string so unit tests don't have to plumb it through. */
   userId?: UserId;
+  /** Test-only: inject a fake WebsocketProvider factory. When omitted, the
+   *  adapter instantiates the real `WebsocketProvider` from y-websocket. */
+  _websocketProviderFactory?: WebsocketProviderFactory;
 }
 
 // ─── MemoryHub: in-process broadcast for 'memory' transport ──────────────
@@ -223,13 +274,29 @@ class CrdtDocImpl<T> implements CrdtDoc<T> {
   private readonly ymap: Y.Map<string>;
   private cached: T;
   private readonly listeners = new Set<(state: T) => void>();
+  private readonly connectionListeners = new Set<(connected: boolean) => void>();
   private readonly transport: CrdtTransport;
   private readonly wsUrl: string | undefined;
   private readonly userId: UserId;
-  private readonly awarenessImpl: AwarenessImpl;
+  // Memory-transport awareness uses our own in-process broadcaster. Websocket
+  // awareness delegates to y-protocols/awareness wired into the provider.
+  // The CrdtDoc surface is `Awareness` for both — callers see one API.
+  private readonly awarenessImpl: Awareness & {
+    _destroy(): void;
+    _receiveRemote?(userId: UserId, state: Record<string, unknown> | null): void;
+    _bindMemoryBroadcast?(
+      fn: (userId: UserId, state: Record<string, unknown> | null) => void,
+    ): void;
+    localState: Record<string, unknown>;
+    remoteStates: Record<UserId, Record<string, unknown>>;
+  };
   private destroyed = false;
   private readonly memorySub: MemorySubscriberInternal | null;
   private readonly observer: (event: Y.YMapEvent<string>) => void;
+  // Websocket-only state.
+  private wsProvider: WebsocketProviderLike | null = null;
+  private wsStatusHandler: ((e: { status: 'connected' | 'disconnected' | 'connecting' }) => void) | null = null;
+  private wsConnected = false;
 
   constructor(config: CrdtConfig<T>) {
     this.id = config.docId;
@@ -242,11 +309,12 @@ class CrdtDocImpl<T> implements CrdtDoc<T> {
 
     this.ydoc = new Y.Doc();
     this.ymap = this.ydoc.getMap<string>(STATE_MAP_NAME);
-    // Seed the snapshot — but ONLY if we're either (a) on the websocket stub
-    // transport (no peers to inherit from) or (b) the first peer in a memory
-    // room. If we'd join an existing memory room, defer seeding so the
-    // handshake's peer-state-update is the source of truth (avoids
-    // last-write-wins racing between two clients' identical seeds).
+    // Seed the snapshot — but ONLY if we're either (a) on the websocket
+    // transport (server handshake will replace it if a peer already has
+    // state) or (b) the first peer in a memory room. If we'd join an
+    // existing memory room, defer seeding so the handshake's
+    // peer-state-update is the source of truth (avoids last-write-wins
+    // racing between two clients' identical seeds).
     const shouldSeed =
       this.transport === 'websocket' || memoryHub._roomSize(this.id) === 0;
     if (shouldSeed) {
@@ -278,9 +346,9 @@ class CrdtDocImpl<T> implements CrdtDoc<T> {
     };
     this.ymap.observe(this.observer);
 
-    this.awarenessImpl = new AwarenessImpl(this.id, this.userId, this.transport);
-
     if (this.transport === 'memory') {
+      const mem = new AwarenessImpl(this.id, this.userId, this.transport);
+      this.awarenessImpl = mem;
       // Wire the update emitter BEFORE join() so that sync-handshake replies
       // we produce inside join() are NOT echoed back to ourselves (the
       // update events we listen for fire on local Y.applyUpdate too).
@@ -297,25 +365,58 @@ class CrdtDocImpl<T> implements CrdtDoc<T> {
         },
         onAwareness: (userId, state) => {
           if (this.destroyed) return;
-          this.awarenessImpl._receiveRemote(userId, state);
+          mem._receiveRemote(userId, state);
         },
         encodeState: () => Y.encodeStateVector(this.ydoc),
         encodeDiff: (sv) => Y.encodeStateAsUpdate(this.ydoc, sv),
         getAwarenessState: () => {
-          const keys = Object.keys(this.awarenessImpl.localState);
+          const keys = Object.keys(mem.localState);
           if (keys.length === 0) return null;
-          return { userId: this.userId, state: { ...this.awarenessImpl.localState } };
+          return { userId: this.userId, state: { ...mem.localState } };
         },
       };
-      this.awarenessImpl._bindMemoryBroadcast((userId, state) => {
+      mem._bindMemoryBroadcast((userId, state) => {
         memoryHub.broadcastAwareness(this.id, userId, state, this.ydoc.clientID);
       });
       memoryHub.join(this.id, this.memorySub);
+      // Memory transport is always "connected" — no socket. wsConnected stays
+      // false but the getter short-circuits on transport === 'memory'.
     } else {
-      // 'websocket' — Phase 2 stub. We deliberately do NOT connect; callers
-      // get the same API and can exercise local update/subscribe flows. The
-      // wsUrl is retained for diagnostics & future provider wiring.
+      // 'websocket' — instantiate a real WebsocketProvider (or the injected
+      // test factory). Wire awareness through y-protocols so cursors flow
+      // over the same socket.
       this.memorySub = null;
+      const awarenessYjs = new awarenessProtocol.Awareness(this.ydoc);
+      const factory: WebsocketProviderFactory =
+        config._websocketProviderFactory ??
+        (({ wsUrl, docId, ydoc, awareness }) =>
+          // The y-websocket types accept `awareness` in opts; cast keeps the
+          // narrow `WebsocketProviderLike` interface honest without leaking
+          // the full ObservableV2 typing through our facade.
+          new WebsocketProvider(wsUrl, docId, ydoc, {
+            connect: true,
+            awareness,
+          }) as unknown as WebsocketProviderLike);
+      this.wsProvider = factory({
+        wsUrl: this.wsUrl as string,
+        docId: this.id,
+        ydoc: this.ydoc,
+        awareness: awarenessYjs,
+      });
+      // Seed wsConnected from provider in case the factory pre-connected
+      // synchronously (mock case).
+      this.wsConnected = !!this.wsProvider.wsconnected;
+      this.wsStatusHandler = (e) => {
+        if (this.destroyed) return;
+        const next = e.status === 'connected';
+        if (next === this.wsConnected) return;
+        this.wsConnected = next;
+        for (const cb of this.connectionListeners) {
+          try { cb(next); } catch { /* listener crash isolated */ }
+        }
+      };
+      this.wsProvider.on('status', this.wsStatusHandler);
+      this.awarenessImpl = new WsAwarenessImpl(awarenessYjs, this.userId);
     }
   }
 
@@ -353,13 +454,40 @@ class CrdtDocImpl<T> implements CrdtDoc<T> {
     return this.awarenessImpl;
   }
 
+  get isConnected(): boolean {
+    if (this.destroyed) return false;
+    if (this.transport === 'memory') return true;
+    return this.wsConnected;
+  }
+
+  onConnectionChange(cb: (connected: boolean) => void): () => void {
+    if (this.destroyed) return () => {};
+    this.connectionListeners.add(cb);
+    return () => {
+      this.connectionListeners.delete(cb);
+    };
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
     this.ymap.unobserve(this.observer);
     this.listeners.clear();
+    this.connectionListeners.clear();
     if (this.memorySub) {
       memoryHub.leave(this.id, this.memorySub);
+    }
+    if (this.wsProvider) {
+      try {
+        if (this.wsStatusHandler) {
+          this.wsProvider.off('status', this.wsStatusHandler);
+        }
+        this.wsProvider.destroy();
+      } catch {
+        // provider teardown crashes must not leak — Y.Doc still needs to die.
+      }
+      this.wsProvider = null;
+      this.wsStatusHandler = null;
     }
     this.awarenessImpl._destroy();
     this.ydoc.destroy();
@@ -457,6 +585,133 @@ class AwarenessImpl implements Awareness {
   }
 }
 
+// ─── Websocket-backed awareness adapter ──────────────────────────────────
+// Wraps y-protocols/awareness so the WsAwarenessImpl conforms to our
+// Awareness interface. Awareness states arrive keyed by Yjs clientID
+// (number); we expose them keyed by UserId (string) by stashing the user id
+// inside every published state under the reserved `__userId` field. That
+// stays consistent with how the memory transport identifies peers.
+
+const USER_ID_FIELD = '__userId';
+
+class WsAwarenessImpl implements Awareness {
+  // localState / remoteStates are recomputed lazily off the underlying
+  // y-protocols awareness map. Exposed as getter-backed records so existing
+  // callers that read `awareness.localState` keep working without an extra
+  // build step.
+  private readonly listeners = new Set<(snap: AwarenessSnapshot) => void>();
+  private destroyed = false;
+  private readonly handler: (
+    changes: { added: number[]; updated: number[]; removed: number[] },
+    origin: unknown,
+  ) => void;
+
+  constructor(
+    private readonly yAwareness: awarenessProtocol.Awareness,
+    private readonly userId: UserId,
+  ) {
+    // Seed the local state with the user id so peers can identify us in
+    // their remoteStates map.
+    this.yAwareness.setLocalStateField(USER_ID_FIELD, this.userId);
+    this.handler = () => {
+      if (this.destroyed) return;
+      const snap: AwarenessSnapshot = {
+        localState: this.localState,
+        remoteStates: this.remoteStates,
+      };
+      for (const cb of this.listeners) {
+        try { cb(snap); } catch { /* listener crash isolated */ }
+      }
+    };
+    this.yAwareness.on('change', this.handler);
+  }
+
+  get localState(): Record<string, unknown> {
+    const raw = this.yAwareness.getLocalState() ?? {};
+    // Hide the internal user-id field from callers — it's plumbing.
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (k === USER_ID_FIELD) continue;
+      out[k] = v;
+    }
+    return out;
+  }
+
+  get remoteStates(): Record<UserId, Record<string, unknown>> {
+    const out: Record<UserId, Record<string, unknown>> = {};
+    const states = this.yAwareness.getStates();
+    for (const [clientId, raw] of states) {
+      if (clientId === this.yAwareness.clientID) continue;
+      const obj = raw as Record<string, unknown>;
+      const uid = obj?.[USER_ID_FIELD];
+      // Skip peers that haven't announced a user id yet — they're in the
+      // first-handshake window and we'd otherwise key them by ''.
+      if (typeof uid !== 'string' || uid.length === 0) continue;
+      // Strip the plumbing field from what callers see.
+      const copy: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (k === USER_ID_FIELD) continue;
+        copy[k] = v;
+      }
+      out[uid] = copy;
+    }
+    return out;
+  }
+
+  setLocal(key: string, value: unknown): void {
+    if (this.destroyed) return;
+    if (key === USER_ID_FIELD) {
+      // Defend the plumbing field — callers must not clobber it.
+      return;
+    }
+    if (value === undefined) {
+      // y-protocols has no "delete one field" API — round-trip via the full
+      // local state. setLocalState with the user-id field preserved.
+      const current = this.yAwareness.getLocalState() ?? {};
+      const next: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(current)) {
+        if (k === key) continue;
+        next[k] = v;
+      }
+      next[USER_ID_FIELD] = this.userId;
+      this.yAwareness.setLocalState(next);
+    } else {
+      this.yAwareness.setLocalStateField(key, value);
+    }
+  }
+
+  onUpdate(cb: (snapshot: AwarenessSnapshot) => void): () => void {
+    if (this.destroyed) return () => {};
+    this.listeners.add(cb);
+    return () => {
+      this.listeners.delete(cb);
+    };
+  }
+
+  _destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    try {
+      this.yAwareness.off('change', this.handler);
+    } catch {
+      // ignore
+    }
+    // Publish a null local state so peers drop our cursor immediately. This
+    // is the y-protocols "I'm leaving" handshake — equivalent to the memory
+    // hub's broadcast(userId, null) we use elsewhere.
+    try {
+      awarenessProtocol.removeAwarenessStates(
+        this.yAwareness,
+        [this.yAwareness.clientID],
+        'local',
+      );
+    } catch {
+      // ignore — awareness may already be torn down
+    }
+    this.listeners.clear();
+  }
+}
+
 // ─── public factory ───────────────────────────────────────────────────────
 
 export function createCrdtDoc<T>(config: CrdtConfig<T>): CrdtDoc<T> {
@@ -478,7 +733,12 @@ export function createCrdtDoc<T>(config: CrdtConfig<T>): CrdtDoc<T> {
 export function createFeatureTreeDoc(
   docId: string,
   initial: FeatureTree,
-  opts: { transport?: CrdtTransport; wsUrl?: string; userId?: UserId } = {},
+  opts: {
+    transport?: CrdtTransport;
+    wsUrl?: string;
+    userId?: UserId;
+    _websocketProviderFactory?: WebsocketProviderFactory;
+  } = {},
 ): CrdtDoc<FeatureTree> {
   return createCrdtDoc<FeatureTree>({
     docId,
@@ -486,6 +746,7 @@ export function createFeatureTreeDoc(
     transport: opts.transport ?? 'memory',
     wsUrl: opts.wsUrl,
     userId: opts.userId,
+    _websocketProviderFactory: opts._websocketProviderFactory,
   });
 }
 
@@ -496,7 +757,12 @@ export function createFeatureTreeDoc(
 export function createAssemblyDoc(
   docId: string,
   initial: AssemblyState,
-  opts: { transport?: CrdtTransport; wsUrl?: string; userId?: UserId } = {},
+  opts: {
+    transport?: CrdtTransport;
+    wsUrl?: string;
+    userId?: UserId;
+    _websocketProviderFactory?: WebsocketProviderFactory;
+  } = {},
 ): CrdtDoc<AssemblyState> {
   return createCrdtDoc<AssemblyState>({
     docId,
@@ -504,5 +770,6 @@ export function createAssemblyDoc(
     transport: opts.transport ?? 'memory',
     wsUrl: opts.wsUrl,
     userId: opts.userId,
+    _websocketProviderFactory: opts._websocketProviderFactory,
   });
 }

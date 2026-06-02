@@ -2,16 +2,25 @@
  * crdtAdapter — unit + multi-doc behaviour tests.
  *
  * Covers:
- *   - construction (memory + websocket-stub) & guards
+ *   - construction (memory + websocket via injected mock provider) & guards
  *   - local update -> state mutation & subscriber notification
  *   - cross-doc sync over the in-process MemoryHub (the heart of CRDT
  *     correctness for our Phase 1 transport)
- *   - awareness setLocal / onUpdate / disconnect signalling
+ *   - awareness setLocal / onUpdate / disconnect signalling (memory + ws)
  *   - destroy semantics (no leaks, idempotent, post-destroy guards)
  *   - JSON snapshot fidelity (nested objects, arrays, null)
  *   - domain helpers for FeatureTree & AssemblyState
+ *   - websocket transport via `_websocketProviderFactory` mock:
+ *     - isConnected: false at construct, true after 'connected' status,
+ *       false after 'disconnected'
+ *     - awareness.setLocal round-trips through the underlying
+ *       y-protocols/awareness instance
+ *     - peer awareness arrives via the same y-protocols backend
+ *     - dispose calls provider.destroy() + ydoc.destroy()
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as Y from 'yjs';
+import * as awarenessProtocol from 'y-protocols/awareness';
 import {
   createCrdtDoc,
   createFeatureTreeDoc,
@@ -19,9 +28,70 @@ import {
   _resetMemoryHub,
   _memoryRoomSize,
   type CrdtDoc,
+  type WebsocketProviderFactory,
+  type WebsocketProviderLike,
 } from './crdtAdapter';
 import type { FeatureTree } from '../cad/featureTree';
 import type { AssemblyState } from '../assembly/assemblyState';
+
+// ─── Mock WebsocketProvider helpers ───────────────────────────────────────
+// We deliberately do NOT spin up a y-websocket server in unit tests — that's
+// integration territory. Instead, a lightweight mock provider exposes the
+// same surface (wsconnected, awareness, on/off, destroy) and lets us drive
+// status events synchronously. Real-server coverage belongs in e2e (TODO
+// Phase 2 once the worker ships).
+
+interface MockProvider extends WebsocketProviderLike {
+  /** Push a connected/disconnected/connecting status event to the doc. */
+  fireStatus(status: 'connected' | 'disconnected' | 'connecting'): void;
+  destroyed: boolean;
+  factoryArgs: {
+    wsUrl: string;
+    docId: string;
+    ydoc: Y.Doc;
+    awareness: awarenessProtocol.Awareness;
+  };
+}
+
+function makeMockFactory(opts: {
+  initiallyConnected?: boolean;
+  /** Capture the produced provider for the test to drive. */
+  capture?: (p: MockProvider) => void;
+} = {}): WebsocketProviderFactory {
+  return (args) => {
+    type Listener = (...a: unknown[]) => void;
+    const handlers: Record<string, Set<Listener>> = {};
+    const on = (event: string, cb: Listener): void => {
+      if (!handlers[event]) handlers[event] = new Set();
+      handlers[event].add(cb);
+    };
+    const off = (event: string, cb: Listener): void => {
+      handlers[event]?.delete(cb);
+    };
+    const provider: MockProvider = {
+      wsconnected: opts.initiallyConnected ?? false,
+      awareness: args.awareness,
+      on: on as MockProvider['on'],
+      off: off as MockProvider['off'],
+      destroy: () => {
+        provider.destroyed = true;
+        // Don't tear down the awareness — the doc's awarenessImpl owns it
+        // and will be _destroy'd separately. Mirrors how the real provider
+        // calls awareness.destroy() but here we keep it simple.
+      },
+      destroyed: false,
+      factoryArgs: args,
+      fireStatus: (status) => {
+        provider.wsconnected = status === 'connected';
+        const set = handlers['status'];
+        if (!set) return;
+        for (const cb of set) cb({ status });
+      },
+    };
+    opts.capture?.(provider);
+    return provider;
+  };
+}
 
 interface Counter {
   n: number;
@@ -497,43 +567,315 @@ describe('destroy + lifecycle', () => {
   });
 });
 
-// ─── websocket transport stub ─────────────────────────────────────────────
+// ─── websocket transport (real provider via injected mock) ───────────────
+// These tests drive the WebsocketProvider integration. We inject a mock
+// provider via `_websocketProviderFactory` rather than spinning up a real
+// y-websocket server — that's e2e territory. The mock satisfies the same
+// `WebsocketProviderLike` contract the production provider implements, so
+// the adapter exercises the same wiring (event subscriptions, awareness
+// hand-off, dispose order) as it would in prod.
 
-describe('websocket transport (stub)', () => {
-  it('accepts wsUrl and behaves like a local doc until provider is bound', () => {
+describe('websocket transport — provider integration', () => {
+  it('constructs a CrdtDoc and instantiates the provider with the right args', () => {
+    let captured: MockProvider | null = null;
+    const factory = makeMockFactory({ capture: (p) => { captured = p; } });
     const doc = createCrdtDoc<Counter>({
-      docId: 'ws',
-      initialState: counter(),
+      docId: 'ws-ctor',
+      initialState: counter({ n: 7 }),
       transport: 'websocket',
-      wsUrl: 'wss://collab.nexyfab.com/ws',
+      wsUrl: 'wss://collab.example/ws',
+      _websocketProviderFactory: factory,
     });
-    doc.update((d) => {
-      d.n = 11;
-    });
-    expect(doc.state.n).toBe(11);
+    expect(doc).toBeDefined();
+    expect(captured).not.toBeNull();
+    const cap = captured as unknown as MockProvider;
+    expect(cap.factoryArgs.wsUrl).toBe('wss://collab.example/ws');
+    expect(cap.factoryArgs.docId).toBe('ws-ctor');
+    expect(cap.factoryArgs.ydoc).toBeInstanceOf(Y.Doc);
+    expect(cap.factoryArgs.awareness).toBeInstanceOf(awarenessProtocol.Awareness);
+    expect(doc.state).toEqual({ n: 7, notes: [] });
     // No memory hub participation
-    expect(_memoryRoomSize('ws')).toBe(0);
+    expect(_memoryRoomSize('ws-ctor')).toBe(0);
     doc.destroy();
   });
 
-  it('websocket-transport docs do NOT cross-sync via the memory hub', () => {
-    const a = createCrdtDoc<Counter>({
-      docId: 'ws-iso',
+  it('isConnected: memory transport is always true', () => {
+    const doc = createCrdtDoc<Counter>({
+      docId: 'conn-mem',
+      initialState: counter(),
+      transport: 'memory',
+    });
+    expect(doc.isConnected).toBe(true);
+    doc.destroy();
+    expect(doc.isConnected).toBe(false);
+  });
+
+  it('isConnected: websocket starts false, flips true on connected status', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'conn-ws-up',
       initialState: counter(),
       transport: 'websocket',
-      wsUrl: 'wss://example/ws',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    expect(doc.isConnected).toBe(false);
+    const cap = captured as unknown as MockProvider;
+    cap.fireStatus('connected');
+    expect(doc.isConnected).toBe(true);
+    doc.destroy();
+  });
+
+  it('isConnected: flips back to false on disconnected status', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'conn-ws-down',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory({
+        initiallyConnected: true,
+        capture: (p) => { captured = p; },
+      }),
+    });
+    expect(doc.isConnected).toBe(true);
+    const cap = captured as unknown as MockProvider;
+    cap.fireStatus('disconnected');
+    expect(doc.isConnected).toBe(false);
+    doc.destroy();
+  });
+
+  it('onConnectionChange fires on every status transition (not on duplicates)', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'conn-evt',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    const calls: boolean[] = [];
+    doc.onConnectionChange((c) => calls.push(c));
+    const cap = captured as unknown as MockProvider;
+    cap.fireStatus('connected');
+    cap.fireStatus('connected'); // duplicate — no-op
+    cap.fireStatus('connecting'); // not connected → false transition
+    cap.fireStatus('connected');
+    cap.fireStatus('disconnected');
+    expect(calls).toEqual([true, false, true, false]);
+    doc.destroy();
+  });
+
+  it('onConnectionChange unsubscribe stops further notifications', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'conn-unsub',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    let calls = 0;
+    const off = doc.onConnectionChange(() => { calls += 1; });
+    const cap = captured as unknown as MockProvider;
+    cap.fireStatus('connected');
+    off();
+    cap.fireStatus('disconnected');
+    expect(calls).toBe(1);
+    doc.destroy();
+  });
+
+  it('awareness.setLocal round-trips through the y-protocols awareness instance', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'ws-aw-rt',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      userId: 'alice',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    doc.awareness.setLocal('cursor', { x: 4, y: 5 });
+    expect(doc.awareness.localState.cursor).toEqual({ x: 4, y: 5 });
+    // The same value is visible on the underlying y-protocols awareness.
+    const cap = captured as unknown as MockProvider;
+    const raw = cap.awareness.getLocalState();
+    expect(raw?.cursor).toEqual({ x: 4, y: 5 });
+    doc.destroy();
+  });
+
+  it('awareness.setLocal(undefined) removes the key on the y-protocols side too', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'ws-aw-del',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      userId: 'alice',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    doc.awareness.setLocal('cursor', { x: 1, y: 1 });
+    doc.awareness.setLocal('cursor', undefined);
+    expect('cursor' in doc.awareness.localState).toBe(false);
+    const cap = captured as unknown as MockProvider;
+    expect((cap.awareness.getLocalState() ?? {}).cursor).toBeUndefined();
+    doc.destroy();
+  });
+
+  it('remote awareness state surfaces under the peer user id, not the clientID', () => {
+    // Stand up two docs with two independent provider mocks but a shared
+    // awarenessProtocol instance to simulate the same room (the real wire
+    // would replicate states between providers; we shortcut by sharing).
+    let aProvider: MockProvider | null = null;
+    let bProvider: MockProvider | null = null;
+    const a = createCrdtDoc<Counter>({
+      docId: 'ws-aw-room',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      userId: 'alice',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { aProvider = p; } }),
     });
     const b = createCrdtDoc<Counter>({
-      docId: 'ws-iso',
+      docId: 'ws-aw-room',
       initialState: counter(),
       transport: 'websocket',
-      wsUrl: 'wss://example/ws',
+      wsUrl: 'wss://ex/ws',
+      userId: 'bob',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { bProvider = p; } }),
     });
-    a.update((d) => {
-      d.n = 5;
+    // Hand-relay an awareness encode/apply pair to simulate the server.
+    const aAw = (aProvider as unknown as MockProvider).awareness;
+    const bAw = (bProvider as unknown as MockProvider).awareness;
+    a.awareness.setLocal('cursor', { x: 9, y: 9 });
+    const update = awarenessProtocol.encodeAwarenessUpdate(aAw, [aAw.clientID]);
+    awarenessProtocol.applyAwarenessUpdate(bAw, update, 'server');
+    expect(b.awareness.remoteStates.alice).toEqual({ cursor: { x: 9, y: 9 } });
+    // The user id is keyed by the user-id field, not the Yjs clientID.
+    expect(Object.keys(b.awareness.remoteStates)).toEqual(['alice']);
+    a.destroy();
+    b.destroy();
+  });
+
+  it('awareness onUpdate fires for both local and remote changes', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'ws-aw-evt',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      userId: 'alice',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
     });
-    // Stub: no provider, so b stays put
-    expect(b.state.n).toBe(0);
+    const cb = vi.fn();
+    doc.awareness.onUpdate(cb);
+    doc.awareness.setLocal('cursor', { x: 1, y: 1 });
+    expect(cb).toHaveBeenCalled();
+    // Simulate a remote update by mutating the shared y-protocols awareness
+    // directly through a peer encode/apply.
+    const peerDoc = new Y.Doc();
+    const peerAw = new awarenessProtocol.Awareness(peerDoc);
+    peerAw.setLocalState({ cursor: { x: 9, y: 9 }, __userId: 'bob' });
+    const cap = captured as unknown as MockProvider;
+    const update = awarenessProtocol.encodeAwarenessUpdate(peerAw, [peerAw.clientID]);
+    cb.mockClear();
+    awarenessProtocol.applyAwarenessUpdate(cap.awareness, update, 'server');
+    expect(cb).toHaveBeenCalled();
+    expect(doc.awareness.remoteStates.bob).toEqual({ cursor: { x: 9, y: 9 } });
+    peerDoc.destroy();
+    doc.destroy();
+  });
+
+  it('destroy calls provider.destroy() and tears down the y-doc', () => {
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'ws-dispose',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    const cap = captured as unknown as MockProvider;
+    expect(cap.destroyed).toBe(false);
+    doc.destroy();
+    expect(cap.destroyed).toBe(true);
+    expect(doc.isConnected).toBe(false);
+    // Double-destroy is idempotent.
+    expect(() => doc.destroy()).not.toThrow();
+  });
+
+  it('destroy unsubscribes the status handler before destroying the provider', () => {
+    // Status events fired AFTER destroy must not flip wsConnected back true
+    // or re-invoke connection listeners — the off() call guards us.
+    let captured: MockProvider | null = null;
+    const doc = createCrdtDoc<Counter>({
+      docId: 'ws-late-status',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory({ capture: (p) => { captured = p; } }),
+    });
+    let calls = 0;
+    doc.onConnectionChange(() => { calls += 1; });
+    const cap = captured as unknown as MockProvider;
+    doc.destroy();
+    cap.fireStatus('connected'); // no-op — handler was off()'d
+    expect(calls).toBe(0);
+    expect(doc.isConnected).toBe(false);
+  });
+
+  it('provider.destroy() throwing does not prevent ydoc teardown', () => {
+    // Resilience: if the provider throws inside destroy(), the doc must
+    // still mark itself destroyed and release the Y.Doc. Without the catch
+    // we'd leak a live awareness instance + a half-destroyed doc.
+    const factory: WebsocketProviderFactory = (args) => {
+      type Listener = (...a: unknown[]) => void;
+      const handlers: Record<string, Set<Listener>> = {};
+      return {
+        wsconnected: false,
+        awareness: args.awareness,
+        on: ((event: string, cb: Listener): void => {
+          (handlers[event] ??= new Set()).add(cb);
+        }) as WebsocketProviderLike['on'],
+        off: ((event: string, cb: Listener): void => {
+          handlers[event]?.delete(cb);
+        }) as WebsocketProviderLike['off'],
+        destroy: () => { throw new Error('provider boom'); },
+      };
+    };
+    const doc = createCrdtDoc<Counter>({
+      docId: 'ws-boom',
+      initialState: counter(),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: factory,
+    });
+    expect(() => doc.destroy()).not.toThrow();
+    expect(doc.isConnected).toBe(false);
+    expect(() => doc.update((d) => (d.n = 1))).toThrow(/destroyed/);
+  });
+
+  it('seeds initial state on the Y.Doc regardless of room peers (websocket has no local hub)', () => {
+    // Memory transport defers seeding when a peer already exists; websocket
+    // can't peek at peers synchronously, so it always seeds. Verify two
+    // websocket docs in the "same" room each get their own seed (their
+    // sync convergence happens via the real wire, not via crdtAdapter).
+    const a = createCrdtDoc<Counter>({
+      docId: 'ws-seed',
+      initialState: counter({ n: 1 }),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory(),
+    });
+    const b = createCrdtDoc<Counter>({
+      docId: 'ws-seed',
+      initialState: counter({ n: 2 }),
+      transport: 'websocket',
+      wsUrl: 'wss://ex/ws',
+      _websocketProviderFactory: makeMockFactory(),
+    });
+    expect(a.state.n).toBe(1);
+    expect(b.state.n).toBe(2);
     a.destroy();
     b.destroy();
   });
