@@ -21,6 +21,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic';
 import SolverSketchEditor, { type SolverSketchEditorProps } from './SolverSketchEditor';
 import RevolveModal, { type RevolveFetcher, type RevolveLang } from './RevolveModal';
+import type { SweepFetcher, SweepLang } from './SweepModal';
+import type { LoftFetcher, LoftLang } from './LoftModal';
+import type { PatternFetcher, PatternLang } from './PatternModal';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
 import type { AxisLine2D } from '@/lib/cad/revolveProfile';
@@ -32,11 +35,30 @@ const StlViewer = dynamic(() => import('./StlViewer'), {
   loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>,
 });
 
+// Sweep / Loft / Pattern modals are also dynamic-loaded so the wrapper
+// bundle stays small for users who never open them. Each modal pulls in
+// its own copy of the StlViewer dynamic chunk, but only when first opened.
+const SweepModal = dynamic(() => import('./SweepModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
+const LoftModal = dynamic(() => import('./LoftModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
+const PatternModal = dynamic(() => import('./PatternModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
+
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
 interface Dict {
   extrude: string;
   revolve: string;
+  sweep: string;
+  loft: string;
+  pattern: string;
   modalTitle: string;
   depth: string;
   direction: string;
@@ -54,7 +76,7 @@ interface Dict {
 
 const dict: Record<Lang, Dict> = {
   ko: {
-    extrude: '돌출', revolve: '회전', modalTitle: '돌출 설정', depth: '깊이 (mm)', direction: '방향', mode: '연산', draft: '드래프트 각도(°)',
+    extrude: '돌출', revolve: '회전', sweep: '스윕', loft: '로프트', pattern: '패턴', modalTitle: '돌출 설정', depth: '깊이 (mm)', direction: '방향', mode: '연산', draft: '드래프트 각도(°)',
     oneSided: '한 방향', twoSided: '양 방향', midplane: '중심면',
     add: '추가', cut: '제거',
     submit: '돌출', cancel: '취소',
@@ -63,7 +85,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '깊이는 0보다 커야 합니다',
   },
   en: {
-    extrude: 'Extrude', revolve: 'Revolve', modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
+    extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
     oneSided: 'One-sided', twoSided: 'Two-sided', midplane: 'Midplane',
     add: 'Add', cut: 'Cut',
     submit: 'Extrude', cancel: 'Cancel',
@@ -72,7 +94,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: 'depth must be > 0',
   },
   ja: {
-    extrude: '押し出し', revolve: '回転', modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
+    extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
     oneSided: '片側', twoSided: '両側', midplane: '中央面',
     add: '追加', cut: '除去',
     submit: '押し出し', cancel: 'キャンセル',
@@ -81,7 +103,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '深さは 0 より大きい必要があります',
   },
   zh: {
-    extrude: '拉伸', revolve: '旋转', modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
+    extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
     oneSided: '单向', twoSided: '双向', midplane: '中面',
     add: '增加', cut: '切除',
     submit: '拉伸', cancel: '取消',
@@ -90,7 +112,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '深度必须大于 0',
   },
   es: {
-    extrude: 'Extruir', revolve: 'Revolver', modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
+    extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
     oneSided: 'Un lado', twoSided: 'Dos lados', midplane: 'Plano medio',
     add: 'Añadir', cut: 'Cortar',
     submit: 'Extruir', cancel: 'Cancelar',
@@ -99,7 +121,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: 'la profundidad debe ser > 0',
   },
   ar: {
-    extrude: 'بثق', revolve: 'دوران', modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
+    extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
     oneSided: 'جانب واحد', twoSided: 'جانبان', midplane: 'مستوى متوسط',
     add: 'إضافة', cut: 'قص',
     submit: 'بثق', cancel: 'إلغاء',
@@ -160,6 +182,12 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
   extrudeFetcher?: ExtrudeFetcher;
   /** Injectable fetcher for tests. Defaults to POST /api/revolve-render. */
   revolveFetcher?: RevolveFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/sweep-render. */
+  sweepFetcher?: SweepFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/loft-render. */
+  loftFetcher?: LoftFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/pattern-render. */
+  patternFetcher?: PatternFetcher;
   /**
    * Optional axis hint forwarded to the Revolve modal — e.g., a selected
    * line in the sketch. The modal renders a "use this as axis" button.
@@ -170,12 +198,23 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
 export default function SolverSketchEditorWithExtrude(
   props: SolverSketchEditorWithExtrudeProps,
 ): React.ReactElement {
-  const { extrudeFetcher = defaultFetcher, revolveFetcher, revolveAxisHint, ...editorProps } = props;
+  const {
+    extrudeFetcher = defaultFetcher,
+    revolveFetcher,
+    sweepFetcher,
+    loftFetcher,
+    patternFetcher,
+    revolveAxisHint,
+    ...editorProps
+  } = props;
   const t = dict[(editorProps.lang ?? 'en') as Lang];
 
   const [sketch, setSketch] = useState<SolverViewState>({ points: [], lines: [] });
   const [modalOpen, setModalOpen] = useState(false);
   const [revolveOpen, setRevolveOpen] = useState(false);
+  const [sweepOpen, setSweepOpen] = useState(false);
+  const [loftOpen, setLoftOpen] = useState(false);
+  const [patternOpen, setPatternOpen] = useState(false);
   const [depth, setDepth] = useState<string>('10');
   const [direction, setDirection] = useState<ExtrudeDirection>('one_sided');
   const [mode, setMode] = useState<ExtrudeMode>('add');
@@ -203,6 +242,9 @@ export default function SolverSketchEditorWithExtrude(
 
   const canExtrude = sketch.points.length >= 3 && sketch.lines.length >= 3;
   const canRevolve = canExtrude;
+  const canSweep = canExtrude;
+  const canLoft = canExtrude;
+  const canPattern = canExtrude;
 
   const onSubmit = useCallback(async () => {
     const d = Number(depth);
@@ -308,6 +350,60 @@ export default function SolverSketchEditorWithExtrude(
         >
           ↻ {t.revolve}
         </button>
+        <button
+          type="button"
+          disabled={!canSweep}
+          onClick={() => setSweepOpen(true)}
+          data-testid="solver-sweep-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canSweep ? '#8b5cf6' : '#e5e7eb',
+            color: canSweep ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canSweep ? '#7c3aed' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canSweep ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ✏ {t.sweep}
+        </button>
+        <button
+          type="button"
+          disabled={!canLoft}
+          onClick={() => setLoftOpen(true)}
+          data-testid="solver-loft-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canLoft ? '#f59e0b' : '#e5e7eb',
+            color: canLoft ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canLoft ? '#d97706' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canLoft ? 'pointer' : 'not-allowed',
+          }}
+        >
+          🥯 {t.loft}
+        </button>
+        <button
+          type="button"
+          disabled={!canPattern}
+          onClick={() => setPatternOpen(true)}
+          data-testid="solver-pattern-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canPattern ? '#10b981' : '#e5e7eb',
+            color: canPattern ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canPattern ? '#059669' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canPattern ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ▦ {t.pattern}
+        </button>
       </div>
 
       {/* Revolve modal (sibling of the Extrude modal) */}
@@ -318,6 +414,36 @@ export default function SolverSketchEditorWithExtrude(
           axisHint={revolveAxisHint}
           onClose={() => setRevolveOpen(false)}
           revolveFetcher={revolveFetcher}
+        />
+      )}
+
+      {/* Sweep modal (Phase 2.2) */}
+      {sweepOpen && (
+        <SweepModal
+          lang={(editorProps.lang ?? 'en') as SweepLang}
+          sketch={sketch}
+          onClose={() => setSweepOpen(false)}
+          sweepFetcher={sweepFetcher}
+        />
+      )}
+
+      {/* Loft modal (Phase 2.2) */}
+      {loftOpen && (
+        <LoftModal
+          lang={(editorProps.lang ?? 'en') as LoftLang}
+          sketch={sketch}
+          onClose={() => setLoftOpen(false)}
+          loftFetcher={loftFetcher}
+        />
+      )}
+
+      {/* Pattern modal (Phase 2.4) */}
+      {patternOpen && (
+        <PatternModal
+          lang={(editorProps.lang ?? 'en') as PatternLang}
+          sketch={sketch}
+          onClose={() => setPatternOpen(false)}
+          patternFetcher={patternFetcher}
         />
       )}
 
