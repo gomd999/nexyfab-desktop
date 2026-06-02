@@ -42,8 +42,14 @@ import {
   type PointId,
   type LineId,
   type CircleId,
+  type ArcId,
   type SolveResult,
 } from '@/lib/sketch/solver';
+import SketchConstraintToolbar, {
+  type SketchEntityRef,
+  type SketchEntityKind,
+  type Constraint as ToolbarConstraint,
+} from './SketchConstraintToolbar';
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -436,7 +442,11 @@ export default function SolverSketchEditor({
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
   const [tool, setTool] = useState<EntityTool>('select');
   const [pending, setPending] = useState<Pending>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  // New richer selection: tracks { kind, id } refs for the SketchConstraintToolbar.
+  // Legacy `selected` (id-only string[]) is derived via useMemo below so the
+  // existing inline constraint toolbar + entity rendering keep working unchanged.
+  const [selection, setSelection] = useState<SketchEntityRef[]>([]);
+  const selected = useMemo(() => selection.map((s) => s.id), [selection]);
   const [drag, setDrag] = useState<{ pointId: PointId } | null>(null);
 
   // ─── helper: refresh view entities from solver after a solve ───
@@ -465,7 +475,7 @@ export default function SolverSketchEditor({
   const changeTool = useCallback((next: EntityTool): void => {
     setTool(next);
     setPending(null);
-    if (next !== 'select') setSelected([]);
+    if (next !== 'select') setSelection([]);
   }, []);
 
   // ─── entity creation: line ───
@@ -735,7 +745,12 @@ export default function SolverSketchEditor({
       const pt = eventToSvgPoint(evt, svgRef.current);
 
       if (tool === 'select') {
-        setSelected([]);
+        // Empty-canvas click clears selection (when no modifier held).
+        // Modifier-held empty click is a no-op so users can carefully build
+        // a selection without losing it by accidentally missing an entity.
+        if (!evt.shiftKey && !evt.ctrlKey && !evt.metaKey) {
+          setSelection([]);
+        }
         return;
       }
 
@@ -799,10 +814,22 @@ export default function SolverSketchEditor({
     (id: string, evt: React.MouseEvent<SVGElement>): void => {
       evt.stopPropagation();
       if (tool === 'select') {
-        setSelected((prev) => {
-          // Toggle: click selected = deselect; click unselected = add (up to 2 for constraints).
-          if (prev.includes(id)) return prev.filter((x) => x !== id);
-          return [...prev, id].slice(-2);
+        const ent = entities.find((e) => e.id === id);
+        if (!ent) return;
+        const ref: SketchEntityRef = { kind: ent.kind, id };
+        const multi = evt.shiftKey || evt.ctrlKey || evt.metaKey;
+        setSelection((prev) => {
+          const existsIdx = prev.findIndex((r) => r.id === id);
+          if (multi) {
+            // Toggle in multi-select mode: click selected = deselect; click new = add.
+            if (existsIdx >= 0) return prev.filter((_, i) => i !== existsIdx);
+            return [...prev, ref];
+          }
+          // Single-select mode:
+          //   - if clicking the already-only-selected entity, deselect it (toggle off);
+          //   - otherwise replace with just this entity.
+          if (prev.length === 1 && existsIdx === 0) return [];
+          return [ref];
         });
         return;
       }
@@ -880,13 +907,170 @@ export default function SolverSketchEditor({
           solver.addCoincident(sel[0]!.id as PointId, sel[1]!.id as PointId);
         }
         solveAndApply();
-        setSelected([]);
+        setSelection([]);
       } catch (e) {
         /* solver rejected — ignore */
         void e;
       }
     },
     [solver, selected, entities, solveAndApply],
+  );
+
+  // ─── SketchConstraintToolbar bridge ───
+  //
+  // The standalone toolbar speaks in a discriminated union (Constraint) over
+  // SketchEntityRef tuples. Map each kind to the corresponding solver.addX
+  // call and re-solve. We are deliberately tolerant here:
+  //   - if the toolbar fires with a kind the solver doesn't yet support
+  //     (e.g. arc-level tangent variants), we no-op rather than throw so
+  //     the UI never crashes from a stale selection;
+  //   - solver rejection (over-constrained, fixed point, etc.) is swallowed
+  //     — the next solve() result will surface conflict/redundant pills.
+  const handleToolbarAdd = useCallback(
+    (constraint: ToolbarConstraint): void => {
+      if (!solver) return;
+      const refs = constraint.entities;
+      const idOf = (idx: number, kind: SketchEntityKind): string | null => {
+        const r = refs[idx];
+        if (!r || r.kind !== kind) return null;
+        return r.id;
+      };
+      try {
+        switch (constraint.kind) {
+          case 'coincident': {
+            // n-ary: chain to first point so all coincide.
+            const anchor = idOf(0, 'point');
+            if (!anchor) return;
+            for (let i = 1; i < refs.length; i++) {
+              const other = idOf(i, 'point');
+              if (other) solver.addCoincident(anchor as PointId, other as PointId);
+            }
+            break;
+          }
+          case 'parallel': {
+            const a = idOf(0, 'line');
+            const b = idOf(1, 'line');
+            if (a && b) solver.addParallel(a as LineId, b as LineId);
+            break;
+          }
+          case 'perpendicular': {
+            const a = idOf(0, 'line');
+            const b = idOf(1, 'line');
+            if (a && b) solver.addPerpendicular(a as LineId, b as LineId);
+            break;
+          }
+          case 'tangent': {
+            // line+circle / line+arc / circle+circle / etc — solver figures
+            // out the variant from kindOf().
+            if (refs.length !== 2) return;
+            const a = refs[0];
+            const b = refs[1];
+            if (!a || !b) return;
+            // Skip point-bearing tangent requests; solver only supports curves.
+            if (a.kind === 'point' || b.kind === 'point') return;
+            solver.addTangent(
+              a.id as LineId | CircleId | ArcId,
+              b.id as LineId | CircleId | ArcId,
+            );
+            break;
+          }
+          case 'equal_length': {
+            // No native equal_length in solver Phase 1.2. Pin equal distances
+            // pairwise as a best-effort fallback by reading current lengths.
+            // Soft-fail (no-op) if not implementable.
+            const lineIds: LineId[] = [];
+            for (const r of refs) {
+              if (r.kind !== 'line') return;
+              lineIds.push(r.id as LineId);
+            }
+            if (lineIds.length < 2) return;
+            // Use first line's current length as the target.
+            const firstLine = entities.find((e) => e.id === lineIds[0]);
+            if (!firstLine || firstLine.kind !== 'line') return;
+            const fp1 = entities.find((e) => e.id === firstLine.p1);
+            const fp2 = entities.find((e) => e.id === firstLine.p2);
+            if (!fp1 || !fp2 || fp1.kind !== 'point' || fp2.kind !== 'point') return;
+            const targetLen = dist(fp1.x, fp1.y, fp2.x, fp2.y);
+            for (let i = 1; i < lineIds.length; i++) {
+              const ln = entities.find((e) => e.id === lineIds[i]);
+              if (!ln || ln.kind !== 'line') continue;
+              solver.addDistance(ln.p1 as PointId, ln.p2 as PointId, targetLen);
+            }
+            // First line gets its own distance pin so all N share it.
+            solver.addDistance(firstLine.p1 as PointId, firstLine.p2 as PointId, targetLen);
+            break;
+          }
+          case 'equal_radius': {
+            // Read first curve's radius and pin all others to it via addRadius.
+            const curves = refs.filter((r) => r.kind === 'circle' || r.kind === 'arc');
+            if (curves.length < 2) return;
+            const firstCurveEnt = entities.find((e) => e.id === curves[0]!.id);
+            if (!firstCurveEnt || firstCurveEnt.kind !== 'circle') return;
+            const targetR = firstCurveEnt.radius;
+            for (const r of curves) {
+              solver.addRadius(r.id as CircleId | ArcId, targetR);
+            }
+            break;
+          }
+          case 'fix': {
+            // Phase 1.2 solver has no addFix(); approximate by pinning each
+            // entity via a zero-distance to itself OR (simpler) by adding
+            // distance/coincident locks. Lowest-risk fallback: skip if no
+            // direct support — surfaced via toolbar but no-op for now.
+            // TODO Phase 2: extend solver with addFix.
+            break;
+          }
+          case 'horizontal': {
+            for (const r of refs) {
+              if (r.kind === 'line') solver.addHorizontal(r.id as LineId);
+            }
+            break;
+          }
+          case 'vertical': {
+            for (const r of refs) {
+              if (r.kind === 'line') solver.addVertical(r.id as LineId);
+            }
+            break;
+          }
+          case 'distance': {
+            const a = idOf(0, 'point');
+            const b = idOf(1, 'point');
+            if (a && b) solver.addDistance(a as PointId, b as PointId, constraint.value);
+            break;
+          }
+          case 'angle': {
+            const a = idOf(0, 'line');
+            const b = idOf(1, 'line');
+            if (a && b) {
+              // Toolbar input is in degrees; solver speaks radians.
+              const rad = (constraint.value * Math.PI) / 180;
+              solver.addAngle(a as LineId, b as LineId, rad);
+            }
+            break;
+          }
+        }
+        solveAndApply();
+        setSelection([]);
+      } catch {
+        /* solver rejected — leave selection alone for re-try */
+      }
+    },
+    [solver, entities, solveAndApply],
+  );
+
+  const handleToolbarClear = useCallback((): void => {
+    setSelection([]);
+  }, []);
+
+  // ─── ESC clears selection (keyboard) ───
+  const handleKeyDown = useCallback(
+    (evt: React.KeyboardEvent<HTMLDivElement>): void => {
+      if (evt.key === 'Escape') {
+        setSelection([]);
+        setPending(null);
+      }
+    },
+    [],
   );
 
   // ─── close ───
@@ -967,6 +1151,7 @@ export default function SolverSketchEditor({
       data-testid="solver-sketch-editor"
       data-state="ready"
       tabIndex={0}
+      onKeyDown={handleKeyDown}
       style={{
         display: 'inline-flex',
         flexDirection: 'column',
@@ -1063,6 +1248,16 @@ export default function SolverSketchEditor({
         })}
       </div>
 
+      {/* SketchConstraintToolbar — Phase 1.A standalone (11 constraint kinds). */}
+      {/* Wired against the unified selection state; ESC + clear share the same setSelection. */}
+      <SketchConstraintToolbar
+        lang={lang}
+        selection={selection}
+        onAdd={handleToolbarAdd}
+        onClear={handleToolbarClear}
+        disabled={!solver}
+      />
+
       {/* Canvas */}
       <svg
         ref={svgRef}
@@ -1091,7 +1286,7 @@ export default function SolverSketchEditor({
               y1={a.y}
               x2={b.x}
               y2={b.y}
-              stroke={isSel ? '#2563eb' : '#111827'}
+              stroke={isSel ? '#06b6d4' : '#111827'}
               strokeWidth={isSel ? 2.4 : 1.6}
               data-testid={`solver-sketch-entity-${l.id}`}
               aria-selected={isSel}
@@ -1113,7 +1308,7 @@ export default function SolverSketchEditor({
               cy={ctr.y}
               r={c.radius}
               fill="none"
-              stroke={isSel ? '#2563eb' : '#111827'}
+              stroke={isSel ? '#06b6d4' : '#111827'}
               strokeWidth={isSel ? 2.4 : 1.6}
               data-testid={`solver-sketch-entity-${c.id}`}
               aria-selected={isSel}
@@ -1132,7 +1327,7 @@ export default function SolverSketchEditor({
               cx={p.x}
               cy={p.y}
               r={isSel ? 4 : 3}
-              fill={p.fixed ? '#dc2626' : isSel ? '#2563eb' : '#111827'}
+              fill={p.fixed ? '#dc2626' : isSel ? '#06b6d4' : '#111827'}
               data-testid={`solver-sketch-entity-${p.id}`}
               data-point-fixed={p.fixed}
               aria-selected={isSel}
