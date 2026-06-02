@@ -105,6 +105,7 @@
     "next": "^16.2.6",
     "nodemailer": "^8.0.7",
     "occt-import-js": "^0.0.23",
+    "opencascade.js": "^1.1.1",
     "otpauth": "^9.5.0",
     "pg": "^8.20.0",
     "react": "19.2.3",
