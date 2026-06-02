@@ -140,6 +140,71 @@ diff occt-worker/occt-worker.js public/occt-worker/occt-worker.js
 If you change `occt-worker/occt-worker.js`, repeat the copy. CI does
 NOT enforce this today — the Phase 5 prebuild script will.
 
+## Phase 5 launch step 10 — CSP headers (`next.config.ts`)
+
+Phase 5 requires two additions to the global Content-Security-Policy emitted
+from `next.config.ts` and one new per-path header group:
+
+1. `script-src` gains `'wasm-unsafe-eval'`.
+   - **What it enables**: the browser will allow
+     `WebAssembly.compile` / `WebAssembly.instantiate` calls inside any
+     same-origin script — required by Emscripten when OCCT boots.
+   - **What it does NOT enable**: `eval()`, `new Function(...)`, or
+     `setTimeout(string)`. `'wasm-unsafe-eval'` is the narrow capability
+     surface defined in CSP Level 3 specifically for WebAssembly. We
+     already ship `'unsafe-eval'` today (GA + reCAPTCHA require it); the
+     intent is to tighten that prod-side once those chunks are isolated —
+     and at that point `'wasm-unsafe-eval'` is the only directive OCCT
+     needs.
+   - **User data impact**: none. WASM modules execute in a sandboxed
+     linear memory; they cannot read DOM, cookies, or localStorage
+     except via the JS bindings we expose.
+
+2. `worker-src 'self' blob:` (new directive).
+   - Emscripten's pthread loader builds intermediate workers from `Blob`
+     URLs. Without `blob:` in `worker-src` the OCCT worker boot fails
+     with "Refused to create a worker from 'blob:…'".
+   - Same-origin scripts can already create Blobs; this directive just
+     allows Workers to be instantiated from them.
+
+3. New per-path group `/occt-worker/(.*)`:
+   - `Cross-Origin-Resource-Policy: same-origin` — defence in depth
+     against cross-origin reads of the WASM bytes (Spectre posture).
+   - `Cache-Control: public, max-age=31536000, immutable` — the binary
+     is content-pinned per build, so a one-year cache is correct.
+
+All three changes are gated by `src/lib/security/cspHeaders.ts` so they are
+unit-tested (`src/test/config/csp.test.ts`) without booting Next.js.
+
+### Optional SRI hash (`scripts/compute-occt-sri.js`)
+
+Run once after `npm run occt:copy` to emit `public/occt-worker/sri.json`:
+
+```bash
+node scripts/compute-occt-sri.js
+```
+
+The script computes SHA-384 of `public/occt-worker/opencascade.js` (the
+Emscripten loader) and writes:
+
+```json
+{
+  "algorithm": "sha384",
+  "generatedAt": "…",
+  "files": { "opencascade.js": "sha384-…" }
+}
+```
+
+The launcher (Phase 5 v2) will read this file and supply the digest to
+`importScripts()` once browsers consistently honour SRI for worker
+scripts. The WASM binary itself is NOT hashed via SRI because the
+HTML spec does not yet plumb integrity metadata into
+`WebAssembly.instantiateStreaming`; integrity for the WASM relies on the
+loader pin + TLS + `Cross-Origin-Resource-Policy: same-origin`.
+
+The script is idempotent, skips gracefully on Phase 4 builds (no WASM),
+and always exits 0.
+
 ## Pre-deploy readiness check (`occt:check`)
 
 Before every deploy — and ideally as a `prebuild` step — run:
