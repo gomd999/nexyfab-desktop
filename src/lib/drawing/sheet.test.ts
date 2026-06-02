@@ -6,9 +6,11 @@ import {
   paperDimensions,
   validateSheet,
   standardThreeViewSheet,
+  effectiveSectionType,
   SheetValidationError,
   type Sheet,
   type Viewport,
+  type SectionProjection,
 } from './sheet';
 
 describe('paperDimensions', () => {
@@ -90,6 +92,116 @@ describe('validateSheet', () => {
       ],
     };
     expect(() => validateSheet(sheet)).toThrow(/sourceViewportId.*not found/);
+  });
+});
+
+// ─── section view variants (Phase 4.1.2) ─────────────────────────────────
+
+function sectionVp(id: string, projection: SectionProjection): Viewport {
+  return {
+    id,
+    sourceId: 'src',
+    projection,
+    centerOnSheet: { x: 150, y: 150 },
+    widthOnSheet: 100,
+    scale: 1,
+  };
+}
+
+describe('SectionProjection variants', () => {
+  it('treats a section projection WITHOUT sectionType as "full" (backward-compat)', () => {
+    const proj: SectionProjection = { kind: 'section', cuttingPlaneId: 'A' };
+    expect(effectiveSectionType(proj)).toBe('full');
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('s1', proj)],
+    };
+    expect(() => validateSheet(sheet)).not.toThrow();
+  });
+
+  it('validates an explicit "full" section', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'A', sectionType: 'full',
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('s1', proj)],
+    };
+    expect(() => validateSheet(sheet)).not.toThrow();
+  });
+
+  it('validates a "half" section (with explicit side)', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'B', sectionType: 'half', side: 'far',
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('h1', proj)],
+    };
+    expect(() => validateSheet(sheet)).not.toThrow();
+  });
+
+  it('validates an "offset" section with cuttingPath length ≥ 2', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'C', sectionType: 'offset',
+      cuttingPath: [
+        { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 }, { x: 20, y: 5 },
+      ],
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('o1', proj)],
+    };
+    expect(() => validateSheet(sheet)).not.toThrow();
+  });
+
+  it('rejects "offset" section with cuttingPath length < 2', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'C', sectionType: 'offset',
+      cuttingPath: [{ x: 0, y: 0 }],
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('o1', proj)],
+    };
+    expect(() => validateSheet(sheet)).toThrow(/cuttingPath/);
+  });
+
+  it('rejects "offset" section with no cuttingPath at all', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'C', sectionType: 'offset',
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('o1', proj)],
+    };
+    expect(() => validateSheet(sheet)).toThrow(SheetValidationError);
+  });
+
+  it('validates an "aligned" section with non-zero segments', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'D', sectionType: 'aligned',
+      cuttingPath: [{ x: 0, y: 0 }, { x: 5, y: 5 }, { x: 10, y: 0 }],
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('a1', proj)],
+    };
+    expect(() => validateSheet(sheet)).not.toThrow();
+  });
+
+  it('rejects "aligned" section with a zero-length segment', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: 'D', sectionType: 'aligned',
+      cuttingPath: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 5, y: 5 }],
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('a1', proj)],
+    };
+    expect(() => validateSheet(sheet)).toThrow(/zero length/);
+  });
+
+  it('rejects any section with empty cuttingPlaneId', () => {
+    const proj: SectionProjection = {
+      kind: 'section', cuttingPlaneId: '', sectionType: 'full',
+    };
+    const sheet: Sheet = {
+      id: 's', name: 'S', paperSize: 'A3', viewports: [sectionVp('s1', proj)],
+    };
+    expect(() => validateSheet(sheet)).toThrow(/cuttingPlaneId/);
   });
 });
 

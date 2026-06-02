@@ -160,7 +160,7 @@ describe('SheetRenderer', () => {
     expect(queryByTestId('sheet-renderer-viewport-label-nl')).toBeNull();
   });
 
-  it('section view renders the cutting-plane arrows group', () => {
+  it('section view renders the cutting-plane arrows group (full / default)', () => {
     const sheet = sheetWithSection();
     const { getByTestId, queryByTestId } = render(<SheetRenderer sheet={sheet} />);
     const arrows = getByTestId('sheet-renderer-section-arrows-sec-A');
@@ -168,8 +168,100 @@ describe('SheetRenderer', () => {
     // Arrows group contains the dashed cut line + 2 polygon arrowheads.
     expect(arrows.querySelectorAll('line').length).toBeGreaterThanOrEqual(1);
     expect(arrows.querySelectorAll('polygon').length).toBe(2);
+    // Default (no sectionType) is tagged as 'full'.
+    expect(arrows.getAttribute('data-section-type')).toBe('full');
     // Non-section viewport must NOT have a section-arrows group.
     expect(queryByTestId('sheet-renderer-section-arrows-front')).toBeNull();
+  });
+
+  it('half-section view renders only ONE arrowhead', () => {
+    const section: Viewport = {
+      id: 'sec-H',
+      sourceId: 'p1',
+      projection: {
+        kind: 'section',
+        cuttingPlaneId: 'B',
+        sectionType: 'half',
+        side: 'near',
+      },
+      centerOnSheet: { x: 200, y: 150 },
+      widthOnSheet: 80,
+      scale: 1,
+      label: 'HALF B-B',
+    };
+    const sheet: Sheet = {
+      id: 's-half', name: 'half', paperSize: 'A3', viewports: [section],
+    };
+    const { getByTestId } = render(<SheetRenderer sheet={sheet} />);
+    const arrows = getByTestId('sheet-renderer-section-arrows-sec-H');
+    expect(arrows.getAttribute('data-section-type')).toBe('half');
+    // 'half' draws the dashed line + exactly ONE arrow polygon.
+    expect(arrows.querySelectorAll('line').length).toBeGreaterThanOrEqual(1);
+    expect(arrows.querySelectorAll('polygon').length).toBe(1);
+  });
+
+  it('offset section view renders a polyline of N+1 path points (→ N segments)', () => {
+    const path = [
+      { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 5 }, { x: 20, y: 5 },
+    ];
+    const section: Viewport = {
+      id: 'sec-O',
+      sourceId: 'p1',
+      projection: {
+        kind: 'section',
+        cuttingPlaneId: 'C',
+        sectionType: 'offset',
+        cuttingPath: path,
+      },
+      centerOnSheet: { x: 200, y: 150 },
+      widthOnSheet: 80,
+      scale: 1,
+      label: 'OFFSET C-C',
+    };
+    const sheet: Sheet = {
+      id: 's-off', name: 'offset', paperSize: 'A3', viewports: [section],
+    };
+    const { getByTestId } = render(<SheetRenderer sheet={sheet} />);
+    const arrows = getByTestId('sheet-renderer-section-arrows-sec-O');
+    expect(arrows.getAttribute('data-section-type')).toBe('offset');
+    const polyline = getByTestId('sheet-renderer-section-polyline-sec-O');
+    expect(polyline.tagName.toLowerCase()).toBe('polyline');
+    const points = (polyline.getAttribute('points') ?? '').trim().split(/\s+/);
+    // N+1 points in the rendered polyline.
+    expect(points.length).toBe(path.length);
+    // Two endpoint arrowheads.
+    expect(getByTestId('sheet-renderer-section-arrow-start-sec-O')).not.toBeNull();
+    expect(getByTestId('sheet-renderer-section-arrow-end-sec-O')).not.toBeNull();
+  });
+
+  it('aligned section renders a polyline same as offset (Phase 1 visual parity)', () => {
+    const path = [
+      { x: 0, y: 0 }, { x: 5, y: 5 }, { x: 15, y: 5 },
+    ];
+    const section: Viewport = {
+      id: 'sec-A',
+      sourceId: 'p1',
+      projection: {
+        kind: 'section',
+        cuttingPlaneId: 'D',
+        sectionType: 'aligned',
+        cuttingPath: path,
+      },
+      centerOnSheet: { x: 200, y: 150 },
+      widthOnSheet: 80,
+      scale: 1,
+      label: 'ALIGNED D-D',
+    };
+    const sheet: Sheet = {
+      id: 's-aln', name: 'aligned', paperSize: 'A3', viewports: [section],
+    };
+    const { getByTestId } = render(<SheetRenderer sheet={sheet} />);
+    const arrows = getByTestId('sheet-renderer-section-arrows-sec-A');
+    expect(arrows.getAttribute('data-section-type')).toBe('aligned');
+    const polyline = getByTestId('sheet-renderer-section-polyline-sec-A');
+    expect(polyline.tagName.toLowerCase()).toBe('polyline');
+    const points = (polyline.getAttribute('points') ?? '').trim().split(/\s+/);
+    expect(points.length).toBe(path.length);
   });
 
   it('detail view renders the detail-circle marker with a letter label', () => {

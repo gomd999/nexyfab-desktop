@@ -71,14 +71,60 @@ export interface AuxiliaryProjection {
   referencePlaneId: string;
 }
 
+/**
+ * Section view variants (spec FULL §8.2).
+ *
+ * - 'full' — single straight cutting plane spans the whole part (current
+ *   behavior). `cuttingPath` may be omitted; the cut is implied by
+ *   `cuttingPlaneId`'s plane definition in the 3D source.
+ * - 'half' — like full but ONLY one side of the cutting plane is shown.
+ *   `side` selects which half is preserved ('near' = side facing the
+ *   viewer, 'far' = side behind the plane).
+ * - 'offset' — the cutting plane is a polyline of 2+ segments ("zigzag").
+ *   `cuttingPath` carries the polyline in the SOURCE viewport's drawing
+ *   coords (mm).
+ * - 'aligned' — like 'offset', but each segment is unfolded back to flat
+ *   when projected (Phase 4.2 will implement the actual unfold; in this
+ *   phase aligned renders identically to offset and is tagged for the
+ *   geometry layer to pick up later).
+ */
+export type SectionType = 'full' | 'half' | 'offset' | 'aligned';
+
 export interface SectionProjection {
   kind: 'section';
   /** Reference cutting plane id in the source model. */
   cuttingPlaneId: string;
+  /**
+   * Variant selector — see {@link SectionType}. Absent ⇒ treated as
+   * 'full' (backward-compat for Sheet IR objects authored before
+   * Phase 4.1.2).
+   */
+  sectionType?: SectionType;
   /** Optional offset of the section plane along its normal (mm). */
   offset?: number;
-  /** When true, only show what's behind the cutting plane (one-side cut). */
+  /**
+   * Legacy: when true, only show what's behind the cutting plane
+   * (one-side cut). Retained for backward-compat with Phase 4.1.1
+   * fixtures. New code should use `sectionType: 'half'` + `side`.
+   */
   oneSided?: boolean;
+  /**
+   * For sectionType:'half' — which half to keep. 'near' (default) keeps
+   * the side facing the viewer; 'far' keeps the side behind the plane.
+   */
+  side?: 'near' | 'far';
+  /**
+   * For sectionType:'offset' and 'aligned' — polyline cutting path in
+   * the SOURCE viewport's drawing coords (mm). MUST have ≥ 2 points
+   * (i.e. ≥ 1 segment); 'offset' typically has ≥ 3 (i.e. ≥ 2 segments
+   * with at least one jog).
+   */
+  cuttingPath?: ReadonlyArray<{ x: number; y: number }>;
+}
+
+/** Resolve a section projection's effective variant, defaulting to 'full'. */
+export function effectiveSectionType(p: SectionProjection): SectionType {
+  return p.sectionType ?? 'full';
 }
 
 export interface DetailProjection {
@@ -136,6 +182,57 @@ export class SheetValidationError extends Error {
   }
 }
 
+function validateSectionProjection(viewportId: string, p: SectionProjection): void {
+  if (!p.cuttingPlaneId) {
+    throw new SheetValidationError(
+      `viewport ${viewportId} (section): cuttingPlaneId is empty`,
+    );
+  }
+  const variant = effectiveSectionType(p);
+  switch (variant) {
+    case 'full':
+      // Nothing further required.
+      return;
+    case 'half':
+      if (p.side !== undefined && p.side !== 'near' && p.side !== 'far') {
+        throw new SheetValidationError(
+          `viewport ${viewportId} (section/half): invalid side ${String(p.side)}`,
+        );
+      }
+      return;
+    case 'offset':
+    case 'aligned': {
+      const path = p.cuttingPath;
+      if (!path || path.length < 2) {
+        throw new SheetValidationError(
+          `viewport ${viewportId} (section/${variant}): cuttingPath must have ≥ 2 points`,
+        );
+      }
+      // 'aligned' additionally requires every segment to be non-zero so the
+      // Phase 4.2 unfold has a well-defined rotation axis per segment.
+      if (variant === 'aligned') {
+        for (let i = 1; i < path.length; i += 1) {
+          const a = path[i - 1];
+          const b = path[i];
+          if (a.x === b.x && a.y === b.y) {
+            throw new SheetValidationError(
+              `viewport ${viewportId} (section/aligned): segment ${i - 1}→${i} has zero length`,
+            );
+          }
+        }
+      }
+      return;
+    }
+    default: {
+      // Exhaustiveness check — surfaces any new SectionType added later.
+      const _exhaustive: never = variant;
+      throw new SheetValidationError(
+        `viewport ${viewportId} (section): unknown sectionType ${String(_exhaustive)}`,
+      );
+    }
+  }
+}
+
 export function validateSheet(sheet: Sheet): void {
   if (!sheet.id) throw new SheetValidationError('sheet id is empty');
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
@@ -159,6 +256,9 @@ export function validateSheet(sheet: Sheet): void {
       throw new SheetValidationError(
         `viewport ${vp.id}: centerOnSheet.y ${vp.centerOnSheet.y} outside sheet height ${dim.height}`,
       );
+    }
+    if (vp.projection.kind === 'section') {
+      validateSectionProjection(vp.id, vp.projection);
     }
     if (vp.projection.kind === 'detail') {
       // Detail must reference an existing viewport id on the SAME sheet.

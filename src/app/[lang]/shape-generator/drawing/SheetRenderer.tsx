@@ -31,7 +31,7 @@
 
 import * as React from 'react';
 import type { Sheet, Viewport } from '@/lib/drawing/sheet';
-import { paperDimensions } from '@/lib/drawing/sheet';
+import { paperDimensions, effectiveSectionType } from '@/lib/drawing/sheet';
 import { viewportSheetBox } from '@/lib/drawing/dxfExport';
 
 // ─── constants ───────────────────────────────────────────────────────────
@@ -208,28 +208,64 @@ interface SectionArrowsProps {
 }
 
 /**
- * Cutting-plane indicator: a horizontal dashed line that crosses the
- * viewport at mid-height, capped at both ends with a small arrowhead
- * pointing inward (toward the cut). Phase 2 will rotate the line to
- * match the source cutting-plane's projection; for now a horizontal
- * stub conveys "this is a section view" without faking geometry.
+ * Cutting-plane indicator. Renders one of four variants (spec FULL §8.2):
+ *
+ *   - 'full'    — horizontal dashed line spanning the viewport, arrows at
+ *                 both ends pointing inward (current behavior).
+ *   - 'half'    — horizontal dashed line + ONE arrow on the side that
+ *                 carries the cut (selected by `side`; default 'near' →
+ *                 left arrow only).
+ *   - 'offset'  — polyline of the IR's `cuttingPath` (mapped from the
+ *                 source viewport's drawing coords into this viewport's
+ *                 box) with an arrowhead at each endpoint.
+ *   - 'aligned' — same visual as 'offset' for Phase 4.1.2; the actual
+ *                 unfold of segments to a flat plane lands in Phase 4.2
+ *                 when the OCCT HLR pipeline is wired.
+ *
+ * Phase 2 will rotate / position lines according to the actual projected
+ * cutting plane on the source viewport; this Phase 1 pass conveys "this
+ * is a section view" without faking geometry.
  */
 function SectionArrows({ viewport, box }: SectionArrowsProps): React.ReactElement {
   if (viewport.projection.kind !== 'section') {
     throw new Error('SectionArrows: viewport is not a section projection');
   }
-  const midY = box.y + box.h / 2;
+  const proj = viewport.projection;
+  const variant = effectiveSectionType(proj);
   const armLen = Math.min(box.w * 0.15, 8);
   const arrowSize = Math.max(1.5, box.h * 0.02);
+  const labelFontSize = Math.max(2.5, box.h * 0.04);
+
+  const commonProps = {
+    'data-testid': `sheet-renderer-section-arrows-${viewport.id}`,
+    'data-section-type': variant,
+    stroke: SECTION_ARROW_COLOR,
+    strokeWidth: 0.5,
+    fill: SECTION_ARROW_COLOR,
+  } as const;
+
+  if (variant === 'offset' || variant === 'aligned') {
+    return (
+      <SectionPolyline
+        viewport={viewport}
+        box={box}
+        path={proj.cuttingPath ?? []}
+        arrowSize={arrowSize}
+        labelFontSize={labelFontSize}
+        commonProps={commonProps}
+      />
+    );
+  }
+
+  // 'full' and 'half' share the straight-line layout; 'half' just drops one arrow.
+  const midY = box.y + box.h / 2;
   const xLeft = box.x - armLen;
   const xRight = box.x + box.w + armLen;
+  const showLeft = variant === 'half' ? (proj.side ?? 'near') === 'near' : true;
+  const showRight = variant === 'half' ? (proj.side ?? 'near') === 'far' : true;
+
   return (
-    <g
-      data-testid={`sheet-renderer-section-arrows-${viewport.id}`}
-      stroke={SECTION_ARROW_COLOR}
-      strokeWidth={0.5}
-      fill={SECTION_ARROW_COLOR}
-    >
+    <g {...commonProps}>
       {/* dashed cutting line crossing the viewport */}
       <line
         x1={xLeft}
@@ -238,37 +274,179 @@ function SectionArrows({ viewport, box }: SectionArrowsProps): React.ReactElemen
         y2={midY}
         strokeDasharray="3 1.5"
       />
-      {/* left arrow head (pointing right, into the viewport) */}
-      <polygon
-        points={`${box.x},${midY} ${box.x - arrowSize},${midY - arrowSize} ${box.x - arrowSize},${midY + arrowSize}`}
-      />
-      {/* right arrow head (pointing left, into the viewport) */}
-      <polygon
-        points={`${box.x + box.w},${midY} ${box.x + box.w + arrowSize},${midY - arrowSize} ${box.x + box.w + arrowSize},${midY + arrowSize}`}
-      />
+      {showLeft ? (
+        // left arrow head (pointing right, into the viewport)
+        <polygon
+          points={`${box.x},${midY} ${box.x - arrowSize},${midY - arrowSize} ${box.x - arrowSize},${midY + arrowSize}`}
+        />
+      ) : null}
+      {showRight ? (
+        // right arrow head (pointing left, into the viewport)
+        <polygon
+          points={`${box.x + box.w},${midY} ${box.x + box.w + arrowSize},${midY - arrowSize} ${box.x + box.w + arrowSize},${midY + arrowSize}`}
+        />
+      ) : null}
       {/* end-labels — the IR carries the cutting plane id, surface as a hint */}
+      {showLeft ? (
+        <text
+          x={xLeft - 1}
+          y={midY - arrowSize - 1}
+          fontSize={labelFontSize}
+          fontFamily="system-ui, sans-serif"
+          textAnchor="end"
+          stroke="none"
+        >
+          {proj.cuttingPlaneId}
+        </text>
+      ) : null}
+      {showRight ? (
+        <text
+          x={xRight + 1}
+          y={midY - arrowSize - 1}
+          fontSize={labelFontSize}
+          fontFamily="system-ui, sans-serif"
+          textAnchor="start"
+          stroke="none"
+        >
+          {proj.cuttingPlaneId}
+        </text>
+      ) : null}
+    </g>
+  );
+}
+
+// ─── section view: offset / aligned polyline ─────────────────────────────
+
+interface SectionPolylineProps {
+  viewport: Viewport;
+  box: ResolvedBox;
+  path: ReadonlyArray<{ x: number; y: number }>;
+  arrowSize: number;
+  labelFontSize: number;
+  commonProps: {
+    'data-testid': string;
+    'data-section-type': string;
+    stroke: string;
+    strokeWidth: number;
+    fill: string;
+  };
+}
+
+/**
+ * Render an offset/aligned cutting polyline inside the viewport box.
+ *
+ * The IR's `cuttingPath` lives in SOURCE viewport drawing coords (mm).
+ * Without the source viewport's resolved geometry available at this
+ * Phase 1 stub (Phase 2 wires the source-coord projection), we normalize
+ * the path's own bounding box and map it to fit inside this viewport's
+ * box with a small inset — that preserves the polyline's SHAPE so users
+ * can see the cut pattern, while leaving exact placement for Phase 2.
+ */
+function SectionPolyline({
+  viewport,
+  box,
+  path,
+  arrowSize,
+  labelFontSize,
+  commonProps,
+}: SectionPolylineProps): React.ReactElement {
+  if (viewport.projection.kind !== 'section') {
+    throw new Error('SectionPolyline: viewport is not a section projection');
+  }
+  const proj = viewport.projection;
+
+  // Map source-viewport coords → this viewport's box. Phase 2 will instead
+  // project the path through the same camera that draws the geometry.
+  const mapped = mapPathToBox(path, box);
+  const first = mapped[0];
+  const last = mapped[mapped.length - 1];
+  const pointsAttr = mapped.map((p) => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <g {...commonProps}>
+      <polyline
+        data-testid={`sheet-renderer-section-polyline-${viewport.id}`}
+        points={pointsAttr}
+        fill="none"
+        strokeDasharray="3 1.5"
+      />
+      {/* Endpoint arrowheads — small triangles centered on the endpoints. */}
+      <polygon
+        data-testid={`sheet-renderer-section-arrow-start-${viewport.id}`}
+        points={`${first.x},${first.y} ${first.x - arrowSize},${first.y - arrowSize} ${first.x - arrowSize},${first.y + arrowSize}`}
+      />
+      <polygon
+        data-testid={`sheet-renderer-section-arrow-end-${viewport.id}`}
+        points={`${last.x},${last.y} ${last.x + arrowSize},${last.y - arrowSize} ${last.x + arrowSize},${last.y + arrowSize}`}
+      />
+      {/* End-labels — same convention as the straight variants. */}
       <text
-        x={xLeft - 1}
-        y={midY - arrowSize - 1}
-        fontSize={Math.max(2.5, box.h * 0.04)}
+        x={first.x - arrowSize - 1}
+        y={first.y - arrowSize - 1}
+        fontSize={labelFontSize}
         fontFamily="system-ui, sans-serif"
         textAnchor="end"
         stroke="none"
       >
-        {viewport.projection.cuttingPlaneId}
+        {proj.cuttingPlaneId}
       </text>
       <text
-        x={xRight + 1}
-        y={midY - arrowSize - 1}
-        fontSize={Math.max(2.5, box.h * 0.04)}
+        x={last.x + arrowSize + 1}
+        y={last.y - arrowSize - 1}
+        fontSize={labelFontSize}
         fontFamily="system-ui, sans-serif"
         textAnchor="start"
         stroke="none"
       >
-        {viewport.projection.cuttingPlaneId}
+        {proj.cuttingPlaneId}
       </text>
     </g>
   );
+}
+
+/**
+ * Fit a path into the viewport box (with a small inset) by translating /
+ * uniformly scaling its bounding box. Degenerate inputs (single point /
+ * zero-extent box) collapse to the viewport centre.
+ */
+function mapPathToBox(
+  path: ReadonlyArray<{ x: number; y: number }>,
+  box: ResolvedBox,
+): Array<{ x: number; y: number }> {
+  if (path.length === 0) {
+    const cx = box.x + box.w / 2;
+    const cy = box.y + box.h / 2;
+    return [{ x: cx, y: cy }];
+  }
+  const inset = Math.min(box.w, box.h) * 0.1;
+  const targetW = Math.max(0, box.w - inset * 2);
+  const targetH = Math.max(0, box.h - inset * 2);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of path) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const srcW = maxX - minX;
+  const srcH = maxY - minY;
+  if (srcW === 0 && srcH === 0) {
+    const cx = box.x + box.w / 2;
+    const cy = box.y + box.h / 2;
+    return path.map(() => ({ x: cx, y: cy }));
+  }
+  const sx = srcW > 0 ? targetW / srcW : 1;
+  const sy = srcH > 0 ? targetH / srcH : 1;
+  const s = Math.min(sx, sy);
+  // Center the scaled path inside the box.
+  const offsetX = box.x + (box.w - srcW * s) / 2;
+  const offsetY = box.y + (box.h - srcH * s) / 2;
+  return path.map((p) => ({
+    x: offsetX + (p.x - minX) * s,
+    // Source path is in drawing-mm with sheet-style (bottom-left) coords;
+    // SVG y is top-down, so flip within the local bounding box.
+    y: offsetY + (srcH - (p.y - minY)) * s,
+  }));
 }
 
 // ─── detail view: detail-circle marker ───────────────────────────────────
