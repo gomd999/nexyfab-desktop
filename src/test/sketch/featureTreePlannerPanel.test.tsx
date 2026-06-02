@@ -9,12 +9,14 @@
  *   - Both null → "Could not understand" status.
  *   - Apply invokes onApply with the plan steps, clears input + plan
  *     preview, retains history.
- *   - History rolling cap = 5 (oldest evicted).
+ *   - History rolling cap (default 50; overridable via maxHistoryEntries).
  *   - Empty plan (warnings only) disables Apply + shows warning.
  *   - 6-lang label rendering.
  *   - Status text transitions through detecting/generating/idle.
+ *   - Persistent history (Agent-IIIII useChatHistory): localStorage, Clear,
+ *     Export, appliedAt checkmark, count badge, source = regex/llm.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   render,
   screen,
@@ -26,6 +28,13 @@ import React from 'react';
 import FeatureTreePlannerPanel from '@/app/[lang]/shape-generator/sketch/FeatureTreePlannerPanel';
 import type { FeatureTree } from '@/lib/cad/featureTree';
 import type { PlanIntent } from '@/lib/ai/featureTreePlanner';
+import {
+  CHAT_HISTORY_AUTOSAVE_DEBOUNCE_MS,
+  CHAT_HISTORY_SCHEMA_VERSION,
+  DEFAULT_STORAGE_KEY,
+  saveChatHistory,
+  type ChatHistoryEntry,
+} from '@/lib/ai/aiChatHistory';
 
 function emptyTree(): FeatureTree {
   return { nodes: [] };
@@ -34,6 +43,22 @@ function emptyTree(): FeatureTree {
 function typeInto(testId: string, value: string): void {
   const el = screen.getByTestId(testId) as HTMLTextAreaElement;
   fireEvent.change(el, { target: { value } });
+}
+
+// Tests share the Map-backed localStorage shim across the file. Without a
+// per-test clear, history leaks between tests and breaks count assertions.
+beforeEach(() => {
+  if (typeof window !== 'undefined') window.localStorage.clear();
+});
+
+afterEach(() => {
+  if (typeof window !== 'undefined') window.localStorage.clear();
+});
+
+let testKeyCounter = 0;
+function uniqueKey(label: string): string {
+  testKeyCounter += 1;
+  return `nexyfab:test:planner-${label}-${testKeyCounter}`;
 }
 
 describe('FeatureTreePlannerPanel', () => {
@@ -258,12 +283,14 @@ describe('FeatureTreePlannerPanel', () => {
     ).toContain('cylinder radius 7 height 12');
   });
 
-  it('history caps at 5 — 6th prompt evicts the oldest', async () => {
+  it('history caps at configured maxHistoryEntries — 6th prompt evicts the oldest when cap=5', async () => {
     render(
       <FeatureTreePlannerPanel
         lang="en"
         currentTree={emptyTree()}
         onApply={vi.fn()}
+        storageKey={`nexyfab:test:planner-cap5-${Math.random()}`}
+        maxHistoryEntries={5}
       />,
     );
     const prompts = [
@@ -483,5 +510,391 @@ describe('FeatureTreePlannerPanel', () => {
     expect(
       (screen.getByTestId('planner-input') as HTMLTextAreaElement).value,
     ).toBe('');
+  });
+
+  // ─── Persistence integration (Agent-IIIII useChatHistory) ───────────────
+
+  it('mounts with empty history when localStorage is clean', () => {
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={uniqueKey('mount-empty')}
+      />,
+    );
+    expect(screen.getByTestId('planner-history')).toBeInTheDocument();
+    expect(screen.queryByTestId('planner-history-item-0')).toBeNull();
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '0 / 50',
+    );
+  });
+
+  it('successful prompt → useChatHistory.add called, history grows by 1', async () => {
+    const key = uniqueKey('add-grow');
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={key}
+      />,
+    );
+    typeInto('planner-input', 'cylinder radius 7 height 8');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '1 / 50',
+    );
+    // Source 'regex' is reflected via intentKind in the rendered label.
+    expect(screen.getByTestId('planner-history-item-0').textContent).toMatch(
+      /create_cylinder/,
+    );
+  });
+
+  it('Apply click → markApplied stamps appliedAt and shows the ✓ marker', async () => {
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={uniqueKey('apply-mark')}
+      />,
+    );
+    typeInto('planner-input', 'box 30x30x30 with fillet 2');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    // Before Apply: no checkmark
+    await screen.findByTestId('planner-history-item-0');
+    expect(screen.queryByTestId('planner-history-applied-0')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    // After Apply: checkmark present
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('planner-history-applied-0'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId('planner-history-applied-0').getAttribute('title'),
+    ).toMatch(/^Applied: \d{4}-/);
+  });
+
+  it('history at 50 + 1 → oldest evicted (default cap)', async () => {
+    const key = uniqueKey('cap50');
+    // Pre-seed 50 entries. Newest-first: index 0 = newest by hook convention.
+    // We label entries `seeded N` where N = position (0 = newest, 49 = oldest)
+    // so the eviction check below targets `seeded 49` (the oldest tail).
+    const seeded: ChatHistoryEntry[] = Array.from({ length: 50 }, (_, i) => ({
+      id: `seed-${i}`,
+      timestamp: 10000 - i, // descending so newer is earlier in array
+      prompt: `seeded ${i}`,
+      source: 'regex',
+      intentKind: 'create_cylinder',
+      stepCount: 1,
+    }));
+    saveChatHistory(seeded, key);
+
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={key}
+      />,
+    );
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '50 / 50',
+    );
+    typeInto('planner-input', 'cylinder radius 11 height 12');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-step-0');
+    // Still 50 / 50 — oldest evicted by addEntry cap.
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '50 / 50',
+    );
+    // 'seeded 49' (the tail / oldest) is evicted; the new prompt is at index 0.
+    expect(
+      screen.queryByTestId('planner-history-item-50'),
+    ).toBeNull();
+    const lastLabel =
+      screen.getByTestId('planner-history-item-49').textContent ?? '';
+    // After eviction, index 49 (new tail) holds the previous "seeded 48".
+    expect(lastLabel).toContain('seeded 48');
+    // Newest prompt is at index 0.
+    expect(screen.getByTestId('planner-history-item-0').textContent).toContain(
+      'cylinder radius 11 height 12',
+    );
+  });
+
+  it('Clear button wipes the history and disables itself', async () => {
+    const key = uniqueKey('clear-wipe');
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={key}
+      />,
+    );
+    typeInto('planner-input', 'cylinder radius 4 height 4');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+
+    const clearBtn = screen.getByTestId('planner-history-clear');
+    expect(clearBtn).not.toBeDisabled();
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('planner-history-item-0')).toBeNull();
+    });
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '0 / 50',
+    );
+    expect(screen.getByTestId('planner-history-clear')).toBeDisabled();
+    expect(screen.getByTestId('planner-history-export')).toBeDisabled();
+    // Persistence: clear also wiped localStorage.
+    expect(window.localStorage.getItem(key)).toBeNull();
+  });
+
+  it('Export button triggers a JSON blob download', async () => {
+    const key = uniqueKey('export-blob');
+    const createObjectURL: (b: Blob) => string = vi.fn(
+      (_b: Blob): string => 'blob:fake',
+    );
+    const revokeObjectURL: (u: string) => void = vi.fn();
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+
+    const clickSpy = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tag: string) => {
+        const el = originalCreateElement(tag) as HTMLElement;
+        if (tag.toLowerCase() === 'a') {
+          (el as HTMLAnchorElement).click = clickSpy;
+        }
+        return el as ReturnType<typeof originalCreateElement>;
+      });
+
+    try {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={emptyTree()}
+          onApply={vi.fn()}
+          storageKey={key}
+        />,
+      );
+      typeInto('planner-input', 'cylinder radius 2 height 2');
+      fireEvent.click(screen.getByTestId('planner-send'));
+      await screen.findByTestId('planner-history-item-0');
+
+      fireEvent.click(screen.getByTestId('planner-history-export'));
+
+      const mock = vi.mocked(createObjectURL);
+      expect(mock).toHaveBeenCalledTimes(1);
+      const blob = mock.mock.calls[0]![0];
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe('application/json');
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      createElementSpy.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+  });
+
+  it('Export button disabled when history empty', () => {
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={uniqueKey('export-empty')}
+      />,
+    );
+    expect(screen.getByTestId('planner-history-export')).toBeDisabled();
+  });
+
+  it('count badge reflects N / cap', async () => {
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={uniqueKey('count-badge')}
+        maxHistoryEntries={8}
+      />,
+    );
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '0 / 8',
+    );
+    typeInto('planner-input', 'cylinder radius 1 height 1');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+    expect(screen.getByTestId('planner-history-count').textContent).toBe(
+      '1 / 8',
+    );
+  });
+
+  it('localStorage persists across remount (same storageKey)', async () => {
+    const key = uniqueKey('persist-remount');
+    const { unmount } = render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={key}
+      />,
+    );
+    typeInto('planner-input', 'cylinder radius 13 height 14');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+
+    // Wait past the 500ms debounce so localStorage actually gets written.
+    await act(async () => {
+      await new Promise((r) =>
+        setTimeout(r, CHAT_HISTORY_AUTOSAVE_DEBOUNCE_MS + 50),
+      );
+    });
+
+    const raw = window.localStorage.getItem(key);
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw as string);
+    expect(parsed.version).toBe(CHAT_HISTORY_SCHEMA_VERSION);
+    expect(parsed.entries).toHaveLength(1);
+    expect(parsed.entries[0].prompt).toBe('cylinder radius 13 height 14');
+    expect(parsed.entries[0].source).toBe('regex');
+
+    unmount();
+
+    // Remount with the same key → history is rehydrated.
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={key}
+      />,
+    );
+    expect(screen.getByTestId('planner-history-item-0').textContent).toContain(
+      'cylinder radius 13 height 14',
+    );
+  });
+
+  it('default storage key is used when storageKey prop omitted', async () => {
+    // Pre-seed under the DEFAULT key — the panel should load it.
+    saveChatHistory(
+      [
+        {
+          id: 'default-key-preload',
+          timestamp: 5000,
+          prompt: 'preloaded under default key',
+          source: 'regex',
+          intentKind: 'create_cylinder',
+          stepCount: 1,
+        },
+      ],
+      DEFAULT_STORAGE_KEY,
+    );
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('planner-history-item-0').textContent).toContain(
+      'preloaded under default key',
+    );
+  });
+
+  it('LLM-resolved prompts record source as llm in persisted entry', async () => {
+    const key = uniqueKey('source-llm');
+    const llmIntentFetcher = vi.fn(
+      async (): Promise<PlanIntent | null> => ({
+        kind: 'create_cylinder',
+        radius: 3,
+        height: 4,
+      }),
+    );
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        llmIntentFetcher={llmIntentFetcher}
+        storageKey={key}
+      />,
+    );
+    typeInto('planner-input', 'something only the llm can parse');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+
+    await act(async () => {
+      await new Promise((r) =>
+        setTimeout(r, CHAT_HISTORY_AUTOSAVE_DEBOUNCE_MS + 50),
+      );
+    });
+    const raw = window.localStorage.getItem(key);
+    const parsed = JSON.parse(raw as string);
+    expect(parsed.entries[0].source).toBe('llm');
+  });
+
+  it('onHistoryError is wired through to the hook (no fire on happy path)', async () => {
+    const onHistoryError = vi.fn();
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={uniqueKey('on-error')}
+        onHistoryError={onHistoryError}
+      />,
+    );
+    typeInto('planner-input', 'cylinder radius 2 height 3');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+    await act(async () => {
+      await new Promise((r) =>
+        setTimeout(r, CHAT_HISTORY_AUTOSAVE_DEBOUNCE_MS + 50),
+      );
+    });
+    // Happy path: no error fired.
+    expect(onHistoryError).not.toHaveBeenCalled();
+  });
+
+  it('Apply on the second prompt marks only the second entry as applied', async () => {
+    render(
+      <FeatureTreePlannerPanel
+        lang="en"
+        currentTree={emptyTree()}
+        onApply={vi.fn()}
+        storageKey={uniqueKey('apply-second')}
+      />,
+    );
+    typeInto('planner-input', 'cylinder radius 1 height 1');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-history-item-0');
+    // Don't apply this one.
+    typeInto('planner-input', 'cylinder radius 2 height 2');
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('planner-history-item-0').textContent,
+      ).toContain('radius 2');
+    });
+    fireEvent.click(screen.getByTestId('planner-apply'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('planner-history-applied-0'),
+      ).toBeInTheDocument();
+    });
+    // The second (older) entry is NOT marked applied.
+    expect(screen.queryByTestId('planner-history-applied-1')).toBeNull();
   });
 });
