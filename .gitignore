@@ -101,3 +101,7 @@ out2/data/factories.json
 
 # Mock/demo validation reports
 /validation-reports/
+
+# Phase 4: OCCT worker stub — node_modules created by ad-hoc installs in occt-worker/
+occt-worker/node_modules/
+public/occt-worker/node_modules/
