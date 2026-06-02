@@ -1,0 +1,282 @@
+/** @vitest-environment jsdom */
+/**
+ * AssemblyBrowserModal — Phase 3.A first user-facing assembly UI tests.
+ *
+ * Standalone modal: takes lang + optional initialState + onClose + optional
+ * onSolve. All test ids prefixed solver-assembly-*.
+ */
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import React from 'react';
+import AssemblyBrowserModal, {
+  type AssemblyBrowserLang,
+  type AssemblyBrowserSolveResult,
+} from '@/app/[lang]/shape-generator/assembly/AssemblyBrowserModal';
+import { IDENTITY_QUAT, type AssemblyState } from '@/lib/assembly/assemblyState';
+
+function seedState(): AssemblyState {
+  return {
+    parts: [
+      {
+        id: 'p_base',
+        name: 'Base',
+        partTemplateId: 'tpl_base',
+        position: { x: 0, y: 0, z: 0 },
+        orientation: IDENTITY_QUAT,
+        fixed: true,
+      },
+      {
+        id: 'p_arm',
+        name: 'Arm',
+        partTemplateId: 'tpl_arm',
+        position: { x: 0, y: 0, z: 0 },
+        orientation: IDENTITY_QUAT,
+      },
+    ],
+    mates: [
+      {
+        id: 'm1',
+        kind: 'coincident',
+        a: { partId: 'p_base', refId: 'face_top', refKind: 'face' },
+        b: { partId: 'p_arm', refId: 'face_bot', refKind: 'face' },
+      },
+    ],
+  };
+}
+
+describe('AssemblyBrowserModal', () => {
+  it('renders the modal title, parts panel, mates panel, footer buttons', () => {
+    render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+    expect(screen.getByTestId('solver-assembly-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-title')).toHaveTextContent(/Assembly Browser/i);
+    expect(screen.getByTestId('solver-assembly-parts-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-mates-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-add-part')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-add-mate')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-close')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-solve')).toBeInTheDocument();
+  });
+
+  it('default state shows empty placeholders for parts and mates', () => {
+    render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+    expect(screen.getByTestId('solver-assembly-parts-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-mates-empty')).toBeInTheDocument();
+  });
+
+  it('renders seeded parts and mates from initialState', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-part-row-p_arm')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-mate-row-m1')).toBeInTheDocument();
+    expect(
+      (screen.getByTestId('solver-assembly-part-fixed-p_base') as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(
+      (screen.getByTestId('solver-assembly-part-fixed-p_arm') as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  it('+ Add part appends a new part and marks the first added one as fixed', () => {
+    render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+    expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+    expect(
+      (screen.getByTestId('solver-assembly-part-fixed-part_1') as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+    expect(screen.getByTestId('solver-assembly-part-row-part_2')).toBeInTheDocument();
+    expect(
+      (screen.getByTestId('solver-assembly-part-fixed-part_2') as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  it('part name input edits the part name in place', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    const name = screen.getByTestId('solver-assembly-part-name-p_arm') as HTMLInputElement;
+    fireEvent.change(name, { target: { value: 'Crank Arm' } });
+    expect(
+      (screen.getByTestId('solver-assembly-part-name-p_arm') as HTMLInputElement).value,
+    ).toBe('Crank Arm');
+  });
+
+  it('toggling Fixed checkbox flips the part fixed flag', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    const cb = screen.getByTestId('solver-assembly-part-fixed-p_arm') as HTMLInputElement;
+    expect(cb.checked).toBe(false);
+    fireEvent.click(cb);
+    expect(
+      (screen.getByTestId('solver-assembly-part-fixed-p_arm') as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+
+  it('removing a part drops both the part row and any mates that reference it', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    expect(screen.getByTestId('solver-assembly-mate-row-m1')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('solver-assembly-part-remove-p_arm'));
+    expect(screen.queryByTestId('solver-assembly-part-row-p_arm')).toBeNull();
+    expect(screen.queryByTestId('solver-assembly-mate-row-m1')).toBeNull();
+  });
+
+  it('+ Add mate appends a new coincident mate pre-wired to first two parts', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByTestId('solver-assembly-add-mate'));
+    // Seed had 1 mate so the new id is mate_2 (mate_${state.mates.length + 1}).
+    const row = screen.getByTestId('solver-assembly-mate-row-mate_2');
+    expect(row).toBeInTheDocument();
+    const kindSel = within(row).getByTestId(
+      'solver-assembly-mate-kind-mate_2',
+    ) as HTMLSelectElement;
+    expect(kindSel.value).toBe('coincident');
+    expect(
+      (within(row).getByTestId('solver-assembly-mate-a-partid-mate_2') as HTMLInputElement).value,
+    ).toBe('p_base');
+    expect(
+      (within(row).getByTestId('solver-assembly-mate-b-partid-mate_2') as HTMLInputElement).value,
+    ).toBe('p_arm');
+  });
+
+  it('changing mate kind to distance reveals the numeric value input', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    const sel = screen.getByTestId('solver-assembly-mate-kind-m1') as HTMLSelectElement;
+    fireEvent.change(sel, { target: { value: 'distance' } });
+    expect(screen.getByTestId('solver-assembly-mate-value-m1')).toBeInTheDocument();
+    expect(
+      (screen.getByTestId('solver-assembly-mate-value-m1') as HTMLInputElement).value,
+    ).toBe('10');
+  });
+
+  it('editing mate value updates the stored value and shows it in inputs', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    fireEvent.change(screen.getByTestId('solver-assembly-mate-kind-m1'), {
+      target: { value: 'angle' },
+    });
+    const val = screen.getByTestId('solver-assembly-mate-value-m1') as HTMLInputElement;
+    fireEvent.change(val, { target: { value: '45' } });
+    expect(
+      (screen.getByTestId('solver-assembly-mate-value-m1') as HTMLInputElement).value,
+    ).toBe('45');
+  });
+
+  it('editing ref A partId / refId / refKind updates the inputs', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    const partId = screen.getByTestId('solver-assembly-mate-a-partid-m1') as HTMLInputElement;
+    fireEvent.change(partId, { target: { value: 'new_part' } });
+    expect(
+      (screen.getByTestId('solver-assembly-mate-a-partid-m1') as HTMLInputElement).value,
+    ).toBe('new_part');
+
+    const refId = screen.getByTestId('solver-assembly-mate-a-refid-m1') as HTMLInputElement;
+    fireEvent.change(refId, { target: { value: 'new_ref' } });
+    expect(
+      (screen.getByTestId('solver-assembly-mate-a-refid-m1') as HTMLInputElement).value,
+    ).toBe('new_ref');
+
+    const refKind = screen.getByTestId('solver-assembly-mate-a-refkind-m1') as HTMLSelectElement;
+    fireEvent.change(refKind, { target: { value: 'axis' } });
+    expect(
+      (screen.getByTestId('solver-assembly-mate-a-refkind-m1') as HTMLSelectElement).value,
+    ).toBe('axis');
+  });
+
+  it('removing a mate drops the row but leaves parts intact', () => {
+    render(
+      <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByTestId('solver-assembly-mate-remove-m1'));
+    expect(screen.queryByTestId('solver-assembly-mate-row-m1')).toBeNull();
+    expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-part-row-p_arm')).toBeInTheDocument();
+  });
+
+  it('Close button invokes onClose', () => {
+    const onClose = vi.fn();
+    render(<AssemblyBrowserModal lang="en" onClose={onClose} />);
+    fireEvent.click(screen.getByTestId('solver-assembly-close'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Solve button is disabled when no onSolve is provided', () => {
+    render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+    expect(
+      (screen.getByTestId('solver-assembly-solve') as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it('clicking Solve invokes onSolve with the current state and renders the result', async () => {
+    const result: AssemblyBrowserSolveResult = {
+      success: true,
+      iterations: 7,
+      finalMaxResidual: 0.0001,
+      dof: 5,
+      residuals: [{ mateId: 'm1', residual: 0, supported: true }],
+    };
+    const onSolve = vi.fn().mockResolvedValue(result);
+    render(
+      <AssemblyBrowserModal
+        lang="en"
+        initialState={seedState()}
+        onClose={vi.fn()}
+        onSolve={onSolve}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-assembly-solve-result')).toBeInTheDocument();
+    });
+    expect(onSolve).toHaveBeenCalledTimes(1);
+    const callArg = onSolve.mock.calls[0][0] as AssemblyState;
+    expect(callArg.parts.length).toBe(2);
+    expect(callArg.mates.length).toBe(1);
+    expect(screen.getByTestId('solver-assembly-solve-success')).toHaveTextContent(/success/i);
+    expect(screen.getByTestId('solver-assembly-solve-dof')).toHaveTextContent(/5/);
+    expect(screen.getByTestId('solver-assembly-solve-iterations')).toHaveTextContent(/7/);
+    expect(screen.getByTestId('solver-assembly-solve-residual-m1')).toBeInTheDocument();
+  });
+
+  it('Solve onError surfaces the error message in the UI', async () => {
+    const onSolve = vi.fn().mockRejectedValue(new Error('solver exploded'));
+    render(
+      <AssemblyBrowserModal
+        lang="en"
+        initialState={seedState()}
+        onClose={vi.fn()}
+        onSolve={onSolve}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-assembly-solve-error')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('solver-assembly-solve-error').textContent).toMatch(
+      /solver exploded/,
+    );
+  });
+
+  it.each<[AssemblyBrowserLang, RegExp]>([
+    ['ko', /어셈블리 브라우저/],
+    ['en', /Assembly Browser/],
+    ['ja', /アセンブリブラウザ/],
+    ['zh', /装配浏览器/],
+    ['es', /Navegador de Ensamblaje/],
+    ['ar', /متصفح التجميع/],
+  ])('i18n: lang %s renders the localized modal title', (lang, re) => {
+    render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+    expect(screen.getByTestId('solver-assembly-title').textContent).toMatch(re);
+  });
+});

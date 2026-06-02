@@ -1,11 +1,26 @@
-import { redirect } from 'next/navigation';
+'use client';
 
-/** Assembly/mates — opens design workspace + assembly panel. */
-export default async function ShapeGeneratorAssemblyPage({
-  params,
-}: {
+/**
+ * /[lang]/shape-generator/assembly — standalone Assembly Browser route
+ * (Phase 3.A first user-facing assembly UI for NexyFab Pro own-CAD).
+ *
+ * Previously this route was a redirect into the shape-generator workspace
+ * with `?entry=assembly`. Phase 3.A replaces it with a dedicated browser
+ * that mounts AssemblyBrowserModal directly so users can author parts
+ * and mates and POST to /api/assembly-solve without a host editor.
+ *
+ * The actual UI lives in `_content.tsx` so tests can mount it with a plain
+ * `lang` string instead of unwrapping the params promise via `use()`.
+ */
+
+import { use } from 'react';
+import { AssemblyBrowserPageContent } from './_content';
+
+interface PageProps {
   params: Promise<{ lang: string }>;
-}) {
-  const { lang } = await params;
-  redirect(`/${lang}/shape-generator?entry=assembly`);
+}
+
+export default function AssemblyBrowserPage({ params }: PageProps): React.ReactElement {
+  const { lang } = use(params);
+  return <AssemblyBrowserPageContent lang={lang} />;
 }
