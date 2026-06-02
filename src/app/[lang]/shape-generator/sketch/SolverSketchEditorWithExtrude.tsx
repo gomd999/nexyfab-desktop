@@ -24,6 +24,10 @@ import RevolveModal, { type RevolveFetcher, type RevolveLang } from './RevolveMo
 import type { SweepFetcher, SweepLang } from './SweepModal';
 import type { LoftFetcher, LoftLang } from './LoftModal';
 import type { PatternFetcher, PatternLang } from './PatternModal';
+import type { ShellFetcher, ShellLang } from './ShellModal';
+import type { HoleFetcher, HoleWizardLang } from './HoleWizardModal';
+import type { FilletFetcher, FilletLang } from './FilletModal';
+import type { ChamferFetcher, ChamferLang } from './ChamferModal';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
 import type { AxisLine2D } from '@/lib/cad/revolveProfile';
@@ -50,6 +54,22 @@ const PatternModal = dynamic(() => import('./PatternModal'), {
   ssr: false,
   loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
 });
+const ShellModal = dynamic(() => import('./ShellModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
+const HoleWizardModal = dynamic(() => import('./HoleWizardModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
+const FilletModal = dynamic(() => import('./FilletModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
+const ChamferModal = dynamic(() => import('./ChamferModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -59,6 +79,10 @@ interface Dict {
   sweep: string;
   loft: string;
   pattern: string;
+  shell: string;
+  hole: string;
+  fillet: string;
+  chamfer: string;
   modalTitle: string;
   depth: string;
   direction: string;
@@ -76,7 +100,7 @@ interface Dict {
 
 const dict: Record<Lang, Dict> = {
   ko: {
-    extrude: '돌출', revolve: '회전', sweep: '스윕', loft: '로프트', pattern: '패턴', modalTitle: '돌출 설정', depth: '깊이 (mm)', direction: '방향', mode: '연산', draft: '드래프트 각도(°)',
+    extrude: '돌출', revolve: '회전', sweep: '스윕', loft: '로프트', pattern: '패턴', shell: '쉘', hole: '구멍', fillet: '필렛', chamfer: '모따기', modalTitle: '돌출 설정', depth: '깊이 (mm)', direction: '방향', mode: '연산', draft: '드래프트 각도(°)',
     oneSided: '한 방향', twoSided: '양 방향', midplane: '중심면',
     add: '추가', cut: '제거',
     submit: '돌출', cancel: '취소',
@@ -85,7 +109,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '깊이는 0보다 커야 합니다',
   },
   en: {
-    extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
+    extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer', modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
     oneSided: 'One-sided', twoSided: 'Two-sided', midplane: 'Midplane',
     add: 'Add', cut: 'Cut',
     submit: 'Extrude', cancel: 'Cancel',
@@ -94,7 +118,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: 'depth must be > 0',
   },
   ja: {
-    extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
+    extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り', modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
     oneSided: '片側', twoSided: '両側', midplane: '中央面',
     add: '追加', cut: '除去',
     submit: '押し出し', cancel: 'キャンセル',
@@ -103,7 +127,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '深さは 0 より大きい必要があります',
   },
   zh: {
-    extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
+    extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角', modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
     oneSided: '单向', twoSided: '双向', midplane: '中面',
     add: '增加', cut: '切除',
     submit: '拉伸', cancel: '取消',
@@ -112,7 +136,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '深度必须大于 0',
   },
   es: {
-    extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
+    extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán', modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
     oneSided: 'Un lado', twoSided: 'Dos lados', midplane: 'Plano medio',
     add: 'Añadir', cut: 'Cortar',
     submit: 'Extruir', cancel: 'Cancelar',
@@ -121,7 +145,7 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: 'la profundidad debe ser > 0',
   },
   ar: {
-    extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
+    extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف', modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
     oneSided: 'جانب واحد', twoSided: 'جانبان', midplane: 'مستوى متوسط',
     add: 'إضافة', cut: 'قص',
     submit: 'بثق', cancel: 'إلغاء',
@@ -188,6 +212,14 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
   loftFetcher?: LoftFetcher;
   /** Injectable fetcher for tests. Defaults to POST /api/pattern-render. */
   patternFetcher?: PatternFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/shell-render. */
+  shellFetcher?: ShellFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/hole-render. */
+  holeFetcher?: HoleFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/fillet-render. */
+  filletFetcher?: FilletFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/chamfer-render. */
+  chamferFetcher?: ChamferFetcher;
   /**
    * Optional axis hint forwarded to the Revolve modal — e.g., a selected
    * line in the sketch. The modal renders a "use this as axis" button.
@@ -204,6 +236,10 @@ export default function SolverSketchEditorWithExtrude(
     sweepFetcher,
     loftFetcher,
     patternFetcher,
+    shellFetcher,
+    holeFetcher,
+    filletFetcher,
+    chamferFetcher,
     revolveAxisHint,
     ...editorProps
   } = props;
@@ -215,6 +251,10 @@ export default function SolverSketchEditorWithExtrude(
   const [sweepOpen, setSweepOpen] = useState(false);
   const [loftOpen, setLoftOpen] = useState(false);
   const [patternOpen, setPatternOpen] = useState(false);
+  const [shellOpen, setShellOpen] = useState(false);
+  const [holeOpen, setHoleOpen] = useState(false);
+  const [filletOpen, setFilletOpen] = useState(false);
+  const [chamferOpen, setChamferOpen] = useState(false);
   const [depth, setDepth] = useState<string>('10');
   const [direction, setDirection] = useState<ExtrudeDirection>('one_sided');
   const [mode, setMode] = useState<ExtrudeMode>('add');
@@ -245,6 +285,10 @@ export default function SolverSketchEditorWithExtrude(
   const canSweep = canExtrude;
   const canLoft = canExtrude;
   const canPattern = canExtrude;
+  const canShell = canExtrude;
+  const canHole = canExtrude;
+  const canFillet = canExtrude;
+  const canChamfer = canExtrude;
 
   const onSubmit = useCallback(async () => {
     const d = Number(depth);
@@ -404,6 +448,78 @@ export default function SolverSketchEditorWithExtrude(
         >
           ▦ {t.pattern}
         </button>
+        <button
+          type="button"
+          disabled={!canShell}
+          onClick={() => setShellOpen(true)}
+          data-testid="solver-shell-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canShell ? '#14b8a6' : '#e5e7eb',
+            color: canShell ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canShell ? '#0d9488' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canShell ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ◌ {t.shell}
+        </button>
+        <button
+          type="button"
+          disabled={!canHole}
+          onClick={() => setHoleOpen(true)}
+          data-testid="solver-hole-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canHole ? '#6366f1' : '#e5e7eb',
+            color: canHole ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canHole ? '#4f46e5' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canHole ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ⊙ {t.hole}
+        </button>
+        <button
+          type="button"
+          disabled={!canFillet}
+          onClick={() => setFilletOpen(true)}
+          data-testid="solver-fillet-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canFillet ? '#f43f5e' : '#e5e7eb',
+            color: canFillet ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canFillet ? '#e11d48' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canFillet ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ◜ {t.fillet}
+        </button>
+        <button
+          type="button"
+          disabled={!canChamfer}
+          onClick={() => setChamferOpen(true)}
+          data-testid="solver-chamfer-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: canChamfer ? '#64748b' : '#e5e7eb',
+            color: canChamfer ? '#fff' : '#9ca3af',
+            border: '1px solid ' + (canChamfer ? '#475569' : '#d1d5db'),
+            borderRadius: 6,
+            cursor: canChamfer ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ◣ {t.chamfer}
+        </button>
       </div>
 
       {/* Revolve modal (sibling of the Extrude modal) */}
@@ -444,6 +560,46 @@ export default function SolverSketchEditorWithExtrude(
           sketch={sketch}
           onClose={() => setPatternOpen(false)}
           patternFetcher={patternFetcher}
+        />
+      )}
+
+      {/* Shell modal (Phase 2.A round 2) */}
+      {shellOpen && (
+        <ShellModal
+          lang={(editorProps.lang ?? 'en') as ShellLang}
+          sketch={sketch}
+          onClose={() => setShellOpen(false)}
+          shellFetcher={shellFetcher}
+        />
+      )}
+
+      {/* Hole wizard modal (Phase 2.A round 2) */}
+      {holeOpen && (
+        <HoleWizardModal
+          lang={(editorProps.lang ?? 'en') as HoleWizardLang}
+          sketch={sketch}
+          onClose={() => setHoleOpen(false)}
+          holeFetcher={holeFetcher}
+        />
+      )}
+
+      {/* Fillet modal (Phase 2.2) */}
+      {filletOpen && (
+        <FilletModal
+          lang={(editorProps.lang ?? 'en') as FilletLang}
+          sketch={sketch}
+          onClose={() => setFilletOpen(false)}
+          filletFetcher={filletFetcher}
+        />
+      )}
+
+      {/* Chamfer modal (Phase 2.2) */}
+      {chamferOpen && (
+        <ChamferModal
+          lang={(editorProps.lang ?? 'en') as ChamferLang}
+          sketch={sketch}
+          onClose={() => setChamferOpen(false)}
+          chamferFetcher={chamferFetcher}
         />
       )}
 

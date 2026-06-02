@@ -157,4 +157,254 @@ describe('SolverSketchEditorWithExtrude — Sweep / Loft / Pattern wiring', () =
     expect((screen.getByTestId('solver-loft-button') as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId('solver-pattern-button') as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('shell button is enabled after a rect is drawn and click opens ShellModal', async () => {
+    await mountReady();
+    expect((screen.getByTestId('solver-shell-button') as HTMLButtonElement).disabled).toBe(true);
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-shell-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-shell-button'));
+    expect(await screen.findByTestId('solver-shell-modal')).toBeInTheDocument();
+  });
+
+  it('hole button is enabled after a rect is drawn and click opens HoleWizardModal', async () => {
+    await mountReady();
+    expect((screen.getByTestId('solver-hole-button') as HTMLButtonElement).disabled).toBe(true);
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-hole-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-hole-button'));
+    expect(await screen.findByTestId('solver-hole-modal')).toBeInTheDocument();
+  });
+
+  it('cancel closes the Shell and Hole modals', async () => {
+    await mountReady();
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-shell-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    // Shell open → cancel → closed.
+    fireEvent.click(screen.getByTestId('solver-shell-button'));
+    await screen.findByTestId('solver-shell-modal');
+    fireEvent.click(screen.getByTestId('solver-shell-cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-shell-modal')).not.toBeInTheDocument();
+    });
+
+    // Hole open → cancel → closed.
+    fireEvent.click(screen.getByTestId('solver-hole-button'));
+    await screen.findByTestId('solver-hole-modal');
+    fireEvent.click(screen.getByTestId('solver-hole-cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-hole-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shellFetcher prop is threaded into ShellModal and called on submit', async () => {
+    const shellFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'shell(...);',
+      pngs: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        shellFetcher={shellFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-shell-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-shell-button'));
+    await screen.findByTestId('solver-shell-modal');
+    fireEvent.click(screen.getByTestId('solver-shell-submit'));
+
+    await waitFor(() => {
+      expect(shellFetcher).toHaveBeenCalledTimes(1);
+    });
+    const call = shellFetcher.mock.calls[0]![0]!;
+    expect(call.sketch.points.length).toBeGreaterThanOrEqual(4);
+    expect(call.sketch.lines.length).toBeGreaterThanOrEqual(4);
+    // Defaults: depth=20, thickness=2.
+    expect(call.depth).toBe(20);
+    expect(call.thickness).toBe(2);
+  });
+
+  it('holeFetcher prop is threaded into HoleWizardModal and called on submit', async () => {
+    const holeFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'hole(...);',
+      pngs: [],
+      holeCount: 1,
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        holeFetcher={holeFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-hole-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-hole-button'));
+    await screen.findByTestId('solver-hole-modal');
+    fireEvent.click(screen.getByTestId('solver-hole-submit'));
+
+    await waitFor(() => {
+      expect(holeFetcher).toHaveBeenCalledTimes(1);
+    });
+    const call = holeFetcher.mock.calls[0]![0]!;
+    expect(call.sketch.points.length).toBeGreaterThanOrEqual(4);
+    expect(Array.isArray(call.holes)).toBe(true);
+    expect(call.holes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('all 9 operation buttons are disabled when sketch is empty', async () => {
+    await mountReady();
+    expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-revolve-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-sweep-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-loft-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-pattern-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-shell-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-hole-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-fillet-button') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('solver-chamfer-button') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('fillet button is enabled after a rect is drawn and click opens FilletModal', async () => {
+    await mountReady();
+    expect((screen.getByTestId('solver-fillet-button') as HTMLButtonElement).disabled).toBe(true);
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-fillet-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-fillet-button'));
+    expect(await screen.findByTestId('solver-fillet-modal')).toBeInTheDocument();
+  });
+
+  it('chamfer button is enabled after a rect is drawn and click opens ChamferModal', async () => {
+    await mountReady();
+    expect((screen.getByTestId('solver-chamfer-button') as HTMLButtonElement).disabled).toBe(true);
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-chamfer-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-chamfer-button'));
+    expect(await screen.findByTestId('solver-chamfer-modal')).toBeInTheDocument();
+  });
+
+  it('cancel closes the Fillet and Chamfer modals', async () => {
+    await mountReady();
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-fillet-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    // Fillet open → cancel → closed.
+    fireEvent.click(screen.getByTestId('solver-fillet-button'));
+    await screen.findByTestId('solver-fillet-modal');
+    fireEvent.click(screen.getByTestId('solver-fillet-cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-fillet-modal')).not.toBeInTheDocument();
+    });
+
+    // Chamfer open → cancel → closed.
+    fireEvent.click(screen.getByTestId('solver-chamfer-button'));
+    await screen.findByTestId('solver-chamfer-modal');
+    fireEvent.click(screen.getByTestId('solver-chamfer-cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-chamfer-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('filletFetcher prop is threaded into FilletModal and called on submit', async () => {
+    const filletFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'fillet(...);',
+      pngs: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        filletFetcher={filletFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-fillet-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-fillet-button'));
+    await screen.findByTestId('solver-fillet-modal');
+    fireEvent.click(screen.getByTestId('solver-fillet-submit'));
+
+    await waitFor(() => {
+      expect(filletFetcher).toHaveBeenCalledTimes(1);
+    });
+    const call = filletFetcher.mock.calls[0]![0]!;
+    expect(call.sketch.points.length).toBeGreaterThanOrEqual(4);
+    expect(call.sketch.lines.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('chamferFetcher prop is threaded into ChamferModal and called on submit', async () => {
+    const chamferFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'chamfer(...);',
+      pngs: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        chamferFetcher={chamferFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-chamfer-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-chamfer-button'));
+    await screen.findByTestId('solver-chamfer-modal');
+    fireEvent.click(screen.getByTestId('solver-chamfer-submit'));
+
+    await waitFor(() => {
+      expect(chamferFetcher).toHaveBeenCalledTimes(1);
+    });
+    const call = chamferFetcher.mock.calls[0]![0]!;
+    expect(call.sketch.points.length).toBeGreaterThanOrEqual(4);
+    expect(call.sketch.lines.length).toBeGreaterThanOrEqual(4);
+  });
 });
