@@ -41,6 +41,8 @@ import {
 } from '@/lib/drawing/sheet';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { writeStepWithPmi } from '@/lib/brep-bridge/stepWriteWithPmi';
+import { writeStepWithPmiBindings } from '@/lib/brep-bridge/stepWriteWithPmiBindings';
+import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { SheetRenderer } from './SheetRenderer';
@@ -85,6 +87,10 @@ interface PageDict {
   exportPdf: string;
   exportPdfError: string;
   multiPagePdfLabel: string;
+  includeBindings: string;
+  useSavedView: string;
+  bindingsApplied: string;
+  bindingsWarningTitle: string;
   dimensionTag: string;
   gdtTag: string;
 }
@@ -111,6 +117,10 @@ const DICT: Record<string, PageDict> = {
     exportPdf: 'PDF 내보내기',
     exportPdfError: 'PDF 내보내기 실패',
     multiPagePdfLabel: '여러 페이지로 묶기',
+    includeBindings: '형상 바인딩 포함',
+    useSavedView: '저장된 뷰 사용',
+    bindingsApplied: '바인딩 적용됨',
+    bindingsWarningTitle: 'STEP 바인딩 경고',
     dimensionTag: '치수',
     gdtTag: 'GD&T',
   },
@@ -135,6 +145,10 @@ const DICT: Record<string, PageDict> = {
     exportPdf: 'Export PDF',
     exportPdfError: 'PDF export failed',
     multiPagePdfLabel: 'Bundle as multi-page PDF',
+    includeBindings: 'Include shape bindings',
+    useSavedView: 'Use saved view',
+    bindingsApplied: 'Bindings applied',
+    bindingsWarningTitle: 'STEP binding warnings',
     dimensionTag: 'DIM',
     gdtTag: 'GD&T',
   },
@@ -159,6 +173,10 @@ const DICT: Record<string, PageDict> = {
     exportPdf: 'PDF エクスポート',
     exportPdfError: 'PDF エクスポートに失敗しました',
     multiPagePdfLabel: '複数ページPDFとしてまとめる',
+    includeBindings: '形状バインディングを含める',
+    useSavedView: '保存ビューを使用',
+    bindingsApplied: 'バインディング適用済み',
+    bindingsWarningTitle: 'STEPバインディング警告',
     dimensionTag: '寸法',
     gdtTag: 'GD&T',
   },
@@ -183,6 +201,10 @@ const DICT: Record<string, PageDict> = {
     exportPdf: '导出PDF',
     exportPdfError: 'PDF 导出失败',
     multiPagePdfLabel: '合并为多页PDF',
+    includeBindings: '包含形状绑定',
+    useSavedView: '使用已保存视图',
+    bindingsApplied: '已应用绑定',
+    bindingsWarningTitle: 'STEP 绑定警告',
     dimensionTag: '尺寸',
     gdtTag: 'GD&T',
   },
@@ -207,6 +229,10 @@ const DICT: Record<string, PageDict> = {
     exportPdf: 'Exportar PDF',
     exportPdfError: 'Error al exportar PDF',
     multiPagePdfLabel: 'Agrupar como PDF de varias páginas',
+    includeBindings: 'Incluir vínculos de forma',
+    useSavedView: 'Usar vista guardada',
+    bindingsApplied: 'Vínculos aplicados',
+    bindingsWarningTitle: 'Advertencias de vínculos STEP',
     dimensionTag: 'DIM',
     gdtTag: 'GD&T',
   },
@@ -231,6 +257,10 @@ const DICT: Record<string, PageDict> = {
     exportPdf: 'تصدير PDF',
     exportPdfError: 'فشل تصدير PDF',
     multiPagePdfLabel: 'تجميع كملف PDF متعدد الصفحات',
+    includeBindings: 'تضمين روابط الشكل',
+    useSavedView: 'استخدام العرض المحفوظ',
+    bindingsApplied: 'تم تطبيق الروابط',
+    bindingsWarningTitle: 'تحذيرات روابط STEP',
     dimensionTag: 'البُعد',
     gdtTag: 'GD&T',
   },
@@ -368,6 +398,75 @@ function exportSheetStep(sourceId: string, sheet: Sheet, filename: string): void
   downloadBlob(blob, filename);
 }
 
+/**
+ * Phase 5.3 sample binding generator (Phase 1 limit — UI-level placeholder).
+ *
+ * The drawing page does not yet have access to the OCCT face/edge/vertex
+ * walk that would yield a faithful `Sheet ref → entityId` map. Until that
+ * pipeline lands, we synthesize a one-binding-per-unique-ref list so users
+ * can validate the end-to-end STEP+PMI+SHAPE_ASPECT envelope. Each binding:
+ *
+ *   - `ref` is the first ref of every dimension and the targetRef of every
+ *     GD&T callout (deduped, insertion-ordered).
+ *   - `entityId` is the placeholder `1` (the geometry's product CARTESIAN_
+ *     POINT id from `stepWrite`) — this anchors the SHAPE_ASPECT to a real
+ *     entity in the STEP source so the file parses, even if the binding
+ *     does not yet point at the topologically correct face.
+ *   - `kind` is hard-coded to `'face'` because the Sheet IR does not carry
+ *     entity-kind metadata yet. Phase 2 will derive `face|edge|vertex`
+ *     from the OCCT walk.
+ */
+function buildSampleBindings(sheet: Sheet): RefBinding[] {
+  const refs: string[] = [];
+  const seen = new Set<string>();
+
+  for (const d of sheet.dimensions ?? []) {
+    const first = d.refs[0];
+    if (first && !seen.has(first)) {
+      seen.add(first);
+      refs.push(first);
+    }
+  }
+  for (const g of sheet.gdtCallouts ?? []) {
+    if (g.targetRef && !seen.has(g.targetRef)) {
+      seen.add(g.targetRef);
+      refs.push(g.targetRef);
+    }
+  }
+
+  return refs.map((ref) => ({ ref, entityId: 1, kind: 'face' as const }));
+}
+
+/**
+ * Phase 5.3 STEP+PMI+bindings exporter. Returns the warnings surfaced by
+ * `writeStepWithPmiBindings` so the caller can show them in the UI.
+ */
+function exportSheetStepWithBindings(
+  sourceId: string,
+  sheet: Sheet,
+  filename: string,
+  opts: { includeBindings: boolean; withSavedView: boolean },
+): { warnings: ReadonlyArray<string>; bindingsCount: number } {
+  const geometry = sampleGeometryForSourceId(sourceId);
+  const bindings = opts.includeBindings ? buildSampleBindings(sheet) : undefined;
+  const result = writeStepWithPmiBindings({
+    geometry,
+    pmi: { sheet },
+    ...(bindings ? { bindings } : {}),
+    withSavedView: opts.withSavedView,
+    header: {
+      description: `NexyFab drawing export — ${sheet.name}`,
+      filename,
+    },
+  });
+  const blob = new Blob([result.source], { type: 'application/step' });
+  downloadBlob(blob, filename);
+  return {
+    warnings: result.warnings,
+    bindingsCount: result.pmiMapping.size,
+  };
+}
+
 // ─── component ───────────────────────────────────────────────────────────
 
 export function DrawingPageContent({ lang }: { lang: string }): React.ReactElement {
@@ -382,6 +481,10 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [stepExportError, setStepExportError] = useState<string | null>(null);
+  const [stepExportWarnings, setStepExportWarnings] = useState<ReadonlyArray<string>>([]);
+  const [stepExportInfo, setStepExportInfo] = useState<string | null>(null);
+  const [includeBindings, setIncludeBindings] = useState<boolean>(false);
+  const [useSavedView, setUseSavedView] = useState<boolean>(false);
   const [pdfExportError, setPdfExportError] = useState<string | null>(null);
   /**
    * Phase 4.4.3 PDF export — when true, the future multi-sheet UI will
@@ -459,15 +562,43 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   }, [sheet]);
 
   const onExportStep = useCallback(() => {
-    // Clear any previous error so a successful retry hides the banner.
+    // Clear any previous error / warning so a successful retry hides the banner.
     setStepExportError(null);
+    setStepExportWarnings([]);
+    setStepExportInfo(null);
     try {
-      exportSheetStep(sourceId, sheet, `${sheet.id}.step`);
+      // Route through the bindings orchestrator only when the user opted in
+      // to either of the new options. Otherwise preserve the existing
+      // (legacy) `writeStepWithPmi` path so the 146 drawing-suite tests that
+      // exercise it continue to pass unchanged.
+      if (includeBindings || useSavedView) {
+        const res = exportSheetStepWithBindings(
+          sourceId,
+          sheet,
+          `${sheet.id}.step`,
+          { includeBindings, withSavedView: useSavedView },
+        );
+        setStepExportWarnings(res.warnings);
+        if (includeBindings && res.bindingsCount > 0) {
+          setStepExportInfo(
+            `${dict.bindingsApplied}: ${res.bindingsCount}`,
+          );
+        }
+      } else {
+        exportSheetStep(sourceId, sheet, `${sheet.id}.step`);
+      }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       setStepExportError(`${dict.exportStepError}: ${detail}`);
     }
-  }, [sourceId, sheet, dict.exportStepError]);
+  }, [
+    sourceId,
+    sheet,
+    includeBindings,
+    useSavedView,
+    dict.exportStepError,
+    dict.bindingsApplied,
+  ]);
 
   const onExportPdf = useCallback(async () => {
     setPdfExportError(null);
@@ -712,7 +843,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <label
               style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
             >
@@ -723,6 +854,28 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 onChange={(e) => setMultiPagePdf(e.target.checked)}
               />
               {dict.multiPagePdfLabel}
+            </label>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-include-bindings"
+                checked={includeBindings}
+                onChange={(e) => setIncludeBindings(e.target.checked)}
+              />
+              {dict.includeBindings}
+            </label>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-use-saved-view"
+                checked={useSavedView}
+                onChange={(e) => setUseSavedView(e.target.checked)}
+              />
+              {dict.useSavedView}
             </label>
             <button
               type="button"
@@ -800,6 +953,46 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             >
               {stepExportError}
             </p>
+          ) : null}
+          {stepExportInfo ? (
+            <p
+              data-testid="drawing-export-step-info"
+              style={{
+                margin: 0,
+                padding: '6px 10px',
+                background: '#dcfce7',
+                color: '#166534',
+                borderRadius: 4,
+                fontSize: 12,
+              }}
+            >
+              {stepExportInfo}
+            </p>
+          ) : null}
+          {stepExportWarnings.length > 0 ? (
+            <div
+              data-testid="drawing-export-step-warnings"
+              role="alert"
+              style={{
+                margin: 0,
+                padding: '6px 10px',
+                background: '#fef3c7',
+                color: '#92400e',
+                borderRadius: 4,
+                fontSize: 12,
+              }}
+            >
+              <strong style={{ display: 'block', marginBottom: 2 }}>
+                {dict.bindingsWarningTitle}
+              </strong>
+              <ul style={{ margin: 0, paddingLeft: 16 }}>
+                {stepExportWarnings.map((w, i) => (
+                  <li key={`${i}-${w}`} data-testid={`drawing-export-step-warning-${i}`}>
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
           {pdfExportError ? (
             <p
