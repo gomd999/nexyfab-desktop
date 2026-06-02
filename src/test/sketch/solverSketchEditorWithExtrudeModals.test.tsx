@@ -408,3 +408,294 @@ describe('SolverSketchEditorWithExtrude — Sweep / Loft / Pattern wiring', () =
     expect(call.sketch.lines.length).toBeGreaterThanOrEqual(4);
   });
 });
+
+// ─── STEP import + FeatureTreeView integration (Phase 2.7 + 5.2 UI) ──────
+describe('SolverSketchEditorWithExtrude — STEP import + FeatureTreeView wiring', () => {
+  function makeRectImportedTree() {
+    return {
+      nodes: [
+        {
+          id: 'imported_0',
+          name: 'Imported Solid 1',
+          dependencies: [],
+          payload: {
+            kind: 'extrude' as const,
+            loop: [
+              { x: 0, y: 0 },
+              { x: 10, y: 0 },
+              { x: 10, y: 5 },
+              { x: 0, y: 5 },
+            ],
+            depth: 3,
+            direction: 'one_sided' as const,
+            mode: 'add' as const,
+          },
+        },
+      ],
+    };
+  }
+
+  it('Import STEP button is always enabled even with empty sketch', async () => {
+    await mountReady();
+    const btn = screen.getByTestId('solver-import-step-button') as HTMLButtonElement;
+    expect(btn).toBeInTheDocument();
+    // canExtrude gate bypassed — should not be disabled.
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('clicking Import STEP opens the StepImportModal', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    expect(await screen.findByTestId('step-import-modal')).toBeInTheDocument();
+    // Replace/Merge mode row also visible.
+    expect(screen.getByTestId('solver-step-import-mode-replace')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-step-import-mode-merge')).toBeInTheDocument();
+  });
+
+  it('onImport replaces the tree (Replace mode default) and closes the modal', async () => {
+    const stepImportFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: makeRectImportedTree(),
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        stepImportFetcher={stepImportFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+
+    // Provide a file and submit.
+    const fileInput = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    const file = new File(['ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n'], 'part.step', { type: 'application/octet-stream' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fireEvent.change(fileInput);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+
+    await waitFor(() => expect(stepImportFetcher).toHaveBeenCalledTimes(1));
+    // Modal auto-closes after onImport.
+    await waitFor(() => {
+      expect(screen.queryByTestId('step-import-modal')).not.toBeInTheDocument();
+    });
+    // Tree now has the imported node.
+    expect(await screen.findByTestId('feature-tree-row-imported_0')).toBeInTheDocument();
+  });
+
+  it('Merge mode appends imported nodes to existing tree (existing kept)', async () => {
+    // First import a tree (creates node imported_0).
+    const stepImportFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: makeRectImportedTree(),
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        stepImportFetcher={stepImportFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    // Round 1: Replace mode (default).
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    const file1 = new File(['step1'], 'a.step', { type: 'application/octet-stream' });
+    const fi1 = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi1, 'files', { value: [file1], configurable: true });
+    fireEvent.change(fi1);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('step-import-modal')).not.toBeInTheDocument();
+    });
+    await screen.findByTestId('feature-tree-row-imported_0');
+
+    // Round 2: switch to Merge mode and import again. Should append a
+    // remapped node alongside the existing imported_0.
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    fireEvent.click(screen.getByTestId('solver-step-import-mode-merge'));
+    const file2 = new File(['step2'], 'b.step', { type: 'application/octet-stream' });
+    const fi2 = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi2, 'files', { value: [file2], configurable: true });
+    fireEvent.change(fi2);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('step-import-modal')).not.toBeInTheDocument();
+    });
+
+    // Original kept.
+    expect(screen.getByTestId('feature-tree-row-imported_0')).toBeInTheDocument();
+    // New merged node present (prefixed with imp* on id collision).
+    const merged = screen.queryAllByText(/Imported Solid 1/);
+    // Two rows total => original + merged appearance.
+    expect(merged.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('Replace mode wipes existing tree before inserting imported nodes', async () => {
+    let callIdx = 0;
+    const trees = [makeRectImportedTree(), makeRectImportedTree()];
+    const stepImportFetcher = vi.fn().mockImplementation(async () => ({
+      ok: true,
+      tree: trees[callIdx++]!,
+      warnings: [],
+      unsupported: [],
+    }));
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        stepImportFetcher={stepImportFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    // Import 1 with Replace (default).
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    const file1 = new File(['s1'], 'a.step', { type: 'application/octet-stream' });
+    const fi1 = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi1, 'files', { value: [file1], configurable: true });
+    fireEvent.change(fi1);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await screen.findByTestId('feature-tree-row-imported_0');
+
+    // Import 2 with Replace — should still only have one row.
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    // Ensure Replace radio is selected (it should be by default).
+    expect((screen.getByTestId('solver-step-import-mode-replace') as HTMLInputElement).checked).toBe(true);
+    const file2 = new File(['s2'], 'b.step', { type: 'application/octet-stream' });
+    const fi2 = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi2, 'files', { value: [file2], configurable: true });
+    fireEvent.change(fi2);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('step-import-modal')).not.toBeInTheDocument();
+    });
+    // After replace, exactly one imported_0 row should be visible.
+    expect(screen.getAllByTestId('feature-tree-row-imported_0').length).toBe(1);
+  });
+
+  it('FeatureTreeView panel renders with empty state when no nodes are added yet', async () => {
+    await mountReady();
+    expect(screen.getByTestId('solver-feature-tree-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-tree-view')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+  });
+
+  it('extrude submit appends a node to the feature tree', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+
+    // After the fetcher resolves ok, an extrude_0 node should appear in the tree.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+  });
+
+  it('clicking a tree row updates selectedFeatureId (data-selected toggle)', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    // Initially not selected.
+    expect(screen.getByTestId('feature-tree-row-extrude_0').getAttribute('data-selected')).toBe('false');
+    fireEvent.click(screen.getByTestId('feature-tree-row-extrude_0'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0').getAttribute('data-selected')).toBe('true');
+    });
+  });
+
+  it('tree-row delete removes the node from the tree', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('feature-tree-row-extrude_0-delete'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument();
+    });
+    // Empty state returns.
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+  });
+
+  it('tree-row suppress toggles data-suppressed on the row', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('feature-tree-row-extrude_0').getAttribute('data-suppressed')).toBe('false');
+    fireEvent.click(screen.getByTestId('feature-tree-row-extrude_0-suppress'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0').getAttribute('data-suppressed')).toBe('true');
+    });
+    // Toggle back.
+    fireEvent.click(screen.getByTestId('feature-tree-row-extrude_0-suppress'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0').getAttribute('data-suppressed')).toBe('false');
+    });
+  });
+});

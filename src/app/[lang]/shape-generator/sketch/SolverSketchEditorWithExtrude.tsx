@@ -28,9 +28,17 @@ import type { ShellFetcher, ShellLang } from './ShellModal';
 import type { HoleFetcher, HoleWizardLang } from './HoleWizardModal';
 import type { FilletFetcher, FilletLang } from './FilletModal';
 import type { ChamferFetcher, ChamferLang } from './ChamferModal';
+import FeatureTreeView, { type FeatureTreeLang } from './FeatureTreeView';
+import type { StepImportFetcher, StepImportLang } from './StepImportModal';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
 import type { AxisLine2D } from '@/lib/cad/revolveProfile';
+import {
+  type FeatureKind,
+  type FeatureNode,
+  type FeatureTree,
+} from '@/lib/cad/featureTree';
+import { applyEdit, FeatureTreeEditError } from '@/lib/cad/featureTreeEdit';
 
 // StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
 // Sketch editor bundle small for users who never click Extrude.
@@ -70,6 +78,10 @@ const ChamferModal = dynamic(() => import('./ChamferModal'), {
   ssr: false,
   loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
 });
+const StepImportModal = dynamic(() => import('./StepImportModal'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -83,6 +95,10 @@ interface Dict {
   hole: string;
   fillet: string;
   chamfer: string;
+  importStep: string;
+  importModeLabel: string;
+  importModeReplace: string;
+  importModeMerge: string;
   modalTitle: string;
   depth: string;
   direction: string;
@@ -100,7 +116,10 @@ interface Dict {
 
 const dict: Record<Lang, Dict> = {
   ko: {
-    extrude: '돌출', revolve: '회전', sweep: '스윕', loft: '로프트', pattern: '패턴', shell: '쉘', hole: '구멍', fillet: '필렛', chamfer: '모따기', modalTitle: '돌출 설정', depth: '깊이 (mm)', direction: '방향', mode: '연산', draft: '드래프트 각도(°)',
+    extrude: '돌출', revolve: '회전', sweep: '스윕', loft: '로프트', pattern: '패턴', shell: '쉘', hole: '구멍', fillet: '필렛', chamfer: '모따기',
+    importStep: 'STEP 가져오기', importModeLabel: '가져오기 모드',
+    importModeReplace: '교체', importModeMerge: '병합',
+    modalTitle: '돌출 설정', depth: '깊이 (mm)', direction: '방향', mode: '연산', draft: '드래프트 각도(°)',
     oneSided: '한 방향', twoSided: '양 방향', midplane: '중심면',
     add: '추가', cut: '제거',
     submit: '돌출', cancel: '취소',
@@ -109,7 +128,10 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '깊이는 0보다 커야 합니다',
   },
   en: {
-    extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer', modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
+    extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
+    importStep: 'Import STEP', importModeLabel: 'Import mode',
+    importModeReplace: 'Replace', importModeMerge: 'Merge',
+    modalTitle: 'Extrude options', depth: 'Depth (mm)', direction: 'Direction', mode: 'Mode', draft: 'Draft angle (°)',
     oneSided: 'One-sided', twoSided: 'Two-sided', midplane: 'Midplane',
     add: 'Add', cut: 'Cut',
     submit: 'Extrude', cancel: 'Cancel',
@@ -118,7 +140,10 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: 'depth must be > 0',
   },
   ja: {
-    extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り', modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
+    extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
+    importStep: 'STEPインポート', importModeLabel: 'インポートモード',
+    importModeReplace: '置換', importModeMerge: 'マージ',
+    modalTitle: '押し出し設定', depth: '深さ (mm)', direction: '方向', mode: '操作', draft: 'ドラフト角度(°)',
     oneSided: '片側', twoSided: '両側', midplane: '中央面',
     add: '追加', cut: '除去',
     submit: '押し出し', cancel: 'キャンセル',
@@ -127,7 +152,10 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '深さは 0 より大きい必要があります',
   },
   zh: {
-    extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角', modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
+    extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
+    importStep: '导入 STEP', importModeLabel: '导入模式',
+    importModeReplace: '替换', importModeMerge: '合并',
+    modalTitle: '拉伸选项', depth: '深度 (mm)', direction: '方向', mode: '模式', draft: '拔模角度(°)',
     oneSided: '单向', twoSided: '双向', midplane: '中面',
     add: '增加', cut: '切除',
     submit: '拉伸', cancel: '取消',
@@ -136,7 +164,10 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: '深度必须大于 0',
   },
   es: {
-    extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán', modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
+    extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
+    importStep: 'Importar STEP', importModeLabel: 'Modo de importación',
+    importModeReplace: 'Reemplazar', importModeMerge: 'Combinar',
+    modalTitle: 'Opciones de extrusión', depth: 'Profundidad (mm)', direction: 'Dirección', mode: 'Modo', draft: 'Ángulo de salida(°)',
     oneSided: 'Un lado', twoSided: 'Dos lados', midplane: 'Plano medio',
     add: 'Añadir', cut: 'Cortar',
     submit: 'Extruir', cancel: 'Cancelar',
@@ -145,7 +176,10 @@ const dict: Record<Lang, Dict> = {
     errorDepthInvalid: 'la profundidad debe ser > 0',
   },
   ar: {
-    extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف', modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
+    extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
+    importStep: 'استيراد STEP', importModeLabel: 'وضع الاستيراد',
+    importModeReplace: 'استبدال', importModeMerge: 'دمج',
+    modalTitle: 'خيارات البثق', depth: 'العمق (مم)', direction: 'الاتجاه', mode: 'الوضع', draft: 'زاوية المسودة(°)',
     oneSided: 'جانب واحد', twoSided: 'جانبان', midplane: 'مستوى متوسط',
     add: 'إضافة', cut: 'قص',
     submit: 'بثق', cancel: 'إلغاء',
@@ -220,6 +254,8 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
   filletFetcher?: FilletFetcher;
   /** Injectable fetcher for tests. Defaults to POST /api/chamfer-render. */
   chamferFetcher?: ChamferFetcher;
+  /** Injectable fetcher for tests. Defaults to POST /api/step-import. */
+  stepImportFetcher?: StepImportFetcher;
   /**
    * Optional axis hint forwarded to the Revolve modal — e.g., a selected
    * line in the sketch. The modal renders a "use this as axis" button.
@@ -240,10 +276,12 @@ export default function SolverSketchEditorWithExtrude(
     holeFetcher,
     filletFetcher,
     chamferFetcher,
+    stepImportFetcher,
     revolveAxisHint,
     ...editorProps
   } = props;
   const t = dict[(editorProps.lang ?? 'en') as Lang];
+  const treeLang = (editorProps.lang ?? 'en') as FeatureTreeLang;
 
   const [sketch, setSketch] = useState<SolverViewState>({ points: [], lines: [] });
   const [modalOpen, setModalOpen] = useState(false);
@@ -255,11 +293,223 @@ export default function SolverSketchEditorWithExtrude(
   const [holeOpen, setHoleOpen] = useState(false);
   const [filletOpen, setFilletOpen] = useState(false);
   const [chamferOpen, setChamferOpen] = useState(false);
+  const [stepImportOpen, setStepImportOpen] = useState(false);
+  /** Replace vs merge — set inside the STEP import wizard before submit. */
+  const [stepImportMode, setStepImportMode] = useState<'replace' | 'merge'>('replace');
   const [depth, setDepth] = useState<string>('10');
   const [direction, setDirection] = useState<ExtrudeDirection>('one_sided');
   const [mode, setMode] = useState<ExtrudeMode>('add');
   const [draftDegrees, setDraftDegrees] = useState<string>('0');
   const [render, setRender] = useState<RenderState>({ status: 'idle' });
+
+  // ── feature tree state (Phase 2.7 + 5.2 UI integration) ─────────────────
+  const [featureTree, setFeatureTree] = useState<FeatureTree>({ nodes: [] });
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | undefined>(undefined);
+  /** Monotonic id generator for tree nodes created by modal submits. */
+  const nextNodeIdRef = useRef<number>(0);
+
+  // Synthetic-payload helper: each modal returns only SCAD+pngs, not a full
+  // feature IR, so we synthesise a placeholder payload tagged by `kind`. The
+  // SCAD render is owned by the modal preview pane; the tree node only
+  // surfaces history + selection. Full IR threading lands in a later batch.
+  const appendNode = useCallback((kind: FeatureKind, labelBase: string): void => {
+    setFeatureTree((prev) => {
+      const idx = nextNodeIdRef.current++;
+      const id = `${kind}_${idx}`;
+      // Cast the synthesised stub to FeaturePayload — runtime tests do not
+      // walk the payload shape; the FeatureTreeView only inspects `kind`.
+      const payload = { kind } as unknown as FeatureNode['payload'];
+      const node: FeatureNode = {
+        id,
+        name: `${labelBase} ${idx + 1}`,
+        dependencies: [],
+        payload,
+      };
+      return { nodes: [...prev.nodes, node] };
+    });
+  }, []);
+
+  // ── fetcher wrappers — intercept ok responses to append a tree node ────
+  // Wrap each per-feature fetcher exactly once per identity change. We
+  // intentionally re-create on appendNode identity (stable across renders).
+  const wrappedExtrudeFetcher = useMemo(
+    () => {
+      const base = extrudeFetcher;
+      return async (req: Parameters<ExtrudeFetcher>[0]) => {
+        const res = await base(req);
+        if (res && res.ok === true) appendNode('extrude', t.extrude);
+        return res;
+      };
+    },
+    [extrudeFetcher, appendNode, t.extrude],
+  );
+  const wrappedRevolveFetcher = useMemo<RevolveFetcher | undefined>(
+    () => {
+      if (!revolveFetcher) return undefined;
+      return async (req) => {
+        const res = await revolveFetcher(req);
+        if (res && res.ok === true) appendNode('revolve', t.revolve);
+        return res;
+      };
+    },
+    [revolveFetcher, appendNode, t.revolve],
+  );
+  const wrappedSweepFetcher = useMemo<SweepFetcher | undefined>(
+    () => {
+      if (!sweepFetcher) return undefined;
+      return async (req) => {
+        const res = await sweepFetcher(req);
+        if (res && res.ok === true) appendNode('sweep', t.sweep);
+        return res;
+      };
+    },
+    [sweepFetcher, appendNode, t.sweep],
+  );
+  const wrappedLoftFetcher = useMemo<LoftFetcher | undefined>(
+    () => {
+      if (!loftFetcher) return undefined;
+      return async (req) => {
+        const res = await loftFetcher(req);
+        if (res && res.ok === true) appendNode('loft', t.loft);
+        return res;
+      };
+    },
+    [loftFetcher, appendNode, t.loft],
+  );
+  const wrappedPatternFetcher = useMemo<PatternFetcher | undefined>(
+    () => {
+      if (!patternFetcher) return undefined;
+      return async (req) => {
+        const res = await patternFetcher(req);
+        if (res && res.ok === true) {
+          const kind: FeatureKind =
+            req.kind === 'circular' ? 'circular_pattern' : 'linear_pattern';
+          appendNode(kind, t.pattern);
+        }
+        return res;
+      };
+    },
+    [patternFetcher, appendNode, t.pattern],
+  );
+  const wrappedShellFetcher = useMemo<ShellFetcher | undefined>(
+    () => {
+      if (!shellFetcher) return undefined;
+      return async (req) => {
+        const res = await shellFetcher(req);
+        // Shell yields an extruded thin-wall body; tag the synthesised
+        // node as 'extrude' (the FeatureKind enum has no dedicated shell
+        // kind yet — covered by the Phase 2.x rework).
+        if (res && res.ok === true) appendNode('extrude', t.shell);
+        return res;
+      };
+    },
+    [shellFetcher, appendNode, t.shell],
+  );
+  const wrappedHoleFetcher = useMemo<HoleFetcher | undefined>(
+    () => {
+      if (!holeFetcher) return undefined;
+      return async (req) => {
+        const res = await holeFetcher(req);
+        if (res && res.ok === true) appendNode('hole', t.hole);
+        return res;
+      };
+    },
+    [holeFetcher, appendNode, t.hole],
+  );
+  const wrappedFilletFetcher = useMemo<FilletFetcher | undefined>(
+    () => {
+      if (!filletFetcher) return undefined;
+      return async (req) => {
+        const res = await filletFetcher(req);
+        if (res && res.ok === true) appendNode('fillet', t.fillet);
+        return res;
+      };
+    },
+    [filletFetcher, appendNode, t.fillet],
+  );
+  const wrappedChamferFetcher = useMemo<ChamferFetcher | undefined>(
+    () => {
+      if (!chamferFetcher) return undefined;
+      return async (req) => {
+        const res = await chamferFetcher(req);
+        if (res && res.ok === true) appendNode('chamfer', t.chamfer);
+        return res;
+      };
+    },
+    [chamferFetcher, appendNode, t.chamfer],
+  );
+
+  // ── tree-row callbacks ──────────────────────────────────────────────────
+  const handleSelectNode = useCallback((id: string) => {
+    setSelectedFeatureId(id);
+  }, []);
+  const handleToggleSuppress = useCallback((id: string) => {
+    setFeatureTree((prev) => {
+      const idx = prev.nodes.findIndex((n) => n.id === id);
+      if (idx < 0) return prev;
+      const node = prev.nodes[idx]!;
+      const next: FeatureNode = { ...node, suppressed: !(node.suppressed === true) };
+      const nodes = prev.nodes.slice();
+      nodes[idx] = next;
+      return { nodes };
+    });
+  }, []);
+  const handleDeleteNode = useCallback((id: string) => {
+    setFeatureTree((prev) => {
+      try {
+        return applyEdit(prev, { type: 'remove_node', nodeId: id });
+      } catch (e) {
+        if (e instanceof FeatureTreeEditError) {
+          // Dependents exist — refuse silently for now; UX surface comes
+          // in the next batch.
+          return prev;
+        }
+        throw e;
+      }
+    });
+    setSelectedFeatureId((curr) => (curr === id ? undefined : curr));
+  }, []);
+  const handleReorderNodes = useCallback((fromIdx: number, toIdx: number) => {
+    setFeatureTree((prev) => {
+      const node = prev.nodes[fromIdx];
+      if (!node) return prev;
+      try {
+        return applyEdit(prev, { type: 'move_node', nodeId: node.id, toIndex: toIdx });
+      } catch (e) {
+        if (e instanceof FeatureTreeEditError) return prev;
+        throw e;
+      }
+    });
+  }, []);
+
+  // ── STEP import — replace / merge into tree ─────────────────────────────
+  const handleStepImport = useCallback(
+    (importedTree: FeatureTree, _warnings: string[], _unsupported: string[]) => {
+      setFeatureTree((prev) => {
+        if (stepImportMode === 'replace') {
+          // Bump the id counter past any imported id so future modal
+          // appends do not collide with id-prefixed imports.
+          nextNodeIdRef.current = importedTree.nodes.length;
+          return { nodes: importedTree.nodes.slice() };
+        }
+        // Merge mode — append, prefixing imported ids on collision.
+        const existing = new Set(prev.nodes.map((n) => n.id));
+        const prefix = `imp${Date.now().toString(36)}_`;
+        const remap = new Map<string, string>();
+        for (const node of importedTree.nodes) {
+          remap.set(node.id, existing.has(node.id) ? `${prefix}${node.id}` : node.id);
+        }
+        const remapped: FeatureNode[] = importedTree.nodes.map((node) => ({
+          ...node,
+          id: remap.get(node.id) ?? node.id,
+          dependencies: node.dependencies.map((d) => remap.get(d) ?? d),
+        }));
+        return { nodes: [...prev.nodes, ...remapped] };
+      });
+      setStepImportOpen(false);
+    },
+    [stepImportMode],
+  );
 
   // Tracks the in-flight fetch's AbortController so cancel/unmount can abort
   // it AND so we can suppress late setState after the controller is aborted.
@@ -308,7 +558,7 @@ export default function SolverSketchEditorWithExtrude(
 
     setRender({ status: 'loading' });
     try {
-      const res = await extrudeFetcher({
+      const res = await wrappedExtrudeFetcher({
         sketch,
         depth: d,
         draftDegrees: Number.isFinite(draftN) && draftN !== 0 ? draftN : undefined,
@@ -331,7 +581,7 @@ export default function SolverSketchEditorWithExtrude(
       }
       fetcherSignals.delete(extrudeFetcher);
     }
-  }, [depth, draftDegrees, direction, mode, sketch, extrudeFetcher, t.errorPrefix, t.errorDepthInvalid]);
+  }, [depth, draftDegrees, direction, mode, sketch, extrudeFetcher, wrappedExtrudeFetcher, t.errorPrefix, t.errorDepthInvalid]);
 
   // Reset preview when modal closes; also abort any in-flight fetch so a
   // late setState after the user clicked Cancel does NOT land on a closed
@@ -520,6 +770,38 @@ export default function SolverSketchEditorWithExtrude(
         >
           ◣ {t.chamfer}
         </button>
+        {/* STEP import — always enabled (canExtrude gate intentionally bypassed). */}
+        <button
+          type="button"
+          onClick={() => setStepImportOpen(true)}
+          data-testid="solver-import-step-button"
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: '#d97706',
+            color: '#fff',
+            border: '1px solid #b45309',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          ⤓ {t.importStep}
+        </button>
+      </div>
+
+      {/* Feature tree panel (Phase 2.7) — mounted below the operation
+          toolbar so users see new nodes accumulate as they submit modals. */}
+      <div data-testid="solver-feature-tree-panel" style={{ marginTop: 4 }}>
+        <FeatureTreeView
+          lang={treeLang}
+          tree={featureTree}
+          selectedId={selectedFeatureId}
+          onSelect={handleSelectNode}
+          onToggleSuppress={handleToggleSuppress}
+          onDelete={handleDeleteNode}
+          onReorder={handleReorderNodes}
+        />
       </div>
 
       {/* Revolve modal (sibling of the Extrude modal) */}
@@ -529,7 +811,7 @@ export default function SolverSketchEditorWithExtrude(
           sketch={sketch}
           axisHint={revolveAxisHint}
           onClose={() => setRevolveOpen(false)}
-          revolveFetcher={revolveFetcher}
+          revolveFetcher={wrappedRevolveFetcher}
         />
       )}
 
@@ -539,7 +821,7 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as SweepLang}
           sketch={sketch}
           onClose={() => setSweepOpen(false)}
-          sweepFetcher={sweepFetcher}
+          sweepFetcher={wrappedSweepFetcher}
         />
       )}
 
@@ -549,7 +831,7 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as LoftLang}
           sketch={sketch}
           onClose={() => setLoftOpen(false)}
-          loftFetcher={loftFetcher}
+          loftFetcher={wrappedLoftFetcher}
         />
       )}
 
@@ -559,7 +841,7 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as PatternLang}
           sketch={sketch}
           onClose={() => setPatternOpen(false)}
-          patternFetcher={patternFetcher}
+          patternFetcher={wrappedPatternFetcher}
         />
       )}
 
@@ -569,7 +851,7 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as ShellLang}
           sketch={sketch}
           onClose={() => setShellOpen(false)}
-          shellFetcher={shellFetcher}
+          shellFetcher={wrappedShellFetcher}
         />
       )}
 
@@ -579,7 +861,7 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as HoleWizardLang}
           sketch={sketch}
           onClose={() => setHoleOpen(false)}
-          holeFetcher={holeFetcher}
+          holeFetcher={wrappedHoleFetcher}
         />
       )}
 
@@ -589,7 +871,7 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as FilletLang}
           sketch={sketch}
           onClose={() => setFilletOpen(false)}
-          filletFetcher={filletFetcher}
+          filletFetcher={wrappedFilletFetcher}
         />
       )}
 
@@ -599,8 +881,63 @@ export default function SolverSketchEditorWithExtrude(
           lang={(editorProps.lang ?? 'en') as ChamferLang}
           sketch={sketch}
           onClose={() => setChamferOpen(false)}
-          chamferFetcher={chamferFetcher}
+          chamferFetcher={wrappedChamferFetcher}
         />
+      )}
+
+      {/* STEP import modal (Phase 5.2) — wrapper picks replace/merge mode
+          via the radio row above and forwards the imported tree. */}
+      {stepImportOpen && (
+        <div data-testid="solver-step-import-host">
+          <div
+            data-testid="solver-step-import-mode-row"
+            style={{
+              position: 'fixed',
+              top: 12,
+              right: 12,
+              zIndex: 1001,
+              padding: '8px 12px',
+              background: '#fff',
+              border: '1px solid #d1d5db',
+              borderRadius: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              fontSize: 12,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>{t.importModeLabel}</span>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="radio"
+                name="step-import-mode"
+                value="replace"
+                checked={stepImportMode === 'replace'}
+                onChange={() => setStepImportMode('replace')}
+                data-testid="solver-step-import-mode-replace"
+              />
+              {t.importModeReplace}
+            </label>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="radio"
+                name="step-import-mode"
+                value="merge"
+                checked={stepImportMode === 'merge'}
+                onChange={() => setStepImportMode('merge')}
+                data-testid="solver-step-import-mode-merge"
+              />
+              {t.importModeMerge}
+            </label>
+          </div>
+          <StepImportModal
+            lang={(editorProps.lang ?? 'en') as StepImportLang}
+            onClose={() => setStepImportOpen(false)}
+            onImport={handleStepImport}
+            stepImportFetcher={stepImportFetcher}
+          />
+        </div>
       )}
 
       {/* Modal */}
