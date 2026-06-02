@@ -38,20 +38,40 @@ export interface SketchSnapIndicatorProps {
   size?: number;
 }
 
-// Phase 2 kinds (arc_*/perpendicular) fall through the switch default
-// and render no marker; the COLORS table only needs entries for Phase 1
-// kinds. We use Partial<Record<SnapKind, string>> so indexing with any
-// SnapKind stays type-safe (returns undefined for unmapped kinds).
+// COLORS table covers every SnapKind. Phase 1 kinds (grid / point /
+// line_endpoint / line_midpoint / circle_center / intersection) keep
+// their original swatches; Phase 2 kinds get a coherent palette:
+//   arc_*               → warm family (orange/blue/yellow/amber/neutral) so
+//                         arc snaps read as a single "arc" group while still
+//                         distinguishing endpoint vs center vs quadrant vs
+//                         midpoint vs nearest-on-arc;
+//   line_perpendicular  → pink-500   (paired with cyan point, pops against
+//                                     dark line strokes)
+//   circle_perpendicular→ fuchsia-500 (matches circle_center hue family —
+//                                      both belong to the "circle" group)
+// Partial<Record<SnapKind, string>> keeps indexing type-safe; any future
+// kind without an entry falls back to FALLBACK_COLOR rather than crashing.
 const COLORS: Partial<Record<SnapKind, string>> = {
-  grid: '#6b7280',           // grey-500
-  point: '#06b6d4',          // cyan-500
-  line_endpoint: '#f97316',  // orange-500
-  line_midpoint: '#eab308',  // yellow-500
-  circle_center: '#d946ef',  // fuchsia-500
-  intersection: '#ef4444',   // red-500
+  grid: '#6b7280',                // grey-500
+  point: '#06b6d4',               // cyan-500
+  line_endpoint: '#f97316',       // orange-500
+  line_midpoint: '#eab308',       // yellow-500
+  circle_center: '#d946ef',       // fuchsia-500
+  intersection: '#ef4444',        // red-500
+  // ── Phase 2 ──
+  arc_endpoint: '#fb923c',        // orange-400 (echoes line_endpoint, lighter)
+  arc_center: '#60a5fa',          // blue-400   (cool, distinct from circle_center)
+  arc_quadrant: '#facc15',        // yellow-400 (cardinal points stand out)
+  arc_midpoint: '#fbbf24',        // amber-400  (between yellow & orange — midpoint)
+  arc_nearest: '#a3a3a3',         // neutral-400 (low-priority fallback)
+  line_perpendicular: '#ec4899',  // pink-500
+  circle_perpendicular: '#d946ef',// fuchsia-500
 };
 
-const FALLBACK_COLOR = '#94a3b8'; // slate-400 — used for Phase 2 kinds with no dedicated marker.
+// Defensive default for any future SnapKind that lands before its colour
+// is mapped above — keeps the indicator visible (slate-400) rather than
+// silently invisible. Phase 1 + Phase 2 kinds all have explicit entries.
+const FALLBACK_COLOR = '#94a3b8'; // slate-400
 
 const SketchSnapIndicator: React.FC<SketchSnapIndicatorProps> = ({
   snap,
@@ -155,8 +175,34 @@ const SketchSnapIndicator: React.FC<SketchSnapIndicatorProps> = ({
         </g>
       );
       break;
-    default:
-      marker = null;
+    default: {
+      // Phase 2 kinds (arc_endpoint / arc_center / arc_quadrant /
+      // arc_midpoint / arc_nearest / line_perpendicular /
+      // circle_perpendicular) — same dispatcher, dedicated colors from
+      // COLORS so the testid + colour assertion suffices for visual diff.
+      // Generic marker: thin ring around `pos` (low visual weight so the
+      // Phase 2 family doesn't dominate the canvas) with a centre dot for
+      // perpendicular-foot kinds (which sit *on* a curve and need a
+      // pinpoint anchor). The data-testid contract `snap-indicator-{kind}`
+      // is preserved for every kind so the host editor's visual regression
+      // assertions stay 1:1 with the SnapKind union.
+      const isPerp = kind === 'line_perpendicular' || kind === 'circle_perpendicular';
+      marker = (
+        <g data-testid={`snap-indicator-${kind}`}>
+          <circle
+            cx={pos.x}
+            cy={pos.y}
+            r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth={1.5}
+            strokeDasharray={isPerp ? '2 2' : undefined}
+          />
+          <circle cx={pos.x} cy={pos.y} r={1.25} fill={color} />
+        </g>
+      );
+      break;
+    }
   }
 
   return (

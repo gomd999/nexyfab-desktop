@@ -39,7 +39,9 @@ function moveTo(el: Element, x: number, y: number): void {
 function tool(id: string): HTMLButtonElement {
   return screen.getByTestId(`solver-sketch-tool-${id}`) as HTMLButtonElement;
 }
-function snapToggle(id: 'grid' | 'point' | 'intersection'): HTMLButtonElement {
+function snapToggle(
+  id: 'grid' | 'point' | 'intersection' | 'arc' | 'perpendicular',
+): HTMLButtonElement {
   return screen.getByTestId(`solver-snap-toggle-${id}`) as HTMLButtonElement;
 }
 function getPoints(): NodeListOf<SVGCircleElement> {
@@ -269,6 +271,203 @@ describe('SolverSketchEditor — snap integration', () => {
     moveTo(canvas(), 3, 7);
     // Dimension is an entity-picking tool, not a free-cursor drawing tool —
     // no indicator should appear.
+    expect(getIndicator()).toBeNull();
+  });
+});
+
+// ─── Phase 2 snap toggles (Arc / Perpendicular) ─────────────────────────
+//
+// Arc + perpendicular foot snap families are wired through the same toolbar
+// pattern as Phase 1 but default OFF. The user opts in per family. Defaults
+// were chosen so back-compat with the original 3-toggle UI is preserved
+// (test suite from Phase 1.4 still observes "Phase 2 off → no Phase 2
+// markers"). Tests below validate:
+//   - both toggles render with the correct testid + aria-pressed=false
+//   - i18n labels resolve per language
+//   - flipping a toggle on actually unlocks the corresponding indicator
+//   - independent of Phase 1 toggles (no coupling)
+//   - both-on emits whichever Phase 2 family wins the priority/distance
+//     race for the cursor
+//   - turning everything (Phase 1 + Phase 2) off still yields zero
+//     indicators (regression for v1.lite behavior)
+
+describe('SolverSketchEditor — Phase 2 snap toggles (Arc / Perpendicular)', () => {
+  it('arc + perpendicular toggles render with default aria-pressed=false', async () => {
+    await mountReady();
+    for (const id of ['arc', 'perpendicular'] as const) {
+      const btn = snapToggle(id);
+      expect(btn).toBeInTheDocument();
+      // Phase 2 defaults are conservative OFF — opting in is explicit.
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+    }
+  });
+
+  it('arc toggle click → aria-pressed flips true (active styling kicks in)', async () => {
+    await mountReady();
+    const arc = snapToggle('arc');
+    expect(arc.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(arc);
+    expect(arc.getAttribute('aria-pressed')).toBe('true');
+    // Same pill style as Phase 1: cyan-700 background when active. Test the
+    // structural signal (aria-pressed) since inline styles aren't asserted
+    // elsewhere in this suite.
+    fireEvent.click(arc);
+    expect(arc.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('perpendicular toggle click → aria-pressed flips, independent of arc', async () => {
+    await mountReady();
+    const perp = snapToggle('perpendicular');
+    const arc = snapToggle('arc');
+    fireEvent.click(perp);
+    expect(perp.getAttribute('aria-pressed')).toBe('true');
+    // Toggling perpendicular must not flip arc — the toggles are siblings,
+    // not a radio group.
+    expect(arc.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('perpendicular ON + line drawn + cursor near body → line_perpendicular indicator', async () => {
+    await mountReady();
+    // Seed a horizontal line at y=100 from x=50 to x=200.
+    fireEvent.click(tool('line'));
+    clickAt(canvas(), 50, 100);
+    clickAt(canvas(), 200, 100);
+    await waitFor(() => expect(getPoints().length).toBeGreaterThanOrEqual(2));
+    // Disable Phase 1 (grid + point + intersection) so perpendicular is the
+    // lone candidate. Default Phase 2 = both off → flip perpendicular on.
+    setSnapAll({ grid: false, point: false, intersection: false });
+    fireEvent.click(snapToggle('perpendicular'));
+    fireEvent.click(tool('line'));
+    // Cursor at (125, 104) — close to the line body (perp distance 4 < 5).
+    moveTo(canvas(), 125, 104);
+    await waitFor(() => {
+      const ind = getIndicator();
+      expect(ind).not.toBeNull();
+      expect(within(ind!).queryByTestId('snap-indicator-line_perpendicular')).toBeTruthy();
+    });
+  });
+
+  it('perpendicular ON + circle + cursor near circumference → circle_perpendicular indicator', async () => {
+    await mountReady();
+    // Seed a circle of radius 50 at (200, 200).
+    fireEvent.click(tool('circle'));
+    clickAt(canvas(), 200, 200);
+    clickAt(canvas(), 250, 200); // radius 50
+    await waitFor(() => expect(getPoints().length).toBeGreaterThanOrEqual(1));
+    // Phase 1 off, perpendicular on. Cursor slightly outside circle body so
+    // the closest circumference point is the perpendicular foot.
+    setSnapAll({ grid: false, point: false, intersection: false });
+    fireEvent.click(snapToggle('perpendicular'));
+    fireEvent.click(tool('line'));
+    // Cursor at (252, 200) — 2 units outside circumference along +x axis.
+    moveTo(canvas(), 252, 200);
+    await waitFor(() => {
+      const ind = getIndicator();
+      expect(ind).not.toBeNull();
+      expect(within(ind!).queryByTestId('snap-indicator-circle_perpendicular')).toBeTruthy();
+    });
+  });
+
+  it('all snap families off (Phase 1 + Phase 2) → no indicator (back-compat regression)', async () => {
+    await mountReady();
+    // Phase 1 defaults are ON → flip all three off. Phase 2 already OFF.
+    setSnapAll({ grid: false, point: false, intersection: false });
+    fireEvent.click(tool('line'));
+    moveTo(canvas(), 17, 23);
+    expect(getIndicator()).toBeNull();
+    // Sanity: confirm the Phase 2 toggles ARE off so the assertion above is
+    // genuinely "everything off" rather than accidental Phase-2-on.
+    expect(snapToggle('arc').getAttribute('aria-pressed')).toBe('false');
+    expect(snapToggle('perpendicular').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('perpendicular ON + Phase 1 OFF + drawing tool → indicator unblocked', async () => {
+    await mountReady();
+    // Seed a line so there is an entity for perpendicular foot to attach to.
+    fireEvent.click(tool('line'));
+    clickAt(canvas(), 50, 50);
+    clickAt(canvas(), 150, 50);
+    await waitFor(() => expect(getPoints().length).toBeGreaterThanOrEqual(2));
+    // Turn EVERY Phase 1 toggle off so perpendicular is the only enabled
+    // family. If `computeSnapAt`'s no-op short-circuit incorrectly only
+    // checks the Phase 1 trio, this test would have returned null and the
+    // indicator would never mount.
+    setSnapAll({ grid: false, point: false, intersection: false });
+    fireEvent.click(snapToggle('perpendicular'));
+    fireEvent.click(tool('line'));
+    moveTo(canvas(), 100, 53); // perpendicular foot at (100, 50), distance 3
+    await waitFor(() => expect(getIndicator()).toBeInTheDocument());
+  });
+
+  it('Phase 2 perpendicular toggle does not flip Phase 1 aria states', async () => {
+    await mountReady();
+    fireEvent.click(snapToggle('perpendicular'));
+    // Phase 1 toggles should still match their defaults (all on).
+    expect(snapToggle('grid').getAttribute('aria-pressed')).toBe('true');
+    expect(snapToggle('point').getAttribute('aria-pressed')).toBe('true');
+    expect(snapToggle('intersection').getAttribute('aria-pressed')).toBe('true');
+    // And the new Phase 2 toggle is the only one flipped.
+    expect(snapToggle('perpendicular').getAttribute('aria-pressed')).toBe('true');
+    expect(snapToggle('arc').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('i18n: en labels show "Arc" + "Perp" for Phase 2 toggles', async () => {
+    await mountReady('en');
+    expect(snapToggle('arc')).toHaveTextContent('Arc');
+    expect(snapToggle('perpendicular')).toHaveTextContent('Perp');
+  });
+
+  it('i18n: ko labels show "호" + "수선" for Phase 2 toggles', async () => {
+    await mountReady('ko');
+    expect(snapToggle('arc')).toHaveTextContent('호');
+    expect(snapToggle('perpendicular')).toHaveTextContent('수선');
+  });
+
+  it('toggling arc on does NOT impact Phase 1 toggles or perpendicular', async () => {
+    await mountReady();
+    const before = {
+      grid: snapToggle('grid').getAttribute('aria-pressed'),
+      point: snapToggle('point').getAttribute('aria-pressed'),
+      intersection: snapToggle('intersection').getAttribute('aria-pressed'),
+      perpendicular: snapToggle('perpendicular').getAttribute('aria-pressed'),
+    };
+    fireEvent.click(snapToggle('arc'));
+    expect(snapToggle('arc').getAttribute('aria-pressed')).toBe('true');
+    expect(snapToggle('grid').getAttribute('aria-pressed')).toBe(before.grid);
+    expect(snapToggle('point').getAttribute('aria-pressed')).toBe(before.point);
+    expect(snapToggle('intersection').getAttribute('aria-pressed')).toBe(before.intersection);
+    expect(snapToggle('perpendicular').getAttribute('aria-pressed')).toBe(before.perpendicular);
+  });
+
+  it('perpendicular OFF (default) → no line_perpendicular indicator even with lines present', async () => {
+    await mountReady();
+    // Seed a line so the geometry exists; do NOT touch the perpendicular
+    // toggle (default OFF). Cursor near the line body — without the toggle,
+    // there must be no perpendicular indicator (proves the default-off
+    // semantics actually gate the candidate computation).
+    fireEvent.click(tool('line'));
+    clickAt(canvas(), 50, 50);
+    clickAt(canvas(), 150, 50);
+    await waitFor(() => expect(getPoints().length).toBeGreaterThanOrEqual(2));
+    // Turn off Phase 1 so any indicator that DOES show must be Phase 2.
+    setSnapAll({ grid: false, point: false, intersection: false });
+    fireEvent.click(tool('line'));
+    moveTo(canvas(), 100, 53);
+    // No Phase 1, Phase 2 default off → snap returns null → indicator unmounted.
+    expect(getIndicator()).toBeNull();
+  });
+
+  it('perpendicular ON + cursor far from any entity → no indicator (threshold respected)', async () => {
+    await mountReady();
+    fireEvent.click(tool('line'));
+    clickAt(canvas(), 50, 50);
+    clickAt(canvas(), 150, 50);
+    await waitFor(() => expect(getPoints().length).toBeGreaterThanOrEqual(2));
+    setSnapAll({ grid: false, point: false, intersection: false });
+    fireEvent.click(snapToggle('perpendicular'));
+    fireEvent.click(tool('line'));
+    // (100, 500) is far past the perpendicular threshold (default 5).
+    moveTo(canvas(), 100, 500);
     expect(getIndicator()).toBeNull();
   });
 });

@@ -132,4 +132,54 @@ describe('SketchSnapIndicator', () => {
     );
     expect(screen.queryByTestId('snap-indicator')).toBeNull();
   });
+
+  // ─── Phase 2 kind coverage (arc_* / *_perpendicular) ────────────────────
+  // Phase 2 kinds were originally handled by the default branch (rendering
+  // nothing). They now render a generic ring + dot marker so the host can
+  // visually distinguish them via the testid + dedicated color. Tests below
+  // assert: each kind mounts the wrapper group + per-kind testid, and the
+  // perpendicular variants render a dashed ring (so users can see "this is
+  // a foot, not a vertex" at a glance).
+  for (const kind of [
+    'arc_endpoint',
+    'arc_center',
+    'arc_quadrant',
+    'arc_midpoint',
+    'arc_nearest',
+    'line_perpendicular',
+    'circle_perpendicular',
+  ] as const) {
+    it(`${kind} kind → mounts wrapper + per-kind testid`, () => {
+      mount(at(kind, 30, 40));
+      expect(screen.getByTestId('snap-indicator')).toBeInTheDocument();
+      const marker = screen.getByTestId(`snap-indicator-${kind}`);
+      expect(marker).toBeInTheDocument();
+      // Generic Phase 2 marker = ring + centre dot.
+      expect(marker.querySelectorAll('circle').length).toBe(2);
+    });
+  }
+
+  it('line_perpendicular renders dashed ring (signals "foot, not vertex")', () => {
+    mount(at('line_perpendicular', 30, 40));
+    const ring = screen
+      .getByTestId('snap-indicator-line_perpendicular')
+      .querySelectorAll('circle')[0]!;
+    expect(ring.getAttribute('stroke-dasharray')).toBe('2 2');
+  });
+
+  it('circle_perpendicular renders dashed ring (signals "foot, not vertex")', () => {
+    mount(at('circle_perpendicular', 30, 40));
+    const ring = screen
+      .getByTestId('snap-indicator-circle_perpendicular')
+      .querySelectorAll('circle')[0]!;
+    expect(ring.getAttribute('stroke-dasharray')).toBe('2 2');
+  });
+
+  it('arc_endpoint ring is NOT dashed (vertex, not foot)', () => {
+    mount(at('arc_endpoint', 30, 40));
+    const ring = screen
+      .getByTestId('snap-indicator-arc_endpoint')
+      .querySelectorAll('circle')[0]!;
+    expect(ring.getAttribute('stroke-dasharray')).toBeNull();
+  });
 });

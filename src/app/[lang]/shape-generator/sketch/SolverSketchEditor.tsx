@@ -129,6 +129,8 @@ interface Dict {
   snapGrid: string;
   snapPoint: string;
   snapIntersection: string;
+  snapArc: string;
+  snapPerpendicular: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -153,6 +155,8 @@ const dict: Record<EditorLang, Dict> = {
     snapGrid: '격자',
     snapPoint: '점',
     snapIntersection: '교차',
+    snapArc: '호',
+    snapPerpendicular: '수선',
   },
   en: {
     title: 'Solver Sketch',
@@ -175,6 +179,8 @@ const dict: Record<EditorLang, Dict> = {
     snapGrid: 'Grid',
     snapPoint: 'Point',
     snapIntersection: 'Int',
+    snapArc: 'Arc',
+    snapPerpendicular: 'Perp',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -197,6 +203,8 @@ const dict: Record<EditorLang, Dict> = {
     snapGrid: 'グリッド',
     snapPoint: '点',
     snapIntersection: '交差',
+    snapArc: '弧',
+    snapPerpendicular: '垂線',
   },
   zh: {
     title: '求解器草图',
@@ -219,6 +227,8 @@ const dict: Record<EditorLang, Dict> = {
     snapGrid: '网格',
     snapPoint: '点',
     snapIntersection: '交点',
+    snapArc: '弧',
+    snapPerpendicular: '垂线',
   },
   es: {
     title: 'Boceto con solver',
@@ -241,6 +251,8 @@ const dict: Record<EditorLang, Dict> = {
     snapGrid: 'Rejilla',
     snapPoint: 'Punto',
     snapIntersection: 'Int',
+    snapArc: 'Arco',
+    snapPerpendicular: 'Perp',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -263,6 +275,8 @@ const dict: Record<EditorLang, Dict> = {
     snapGrid: 'شبكة',
     snapPoint: 'نقطة',
     snapIntersection: 'تقاطع',
+    snapArc: 'قوس',
+    snapPerpendicular: 'عمودي',
   },
 };
 
@@ -501,21 +515,30 @@ export default function SolverSketchEditor({
   >([]);
   const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
 
-  // ─── snap state (Phase 1.4) ───
+  // ─── snap state (Phase 1.4 + Phase 2) ───
   // Snap options control which families of candidates `findSnapTarget` will
-  // consider. Defaults are chosen so an "out-of-the-box" sketch session feels
-  // responsive (grid + point + intersection all on) — the user can toggle any
-  // family off if it gets in the way. When all three are off snap is a no-op
-  // and the raw cursor is used (zero regression vs. v1.lite behavior).
+  // consider. Phase 1 defaults (grid + point + intersection) are on so an
+  // "out-of-the-box" sketch session feels responsive. Phase 2 families (arc
+  // endpoints/centers/quadrants/midpoints + perpendicular foot to line and
+  // circle) are intentionally OFF by default — they fire many extra
+  // candidates per cursor move (esp. perpendicular foot, which targets the
+  // *interior* of every line/circle within threshold), so opting in keeps
+  // the indicator quiet for users who only need vertex snaps. When every
+  // toggle is off snap is a no-op and the raw cursor is used (zero
+  // regression vs. v1.lite behavior).
   const [snapOpts, setSnapOpts] = useState<{
     enableGrid: boolean;
     enablePointSnap: boolean;
     enableIntersection: boolean;
+    enableArc: boolean;
+    enablePerpendicular: boolean;
     gridSpacing: number;
   }>({
     enableGrid: true,
     enablePointSnap: true,
     enableIntersection: true,
+    enableArc: false,
+    enablePerpendicular: false,
     gridSpacing: GRID_MINOR,
   });
   const [snapTarget, setSnapTarget] = useState<SnapTarget | null>(null);
@@ -905,18 +928,32 @@ export default function SolverSketchEditor({
   const computeSnapAt = useCallback(
     (pt: { x: number; y: number }): SnapTarget | null => {
       if (!isDrawingTool(tool)) return null;
-      const { enableGrid, enablePointSnap, enableIntersection, gridSpacing } = snapOpts;
-      if (!enableGrid && !enablePointSnap && !enableIntersection) return null;
+      const {
+        enableGrid,
+        enablePointSnap,
+        enableIntersection,
+        enableArc,
+        enablePerpendicular,
+        gridSpacing,
+      } = snapOpts;
+      // No-op when every snap family is disabled — host falls back to the
+      // raw cursor and the indicator stays unmounted.
+      if (
+        !enableGrid &&
+        !enablePointSnap &&
+        !enableIntersection &&
+        !enableArc &&
+        !enablePerpendicular
+      ) return null;
       return findSnapTarget(pt, snapEntities, {
         gridSpacing,
         enableGrid,
         enablePointSnap,
         enableIntersection,
-        // Phase 2 snaps (arc / perpendicular foot) require dedicated toolbar
-        // toggles before they ship in the editor; keep them off here so the
-        // 3 user-visible toggles map 1:1 to behavior.
-        enableArc: false,
-        enablePerpendicular: false,
+        // Phase 2 toggles now driven by user-visible toolbar buttons (Arc /
+        // Perpendicular). Defaults are OFF so back-compat is preserved.
+        enableArc,
+        enablePerpendicular,
       });
     },
     [isDrawingTool, tool, snapOpts, snapEntities],
@@ -1271,11 +1308,18 @@ export default function SolverSketchEditor({
   );
 
   // ─── snap option toggles ───
-  // Each toggle is independent — disabling all three turns snap off entirely
-  // (callers see `findSnapTarget` return null, indicator stays unmounted, and
-  // clicks fall back to raw cursor positions).
+  // Each toggle is independent — disabling all five (3 Phase 1 + 2 Phase 2)
+  // turns snap off entirely (callers see `findSnapTarget` return null,
+  // indicator stays unmounted, and clicks fall back to raw cursor positions).
   const toggleSnap = useCallback(
-    (key: 'enableGrid' | 'enablePointSnap' | 'enableIntersection'): void => {
+    (
+      key:
+        | 'enableGrid'
+        | 'enablePointSnap'
+        | 'enableIntersection'
+        | 'enableArc'
+        | 'enablePerpendicular',
+    ): void => {
       setSnapOpts((prev) => ({ ...prev, [key]: !prev[key] }));
     },
     [],
@@ -1728,6 +1772,10 @@ export default function SolverSketchEditor({
           { key: 'enableGrid', id: 'grid', label: t.snapGrid },
           { key: 'enablePointSnap', id: 'point', label: t.snapPoint },
           { key: 'enableIntersection', id: 'intersection', label: t.snapIntersection },
+          // Phase 2 toggles default OFF so the toolbar reads "Phase 1 on,
+          // Phase 2 opt-in". Same pill design (cyan-700 active on white).
+          { key: 'enableArc', id: 'arc', label: t.snapArc },
+          { key: 'enablePerpendicular', id: 'perpendicular', label: t.snapPerpendicular },
         ] as const).map((s) => {
           const active = snapOpts[s.key];
           return (
