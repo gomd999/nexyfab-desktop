@@ -88,3 +88,58 @@ diff occt-worker/occt-worker.js public/occt-worker/occt-worker.js
 
 If you change `occt-worker/occt-worker.js`, repeat the copy. CI does
 NOT enforce this today — the Phase 5 prebuild script will.
+
+## Pre-deploy readiness check (`occt:check`)
+
+Before every deploy — and ideally as a `prebuild` step — run:
+
+```bash
+npm run occt:check
+```
+
+That runs `scripts/check-occt-readiness.js --mode=auto`, which:
+
+- Verifies `public/occt-worker/occt-worker.js` exists (both phases).
+- Auto-detects which phase is shipping by looking for
+  `public/occt-worker/opencascade.wasm`:
+  - file present & ≥ 1 MB → resolved mode `'wasm'` (Phase 5)
+  - file absent → resolved mode `'stub'` (Phase 4 baseline)
+  - file present but < 1 MB → resolved as `'stub'` + warning
+    ("placeholder file?") — most likely a botched copy.
+- Prints a single-line JSON result on stdout for CI consumption:
+
+  ```json
+  {"mode":"stub","warnings":[],"errors":[]}
+  ```
+
+- Exits `0` if `errors.length === 0`, `1` otherwise. Warnings never block.
+
+Force a specific mode (useful in `wasm` to fail-fast if the prebuild
+copy step regressed):
+
+```bash
+node scripts/check-occt-readiness.js --mode=wasm   # require real OCCT WASM
+node scripts/check-occt-readiness.js --mode=stub   # Phase 4 baseline only
+```
+
+### Recommended `prebuild` integration
+
+Once Phase 5 lands and `scripts/copy-occt.js` (from
+`PHASE_5_INTEGRATION.md` § Step 1) copies the WASM blob into
+`public/occt-worker/`, chain the readiness check after the copy:
+
+```json
+"scripts": {
+  "prebuild": "node scripts/copy-occt.js && npm run occt:check"
+}
+```
+
+The check is a few milliseconds of `fs.statSync` — cheap enough to run
+on every `npm run build`, which guarantees Vercel/Railway/Docker
+deployments fail loudly when the kernel is missing rather than silently
+shipping the stub. CI pipelines that don't use `prebuild` (e.g. Cloudflare
+Pages with a custom build command) should add a dedicated step:
+
+```yaml
+- run: npm run occt:check
+```
