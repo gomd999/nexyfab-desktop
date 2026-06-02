@@ -44,6 +44,13 @@ import MateConstraintsToolbar, {
   type ToolbarSelectionRef,
   type ToolbarRefKind,
 } from './MateConstraintsToolbar';
+import SuggestedMatesPanel from './SuggestedMatesPanel';
+import {
+  inferMatesFromPlacements,
+  type FaceData,
+  type AxisData,
+} from '@/lib/brep-bridge/stepAssemblyMateInference';
+import { derivePartGeometryForAssembly } from './assemblyPartGeometry';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -104,6 +111,14 @@ interface Dict {
   savedAt: string;
   saveError: string;
   reset: string;
+  /** "Infer mates" button label (Phase 5.2.3 mate inference). */
+  inferMates: string;
+  /** In-flight label shown while the inference is running. */
+  inferring: string;
+  /** Footer line shown above the panel when results came back non-empty. */
+  suggestionsAvailable: string;
+  /** Footer line shown above the panel when 0 mates were inferred. */
+  noSuggestions: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -151,6 +166,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     savedAt: '저장됨',
     saveError: '저장 실패',
     reset: '초기화',
+    inferMates: '메이트 추론',
+    inferring: '추론 중...',
+    suggestionsAvailable: '추천 사용 가능',
+    noSuggestions: '추천된 메이트가 없습니다',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -196,6 +215,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     savedAt: 'Saved',
     saveError: 'Save failed',
     reset: 'Reset',
+    inferMates: 'Infer mates',
+    inferring: 'Inferring...',
+    suggestionsAvailable: 'Suggestions available',
+    noSuggestions: 'No mate suggestions found',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -241,6 +264,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     savedAt: '保存済み',
     saveError: '保存失敗',
     reset: 'リセット',
+    inferMates: '合致を推論',
+    inferring: '推論中...',
+    suggestionsAvailable: '推奨が利用可能',
+    noSuggestions: '推奨される合致はありません',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -286,6 +313,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     savedAt: '已保存',
     saveError: '保存失败',
     reset: '重置',
+    inferMates: '推断配合',
+    inferring: '推断中...',
+    suggestionsAvailable: '建议可用',
+    noSuggestions: '未找到配合建议',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -331,6 +362,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     savedAt: 'Guardado',
     saveError: 'Error al guardar',
     reset: 'Restablecer',
+    inferMates: 'Inferir restricciones',
+    inferring: 'Infiriendo...',
+    suggestionsAvailable: 'Sugerencias disponibles',
+    noSuggestions: 'No se encontraron sugerencias',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -376,6 +411,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     savedAt: 'تم الحفظ',
     saveError: 'فشل الحفظ',
     reset: 'إعادة تعيين',
+    inferMates: 'استنتاج القيود',
+    inferring: 'يستنتج...',
+    suggestionsAvailable: 'الاقتراحات متاحة',
+    noSuggestions: 'لا توجد قيود مقترحة',
   },
 };
 
@@ -442,6 +481,21 @@ export interface AssemblyBrowserModalProps {
    * existing 50 in-memory tests).
    */
   projectId?: string;
+  /**
+   * Optional injectable mate-inference callback (Phase 5.2.3). When
+   * provided, the "Infer mates" button calls this in place of the default
+   * `inferMatesFromPlacements + derivePartGeometryForAssembly` pipeline.
+   * Wrappers wiring real OCCT-derived geometry pass this; the default
+   * Phase 1 path is featureTree-AABB inside the modal.
+   *
+   * Sync return matches the Phase 1 spec ("inference is sync"); wrappers
+   * doing async OCCT work should resolve to a snapshot before calling.
+   */
+  onInferMates?: (
+    state: AssemblyState,
+    partFaces: Record<string, FaceData[]>,
+    partAxes: Record<string, AxisData[]>,
+  ) => Mate[];
 }
 
 /** Persistence key prefixes — kept stable across modal + wrapper. */
@@ -711,6 +765,7 @@ export default function AssemblyBrowserModal({
   onClose,
   onSolve,
   projectId,
+  onInferMates,
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
 
@@ -1081,7 +1136,75 @@ export default function AssemblyBrowserModal({
     setRefsPanelOpen({});
     setSelection([]);
     setTreesPersistError(null);
+    setSuggestions([]);
+    setHasInferred(false);
   }, [setState, setFeatureTrees]);
+
+  // ── infer-mates (Phase 5.2.3) ──────────────────────────────────────────
+
+  /**
+   * Suggestion buffer — populated by `onInferMatesClick`, drained by
+   * `onAcceptSuggestion` / `onAcceptAllSuggestions` (push into state.mates)
+   * or `onRejectSuggestion` / `onRejectAllSuggestions` (silent drop).
+   */
+  const [suggestions, setSuggestions] = useState<ReadonlyArray<Mate>>([]);
+  /**
+   * Sticky flag: distinguishes "user hasn't pressed the button yet" from
+   * "user pressed and got zero results". Lets the UI show the `noSuggestions`
+   * banner only after at least one inference run.
+   */
+  const [hasInferred, setHasInferred] = useState<boolean>(false);
+
+  const onInferMatesClick = useCallback(() => {
+    const { partFaces, partAxes } = derivePartGeometryForAssembly(
+      state.parts,
+      featureTrees,
+    );
+    const inferred = onInferMates
+      ? onInferMates(state, partFaces, partAxes)
+      : inferMatesFromPlacements(state, partFaces, partAxes);
+    // Drop any suggestion whose id collides with an existing mate id (the
+    // inference module generates `inferred_<kind>_<n>` so practical
+    // collisions are rare, but defensive). Also dedup against any prior
+    // suggestion buffer — the user may infer twice with no accept in
+    // between.
+    const existingMateIds = new Set(state.mates.map((m) => m.id));
+    const existingSuggestionIds = new Set(suggestions.map((s) => s.id));
+    const filtered = inferred.filter(
+      (m) => !existingMateIds.has(m.id) && !existingSuggestionIds.has(m.id),
+    );
+    setSuggestions([...suggestions, ...filtered]);
+    setHasInferred(true);
+  }, [onInferMates, state, featureTrees, suggestions]);
+
+  const onAcceptSuggestion = useCallback(
+    (mate: Mate) => {
+      setState((prev) => ({ ...prev, mates: [...prev.mates, mate] }));
+      setSuggestions((prev) => prev.filter((s) => s.id !== mate.id));
+    },
+    [setState],
+  );
+
+  const onRejectSuggestion = useCallback((mateId: string) => {
+    setSuggestions((prev) => prev.filter((s) => s.id !== mateId));
+  }, []);
+
+  const onAcceptAllSuggestions = useCallback(() => {
+    setState((prev) => ({ ...prev, mates: [...prev.mates, ...suggestions] }));
+    setSuggestions([]);
+  }, [setState, suggestions]);
+
+  const onRejectAllSuggestions = useCallback(() => {
+    setSuggestions([]);
+  }, []);
+
+  const partNameById = useCallback(
+    (partId: string): string | undefined => {
+      const part = state.parts.find((p) => p.id === partId);
+      return part?.name;
+    },
+    [state.parts],
+  );
 
   // ── solve ─────────────────────────────────────────────────────────────
 
@@ -1735,6 +1858,72 @@ export default function AssemblyBrowserModal({
               {t.addMate}
             </button>
           </section>
+        </div>
+
+        {/* ── infer-mates section (Phase 5.2.3) ─────────────────────── */}
+        <div
+          data-testid="solver-assembly-infer-mates-section"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onInferMatesClick}
+              data-testid="solver-assembly-infer-mates-button"
+              style={{
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                background: '#fef3c7',
+                color: '#92400e',
+                border: '1px solid #fde68a',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {t.inferMates}
+            </button>
+            {hasInferred && suggestions.length > 0 && (
+              <span
+                data-testid="solver-assembly-infer-mates-status"
+                style={{ fontSize: 11, color: '#92400e' }}
+              >
+                {t.suggestionsAvailable} ({suggestions.length})
+              </span>
+            )}
+            {hasInferred && suggestions.length === 0 && (
+              <span
+                data-testid="solver-assembly-infer-mates-empty"
+                style={{ fontSize: 11, color: '#6b7280' }}
+              >
+                {t.noSuggestions}
+              </span>
+            )}
+          </div>
+          {suggestions.length > 0 && (
+            <div data-testid="solver-suggested-mates-panel">
+              <SuggestedMatesPanel
+                lang={lang}
+                suggestions={suggestions}
+                onAccept={onAcceptSuggestion}
+                onAcceptAll={onAcceptAllSuggestions}
+                onReject={onRejectSuggestion}
+                onRejectAll={onRejectAllSuggestions}
+                partNameById={partNameById}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── solve result ──────────────────────────────────────────── */}

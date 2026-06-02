@@ -1019,4 +1019,311 @@ describe('AssemblyBrowserModal', () => {
       }
     });
   });
+
+  // ── Phase 5.2.3: Infer mates + SuggestedMatesPanel integration ──────────
+
+  /**
+   * The "Infer mates" button derives partFaces/partAxes from each part's
+   * FeatureTree (Phase 1 AABB approximation) and feeds the result through
+   * `inferMatesFromPlacements`. Suggestions are buffered in the modal's
+   * state and rendered via `SuggestedMatesPanel`. Accept pushes the mate
+   * into state.mates; reject silently drops it.
+   */
+  describe('Phase 5.2.3 Infer mates + SuggestedMatesPanel', () => {
+    /**
+     * Box-extrude FeatureTree — produces 6 AABB faces in the part's local
+     * frame. Used as the building block for stacked-box adjacency tests.
+     */
+    const BOX_TREE: FeatureTree = {
+      nodes: [
+        {
+          id: 'e1',
+          name: 'Box',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [
+              { x: 0, y: 0 },
+              { x: 5, y: 0 },
+              { x: 5, y: 5 },
+              { x: 0, y: 5 },
+            ],
+            depth: 10,
+            direction: 'one_sided',
+            mode: 'add',
+          },
+        },
+      ],
+    };
+
+    /** Two boxes stacked along +Z so A.top is coplanar with B.bottom. */
+    function adjacentBoxesState(): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'Box A',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'Box B',
+            partTemplateId: 'tpl',
+            // Stacked directly on top: B.bottom (z=0 local) world-frame =
+            // A.top (z=10 local) world-frame. Coincident mate expected.
+            position: { x: 0, y: 0, z: 10 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [],
+      };
+    }
+
+    /** Two boxes placed at non-coplanar positions → no inferred mates. */
+    function farApartBoxesState(): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'Box A',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'Box B',
+            partTemplateId: 'tpl',
+            // Translate ALL THREE axes so no AABB face plane lines up
+            // (otherwise side-side faces sit on a shared world plane and
+            // emit false-positive coincident suggestions).
+            position: { x: 100, y: 100, z: 100 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [],
+      };
+    }
+
+    it('renders the Infer mates button', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const btn = screen.getByTestId('solver-assembly-infer-mates-button');
+      expect(btn).toBeInTheDocument();
+      expect(btn.textContent).toMatch(/Infer mates/i);
+    });
+
+    it('clicking with 2 adjacent boxes emits ≥1 suggestion + mounts the panel', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      // Panel hidden before click.
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      // Panel mounted with ≥1 suggestion.
+      const panel = screen.getByTestId('solver-suggested-mates-panel');
+      expect(panel).toBeInTheDocument();
+      const matches = panel.querySelectorAll('[data-testid^="solver-suggested-mate-"]');
+      // Filter out accept/reject buttons (testid prefix collision).
+      const rows = Array.from(matches).filter((el) => {
+        const id = el.getAttribute('data-testid')!;
+        return !id.endsWith('-accept') && !id.endsWith('-reject');
+      });
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+      // Status banner reflects the count.
+      expect(screen.getByTestId('solver-assembly-infer-mates-status')).toBeInTheDocument();
+    });
+
+    it('clicking with 2 far-apart boxes emits 0 suggestions + shows noSuggestions banner', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={farApartBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      // No panel mounted (suggestions empty).
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+      // Empty banner shown instead.
+      expect(screen.getByTestId('solver-assembly-infer-mates-empty')).toBeInTheDocument();
+    });
+
+    it('accept moves the suggestion from panel into state.mates', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      // Sanity — start with 0 mates.
+      expect(screen.queryAllByTestId(/^solver-assembly-mate-row-/).length).toBe(0);
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      // Grab the first suggestion row and accept it.
+      const panel = screen.getByTestId('solver-suggested-mates-panel');
+      const firstRow = panel.querySelector('[data-testid^="solver-suggested-mate-"]') as HTMLElement;
+      const mateId = firstRow.getAttribute('data-testid')!.replace('solver-suggested-mate-', '');
+      const matesBefore = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      fireEvent.click(screen.getByTestId(`solver-suggested-mate-${mateId}-accept`));
+      const matesAfter = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      expect(matesAfter).toBe(matesBefore + 1);
+      // The accepted suggestion row is gone.
+      expect(screen.queryByTestId(`solver-suggested-mate-${mateId}`)).toBeNull();
+    });
+
+    it('accept all batches every suggestion into state.mates and empties the panel', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      const panel = screen.getByTestId('solver-suggested-mates-panel');
+      const rowsBefore = panel.querySelectorAll('[data-testid^="solver-suggested-mate-"]');
+      const suggestionCount = Array.from(rowsBefore).filter((el) => {
+        const id = el.getAttribute('data-testid')!;
+        return !id.endsWith('-accept') && !id.endsWith('-reject');
+      }).length;
+      expect(suggestionCount).toBeGreaterThanOrEqual(1);
+      const matesBefore = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      fireEvent.click(screen.getByTestId('solver-suggested-accept-all'));
+      const matesAfter = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      expect(matesAfter).toBe(matesBefore + suggestionCount);
+      // Panel is unmounted (suggestions empty).
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+    });
+
+    it('reject removes a suggestion without adding to state.mates', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      const panel = screen.getByTestId('solver-suggested-mates-panel');
+      const firstRow = panel.querySelector('[data-testid^="solver-suggested-mate-"]') as HTMLElement;
+      const mateId = firstRow.getAttribute('data-testid')!.replace('solver-suggested-mate-', '');
+      const matesBefore = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      fireEvent.click(screen.getByTestId(`solver-suggested-mate-${mateId}-reject`));
+      const matesAfter = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      expect(matesAfter).toBe(matesBefore);
+      expect(screen.queryByTestId(`solver-suggested-mate-${mateId}`)).toBeNull();
+    });
+
+    it('reject all empties the panel without adding any mates', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      const matesBefore = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      fireEvent.click(screen.getByTestId('solver-suggested-reject-all'));
+      const matesAfter = screen.queryAllByTestId(/^solver-assembly-mate-row-/).length;
+      expect(matesAfter).toBe(matesBefore);
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+    });
+
+    it('part without a FeatureTree contributes no faces (no suggestions)', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          // Only p_a has a tree → p_b contributes 0 faces → 0 suggestions.
+          initialFeatureTrees={{ p_a: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+      expect(screen.getByTestId('solver-assembly-infer-mates-empty')).toBeInTheDocument();
+    });
+
+    it('partNameById resolves part names in the suggestion ref text', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      const panel = screen.getByTestId('solver-suggested-mates-panel');
+      // The friendly names "Box A" / "Box B" appear in the ref text instead
+      // of the raw partIds p_a / p_b.
+      expect(panel.textContent).toMatch(/Box A/);
+      expect(panel.textContent).toMatch(/Box B/);
+    });
+
+    it('onInferMates override is used in place of the default pipeline', () => {
+      const fake = vi.fn().mockReturnValue([
+        {
+          id: 'fake_1',
+          kind: 'coincident',
+          a: { partId: 'p_a', refId: 'face_x', refKind: 'face' },
+          b: { partId: 'p_b', refId: 'face_y', refKind: 'face' },
+        },
+      ]);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          onClose={vi.fn()}
+          onInferMates={fake}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      expect(fake).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('solver-suggested-mate-fake_1')).toBeInTheDocument();
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /메이트 추론/],
+      ['en', /Infer mates/i],
+    ])('i18n: lang %s localizes the Infer mates button label', (lang, re) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      expect(
+        screen.getByTestId('solver-assembly-infer-mates-button').textContent,
+      ).toMatch(re);
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /추천된 메이트가 없습니다/],
+      ['en', /No mate suggestions/i],
+    ])('i18n: lang %s localizes the noSuggestions banner', (lang, re) => {
+      render(
+        <AssemblyBrowserModal
+          lang={lang}
+          initialState={farApartBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      expect(
+        screen.getByTestId('solver-assembly-infer-mates-empty').textContent,
+      ).toMatch(re);
+    });
+  });
 });
