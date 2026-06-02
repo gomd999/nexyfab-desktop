@@ -2229,4 +2229,268 @@ describe('AssemblyBrowserModal', () => {
       ).toMatch(re);
     });
   });
+
+  // ── Phase 3.AI.Assembly: AI builder toggle + per-part planner + NL ──────
+  describe('Phase 3.AI.Assembly AI builder', () => {
+    /** Box-extrude tree reused as currentTree by the per-part planner. */
+    const BOX_TREE: FeatureTree = {
+      nodes: [
+        {
+          id: 'e1',
+          name: 'Box',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [
+              { x: 0, y: 0 },
+              { x: 5, y: 0 },
+              { x: 5, y: 5 },
+              { x: 0, y: 5 },
+            ],
+            depth: 10,
+            direction: 'one_sided',
+            mode: 'add',
+          },
+        },
+      ],
+    };
+
+    it('AI toggle is visible and defaults to off (panel and input hidden)', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-ai-toggle') as HTMLInputElement;
+      expect(toggle).toBeInTheDocument();
+      expect(toggle.checked).toBe(false);
+      // While off: no per-part planner, no NL input.
+      expect(screen.queryByTestId('solver-assembly-ai-builder')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-ai-input')).toBeNull();
+    });
+
+    it('flipping the toggle on mounts the assembly-level NL input + submit', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      expect(screen.getByTestId('solver-assembly-ai-builder')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-ai-input')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-ai-submit')).toBeInTheDocument();
+    });
+
+    it('flipping the toggle on mounts a per-part FeatureTreePlannerPanel for each part', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      // Pre-toggle: no planner panels.
+      expect(screen.queryByTestId('solver-assembly-part-p_base-ai-planner')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-part-p_arm-ai-planner')).toBeNull();
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      // Post-toggle: each part row has a planner wrapper, and the wrapper
+      // contains a real FeatureTreePlannerPanel (planner-panel testid).
+      const baseWrap = screen.getByTestId('solver-assembly-part-p_base-ai-planner');
+      const armWrap = screen.getByTestId('solver-assembly-part-p_arm-ai-planner');
+      expect(baseWrap).toBeInTheDocument();
+      expect(armWrap).toBeInTheDocument();
+      // Each wrapper hosts exactly one planner-panel.
+      expect(baseWrap.querySelectorAll('[data-testid="planner-panel"]').length).toBe(1);
+      expect(armWrap.querySelectorAll('[data-testid="planner-panel"]').length).toBe(1);
+    });
+
+    it('per-part planner Apply pushes the produced nodes into featureTrees', async () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      // Drive the per-part planner: type a regex-recognized prompt and Send.
+      const baseWrap = screen.getByTestId('solver-assembly-part-p_base-ai-planner');
+      const input = within(baseWrap).getByTestId('planner-input') as HTMLTextAreaElement;
+      fireEvent.change(input, { target: { value: 'cylinder 25x60' } });
+      fireEvent.click(within(baseWrap).getByTestId('planner-send'));
+      // Wait for the plan to materialize, then Apply.
+      const applyBtn = await within(baseWrap).findByTestId('planner-apply');
+      fireEvent.click(applyBtn);
+      // Now Solve and inspect the featureTrees argument — p_base must
+      // carry at least one node now.
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      const trees = onSolve.mock.calls[0][1] as Record<string, FeatureTree>;
+      expect(trees).toHaveProperty('p_base');
+      expect(trees.p_base.nodes.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('per-part planner seeds currentTree from existing featureTrees', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          initialFeatureTrees={{ p_base: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      // The planner-panel mounts unconditionally when AI is on; the seed
+      // is reflected via planner internals (not directly testable from
+      // outside). Smoke-test that it mounts without throwing.
+      expect(
+        screen.getByTestId('solver-assembly-part-p_base-ai-planner'),
+      ).toBeInTheDocument();
+    });
+
+    it('"3 stacked plates" → 3 parts + 2 concentric mates', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '3 stacked plates' } });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      const partRows = screen.getAllByTestId(/^solver-assembly-part-row-/);
+      expect(partRows.length).toBe(3);
+      const mateRows = screen.getAllByTestId(/^solver-assembly-mate-row-/);
+      expect(mateRows.length).toBe(2);
+      // Status banner reports the counts.
+      expect(screen.getByTestId('solver-assembly-ai-created').textContent).toMatch(
+        /\+3 parts/,
+      );
+      expect(screen.getByTestId('solver-assembly-ai-created').textContent).toMatch(
+        /\+2 mates/,
+      );
+    });
+
+    it('"2 x 3 grid" → 6 parts, 0 mates', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2 x 3 grid' } });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      const partRows = screen.getAllByTestId(/^solver-assembly-part-row-/);
+      expect(partRows.length).toBe(6);
+      // Grid produces no mates (only positions).
+      expect(screen.queryAllByTestId(/^solver-assembly-mate-row-/).length).toBe(0);
+      expect(screen.getByTestId('solver-assembly-ai-created').textContent).toMatch(
+        /\+6 parts/,
+      );
+    });
+
+    it('unrecognized prompt → "Could not parse" banner, no state change', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
+      fireEvent.change(input, {
+        target: { value: 'build me a robot with kinematic arms' },
+      });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      const banner = screen.getByTestId('solver-assembly-ai-unparsed');
+      expect(banner).toBeInTheDocument();
+      expect(banner.textContent).toMatch(/Could not parse/i);
+      // No parts/mates added.
+      expect(screen.getByTestId('solver-assembly-parts-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-mates-empty')).toBeInTheDocument();
+      // No success banner.
+      expect(screen.queryByTestId('solver-assembly-ai-created')).toBeNull();
+    });
+
+    it('NL prompt with existing parts appends without clobbering', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      // seedState has parts p_base + p_arm. Toggle on, then "2 stacked"
+      // → expect 2 new parts appended (total 4) and 1 new concentric mate.
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      fireEvent.change(screen.getByTestId('solver-assembly-ai-input'), {
+        target: { value: '2 stacked' },
+      });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(4);
+      // Original m1 + 1 new = 2 mate rows.
+      expect(screen.getAllByTestId(/^solver-assembly-mate-row-/).length).toBe(2);
+      // Original p_base / p_arm still present (no clobber).
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-p_arm')).toBeInTheDocument();
+    });
+
+    it('input clears after a successful submit (so a second submit starts fresh)', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '3 stacked' } });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      // After success the input value is wiped.
+      expect(
+        (screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement).value,
+      ).toBe('');
+    });
+
+    it('Enter key on the NL input submits without clicking the button', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '3 stacked' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(3);
+    });
+
+    it('flipping the toggle off after submit hides the builder (state preserved)', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      fireEvent.change(screen.getByTestId('solver-assembly-ai-input'), {
+        target: { value: '3 stacked' },
+      });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(3);
+      // Toggle off — builder UI hides but the 3 parts stay.
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      expect(screen.queryByTestId('solver-assembly-ai-builder')).toBeNull();
+      expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(3);
+    });
+
+    it('"2x3 grid" (no spaces around x) is also recognised', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      fireEvent.change(screen.getByTestId('solver-assembly-ai-input'), {
+        target: { value: '2x3 grid' },
+      });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(6);
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /AI 어셈블리 빌더/],
+      ['en', /AI assembly builder/i],
+      ['ja', /AI アセンブリビルダー/],
+      ['zh', /AI 装配生成器/],
+      ['es', /Constructor de ensamblaje IA/i],
+      ['ar', /منشئ التجميع بالذكاء الاصطناعي/],
+    ])('i18n: lang %s localizes the AI toggle label', (lang, re) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      expect(
+        screen.getByTestId('solver-assembly-ai-toggle-label').textContent,
+      ).toMatch(re);
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /입력을 이해할 수 없습니다/],
+      ['en', /Could not parse/i],
+      ['ja', /入力を解析できません/],
+      ['zh', /无法解析输入/],
+      ['es', /No se pudo analizar/i],
+      ['ar', /تعذّر التحليل/],
+    ])('i18n: lang %s localizes the couldNotParse banner', (lang, re) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
+      fireEvent.change(screen.getByTestId('solver-assembly-ai-input'), {
+        target: { value: 'gibberish' },
+      });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      expect(
+        screen.getByTestId('solver-assembly-ai-unparsed').textContent,
+      ).toMatch(re);
+    });
+  });
 });

@@ -55,6 +55,8 @@ import {
   importStepAssembly,
   type StepAssemblyImportResult,
 } from '@/lib/brep-bridge/stepAssemblyImport';
+import FeatureTreePlannerPanel from '../sketch/FeatureTreePlannerPanel';
+import type { PlanStep } from '@/lib/ai/featureTreePlanner';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -173,6 +175,29 @@ interface Dict {
   inferredSummary: (parts: number, mates: number) => string;
   /** Toast dismiss button label (X). */
   dismissToast: string;
+  /**
+   * Phase 3.AI.Assembly — toggle label that turns on the AI assembly
+   * builder (per-part FeatureTreePlannerPanel + assembly-level NL input).
+   * Default off so the modal's existing layout is unchanged for users who
+   * don't opt in.
+   */
+  aiAssemblyBuilder: string;
+  /**
+   * Placeholder shown in the assembly-level NL input. Sample phrasings
+   * mirror the two patterns the Phase 1 parser recognises ("3 stacked"
+   * and "2 x 3 grid") so the user immediately understands what to type.
+   */
+  createAssemblyPrompt: string;
+  /**
+   * Submit button label next to the assembly-level NL input.
+   */
+  createAssemblySubmit: string;
+  /**
+   * Banner shown when the parser cannot match any pattern in the user's
+   * input. Graceful fallback: tell the user we couldn't parse instead of
+   * doing something unexpected.
+   */
+  couldNotParse: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -247,6 +272,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferredSummary: (parts, mates) =>
       `${parts}개 부품을 가져오고, ${mates}개 메이트 제안을 추론했습니다`,
     dismissToast: '닫기',
+    aiAssemblyBuilder: 'AI 어셈블리 빌더',
+    createAssemblyPrompt: '예: 3 stacked plates / 2 x 3 grid',
+    createAssemblySubmit: '생성',
+    couldNotParse: '입력을 이해할 수 없습니다',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -320,6 +349,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferredSummary: (parts, mates) =>
       `Imported ${parts} parts, inferred ${mates} mate suggestions`,
     dismissToast: 'Dismiss',
+    aiAssemblyBuilder: 'AI assembly builder',
+    createAssemblyPrompt: 'e.g., 3 stacked plates / 2 x 3 grid',
+    createAssemblySubmit: 'Create',
+    couldNotParse: 'Could not parse',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -393,6 +426,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferredSummary: (parts, mates) =>
       `${parts}パーツを取込み、${mates}件の合致候補を推論しました`,
     dismissToast: '閉じる',
+    aiAssemblyBuilder: 'AI アセンブリビルダー',
+    createAssemblyPrompt: '例: 3 stacked plates / 2 x 3 grid',
+    createAssemblySubmit: '作成',
+    couldNotParse: '入力を解析できません',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -465,6 +502,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferredSummary: (parts, mates) =>
       `已导入 ${parts} 个零件，推断了 ${mates} 条配合建议`,
     dismissToast: '关闭',
+    aiAssemblyBuilder: 'AI 装配生成器',
+    createAssemblyPrompt: '例如: 3 stacked plates / 2 x 3 grid',
+    createAssemblySubmit: '创建',
+    couldNotParse: '无法解析输入',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -538,6 +579,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferredSummary: (parts, mates) =>
       `Importadas ${parts} piezas, inferidas ${mates} sugerencias de restricción`,
     dismissToast: 'Cerrar',
+    aiAssemblyBuilder: 'Constructor de ensamblaje IA',
+    createAssemblyPrompt: 'p. ej., 3 stacked plates / 2 x 3 grid',
+    createAssemblySubmit: 'Crear',
+    couldNotParse: 'No se pudo analizar',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -611,6 +656,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferredSummary: (parts, mates) =>
       `تم استيراد ${parts} جزءًا واستنتاج ${mates} اقتراح قيود`,
     dismissToast: 'إغلاق',
+    aiAssemblyBuilder: 'منشئ التجميع بالذكاء الاصطناعي',
+    createAssemblyPrompt: 'مثال: 3 stacked plates / 2 x 3 grid',
+    createAssemblySubmit: 'إنشاء',
+    couldNotParse: 'تعذّر التحليل',
   },
 };
 
@@ -914,6 +963,58 @@ function toggleSelection(
   if (appended.length <= MAX_SELECTION) return appended;
   // evict oldest — FIFO
   return appended.slice(appended.length - MAX_SELECTION);
+}
+
+// ─── assembly-level NL builder (Phase 3.AI.Assembly) ────────────────────
+
+/**
+ * Result of parsing the assembly-level NL input. Phase 1 recognises two
+ * deterministic patterns:
+ *
+ *   1. "N stacked"          → N parts + (N-1) concentric mates between
+ *                             consecutive parts on their z_axis. Anything
+ *                             after "stacked" (e.g. "stacked plates",
+ *                             "stacked blocks") is ignored — the noun is
+ *                             part-template-agnostic at this level.
+ *   2. "N x M grid"         → N*M parts arranged conceptually in a grid;
+ *                             no mates are added (we don't yet have a
+ *                             cross-axis pattern primitive in the IR).
+ *                             Accepts 'x', 'X', or '×'.
+ *
+ * Anything else returns `{ kind: 'unparsed' }` so the caller can render
+ * the "Could not parse" banner instead of guessing.
+ *
+ * The parser is intentionally tiny and pure (no LLM, no state). Future
+ * phases will layer richer pattern matching (e.g. "ring of N" / "row of
+ * N spaced D") on top of the same return shape.
+ */
+export type AssemblyNlResult =
+  | { kind: 'stacked'; count: number }
+  | { kind: 'grid'; rows: number; cols: number }
+  | { kind: 'unparsed' };
+
+const STACKED_RE = /^\s*(\d+)\s+stacked\b/i;
+const GRID_RE = /^\s*(\d+)\s*[x×X]\s*(\d+)\s+grid\b/i;
+
+export function parseAssemblyNl(text: string): AssemblyNlResult {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return { kind: 'unparsed' };
+  const gridMatch = GRID_RE.exec(trimmed);
+  if (gridMatch) {
+    const rows = Number(gridMatch[1]);
+    const cols = Number(gridMatch[2]);
+    if (Number.isFinite(rows) && Number.isFinite(cols) && rows > 0 && cols > 0) {
+      return { kind: 'grid', rows, cols };
+    }
+  }
+  const stackedMatch = STACKED_RE.exec(trimmed);
+  if (stackedMatch) {
+    const count = Number(stackedMatch[1]);
+    if (Number.isFinite(count) && count > 0) {
+      return { kind: 'stacked', count };
+    }
+  }
+  return { kind: 'unparsed' };
 }
 
 // ─── per-part FeatureTree record persistence ─────────────────────────────
@@ -1474,6 +1575,11 @@ export default function AssemblyBrowserModal({
     setImportState({ status: 'idle' });
     setWarningsOpen(false);
     setUnsupportedOpen(false);
+    // AI assembly builder (Phase 3.AI.Assembly): clear transient NL state.
+    // Toggle itself is preserved — user explicitly turned it on, so we
+    // don't undo that just because they wiped the assembly contents.
+    setAiInput('');
+    setAiStatus(null);
   }, [state.parts.length, state.mates.length, history, setFeatureTrees, t]);
 
   // ── infer-mates (Phase 5.2.3) ──────────────────────────────────────────
@@ -1530,6 +1636,220 @@ export default function AssemblyBrowserModal({
     mates: number;
   } | null>(null);
   const dismissImportToast = useCallback(() => setImportToast(null), []);
+
+  // ── AI assembly builder (Phase 3.AI.Assembly) ──────────────────────────
+  //
+  // Single boolean gate that flips on:
+  //   1. a per-part inline FeatureTreePlannerPanel on every part row, and
+  //   2. an assembly-level NL input + submit at the modal footer.
+  //
+  // Default off so the modal's existing tests + layout are untouched for
+  // every consumer that hasn't opted in.
+  const [aiBuilderOn, setAiBuilderOn] = useState<boolean>(false);
+  /** Controlled input value for the assembly-level NL submit form. */
+  const [aiInput, setAiInput] = useState<string>('');
+  /**
+   * Status banner shown below the assembly-level NL input. `null` means no
+   * banner; an object means the most recent submit produced this outcome.
+   * - 'created' renders the success summary (parts + mates created).
+   * - 'unparsed' renders the localized couldNotParse line.
+   */
+  const [aiStatus, setAiStatus] = useState<
+    | null
+    | { kind: 'created'; parts: number; mates: number }
+    | { kind: 'unparsed' }
+  >(null);
+
+  /**
+   * Apply a planner-supplied `PlanStep[]` to a single part's FeatureTree
+   * by folding every `add_node` step onto the node list. Other step kinds
+   * (remove / move / toggle_suppress) operate on existing nodes — same
+   * semantics as `SolverSketchEditorWithExtrude.handlePlannerApply` but
+   * inlined here because the assembly modal doesn't have an `applyEdit`
+   * history layer for per-part trees (those live outside AssemblyState).
+   */
+  const applyPlanStepsToPartTree = useCallback(
+    (partId: string, steps: PlanStep[]): void => {
+      setFeatureTrees((prev) => {
+        const current = prev[partId] ?? { nodes: [] };
+        let nextNodes = [...current.nodes];
+        for (const step of steps) {
+          if (step.type === 'add_node' && step.node !== undefined) {
+            nextNodes.push(step.node);
+          } else if (step.type === 'remove_node' && step.nodeId !== undefined) {
+            nextNodes = nextNodes.filter((n) => n.id !== step.nodeId);
+          } else if (
+            step.type === 'move_node' &&
+            step.nodeId !== undefined &&
+            typeof step.toIdx === 'number'
+          ) {
+            const fromIdx = nextNodes.findIndex((n) => n.id === step.nodeId);
+            if (fromIdx >= 0) {
+              const [moved] = nextNodes.splice(fromIdx, 1);
+              if (moved !== undefined) nextNodes.splice(step.toIdx, 0, moved);
+            }
+          } else if (step.type === 'toggle_suppress' && step.nodeId !== undefined) {
+            nextNodes = nextNodes.map((n) =>
+              n.id === step.nodeId
+                ? { ...n, suppressed: !(n.suppressed === true) }
+                : n,
+            );
+          }
+        }
+        const nextTree: FeatureTree = { nodes: nextNodes };
+        const out = { ...prev, [partId]: nextTree };
+        return out;
+      });
+      // Keep the textarea body in sync so a user who later opens the JSON
+      // editor sees the planner-produced tree rather than the pre-apply one.
+      setFeatureTreeText((prev) => {
+        const currentTree = featureTrees[partId] ?? { nodes: [] };
+        let nextNodes = [...currentTree.nodes];
+        for (const step of steps) {
+          if (step.type === 'add_node' && step.node !== undefined) {
+            nextNodes.push(step.node);
+          } else if (step.type === 'remove_node' && step.nodeId !== undefined) {
+            nextNodes = nextNodes.filter((n) => n.id !== step.nodeId);
+          } else if (
+            step.type === 'move_node' &&
+            step.nodeId !== undefined &&
+            typeof step.toIdx === 'number'
+          ) {
+            const fromIdx = nextNodes.findIndex((n) => n.id === step.nodeId);
+            if (fromIdx >= 0) {
+              const [moved] = nextNodes.splice(fromIdx, 1);
+              if (moved !== undefined) nextNodes.splice(step.toIdx, 0, moved);
+            }
+          } else if (step.type === 'toggle_suppress' && step.nodeId !== undefined) {
+            nextNodes = nextNodes.map((n) =>
+              n.id === step.nodeId
+                ? { ...n, suppressed: !(n.suppressed === true) }
+                : n,
+            );
+          }
+        }
+        return { ...prev, [partId]: JSON.stringify({ nodes: nextNodes }, null, 2) };
+      });
+    },
+    [setFeatureTrees, featureTrees],
+  );
+
+  /**
+   * Pick a fresh part id that does not collide with any existing one in
+   * `base`. We extend the same `part_${n}` convention `addPartLocal` uses
+   * so the resulting ids are visually consistent across mediums (UI add,
+   * STEP import, AI NL builder).
+   */
+  function pickFreshPartId(taken: ReadonlySet<string>, startIdx: number): {
+    id: string;
+    nextIdx: number;
+  } {
+    let idx = startIdx;
+    // Cap the search to avoid pathological infinite loops if the caller
+    // somehow seeds an absurdly dense set; in practice idx grows by 1.
+    for (let safety = 0; safety < 10_000; safety++) {
+      const candidate = `part_${idx}`;
+      if (!taken.has(candidate)) return { id: candidate, nextIdx: idx + 1 };
+      idx++;
+    }
+    return { id: `part_${idx}_${Date.now()}`, nextIdx: idx + 1 };
+  }
+
+  /**
+   * Run the assembly-level NL parser on the current input and apply the
+   * result to AssemblyState. Updates `aiStatus` so the user always sees
+   * what happened (success summary or "Could not parse"). Single
+   * `recordChange` so the whole NL prompt lands as one history entry.
+   */
+  const onAiAssemblySubmit = useCallback(() => {
+    const result = parseAssemblyNl(aiInput);
+    if (result.kind === 'unparsed') {
+      setAiStatus({ kind: 'unparsed' });
+      return;
+    }
+    const base = overrideState ?? history.state;
+    const takenPartIds = new Set(base.parts.map((p) => p.id));
+    const takenMateIds = new Set(base.mates.map((m) => m.id));
+    let partIdx = base.parts.length + 1;
+    let mateIdx = base.mates.length + 1;
+    const newParts: PartInstance[] = [];
+    const newMates: Mate[] = [];
+
+    if (result.kind === 'stacked') {
+      const STACK_SPACING = 10;
+      for (let i = 0; i < result.count; i++) {
+        const picked = pickFreshPartId(takenPartIds, partIdx);
+        partIdx = picked.nextIdx;
+        takenPartIds.add(picked.id);
+        const isFirst = base.parts.length === 0 && i === 0;
+        newParts.push({
+          id: picked.id,
+          name: `Part ${picked.id.replace(/^part_/, '')}`,
+          partTemplateId: picked.id,
+          // Stack along +Z so consecutive parts read as physically
+          // stacked in the viewport when geometry shows up.
+          position: { x: 0, y: 0, z: i * STACK_SPACING },
+          orientation: IDENTITY_QUAT,
+          fixed: isFirst,
+        });
+      }
+      // Build (count-1) concentric mates between consecutive parts on
+      // their z_axis. We use the canonical z_axis ref every part exposes.
+      for (let i = 0; i < newParts.length - 1; i++) {
+        const a = newParts[i]!;
+        const b = newParts[i + 1]!;
+        let mid: string;
+        // Find a non-colliding mate id.
+        while (true) {
+          mid = `mate_${mateIdx++}`;
+          if (!takenMateIds.has(mid)) break;
+        }
+        takenMateIds.add(mid);
+        newMates.push({
+          id: mid,
+          kind: 'concentric',
+          a: { partId: a.id, refId: 'z_axis', refKind: 'axis' },
+          b: { partId: b.id, refId: 'z_axis', refKind: 'axis' },
+        });
+      }
+    } else if (result.kind === 'grid') {
+      const SPACING = 10;
+      for (let r = 0; r < result.rows; r++) {
+        for (let c = 0; c < result.cols; c++) {
+          const picked = pickFreshPartId(takenPartIds, partIdx);
+          partIdx = picked.nextIdx;
+          takenPartIds.add(picked.id);
+          const isFirst = base.parts.length === 0 && r === 0 && c === 0;
+          newParts.push({
+            id: picked.id,
+            name: `Part ${picked.id.replace(/^part_/, '')}`,
+            partTemplateId: picked.id,
+            position: { x: c * SPACING, y: r * SPACING, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: isFirst,
+          });
+        }
+      }
+    }
+
+    const description =
+      result.kind === 'stacked'
+        ? `AI: ${result.count} stacked → ${newParts.length} parts + ${newMates.length} mates`
+        : `AI: ${result.rows}x${result.cols} grid → ${newParts.length} parts`;
+    recordState(
+      (prev) => ({
+        parts: [...prev.parts, ...newParts],
+        mates: [...prev.mates, ...newMates],
+      }),
+      description,
+    );
+    setAiStatus({
+      kind: 'created',
+      parts: newParts.length,
+      mates: newMates.length,
+    });
+    setAiInput('');
+  }, [aiInput, overrideState, history.state, recordState]);
 
   const onInferMatesClick = useCallback(() => {
     const { partFaces, partAxes } = derivePartGeometryForAssembly(
@@ -2150,6 +2470,20 @@ export default function AssemblyBrowserModal({
                               {t.featureTreeParseError}: {treeErr}
                             </div>
                           )}
+                        </div>
+                      )}
+                      {aiBuilderOn && (
+                        <div
+                          data-testid={`solver-assembly-part-${p.id}-ai-planner`}
+                          style={{ marginTop: 4 }}
+                        >
+                          <FeatureTreePlannerPanel
+                            lang={lang}
+                            currentTree={featureTrees[p.id] ?? { nodes: [] }}
+                            onApply={(steps) =>
+                              applyPlanStepsToPartTree(p.id, steps)
+                            }
+                          />
                         </div>
                       )}
                       {refsOpen && (
@@ -2981,6 +3315,94 @@ export default function AssemblyBrowserModal({
           )}
         </div>
 
+        {/* ── AI assembly builder (Phase 3.AI.Assembly) ───────────────── */}
+        {aiBuilderOn && (
+          <div
+            data-testid="solver-assembly-ai-builder"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: 8,
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: 4,
+            }}
+          >
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="text"
+                value={aiInput}
+                placeholder={t.createAssemblyPrompt}
+                data-testid="solver-assembly-ai-input"
+                aria-label={t.aiAssemblyBuilder}
+                onChange={(e) => setAiInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onAiAssemblySubmit();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  fontSize: 12,
+                  padding: 6,
+                  border: '1px solid #93c5fd',
+                  borderRadius: 4,
+                }}
+              />
+              <button
+                type="button"
+                onClick={onAiAssemblySubmit}
+                data-testid="solver-assembly-ai-submit"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: '1px solid #1d4ed8',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.createAssemblySubmit}
+              </button>
+            </div>
+            {aiStatus?.kind === 'unparsed' && (
+              <div
+                data-testid="solver-assembly-ai-unparsed"
+                role="alert"
+                style={{
+                  fontSize: 11,
+                  color: '#b91c1c',
+                  padding: '4px 6px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 3,
+                }}
+              >
+                {t.couldNotParse}
+              </div>
+            )}
+            {aiStatus?.kind === 'created' && (
+              <div
+                data-testid="solver-assembly-ai-created"
+                style={{
+                  fontSize: 11,
+                  color: '#065f46',
+                  padding: '4px 6px',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: 3,
+                }}
+              >
+                +{aiStatus.parts} parts, +{aiStatus.mates} mates
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── footer ───────────────────────────────────────────────── */}
         <div
           style={{
@@ -3042,6 +3464,37 @@ export default function AssemblyBrowserModal({
               onChange={(e) => setAutoInfer(e.target.checked)}
             />
             {t.autoInferLabel}
+          </label>
+          <label
+            data-testid="solver-assembly-ai-toggle-label"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11,
+              color: '#374151',
+              padding: '2px 6px',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+              background: '#fafafa',
+            }}
+            title={t.aiAssemblyBuilder}
+          >
+            <input
+              type="checkbox"
+              data-testid="solver-assembly-ai-toggle"
+              checked={aiBuilderOn}
+              onChange={(e) => {
+                setAiBuilderOn(e.target.checked);
+                // Reset transient NL state when the user closes the panel
+                // so a future re-open starts fresh (no stale banner).
+                if (!e.target.checked) {
+                  setAiStatus(null);
+                  setAiInput('');
+                }
+              }}
+            />
+            {t.aiAssemblyBuilder}
           </label>
           <button
             type="button"
