@@ -51,6 +51,10 @@ import {
   type AxisData,
 } from '@/lib/brep-bridge/stepAssemblyMateInference';
 import { derivePartGeometryForAssembly } from './assemblyPartGeometry';
+import {
+  importStepAssembly,
+  type StepAssemblyImportResult,
+} from '@/lib/brep-bridge/stepAssemblyImport';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -139,6 +143,36 @@ interface Dict {
   descRemoveMate: (id: string) => string;
   descAcceptMate: (id: string) => string;
   descAcceptAllMates: (count: number) => string;
+  /** "Import STEP assembly" footer button label (Phase 4.B). */
+  importStepAssembly: string;
+  /** In-flight label while the file is being parsed. */
+  importingAssembly: string;
+  /** Builds the "Imported N parts, M warnings, K unsupported" summary. */
+  importedSummary: (parts: number, warnings: number, unsupported: number) => string;
+  /** Disclosure label for the per-part warnings list. */
+  warningsList: string;
+  /** Disclosure label for the per-solid unsupported list. */
+  unsupportedList: string;
+  /** Description recorded in history when a STEP assembly is imported. */
+  descImportAssembly: (fileName: string, parts: number) => string;
+  /** Error shown when the selected file exceeds the 5 MB cap (413). */
+  errorFileTooLarge: string;
+  /** Error shown when the selected file is empty (400). */
+  errorFileEmpty: string;
+  /**
+   * Footer checkbox label: "Auto-infer mates after import" (Phase 5.2.4).
+   * Toggles whether the modal fires inferMatesFromPlacements right after a
+   * STEP assembly import (or a sample-loader remount) so the user lands on
+   * a populated Suggested-Mates panel without clicking "Infer mates".
+   */
+  autoInferLabel: string;
+  /**
+   * Toast template shown right after an auto-inference fires — returns the
+   * localized "Imported N parts, inferred M mate suggestions" line.
+   */
+  inferredSummary: (parts: number, mates: number) => string;
+  /** Toast dismiss button label (X). */
+  dismissToast: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -200,6 +234,19 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `메이트 삭제 ${id}`,
     descAcceptMate: (id) => `추론 메이트 수락 ${id}`,
     descAcceptAllMates: (count) => `추론 메이트 일괄 수락 (${count})`,
+    importStepAssembly: 'STEP 어셈블리 가져오기',
+    importingAssembly: '어셈블리 가져오는 중...',
+    importedSummary: (parts, warnings, unsupported) =>
+      `${parts}개 부품, ${warnings}개 경고, ${unsupported}개 미지원 항목을 가져왔습니다`,
+    warningsList: '경고',
+    unsupportedList: '미지원 항목',
+    descImportAssembly: (fileName, parts) => `STEP 어셈블리 가져오기 ${fileName} (${parts} 부품)`,
+    errorFileTooLarge: '파일이 너무 큽니다 (최대 5MB · 413)',
+    errorFileEmpty: '파일이 비어 있습니다 (400)',
+    autoInferLabel: '가져오기 후 메이트 자동 추론',
+    inferredSummary: (parts, mates) =>
+      `${parts}개 부품을 가져오고, ${mates}개 메이트 제안을 추론했습니다`,
+    dismissToast: '닫기',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -259,6 +306,20 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `Remove mate ${id}`,
     descAcceptMate: (id) => `Accept inferred mate ${id}`,
     descAcceptAllMates: (count) => `Accept all inferred mates (${count})`,
+    importStepAssembly: 'Import STEP assembly',
+    importingAssembly: 'Importing assembly...',
+    importedSummary: (parts, warnings, unsupported) =>
+      `Imported ${parts} parts, ${warnings} warnings, ${unsupported} unsupported`,
+    warningsList: 'Warnings',
+    unsupportedList: 'Unsupported',
+    descImportAssembly: (fileName, parts) =>
+      `Import STEP assembly ${fileName} (${parts} parts)`,
+    errorFileTooLarge: 'File too large (max 5 MB · 413)',
+    errorFileEmpty: 'File is empty (400)',
+    autoInferLabel: 'Auto-infer mates after import',
+    inferredSummary: (parts, mates) =>
+      `Imported ${parts} parts, inferred ${mates} mate suggestions`,
+    dismissToast: 'Dismiss',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -318,6 +379,20 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `メイト削除 ${id}`,
     descAcceptMate: (id) => `推論メイトを受入 ${id}`,
     descAcceptAllMates: (count) => `推論メイトを一括受入 (${count})`,
+    importStepAssembly: 'STEP アセンブリ取込',
+    importingAssembly: 'アセンブリ取込中...',
+    importedSummary: (parts, warnings, unsupported) =>
+      `${parts} パーツ、${warnings} 警告、${unsupported} 未対応 を取込`,
+    warningsList: '警告',
+    unsupportedList: '未対応',
+    descImportAssembly: (fileName, parts) =>
+      `STEPアセンブリ取込 ${fileName} (${parts}パーツ)`,
+    errorFileTooLarge: 'ファイルサイズ超過 (最大 5MB · 413)',
+    errorFileEmpty: 'ファイルが空です (400)',
+    autoInferLabel: '取込後に合致を自動推論',
+    inferredSummary: (parts, mates) =>
+      `${parts}パーツを取込み、${mates}件の合致候補を推論しました`,
+    dismissToast: '閉じる',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -377,6 +452,19 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `删除配合 ${id}`,
     descAcceptMate: (id) => `接受推断配合 ${id}`,
     descAcceptAllMates: (count) => `批量接受推断配合 (${count})`,
+    importStepAssembly: '导入 STEP 装配',
+    importingAssembly: '正在导入装配...',
+    importedSummary: (parts, warnings, unsupported) =>
+      `已导入 ${parts} 个零件、${warnings} 条警告、${unsupported} 个不支持项`,
+    warningsList: '警告',
+    unsupportedList: '不支持',
+    descImportAssembly: (fileName, parts) => `导入 STEP 装配 ${fileName} (${parts} 零件)`,
+    errorFileTooLarge: '文件过大 (最大 5MB · 413)',
+    errorFileEmpty: '文件为空 (400)',
+    autoInferLabel: '导入后自动推断配合',
+    inferredSummary: (parts, mates) =>
+      `已导入 ${parts} 个零件，推断了 ${mates} 条配合建议`,
+    dismissToast: '关闭',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -436,6 +524,20 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `Eliminar restricción ${id}`,
     descAcceptMate: (id) => `Aceptar restricción inferida ${id}`,
     descAcceptAllMates: (count) => `Aceptar todas las restricciones inferidas (${count})`,
+    importStepAssembly: 'Importar ensamblaje STEP',
+    importingAssembly: 'Importando ensamblaje...',
+    importedSummary: (parts, warnings, unsupported) =>
+      `Importadas ${parts} piezas, ${warnings} advertencias, ${unsupported} no soportadas`,
+    warningsList: 'Advertencias',
+    unsupportedList: 'No soportadas',
+    descImportAssembly: (fileName, parts) =>
+      `Importar ensamblaje STEP ${fileName} (${parts} piezas)`,
+    errorFileTooLarge: 'Archivo demasiado grande (máx 5 MB · 413)',
+    errorFileEmpty: 'Archivo vacío (400)',
+    autoInferLabel: 'Inferir restricciones tras importar',
+    inferredSummary: (parts, mates) =>
+      `Importadas ${parts} piezas, inferidas ${mates} sugerencias de restricción`,
+    dismissToast: 'Cerrar',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -495,6 +597,20 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `حذف قيد ${id}`,
     descAcceptMate: (id) => `قبول القيد المستنتج ${id}`,
     descAcceptAllMates: (count) => `قبول جميع القيود المستنتجة (${count})`,
+    importStepAssembly: 'استيراد تجميع STEP',
+    importingAssembly: 'جارٍ استيراد التجميع...',
+    importedSummary: (parts, warnings, unsupported) =>
+      `تم استيراد ${parts} جزءًا، ${warnings} تحذيرًا، ${unsupported} غير مدعوم`,
+    warningsList: 'تحذيرات',
+    unsupportedList: 'غير مدعوم',
+    descImportAssembly: (fileName, parts) =>
+      `استيراد تجميع STEP ${fileName} (${parts} جزء)`,
+    errorFileTooLarge: 'الملف كبير جدًا (الحد الأقصى 5 ميغابايت · 413)',
+    errorFileEmpty: 'الملف فارغ (400)',
+    autoInferLabel: 'استنتاج القيود تلقائيًا بعد الاستيراد',
+    inferredSummary: (parts, mates) =>
+      `تم استيراد ${parts} جزءًا واستنتاج ${mates} اقتراح قيود`,
+    dismissToast: 'إغلاق',
   },
 };
 
@@ -576,11 +692,76 @@ export interface AssemblyBrowserModalProps {
     partFaces: Record<string, FaceData[]>,
     partAxes: Record<string, AxisData[]>,
   ) => Mate[];
+  /**
+   * Optional injectable STEP-assembly importer (Phase 4.B). When provided,
+   * the "Import STEP assembly" footer button delegates to this function
+   * instead of calling the in-process `importStepAssembly` directly.
+   * Tests inject a mock to avoid round-tripping a real STEP file through
+   * the parser inside jsdom (and to assert that the modal forwards the
+   * file source verbatim).
+   *
+   * The default path reads the picked file via FileReader.readAsText and
+   * calls `importStepAssembly(source)` synchronously. Either path then
+   * recordChange()s the returned state onto the history stack so the user
+   * can Ctrl+Z back to the pre-import state.
+   */
+  onImportStepAssembly?: (source: string, fileName: string) => Promise<StepAssemblyImportResult>;
+  /**
+   * Maximum size, in bytes, of a STEP file the importer will accept.
+   * Defaults to 5 MiB (5 × 1024 × 1024). Anything larger surfaces the
+   * `errorFileTooLarge` (HTTP 413) message and the import is rejected
+   * before we attempt to read the file body. Lets tests override the cap
+   * down to a few bytes without having to build a multi-megabyte fixture.
+   */
+  importStepMaxBytes?: number;
+  /**
+   * Phase 5.2.4 — when true, the modal automatically runs
+   * {@link inferMatesFromPlacements} once on mount (provided the user's
+   * `nexyfab:autoInfer` preference is on AND at least 2 parts + 1
+   * FeatureTree are present). The wrapping page sets this to `true`
+   * whenever the seed came from a sample-load or a STEP import, and
+   * `false` (the default) for the blank assembly so the empty-state UI
+   * stays empty until the user explicitly clicks "Infer mates".
+   *
+   * The auto-trigger fires AT MOST ONCE per mount; toggling the prop
+   * mid-life has no further effect (use `key={...}` to remount and
+   * re-trigger, matching how the page already remounts on sample-change).
+   */
+  autoInferOnMount?: boolean;
+  /**
+   * Phase 5.2.4 — initial value of the auto-infer user preference. When
+   * `undefined` the modal hydrates from `localStorage['nexyfab:autoInfer']`
+   * (defaulting to `true` when the slot is empty); when defined the modal
+   * uses this verbatim and skips the localStorage read on the initial
+   * render. Tests inject `false` to deterministically opt out without
+   * having to pre-seed window.localStorage.
+   */
+  initialAutoInfer?: boolean;
 }
 
 /** Persistence key prefixes — kept stable across modal + wrapper. */
 const ASSEMBLY_STORAGE_PREFIX = 'nexyfab:assembly:';
 const ASSEMBLY_TREES_STORAGE_PREFIX = 'nexyfab:assembly-trees:';
+
+/** Default 5 MiB cap on STEP files routed through the importer. */
+const DEFAULT_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * localStorage slot holding the user's auto-infer preference (Phase 5.2.4).
+ * Kept outside any per-project prefix because it's a global UX preference
+ * shared across every assembly the user opens. Persisted as the literal
+ * string 'true' / 'false' so a missing slot reads back as `null` and the
+ * hook can apply its default-true policy unambiguously.
+ */
+const AUTO_INFER_STORAGE_KEY = 'nexyfab:autoInfer';
+
+/**
+ * How long the import-summary toast stays visible before auto-dismissing.
+ * 6 s gives the user enough time to read the "Imported N parts, inferred
+ * M suggestions" line without leaving the toast lingering forever. The
+ * toast also exposes a manual Dismiss button for keyboard / a11y users.
+ */
+const IMPORT_TOAST_AUTO_DISMISS_MS = 6000;
 
 // ─── small immutable helpers ─────────────────────────────────────────────
 
@@ -846,6 +1027,10 @@ export default function AssemblyBrowserModal({
   onSolve,
   projectId,
   onInferMates,
+  onImportStepAssembly,
+  importStepMaxBytes = DEFAULT_IMPORT_MAX_BYTES,
+  autoInferOnMount = false,
+  initialAutoInfer,
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
 
@@ -1286,6 +1471,9 @@ export default function AssemblyBrowserModal({
     setTreesPersistError(null);
     setSuggestions([]);
     setHasInferred(false);
+    setImportState({ status: 'idle' });
+    setWarningsOpen(false);
+    setUnsupportedOpen(false);
   }, [state.parts.length, state.mates.length, history, setFeatureTrees, t]);
 
   // ── infer-mates (Phase 5.2.3) ──────────────────────────────────────────
@@ -1302,6 +1490,46 @@ export default function AssemblyBrowserModal({
    * banner only after at least one inference run.
    */
   const [hasInferred, setHasInferred] = useState<boolean>(false);
+
+  // ── auto-infer preference (Phase 5.2.4) ───────────────────────────────
+  //
+  // User preference for "auto-infer mates after import", persisted to
+  // localStorage['nexyfab:autoInfer'] (default true on first visit). The
+  // footer checkbox flips this; the on-mount effect below reads it.
+  // We hydrate via a function-form useState initializer so the
+  // localStorage read happens exactly once per modal mount.
+  const [autoInfer, setAutoInferState] = useState<boolean>(() => {
+    if (initialAutoInfer !== undefined) return initialAutoInfer;
+    if (typeof window === 'undefined' || !window.localStorage) return true;
+    try {
+      const raw = window.localStorage.getItem(AUTO_INFER_STORAGE_KEY);
+      if (raw === null) return true;
+      return raw === 'true';
+    } catch {
+      return true;
+    }
+  });
+  const setAutoInfer = useCallback((next: boolean) => {
+    setAutoInferState(next);
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      window.localStorage.setItem(AUTO_INFER_STORAGE_KEY, next ? 'true' : 'false');
+    } catch {
+      // QuotaExceeded / disabled cookies → silently keep the in-memory value.
+    }
+  }, []);
+
+  /**
+   * Toast surfaced after an auto-inference fires. Both counts are baked
+   * into the localized "Imported N parts, inferred M suggestions" line;
+   * `null` means no toast is currently displayed. Cleared either via the
+   * Dismiss button or the auto-fade timer (see effect below).
+   */
+  const [importToast, setImportToast] = useState<{
+    parts: number;
+    mates: number;
+  } | null>(null);
+  const dismissImportToast = useCallback(() => setImportToast(null), []);
 
   const onInferMatesClick = useCallback(() => {
     const { partFaces, partAxes } = derivePartGeometryForAssembly(
@@ -1359,6 +1587,201 @@ export default function AssemblyBrowserModal({
       return part?.name;
     },
     [state.parts],
+  );
+
+  // ── STEP assembly import (Phase 4.B) ───────────────────────────────────
+  //
+  // UX contract (matches /api/step-import for size/empty errors so the
+  // labels read naturally):
+  //   - 5 MiB cap, surfaced as the "413 file too large" message — we use
+  //     the same number so a user who later moves to the server route sees
+  //     identical wording.
+  //   - empty file (0 bytes OR whitespace-only after read) → "400 empty".
+  //   - successful parse → state.parts + featureTrees merge into the
+  //     modal's history via `recordChange`, so the user can Ctrl+Z back to
+  //     the pre-import assembly. We bake the file name + new part count
+  //     into the description so the history panel reads "Import STEP
+  //     assembly foo.step (3 parts)".
+  //   - warnings / unsupported lists are kept in the import-result panel,
+  //     not the history panel — they're per-import diagnostics, not edit
+  //     events.
+
+  /**
+   * Hidden <input type="file"> — clicked imperatively by the visible
+   * "Import STEP assembly" button. We keep a ref so the button can call
+   * .click() without rendering a default file-picker chrome.
+   */
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+  const [importState, setImportState] = useState<
+    | { status: 'idle' }
+    | { status: 'loading'; fileName: string }
+    | {
+        status: 'ok';
+        fileName: string;
+        partCount: number;
+        warnings: ReadonlyArray<string>;
+        unsupported: ReadonlyArray<string>;
+      }
+    | { status: 'error'; httpStatus: 400 | 413 | 422; message: string }
+  >({ status: 'idle' });
+  /** Independent expand flags for the warnings / unsupported disclosure
+   *  lists (collapsed by default — the summary line is the headline UI). */
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const [unsupportedOpen, setUnsupportedOpen] = useState(false);
+
+  const onImportButtonClick = useCallback(() => {
+    if (importState.status === 'loading') return;
+    importFileRef.current?.click();
+  }, [importState.status]);
+
+  /**
+   * Run the importer on a freshly-read STEP file source. Handles the
+   * happy path (recordChange + summary panel) AND the validateAssembly
+   * failure case (the importer's state may legitimately fail IR
+   * validation — e.g., zero-part STEP files — and we want the user to
+   * see that as a 422 rather than have it propagate as an unhandled
+   * throw out of recordChange).
+   */
+  const applyImportResult = useCallback(
+    (result: StepAssemblyImportResult, fileName: string) => {
+      try {
+        recordState(result.state, t.descImportAssembly(fileName, result.state.parts.length));
+        setFeatureTrees((prev) => ({ ...prev, ...result.featureTrees }));
+        // Seed the textarea bodies for every imported part so the editor
+        // panel hydrates with the imported JSON immediately if the user
+        // opens it. This matches the seed flow used by initialFeatureTrees.
+        setFeatureTreeText((prev) => {
+          const next = { ...prev };
+          for (const [pid, tree] of Object.entries(result.featureTrees)) {
+            next[pid] = JSON.stringify(tree, null, 2);
+          }
+          return next;
+        });
+        setImportState({
+          status: 'ok',
+          fileName,
+          partCount: result.state.parts.length,
+          warnings: result.warnings,
+          unsupported: result.unsupported,
+        });
+        setWarningsOpen(false);
+        setUnsupportedOpen(false);
+        // Phase 5.2.4 — auto-infer right after a successful import so the
+        // Suggested-Mates panel is populated by the time the user looks
+        // back at the modal. Gated on the user's `autoInfer` preference.
+        // We feed inference the *imported* state + merged trees directly
+        // (not the closure's `state` / `featureTrees`, which won't have
+        // re-rendered yet — React batches the setStates above).
+        if (autoInfer) {
+          const mergedTrees = { ...featureTrees, ...result.featureTrees };
+          const { partFaces, partAxes } = derivePartGeometryForAssembly(
+            result.state.parts,
+            mergedTrees,
+          );
+          const inferred = onInferMates
+            ? onInferMates(result.state, partFaces, partAxes)
+            : inferMatesFromPlacements(result.state, partFaces, partAxes);
+          const existingMateIds = new Set(result.state.mates.map((m) => m.id));
+          const filtered = inferred.filter((m) => !existingMateIds.has(m.id));
+          setSuggestions(filtered);
+          setHasInferred(true);
+          setImportToast({ parts: result.state.parts.length, mates: filtered.length });
+        }
+      } catch (e) {
+        setImportState({
+          status: 'error',
+          httpStatus: 422,
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    },
+    [recordState, setFeatureTrees, t, autoInfer, featureTrees, onInferMates],
+  );
+
+  const onImportFileChosen = useCallback(
+    async (file: File): Promise<void> => {
+      // 5 MiB cap → 413 BEFORE we read the file. Reading first would defeat
+      // the point of the cap (an attacker could OOM the tab with a 1 GB
+      // file). `file.size` is the on-disk byte length, not the decoded
+      // text length, which is what we actually want to gate on.
+      if (file.size > importStepMaxBytes) {
+        setImportState({
+          status: 'error',
+          httpStatus: 413,
+          message: t.errorFileTooLarge,
+        });
+        return;
+      }
+      if (file.size === 0) {
+        setImportState({
+          status: 'error',
+          httpStatus: 400,
+          message: t.errorFileEmpty,
+        });
+        return;
+      }
+      setImportState({ status: 'loading', fileName: file.name });
+      try {
+        // Prefer `file.text()` (modern browsers), fall back to FileReader
+        // for jsdom + legacy browsers. The check is on the actual File
+        // instance because some jsdom polyfills shim a non-callable
+        // property on the prototype.
+        let source: string;
+        if (typeof (file as { text?: unknown }).text === 'function') {
+          source = await file.text();
+        } else {
+          source = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result ?? ''));
+            reader.onerror = () =>
+              reject(reader.error ?? new Error('FileReader.read failed'));
+            reader.readAsText(file);
+          });
+        }
+        // A file that's whitespace-only is functionally empty too — the
+        // importer would throw `empty_source`. Catch it here so the user
+        // sees the friendlier 400 message.
+        if (source.trim().length === 0) {
+          setImportState({
+            status: 'error',
+            httpStatus: 400,
+            message: t.errorFileEmpty,
+          });
+          return;
+        }
+        const result = onImportStepAssembly
+          ? await onImportStepAssembly(source, file.name)
+          : importStepAssembly(source);
+        applyImportResult(result, file.name);
+      } catch (e) {
+        setImportState({
+          status: 'error',
+          httpStatus: 422,
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    },
+    [
+      importStepMaxBytes,
+      onImportStepAssembly,
+      applyImportResult,
+      t.errorFileTooLarge,
+      t.errorFileEmpty,
+    ],
+  );
+
+  const onImportFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      // Clear the input's value so picking the same file twice in a row
+      // still fires `change` — Chrome / Firefox suppress the second event
+      // otherwise. We do this BEFORE awaiting onImportFileChosen so a
+      // late await rejection doesn't leave us stuck with a stale value.
+      e.target.value = '';
+      if (!file) return;
+      void onImportFileChosen(file);
+    },
+    [onImportFileChosen],
   );
 
   // ── solve ─────────────────────────────────────────────────────────────
@@ -1433,6 +1856,60 @@ export default function AssemblyBrowserModal({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onUndo, onRedo, canUndo, canRedo]);
+
+  // ── Phase 5.2.4 on-mount auto-inference ────────────────────────────────
+  //
+  // When the wrapping page sets `autoInferOnMount` (e.g., after a
+  // sample-loader change OR after a STEP import that remounts the modal
+  // with the imported state), AND the user's `autoInfer` preference is
+  // on, AND there are at least 2 parts + 1 FeatureTree to chew on, we
+  // run inference once. The `autoInferRanRef` guard prevents the effect
+  // from re-firing on later re-renders even if the deps change — to
+  // re-trigger, the parent must remount the modal (key change), which
+  // is what `_content.tsx` already does on sample-change.
+  //
+  // We deliberately read the latest `state` / `featureTrees` from refs
+  // captured at effect-execution time rather than putting them in the
+  // dep array — adding them would let any unrelated edit re-fire the
+  // effect, which is exactly the spam behaviour we're avoiding.
+  const stateRef = useRef(state);
+  const featureTreesRef = useRef(featureTrees);
+  const onInferMatesRef = useRef(onInferMates);
+  useEffect(() => {
+    stateRef.current = state;
+    featureTreesRef.current = featureTrees;
+    onInferMatesRef.current = onInferMates;
+  });
+  const autoInferRanRef = useRef(false);
+  useEffect(() => {
+    if (autoInferRanRef.current) return;
+    if (!autoInferOnMount) return;
+    if (!autoInfer) return;
+    const s = stateRef.current;
+    const trees = featureTreesRef.current;
+    if (s.parts.length < 2) return;
+    if (Object.keys(trees).length === 0) return;
+    autoInferRanRef.current = true;
+    const { partFaces, partAxes } = derivePartGeometryForAssembly(s.parts, trees);
+    const fn = onInferMatesRef.current;
+    const inferred = fn
+      ? fn(s, partFaces, partAxes)
+      : inferMatesFromPlacements(s, partFaces, partAxes);
+    const existingMateIds = new Set(s.mates.map((m) => m.id));
+    const filtered = inferred.filter((m) => !existingMateIds.has(m.id));
+    setSuggestions(filtered);
+    setHasInferred(true);
+    setImportToast({ parts: s.parts.length, mates: filtered.length });
+  }, [autoInferOnMount, autoInfer]);
+
+  // Auto-dismiss the import toast after a short delay. Stays mounted
+  // forever if the user disables the timer by hovering an interaction
+  // (we keep this simple — just a fixed 6 s window).
+  useEffect(() => {
+    if (importToast === null) return;
+    const id = setTimeout(() => setImportToast(null), IMPORT_TOAST_AUTO_DISMISS_MS);
+    return () => clearTimeout(id);
+  }, [importToast]);
 
   return (
     <div
@@ -2053,6 +2530,46 @@ export default function AssemblyBrowserModal({
           </section>
         </div>
 
+        {/* ── auto-infer summary toast (Phase 5.2.4) ──────────────── */}
+        {importToast !== null && (
+          <div
+            data-testid="solver-assembly-import-toast"
+            role="status"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12,
+              padding: '8px 12px',
+              background: '#ecfdf5',
+              color: '#065f46',
+              border: '1px solid #6ee7b7',
+              borderRadius: 4,
+            }}
+          >
+            <span data-testid="solver-assembly-import-toast-text" style={{ flex: 1 }}>
+              {t.inferredSummary(importToast.parts, importToast.mates)}
+            </span>
+            <button
+              type="button"
+              data-testid="solver-assembly-import-toast-dismiss"
+              onClick={dismissImportToast}
+              aria-label={t.dismissToast}
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                background: '#fff',
+                border: '1px solid #6ee7b7',
+                color: '#065f46',
+                borderRadius: 3,
+                cursor: 'pointer',
+              }}
+            >
+              {t.dismissToast}
+            </button>
+          </div>
+        )}
+
         {/* ── infer-mates section (Phase 5.2.3) ─────────────────────── */}
         <div
           data-testid="solver-assembly-infer-mates-section"
@@ -2233,6 +2750,166 @@ export default function AssemblyBrowserModal({
           </div>
         )}
 
+        {/* ── STEP assembly import panel (Phase 4.B) ──────────────── */}
+        <div
+          data-testid="solver-assembly-import-section"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          {importState.status === 'loading' && (
+            <div
+              data-testid="solver-assembly-import-loading"
+              style={{
+                fontSize: 12,
+                color: '#6b7280',
+                padding: 8,
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: 4,
+              }}
+            >
+              {t.importingAssembly} ({importState.fileName})
+            </div>
+          )}
+          {importState.status === 'error' && (
+            <div
+              data-testid="solver-assembly-import-error"
+              role="alert"
+              data-http-status={importState.httpStatus}
+              style={{
+                fontSize: 12,
+                color: '#b91c1c',
+                padding: 8,
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 4,
+              }}
+            >
+              {importState.message}
+            </div>
+          )}
+          {importState.status === 'ok' && (
+            <div
+              data-testid="solver-assembly-import-result"
+              style={{
+                fontSize: 12,
+                padding: 8,
+                background: '#ecfdf5',
+                border: '1px solid #a7f3d0',
+                borderRadius: 4,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+              }}
+            >
+              <div
+                data-testid="solver-assembly-import-summary"
+                style={{ fontWeight: 600, color: '#065f46' }}
+              >
+                {t.importedSummary(
+                  importState.partCount,
+                  importState.warnings.length,
+                  importState.unsupported.length,
+                )}
+                <span style={{ fontWeight: 400, color: '#047857', marginInlineStart: 6 }}>
+                  ({importState.fileName})
+                </span>
+              </div>
+              {importState.warnings.length > 0 && (
+                <div data-testid="solver-assembly-import-warnings-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setWarningsOpen((v) => !v)}
+                    data-testid="solver-assembly-import-warnings-toggle"
+                    aria-expanded={warningsOpen}
+                    style={{
+                      fontSize: 11,
+                      padding: '2px 6px',
+                      background: '#fff',
+                      border: '1px solid #fbbf24',
+                      color: '#92400e',
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {warningsOpen ? '▼ ' : '▶ '}
+                    {t.warningsList} ({importState.warnings.length})
+                  </button>
+                  {warningsOpen && (
+                    <ul
+                      data-testid="solver-assembly-import-warnings-list"
+                      style={{
+                        listStyle: 'disc',
+                        margin: '4px 0 0 18px',
+                        padding: 0,
+                        fontSize: 11,
+                        color: '#78350f',
+                        fontFamily: 'monospace',
+                      }}
+                    >
+                      {importState.warnings.map((w, i) => (
+                        <li
+                          key={`w-${i}`}
+                          data-testid={`solver-assembly-import-warning-${i}`}
+                        >
+                          {w}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {importState.unsupported.length > 0 && (
+                <div data-testid="solver-assembly-import-unsupported-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setUnsupportedOpen((v) => !v)}
+                    data-testid="solver-assembly-import-unsupported-toggle"
+                    aria-expanded={unsupportedOpen}
+                    style={{
+                      fontSize: 11,
+                      padding: '2px 6px',
+                      background: '#fff',
+                      border: '1px solid #f87171',
+                      color: '#991b1b',
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {unsupportedOpen ? '▼ ' : '▶ '}
+                    {t.unsupportedList} ({importState.unsupported.length})
+                  </button>
+                  {unsupportedOpen && (
+                    <ul
+                      data-testid="solver-assembly-import-unsupported-list"
+                      style={{
+                        listStyle: 'disc',
+                        margin: '4px 0 0 18px',
+                        padding: 0,
+                        fontSize: 11,
+                        color: '#7f1d1d',
+                        fontFamily: 'monospace',
+                      }}
+                    >
+                      {importState.unsupported.map((u, i) => (
+                        <li
+                          key={`u-${i}`}
+                          data-testid={`solver-assembly-import-unsupported-${i}`}
+                        >
+                          {u}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* ── history panel (Phase 4.2) ────────────────────────────── */}
         <div
           data-testid="solver-assembly-history-panel"
@@ -2343,6 +3020,29 @@ export default function AssemblyBrowserModal({
                 : treesPersistError.message}
             </span>
           )}
+          <label
+            data-testid="solver-assembly-auto-infer-label"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11,
+              color: '#374151',
+              padding: '2px 6px',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+              background: '#fafafa',
+            }}
+            title={t.autoInferLabel}
+          >
+            <input
+              type="checkbox"
+              data-testid="solver-assembly-auto-infer"
+              checked={autoInfer}
+              onChange={(e) => setAutoInfer(e.target.checked)}
+            />
+            {t.autoInferLabel}
+          </label>
           <button
             type="button"
             onClick={history.undo}
@@ -2378,6 +3078,32 @@ export default function AssemblyBrowserModal({
             }}
           >
             {t.redo}
+          </button>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept=".step,.stp,application/step,model/step"
+            data-testid="solver-assembly-import-step-file-input"
+            onChange={onImportFileInputChange}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            onClick={onImportButtonClick}
+            disabled={importState.status === 'loading'}
+            data-testid="solver-assembly-import-step"
+            title={t.importStepAssembly}
+            style={{
+              padding: '8px 12px',
+              fontSize: 13,
+              background: importState.status === 'loading' ? '#f3f4f6' : '#fff',
+              color: importState.status === 'loading' ? '#9ca3af' : '#111827',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: importState.status === 'loading' ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {importState.status === 'loading' ? t.importingAssembly : t.importStepAssembly}
           </button>
           <button
             type="button"

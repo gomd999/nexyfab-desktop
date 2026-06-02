@@ -1537,4 +1537,696 @@ describe('AssemblyBrowserModal', () => {
       expect(screen.getByTestId('solver-assembly-redo').textContent).toMatch(redoRe);
     });
   });
+
+  // ── STEP assembly import (Phase 4.B) ────────────────────────────────────
+
+  describe('STEP assembly import', () => {
+    /**
+     * Helpers for the file-picker tests. We always inject an `onImportStepAssembly`
+     * mock so the test never touches the real STEP parser — exercises the
+     * UI behaviour (button click → file picker → result panel → history)
+     * in isolation.
+     */
+    function makeFile(content: string, name = 'asm.step', size?: number): File {
+      const blob = new Blob([content], { type: 'application/step' });
+      const file = new File([blob], name, { type: 'application/step' });
+      // Some tests need to fake a much larger size than the actual content
+      // so we don't have to allocate a 5 MiB string. Object.defineProperty
+      // is the standard jsdom escape hatch for this.
+      if (size !== undefined) {
+        Object.defineProperty(file, 'size', { value: size, configurable: true });
+      }
+      return file;
+    }
+
+    function pickFile(input: HTMLInputElement, file: File): void {
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      fireEvent.change(input);
+    }
+
+    function fakeResult(partIds: string[], opts: {
+      warnings?: string[];
+      unsupported?: string[];
+    } = {}) {
+      return {
+        state: {
+          parts: partIds.map((id, i) => ({
+            id,
+            name: id,
+            partTemplateId: `pd_${id}`,
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: i === 0,
+          })),
+          mates: [],
+        },
+        featureTrees: Object.fromEntries(
+          partIds.map((id) => [id, { nodes: [] } as FeatureTree]),
+        ),
+        warnings: opts.warnings ?? [],
+        unsupported: opts.unsupported ?? [],
+      };
+    }
+
+    it('renders the "Import STEP assembly" footer button + hidden file input', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const btn = screen.getByTestId('solver-assembly-import-step');
+      expect(btn).toBeInTheDocument();
+      expect(btn.textContent).toMatch(/Import STEP assembly/i);
+      const input = screen.getByTestId(
+        'solver-assembly-import-step-file-input',
+      ) as HTMLInputElement;
+      expect(input).toBeInTheDocument();
+      expect(input.type).toBe('file');
+      expect(input.accept).toMatch(/\.step/);
+    });
+
+    it('picking a file invokes onImportStepAssembly and renders the summary', async () => {
+      const onImport = vi.fn().mockResolvedValue(
+        fakeResult(['box_1', 'box_2'], { warnings: ['heal:trim_ws'] }),
+      );
+      render(
+        <AssemblyBrowserModal lang="en" onClose={vi.fn()} onImportStepAssembly={onImport} />,
+      );
+      const input = screen.getByTestId(
+        'solver-assembly-import-step-file-input',
+      ) as HTMLInputElement;
+      pickFile(input, makeFile('ISO-10303-21;\nHEADER;\nENDSEC;\n', 'mini.step'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-result')).toBeInTheDocument(),
+      );
+      expect(onImport).toHaveBeenCalledTimes(1);
+      const [src, name] = onImport.mock.calls[0] as [string, string];
+      expect(src).toContain('ISO-10303-21');
+      expect(name).toBe('mini.step');
+      expect(screen.getByTestId('solver-assembly-import-summary').textContent).toMatch(
+        /Imported 2 parts, 1 warnings, 0 unsupported/,
+      );
+      // Parts row now rendered from the imported state.
+      expect(screen.getByTestId('solver-assembly-part-row-box_1')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-box_2')).toBeInTheDocument();
+    });
+
+    it('warnings list is collapsible and reveals per-warning rows on expand', async () => {
+      const onImport = vi.fn().mockResolvedValue(
+        fakeResult(['p1'], { warnings: ['heal:bom_strip', 'part_p1:unsupported_face'] }),
+      );
+      render(
+        <AssemblyBrowserModal lang="en" onClose={vi.fn()} onImportStepAssembly={onImport} />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('SRC'),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('solver-assembly-import-warnings-toggle'),
+        ).toBeInTheDocument(),
+      );
+      // Collapsed by default.
+      expect(
+        screen.queryByTestId('solver-assembly-import-warnings-list'),
+      ).toBeNull();
+      fireEvent.click(screen.getByTestId('solver-assembly-import-warnings-toggle'));
+      const list = screen.getByTestId('solver-assembly-import-warnings-list');
+      expect(within(list).queryAllByRole('listitem')).toHaveLength(2);
+      expect(
+        screen.getByTestId('solver-assembly-import-warning-0').textContent,
+      ).toMatch(/heal:bom_strip/);
+      expect(
+        screen.getByTestId('solver-assembly-import-warning-1').textContent,
+      ).toMatch(/unsupported_face/);
+    });
+
+    it('unsupported list is collapsible and reveals per-entry rows on expand', async () => {
+      const onImport = vi.fn().mockResolvedValue(
+        fakeResult(['p1'], { unsupported: ['solid_42:nurbs_surface', 'solid_7:bspline'] }),
+      );
+      render(
+        <AssemblyBrowserModal lang="en" onClose={vi.fn()} onImportStepAssembly={onImport} />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('SRC'),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('solver-assembly-import-unsupported-toggle'),
+        ).toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByTestId('solver-assembly-import-unsupported-list'),
+      ).toBeNull();
+      fireEvent.click(screen.getByTestId('solver-assembly-import-unsupported-toggle'));
+      const list = screen.getByTestId('solver-assembly-import-unsupported-list');
+      expect(within(list).queryAllByRole('listitem')).toHaveLength(2);
+      expect(
+        screen.getByTestId('solver-assembly-import-unsupported-0').textContent,
+      ).toMatch(/nurbs_surface/);
+    });
+
+    it('file > 5 MB cap surfaces the 413 error and never calls the importer', async () => {
+      const onImport = vi.fn();
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          onClose={vi.fn()}
+          onImportStepAssembly={onImport}
+        />,
+      );
+      const huge = makeFile('x', 'big.step', 6 * 1024 * 1024);
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        huge,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-error')).toBeInTheDocument(),
+      );
+      expect(screen.getByTestId('solver-assembly-import-error').getAttribute('data-http-status'))
+        .toBe('413');
+      expect(screen.getByTestId('solver-assembly-import-error').textContent).toMatch(
+        /5 MB|413/,
+      );
+      expect(onImport).not.toHaveBeenCalled();
+    });
+
+    it('custom importStepMaxBytes lets tiny files trigger the 413 path', async () => {
+      const onImport = vi.fn();
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          onClose={vi.fn()}
+          onImportStepAssembly={onImport}
+          importStepMaxBytes={16}
+        />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('PADDED LONGER THAN 16 BYTES'),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-error')).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-import-error').getAttribute('data-http-status'),
+      ).toBe('413');
+      expect(onImport).not.toHaveBeenCalled();
+    });
+
+    it('empty file (0 bytes) surfaces the 400 error and skips the importer', async () => {
+      const onImport = vi.fn();
+      render(
+        <AssemblyBrowserModal lang="en" onClose={vi.fn()} onImportStepAssembly={onImport} />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('', 'empty.step', 0),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-error')).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-import-error').getAttribute('data-http-status'),
+      ).toBe('400');
+      expect(onImport).not.toHaveBeenCalled();
+    });
+
+    it('whitespace-only file is treated as empty (400) without invoking importer', async () => {
+      const onImport = vi.fn();
+      render(
+        <AssemblyBrowserModal lang="en" onClose={vi.fn()} onImportStepAssembly={onImport} />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('   \n\t  '),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-error')).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-import-error').getAttribute('data-http-status'),
+      ).toBe('400');
+      expect(onImport).not.toHaveBeenCalled();
+    });
+
+    it('successful import is recorded in history → Ctrl+Z reverts to the prior state', async () => {
+      const onImport = vi.fn().mockResolvedValue(fakeResult(['imported_a', 'imported_b']));
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onImportStepAssembly={onImport}
+        />,
+      );
+      // Pre-import: seedState parts visible.
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('SRC', 'demo.step'),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-part-row-imported_a')).toBeInTheDocument(),
+      );
+      // Description recorded.
+      expect(screen.getByTestId('solver-assembly-history-current').textContent).toMatch(
+        /Import STEP assembly demo\.step \(2 parts\)/,
+      );
+      // Undo button is now enabled — click it and the original parts return.
+      const undo = screen.getByTestId('solver-assembly-undo') as HTMLButtonElement;
+      expect(undo.disabled).toBe(false);
+      fireEvent.click(undo);
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      expect(screen.queryByTestId('solver-assembly-part-row-imported_a')).toBeNull();
+    });
+
+    it('importer throw surfaces as a 422 error without corrupting history', async () => {
+      const onImport = vi.fn().mockRejectedValue(new Error('circular_assembly: cycle #1 → #1'));
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onImportStepAssembly={onImport}
+        />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('SRC'),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-error')).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-import-error').getAttribute('data-http-status'),
+      ).toBe('422');
+      expect(screen.getByTestId('solver-assembly-import-error').textContent).toMatch(
+        /circular_assembly/,
+      );
+      // Original parts still present — failed import did not mutate state.
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      // Undo still disabled (nothing recorded).
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('Reset button clears a finished import result panel', async () => {
+      const onImport = vi.fn().mockResolvedValue(
+        fakeResult(['p1'], { warnings: ['w1'], unsupported: ['u1'] }),
+      );
+      render(
+        <AssemblyBrowserModal lang="en" onClose={vi.fn()} onImportStepAssembly={onImport} />,
+      );
+      pickFile(
+        screen.getByTestId('solver-assembly-import-step-file-input') as HTMLInputElement,
+        makeFile('SRC'),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-result')).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-reset'));
+      expect(screen.queryByTestId('solver-assembly-import-result')).toBeNull();
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /STEP 어셈블리 가져오기/],
+      ['en', /Import STEP assembly/],
+      ['ja', /STEP アセンブリ取込/],
+      ['zh', /导入 STEP 装配/],
+      ['es', /Importar ensamblaje STEP/],
+      ['ar', /استيراد تجميع STEP/],
+    ])('i18n: lang %s localizes the import button label', (lang, re) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      expect(screen.getByTestId('solver-assembly-import-step').textContent).toMatch(re);
+    });
+  });
+
+  // ── Phase 5.2.4: NAUO inference auto-prompt after STEP import ─────────────
+
+  /**
+   * "Auto-infer mates after import" UX — when the wrapping page tells the
+   * modal that the seed came from a sample-load (or, in the wired path,
+   * a STEP import that remounts the modal with `autoInferOnMount`), the
+   * modal runs `inferMatesFromPlacements` once on mount and surfaces a
+   * "Imported N parts, inferred M suggestions" toast.
+   *
+   * The user-pref live-toggles via a footer checkbox that persists to
+   * `localStorage['nexyfab:autoInfer']` (default `true`). When unchecked
+   * the auto-trigger silently bails — the existing manual "Infer mates"
+   * button stays the only path.
+   */
+  describe('Phase 5.2.4 NAUO inference auto-prompt', () => {
+    /** Same 5×5×10 box tree used by the Phase 5.2.3 suite. */
+    const BOX_TREE: FeatureTree = {
+      nodes: [
+        {
+          id: 'e1',
+          name: 'Box',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [
+              { x: 0, y: 0 },
+              { x: 5, y: 0 },
+              { x: 5, y: 5 },
+              { x: 0, y: 5 },
+            ],
+            depth: 10,
+            direction: 'one_sided',
+            mode: 'add',
+          },
+        },
+      ],
+    };
+
+    function adjacentBoxesState(): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'Box A',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'Box B',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 10 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [],
+      };
+    }
+
+    beforeEach(() => {
+      // Reset the persistence slot before every test so we get clean
+      // default-true hydration unless the test explicitly seeds 'false'.
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('nexyfab:autoInfer');
+      }
+    });
+
+    afterEach(() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('nexyfab:autoInfer');
+      }
+    });
+
+    it('renders the auto-infer checkbox, checked by default', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const cb = screen.getByTestId('solver-assembly-auto-infer') as HTMLInputElement;
+      expect(cb).toBeInTheDocument();
+      expect(cb.type).toBe('checkbox');
+      expect(cb.checked).toBe(true);
+    });
+
+    it('autoInferOnMount + autoInfer=true seeds suggestions without a click', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      // Suggested panel mounted automatically.
+      const panel = screen.getByTestId('solver-suggested-mates-panel');
+      expect(panel).toBeInTheDocument();
+      const rows = panel.querySelectorAll('[data-testid^="solver-suggested-mate-"]');
+      const suggestionRows = Array.from(rows).filter((el) => {
+        const id = el.getAttribute('data-testid')!;
+        return !id.endsWith('-accept') && !id.endsWith('-reject');
+      });
+      expect(suggestionRows.length).toBeGreaterThanOrEqual(1);
+      // Status banner reflects auto-trigger as well.
+      expect(screen.getByTestId('solver-assembly-infer-mates-status')).toBeInTheDocument();
+    });
+
+    it('autoInferOnMount=false leaves suggestions buffer empty on mount', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      // Default autoInferOnMount=false → panel never mounted.
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+      // hasInferred is false → no banner either.
+      expect(screen.queryByTestId('solver-assembly-infer-mates-status')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-infer-mates-empty')).toBeNull();
+    });
+
+    it('autoInferOnMount + initialAutoInfer=false bails out (no suggestions, no toast)', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+          initialAutoInfer={false}
+        />,
+      );
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-import-toast')).toBeNull();
+    });
+
+    it('toast text reads "Imported N parts, inferred M mate suggestions"', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      const toast = screen.getByTestId('solver-assembly-import-toast-text');
+      expect(toast.textContent).toMatch(/Imported 2 parts, inferred \d+ mate suggestions/);
+    });
+
+    it('clicking Dismiss removes the toast', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      expect(screen.getByTestId('solver-assembly-import-toast')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('solver-assembly-import-toast-dismiss'));
+      expect(screen.queryByTestId('solver-assembly-import-toast')).toBeNull();
+    });
+
+    it('localStorage seeded false → checkbox reflects false', () => {
+      window.localStorage.setItem('nexyfab:autoInfer', 'false');
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const cb = screen.getByTestId('solver-assembly-auto-infer') as HTMLInputElement;
+      expect(cb.checked).toBe(false);
+    });
+
+    it('toggling the checkbox writes through to localStorage', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const cb = screen.getByTestId('solver-assembly-auto-infer') as HTMLInputElement;
+      // Uncheck.
+      fireEvent.click(cb);
+      expect(cb.checked).toBe(false);
+      expect(window.localStorage.getItem('nexyfab:autoInfer')).toBe('false');
+      // Re-check.
+      fireEvent.click(cb);
+      expect(cb.checked).toBe(true);
+      expect(window.localStorage.getItem('nexyfab:autoInfer')).toBe('true');
+    });
+
+    it('auto-trigger bails when fewer than 2 parts are present', () => {
+      const onlyOne: AssemblyState = {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'Box A',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+        ],
+        mates: [],
+      };
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={onlyOne}
+          initialFeatureTrees={{ p_a: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      expect(screen.queryByTestId('solver-assembly-import-toast')).toBeNull();
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+    });
+
+    it('auto-trigger bails when no FeatureTree is supplied', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      expect(screen.queryByTestId('solver-assembly-import-toast')).toBeNull();
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+    });
+
+    it('autoInferOnMount fires exactly once — toggling autoInfer off later does not re-undo it', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      expect(screen.getByTestId('solver-suggested-mates-panel')).toBeInTheDocument();
+      // Flip the checkbox off — suggestions stay (we don't retroactively
+      // clear them, the user can manually reject-all).
+      fireEvent.click(screen.getByTestId('solver-assembly-auto-infer'));
+      expect(screen.getByTestId('solver-suggested-mates-panel')).toBeInTheDocument();
+    });
+
+    it('onInferMates override is honoured by the auto-trigger pipeline', () => {
+      const fake = vi.fn().mockReturnValue([
+        {
+          id: 'auto_fake_1',
+          kind: 'coincident',
+          a: { partId: 'p_a', refId: 'face_x', refKind: 'face' },
+          b: { partId: 'p_b', refId: 'face_y', refKind: 'face' },
+        },
+      ]);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+          onInferMates={fake}
+        />,
+      );
+      expect(fake).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('solver-suggested-mate-auto_fake_1')).toBeInTheDocument();
+      // Toast count reflects the fake's single return.
+      expect(screen.getByTestId('solver-assembly-import-toast-text').textContent).toMatch(
+        /Imported 2 parts, inferred 1 mate suggestions/,
+      );
+    });
+
+    it('STEP import with autoInfer=true populates toast + suggestions in one step', async () => {
+      // Build a fake importer that returns 2 parts + featureTrees that
+      // produce face overlap → inferMatesFromPlacements emits ≥1
+      // suggestion via the default pipeline.
+      const onImport = vi.fn().mockResolvedValue({
+        state: adjacentBoxesState(),
+        featureTrees: { p_a: BOX_TREE, p_b: BOX_TREE },
+        warnings: [],
+        unsupported: [],
+      });
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          onClose={vi.fn()}
+          onImportStepAssembly={onImport}
+        />,
+      );
+      const input = screen.getByTestId(
+        'solver-assembly-import-step-file-input',
+      ) as HTMLInputElement;
+      const blob = new Blob(['SRC'], { type: 'application/step' });
+      const file = new File([blob], 'auto.step', { type: 'application/step' });
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      fireEvent.change(input);
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-toast')).toBeInTheDocument(),
+      );
+      expect(screen.getByTestId('solver-assembly-import-toast-text').textContent).toMatch(
+        /Imported 2 parts, inferred \d+ mate suggestions/,
+      );
+      // Suggested panel mounted from the auto-trigger.
+      expect(screen.getByTestId('solver-suggested-mates-panel')).toBeInTheDocument();
+    });
+
+    it('STEP import with autoInfer=false skips inference but still imports', async () => {
+      window.localStorage.setItem('nexyfab:autoInfer', 'false');
+      const onImport = vi.fn().mockResolvedValue({
+        state: adjacentBoxesState(),
+        featureTrees: { p_a: BOX_TREE, p_b: BOX_TREE },
+        warnings: [],
+        unsupported: [],
+      });
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          onClose={vi.fn()}
+          onImportStepAssembly={onImport}
+        />,
+      );
+      const input = screen.getByTestId(
+        'solver-assembly-import-step-file-input',
+      ) as HTMLInputElement;
+      const blob = new Blob(['SRC'], { type: 'application/step' });
+      const file = new File([blob], 'auto.step', { type: 'application/step' });
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      fireEvent.change(input);
+      // Import summary still renders (regular import path is untouched).
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-import-result')).toBeInTheDocument(),
+      );
+      // …but no auto-infer side effects.
+      expect(screen.queryByTestId('solver-assembly-import-toast')).toBeNull();
+      expect(screen.queryByTestId('solver-suggested-mates-panel')).toBeNull();
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /가져오기 후 메이트 자동 추론/],
+      ['en', /Auto-infer mates after import/i],
+      ['ja', /取込後に合致を自動推論/],
+      ['zh', /导入后自动推断配合/],
+      ['es', /Inferir restricciones tras importar/i],
+      ['ar', /استنتاج القيود تلقائيًا بعد الاستيراد/],
+    ])('i18n: lang %s localizes the auto-infer checkbox label', (lang, re) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      expect(
+        screen.getByTestId('solver-assembly-auto-infer-label').textContent,
+      ).toMatch(re);
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /부품을 가져오고/],
+      ['en', /Imported \d+ parts, inferred \d+ mate suggestions/i],
+    ])('i18n: lang %s localizes the inferred-summary toast', (lang, re) => {
+      render(
+        <AssemblyBrowserModal
+          lang={lang}
+          initialState={adjacentBoxesState()}
+          initialFeatureTrees={{ p_a: BOX_TREE, p_b: BOX_TREE }}
+          onClose={vi.fn()}
+          autoInferOnMount
+        />,
+      );
+      expect(
+        screen.getByTestId('solver-assembly-import-toast-text').textContent,
+      ).toMatch(re);
+    });
+  });
 });

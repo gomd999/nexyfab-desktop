@@ -236,6 +236,12 @@ export function AssemblyBrowserPageContent({
         onClose={onClose}
         onSolve={onSolve ?? defaultOnSolve}
         projectId={projectId}
+        // Phase 5.2.4 — fire the modal's auto-infer pass whenever the
+        // seed came from a non-blank sample. Blank assemblies keep their
+        // pristine empty-state UI; pre-populated samples surface the
+        // Suggested-Mates panel and toast on mount (subject to the
+        // user's localStorage `nexyfab:autoInfer` preference).
+        autoInferOnMount={sample !== BLANK_SENTINEL}
       />
     </main>
   );
