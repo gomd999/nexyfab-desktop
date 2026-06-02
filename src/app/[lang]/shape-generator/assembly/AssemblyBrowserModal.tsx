@@ -37,6 +37,11 @@ import {
 } from '@/lib/assembly/assemblyState';
 import type { Mate, MateKind, MateRef, MateRefKind } from '@/lib/assembly/mate';
 import type { FeatureTree } from '@/lib/cad/featureTree';
+import { listPartRefs } from '@/lib/assembly/geometryResolver';
+import MateConstraintsToolbar, {
+  type ToolbarSelectionRef,
+  type ToolbarRefKind,
+} from './MateConstraintsToolbar';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -80,6 +85,19 @@ interface Dict {
   featureTreeParseError: string;
   /** Small badge label that prefixes the phase value ('real' | 'stub'). */
   phaseLabel: string;
+  /** Per-part "Select refs" panel toggle. */
+  selectRefs: string;
+  hideRefs: string;
+  /** Heading shown above the per-part ref-button grid. */
+  refsAvailable: string;
+  /** Banner shown when the user tries to select a 3rd ref while 2 are picked. */
+  maxRefs: string;
+  /** "Selected: ..." prefix above the mate toolbar. */
+  selectedLabel: string;
+  /** Empty-selection placeholder. */
+  selectedEmpty: string;
+  /** Clear-selection button label. */
+  clearSelection: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -117,6 +135,13 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: '{ "nodes": [] } 형식의 JSON',
     featureTreeParseError: 'JSON 파싱 오류',
     phaseLabel: '단계',
+    selectRefs: 'ref 선택',
+    hideRefs: 'ref 닫기',
+    refsAvailable: '사용 가능 ref',
+    maxRefs: '최대 2개',
+    selectedLabel: '선택됨',
+    selectedEmpty: '(없음)',
+    clearSelection: '선택 초기화',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -152,6 +177,13 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: 'JSON of shape { "nodes": [] }',
     featureTreeParseError: 'JSON parse error',
     phaseLabel: 'Phase',
+    selectRefs: 'Select refs',
+    hideRefs: 'Hide refs',
+    refsAvailable: 'Available refs',
+    maxRefs: 'Max 2 refs',
+    selectedLabel: 'Selected',
+    selectedEmpty: '(none)',
+    clearSelection: 'Clear selection',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -187,6 +219,13 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: '{ "nodes": [] } 形式の JSON',
     featureTreeParseError: 'JSON 解析エラー',
     phaseLabel: 'フェーズ',
+    selectRefs: '参照を選択',
+    hideRefs: '参照を閉じる',
+    refsAvailable: '利用可能な参照',
+    maxRefs: '最大2件',
+    selectedLabel: '選択中',
+    selectedEmpty: '(なし)',
+    clearSelection: '選択解除',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -222,6 +261,13 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: '形如 { "nodes": [] } 的 JSON',
     featureTreeParseError: 'JSON 解析错误',
     phaseLabel: '阶段',
+    selectRefs: '选择参考',
+    hideRefs: '关闭参考',
+    refsAvailable: '可用参考',
+    maxRefs: '最多2个',
+    selectedLabel: '已选择',
+    selectedEmpty: '(无)',
+    clearSelection: '清除选择',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -257,6 +303,13 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: 'JSON de forma { "nodes": [] }',
     featureTreeParseError: 'Error de análisis JSON',
     phaseLabel: 'Fase',
+    selectRefs: 'Seleccionar refs',
+    hideRefs: 'Ocultar refs',
+    refsAvailable: 'Refs disponibles',
+    maxRefs: 'Máx. 2 refs',
+    selectedLabel: 'Seleccionado',
+    selectedEmpty: '(ninguno)',
+    clearSelection: 'Limpiar selección',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -292,6 +345,13 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: 'JSON بالشكل { "nodes": [] }',
     featureTreeParseError: 'خطأ في تحليل JSON',
     phaseLabel: 'المرحلة',
+    selectRefs: 'اختيار المراجع',
+    hideRefs: 'إخفاء المراجع',
+    refsAvailable: 'المراجع المتاحة',
+    maxRefs: 'الحد الأقصى 2',
+    selectedLabel: 'المحدد',
+    selectedEmpty: '(لا شيء)',
+    clearSelection: 'مسح التحديد',
   },
 };
 
@@ -435,6 +495,75 @@ function setMateValue(m: Mate, v: number): Mate {
   return m;
 }
 
+// ─── ref-selection helpers (mate-toolbar bridge) ─────────────────────────
+
+/**
+ * The 7 canonical refs every part exposes, regardless of FeatureTree, mirrored
+ * 1-to-1 from `buildPartRefRegistry`'s always-present block. We render these
+ * inline as clickable buttons so the user can build a mate selection without
+ * needing a FeatureTree at all (Phase 1 baseline).
+ */
+const CANONICAL_REFS: ReadonlyArray<{ refId: string; refKind: ToolbarRefKind }> = [
+  { refId: 'origin', refKind: 'point' },
+  { refId: 'x_axis', refKind: 'axis' },
+  { refId: 'y_axis', refKind: 'axis' },
+  { refId: 'z_axis', refKind: 'axis' },
+  { refId: 'xy_plane', refKind: 'plane' },
+  { refId: 'yz_plane', refKind: 'plane' },
+  { refId: 'xz_plane', refKind: 'plane' },
+];
+const CANONICAL_REF_IDS: ReadonlySet<string> = new Set(CANONICAL_REFS.map((r) => r.refId));
+
+/**
+ * Infer the {@link ToolbarRefKind} for a refId produced by `listPartRefs`
+ * (geometryResolver). We use the well-defined naming scheme:
+ *   - any id containing `axis`              → axis  (extrude_axis, hole_axis_N, …)
+ *   - any id containing `plane`             → plane (sketch_plane, sketch_plane_N, …)
+ *   - `origin` / any id with `_top_`        → point (hole_top_N)
+ *
+ * Returns `null` for ids we don't know how to map (so the UI silently skips
+ * them rather than passing an invalid refKind into the mate toolbar).
+ */
+function inferRefKindFromId(refId: string): ToolbarRefKind | null {
+  if (refId === 'origin') return 'point';
+  if (refId.includes('axis')) return 'axis';
+  if (refId.includes('plane')) return 'plane';
+  if (refId.includes('_top_')) return 'point';
+  return null;
+}
+
+/**
+ * Selection cap. Two refs is the universal mate-toolbar precondition (cf.
+ * MATE_DEFS in MateConstraintsToolbar). We chose **FIFO oldest-evict** over
+ * **reject 3rd** so the user can fluidly re-aim selection without manually
+ * clicking the first ref again — matching SolidWorks / Onshape behaviour.
+ */
+const MAX_SELECTION = 2;
+
+/**
+ * Update a selection array in response to a ref-button click. Toggling an
+ * already-selected ref removes it; clicking a fresh ref appends it (and
+ * evicts the oldest entry when the cap is exceeded). The (partId, refId)
+ * tuple is the identity key — a different part with the same refId (e.g.,
+ * both parts have `x_axis`) counts as a distinct selection slot.
+ */
+function toggleSelection(
+  current: ReadonlyArray<ToolbarSelectionRef>,
+  next: ToolbarSelectionRef,
+): ReadonlyArray<ToolbarSelectionRef> {
+  const existingIdx = current.findIndex(
+    (s) => s.partId === next.partId && s.refId === next.refId,
+  );
+  if (existingIdx >= 0) {
+    // toggle off
+    return current.filter((_, i) => i !== existingIdx);
+  }
+  const appended = [...current, next];
+  if (appended.length <= MAX_SELECTION) return appended;
+  // evict oldest — FIFO
+  return appended.slice(appended.length - MAX_SELECTION);
+}
+
 // ─── component ───────────────────────────────────────────────────────────
 
 const EMPTY_STATE: AssemblyState = { parts: [], mates: [] };
@@ -478,6 +607,14 @@ export default function AssemblyBrowserModal({
   const [featureTreeOpen, setFeatureTreeOpen] = useState<Record<string, boolean>>({});
   /** Per-part parse error message (truthy iff the textarea body failed JSON.parse / shape check). */
   const [featureTreeError, setFeatureTreeError] = useState<Record<string, string>>({});
+  /** Per-part "refs panel" expand flag — drives the canonical-ref grid visibility. */
+  const [refsPanelOpen, setRefsPanelOpen] = useState<Record<string, boolean>>({});
+  /**
+   * Current mate-toolbar selection — at most {@link MAX_SELECTION} refs at
+   * a time. Newest entries are at the END; FIFO eviction keeps the most
+   * recent two when the user clicks a 3rd ref (see `toggleSelection`).
+   */
+  const [selection, setSelection] = useState<ReadonlyArray<ToolbarSelectionRef>>([]);
   const [solveState, setSolveState] = useState<
     | { status: 'idle' }
     | { status: 'loading' }
@@ -541,6 +678,15 @@ export default function AssemblyBrowserModal({
       void _drop;
       return rest;
     });
+    setRefsPanelOpen((prev) => {
+      if (!(partId in prev)) return prev;
+      const { [partId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
+    // Drop any selection entries pointing at the removed part so the mate
+    // toolbar doesn't end up holding refs to a part that no longer exists.
+    setSelection((prev) => prev.filter((s) => s.partId !== partId));
   }, []);
 
   const renamePart = useCallback((partId: string, name: string) => {
@@ -682,6 +828,33 @@ export default function AssemblyBrowserModal({
     }));
   }, []);
 
+  // ── ref-selection / mate-toolbar ops ───────────────────────────────────
+
+  const toggleRefsPanel = useCallback((partId: string) => {
+    setRefsPanelOpen((prev) => ({ ...prev, [partId]: !prev[partId] }));
+  }, []);
+
+  const onRefButtonClick = useCallback(
+    (partId: string, refId: string, refKind: ToolbarRefKind) => {
+      setSelection((prev) => toggleSelection(prev, { partId, refId, refKind }));
+    },
+    [],
+  );
+
+  const onClearSelection = useCallback(() => setSelection([]), []);
+
+  /**
+   * MateConstraintsToolbar.onAdd handler — appends the validated Mate to
+   * state.mates and clears the selection so the next mate starts fresh
+   * (UX matches Onshape: pick refs → click button → selection resets).
+   * mate.ts validateMate is NOT re-run here because the toolbar guarantees
+   * a cross-part, kind-compatible pair via canApply().
+   */
+  const onAddMateFromToolbar = useCallback((mate: Mate) => {
+    setState((prev) => ({ ...prev, mates: [...prev.mates, mate] }));
+    setSelection([]);
+  }, []);
+
   // ── solve ─────────────────────────────────────────────────────────────
 
   const onSolveClick = useCallback(async () => {
@@ -798,6 +971,26 @@ export default function AssemblyBrowserModal({
                   const treeOpen = !!featureTreeOpen[p.id];
                   const treeText = featureTreeText[p.id] ?? '';
                   const treeErr = featureTreeError[p.id];
+                  const refsOpen = !!refsPanelOpen[p.id];
+                  // Extra (non-canonical) refs derived from this part's
+                  // FeatureTree, if one has been provided. listPartRefs
+                  // returns the canonical 7 too — filter them out so we
+                  // don't render duplicate buttons.
+                  const partTree = featureTrees[p.id];
+                  const extraRefs: ReadonlyArray<{ refId: string; refKind: ToolbarRefKind }> =
+                    partTree
+                      ? listPartRefs(partTree)
+                          .filter((refId) => !CANONICAL_REF_IDS.has(refId))
+                          .map((refId) => {
+                            const kind = inferRefKindFromId(refId);
+                            return kind ? { refId, refKind: kind } : null;
+                          })
+                          .filter(
+                            (
+                              r,
+                            ): r is { refId: string; refKind: ToolbarRefKind } => r !== null,
+                          )
+                      : [];
                   return (
                     <div
                       key={p.id}
@@ -862,6 +1055,22 @@ export default function AssemblyBrowserModal({
                         </button>
                         <button
                           type="button"
+                          onClick={() => toggleRefsPanel(p.id)}
+                          data-testid={`solver-assembly-part-${p.id}-refs-toggle`}
+                          style={{
+                            fontSize: 11,
+                            padding: '3px 8px',
+                            background: refsOpen ? '#dcfce7' : '#fff',
+                            border: '1px solid #86efac',
+                            color: '#166534',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {refsOpen ? t.hideRefs : t.selectRefs}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => removePartLocal(p.id)}
                           data-testid={`solver-assembly-part-remove-${p.id}`}
                           style={{
@@ -922,6 +1131,69 @@ export default function AssemblyBrowserModal({
                           )}
                         </div>
                       )}
+                      {refsOpen && (
+                        <div
+                          data-testid={`solver-assembly-part-${p.id}-refs-panel`}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                            padding: 4,
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            borderRadius: 4,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: '#166534',
+                            }}
+                          >
+                            {t.refsAvailable}
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 3,
+                            }}
+                          >
+                            {[...CANONICAL_REFS, ...extraRefs].map((r) => {
+                              const isSelected = selection.some(
+                                (s) => s.partId === p.id && s.refId === r.refId,
+                              );
+                              return (
+                                <button
+                                  key={r.refId}
+                                  type="button"
+                                  onClick={() =>
+                                    onRefButtonClick(p.id, r.refId, r.refKind)
+                                  }
+                                  data-testid={`solver-assembly-part-${p.id}-ref-${r.refId}`}
+                                  aria-pressed={isSelected}
+                                  title={`${r.refId} (${r.refKind})`}
+                                  style={{
+                                    fontSize: 10,
+                                    padding: '2px 6px',
+                                    background: isSelected ? '#166534' : '#fff',
+                                    color: isSelected ? '#fff' : '#374151',
+                                    border: `1px solid ${
+                                      isSelected ? '#166534' : '#d1d5db'
+                                    }`,
+                                    borderRadius: 3,
+                                    cursor: 'pointer',
+                                    fontFamily: 'monospace',
+                                  }}
+                                >
+                                  {r.refId}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -943,6 +1215,76 @@ export default function AssemblyBrowserModal({
             >
               {t.addPart}
             </button>
+
+            {/* ── selection display + mate-toolbar bridge ─────────────── */}
+            <div
+              data-testid="solver-assembly-selection-bar"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                marginTop: 8,
+                padding: 6,
+                borderTop: '1px dashed #e5e7eb',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 11,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>{t.selectedLabel}:</span>
+                {selection.length === 0 ? (
+                  <span style={{ color: '#6b7280' }}>{t.selectedEmpty}</span>
+                ) : (
+                  selection.map((s, idx) => (
+                    <span
+                      key={`${s.partId}:${s.refId}`}
+                      data-testid={`solver-assembly-selection-${idx}`}
+                      style={{
+                        fontFamily: 'monospace',
+                        padding: '1px 5px',
+                        background: '#dcfce7',
+                        border: '1px solid #86efac',
+                        borderRadius: 3,
+                      }}
+                    >
+                      {s.partId}:{s.refId}
+                    </span>
+                  ))
+                )}
+                <span style={{ color: '#9ca3af', marginInlineStart: 'auto' }}>
+                  ({t.maxRefs})
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearSelection}
+                  disabled={selection.length === 0}
+                  data-testid="solver-assembly-clear-selection"
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 6px',
+                    background: selection.length === 0 ? '#f3f4f6' : '#fff',
+                    color: selection.length === 0 ? '#9ca3af' : '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 3,
+                    cursor: selection.length === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {t.clearSelection}
+                </button>
+              </div>
+              <MateConstraintsToolbar
+                lang={lang}
+                selection={selection}
+                onAdd={onAddMateFromToolbar}
+                onClear={onClearSelection}
+              />
+            </div>
           </section>
 
           {/* ── RIGHT: mates list ─────────────────────────────────────── */}

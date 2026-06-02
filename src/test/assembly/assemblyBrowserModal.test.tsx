@@ -583,4 +583,237 @@ describe('AssemblyBrowserModal', () => {
       expect(btn.textContent).toMatch(re);
     });
   });
+
+  // ── Ref-selection + MateConstraintsToolbar bridge (Agent-VV ↔ Agent-X) ──
+
+  describe('ref-selection + mate-toolbar bridge', () => {
+    /** Tiny tree producing one hole → adds `hole_axis_0` / `hole_top_0`. */
+    const HOLE_TREE: FeatureTree = {
+      nodes: [
+        {
+          id: 'h1',
+          name: 'Hole',
+          dependencies: [],
+          payload: {
+            kind: 'hole',
+            center: { x: 3, y: 4 },
+            holeType: 'drilled',
+            diameter: 5,
+            depth: 10,
+          },
+        },
+      ],
+    };
+
+    function openRefs(partId: string): void {
+      fireEvent.click(screen.getByTestId(`solver-assembly-part-${partId}-refs-toggle`));
+    }
+
+    it('expanding a part row exposes the 7 canonical ref buttons', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      // Panel hidden by default.
+      expect(screen.queryByTestId('solver-assembly-part-p_base-ref-origin')).toBeNull();
+      openRefs('p_base');
+      for (const refId of [
+        'origin',
+        'x_axis',
+        'y_axis',
+        'z_axis',
+        'xy_plane',
+        'yz_plane',
+        'xz_plane',
+      ]) {
+        expect(
+          screen.getByTestId(`solver-assembly-part-p_base-ref-${refId}`),
+        ).toBeInTheDocument();
+      }
+    });
+
+    it('clicking a ref button adds it to the selection display', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-z_axis'));
+      const slot0 = screen.getByTestId('solver-assembly-selection-0');
+      expect(slot0.textContent).toMatch(/p_base:z_axis/);
+    });
+
+    it('clicking the same ref again toggles it off', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      const btn = screen.getByTestId('solver-assembly-part-p_base-ref-z_axis');
+      fireEvent.click(btn);
+      expect(screen.getByTestId('solver-assembly-selection-0')).toBeInTheDocument();
+      fireEvent.click(btn);
+      expect(screen.queryByTestId('solver-assembly-selection-0')).toBeNull();
+    });
+
+    it('selecting 2 refs from different parts enables the mate toolbar concentric button', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      openRefs('p_arm');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-z_axis'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_arm-ref-z_axis'));
+      const concentric = screen.getByTestId(
+        'solver-mate-concentric-button',
+      ) as HTMLButtonElement;
+      expect(concentric.disabled).toBe(false);
+    });
+
+    it('clicking concentric adds a mate to the mates list and clears the selection', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      openRefs('p_arm');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-z_axis'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_arm-ref-z_axis'));
+      const matesBefore = screen.getAllByTestId(/^solver-assembly-mate-row-/).length;
+      fireEvent.click(screen.getByTestId('solver-mate-concentric-button'));
+      const matesAfter = screen.getAllByTestId(/^solver-assembly-mate-row-/).length;
+      expect(matesAfter).toBe(matesBefore + 1);
+      // Selection auto-cleared after onAdd.
+      expect(screen.queryByTestId('solver-assembly-selection-0')).toBeNull();
+    });
+
+    it('clicking a 3rd ref evicts the oldest entry (FIFO max-2)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      openRefs('p_arm');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-x_axis'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-y_axis'));
+      // Pre-3rd: selection is [x_axis, y_axis]
+      expect(screen.getByTestId('solver-assembly-selection-0').textContent).toMatch(
+        /p_base:x_axis/,
+      );
+      // Third click should evict x_axis (oldest) and append the new ref.
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_arm-ref-z_axis'));
+      const slot0 = screen.getByTestId('solver-assembly-selection-0').textContent ?? '';
+      const slot1 = screen.getByTestId('solver-assembly-selection-1').textContent ?? '';
+      expect(slot0).toMatch(/p_base:y_axis/);
+      expect(slot1).toMatch(/p_arm:z_axis/);
+      // x_axis is gone.
+      expect(`${slot0}${slot1}`).not.toMatch(/p_base:x_axis/);
+    });
+
+    it('clear-selection button empties the selection', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-z_axis'));
+      expect(screen.getByTestId('solver-assembly-selection-0')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('solver-assembly-clear-selection'));
+      expect(screen.queryByTestId('solver-assembly-selection-0')).toBeNull();
+    });
+
+    it('parts with a FeatureTree expose additional refs (hole_axis_0, hole_top_0)', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          initialFeatureTrees={{ p_base: HOLE_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      openRefs('p_base');
+      expect(
+        screen.getByTestId('solver-assembly-part-p_base-ref-hole_axis_0'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('solver-assembly-part-p_base-ref-hole_top_0'),
+      ).toBeInTheDocument();
+      // p_arm has no tree → no hole refs.
+      openRefs('p_arm');
+      expect(
+        screen.queryByTestId('solver-assembly-part-p_arm-ref-hole_axis_0'),
+      ).toBeNull();
+    });
+
+    it('2 axes across different parts enables EVERY mate-toolbar button whose canApply requires 2 axes', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      openRefs('p_arm');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-z_axis'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_arm-ref-z_axis'));
+      // 2-axis enabled set per MATE_DEFS: concentric, parallel, perpendicular,
+      // angle, hinge, gear.
+      for (const kind of [
+        'concentric',
+        'parallel',
+        'perpendicular',
+        'angle',
+        'hinge',
+        'gear',
+      ]) {
+        const btn = screen.getByTestId(`solver-mate-${kind}-button`) as HTMLButtonElement;
+        expect(btn.disabled).toBe(false);
+      }
+    });
+
+    it('2 refs from the SAME part disables every mate-toolbar button (cross-part rule)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-x_axis'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-y_axis'));
+      for (const kind of [
+        'concentric',
+        'parallel',
+        'perpendicular',
+        'angle',
+        'hinge',
+        'gear',
+        'coincident_point',
+        'coincident_plane',
+        'distance',
+        'tangent',
+        'slot',
+        'rack_pinion',
+      ]) {
+        const btn = screen.getByTestId(`solver-mate-${kind}-button`) as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
+      }
+    });
+
+    it('adding a mate via the toolbar clears the selection automatically', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      openRefs('p_base');
+      openRefs('p_arm');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-ref-xy_plane'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_arm-ref-xy_plane'));
+      // coincident_plane needs 2 planes, cross-part → enabled.
+      const cp = screen.getByTestId(
+        'solver-mate-coincident_plane-button',
+      ) as HTMLButtonElement;
+      expect(cp.disabled).toBe(false);
+      fireEvent.click(cp);
+      expect(screen.queryByTestId('solver-assembly-selection-0')).toBeNull();
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /ref 선택/],
+      ['en', /Select refs/],
+    ])('i18n: lang %s localizes the refs-toggle label', (lang, re) => {
+      render(
+        <AssemblyBrowserModal lang={lang} initialState={seedState()} onClose={vi.fn()} />,
+      );
+      const btn = screen.getByTestId('solver-assembly-part-p_base-refs-toggle');
+      expect(btn.textContent).toMatch(re);
+    });
+  });
 });
