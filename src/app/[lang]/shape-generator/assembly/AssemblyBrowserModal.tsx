@@ -33,6 +33,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type AssemblyState,
   type PartInstance,
+  type Quat,
   IDENTITY_QUAT,
 } from '@/lib/assembly/assemblyState';
 import { useAssemblyHistory } from '@/lib/assembly/assemblyHistory';
@@ -59,6 +60,12 @@ import FeatureTreePlannerPanel from '../sketch/FeatureTreePlannerPanel';
 import type { PlanStep } from '@/lib/ai/featureTreePlanner';
 import { buildBom, bomToCsv, bomToJson } from '@/lib/assembly/bomExport';
 import Assembly3DViewer from './Assembly3DViewer';
+import AssemblyAiPanel from './AssemblyAiPanel';
+import PartManipulatorGizmo, {
+  type PartManipulatorMode,
+  type Vec3,
+} from './PartManipulatorGizmo';
+import type { AssemblyPlan } from '@/lib/ai/assemblyNlParser';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -247,6 +254,22 @@ interface Dict {
   show3DView: string;
   /** Toggle label when the 3D viewer is already mounted. */
   hide3DView: string;
+  /**
+   * Phase 3.A.UUUUU-integration — toggle label that mounts the rich
+   * standalone {@link AssemblyAiPanel} (Agent-VVVV intent pipeline) in a
+   * side slot of the modal. Default off so existing modal layout is
+   * untouched for users (and the existing 210 tests) that don't opt in.
+   * Distinct from `aiAssemblyBuilder` (NNNN inline 2-pattern builder).
+   */
+  aiPanel: string;
+  /** Toggle label when the AI panel is already mounted. */
+  hideAiPanel: string;
+  /** Phase 3.A.RRRRR-integration — gizmo mode picker. Translate (XYZ arrows). */
+  gizmoModeTranslate: string;
+  /** Gizmo mode picker — rotate (XYZ rings). */
+  gizmoModeRotate: string;
+  /** Heading shown above the gizmo mode picker. */
+  gizmoModeLabel: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -338,6 +361,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomTotalMass: '총 질량',
     show3DView: '3D 뷰 표시',
     hide3DView: '3D 뷰 숨기기',
+    aiPanel: 'AI 패널',
+    hideAiPanel: 'AI 패널 닫기',
+    gizmoModeTranslate: '이동',
+    gizmoModeRotate: '회전',
+    gizmoModeLabel: '기즈모 모드',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -428,6 +456,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomTotalMass: 'Total mass',
     show3DView: 'Show 3D view',
     hide3DView: 'Hide 3D view',
+    aiPanel: 'AI panel',
+    hideAiPanel: 'Hide AI panel',
+    gizmoModeTranslate: 'Translate',
+    gizmoModeRotate: 'Rotate',
+    gizmoModeLabel: 'Gizmo mode',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -518,6 +551,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomTotalMass: '総質量',
     show3DView: '3D ビューを表示',
     hide3DView: '3D ビューを隠す',
+    aiPanel: 'AI パネル',
+    hideAiPanel: 'AI パネルを閉じる',
+    gizmoModeTranslate: '移動',
+    gizmoModeRotate: '回転',
+    gizmoModeLabel: 'ギズモモード',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -607,6 +645,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomTotalMass: '总质量',
     show3DView: '显示 3D 视图',
     hide3DView: '隐藏 3D 视图',
+    aiPanel: 'AI 面板',
+    hideAiPanel: '关闭 AI 面板',
+    gizmoModeTranslate: '平移',
+    gizmoModeRotate: '旋转',
+    gizmoModeLabel: '操控器模式',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -698,6 +741,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomTotalMass: 'Masa total',
     show3DView: 'Mostrar vista 3D',
     hide3DView: 'Ocultar vista 3D',
+    aiPanel: 'Panel IA',
+    hideAiPanel: 'Ocultar panel IA',
+    gizmoModeTranslate: 'Trasladar',
+    gizmoModeRotate: 'Rotar',
+    gizmoModeLabel: 'Modo gizmo',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -788,6 +836,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomTotalMass: 'الكتلة الإجمالية',
     show3DView: 'إظهار العرض ثلاثي الأبعاد',
     hide3DView: 'إخفاء العرض ثلاثي الأبعاد',
+    aiPanel: 'لوحة الذكاء الاصطناعي',
+    hideAiPanel: 'إخفاء لوحة الذكاء الاصطناعي',
+    gizmoModeTranslate: 'إزاحة',
+    gizmoModeRotate: 'تدوير',
+    gizmoModeLabel: 'وضع الأداة',
   },
 };
 
@@ -1907,6 +1960,10 @@ export default function AssemblyBrowserModal({
     // list and the (now-empty) viewer agree on "no selection". The
     // show3DView toggle is preserved (same UX rationale as the AI toggle).
     setSelectedPartId(null);
+    // Gizmo mode is a transient UI preference, not bound to the assembly
+    // content — leave it on whatever the user picked. AI panel toggle is
+    // user-explicit; preserve it across reset for the same reason as the
+    // 3D / inline AI toggles above.
   }, [state.parts.length, state.mates.length, history, setFeatureTrees, t]);
 
   // ── infer-mates (Phase 5.2.3) ──────────────────────────────────────────
@@ -2486,6 +2543,219 @@ export default function AssemblyBrowserModal({
     setSelectedPartId((prev) => (prev === partId ? null : partId));
   }, []);
 
+  // ── AI panel (UUUUU Agent integration, Phase 3.A.UUUUU-integration) ──
+  //
+  // Default off so the modal's existing layout + the 210 pre-existing
+  // modal tests are untouched for every consumer that hasn't opted in.
+  // Distinct from `aiBuilderOn` (NNNN inline 2-pattern NL builder): this
+  // hosts the richer standalone {@link AssemblyAiPanel} (VVVV regex+LLM
+  // intent pipeline) in a side slot so the user can choose between the
+  // quick footer NL line or the full-featured panel with plan preview.
+  const [aiPanelOn, setAiPanelOn] = useState<boolean>(false);
+  const toggleAiPanel = useCallback(() => setAiPanelOn((v) => !v), []);
+
+  /**
+   * AssemblyAiPanel.onBuildAssembly handler. Translates an {@link
+   * AssemblyPlan} (stacked | grid | ring | pair) into PartInstance + Mate
+   * appends and lands the whole batch as a single history entry so the
+   * user can Ctrl+Z back to the pre-AI state. Mirrors the part / mate id
+   * picking logic of the existing inline NL builder so the two paths
+   * produce visually identical assemblies for the patterns they both
+   * support; ring + pair are exclusive to this richer panel.
+   *
+   * recordChange policy: ONE history entry per AI submit so Undo restores
+   * the whole AI-generated batch in one click (matches the inline NL
+   * builder's policy).
+   */
+  const onBuildAssemblyFromPlan = useCallback(
+    (plan: AssemblyPlan) => {
+      if (plan.kind === 'unparsed') return;
+      const base = overrideState ?? history.state;
+      const takenPartIds = new Set(base.parts.map((p) => p.id));
+      const takenMateIds = new Set(base.mates.map((m) => m.id));
+      let partIdx = base.parts.length + 1;
+      let mateIdx = base.mates.length + 1;
+      const newParts: PartInstance[] = [];
+      const newMates: Mate[] = [];
+
+      function freshMateId(): string {
+        while (true) {
+          const mid = `mate_${mateIdx++}`;
+          if (!takenMateIds.has(mid)) {
+            takenMateIds.add(mid);
+            return mid;
+          }
+        }
+      }
+
+      if (plan.kind === 'stacked') {
+        const spacing = plan.spacing ?? 10;
+        for (let i = 0; i < plan.count; i++) {
+          const picked = pickFreshPartId(takenPartIds, partIdx);
+          partIdx = picked.nextIdx;
+          takenPartIds.add(picked.id);
+          const isFirst = base.parts.length === 0 && i === 0;
+          newParts.push({
+            id: picked.id,
+            name: `Part ${picked.id.replace(/^part_/, '')}`,
+            partTemplateId: picked.id,
+            position: { x: 0, y: 0, z: i * spacing },
+            orientation: IDENTITY_QUAT,
+            fixed: isFirst,
+          });
+        }
+        for (let i = 0; i < newParts.length - 1; i++) {
+          const a = newParts[i]!;
+          const b = newParts[i + 1]!;
+          newMates.push({
+            id: freshMateId(),
+            kind: 'concentric',
+            a: { partId: a.id, refId: 'z_axis', refKind: 'axis' },
+            b: { partId: b.id, refId: 'z_axis', refKind: 'axis' },
+          });
+        }
+      } else if (plan.kind === 'grid') {
+        const spacing = plan.spacing ?? 10;
+        for (let r = 0; r < plan.rows; r++) {
+          for (let c = 0; c < plan.cols; c++) {
+            const picked = pickFreshPartId(takenPartIds, partIdx);
+            partIdx = picked.nextIdx;
+            takenPartIds.add(picked.id);
+            const isFirst = base.parts.length === 0 && r === 0 && c === 0;
+            newParts.push({
+              id: picked.id,
+              name: `Part ${picked.id.replace(/^part_/, '')}`,
+              partTemplateId: picked.id,
+              position: { x: c * spacing, y: r * spacing, z: 0 },
+              orientation: IDENTITY_QUAT,
+              fixed: isFirst,
+            });
+          }
+        }
+      } else if (plan.kind === 'ring') {
+        const radius = plan.radius ?? 50;
+        for (let i = 0; i < plan.count; i++) {
+          const theta = (2 * Math.PI * i) / plan.count;
+          const picked = pickFreshPartId(takenPartIds, partIdx);
+          partIdx = picked.nextIdx;
+          takenPartIds.add(picked.id);
+          const isFirst = base.parts.length === 0 && i === 0;
+          newParts.push({
+            id: picked.id,
+            name: `Part ${picked.id.replace(/^part_/, '')}`,
+            partTemplateId: picked.id,
+            position: {
+              x: radius * Math.cos(theta),
+              y: radius * Math.sin(theta),
+              z: 0,
+            },
+            orientation: IDENTITY_QUAT,
+            fixed: isFirst,
+          });
+        }
+      } else if (plan.kind === 'pair') {
+        for (let i = 0; i < 2; i++) {
+          const picked = pickFreshPartId(takenPartIds, partIdx);
+          partIdx = picked.nextIdx;
+          takenPartIds.add(picked.id);
+          const isFirst = base.parts.length === 0 && i === 0;
+          newParts.push({
+            id: picked.id,
+            name: `Part ${picked.id.replace(/^part_/, '')}`,
+            partTemplateId: picked.id,
+            position: { x: i * 10, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: isFirst,
+          });
+        }
+        const a = newParts[0]!;
+        const b = newParts[1]!;
+        // pair plans always carry one of the 3 vocabulary mates
+        // (concentric / coincident / hinge). z_axis is the canonical
+        // shared ref every part exposes.
+        newMates.push({
+          id: freshMateId(),
+          kind: plan.mate,
+          a: { partId: a.id, refId: 'z_axis', refKind: 'axis' },
+          b: { partId: b.id, refId: 'z_axis', refKind: 'axis' },
+        });
+      }
+
+      if (newParts.length === 0 && newMates.length === 0) return;
+      const description = `AI panel: ${plan.kind} → +${newParts.length} parts, +${newMates.length} mates`;
+      recordState(
+        (prev) => ({
+          parts: [...prev.parts, ...newParts],
+          mates: [...prev.mates, ...newMates],
+        }),
+        description,
+      );
+    },
+    [overrideState, history.state, recordState],
+  );
+
+  // ── Part manipulator gizmo (RRRRR Agent integration) ──────────────────
+  //
+  // The gizmo only mounts when both `show3DView` is ON and a part is
+  // selected. We expose a translate/rotate mode picker so the user can
+  // flip between XYZ arrows and XYZ rings without dropping their
+  // selection.
+  //
+  // Phase 1 simulation: Assembly3DViewer.tsx is intentionally untouched
+  // (DO NOT modify constraint), so we cannot reach into its sceneRef /
+  // cameraRef / renderer DOM element. Instead we pass a tiny stub scene
+  // (`{} as THREE.Scene`) that satisfies the gizmo's `Boolean(selectedPart
+  // && scene)` render gate, and OMIT camera + domElement so the gizmo's
+  // internal TransformControls construction is skipped (the gizmo's own
+  // `if (camera && domElement)` guard handles this). The visible DOM
+  // marker still mounts, and `onTransform` is fully wired — tests that
+  // want to assert state changes can call it directly via the gizmo's
+  // mock pose-end events (or in this batch, by simulating onTransform
+  // through the modal's wrapper API).
+  //
+  // The phase-2 follow-up will either add a `viewerRef` prop to
+  // Assembly3DViewer or render the gizmo inside the viewer itself.
+  const [gizmoMode, setGizmoMode] = useState<PartManipulatorMode>('translate');
+  const stubGizmoScene = useMemo(
+    // Cast through unknown so we don't pull `three` into the modal's import
+    // graph just for a sentinel. The gizmo only reads `.add?.()` / `.remove?.()`
+    // off the scene, both of which optional-chain on missing methods.
+    () => ({}) as unknown as import('three').Scene,
+    [],
+  );
+
+  const selectedPart = useMemo<PartInstance | null>(() => {
+    if (selectedPartId === null) return null;
+    return state.parts.find((p) => p.id === selectedPartId) ?? null;
+  }, [selectedPartId, state.parts]);
+
+  /**
+   * PartManipulatorGizmo.onTransform handler. Records a single history
+   * entry per drag-end so Undo restores the prior pose in one click. We
+   * push through `history.recordChange` directly (not via setStateDirect)
+   * because pose moves are user-initiated and meaningful enough to
+   * deserve a stack entry. The gizmo already snapped to grid before
+   * calling, so we trust the inputs verbatim.
+   *
+   * recordChange policy: one history entry per gizmo drag-end. The IR's
+   * `validateAssembly` is invoked on the way through; a pose change can't
+   * make the assembly IR-invalid (geometry-only), so it always succeeds.
+   */
+  const onGizmoTransform = useCallback(
+    (partId: string, position: Vec3, orientation: Quat) => {
+      recordState(
+        (prev) => ({
+          ...prev,
+          parts: prev.parts.map((p) =>
+            p.id === partId ? { ...p, position, orientation } : p,
+          ),
+        }),
+        `Gizmo: move ${partId}`,
+      );
+    },
+    [recordState],
+  );
+
   const downloadBom = useCallback(
     (format: 'csv' | 'json') => {
       const assemblyName = projectId ?? 'assembly';
@@ -2693,6 +2963,25 @@ export default function AssemblyBrowserModal({
             }}
           >
             {show3DView ? t.hide3DView : t.show3DView}
+          </button>
+          <button
+            type="button"
+            onClick={toggleAiPanel}
+            data-testid="solver-assembly-ai-panel-toggle"
+            aria-pressed={aiPanelOn}
+            title={aiPanelOn ? t.hideAiPanel : t.aiPanel}
+            style={{
+              fontSize: 11,
+              padding: '4px 10px',
+              background: aiPanelOn ? '#eff6ff' : '#fff',
+              color: aiPanelOn ? '#1e40af' : '#374151',
+              border: `1px solid ${aiPanelOn ? '#93c5fd' : '#d1d5db'}`,
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {aiPanelOn ? t.hideAiPanel : t.aiPanel}
           </button>
         </div>
 
@@ -3099,6 +3388,7 @@ export default function AssemblyBrowserModal({
                 flexDirection: 'column',
                 gap: 8,
                 minHeight: 280,
+                position: 'relative',
               }}
             >
               <Assembly3DViewer
@@ -3110,6 +3400,71 @@ export default function AssemblyBrowserModal({
                 height={400}
                 lang={lang}
               />
+              {/* ── RRRRR Agent: PartManipulatorGizmo integration ──
+                  Only when a part is selected. The gizmo's render gate is
+                  Boolean(selectedPart && scene); we pass a stub scene so
+                  the DOM marker mounts (camera + dom are omitted so the
+                  internal TransformControls path is skipped — that path
+                  needs hooks into the viewer's renderer which we can't
+                  add without modifying Assembly3DViewer). */}
+              {selectedPart !== null && (
+                <>
+                  <div
+                    data-testid="solver-assembly-gizmo-mode-bar"
+                    style={{
+                      display: 'flex',
+                      gap: 6,
+                      alignItems: 'center',
+                      fontSize: 11,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span style={{ color: '#374151' }}>{t.gizmoModeLabel}:</span>
+                    <button
+                      type="button"
+                      onClick={() => setGizmoMode('translate')}
+                      data-testid="solver-assembly-gizmo-mode-translate"
+                      aria-pressed={gizmoMode === 'translate'}
+                      style={{
+                        fontSize: 11,
+                        padding: '3px 8px',
+                        background: gizmoMode === 'translate' ? '#1e40af' : '#fff',
+                        color: gizmoMode === 'translate' ? '#fff' : '#374151',
+                        border: '1px solid #93c5fd',
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t.gizmoModeTranslate}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGizmoMode('rotate')}
+                      data-testid="solver-assembly-gizmo-mode-rotate"
+                      aria-pressed={gizmoMode === 'rotate'}
+                      style={{
+                        fontSize: 11,
+                        padding: '3px 8px',
+                        background: gizmoMode === 'rotate' ? '#1e40af' : '#fff',
+                        color: gizmoMode === 'rotate' ? '#fff' : '#374151',
+                        border: '1px solid #93c5fd',
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t.gizmoModeRotate}
+                    </button>
+                  </div>
+                  <PartManipulatorGizmo
+                    selectedPart={selectedPart}
+                    scene={stubGizmoScene}
+                    onTransform={onGizmoTransform}
+                    mode={gizmoMode}
+                  />
+                </>
+              )}
             </section>
           )}
 
@@ -3377,6 +3732,25 @@ export default function AssemblyBrowserModal({
             </button>
           </section>
         </div>
+
+        {/* ── UUUUU Agent: AssemblyAiPanel mount ───────────────────
+            Rendered as a horizontal strip immediately below the main
+            grid (no extra column to avoid breaking the existing 2D ↔ 3D
+            layout). Mounts only when the user clicks the panel toggle in
+            the top-bar — default off so the modal layout is unchanged
+            for the 210 pre-existing tests. */}
+        {aiPanelOn && (
+          <div
+            data-testid="solver-assembly-ai-panel-host"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
+            <AssemblyAiPanel lang={lang} onBuildAssembly={onBuildAssemblyFromPlan} />
+          </div>
+        )}
 
         {/* ── auto-infer summary toast (Phase 5.2.4) ──────────────── */}
         {importToast !== null && (

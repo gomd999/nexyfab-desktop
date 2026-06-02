@@ -3372,4 +3372,241 @@ describe('AssemblyBrowserModal', () => {
       expect(host.style.height).toBe('400px');
     });
   });
+
+  // ─── UUUUU + RRRRR Agent integration (Phase 3.A) ────────────────────────
+  //
+  // Wires {@link AssemblyAiPanel} (rich VVVV intent panel) and
+  // {@link PartManipulatorGizmo} (3-axis translate/rotate gizmo) into the
+  // modal behind dedicated toggles. The AI panel is independent of the 3D
+  // toggle so the user can use the richer NL builder without opening the
+  // 3D viewport; the gizmo gates on `show3DView && selectedPart` since it
+  // only makes sense as an overlay on the live viewer.
+  //
+  // Pre-existing 210 tests stay untouched: both toggles default to OFF.
+  describe('AI panel + gizmo integration (Phase 3.A.UUUUU+RRRRR)', () => {
+    it('renders the AI panel toggle by default; panel host is hidden', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-ai-panel-toggle');
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.queryByTestId('solver-assembly-ai-panel-host')).toBeNull();
+      // The standalone panel root (its own testid) should also be absent.
+      expect(screen.queryByTestId('assembly-ai-panel')).toBeNull();
+    });
+
+    it('clicking the AI panel toggle mounts AssemblyAiPanel', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-panel-toggle'));
+      expect(screen.getByTestId('solver-assembly-ai-panel-host')).toBeInTheDocument();
+      // The panel exposes its own testid `assembly-ai-panel`, which the
+      // host renders verbatim — proves the mount went through.
+      expect(screen.getByTestId('assembly-ai-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-ai-panel-toggle')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    it('toggling the AI panel off unmounts it', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-ai-panel-toggle');
+      fireEvent.click(toggle);
+      expect(screen.getByTestId('assembly-ai-panel')).toBeInTheDocument();
+      fireEvent.click(toggle);
+      expect(screen.queryByTestId('assembly-ai-panel')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-ai-panel-host')).toBeNull();
+    });
+
+    it('AI panel "3 stacked" → Apply creates 3 parts + 2 mates + records one history entry', async () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-panel-toggle'));
+      const input = screen.getByTestId('assembly-ai-input') as HTMLTextAreaElement;
+      fireEvent.change(input, { target: { value: '3 stacked' } });
+      fireEvent.click(screen.getByTestId('assembly-ai-send'));
+      // Wait for the regex pass to surface the preview.
+      await waitFor(() => {
+        expect(screen.getByTestId('assembly-ai-apply')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-apply'));
+      // 3 parts (part_1..part_3) appended at base assembly.
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-part_2')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-part_3')).toBeInTheDocument();
+      // 2 mates linking consecutive parts (mate_1, mate_2).
+      expect(screen.getByTestId('solver-assembly-mate-row-mate_1')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-mate-row-mate_2')).toBeInTheDocument();
+      // First part is fixed; subsequent ones are not.
+      expect(
+        (screen.getByTestId('solver-assembly-part-fixed-part_1') as HTMLInputElement).checked,
+      ).toBe(true);
+      expect(
+        (screen.getByTestId('solver-assembly-part-fixed-part_2') as HTMLInputElement).checked,
+      ).toBe(false);
+      // Single history entry → Undo enabled.
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
+
+    it('Ctrl+Z after AI Apply restores the pre-AI assembly (full batch undone)', async () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-panel-toggle'));
+      fireEvent.change(screen.getByTestId('assembly-ai-input'), {
+        target: { value: '3 stacked' },
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-send'));
+      await waitFor(() => {
+        expect(screen.getByTestId('assembly-ai-apply')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-apply'));
+      // Seed had 2 parts → AI batch claims part_3 / part_4 / part_5
+      // (pickFreshPartId starts at base.parts.length+1).
+      expect(screen.getByTestId('solver-assembly-part-row-part_3')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-part_4')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-part_5')).toBeInTheDocument();
+      // Click Undo to roll the whole AI batch back.
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      // All AI-added parts are gone; original seed parts remain.
+      expect(screen.queryByTestId('solver-assembly-part-row-part_3')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-part-row-part_4')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-part-row-part_5')).toBeNull();
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-p_arm')).toBeInTheDocument();
+    });
+
+    it('AI panel "pair concentric" produces 2 parts + 1 mate of the requested kind', async () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-panel-toggle'));
+      fireEvent.change(screen.getByTestId('assembly-ai-input'), {
+        target: { value: 'pair concentric' },
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-send'));
+      await waitFor(() => {
+        expect(screen.getByTestId('assembly-ai-apply')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-apply'));
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-part-row-part_2')).toBeInTheDocument();
+      expect(screen.queryByTestId('solver-assembly-part-row-part_3')).toBeNull();
+      const kindSel = screen.getByTestId(
+        'solver-assembly-mate-kind-mate_1',
+      ) as HTMLSelectElement;
+      expect(kindSel.value).toBe('concentric');
+    });
+
+    it('AI panel "2 x 3 grid" creates 6 parts and 0 mates', async () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-panel-toggle'));
+      fireEvent.change(screen.getByTestId('assembly-ai-input'), {
+        target: { value: '2 x 3 grid' },
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-send'));
+      await waitFor(() => {
+        expect(screen.getByTestId('assembly-ai-apply')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByTestId('assembly-ai-apply'));
+      for (let i = 1; i <= 6; i++) {
+        expect(
+          screen.getByTestId(`solver-assembly-part-row-part_${i}`),
+        ).toBeInTheDocument();
+      }
+      expect(screen.queryByTestId('solver-assembly-part-row-part_7')).toBeNull();
+      // No mates in grid mode (planner adds them downstream).
+      expect(screen.getByTestId('solver-assembly-mates-empty')).toBeInTheDocument();
+    });
+
+    it('gizmo mode toggle bar appears only when 3D view + a selected part are both present', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      // No 3D, no selection → gizmo bar absent.
+      expect(screen.queryByTestId('solver-assembly-gizmo-mode-bar')).toBeNull();
+      // Turn on 3D, but still no part selected → bar absent.
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      expect(screen.queryByTestId('solver-assembly-gizmo-mode-bar')).toBeNull();
+      // Select a part → bar appears with both mode buttons.
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      expect(screen.getByTestId('solver-assembly-gizmo-mode-bar')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-gizmo-mode-translate')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-gizmo-mode-rotate')).toBeInTheDocument();
+    });
+
+    it('gizmo defaults to translate mode and renders the gizmo DOM marker', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      // Translate pressed; rotate not pressed.
+      expect(
+        screen.getByTestId('solver-assembly-gizmo-mode-translate'),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        screen.getByTestId('solver-assembly-gizmo-mode-rotate'),
+      ).toHaveAttribute('aria-pressed', 'false');
+      // The gizmo's own DOM marker should be rendered with data-mode=translate.
+      const marker = screen.getByTestId('part-manipulator-gizmo');
+      expect(marker.getAttribute('data-mode')).toBe('translate');
+      expect(marker.getAttribute('data-selected-part-id')).toBe('p_arm');
+    });
+
+    it('clicking the rotate mode button flips data-mode on the gizmo marker', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      fireEvent.click(screen.getByTestId('solver-assembly-gizmo-mode-rotate'));
+      expect(
+        screen.getByTestId('solver-assembly-gizmo-mode-rotate'),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        screen.getByTestId('solver-assembly-gizmo-mode-translate'),
+      ).toHaveAttribute('aria-pressed', 'false');
+      expect(
+        screen.getByTestId('part-manipulator-gizmo').getAttribute('data-mode'),
+      ).toBe('rotate');
+    });
+
+    it('clearing the selection (clicking the row again) hides the gizmo bar + marker', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      const row = screen.getByTestId('solver-assembly-part-row-p_arm');
+      fireEvent.click(row);
+      expect(screen.getByTestId('solver-assembly-gizmo-mode-bar')).toBeInTheDocument();
+      expect(screen.getByTestId('part-manipulator-gizmo')).toBeInTheDocument();
+      // Toggle off by clicking the row again.
+      fireEvent.click(row);
+      expect(screen.queryByTestId('solver-assembly-gizmo-mode-bar')).toBeNull();
+      expect(screen.queryByTestId('part-manipulator-gizmo')).toBeNull();
+    });
+
+    it('removing the selected part hides the gizmo and clears the selection', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      expect(screen.getByTestId('part-manipulator-gizmo')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('solver-assembly-part-remove-p_arm'));
+      expect(screen.queryByTestId('part-manipulator-gizmo')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-gizmo-mode-bar')).toBeNull();
+    });
+
+    it.each<[AssemblyBrowserLang, string]>([
+      ['ko', 'AI 패널'],
+      ['en', 'AI panel'],
+      ['ja', 'AI パネル'],
+      ['zh', 'AI 面板'],
+      ['es', 'Panel IA'],
+      ['ar', 'لوحة الذكاء الاصطناعي'],
+    ])('AI panel toggle label is localized (%s)', (lang, expected) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-ai-panel-toggle');
+      expect(toggle).toHaveTextContent(expected);
+    });
+
+    it('AI panel state is preserved through reset (the toggle stays on)', async () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-panel-toggle'));
+      expect(screen.getByTestId('assembly-ai-panel')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('solver-assembly-reset'));
+      // Reset wipes parts/mates but leaves the AI panel toggle ON
+      // (consistent with the policy applied to 3D / inline AI toggles).
+      expect(screen.getByTestId('assembly-ai-panel')).toBeInTheDocument();
+      expect(screen.queryByTestId('solver-assembly-part-row-p_arm')).toBeNull();
+    });
+  });
 });
