@@ -52,6 +52,7 @@
     "validate:scad-agent": "tsx scripts/validate-scad-agent.ts",
     "check:openscad-deploy": "node scripts/check-openscad-deploy.mjs",
     "occt:check": "node scripts/check-occt-readiness.js --mode=auto",
+    "occt:copy": "node scripts/copy-occt.js",
     "build:solvespace-wasm": "bash scripts/build-solvespace-wasm.sh",
     "ci:replicate-build": "cross-env CSP_OMIT_UPGRADE_INSECURE=1 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe JWT_SECRET=ci-test-secret-at-least-32-chars npm run build",
     "security:smoke": "node scripts/security-smoke.mjs",

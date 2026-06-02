@@ -11,8 +11,11 @@ import {
   detectOcctMode,
   getCachedOcctMode,
   OCCT_WASM_PROBE_URL,
+  pickWorkerUrl,
   resetOcctModeCache,
   setOcctPackagePresenceOverride,
+  WORKER_URL_LAUNCHER,
+  WORKER_URL_STUB,
 } from './runtimeMode';
 
 interface MutableGlobal {
@@ -221,5 +224,29 @@ describe('detectOcctMode — Phase 5 wasm-stub tier', () => {
     // the detection should now agree with the runtime.
     const mode = await detectOcctMode();
     expect(['stub', 'wasm-stub']).toContain(mode);
+  });
+
+  describe('pickWorkerUrl', () => {
+    it('returns the stub worker URL for stub mode', () => {
+      expect(pickWorkerUrl('stub')).toBe(WORKER_URL_STUB);
+    });
+
+    it('returns the stub worker URL for wasm-stub mode (skip launcher round-trip)', () => {
+      // wasm-stub means the npm package is installed but no WASM blob is
+      // shipped at the public/ URL — the launcher would just fall back to
+      // the stub anyway, so we skip the extra importScripts attempt.
+      expect(pickWorkerUrl('wasm-stub')).toBe(WORKER_URL_STUB);
+    });
+
+    it('returns the launcher URL for wasm mode (probe + fallback)', () => {
+      expect(pickWorkerUrl('wasm')).toBe(WORKER_URL_LAUNCHER);
+    });
+
+    it('exports stable URL constants the bridge can rely on', () => {
+      // The bridge default in wasmBridge.ts is /occt-worker/occt-worker.js —
+      // keep WORKER_URL_STUB in sync so a config flip is a one-liner.
+      expect(WORKER_URL_STUB).toBe('/occt-worker/occt-worker.js');
+      expect(WORKER_URL_LAUNCHER).toBe('/occt-worker/occt-worker-launcher.js');
+    });
   });
 });

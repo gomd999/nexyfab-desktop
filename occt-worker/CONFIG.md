@@ -59,6 +59,57 @@ with a build script:
 4. Keep `public/occt-worker/` in `.gitignore` from that point on — it is
    build output, not source.
 
+## Phase 5 launch step 1 — `scripts/copy-occt.js` (today)
+
+The Phase 5 spike already ships `opencascade.js@1.1.x` in
+`node_modules/opencascade.js/dist/` (~65 MB raw WASM + 330 KB JS loader).
+To stage them into `public/occt-worker/` so the worker bundle can
+`importScripts('./opencascade.js')`, run:
+
+```bash
+npm run occt:copy
+```
+
+That executes `node scripts/copy-occt.js`, which:
+
+- Reads `node_modules/opencascade.js/dist/opencascade.wasm.{js,wasm}`.
+- Writes `public/occt-worker/opencascade.{js,wasm}` (drops the inner
+  `.wasm.` segment so Emscripten's default `locateFile` resolves
+  correctly without a custom hook).
+- Creates `public/occt-worker/` if missing.
+- Skips gracefully (warns, exits 0) when the npm package is absent — so
+  stub-only Phase 4 deployments are unaffected.
+
+**`prebuild` chain wiring (launch day, NOT today):**
+
+Append `node scripts/copy-occt.js && ` to the existing `prebuild` script:
+
+```json
+"scripts": {
+  "prebuild": "node scripts/copy-occt.js && node -e \"...existing occt-import-js + helvetiker copies...\""
+}
+```
+
+Or — preferred — chain through the readiness check after copy:
+
+```json
+"scripts": {
+  "prebuild": "node scripts/copy-occt.js && npm run occt:check && node -e \"...existing copies...\""
+}
+```
+
+We INTENTIONALLY leave `prebuild` untouched in this commit because:
+
+- CI runs `prebuild` on every PR, including stub-only branches.
+  Until the launch checklist clears, we want WASM copy to be a manual
+  `npm run occt:copy` step a human runs alongside the swap diff in
+  `occt-worker/occt-worker.js`.
+- Stale Docker layers can have an old `node_modules/` snapshot; adding
+  a copy step that silently succeeds on a missing dist dir but loudly
+  fails on a botched one would mask real packaging bugs.
+- The Phase 5 swap PR is the right place to flip both the worker
+  dispatcher AND the `prebuild` chain in the same diff.
+
 We do NOT use a webpack/Turbopack rule to bundle the worker through
 the main Next pipeline. The OCCT binary is huge (5–15 MB), structured
 for `importScripts`, and Webpack's worker-loader path has historically

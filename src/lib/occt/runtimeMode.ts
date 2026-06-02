@@ -51,6 +51,43 @@ export type OcctRuntimeMode = 'stub' | 'wasm-stub' | 'wasm';
 /** URL probed to determine if the real OCCT WASM is shipped alongside the worker. */
 export const OCCT_WASM_PROBE_URL = '/occt-worker/opencascade.wasm';
 
+/**
+ * The two worker URLs the bridge can be pointed at.
+ *
+ *  - `WORKER_URL_STUB` — Phase 4 baseline. Loads `occt-worker/occt-worker.js`
+ *    directly; no real-OCCT attempt. Safest default; bridge has used this
+ *    since Phase 3. Always responds (synthetic bbox) so the UI never hangs.
+ *  - `WORKER_URL_LAUNCHER` — Phase 5 feature-detection wrapper. Loads
+ *    `occt-worker/occt-worker-launcher.js`, which `importScripts`-probes the
+ *    real `opencascade.js` + `occt-worker-real.js` and falls back to the
+ *    stub when either is missing. Posts a `{event:'mode',mode}` event so the
+ *    UI badge can read "OCCT 7.7" vs "simulated".
+ *
+ * The bridge does not branch on these — they're just string constants
+ * callers pass into `createWasmBridge({ workerUrl })`. Use `pickWorkerUrl`
+ * below when you have an `OcctRuntimeMode` in hand and want the right URL
+ * without writing a switch yourself.
+ */
+export const WORKER_URL_STUB = '/occt-worker/occt-worker.js';
+export const WORKER_URL_LAUNCHER = '/occt-worker/occt-worker-launcher.js';
+
+/**
+ * Pick the recommended `workerUrl` for a given runtime mode.
+ *
+ *   - `'stub'`      → `WORKER_URL_STUB` (direct stub load, fastest path)
+ *   - `'wasm-stub'` → `WORKER_URL_STUB` (no WASM blob, launcher would just
+ *                     fall back to stub anyway; skip the extra round-trip)
+ *   - `'wasm'`      → `WORKER_URL_LAUNCHER` (probe + fallback; safer than
+ *                     hard-coding the real path because a 404 on the WASM
+ *                     blob silently degrades instead of hanging the bridge)
+ *
+ * Phase 5 launch wires this into the bridge construction site so the worker
+ * URL adapts to whichever deployment shape is live without a config flip.
+ */
+export function pickWorkerUrl(mode: OcctRuntimeMode): string {
+  return mode === 'wasm' ? WORKER_URL_LAUNCHER : WORKER_URL_STUB;
+}
+
 let cached: OcctRuntimeMode | null = null;
 let pending: Promise<OcctRuntimeMode> | null = null;
 
