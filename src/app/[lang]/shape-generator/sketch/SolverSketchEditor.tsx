@@ -36,6 +36,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import dynamic from 'next/dynamic';
 import {
   createSketchSolver,
   type SketchSolver,
@@ -75,6 +76,23 @@ import {
   type SvgCircle,
   type SvgArc,
 } from '@/lib/sketch/sketchSvgExport';
+
+// SketchExportModal is dynamic-loaded so the multi-format export UI
+// (SVG/PNG/JSON + preview + paper/unit controls) only enters the bundle
+// the first time the user clicks "Export...". Quick-SVG download path
+// stays statically wired so it remains zero-latency. ssr:false matches
+// the other modal siblings in this folder (Sweep/Loft/etc).
+const SketchExportModal = dynamic(() => import('./SketchExportModal'), {
+  ssr: false,
+  loading: () => (
+    <div
+      data-testid="solver-sketch-export-modal-loading"
+      style={{ fontSize: 11, color: '#6b7280', padding: 12 }}
+    >
+      loading…
+    </div>
+  ),
+});
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -147,6 +165,7 @@ interface Dict {
   snapPerpendicular: string;
   exportSvg: string;
   svgFilename: string;
+  exportModal: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -175,6 +194,7 @@ const dict: Record<EditorLang, Dict> = {
     snapPerpendicular: '수선',
     exportSvg: 'SVG 내보내기',
     svgFilename: '스케치',
+    exportModal: '내보내기...',
   },
   en: {
     title: 'Solver Sketch',
@@ -201,6 +221,7 @@ const dict: Record<EditorLang, Dict> = {
     snapPerpendicular: 'Perp',
     exportSvg: 'Export SVG',
     svgFilename: 'sketch',
+    exportModal: 'Export...',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -227,6 +248,7 @@ const dict: Record<EditorLang, Dict> = {
     snapPerpendicular: '垂線',
     exportSvg: 'SVG出力',
     svgFilename: 'スケッチ',
+    exportModal: 'エクスポート...',
   },
   zh: {
     title: '求解器草图',
@@ -253,6 +275,7 @@ const dict: Record<EditorLang, Dict> = {
     snapPerpendicular: '垂线',
     exportSvg: '导出SVG',
     svgFilename: '草图',
+    exportModal: '导出...',
   },
   es: {
     title: 'Boceto con solver',
@@ -279,6 +302,7 @@ const dict: Record<EditorLang, Dict> = {
     snapPerpendicular: 'Perp',
     exportSvg: 'Exportar SVG',
     svgFilename: 'boceto',
+    exportModal: 'Exportar...',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -305,6 +329,7 @@ const dict: Record<EditorLang, Dict> = {
     snapPerpendicular: 'عمودي',
     exportSvg: 'تصدير SVG',
     svgFilename: 'رسم',
+    exportModal: 'تصدير...',
   },
 };
 
@@ -1444,6 +1469,23 @@ export default function SolverSketchEditor({
     return `${prefix}-${stamp}`;
   }, [projectId]);
 
+  // ─── multi-format export modal state ─────────────────────────────────
+  //
+  // The modal is dynamic-imported (see top-of-file `SketchExportModal`)
+  // so its bundle cost is paid only when the user first opens it. We
+  // gate the actual mount on `modalOpen` rather than always rendering
+  // `null`-on-closed because dynamic() still resolves the chunk the
+  // moment React encounters the element — gating keeps the chunk lazy.
+  //
+  // The `Export...` button reuses `buildSvgEntities()` (defined below)
+  // to snapshot the current sketch into the modal's `entities` prop,
+  // and `buildSvgFilename()` for the default filename — same semantics
+  // as the legacy quick-SVG button so users get a consistent suggested
+  // filename across both export paths.
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const openExportModal = useCallback((): void => setModalOpen(true), []);
+  const closeExportModal = useCallback((): void => setModalOpen(false), []);
+
   // Bound to the toolbar "Export SVG" button. Builds entities + filename,
   // then defers to `downloadSketchAsSvg` (browser-only — throws in non-DOM
   // envs). bbox auto-fit with 10mm margin is the default, and 200×150 mm
@@ -1897,6 +1939,15 @@ export default function SolverSketchEditor({
           </button>
           <button
             type="button"
+            onClick={openExportModal}
+            data-testid="solver-sketch-export-modal-button"
+            title={t.exportModal}
+            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+          >
+            {t.exportModal}
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
             style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -2175,6 +2226,25 @@ export default function SolverSketchEditor({
       >
         {entities.length === 0 && !pending ? t.hint : statusText}
       </div>
+
+      {/*
+        Multi-format export modal (SVG / PNG / JSON) — Agent-SSSSS's
+        SketchExportModal mounted lazily. We deliberately render the
+        element only when `modalOpen` is true so the dynamic chunk
+        load is deferred until the first click. Entities + suggested
+        filename are snapshotted at render time so the modal always
+        sees the LATEST sketch state, not whatever was there at
+        component-mount time. We pass the editor's own `lang` through
+        — the modal supports the same 6-language matrix.
+      */}
+      {modalOpen && (
+        <SketchExportModal
+          lang={lang}
+          entities={buildSvgEntities()}
+          defaultFilename={buildSvgFilename()}
+          onClose={closeExportModal}
+        />
+      )}
     </div>
   );
 }

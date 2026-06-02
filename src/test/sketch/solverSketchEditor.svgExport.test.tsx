@@ -251,3 +251,156 @@ describe('SolverSketchEditor — Export SVG button', () => {
     expect(svg).toMatch(/<title>NexyFab Sketch — demo-\d{14}<\/title>/);
   });
 });
+
+// ─── SketchExportModal integration ───────────────────────────────────────
+//
+// Agent-SSSSS shipped the standalone multi-format dialog
+// (SketchExportModal). The editor now exposes a sibling "Export..." button
+// (testid `solver-sketch-export-modal-button`) that lazy-mounts the modal
+// alongside the existing quick "Export SVG" direct-download button. These
+// tests pin:
+//   - the button renders + is distinct from the quick-SVG button,
+//   - clicking it mounts the modal,
+//   - the mounted modal performs an SVG export end-to-end,
+//   - the modal unmounts when Cancel is clicked,
+//   - re-opening creates a fresh dialog (no stale state),
+//   - clicking the backdrop dismisses the modal,
+//   - 6-lang label translations match the editor dict,
+//   - the legacy quick-SVG path is unaffected by the modal being open.
+//
+// The modal is dynamic-imported via next/dynamic, so we use `findByTestId`
+// (async-aware) when waiting for the modal markup to appear — same pattern
+// the SolverSketchEditorWithExtrude tests use for Sweep/Loft/Pattern.
+describe('SolverSketchEditor — Export... modal integration', () => {
+  let spy: UrlSpy;
+
+  beforeEach(() => {
+    spy = installUrlSpy();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders the Export... modal-trigger button distinct from the quick Export SVG button', async () => {
+    await mountReady();
+    const modalBtn = screen.getByTestId('solver-sketch-export-modal-button');
+    const quickBtn = screen.getByTestId('solver-sketch-export-svg');
+    expect(modalBtn).toBeInTheDocument();
+    expect(quickBtn).toBeInTheDocument();
+    expect(modalBtn).not.toBe(quickBtn);
+    expect(modalBtn.tagName).toBe('BUTTON');
+    expect(modalBtn.textContent).toBe('Export...');
+  });
+
+  it('modal is not mounted before the Export... button is clicked', async () => {
+    await mountReady();
+    // Closed by default — no modal dialog in the DOM.
+    expect(screen.queryByTestId('sketch-export-modal')).toBeNull();
+    expect(screen.queryByTestId('sketch-export-title')).toBeNull();
+  });
+
+  it('clicking Export... mounts the SketchExportModal', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    // Dynamic-imported — wait for the chunk to resolve + render.
+    const modal = await screen.findByTestId('sketch-export-modal');
+    expect(modal).toBeInTheDocument();
+    // Submit/Cancel buttons + SVG format radio confirm the modal is fully rendered.
+    expect(screen.getByTestId('sketch-export-submit')).toBeInTheDocument();
+    expect(screen.getByTestId('sketch-export-cancel')).toBeInTheDocument();
+    expect(screen.getByTestId('sketch-export-format-svg')).toBeInTheDocument();
+  });
+
+  it('modal SVG export → produces a download (URL.createObjectURL called)', async () => {
+    await mountReady();
+    // Draw a line so the modal exports a non-empty sketch.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-line'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 200, 100);
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-testid^="solver-sketch-entity-l"]').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    await screen.findByTestId('sketch-export-modal');
+    // SVG is the default format. Click Export inside the modal.
+    fireEvent.click(screen.getByTestId('sketch-export-submit'));
+    await waitFor(() => expect(spy.createObjectURL).toHaveBeenCalled());
+    const svg = await spy.readSvg();
+    expect(svg).toBeTruthy();
+    expect(svg).toMatch(/<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    expect(svg).toContain('data-kind="line"');
+  });
+
+  it('Cancel button unmounts the modal', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    const modal = await screen.findByTestId('sketch-export-modal');
+    expect(modal).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sketch-export-cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('sketch-export-modal')).toBeNull();
+    });
+  });
+
+  it('backdrop click closes the modal (onClose path)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    const modal = await screen.findByTestId('sketch-export-modal');
+    // The backdrop is the outermost element; click on the modal itself
+    // (target === currentTarget) triggers close.
+    fireEvent.click(modal, { target: modal, currentTarget: modal });
+    await waitFor(() => {
+      expect(screen.queryByTestId('sketch-export-modal')).toBeNull();
+    });
+  });
+
+  it('re-opening after close mounts a fresh modal (no stale state)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    await screen.findByTestId('sketch-export-modal');
+    fireEvent.click(screen.getByTestId('sketch-export-cancel'));
+    await waitFor(() => expect(screen.queryByTestId('sketch-export-modal')).toBeNull());
+
+    // Second open — should mount a new modal instance.
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    const reopened = await screen.findByTestId('sketch-export-modal');
+    expect(reopened).toBeInTheDocument();
+    expect(screen.getByTestId('sketch-export-title')).toBeInTheDocument();
+  });
+
+  it('legacy "Export SVG" quick-download still works even when the modal is open', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-export-modal-button'));
+    await screen.findByTestId('sketch-export-modal');
+    // The quick button must still be reachable + functional — assert it
+    // produces its own download independent of the modal's submit path.
+    const quick = screen.getByTestId('solver-sketch-export-svg');
+    fireEvent.click(quick);
+    expect(spy.createObjectURL).toHaveBeenCalledTimes(1);
+    const svg = await spy.readSvg();
+    expect(svg).toBeTruthy();
+    expect(svg).toMatch(/<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  });
+
+  it('modal-trigger button label is translated for each of the 6 supported languages', async () => {
+    const langs: Array<['en' | 'ko' | 'ja' | 'zh' | 'es' | 'ar', string]> = [
+      ['en', 'Export...'],
+      ['ko', '내보내기...'],
+      ['ja', 'エクスポート...'],
+      ['zh', '导出...'],
+      ['es', 'Exportar...'],
+      ['ar', 'تصدير...'],
+    ];
+    for (const [lang, expected] of langs) {
+      const { unmount } = render(<SolverSketchEditor lang={lang} />);
+      const editor = await screen.findByTestId('solver-sketch-editor');
+      await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+      const btn = screen.getByTestId('solver-sketch-export-modal-button');
+      expect(btn.textContent).toBe(expected);
+      unmount();
+    }
+  });
+});
