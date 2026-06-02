@@ -67,6 +67,8 @@
     "test:e2e:m4": "playwright test e2e/m4-auto-drawing.spec.ts --project=chromium",
     "test:e2e:m6": "playwright test e2e/m6-project-members-api.spec.ts --project=chromium",
     "test:e2e:m6-team": "playwright test e2e/m6-team-members.spec.ts --project=chromium",
+    "test:e2e:occt": "cross-env NEXYFAB_OCCT_REAL=1 playwright test e2e/occt --project=chromium",
+    "test:occt:smoke": "cross-env NEXYFAB_OCCT_REAL=1 playwright test e2e/occt --project=chromium --grep \"unit box\"",
     "test:e2e:m3:serve": "cross-env NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe CSP_OMIT_UPGRADE_INSECURE=1 npm run build && cross-env PORT=3334 HOSTNAME=127.0.0.1 NODE_ENV=production JWT_SECRET=e2e-jwt-secret-placeholder-must-be-at-least-32-characters-long ADMIN_SECRET=e2e-admin-secret-16 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3334 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe node .next/standalone/server.js",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
@@ -78,7 +80,9 @@
     "perf:bench": "node scripts/perf-benchmark.mjs",
     "perf:bench:json": "node scripts/perf-benchmark.mjs --json",
     "bundle:budget": "node scripts/bundle-budget.mjs",
-    "bundle:budget:json": "node scripts/bundle-budget.mjs --json"
+    "bundle:budget:json": "node scripts/bundle-budget.mjs --json",
+    "collab:dev": "node collab-worker/server.js",
+    "collab:test": "node --test collab-worker/server.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1025.0",
