@@ -22,6 +22,7 @@ import AssemblyBrowserModal, {
   type AssemblyBrowserLang,
   type AssemblyBrowserOnSolve,
   type AssemblyBrowserSolveResult,
+  type AssemblySolverSelection,
 } from './AssemblyBrowserModal';
 import type { AssemblyState } from '@/lib/assembly/assemblyState';
 import type { FeatureTree } from '@/lib/cad/featureTree';
@@ -61,12 +62,27 @@ function normalizeLang(raw: string): AssemblyBrowserLang {
  *
  * Tests inject `onSolve` directly so we never hit the network from jsdom.
  */
-const defaultOnSolve: AssemblyBrowserOnSolve = async (state, featureTrees) => {
-  const body: { state: AssemblyState; featureTrees?: Record<string, FeatureTree> } = {
+const defaultOnSolve: AssemblyBrowserOnSolve = async (
+  state,
+  featureTrees,
+  solver,
+) => {
+  const body: {
+    state: AssemblyState;
+    featureTrees?: Record<string, FeatureTree>;
+    solver?: AssemblySolverSelection;
+  } = {
     state,
   };
   if (featureTrees && Object.keys(featureTrees).length > 0) {
     body.featureTrees = featureTrees;
+  }
+  // Forward the solver picker selection so the API can pick / dispatch.
+  // Defaults to 'auto' inside the modal — we still send it explicitly so
+  // the server's recommendSolver pipeline runs instead of falling back to
+  // the API's back-compat 'gauss_seidel' default.
+  if (solver !== undefined) {
+    body.solver = solver;
   }
   const res = await fetch('/api/assembly-solve', {
     method: 'POST',

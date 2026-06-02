@@ -100,6 +100,22 @@ interface Dict {
   featureTreeParseError: string;
   /** Small badge label that prefixes the phase value ('real' | 'stub'). */
   phaseLabel: string;
+  /**
+   * Phase 3.2 — solver picker label rendered next to the Solve button.
+   * The select itself lets the user steer which assembly solver runs:
+   * Auto (server picks), Gauss-Seidel, Lagrangian, or Adaptive.
+   */
+  solverLabel: string;
+  /** Solver picker option — server picks via pickAutoSolver (default). */
+  solverAuto: string;
+  /** Solver picker option — Gauss-Seidel relaxation (iterativeSolve). */
+  solverGaussSeidel: string;
+  /** Solver picker option — Newton-LM with numeric Jacobian (lagrangianSolve). */
+  solverLagrangian: string;
+  /** Solver picker option — Newton-LM + analytic Jacobian + line-search. */
+  solverAdaptive: string;
+  /** Prefix shown on the solverUsed badge next to the phase badge. */
+  solverUsedLabel: string;
   /** Per-part "Select refs" panel toggle. */
   selectRefs: string;
   hideRefs: string;
@@ -235,6 +251,12 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: '{ "nodes": [] } 형식의 JSON',
     featureTreeParseError: 'JSON 파싱 오류',
     phaseLabel: '단계',
+    solverLabel: '솔버',
+    solverAuto: '자동',
+    solverGaussSeidel: 'Gauss-Seidel',
+    solverLagrangian: 'Lagrangian',
+    solverAdaptive: '적응형',
+    solverUsedLabel: '사용 솔버',
     selectRefs: 'ref 선택',
     hideRefs: 'ref 닫기',
     refsAvailable: '사용 가능 ref',
@@ -311,6 +333,12 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: 'JSON of shape { "nodes": [] }',
     featureTreeParseError: 'JSON parse error',
     phaseLabel: 'Phase',
+    solverLabel: 'Solver',
+    solverAuto: 'Auto',
+    solverGaussSeidel: 'Gauss-Seidel',
+    solverLagrangian: 'Lagrangian',
+    solverAdaptive: 'Adaptive',
+    solverUsedLabel: 'Solver',
     selectRefs: 'Select refs',
     hideRefs: 'Hide refs',
     refsAvailable: 'Available refs',
@@ -388,6 +416,12 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: '{ "nodes": [] } 形式の JSON',
     featureTreeParseError: 'JSON 解析エラー',
     phaseLabel: 'フェーズ',
+    solverLabel: 'ソルバー',
+    solverAuto: '自動',
+    solverGaussSeidel: 'Gauss-Seidel',
+    solverLagrangian: 'Lagrangian',
+    solverAdaptive: '適応型',
+    solverUsedLabel: '使用ソルバー',
     selectRefs: '参照を選択',
     hideRefs: '参照を閉じる',
     refsAvailable: '利用可能な参照',
@@ -465,6 +499,12 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: '形如 { "nodes": [] } 的 JSON',
     featureTreeParseError: 'JSON 解析错误',
     phaseLabel: '阶段',
+    solverLabel: '求解器',
+    solverAuto: '自动',
+    solverGaussSeidel: 'Gauss-Seidel',
+    solverLagrangian: 'Lagrangian',
+    solverAdaptive: '自适应',
+    solverUsedLabel: '已用求解器',
     selectRefs: '选择参考',
     hideRefs: '关闭参考',
     refsAvailable: '可用参考',
@@ -541,6 +581,12 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: 'JSON de forma { "nodes": [] }',
     featureTreeParseError: 'Error de análisis JSON',
     phaseLabel: 'Fase',
+    solverLabel: 'Solver',
+    solverAuto: 'Auto',
+    solverGaussSeidel: 'Gauss-Seidel',
+    solverLagrangian: 'Lagrangiano',
+    solverAdaptive: 'Adaptativo',
+    solverUsedLabel: 'Solver',
     selectRefs: 'Seleccionar refs',
     hideRefs: 'Ocultar refs',
     refsAvailable: 'Refs disponibles',
@@ -618,6 +664,12 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     featureTreePlaceholder: 'JSON بالشكل { "nodes": [] }',
     featureTreeParseError: 'خطأ في تحليل JSON',
     phaseLabel: 'المرحلة',
+    solverLabel: 'الحلّال',
+    solverAuto: 'تلقائي',
+    solverGaussSeidel: 'Gauss-Seidel',
+    solverLagrangian: 'لاغرانجي',
+    solverAdaptive: 'متكيّف',
+    solverUsedLabel: 'الحلّال المستخدم',
     selectRefs: 'اختيار المراجع',
     hideRefs: 'إخفاء المراجع',
     refsAvailable: 'المراجع المتاحة',
@@ -690,18 +742,56 @@ export interface AssemblyBrowserSolveResult {
    * still type-check.
    */
   phase?: 'real' | 'stub';
+  /**
+   * Phase 3.2 — concrete solver the server actually ran. Mirrors the
+   * /api/assembly-solve route's `solverUsed`. When the request asked for
+   * `solver: 'auto'`, this echoes back whichever Gauss-Seidel / Lagrangian
+   * / Adaptive variant `pickAutoSolver` chose so the UI can show the
+   * decision to the user. Optional so legacy callers (and the Phase-1
+   * stub path that predates the picker) still type-check.
+   */
+  solverUsed?: AssemblySolverChoice;
 }
+
+/**
+ * Solver picker options. Mirrors the API's `solver` request field
+ * (`gauss_seidel` | `lagrangian` | `adaptive` | `auto`) — the modal
+ * forwards the user's pick verbatim and the server is responsible for
+ * resolving `auto` to a concrete choice via `pickAutoSolver`.
+ */
+export type AssemblySolverChoice =
+  | 'gauss_seidel'
+  | 'lagrangian'
+  | 'adaptive';
+
+export type AssemblySolverSelection = AssemblySolverChoice | 'auto';
+
+/**
+ * All solver picker options in the order they should appear in the UI.
+ * Kept exported so tests can iterate the full set without re-declaring
+ * the union.
+ */
+export const ASSEMBLY_SOLVER_SELECTIONS: ReadonlyArray<AssemblySolverSelection> = [
+  'auto',
+  'gauss_seidel',
+  'lagrangian',
+  'adaptive',
+];
 
 /**
  * onSolve receives the current AssemblyState plus the per-part FeatureTree
  * map. The map may be empty (no part has a tree yet) — callers decide
  * whether to send `featureTrees` over the wire or omit it for the stub
- * path. Two args (instead of one bag) keep the signature ergonomic for
- * tests that only care about state.
+ * path. The optional 3rd `solver` argument carries the user's solver
+ * picker choice ('auto' | 'gauss_seidel' | 'lagrangian' | 'adaptive');
+ * legacy callers that ignore it default to the API's 'gauss_seidel'
+ * back-compat path. Three args (instead of one bag) keep the signature
+ * ergonomic for tests that only care about state.
  */
 export type AssemblyBrowserOnSolve = (
   state: AssemblyState,
   featureTrees: Record<string, FeatureTree>,
+  solver?: AssemblySolverSelection,
 ) => Promise<AssemblyBrowserSolveResult>;
 
 export interface AssemblyBrowserModalProps {
@@ -1285,6 +1375,18 @@ export default function AssemblyBrowserModal({
     | { status: 'ok'; result: AssemblyBrowserSolveResult }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
+
+  /**
+   * Phase 3.2 — solver picker selection. 'auto' lets the server choose
+   * (recommendSolver + adaptive upgrade). Defaults to 'auto' so new
+   * users get the best out-of-the-box experience; the API back-compat
+   * default of 'gauss_seidel' still kicks in for any caller that omits
+   * the field, which is why the dispatcher only forwards the field when
+   * the user actually deviates from a known sentinel.
+   */
+  const [solverSelection, setSolverSelection] = useState<AssemblySolverSelection>(
+    'auto',
+  );
 
   // ── parts ops ──────────────────────────────────────────────────────────
 
@@ -2110,7 +2212,7 @@ export default function AssemblyBrowserModal({
     if (!onSolve) return;
     setSolveState({ status: 'loading' });
     try {
-      const result = await onSolve(state, featureTrees);
+      const result = await onSolve(state, featureTrees, solverSelection);
       setSolveState({ status: 'ok', result });
     } catch (e) {
       setSolveState({
@@ -2118,7 +2220,7 @@ export default function AssemblyBrowserModal({
         message: `${t.errorPrefix}: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
-  }, [onSolve, state, featureTrees, t.errorPrefix]);
+  }, [onSolve, state, featureTrees, solverSelection, t.errorPrefix]);
 
   // ── derived ────────────────────────────────────────────────────────────
 
@@ -3017,26 +3119,44 @@ export default function AssemblyBrowserModal({
               }}
             >
               <div style={{ fontWeight: 700 }}>{t.solveResultTitle}</div>
-              {solveState.result.phase && (
-                <span
-                  data-testid="solver-assembly-solve-phase"
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    padding: '2px 6px',
-                    borderRadius: 999,
-                    background:
-                      solveState.result.phase === 'real' ? '#dcfce7' : '#fef3c7',
-                    color:
-                      solveState.result.phase === 'real' ? '#166534' : '#92400e',
-                    border: `1px solid ${
-                      solveState.result.phase === 'real' ? '#86efac' : '#fde68a'
-                    }`,
-                  }}
-                >
-                  {t.phaseLabel}: {solveState.result.phase}
-                </span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {solveState.result.phase && (
+                  <span
+                    data-testid="solver-assembly-solve-phase"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: 999,
+                      background:
+                        solveState.result.phase === 'real' ? '#dcfce7' : '#fef3c7',
+                      color:
+                        solveState.result.phase === 'real' ? '#166534' : '#92400e',
+                      border: `1px solid ${
+                        solveState.result.phase === 'real' ? '#86efac' : '#fde68a'
+                      }`,
+                    }}
+                  >
+                    {t.phaseLabel}: {solveState.result.phase}
+                  </span>
+                )}
+                {solveState.result.solverUsed && (
+                  <span
+                    data-testid="solver-assembly-solve-solver-used"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: 999,
+                      background: '#e0e7ff',
+                      color: '#3730a3',
+                      border: '1px solid #c7d2fe',
+                    }}
+                  >
+                    {t.solverUsedLabel}: {solveState.result.solverUsed}
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <span data-testid="solver-assembly-solve-success">
@@ -3588,6 +3708,39 @@ export default function AssemblyBrowserModal({
           >
             {t.close}
           </button>
+          <label
+            data-testid="solver-assembly-solver-select-label"
+            htmlFor="solver-assembly-solver-select"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11,
+              color: '#374151',
+            }}
+          >
+            {t.solverLabel}
+            <select
+              id="solver-assembly-solver-select"
+              data-testid="solver-assembly-solver-select"
+              value={solverSelection}
+              onChange={(e) =>
+                setSolverSelection(e.target.value as AssemblySolverSelection)
+              }
+              style={{
+                fontSize: 12,
+                padding: '4px 6px',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: '#fff',
+              }}
+            >
+              <option value="auto">{t.solverAuto}</option>
+              <option value="gauss_seidel">{t.solverGaussSeidel}</option>
+              <option value="lagrangian">{t.solverLagrangian}</option>
+              <option value="adaptive">{t.solverAdaptive}</option>
+            </select>
+          </label>
           <button
             type="button"
             onClick={onSolveClick}

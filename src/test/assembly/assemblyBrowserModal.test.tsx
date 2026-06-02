@@ -584,6 +584,329 @@ describe('AssemblyBrowserModal', () => {
     });
   });
 
+  // ── Solver picker (Phase 3.2 — QQQQ /api/assembly-solve solver=auto UI) ──
+
+  describe('solver picker', () => {
+    it('renders the solver picker dropdown with all 4 options + Auto default', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      const sel = screen.getByTestId(
+        'solver-assembly-solver-select',
+      ) as HTMLSelectElement;
+      expect(sel).toBeInTheDocument();
+      expect(sel.value).toBe('auto');
+      const values = Array.from(sel.options).map((o) => o.value);
+      expect(values).toEqual(['auto', 'gauss_seidel', 'lagrangian', 'adaptive']);
+    });
+
+    it('changing the solver picker updates the controlled selection value', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      const sel = screen.getByTestId(
+        'solver-assembly-solver-select',
+      ) as HTMLSelectElement;
+      fireEvent.change(sel, { target: { value: 'lagrangian' } });
+      expect(
+        (screen.getByTestId(
+          'solver-assembly-solver-select',
+        ) as HTMLSelectElement).value,
+      ).toBe('lagrangian');
+    });
+
+    it('clicking Solve forwards the default "auto" solver as the 3rd onSolve arg', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        residuals: [],
+        dof: 0,
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      // 3rd arg is the solver selection.
+      expect(onSolve.mock.calls[0][2]).toBe('auto');
+    });
+
+    it('changing solver to lagrangian then Solve forwards "lagrangian"', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        residuals: [],
+        dof: 0,
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.change(
+        screen.getByTestId('solver-assembly-solver-select'),
+        { target: { value: 'lagrangian' } },
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      expect(onSolve.mock.calls[0][2]).toBe('lagrangian');
+    });
+
+    it('changing solver to adaptive then Solve forwards "adaptive"', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        residuals: [],
+        dof: 0,
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.change(
+        screen.getByTestId('solver-assembly-solver-select'),
+        { target: { value: 'adaptive' } },
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      expect(onSolve.mock.calls[0][2]).toBe('adaptive');
+    });
+
+    it('changing solver to gauss_seidel then Solve forwards "gauss_seidel"', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        residuals: [],
+        dof: 0,
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.change(
+        screen.getByTestId('solver-assembly-solver-select'),
+        { target: { value: 'gauss_seidel' } },
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      expect(onSolve.mock.calls[0][2]).toBe('gauss_seidel');
+    });
+
+    it('renders the solverUsed badge when the result carries solverUsed=adaptive', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        iterations: 4,
+        finalMaxResidual: 1e-7,
+        dof: 0,
+        residuals: [],
+        phase: 'real',
+        solverUsed: 'adaptive',
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('solver-assembly-solve-solver-used'),
+        ).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-solve-solver-used').textContent,
+      ).toMatch(/adaptive/i);
+    });
+
+    it('renders the solverUsed badge when the result carries solverUsed=gauss_seidel', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        iterations: 2,
+        finalMaxResidual: 0,
+        dof: 0,
+        residuals: [],
+        phase: 'real',
+        solverUsed: 'gauss_seidel',
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('solver-assembly-solve-solver-used'),
+        ).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-solve-solver-used').textContent,
+      ).toMatch(/gauss_seidel/i);
+    });
+
+    it('renders the solverUsed badge when the result carries solverUsed=lagrangian', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        iterations: 5,
+        finalMaxResidual: 1e-6,
+        dof: 0,
+        residuals: [],
+        phase: 'real',
+        solverUsed: 'lagrangian',
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('solver-assembly-solve-solver-used'),
+        ).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId('solver-assembly-solve-solver-used').textContent,
+      ).toMatch(/lagrangian/i);
+    });
+
+    it('does NOT render the solverUsed badge when the result omits solverUsed', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        residuals: [],
+        dof: 0,
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-solve-result')).toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId('solver-assembly-solve-solver-used')).toBeNull();
+    });
+
+    it('solverUsed badge can coexist with the phase badge in the result header', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        iterations: 1,
+        finalMaxResidual: 0,
+        dof: 0,
+        residuals: [],
+        phase: 'real',
+        solverUsed: 'adaptive',
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-solve-result')).toBeInTheDocument(),
+      );
+      expect(screen.getByTestId('solver-assembly-solve-phase')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('solver-assembly-solve-solver-used'),
+      ).toBeInTheDocument();
+    });
+
+    it('solver picker selection survives across multiple Solve clicks', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        residuals: [],
+        dof: 0,
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.change(
+        screen.getByTestId('solver-assembly-solver-select'),
+        { target: { value: 'adaptive' } },
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalledTimes(2));
+      expect(onSolve.mock.calls[0][2]).toBe('adaptive');
+      expect(onSolve.mock.calls[1][2]).toBe('adaptive');
+      // Picker still reflects the chosen solver after the round-trip.
+      expect(
+        (screen.getByTestId(
+          'solver-assembly-solver-select',
+        ) as HTMLSelectElement).value,
+      ).toBe('adaptive');
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /솔버/],
+      ['en', /Solver/],
+      ['ja', /ソルバー/],
+      ['zh', /求解器/],
+      ['es', /Solver/],
+      ['ar', /الحلّال/],
+    ])('i18n: lang %s localizes the solver picker label', (lang, re) => {
+      render(
+        <AssemblyBrowserModal lang={lang} initialState={seedState()} onClose={vi.fn()} />,
+      );
+      expect(
+        screen.getByTestId('solver-assembly-solver-select-label').textContent,
+      ).toMatch(re);
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /자동/],
+      ['en', /Auto/],
+      ['ja', /自動/],
+      ['zh', /自动/],
+      ['es', /Auto/],
+      ['ar', /تلقائي/],
+    ])('i18n: lang %s localizes the "Auto" solver option', (lang, re) => {
+      render(
+        <AssemblyBrowserModal lang={lang} initialState={seedState()} onClose={vi.fn()} />,
+      );
+      const sel = screen.getByTestId(
+        'solver-assembly-solver-select',
+      ) as HTMLSelectElement;
+      const autoOpt = Array.from(sel.options).find((o) => o.value === 'auto')!;
+      expect(autoOpt.textContent).toMatch(re);
+    });
+  });
+
   // ── Ref-selection + MateConstraintsToolbar bridge (Agent-VV ↔ Agent-X) ──
 
   describe('ref-selection + mate-toolbar bridge', () => {
