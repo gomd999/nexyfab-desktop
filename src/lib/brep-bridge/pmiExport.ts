@@ -90,13 +90,78 @@ class PmiBuilder {
 
 // ─── formatting helpers (kept local — DO NOT import from stepWrite) ──────
 
-/** Mirrors stepWrite.fmt — REAL literal with trailing '.' for STEP parsers. */
+/**
+ * Mirrors stepWrite.fmt — REAL literal for STEP Part 21 parsers.
+ *
+ * Contract (must match stepWrite.fmt byte-for-byte for matching inputs so a
+ * sheet that mixes geometry + PMI produces consistent literals throughout the
+ * DATA section):
+ *   - integer values  → `'1.'`, `'-2.'`, `'100.'` (single trailing dot is
+ *                       the REAL marker; without it `1` parses as INTEGER)
+ *   - non-integer     → `'1.5'`, `'-0.529999'`, `'3.14'` (NO stray trailing
+ *                       dot — the previous implementation produced `'7.5.'`
+ *                       because the regex chain replaced `.` with `.` and
+ *                       then appended another `.` unconditionally)
+ *   - zero            → `'0.'`
+ *   - sub-resolution  → STEP exponential `'1.E-7'` (would otherwise round to
+ *                       `'0.'` under 6-decimal `toFixed`)
+ *   - magnitude >=1e15→ STEP exponential (would lose precision under toFixed)
+ *   - NaN / ±Infinity → throws
+ *
+ * Bug history: the JJ-authored CIRCULAR_AREA(..., size=7.5) emitted
+ * `'7.5.'` because of the `replace(/\.$/, '.')` no-op followed by the
+ * `endsWith('.')` guard incorrectly re-appending a dot. Aligned with
+ * stepWrite.fmt (Agent-FF fix) so geometry + PMI share one contract.
+ */
 function fmt(n: number): string {
   if (!Number.isFinite(n)) throw new Error(`pmiExport: non-finite number ${n}`);
   if (n === 0) return '0.';
+  const abs = Math.abs(n);
+
+  // Sub-resolution / very large: 6-decimal toFixed would either round to 0
+  // and silently lose the value, or overflow precision. Fall back to STEP
+  // exponential form so the literal survives a round-trip. Threshold matches
+  // stepWrite.fmt (0.5 ULP at 6 decimals).
+  if (abs < 5e-7 || abs >= 1e15) {
+    return toStepExponential(n);
+  }
+
   const fixed = n.toFixed(6);
-  const trimmed = fixed.replace(/0+$/, '').replace(/\.$/, '.');
-  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+  if (!fixed.includes('.')) {
+    // Defensive: toFixed(6) always includes a '.', but guard anyway so a
+    // future refactor can't reintroduce the missing-dot regression.
+    return `${fixed}.`;
+  }
+  // Strip trailing zeros from the fractional part.
+  const trimmed = fixed.replace(/0+$/, '');
+  // If everything after the '.' was zero, `trimmed` now ends with '.' — the
+  // value is an integer and we keep the single trailing dot (REAL marker).
+  // Otherwise (genuine fractional component) `trimmed` already ends in a
+  // non-zero digit and MUST NOT have any dot appended.
+  return trimmed;
+}
+
+/**
+ * Convert a number to STEP Part 21 exponential REAL literal, e.g.
+ * `1.E-7`, `-3.5E+12`. Mirrors stepWrite.toStepExponential so a number that
+ * falls into the exponential branch produces the SAME literal whether it's
+ * emitted by geometry (stepWrite) or PMI (this module).
+ */
+function toStepExponential(n: number): string {
+  const e = n.toExponential();
+  const [mantRaw, expRaw] = e.split('e');
+  const exp = Number.parseInt(expRaw!, 10);
+  let mant = mantRaw!;
+  if (!mant.includes('.')) {
+    // Single-digit mantissa (e.g. "1"): append '.' so the literal is
+    // unambiguously REAL ("1.E-7", not "1E-7").
+    mant = `${mant}.`;
+  } else {
+    // Multi-digit mantissa (e.g. "1.5"): strip trailing fractional zeros —
+    // a bare trailing '.' is fine as a REAL marker.
+    mant = mant.replace(/0+$/, '');
+  }
+  return `${mant}E${exp >= 0 ? '+' : ''}${exp}`;
 }
 
 /** Mirrors stepWrite.esc — single quotes doubled, control chars stripped. */
@@ -740,6 +805,7 @@ export const __internal = {
   gdtSubtype,
   materialConditionEnum,
   fmt,
+  toStepExponential,
   esc,
   parseDatumIdsByName,
   emitDatumTargetShape,

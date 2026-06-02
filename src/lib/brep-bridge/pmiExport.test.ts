@@ -519,8 +519,10 @@ describe('writePmiFragmentWithSavedView — datum targets', () => {
       datumTargets: [{ name: 'A', targetType: 'area', size: 7.5 }],
     });
     expect(res.source).toContain('CIRCULAR_AREA(');
-    // Size 7.5 → `fmt(7.5)` = `'7.5.'` (trailing `.` for STEP REAL literal).
-    expect(res.source).toMatch(/CIRCULAR_AREA\('A\.1',#\d+,7\.5\.\)/);
+    // Size 7.5 → `fmt(7.5)` = `'7.5'` (no stray trailing dot — see
+    // pmiExport.fmt trailing-dot regression suite below). The previous
+    // implementation emitted `'7.5.'`, which would break Part 21 parsers.
+    expect(res.source).toMatch(/CIRCULAR_AREA\('A\.1',#\d+,7\.5\)/);
   });
 
   it("point target → CARTESIAN_POINT (no LINE / no CIRCULAR_AREA)", () => {
@@ -636,5 +638,233 @@ describe('writePmiFragmentWithSavedView — non-regression', () => {
     expect(out.get('A')).toBe(10);
     expect(out.get('B')).toBe(13);
     expect(out.size).toBe(2);
+  });
+});
+
+// ─── pmiExport.fmt trailing-dot regression suite ──────────────────────────
+//
+// Mirrors stepWrite.fmt.test.ts (Agent-FF). The pmiExport module owns its
+// own copy of `fmt` (intentional — keeps the two modules decoupled) and the
+// JJ-authored CIRCULAR_AREA(..., size=7.5) path exposed a stray-trailing-dot
+// bug (`'7.5.'`) that crashed strict Part 21 parsers. The cases below pin
+// the corrected contract.
+
+describe('pmiExport.fmt — integer values', () => {
+  const { fmt } = __internal;
+
+  it('fmt(0) → "0."', () => {
+    expect(fmt(0)).toBe('0.');
+  });
+
+  it('fmt(1) → "1." (integer LENGTH_MEASURE)', () => {
+    expect(fmt(1)).toBe('1.');
+  });
+
+  it('fmt(-2) → "-2."', () => {
+    expect(fmt(-2)).toBe('-2.');
+  });
+
+  it('fmt(100) → "100."', () => {
+    expect(fmt(100)).toBe('100.');
+  });
+});
+
+describe('pmiExport.fmt — non-integer values (regression: no stray trailing dot)', () => {
+  const { fmt } = __internal;
+
+  it('fmt(7.5) → "7.5" (CIRCULAR_AREA size case — was "7.5." before fix)', () => {
+    expect(fmt(7.5)).toBe('7.5');
+  });
+
+  it('fmt(1.5) → "1.5"', () => {
+    expect(fmt(1.5)).toBe('1.5');
+  });
+
+  it('fmt(-0.001) → "-0.001"', () => {
+    expect(fmt(-0.001)).toBe('-0.001');
+  });
+
+  it('fmt(0.5) → "0.5" (radian PLANE_ANGLE_MEASURE)', () => {
+    expect(fmt(0.5)).toBe('0.5');
+  });
+
+  it('fmt(0.05) → "0.05" (typical bilateral tolerance)', () => {
+    expect(fmt(0.05)).toBe('0.05');
+  });
+
+  it('fmt(0.1) → "0.1" (typical unilateral tolerance)', () => {
+    expect(fmt(0.1)).toBe('0.1');
+  });
+
+  it('fmt(-0.529999) → "-0.529999" (matches stepWrite.fmt contract)', () => {
+    expect(fmt(-0.529999)).toBe('-0.529999');
+  });
+
+  it('fmt(3.14) → "3.14"', () => {
+    expect(fmt(3.14)).toBe('3.14');
+  });
+});
+
+describe('pmiExport.fmt — sub-resolution / very large → STEP exponential', () => {
+  const { fmt } = __internal;
+
+  it('fmt(1e-7) → "1.E-7"', () => {
+    expect(fmt(1e-7)).toBe('1.E-7');
+  });
+
+  it('fmt(-1e-7) → "-1.E-7"', () => {
+    expect(fmt(-1e-7)).toBe('-1.E-7');
+  });
+
+  it('fmt(1e-12) survives round-trip — does not collapse to 0', () => {
+    const out = fmt(1e-12);
+    expect(out).not.toBe('0.');
+    expect(Number(out.replace('E', 'e'))).toBeCloseTo(1e-12, 18);
+  });
+});
+
+describe('pmiExport.fmt — non-finite throws', () => {
+  const { fmt } = __internal;
+
+  it('fmt(NaN) throws', () => {
+    expect(() => fmt(Number.NaN)).toThrow(/non-finite/);
+  });
+
+  it('fmt(Infinity) throws', () => {
+    expect(() => fmt(Number.POSITIVE_INFINITY)).toThrow(/non-finite/);
+  });
+
+  it('fmt(-Infinity) throws', () => {
+    expect(() => fmt(Number.NEGATIVE_INFINITY)).toThrow(/non-finite/);
+  });
+});
+
+describe('pmiExport output — no stray trailing dots in REAL literals (end-to-end)', () => {
+  it('CIRCULAR_AREA size=7.5 → exactly "7.5" with closing paren (no "7.5.")', () => {
+    const res = writePmiFragmentWithSavedView(makeSheet(), 100, {
+      datumTargets: [{ name: 'A', targetType: 'area', size: 7.5 }],
+    });
+    // Bug form would be `,7.5.)`; correct form is `,7.5)`.
+    expect(res.source).not.toMatch(/,7\.5\.\)/);
+    expect(res.source).toMatch(/CIRCULAR_AREA\('A\.1',#\d+,7\.5\)/);
+  });
+
+  it('LENGTH_MEASURE for integer nominal 20 → "LENGTH_MEASURE(20.)"', () => {
+    const sheet = makeSheet({
+      dimensions: [linearDim({ valueOverride: 20 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('LENGTH_MEASURE(20.)');
+  });
+
+  it('LENGTH_MEASURE for fractional 1.5 → "LENGTH_MEASURE(1.5)" (no stray dot)', () => {
+    const sheet = makeSheet({
+      dimensions: [linearDim({ valueOverride: 1.5 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('LENGTH_MEASURE(1.5)');
+    expect(res.source).not.toContain('LENGTH_MEASURE(1.5.)');
+  });
+
+  it('LENGTH_MEASURE for negative fractional -0.001 → "LENGTH_MEASURE(-0.001)"', () => {
+    const sheet = makeSheet({
+      dimensions: [linearDim({ valueOverride: -0.001 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('LENGTH_MEASURE(-0.001)');
+    expect(res.source).not.toContain('LENGTH_MEASURE(-0.001.)');
+  });
+
+  it('LENGTH_MEASURE for zero → "LENGTH_MEASURE(0.)"', () => {
+    const sheet = makeSheet({
+      dimensions: [linearDim({ valueOverride: 0 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('LENGTH_MEASURE(0.)');
+  });
+
+  it('PLANE_ANGLE_MEASURE for fractional 0.5 rad → "PLANE_ANGLE_MEASURE(0.5)"', () => {
+    const sheet = makeSheet({
+      dimensions: [angularDim({ valueOverride: 0.5 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('PLANE_ANGLE_MEASURE(0.5)');
+    expect(res.source).not.toContain('PLANE_ANGLE_MEASURE(0.5.)');
+  });
+
+  it('PLANE_ANGLE_MEASURE for integer 1 rad → "PLANE_ANGLE_MEASURE(1.)"', () => {
+    const sheet = makeSheet({
+      dimensions: [angularDim({ valueOverride: 1 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('PLANE_ANGLE_MEASURE(1.)');
+  });
+
+  it('tolerance value 0.05 → emitted as "LENGTH_MEASURE(0.05)" (no stray dot)', () => {
+    const sheet = makeSheet({
+      gdtCallouts: [flatnessGdt({ toleranceValue: 0.05 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('LENGTH_MEASURE(0.05)');
+    expect(res.source).not.toContain('LENGTH_MEASURE(0.05.)');
+  });
+
+  it('tolerance value 0.1 → emitted as "LENGTH_MEASURE(0.1)"', () => {
+    const sheet = makeSheet({
+      gdtCallouts: [flatnessGdt({ toleranceValue: 0.1 })],
+    });
+    const res = writePmiFragment(sheet, 100);
+    expect(res.source).toContain('LENGTH_MEASURE(0.1)');
+    expect(res.source).not.toContain('LENGTH_MEASURE(0.1.)');
+  });
+
+  it('full mixed sheet output has NO stray trailing-dot REAL tokens', () => {
+    // Realistic sheet: integer dims (20), fractional dims (1.5, -0.001),
+    // angular fractional (0.5), tolerances (0.05, 0.1), CIRCULAR_AREA size.
+    const sheet = makeSheet({
+      dimensions: [
+        linearDim({ id: 'd1', valueOverride: 20 }),
+        linearDim({
+          id: 'd2',
+          valueOverride: 1.5,
+          tolerance: { kind: 'bilateral', upper: 0.05, lower: 0.05 },
+        }),
+        radialDim({ id: 'd3', valueOverride: -0.001 }),
+        angularDim({ id: 'd4', valueOverride: 0.5 }),
+      ],
+      gdtCallouts: [
+        flatnessGdt({
+          id: 'g1',
+          toleranceValue: 0.1,
+          datums: ['A'],
+        }),
+      ],
+    });
+    const res = writePmiFragmentWithSavedView(sheet, 100, {
+      datumTargets: [{ name: 'A', targetType: 'area', size: 7.5 }],
+    });
+
+    // Scan every comma-separated argument inside parentheses and check that
+    // no purely-numeric token has two `.` characters in its mantissa. A
+    // bug-form token like `7.5.` would have two dots; the fix collapses it
+    // to a single dot.
+    for (const m of res.source.matchAll(/\(([^()]*)\)/g)) {
+      for (const tok of m[1]!.split(',')) {
+        const trimmed = tok.trim();
+        // Numeric-looking tokens: digit anywhere, no ref/quote/sentinel chars.
+        if (!/^-?\d/.test(trimmed)) continue;
+        if (/[#'$*]/.test(trimmed)) continue;
+        const mantissa = trimmed.split(/[eE]/)[0]!;
+        const dotCount = (mantissa.match(/\./g) ?? []).length;
+        expect(dotCount, `stray dot in token ${trimmed}`).toBeLessThanOrEqual(1);
+      }
+    }
+
+    // Spot-check the specific bug forms can't reappear.
+    expect(res.source).not.toMatch(/\d\.\d+\.\D/);
+    expect(res.source).not.toContain('7.5.');
+    expect(res.source).not.toContain('0.05.');
+    expect(res.source).not.toContain('0.1.');
+    expect(res.source).not.toContain('1.5.');
   });
 });
