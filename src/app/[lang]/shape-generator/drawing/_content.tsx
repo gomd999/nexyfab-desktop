@@ -40,6 +40,9 @@ import {
   type Sheet,
 } from '@/lib/drawing/sheet';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
+import { writeStepWithPmi } from '@/lib/brep-bridge/stepWriteWithPmi';
+import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
+import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { SheetRenderer } from './SheetRenderer';
 import DimensionAnnotationModal from './DimensionAnnotationModal';
 
@@ -77,6 +80,11 @@ interface PageDict {
   deleteAnnotation: string;
   exportPng: string;
   exportJson: string;
+  exportStepPmi: string;
+  exportStepError: string;
+  exportPdf: string;
+  exportPdfError: string;
+  multiPagePdfLabel: string;
   dimensionTag: string;
   gdtTag: string;
 }
@@ -98,6 +106,11 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: '삭제',
     exportPng: 'PNG 내보내기',
     exportJson: 'JSON 내보내기',
+    exportStepPmi: 'STEP+PMI 내보내기',
+    exportStepError: 'STEP 내보내기 실패',
+    exportPdf: 'PDF 내보내기',
+    exportPdfError: 'PDF 내보내기 실패',
+    multiPagePdfLabel: '여러 페이지로 묶기',
     dimensionTag: '치수',
     gdtTag: 'GD&T',
   },
@@ -117,6 +130,11 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: 'Delete',
     exportPng: 'Export PNG',
     exportJson: 'Export JSON',
+    exportStepPmi: 'Export STEP+PMI',
+    exportStepError: 'STEP export failed',
+    exportPdf: 'Export PDF',
+    exportPdfError: 'PDF export failed',
+    multiPagePdfLabel: 'Bundle as multi-page PDF',
     dimensionTag: 'DIM',
     gdtTag: 'GD&T',
   },
@@ -136,6 +154,11 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: '削除',
     exportPng: 'PNGエクスポート',
     exportJson: 'JSONエクスポート',
+    exportStepPmi: 'STEP+PMI エクスポート',
+    exportStepError: 'STEP エクスポートに失敗しました',
+    exportPdf: 'PDF エクスポート',
+    exportPdfError: 'PDF エクスポートに失敗しました',
+    multiPagePdfLabel: '複数ページPDFとしてまとめる',
     dimensionTag: '寸法',
     gdtTag: 'GD&T',
   },
@@ -155,7 +178,60 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: '删除',
     exportPng: '导出PNG',
     exportJson: '导出JSON',
+    exportStepPmi: '导出STEP+PMI',
+    exportStepError: 'STEP 导出失败',
+    exportPdf: '导出PDF',
+    exportPdfError: 'PDF 导出失败',
+    multiPagePdfLabel: '合并为多页PDF',
     dimensionTag: '尺寸',
+    gdtTag: 'GD&T',
+  },
+  es: {
+    title: 'Estudio de Planos',
+    subtitle: 'Hoja estándar 3 vistas + iso, anotaciones de dimensión / GD&T, exportación PNG / JSON',
+    partLabel: 'Pieza',
+    partCube: 'Cubo de muestra',
+    partCylinder: 'Cilindro de muestra',
+    partPentagonPrism: 'Prisma pentagonal de muestra',
+    partSampleStep: 'Archivo STEP de muestra',
+    paperLabel: 'Tamaño de papel',
+    scaleLabel: 'Escala',
+    annotationsLabel: 'Anotaciones',
+    noAnnotations: 'Aún no hay anotaciones',
+    addAnnotation: 'Añadir anotación',
+    deleteAnnotation: 'Eliminar',
+    exportPng: 'Exportar PNG',
+    exportJson: 'Exportar JSON',
+    exportStepPmi: 'Exportar STEP+PMI',
+    exportStepError: 'Error al exportar STEP',
+    exportPdf: 'Exportar PDF',
+    exportPdfError: 'Error al exportar PDF',
+    multiPagePdfLabel: 'Agrupar como PDF de varias páginas',
+    dimensionTag: 'DIM',
+    gdtTag: 'GD&T',
+  },
+  ar: {
+    title: 'استوديو الرسومات',
+    subtitle: 'ورقة قياسية بثلاث رؤى + إيزو، تعليقات الأبعاد / GD&T، تصدير PNG / JSON',
+    partLabel: 'الجزء',
+    partCube: 'مكعب نموذج',
+    partCylinder: 'أسطوانة نموذج',
+    partPentagonPrism: 'منشور خماسي نموذج',
+    partSampleStep: 'ملف STEP نموذج',
+    paperLabel: 'حجم الورق',
+    scaleLabel: 'المقياس',
+    annotationsLabel: 'التعليقات',
+    noAnnotations: 'لا توجد تعليقات بعد',
+    addAnnotation: 'إضافة تعليق',
+    deleteAnnotation: 'حذف',
+    exportPng: 'تصدير PNG',
+    exportJson: 'تصدير JSON',
+    exportStepPmi: 'تصدير STEP+PMI',
+    exportStepError: 'فشل تصدير STEP',
+    exportPdf: 'تصدير PDF',
+    exportPdfError: 'فشل تصدير PDF',
+    multiPagePdfLabel: 'تجميع كملف PDF متعدد الصفحات',
+    dimensionTag: 'البُعد',
     gdtTag: 'GD&T',
   },
 };
@@ -270,6 +346,28 @@ function exportSheetJson(sheet: Sheet, filename: string): void {
   downloadBlob(blob, filename);
 }
 
+/**
+ * Export a complete ISO-10303-21 STEP file (geometry + AP242 PMI fragment)
+ * for the currently selected sample part + the live sheet annotations.
+ *
+ * Throws are re-raised so the caller can surface them in the UI; the
+ * MIME type matches the IANA-registered `application/step` so browsers
+ * route the download into the user's STEP/CAD application by default.
+ */
+function exportSheetStep(sourceId: string, sheet: Sheet, filename: string): void {
+  const geometry = sampleGeometryForSourceId(sourceId);
+  const stepSource = writeStepWithPmi({
+    geometry,
+    pmi: { sheet },
+    header: {
+      description: `NexyFab drawing export — ${sheet.name}`,
+      filename,
+    },
+  });
+  const blob = new Blob([stepSource], { type: 'application/step' });
+  downloadBlob(blob, filename);
+}
+
 // ─── component ───────────────────────────────────────────────────────────
 
 export function DrawingPageContent({ lang }: { lang: string }): React.ReactElement {
@@ -283,6 +381,17 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   }>({ dimensions: [], gdtCallouts: [] });
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [stepExportError, setStepExportError] = useState<string | null>(null);
+  const [pdfExportError, setPdfExportError] = useState<string | null>(null);
+  /**
+   * Phase 4.4.3 PDF export — when true, the future multi-sheet UI will
+   * pass every sheet to {@link exportSheetsToPdf}. Today this page only
+   * authors a single Sheet, so the checkbox is wired but has no
+   * additional effect until a `sheets[]` prop arrives upstream. The
+   * state is preserved so caller harnesses (including the tests) can
+   * still flip it.
+   */
+  const [multiPagePdf, setMultiPagePdf] = useState<boolean>(false);
 
   const sheetRef = React.useRef<HTMLDivElement>(null);
 
@@ -348,6 +457,42 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   const onExportJson = useCallback(() => {
     exportSheetJson(sheet, `${sheet.id}.json`);
   }, [sheet]);
+
+  const onExportStep = useCallback(() => {
+    // Clear any previous error so a successful retry hides the banner.
+    setStepExportError(null);
+    try {
+      exportSheetStep(sourceId, sheet, `${sheet.id}.step`);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setStepExportError(`${dict.exportStepError}: ${detail}`);
+    }
+  }, [sourceId, sheet, dict.exportStepError]);
+
+  const onExportPdf = useCallback(async () => {
+    setPdfExportError(null);
+    if (!sheetRef.current) return;
+    const svgEl = sheetRef.current.querySelector(
+      'svg[data-testid="sheet-renderer-root"]',
+    ) as SVGElement | null;
+    if (!svgEl) return;
+    // Phase 1: page list is always [currentSheet]. The `multiPagePdf`
+    // toggle is a no-op until a `sheets[]` prop is wired in upstream;
+    // once it is, replace `[sheet]` / `[svgEl]` with the full arrays.
+    const sheetsToExport = [sheet];
+    const svgRefs: SVGElement[] = [svgEl];
+    try {
+      const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
+      downloadBlob(blob, `${sheet.id}.pdf`);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      const prefix =
+        err instanceof PdfExportError && err.code === 'jspdf-missing'
+          ? `${dict.exportPdfError} (jspdf)`
+          : dict.exportPdfError;
+      setPdfExportError(`${prefix}: ${detail}`);
+    }
+  }, [sheet, dict.exportPdfError]);
 
   return (
     <main
@@ -554,12 +699,12 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           </aside>
         </div>
 
-        {/* ─── Bottom: export buttons ──────────────────────────────── */}
+        {/* ─── Bottom: export buttons + error banner ───────────────── */}
         <footer
           data-testid="drawing-page-footer"
           style={{
             display: 'flex',
-            justifyContent: 'flex-end',
+            flexDirection: 'column',
             gap: 8,
             padding: 12,
             background: '#ffffff',
@@ -567,36 +712,111 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
           }}
         >
-          <button
-            type="button"
-            data-testid="drawing-export-png-button"
-            onClick={onExportPng}
-            style={{
-              padding: '8px 14px',
-              background: '#0f172a',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            {dict.exportPng}
-          </button>
-          <button
-            type="button"
-            data-testid="drawing-export-json-button"
-            onClick={onExportJson}
-            style={{
-              padding: '8px 14px',
-              background: '#0f172a',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            {dict.exportJson}
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-multi-page-pdf-checkbox"
+                checked={multiPagePdf}
+                onChange={(e) => setMultiPagePdf(e.target.checked)}
+              />
+              {dict.multiPagePdfLabel}
+            </label>
+            <button
+              type="button"
+              data-testid="drawing-export-png-button"
+              onClick={onExportPng}
+              style={{
+                padding: '8px 14px',
+                background: '#0f172a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {dict.exportPng}
+            </button>
+            <button
+              type="button"
+              data-testid="drawing-export-json-button"
+              onClick={onExportJson}
+              style={{
+                padding: '8px 14px',
+                background: '#0f172a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {dict.exportJson}
+            </button>
+            <button
+              type="button"
+              data-testid="drawing-export-pdf-button"
+              onClick={() => { void onExportPdf(); }}
+              style={{
+                padding: '8px 14px',
+                background: '#0f172a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {dict.exportPdf}
+            </button>
+            <button
+              type="button"
+              data-testid="drawing-export-step-button"
+              onClick={onExportStep}
+              style={{
+                padding: '8px 14px',
+                background: '#0f172a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {dict.exportStepPmi}
+            </button>
+          </div>
+          {stepExportError ? (
+            <p
+              data-testid="drawing-export-step-error"
+              role="alert"
+              style={{
+                margin: 0,
+                padding: '6px 10px',
+                background: '#fee2e2',
+                color: '#991b1b',
+                borderRadius: 4,
+                fontSize: 12,
+              }}
+            >
+              {stepExportError}
+            </p>
+          ) : null}
+          {pdfExportError ? (
+            <p
+              data-testid="drawing-export-pdf-error"
+              role="alert"
+              style={{
+                margin: 0,
+                padding: '6px 10px',
+                background: '#fee2e2',
+                color: '#991b1b',
+                borderRadius: 4,
+                fontSize: 12,
+              }}
+            >
+              {pdfExportError}
+            </p>
+          ) : null}
         </footer>
       </div>
 
