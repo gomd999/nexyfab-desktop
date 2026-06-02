@@ -5,7 +5,7 @@
  * Standalone modal: takes lang + optional initialState + onClose + optional
  * onSolve. All test ids prefixed solver-assembly-*.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import AssemblyBrowserModal, {
@@ -814,6 +814,209 @@ describe('AssemblyBrowserModal', () => {
       );
       const btn = screen.getByTestId('solver-assembly-part-p_base-refs-toggle');
       expect(btn.textContent).toMatch(re);
+    });
+  });
+
+  // ── Phase 4: projectId persistence ──────────────────────────────────────
+
+  /**
+   * Persistence tests live next to the in-memory suite so the back-compat
+   * contract (no projectId = no localStorage touched) is auditable in one
+   * file. The existing 50 in-memory tests above cover the unpersisted
+   * path verbatim — this suite focuses on the persisted branch.
+   */
+  describe('Phase 4 projectId persistence', () => {
+    beforeEach(() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.clear();
+      }
+    });
+    afterEach(() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.clear();
+      }
+    });
+
+    it('without projectId: in-memory mode does NOT touch localStorage on add-part', () => {
+      // Patch the instance method on window.localStorage — vi.spyOn against
+      // Storage.prototype is a no-op in jsdom because instance.setItem is
+      // bound, not delegated to the prototype.
+      const calls: Array<{ key: string; value: string }> = [];
+      const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+      window.localStorage.setItem = (key: string, value: string) => {
+        calls.push({ key, value });
+        originalSetItem(key, value);
+      };
+      try {
+        render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+        fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+        const writesForKeys = calls.filter((c) => c.key.startsWith('nexyfab:assembly'));
+        expect(writesForKeys.length).toBe(0);
+        expect(screen.queryByTestId('solver-assembly-saved')).toBeNull();
+      } finally {
+        window.localStorage.setItem = originalSetItem;
+      }
+    });
+
+    it('with projectId: add-part → mate → debounced write under nexyfab:assembly:${pid}', async () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          projectId="proj-asm-write"
+          initialState={seedState()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      // useAssemblyStorage debounces 500 ms — wait for the localStorage
+      // entry to appear (real timers; the hook uses setTimeout natively).
+      await waitFor(
+        () => {
+          const raw = window.localStorage.getItem('nexyfab:assembly:proj-asm-write');
+          expect(raw).not.toBeNull();
+        },
+        { timeout: 2000 },
+      );
+      const raw = window.localStorage.getItem('nexyfab:assembly:proj-asm-write')!;
+      const parsed = JSON.parse(raw) as {
+        version: number;
+        state: { parts: unknown[] };
+      };
+      expect(parsed.version).toBe(1);
+      // Original 2 parts from seedState() + 1 from the add-part click.
+      expect(parsed.state.parts.length).toBe(3);
+    });
+
+    it('with projectId: mounts with pre-populated localStorage → rehydrates the assembly', () => {
+      // Hand-craft a valid v1 envelope with one fixed part.
+      const persisted = {
+        version: 1,
+        state: {
+          parts: [
+            {
+              id: 'persisted_part',
+              name: 'Persisted Part',
+              partTemplateId: 'tpl',
+              position: { x: 0, y: 0, z: 0 },
+              orientation: IDENTITY_QUAT,
+              fixed: true,
+            },
+          ],
+          mates: [],
+        },
+      };
+      window.localStorage.setItem(
+        'nexyfab:assembly:proj-asm-load',
+        JSON.stringify(persisted),
+      );
+      render(
+        <AssemblyBrowserModal lang="en" projectId="proj-asm-load" onClose={vi.fn()} />,
+      );
+      expect(screen.getByTestId('solver-assembly-part-row-persisted_part')).toBeInTheDocument();
+    });
+
+    it('with projectId: initialFeatureTrees persist under nexyfab:assembly-trees:${pid}', async () => {
+      const TINY_TREE: FeatureTree = { nodes: [] };
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          projectId="proj-asm-trees"
+          initialState={seedState()}
+          initialFeatureTrees={{ p_base: TINY_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      // Trigger a tree-edit so the per-part record write fires. Open the
+      // editor and type the same tree back — that round-trips through
+      // setFeatureTrees and enqueues the debounced write.
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      const ed = screen.getByTestId(
+        'solver-assembly-part-p_base-tree-editor',
+      ) as HTMLTextAreaElement;
+      fireEvent.change(ed, { target: { value: '{ "nodes": [] }' } });
+      await waitFor(
+        () => {
+          const raw = window.localStorage.getItem(
+            'nexyfab:assembly-trees:proj-asm-trees',
+          );
+          expect(raw).not.toBeNull();
+        },
+        { timeout: 2000 },
+      );
+      const raw = window.localStorage.getItem(
+        'nexyfab:assembly-trees:proj-asm-trees',
+      )!;
+      const parsed = JSON.parse(raw) as { record: Record<string, unknown> };
+      expect(parsed.record).toHaveProperty('p_base');
+    });
+
+    it('with projectId: Reset button wipes parts + mates and shows empty placeholders', async () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          projectId="proj-asm-reset"
+          initialState={seedState()}
+          onClose={vi.fn()}
+        />,
+      );
+      // Sanity — seeded rows present.
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-mate-row-m1')).toBeInTheDocument();
+      // Reset.
+      fireEvent.click(screen.getByTestId('solver-assembly-reset'));
+      await waitFor(() => {
+        expect(screen.queryByTestId('solver-assembly-part-row-p_base')).toBeNull();
+        expect(screen.queryByTestId('solver-assembly-mate-row-m1')).toBeNull();
+      });
+      // Empty placeholders return.
+      expect(screen.getByTestId('solver-assembly-parts-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-mates-empty')).toBeInTheDocument();
+    });
+
+    it('without projectId: Reset still clears the modal (in-memory mode)', async () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('solver-assembly-reset'));
+      await waitFor(() =>
+        expect(screen.queryByTestId('solver-assembly-part-row-p_base')).toBeNull(),
+      );
+      // Saved indicator absent (in-memory mode).
+      expect(screen.queryByTestId('solver-assembly-saved')).toBeNull();
+    });
+
+    it('with projectId: trees-record quota-exceeded surfaces save-error banner', async () => {
+      // Patch the instance method on window.localStorage — vi.spyOn against
+      // Storage.prototype doesn't intercept jsdom's bound setItem.
+      const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+      window.localStorage.setItem = (key: string, value: string) => {
+        if (key === 'nexyfab:assembly-trees:proj-asm-quota') {
+          const err = new Error('quota');
+          err.name = 'QuotaExceededError';
+          throw err;
+        }
+        originalSetItem(key, value);
+      };
+      try {
+        render(
+          <AssemblyBrowserModal
+            lang="en"
+            projectId="proj-asm-quota"
+            initialState={seedState()}
+            onClose={vi.fn()}
+          />,
+        );
+        fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+        const ed = screen.getByTestId(
+          'solver-assembly-part-p_base-tree-editor',
+        ) as HTMLTextAreaElement;
+        fireEvent.change(ed, { target: { value: '{ "nodes": [] }' } });
+        const banner = await screen.findByTestId('solver-assembly-save-error', undefined, {
+          timeout: 2000,
+        });
+        expect(banner.textContent).toMatch(/quota exceeded/i);
+      } finally {
+        window.localStorage.setItem = originalSetItem;
+      }
     });
   });
 });

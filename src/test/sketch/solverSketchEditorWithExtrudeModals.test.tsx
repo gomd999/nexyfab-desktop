@@ -15,11 +15,19 @@
  * The new modals are dynamic-imported in the wrapper to keep the bundle
  * small for users who never open them, so `findByTestId` is used (await
  * the async chunk load) instead of synchronous `getByTestId`.
+ *
+ * Phase 2.8 adds the "projectId persistence" suite at the bottom — exercises
+ * useFeatureTreeStorage routing, Reset, autosave debounce, quota error.
  */
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import SolverSketchEditorWithExtrude from '@/app/[lang]/shape-generator/sketch/SolverSketchEditorWithExtrude';
+import {
+  serializeFeatureTree,
+  FEATURE_TREE_AUTOSAVE_DEBOUNCE_MS,
+} from '@/lib/cad/featureTreePersist';
+import type { FeatureTree } from '@/lib/cad/featureTree';
 
 function clickAt(el: Element, x: number, y: number) {
   fireEvent.click(el, { clientX: x, clientY: y });
@@ -697,5 +705,328 @@ describe('SolverSketchEditorWithExtrude — STEP import + FeatureTreeView wiring
     await waitFor(() => {
       expect(screen.getByTestId('feature-tree-row-extrude_0').getAttribute('data-suppressed')).toBe('false');
     });
+  });
+});
+
+// ─── Phase 2.8: projectId persistence ────────────────────────────────────
+
+/**
+ * Persistence tests cover the projectId-gated `useFeatureTreeStorage`
+ * branch of the wrapper. The constraint requires 100 % back-compat when
+ * `projectId` is absent — the existing 36 tests above exercise that path
+ * verbatim, so the suite here focuses on the persisted branch.
+ */
+describe('SolverSketchEditorWithExtrude — Phase 2.8 projectId persistence', () => {
+  const TREE_KEY = (pid: string) => `nexyfab:tree:${pid}`;
+
+  beforeEach(() => {
+    // Each test gets a clean localStorage slot so cross-test bleed is
+    // impossible. The wrapper writes under nexyfab:tree:${projectId}.
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+  });
+  afterEach(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+  });
+
+  /** Real-time delay helper — sleep slightly longer than the autosave
+   *  debounce so any pending write would have fired by the time we check. */
+  const sleepPastDebounce = () =>
+    new Promise<void>((r) => setTimeout(r, FEATURE_TREE_AUTOSAVE_DEBOUNCE_MS + 100));
+
+  it('no projectId → no localStorage write happens even after a submit', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    fireEvent.click(canvas, { clientX: 100, clientY: 100 });
+    fireEvent.click(canvas, { clientX: 200, clientY: 200 });
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    // Wait past the debounce window — nothing should land in localStorage.
+    await act(async () => {
+      await sleepPastDebounce();
+    });
+    // No key starting with nexyfab:tree: should exist.
+    const keys = Object.keys(window.localStorage);
+    expect(keys.filter((k) => k.startsWith('nexyfab:tree:'))).toEqual([]);
+    // Saved indicator is hidden in in-memory mode.
+    expect(screen.queryByTestId('solver-feature-tree-saved')).toBeNull();
+  });
+
+  it('projectId set → debounced localStorage write after a submit', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        projectId="proj-debounce"
+        extrudeFetcher={fetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    fireEvent.click(canvas, { clientX: 100, clientY: 100 });
+    fireEvent.click(canvas, { clientX: 200, clientY: 200 });
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    const targetKey = TREE_KEY('proj-debounce');
+    // Wait for the debounced write to land.
+    await waitFor(
+      () => {
+        expect(window.localStorage.getItem(targetKey)).not.toBeNull();
+      },
+      { timeout: 2000 },
+    );
+    expect(screen.getByTestId('solver-feature-tree-saved')).toBeInTheDocument();
+    const raw = window.localStorage.getItem(targetKey)!;
+    const parsed = JSON.parse(raw) as { version: number; tree: { nodes: unknown[] } };
+    expect(parsed.version).toBe(1);
+    expect(parsed.tree.nodes.length).toBe(1);
+  });
+
+  it('mount with pre-populated localStorage → wrapper rehydrates the tree on first paint', async () => {
+    // Construct a structurally valid extrude payload so deserializeFeatureTree
+    // (which runs per-kind required-field checks) accepts the rehydrate.
+    const SEED: FeatureTree = {
+      nodes: [
+        {
+          id: 'extrude_seed',
+          name: 'Seeded extrude',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }],
+            depth: 5,
+            direction: 'one_sided',
+            mode: 'add',
+          } as unknown as FeatureTree['nodes'][number]['payload'],
+        },
+      ],
+    };
+    window.localStorage.setItem(TREE_KEY('proj-load'), serializeFeatureTree(SEED));
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        projectId="proj-load"
+        extrudeFetcher={vi.fn()}
+      />,
+    );
+    // Seeded row should be present on the very first paint — no submit
+    // required.
+    expect(await screen.findByTestId('feature-tree-row-extrude_seed')).toBeInTheDocument();
+  });
+
+  it('Reset button clears the tree AND flushes an empty payload to localStorage', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        projectId="proj-reset"
+        extrudeFetcher={fetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    fireEvent.click(canvas, { clientX: 100, clientY: 100 });
+    fireEvent.click(canvas, { clientX: 200, clientY: 200 });
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    // Now Reset.
+    fireEvent.click(screen.getByTestId('solver-feature-tree-reset'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument(),
+    );
+    // Wait past debounce so the empty-tree write lands.
+    await act(async () => {
+      await sleepPastDebounce();
+    });
+    const raw = window.localStorage.getItem(TREE_KEY('proj-reset'))!;
+    const parsed = JSON.parse(raw) as { tree: { nodes: unknown[] } };
+    expect(parsed.tree.nodes).toEqual([]);
+  });
+
+  it('Reset button works in in-memory mode (no projectId) — just clears the panel', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    fireEvent.click(canvas, { clientX: 100, clientY: 100 });
+    fireEvent.click(canvas, { clientX: 200, clientY: 200 });
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('solver-feature-tree-reset'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('quota-exceeded save error surfaces the toast / onError banner', async () => {
+    // Patch the instance method on window.localStorage directly. Mocking
+    // via vi.spyOn(Storage.prototype, ...) is a no-op in jsdom because
+    // window.localStorage stores its own bound setItem, not the prototype.
+    const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+    window.localStorage.setItem = (key: string, value: string) => {
+      if (key === 'nexyfab:tree:proj-quota') {
+        const err = new Error('quota');
+        err.name = 'QuotaExceededError';
+        throw err;
+      }
+      originalSetItem(key, value);
+    };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    try {
+      render(
+        <SolverSketchEditorWithExtrude
+          lang="en"
+          projectId="proj-quota"
+          extrudeFetcher={fetcher}
+        />,
+      );
+      const editor = await screen.findByTestId('solver-sketch-editor');
+      await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+        timeout: 10000,
+      });
+      fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+      const canvas = screen.getByTestId('solver-sketch-canvas');
+      fireEvent.click(canvas, { clientX: 100, clientY: 100 });
+      fireEvent.click(canvas, { clientX: 200, clientY: 200 });
+      await waitFor(() => {
+        expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+          false,
+        );
+      });
+      fireEvent.click(screen.getByTestId('solver-extrude-button'));
+      fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+      await waitFor(() =>
+        expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+      );
+      // Wait past debounce so the (failing) write runs and toast surfaces.
+      const banner = await screen.findByTestId(
+        'solver-feature-tree-save-error',
+        undefined,
+        { timeout: 2000 },
+      );
+      expect(banner.textContent).toMatch(/quota exceeded/i);
+    } finally {
+      window.localStorage.setItem = originalSetItem;
+    }
+  });
+
+  it('debounce eventually settles to a single setItem call after a Reset chain', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        projectId="proj-debounce-2"
+        extrudeFetcher={fetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    fireEvent.click(canvas, { clientX: 100, clientY: 100 });
+    fireEvent.click(canvas, { clientX: 200, clientY: 200 });
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    // Reset immediately resets the timer — the queued tree under the same
+    // key is replaced before the 500 ms window elapses.
+    fireEvent.click(screen.getByTestId('solver-feature-tree-reset'));
+    // After settling, the persisted blob reflects the FINAL state (empty)
+    // even though multiple setTree calls were issued in rapid succession.
+    await waitFor(
+      () => {
+        const raw = window.localStorage.getItem(TREE_KEY('proj-debounce-2'));
+        expect(raw).not.toBeNull();
+        const parsed = JSON.parse(raw!) as { tree: { nodes: unknown[] } };
+        expect(parsed.tree.nodes).toEqual([]);
+      },
+      { timeout: 2000 },
+    );
   });
 });

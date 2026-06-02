@@ -112,6 +112,14 @@ export interface AssemblyBrowserPageContentProps {
   initialState?: AssemblyState;
   initialFeatureTrees?: Record<string, FeatureTree>;
   onSolve?: AssemblyBrowserOnSolve;
+  /**
+   * Optional project identifier (Phase 4). Threaded down into the
+   * AssemblyBrowserModal so parts + mates + per-part FeatureTrees are
+   * auto-persisted to localStorage under `nexyfab:assembly:${projectId}`
+   * and `nexyfab:assembly-trees:${projectId}`. When omitted the modal
+   * stays on its in-memory state path.
+   */
+  projectId?: string;
 }
 
 export function AssemblyBrowserPageContent({
@@ -119,6 +127,7 @@ export function AssemblyBrowserPageContent({
   initialState,
   initialFeatureTrees,
   onSolve,
+  projectId,
 }: AssemblyBrowserPageContentProps): React.ReactElement {
   const editorLang = normalizeLang(lang);
   const labels = SAMPLE_LABELS[editorLang];
@@ -226,6 +235,7 @@ export function AssemblyBrowserPageContent({
         initialFeatureTrees={loadedTrees}
         onClose={onClose}
         onSolve={onSolve ?? defaultOnSolve}
+        projectId={projectId}
       />
     </main>
   );

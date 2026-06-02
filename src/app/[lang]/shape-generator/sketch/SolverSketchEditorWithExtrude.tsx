@@ -39,6 +39,10 @@ import {
   type FeatureTree,
 } from '@/lib/cad/featureTree';
 import { applyEdit, FeatureTreeEditError } from '@/lib/cad/featureTreeEdit';
+import {
+  useFeatureTreeStorage,
+  type SaveError,
+} from '@/lib/cad/featureTreePersist';
 
 // StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
 // Sketch editor bundle small for users who never click Extrude.
@@ -112,6 +116,10 @@ interface Dict {
   pngHeading: string;
   errorPrefix: string;
   errorDepthInvalid: string;
+  /** Persistence (Phase 2.8) — shown when a projectId is provided. */
+  savedAt: string;
+  saveError: string;
+  reset: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -126,6 +134,9 @@ const dict: Record<Lang, Dict> = {
     rendering: '렌더링 중...', scadHeading: 'SCAD 소스', pngHeading: '미리보기',
     errorPrefix: '오류',
     errorDepthInvalid: '깊이는 0보다 커야 합니다',
+    savedAt: '저장됨',
+    saveError: '저장 실패',
+    reset: '초기화',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -138,6 +149,9 @@ const dict: Record<Lang, Dict> = {
     rendering: 'Rendering...', scadHeading: 'SCAD source', pngHeading: 'Preview',
     errorPrefix: 'Error',
     errorDepthInvalid: 'depth must be > 0',
+    savedAt: 'Saved',
+    saveError: 'Save failed',
+    reset: 'Reset',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -150,6 +164,9 @@ const dict: Record<Lang, Dict> = {
     rendering: 'レンダリング中...', scadHeading: 'SCADソース', pngHeading: 'プレビュー',
     errorPrefix: 'エラー',
     errorDepthInvalid: '深さは 0 より大きい必要があります',
+    savedAt: '保存済み',
+    saveError: '保存失敗',
+    reset: 'リセット',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -162,6 +179,9 @@ const dict: Record<Lang, Dict> = {
     rendering: '渲染中...', scadHeading: 'SCAD源', pngHeading: '预览',
     errorPrefix: '错误',
     errorDepthInvalid: '深度必须大于 0',
+    savedAt: '已保存',
+    saveError: '保存失败',
+    reset: '重置',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -174,6 +194,9 @@ const dict: Record<Lang, Dict> = {
     rendering: 'Renderizando...', scadHeading: 'Fuente SCAD', pngHeading: 'Vista previa',
     errorPrefix: 'Error',
     errorDepthInvalid: 'la profundidad debe ser > 0',
+    savedAt: 'Guardado',
+    saveError: 'Error al guardar',
+    reset: 'Restablecer',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -186,6 +209,9 @@ const dict: Record<Lang, Dict> = {
     rendering: 'جارٍ التصيير...', scadHeading: 'مصدر SCAD', pngHeading: 'معاينة',
     errorPrefix: 'خطأ',
     errorDepthInvalid: 'يجب أن يكون العمق أكبر من 0',
+    savedAt: 'تم الحفظ',
+    saveError: 'فشل الحفظ',
+    reset: 'إعادة تعيين',
   },
 };
 
@@ -235,7 +261,31 @@ const defaultFetcher: ExtrudeFetcher = async (req) => {
   return res.json();
 };
 
+/**
+ * Optional persistence (Phase 2.8). When a `projectId` is supplied, the
+ * wrapper switches FeatureTree state from plain in-memory `useState` to
+ * `useFeatureTreeStorage('nexyfab:tree:${projectId}')` — auto-load on
+ * mount, debounced save (500 ms) on every edit, Reset button to clear.
+ *
+ * When `projectId` is omitted, the wrapper uses the original in-memory
+ * `useState` path verbatim. No localStorage I/O happens — tests written
+ * before persistence existed keep passing without changes.
+ *
+ * Implementation note: React rules-of-hooks forbid conditional hook calls,
+ * so we always call BOTH hooks and pick the active branch by `useMemo`.
+ * The unused branch holds its empty initial state and never advances, so
+ * the cost is one extra `useState` allocation per render.
+ */
+const STORAGE_KEY_PREFIX = 'nexyfab:tree:';
+
 export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorProps {
+  /**
+   * Optional project identifier. When provided the FeatureTree is
+   * persisted to `localStorage['nexyfab:tree:${projectId}']` with a 500 ms
+   * debounced auto-save (see useFeatureTreeStorage). When absent the
+   * wrapper stays on its original in-memory state (100 % back-compat).
+   */
+  projectId?: string;
   /** Injectable fetcher for tests. Defaults to POST /api/extrude-render. */
   extrudeFetcher?: ExtrudeFetcher;
   /** Injectable fetcher for tests. Defaults to POST /api/revolve-render. */
@@ -267,6 +317,7 @@ export default function SolverSketchEditorWithExtrude(
   props: SolverSketchEditorWithExtrudeProps,
 ): React.ReactElement {
   const {
+    projectId,
     extrudeFetcher = defaultFetcher,
     revolveFetcher,
     sweepFetcher,
@@ -303,10 +354,39 @@ export default function SolverSketchEditorWithExtrude(
   const [render, setRender] = useState<RenderState>({ status: 'idle' });
 
   // ── feature tree state (Phase 2.7 + 5.2 UI integration) ─────────────────
-  const [featureTree, setFeatureTree] = useState<FeatureTree>({ nodes: [] });
+  // Persistence toast (Phase 2.8) — shown for ~3 s when the storage hook
+  // surfaces a write error (quota_exceeded, no_storage, unknown).
+  const [persistError, setPersistError] = useState<{ error: SaveError; message: string } | null>(
+    null,
+  );
+  // Stable callback the storage hook calls on every save failure. We mirror
+  // both the structured error code AND the human-readable message so the
+  // toast can fall back to "Save failed" + the raw reason.
+  const onPersistError = useCallback((error: SaveError, message: string) => {
+    setPersistError({ error, message });
+  }, []);
+
+  // BOTH hooks run on every render to keep rules-of-hooks happy. The
+  // storage hook is keyed under a stable per-instance sentinel when no
+  // projectId is supplied; we never *read* its state in that case, so
+  // those writes never happen (we don't call its setter). When projectId
+  // IS supplied, we route both reads and writes through it.
+  const storageKey = projectId !== undefined ? `${STORAGE_KEY_PREFIX}${projectId}` : '';
+  const [storedFeatureTree, setStoredFeatureTree] = useFeatureTreeStorage(storageKey, {
+    onError: onPersistError,
+  });
+  const [memoryFeatureTree, setMemoryFeatureTree] = useState<FeatureTree>({ nodes: [] });
+  const featureTree = projectId !== undefined ? storedFeatureTree : memoryFeatureTree;
+  const setFeatureTree: typeof setMemoryFeatureTree =
+    projectId !== undefined
+      ? (setStoredFeatureTree as typeof setMemoryFeatureTree)
+      : setMemoryFeatureTree;
+
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | undefined>(undefined);
-  /** Monotonic id generator for tree nodes created by modal submits. */
-  const nextNodeIdRef = useRef<number>(0);
+  /** Monotonic id generator for tree nodes created by modal submits. Seeded
+   *  from the loaded tree size so a freshly rehydrated tree appends new
+   *  nodes after the persisted ones rather than colliding with them. */
+  const nextNodeIdRef = useRef<number>(featureTree.nodes.length);
 
   // Synthetic-payload helper: each modal returns only SCAD+pngs, not a full
   // feature IR, so we synthesise a placeholder payload tagged by `kind`. The
@@ -440,6 +520,15 @@ export default function SolverSketchEditorWithExtrude(
   );
 
   // ── tree-row callbacks ──────────────────────────────────────────────────
+  // Reset = clear the tree + the local id counter. When persisted, also
+  // wipes the localStorage entry on the next debounce flush (the storage
+  // hook serialises the empty tree and writes it under the same key).
+  const handleResetTree = useCallback(() => {
+    nextNodeIdRef.current = 0;
+    setSelectedFeatureId(undefined);
+    setPersistError(null);
+    setFeatureTree({ nodes: [] });
+  }, [setFeatureTree]);
   const handleSelectNode = useCallback((id: string) => {
     setSelectedFeatureId(id);
   }, []);
@@ -791,8 +880,63 @@ export default function SolverSketchEditorWithExtrude(
       </div>
 
       {/* Feature tree panel (Phase 2.7) — mounted below the operation
-          toolbar so users see new nodes accumulate as they submit modals. */}
+          toolbar so users see new nodes accumulate as they submit modals.
+          Phase 2.8 adds a Reset button + persistence status banner that
+          surface ONLY when the wrapper is in persisted mode (projectId set). */}
       <div data-testid="solver-feature-tree-panel" style={{ marginTop: 4 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            marginBottom: 4,
+            fontSize: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleResetTree}
+            data-testid="solver-feature-tree-reset"
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: '#fff',
+              border: '1px solid #d1d5db',
+              color: '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {t.reset}
+          </button>
+          {projectId !== undefined && persistError === null && (
+            <span
+              data-testid="solver-feature-tree-saved"
+              style={{ color: '#16a34a', fontSize: 11 }}
+            >
+              {t.savedAt}
+            </span>
+          )}
+          {projectId !== undefined && persistError !== null && (
+            <span
+              data-testid="solver-feature-tree-save-error"
+              role="alert"
+              style={{
+                color: '#dc2626',
+                fontSize: 11,
+                padding: '2px 6px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 4,
+              }}
+            >
+              {t.saveError}: {persistError.error === 'quota_exceeded'
+                ? 'quota exceeded'
+                : persistError.message}
+            </span>
+          )}
+        </div>
         <FeatureTreeView
           lang={treeLang}
           tree={featureTree}

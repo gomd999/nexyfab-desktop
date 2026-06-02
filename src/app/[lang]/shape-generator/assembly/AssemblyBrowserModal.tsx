@@ -29,14 +29,16 @@
  * All test ids are prefixed `solver-assembly-` per the task convention.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type AssemblyState,
   type PartInstance,
   IDENTITY_QUAT,
 } from '@/lib/assembly/assemblyState';
+import { useAssemblyStorage } from '@/lib/assembly/assemblyPersist';
 import type { Mate, MateKind, MateRef, MateRefKind } from '@/lib/assembly/mate';
 import type { FeatureTree } from '@/lib/cad/featureTree';
+import type { SaveError } from '@/lib/cad/featureTreePersist';
 import { listPartRefs } from '@/lib/assembly/geometryResolver';
 import MateConstraintsToolbar, {
   type ToolbarSelectionRef,
@@ -98,6 +100,10 @@ interface Dict {
   selectedEmpty: string;
   /** Clear-selection button label. */
   clearSelection: string;
+  /** Persistence (Phase 4) — shown when a projectId is provided. */
+  savedAt: string;
+  saveError: string;
+  reset: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -142,6 +148,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     selectedLabel: '선택됨',
     selectedEmpty: '(없음)',
     clearSelection: '선택 초기화',
+    savedAt: '저장됨',
+    saveError: '저장 실패',
+    reset: '초기화',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -184,6 +193,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     selectedLabel: 'Selected',
     selectedEmpty: '(none)',
     clearSelection: 'Clear selection',
+    savedAt: 'Saved',
+    saveError: 'Save failed',
+    reset: 'Reset',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -226,6 +238,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     selectedLabel: '選択中',
     selectedEmpty: '(なし)',
     clearSelection: '選択解除',
+    savedAt: '保存済み',
+    saveError: '保存失敗',
+    reset: 'リセット',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -268,6 +283,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     selectedLabel: '已选择',
     selectedEmpty: '(无)',
     clearSelection: '清除选择',
+    savedAt: '已保存',
+    saveError: '保存失败',
+    reset: '重置',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -310,6 +328,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     selectedLabel: 'Seleccionado',
     selectedEmpty: '(ninguno)',
     clearSelection: 'Limpiar selección',
+    savedAt: 'Guardado',
+    saveError: 'Error al guardar',
+    reset: 'Restablecer',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -352,6 +373,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     selectedLabel: 'المحدد',
     selectedEmpty: '(لا شيء)',
     clearSelection: 'مسح التحديد',
+    savedAt: 'تم الحفظ',
+    saveError: 'فشل الحفظ',
+    reset: 'إعادة تعيين',
   },
 };
 
@@ -409,7 +433,20 @@ export interface AssemblyBrowserModalProps {
   onClose: () => void;
   /** Optional solve handler. When absent the Solve button is disabled. */
   onSolve?: AssemblyBrowserOnSolve;
+  /**
+   * Optional project identifier (Phase 4). When provided, the modal swaps
+   * its in-memory state for `useAssemblyStorage('nexyfab:assembly:${projectId}')`
+   * (parts + mates persisted) AND per-part FeatureTrees persisted under
+   * `nexyfab:tree:${projectId}` as a single combined record. When absent
+   * the modal behaves exactly as before (100 % back-compat for the
+   * existing 50 in-memory tests).
+   */
+  projectId?: string;
 }
+
+/** Persistence key prefixes — kept stable across modal + wrapper. */
+const ASSEMBLY_STORAGE_PREFIX = 'nexyfab:assembly:';
+const ASSEMBLY_TREES_STORAGE_PREFIX = 'nexyfab:assembly-trees:';
 
 // ─── small immutable helpers ─────────────────────────────────────────────
 
@@ -564,6 +601,105 @@ function toggleSelection(
   return appended.slice(appended.length - MAX_SELECTION);
 }
 
+// ─── per-part FeatureTree record persistence ─────────────────────────────
+
+/**
+ * Tiny purpose-built hook for the assembly modal — persists a
+ * `Record<string, FeatureTree>` (per-part trees) under one localStorage
+ * key with a 500 ms debounced write. Mirrors the contract of
+ * `useFeatureTreeStorage` but for a record, since the existing hook is
+ * per-single-tree.
+ *
+ * Returns a tuple of `[record, setRecord, jsonText]` so the assembly
+ * modal can hydrate per-part textarea bodies from the stored snapshot on
+ * mount without re-stringifying every part on each render.
+ *
+ * When `key` is empty (no projectId), behaves as a plain useState; no
+ * localStorage I/O happens. This is the 100 %-back-compat hatch.
+ */
+const TREES_AUTOSAVE_DEBOUNCE_MS = 500;
+function usePersistedTreeRecord(
+  key: string,
+  initial: Record<string, FeatureTree>,
+  onError: (e: SaveError, message: string) => void,
+): [
+  Record<string, FeatureTree>,
+  (next: Record<string, FeatureTree>) => void,
+  Record<string, string>,
+] {
+  const [state, setStateInternal] = useState<{
+    record: Record<string, FeatureTree>;
+    text: Record<string, string>;
+  }>(() => {
+    if (!key) return { record: initial, text: stringifyRecord(initial) };
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return { record: initial, text: stringifyRecord(initial) };
+    }
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) return { record: initial, text: stringifyRecord(initial) };
+      const parsed = JSON.parse(raw) as { record?: Record<string, FeatureTree> };
+      if (parsed && parsed.record && typeof parsed.record === 'object') {
+        return { record: parsed.record, text: stringifyRecord(parsed.record) };
+      }
+    } catch {
+      // fall through to initial
+    }
+    return { record: initial, text: stringifyRecord(initial) };
+  });
+
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setRecord = useCallback(
+    (next: Record<string, FeatureTree>) => {
+      setStateInternal({ record: next, text: stringifyRecord(next) });
+      if (!key) return;
+      if (typeof window === 'undefined' || !window.localStorage) return;
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        try {
+          window.localStorage.setItem(key, JSON.stringify({ record: next }));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (
+            (err instanceof Error && err.name === 'QuotaExceededError') ||
+            (err && typeof err === 'object' && (err as { code?: number }).code === 22)
+          ) {
+            onErrorRef.current('quota_exceeded', msg);
+          } else {
+            onErrorRef.current('unknown', msg);
+          }
+        }
+      }, TREES_AUTOSAVE_DEBOUNCE_MS);
+    },
+    [key],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
+  return [state.record, setRecord, state.text];
+}
+
+function stringifyRecord(rec: Record<string, FeatureTree>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rec)) {
+    out[k] = JSON.stringify(v, null, 2);
+  }
+  return out;
+}
+
 // ─── component ───────────────────────────────────────────────────────────
 
 const EMPTY_STATE: AssemblyState = { parts: [], mates: [] };
@@ -574,28 +710,101 @@ export default function AssemblyBrowserModal({
   initialFeatureTrees,
   onClose,
   onSolve,
+  projectId,
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
 
-  const [state, setState] = useState<AssemblyState>(initialState ?? EMPTY_STATE);
+  // Persistence (Phase 4): when projectId is supplied we route assembly
+  // state through `useAssemblyStorage` (autosave to
+  // `nexyfab:assembly:${projectId}`) and per-part FeatureTrees through the
+  // simpler local-storage hook below. When absent both branches fall back
+  // to plain `useState`, preserving the existing 50 in-memory tests.
+  const assemblyKey = projectId !== undefined ? `${ASSEMBLY_STORAGE_PREFIX}${projectId}` : '';
+  const treesKey =
+    projectId !== undefined ? `${ASSEMBLY_TREES_STORAGE_PREFIX}${projectId}` : '';
+
+  // Always-call both hooks — rules-of-hooks demands a stable call shape.
+  const [persistedState, setPersistedState] = useAssemblyStorage(
+    assemblyKey,
+    initialState ?? EMPTY_STATE,
+  );
+  const [memoryState, setMemoryState] = useState<AssemblyState>(initialState ?? EMPTY_STATE);
+
+  const state = projectId !== undefined ? persistedState : memoryState;
+  // Uniform `setState(prev => next)` adapter — `useAssemblyStorage`'s
+  // setter only takes a value, so we resolve the updater against the
+  // current `state` ourselves when in persisted mode.
+  const setState = useCallback(
+    (next: AssemblyState | ((prev: AssemblyState) => AssemblyState)) => {
+      if (projectId !== undefined) {
+        const resolved =
+          typeof next === 'function'
+            ? (next as (p: AssemblyState) => AssemblyState)(persistedState)
+            : next;
+        setPersistedState(resolved);
+      } else {
+        setMemoryState(next);
+      }
+    },
+    [projectId, persistedState, setPersistedState],
+  );
+
+  // Persistence toast for the trees-storage branch.
+  const [treesPersistError, setTreesPersistError] = useState<{
+    error: SaveError;
+    message: string;
+  } | null>(null);
+  const onTreesPersistError = useCallback((error: SaveError, message: string) => {
+    setTreesPersistError({ error, message });
+  }, []);
+  const [persistedTrees, setPersistedTrees, persistedTreesText] = usePersistedTreeRecord(
+    treesKey,
+    initialFeatureTrees ?? {},
+    onTreesPersistError,
+  );
+
   /**
    * Per-part FeatureTrees, controlled. Only parts whose JSON parsed
    * successfully (and was non-empty) appear here; opening the editor
    * for a fresh part does NOT add an entry until the user types valid
    * JSON. This way an empty string clears any prior entry.
    */
-  const [featureTrees, setFeatureTrees] = useState<Record<string, FeatureTree>>(
+  const [memoryFeatureTrees, setMemoryFeatureTrees] = useState<Record<string, FeatureTree>>(
     initialFeatureTrees ?? {},
+  );
+  const featureTrees = projectId !== undefined ? persistedTrees : memoryFeatureTrees;
+  const setFeatureTrees = useCallback(
+    (
+      next:
+        | Record<string, FeatureTree>
+        | ((prev: Record<string, FeatureTree>) => Record<string, FeatureTree>),
+    ) => {
+      if (projectId !== undefined) {
+        const resolved =
+          typeof next === 'function'
+            ? (next as (p: Record<string, FeatureTree>) => Record<string, FeatureTree>)(
+                persistedTrees,
+              )
+            : next;
+        setPersistedTrees(resolved);
+      } else {
+        setMemoryFeatureTrees(next);
+      }
+    },
+    [projectId, persistedTrees, setPersistedTrees],
   );
   /**
    * Per-part "raw" textarea contents — the controlled value of each
    * textarea. Decoupled from `featureTrees` so the user can transiently
    * hold invalid JSON in the textarea while we report the parse error
    * and disable Solve. Seeded by JSON-stringifying `initialFeatureTrees`
-   * lazily on first edit.
+   * lazily on first edit. In persisted mode we seed from the hydrated
+   * record's stringified snapshot so a reload picks up the previously
+   * saved textarea bodies verbatim.
    */
   const [featureTreeText, setFeatureTreeText] = useState<Record<string, string>>(
     () => {
+      if (projectId !== undefined) return persistedTreesText;
       const seed: Record<string, string> = {};
       for (const [pid, tree] of Object.entries(initialFeatureTrees ?? {})) {
         seed[pid] = JSON.stringify(tree, null, 2);
@@ -854,6 +1063,25 @@ export default function AssemblyBrowserModal({
     setState((prev) => ({ ...prev, mates: [...prev.mates, mate] }));
     setSelection([]);
   }, []);
+
+  // ── reset (Phase 4) ───────────────────────────────────────────────────
+
+  /**
+   * Wipe parts, mates, per-part FeatureTrees and the textarea bodies in
+   * one shot. In persisted mode the storage hooks see the empty record
+   * via their setters, debounce 500 ms and write the empty payload to
+   * localStorage — effectively clearing the slot.
+   */
+  const onResetAssembly = useCallback(() => {
+    setState(EMPTY_STATE);
+    setFeatureTrees({});
+    setFeatureTreeText({});
+    setFeatureTreeOpen({});
+    setFeatureTreeError({});
+    setRefsPanelOpen({});
+    setSelection([]);
+    setTreesPersistError(null);
+  }, [setState, setFeatureTrees]);
 
   // ── solve ─────────────────────────────────────────────────────────────
 
@@ -1630,8 +1858,53 @@ export default function AssemblyBrowserModal({
             justifyContent: 'flex-end',
             gap: 8,
             marginTop: 4,
+            alignItems: 'center',
           }}
         >
+          {/* Persistence status banner — visible only when projectId is set.
+              The Reset button is always visible (works in both modes). */}
+          {projectId !== undefined && treesPersistError === null && (
+            <span
+              data-testid="solver-assembly-saved"
+              style={{ color: '#16a34a', fontSize: 11, marginRight: 'auto' }}
+            >
+              {t.savedAt}
+            </span>
+          )}
+          {projectId !== undefined && treesPersistError !== null && (
+            <span
+              data-testid="solver-assembly-save-error"
+              role="alert"
+              style={{
+                color: '#dc2626',
+                fontSize: 11,
+                marginRight: 'auto',
+                padding: '2px 6px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 4,
+              }}
+            >
+              {t.saveError}: {treesPersistError.error === 'quota_exceeded'
+                ? 'quota exceeded'
+                : treesPersistError.message}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onResetAssembly}
+            data-testid="solver-assembly-reset"
+            style={{
+              padding: '8px 16px',
+              fontSize: 13,
+              background: '#fff',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {t.reset}
+          </button>
           <button
             type="button"
             onClick={onClose}
