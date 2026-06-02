@@ -14,6 +14,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { POST, handleFeatureTreeIntent } from './route';
+import { INTENT_KINDS } from '@/lib/ai/featureTreeIntentDetector';
 
 function makeReq(body: unknown): Request {
   return new Request('http://localhost/api/featureTree-intent', {
@@ -356,5 +357,274 @@ describe('POST /api/featureTree-intent — env-var resolution', () => {
     } finally {
       globalThis.fetch = realFetch;
     }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase 3.AI.2 — RRRR BUILD_INTENT_PROMPT migration coverage
+//
+// These tests verify that:
+//   (a) the prompt sent to the LLM is produced by `BUILD_INTENT_PROMPT` from
+//       `@/lib/ai/llmPrompt` (covers every one of the 12 INTENT_KINDS),
+//   (b) the extended `validatePlanIntent` accepts all 12 kinds end-to-end,
+//   (c) malformed payloads for the 6 newly-supported kinds still fallback,
+//   (d) `source:'llm'` responses carry the optional `promptVersion`,
+//   (e) regex hits on the new kinds still short-circuit the LLM.
+// ───────────────────────────────────────────────────────────────────────────
+describe('POST /api/featureTree-intent — BUILD_INTENT_PROMPT integration', () => {
+  it('passes a prompt to the LLM fetcher that mentions every INTENT_KIND', async () => {
+    // Capture the *prompt body* by injecting a fetcher that records its calls.
+    // The route only sends `text` to the injected seam, so we must verify the
+    // prompt indirectly by triggering the env-driven path and snooping fetch.
+    process.env.ANTHROPIC_API_KEY = 'snoop-key';
+    const realFetch = globalThis.fetch;
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ content: [{ type: 'text', text: 'null' }] }), {
+          status: 200,
+        }),
+      );
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      await POST(makeReq({ text: 'abstract free-form prompt' }) as never);
+      const body = JSON.parse(
+        String((fetchSpy.mock.calls[0]![1] as RequestInit).body),
+      ) as { messages: Array<{ content: string }> };
+      const sent = body.messages[0]!.content;
+      for (const kind of INTENT_KINDS) {
+        expect(sent).toContain(kind);
+      }
+      // Sanity: must look like the RRRR template, not the old inline 4-example one.
+      expect(sent).toMatch(/##\s+Allowed intent kinds/);
+      expect(sent).toMatch(/##\s+JSON schema sketch/);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it('LLM accepts create_box_with_chamfer (new kind) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_box_with_chamfer',
+      size: { x: 50, y: 50, z: 30 },
+      chamferDistance: 2,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'cube with bevelled corners' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'create_box_with_chamfer')
+      throw new Error('expected create_box_with_chamfer');
+    expect(res.payload.intent.chamferDistance).toBe(2);
+    expect(res.payload.intent.size).toEqual({ x: 50, y: 50, z: 30 });
+  });
+
+  it('LLM accepts create_pattern_grid (new kind) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_pattern_grid',
+      baseFeature: 'cylinder',
+      count: { x: 4, y: 3 },
+      spacing: 50,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'array of 4x3 columns' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'create_pattern_grid')
+      throw new Error('expected create_pattern_grid');
+    expect(res.payload.intent.baseFeature).toBe('cylinder');
+    expect(res.payload.intent.count).toEqual({ x: 4, y: 3 });
+    expect(res.payload.intent.spacing).toBe(50);
+  });
+
+  it('LLM accepts create_box_with_pocket (new kind) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_box_with_pocket',
+      size: { x: 80, y: 60, z: 20 },
+      pocketDepth: 10,
+      pocketRadius: 8,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'tray with a recessed bowl' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'create_box_with_pocket')
+      throw new Error('expected create_box_with_pocket');
+    expect(res.payload.intent.pocketDepth).toBe(10);
+    expect(res.payload.intent.pocketRadius).toBe(8);
+  });
+
+  it('LLM accepts create_cylinder_with_hole (new kind) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_cylinder_with_hole',
+      radius: 25,
+      height: 60,
+      holeRadius: 10,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'hollow tube' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'create_cylinder_with_hole')
+      throw new Error('expected create_cylinder_with_hole');
+    expect(res.payload.intent.holeRadius).toBe(10);
+  });
+
+  it('LLM accepts create_revolve_axis (new kind) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_revolve_axis',
+      profile: 'triangle',
+      radius: 25,
+      height: 60,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'lathe-spun cone' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'create_revolve_axis')
+      throw new Error('expected create_revolve_axis');
+    expect(res.payload.intent.profile).toBe('triangle');
+  });
+
+  it('LLM accepts add_pattern_to_last linear (new kind) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'add_pattern_to_last',
+      patternKind: 'linear',
+      count: 5,
+      spacing: 50,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'repeat in a row five times' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'add_pattern_to_last')
+      throw new Error('expected add_pattern_to_last');
+    expect(res.payload.intent.patternKind).toBe('linear');
+    expect(res.payload.intent.spacing).toBe(50);
+  });
+
+  it('LLM accepts add_pattern_to_last circular with optional angle omitted', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'add_pattern_to_last',
+      patternKind: 'circular',
+      count: 8,
+      // angle omitted — planner will default to 360°
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'circular array of 8 around the centre' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind !== 'add_pattern_to_last')
+      throw new Error('expected add_pattern_to_last');
+    expect(res.payload.intent.patternKind).toBe('circular');
+    expect(res.payload.intent.count).toBe(8);
+    // angle stays undefined; planner applies the default at plan-time.
+    expect(res.payload.intent.angle).toBeUndefined();
+  });
+
+  it('LLM rejects create_pattern_grid with invalid baseFeature → fallback', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_pattern_grid',
+      baseFeature: 'torus', // not allowed
+      count: { x: 2, y: 2 },
+      spacing: 10,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'grid of toruses' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+    expect(res.payload.intent).toBeNull();
+  });
+
+  it('LLM rejects add_pattern_to_last linear missing spacing → fallback', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'add_pattern_to_last',
+      patternKind: 'linear',
+      count: 3,
+      // spacing intentionally missing
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'repeat in a row' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+  });
+
+  it('source:"llm" responses include a promptVersion metadata field', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_cylinder',
+      radius: 5,
+      height: 12,
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'unrecognised free-form prompt for the LLM path' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    expect(typeof res.payload.promptVersion).toBe('string');
+    expect(res.payload.promptVersion!.length).toBeGreaterThan(0);
+  });
+
+  it('source:"regex" and source:"fallback" responses do NOT include promptVersion', async () => {
+    // regex hit
+    const r1 = await handleFeatureTreeIntent({
+      text: 'cylinder r 10 h 20',
+    });
+    expect(r1.payload.ok).toBe(true);
+    if (!r1.payload.ok) throw new Error('expected ok');
+    expect(r1.payload.source).toBe('regex');
+    expect(r1.payload.promptVersion).toBeUndefined();
+
+    // fallback (no provider, regex miss)
+    const r2 = await handleFeatureTreeIntent({
+      text: 'something that no regex will ever match for sure',
+    });
+    expect(r2.payload.ok).toBe(true);
+    if (!r2.payload.ok) throw new Error('expected ok');
+    expect(r2.payload.source).toBe('fallback');
+    expect(r2.payload.promptVersion).toBeUndefined();
+  });
+
+  it('regex hit on a Phase 3.AI.2 kind (chamfer) bypasses the LLM', async () => {
+    // "box ... chamfer N" is now a regex-detected pattern — the LLM should
+    // never be touched when the regex finds it.
+    const fetcher = vi.fn();
+    const res = await handleFeatureTreeIntent(
+      { text: 'box 50x50x30 chamfer 2' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('regex');
+    expect(res.payload.intent?.kind).toBe('create_box_with_chamfer');
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

@@ -32,6 +32,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectIntent } from '@/lib/ai/featureTreeIntentDetector';
 import { INTENT_KINDS } from '@/lib/ai/featureTreeIntentDetector';
+import { BUILD_INTENT_PROMPT } from '@/lib/ai/llmPrompt';
 import type { PlanIntent } from '@/lib/ai/featureTreePlanner';
 
 export const runtime = 'nodejs';
@@ -39,6 +40,17 @@ export const dynamic = 'force-dynamic';
 
 const MAX_TEXT_LEN = 1000;
 const LLM_TIMEOUT_MS = 10_000;
+
+/**
+ * Prompt template version surfaced in successful `source:'llm'` responses
+ * (as optional `promptVersion` metadata). Bump when `BUILD_INTENT_PROMPT`
+ * changes shape — the value is opaque to clients but useful for evals
+ * (e.g. comparing acceptance rate across prompt revisions in logs).
+ *
+ *   v1 — original inline 6-kind prompt (pre-RRRR), replaced 2026-06-02.
+ *   v2 — RRRR `BUILD_INTENT_PROMPT` covering all 12 INTENT_KINDS.
+ */
+const PROMPT_VERSION = 'v2';
 
 export interface FeatureTreeIntentBody {
   text?: string;
@@ -48,6 +60,12 @@ export interface FeatureTreeIntentResponseOk {
   ok: true;
   intent: PlanIntent | null;
   source: 'regex' | 'llm' | 'fallback';
+  /**
+   * Optional prompt template version, present only when `source === 'llm'`.
+   * Lets downstream eval / observability tooling correlate acceptance rate
+   * with a specific revision of `BUILD_INTENT_PROMPT`.
+   */
+  promptVersion?: string;
 }
 
 export interface FeatureTreeIntentResponseErr {
@@ -88,19 +106,19 @@ function resolveLlmFetcher(
   return null;
 }
 
+/**
+ * Build the LLM prompt for a single user text. Thin wrapper over RRRR's
+ * `BUILD_INTENT_PROMPT` from `@/lib/ai/llmPrompt` so the route file stays
+ * narrow and the canonical prompt template lives in one module (unit-tested
+ * separately, reused by CLI tools + evals).
+ *
+ * Defaults to the full 12-kind `INTENT_KINDS` set — if a caller ever wants
+ * to restrict the LLM to a subset (e.g. modifier-only quick actions), they
+ * can build the prompt themselves and pass the body through an injected
+ * `opts.llmFetcher`.
+ */
 function buildPrompt(text: string): string {
-  const kinds = INTENT_KINDS.join(', ');
-  return [
-    `You are a CAD design assistant. Convert the user's natural language request to a JSON intent.`,
-    `Allowed kinds: [${kinds}].`,
-    `Examples:`,
-    `  "box 50x50x30" → {"kind":"create_cylinder", ...}  // NO`,
-    `  "box 50x50x30" → {"kind":"create_box_with_holes","size":{"x":50,"y":50,"z":30},"holes":[]}`,
-    `  "cylinder r 10 h 20" → {"kind":"create_cylinder","radius":10,"height":20}`,
-    `  "add fillet 3" → {"kind":"add_fillet_to_last","radius":3}`,
-    `Return ONLY valid JSON (no prose, no markdown fences) or the literal "null".`,
-    `User: "${text.replace(/"/g, '\\"')}"`,
-  ].join('\n');
+  return BUILD_INTENT_PROMPT(text, INTENT_KINDS);
 }
 
 async function callAnthropic(
@@ -232,6 +250,87 @@ function validatePlanIntent(payload: unknown): PlanIntent | null {
       const spacing = typeof obj.spacing === 'number' ? obj.spacing : 10;
       return { kind, partCount: obj.partCount, spacing };
     }
+    // ── Phase 3.AI.2 — 6 additional kinds (mirror featureTreePlanner.PlanIntent)
+    case 'create_box_with_chamfer': {
+      if (!isVec3(obj.size)) return null;
+      if (typeof obj.chamferDistance !== 'number') return null;
+      return { kind, size: obj.size, chamferDistance: obj.chamferDistance };
+    }
+    case 'create_box_with_pocket': {
+      if (!isVec3(obj.size)) return null;
+      if (typeof obj.pocketDepth !== 'number') return null;
+      if (typeof obj.pocketRadius !== 'number') return null;
+      return {
+        kind,
+        size: obj.size,
+        pocketDepth: obj.pocketDepth,
+        pocketRadius: obj.pocketRadius,
+      };
+    }
+    case 'create_cylinder_with_hole': {
+      if (typeof obj.radius !== 'number') return null;
+      if (typeof obj.height !== 'number') return null;
+      if (typeof obj.holeRadius !== 'number') return null;
+      return {
+        kind,
+        radius: obj.radius,
+        height: obj.height,
+        holeRadius: obj.holeRadius,
+      };
+    }
+    case 'create_pattern_grid': {
+      if (obj.baseFeature !== 'extrude_box' && obj.baseFeature !== 'cylinder') {
+        return null;
+      }
+      const count = obj.count;
+      if (!count || typeof count !== 'object') return null;
+      const c = count as Record<string, unknown>;
+      if (typeof c.x !== 'number' || typeof c.y !== 'number') return null;
+      if (typeof obj.spacing !== 'number') return null;
+      return {
+        kind,
+        baseFeature: obj.baseFeature,
+        count: { x: c.x, y: c.y },
+        spacing: obj.spacing,
+      };
+    }
+    case 'create_revolve_axis': {
+      if (obj.profile !== 'rectangle' && obj.profile !== 'triangle') return null;
+      if (typeof obj.radius !== 'number') return null;
+      if (typeof obj.height !== 'number') return null;
+      return {
+        kind,
+        profile: obj.profile,
+        radius: obj.radius,
+        height: obj.height,
+      };
+    }
+    case 'add_pattern_to_last': {
+      if (obj.patternKind !== 'linear' && obj.patternKind !== 'circular') {
+        return null;
+      }
+      if (typeof obj.count !== 'number') return null;
+      // spacing required for linear, angle optional for circular (planner
+      // defaults to 360°). Mirror the planner's contract — over-permissive
+      // here would just push the rejection to the planner with a worse error.
+      if (obj.patternKind === 'linear') {
+        if (typeof obj.spacing !== 'number') return null;
+        return {
+          kind,
+          patternKind: 'linear',
+          count: obj.count,
+          spacing: obj.spacing,
+        };
+      }
+      // circular — angle is optional; planner defaults to 360 when omitted.
+      const circular: Extract<PlanIntent, { kind: 'add_pattern_to_last' }> = {
+        kind,
+        patternKind: 'circular',
+        count: obj.count,
+      };
+      if (typeof obj.angle === 'number') circular.angle = obj.angle;
+      return circular;
+    }
     default:
       return null;
   }
@@ -322,7 +421,12 @@ export async function handleFeatureTreeIntent(
   }
   return {
     status: 200,
-    payload: { ok: true, intent: validated, source: 'llm' },
+    payload: {
+      ok: true,
+      intent: validated,
+      source: 'llm',
+      promptVersion: PROMPT_VERSION,
+    },
   };
 }
 
