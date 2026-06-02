@@ -19,6 +19,10 @@ import type { FilletFeature } from '@/lib/cad/filletProfile';
 import type { ChamferFeature } from '@/lib/cad/chamferProfile';
 import type { HoleFeature } from '@/lib/cad/holeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
+import type {
+  LinearPatternFeature,
+  CircularPatternFeature,
+} from '@/lib/cad/pattern';
 
 // ─── fixtures ─────────────────────────────────────────────────────────────
 
@@ -317,5 +321,326 @@ describe('planFromIntent — rationale + warnings', () => {
       EMPTY,
     );
     expect(r.warnings.some((w) => w.includes('unit-mismatch'))).toBe(true);
+  });
+});
+
+// ─── Phase 3.AI.2 — create_box_with_chamfer ──────────────────────────────
+
+describe('planFromIntent — create_box_with_chamfer', () => {
+  it('emits box + chamfer node depending on the box', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_box_with_chamfer',
+        size: { x: 50, y: 50, z: 30 },
+        chamferDistance: 2,
+      },
+      EMPTY,
+    );
+    expect(r.steps).toHaveLength(2);
+    const boxId = r.steps[0]!.node!.id;
+    const chamfer = r.steps[1]!.node!;
+    expect(chamfer.payload.kind).toBe('chamfer');
+    expect(chamfer.dependencies).toEqual([boxId]);
+    expect((chamfer.payload as ChamferFeature).distance).toBe(2);
+  });
+
+  it('throws when chamferDistance is non-positive', () => {
+    expect(() =>
+      planFromIntent(
+        { kind: 'create_box_with_chamfer', size: { x: 10, y: 10, z: 10 }, chamferDistance: 0 },
+        EMPTY,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+
+  it('warns when chamferDistance ≥ min(size)/2', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_box_with_chamfer',
+        size: { x: 10, y: 10, z: 10 },
+        chamferDistance: 6,
+      },
+      EMPTY,
+    );
+    expect(r.warnings.some((w) => w.includes('build time'))).toBe(true);
+  });
+});
+
+// ─── Phase 3.AI.2 — create_box_with_pocket ───────────────────────────────
+
+describe('planFromIntent — create_box_with_pocket', () => {
+  it('emits box + centred pocket (modelled as a hole)', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_box_with_pocket',
+        size: { x: 50, y: 50, z: 30 },
+        pocketDepth: 10,
+        pocketRadius: 5,
+      },
+      EMPTY,
+    );
+    expect(r.steps).toHaveLength(2);
+    const boxId = r.steps[0]!.node!.id;
+    const pocket = r.steps[1]!.node!.payload as HoleFeature;
+    expect(pocket.kind).toBe('hole');
+    expect(pocket.diameter).toBe(10); // 2 * pocketRadius
+    expect(pocket.depth).toBe(10);
+    expect(pocket.center).toEqual({ x: 25, y: 25 });
+    expect(r.steps[1]!.node!.dependencies).toEqual([boxId]);
+  });
+
+  it('throws on non-positive pocketDepth / pocketRadius', () => {
+    expect(() =>
+      planFromIntent(
+        {
+          kind: 'create_box_with_pocket',
+          size: { x: 50, y: 50, z: 30 },
+          pocketDepth: 0,
+          pocketRadius: 5,
+        },
+        EMPTY,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+    expect(() =>
+      planFromIntent(
+        {
+          kind: 'create_box_with_pocket',
+          size: { x: 50, y: 50, z: 30 },
+          pocketDepth: 10,
+          pocketRadius: -1,
+        },
+        EMPTY,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+
+  it('warns when pocket would breach (depth ≥ size.z or radius ≥ min/2)', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_box_with_pocket',
+        size: { x: 20, y: 20, z: 10 },
+        pocketDepth: 20,
+        pocketRadius: 15,
+      },
+      EMPTY,
+    );
+    expect(r.warnings.some((w) => w.includes('punch through'))).toBe(true);
+    expect(r.warnings.some((w) => w.includes('side walls'))).toBe(true);
+  });
+});
+
+// ─── Phase 3.AI.2 — create_cylinder_with_hole ────────────────────────────
+
+describe('planFromIntent — create_cylinder_with_hole', () => {
+  it('emits cylinder (revolve) + concentric hole', () => {
+    const r = planFromIntent(
+      { kind: 'create_cylinder_with_hole', radius: 25, height: 60, holeRadius: 10 },
+      EMPTY,
+    );
+    expect(r.steps).toHaveLength(2);
+    const cyl = r.steps[0]!.node!.payload as RevolveFeature;
+    expect(cyl.kind).toBe('revolve');
+    expect(cyl.angleDegrees).toBe(360);
+    const hole = r.steps[1]!.node!.payload as HoleFeature;
+    expect(hole.kind).toBe('hole');
+    expect(hole.diameter).toBe(20); // 2 * holeRadius
+    expect(hole.depth).toBe(60);
+    expect(hole.center).toEqual({ x: 0, y: 0 });
+  });
+
+  it('throws on non-positive inputs', () => {
+    expect(() =>
+      planFromIntent(
+        { kind: 'create_cylinder_with_hole', radius: 0, height: 10, holeRadius: 1 },
+        EMPTY,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+
+  it('warns when holeRadius ≥ radius', () => {
+    const r = planFromIntent(
+      { kind: 'create_cylinder_with_hole', radius: 10, height: 20, holeRadius: 12 },
+      EMPTY,
+    );
+    expect(r.warnings.some((w) => w.includes('cylinder wall'))).toBe(true);
+  });
+});
+
+// ─── Phase 3.AI.2 — create_pattern_grid ──────────────────────────────────
+
+describe('planFromIntent — create_pattern_grid', () => {
+  it('emits base + 2 nested linear patterns for box base', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_pattern_grid',
+        baseFeature: 'extrude_box',
+        count: { x: 3, y: 3 },
+        spacing: 100,
+      },
+      EMPTY,
+    );
+    expect(r.steps).toHaveLength(3);
+    expect(r.steps[0]!.node!.payload.kind).toBe('extrude');
+    expect(r.steps[1]!.node!.payload.kind).toBe('linear_pattern');
+    expect(r.steps[2]!.node!.payload.kind).toBe('linear_pattern');
+    const xPat = r.steps[1]!.node!.payload as LinearPatternFeature;
+    expect(xPat.count).toBe(3);
+    expect(xPat.spacing).toBe(100);
+    expect(xPat.direction).toEqual({ x: 1, y: 0, z: 0 });
+    const yPat = r.steps[2]!.node!.payload as LinearPatternFeature;
+    expect(yPat.direction).toEqual({ x: 0, y: 1, z: 0 });
+    expect(r.steps[2]!.node!.dependencies).toEqual([r.steps[1]!.node!.id]);
+  });
+
+  it('emits cylinder base when baseFeature is "cylinder"', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_pattern_grid',
+        baseFeature: 'cylinder',
+        count: { x: 2, y: 2 },
+        spacing: 30,
+      },
+      EMPTY,
+    );
+    expect(r.steps[0]!.node!.payload.kind).toBe('revolve');
+  });
+
+  it('throws on non-integer/non-positive counts', () => {
+    expect(() =>
+      planFromIntent(
+        {
+          kind: 'create_pattern_grid',
+          baseFeature: 'extrude_box',
+          count: { x: 0, y: 3 },
+          spacing: 10,
+        },
+        EMPTY,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+
+  it('warns on very large grids', () => {
+    const r = planFromIntent(
+      {
+        kind: 'create_pattern_grid',
+        baseFeature: 'extrude_box',
+        count: { x: 20, y: 20 },
+        spacing: 10,
+      },
+      EMPTY,
+    );
+    expect(r.warnings.some((w) => w.includes('large grid'))).toBe(true);
+  });
+});
+
+// ─── Phase 3.AI.2 — create_revolve_axis ──────────────────────────────────
+
+describe('planFromIntent — create_revolve_axis', () => {
+  it('emits a rectangle-profile revolve with 4 loop points', () => {
+    const r = planFromIntent(
+      { kind: 'create_revolve_axis', profile: 'rectangle', radius: 10, height: 20 },
+      EMPTY,
+    );
+    expect(r.steps).toHaveLength(1);
+    const payload = r.steps[0]!.node!.payload as RevolveFeature;
+    expect(payload.kind).toBe('revolve');
+    expect(payload.loop).toHaveLength(4);
+  });
+
+  it('emits a triangle-profile revolve with 3 loop points', () => {
+    const r = planFromIntent(
+      { kind: 'create_revolve_axis', profile: 'triangle', radius: 25, height: 60 },
+      EMPTY,
+    );
+    const payload = r.steps[0]!.node!.payload as RevolveFeature;
+    expect(payload.loop).toHaveLength(3);
+  });
+
+  it('throws on non-positive radius/height', () => {
+    expect(() =>
+      planFromIntent(
+        { kind: 'create_revolve_axis', profile: 'triangle', radius: -1, height: 10 },
+        EMPTY,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+});
+
+// ─── Phase 3.AI.2 — add_pattern_to_last ──────────────────────────────────
+
+describe('planFromIntent — add_pattern_to_last', () => {
+  it('appends a linear pattern depending on the last solid', () => {
+    const tree: FeatureTree = { nodes: [boxNode('box_1')] };
+    const r = planFromIntent(
+      { kind: 'add_pattern_to_last', patternKind: 'linear', count: 5, spacing: 50 },
+      tree,
+    );
+    expect(r.steps).toHaveLength(1);
+    const payload = r.steps[0]!.node!.payload as LinearPatternFeature;
+    expect(payload.kind).toBe('linear_pattern');
+    expect(payload.count).toBe(5);
+    expect(payload.spacing).toBe(50);
+    expect(r.steps[0]!.node!.dependencies).toEqual(['box_1']);
+  });
+
+  it('appends a circular pattern (default 360°)', () => {
+    const tree: FeatureTree = { nodes: [boxNode('box_1')] };
+    const r = planFromIntent(
+      { kind: 'add_pattern_to_last', patternKind: 'circular', count: 8 },
+      tree,
+    );
+    const payload = r.steps[0]!.node!.payload as CircularPatternFeature;
+    expect(payload.kind).toBe('circular_pattern');
+    expect(payload.count).toBe(8);
+    expect(payload.totalAngleDegrees).toBe(360);
+  });
+
+  it('honours explicit angle for circular pattern', () => {
+    const tree: FeatureTree = { nodes: [boxNode('box_1')] };
+    const r = planFromIntent(
+      { kind: 'add_pattern_to_last', patternKind: 'circular', count: 6, angle: 180 },
+      tree,
+    );
+    const payload = r.steps[0]!.node!.payload as CircularPatternFeature;
+    expect(payload.totalAngleDegrees).toBe(180);
+  });
+
+  it('warns + empty steps when no solid feature exists', () => {
+    const r = planFromIntent(
+      { kind: 'add_pattern_to_last', patternKind: 'linear', count: 3, spacing: 10 },
+      EMPTY,
+    );
+    expect(r.steps).toHaveLength(0);
+    expect(r.warnings.some((w) => w.includes('no solid'))).toBe(true);
+  });
+
+  it('throws on count < 2', () => {
+    const tree: FeatureTree = { nodes: [boxNode('box_1')] };
+    expect(() =>
+      planFromIntent(
+        { kind: 'add_pattern_to_last', patternKind: 'linear', count: 1, spacing: 10 },
+        tree,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+
+  it('throws when linear pattern omits spacing', () => {
+    const tree: FeatureTree = { nodes: [boxNode('box_1')] };
+    expect(() =>
+      planFromIntent(
+        { kind: 'add_pattern_to_last', patternKind: 'linear', count: 3 },
+        tree,
+      ),
+    ).toThrow(FeatureTreePlannerError);
+  });
+
+  it('throws when circular angle is out of (0, 360]', () => {
+    const tree: FeatureTree = { nodes: [boxNode('box_1')] };
+    expect(() =>
+      planFromIntent(
+        { kind: 'add_pattern_to_last', patternKind: 'circular', count: 4, angle: 400 },
+        tree,
+      ),
+    ).toThrow(FeatureTreePlannerError);
   });
 });

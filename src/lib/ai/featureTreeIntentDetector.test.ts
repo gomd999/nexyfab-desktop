@@ -186,13 +186,188 @@ describe('detectIntent — disambiguation', () => {
 });
 
 describe('INTENT_KINDS export', () => {
-  it('lists all 6 intent kinds', () => {
-    expect(INTENT_KINDS).toHaveLength(6);
+  it('lists all 12 intent kinds (6 base + 6 Phase 3.AI.2)', () => {
+    expect(INTENT_KINDS).toHaveLength(12);
     expect(INTENT_KINDS).toContain('create_box_with_holes');
     expect(INTENT_KINDS).toContain('create_box_with_fillet');
     expect(INTENT_KINDS).toContain('create_cylinder');
     expect(INTENT_KINDS).toContain('add_fillet_to_last');
     expect(INTENT_KINDS).toContain('add_chamfer_to_last');
     expect(INTENT_KINDS).toContain('create_assembly_stack');
+    expect(INTENT_KINDS).toContain('create_box_with_chamfer');
+    expect(INTENT_KINDS).toContain('create_box_with_pocket');
+    expect(INTENT_KINDS).toContain('create_cylinder_with_hole');
+    expect(INTENT_KINDS).toContain('create_pattern_grid');
+    expect(INTENT_KINDS).toContain('create_revolve_axis');
+    expect(INTENT_KINDS).toContain('add_pattern_to_last');
+  });
+});
+
+// ─── Phase 3.AI.2 — create_box_with_chamfer ──────────────────────────────
+
+describe('detectIntent — create_box_with_chamfer', () => {
+  it('"box 50x50x30 chamfer 2"', () => {
+    const r = detectIntent('box 50x50x30 chamfer 2');
+    expect(r?.kind).toBe('create_box_with_chamfer');
+    if (r?.kind === 'create_box_with_chamfer') {
+      expect(r.size).toEqual({ x: 50, y: 50, z: 30 });
+      expect(r.chamferDistance).toBe(2);
+    }
+  });
+
+  it('"create box 80x40x20 with chamfer distance 3"', () => {
+    const r = detectIntent('create box 80x40x20 with chamfer distance 3');
+    expect(r?.kind).toBe('create_box_with_chamfer');
+    if (r?.kind === 'create_box_with_chamfer') {
+      expect(r.chamferDistance).toBe(3);
+    }
+  });
+});
+
+// ─── Phase 3.AI.2 — create_box_with_pocket ───────────────────────────────
+
+describe('detectIntent — create_box_with_pocket', () => {
+  it('"box 50x50x30 with pocket depth 10 radius 5"', () => {
+    const r = detectIntent('box 50x50x30 with pocket depth 10 radius 5');
+    expect(r?.kind).toBe('create_box_with_pocket');
+    if (r?.kind === 'create_box_with_pocket') {
+      expect(r.size).toEqual({ x: 50, y: 50, z: 30 });
+      expect(r.pocketDepth).toBe(10);
+      expect(r.pocketRadius).toBe(5);
+    }
+  });
+
+  it('"create box 100x100x20 pocket depth 5 r 8"', () => {
+    const r = detectIntent('create box 100x100x20 pocket depth 5 r 8');
+    expect(r?.kind).toBe('create_box_with_pocket');
+    if (r?.kind === 'create_box_with_pocket') {
+      expect(r.pocketDepth).toBe(5);
+      expect(r.pocketRadius).toBe(8);
+    }
+  });
+
+  it('returns null when "pocket" present but depth/radius missing', () => {
+    expect(detectIntent('box 50x50x30 pocket')).toBeNull();
+  });
+});
+
+// ─── Phase 3.AI.2 — create_cylinder_with_hole ────────────────────────────
+
+describe('detectIntent — create_cylinder_with_hole', () => {
+  it('"cylinder 25 60 with hole 10" (shorthand)', () => {
+    const r = detectIntent('cylinder 25 60 with hole 10');
+    expect(r?.kind).toBe('create_cylinder_with_hole');
+    if (r?.kind === 'create_cylinder_with_hole') {
+      expect(r.radius).toBe(25);
+      expect(r.height).toBe(60);
+      expect(r.holeRadius).toBe(10);
+    }
+  });
+
+  it('"create cylinder radius 25 height 60 hole 10"', () => {
+    const r = detectIntent('create cylinder radius 25 height 60 hole 10');
+    expect(r?.kind).toBe('create_cylinder_with_hole');
+    if (r?.kind === 'create_cylinder_with_hole') {
+      expect(r.holeRadius).toBe(10);
+    }
+  });
+
+  it('does not match a plain cylinder without "hole" keyword', () => {
+    const r = detectIntent('cylinder 25 60');
+    expect(r?.kind).not.toBe('create_cylinder_with_hole');
+  });
+});
+
+// ─── Phase 3.AI.2 — create_pattern_grid ──────────────────────────────────
+
+describe('detectIntent — create_pattern_grid', () => {
+  it('"grid 3x3 cubes spacing 100"', () => {
+    const r = detectIntent('grid 3x3 cubes spacing 100');
+    expect(r?.kind).toBe('create_pattern_grid');
+    if (r?.kind === 'create_pattern_grid') {
+      expect(r.count).toEqual({ x: 3, y: 3 });
+      expect(r.spacing).toBe(100);
+      expect(r.baseFeature).toBe('extrude_box');
+    }
+  });
+
+  it('"4x2 grid of cylinders spacing 50"', () => {
+    const r = detectIntent('4x2 grid of cylinders spacing 50');
+    expect(r?.kind).toBe('create_pattern_grid');
+    if (r?.kind === 'create_pattern_grid') {
+      expect(r.baseFeature).toBe('cylinder');
+      expect(r.count).toEqual({ x: 4, y: 2 });
+    }
+  });
+
+  it('returns null when shape word missing', () => {
+    expect(detectIntent('grid 3x3 spacing 10')).toBeNull();
+  });
+});
+
+// ─── Phase 3.AI.2 — create_revolve_axis ──────────────────────────────────
+
+describe('detectIntent — create_revolve_axis', () => {
+  it('"revolve triangle 25 60" (shorthand)', () => {
+    const r = detectIntent('revolve triangle 25 60');
+    expect(r?.kind).toBe('create_revolve_axis');
+    if (r?.kind === 'create_revolve_axis') {
+      expect(r.profile).toBe('triangle');
+      expect(r.radius).toBe(25);
+      expect(r.height).toBe(60);
+    }
+  });
+
+  it('"revolve rectangle radius 30 height 80"', () => {
+    const r = detectIntent('revolve rectangle radius 30 height 80');
+    expect(r?.kind).toBe('create_revolve_axis');
+    if (r?.kind === 'create_revolve_axis') {
+      expect(r.profile).toBe('rectangle');
+      expect(r.radius).toBe(30);
+    }
+  });
+
+  it('returns null when profile word missing', () => {
+    expect(detectIntent('revolve 25 60')).toBeNull();
+  });
+});
+
+// ─── Phase 3.AI.2 — add_pattern_to_last ──────────────────────────────────
+
+describe('detectIntent — add_pattern_to_last', () => {
+  it('"linear pattern 5 spacing 50"', () => {
+    const r = detectIntent('linear pattern 5 spacing 50');
+    expect(r?.kind).toBe('add_pattern_to_last');
+    if (r?.kind === 'add_pattern_to_last') {
+      expect(r.patternKind).toBe('linear');
+      expect(r.count).toBe(5);
+      expect(r.spacing).toBe(50);
+    }
+  });
+
+  it('"circular pattern 8 around 360"', () => {
+    const r = detectIntent('circular pattern 8 around 360');
+    expect(r?.kind).toBe('add_pattern_to_last');
+    if (r?.kind === 'add_pattern_to_last') {
+      expect(r.patternKind).toBe('circular');
+      expect(r.count).toBe(8);
+      expect(r.angle).toBe(360);
+    }
+  });
+
+  it('"circular pattern 6" defaults angle to 360', () => {
+    const r = detectIntent('circular pattern 6');
+    expect(r?.kind).toBe('add_pattern_to_last');
+    if (r?.kind === 'add_pattern_to_last') {
+      expect(r.angle).toBe(360);
+    }
+  });
+
+  it('returns null when linear pattern omits spacing', () => {
+    expect(detectIntent('linear pattern 5')).toBeNull();
+  });
+
+  it('returns null when count < 2', () => {
+    expect(detectIntent('linear pattern 1 spacing 10')).toBeNull();
   });
 });

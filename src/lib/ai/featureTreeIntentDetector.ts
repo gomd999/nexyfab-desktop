@@ -52,6 +52,13 @@ export const INTENT_KINDS = [
   'add_fillet_to_last',
   'add_chamfer_to_last',
   'create_assembly_stack',
+  // ── Phase 3.AI.2 — 6 additional kinds ──────────────────────────────────
+  'create_box_with_chamfer',
+  'create_box_with_pocket',
+  'create_cylinder_with_hole',
+  'create_pattern_grid',
+  'create_revolve_axis',
+  'add_pattern_to_last',
 ] as const;
 
 export type IntentKind = (typeof INTENT_KINDS)[number];
@@ -66,11 +73,19 @@ export function detectIntent(input: string): PlanIntent | null {
   const lower = text.toLowerCase();
 
   // Order matters: more specific patterns first.
+  // Phase 3.AI.2 additions are tried *before* their single-feature counterparts
+  // when they share keywords (e.g., "box ... with pocket" before "box ... fillet").
   return (
+    matchCreateBoxWithPocket(lower) ??
+    matchCreateBoxWithChamfer(lower) ??
     matchCreateBoxWithFillet(lower) ??
     matchCreateBoxWithHoles(lower) ??
+    matchCreatePatternGrid(lower) ??
+    matchCreateCylinderWithHole(lower) ??
     matchCreateCylinder(lower) ??
+    matchCreateRevolveAxis(lower) ??
     matchAssemblyStack(lower) ??
+    matchAddPatternToLast(lower) ??
     matchAddFilletToLast(lower) ??
     matchAddChamferToLast(lower) ??
     null
@@ -231,6 +246,209 @@ function matchAssemblyStack(t: string): PlanIntent | null {
   const spacing = spaceMatch ? Number(spaceMatch[1]!) : 10;
   if (!Number.isFinite(spacing) || spacing < 0) return null;
   return { kind: 'create_assembly_stack', partCount, spacing };
+}
+
+// ─── Phase 3.AI.2 — 6 additional matchers ───────────────────────────────
+
+/**
+ * "box 50x50x30 chamfer 2"
+ * "create box 80x40x20 with chamfer distance 3"
+ * "make a box 100x100x10 with chamfered edges 1.5"
+ */
+function matchCreateBoxWithChamfer(t: string): PlanIntent | null {
+  const dims = matchBoxDims(t);
+  if (!dims) return null;
+  // Disambiguate against pocket/fillet prompts that may include "chamfer"
+  // accidentally — those are matched by their own matchers above.
+  if (/\bpocket\b/.test(t)) return null;
+  if (/\bfillet\b|\brounded\s+edges?\b/.test(t)) return null;
+  const pat =
+    /(?:chamfer(?:ed\s+edges?)?|bevel)\s*(?:distance|d)?\s*(\d+(?:\.\d+)?)/;
+  const m = t.match(pat);
+  if (!m) return null;
+  const distance = Number(m[1]!);
+  if (!Number.isFinite(distance) || distance <= 0) return null;
+  return {
+    kind: 'create_box_with_chamfer',
+    size: dims,
+    chamferDistance: distance,
+  };
+}
+
+/**
+ * "box 50x50x30 with pocket depth 10 radius 5"
+ * "create box 100x100x20 pocket depth 5 r 8"
+ */
+function matchCreateBoxWithPocket(t: string): PlanIntent | null {
+  const dims = matchBoxDims(t);
+  if (!dims) return null;
+  if (!/\bpocket\b/.test(t)) return null;
+  const depthMatch = t.match(/depth\s+(\d+(?:\.\d+)?)/);
+  const radiusMatch = t.match(/(?:radius|r)\s+(\d+(?:\.\d+)?)/);
+  if (!depthMatch || !radiusMatch) return null;
+  const pocketDepth = Number(depthMatch[1]!);
+  const pocketRadius = Number(radiusMatch[1]!);
+  if (!Number.isFinite(pocketDepth) || pocketDepth <= 0) return null;
+  if (!Number.isFinite(pocketRadius) || pocketRadius <= 0) return null;
+  return {
+    kind: 'create_box_with_pocket',
+    size: dims,
+    pocketDepth,
+    pocketRadius,
+  };
+}
+
+/**
+ * "cylinder 25 60 with hole 10"
+ * "create cylinder radius 25 height 60 hole 10"
+ * "cylinder 25x60 with hole radius 10"
+ */
+function matchCreateCylinderWithHole(t: string): PlanIntent | null {
+  if (!/\bcylinder\b/.test(t)) return null;
+  if (!/\bhole\b/.test(t)) return null;
+  // Locate radius/height first.
+  let radius: number | null = null;
+  let height: number | null = null;
+  const rMatch = t.match(/(?:radius|r)\s*(\d+(?:\.\d+)?)/);
+  const hMatch = t.match(/(?:height|h)\s*(\d+(?:\.\d+)?)/);
+  if (rMatch && hMatch) {
+    radius = Number(rMatch[1]!);
+    height = Number(hMatch[1]!);
+  } else {
+    // Shorthand: "cylinder 25 60" or "cylinder 25x60"
+    const short = t.match(/cylinder\s+(\d+(?:\.\d+)?)\s*(?:x|\s)\s*(\d+(?:\.\d+)?)/);
+    if (short) {
+      radius = Number(short[1]!);
+      height = Number(short[2]!);
+    }
+  }
+  if (radius === null || height === null) return null;
+  if (!Number.isFinite(radius) || radius <= 0) return null;
+  if (!Number.isFinite(height) || height <= 0) return null;
+  // Hole radius: explicit "hole 10" or "hole radius 10" or "hole r 10".
+  const holeMatch = t.match(/hole\s+(?:radius\s+|r\s*)?(\d+(?:\.\d+)?)/);
+  if (!holeMatch) return null;
+  const holeRadius = Number(holeMatch[1]!);
+  if (!Number.isFinite(holeRadius) || holeRadius <= 0) return null;
+  return {
+    kind: 'create_cylinder_with_hole',
+    radius,
+    height,
+    holeRadius,
+  };
+}
+
+/**
+ * "grid 3x3 cubes spacing 100"
+ * "create grid 4x2 cylinders spacing 50"
+ * "5x5 grid of cubes spacing 10"
+ */
+function matchCreatePatternGrid(t: string): PlanIntent | null {
+  if (!/\bgrid\b/.test(t)) return null;
+  const gridMatch = t.match(/(\d+)\s*x\s*(\d+)/);
+  if (!gridMatch) return null;
+  const cx = Number(gridMatch[1]!);
+  const cy = Number(gridMatch[2]!);
+  if (!Number.isInteger(cx) || cx <= 0) return null;
+  if (!Number.isInteger(cy) || cy <= 0) return null;
+  const spaceMatch = t.match(/spacing\s+(\d+(?:\.\d+)?)/);
+  if (!spaceMatch) return null;
+  const spacing = Number(spaceMatch[1]!);
+  if (!Number.isFinite(spacing) || spacing <= 0) return null;
+  // Base feature: "cubes"/"box" → extrude_box, "cylinders" → cylinder.
+  let baseFeature: 'extrude_box' | 'cylinder' = 'extrude_box';
+  if (/\bcylinders?\b/.test(t)) baseFeature = 'cylinder';
+  else if (/\b(?:cubes?|boxes?)\b/.test(t)) baseFeature = 'extrude_box';
+  else return null; // require explicit shape keyword
+  return {
+    kind: 'create_pattern_grid',
+    baseFeature,
+    count: { x: cx, y: cy },
+    spacing,
+  };
+}
+
+/**
+ * "revolve triangle 25 60"
+ * "revolve rectangle radius 30 height 80"
+ * "create a revolve of triangle r 10 h 20"
+ */
+function matchCreateRevolveAxis(t: string): PlanIntent | null {
+  if (!/\brevolve\b/.test(t)) return null;
+  let profile: 'rectangle' | 'triangle' | null = null;
+  if (/\btriangle\b/.test(t)) profile = 'triangle';
+  else if (/\brectangle\b|\brect\b/.test(t)) profile = 'rectangle';
+  if (!profile) return null;
+  let radius: number | null = null;
+  let height: number | null = null;
+  const rMatch = t.match(/(?:radius|r)\s*(\d+(?:\.\d+)?)/);
+  const hMatch = t.match(/(?:height|h)\s*(\d+(?:\.\d+)?)/);
+  if (rMatch && hMatch) {
+    radius = Number(rMatch[1]!);
+    height = Number(hMatch[1]!);
+  } else {
+    // Shorthand: "revolve triangle 25 60" — first 2 bare numbers after
+    // the profile word.
+    const short = t.match(
+      new RegExp(`${profile}\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)`),
+    );
+    if (short) {
+      radius = Number(short[1]!);
+      height = Number(short[2]!);
+    }
+  }
+  if (radius === null || height === null) return null;
+  if (!Number.isFinite(radius) || radius <= 0) return null;
+  if (!Number.isFinite(height) || height <= 0) return null;
+  return {
+    kind: 'create_revolve_axis',
+    profile,
+    radius,
+    height,
+  };
+}
+
+/**
+ * "linear pattern 5 spacing 50"
+ * "circular pattern 8 around 360"
+ * "circular pattern 6"  (default 360°)
+ * "linear pattern 4 spacing 25 mm"
+ */
+function matchAddPatternToLast(t: string): PlanIntent | null {
+  // Reject if a box dimension triple is present (delegated to box matchers).
+  if (matchBoxDims(t)) return null;
+  // Reject grid prompts (handled by matchCreatePatternGrid).
+  if (/\bgrid\b/.test(t)) return null;
+  const linMatch = t.match(/linear\s+pattern\s+(\d+)/);
+  if (linMatch) {
+    const count = Number(linMatch[1]!);
+    if (!Number.isInteger(count) || count < 2) return null;
+    const spaceMatch = t.match(/spacing\s+(\d+(?:\.\d+)?)/);
+    if (!spaceMatch) return null;
+    const spacing = Number(spaceMatch[1]!);
+    if (!Number.isFinite(spacing) || spacing <= 0) return null;
+    return {
+      kind: 'add_pattern_to_last',
+      patternKind: 'linear',
+      count,
+      spacing,
+    };
+  }
+  const cirMatch = t.match(/circular\s+pattern\s+(\d+)/);
+  if (cirMatch) {
+    const count = Number(cirMatch[1]!);
+    if (!Number.isInteger(count) || count < 2) return null;
+    const angleMatch = t.match(/(?:around|angle)\s+(\d+(?:\.\d+)?)/);
+    const angle = angleMatch ? Number(angleMatch[1]!) : 360;
+    if (!Number.isFinite(angle) || angle <= 0 || angle > 360) return null;
+    return {
+      kind: 'add_pattern_to_last',
+      patternKind: 'circular',
+      count,
+      angle,
+    };
+  }
+  return null;
 }
 
 // ─── Shared sub-pattern matchers ─────────────────────────────────────────

@@ -53,6 +53,10 @@ import type {
 import type {
   RevolveFeature,
 } from '@/lib/cad/revolveProfile';
+import type {
+  LinearPatternFeature,
+  CircularPatternFeature,
+} from '@/lib/cad/pattern';
 
 // ─── Public API types ────────────────────────────────────────────────────
 
@@ -106,6 +110,43 @@ export type PlanIntent =
       kind: 'create_assembly_stack';
       partCount: number;
       spacing: number;
+    }
+  // ── Phase 3.AI.2 — 6 additional kinds ──────────────────────────────────
+  | {
+      kind: 'create_box_with_chamfer';
+      size: Vec3;
+      chamferDistance: number;
+    }
+  | {
+      kind: 'create_box_with_pocket';
+      size: Vec3;
+      pocketDepth: number;
+      pocketRadius: number;
+    }
+  | {
+      kind: 'create_cylinder_with_hole';
+      radius: number;
+      height: number;
+      holeRadius: number;
+    }
+  | {
+      kind: 'create_pattern_grid';
+      baseFeature: 'extrude_box' | 'cylinder';
+      count: { x: number; y: number };
+      spacing: number;
+    }
+  | {
+      kind: 'create_revolve_axis';
+      profile: 'rectangle' | 'triangle';
+      radius: number;
+      height: number;
+    }
+  | {
+      kind: 'add_pattern_to_last';
+      patternKind: 'linear' | 'circular';
+      count: number;
+      spacing?: number;
+      angle?: number;
     };
 
 export class FeatureTreePlannerError extends Error {
@@ -140,6 +181,19 @@ export function planFromIntent(
       return planAddChamferToLast(intent, currentTree);
     case 'create_assembly_stack':
       return planCreateAssemblyStack(intent, currentTree);
+    // ── Phase 3.AI.2 — 6 additional kinds ────────────────────────────────
+    case 'create_box_with_chamfer':
+      return planCreateBoxWithChamfer(intent, currentTree);
+    case 'create_box_with_pocket':
+      return planCreateBoxWithPocket(intent, currentTree);
+    case 'create_cylinder_with_hole':
+      return planCreateCylinderWithHole(intent, currentTree);
+    case 'create_pattern_grid':
+      return planCreatePatternGrid(intent, currentTree);
+    case 'create_revolve_axis':
+      return planCreateRevolveAxis(intent, currentTree);
+    case 'add_pattern_to_last':
+      return planAddPatternToLast(intent, currentTree);
   }
 }
 
@@ -390,6 +444,438 @@ function planCreateAssemblyStack(
   return { steps, rationale, warnings };
 }
 
+// ─── Phase 3.AI.2 — 6 additional per-intent planners ────────────────────
+
+function planCreateBoxWithChamfer(
+  intent: Extract<PlanIntent, { kind: 'create_box_with_chamfer' }>,
+  tree: FeatureTree,
+): PlanResult {
+  const warnings: string[] = [];
+  validatePositiveSize(intent.size, warnings);
+  if (!Number.isFinite(intent.chamferDistance) || intent.chamferDistance <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_box_with_chamfer: chamferDistance must be positive, got ${intent.chamferDistance}`,
+    );
+  }
+  const minDim = Math.min(intent.size.x, intent.size.y, intent.size.z);
+  if (intent.chamferDistance >= minDim / 2) {
+    warnings.push(
+      `chamferDistance ${intent.chamferDistance} ≥ min(size)/2 = ${minDim / 2}; ` +
+        `apply step will fail at build time`,
+    );
+  }
+
+  const idGen = makeIdGenerator(tree);
+  const boxId = idGen('box');
+  const chamferId = idGen('chamfer');
+  const boxNode = makeBoxNode(boxId, intent.size);
+  const chamferPayload: ChamferFeature = {
+    kind: 'chamfer',
+    childExtrude: boxNode.payload as ExtrudeFeature,
+    distance: intent.chamferDistance,
+    edgeSelection: 'all',
+  };
+  const chamferNode: FeatureNode = {
+    id: chamferId,
+    name: `Chamfer d${fmt(intent.chamferDistance)}`,
+    dependencies: [boxId],
+    payload: chamferPayload,
+  };
+  const rationale =
+    `Create a ${fmt(intent.size.x)}x${fmt(intent.size.y)}x${fmt(intent.size.z)} mm box, ` +
+    `then chamfer all edges with distance ${fmt(intent.chamferDistance)} mm.`;
+  return {
+    steps: [
+      { type: 'add_node', node: boxNode },
+      { type: 'add_node', node: chamferNode },
+    ],
+    rationale,
+    warnings,
+  };
+}
+
+function planCreateBoxWithPocket(
+  intent: Extract<PlanIntent, { kind: 'create_box_with_pocket' }>,
+  tree: FeatureTree,
+): PlanResult {
+  const warnings: string[] = [];
+  validatePositiveSize(intent.size, warnings);
+  if (!Number.isFinite(intent.pocketDepth) || intent.pocketDepth <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_box_with_pocket: pocketDepth must be positive, got ${intent.pocketDepth}`,
+    );
+  }
+  if (!Number.isFinite(intent.pocketRadius) || intent.pocketRadius <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_box_with_pocket: pocketRadius must be positive, got ${intent.pocketRadius}`,
+    );
+  }
+  if (intent.pocketDepth >= intent.size.z) {
+    warnings.push(
+      `pocketDepth ${intent.pocketDepth} ≥ size.z ${intent.size.z}; pocket would punch through`,
+    );
+  }
+  const maxRadius = Math.min(intent.size.x, intent.size.y) / 2;
+  if (intent.pocketRadius >= maxRadius) {
+    warnings.push(
+      `pocketRadius ${intent.pocketRadius} ≥ min(size.x,size.y)/2 = ${maxRadius}; ` +
+        `pocket would breach the side walls`,
+    );
+  }
+
+  const idGen = makeIdGenerator(tree);
+  const boxId = idGen('box');
+  const pocketId = idGen('hole');
+  const boxNode = makeBoxNode(boxId, intent.size);
+  // Model the pocket as a centred drilled hole — it's the simplest path that
+  // reuses the existing HoleFeature builder, and the host pipeline will
+  // subtract it via `difference()`.
+  const pocketNode = makeHoleNode(
+    pocketId,
+    intent.size.x / 2,
+    intent.size.y / 2,
+    intent.pocketRadius * 2, // diameter
+    intent.pocketDepth,
+    [boxId],
+  );
+  const rationale =
+    `Create a ${fmt(intent.size.x)}x${fmt(intent.size.y)}x${fmt(intent.size.z)} mm box ` +
+    `with a centred pocket: radius ${fmt(intent.pocketRadius)} mm, ` +
+    `depth ${fmt(intent.pocketDepth)} mm.`;
+  return {
+    steps: [
+      { type: 'add_node', node: boxNode },
+      { type: 'add_node', node: pocketNode },
+    ],
+    rationale,
+    warnings,
+  };
+}
+
+function planCreateCylinderWithHole(
+  intent: Extract<PlanIntent, { kind: 'create_cylinder_with_hole' }>,
+  tree: FeatureTree,
+): PlanResult {
+  const warnings: string[] = [];
+  if (!Number.isFinite(intent.radius) || intent.radius <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_cylinder_with_hole: radius must be positive, got ${intent.radius}`,
+    );
+  }
+  if (!Number.isFinite(intent.height) || intent.height <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_cylinder_with_hole: height must be positive, got ${intent.height}`,
+    );
+  }
+  if (!Number.isFinite(intent.holeRadius) || intent.holeRadius <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_cylinder_with_hole: holeRadius must be positive, got ${intent.holeRadius}`,
+    );
+  }
+  if (intent.holeRadius >= intent.radius) {
+    warnings.push(
+      `holeRadius ${intent.holeRadius} ≥ outer radius ${intent.radius}; ` +
+        `would erase the cylinder wall`,
+    );
+  }
+
+  const idGen = makeIdGenerator(tree);
+  const cylId = idGen('cylinder');
+  const holeId = idGen('hole');
+  // Outer cylinder via 360° revolve (matches the create_cylinder shape).
+  const cylPayload: RevolveFeature = {
+    kind: 'revolve',
+    loop: [
+      { x: 0, y: 0 },
+      { x: intent.radius, y: 0 },
+      { x: intent.radius, y: intent.height },
+      { x: 0, y: intent.height },
+    ],
+    angleDegrees: 360,
+    mode: 'add',
+  };
+  const cylNode: FeatureNode = {
+    id: cylId,
+    name: `Cylinder r${fmt(intent.radius)} h${fmt(intent.height)}`,
+    dependencies: [],
+    payload: cylPayload,
+  };
+  // Concentric through-hole. Centre at the cylinder origin (0,0).
+  const holeNode = makeHoleNode(
+    holeId,
+    0,
+    0,
+    intent.holeRadius * 2,
+    intent.height,
+    [cylId],
+  );
+  const rationale =
+    `Create a cylinder r${fmt(intent.radius)} h${fmt(intent.height)} mm ` +
+    `with a concentric through-hole r${fmt(intent.holeRadius)} mm.`;
+  return {
+    steps: [
+      { type: 'add_node', node: cylNode },
+      { type: 'add_node', node: holeNode },
+    ],
+    rationale,
+    warnings,
+  };
+}
+
+function planCreatePatternGrid(
+  intent: Extract<PlanIntent, { kind: 'create_pattern_grid' }>,
+  tree: FeatureTree,
+): PlanResult {
+  const warnings: string[] = [];
+  if (!Number.isInteger(intent.count.x) || intent.count.x <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_pattern_grid: count.x must be a positive integer, got ${intent.count.x}`,
+    );
+  }
+  if (!Number.isInteger(intent.count.y) || intent.count.y <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_pattern_grid: count.y must be a positive integer, got ${intent.count.y}`,
+    );
+  }
+  if (!Number.isFinite(intent.spacing) || intent.spacing <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_pattern_grid: spacing must be positive, got ${intent.spacing}`,
+    );
+  }
+  const total = intent.count.x * intent.count.y;
+  if (total > 200) {
+    warnings.push(
+      `create_pattern_grid: large grid (${intent.count.x}x${intent.count.y}=${total}) may degrade render performance`,
+    );
+  }
+
+  const idGen = makeIdGenerator(tree);
+  const steps: PlanStep[] = [];
+
+  // Emit base feature as a single node first, then 2 nested linear patterns
+  // that copy it along X and along Y. The base sits at (0,0); patterns
+  // wrap its SCAD body via opaque childScad (the host pipeline materializes
+  // childScad at render time — see pattern.ts docstring).
+  let baseId: string;
+  if (intent.baseFeature === 'extrude_box') {
+    baseId = idGen('box');
+    const baseNode = makeBoxNode(baseId, { x: 20, y: 20, z: 10 });
+    steps.push({ type: 'add_node', node: baseNode });
+  } else {
+    baseId = idGen('cylinder');
+    const cylPayload: RevolveFeature = {
+      kind: 'revolve',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 },
+      ],
+      angleDegrees: 360,
+      mode: 'add',
+    };
+    steps.push({
+      type: 'add_node',
+      node: {
+        id: baseId,
+        name: 'Cylinder r10 h10',
+        dependencies: [],
+        payload: cylPayload,
+      },
+    });
+  }
+
+  // X-direction pattern.
+  const xPatternId = idGen('linpat');
+  const xPayload: LinearPatternFeature = {
+    kind: 'linear_pattern',
+    childScad: `// pattern_child_ref:${baseId}`,
+    count: intent.count.x,
+    direction: { x: 1, y: 0, z: 0 },
+    spacing: intent.spacing,
+  };
+  steps.push({
+    type: 'add_node',
+    node: {
+      id: xPatternId,
+      name: `Linear X ×${intent.count.x} s${fmt(intent.spacing)}`,
+      dependencies: [baseId],
+      payload: xPayload,
+    },
+  });
+
+  // Y-direction pattern (operates on the X row → produces full grid).
+  const yPatternId = idGen('linpat');
+  const yPayload: LinearPatternFeature = {
+    kind: 'linear_pattern',
+    childScad: `// pattern_child_ref:${xPatternId}`,
+    count: intent.count.y,
+    direction: { x: 0, y: 1, z: 0 },
+    spacing: intent.spacing,
+  };
+  steps.push({
+    type: 'add_node',
+    node: {
+      id: yPatternId,
+      name: `Linear Y ×${intent.count.y} s${fmt(intent.spacing)}`,
+      dependencies: [xPatternId],
+      payload: yPayload,
+    },
+  });
+
+  const rationale =
+    `Create a ${intent.count.x}x${intent.count.y} grid of ${intent.baseFeature}s ` +
+    `spaced ${fmt(intent.spacing)} mm apart, via 2 nested linear patterns.`;
+  return { steps, rationale, warnings };
+}
+
+function planCreateRevolveAxis(
+  intent: Extract<PlanIntent, { kind: 'create_revolve_axis' }>,
+  tree: FeatureTree,
+): PlanResult {
+  const warnings: string[] = [];
+  if (!Number.isFinite(intent.radius) || intent.radius <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_revolve_axis: radius must be positive, got ${intent.radius}`,
+    );
+  }
+  if (!Number.isFinite(intent.height) || intent.height <= 0) {
+    throw new FeatureTreePlannerError(
+      `create_revolve_axis: height must be positive, got ${intent.height}`,
+    );
+  }
+
+  const idGen = makeIdGenerator(tree);
+  const id = idGen('revolve');
+  const loop: Array<{ x: number; y: number }> =
+    intent.profile === 'rectangle'
+      ? [
+          { x: 0, y: 0 },
+          { x: intent.radius, y: 0 },
+          { x: intent.radius, y: intent.height },
+          { x: 0, y: intent.height },
+        ]
+      : // triangle: right-triangle with the vertical leg on the axis
+        [
+          { x: 0, y: 0 },
+          { x: intent.radius, y: 0 },
+          { x: 0, y: intent.height },
+        ];
+  const payload: RevolveFeature = {
+    kind: 'revolve',
+    loop,
+    angleDegrees: 360,
+    mode: 'add',
+  };
+  const node: FeatureNode = {
+    id,
+    name: `Revolve ${intent.profile} r${fmt(intent.radius)} h${fmt(intent.height)}`,
+    dependencies: [],
+    payload,
+  };
+  const rationale =
+    `Revolve a ${intent.profile} (radius ${fmt(intent.radius)} mm, ` +
+    `height ${fmt(intent.height)} mm) 360° around the Y axis.`;
+  return { steps: [{ type: 'add_node', node }], rationale, warnings };
+}
+
+function planAddPatternToLast(
+  intent: Extract<PlanIntent, { kind: 'add_pattern_to_last' }>,
+  tree: FeatureTree,
+): PlanResult {
+  const warnings: string[] = [];
+  if (!Number.isInteger(intent.count) || intent.count < 2) {
+    throw new FeatureTreePlannerError(
+      `add_pattern_to_last: count must be an integer ≥ 2, got ${intent.count}`,
+    );
+  }
+  if (intent.count > 1000) {
+    throw new FeatureTreePlannerError(
+      `add_pattern_to_last: count ${intent.count} exceeds 1000 (perf safety)`,
+    );
+  }
+  const parent = findLastSolidFeature(tree);
+  if (!parent) {
+    warnings.push(
+      'add_pattern_to_last: no solid feature found in current tree — cannot pattern',
+    );
+    return {
+      steps: [],
+      rationale: `Cannot add ${intent.patternKind} pattern: no parent solid in tree.`,
+      warnings,
+    };
+  }
+
+  const idGen = makeIdGenerator(tree);
+  if (intent.patternKind === 'linear') {
+    const spacing = intent.spacing;
+    if (spacing === undefined || !Number.isFinite(spacing) || spacing <= 0) {
+      throw new FeatureTreePlannerError(
+        `add_pattern_to_last: linear pattern requires positive spacing, got ${spacing}`,
+      );
+    }
+    const id = idGen('linpat');
+    const payload: LinearPatternFeature = {
+      kind: 'linear_pattern',
+      childScad: `// pattern_child_ref:${parent.id}`,
+      count: intent.count,
+      direction: { x: 1, y: 0, z: 0 },
+      spacing,
+    };
+    return {
+      steps: [
+        {
+          type: 'add_node',
+          node: {
+            id,
+            name: `Linear ×${intent.count} s${fmt(spacing)}`,
+            dependencies: [parent.id],
+            payload,
+          },
+        },
+      ],
+      rationale:
+        `Add a linear pattern of ${intent.count} copies (spacing ${fmt(spacing)} mm) ` +
+        `to '${parent.name}' (${parent.id}).`,
+      warnings,
+    };
+  }
+
+  // circular
+  const angle = intent.angle ?? 360;
+  if (!Number.isFinite(angle) || angle <= 0 || angle > 360) {
+    throw new FeatureTreePlannerError(
+      `add_pattern_to_last: circular pattern angle must be in (0, 360], got ${angle}`,
+    );
+  }
+  const id = idGen('cirpat');
+  const payload: CircularPatternFeature = {
+    kind: 'circular_pattern',
+    childScad: `// pattern_child_ref:${parent.id}`,
+    count: intent.count,
+    axisOrigin: { x: 0, y: 0, z: 0 },
+    axisDirection: { x: 0, y: 0, z: 1 },
+    totalAngleDegrees: angle,
+  };
+  return {
+    steps: [
+      {
+        type: 'add_node',
+        node: {
+          id,
+          name: `Circular ×${intent.count} (${fmt(angle)}°)`,
+          dependencies: [parent.id],
+          payload,
+        },
+      },
+    ],
+    rationale:
+      `Add a circular pattern of ${intent.count} copies around the Z axis ` +
+      `(${fmt(angle)}° sweep) to '${parent.name}' (${parent.id}).`,
+    warnings,
+  };
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 function makeBoxNode(id: string, size: Vec3, name?: string): FeatureNode {
@@ -445,6 +931,21 @@ function findLastFilletableExtrude(tree: FeatureTree): FeatureNode | undefined {
   for (let i = tree.nodes.length - 1; i >= 0; i--) {
     const n = tree.nodes[i]!;
     if (n.payload.kind === 'extrude') return n;
+  }
+  return undefined;
+}
+
+/**
+ * Find the most-recent feature that produces a solid body (so a pattern has
+ * something meaningful to copy). Accepts extrude / revolve / sweep / loft —
+ * skips holes, fillets, chamfers, and other modifiers that aren't standalone
+ * bodies. Returns undefined if no eligible feature exists.
+ */
+function findLastSolidFeature(tree: FeatureTree): FeatureNode | undefined {
+  const solidKinds = new Set(['extrude', 'revolve', 'sweep', 'loft']);
+  for (let i = tree.nodes.length - 1; i >= 0; i--) {
+    const n = tree.nodes[i]!;
+    if (solidKinds.has(n.payload.kind)) return n;
   }
   return undefined;
 }
