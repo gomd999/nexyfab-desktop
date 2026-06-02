@@ -30,7 +30,7 @@
  */
 
 import React from 'react';
-import type { SnapTarget } from '@/lib/sketch/sketchSnap';
+import type { SnapTarget, SnapKind } from '@/lib/sketch/sketchSnap';
 
 export interface SketchSnapIndicatorProps {
   snap: SnapTarget | null;
@@ -38,14 +38,20 @@ export interface SketchSnapIndicatorProps {
   size?: number;
 }
 
-const COLORS = {
+// Phase 2 kinds (arc_*/perpendicular) fall through the switch default
+// and render no marker; the COLORS table only needs entries for Phase 1
+// kinds. We use Partial<Record<SnapKind, string>> so indexing with any
+// SnapKind stays type-safe (returns undefined for unmapped kinds).
+const COLORS: Partial<Record<SnapKind, string>> = {
   grid: '#6b7280',           // grey-500
   point: '#06b6d4',          // cyan-500
   line_endpoint: '#f97316',  // orange-500
   line_midpoint: '#eab308',  // yellow-500
   circle_center: '#d946ef',  // fuchsia-500
   intersection: '#ef4444',   // red-500
-} as const;
+};
+
+const FALLBACK_COLOR = '#94a3b8'; // slate-400 — used for Phase 2 kinds with no dedicated marker.
 
 const SketchSnapIndicator: React.FC<SketchSnapIndicatorProps> = ({
   snap,
@@ -54,7 +60,7 @@ const SketchSnapIndicator: React.FC<SketchSnapIndicatorProps> = ({
   if (!snap) return null;
 
   const { pos, kind } = snap;
-  const color = COLORS[kind];
+  const color = COLORS[kind] ?? FALLBACK_COLOR;
   const r = size;
 
   let marker: React.ReactNode;
