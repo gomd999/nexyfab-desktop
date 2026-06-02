@@ -36,6 +36,8 @@ import type { SweepFeature, LoftFeature } from './sweepLoft';
 import { sweepToScad, loftToScad } from './sweepLoft';
 import type { LinearPatternFeature, CircularPatternFeature } from './pattern';
 import { linearPatternToScad, circularPatternToScad } from './pattern';
+import type { HoleFeature } from './holeProfile';
+import { holeToScad } from './holeProfile';
 
 // ─── IR ───────────────────────────────────────────────────────────────────
 
@@ -45,7 +47,8 @@ export type FeatureKind =
   | 'sweep'
   | 'loft'
   | 'linear_pattern'
-  | 'circular_pattern';
+  | 'circular_pattern'
+  | 'hole';
 
 export type FeaturePayload =
   | ExtrudeFeature
@@ -53,7 +56,8 @@ export type FeaturePayload =
   | SweepFeature
   | LoftFeature
   | LinearPatternFeature
-  | CircularPatternFeature;
+  | CircularPatternFeature
+  | HoleFeature;
 
 export interface FeatureNode {
   /** Stable id within the tree. Used for dependency refs + UI selection. */
@@ -166,6 +170,8 @@ function renderNode(node: FeatureNode): string {
       return linearPatternToScad(p);
     case 'circular_pattern':
       return circularPatternToScad(p);
+    case 'hole':
+      return holeToScad(p);
   }
 }
 
