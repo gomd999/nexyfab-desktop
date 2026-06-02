@@ -43,7 +43,9 @@ import {
   type LineId,
   type CircleId,
   type ArcId,
+  type ConstraintId,
   type SolveResult,
+  type SerializedConstraint,
 } from '@/lib/sketch/solver';
 import SketchConstraintToolbar, {
   type SketchEntityRef,
@@ -55,6 +57,10 @@ import SketchEntityPropertyPanel, {
   type EntityField as PanelEntityField,
   type EntityFieldValue as PanelEntityFieldValue,
 } from './SketchEntityPropertyPanel';
+import SketchConstraintOverlay, {
+  type DisplayConstraint,
+  type Pt as OverlayPt,
+} from './SketchConstraintOverlay';
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -453,6 +459,13 @@ export default function SolverSketchEditor({
   const [selection, setSelection] = useState<SketchEntityRef[]>([]);
   const selected = useMemo(() => selection.map((s) => s.id), [selection]);
   const [drag, setDrag] = useState<{ pointId: PointId } | null>(null);
+  // Phase 1.B overlay state: snapshot of solver.getConstraints() refreshed
+  // after every solve. The overlay reads this + entity coords to render
+  // dim-lines/arcs/badges. Selected constraint is highlighted blue.
+  const [constraintSnapshot, setConstraintSnapshot] = useState<
+    ReadonlyArray<SerializedConstraint>
+  >([]);
+  const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
 
   // ─── helper: refresh view entities from solver after a solve ───
   const refreshFromSolver = useCallback((s: SketchSolver, current: ViewEntity[]): ViewEntity[] => {
@@ -472,6 +485,10 @@ export default function SolverSketchEditor({
       const result = solver.solve();
       setSolveResult(result);
       setEntities((prev) => refreshFromSolver(solver, next ?? prev));
+      // Refresh constraint snapshot for the overlay. We do this on every
+      // solve so newly-added constraints appear immediately + removed ones
+      // disappear without an extra re-render hop.
+      setConstraintSnapshot(solver.getConstraints());
     },
     [solver, refreshFromSolver],
   );
@@ -1136,6 +1153,118 @@ export default function SolverSketchEditor({
     return m;
   }, [renderPoints]);
 
+  // ─── SketchConstraintOverlay bridge (Phase 1.B) ───────────────────────
+  //
+  // Convert each SerializedConstraint into a DisplayConstraint by joining
+  // the constraint's `refs` (entity ids) with the current entity coords.
+  //
+  // Per-kind mapping (refs order matches solver.ts comment):
+  //   distance      : refs[2] = points          → { p1, p2, value }
+  //   angle         : refs[2] = lines           → { line1Pts, line2Pts, value }
+  //   horizontal    : refs[1] = line            → entities = [lineP1, lineP2]
+  //   vertical      : refs[1] = line            → entities = [lineP1, lineP2]
+  //   parallel      : refs[2] = lines           → entities = [l1P1, l1P2]
+  //   perpendicular : refs[2] = lines           → entities = [l1P1, l1P2]
+  //   coincident    : refs[2] = points          → entities = [p1]
+  //   tangent       : refs[2] = curves          → entities = [curveAnchor]
+  //   radius        : refs[1] = circle | arc    → entities = [center]
+  //
+  // Constraints whose refs resolve to missing entities are dropped silently
+  // (e.g. an entity was deleted but the underlying planegcs constraint
+  // lingers until destroy — see solver.removeConstraint caveat).
+  const overlayConstraints = useMemo<ReadonlyArray<DisplayConstraint>>(() => {
+    const entityById = new Map<string, ViewEntity>();
+    for (const e of entities) entityById.set(e.id as string, e);
+
+    const pointCoords = (id: string): OverlayPt | null => {
+      const e = entityById.get(id);
+      if (!e || e.kind !== 'point') return null;
+      return { x: e.x, y: e.y };
+    };
+    const lineEndpoints = (id: string): [OverlayPt, OverlayPt] | null => {
+      const e = entityById.get(id);
+      if (!e || e.kind !== 'line') return null;
+      const a = pointCoords(e.p1 as string);
+      const b = pointCoords(e.p2 as string);
+      if (!a || !b) return null;
+      return [a, b];
+    };
+    const circleCenter = (id: string): OverlayPt | null => {
+      const e = entityById.get(id);
+      if (!e || e.kind !== 'circle') return null;
+      return pointCoords(e.center as string);
+    };
+
+    const out: DisplayConstraint[] = [];
+    for (const c of constraintSnapshot) {
+      if (c.kind === 'distance') {
+        const p1 = pointCoords(c.refs[0] ?? '');
+        const p2 = pointCoords(c.refs[1] ?? '');
+        if (!p1 || !p2 || c.value === undefined) continue;
+        out.push({ kind: 'distance', id: c.id, p1, p2, value: c.value });
+        continue;
+      }
+      if (c.kind === 'angle') {
+        const l1 = lineEndpoints(c.refs[0] ?? '');
+        const l2 = lineEndpoints(c.refs[1] ?? '');
+        if (!l1 || !l2 || c.value === undefined) continue;
+        out.push({ kind: 'angle', id: c.id, line1Pts: l1, line2Pts: l2, value: c.value });
+        continue;
+      }
+      if (c.kind === 'horizontal' || c.kind === 'vertical') {
+        const l = lineEndpoints(c.refs[0] ?? '');
+        if (!l) continue;
+        out.push({ kind: c.kind, id: c.id, entities: l });
+        continue;
+      }
+      if (c.kind === 'parallel' || c.kind === 'perpendicular') {
+        // Badge anchors on line A's midpoint — pass its two endpoints.
+        const l1 = lineEndpoints(c.refs[0] ?? '');
+        if (!l1) continue;
+        out.push({ kind: c.kind, id: c.id, entities: l1 });
+        continue;
+      }
+      if (c.kind === 'coincident') {
+        const p1 = pointCoords(c.refs[0] ?? '');
+        if (!p1) continue;
+        out.push({ kind: 'coincident', id: c.id, entities: [p1] });
+        continue;
+      }
+      if (c.kind === 'tangent') {
+        // Anchor at curve A's center / line midpoint.
+        const idA = c.refs[0] ?? '';
+        const entA = entityById.get(idA);
+        let anchor: OverlayPt | null = null;
+        if (entA?.kind === 'line') {
+          const ep = lineEndpoints(idA);
+          if (ep) anchor = { x: (ep[0].x + ep[1].x) / 2, y: (ep[0].y + ep[1].y) / 2 };
+        } else if (entA?.kind === 'circle') {
+          anchor = circleCenter(idA);
+        }
+        if (!anchor) continue;
+        out.push({ kind: 'tangent', id: c.id, entities: [anchor] });
+        continue;
+      }
+      // 'radius' is solver-level (no overlay glyph defined in Phase 1.B).
+      // Skip — future Phase 1.C could surface as an equal_radius badge.
+    }
+    return out;
+  }, [constraintSnapshot, entities]);
+
+  const handleConstraintSelect = useCallback((id: string): void => {
+    setSelectedConstraintId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const handleConstraintDelete = useCallback(
+    (id: string): void => {
+      if (!solver) return;
+      solver.removeConstraint(id as ConstraintId);
+      setSelectedConstraintId((prev) => (prev === id ? null : prev));
+      solveAndApply();
+    },
+    [solver, solveAndApply],
+  );
+
   // ─── SketchEntityPropertyPanel bridge ──────────────────────────────────
   //
   // Derive an EntityData snapshot of the currently selected entities so the
@@ -1509,6 +1638,24 @@ export default function SolverSketchEditor({
             />
           );
         })}
+
+        {/*
+          Constraint overlay — Phase 1.B. Rendered AFTER lines/circles/points
+          so dim-lines + badges sit visually above geometry. Inside the SVG
+          so the overlay shares the canvas coordinate system (no extra
+          transform needed). z-order summary inside the canvas <svg>:
+            1. Grid
+            2. Lines + circles
+            3. Points (drawn last among geometry so they're on top)
+            4. SketchConstraintOverlay  ← here (top of geometry layer)
+            5. In-progress preview (line/circle/rect ghost)
+        */}
+        <SketchConstraintOverlay
+          constraints={overlayConstraints}
+          selectedConstraintId={selectedConstraintId ?? undefined}
+          onSelect={handleConstraintSelect}
+          onDelete={handleConstraintDelete}
+        />
 
         {/* in-progress preview */}
         {pending && cursor && pending.kind === 'line' && (

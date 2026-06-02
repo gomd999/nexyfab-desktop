@@ -99,6 +99,45 @@ export interface SolveResult {
   dof: number;
 }
 
+// ---------- Phase 1.B overlay accessor: serialized constraint snapshot ----------
+//
+// `SerializedConstraint` is a view-friendly projection of every constraint
+// currently registered with the solver. Wrappers (e.g. SketchConstraintOverlay)
+// can use this to render visual badges/dim-lines without poking at planegcs
+// internals.
+//
+// `kind` is the same vocabulary as the facade `addX` methods (horizontal,
+// vertical, parallel, perpendicular, coincident, distance, angle, tangent,
+// radius). `refs` is an ordered list of entity ids — exact layout per kind:
+//
+//   horizontal/vertical/radius : [lineId | circleId | arcId]
+//   parallel/perpendicular/    : [lineId, lineId]   (or [curveId, curveId] for tangent)
+//   tangent                    : [curveAId, curveBId]
+//   coincident                 : [pointId, pointId]
+//   distance                   : [pointId, pointId]
+//   angle                      : [lineId, lineId]
+//
+// `value` is set for dimensional kinds (distance, angle, radius); undefined
+// for purely geometric ones.
+
+export type SerializedConstraintKind =
+  | 'horizontal'
+  | 'vertical'
+  | 'parallel'
+  | 'perpendicular'
+  | 'coincident'
+  | 'tangent'
+  | 'distance'
+  | 'angle'
+  | 'radius';
+
+export interface SerializedConstraint {
+  id: ConstraintId;
+  kind: SerializedConstraintKind;
+  refs: ReadonlyArray<string>;
+  value?: number;
+}
+
 // ---------- internal state ----------
 
 interface PointRecord {
@@ -108,6 +147,12 @@ interface PointRecord {
 
 interface ConstraintRecord {
   id: ConstraintId;
+  /** View-side projection (Phase 1.B). Mirrors the addX method that created it. */
+  kind: SerializedConstraintKind;
+  /** Ordered entity ids the constraint references (see SerializedConstraint comment). */
+  refs: ReadonlyArray<string>;
+  /** Dimensional value when applicable (distance mm / angle rad / radius). */
+  value?: number;
 }
 
 // ---------- main class ----------
@@ -202,17 +247,29 @@ export class SketchSolver {
 
   /** Two points share the same location. */
   addCoincident(p1: PointId, p2: PointId): ConstraintId {
-    return this.pushConstraint({ type: 'p2p_coincident', p1_id: p1, p2_id: p2 });
+    return this.pushConstraint(
+      { type: 'p2p_coincident', p1_id: p1, p2_id: p2 },
+      'coincident',
+      [p1, p2],
+    );
   }
 
   /** Two lines are parallel. */
   addParallel(l1: LineId, l2: LineId): ConstraintId {
-    return this.pushConstraint({ type: 'parallel', l1_id: l1, l2_id: l2 });
+    return this.pushConstraint(
+      { type: 'parallel', l1_id: l1, l2_id: l2 },
+      'parallel',
+      [l1, l2],
+    );
   }
 
   /** Two lines are perpendicular. */
   addPerpendicular(l1: LineId, l2: LineId): ConstraintId {
-    return this.pushConstraint({ type: 'perpendicular_ll', l1_id: l1, l2_id: l2 });
+    return this.pushConstraint(
+      { type: 'perpendicular_ll', l1_id: l1, l2_id: l2 },
+      'perpendicular',
+      [l1, l2],
+    );
   }
 
   /**
@@ -227,19 +284,19 @@ export class SketchSolver {
     const aKind = this.kindOf(a);
     const bKind = this.kindOf(b);
     if (aKind === 'line' && bKind === 'circle') {
-      return this.pushConstraint({ type: 'tangent_lc', l_id: a, c_id: b });
+      return this.pushConstraint({ type: 'tangent_lc', l_id: a, c_id: b }, 'tangent', [a, b]);
     }
     if (aKind === 'circle' && bKind === 'line') {
-      return this.pushConstraint({ type: 'tangent_lc', l_id: b, c_id: a });
+      return this.pushConstraint({ type: 'tangent_lc', l_id: b, c_id: a }, 'tangent', [a, b]);
     }
     if (aKind === 'line' && bKind === 'arc') {
-      return this.pushConstraint({ type: 'tangent_la', l_id: a, a_id: b });
+      return this.pushConstraint({ type: 'tangent_la', l_id: a, a_id: b }, 'tangent', [a, b]);
     }
     if (aKind === 'arc' && bKind === 'line') {
-      return this.pushConstraint({ type: 'tangent_la', l_id: b, a_id: a });
+      return this.pushConstraint({ type: 'tangent_la', l_id: b, a_id: a }, 'tangent', [a, b]);
     }
     if (aKind === 'circle' && bKind === 'circle') {
-      return this.pushConstraint({ type: 'tangent_cc', c1_id: a, c2_id: b });
+      return this.pushConstraint({ type: 'tangent_cc', c1_id: a, c2_id: b }, 'tangent', [a, b]);
     }
     throw new Error(
       `addTangent: unsupported geometry combination ${aKind}/${bKind}. ` +
@@ -249,34 +306,54 @@ export class SketchSolver {
 
   /** Line lies parallel to the X axis. */
   addHorizontal(l: LineId): ConstraintId {
-    return this.pushConstraint({ type: 'horizontal_l', l_id: l });
+    return this.pushConstraint({ type: 'horizontal_l', l_id: l }, 'horizontal', [l]);
   }
 
   /** Line lies parallel to the Y axis. */
   addVertical(l: LineId): ConstraintId {
-    return this.pushConstraint({ type: 'vertical_l', l_id: l });
+    return this.pushConstraint({ type: 'vertical_l', l_id: l }, 'vertical', [l]);
   }
 
   // ----- constraints: dimensional (3 types) -----
 
   /** Pin the distance between two points. */
   addDistance(p1: PointId, p2: PointId, distance: number): ConstraintId {
-    return this.pushConstraint({ type: 'p2p_distance', p1_id: p1, p2_id: p2, distance });
+    return this.pushConstraint(
+      { type: 'p2p_distance', p1_id: p1, p2_id: p2, distance },
+      'distance',
+      [p1, p2],
+      distance,
+    );
   }
 
   /** Pin the angle (radians) between two lines. */
   addAngle(l1: LineId, l2: LineId, angleRadians: number): ConstraintId {
-    return this.pushConstraint({ type: 'l2l_angle_ll', l1_id: l1, l2_id: l2, angle: angleRadians });
+    return this.pushConstraint(
+      { type: 'l2l_angle_ll', l1_id: l1, l2_id: l2, angle: angleRadians },
+      'angle',
+      [l1, l2],
+      angleRadians,
+    );
   }
 
   /** Pin a circle's or arc's radius. */
   addRadius(geometry: CircleId | ArcId, radius: number): ConstraintId {
     const kind = this.kindOf(geometry);
     if (kind === 'circle') {
-      return this.pushConstraint({ type: 'circle_radius', c_id: geometry, radius });
+      return this.pushConstraint(
+        { type: 'circle_radius', c_id: geometry, radius },
+        'radius',
+        [geometry],
+        radius,
+      );
     }
     if (kind === 'arc') {
-      return this.pushConstraint({ type: 'arc_radius', a_id: geometry, radius });
+      return this.pushConstraint(
+        { type: 'arc_radius', a_id: geometry, radius },
+        'radius',
+        [geometry],
+        radius,
+      );
     }
     throw new Error(`addRadius: ${geometry} is neither circle nor arc`);
   }
@@ -533,6 +610,53 @@ export class SketchSolver {
     this.arcs.delete(id);
   }
 
+  // ----- constraint accessors (Phase 1.B overlay) -----
+
+  /**
+   * Snapshot of every constraint currently registered, in the order they
+   * were added. Pure read; safe to call from a React render loop.
+   *
+   * Wrappers use this to drive the visual overlay (SketchConstraintOverlay)
+   * without poking at planegcs internals or maintaining a parallel ledger.
+   */
+  getConstraints(): ReadonlyArray<SerializedConstraint> {
+    return Array.from(this.constraints.values(), (rec) => ({
+      id: rec.id,
+      kind: rec.kind,
+      refs: rec.refs,
+      value: rec.value,
+    }));
+  }
+
+  /**
+   * Drop a constraint from the JS-side tracking ledger.
+   *
+   * Phase 1.B caveat: planegcs (the underlying solver) has no public
+   * delete-constraint API exposed by GcsWrapper — once a primitive has
+   * been pushed via `push_primitives_and_params`, it lives on the C++
+   * side until the GCS instance is destroyed. This method therefore
+   * only un-registers the constraint from our tracking Map (so it no
+   * longer shows up in `getConstraints()` and the next-time-pushed
+   * `pending` array stays clean) — the constraint may still affect the
+   * very next solve() if it was already flushed.
+   *
+   * Returns `true` if a record was removed, `false` if `id` was unknown.
+   * Callers (e.g. SolverSketchEditor) should `solve()` after to refresh
+   * DoF + conflicting/redundant lists.
+   */
+  removeConstraint(id: ConstraintId): boolean {
+    const had = this.constraints.delete(id);
+    // Also strip from the pending batch in case the constraint hasn't
+    // been flushed to planegcs yet (otherwise we'd push a deleted one).
+    if (this.pending.length > 0) {
+      this.pending = this.pending.filter((p) => {
+        const rec = p as { id?: string };
+        return rec.id !== id;
+      });
+    }
+    return had;
+  }
+
   // ----- lifecycle -----
 
   destroy(): void {
@@ -543,10 +667,15 @@ export class SketchSolver {
 
   // ----- internals -----
 
-  private pushConstraint(body: Record<string, unknown>): ConstraintId {
+  private pushConstraint(
+    body: Record<string, unknown>,
+    kind: SerializedConstraintKind,
+    refs: ReadonlyArray<string>,
+    value?: number,
+  ): ConstraintId {
     this.assertAlive();
     const id = this.fresh<ConstraintId>('k');
-    this.constraints.set(id, { id });
+    this.constraints.set(id, { id, kind, refs: [...refs], value });
     this.pending.push({ id, ...body });
     return id;
   }
