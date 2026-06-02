@@ -446,41 +446,449 @@ export function writeExtrudeAsStep(
   return `${header}${data}END-ISO-10303-21;\n`;
 }
 
+// ─── Polygon-profile extrude (Phase 5.1) ──────────────────────────────────
+//
+// Extension of the BOX-only writer to handle arbitrary CONVEX polygon
+// profiles (any vertex count N ≥ 3). The emitted entity graph follows the
+// same AP214 envelope as `emitBox`, but topology scales with N:
+//
+//     - 2N VERTEX_POINTs            (N bottom @ z=0, N top @ z=depth)
+//     - 3N EDGE_CURVEs              (N bottom ring + N top ring + N risers)
+//     - N + 2 ADVANCED_FACEs        (N rectangular sides + 1 top + 1 bottom)
+//
+// Each side face is the strip bounded by 2 vertical riser edges and the
+// matching bottom/top polygon edge — its surface PLANE is normal to
+// `edgeDir × Z` (outward when the loop is CCW). Top/bottom faces use the
+// usual +Z / -Z plane normals.
+//
+// Phase 1 limit: concave loops (interior angle > 180° at any vertex) and
+// self-intersecting loops fall back to bbox via `writeExtrudeAsStep`.
+// Holes (multi-loop) still require Phase 2 OCCT.
+
+/** Signed area of a 2D polygon (CCW positive, CW negative). */
+function signedArea2D(loop: ReadonlyArray<{ x: number; y: number }>): number {
+  let s = 0;
+  const n = loop.length;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i]!;
+    const b = loop[(i + 1) % n]!;
+    s += a.x * b.y - b.x * a.y;
+  }
+  return s / 2;
+}
+
+/**
+ * Convexity test: a polygon is convex when every consecutive cross product
+ * (edge_i × edge_{i+1}) shares the same sign. A sign flip means an interior
+ * angle exceeded 180° (i.e. a reflex/concave vertex).
+ */
+function isConvexLoop(loop: ReadonlyArray<{ x: number; y: number }>): boolean {
+  const n = loop.length;
+  if (n < 3) return false;
+  let sign = 0;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i]!;
+    const b = loop[(i + 1) % n]!;
+    const c = loop[(i + 2) % n]!;
+    const cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+    if (Math.abs(cross) < 1e-12) continue; // collinear vertex — ignore
+    if (sign === 0) sign = cross > 0 ? 1 : -1;
+    else if ((cross > 0 ? 1 : -1) !== sign) return false;
+  }
+  return true;
+}
+
+/**
+ * Cheap self-intersection check: O(N^2) pairwise segment-segment test on
+ * non-adjacent edges. Fine for small N (typical sketch polygons < 64 verts).
+ * Returns true iff any two non-adjacent edges properly cross.
+ */
+function hasSelfIntersection(loop: ReadonlyArray<{ x: number; y: number }>): boolean {
+  const n = loop.length;
+  for (let i = 0; i < n; i++) {
+    const a1 = loop[i]!;
+    const a2 = loop[(i + 1) % n]!;
+    for (let j = i + 1; j < n; j++) {
+      // Skip the same edge and the two edges adjacent to edge i (they share
+      // an endpoint, so they "touch" but don't cross).
+      if (j === i) continue;
+      if ((j + 1) % n === i) continue;
+      if ((i + 1) % n === j) continue;
+      const b1 = loop[j]!;
+      const b2 = loop[(j + 1) % n]!;
+      if (segmentsCross(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+/** Proper segment-segment intersection (excludes touching endpoints). */
+function segmentsCross(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  p3: { x: number; y: number },
+  p4: { x: number; y: number },
+): boolean {
+  const d1 = orient(p3, p4, p1);
+  const d2 = orient(p3, p4, p2);
+  const d3 = orient(p1, p2, p3);
+  const d4 = orient(p1, p2, p4);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
+  return false;
+}
+
+function orient(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+/** Classification of a sketch loop for the polygon writer. */
+export type PolygonLoopClassification =
+  | { kind: 'convex' }
+  | { kind: 'concave'; reason: 'reflex vertex' }
+  | { kind: 'self_intersecting' }
+  | { kind: 'degenerate'; reason: string };
+
+/**
+ * Inspect a loop and decide whether the polygon writer can render it as-is
+ * or whether the caller should fall back to the bounding-box writer.
+ *
+ * Caller contract: `convex` → safe for `emitPolygonExtrude`. Anything else
+ * is the bbox-fallback path.
+ */
+export function classifyPolygonLoop(
+  loop: ReadonlyArray<{ x: number; y: number }>,
+): PolygonLoopClassification {
+  if (loop.length < 3) return { kind: 'degenerate', reason: 'fewer than 3 points' };
+  // Self-intersection check first: a bowtie has zero signed area but should
+  // be reported as crossing edges (its actual failure mode), not "degenerate".
+  if (hasSelfIntersection(loop)) return { kind: 'self_intersecting' };
+  const area = signedArea2D(loop);
+  if (Math.abs(area) < 1e-9) return { kind: 'degenerate', reason: 'zero area' };
+  if (!isConvexLoop(loop)) return { kind: 'concave', reason: 'reflex vertex' };
+  return { kind: 'convex' };
+}
+
+/**
+ * Emit all entity rows needed to describe a prismatic polygon extrude
+ * (CCW convex loop, depth in +Z). Returns refs that mirror `emitBox`.
+ *
+ * Pre-conditions (caller-enforced):
+ *   - `loop` is convex, non-self-intersecting, has ≥ 3 distinct vertices
+ *   - vertices are CCW (positive signed area)
+ *   - depth > 0
+ */
+function emitPolygonExtrude(
+  b: StepBuilder,
+  loop: ReadonlyArray<{ x: number; y: number }>,
+  depth: number,
+): BoxGeometryRefs {
+  const n = loop.length;
+
+  // 2N CARTESIAN_POINTs: bottom ring [0..n) then top ring [n..2n).
+  const cp: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = loop[i]!;
+    cp.push(b.add(`CARTESIAN_POINT('',(${fmt(p.x)},${fmt(p.y)},${fmt(0)}))`));
+  }
+  for (let i = 0; i < n; i++) {
+    const p = loop[i]!;
+    cp.push(b.add(`CARTESIAN_POINT('',(${fmt(p.x)},${fmt(p.y)},${fmt(depth)}))`));
+  }
+
+  const vp = cp.map((p) => b.add(`VERTEX_POINT('',${p})`));
+
+  // 3N edges:
+  //   bottom[i] = vertex i  → vertex (i+1) mod n          (indices 0..n-1)
+  //   top[i]    = vertex n+i → vertex n+((i+1) mod n)     (indices n..2n-1)
+  //   riser[i]  = vertex i  → vertex n+i                  (indices 2n..3n-1)
+  type Edge = { a: number; b: number };
+  const edges: Edge[] = [];
+  for (let i = 0; i < n; i++) edges.push({ a: i, b: (i + 1) % n });
+  for (let i = 0; i < n; i++) edges.push({ a: n + i, b: n + ((i + 1) % n) });
+  for (let i = 0; i < n; i++) edges.push({ a: i, b: n + i });
+
+  const edgeCurves: string[] = [];
+  for (const e of edges) {
+    const pStart = cp[e.a]!;
+    const startCoords = vertexCoords(e.a, loop, depth);
+    const endCoords = vertexCoords(e.b, loop, depth);
+    const ux = endCoords[0] - startCoords[0];
+    const uy = endCoords[1] - startCoords[1];
+    const uz = endCoords[2] - startCoords[2];
+    const length = Math.hypot(ux, uy, uz);
+    if (length <= 0) throw new Error('emitPolygonExtrude: zero-length edge');
+    const dxN = ux / length;
+    const dyN = uy / length;
+    const dzN = uz / length;
+    const dirRef = b.add(`DIRECTION('',(${fmt(dxN)},${fmt(dyN)},${fmt(dzN)}))`);
+    const vecRef = b.add(`VECTOR('',${dirRef},${fmt(length)})`);
+    const lineRef = b.add(`LINE('',${pStart},${vecRef})`);
+    const ecRef = b.add(`EDGE_CURVE('',${vp[e.a]!},${vp[e.b]!},${lineRef},.T.)`);
+    edgeCurves.push(ecRef);
+  }
+
+  // Edge index helpers.
+  const botEdge = (i: number) => i;                // 0..n-1
+  const topEdge = (i: number) => n + i;            // n..2n-1
+  const riserEdge = (i: number) => 2 * n + i;      // 2n..3n-1
+
+  const faceRefs: string[] = [];
+
+  // ─── Side faces ────────────────────────────────────────────────────────
+  // For side i (between vertex i and vertex (i+1)%n), the outward edge loop
+  // (viewed from outside the solid, CCW) is:
+  //
+  //     bot[i] (+)  →  riser[(i+1)%n] (+)  →  top[i] (-)  →  riser[i] (-)
+  //
+  // Surface normal = (edgeDir2D × Z) for a CCW polygon — outward-pointing.
+  for (let i = 0; i < n; i++) {
+    const iNext = (i + 1) % n;
+    const orientedEdges = [
+      b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[botEdge(i)]!},.T.)`),
+      b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[riserEdge(iNext)]!},.T.)`),
+      b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[topEdge(i)]!},.F.)`),
+      b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[riserEdge(i)]!},.F.)`),
+    ];
+    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(',')}))`);
+    const outerBound = b.add(`FACE_OUTER_BOUND('',${loopRef},.T.)`);
+
+    const a = loop[i]!;
+    const c = loop[iNext]!;
+    const ex = c.x - a.x;
+    const ey = c.y - a.y;
+    const eLen = Math.hypot(ex, ey);
+    // Outward normal for CCW loop = edgeDir × +Z = (ey, -ex, 0) / |edge|.
+    const nx = ey / eLen;
+    const ny = -ex / eLen;
+    // In-plane reference direction = the edge direction itself (unit).
+    const rx = ex / eLen;
+    const ry = ey / eLen;
+
+    const planeNormalDir = b.add(`DIRECTION('',(${fmt(nx)},${fmt(ny)},${fmt(0)}))`);
+    const planeRefDir = b.add(`DIRECTION('',(${fmt(rx)},${fmt(ry)},${fmt(0)}))`);
+    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[i]!},${planeNormalDir},${planeRefDir})`);
+    const plane = b.add(`PLANE('',${planeAxis})`);
+    const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
+    faceRefs.push(face);
+  }
+
+  // ─── Bottom face (z=0, outward normal -Z) ──────────────────────────────
+  // Walk the bottom ring CW (i.e. reversed) so the loop is CCW from below.
+  {
+    const orientedEdges: string[] = [];
+    for (let i = n - 1; i >= 0; i--) {
+      orientedEdges.push(b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[botEdge(i)]!},.F.)`));
+    }
+    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(',')}))`);
+    const outerBound = b.add(`FACE_OUTER_BOUND('',${loopRef},.T.)`);
+    const planeNormalDir = b.add(`DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(-1)}))`);
+    const planeRefDir = b.add(`DIRECTION('',(${fmt(1)},${fmt(0)},${fmt(0)}))`);
+    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[0]!},${planeNormalDir},${planeRefDir})`);
+    const plane = b.add(`PLANE('',${planeAxis})`);
+    const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
+    faceRefs.push(face);
+  }
+
+  // ─── Top face (z=depth, outward normal +Z) ─────────────────────────────
+  // Walk the top ring CCW.
+  {
+    const orientedEdges: string[] = [];
+    for (let i = 0; i < n; i++) {
+      orientedEdges.push(b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[topEdge(i)]!},.T.)`));
+    }
+    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(',')}))`);
+    const outerBound = b.add(`FACE_OUTER_BOUND('',${loopRef},.T.)`);
+    const planeNormalDir = b.add(`DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(1)}))`);
+    const planeRefDir = b.add(`DIRECTION('',(${fmt(1)},${fmt(0)},${fmt(0)}))`);
+    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[n]!},${planeNormalDir},${planeRefDir})`);
+    const plane = b.add(`PLANE('',${planeAxis})`);
+    const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
+    faceRefs.push(face);
+  }
+
+  const shell = b.add(`CLOSED_SHELL('',(${faceRefs.join(',')}))`);
+  const solid = b.add(`MANIFOLD_SOLID_BREP('',${shell})`);
+
+  // Geometric representation context (mirrors emitBox).
+  const originPt = b.add(`CARTESIAN_POINT('',(${fmt(0)},${fmt(0)},${fmt(0)}))`);
+  const zDir = b.add(`DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(1)}))`);
+  const xDir = b.add(`DIRECTION('',(${fmt(1)},${fmt(0)},${fmt(0)}))`);
+  const worldAxis = b.add(`AXIS2_PLACEMENT_3D('',${originPt},${zDir},${xDir})`);
+
+  const lenUnit = b.add(
+    `( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) )`,
+  );
+  const angUnit = b.add(
+    `( NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.) )`,
+  );
+  const solidAngUnit = b.add(
+    `( NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT() )`,
+  );
+  const uncMag = b.add(
+    `UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-7),${lenUnit},'distance_accuracy_value','confusion accuracy')`,
+  );
+  const geomContext = b.add(
+    `( GEOMETRIC_REPRESENTATION_CONTEXT(3) ` +
+      `GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((${uncMag})) ` +
+      `GLOBAL_UNIT_ASSIGNED_CONTEXT((${lenUnit},${angUnit},${solidAngUnit})) ` +
+      `REPRESENTATION_CONTEXT('Context','3D') )`,
+  );
+
+  return { solid, geomContext, worldAxis };
+}
+
+function vertexCoords(
+  i: number,
+  loop: ReadonlyArray<{ x: number; y: number }>,
+  depth: number,
+): [number, number, number] {
+  const n = loop.length;
+  const isTop = i >= n;
+  const idx = isTop ? i - n : i;
+  const p = loop[idx]!;
+  return [p.x, p.y, isTop ? depth : 0];
+}
+
+// ─── Polygon writer public API ────────────────────────────────────────────
+
+export interface PolygonExtrudeOptions extends ExtrudeToStepOptions {
+  /**
+   * Hook for callers that want to observe (or fail loudly on) bbox fallback.
+   * Default: log to console.warn.
+   */
+  onFallback?: (info: { reason: PolygonLoopClassification['kind']; detail: string }) => void;
+}
+
+/**
+ * Phase 5.1 polygon extrude writer. Emits a STEP file whose B-rep matches
+ * the actual N-vertex CCW convex profile (not the bounding box).
+ *
+ * Fallback policy:
+ *   - concave (reflex vertex) → bbox fallback via `writeExtrudeAsStep`
+ *   - self-intersecting       → bbox fallback
+ *   - degenerate (<3 pts, 0 area) → throws (same as the box writer)
+ *
+ * Fallbacks trigger `opts.onFallback` (defaults to console.warn) so callers
+ * can detect when geometry was downgraded.
+ */
+export function writeExtrudePolygonAsStep(
+  feature: ExtrudeFeature,
+  opts: PolygonExtrudeOptions = {},
+): string {
+  if (feature.kind !== 'extrude') {
+    throw new Error(`writeExtrudePolygonAsStep: expected kind='extrude', got '${(feature as { kind: string }).kind}'`);
+  }
+  if (feature.loop.length < 3) {
+    throw new Error(`writeExtrudePolygonAsStep: loop must have at least 3 points, got ${feature.loop.length}`);
+  }
+  if (!(feature.depth > 0) || !Number.isFinite(feature.depth)) {
+    throw new Error(`writeExtrudePolygonAsStep: depth must be positive, got ${feature.depth}`);
+  }
+
+  const classification = classifyPolygonLoop(feature.loop);
+  if (classification.kind !== 'convex') {
+    const reason = classification.kind;
+    const detail =
+      classification.kind === 'concave' ? classification.reason :
+      classification.kind === 'degenerate' ? classification.reason :
+      'edges cross';
+    const onFallback = opts.onFallback ?? defaultFallbackWarn;
+    onFallback({ reason, detail });
+    return writeExtrudeAsStep(feature, opts);
+  }
+
+  // Ensure CCW (positive signed area). If input is CW, reverse so emit*
+  // sees the canonical orientation it expects.
+  const loop: ReadonlyArray<{ x: number; y: number }> =
+    signedArea2D(feature.loop) >= 0 ? feature.loop : [...feature.loop].reverse();
+
+  const b = new StepBuilder();
+  const geom = emitPolygonExtrude(b, loop, feature.depth);
+  emitProductForSolid(b, opts.productName ?? 'extrude', geom);
+
+  const header = writeStepHeader(opts);
+  const data = ['DATA;', b.serialize() + 'ENDSEC;', ''].join('\n');
+  return `${header}${data}END-ISO-10303-21;\n`;
+}
+
+function defaultFallbackWarn(info: { reason: string; detail: string }): void {
+  console.warn(
+    `[stepWrite] polygon writer fallback → bbox: ${info.reason} (${info.detail})`,
+  );
+}
+
 // ─── Assembly writer (Phase 2 hook) ───────────────────────────────────────
 
 /**
- * Minimal-input descriptor for the assembly writer. Each part is still a
- * Phase 1 axis-aligned box (BOX-only limitation applies). For the Phase 2
- * worker integration these box bounds will be replaced by real B-rep refs.
+ * Minimal-input descriptor for the assembly writer. Each part is either a
+ * Phase 1 axis-aligned box OR (Phase 5.1) a polygon-profile extrude.
+ *
+ * For Phase 2 worker integration these will be replaced by real B-rep refs.
  */
+export type AssemblyPart =
+  | {
+      kind?: 'box';
+      /** Stable id used as the NAUO id and the PRODUCT name. */
+      id: string;
+      /** Human-readable display name (UI label). */
+      name: string;
+      x0: number; y0: number; z0: number;
+      x1: number; y1: number; z1: number;
+    }
+  | {
+      kind: 'polygon';
+      id: string;
+      name: string;
+      /** CCW (or CW — auto-corrected) profile loop. */
+      loop: ReadonlyArray<{ x: number; y: number }>;
+      /** Extrude depth in +Z (mm). */
+      depth: number;
+    };
+
 export interface AssemblyStepInput {
   /** Display name of the root assembly PRODUCT. */
   assemblyName: string;
   /** Child parts. Each becomes its own PRODUCT + MANIFOLD_SOLID_BREP plus
    *  a NEXT_ASSEMBLY_USAGE_OCCURRENCE tying it to the root assembly. */
-  parts: ReadonlyArray<{
-    /** Stable id used as the NAUO id and the PRODUCT name. */
-    id: string;
-    /** Human-readable display name (UI label). */
-    name: string;
-    x0: number; y0: number; z0: number;
-    x1: number; y1: number; z1: number;
-  }>;
+  parts: ReadonlyArray<AssemblyPart>;
 }
 
 /**
- * **BOX-ONLY** Phase 1 assembly writer. Emits a STEP file that contains:
+ * Phase 1 / 5.1 assembly writer. Emits a STEP file that contains:
  *   - one root PRODUCT + PRODUCT_DEFINITION for the assembly itself
  *   - one PRODUCT + PRODUCT_DEFINITION + MANIFOLD_SOLID_BREP per part
  *   - one NEXT_ASSEMBLY_USAGE_OCCURRENCE per (assembly, part) pair
  *
+ * Each part may be either an axis-aligned BOX (Phase 1) or a polygon-
+ * profile extrude (Phase 5.1 — convex CCW loops only; concave / self-
+ * intersecting loops fall back to bbox with `opts.onFallback`).
+ *
  * Phase 2 will add ITEM_DEFINED_TRANSFORMATION + CONTEXT_DEPENDENT_SHAPE_REPRESENTATION
- * so each instance can carry its world-frame placement. For Phase 1 every
+ * so each instance can carry its world-frame placement. For now every
  * child sits at world origin — the assembly is structural only.
  */
+export interface AssemblyStepOptions extends StepHeaderOptions {
+  /**
+   * Optional hook fired when a polygon-part falls back to bbox geometry.
+   * Defaults to `console.warn`.
+   */
+  onFallback?: (info: {
+    partId: string;
+    reason: PolygonLoopClassification['kind'];
+    detail: string;
+  }) => void;
+}
+
 export function writeAssemblyAsStep(
   input: AssemblyStepInput,
-  opts: StepHeaderOptions = {},
+  opts: AssemblyStepOptions = {},
 ): string {
   if (input.parts.length === 0) {
     throw new Error('writeAssemblyAsStep: at least one part is required');
@@ -513,8 +921,7 @@ export function writeAssemblyAsStep(
 
   // Per-part: geometry + product chain + NAUO.
   for (const part of input.parts) {
-    validateBoxNonDegenerate(part);
-    const geom = emitBox(b, part.x0, part.y0, part.z0, part.x1, part.y1, part.z1);
+    const geom = emitGeometryForPart(b, part, opts);
 
     const partName = esc(part.name);
     const partProduct = b.add(`PRODUCT('${esc(part.id)}','${partName}','',(${prodCtx}))`);
@@ -539,15 +946,64 @@ export function writeAssemblyAsStep(
   return `${header}${data}END-ISO-10303-21;\n`;
 }
 
+/**
+ * Dispatch a single AssemblyPart to the appropriate geometry emitter, with
+ * the polygon → bbox fallback policy applied in-line so the assembly
+ * remains a single STEP file (no partial output on fallback).
+ */
+function emitGeometryForPart(
+  b: StepBuilder,
+  part: AssemblyPart,
+  opts: AssemblyStepOptions,
+): BoxGeometryRefs {
+  if (part.kind === 'polygon') {
+    if (part.loop.length < 3) {
+      throw new Error(`writeAssemblyAsStep: polygon part '${part.id}' loop must have ≥ 3 points`);
+    }
+    if (!(part.depth > 0) || !Number.isFinite(part.depth)) {
+      throw new Error(`writeAssemblyAsStep: polygon part '${part.id}' depth must be positive`);
+    }
+    const cls = classifyPolygonLoop(part.loop);
+    if (cls.kind === 'convex') {
+      const loop = signedArea2D(part.loop) >= 0 ? part.loop : [...part.loop].reverse();
+      return emitPolygonExtrude(b, loop, part.depth);
+    }
+    if (cls.kind === 'degenerate') {
+      throw new Error(`writeAssemblyAsStep: polygon part '${part.id}' is degenerate (${cls.reason})`);
+    }
+    // Concave or self-intersecting → bbox fallback.
+    const detail = cls.kind === 'concave' ? cls.reason : 'edges cross';
+    const onFallback = opts.onFallback ?? ((info) =>
+      console.warn(
+        `[stepWrite] assembly part '${info.partId}' polygon → bbox fallback: ${info.reason} (${info.detail})`,
+      ));
+    onFallback({ partId: part.id, reason: cls.kind, detail });
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of part.loop) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return emitBox(b, minX, minY, 0, maxX, maxY, part.depth);
+  }
+  validateBoxNonDegenerate(part);
+  return emitBox(b, part.x0, part.y0, part.z0, part.x1, part.y1, part.z1);
+}
+
 // ─── escape-hatch exports for tests / Phase 2 ────────────────────────────
 
 /** Exposed for assembly writer / tests. Internal API; not stable. */
 export const __internal = {
   StepBuilder,
   emitBox,
+  emitPolygonExtrude,
   emitProductForSolid,
   fmt,
   esc,
+  signedArea2D,
+  isConvexLoop,
+  hasSelfIntersection,
   AP214_SCHEMA,
   NEXYFAB_APPLICATION,
 };
