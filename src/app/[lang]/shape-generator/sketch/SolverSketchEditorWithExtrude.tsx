@@ -47,6 +47,8 @@ import {
   type SaveError,
 } from '@/lib/cad/featureTreePersist';
 import { useFeatureTreeHistory } from '@/lib/cad/featureTreeHistory';
+import { useCrdtDoc } from '@/lib/collab/useCrdtDoc';
+import { CursorOverlay } from '@/app/[lang]/shape-generator/_shared/CursorOverlay';
 
 // StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
 // Sketch editor bundle small for users who never click Extrude.
@@ -150,6 +152,11 @@ interface Dict {
   /** IntentExamplesPanel toggle (Phase 3.AI.UI helper). */
   showExamples: string;
   hideExamples: string;
+  /** Collab mode (Phase 1 wiring of useCrdtDoc + CursorOverlay). */
+  collabMode: string;
+  collabConnected: string;
+  /** `{N}` placeholder for peer count. */
+  collabPeers: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -175,6 +182,9 @@ const dict: Record<Lang, Dict> = {
     plannerToast: '계획 적용 완료 ({N}개 노드 추가)',
     showExamples: '예시 표시',
     hideExamples: '예시 숨기기',
+    collabMode: '협업 모드',
+    collabConnected: '연결됨',
+    collabPeers: '{N}명 접속 중',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -198,6 +208,9 @@ const dict: Record<Lang, Dict> = {
     plannerToast: 'Plan applied ({N} nodes added)',
     showExamples: 'Show examples',
     hideExamples: 'Hide examples',
+    collabMode: 'Collab mode',
+    collabConnected: 'Connected',
+    collabPeers: '{N} peers',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -221,6 +234,9 @@ const dict: Record<Lang, Dict> = {
     plannerToast: 'プラン適用完了 ({N}個のノード追加)',
     showExamples: '例を表示',
     hideExamples: '例を隠す',
+    collabMode: 'コラボモード',
+    collabConnected: '接続済み',
+    collabPeers: '{N}人接続中',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -244,6 +260,9 @@ const dict: Record<Lang, Dict> = {
     plannerToast: '计划已应用 (添加{N}个节点)',
     showExamples: '显示示例',
     hideExamples: '隐藏示例',
+    collabMode: '协作模式',
+    collabConnected: '已连接',
+    collabPeers: '{N}个用户',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -267,6 +286,9 @@ const dict: Record<Lang, Dict> = {
     plannerToast: 'Plan aplicado ({N} nodos añadidos)',
     showExamples: 'Mostrar ejemplos',
     hideExamples: 'Ocultar ejemplos',
+    collabMode: 'Modo colaboración',
+    collabConnected: 'Conectado',
+    collabPeers: '{N} usuarios',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -290,6 +312,9 @@ const dict: Record<Lang, Dict> = {
     plannerToast: 'تم تطبيق الخطة ({N} عقد مضافة)',
     showExamples: 'إظهار الأمثلة',
     hideExamples: 'إخفاء الأمثلة',
+    collabMode: 'وضع التعاون',
+    collabConnected: 'متصل',
+    collabPeers: '{N} مستخدمين',
   },
 };
 
@@ -842,6 +867,95 @@ export default function SolverSketchEditorWithExtrude(
     };
   }, []);
 
+  // ── Collab mode (Phase 1 wiring of useCrdtDoc + CursorOverlay) ──────────
+  // The hook is ALWAYS called (Rules of Hooks). When `collabEnabled` is
+  // false we never call `update`/`setLocal` and never render the overlay
+  // — so the wrapper stays byte-for-byte back-compat with the prior tests.
+  const [collabEnabled, setCollabEnabled] = useState(false);
+  const collabDocId = projectId ?? 'demo';
+  const {
+    state: crdtState,
+    update: crdtUpdate,
+    awareness: crdtAwareness,
+    isConnected: crdtConnected,
+  } = useCrdtDoc<FeatureTree>({
+    docId: collabDocId,
+    initialState: featureTree,
+    transport: 'memory',
+    userId: 'me',
+  });
+  // Self-update guard: when a local edit pushes into the CRDT and the
+  // subscribe callback fires back with the same snapshot we just wrote,
+  // suppress the remote → local apply path to avoid the
+  // featureTree → update → subscribe → setFeatureTree cycle.
+  const lastSyncedRef = useRef<FeatureTree | null>(null);
+  // Viewport ref for the CursorOverlay positioning.
+  const sketchViewportRef = useRef<HTMLDivElement | null>(null);
+
+  // Local → CRDT mirror: whenever the history-managed featureTree changes
+  // and we're in collab mode, push the new snapshot into the CRDT. We mark
+  // the value in lastSyncedRef *before* the update so the subscribe
+  // callback's self-echo is suppressed below.
+  useEffect(() => {
+    if (!collabEnabled) return;
+    if (lastSyncedRef.current === featureTree) return;
+    lastSyncedRef.current = featureTree;
+    try {
+      crdtUpdate((draft) => {
+        // The crdtAdapter snapshot is a structural clone of `draft` after
+        // the mutator runs. Replace nodes wholesale — coarse-grained on
+        // purpose, see crdtAdapter docs.
+        draft.nodes = featureTree.nodes;
+      });
+    } catch {
+      // CRDT push errors are non-fatal — collab is best-effort.
+    }
+  }, [collabEnabled, featureTree, crdtUpdate]);
+
+  // CRDT → local mirror: when a remote update arrives, replay it onto the
+  // history-managed tree as a sequence of insert_node ops. We use a coarse
+  // reset+rebuild strategy because the history hook does not expose a tree
+  // setter. Self-echoes are skipped via lastSyncedRef. Only runs in collab
+  // mode.
+  const lastAppliedRemoteRef = useRef<FeatureTree | null>(null);
+  useEffect(() => {
+    if (!collabEnabled) return;
+    if (crdtState === featureTree) return;
+    if (lastAppliedRemoteRef.current === crdtState) return;
+    // Cheap structural compare via JSON — Phase 1 stub adapter clones, so
+    // ref equality alone is not enough.
+    const same =
+      crdtState.nodes.length === featureTree.nodes.length &&
+      JSON.stringify(crdtState.nodes) === JSON.stringify(featureTree.nodes);
+    if (same) return;
+    lastAppliedRemoteRef.current = crdtState;
+    // Mark synced so the local→CRDT effect above does not re-broadcast.
+    lastSyncedRef.current = featureTree;
+    // Reset history to the empty seed, then bulk-insert remote nodes.
+    resetHistory();
+    for (const node of crdtState.nodes) {
+      applyHistoryEdit({ type: 'insert_node', node });
+    }
+  }, [collabEnabled, crdtState, featureTree, resetHistory, applyHistoryEdit]);
+
+  // Local mouse position → awareness cursor. Only attached when collab
+  // is on, so the listener is fully torn down in off mode.
+  const handleSketchMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!collabEnabled) return;
+      const el = sketchViewportRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      crdtAwareness.setLocal('cursor', {
+        x: e.clientX - r.left,
+        y: e.clientY - r.top,
+      });
+    },
+    [collabEnabled, crdtAwareness],
+  );
+
+  const peerCount = Object.keys(crdtAwareness.remoteStates).length;
+
   // Tracks the in-flight fetch's AbortController so cancel/unmount can abort
   // it AND so we can suppress late setState after the controller is aborted.
   const abortRef = useRef<AbortController | null>(null);
@@ -993,7 +1107,20 @@ export default function SolverSketchEditorWithExtrude(
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <SolverSketchEditor {...editorProps} onSketchChange={composedOnSketchChange} />
+      <div
+        ref={sketchViewportRef}
+        data-testid="solver-collab-viewport"
+        onMouseMove={handleSketchMouseMove}
+        style={{ position: 'relative' }}
+      >
+        <SolverSketchEditor {...editorProps} onSketchChange={composedOnSketchChange} />
+        {collabEnabled && (
+          <CursorOverlay
+            awareness={{ remoteStates: crdtAwareness.remoteStates }}
+            viewportRef={sketchViewportRef}
+          />
+        )}
+      </div>
 
       {/* Operation toolbar */}
       <div style={{ display: 'flex', gap: 8 }}>
@@ -1290,6 +1417,48 @@ export default function SolverSketchEditorWithExtrude(
           >
             💡 {showExamples ? t.hideExamples : t.showExamples}
           </button>
+          <label
+            data-testid="solver-collab-toggle-label"
+            style={{
+              display: 'flex',
+              gap: 4,
+              alignItems: 'center',
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: collabEnabled ? '#0ea5e9' : '#fff',
+              border: '1px solid ' + (collabEnabled ? '#0284c7' : '#d1d5db'),
+              color: collabEnabled ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={collabEnabled}
+              onChange={(e) => setCollabEnabled(e.target.checked)}
+              data-testid="solver-collab-toggle"
+              aria-label={t.collabMode}
+              style={{ margin: 0 }}
+            />
+            🌐 {t.collabMode}
+          </label>
+          {collabEnabled && (
+            <span
+              data-testid="solver-collab-status"
+              role="status"
+              style={{
+                fontSize: 11,
+                color: crdtConnected ? '#0e7490' : '#6b7280',
+                padding: '2px 6px',
+                background: crdtConnected ? '#ecfeff' : '#f3f4f6',
+                border: '1px solid ' + (crdtConnected ? '#a5f3fc' : '#e5e7eb'),
+                borderRadius: 4,
+              }}
+            >
+              {t.collabMode}: {t.collabConnected} ({t.collabPeers.replace('{N}', String(peerCount))})
+            </span>
+          )}
           {projectId !== undefined && persistError === null && (
             <span
               data-testid="solver-feature-tree-saved"

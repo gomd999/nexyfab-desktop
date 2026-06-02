@@ -1651,3 +1651,140 @@ describe('SolverSketchEditorWithExtrude — Phase 3.AI.UI examples panel wiring'
     expect(screen.getByTestId('solver-planner-examples-host')).toBeInTheDocument();
   });
 });
+
+// ─── Collab mode wiring (useCrdtDoc + CursorOverlay) ─────────────────────
+describe('SolverSketchEditorWithExtrude — Collab mode wiring', () => {
+  it('collab toggle is visible and off by default', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-collab-toggle') as HTMLInputElement;
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.checked).toBe(false);
+    // Status banner only renders when collab is on.
+    expect(screen.queryByTestId('solver-collab-status')).toBeNull();
+    // Cursor overlay only mounted when collab is on.
+    expect(screen.queryByTestId('cursor-overlay')).toBeNull();
+  });
+
+  it('flipping the toggle on mounts the cursor overlay + status banner', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-collab-toggle') as HTMLInputElement;
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(true);
+    expect(await screen.findByTestId('cursor-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-collab-status')).toBeInTheDocument();
+  });
+
+  it('status banner exposes the peer count (0 peers initially)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const status = await screen.findByTestId('solver-collab-status');
+    // Initial — no peers joined yet, so the {N}-substituted string surfaces.
+    expect(status.textContent ?? '').toMatch(/0/);
+  });
+
+  it('status banner shows "Connected" when memory transport is up', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const status = await screen.findByTestId('solver-collab-status');
+    // Memory transport reports isConnected=true synchronously.
+    expect(status.textContent ?? '').toContain('Connected');
+  });
+
+  it('Korean i18n surfaces 협업 모드 / 연결됨 / N명', async () => {
+    render(<SolverSketchEditorWithExtrude lang="ko" extrudeFetcher={vi.fn()} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    const label = screen.getByTestId('solver-collab-toggle-label');
+    expect(label.textContent ?? '').toContain('협업 모드');
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const status = await screen.findByTestId('solver-collab-status');
+    expect(status.textContent ?? '').toContain('연결됨');
+    expect(status.textContent ?? '').toContain('명');
+  });
+
+  it('English i18n surfaces "Collab mode" / "Connected" / "peers"', async () => {
+    await mountReady();
+    const label = screen.getByTestId('solver-collab-toggle-label');
+    expect(label.textContent ?? '').toContain('Collab mode');
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const status = await screen.findByTestId('solver-collab-status');
+    expect(status.textContent ?? '').toContain('Connected');
+    expect(status.textContent ?? '').toContain('peers');
+  });
+
+  it('viewport wrapper carries the testid and a mousemove handler (collab on)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const viewport = screen.getByTestId('solver-collab-viewport');
+    expect(viewport).toBeInTheDocument();
+    // The handler is wired — exercise it once; no peer assertion needed
+    // here (the local cursor is never rendered by CursorOverlay).
+    fireEvent.mouseMove(viewport, { clientX: 30, clientY: 50 });
+    // Cursor overlay still mounted.
+    expect(screen.getByTestId('cursor-overlay')).toBeInTheDocument();
+  });
+
+  it('toggling collab off tears down the cursor overlay + status banner', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-collab-toggle');
+    fireEvent.click(toggle);
+    await screen.findByTestId('cursor-overlay');
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(screen.queryByTestId('cursor-overlay')).toBeNull();
+      expect(screen.queryByTestId('solver-collab-status')).toBeNull();
+    });
+  });
+
+  it('collab off is fully back-compat: extrude flow still operates', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, scad: 'cube();', pngs: [] });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    // Collab off — no overlay, no status.
+    expect(screen.queryByTestId('cursor-overlay')).toBeNull();
+    // Draw a rect then run the extrude flow.
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 200, 200);
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+  });
+
+  it('collab on, then a local edit (drawn rect → fetcher append) does not crash the mirror', async () => {
+    // Smoke test for the local → CRDT mirror path: open a rect, run the
+    // extrude flow, and confirm the wrapper does not throw under collab on.
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, scad: 'cube();', pngs: [] });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    await screen.findByTestId('cursor-overlay');
+    fireEvent.click(screen.getByTestId('solver-sketch-tool-rect'));
+    const canvas = screen.getByTestId('solver-sketch-canvas');
+    clickAt(canvas, 100, 100);
+    clickAt(canvas, 200, 200);
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    // Cursor overlay still up; status still says Connected.
+    expect(screen.getByTestId('cursor-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-collab-status').textContent ?? '').toContain('Connected');
+  });
+
+  it('mousemove inside the viewport while collab is OFF is a no-op (no overlay, no throw)', async () => {
+    await mountReady();
+    const viewport = screen.getByTestId('solver-collab-viewport');
+    // Should not throw even with no cursor overlay / no CRDT awareness use.
+    fireEvent.mouseMove(viewport, { clientX: 10, clientY: 20 });
+    expect(screen.queryByTestId('cursor-overlay')).toBeNull();
+  });
+});
