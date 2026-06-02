@@ -3227,4 +3227,149 @@ describe('AssemblyBrowserModal', () => {
       ).toBe('0');
     });
   });
+
+  // ─── 3D viewer integration (Phase 3.A.viewer-integration) ───────────────
+  //
+  // Wires the standalone {@link Assembly3DViewer} into the modal behind a
+  // user-toggleable button. Default off so the existing parts/mates layout
+  // and the 194 pre-existing modal tests are untouched. The viewer mounts
+  // between the parts panel and the mates panel when ON; selectedPartId
+  // is shared so a click in either surface highlights the other.
+  //
+  // jsdom has no WebGL, so when the viewer mounts it falls back to its
+  // try/catch hatches (WebGLRenderer init prints a warning and continues
+  // with a null renderer). We don't mock `three` here — the viewer's own
+  // defensive try/catches keep the render path alive. The visible DOM
+  // surface (host div + axis legend) is what we assert on.
+  describe('3D viewer toggle (Phase 3.A.viewer-integration)', () => {
+    it('renders the 3D-view toggle button by default', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-3d-toggle');
+      expect(toggle).toBeInTheDocument();
+      // Default off — viewer panel is absent.
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.queryByTestId('solver-assembly-3d-panel')).toBeNull();
+      expect(screen.queryByTestId('assembly-3d-viewer')).toBeNull();
+    });
+
+    it('clicking the toggle mounts the Assembly3DViewer panel + canvas host', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      expect(screen.getByTestId('solver-assembly-3d-panel')).toBeInTheDocument();
+      // The viewer's outer host renders even in jsdom — its inner WebGL
+      // renderer init may bail (no WebGL) but the host div is unconditional.
+      expect(screen.getByTestId('assembly-3d-viewer')).toBeInTheDocument();
+      // aria-pressed reflects the new state.
+      expect(screen.getByTestId('solver-assembly-3d-toggle')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    it('toggling off again unmounts the viewer panel', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-3d-toggle');
+      fireEvent.click(toggle);
+      expect(screen.getByTestId('solver-assembly-3d-panel')).toBeInTheDocument();
+      fireEvent.click(toggle);
+      expect(screen.queryByTestId('solver-assembly-3d-panel')).toBeNull();
+      expect(screen.queryByTestId('assembly-3d-viewer')).toBeNull();
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('clicking a part row selects it (data-selected attr) and highlights green', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      const row = screen.getByTestId('solver-assembly-part-row-p_arm');
+      // Pre-click: no selection.
+      expect(row.getAttribute('data-selected')).toBeNull();
+      fireEvent.click(row);
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_arm').getAttribute('data-selected'),
+      ).toBe('true');
+      // The previously-unselected p_base row stays unselected.
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_base').getAttribute('data-selected'),
+      ).toBeNull();
+    });
+
+    it('clicking the same selected part row a second time clears the selection', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      const row = screen.getByTestId('solver-assembly-part-row-p_arm');
+      fireEvent.click(row);
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_arm').getAttribute('data-selected'),
+      ).toBe('true');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_arm').getAttribute('data-selected'),
+      ).toBeNull();
+    });
+
+    it('clicking an inner input (e.g. part name) does NOT change the selection', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      const nameInput = screen.getByTestId('solver-assembly-part-name-p_arm');
+      fireEvent.click(nameInput);
+      // Click on an INPUT bubbles up to the row's onClick, but we filter
+      // those tags out so the selection stays untouched.
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_arm').getAttribute('data-selected'),
+      ).toBeNull();
+    });
+
+    it('removing the currently-selected part clears the selection', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_arm').getAttribute('data-selected'),
+      ).toBe('true');
+      fireEvent.click(screen.getByTestId('solver-assembly-part-remove-p_arm'));
+      // p_arm gone — only p_base remains and stays unselected.
+      expect(screen.queryByTestId('solver-assembly-part-row-p_arm')).toBeNull();
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_base').getAttribute('data-selected'),
+      ).toBeNull();
+    });
+
+    it('viewer mount is independent of project persistence (works without projectId)', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      // 3D viewer host renders even without projectId / persistence wiring.
+      expect(screen.getByTestId('assembly-3d-viewer')).toBeInTheDocument();
+    });
+
+    it('reset clears the selectedPartId while preserving the toggle on-state', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      fireEvent.click(screen.getByTestId('solver-assembly-part-row-p_arm'));
+      expect(
+        screen.getByTestId('solver-assembly-part-row-p_arm').getAttribute('data-selected'),
+      ).toBe('true');
+      fireEvent.click(screen.getByTestId('solver-assembly-reset'));
+      // Parts are gone after reset, but the toggle stays ON (matches the
+      // AI-builder / autoInfer policy in this modal).
+      expect(screen.queryByTestId('solver-assembly-part-row-p_arm')).toBeNull();
+      expect(screen.getByTestId('solver-assembly-3d-panel')).toBeInTheDocument();
+    });
+
+    it.each<[AssemblyBrowserLang, string]>([
+      ['ko', '3D 뷰 표시'],
+      ['en', 'Show 3D view'],
+      ['ja', '3D ビューを表示'],
+      ['zh', '显示 3D 视图'],
+      ['es', 'Mostrar vista 3D'],
+      ['ar', 'إظهار العرض ثلاثي الأبعاد'],
+    ])('toggle label is localized (%s)', (lang, expected) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      const toggle = screen.getByTestId('solver-assembly-3d-toggle');
+      expect(toggle).toHaveTextContent(expected);
+    });
+
+    it('toggle ON renders viewer with width=400/height=400 props honoured by host', () => {
+      render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-3d-toggle'));
+      const host = screen.getByTestId('assembly-3d-viewer') as HTMLDivElement;
+      expect(host.style.width).toBe('400px');
+      expect(host.style.height).toBe('400px');
+    });
+  });
 });

@@ -58,6 +58,7 @@ import {
 import FeatureTreePlannerPanel from '../sketch/FeatureTreePlannerPanel';
 import type { PlanStep } from '@/lib/ai/featureTreePlanner';
 import { buildBom, bomToCsv, bomToJson } from '@/lib/assembly/bomExport';
+import Assembly3DViewer from './Assembly3DViewer';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -237,6 +238,15 @@ interface Dict {
    * value in a localized "Total mass: X g" line.
    */
   bomTotalMass: string;
+  /**
+   * Phase 3.A.viewer-integration — toggle label that mounts the
+   * standalone {@link Assembly3DViewer} alongside the parts list. Default
+   * off so the modal's existing 2D parts/mates layout is unchanged for
+   * users (and tests) that don't opt in.
+   */
+  show3DView: string;
+  /** Toggle label when the 3D viewer is already mounted. */
+  hide3DView: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -326,6 +336,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomCsv: 'CSV',
     bomJson: 'JSON',
     bomTotalMass: '총 질량',
+    show3DView: '3D 뷰 표시',
+    hide3DView: '3D 뷰 숨기기',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -414,6 +426,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomCsv: 'CSV',
     bomJson: 'JSON',
     bomTotalMass: 'Total mass',
+    show3DView: 'Show 3D view',
+    hide3DView: 'Hide 3D view',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -502,6 +516,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomCsv: 'CSV',
     bomJson: 'JSON',
     bomTotalMass: '総質量',
+    show3DView: '3D ビューを表示',
+    hide3DView: '3D ビューを隠す',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -589,6 +605,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomCsv: 'CSV',
     bomJson: 'JSON',
     bomTotalMass: '总质量',
+    show3DView: '显示 3D 视图',
+    hide3DView: '隐藏 3D 视图',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -678,6 +696,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomCsv: 'CSV',
     bomJson: 'JSON',
     bomTotalMass: 'Masa total',
+    show3DView: 'Mostrar vista 3D',
+    hide3DView: 'Ocultar vista 3D',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -766,6 +786,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bomCsv: 'CSV',
     bomJson: 'JSON',
     bomTotalMass: 'الكتلة الإجمالية',
+    show3DView: 'إظهار العرض ثلاثي الأبعاد',
+    hide3DView: 'إخفاء العرض ثلاثي الأبعاد',
   },
 };
 
@@ -1537,6 +1559,8 @@ export default function AssemblyBrowserModal({
     // Drop any selection entries pointing at the removed part so the mate
     // toolbar doesn't end up holding refs to a part that no longer exists.
     setSelection((prev) => prev.filter((s) => s.partId !== partId));
+    // Clear the 3D viewer highlight if the removed part was selected.
+    setSelectedPartId((prev) => (prev === partId ? null : prev));
   }, [recordState, t]);
 
   const renamePart = useCallback((partId: string, name: string) => {
@@ -1879,6 +1903,10 @@ export default function AssemblyBrowserModal({
     // don't undo that just because they wiped the assembly contents.
     setAiInput('');
     setAiStatus(null);
+    // 3D viewer highlight — drop the selection so the (now-empty) parts
+    // list and the (now-empty) viewer agree on "no selection". The
+    // show3DView toggle is preserved (same UX rationale as the AI toggle).
+    setSelectedPartId(null);
   }, [state.parts.length, state.mates.length, history, setFeatureTrees, t]);
 
   // ── infer-mates (Phase 5.2.3) ──────────────────────────────────────────
@@ -2434,6 +2462,30 @@ export default function AssemblyBrowserModal({
   const [bomMenuOpen, setBomMenuOpen] = useState(false);
   const toggleBomMenu = useCallback(() => setBomMenuOpen((v) => !v), []);
 
+  // ── 3D viewer toggle (Phase 3.A.viewer-integration) ──────────────────
+  //
+  // Default off so the modal's existing 2D parts-list / mates-list layout
+  // is unchanged for users (and the 194 existing modal tests) that don't
+  // opt in. When ON we mount {@link Assembly3DViewer} between the parts
+  // panel and the mates panel, sharing the `selectedPartId` state with the
+  // 2D parts list so a click in either surface highlights the other.
+  const [show3DView, setShow3DView] = useState<boolean>(false);
+  const toggle3DView = useCallback(() => setShow3DView((v) => !v), []);
+
+  /**
+   * Currently-selected partId, shared between the 2D parts list and the
+   * 3D viewer. `null` means "no selection". Click on a 2D part row or a
+   * 3D mesh sets this; clearing happens implicitly when the highlighted
+   * part is removed (handled in `removePartLocal`).
+   */
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+  const onSelectPartFromViewer = useCallback((partId: string) => {
+    setSelectedPartId((prev) => (prev === partId ? null : partId));
+  }, []);
+  const onSelectPartFromList = useCallback((partId: string) => {
+    setSelectedPartId((prev) => (prev === partId ? null : partId));
+  }, []);
+
   const downloadBom = useCallback(
     (format: 'csv' | 'json') => {
       const assemblyName = projectId ?? 'assembly';
@@ -2615,9 +2667,39 @@ export default function AssemblyBrowserModal({
         </h3>
 
         <div
+          data-testid="solver-assembly-3d-toggle-wrap"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <button
+            type="button"
+            onClick={toggle3DView}
+            data-testid="solver-assembly-3d-toggle"
+            aria-pressed={show3DView}
+            title={show3DView ? t.hide3DView : t.show3DView}
+            style={{
+              fontSize: 11,
+              padding: '4px 10px',
+              background: show3DView ? '#ecfdf5' : '#fff',
+              color: show3DView ? '#065f46' : '#374151',
+              border: `1px solid ${show3DView ? '#6ee7b7' : '#d1d5db'}`,
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {show3DView ? t.hide3DView : t.show3DView}
+          </button>
+        </div>
+
+        <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1.4fr',
+            gridTemplateColumns: show3DView ? '1fr 420px 1.4fr' : '1fr 1.4fr',
             gap: 16,
             alignItems: 'stretch',
           }}
@@ -2672,17 +2754,40 @@ export default function AssemblyBrowserModal({
                             ): r is { refId: string; refKind: ToolbarRefKind } => r !== null,
                           )
                       : [];
+                  const isSelectedPart = selectedPartId === p.id;
                   return (
                     <div
                       key={p.id}
                       data-testid={`solver-assembly-part-row-${p.id}`}
+                      data-selected={isSelectedPart ? 'true' : undefined}
+                      onClick={(e) => {
+                        // Only "select" the part when the click landed on the
+                        // row chrome itself, not on an interactive descendant
+                        // (input / select / button / textarea / label). Those
+                        // already do their own thing and folding them into
+                        // selection would feel hostile.
+                        const tag = (e.target as HTMLElement).tagName;
+                        if (
+                          tag === 'INPUT' ||
+                          tag === 'SELECT' ||
+                          tag === 'BUTTON' ||
+                          tag === 'TEXTAREA' ||
+                          tag === 'LABEL' ||
+                          tag === 'OPTION'
+                        ) {
+                          return;
+                        }
+                        onSelectPartFromList(p.id);
+                      }}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 4,
                         padding: '4px 6px',
-                        border: '1px solid #f3f4f6',
+                        border: `1px solid ${isSelectedPart ? '#10b981' : '#f3f4f6'}`,
+                        background: isSelectedPart ? '#ecfdf5' : 'transparent',
                         borderRadius: 4,
+                        cursor: 'pointer',
                       }}
                     >
                       <div
@@ -2981,6 +3086,32 @@ export default function AssemblyBrowserModal({
               />
             </div>
           </section>
+
+          {/* ── MIDDLE: 3D viewer (Phase 3.A.viewer-integration) ────── */}
+          {show3DView && (
+            <section
+              data-testid="solver-assembly-3d-panel"
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+                padding: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                minHeight: 280,
+              }}
+            >
+              <Assembly3DViewer
+                state={state}
+                featureTrees={featureTrees}
+                selectedPartId={selectedPartId ?? undefined}
+                onSelectPart={onSelectPartFromViewer}
+                width={400}
+                height={400}
+                lang={lang}
+              />
+            </section>
+          )}
 
           {/* ── RIGHT: mates list ─────────────────────────────────────── */}
           <section
