@@ -36,6 +36,7 @@ import {
   IDENTITY_QUAT,
 } from '@/lib/assembly/assemblyState';
 import type { Mate, MateKind, MateRef, MateRefKind } from '@/lib/assembly/mate';
+import type { FeatureTree } from '@/lib/cad/featureTree';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,15 @@ interface Dict {
   errorPrefix: string;
   emptyParts: string;
   emptyMates: string;
+  /** Toggle button on each part row to open the FeatureTree JSON editor. */
+  editFeatureTree: string;
+  hideFeatureTree: string;
+  /** Placeholder shown inside the empty FeatureTree textarea. */
+  featureTreePlaceholder: string;
+  /** Error prefix shown beneath the textarea on parse failure. */
+  featureTreeParseError: string;
+  /** Small badge label that prefixes the phase value ('real' | 'stub'). */
+  phaseLabel: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -102,6 +112,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     errorPrefix: '오류',
     emptyParts: '아직 부품이 없습니다',
     emptyMates: '아직 메이트가 없습니다',
+    editFeatureTree: 'FeatureTree 편집',
+    hideFeatureTree: 'FeatureTree 닫기',
+    featureTreePlaceholder: '{ "nodes": [] } 형식의 JSON',
+    featureTreeParseError: 'JSON 파싱 오류',
+    phaseLabel: '단계',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -132,6 +147,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     errorPrefix: 'Error',
     emptyParts: 'No parts yet',
     emptyMates: 'No mates yet',
+    editFeatureTree: 'Edit FeatureTree',
+    hideFeatureTree: 'Hide FeatureTree',
+    featureTreePlaceholder: 'JSON of shape { "nodes": [] }',
+    featureTreeParseError: 'JSON parse error',
+    phaseLabel: 'Phase',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -162,6 +182,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     errorPrefix: 'エラー',
     emptyParts: 'パーツがまだありません',
     emptyMates: 'メイトがまだありません',
+    editFeatureTree: 'FeatureTree 編集',
+    hideFeatureTree: 'FeatureTree 閉じる',
+    featureTreePlaceholder: '{ "nodes": [] } 形式の JSON',
+    featureTreeParseError: 'JSON 解析エラー',
+    phaseLabel: 'フェーズ',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -192,6 +217,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     errorPrefix: '错误',
     emptyParts: '尚无零件',
     emptyMates: '尚无配合',
+    editFeatureTree: '编辑 FeatureTree',
+    hideFeatureTree: '关闭 FeatureTree',
+    featureTreePlaceholder: '形如 { "nodes": [] } 的 JSON',
+    featureTreeParseError: 'JSON 解析错误',
+    phaseLabel: '阶段',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -222,6 +252,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     errorPrefix: 'Error',
     emptyParts: 'Sin piezas todavía',
     emptyMates: 'Sin restricciones todavía',
+    editFeatureTree: 'Editar FeatureTree',
+    hideFeatureTree: 'Ocultar FeatureTree',
+    featureTreePlaceholder: 'JSON de forma { "nodes": [] }',
+    featureTreeParseError: 'Error de análisis JSON',
+    phaseLabel: 'Fase',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -252,6 +287,11 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     errorPrefix: 'خطأ',
     emptyParts: 'لا توجد أجزاء بعد',
     emptyMates: 'لا توجد قيود بعد',
+    editFeatureTree: 'تحرير FeatureTree',
+    hideFeatureTree: 'إخفاء FeatureTree',
+    featureTreePlaceholder: 'JSON بالشكل { "nodes": [] }',
+    featureTreeParseError: 'خطأ في تحليل JSON',
+    phaseLabel: 'المرحلة',
   },
 };
 
@@ -274,15 +314,38 @@ export interface AssemblyBrowserSolveResult {
     residual: number;
     supported: boolean;
   }>;
+  /**
+   * Phase 4 marker mirrored from /api/assembly-solve. 'real' means the
+   * iterativeSolve ran against featureTreeGeometryResolver; 'stub' means
+   * deterministic zero-residual response (Phase 1 backward-compat).
+   * Optional so older callers (and the empty-featureTrees default path)
+   * still type-check.
+   */
+  phase?: 'real' | 'stub';
 }
 
+/**
+ * onSolve receives the current AssemblyState plus the per-part FeatureTree
+ * map. The map may be empty (no part has a tree yet) — callers decide
+ * whether to send `featureTrees` over the wire or omit it for the stub
+ * path. Two args (instead of one bag) keep the signature ergonomic for
+ * tests that only care about state.
+ */
 export type AssemblyBrowserOnSolve = (
   state: AssemblyState,
+  featureTrees: Record<string, FeatureTree>,
 ) => Promise<AssemblyBrowserSolveResult>;
 
 export interface AssemblyBrowserModalProps {
   lang: AssemblyBrowserLang;
   initialState?: AssemblyState;
+  /**
+   * Optional pre-seeded per-part FeatureTrees. Keys are PartInstance.id,
+   * values are the FeatureTree IR the geometry resolver consumes. Parts
+   * without an entry contribute no geometry (solver falls back to its
+   * stub behaviour for that part's refs).
+   */
+  initialFeatureTrees?: Record<string, FeatureTree>;
   onClose: () => void;
   /** Optional solve handler. When absent the Solve button is disabled. */
   onSolve?: AssemblyBrowserOnSolve;
@@ -379,12 +442,42 @@ const EMPTY_STATE: AssemblyState = { parts: [], mates: [] };
 export default function AssemblyBrowserModal({
   lang,
   initialState,
+  initialFeatureTrees,
   onClose,
   onSolve,
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
 
   const [state, setState] = useState<AssemblyState>(initialState ?? EMPTY_STATE);
+  /**
+   * Per-part FeatureTrees, controlled. Only parts whose JSON parsed
+   * successfully (and was non-empty) appear here; opening the editor
+   * for a fresh part does NOT add an entry until the user types valid
+   * JSON. This way an empty string clears any prior entry.
+   */
+  const [featureTrees, setFeatureTrees] = useState<Record<string, FeatureTree>>(
+    initialFeatureTrees ?? {},
+  );
+  /**
+   * Per-part "raw" textarea contents — the controlled value of each
+   * textarea. Decoupled from `featureTrees` so the user can transiently
+   * hold invalid JSON in the textarea while we report the parse error
+   * and disable Solve. Seeded by JSON-stringifying `initialFeatureTrees`
+   * lazily on first edit.
+   */
+  const [featureTreeText, setFeatureTreeText] = useState<Record<string, string>>(
+    () => {
+      const seed: Record<string, string> = {};
+      for (const [pid, tree] of Object.entries(initialFeatureTrees ?? {})) {
+        seed[pid] = JSON.stringify(tree, null, 2);
+      }
+      return seed;
+    },
+  );
+  /** Per-part textarea-open flag (drives the inline editor visibility). */
+  const [featureTreeOpen, setFeatureTreeOpen] = useState<Record<string, boolean>>({});
+  /** Per-part parse error message (truthy iff the textarea body failed JSON.parse / shape check). */
+  const [featureTreeError, setFeatureTreeError] = useState<Record<string, string>>({});
   const [solveState, setSolveState] = useState<
     | { status: 'idle' }
     | { status: 'loading' }
@@ -422,6 +515,32 @@ export default function AssemblyBrowserModal({
         (m) => m.a.partId !== partId && m.b.partId !== partId,
       ),
     }));
+    // Also drop any associated FeatureTree / editor state for the removed
+    // part so a future re-add of the same id starts fresh.
+    setFeatureTrees((prev) => {
+      if (!(partId in prev)) return prev;
+      const { [partId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
+    setFeatureTreeText((prev) => {
+      if (!(partId in prev)) return prev;
+      const { [partId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
+    setFeatureTreeOpen((prev) => {
+      if (!(partId in prev)) return prev;
+      const { [partId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
+    setFeatureTreeError((prev) => {
+      if (!(partId in prev)) return prev;
+      const { [partId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
   }, []);
 
   const renamePart = useCallback((partId: string, name: string) => {
@@ -436,6 +555,73 @@ export default function AssemblyBrowserModal({
       ...prev,
       parts: prev.parts.map((p) => (p.id === partId ? { ...p, fixed } : p)),
     }));
+  }, []);
+
+  // ── featureTree ops ────────────────────────────────────────────────────
+
+  const toggleFeatureTreeEditor = useCallback((partId: string) => {
+    setFeatureTreeOpen((prev) => ({ ...prev, [partId]: !prev[partId] }));
+  }, []);
+
+  /**
+   * Validate one textarea body against the FeatureTree shape:
+   *   - empty / whitespace → clear the tree (returns ok=true, tree=undefined)
+   *   - JSON.parse failure → returns ok=false, error message
+   *   - parsed but not `{ nodes: [...] }` → ok=false, error message
+   *   - parsed ok                          → ok=true, tree=parsed
+   *
+   * Kept intentionally shallow: full per-node `validateTree` semantics
+   * are enforced server-side by the API route, and re-validating them
+   * client-side would duplicate the IR walk for no UX gain.
+   */
+  function parseFeatureTreeBody(
+    text: string,
+  ): { ok: true; tree: FeatureTree | undefined } | { ok: false; error: string } {
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+      return { ok: true, tree: undefined };
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      return { ok: false, error: 'expected an object with a "nodes" array' };
+    }
+    const obj = parsed as { nodes?: unknown };
+    if (!Array.isArray(obj.nodes)) {
+      return { ok: false, error: 'expected "nodes" to be an array' };
+    }
+    return { ok: true, tree: parsed as FeatureTree };
+  }
+
+  const updateFeatureTreeText = useCallback((partId: string, text: string) => {
+    setFeatureTreeText((prev) => ({ ...prev, [partId]: text }));
+    const result = parseFeatureTreeBody(text);
+    if (result.ok) {
+      setFeatureTreeError((prev) => {
+        if (!(partId in prev)) return prev;
+        const { [partId]: _drop, ...rest } = prev;
+        void _drop;
+        return rest;
+      });
+      setFeatureTrees((prev) => {
+        if (result.tree === undefined) {
+          if (!(partId in prev)) return prev;
+          const { [partId]: _drop, ...rest } = prev;
+          void _drop;
+          return rest;
+        }
+        return { ...prev, [partId]: result.tree };
+      });
+    } else {
+      setFeatureTreeError((prev) => ({ ...prev, [partId]: result.error }));
+    }
   }, []);
 
   // ── mates ops ──────────────────────────────────────────────────────────
@@ -502,7 +688,7 @@ export default function AssemblyBrowserModal({
     if (!onSolve) return;
     setSolveState({ status: 'loading' });
     try {
-      const result = await onSolve(state);
+      const result = await onSolve(state, featureTrees);
       setSolveState({ status: 'ok', result });
     } catch (e) {
       setSolveState({
@@ -510,13 +696,25 @@ export default function AssemblyBrowserModal({
         message: `${t.errorPrefix}: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
-  }, [onSolve, state, t.errorPrefix]);
+  }, [onSolve, state, featureTrees, t.errorPrefix]);
 
   // ── derived ────────────────────────────────────────────────────────────
 
+  /**
+   * Solve is disabled whenever:
+   *  - the parent didn't provide an `onSolve` handler, OR
+   *  - a solve is currently in-flight, OR
+   *  - ANY part's FeatureTree textarea currently holds invalid JSON
+   *    (we'd POST garbage). Empty textareas are fine — those just mean
+   *    that part contributes no geometry (stub-fallback).
+   */
+  const hasFeatureTreeError = useMemo(
+    () => Object.values(featureTreeError).some((msg) => Boolean(msg)),
+    [featureTreeError],
+  );
   const solveDisabled = useMemo(
-    () => !onSolve || solveState.status === 'loading',
-    [onSolve, solveState.status],
+    () => !onSolve || solveState.status === 'loading' || hasFeatureTreeError,
+    [onSolve, solveState.status, hasFeatureTreeError],
   );
 
   return (
@@ -596,67 +794,137 @@ export default function AssemblyBrowserModal({
                   {t.emptyParts}
                 </div>
               ) : (
-                state.parts.map((p) => (
-                  <div
-                    key={p.id}
-                    data-testid={`solver-assembly-part-row-${p.id}`}
-                    style={{
-                      display: 'flex',
-                      gap: 6,
-                      alignItems: 'center',
-                      padding: '4px 6px',
-                      border: '1px solid #f3f4f6',
-                      borderRadius: 4,
-                    }}
-                  >
-                    <input
-                      type="text"
-                      value={p.name}
-                      aria-label={`${t.partName} ${p.id}`}
-                      data-testid={`solver-assembly-part-name-${p.id}`}
-                      onChange={(e) => renamePart(p.id, e.target.value)}
+                state.parts.map((p) => {
+                  const treeOpen = !!featureTreeOpen[p.id];
+                  const treeText = featureTreeText[p.id] ?? '';
+                  const treeErr = featureTreeError[p.id];
+                  return (
+                    <div
+                      key={p.id}
+                      data-testid={`solver-assembly-part-row-${p.id}`}
                       style={{
-                        flex: 1,
-                        fontSize: 12,
-                        padding: 4,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 3,
-                      }}
-                    />
-                    <label
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: 4,
-                        fontSize: 11,
+                        padding: '4px 6px',
+                        border: '1px solid #f3f4f6',
+                        borderRadius: 4,
                       }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={!!p.fixed}
-                        data-testid={`solver-assembly-part-fixed-${p.id}`}
-                        onChange={(e) => toggleFixed(p.id, e.target.checked)}
-                      />
-                      {t.fixed}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => removePartLocal(p.id)}
-                      data-testid={`solver-assembly-part-remove-${p.id}`}
-                      style={{
-                        fontSize: 11,
-                        padding: '3px 8px',
-                        background: '#fff',
-                        border: '1px solid #fca5a5',
-                        color: '#b91c1c',
-                        borderRadius: 3,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {t.remove}
-                    </button>
-                  </div>
-                ))
+                      <div
+                        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                      >
+                        <input
+                          type="text"
+                          value={p.name}
+                          aria-label={`${t.partName} ${p.id}`}
+                          data-testid={`solver-assembly-part-name-${p.id}`}
+                          onChange={(e) => renamePart(p.id, e.target.value)}
+                          style={{
+                            flex: 1,
+                            fontSize: 12,
+                            padding: 4,
+                            border: '1px solid #d1d5db',
+                            borderRadius: 3,
+                          }}
+                        />
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 11,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!p.fixed}
+                            data-testid={`solver-assembly-part-fixed-${p.id}`}
+                            onChange={(e) => toggleFixed(p.id, e.target.checked)}
+                          />
+                          {t.fixed}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => toggleFeatureTreeEditor(p.id)}
+                          data-testid={`solver-assembly-part-${p.id}-tree-toggle`}
+                          style={{
+                            fontSize: 11,
+                            padding: '3px 8px',
+                            background: treeOpen ? '#e0f2fe' : '#fff',
+                            border: '1px solid #93c5fd',
+                            color: '#1d4ed8',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {treeOpen ? t.hideFeatureTree : t.editFeatureTree}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removePartLocal(p.id)}
+                          data-testid={`solver-assembly-part-remove-${p.id}`}
+                          style={{
+                            fontSize: 11,
+                            padding: '3px 8px',
+                            background: '#fff',
+                            border: '1px solid #fca5a5',
+                            color: '#b91c1c',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {t.remove}
+                        </button>
+                      </div>
+                      {treeOpen && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                          }}
+                        >
+                          <textarea
+                            value={treeText}
+                            placeholder={t.featureTreePlaceholder}
+                            aria-label={`FeatureTree ${p.id}`}
+                            data-testid={`solver-assembly-part-${p.id}-tree-editor`}
+                            onChange={(e) =>
+                              updateFeatureTreeText(p.id, e.target.value)
+                            }
+                            spellCheck={false}
+                            rows={6}
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              padding: 6,
+                              border: `1px solid ${treeErr ? '#fca5a5' : '#d1d5db'}`,
+                              borderRadius: 3,
+                              resize: 'vertical',
+                              minHeight: 60,
+                            }}
+                          />
+                          {treeErr && (
+                            <div
+                              data-testid={`solver-assembly-part-${p.id}-tree-error`}
+                              style={{
+                                fontSize: 11,
+                                color: '#b91c1c',
+                                padding: '2px 4px',
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: 3,
+                              }}
+                            >
+                              {t.featureTreeParseError}: {treeErr}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
             <button
@@ -937,7 +1205,36 @@ export default function AssemblyBrowserModal({
               gap: 4,
             }}
           >
-            <div style={{ fontWeight: 700 }}>{t.solveResultTitle}</div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{t.solveResultTitle}</div>
+              {solveState.result.phase && (
+                <span
+                  data-testid="solver-assembly-solve-phase"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: 999,
+                    background:
+                      solveState.result.phase === 'real' ? '#dcfce7' : '#fef3c7',
+                    color:
+                      solveState.result.phase === 'real' ? '#166534' : '#92400e',
+                    border: `1px solid ${
+                      solveState.result.phase === 'real' ? '#86efac' : '#fde68a'
+                    }`,
+                  }}
+                >
+                  {t.phaseLabel}: {solveState.result.phase}
+                </span>
+              )}
+            </div>
             <div>
               <span data-testid="solver-assembly-solve-success">
                 {solveState.result.success ? t.success : t.failure}

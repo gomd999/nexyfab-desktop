@@ -13,6 +13,7 @@ import AssemblyBrowserModal, {
   type AssemblyBrowserSolveResult,
 } from '@/app/[lang]/shape-generator/assembly/AssemblyBrowserModal';
 import { IDENTITY_QUAT, type AssemblyState } from '@/lib/assembly/assemblyState';
+import type { FeatureTree } from '@/lib/cad/featureTree';
 
 function seedState(): AssemblyState {
   return {
@@ -278,5 +279,308 @@ describe('AssemblyBrowserModal', () => {
   ])('i18n: lang %s renders the localized modal title', (lang, re) => {
     render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
     expect(screen.getByTestId('solver-assembly-title').textContent).toMatch(re);
+  });
+
+  // ── FeatureTree editor (Phase 4 ↔ UI bridge) ───────────────────────────
+
+  describe('FeatureTree editor', () => {
+    const TINY_TREE: FeatureTree = {
+      nodes: [
+        {
+          id: 'e1',
+          name: 'Extrude',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [
+              { x: 0, y: 0 },
+              { x: 5, y: 0 },
+              { x: 5, y: 5 },
+              { x: 0, y: 5 },
+            ],
+            depth: 10,
+            direction: 'one_sided',
+            mode: 'add',
+          },
+        },
+      ],
+    };
+
+    it('toggles the per-part FeatureTree textarea visibility', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      // Editor is hidden by default.
+      expect(screen.queryByTestId('solver-assembly-part-p_base-tree-editor')).toBeNull();
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      expect(
+        screen.getByTestId('solver-assembly-part-p_base-tree-editor'),
+      ).toBeInTheDocument();
+      // Toggling again hides it.
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      expect(screen.queryByTestId('solver-assembly-part-p_base-tree-editor')).toBeNull();
+    });
+
+    it('typing valid JSON in the editor surfaces the parsed tree to onSolve', async () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      const ta = screen.getByTestId(
+        'solver-assembly-part-p_base-tree-editor',
+      ) as HTMLTextAreaElement;
+      fireEvent.change(ta, { target: { value: JSON.stringify(TINY_TREE) } });
+      // No parse error block should be rendered.
+      expect(screen.queryByTestId('solver-assembly-part-p_base-tree-error')).toBeNull();
+      // Solve should pass the parsed tree as second arg.
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      const trees = onSolve.mock.calls[0][1] as Record<string, FeatureTree>;
+      expect(trees).toHaveProperty('p_base');
+      expect(trees.p_base.nodes).toHaveLength(1);
+      expect(trees.p_base.nodes[0]!.id).toBe('e1');
+    });
+
+    it('invalid JSON shows a parse error message and disables Solve', () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      const ta = screen.getByTestId(
+        'solver-assembly-part-p_base-tree-editor',
+      ) as HTMLTextAreaElement;
+      fireEvent.change(ta, { target: { value: '{ broken json' } });
+      expect(
+        screen.getByTestId('solver-assembly-part-p_base-tree-error'),
+      ).toBeInTheDocument();
+      expect(
+        (screen.getByTestId('solver-assembly-solve') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('non-object / missing nodes array shows a parse error', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      const ta = screen.getByTestId(
+        'solver-assembly-part-p_base-tree-editor',
+      ) as HTMLTextAreaElement;
+      fireEvent.change(ta, { target: { value: '[1, 2, 3]' } });
+      expect(
+        screen.getByTestId('solver-assembly-part-p_base-tree-error'),
+      ).toBeInTheDocument();
+    });
+
+    it('clearing the textarea drops the entry from featureTrees and re-enables Solve', async () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      const ta = screen.getByTestId(
+        'solver-assembly-part-p_base-tree-editor',
+      ) as HTMLTextAreaElement;
+      // First invalid → disabled
+      fireEvent.change(ta, { target: { value: '{ bad' } });
+      expect(
+        (screen.getByTestId('solver-assembly-solve') as HTMLButtonElement).disabled,
+      ).toBe(true);
+      // Clear → re-enabled, entry removed
+      fireEvent.change(ta, { target: { value: '' } });
+      expect(screen.queryByTestId('solver-assembly-part-p_base-tree-error')).toBeNull();
+      expect(
+        (screen.getByTestId('solver-assembly-solve') as HTMLButtonElement).disabled,
+      ).toBe(false);
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      const trees = onSolve.mock.calls[0][1] as Record<string, FeatureTree>;
+      expect(trees).not.toHaveProperty('p_base');
+    });
+
+    it('onSolve is invoked with (state, featureTrees={}) when no trees were entered', async () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      expect(onSolve.mock.calls[0][1]).toEqual({});
+    });
+
+    it('initialFeatureTrees pre-seed the editor textareas', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          initialFeatureTrees={{ p_base: TINY_TREE }}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-part-p_base-tree-toggle'));
+      const ta = screen.getByTestId(
+        'solver-assembly-part-p_base-tree-editor',
+      ) as HTMLTextAreaElement;
+      // Pretty-printed JSON of TINY_TREE includes the e1 node id.
+      expect(ta.value).toMatch(/"id":\s*"e1"/);
+    });
+
+    it('phase badge shows "real" when the result carries phase=real', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        iterations: 3,
+        finalMaxResidual: 1e-6,
+        dof: 0,
+        residuals: [],
+        phase: 'real',
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-solve-phase')).toBeInTheDocument(),
+      );
+      expect(screen.getByTestId('solver-assembly-solve-phase').textContent).toMatch(
+        /real/i,
+      );
+    });
+
+    it('phase badge shows "stub" when the result carries phase=stub', async () => {
+      const onSolve = vi.fn().mockResolvedValue({
+        success: true,
+        iterations: 0,
+        finalMaxResidual: 0,
+        dof: 0,
+        residuals: [],
+        phase: 'stub',
+      } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-solve-phase')).toBeInTheDocument(),
+      );
+      expect(screen.getByTestId('solver-assembly-solve-phase').textContent).toMatch(
+        /stub/i,
+      );
+    });
+
+    it('phase badge is hidden when the result does not carry a phase', async () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-assembly-solve-result')).toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId('solver-assembly-solve-phase')).toBeNull();
+    });
+
+    it('removing a part also drops its FeatureTree entry', async () => {
+      const onSolve = vi
+        .fn()
+        .mockResolvedValue({
+          success: true,
+          residuals: [],
+          dof: 0,
+        } as AssemblyBrowserSolveResult);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          initialFeatureTrees={{ p_arm: TINY_TREE }}
+          onClose={vi.fn()}
+          onSolve={onSolve}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-part-remove-p_arm'));
+      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
+      await waitFor(() => expect(onSolve).toHaveBeenCalled());
+      const trees = onSolve.mock.calls[0][1] as Record<string, FeatureTree>;
+      expect(trees).not.toHaveProperty('p_arm');
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp]>([
+      ['ko', /FeatureTree 편집/],
+      ['en', /Edit FeatureTree/],
+      ['ja', /FeatureTree 編集/],
+      ['zh', /编辑 FeatureTree/],
+    ])('i18n: lang %s localizes the FeatureTree toggle label', (lang, re) => {
+      render(
+        <AssemblyBrowserModal lang={lang} initialState={seedState()} onClose={vi.fn()} />,
+      );
+      const btn = screen.getByTestId('solver-assembly-part-p_base-tree-toggle');
+      expect(btn.textContent).toMatch(re);
+    });
   });
 });

@@ -18,6 +18,7 @@ import AssemblyBrowserModal, {
   type AssemblyBrowserSolveResult,
 } from './AssemblyBrowserModal';
 import type { AssemblyState } from '@/lib/assembly/assemblyState';
+import type { FeatureTree } from '@/lib/cad/featureTree';
 
 function normalizeLang(raw: string): AssemblyBrowserLang {
   if (
@@ -36,14 +37,30 @@ function normalizeLang(raw: string): AssemblyBrowserLang {
 }
 
 /**
- * Default solve fetcher — POSTs the AssemblyState to /api/assembly-solve.
+ * Default solve fetcher — POSTs the AssemblyState + per-part FeatureTrees
+ * to /api/assembly-solve.
+ *
+ * - When `featureTrees` is empty (no part has a tree yet), we OMIT the
+ *   `featureTrees` field from the body so the API route stays on its
+ *   Phase-1 'stub' path (preserves existing UI behaviour for users who
+ *   haven't opened any tree editor).
+ * - When `featureTrees` has at least one entry, we forward it so the
+ *   route flips to the Phase-4 'real' iterativeSolve path and the
+ *   response carries `phase: 'real'` + actual residuals.
+ *
  * Tests inject `onSolve` directly so we never hit the network from jsdom.
  */
-const defaultOnSolve: AssemblyBrowserOnSolve = async (state) => {
+const defaultOnSolve: AssemblyBrowserOnSolve = async (state, featureTrees) => {
+  const body: { state: AssemblyState; featureTrees?: Record<string, FeatureTree> } = {
+    state,
+  };
+  if (featureTrees && Object.keys(featureTrees).length > 0) {
+    body.featureTrees = featureTrees;
+  }
   const res = await fetch('/api/assembly-solve', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ state }),
+    body: JSON.stringify(body),
   });
   const data = (await res.json()) as
     | (AssemblyBrowserSolveResult & { ok: true })
@@ -57,12 +74,14 @@ const defaultOnSolve: AssemblyBrowserOnSolve = async (state) => {
 export interface AssemblyBrowserPageContentProps {
   lang: string;
   initialState?: AssemblyState;
+  initialFeatureTrees?: Record<string, FeatureTree>;
   onSolve?: AssemblyBrowserOnSolve;
 }
 
 export function AssemblyBrowserPageContent({
   lang,
   initialState,
+  initialFeatureTrees,
   onSolve,
 }: AssemblyBrowserPageContentProps): React.ReactElement {
   const editorLang = normalizeLang(lang);
@@ -84,6 +103,7 @@ export function AssemblyBrowserPageContent({
       <AssemblyBrowserModal
         lang={editorLang}
         initialState={initialState}
+        initialFeatureTrees={initialFeatureTrees}
         onClose={onClose}
         onSolve={onSolve ?? defaultOnSolve}
       />
