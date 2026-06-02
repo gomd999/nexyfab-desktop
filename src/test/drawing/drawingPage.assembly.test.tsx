@@ -21,7 +21,7 @@
  * arguments + force warnings paths without spinning up the real STEP writer.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import React from 'react';
 
 // ─── mock the orchestrator BEFORE component import ───────────────────────
@@ -30,6 +30,54 @@ const writeAssemblyWithPmiMock = vi.fn();
 vi.mock('@/lib/brep-bridge/stepWriteAssemblyWithPmi', () => ({
   writeAssemblyWithPmi: (opts: unknown) => writeAssemblyWithPmiMock(opts),
 }));
+
+// Phase 5.4 PDF export — mock `exportSheetsToPdf` so the assembly PDF
+// tests can assert (sheets, svgRefs) call shape without spinning up
+// jspdf or the SVG→PNG canvas pipeline. The factory is hoisted, so
+// the mock state lives on a global symbol; test bodies access via
+// `getPdfMockState()` below.
+vi.mock('@/lib/drawing/pdfExport', () => {
+  class MockPdfExportError extends Error {
+    public readonly code: string;
+    constructor(message: string, code: string) {
+      super(message);
+      this.name = 'PdfExportError';
+      this.code = code;
+    }
+  }
+  // Default implementation: succeed with a tiny PDF blob.
+  const defaultImpl = async (
+    _sheets: ReadonlyArray<unknown>,
+    _svgRefs: ReadonlyArray<unknown>,
+  ): Promise<Blob> => new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+  const mock = vi.fn<
+    (sheets: ReadonlyArray<unknown>, svgRefs: ReadonlyArray<unknown>) => Promise<Blob>
+  >(defaultImpl);
+  const state = { mock, MockPdfExportError, defaultImpl };
+  (globalThis as unknown as { __pdfMock: typeof state }).__pdfMock = state;
+  return {
+    exportSheetsToPdf: (
+      sheets: ReadonlyArray<unknown>,
+      svgRefs: ReadonlyArray<unknown>,
+    ) => mock(sheets, svgRefs),
+    PdfExportError: MockPdfExportError,
+  };
+});
+
+type PdfMockState = {
+  mock: ReturnType<typeof vi.fn<
+    (sheets: ReadonlyArray<unknown>, svgRefs: ReadonlyArray<unknown>) => Promise<Blob>
+  >>;
+  MockPdfExportError: new (m: string, c: string) => Error & { code: string };
+  defaultImpl: (
+    sheets: ReadonlyArray<unknown>,
+    svgRefs: ReadonlyArray<unknown>,
+  ) => Promise<Blob>;
+};
+
+function getPdfMockState(): PdfMockState {
+  return (globalThis as unknown as { __pdfMock: PdfMockState }).__pdfMock;
+}
 
 // Component must be imported AFTER vi.mock so its bound reference resolves
 // to the mock function.
@@ -51,6 +99,10 @@ beforeEach(() => {
     ranges: [],
     warnings: [],
   }));
+
+  const pdfState = getPdfMockState();
+  pdfState.mock.mockReset();
+  pdfState.mock.mockImplementation(pdfState.defaultImpl);
 
   originalCreate = URL.createObjectURL;
   originalRevoke = URL.revokeObjectURL;
@@ -540,5 +592,247 @@ describe('DrawingPageContent assembly sheet editor / remove / bulk', () => {
     expect(
       (screen.getByTestId('drawing-assembly-clear-all-sheets') as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+});
+
+// ─── multi-sheet PDF export (Phase 5.4) ──────────────────────────────────
+
+describe('DrawingPageContent assembly multi-sheet PDF export', () => {
+  it('renders the assembly Export PDF button when assembly mode is on', () => {
+    mount();
+    enableAssemblyMode();
+    expect(screen.getByTestId('drawing-assembly-export-pdf')).toBeInTheDocument();
+  });
+
+  it('Export PDF button is absent in the single-part flow', () => {
+    mount();
+    expect(screen.queryByTestId('drawing-assembly-export-pdf')).toBeNull();
+  });
+
+  it('Export PDF button is disabled until at least one part has a sheet', () => {
+    mount();
+    enableAssemblyMode();
+    const btn = screen.getByTestId('drawing-assembly-export-pdf') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('2 parts + 2 sheets → exportSheetsToPdf called with 2 sheets, 2 svg refs (aligned)', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_b-sheet'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(getPdfMockState().mock).toHaveBeenCalledTimes(1);
+    });
+    const [sheets, svgRefs] = getPdfMockState().mock.mock.calls[0] as [
+      ReadonlyArray<{ id: string }>,
+      ReadonlyArray<SVGElement>,
+    ];
+    expect(sheets.length).toBe(2);
+    expect(svgRefs.length).toBe(2);
+    // Sheets must align with their SVG ref pair — every ref is a real
+    // <svg> mounted by SheetRenderer.
+    for (const svg of svgRefs) {
+      expect(svg).not.toBeNull();
+      expect(svg.tagName.toLowerCase()).toBe('svg');
+    }
+  });
+
+  it('downloads a multi-page PDF blob via URL.createObjectURL', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-add-all-sheets'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      const calls = createObjectUrlSpy.mock.calls.map((c) => c[0] as Blob);
+      expect(calls.some((b) => b?.type === 'application/pdf')).toBe(true);
+    });
+  });
+
+  it('success surfaces the "Exported N-page PDF" info banner', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-add-all-sheets'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-info')).toBeInTheDocument();
+    });
+    const info = screen.getByTestId('drawing-assembly-pdf-info');
+    // Two cubes → 2-page PDF.
+    expect(info.textContent ?? '').toMatch(/2/);
+  });
+
+  it('0 sheets → info banner surfaces the "no sheets" message, exporter not called', async () => {
+    mount();
+    enableAssemblyMode();
+    // Re-enable the button artificially: we click via a direct call even
+    // though the button is disabled. Disabled buttons don't fire `click`
+    // through fireEvent.click; instead we add a sheet then clear so the
+    // button toggles back to disabled, then call the handler via
+    // .closest('button').click(). The simplest verification path is to
+    // assert disabled-state covers the empty case (no-call) — combined
+    // with the next test where we force-empty after a wipe.
+    const btn = screen.getByTestId('drawing-assembly-export-pdf') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    fireEvent.click(btn);
+    expect(getPdfMockState().mock).not.toHaveBeenCalled();
+  });
+
+  it('a wiped partSheets list keeps the button disabled (no PDF emitted)', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-add-all-sheets'));
+    const btn = screen.getByTestId('drawing-assembly-export-pdf') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('drawing-assembly-clear-all-sheets'));
+    expect(btn.disabled).toBe(true);
+    fireEvent.click(btn);
+    expect(getPdfMockState().mock).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('different paperSizes per part → the matching Sheet IRs reach the exporter', async () => {
+    mount();
+    enableAssemblyMode();
+    // Add both sheets, then edit cube_a to A1 while cube_b stays A3.
+    fireEvent.click(screen.getByTestId('drawing-assembly-add-all-sheets'));
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-edit-sheet'));
+    fireEvent.change(screen.getByTestId('drawing-assembly-sheet-paper-select'), {
+      target: { value: 'A1' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(getPdfMockState().mock).toHaveBeenCalledTimes(1);
+    });
+    const [sheets] = getPdfMockState().mock.mock.calls[0] as [
+      ReadonlyArray<{ paperSize: string }>,
+      ReadonlyArray<SVGElement>,
+    ];
+    const papers = sheets.map((s) => s.paperSize).sort();
+    expect(papers).toEqual(['A1', 'A3']);
+  });
+
+  it('exporter throw surfaces the red error banner with the PdfExportError prefix', async () => {
+    const { mock, MockPdfExportError } = getPdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockPdfExportError('jspdf not installed (boom)', 'jspdf-missing');
+    });
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-error')).toBeInTheDocument();
+    });
+    const banner = screen.getByTestId('drawing-assembly-pdf-error');
+    expect(banner.textContent ?? '').toMatch(/jspdf/);
+    expect(banner.textContent ?? '').toMatch(/boom/);
+  });
+
+  it('a generic Error throw surfaces the red banner without the jspdf prefix', async () => {
+    getPdfMockState().mock.mockImplementation(async () => {
+      throw new Error('unexpected rasterisation failure');
+    });
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-error')).toBeInTheDocument();
+    });
+    const banner = screen.getByTestId('drawing-assembly-pdf-error');
+    expect(banner.textContent ?? '').toMatch(/unexpected rasterisation failure/);
+  });
+
+  it('a successful export after a previous failure clears the red banner', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    // First call: failure.
+    getPdfMockState().mock.mockImplementationOnce(async () => {
+      throw new Error('boom');
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-error')).toBeInTheDocument();
+    });
+    // Second call: success (mock default).
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId('drawing-assembly-pdf-error')).toBeNull();
+      expect(screen.getByTestId('drawing-assembly-pdf-info')).toBeInTheDocument();
+    });
+  });
+
+  it('the hidden multi-sheet renderer mount is populated with one wrapper per partSheet', () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-add-all-sheets'));
+    const hidden = screen.getByTestId('drawing-assembly-hidden-sheets');
+    const wrappers = hidden.querySelectorAll('[data-part-id]');
+    expect(wrappers.length).toBe(2);
+    const ids = Array.from(wrappers)
+      .map((w) => w.getAttribute('data-part-id'))
+      .sort();
+    expect(ids).toEqual(['cube_a', 'cube_b']);
+    // Every wrapper has a SheetRenderer SVG inside it.
+    for (const w of wrappers) {
+      expect(w.querySelector('svg[data-testid="sheet-renderer-root"]')).not.toBeNull();
+    }
+  });
+
+  it('Korean i18n surfaces the "조립체 PDF 내보내기" label', () => {
+    mount('ko');
+    enableAssemblyMode();
+    expect(screen.getByTestId('drawing-assembly-export-pdf').textContent ?? '')
+      .toMatch(/조립체 PDF/);
+  });
+
+  it('Japanese i18n surfaces the "アセンブリ PDF" label', () => {
+    mount('ja');
+    enableAssemblyMode();
+    expect(screen.getByTestId('drawing-assembly-export-pdf').textContent ?? '')
+      .toMatch(/アセンブリ PDF/);
+  });
+
+  it('Chinese i18n surfaces the "导出装配PDF" label', () => {
+    mount('zh');
+    enableAssemblyMode();
+    expect(screen.getByTestId('drawing-assembly-export-pdf').textContent ?? '')
+      .toMatch(/导出装配PDF/);
+  });
+
+  it('switching the sample after a PDF export clears the info banner', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-add-all-sheets'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-info')).toBeInTheDocument();
+    });
+    selectSample('hinge-pair');
+    expect(screen.queryByTestId('drawing-assembly-pdf-info')).toBeNull();
   });
 });

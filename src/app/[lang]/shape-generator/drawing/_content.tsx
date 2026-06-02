@@ -120,6 +120,10 @@ interface PageDict {
   confirmRemoveSheet: string;
   confirmClearAllSheets: string;
   closeEditor: string;
+  exportAssemblyPdf: string;
+  assemblyPdfSuccess: string;
+  assemblyPdfError: string;
+  assemblyPdfNoSheets: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -166,6 +170,10 @@ const DICT: Record<string, PageDict> = {
     confirmRemoveSheet: '이 시트를 삭제하시겠습니까?',
     confirmClearAllSheets: '모든 부품의 시트를 제거하시겠습니까?',
     closeEditor: '닫기',
+    exportAssemblyPdf: '조립체 PDF 내보내기',
+    assemblyPdfSuccess: '페이지 PDF를 내보냈습니다',
+    assemblyPdfError: '조립체 PDF 내보내기 실패',
+    assemblyPdfNoSheets: '내보낼 시트가 없습니다',
   },
   en: {
     title: 'Drawing Studio',
@@ -210,6 +218,10 @@ const DICT: Record<string, PageDict> = {
     confirmRemoveSheet: 'Remove this sheet?',
     confirmClearAllSheets: 'Remove sheets for all parts?',
     closeEditor: 'Close',
+    exportAssemblyPdf: 'Export assembly PDF',
+    assemblyPdfSuccess: 'Exported {n}-page PDF',
+    assemblyPdfError: 'Assembly PDF export failed',
+    assemblyPdfNoSheets: 'No sheets to export',
   },
   ja: {
     title: '図面スタジオ',
@@ -254,6 +266,10 @@ const DICT: Record<string, PageDict> = {
     confirmRemoveSheet: 'このシートを削除しますか？',
     confirmClearAllSheets: 'すべての部品のシートを削除しますか？',
     closeEditor: '閉じる',
+    exportAssemblyPdf: 'アセンブリ PDF エクスポート',
+    assemblyPdfSuccess: 'ページPDFをエクスポートしました',
+    assemblyPdfError: 'アセンブリ PDF エクスポートに失敗しました',
+    assemblyPdfNoSheets: 'エクスポートするシートがありません',
   },
   zh: {
     title: '图纸工作室',
@@ -298,6 +314,10 @@ const DICT: Record<string, PageDict> = {
     confirmRemoveSheet: '是否删除该图纸？',
     confirmClearAllSheets: '是否删除所有零件的图纸？',
     closeEditor: '关闭',
+    exportAssemblyPdf: '导出装配PDF',
+    assemblyPdfSuccess: '已导出 {n} 页 PDF',
+    assemblyPdfError: '装配 PDF 导出失败',
+    assemblyPdfNoSheets: '没有可导出的图纸',
   },
   es: {
     title: 'Estudio de Planos',
@@ -342,6 +362,10 @@ const DICT: Record<string, PageDict> = {
     confirmRemoveSheet: '¿Eliminar esta hoja?',
     confirmClearAllSheets: '¿Eliminar las hojas de todas las piezas?',
     closeEditor: 'Cerrar',
+    exportAssemblyPdf: 'Exportar PDF de ensamblaje',
+    assemblyPdfSuccess: 'PDF de {n} páginas exportado',
+    assemblyPdfError: 'Error al exportar PDF de ensamblaje',
+    assemblyPdfNoSheets: 'No hay hojas para exportar',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -386,6 +410,10 @@ const DICT: Record<string, PageDict> = {
     confirmRemoveSheet: 'هل تريد إزالة هذه الورقة؟',
     confirmClearAllSheets: 'هل تريد إزالة أوراق جميع الأجزاء؟',
     closeEditor: 'إغلاق',
+    exportAssemblyPdf: 'تصدير PDF التجميع',
+    assemblyPdfSuccess: 'تم تصدير PDF بـ {n} صفحات',
+    assemblyPdfError: 'فشل تصدير PDF التجميع',
+    assemblyPdfNoSheets: 'لا توجد أوراق للتصدير',
   },
 };
 
@@ -676,8 +704,29 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     bindingsCount: number;
   } | null>(null);
   const [assemblyExportError, setAssemblyExportError] = useState<string | null>(null);
+  /**
+   * Phase 5.4 multi-sheet PDF export — message shown on success ("Exported
+   * N-page PDF"). Set to null when no recent export, or while a fresh
+   * export is in progress.
+   */
+  const [assemblyPdfInfo, setAssemblyPdfInfo] = useState<string | null>(null);
+  const [assemblyPdfError, setAssemblyPdfError] = useState<string | null>(null);
 
   const sheetRef = React.useRef<HTMLDivElement>(null);
+  /**
+   * Hidden DOM region that mounts every per-part `SheetRenderer` in
+   * assembly mode (display:none for non-selected parts). The Export PDF
+   * handler walks this region with `querySelector` to collect one
+   * `SVGElement` per partSheet — alignment with `Object.values(partSheets)`
+   * is guaranteed because we wrap each renderer in a `div` keyed by
+   * `data-part-id` and iterate sheets in the same order we render them.
+   *
+   * Why not mount inline? The centre canvas only shows the *selected* part;
+   * an unselected SheetRenderer would otherwise not be in the DOM, which
+   * would force a per-sheet React re-render race during PDF capture. A
+   * dedicated hidden container side-steps that.
+   */
+  const hiddenSheetsRef = React.useRef<HTMLDivElement>(null);
 
   /**
    * Memoised sample assembly. Recomputed only when the user picks a new
@@ -696,6 +745,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setEditingPartId(null);
     setAssemblyExport(null);
     setAssemblyExportError(null);
+    setAssemblyPdfInfo(null);
+    setAssemblyPdfError(null);
   }, [sampleName]);
 
   const handleAddSheetForPart = useCallback((partId: string, partName: string) => {
@@ -839,6 +890,75 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       setAssemblyExportError(`${dict.assemblyExportError}: ${detail}`);
     }
   }, [sampleAssembly, sampleName, partSheets, dict.assemblyExportError]);
+
+  /**
+   * Phase 5.4 multi-sheet PDF export — bundles every part sheet that has
+   * a corresponding hidden `SheetRenderer` SVG mount into a single
+   * multi-page PDF via {@link exportSheetsToPdf}.
+   *
+   * SVG ref collection algorithm:
+   *   1. Iterate `Object.entries(partSheets)` in insertion order.
+   *   2. For each (partId, sheet), look up the matching hidden wrapper
+   *      via `[data-part-id="<id>"]` inside `hiddenSheetsRef`.
+   *   3. Query the SVG element under that wrapper. If absent (race or
+   *      missing renderer) skip the pair entirely — `exportSheetsToPdf`
+   *      enforces `sheets.length === svgRefs.length` so we must keep
+   *      arrays paired.
+   *   4. Pass the paired arrays straight through. If nothing remains,
+   *      surface the "no sheets to export" info banner.
+   */
+  const onExportAssemblyPdf = useCallback(async () => {
+    setAssemblyPdfError(null);
+    setAssemblyPdfInfo(null);
+
+    const entries = Object.entries(partSheets);
+    if (entries.length === 0) {
+      setAssemblyPdfInfo(dict.assemblyPdfNoSheets);
+      return;
+    }
+
+    const sheetsToExport: Sheet[] = [];
+    const svgRefs: SVGElement[] = [];
+    const root = hiddenSheetsRef.current;
+    if (root) {
+      for (const [partId, partSheet] of entries) {
+        const wrapper = root.querySelector(`[data-part-id="${partId}"]`);
+        const svg = wrapper?.querySelector(
+          'svg[data-testid="sheet-renderer-root"]',
+        ) as SVGElement | null;
+        if (svg) {
+          sheetsToExport.push(partSheet);
+          svgRefs.push(svg);
+        }
+      }
+    }
+
+    if (sheetsToExport.length === 0) {
+      setAssemblyPdfInfo(dict.assemblyPdfNoSheets);
+      return;
+    }
+
+    try {
+      const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
+      downloadBlob(blob, `${sampleName}.pdf`);
+      setAssemblyPdfInfo(
+        dict.assemblyPdfSuccess.replace('{n}', String(sheetsToExport.length)),
+      );
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      const prefix =
+        err instanceof PdfExportError && err.code === 'jspdf-missing'
+          ? `${dict.assemblyPdfError} (jspdf)`
+          : dict.assemblyPdfError;
+      setAssemblyPdfError(`${prefix}: ${detail}`);
+    }
+  }, [
+    partSheets,
+    sampleName,
+    dict.assemblyPdfError,
+    dict.assemblyPdfSuccess,
+    dict.assemblyPdfNoSheets,
+  ]);
 
   const sheet: Sheet = useMemo(() => {
     const base = standardThreeViewSheet({
@@ -1306,6 +1426,25 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               >
                 {dict.exportAssemblyStep}
               </button>
+              <button
+                type="button"
+                data-testid="drawing-assembly-export-pdf"
+                onClick={() => { void onExportAssemblyPdf(); }}
+                disabled={Object.keys(partSheets).length === 0}
+                style={{
+                  padding: '8px 14px',
+                  background:
+                    Object.keys(partSheets).length === 0 ? '#9ca3af' : '#1d4ed8',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor:
+                    Object.keys(partSheets).length === 0 ? 'not-allowed' : 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                {dict.exportAssemblyPdf}
+              </button>
             </aside>
 
             {/* ─── Centre: selected part's sheet preview ─────────────── */}
@@ -1331,6 +1470,37 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                   {dict.noSheetAdded}
                 </p>
               )}
+            </div>
+
+            {/*
+              Hidden multi-sheet mount used by the PDF exporter. Each
+              part's SheetRenderer is mounted here so the exporter can
+              query its SVG element regardless of which part the user
+              has selected in the centre preview. `aria-hidden` keeps it
+              out of assistive-tech focus order; `position: absolute`
+              + `visibility: hidden` keeps the layout clean while
+              ensuring jsdom + browser layout pipelines populate the
+              renderer's `<svg>` mount the same way the visible canvas
+              does.
+            */}
+            <div
+              ref={hiddenSheetsRef}
+              data-testid="drawing-assembly-hidden-sheets"
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                width: 0,
+                height: 0,
+                overflow: 'hidden',
+                visibility: 'hidden',
+                pointerEvents: 'none',
+              }}
+            >
+              {Object.entries(partSheets).map(([pid, ps]) => (
+                <div key={pid} data-part-id={pid}>
+                  <SheetRenderer sheet={ps} />
+                </div>
+              ))}
             </div>
 
             {/* ─── Export result + warnings ──────────────────────────── */}
@@ -1401,6 +1571,39 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 }}
               >
                 {assemblyExportError}
+              </p>
+            ) : null}
+            {assemblyPdfInfo ? (
+              <p
+                data-testid="drawing-assembly-pdf-info"
+                style={{
+                  gridColumn: '1 / -1',
+                  margin: 0,
+                  padding: '6px 10px',
+                  background: '#dcfce7',
+                  color: '#166534',
+                  borderRadius: 4,
+                  fontSize: 12,
+                }}
+              >
+                {assemblyPdfInfo}
+              </p>
+            ) : null}
+            {assemblyPdfError ? (
+              <p
+                data-testid="drawing-assembly-pdf-error"
+                role="alert"
+                style={{
+                  gridColumn: '1 / -1',
+                  margin: 0,
+                  padding: '6px 10px',
+                  background: '#fee2e2',
+                  color: '#991b1b',
+                  borderRadius: 4,
+                  fontSize: 12,
+                }}
+              >
+                {assemblyPdfError}
               </p>
             ) : null}
           </section>
