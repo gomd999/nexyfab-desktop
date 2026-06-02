@@ -270,6 +270,28 @@ interface Dict {
   gizmoModeRotate: string;
   /** Heading shown above the gizmo mode picker. */
   gizmoModeLabel: string;
+  /**
+   * Phase 3.A bulk-edit mate values — footer panel that appears whenever
+   * the user selects 2+ mates of the **same** kind via the per-row select
+   * checkbox. The single number input applies to every selected mate's
+   * canonical numeric field (distance.value / angle.value / gear.ratio /
+   * rack_pinion.pinionRadius) in ONE `recordChange` so the whole batch
+   * undoes in a single Ctrl+Z. Localised function so the kind name can
+   * be interpolated naturally in every language. AAAAA's single inline
+   * editor still works unchanged for one-at-a-time edits.
+   */
+  bulkEditMates: (count: number, kind: MateKind) => string;
+  /**
+   * Banner shown in place of `bulkEditMates` when the user picks mates of
+   * different kinds. The Apply button is disabled — the user must narrow
+   * the selection to a single kind first.
+   */
+  mixedSelection: string;
+  /**
+   * Apply button label on the bulk-edit panel. Commits the single value
+   * to every selected mate via one `recordChange` (single history entry).
+   */
+  bulkApply: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -366,6 +388,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     gizmoModeTranslate: '이동',
     gizmoModeRotate: '회전',
     gizmoModeLabel: '기즈모 모드',
+    bulkEditMates: (count, kind) => `메이트 ${count}개 일괄 편집 (종류: ${kind})`,
+    mixedSelection: '서로 다른 종류 — 같은 종류만 선택하세요',
+    bulkApply: '적용',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -461,6 +486,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     gizmoModeTranslate: 'Translate',
     gizmoModeRotate: 'Rotate',
     gizmoModeLabel: 'Gizmo mode',
+    bulkEditMates: (count, kind) => `Bulk edit ${count} mates (kind: ${kind})`,
+    mixedSelection: 'Mixed selection — pick same kind',
+    bulkApply: 'Apply',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -556,6 +584,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     gizmoModeTranslate: '移動',
     gizmoModeRotate: '回転',
     gizmoModeLabel: 'ギズモモード',
+    bulkEditMates: (count, kind) => `${count} 件のメイトを一括編集 (種類: ${kind})`,
+    mixedSelection: '種類が混在 — 同じ種類のみ選択してください',
+    bulkApply: '適用',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -650,6 +681,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     gizmoModeTranslate: '平移',
     gizmoModeRotate: '旋转',
     gizmoModeLabel: '操控器模式',
+    bulkEditMates: (count, kind) => `批量编辑 ${count} 个配合 (类型: ${kind})`,
+    mixedSelection: '类型混合 — 请选择同一类型',
+    bulkApply: '应用',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -746,6 +780,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     gizmoModeTranslate: 'Trasladar',
     gizmoModeRotate: 'Rotar',
     gizmoModeLabel: 'Modo gizmo',
+    bulkEditMates: (count, kind) =>
+      `Edición masiva de ${count} restricciones (tipo: ${kind})`,
+    mixedSelection: 'Selección mixta — elige el mismo tipo',
+    bulkApply: 'Aplicar',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -841,6 +879,9 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     gizmoModeTranslate: 'إزاحة',
     gizmoModeRotate: 'تدوير',
     gizmoModeLabel: 'وضع الأداة',
+    bulkEditMates: (count, kind) => `تحرير ${count} قيود دفعةً واحدة (النوع: ${kind})`,
+    mixedSelection: 'تحديد مختلط — اختر النوع نفسه',
+    bulkApply: 'تطبيق',
   },
 };
 
@@ -1742,6 +1783,14 @@ export default function AssemblyBrowserModal({
         void _drop;
         return rest;
       });
+      // Bulk-edit — drop the removed mate from the selection so the
+      // panel doesn't keep counting a ghost.
+      setSelectedMateIds((prev) => {
+        if (!prev.has(mateId)) return prev;
+        const next = new Set(prev);
+        next.delete(mateId);
+        return next;
+      });
     },
     [recordState, t],
   );
@@ -1795,6 +1844,43 @@ export default function AssemblyBrowserModal({
   const [mateValueDraft, setMateValueDraft] = useState<
     Record<string, { raw: string; invalid: boolean }>
   >({});
+
+  /**
+   * Phase 3.A bulk-edit selection — set of mate ids the user has ticked
+   * via the per-row checkbox. When ≥2 entries are present AND every
+   * selected mate shares the same `kind` AND that kind carries a
+   * numeric value field, the mates-panel footer reveals the bulk-edit
+   * panel (single value input + Apply button). Apply commits ONE
+   * `recordChange` setting every selected mate's value to the typed
+   * number so the whole batch undoes in a single Ctrl+Z — matching
+   * AAAAA's single inline editor's "one history entry per commit" policy.
+   *
+   * We intentionally hold this as `Set<string>` rather than `Mate[]` so
+   * a transient ref/kind edit that re-creates the mate object via
+   * `setStateDirect` doesn't invalidate the selection. Mate ids that
+   * vanish from `state.mates` (e.g., the user removed the row) are
+   * filtered out at render time, not on mutation, which keeps the
+   * checkbox handler O(1) and the "mate gone" cleanup centralised.
+   */
+  const [selectedMateIds, setSelectedMateIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+
+  const toggleMateSelection = useCallback((mateId: string) => {
+    setSelectedMateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(mateId)) next.delete(mateId);
+      else next.add(mateId);
+      return next;
+    });
+  }, []);
+
+  /**
+   * Bulk-edit input — single raw value typed by the user, plus a derived
+   * invalid flag so the panel can mirror AAAAA's red-border UX. Cleared
+   * after a successful Apply.
+   */
+  const [bulkValueRaw, setBulkValueRaw] = useState<string>('');
 
   const beginMateValueEdit = useCallback((mateId: string, seed: number) => {
     setMateValueDraft((prev) => ({
@@ -1883,6 +1969,100 @@ export default function AssemblyBrowserModal({
     [mateValueDraft, overrideState, history, t, cancelMateValueEdit],
   );
 
+  /**
+   * Drop selection entries that point at mates that no longer exist (the
+   * user removed a row while it was selected) or that switched to a
+   * valueless kind. Doing this lazily — at the start of each render —
+   * keeps the row-toggle path simple and means the cleanup also covers
+   * Undo / Redo paths that wholesale-replace `state.mates`.
+   */
+  const liveSelectedMates = useMemo(() => {
+    const live: Mate[] = [];
+    for (const m of state.mates) {
+      if (selectedMateIds.has(m.id)) live.push(m);
+    }
+    return live;
+  }, [state.mates, selectedMateIds]);
+
+  /**
+   * Bulk-edit panel mode (derived):
+   *   - 'hidden'  → 0 or 1 mate selected; panel collapses.
+   *   - 'mixed'   → ≥2 selected but kinds differ; show banner, no input.
+   *   - 'valueless' → ≥2 same-kind selected but the kind has no value
+   *                   field (e.g., coincident); panel collapses (no edit
+   *                   surface to expose).
+   *   - 'ready'   → ≥2 same-kind, value-bearing selection; render input.
+   */
+  const bulkMode: {
+    kind: 'hidden' | 'mixed' | 'valueless' | 'ready';
+    mateKind?: MateKind;
+    count: number;
+  } = useMemo(() => {
+    if (liveSelectedMates.length < 2) {
+      return { kind: 'hidden', count: liveSelectedMates.length };
+    }
+    const firstKind = liveSelectedMates[0]!.kind;
+    const allSame = liveSelectedMates.every((m) => m.kind === firstKind);
+    if (!allSame) return { kind: 'mixed', count: liveSelectedMates.length };
+    if (!mateKindNeedsValue(firstKind).needed) {
+      return { kind: 'valueless', count: liveSelectedMates.length };
+    }
+    return { kind: 'ready', mateKind: firstKind, count: liveSelectedMates.length };
+  }, [liveSelectedMates]);
+
+  const bulkInvalid = useMemo(() => {
+    if (bulkMode.kind !== 'ready') return false;
+    if (bulkValueRaw.trim().length === 0) return false;
+    const parsed = Number(bulkValueRaw);
+    return !isMateValueValid(bulkMode.mateKind!, parsed);
+  }, [bulkMode, bulkValueRaw]);
+
+  /**
+   * Apply the typed bulk value to every selected mate in a SINGLE
+   * `recordChange` so Undo restores the whole batch in one click. We
+   * compose the new state once, then push through history.recordChange
+   * directly (not via recordState) so we don't reach into any in-flight
+   * `overrideState` mid-edit — bulk apply is a fresh canonical write.
+   *
+   * Rejects invalid input (red border stays, no history entry); rejects
+   * trivial no-op (the same value as everyone already has); on success,
+   * the bulk input clears so the panel is ready for the next batch.
+   * Selection itself is preserved so the user can iterate on the same
+   * set without re-ticking every row.
+   */
+  const onBulkApply = useCallback(() => {
+    if (bulkMode.kind !== 'ready') return;
+    const parsed = Number(bulkValueRaw);
+    if (!Number.isFinite(parsed)) return;
+    if (!isMateValueValid(bulkMode.mateKind!, parsed)) return;
+
+    const base = overrideState ?? history.state;
+    const targetIds = new Set(liveSelectedMates.map((m) => m.id));
+    const nextMates = base.mates.map((m) =>
+      targetIds.has(m.id) ? setMateValue(m, parsed) : m,
+    );
+    // Bail if nothing actually changes — avoids polluting history with
+    // a no-op entry when the user types the same number that's already
+    // set on every selected mate.
+    const changed = nextMates.some((m, i) => m !== base.mates[i]);
+    if (!changed) {
+      setBulkValueRaw('');
+      return;
+    }
+    const next: AssemblyState = { ...base, mates: nextMates };
+    try {
+      history.recordChange(
+        next,
+        t.bulkEditMates(liveSelectedMates.length, bulkMode.mateKind!),
+      );
+      setBulkValueRaw('');
+    } catch {
+      // validateAssembly threw — keep the raw text so the user can
+      // adjust. Most likely a sibling override edit left a selected
+      // mate in an IR-invalid shape.
+    }
+  }, [bulkMode, bulkValueRaw, overrideState, history, liveSelectedMates, t]);
+
   // ── ref-selection / mate-toolbar ops ───────────────────────────────────
 
   const toggleRefsPanel = useCallback((partId: string) => {
@@ -1951,6 +2131,11 @@ export default function AssemblyBrowserModal({
     // future mate that gains a value cell starts in display mode rather
     // than inheriting a stale red border.
     setMateValueDraft({});
+    // Phase 3.A bulk-edit — wipe the selection set + the typed value so
+    // a future user click on a fresh checkbox starts in display mode
+    // rather than inheriting a stale selection from before the reset.
+    setSelectedMateIds(new Set<string>());
+    setBulkValueRaw('');
     // AI assembly builder (Phase 3.AI.Assembly): clear transient NL state.
     // Toggle itself is preserved — user explicitly turned it on, so we
     // don't undo that just because they wiped the assembly contents.
@@ -3518,6 +3703,14 @@ export default function AssemblyBrowserModal({
                           fontSize: 12,
                         }}
                       >
+                        <input
+                          type="checkbox"
+                          checked={selectedMateIds.has(m.id)}
+                          aria-label={`select ${m.id}`}
+                          data-testid={`solver-assembly-mate-${m.id}-select`}
+                          onChange={() => toggleMateSelection(m.id)}
+                          style={{ margin: 0, cursor: 'pointer' }}
+                        />
                         <span
                           data-testid={`solver-assembly-mate-name-${m.id}`}
                           style={{ fontWeight: 600 }}
@@ -3714,6 +3907,88 @@ export default function AssemblyBrowserModal({
                 })
               )}
             </div>
+            {bulkMode.kind !== 'hidden' && bulkMode.kind !== 'valueless' && (
+              <div
+                data-testid="solver-assembly-mate-bulk-panel"
+                data-bulk-mode={bulkMode.kind}
+                style={{
+                  marginTop: 4,
+                  padding: 8,
+                  border: `1px solid ${bulkMode.kind === 'mixed' ? '#fcd34d' : '#93c5fd'}`,
+                  background: bulkMode.kind === 'mixed' ? '#fffbeb' : '#eff6ff',
+                  borderRadius: 4,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  fontSize: 12,
+                }}
+              >
+                {bulkMode.kind === 'mixed' ? (
+                  <span data-testid="solver-assembly-mate-bulk-mixed">
+                    {t.mixedSelection}
+                  </span>
+                ) : (
+                  <>
+                    <span data-testid="solver-assembly-mate-bulk-label">
+                      {t.bulkEditMates(bulkMode.count, bulkMode.mateKind!)}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="number"
+                        value={bulkValueRaw}
+                        aria-label="bulk value"
+                        aria-invalid={bulkInvalid || undefined}
+                        data-testid="solver-assembly-mate-bulk-input"
+                        data-bulk-invalid={bulkInvalid ? 'true' : undefined}
+                        onChange={(e) => setBulkValueRaw(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onBulkApply();
+                          }
+                        }}
+                        step="0.1"
+                        style={{
+                          flex: 1,
+                          fontSize: 11,
+                          padding: 3,
+                          border: `1px solid ${bulkInvalid ? '#fca5a5' : '#d1d5db'}`,
+                          background: bulkInvalid ? '#fef2f2' : '#fff',
+                          borderRadius: 3,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        data-testid="solver-assembly-mate-bulk-apply"
+                        disabled={bulkInvalid || bulkValueRaw.trim().length === 0}
+                        onClick={onBulkApply}
+                        style={{
+                          fontSize: 11,
+                          padding: '4px 10px',
+                          background:
+                            bulkInvalid || bulkValueRaw.trim().length === 0
+                              ? '#f3f4f6'
+                              : '#3b82f6',
+                          color:
+                            bulkInvalid || bulkValueRaw.trim().length === 0
+                              ? '#9ca3af'
+                              : '#fff',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 3,
+                          cursor:
+                            bulkInvalid || bulkValueRaw.trim().length === 0
+                              ? 'not-allowed'
+                              : 'pointer',
+                        }}
+                      >
+                        {t.bulkApply}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <button
               type="button"
               onClick={addMateLocal}

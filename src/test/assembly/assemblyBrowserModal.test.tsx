@@ -3609,4 +3609,436 @@ describe('AssemblyBrowserModal', () => {
       expect(screen.queryByTestId('solver-assembly-part-row-p_arm')).toBeNull();
     });
   });
+
+  // ── Phase 3.A bulk-edit mate values (BBBBB) ────────────────────────────
+  //
+  /**
+   * The mates panel now exposes a per-row checkbox + a footer "bulk edit"
+   * panel that lets the user change the numeric value field of multiple
+   * mates at once. AAAAA's single inline editor stays unchanged. The bulk
+   * panel only appears when ≥2 mates of the SAME kind are selected; mixed
+   * kinds surface a banner and the Apply button is hidden. Apply commits
+   * through ONE `history.recordChange` so Ctrl+Z restores the entire batch
+   * in a single click.
+   */
+  describe('Phase 3.A bulk-edit mate values', () => {
+    /**
+     * Two distance mates between three parts so we can tick 2 rows of the
+     * same kind. p_a is fixed so the IR is valid out of the gate.
+     */
+    function twoDistanceState(): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+          {
+            id: 'p_c',
+            name: 'C',
+            partTemplateId: 'tpl_c',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_d1',
+            kind: 'distance',
+            a: { partId: 'p_a', refId: 'face_x', refKind: 'face' },
+            b: { partId: 'p_b', refId: 'face_y', refKind: 'face' },
+            value: 10,
+          },
+          {
+            id: 'm_d2',
+            kind: 'distance',
+            a: { partId: 'p_a', refId: 'face_x2', refKind: 'face' },
+            b: { partId: 'p_c', refId: 'face_y2', refKind: 'face' },
+            value: 20,
+          },
+        ],
+      };
+    }
+
+    /** One distance + one angle mate so we can exercise the mixed-kinds path. */
+    function mixedKindsState(): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_d',
+            kind: 'distance',
+            a: { partId: 'p_a', refId: 'face_x', refKind: 'face' },
+            b: { partId: 'p_b', refId: 'face_y', refKind: 'face' },
+            value: 10,
+          },
+          {
+            id: 'm_ang',
+            kind: 'angle',
+            a: { partId: 'p_a', refId: 'face_z', refKind: 'face' },
+            b: { partId: 'p_b', refId: 'face_w', refKind: 'face' },
+            value: 45,
+          },
+        ],
+      };
+    }
+
+    it('renders a per-row selection checkbox for every mate', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      const cb1 = screen.getByTestId('solver-assembly-mate-m_d1-select') as HTMLInputElement;
+      const cb2 = screen.getByTestId('solver-assembly-mate-m_d2-select') as HTMLInputElement;
+      expect(cb1).toBeInTheDocument();
+      expect(cb2).toBeInTheDocument();
+      expect(cb1.checked).toBe(false);
+      expect(cb2.checked).toBe(false);
+    });
+
+    it('bulk panel stays hidden when only 0 or 1 mate is selected', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-panel')).toBeNull();
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      // 1 selected → still hidden
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-panel')).toBeNull();
+    });
+
+    it('selecting 2 same-kind distance mates reveals the bulk-edit panel + input', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d2-select'));
+      const panel = screen.getByTestId('solver-assembly-mate-bulk-panel');
+      expect(panel).toBeInTheDocument();
+      expect(panel.getAttribute('data-bulk-mode')).toBe('ready');
+      expect(screen.getByTestId('solver-assembly-mate-bulk-label')).toHaveTextContent(
+        /Bulk edit 2 mates \(kind: distance\)/,
+      );
+      expect(screen.getByTestId('solver-assembly-mate-bulk-input')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-mate-bulk-apply')).toBeInTheDocument();
+    });
+
+    it('Apply with valid value updates both mates AND records ONE history entry', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      // Sanity — both inputs start at their seeded values, no Undo yet.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d1') as HTMLInputElement).value,
+      ).toBe('10');
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d2') as HTMLInputElement).value,
+      ).toBe('20');
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d2-select'));
+      const input = screen.getByTestId(
+        'solver-assembly-mate-bulk-input',
+      ) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '77' } });
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-bulk-apply'));
+
+      // Both mate values now read 77.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d1') as HTMLInputElement).value,
+      ).toBe('77');
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d2') as HTMLInputElement).value,
+      ).toBe('77');
+      // History panel shows the localized bulk description (ONE entry).
+      expect(
+        screen.getByTestId('solver-assembly-history-current').textContent,
+      ).toMatch(/Bulk edit 2 mates \(kind: distance\)/);
+      // Single history entry → exactly one Undo restores BOTH values to
+      // their pre-bulk state (10 / 20). If Apply had emitted 2 entries
+      // we'd need 2 Undos, which is the precise regression this guards.
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d1') as HTMLInputElement).value,
+      ).toBe('10');
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d2') as HTMLInputElement).value,
+      ).toBe('20');
+      // Undo stack is now empty again — confirms only ONE entry was pushed.
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('mixed kinds show the "Mixed selection" banner with no input/apply', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={mixedKindsState()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_ang-select'));
+      const panel = screen.getByTestId('solver-assembly-mate-bulk-panel');
+      expect(panel.getAttribute('data-bulk-mode')).toBe('mixed');
+      expect(screen.getByTestId('solver-assembly-mate-bulk-mixed')).toHaveTextContent(
+        /Mixed selection — pick same kind/,
+      );
+      // No input / apply button rendered in the mixed branch.
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-input')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-apply')).toBeNull();
+    });
+
+    it('selecting only valueless mates (e.g., 2 concentrics) keeps panel hidden', () => {
+      // Two concentric mates → same kind but no value field → no bulk surface.
+      const state: AssemblyState = {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+          {
+            id: 'p_c',
+            name: 'C',
+            partTemplateId: 'tpl_c',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_c1',
+            kind: 'concentric',
+            a: { partId: 'p_a', refId: 'axis_a', refKind: 'axis' },
+            b: { partId: 'p_b', refId: 'axis_b', refKind: 'axis' },
+          },
+          {
+            id: 'm_c2',
+            kind: 'concentric',
+            a: { partId: 'p_a', refId: 'axis_a2', refKind: 'axis' },
+            b: { partId: 'p_c', refId: 'axis_c', refKind: 'axis' },
+          },
+        ],
+      };
+      render(<AssemblyBrowserModal lang="en" initialState={state} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_c1-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_c2-select'));
+      // valueless branch suppresses the panel entirely (no edit surface
+      // makes sense for kinds without a numeric value field).
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-panel')).toBeNull();
+    });
+
+    it('Apply button is disabled when the input is empty or holds invalid value', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d2-select'));
+      const apply = screen.getByTestId(
+        'solver-assembly-mate-bulk-apply',
+      ) as HTMLButtonElement;
+      // Empty input → disabled.
+      expect(apply.disabled).toBe(true);
+      // Type an invalid (negative) distance → red border + still disabled.
+      const input = screen.getByTestId(
+        'solver-assembly-mate-bulk-input',
+      ) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '-3' } });
+      expect(input.getAttribute('data-bulk-invalid')).toBe('true');
+      expect(
+        (screen.getByTestId('solver-assembly-mate-bulk-apply') as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+      // Type a valid value → enabled.
+      fireEvent.change(input, { target: { value: '12' } });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-bulk-apply') as HTMLButtonElement)
+          .disabled,
+      ).toBe(false);
+    });
+
+    it('Apply with invalid value does NOT change any mate or push history', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d2-select'));
+      const input = screen.getByTestId(
+        'solver-assembly-mate-bulk-input',
+      ) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '-9' } });
+      // Click apply (the button is disabled, but for paranoia we also
+      // verify the handler's guard rejects the apply if reached).
+      const apply = screen.getByTestId(
+        'solver-assembly-mate-bulk-apply',
+      ) as HTMLButtonElement;
+      expect(apply.disabled).toBe(true);
+      // Mates unchanged, no history entry.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d1') as HTMLInputElement).value,
+      ).toBe('10');
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d2') as HTMLInputElement).value,
+      ).toBe('20');
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('AAAAA single inline value editor still works alongside bulk selection', () => {
+      // Tick a checkbox on m_d1 but only one — the bulk panel stays hidden
+      // (count < 2) and the legacy inline value editor on m_d1 must still
+      // commit independently via Enter, just like before BBBBB landed.
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-panel')).toBeNull();
+      const input = screen.getByTestId(
+        'solver-assembly-mate-value-m_d1',
+      ) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '55' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d1') as HTMLInputElement).value,
+      ).toBe('55');
+      // m_d2 is untouched — AAAAA path is a per-mate edit, not a batch.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d2') as HTMLInputElement).value,
+      ).toBe('20');
+      // The single inline commit produces its own (single-mate) history
+      // entry, which is the prior AAAAA-recorded description.
+      expect(
+        screen.getByTestId('solver-assembly-history-current').textContent,
+      ).toMatch(/Update mate m_d1 value/);
+    });
+
+    it('removing a selected mate also drops it from the bulk selection', () => {
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={twoDistanceState()}
+          onClose={vi.fn()}
+        />,
+      );
+      // Select both → bulk panel visible (2 mates).
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d2-select'));
+      expect(
+        screen.getByTestId('solver-assembly-mate-bulk-panel'),
+      ).toBeInTheDocument();
+      // Remove m_d2 — selection drops to 1 → panel collapses, no ghost.
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-remove-m_d2'));
+      expect(screen.queryByTestId('solver-assembly-mate-bulk-panel')).toBeNull();
+      expect(screen.queryByTestId('solver-assembly-mate-row-m_d2')).toBeNull();
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp, RegExp]>([
+      ['ko', /메이트 2개 일괄 편집/, /서로 다른 종류/],
+      ['en', /Bulk edit 2 mates/, /Mixed selection/],
+      ['ja', /2 件のメイトを一括編集/, /種類が混在/],
+      ['zh', /批量编辑 2 个配合/, /类型混合/],
+      ['es', /Edición masiva de 2 restricciones/, /Selección mixta/],
+      ['ar', /تحرير 2 قيود دفعةً واحدة/, /تحديد مختلط/],
+    ])(
+      'bulk-edit + mixed-selection labels are localized (%s)',
+      (lang, bulkRe, mixedRe) => {
+        // Same-kind branch → bulk label.
+        const { unmount } = render(
+          <AssemblyBrowserModal
+            lang={lang}
+            initialState={twoDistanceState()}
+            onClose={vi.fn()}
+          />,
+        );
+        fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d1-select'));
+        fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d2-select'));
+        expect(
+          screen.getByTestId('solver-assembly-mate-bulk-label'),
+        ).toHaveTextContent(bulkRe);
+        unmount();
+        // Mixed-kinds branch → mixedSelection banner.
+        render(
+          <AssemblyBrowserModal
+            lang={lang}
+            initialState={mixedKindsState()}
+            onClose={vi.fn()}
+          />,
+        );
+        fireEvent.click(screen.getByTestId('solver-assembly-mate-m_d-select'));
+        fireEvent.click(screen.getByTestId('solver-assembly-mate-m_ang-select'));
+        expect(
+          screen.getByTestId('solver-assembly-mate-bulk-mixed'),
+        ).toHaveTextContent(mixedRe);
+      },
+    );
+  });
 });
