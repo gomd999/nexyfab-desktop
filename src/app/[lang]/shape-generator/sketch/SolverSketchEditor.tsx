@@ -67,6 +67,14 @@ import {
   type SnapEntities,
   type SnapTarget,
 } from '@/lib/sketch/sketchSnap';
+import {
+  downloadSketchAsSvg,
+  type SketchEntities as SvgSketchEntities,
+  type SvgPoint,
+  type SvgLine,
+  type SvgCircle,
+  type SvgArc,
+} from '@/lib/sketch/sketchSvgExport';
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -95,6 +103,12 @@ export interface SolverSketchEditorProps {
   width?: number;
   height?: number;
   onClose?: () => void;
+  /**
+   * Optional project identifier used as the prefix for the exported SVG
+   * filename. When omitted, falls back to `'sketch'`. Kept opaque (string)
+   * so callers can pass anything filename-safe (UUID, slug, etc.).
+   */
+  projectId?: string;
   /**
    * Fires whenever the sketch's points or lines change. Used by wrapper
    * components (e.g., SolverSketchEditorWithExtrude) that need a mirror
@@ -131,6 +145,8 @@ interface Dict {
   snapIntersection: string;
   snapArc: string;
   snapPerpendicular: string;
+  exportSvg: string;
+  svgFilename: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -157,6 +173,8 @@ const dict: Record<EditorLang, Dict> = {
     snapIntersection: '교차',
     snapArc: '호',
     snapPerpendicular: '수선',
+    exportSvg: 'SVG 내보내기',
+    svgFilename: '스케치',
   },
   en: {
     title: 'Solver Sketch',
@@ -181,6 +199,8 @@ const dict: Record<EditorLang, Dict> = {
     snapIntersection: 'Int',
     snapArc: 'Arc',
     snapPerpendicular: 'Perp',
+    exportSvg: 'Export SVG',
+    svgFilename: 'sketch',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -205,6 +225,8 @@ const dict: Record<EditorLang, Dict> = {
     snapIntersection: '交差',
     snapArc: '弧',
     snapPerpendicular: '垂線',
+    exportSvg: 'SVG出力',
+    svgFilename: 'スケッチ',
   },
   zh: {
     title: '求解器草图',
@@ -229,6 +251,8 @@ const dict: Record<EditorLang, Dict> = {
     snapIntersection: '交点',
     snapArc: '弧',
     snapPerpendicular: '垂线',
+    exportSvg: '导出SVG',
+    svgFilename: '草图',
   },
   es: {
     title: 'Boceto con solver',
@@ -253,6 +277,8 @@ const dict: Record<EditorLang, Dict> = {
     snapIntersection: 'Int',
     snapArc: 'Arco',
     snapPerpendicular: 'Perp',
+    exportSvg: 'Exportar SVG',
+    svgFilename: 'boceto',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -277,6 +303,8 @@ const dict: Record<EditorLang, Dict> = {
     snapIntersection: 'تقاطع',
     snapArc: 'قوس',
     snapPerpendicular: 'عمودي',
+    exportSvg: 'تصدير SVG',
+    svgFilename: 'رسم',
   },
 };
 
@@ -466,6 +494,7 @@ export default function SolverSketchEditor({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   onClose,
+  projectId,
 }: SolverSketchEditorProps): React.ReactElement {
   const t = dict[lang];
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -1330,6 +1359,111 @@ export default function SolverSketchEditor({
     onClose?.();
   }, [onClose]);
 
+  // ─── SVG export ───────────────────────────────────────────────────────
+  //
+  // Convert the current view state (which mirrors the solver) into the
+  // `SketchEntities` shape that `sketchSvgExport.downloadSketchAsSvg`
+  // expects. View ↔ SVG mapping:
+  //   ViewPoint  → SvgPoint  { id, x, y, isFixed }
+  //   ViewLine   → SvgLine   { id, p1/p2 ids + resolved x1,y1,x2,y2 }
+  //   ViewCircle → SvgCircle { id, cx, cy (from center point), radius }
+  //   ViewArc    — not modeled in this editor (arc tool placeholder); we
+  //                still attempt to read arcs from the solver in case a
+  //                future code path creates them, but in Phase 1 the array
+  //                stays empty. The SVG export gracefully handles an
+  //                empty arc list.
+  //
+  // Defensive lookups: lines whose endpoints can't be resolved (e.g. point
+  // deleted but line lingers) are silently dropped — the SVG export would
+  // otherwise emit `NaN` coords. Same policy as the constraint overlay.
+  const buildSvgEntities = useCallback((): SvgSketchEntities => {
+    const ptMap = new Map<string, ViewPoint>();
+    for (const e of entities) if (e.kind === 'point') ptMap.set(e.id as string, e);
+
+    const svgPoints: SvgPoint[] = entities
+      .filter((e): e is ViewPoint => e.kind === 'point')
+      .map((p) => ({
+        id: p.id as string,
+        x: p.x,
+        y: p.y,
+        isFixed: p.fixed,
+      }));
+
+    const svgLines: SvgLine[] = entities
+      .filter((e): e is ViewLine => e.kind === 'line')
+      .map((l) => {
+        const a = ptMap.get(l.p1 as string);
+        const b = ptMap.get(l.p2 as string);
+        if (!a || !b) return null;
+        return {
+          id: l.id as string,
+          p1: l.p1 as string,
+          p2: l.p2 as string,
+          x1: a.x,
+          y1: a.y,
+          x2: b.x,
+          y2: b.y,
+        };
+      })
+      .filter((x): x is SvgLine => x !== null);
+
+    const svgCircles: SvgCircle[] = entities
+      .filter((e): e is ViewCircle => e.kind === 'circle')
+      .map((c) => {
+        const ctr = ptMap.get(c.center as string);
+        if (!ctr) return null;
+        return {
+          id: c.id as string,
+          cx: ctr.x,
+          cy: ctr.y,
+          radius: c.radius,
+        };
+      })
+      .filter((x): x is SvgCircle => x !== null);
+
+    // Arcs aren't part of the view state in Phase 1.3, but the SVG export
+    // API accepts them. Empty array keeps the export valid + extensible.
+    const svgArcs: SvgArc[] = [];
+
+    return {
+      points: svgPoints,
+      lines: svgLines,
+      circles: svgCircles,
+      arcs: svgArcs,
+    };
+  }, [entities]);
+
+  // Compose a deterministic, filesystem-safe filename:
+  //   `${projectId ?? 'sketch'}-{YYYYMMDDTHHMMSS}.svg`
+  // The timestamp uses UTC + `Date.toISOString` with all separators stripped
+  // so the filename is portable across operating systems (no `:` on Windows).
+  // The `.svg` extension is appended by `downloadSketchAsSvg` itself.
+  const buildSvgFilename = useCallback((): string => {
+    const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+    const prefix = projectId ?? 'sketch';
+    return `${prefix}-${stamp}`;
+  }, [projectId]);
+
+  // Bound to the toolbar "Export SVG" button. Builds entities + filename,
+  // then defers to `downloadSketchAsSvg` (browser-only — throws in non-DOM
+  // envs). bbox auto-fit with 10mm margin is the default, and 200×150 mm
+  // is a reasonable A5-ish printable size for an editor-driven export.
+  const handleExportSvg = useCallback((): void => {
+    const entitiesForSvg = buildSvgEntities();
+    const filename = buildSvgFilename();
+    try {
+      downloadSketchAsSvg(entitiesForSvg, filename, {
+        width: 200,
+        height: 150,
+        margin: 10,
+        title: `NexyFab Sketch — ${filename}`,
+      });
+    } catch {
+      // Non-DOM env or browser refused — surface nothing here. Tests can
+      // assert the URL.createObjectURL spy was called instead.
+    }
+  }, [buildSvgEntities, buildSvgFilename]);
+
   // ─── derived UI state ───
   const dof = solveResult?.dof ?? 0;
   const dofKind = dofState(dof);
@@ -1752,6 +1886,15 @@ export default function SolverSketchEditor({
           >
             {t.dofLabel}: {dof} ({dofText})
           </span>
+          <button
+            type="button"
+            onClick={handleExportSvg}
+            data-testid="solver-sketch-export-svg"
+            title={t.exportSvg}
+            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+          >
+            {t.exportSvg}
+          </button>
           <button
             type="button"
             onClick={handleClose}
