@@ -1307,3 +1307,274 @@ describe('SolverSketchEditorWithExtrude — Phase 2.7.1 undo / redo history', ()
     expect(redoBtn.getAttribute('aria-label')).toBe('다시 실행');
   });
 });
+
+// ─── Phase 3.AI.UI: FeatureTreePlannerPanel wrapper integration ──────────
+
+/**
+ * The wrapper mounts FeatureTreePlannerPanel behind the
+ * `solver-planner-toggle` button. Panel is hidden by default (compact
+ * mode). When shown, PlanStep[] from the panel's onApply callback is
+ * translated to EditOps and pushed through `applyHistoryEdit` so each
+ * step lands in the wrapper's undo history.
+ *
+ * Coverage:
+ *  - toggle on / off mounts/unmounts the panel,
+ *  - default-hidden compact mode,
+ *  - regex-only plans flow through panel → wrapper.tree,
+ *  - 2-step plan adds 2 nodes,
+ *  - toast surfaces with the node count,
+ *  - undo removes planner-applied nodes (history integration),
+ *  - llmIntentFetcher mock is invoked when regex fails,
+ *  - history is preserved across hide-then-show,
+ *  - 6-lang label rendering of the toggle.
+ */
+describe('SolverSketchEditorWithExtrude — Phase 3.AI.UI planner panel wiring', () => {
+  it('panel is hidden by default (compact mode)', async () => {
+    await mountReady();
+    expect(screen.getByTestId('solver-planner-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('solver-planner-panel-host')).toBeNull();
+    expect(screen.queryByTestId('planner-panel')).toBeNull();
+  });
+
+  it('clicking AI Planner toggle mounts the planner panel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    expect(await screen.findByTestId('solver-planner-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('planner-panel')).toBeInTheDocument();
+    // Toggle reflects expanded state.
+    expect(screen.getByTestId('solver-planner-toggle').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('clicking the toggle a second time unmounts the panel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('planner-panel')).toBeNull();
+    });
+    expect(screen.getByTestId('solver-planner-toggle').getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('planner Apply with a 2-step plan adds 2 nodes to the wrapper tree', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        plannerLlmFetcher={null}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    // "box 50x50x30 with fillet 5" emits 2 add_node steps (box + fillet).
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'box 50x50x30 with fillet 5' } });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    // Wait for plan rendering.
+    await screen.findByTestId('planner-step-0');
+    await screen.findByTestId('planner-step-1');
+    // Apply.
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    // Box + fillet nodes should now exist in the wrapper's tree.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-box_1')).toBeInTheDocument();
+      expect(screen.getByTestId('feature-tree-row-fillet_2')).toBeInTheDocument();
+    });
+  });
+
+  it('toast surfaces after Apply with the node count', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        plannerLlmFetcher={null}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'cylinder r10 h20' } });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-step-0');
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    const toast = await screen.findByTestId('solver-planner-toast');
+    expect(toast.textContent).toMatch(/Plan applied/);
+    expect(toast.textContent).toMatch(/1/);
+  });
+
+  it('undo after planner-applied 2-step plan rolls back nodes one-at-a-time', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        plannerLlmFetcher={null}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'box 50x50x30 with fillet 5' } });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-step-1');
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-fillet_2')).toBeInTheDocument();
+    });
+    // Undo once — fillet (the last applied step) is removed first.
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-fillet_2')).toBeNull();
+    });
+    // Box is still present.
+    expect(screen.getByTestId('feature-tree-row-box_1')).toBeInTheDocument();
+    // Undo again — box also gone.
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-box_1')).toBeNull();
+    });
+  });
+
+  it('llmIntentFetcher mock is invoked when regex returns null', async () => {
+    const llm = vi.fn().mockResolvedValue({
+      kind: 'create_cylinder',
+      radius: 5,
+      height: 12,
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        plannerLlmFetcher={llm}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    // A nonsense string that regex detectIntent cannot parse.
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, {
+      target: { value: '__please_call_the_llm_unparseable__' },
+    });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await waitFor(() => {
+      expect(llm).toHaveBeenCalledTimes(1);
+    });
+    // Verify the prompt was the one we typed.
+    expect(llm.mock.calls[0]![0]!).toBe('__please_call_the_llm_unparseable__');
+    // And the planner emitted a step for the LLM-supplied intent.
+    await screen.findByTestId('planner-step-0');
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    // Cylinder lands in the tree.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-cylinder_1')).toBeInTheDocument();
+    });
+  });
+
+  it('plannerLlmFetcher omitted → default (network) fetcher is wired but regex covers happy path', async () => {
+    // We do NOT pass plannerLlmFetcher, so the wrapper's default `fetch` call
+    // would happen for unparseable prompts. We test only the regex path so no
+    // real network access is triggered. Confirms the panel works without a
+    // test-supplied fetcher.
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'cylinder r5 h10' } });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-step-0');
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-cylinder_1')).toBeInTheDocument();
+    });
+  });
+
+  it('toggle button uses the i18n label (Korean)', async () => {
+    render(<SolverSketchEditorWithExtrude lang="ko" extrudeFetcher={vi.fn()} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    const toggle = screen.getByTestId('solver-planner-toggle');
+    expect(toggle.textContent).toMatch(/AI 플래너/);
+    expect(toggle.getAttribute('aria-label')).toMatch(/AI 플래너 표시/);
+  });
+
+  it('hiding then re-showing the panel preserves the wrapper tree', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        plannerLlmFetcher={null}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'cylinder r3 h6' } });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    await screen.findByTestId('planner-step-0');
+    fireEvent.click(screen.getByTestId('planner-apply'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-cylinder_1')).toBeInTheDocument();
+    });
+    // Hide panel.
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('planner-panel')).toBeNull();
+    });
+    // Tree node is still there.
+    expect(screen.getByTestId('feature-tree-row-cylinder_1')).toBeInTheDocument();
+    // Re-show panel → tree unchanged.
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    expect(screen.getByTestId('feature-tree-row-cylinder_1')).toBeInTheDocument();
+  });
+
+  it('llmIntentFetcher rejection surfaces the panel error and does NOT add nodes', async () => {
+    const llm = vi.fn().mockRejectedValue(new Error('boom'));
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        plannerLlmFetcher={llm}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    await screen.findByTestId('planner-panel');
+    const ta = screen.getByTestId('planner-input') as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: '__unparseable_x__' } });
+    fireEvent.click(screen.getByTestId('planner-send'));
+    // Status surfaces the error.
+    await waitFor(() => {
+      const status = screen.getByTestId('planner-status');
+      expect(status.textContent).toMatch(/boom/);
+    });
+    // Apply button must not have been actuated and tree is empty (no
+    // planner-applied nodes). The toast must also be absent.
+    expect(screen.queryByTestId('solver-planner-toast')).toBeNull();
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+  });
+});

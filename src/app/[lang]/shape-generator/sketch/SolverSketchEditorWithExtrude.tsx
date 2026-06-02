@@ -29,6 +29,8 @@ import type { HoleFetcher, HoleWizardLang } from './HoleWizardModal';
 import type { FilletFetcher, FilletLang } from './FilletModal';
 import type { ChamferFetcher, ChamferLang } from './ChamferModal';
 import FeatureTreeView, { type FeatureTreeLang } from './FeatureTreeView';
+import type { PlannerLang } from './FeatureTreePlannerPanel';
+import type { PlanIntent, PlanStep } from '@/lib/ai/featureTreePlanner';
 import type { StepImportFetcher, StepImportLang } from './StepImportModal';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
@@ -88,6 +90,13 @@ const StepImportModal = dynamic(() => import('./StepImportModal'), {
   ssr: false,
   loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
 });
+// FeatureTreePlannerPanel (Phase 3.AI.UI) — dynamic-loaded so users who
+// never toggle the AI panel pay no bundle cost. Default state below is
+// `showPlanner=false` so the chunk only loads on click.
+const FeatureTreePlannerPanel = dynamic(() => import('./FeatureTreePlannerPanel'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -125,6 +134,12 @@ interface Dict {
   /** Undo / redo (Phase 2.7.1 — featureTreeHistory integration). */
   undo: string;
   redo: string;
+  /** AI Planner panel toggle (Phase 3.AI.UI). */
+  aiPlanner: string;
+  showPlanner: string;
+  hidePlanner: string;
+  /** Toast surface after Plan apply. `{N}` is replaced with the node count. */
+  plannerToast: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -144,6 +159,10 @@ const dict: Record<Lang, Dict> = {
     reset: '초기화',
     undo: '실행 취소',
     redo: '다시 실행',
+    aiPlanner: 'AI 플래너',
+    showPlanner: 'AI 플래너 표시',
+    hidePlanner: 'AI 플래너 숨기기',
+    plannerToast: '계획 적용 완료 ({N}개 노드 추가)',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -161,6 +180,10 @@ const dict: Record<Lang, Dict> = {
     reset: 'Reset',
     undo: 'Undo',
     redo: 'Redo',
+    aiPlanner: 'AI Planner',
+    showPlanner: 'Show AI Planner',
+    hidePlanner: 'Hide AI Planner',
+    plannerToast: 'Plan applied ({N} nodes added)',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -178,6 +201,10 @@ const dict: Record<Lang, Dict> = {
     reset: 'リセット',
     undo: '元に戻す',
     redo: 'やり直す',
+    aiPlanner: 'AIプランナー',
+    showPlanner: 'AIプランナーを表示',
+    hidePlanner: 'AIプランナーを隠す',
+    plannerToast: 'プラン適用完了 ({N}個のノード追加)',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -195,6 +222,10 @@ const dict: Record<Lang, Dict> = {
     reset: '重置',
     undo: '撤销',
     redo: '重做',
+    aiPlanner: 'AI规划器',
+    showPlanner: '显示AI规划器',
+    hidePlanner: '隐藏AI规划器',
+    plannerToast: '计划已应用 (添加{N}个节点)',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -212,6 +243,10 @@ const dict: Record<Lang, Dict> = {
     reset: 'Restablecer',
     undo: 'Deshacer',
     redo: 'Rehacer',
+    aiPlanner: 'Planificador IA',
+    showPlanner: 'Mostrar planificador IA',
+    hidePlanner: 'Ocultar planificador IA',
+    plannerToast: 'Plan aplicado ({N} nodos añadidos)',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -229,6 +264,10 @@ const dict: Record<Lang, Dict> = {
     reset: 'إعادة تعيين',
     undo: 'تراجع',
     redo: 'إعادة',
+    aiPlanner: 'مخطط الذكاء الاصطناعي',
+    showPlanner: 'إظهار مخطط الذكاء الاصطناعي',
+    hidePlanner: 'إخفاء مخطط الذكاء الاصطناعي',
+    plannerToast: 'تم تطبيق الخطة ({N} عقد مضافة)',
   },
 };
 
@@ -328,6 +367,19 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
    * line in the sketch. The modal renders a "use this as axis" button.
    */
   revolveAxisHint?: AxisLine2D;
+  /**
+   * Injectable LLM intent fetcher forwarded to FeatureTreePlannerPanel
+   * (Phase 3.AI.UI). When omitted the wrapper provides a default that
+   * POSTs the prompt to `/api/featureTree-planner`; tests can replace it
+   * with a deterministic mock OR pass `null` to opt out entirely (the
+   * panel then runs the regex-only path).
+   *
+   * Contract:
+   *   - resolve to a `PlanIntent` to drive `planFromIntent` downstream;
+   *   - resolve to `null` if the LLM cannot understand;
+   *   - throw to surface an error in the panel.
+   */
+  plannerLlmFetcher?: ((text: string) => Promise<PlanIntent | null>) | null;
 }
 
 export default function SolverSketchEditorWithExtrude(
@@ -346,10 +398,12 @@ export default function SolverSketchEditorWithExtrude(
     chamferFetcher,
     stepImportFetcher,
     revolveAxisHint,
+    plannerLlmFetcher,
     ...editorProps
   } = props;
   const t = dict[(editorProps.lang ?? 'en') as Lang];
   const treeLang = (editorProps.lang ?? 'en') as FeatureTreeLang;
+  const plannerLang = (editorProps.lang ?? 'en') as PlannerLang;
 
   const [sketch, setSketch] = useState<SolverViewState>({ points: [], lines: [] });
   const [modalOpen, setModalOpen] = useState(false);
@@ -650,6 +704,109 @@ export default function SolverSketchEditorWithExtrude(
     },
     [featureTree, stepImportMode, applyHistoryEdit],
   );
+
+  // ── AI Planner panel (Phase 3.AI.UI) ───────────────────────────────────
+  // Hidden by default (compact mode). The toggle button mounts/unmounts
+  // the panel, so the dynamic chunk only loads when first opened.
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [plannerToast, setPlannerToast] = useState<string | null>(null);
+  const plannerToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Default LLM intent fetcher — POSTs the prompt to the planner API
+  // route. Tests pass `null` or a mock to bypass network. Whenever the
+  // caller explicitly passes `null`, we forward `undefined` to the panel
+  // so the panel runs regex-only.
+  const defaultPlannerLlmFetcher = useCallback(
+    async (text: string): Promise<PlanIntent | null> => {
+      const res = await fetch('/api/featureTree-planner', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        throw new Error(`planner endpoint returned ${res.status}`);
+      }
+      const data: unknown = await res.json();
+      // Endpoint envelope: { ok: true, intent: PlanIntent | null } | { ok: false, message: string }
+      if (typeof data === 'object' && data !== null) {
+        const d = data as { ok?: boolean; intent?: PlanIntent | null; message?: string };
+        if (d.ok === true) return d.intent ?? null;
+        if (d.ok === false) throw new Error(d.message ?? 'planner endpoint error');
+      }
+      return null;
+    },
+    [],
+  );
+  // Resolve the panel's llmIntentFetcher prop:
+  //   - prop omitted (undefined) → default (POST /api/...)
+  //   - prop === null            → undefined (regex-only path)
+  //   - prop supplied            → forwarded as-is (tests)
+  const effectivePlannerFetcher: ((text: string) => Promise<PlanIntent | null>) | undefined =
+    plannerLlmFetcher === undefined
+      ? defaultPlannerLlmFetcher
+      : plannerLlmFetcher === null
+        ? undefined
+        : plannerLlmFetcher;
+
+  // Apply a PlanStep[] to the history-managed tree. Each step is mapped
+  // to the corresponding EditOp so undo/redo can roll it back as a
+  // standard history entry — N steps land as N entries in the past
+  // stack. Steps for which the panel did not supply the required field
+  // (e.g., add_node without a node) are skipped silently.
+  const handlePlannerApply = useCallback(
+    (steps: PlanStep[]): void => {
+      let added = 0;
+      for (const step of steps) {
+        if (step.type === 'add_node' && step.node !== undefined) {
+          applyHistoryEdit({ type: 'insert_node', node: step.node });
+          added++;
+        } else if (step.type === 'remove_node' && step.nodeId !== undefined) {
+          applyHistoryEdit({ type: 'remove_node', nodeId: step.nodeId });
+        } else if (
+          step.type === 'move_node' &&
+          step.nodeId !== undefined &&
+          typeof step.toIdx === 'number'
+        ) {
+          applyHistoryEdit({ type: 'move_node', nodeId: step.nodeId, toIndex: step.toIdx });
+        } else if (step.type === 'toggle_suppress' && step.nodeId !== undefined) {
+          // Resolve current suppressed state from the tree at apply time.
+          const node = featureTree.nodes.find((n) => n.id === step.nodeId);
+          if (node !== undefined) {
+            applyHistoryEdit({
+              type: 'set_suppressed',
+              nodeId: step.nodeId,
+              suppressed: !(node.suppressed === true),
+            });
+          }
+        }
+      }
+      // Bump the node id counter past any added nodes so subsequent
+      // modal-driven appends do not collide with planner ids.
+      nextNodeIdRef.current += added;
+
+      // Show a short toast / inline confirmation. Auto-clear after 3s.
+      const msg = t.plannerToast.replace('{N}', String(added));
+      setPlannerToast(msg);
+      if (plannerToastTimerRef.current !== null) {
+        clearTimeout(plannerToastTimerRef.current);
+      }
+      plannerToastTimerRef.current = setTimeout(() => {
+        setPlannerToast(null);
+        plannerToastTimerRef.current = null;
+      }, 3000);
+    },
+    [applyHistoryEdit, featureTree, t.plannerToast],
+  );
+
+  // Clear pending toast timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (plannerToastTimerRef.current !== null) {
+        clearTimeout(plannerToastTimerRef.current);
+        plannerToastTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Tracks the in-flight fetch's AbortController so cancel/unmount can abort
   // it AND so we can suppress late setState after the controller is aborted.
@@ -1059,6 +1216,26 @@ export default function SolverSketchEditorWithExtrude(
           >
             ↷ {t.redo}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowPlanner((v) => !v)}
+            data-testid="solver-planner-toggle"
+            aria-label={showPlanner ? t.hidePlanner : t.showPlanner}
+            aria-expanded={showPlanner}
+            title={showPlanner ? t.hidePlanner : t.showPlanner}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: showPlanner ? '#2563eb' : '#fff',
+              border: '1px solid ' + (showPlanner ? '#1d4ed8' : '#d1d5db'),
+              color: showPlanner ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            ✨ {t.aiPlanner}
+          </button>
           {projectId !== undefined && persistError === null && (
             <span
               data-testid="solver-feature-tree-saved"
@@ -1095,6 +1272,37 @@ export default function SolverSketchEditorWithExtrude(
           onDelete={handleDeleteNode}
           onReorder={handleReorderNodes}
         />
+        {showPlanner && (
+          <div
+            data-testid="solver-planner-panel-host"
+            style={{ marginTop: 8 }}
+          >
+            <FeatureTreePlannerPanel
+              lang={plannerLang}
+              currentTree={featureTree}
+              onApply={handlePlannerApply}
+              llmIntentFetcher={effectivePlannerFetcher}
+            />
+          </div>
+        )}
+        {plannerToast !== null && (
+          <div
+            data-testid="solver-planner-toast"
+            role="status"
+            aria-live="polite"
+            style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              fontSize: 12,
+              color: '#065f46',
+              background: '#d1fae5',
+              border: '1px solid #6ee7b7',
+              borderRadius: 4,
+            }}
+          >
+            {plannerToast}
+          </div>
+        )}
       </div>
 
       {/* Revolve modal (sibling of the Extrude modal) */}
