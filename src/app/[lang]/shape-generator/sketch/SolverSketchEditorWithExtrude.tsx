@@ -97,6 +97,13 @@ const FeatureTreePlannerPanel = dynamic(() => import('./FeatureTreePlannerPanel'
   ssr: false,
   loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
 });
+// IntentExamplesPanel (Phase 3.AI.UI helper) — surfaces INTENT_EXAMPLES
+// as click-to-insert chips. Hidden by default (chunk loads only after the
+// "Show examples" toggle is clicked).
+const IntentExamplesPanel = dynamic(() => import('./IntentExamplesPanel'), {
+  ssr: false,
+  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+});
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -140,6 +147,9 @@ interface Dict {
   hidePlanner: string;
   /** Toast surface after Plan apply. `{N}` is replaced with the node count. */
   plannerToast: string;
+  /** IntentExamplesPanel toggle (Phase 3.AI.UI helper). */
+  showExamples: string;
+  hideExamples: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -163,6 +173,8 @@ const dict: Record<Lang, Dict> = {
     showPlanner: 'AI 플래너 표시',
     hidePlanner: 'AI 플래너 숨기기',
     plannerToast: '계획 적용 완료 ({N}개 노드 추가)',
+    showExamples: '예시 표시',
+    hideExamples: '예시 숨기기',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -184,6 +196,8 @@ const dict: Record<Lang, Dict> = {
     showPlanner: 'Show AI Planner',
     hidePlanner: 'Hide AI Planner',
     plannerToast: 'Plan applied ({N} nodes added)',
+    showExamples: 'Show examples',
+    hideExamples: 'Hide examples',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -205,6 +219,8 @@ const dict: Record<Lang, Dict> = {
     showPlanner: 'AIプランナーを表示',
     hidePlanner: 'AIプランナーを隠す',
     plannerToast: 'プラン適用完了 ({N}個のノード追加)',
+    showExamples: '例を表示',
+    hideExamples: '例を隠す',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -226,6 +242,8 @@ const dict: Record<Lang, Dict> = {
     showPlanner: '显示AI规划器',
     hidePlanner: '隐藏AI规划器',
     plannerToast: '计划已应用 (添加{N}个节点)',
+    showExamples: '显示示例',
+    hideExamples: '隐藏示例',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -247,6 +265,8 @@ const dict: Record<Lang, Dict> = {
     showPlanner: 'Mostrar planificador IA',
     hidePlanner: 'Ocultar planificador IA',
     plannerToast: 'Plan aplicado ({N} nodos añadidos)',
+    showExamples: 'Mostrar ejemplos',
+    hideExamples: 'Ocultar ejemplos',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -268,6 +288,8 @@ const dict: Record<Lang, Dict> = {
     showPlanner: 'إظهار مخطط الذكاء الاصطناعي',
     hidePlanner: 'إخفاء مخطط الذكاء الاصطناعي',
     plannerToast: 'تم تطبيق الخطة ({N} عقد مضافة)',
+    showExamples: 'إظهار الأمثلة',
+    hideExamples: 'إخفاء الأمثلة',
   },
 };
 
@@ -711,6 +733,18 @@ export default function SolverSketchEditorWithExtrude(
   const [showPlanner, setShowPlanner] = useState(false);
   const [plannerToast, setPlannerToast] = useState<string | null>(null);
   const plannerToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // IntentExamplesPanel — off by default; on click a chip we capture the
+  // selected text in `examplePrefill` and surface it in a read-only preview
+  // band so the user can copy/paste into the planner input. Pushing the
+  // text directly into the planner's internal textarea state would require
+  // either lifting that state up (touches 23 panel tests) or a ref API
+  // (Phase 2). Phase 1 keeps the planner untouched.
+  const [showExamples, setShowExamples] = useState(false);
+  const [examplePrefill, setExamplePrefill] = useState<string | null>(null);
+
+  const handleSelectExample = useCallback((text: string) => {
+    setExamplePrefill(text);
+  }, []);
 
   // Default LLM intent fetcher — POSTs the prompt to the planner API
   // route. Tests pass `null` or a mock to bypass network. Whenever the
@@ -1236,6 +1270,26 @@ export default function SolverSketchEditorWithExtrude(
           >
             ✨ {t.aiPlanner}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowExamples((v) => !v)}
+            data-testid="solver-planner-examples-toggle"
+            aria-label={showExamples ? t.hideExamples : t.showExamples}
+            aria-expanded={showExamples}
+            title={showExamples ? t.hideExamples : t.showExamples}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: showExamples ? '#7c3aed' : '#fff',
+              border: '1px solid ' + (showExamples ? '#6d28d9' : '#d1d5db'),
+              color: showExamples ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            💡 {showExamples ? t.hideExamples : t.showExamples}
+          </button>
           {projectId !== undefined && persistError === null && (
             <span
               data-testid="solver-feature-tree-saved"
@@ -1283,6 +1337,33 @@ export default function SolverSketchEditorWithExtrude(
               onApply={handlePlannerApply}
               llmIntentFetcher={effectivePlannerFetcher}
             />
+          </div>
+        )}
+        {showExamples && (
+          <div
+            data-testid="solver-planner-examples-host"
+            style={{ marginTop: 8 }}
+          >
+            <IntentExamplesPanel
+              lang={plannerLang}
+              onSelectExample={handleSelectExample}
+            />
+            {examplePrefill !== null && (
+              <div
+                data-testid="solver-planner-examples-selected"
+                style={{
+                  marginTop: 6,
+                  padding: '6px 10px',
+                  fontSize: 12,
+                  color: '#1f2937',
+                  background: '#f5f3ff',
+                  border: '1px solid #c4b5fd',
+                  borderRadius: 4,
+                }}
+              >
+                {examplePrefill}
+              </div>
+            )}
           </div>
         )}
         {plannerToast !== null && (

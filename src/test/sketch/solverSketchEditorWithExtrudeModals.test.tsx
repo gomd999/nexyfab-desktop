@@ -1578,3 +1578,76 @@ describe('SolverSketchEditorWithExtrude — Phase 3.AI.UI planner panel wiring',
     expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
   });
 });
+
+// ─── Phase 3.AI.UI helper: IntentExamplesPanel wrapper integration ────────
+
+/**
+ * The wrapper exposes the INTENT_EXAMPLES suggestions behind the
+ * `solver-planner-examples-toggle` button. Hidden by default (compact
+ * mode). When shown, IntentExamplesPanel mounts; clicking a chip surfaces
+ * the example text in `solver-planner-examples-selected`.
+ *
+ * Coverage:
+ *  - toggle visible + default off,
+ *  - toggle on → panel mounts,
+ *  - example click → wrapper records the selection,
+ *  - toggle off → panel unmounts and selection cleared from DOM.
+ */
+describe('SolverSketchEditorWithExtrude — Phase 3.AI.UI examples panel wiring', () => {
+  it('examples toggle is visible and panel hidden by default', async () => {
+    await mountReady();
+    expect(screen.getByTestId('solver-planner-examples-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('solver-planner-examples-host')).toBeNull();
+    expect(screen.queryByTestId('planner-intent-examples-panel')).toBeNull();
+  });
+
+  it('clicking the examples toggle mounts the IntentExamplesPanel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    expect(await screen.findByTestId('solver-planner-examples-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('planner-intent-examples-panel')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('solver-planner-examples-toggle').getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('clicking an example chip surfaces the text in the selected preview band', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    await screen.findByTestId('planner-intent-examples-panel');
+    // No selection yet.
+    expect(screen.queryByTestId('solver-planner-examples-selected')).toBeNull();
+    // Click a chip.
+    const chip = await screen.findByTestId('planner-intent-example-create_cylinder-0');
+    fireEvent.click(chip);
+    const selected = await screen.findByTestId('solver-planner-examples-selected');
+    // The chip text is the literal INTENT_EXAMPLES `in` string — exact
+    // match is verified in intentExamplesPanel.test.tsx; here we just
+    // confirm the value propagated.
+    expect(selected.textContent ?? '').toContain('cylinder');
+  });
+
+  it('clicking the toggle a second time hides the examples panel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    await screen.findByTestId('planner-intent-examples-panel');
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('planner-intent-examples-panel')).toBeNull();
+    });
+    expect(
+      screen.getByTestId('solver-planner-examples-toggle').getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  it('examples toggle and AI planner toggle are independent (both can be on)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    await screen.findByTestId('planner-panel');
+    await screen.findByTestId('planner-intent-examples-panel');
+    // Both mounted side by side.
+    expect(screen.getByTestId('solver-planner-panel-host')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-planner-examples-host')).toBeInTheDocument();
+  });
+});
