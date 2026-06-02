@@ -29,6 +29,20 @@
 import { describe, it, expect } from 'vitest';
 import { buildUnitBox, loadOcctModule } from './wasmReal';
 
+/**
+ * The "build unit box" placeholder is conditional on `NEXYFAB_OCCT_REAL=1`.
+ * When the env flag is set, this single it.skip becomes a live `it` that
+ * exercises the real opencascade.js module end-to-end. Run via:
+ *
+ *   NEXYFAB_OCCT_REAL=1 npx vitest run src/lib/occt/wasmReal.placeholder.test.ts
+ *
+ * (See `npm run test:occt:real` in package.json — a thin wrapper that sets the
+ * env var and runs only this file.) The OTHER four placeholders stay
+ * unconditionally skipped because they require a real Worker / Playwright.
+ */
+const REAL_OCCT_ENABLED = typeof process !== 'undefined' && process.env?.NEXYFAB_OCCT_REAL === '1';
+const itRealOrSkip = REAL_OCCT_ENABLED ? it : it.skip;
+
 describe('wasmReal — Phase 5 launch acceptance (skip-marked until real WASM ships)', () => {
   it.skip('Phase 5 launch: real opencascade.js initOpenCascade resolves to an Embind module', async () => {
     // ON LAUNCH DAY: remove `forceStub: true` so the dynamic import runs.
@@ -42,8 +56,12 @@ describe('wasmReal — Phase 5 launch acceptance (skip-marked until real WASM sh
     expect(typeof (loaded.module as unknown as Record<string, unknown>).BRepPrimAPI_MakePrism_1).toBe('function');
   });
 
-  it.skip('Phase 5 launch: builds a unit box via real OCCT (volume == depth ± 1e-6)', async () => {
-    const loaded = await loadOcctModule({ forceStub: false });
+  itRealOrSkip('Phase 5 launch: builds a unit box via real OCCT (volume == depth ± 1e-6)', async () => {
+    // Conditional on NEXYFAB_OCCT_REAL=1. Default Vitest sweep keeps this
+    // skipped because the dynamic import would try to instantiate the 65MB
+    // WASM in node and either OOM or hang. Set the env var on a workstation
+    // with the package installed to flip this on.
+    const loaded = await loadOcctModule({ forceStub: false, timeoutMs: 30000 });
     expect(loaded.kind).toBe('real');
     const res = buildUnitBox(loaded.module, 10);
     expect(res.ok).toBe(true);
