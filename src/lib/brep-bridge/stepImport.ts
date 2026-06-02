@@ -5,29 +5,43 @@
  * -----
  * Inverse of `stepWrite.ts`. Given a STEP AP214 / AP203 / AP242 source string,
  * walks the entity graph and reconstructs a `FeatureTree` whose nodes are
- * `ExtrudeFeature` IRs. The Phase 1 scope mirrors what `stepWrite.ts` is able
- * to emit:
+ * `ExtrudeFeature` or `RevolveFeature` IRs.
  *
+ * Phase 1 (BREP planar prisms):
  *   1. Axis-aligned BOX  →  rectangular 4-vertex `ExtrudeFeature` (the loop is
  *      the bbox in XY, depth = Z extent).
  *   2. Convex polygon PRISM (N side faces + 2 cap faces with ±Z normals)  →
  *      N-vertex `ExtrudeFeature` (loop = bottom cap polygon, depth = z1 - z0).
  *
- * Any other solid (curved surfaces, revolutions, lofts, swept profiles,
- * fillets, drafts, multi-loop faces with inner bounds, non-planar caps) is
- * SKIPPED and reported via the `unsupported` channel — it does NOT abort the
- * whole import. The caller can surface those in the UI ("3 of 5 solids
- * imported; 2 require Phase 2 OCCT B-rep round-trip").
+ * Phase 2 (axis-aligned revolves — this module):
+ *   3. REVOLVED_AREA_SOLID with planar profile + axis aligned to ±X / ±Y / ±Z
+ *      →  `RevolveFeature` (profile transformed into the canonical
+ *      rotate_extrude frame: axis = +Y, profile in X ≥ 0 half).
+ *   4. BREP cylinder — exactly 1 CYLINDRICAL_SURFACE side face + 2 PLANE caps
+ *      with cap normals parallel to the cylinder axis  →  `RevolveFeature`
+ *      whose loop is the rectangle `[(0,0), (r,0), (r,h), (0,h)]` (axis-Y
+ *      canonical).
+ *
+ * Any other solid (BSPLINE / CONICAL / SPHERICAL / TOROIDAL surfaces,
+ * non-axis-aligned revolution axes, lofts, swept profiles, fillets, drafts,
+ * multi-loop faces with inner bounds) is SKIPPED and reported via the
+ * `unsupported` channel — it does NOT abort the whole import. The caller
+ * can surface those in the UI ("3 of 5 solids imported; 2 require Phase 3
+ * OCCT B-rep round-trip").
  *
  * PIPELINE
  * --------
  *   source
  *     ↓  healStepSource             (encoding, line endings, missing END-ISO)
  *     ↓  parseEntities              (regex tokenize → Map<id, Entity>)
- *     ↓  for each MANIFOLD_SOLID_BREP
+ *     ↓  for each MANIFOLD_SOLID_BREP / BREP_WITH_VOIDS
  *         ↓  collect CLOSED_SHELL → ADVANCED_FACE[]
- *         ↓  classify (box | polygon_prism | unsupported)
- *         ↓  emit ExtrudeFeature  +  FeatureNode
+ *         ↓  classify (box | polygon_prism | cylinder | unsupported)
+ *         ↓  emit ExtrudeFeature | RevolveFeature  +  FeatureNode
+ *     ↓  for each REVOLVED_AREA_SOLID (direct revolve entity)
+ *         ↓  read swept_area profile + AXIS1_PLACEMENT
+ *         ↓  classify axis → 'x' | 'y' | 'z' | unsupported
+ *         ↓  emit RevolveFeature  +  FeatureNode
  *   FeatureTree
  *
  * DESIGN
@@ -39,16 +53,21 @@
  *   tolerances tuned for mm-scale models (`POINT_EPS = 1e-6 mm`,
  *   `AXIS_EPS = 1e-4` for unit-vector components). Reasonable for hand-edited
  *   or round-tripped files; insufficient for sub-micron precision parts.
+ * - Phase 2 limit: revolve axis MUST be one of ±X, ±Y, ±Z (within AXIS_EPS).
+ *   Arbitrary (e.g. diagonal) axes are routed to `unsupported` with an
+ *   `axis not axis-aligned` reason — Phase 3 will compose a sketch-plane
+ *   basis to recover the world-space axis.
  *
- * PHASE 2 WISHLIST (NOT implemented in this module)
+ * PHASE 3 WISHLIST (NOT implemented in this module)
  * -------------------------------------------------
  *   - BSPLINE_SURFACE_WITH_KNOTS / RATIONAL_B_SPLINE_SURFACE
- *   - CYLINDRICAL_SURFACE / CONICAL_SURFACE / SPHERICAL_SURFACE /
- *     TOROIDAL_SURFACE (parametric primitives)
+ *   - CONICAL_SURFACE / SPHERICAL_SURFACE / TOROIDAL_SURFACE (parametric
+ *     primitives beyond cylinder)
  *   - SURFACE_OF_REVOLUTION / SURFACE_OF_LINEAR_EXTRUSION when the basis
- *     curve is non-trivial
- *   - REVOLVED_AREA_SOLID / SWEPT_AREA_SOLID / SWEPT_DISK_SOLID (revolve /
- *     sweep IRs in `revolveProfile.ts` / `sweepLoft.ts`)
+ *     curve is non-linear (Phase 2 only handles cylinders directly)
+ *   - REVOLVED_AREA_SOLID with non-axis-aligned axis (composed sketch
+ *     transform → world axis)
+ *   - SWEPT_AREA_SOLID / SWEPT_DISK_SOLID (sweep IR in `sweepLoft.ts`)
  *   - FACE_BOUND with inner-loop holes (HOLE feature IR exists)
  *   - FILLETED_EDGE / CHAMFERED_EDGE annotations  →  fillet/chamfer IRs
  *   - Concave polygon prisms (Phase 1 only verifies cap == cap; concave caps
@@ -65,6 +84,7 @@
  */
 
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import { healStepSource } from './stepRead';
 
@@ -140,26 +160,33 @@ export function importStep(
 
   // Find every MANIFOLD_SOLID_BREP — each becomes a candidate FeatureNode.
   const solidIds: number[] = [];
+  // Find every REVOLVED_AREA_SOLID — Phase 2 direct-revolve entities.
+  const revolveSolidIds: number[] = [];
   for (const [id, ent] of entities) {
     if (ent.name === 'MANIFOLD_SOLID_BREP' || ent.name === 'BREP_WITH_VOIDS') {
       solidIds.push(id);
+    } else if (ent.name === 'REVOLVED_AREA_SOLID') {
+      revolveSolidIds.push(id);
     }
   }
-  if (solidIds.length === 0) {
+  if (solidIds.length === 0 && revolveSolidIds.length === 0) {
     warnings.push('parse:no_manifold_solid_brep');
   }
   // Sort by id for deterministic node ordering across runs / serialisations.
   solidIds.sort((a, b) => a - b);
+  revolveSolidIds.sort((a, b) => a - b);
 
   const prefix = opts.namePrefix ?? 'imported';
   const nodes: FeatureNode[] = [];
 
-  for (let idx = 0; idx < solidIds.length; idx++) {
-    const solidId = solidIds[idx]!;
-    let feature: ExtrudeFeature | null = null;
+  // ─── pass 1: BREP solids (boxes / polygon prisms / cylinders) ───────────
+  let extrudeIdx = 0;
+  let cylinderRevolveIdx = 0;
+  for (const solidId of solidIds) {
+    let feature: ExtrudeFeature | RevolveFeature | null = null;
     let reason: string | null = null;
     try {
-      const result = solidToExtrude(solidId, entities);
+      const result = solidToFeature(solidId, entities);
       if (result.kind === 'ok') {
         feature = result.feature;
       } else {
@@ -172,18 +199,57 @@ export function importStep(
       unsupported.push(`#${solidId}: ${reason ?? 'unknown'}`);
       continue;
     }
+    if (feature.kind === 'extrude') {
+      nodes.push({
+        id: `${prefix}_${extrudeIdx}`,
+        name: `Imported Solid ${extrudeIdx + 1}`,
+        dependencies: [],
+        payload: feature,
+      });
+      extrudeIdx += 1;
+    } else {
+      // BREP-derived revolve (cylinder primitive).
+      nodes.push({
+        id: `${prefix}_revolve_${cylinderRevolveIdx}`,
+        name: `Imported Revolved Solid ${cylinderRevolveIdx + 1}`,
+        dependencies: [],
+        payload: feature,
+      });
+      cylinderRevolveIdx += 1;
+    }
+  }
+
+  // ─── pass 2: direct REVOLVED_AREA_SOLID entities ────────────────────────
+  for (const revolveId of revolveSolidIds) {
+    let feature: RevolveFeature | null = null;
+    let reason: string | null = null;
+    try {
+      const result = revolvedAreaSolidToRevolve(revolveId, entities);
+      if (result.kind === 'ok') {
+        feature = result.feature;
+      } else {
+        reason = result.reason;
+      }
+    } catch (err) {
+      reason = `parse_error: ${(err as Error).message}`;
+    }
+    if (!feature) {
+      unsupported.push(`#${revolveId}: ${reason ?? 'unknown'}`);
+      continue;
+    }
     nodes.push({
-      id: `${prefix}_${idx}`,
-      name: `Imported Solid ${idx + 1}`,
+      id: `${prefix}_revolve_${cylinderRevolveIdx}`,
+      name: `Imported Revolved Solid ${cylinderRevolveIdx + 1}`,
       dependencies: [],
       payload: feature,
     });
+    cylinderRevolveIdx += 1;
   }
 
   // CLOSED_SHELL not referenced by any MANIFOLD_SOLID_BREP is a common
   // "headless" case (some viewers strip the BREP wrapper). Surface it so
   // the caller can hint at the issue.
-  if (solidIds.length === 0) {
+  if (solidIds.length === 0 && revolveSolidIds.length === 0) {
     let shellCount = 0;
     for (const ent of entities.values()) {
       if (ent.name === 'CLOSED_SHELL' || ent.name === 'OPEN_SHELL') shellCount++;
@@ -530,15 +596,16 @@ function parseSingleArg(s: string): StepArg {
 // ─── solid → feature classification ───────────────────────────────────────
 
 type SolidParseResult =
-  | { kind: 'ok'; feature: ExtrudeFeature }
+  | { kind: 'ok'; feature: ExtrudeFeature | RevolveFeature }
   | { kind: 'unsupported'; reason: string };
 
 /**
- * Classify a MANIFOLD_SOLID_BREP and convert to an ExtrudeFeature. Phase 1
- * supports two shapes: an axis-aligned box and a convex polygon prism with
- * planar caps at constant ±Z. Anything else returns `{ kind: 'unsupported' }`.
+ * Classify a MANIFOLD_SOLID_BREP and convert to either an ExtrudeFeature
+ * (box / polygon prism) or a RevolveFeature (cylinder primitive: exactly 1
+ * CYLINDRICAL_SURFACE face + 2 PLANE cap faces). Anything else returns
+ * `{ kind: 'unsupported' }`.
  */
-function solidToExtrude(
+function solidToFeature(
   solidId: number,
   entities: Map<number, StepEntity>,
 ): SolidParseResult {
@@ -568,22 +635,48 @@ function solidToExtrude(
     return { kind: 'unsupported', reason: 'CLOSED_SHELL has zero faces' };
   }
 
-  // Decode every face into a planar face descriptor. Any non-planar surface
-  // (BSPLINE / cylinder / cone / sphere / torus / revolution / extrusion of
-  // a non-line curve) trips a single "unsupported" reason for the whole
-  // solid — Phase 2 may relax this once we have a non-planar IR.
-  const faces: PlaneFace[] = [];
+  // Decode every face. Surface type is captured so the classifier can route
+  // mixed planar + cylindrical solids to the cylinder branch.
+  const planeFaces: PlaneFace[] = [];
+  const cylinderFaces: CylinderFace[] = [];
+  const otherSurfaces: string[] = [];
   for (const fr of faceRefs) {
     const decoded = decodeFace(fr, entities);
-    if (decoded.kind === 'unsupported') {
-      return { kind: 'unsupported', reason: `${faces.length + 1}/${faceRefs.length} faces decoded — face #${fr}: ${decoded.reason}` };
+    if (decoded.kind === 'plane') {
+      planeFaces.push(decoded.face);
+    } else if (decoded.kind === 'cylinder') {
+      cylinderFaces.push(decoded.face);
+    } else if (decoded.kind === 'other_surface') {
+      // Record but keep going — a single BSPLINE among 7 faces still aborts,
+      // but we want the reason to name the surface kind exactly.
+      otherSurfaces.push(decoded.surfaceName);
+    } else {
+      // Hard parse error (missing entity / bad loop) — abort whole solid.
+      return {
+        kind: 'unsupported',
+        reason: `face #${fr}: ${decoded.reason}`,
+      };
     }
-    faces.push(decoded.face);
   }
 
-  // ─── try box detection first ─────────────────────────────────────────────
-  if (faces.length === 6 && faces.every((f) => isAxisAligned(f.normal))) {
-    const box = facesToBox(faces);
+  if (otherSurfaces.length > 0) {
+    // Phase 2 only handles plane + cylinder; cone/sphere/torus/spline remain
+    // unsupported. Surface the FIRST exotic surface name so callers can
+    // hint at the actual blocker (helps debugging mixed-geometry STEP files).
+    const uniq = Array.from(new Set(otherSurfaces));
+    return {
+      kind: 'unsupported',
+      reason: `${faceRefs.length} faces include unsupported surface(s): ${uniq.join(', ')}`,
+    };
+  }
+
+  // ─── try box detection first (6 planar axis-aligned faces) ──────────────
+  if (
+    cylinderFaces.length === 0 &&
+    planeFaces.length === 6 &&
+    planeFaces.every((f) => isAxisAligned(f.normal))
+  ) {
+    const box = facesToBox(planeFaces);
     if (box) {
       const { x0, y0, x1, y1, z0, z1 } = box;
       return {
@@ -604,20 +697,46 @@ function solidToExtrude(
     }
   }
 
+  // ─── cylinder primitive: 1 CYLINDRICAL + 2 PLANE caps + nothing else ────
+  if (
+    cylinderFaces.length === 1 &&
+    planeFaces.length === 2 &&
+    faceRefs.length === 3
+  ) {
+    const cyl = cylinderFaces[0]!;
+    const result = cylinderToRevolve(cyl, planeFaces);
+    if (result.kind === 'ok') {
+      return { kind: 'ok', feature: result.feature };
+    }
+    return { kind: 'unsupported', reason: `cylinder: ${result.reason}` };
+  }
+
+  if (cylinderFaces.length > 0) {
+    // Cylindrical face present but doesn't match the clean 1+2 pattern
+    // (multiple cylinders, mixed prism + cylinder, missing caps, etc.).
+    // Phase 3 will handle these via OCCT round-trip.
+    return {
+      kind: 'unsupported',
+      reason:
+        `${faceRefs.length} faces (${cylinderFaces.length} CYLINDRICAL_SURFACE, ` +
+        `${planeFaces.length} PLANE) — cylinder detector wants exactly 1 cylinder + 2 caps`,
+    };
+  }
+
   // ─── polygon prism: 2 ±Z caps + N vertical sides ─────────────────────────
   const caps: PlaneFace[] = [];
   const sides: PlaneFace[] = [];
-  for (const f of faces) {
+  for (const f of planeFaces) {
     if (isZAxisNormal(f.normal)) caps.push(f);
     else if (isHorizontalNormal(f.normal)) sides.push(f);
     else {
       return {
         kind: 'unsupported',
-        reason: `${faces.length} faces, non-axis-aligned normals — likely curved surface`,
+        reason: `${planeFaces.length} faces, non-axis-aligned normals — likely curved surface`,
       };
     }
   }
-  if (caps.length === 2 && sides.length === faces.length - 2 && sides.length >= 3) {
+  if (caps.length === 2 && sides.length === planeFaces.length - 2 && sides.length >= 3) {
     const prism = capsToPrism(caps, sides);
     if (prism.kind === 'ok') {
       return {
@@ -637,8 +756,8 @@ function solidToExtrude(
   return {
     kind: 'unsupported',
     reason:
-      `${faces.length} faces (${caps.length} Z-cap, ${sides.length} horizontal-side` +
-      `, ${faces.length - caps.length - sides.length} other) — does not match Phase 1 box or polygon prism`,
+      `${planeFaces.length} faces (${caps.length} Z-cap, ${sides.length} horizontal-side` +
+      `, ${planeFaces.length - caps.length - sides.length} other) — does not match Phase 1 box or polygon prism`,
   };
 }
 
@@ -651,21 +770,37 @@ interface PlaneFace {
   loop: Array<[number, number, number]>;
 }
 
+interface CylinderFace {
+  /** Axis direction of the cylinder (the AXIS2_PLACEMENT_3D's local +Z). */
+  axisDir: [number, number, number];
+  /** Origin of the cylinder axis in world coords. */
+  axisOrigin: [number, number, number];
+  /** Cylinder radius (from CYLINDRICAL_SURFACE(_, _, R)). */
+  radius: number;
+}
+
 type FaceDecodeResult =
-  | { kind: 'ok'; face: PlaneFace }
+  /** Planar face with outer-bound loop decoded. */
+  | { kind: 'plane'; face: PlaneFace }
+  /** CYLINDRICAL_SURFACE face — outer-bound loop intentionally NOT decoded
+   *  (would contain CIRCLE edges, which the linear-edge path rejects). */
+  | { kind: 'cylinder'; face: CylinderFace }
+  /** Non-planar, non-cylinder surface we recognise but can't import yet
+   *  (BSPLINE / CONICAL / SPHERICAL / TOROIDAL / SURFACE_OF_REVOLUTION /
+   *  SURFACE_OF_LINEAR_EXTRUSION). */
+  | { kind: 'other_surface'; surfaceName: string }
+  /** Hard parse failure (missing entity, malformed loop, non-linear edge on
+   *  a PLANE face) — aborts the entire solid with a specific reason. */
   | { kind: 'unsupported'; reason: string };
 
 /**
- * Walk one ADVANCED_FACE down to:
- *   - the plane normal (from PLANE → AXIS2_PLACEMENT_3D → DIRECTION)
- *   - the ordered ring of vertex coords (from FACE_OUTER_BOUND → EDGE_LOOP
- *     → ORIENTED_EDGE chain)
- *
- * Returns `{ kind: 'unsupported', reason }` for any of:
- *   - non-PLANE surface
- *   - inner-loop bounds (`FACE_BOUND` instead of `FACE_OUTER_BOUND`)
- *   - missing intermediate entities
- *   - non-linear edges (CIRCLE / ELLIPSE / B_SPLINE_CURVE)
+ * Walk one ADVANCED_FACE and return one of:
+ *   - `plane`           — PLANE surface + linear-edge outer loop
+ *   - `cylinder`        — CYLINDRICAL_SURFACE (loop NOT decoded; the solid
+ *                         classifier reconstructs (r, h) from the cap planes)
+ *   - `other_surface`   — recognised but non-importable (BSPLINE / cone /
+ *                         sphere / torus / etc); reason names the surface
+ *   - `unsupported`     — hard parse error (missing entity, bad loop)
  */
 function decodeFace(
   faceId: number,
@@ -682,8 +817,43 @@ function decodeFace(
     return { kind: 'unsupported', reason: `ADVANCED_FACE missing bounds/surface` };
   }
   const surface = entities.get(surfaceArg.id);
+  const surfaceName = surface?.name ?? 'unknown';
+
+  // ─── CYLINDRICAL_SURFACE branch ─────────────────────────────────────────
+  // CYLINDRICAL_SURFACE('', #axis2_placement_3d, radius)
+  if (surface && surface.name === 'CYLINDRICAL_SURFACE') {
+    const axisRef = surface.args[1];
+    const radiusArg = surface.args[2];
+    if (!axisRef || axisRef.kind !== 'ref') {
+      return { kind: 'unsupported', reason: `CYLINDRICAL_SURFACE missing axis ref` };
+    }
+    if (!radiusArg || radiusArg.kind !== 'number' || !(radiusArg.value > 0)) {
+      return { kind: 'unsupported', reason: `CYLINDRICAL_SURFACE has non-positive radius` };
+    }
+    const axisPlacement = readAxisPlacement(axisRef.id, entities);
+    if (!axisPlacement) {
+      return { kind: 'unsupported', reason: `CYLINDRICAL_SURFACE bad AXIS2_PLACEMENT_3D` };
+    }
+    return {
+      kind: 'cylinder',
+      face: {
+        axisDir: axisPlacement.zDir,
+        axisOrigin: axisPlacement.origin,
+        radius: radiusArg.value,
+      },
+    };
+  }
+
+  // ─── non-planar, non-cylinder surfaces ──────────────────────────────────
+  // Surface kinds that Phase 2 explicitly recognises but cannot import.
+  // Phase 3 will add BSPLINE / cone / sphere / torus / surface-of-revolution
+  // with a non-trivial profile.
+  if (surface && surface.name !== 'PLANE') {
+    return { kind: 'other_surface', surfaceName };
+  }
+
   if (!surface || surface.name !== 'PLANE') {
-    return { kind: 'unsupported', reason: `surface is ${surface?.name ?? 'unknown'} (Phase 2)` };
+    return { kind: 'unsupported', reason: `surface is ${surfaceName} (unknown)` };
   }
   // PLANE('', #axis2placement)
   const axisRef = surface.args[1];
@@ -792,7 +962,65 @@ function decodeFace(
   if (ring.length > 3 && pointEq(ring[0]!, ring[ring.length - 1]!)) {
     ring.pop();
   }
-  return { kind: 'ok', face: { normal, loop: ring } };
+  return { kind: 'plane', face: { normal, loop: ring } };
+}
+
+/**
+ * Decode an AXIS2_PLACEMENT_3D entity into `{ origin, zDir }`. Returns null
+ * if any sub-entity is missing or malformed. The refdir (X axis) is parsed
+ * but not returned — Phase 2 only uses the Z axis for cylinder / revolve
+ * axis-alignment checks.
+ */
+function readAxisPlacement(
+  id: number,
+  entities: Map<number, StepEntity>,
+): { origin: [number, number, number]; zDir: [number, number, number] } | null {
+  const ent = entities.get(id);
+  if (!ent || ent.name !== 'AXIS2_PLACEMENT_3D') return null;
+  // AXIS2_PLACEMENT_3D('', #cartesian_point, #zdir, #refdir)
+  const originRef = ent.args[1];
+  const zDirRef = ent.args[2];
+  if (!originRef || originRef.kind !== 'ref') return null;
+  if (!zDirRef || zDirRef.kind !== 'ref') return null;
+  const origin = readCartesianPoint(originRef.id, entities);
+  const zDir = readDirection(zDirRef.id, entities);
+  if (!origin || !zDir) return null;
+  return { origin, zDir };
+}
+
+/** Decode an AXIS1_PLACEMENT entity (used by REVOLVED_AREA_SOLID). */
+function readAxis1Placement(
+  id: number,
+  entities: Map<number, StepEntity>,
+): { origin: [number, number, number]; direction: [number, number, number] } | null {
+  const ent = entities.get(id);
+  if (!ent || ent.name !== 'AXIS1_PLACEMENT') return null;
+  // AXIS1_PLACEMENT('', #cartesian_point, #direction)
+  const originRef = ent.args[1];
+  const dirRef = ent.args[2];
+  if (!originRef || originRef.kind !== 'ref') return null;
+  if (!dirRef || dirRef.kind !== 'ref') return null;
+  const origin = readCartesianPoint(originRef.id, entities);
+  const direction = readDirection(dirRef.id, entities);
+  if (!origin || !direction) return null;
+  return { origin, direction };
+}
+
+function readCartesianPoint(
+  id: number,
+  entities: Map<number, StepEntity>,
+): [number, number, number] | null {
+  const cp = entities.get(id);
+  if (!cp || cp.name !== 'CARTESIAN_POINT') return null;
+  const coords = cp.args[1];
+  if (!coords || coords.kind !== 'list') return null;
+  const xs: number[] = [];
+  for (const item of coords.items) {
+    if (item.kind !== 'number') return null;
+    xs.push(item.value);
+  }
+  if (xs.length !== 3) return null;
+  return [xs[0]!, xs[1]!, xs[2]!];
 }
 
 function readDirection(
@@ -835,6 +1063,343 @@ function readVertexPoint(
   return [xs[0]!, xs[1]!, xs[2]!];
 }
 
+// ─── cylinder primitive → RevolveFeature ──────────────────────────────────
+
+type CylinderRevolveResult =
+  | { kind: 'ok'; feature: RevolveFeature }
+  | { kind: 'unsupported'; reason: string };
+
+/**
+ * Reconstruct a `RevolveFeature` from a BREP cylinder: 1 CYLINDRICAL_SURFACE
+ * side face + 2 PLANE cap faces.
+ *
+ * Requirements (Phase 2):
+ *   - Cylinder axis direction MUST be ±X / ±Y / ±Z (axis-aligned).
+ *   - Both cap normals must be parallel (within AXIS_EPS) to the cylinder
+ *     axis, and the two caps must lie on opposite sides of the cylinder
+ *     origin along the axis.
+ *
+ * Output: a `RevolveFeature` whose loop is the rectangle
+ *   `[(0,0), (r,0), (r,h), (0,h)]`
+ * in the canonical rotate_extrude frame (axis = +Y, profile in X ≥ 0 half).
+ * Height `h = distance between the two cap centres along the cylinder axis`.
+ *
+ * Note: this representation discards the original world-space axis. The
+ * Phase 3 follow-up will store the axis classifier (`'x' | 'y' | 'z'`) on
+ * a side-channel so the editor can re-orient the part in the viewport
+ * without rebuilding the IR.
+ */
+function cylinderToRevolve(
+  cyl: CylinderFace,
+  caps: PlaneFace[],
+): CylinderRevolveResult {
+  const axisKind = classifyAxisAlignment(cyl.axisDir);
+  if (axisKind === null) {
+    return {
+      kind: 'unsupported',
+      reason:
+        `cylinder axis (${formatDir(cyl.axisDir)}) is not axis-aligned ` +
+        `(Phase 2 limit: only ±X/±Y/±Z)`,
+    };
+  }
+  if (caps.length !== 2) {
+    return { kind: 'unsupported', reason: `expected 2 cap planes, got ${caps.length}` };
+  }
+  // Both cap normals must be parallel to the cylinder axis.
+  for (const cap of caps) {
+    if (!directionsParallel(cap.normal, cyl.axisDir)) {
+      return {
+        kind: 'unsupported',
+        reason:
+          `cap plane normal (${formatDir(cap.normal)}) not parallel to cylinder axis ` +
+          `(${formatDir(cyl.axisDir)})`,
+      };
+    }
+  }
+  // Compute cap centroids and project onto the cylinder axis.
+  const axisU = unitVec(cyl.axisDir);
+  const projs: number[] = [];
+  for (const cap of caps) {
+    const c = centroid(cap.loop);
+    const dx = c[0] - cyl.axisOrigin[0];
+    const dy = c[1] - cyl.axisOrigin[1];
+    const dz = c[2] - cyl.axisOrigin[2];
+    projs.push(dx * axisU[0] + dy * axisU[1] + dz * axisU[2]);
+  }
+  const height = Math.abs(projs[1]! - projs[0]!);
+  if (!(height > POINT_EPS)) {
+    return { kind: 'unsupported', reason: `degenerate cylinder height: ${height}` };
+  }
+  // Build the canonical revolve loop: rectangle (radius × height) in the
+  // X≥0 half-plane, axis = +Y. Loop walks CCW.
+  const r = cyl.radius;
+  const feature: RevolveFeature = {
+    kind: 'revolve',
+    loop: [
+      { x: 0, y: 0 },
+      { x: r, y: 0 },
+      { x: r, y: height },
+      { x: 0, y: height },
+    ],
+    angleDegrees: 360,
+    mode: 'add',
+  };
+  return { kind: 'ok', feature };
+}
+
+// ─── REVOLVED_AREA_SOLID → RevolveFeature ─────────────────────────────────
+
+type RevolvedAreaResult =
+  | { kind: 'ok'; feature: RevolveFeature }
+  | { kind: 'unsupported'; reason: string };
+
+/**
+ * Parse a REVOLVED_AREA_SOLID entity directly into a `RevolveFeature`.
+ *
+ * Entity shape (ISO 10303-42 Part 4 §4.3.4):
+ *   REVOLVED_AREA_SOLID('', #swept_area, #axis1_placement, angle)
+ *
+ * Where `#swept_area` is typically:
+ *   - `PLANAR_FACE` referencing a `FACE_OUTER_BOUND` → `EDGE_LOOP` with
+ *     linear `EDGE_CURVE`s (which is what we support);
+ *   - or a curve-bounded surface / non-planar profile (NOT supported in
+ *     Phase 2 — flagged with `complex profile` reason).
+ *
+ * Axis (AXIS1_PLACEMENT) MUST be ±X / ±Y / ±Z. Arbitrary axes are routed
+ * to `unsupported` with a `not axis-aligned` reason.
+ *
+ * The profile is extracted as a list of (x, y, z) world points, then
+ * transformed into the canonical rotate_extrude frame (axis = +Y, profile
+ * in X ≥ 0 half) by:
+ *   1. projecting each profile point onto the axis (→ canonical Y),
+ *   2. taking the absolute perpendicular distance from the axis (→ canonical X).
+ */
+function revolvedAreaSolidToRevolve(
+  revolveId: number,
+  entities: Map<number, StepEntity>,
+): RevolvedAreaResult {
+  const ent = entities.get(revolveId);
+  if (!ent || ent.name !== 'REVOLVED_AREA_SOLID') {
+    return { kind: 'unsupported', reason: `not a REVOLVED_AREA_SOLID` };
+  }
+  // args[0]=name, args[1]=swept_area, args[2]=axis, args[3]=angle.
+  const sweptAreaArg = ent.args[1];
+  const axisArg = ent.args[2];
+  const angleArg = ent.args[3];
+  if (!sweptAreaArg || sweptAreaArg.kind !== 'ref') {
+    return { kind: 'unsupported', reason: `REVOLVED_AREA_SOLID missing swept_area ref` };
+  }
+  if (!axisArg || axisArg.kind !== 'ref') {
+    return { kind: 'unsupported', reason: `REVOLVED_AREA_SOLID missing AXIS1_PLACEMENT ref` };
+  }
+  // Angle is in radians per ISO 10303. Some viewers emit 0 to mean "full
+  // revolve"; we treat 0 / null / missing as 2π.
+  let angleRad = 2 * Math.PI;
+  if (angleArg && angleArg.kind === 'number' && angleArg.value > 0) {
+    angleRad = angleArg.value;
+  }
+  if (angleRad > 2 * Math.PI + 1e-6) {
+    return { kind: 'unsupported', reason: `revolve angle ${angleRad} rad exceeds 2π` };
+  }
+  const angleDegrees = (angleRad * 180) / Math.PI;
+
+  // ─── decode axis ────────────────────────────────────────────────────────
+  const axisPlacement = readAxis1Placement(axisArg.id, entities);
+  if (!axisPlacement) {
+    return { kind: 'unsupported', reason: `bad AXIS1_PLACEMENT entity` };
+  }
+  const axisKind = classifyAxisAlignment(axisPlacement.direction);
+  if (axisKind === null) {
+    return {
+      kind: 'unsupported',
+      reason:
+        `revolve axis (${formatDir(axisPlacement.direction)}) is not axis-aligned ` +
+        `(Phase 2 limit: only ±X/±Y/±Z)`,
+    };
+  }
+
+  // ─── decode profile ────────────────────────────────────────────────────
+  const profile = readSweptAreaProfile(sweptAreaArg.id, entities);
+  if (profile.kind !== 'ok') {
+    return { kind: 'unsupported', reason: `swept_area: ${profile.reason}` };
+  }
+  if (profile.points.length < 3) {
+    return {
+      kind: 'unsupported',
+      reason: `swept_area has ${profile.points.length} points, need ≥ 3`,
+    };
+  }
+
+  // ─── transform profile into canonical (axis=Y, X≥0) frame ──────────────
+  const axisU = unitVec(axisPlacement.direction);
+  const origin = axisPlacement.origin;
+  const canonical: Array<{ x: number; y: number }> = [];
+  let signSeen: 1 | -1 | 0 = 0;
+  for (const p of profile.points) {
+    const dx = p[0] - origin[0];
+    const dy = p[1] - origin[1];
+    const dz = p[2] - origin[2];
+    // Y' = projection along axis.
+    const yProj = dx * axisU[0] + dy * axisU[1] + dz * axisU[2];
+    // X' = perpendicular distance from axis (vector subtraction).
+    const perpX = dx - yProj * axisU[0];
+    const perpY = dy - yProj * axisU[1];
+    const perpZ = dz - yProj * axisU[2];
+    const perpDist = Math.hypot(perpX, perpY, perpZ);
+    // For axis-aligned cases the perpendicular plane has a deterministic
+    // sign (it's the plane normal to the axis); we use the dominant
+    // non-axis component as the sign source so we can reject profiles that
+    // straddle the axis.
+    const signRef = pickPerpSignReference(axisKind, perpX, perpY, perpZ);
+    if (Math.abs(signRef) > POINT_EPS) {
+      const sign = signRef > 0 ? 1 : -1;
+      if (signSeen === 0) signSeen = sign;
+      else if (signSeen !== sign) {
+        return {
+          kind: 'unsupported',
+          reason: `profile straddles the revolve axis (would self-intersect)`,
+        };
+      }
+    }
+    canonical.push({ x: perpDist, y: yProj });
+  }
+
+  // Drop closing duplicate vertex if present.
+  if (
+    canonical.length > 3 &&
+    Math.abs(canonical[0]!.x - canonical[canonical.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(canonical[0]!.y - canonical[canonical.length - 1]!.y) <= POINT_EPS
+  ) {
+    canonical.pop();
+  }
+
+  return {
+    kind: 'ok',
+    feature: {
+      kind: 'revolve',
+      loop: canonical,
+      angleDegrees,
+      mode: 'add',
+    },
+  };
+}
+
+type SweptAreaResult =
+  | { kind: 'ok'; points: Array<[number, number, number]> }
+  | { kind: 'unsupported'; reason: string };
+
+/**
+ * Extract the profile point ring from a REVOLVED_AREA_SOLID's swept_area.
+ *
+ * Supported shapes (Phase 2):
+ *   - `PLANAR_FACE('', #face_outer_bound)` — most common; we drill down
+ *     through FACE_OUTER_BOUND → EDGE_LOOP → ORIENTED_EDGE chain (LINE
+ *     edges only).
+ *
+ * Anything else (CURVE_BOUNDED_PLANAR_SURFACE with B-spline bounds,
+ * composite curve sections, etc) returns `unsupported` so the caller can
+ * route to Phase 3 OCCT.
+ */
+function readSweptAreaProfile(
+  sweptAreaId: number,
+  entities: Map<number, StepEntity>,
+): SweptAreaResult {
+  const ent = entities.get(sweptAreaId);
+  if (!ent) {
+    return { kind: 'unsupported', reason: `swept_area #${sweptAreaId} missing` };
+  }
+  if (ent.name !== 'PLANAR_FACE' && ent.name !== 'FACE_OUTER_BOUND') {
+    return {
+      kind: 'unsupported',
+      reason: `swept_area type ${ent.name} not supported (Phase 2: PLANAR_FACE only)`,
+    };
+  }
+  // Find the FACE_OUTER_BOUND. PLANAR_FACE has bounds list as args[1];
+  // FACE_OUTER_BOUND is itself the bound entity.
+  let boundEnt: StepEntity | null = null;
+  if (ent.name === 'PLANAR_FACE') {
+    const boundsArg = ent.args[1];
+    if (!boundsArg || boundsArg.kind !== 'list') {
+      return { kind: 'unsupported', reason: `PLANAR_FACE missing bounds list` };
+    }
+    for (const item of boundsArg.items) {
+      if (item.kind !== 'ref') continue;
+      const b = entities.get(item.id);
+      if (b && b.name === 'FACE_OUTER_BOUND') {
+        boundEnt = b;
+        break;
+      }
+    }
+    if (!boundEnt) {
+      return { kind: 'unsupported', reason: `PLANAR_FACE has no FACE_OUTER_BOUND` };
+    }
+  } else {
+    boundEnt = ent;
+  }
+  // FACE_OUTER_BOUND('', #loop, .T.)
+  const loopRef = boundEnt.args[1];
+  if (!loopRef || loopRef.kind !== 'ref') {
+    return { kind: 'unsupported', reason: `FACE_OUTER_BOUND missing loop ref` };
+  }
+  const loop = entities.get(loopRef.id);
+  if (!loop || loop.name !== 'EDGE_LOOP') {
+    return { kind: 'unsupported', reason: `bound loop is ${loop?.name ?? 'unknown'}` };
+  }
+  const oeArg = loop.args[1];
+  if (!oeArg || oeArg.kind !== 'list') {
+    return { kind: 'unsupported', reason: `EDGE_LOOP missing edge list` };
+  }
+  const ring: Array<[number, number, number]> = [];
+  for (const item of oeArg.items) {
+    if (item.kind !== 'ref') {
+      return { kind: 'unsupported', reason: `ORIENTED_EDGE non-ref in loop` };
+    }
+    const oe = entities.get(item.id);
+    if (!oe || oe.name !== 'ORIENTED_EDGE') {
+      return { kind: 'unsupported', reason: `ORIENTED_EDGE missing` };
+    }
+    const ecRef = oe.args[3];
+    const oeFlag = oe.args[4];
+    if (!ecRef || ecRef.kind !== 'ref') {
+      return { kind: 'unsupported', reason: `ORIENTED_EDGE missing EDGE_CURVE` };
+    }
+    const forwardOe = oeFlag?.kind === 'enum' ? oeFlag.value !== 'F' : true;
+    const ec = entities.get(ecRef.id);
+    if (!ec || ec.name !== 'EDGE_CURVE') {
+      return { kind: 'unsupported', reason: `EDGE_CURVE missing` };
+    }
+    const vStartRef = ec.args[1];
+    const vEndRef = ec.args[2];
+    const curveRef = ec.args[3];
+    if (!vStartRef || vStartRef.kind !== 'ref' || !vEndRef || vEndRef.kind !== 'ref') {
+      return { kind: 'unsupported', reason: `EDGE_CURVE missing vertex refs` };
+    }
+    if (curveRef && curveRef.kind === 'ref') {
+      const curve = entities.get(curveRef.id);
+      if (curve && curve.name && curve.name !== 'LINE' && curve.name !== 'POLYLINE') {
+        return {
+          kind: 'unsupported',
+          reason: `profile has non-linear edge (${curve.name})`,
+        };
+      }
+    }
+    const start = readVertexPoint(vStartRef.id, entities);
+    const end = readVertexPoint(vEndRef.id, entities);
+    if (!start || !end) {
+      return { kind: 'unsupported', reason: `VERTEX_POINT decode failed` };
+    }
+    const first = forwardOe ? start : end;
+    if (ring.length === 0 || !pointEq(ring[ring.length - 1]!, first)) {
+      ring.push(first);
+    }
+  }
+  // Drop a closing duplicate vertex if present.
+  if (ring.length > 3 && pointEq(ring[0]!, ring[ring.length - 1]!)) {
+    ring.pop();
+  }
+  return { kind: 'ok', points: ring };
+}
+
 // ─── geometric helpers ────────────────────────────────────────────────────
 
 function pointEq(a: [number, number, number], b: [number, number, number]): boolean {
@@ -866,6 +1431,87 @@ function isHorizontalAxisNormal(n: [number, number, number]): boolean {
   if (az > AXIS_EPS) return false;
   return (Math.abs(ax - 1) <= AXIS_EPS && ay <= AXIS_EPS) ||
          (Math.abs(ay - 1) <= AXIS_EPS && ax <= AXIS_EPS);
+}
+
+/**
+ * Classify a (possibly non-unit) direction vector as ±X / ±Y / ±Z or
+ * non-axis-aligned. Returns one of 'x' | 'y' | 'z' for axis-aligned
+ * directions, null otherwise. Tolerance: AXIS_EPS on the unit-normalised
+ * vector — the input does not need to be pre-normalised.
+ *
+ * Note: callers that need the sign of the axis (e.g. to flip a cap) must
+ * inspect the raw direction; this classifier is sign-agnostic by design.
+ */
+function classifyAxisAlignment(
+  dir: [number, number, number],
+): 'x' | 'y' | 'z' | null {
+  const len = Math.hypot(dir[0], dir[1], dir[2]);
+  if (len < 1e-9) return null;
+  const ax = Math.abs(dir[0] / len);
+  const ay = Math.abs(dir[1] / len);
+  const az = Math.abs(dir[2] / len);
+  if (Math.abs(ax - 1) <= AXIS_EPS && ay <= AXIS_EPS && az <= AXIS_EPS) return 'x';
+  if (Math.abs(ay - 1) <= AXIS_EPS && ax <= AXIS_EPS && az <= AXIS_EPS) return 'y';
+  if (Math.abs(az - 1) <= AXIS_EPS && ax <= AXIS_EPS && ay <= AXIS_EPS) return 'z';
+  return null;
+}
+
+/** True iff `a` and `b` are parallel (same or opposite direction). */
+function directionsParallel(
+  a: [number, number, number],
+  b: [number, number, number],
+): boolean {
+  const ua = unitVec(a);
+  const ub = unitVec(b);
+  // Cross product magnitude ≈ 0 ⇒ parallel.
+  const cx = ua[1] * ub[2] - ua[2] * ub[1];
+  const cy = ua[2] * ub[0] - ua[0] * ub[2];
+  const cz = ua[0] * ub[1] - ua[1] * ub[0];
+  return Math.hypot(cx, cy, cz) <= AXIS_EPS;
+}
+
+function unitVec(v: [number, number, number]): [number, number, number] {
+  const len = Math.hypot(v[0], v[1], v[2]);
+  if (len < 1e-12) return [0, 0, 0];
+  return [v[0] / len, v[1] / len, v[2] / len];
+}
+
+function centroid(loop: Array<[number, number, number]>): [number, number, number] {
+  let sx = 0, sy = 0, sz = 0;
+  for (const v of loop) {
+    sx += v[0];
+    sy += v[1];
+    sz += v[2];
+  }
+  const n = loop.length;
+  return n > 0 ? [sx / n, sy / n, sz / n] : [0, 0, 0];
+}
+
+/** Format a direction as a short "(x,y,z)" string for unsupported reasons. */
+function formatDir(d: [number, number, number]): string {
+  const fmt = (v: number) => Math.abs(v) < 1e-6 ? '0' : Number(v.toFixed(4)).toString();
+  return `(${fmt(d[0])},${fmt(d[1])},${fmt(d[2])})`;
+}
+
+/**
+ * For axis-aligned revolves, return the perpendicular component that
+ * unambiguously signals which side of the axis a profile point sits on.
+ *   - axis = X  →  use Y component (the dominant perpendicular)
+ *   - axis = Y  →  use X component
+ *   - axis = Z  →  use X component
+ * (Z-axis revolves with profile in XZ vs YZ are both valid; we conservatively
+ * use X — profiles in the YZ plane will all return signRef ≈ 0 and skip the
+ * straddle check, which is the correct relaxation.)
+ */
+function pickPerpSignReference(
+  axisKind: 'x' | 'y' | 'z',
+  perpX: number,
+  perpY: number,
+  _perpZ: number,
+): number {
+  if (axisKind === 'x') return perpY;
+  if (axisKind === 'y') return perpX;
+  return perpX; // z-axis: profile expected in XZ or YZ plane
 }
 
 // ─── box reconstruction ───────────────────────────────────────────────────
