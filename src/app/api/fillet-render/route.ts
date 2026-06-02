@@ -41,6 +41,11 @@ interface FilletRenderBody {
   sketch?: SolverViewState;
   depth?: number;
   radius?: number;
+  /** Phase 3 — per-vertex radii (rect-only). Length must equal extracted
+   *  loop length. Precedence: vertexRadii > edgeRadii > radius. */
+  vertexRadii?: number[];
+  /** Phase 3 — per-edge radii (rect-only). Auto-converted. */
+  edgeRadii?: number[];
   edgeSelection?: FilletEdgeSelection;
   views?: { label: string; camera: string }[];
   includeStl?: boolean;
@@ -98,11 +103,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
-  if (!isFiniteNum(body.radius) || body.radius <= 0) {
+  const hasVariableInput =
+    Array.isArray(body.vertexRadii) || Array.isArray(body.edgeRadii);
+  if (!hasVariableInput && (!isFiniteNum(body.radius) || body.radius <= 0)) {
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'radius must be a positive number' },
       { status: 400 },
     );
+  }
+  // Per-vertex / per-edge arrays: structural validation only (length &
+  // positivity are re-checked inside the IR builder against the actual
+  // extracted loop length).
+  const validatePosArray = (arr: unknown, label: string): string | null => {
+    if (!Array.isArray(arr)) return null;
+    for (let i = 0; i < arr.length; i++) {
+      const v = arr[i];
+      if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) {
+        return `${label}[${i}] must be a positive finite number`;
+      }
+    }
+    return null;
+  };
+  const vrErr = validatePosArray(body.vertexRadii, 'vertexRadii');
+  if (vrErr) {
+    return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: vrErr }, { status: 400 });
+  }
+  const erErr = validatePosArray(body.edgeRadii, 'edgeRadii');
+  if (erErr) {
+    return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: erErr }, { status: 400 });
   }
   const edgeSelection: FilletEdgeSelection = body.edgeSelection ?? 'all';
   if (!ALLOWED_EDGES.includes(edgeSelection)) {
@@ -119,14 +147,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // participate) so the math layer never sees a fully-collapsed crown.
   // buildFilletFeature enforces < depth/2 in those cases; the API uses
   // a tighter < depth/3 cap so users hit a clear 400 first.
+  // For variable-radius inputs the max entry is the effective probe.
   const touchesTopOrBottom =
     edgeSelection === 'all' || edgeSelection === 'top' || edgeSelection === 'bottom';
-  if (touchesTopOrBottom && body.radius >= body.depth / 3) {
+  const effectiveMaxRadius = Array.isArray(body.vertexRadii)
+    ? Math.max(...body.vertexRadii)
+    : Array.isArray(body.edgeRadii)
+      ? Math.max(...body.edgeRadii)
+      : (body.radius as number);
+  if (touchesTopOrBottom && effectiveMaxRadius >= body.depth / 3) {
     return NextResponse.json(
       {
         ok: false,
         code: 'BAD_REQUEST',
-        message: `radius ${body.radius} must be < depth/3 = ${body.depth / 3} when filleting top/bottom edges`,
+        message: `radius ${effectiveMaxRadius} must be < depth/3 = ${body.depth / 3} when filleting top/bottom edges`,
       },
       { status: 400 },
     );
@@ -141,8 +175,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const pipeline = filletFromSketch(body.sketch, {
     depth: body.depth,
-    radius: body.radius,
+    // When only variable arrays are supplied, the IR ignores `radius` but
+    // the field is required by the type; fall back to the max entry so
+    // any uniform-radius safety probes still see a sensible value.
+    radius: isFiniteNum(body.radius) && body.radius > 0 ? body.radius : effectiveMaxRadius,
     edgeSelection,
+    ...(Array.isArray(body.vertexRadii) ? { vertexRadii: body.vertexRadii } : {}),
+    ...(Array.isArray(body.edgeRadii) ? { edgeRadii: body.edgeRadii } : {}),
   });
   if (!pipeline.ok) {
     return NextResponse.json(

@@ -43,6 +43,12 @@ export interface ChamferFromSketchOptions {
   /** Uniform chamfer setback distance (mm). Must be > 0 and
    *  < min(profileBBox)/2; for top/bottom edge selections also < depth/2. */
   distance: number;
+  /** Phase 3 — per-vertex chamfer distances (rect-only). Precedence over
+   *  `distance`. */
+  vertexDistances?: ReadonlyArray<number>;
+  /** Phase 3 — per-edge chamfer distances (rect-only). Auto-converted via
+   *  max(adjacent). */
+  edgeDistances?: ReadonlyArray<number>;
   edgeSelection: ChamferEdgeSelection;
   featureName?: string;
 }
@@ -97,7 +103,16 @@ export function chamferFromSketch(
 
   let chamfer: ChamferFeature;
   try {
-    chamfer = buildChamferFeature(childExtrude, opts.distance, opts.edgeSelection);
+    if (opts.vertexDistances !== undefined || opts.edgeDistances !== undefined) {
+      chamfer = buildChamferFeature(childExtrude, {
+        distance: opts.distance,
+        edgeSelection: opts.edgeSelection,
+        ...(opts.vertexDistances !== undefined ? { vertexDistances: opts.vertexDistances } : {}),
+        ...(opts.edgeDistances !== undefined ? { edgeDistances: opts.edgeDistances } : {}),
+      });
+    } else {
+      chamfer = buildChamferFeature(childExtrude, opts.distance, opts.edgeSelection);
+    }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

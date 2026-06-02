@@ -1,11 +1,16 @@
 /**
- * chamferProfile — Phase 2.2 of NexyFab Pro own-CAD (ADR-013).
+ * chamferProfile — Phase 2.2 + Phase 3 of NexyFab Pro own-CAD (ADR-013).
  *
- * Chamfer bevels selected edges of an existing solid body by a uniform
- * setback distance (the orthogonal distance the bevel cuts from the
- * original edge). Mirror of filletProfile.ts; differs only in that the
- * minkowski seed shape is a regular octahedron / rotated square prism
- * instead of a sphere/cylinder.
+ * Chamfer bevels selected edges of an existing solid body by a setback
+ * distance (the orthogonal distance the bevel cuts from the original edge).
+ * Phases 1/2 use a uniform distance. Phase 3 adds variable-distance via
+ * per-vertex (`vertexDistances`) or per-edge (`edgeDistances`) arrays —
+ * see filletProfile.ts for the symmetric vertexRadii/edgeRadii pattern;
+ * the chamfer fields use 'Distances' rather than 'Radii' to match the
+ * existing scalar field name `distance`. Mirror of filletProfile.ts;
+ * differs only in that the minkowski seed shape is a regular octahedron /
+ * rotated square prism instead of a sphere/cylinder, and the Phase 3
+ * hull primitives are octahedra rather than spheres.
  *
  * Implementation strategy:
  *   - Wrap an existing ExtrudeFeature as the child body.
@@ -66,8 +71,14 @@ export interface ChamferFeature {
   childExtrude: ExtrudeFeature;
   /** Chamfer setback distance (mm) — the orthogonal distance the bevel
    *  cuts from the original edge. Must be > 0 and < min(inscribed-clearance)/2;
-   *  for top/bottom edge selections also < depth/2. */
+   *  for top/bottom edge selections also < depth/2.
+   *  When `vertexDistances` is supplied this acts as a fallback uniform
+   *  value but is not consumed by the SCAD emitter — vertexDistances wins. */
   distance: number;
+  /** Phase 3 — variable distance per vertex (mm). When present, must satisfy
+   *  `vertexDistances.length === childExtrude.loop.length` and every entry
+   *  > 0. Rect-only (convex N-gon + variable distance is Phase 4 wishlist). */
+  vertexDistances?: ReadonlyArray<number>;
   /** Which edges to bevel. See ChamferEdgeSelection enum. */
   edgeSelection: ChamferEdgeSelection;
 }
@@ -75,6 +86,11 @@ export interface ChamferFeature {
 export interface ChamferOptions {
   distance: number;
   edgeSelection: ChamferEdgeSelection;
+  /** Phase 3 — per-vertex chamfer distances. length must equal `loop.length`. */
+  vertexDistances?: ReadonlyArray<number>;
+  /** Phase 3 — per-edge chamfer distances (sugar form). Auto-converted to
+   *  vertexDistances via `d_vertex_i = max(d_edge_{i-1}, d_edge_i)`. */
+  edgeDistances?: ReadonlyArray<number>;
 }
 
 const ALLOWED_EDGE_SELECTIONS: readonly ChamferEdgeSelection[] = [
@@ -127,6 +143,44 @@ function minVertexToEdgeDistance(loop: ReadonlyArray<Pt2>): number {
 // ─── builder ──────────────────────────────────────────────────────────────
 
 /**
+ * Phase 3 sugar: convert edgeDistances to per-vertex distances using
+ * `d_vertex_i = max(d_edge_{i-1}, d_edge_i)`. Mirror of
+ * filletProfile.edgeRadiiToVertexRadii.
+ */
+export function edgeDistancesToVertexDistances(
+  edgeDistances: ReadonlyArray<number>,
+): number[] {
+  const n = edgeDistances.length;
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    const prev = edgeDistances[(i - 1 + n) % n]!;
+    const next = edgeDistances[i]!;
+    out[i] = Math.max(prev, next);
+  }
+  return out;
+}
+
+function validateVertexDistances(
+  loop: ReadonlyArray<Pt2>,
+  vertexDistances: ReadonlyArray<number>,
+  label: 'vertexDistances' | 'edgeDistances' = 'vertexDistances',
+): void {
+  if (vertexDistances.length !== loop.length) {
+    throw new Error(
+      `chamfer ${label} length ${vertexDistances.length} must equal loop length ${loop.length}`,
+    );
+  }
+  for (let i = 0; i < vertexDistances.length; i++) {
+    const d = vertexDistances[i]!;
+    if (!Number.isFinite(d) || d <= 0) {
+      throw new Error(
+        `chamfer ${label}[${i}] must be a positive finite number, got: ${d}`,
+      );
+    }
+  }
+}
+
+/**
  * Build a ChamferFeature wrapping an ExtrudeFeature.
  *
  * Validation:
@@ -136,12 +190,22 @@ function minVertexToEdgeDistance(loop: ReadonlyArray<Pt2>): number {
  *   - Phase 2 N-vertex path: profile must be convex; distance < (shortest
  *     vertex-to-edge perpendicular distance)/2.
  *   - distance must be < depth / 2 when edges include top/bottom
+ *   - Phase 3 (variable distance via vertexDistances or edgeDistances):
+ *       * supported ONLY on axis-aligned rect profiles
+ *       * length must match loop.length, every entry > 0
+ *       * each d_i must be < min(bbox)/2 and < depth/2 when edges touch top/bottom
  */
 export function buildChamferFeature(
   child: ExtrudeFeature,
-  distance: number,
-  edgeSelection: ChamferEdgeSelection,
+  distanceOrOptions: number | ChamferOptions,
+  edgeSelectionArg?: ChamferEdgeSelection,
 ): ChamferFeature {
+  const opts: ChamferOptions =
+    typeof distanceOrOptions === 'number'
+      ? { distance: distanceOrOptions, edgeSelection: edgeSelectionArg ?? 'all' }
+      : distanceOrOptions;
+  const { distance, edgeSelection } = opts;
+
   if (!Number.isFinite(distance) || distance <= 0) {
     throw new Error(`chamfer distance must be a positive number, got: ${distance}`);
   }
@@ -153,6 +217,58 @@ export function buildChamferFeature(
 
   const loop = child.loop;
   const rectPath = isAxisAlignedRect(loop);
+
+  // ─── Phase 3 — variable distance path ─────────────────────────────────
+  let vertexDistances: ReadonlyArray<number> | undefined;
+  if (opts.vertexDistances !== undefined) {
+    validateVertexDistances(loop, opts.vertexDistances, 'vertexDistances');
+    vertexDistances = opts.vertexDistances;
+  } else if (opts.edgeDistances !== undefined) {
+    validateVertexDistances(loop, opts.edgeDistances, 'edgeDistances');
+    vertexDistances = edgeDistancesToVertexDistances(opts.edgeDistances);
+  }
+
+  if (vertexDistances !== undefined) {
+    if (!rectPath) {
+      throw new Error(
+        'chamfer variable distance (vertexDistances/edgeDistances) is Phase 3 rect-only; ' +
+          'convex N-gon variable distance is Phase 4 (OCCT) wishlist',
+      );
+    }
+    const bb = loopBoundingBox(loop);
+    const w = bb.maxX - bb.minX;
+    const h = bb.maxY - bb.minY;
+    const maxAllowed = Math.min(w, h) / 2;
+    for (let i = 0; i < vertexDistances.length; i++) {
+      const d_i = vertexDistances[i]!;
+      if (d_i >= maxAllowed) {
+        throw new Error(
+          `chamfer vertexDistances[${i}]=${d_i} must be < min(profile bbox)/2 = ${maxAllowed}`,
+        );
+      }
+    }
+    const touchesTopOrBottomVar =
+      edgeSelection === 'all' || edgeSelection === 'top' || edgeSelection === 'bottom';
+    if (touchesTopOrBottomVar) {
+      for (let i = 0; i < vertexDistances.length; i++) {
+        const d_i = vertexDistances[i]!;
+        if (d_i >= child.depth / 2) {
+          throw new Error(
+            `chamfer vertexDistances[${i}]=${d_i} must be < depth/2 = ${child.depth / 2} when chamfering top/bottom edges`,
+          );
+        }
+      }
+    }
+    return {
+      kind: 'chamfer',
+      childExtrude: child,
+      distance,
+      vertexDistances,
+      edgeSelection,
+    };
+  }
+
+  // ─── Phase 1/2 — uniform distance path (unchanged) ─────────────────────
   if (rectPath) {
     const bb = loopBoundingBox(loop);
     const w = bb.maxX - bb.minX;
@@ -253,6 +369,12 @@ export function chamferToScad(feature: ChamferFeature): string {
   const depth = feature.childExtrude.depth;
   const epsilon = 0.001;
   const halfDiag = (d * Math.SQRT2) / 2;
+
+  // ─── Phase 3 path: variable distance (rect-only — guarded by builder) ─
+  if (feature.vertexDistances !== undefined) {
+    return chamferVariableDistanceToScad(feature, feature.vertexDistances);
+  }
+
   const header =
     `// NEXYFAB:CHAMFER distance=${formatNum(d)} edges=${feature.edgeSelection}`;
 
@@ -364,6 +486,136 @@ export function chamferToScad(feature: ChamferFeature): string {
     `      linear_extrude(height=${formatNum(epsilon)})\n` +
     `        polygon([${offsetPts}]);\n` +
     `    ${octahedronScad(d)}\n` +
+    `  }\n` +
+    `}`
+  );
+}
+
+// ─── Phase 3 SCAD: variable distance (rect-only) ──────────────────────────
+
+/**
+ * Phase 3 variable-distance SCAD emission for an axis-aligned rect.
+ *
+ * Algorithm — hull() of per-corner octahedra (3D) or squares (2D) with
+ * varying setback:
+ *
+ *   'vertical': linear_extrude(depth) hull() { 4 rotated squares, one per corner }
+ *     Each square (technically a circle with $fn=4 rotated 45°) has
+ *     half-diagonal = d_i, positioned at the inset corner.
+ *   'all':      hull() { 8 octahedra, one per (corner × top/bottom-face) }
+ *   'top':      union(slab, hull(4 top octahedra))
+ *   'bottom':   mirror of 'top'.
+ *
+ * The convex hull of per-corner octahedra produces flat-faceted chamfers
+ * with variable setback — exactly matching the chamfer drawing callout
+ * convention "d_i × 45°" at each corner. Variable-distance vertical
+ * edges between corners with different d_i are linearly blended (a
+ * trapezoidal facet rather than a clean 45° bevel); this is the
+ * documented Phase 3 trade-off, consistent with the filletProfile
+ * variable-radius approach. Phase 4 (OCCT) restores per-edge consistent
+ * chamfer cross-sections.
+ */
+function chamferVariableDistanceToScad(
+  feature: ChamferFeature,
+  vertexDistances: ReadonlyArray<number>,
+): string {
+  const loop = feature.childExtrude.loop;
+  const depth = feature.childExtrude.depth;
+  const edges = feature.edgeSelection;
+  const bb = loopBoundingBox(loop);
+  const header =
+    `// NEXYFAB:CHAMFER vertexDistances=[${vertexDistances.map((v) => formatNum(v)).join(',')}] edges=${edges}`;
+
+  interface Inset {
+    cx: number;
+    cy: number;
+    d: number;
+  }
+  const cx = (bb.minX + bb.maxX) / 2;
+  const cy = (bb.minY + bb.maxY) / 2;
+  const insets: Inset[] = [];
+  for (let i = 0; i < loop.length; i++) {
+    const v = loop[i]!;
+    const d_i = vertexDistances[i]!;
+    const sx = v.x < cx ? 1 : -1;
+    const sy = v.y < cy ? 1 : -1;
+    insets.push({ cx: v.x + sx * d_i, cy: v.y + sy * d_i, d: d_i });
+  }
+  const maxD = vertexDistances.reduce((a, b) => Math.max(a, b), 0);
+
+  if (edges === 'vertical') {
+    const squares = insets
+      .map(
+        (it) =>
+          `    translate([${formatNum(it.cx)}, ${formatNum(it.cy)}])\n` +
+          `      rotate([0, 0, 45]) circle(r=${formatNum((it.d * Math.SQRT2) / 2)}, $fn=4);`,
+      )
+      .join('\n');
+    return (
+      `${header}\n` +
+      `linear_extrude(height=${formatNum(depth)})\n` +
+      `  hull() {\n` +
+      `${squares}\n` +
+      `  }`
+    );
+  }
+
+  if (edges === 'all') {
+    const polys: string[] = [];
+    for (const it of insets) {
+      polys.push(
+        `  translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(it.d)}])\n` +
+          `    ${octahedronScad(it.d)}`,
+      );
+      polys.push(
+        `  translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(depth - it.d)}])\n` +
+          `    ${octahedronScad(it.d)}`,
+      );
+    }
+    return `${header}\n` + `hull() {\n` + polys.join('\n') + `\n}`;
+  }
+
+  const w = bb.maxX - bb.minX;
+  const h = bb.maxY - bb.minY;
+  if (edges === 'top') {
+    const slab =
+      `  translate([${formatNum(bb.minX)}, ${formatNum(bb.minY)}, 0])\n` +
+      `    cube([${formatNum(w)}, ${formatNum(h)}, ${formatNum(depth - maxD)}]);`;
+    const crownPolys = insets
+      .map(
+        (it) =>
+          `    translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(depth - it.d)}])\n` +
+          `      ${octahedronScad(it.d)}`,
+      )
+      .join('\n');
+    return (
+      `${header}\n` +
+      `union() {\n` +
+      `${slab}\n` +
+      `  hull() {\n` +
+      `${crownPolys}\n` +
+      `  }\n` +
+      `}`
+    );
+  }
+
+  // 'bottom'
+  const slab =
+    `  translate([${formatNum(bb.minX)}, ${formatNum(bb.minY)}, ${formatNum(maxD)}])\n` +
+    `    cube([${formatNum(w)}, ${formatNum(h)}, ${formatNum(depth - maxD)}]);`;
+  const crownPolys = insets
+    .map(
+      (it) =>
+        `    translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(it.d)}])\n` +
+        `      ${octahedronScad(it.d)}`,
+    )
+    .join('\n');
+  return (
+    `${header}\n` +
+    `union() {\n` +
+    `${slab}\n` +
+    `  hull() {\n` +
+    `${crownPolys}\n` +
     `  }\n` +
     `}`
   );

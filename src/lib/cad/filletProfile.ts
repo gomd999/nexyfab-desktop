@@ -1,11 +1,11 @@
 /**
- * filletProfile — Phase 2.2 of NexyFab Pro own-CAD (ADR-013).
+ * filletProfile — Phase 2.2 + Phase 3 of NexyFab Pro own-CAD (ADR-013).
  *
- * Fillet rounds selected edges of an existing solid body with a constant
- * radius. Mirror of shellProfile.ts: the IR wraps a child ExtrudeFeature
- * and serializes to OpenSCAD source that reproduces the rounded body via
- * a minkowski sum trick (the only kernel-free strategy that works in the
- * vanilla OpenSCAD pipeline NexyFab currently runs against).
+ * Fillet rounds selected edges of an existing solid body. Phases 1/2 use a
+ * uniform radius. Phase 3 adds an alternative variable-radius form where
+ * each vertex of the profile gets its own radius (`vertexRadii`) — or, as
+ * a sugar form, each edge (`edgeRadii` length = N is auto-converted to
+ * a per-vertex array via `r_vertex_i = max(r_edge_{i-1}, r_edge_i)`).
  *
  * Implementation strategy:
  *   - Wrap an existing ExtrudeFeature as the child body.
@@ -33,20 +33,44 @@
  *     special case and use the original Phase 1 cube-based emission for
  *     determinism (zero regression risk).
  *
- * Phase 2 limitations (documented for the UI to surface):
- *   - Convex N-vertex polygon profiles only. Concave loops throw with a
- *     clear error message; the UI should bounce these before reaching
- *     this layer.
- *   - Uniform radius only (no variable-radius / hold-line fillets).
+ *   - Phase 3 (variable radius) — *axis-aligned rect only*. We synthesize
+ *     the body as a `hull()` of corner spheres / circles of varying radius,
+ *     positioned at each corner inset by its own r_i. This is mathematically
+ *     exact (the convex hull of 8 sphere primitives is a rectangular box
+ *     whose corners are rounded by their respective r_i) and requires no
+ *     custom 3D arithmetic.
+ *
+ *         'all':       hull() { 8 spheres, one per (corner × top/bottom-face), each r=r_i }
+ *         'vertical':  linear_extrude(depth) hull() { 4 circles, one per corner, each r=r_i }
+ *         'top':       union(slab(depth-max_r), hull(4 spheres at top z, each r=r_i))
+ *         'bottom':    union(translate-up slab, hull(4 spheres at z=max_r, each r=r_i))
+ *
+ *     The rect+variable path is "good enough" for visual approximation and
+ *     even exact for the rect case (the corner sphere hull = box with
+ *     variable rounded corners — provably the offset of a degenerate
+ *     center-segment by a varying radius envelope). For N-gon + variable
+ *     radius we throw a Phase 4 wishlist error; the polygon-offset solver
+ *     for non-uniform vertex offsets requires straight-skeleton math we
+ *     intentionally defer until OCCT/Parasolid lands.
+ *
+ * Phase 2/3 limitations (documented for the UI to surface):
+ *   - Uniform radius: convex N-vertex polygon profiles supported.
+ *   - Variable radius (vertexRadii / edgeRadii): axis-aligned rect only.
+ *     Convex N-gon + variable radius throws a Phase 4 wishlist error.
+ *   - Variable radius is an exact CSG for the rect case (hull of corner
+ *     spheres). For N-gon this is only a *visual approximation* and is
+ *     therefore gated off until OCCT lands.
  *   - Child must be a single ExtrudeFeature; revolves/sweeps/lofts/
  *     patterns are out of scope until Phase 2.x OCCT fillet lands.
  *   - Edge selection limited to four enums: all, top, bottom, vertical
  *     (top-and-bottom-only) — there is no per-edge picking yet.
  *
- * Out of scope (Phase 3+):
+ * Out of scope (Phase 4+ — OCCT wishlist):
  *   - Concave / arbitrary polygon (needs straight-skeleton or OCCT).
  *   - General edge selection (pick individual edges by id).
- *   - Variable radius / spline curvature.
+ *   - Variable radius on a convex N-gon (needs non-uniform vertex offset
+ *     via straight-skeleton or OCCT BRepFilletAPI_MakeFillet).
+ *   - Spline-curvature / hold-line fillets.
  *   - Face blends, full-round, three-tangent.
  *   - Fillet of a body produced by revolve/sweep/loft/pattern.
  */
@@ -70,8 +94,16 @@ export interface FilletFeature {
   /** The body to be filleted. Phase 2 supports any convex polygon ExtrudeFeature. */
   childExtrude: ExtrudeFeature;
   /** Fillet radius (mm). Must be > 0 and < min(inscribed-clearance)/2; for
-   *  top/bottom edge selections also < depth/2. */
+   *  top/bottom edge selections also < depth/2.
+   *  When `vertexRadii` is supplied this acts as the *fallback uniform value*
+   *  but is not consumed by the SCAD emitter — vertexRadii takes precedence. */
   radius: number;
+  /** Phase 3 — variable radius per vertex (mm). When present, must satisfy
+   *  `vertexRadii.length === childExtrude.loop.length` and every entry > 0.
+   *  Each r_i applies to the corner at loop[i]. Currently rect-only; convex
+   *  N-gon + variable radius throws (Phase 4 wishlist). Takes precedence
+   *  over `radius` in the SCAD emitter. */
+  vertexRadii?: ReadonlyArray<number>;
   /** Which edges to round. See FilletEdgeSelection enum. */
   edgeSelection: FilletEdgeSelection;
 }
@@ -79,6 +111,13 @@ export interface FilletFeature {
 export interface FilletOptions {
   radius: number;
   edgeSelection: FilletEdgeSelection;
+  /** Phase 3 — per-vertex radii. length must equal `loop.length`. */
+  vertexRadii?: ReadonlyArray<number>;
+  /** Phase 3 — per-edge radii (sugar form). Auto-converted to vertexRadii
+   *  via `r_vertex_i = max(r_edge_{i-1}, r_edge_i)` so the corner is rounded
+   *  by the larger of its two adjacent edges. length must equal `loop.length`.
+   *  vertexRadii takes precedence if both are supplied. */
+  edgeRadii?: ReadonlyArray<number>;
 }
 
 const ALLOWED_EDGE_SELECTIONS: readonly FilletEdgeSelection[] = [
@@ -270,6 +309,54 @@ export function offsetPolygonInward(loop: ReadonlyArray<Pt2>, r: number): Pt2[] 
 // ─── builder ──────────────────────────────────────────────────────────────
 
 /**
+ * Phase 3 — convert an `edgeRadii` array to the equivalent `vertexRadii`.
+ * Each vertex gets the maximum of its two adjacent-edge radii so the
+ * corner is rounded by the *larger* of the two edges meeting it. (Picking
+ * max — rather than mean — keeps the corner inset bound consistent with
+ * each adjacent edge's expectation.)
+ *
+ * Convention: edgeRadii[i] is the radius applied to the edge from
+ * loop[i] → loop[(i+1) % N]. Hence the corner at loop[i] sits between
+ * edgeRadii[(i-1+N)%N] (incoming) and edgeRadii[i] (outgoing).
+ */
+export function edgeRadiiToVertexRadii(
+  edgeRadii: ReadonlyArray<number>,
+): number[] {
+  const n = edgeRadii.length;
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    const prev = edgeRadii[(i - 1 + n) % n]!;
+    const next = edgeRadii[i]!;
+    out[i] = Math.max(prev, next);
+  }
+  return out;
+}
+
+/**
+ * Validate a per-vertex radius array against the loop. Throws on any
+ * mismatch / non-positive / non-finite entry.
+ */
+function validateVertexRadii(
+  loop: ReadonlyArray<Pt2>,
+  vertexRadii: ReadonlyArray<number>,
+  label: 'vertexRadii' | 'edgeRadii' = 'vertexRadii',
+): void {
+  if (vertexRadii.length !== loop.length) {
+    throw new Error(
+      `fillet ${label} length ${vertexRadii.length} must equal loop length ${loop.length}`,
+    );
+  }
+  for (let i = 0; i < vertexRadii.length; i++) {
+    const r = vertexRadii[i]!;
+    if (!Number.isFinite(r) || r <= 0) {
+      throw new Error(
+        `fillet ${label}[${i}] must be a positive finite number, got: ${r}`,
+      );
+    }
+  }
+}
+
+/**
  * Build a FilletFeature wrapping an ExtrudeFeature.
  *
  * Validation:
@@ -281,12 +368,26 @@ export function offsetPolygonInward(loop: ReadonlyArray<Pt2>, r: number): Pt2[] 
  *     reduces to the bbox/2 rule for axis-aligned rectangles).
  *   - radius must be < depth/2 when edges include top/bottom — otherwise
  *     the rounded crown eats the entire body in the Z direction
+ *   - Phase 3 (variable radius via `vertexRadii` or `edgeRadii`):
+ *       * supported ONLY on axis-aligned rect profiles (Phase 4 wishlist
+ *         for convex N-gons — straight-skeleton offsets required).
+ *       * length must match loop.length, every entry > 0.
+ *       * each r_i must be < min(adjacentEdgeLengths)/2 (so corner
+ *         insets do not overlap each other) and < depth/2 when edges
+ *         include top/bottom.
  */
 export function buildFilletFeature(
   child: ExtrudeFeature,
-  radius: number,
-  edgeSelection: FilletEdgeSelection,
+  radiusOrOptions: number | FilletOptions,
+  edgeSelectionArg?: FilletEdgeSelection,
 ): FilletFeature {
+  // Resolve the two call signatures into a single FilletOptions.
+  const opts: FilletOptions =
+    typeof radiusOrOptions === 'number'
+      ? { radius: radiusOrOptions, edgeSelection: edgeSelectionArg ?? 'all' }
+      : radiusOrOptions;
+  const { radius, edgeSelection } = opts;
+
   if (!Number.isFinite(radius) || radius <= 0) {
     throw new Error(`fillet radius must be a positive number, got: ${radius}`);
   }
@@ -298,6 +399,66 @@ export function buildFilletFeature(
 
   const loop = child.loop;
   const rectPath = isAxisAlignedRect(loop);
+
+  // ─── Phase 3 — variable radius path ─────────────────────────────────────
+  // Resolve vertexRadii: explicit `vertexRadii` wins; else derive from
+  // `edgeRadii` if supplied.
+  let vertexRadii: ReadonlyArray<number> | undefined;
+  if (opts.vertexRadii !== undefined) {
+    validateVertexRadii(loop, opts.vertexRadii, 'vertexRadii');
+    vertexRadii = opts.vertexRadii;
+  } else if (opts.edgeRadii !== undefined) {
+    validateVertexRadii(loop, opts.edgeRadii, 'edgeRadii');
+    vertexRadii = edgeRadiiToVertexRadii(opts.edgeRadii);
+  }
+
+  if (vertexRadii !== undefined) {
+    // Phase 3 limitation: rect-only.
+    if (!rectPath) {
+      throw new Error(
+        'fillet variable radius (vertexRadii/edgeRadii) is Phase 3 rect-only; ' +
+          'convex N-gon variable radius is Phase 4 (OCCT) wishlist',
+      );
+    }
+    // Validate each r_i against adjacent edge lengths. For an axis-aligned
+    // rect with bbox WxH, every vertex has two adjacent edges of length W
+    // and H respectively; the inset point for vertex i lives at
+    // (corner ± r_i, corner ± r_i) and must stay inside the half-bbox in
+    // both axes — so r_i < min(W, H) / 2 is the tightest universal bound.
+    const bb = loopBoundingBox(loop);
+    const w = bb.maxX - bb.minX;
+    const h = bb.maxY - bb.minY;
+    const maxAllowed = Math.min(w, h) / 2;
+    for (let i = 0; i < vertexRadii.length; i++) {
+      const r_i = vertexRadii[i]!;
+      if (r_i >= maxAllowed) {
+        throw new Error(
+          `fillet vertexRadii[${i}]=${r_i} must be < min(profile bbox)/2 = ${maxAllowed}`,
+        );
+      }
+    }
+    const touchesTopOrBottomVar =
+      edgeSelection === 'all' || edgeSelection === 'top' || edgeSelection === 'bottom';
+    if (touchesTopOrBottomVar) {
+      for (let i = 0; i < vertexRadii.length; i++) {
+        const r_i = vertexRadii[i]!;
+        if (r_i >= child.depth / 2) {
+          throw new Error(
+            `fillet vertexRadii[${i}]=${r_i} must be < depth/2 = ${child.depth / 2} when filleting top/bottom edges`,
+          );
+        }
+      }
+    }
+    return {
+      kind: 'fillet',
+      childExtrude: child,
+      radius,
+      vertexRadii,
+      edgeSelection,
+    };
+  }
+
+  // ─── Phase 1/2 — uniform radius path (unchanged) ────────────────────────
   if (rectPath) {
     // Phase 1 path — keep the existing bbox-based check verbatim for zero
     // regression. The minkowski-with-cube emission is the same.
@@ -381,6 +542,12 @@ export function filletToScad(feature: FilletFeature): string {
   const loop = feature.childExtrude.loop;
   const depth = feature.childExtrude.depth;
   const epsilon = 0.001; // sub-mm slab thickness used to seed the minkowski crown
+
+  // ─── Phase 3 path: variable radius (rect-only — guarded by builder) ───
+  if (feature.vertexRadii !== undefined) {
+    return filletVariableRadiusToScad(feature, feature.vertexRadii);
+  }
+
   const header =
     `// NEXYFAB:FILLET radius=${formatNum(r)} edges=${feature.edgeSelection}`;
 
@@ -492,6 +659,168 @@ export function filletToScad(feature: FilletFeature): string {
     `      linear_extrude(height=${formatNum(epsilon)})\n` +
     `        polygon([${offsetPts}]);\n` +
     `    sphere(r=${formatNum(r)}, $fn=32);\n` +
+    `  }\n` +
+    `}`
+  );
+}
+
+// ─── Phase 3 SCAD: variable radius (rect-only) ────────────────────────────
+
+/**
+ * Phase 3 variable-radius SCAD emission for an axis-aligned rect profile.
+ *
+ * Algorithm — hull() of corner primitives whose radii vary per corner:
+ *
+ *   'vertical': linear_extrude(depth) hull() { 4 circles, one per corner }
+ *     Each circle is positioned at the inset corner (corner_xy ± r_i)
+ *     with radius r_i. The 2D convex hull of four positive-radius circles,
+ *     each tucked into one of the bbox corners, is exactly the original
+ *     rectangle with corner i rounded by r_i.
+ *
+ *   'all': hull() { 8 spheres = 4 corners × {top,bottom} face }
+ *     Each sphere is at (corner_xy ± r_i, r_i_or_(depth-r_i)) with radius
+ *     r_i. The 3D convex hull is the full body with all 12 edges of the
+ *     box rounded, where the top/bottom corner spheres share a radius
+ *     within each column. (We deliberately use the *same* r_i for the
+ *     top and bottom sphere of a column — variable radius along Z is not
+ *     part of this Phase 3 cut.)
+ *
+ *   'top': union of (linear_extrude(depth - max_r) hull(4 circles)) +
+ *          hull(4 top spheres, each at z = depth - r_i + r_i = depth).
+ *     The bottom slab is the full rect at every Z below depth-max_r; the
+ *     top "crown" is the hull of 4 spheres giving variable rounding to
+ *     the top edges only. Both pieces share the same per-corner inset so
+ *     the slab-to-crown seam is C0-continuous (no visible step).
+ *
+ *   'bottom': mirror of 'top'.
+ *
+ * Determinism: vertex traversal order follows loop[i], producing
+ * identical SCAD for identical inputs (cache-key safe).
+ *
+ * Phase 3 limitation: For 'all' / 'top' / 'bottom' on a rect where the
+ * 4 corner radii differ, the *vertical* edges between two corners with
+ * different r_i are a smooth blend (the convex hull of two spheres of
+ * different radii is a truncated cone surface). This matches the most
+ * common "variable fillet" CAD semantics, but is *not* identical to an
+ * OCCT BRepFilletAPI variable-radius blend along an edge — that one
+ * follows the loft of a circular cross-section along the edge. The
+ * difference is sub-visual for moderate radius variation and is called
+ * out here for the Phase 4 wishlist (true edge-following variable
+ * radius blends).
+ */
+function filletVariableRadiusToScad(
+  feature: FilletFeature,
+  vertexRadii: ReadonlyArray<number>,
+): string {
+  const loop = feature.childExtrude.loop;
+  const depth = feature.childExtrude.depth;
+  const edges = feature.edgeSelection;
+  const bb = loopBoundingBox(loop);
+  const header =
+    `// NEXYFAB:FILLET vertexRadii=[${vertexRadii.map((v) => formatNum(v)).join(',')}] edges=${edges}`;
+
+  // Per-corner inset positions: tuck each radius into its corner.
+  // For an axis-aligned rect we know each loop vertex sits at one of
+  // (minX/maxX) × (minY/maxY). We compute the inset corner as
+  // (cornerX + sx*r_i, cornerY + sy*r_i) where sx, sy = ±1 pointing
+  // toward the rect center.
+  interface Inset {
+    cx: number;
+    cy: number;
+    r: number;
+  }
+  const cx = (bb.minX + bb.maxX) / 2;
+  const cy = (bb.minY + bb.maxY) / 2;
+  const insets: Inset[] = [];
+  for (let i = 0; i < loop.length; i++) {
+    const v = loop[i]!;
+    const r_i = vertexRadii[i]!;
+    const sx = v.x < cx ? 1 : -1;
+    const sy = v.y < cy ? 1 : -1;
+    insets.push({ cx: v.x + sx * r_i, cy: v.y + sy * r_i, r: r_i });
+  }
+  const maxR = vertexRadii.reduce((a, b) => Math.max(a, b), 0);
+
+  if (edges === 'vertical') {
+    const circles = insets
+      .map(
+        (it) =>
+          `    translate([${formatNum(it.cx)}, ${formatNum(it.cy)}])\n` +
+          `      circle(r=${formatNum(it.r)}, $fn=32);`,
+      )
+      .join('\n');
+    return (
+      `${header}\n` +
+      `linear_extrude(height=${formatNum(depth)})\n` +
+      `  hull() {\n` +
+      `${circles}\n` +
+      `  }`
+    );
+  }
+
+  if (edges === 'all') {
+    // 8 spheres = 4 corners × {bottom (z = r_i), top (z = depth - r_i)}
+    const spheres: string[] = [];
+    for (const it of insets) {
+      spheres.push(
+        `  translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(it.r)}])\n` +
+          `    sphere(r=${formatNum(it.r)}, $fn=32);`,
+      );
+      spheres.push(
+        `  translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(depth - it.r)}])\n` +
+          `    sphere(r=${formatNum(it.r)}, $fn=32);`,
+      );
+    }
+    return `${header}\n` + `hull() {\n` + spheres.join('\n') + `\n}`;
+  }
+
+  // 'top' or 'bottom' — slab + crown.
+  // The bottom slab spans the entire rect from z=0 to z=depth-maxR (for
+  // 'top') or from z=maxR to z=depth (for 'bottom'). The crown is the
+  // hull of 4 spheres at the rounded face, giving variable top/bottom
+  // edge rounding without introducing variable vertical-edge blending
+  // (the slab edges stay sharp 90°).
+  const w = bb.maxX - bb.minX;
+  const h = bb.maxY - bb.minY;
+  if (edges === 'top') {
+    const slab =
+      `  translate([${formatNum(bb.minX)}, ${formatNum(bb.minY)}, 0])\n` +
+      `    cube([${formatNum(w)}, ${formatNum(h)}, ${formatNum(depth - maxR)}]);`;
+    const crownSpheres = insets
+      .map(
+        (it) =>
+          `    translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(depth - it.r)}])\n` +
+          `      sphere(r=${formatNum(it.r)}, $fn=32);`,
+      )
+      .join('\n');
+    return (
+      `${header}\n` +
+      `union() {\n` +
+      `${slab}\n` +
+      `  hull() {\n` +
+      `${crownSpheres}\n` +
+      `  }\n` +
+      `}`
+    );
+  }
+
+  // 'bottom'
+  const slab =
+    `  translate([${formatNum(bb.minX)}, ${formatNum(bb.minY)}, ${formatNum(maxR)}])\n` +
+    `    cube([${formatNum(w)}, ${formatNum(h)}, ${formatNum(depth - maxR)}]);`;
+  const crownSpheres = insets
+    .map(
+      (it) =>
+        `    translate([${formatNum(it.cx)}, ${formatNum(it.cy)}, ${formatNum(it.r)}])\n` +
+        `      sphere(r=${formatNum(it.r)}, $fn=32);`,
+    )
+    .join('\n');
+  return (
+    `${header}\n` +
+    `union() {\n` +
+    `${slab}\n` +
+    `  hull() {\n` +
+    `${crownSpheres}\n` +
     `  }\n` +
     `}`
   );

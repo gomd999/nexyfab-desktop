@@ -178,4 +178,66 @@ describe('chamferFromSketch', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/bbox|2\.5/);
   });
+
+  it('Phase 3: vertexDistances input → SCAD hull-of-squares output', () => {
+    const r = chamferFromSketch(rectSketch(), {
+      depth: 20,
+      distance: 1,
+      edgeSelection: 'vertical',
+      vertexDistances: [0.5, 1, 1.5, 1],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('hull()');
+      expect(r.scad).toContain('NEXYFAB:CHAMFER vertexDistances');
+      expect(r.chamfer.vertexDistances).toEqual([0.5, 1, 1.5, 1]);
+    }
+  });
+
+  it('Phase 3: edgeDistances input → vertexDistances via max(adjacent) in IR', () => {
+    const r = chamferFromSketch(rectSketch(), {
+      depth: 20,
+      distance: 2,
+      edgeSelection: 'vertical',
+      edgeDistances: [1, 2, 1, 2],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.chamfer.vertexDistances).toEqual([2, 2, 2, 2]);
+    }
+  });
+
+  it('Phase 3: vertexDistances of wrong length → error', () => {
+    const r = chamferFromSketch(rectSketch(), {
+      depth: 20,
+      distance: 1,
+      edgeSelection: 'vertical',
+      vertexDistances: [1, 1],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/vertexDistances length/);
+  });
+
+  it('Phase 3: convex N-gon + vertexDistances → Phase 4 wishlist error', () => {
+    const triangle = {
+      points: [
+        { id: 'p1', x: 0, y: 0 },
+        { id: 'p2', x: 10, y: 0 },
+        { id: 'p3', x: 5, y: 5 },
+      ],
+      lines: [
+        { id: 'l1', p1: 'p1', p2: 'p2' },
+        { id: 'l2', p1: 'p2', p2: 'p3' },
+        { id: 'l3', p1: 'p3', p2: 'p1' },
+      ],
+    };
+    const r = chamferFromSketch(triangle, {
+      depth: 20,
+      distance: 0.3,
+      edgeSelection: 'vertical',
+      vertexDistances: [0.3, 0.3, 0.3],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/Phase 3 rect-only|Phase 4/);
+  });
 });

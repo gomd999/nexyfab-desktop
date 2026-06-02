@@ -35,6 +35,10 @@ interface ChamferRenderBody {
   sketch?: SolverViewState;
   depth?: number;
   distance?: number;
+  /** Phase 3 — per-vertex chamfer distances (rect-only). */
+  vertexDistances?: number[];
+  /** Phase 3 — per-edge chamfer distances (rect-only). */
+  edgeDistances?: number[];
   edgeSelection?: ChamferEdgeSelection;
   views?: { label: string; camera: string }[];
   includeStl?: boolean;
@@ -92,11 +96,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
-  if (!isFiniteNum(body.distance) || body.distance <= 0) {
+  const hasVariableInput =
+    Array.isArray(body.vertexDistances) || Array.isArray(body.edgeDistances);
+  if (!hasVariableInput && (!isFiniteNum(body.distance) || body.distance <= 0)) {
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'distance must be a positive number' },
       { status: 400 },
     );
+  }
+  const validatePosArray = (arr: unknown, label: string): string | null => {
+    if (!Array.isArray(arr)) return null;
+    for (let i = 0; i < arr.length; i++) {
+      const v = arr[i];
+      if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) {
+        return `${label}[${i}] must be a positive finite number`;
+      }
+    }
+    return null;
+  };
+  const vdErr = validatePosArray(body.vertexDistances, 'vertexDistances');
+  if (vdErr) {
+    return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: vdErr }, { status: 400 });
+  }
+  const edErr = validatePosArray(body.edgeDistances, 'edgeDistances');
+  if (edErr) {
+    return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: edErr }, { status: 400 });
   }
   const edgeSelection: ChamferEdgeSelection = body.edgeSelection ?? 'all';
   if (!ALLOWED_EDGES.includes(edgeSelection)) {
@@ -111,12 +135,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const touchesTopOrBottom =
     edgeSelection === 'all' || edgeSelection === 'top' || edgeSelection === 'bottom';
-  if (touchesTopOrBottom && body.distance >= body.depth / 3) {
+  const effectiveMaxDistance = Array.isArray(body.vertexDistances)
+    ? Math.max(...body.vertexDistances)
+    : Array.isArray(body.edgeDistances)
+      ? Math.max(...body.edgeDistances)
+      : (body.distance as number);
+  if (touchesTopOrBottom && effectiveMaxDistance >= body.depth / 3) {
     return NextResponse.json(
       {
         ok: false,
         code: 'BAD_REQUEST',
-        message: `distance ${body.distance} must be < depth/3 = ${body.depth / 3} when chamfering top/bottom edges`,
+        message: `distance ${effectiveMaxDistance} must be < depth/3 = ${body.depth / 3} when chamfering top/bottom edges`,
       },
       { status: 400 },
     );
@@ -131,8 +160,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const pipeline = chamferFromSketch(body.sketch, {
     depth: body.depth,
-    distance: body.distance,
+    distance: isFiniteNum(body.distance) && body.distance > 0 ? body.distance : effectiveMaxDistance,
     edgeSelection,
+    ...(Array.isArray(body.vertexDistances) ? { vertexDistances: body.vertexDistances } : {}),
+    ...(Array.isArray(body.edgeDistances) ? { edgeDistances: body.edgeDistances } : {}),
   });
   if (!pipeline.ok) {
     return NextResponse.json(

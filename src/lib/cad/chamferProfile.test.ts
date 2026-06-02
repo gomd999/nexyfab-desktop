@@ -2,7 +2,11 @@
  * chamferProfile — IR builder + SCAD serializer tests (Phase 2.2).
  */
 import { describe, it, expect } from 'vitest';
-import { buildChamferFeature, chamferToScad } from './chamferProfile';
+import {
+  buildChamferFeature,
+  chamferToScad,
+  edgeDistancesToVertexDistances,
+} from './chamferProfile';
 import type { ExtrudeFeature } from './extrudeProfile';
 
 function rectExtrude(depth = 20): ExtrudeFeature {
@@ -296,5 +300,210 @@ describe('chamferToScad', () => {
     const t = chamferToScad(buildChamferFeature(rectExtrude(), 1, 'top'));
     const b = chamferToScad(buildChamferFeature(rectExtrude(), 1, 'bottom'));
     expect(new Set([a, v, t, b]).size).toBe(4);
+  });
+});
+
+// ─── Phase 3: variable distance per vertex / per edge ─────────────────────
+
+describe('edgeDistancesToVertexDistances (Phase 3)', () => {
+  it('uniform → uniform', () => {
+    expect(edgeDistancesToVertexDistances([1, 1, 1, 1])).toEqual([1, 1, 1, 1]);
+  });
+  it('picks max of two adjacent edges per corner', () => {
+    expect(edgeDistancesToVertexDistances([1, 3, 2, 4])).toEqual([4, 3, 3, 4]);
+  });
+});
+
+describe('buildChamferFeature (Phase 3 variable distance)', () => {
+  it('accepts vertexDistances of correct length on rect', () => {
+    const f = buildChamferFeature(rectExtrude(), {
+      distance: 1,
+      edgeSelection: 'vertical',
+      vertexDistances: [0.5, 1, 1.5, 1],
+    });
+    expect(f.kind).toBe('chamfer');
+    expect(f.vertexDistances).toEqual([0.5, 1, 1.5, 1]);
+  });
+
+  it('accepts edgeDistances → uniform vertexDistances when all equal', () => {
+    const f = buildChamferFeature(rectExtrude(), {
+      distance: 2,
+      edgeSelection: 'vertical',
+      edgeDistances: [2, 2, 2, 2],
+    });
+    expect(f.vertexDistances).toEqual([2, 2, 2, 2]);
+  });
+
+  it('vertexDistances precedence over edgeDistances when both supplied', () => {
+    const f = buildChamferFeature(rectExtrude(), {
+      distance: 1,
+      edgeSelection: 'vertical',
+      vertexDistances: [0.5, 0.5, 0.5, 0.5],
+      edgeDistances: [9, 9, 9, 9],
+    });
+    expect(f.vertexDistances).toEqual([0.5, 0.5, 0.5, 0.5]);
+  });
+
+  it('rejects vertexDistances with wrong length', () => {
+    expect(() =>
+      buildChamferFeature(rectExtrude(), {
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [1, 1, 1],
+      }),
+    ).toThrow(/vertexDistances length/);
+  });
+
+  it('rejects vertexDistances with negative or zero entry', () => {
+    expect(() =>
+      buildChamferFeature(rectExtrude(), {
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [1, -1, 1, 1],
+      }),
+    ).toThrow(/vertexDistances\[1\].*positive/);
+    expect(() =>
+      buildChamferFeature(rectExtrude(), {
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [1, 0, 1, 1],
+      }),
+    ).toThrow(/vertexDistances\[1\].*positive/);
+  });
+
+  it('rejects vertexDistances entry ≥ min(bbox)/2', () => {
+    expect(() =>
+      buildChamferFeature(rectExtrude(), {
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [1, 1, 1, 3],
+      }),
+    ).toThrow(/vertexDistances\[3\].*bbox/);
+  });
+
+  it('rejects vertexDistances entry ≥ depth/2 when chamfering top/bottom', () => {
+    const wide: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 },
+      ],
+      depth: 4,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    expect(() =>
+      buildChamferFeature(wide, {
+        distance: 1,
+        edgeSelection: 'all',
+        vertexDistances: [1, 1, 3, 1],
+      }),
+    ).toThrow(/vertexDistances\[2\].*depth\/2/);
+  });
+
+  it('throws Phase 4 wishlist error for convex N-gon + vertexDistances', () => {
+    const tri: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 5, y: 5 },
+      ],
+      depth: 20,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    expect(() =>
+      buildChamferFeature(tri, {
+        distance: 0.3,
+        edgeSelection: 'vertical',
+        vertexDistances: [0.3, 0.3, 0.3],
+      }),
+    ).toThrow(/Phase 3 rect-only|Phase 4/);
+  });
+});
+
+describe('chamferToScad (Phase 3 variable distance)', () => {
+  it('vertexDistances vertical: emits hull of 4 rotated $fn=4 circles with varying half-diag', () => {
+    const f = buildChamferFeature(rectExtrude(), {
+      distance: 1,
+      edgeSelection: 'vertical',
+      vertexDistances: [0.5, 1, 1.5, 1],
+    });
+    const scad = chamferToScad(f);
+    expect(scad).toContain('linear_extrude');
+    expect(scad).toContain('hull()');
+    expect(scad).toMatch(/rotate\(\[0, 0, 45\]\) circle\(r=/);
+    expect(scad).toContain('NEXYFAB:CHAMFER vertexDistances=[0.5,1,1.5,1]');
+    expect(scad).not.toContain('minkowski()');
+  });
+
+  it('vertexDistances all: emits hull of 8 octahedra (4 corners × top/bottom)', () => {
+    const f = buildChamferFeature(rectExtrude(20), {
+      distance: 1,
+      edgeSelection: 'all',
+      vertexDistances: [1, 2, 1, 2],
+    });
+    const scad = chamferToScad(f);
+    expect(scad).toContain('hull()');
+    const polyCount = (scad.match(/polyhedron\(/g) ?? []).length;
+    expect(polyCount).toBe(8);
+  });
+
+  it('edgeDistances [2,2,2,2] produces same number of seed primitives as uniform', () => {
+    const f = buildChamferFeature(rectExtrude(), {
+      distance: 2,
+      edgeSelection: 'vertical',
+      edgeDistances: [2, 2, 2, 2],
+    });
+    const scad = chamferToScad(f);
+    // 4 rotated $fn=4 circles in the hull.
+    const r2Count = (scad.match(/circle\(r=/g) ?? []).length;
+    expect(r2Count).toBe(4);
+  });
+
+  it('vertexDistances top: emits union of slab + hull of 4 octahedra', () => {
+    const f = buildChamferFeature(rectExtrude(20), {
+      distance: 1,
+      edgeSelection: 'top',
+      vertexDistances: [1, 2, 1, 2],
+    });
+    const scad = chamferToScad(f);
+    expect(scad).toContain('union()');
+    expect(scad).toContain('hull()');
+    const polyCount = (scad.match(/polyhedron\(/g) ?? []).length;
+    expect(polyCount).toBe(4);
+    // Slab height = depth - maxD = 18
+    expect(scad).toMatch(/cube\(\[10, 5, 18\]\)/);
+  });
+
+  it('vertexDistances bottom: slab translated up by maxD', () => {
+    const f = buildChamferFeature(rectExtrude(20), {
+      distance: 1,
+      edgeSelection: 'bottom',
+      vertexDistances: [1, 2, 1, 2],
+    });
+    const scad = chamferToScad(f);
+    expect(scad).toMatch(/translate\(\[0, 0, 2\]\)[\s\S]*cube\(\[10, 5, 18\]\)/);
+  });
+
+  it('deterministic for identical vertexDistances inputs', () => {
+    const opts = {
+      distance: 1,
+      edgeSelection: 'vertical' as const,
+      vertexDistances: [0.5, 1, 1.5, 1],
+    };
+    const a = chamferToScad(buildChamferFeature(rectExtrude(), opts));
+    const b = chamferToScad(buildChamferFeature(rectExtrude(), opts));
+    expect(a).toBe(b);
+  });
+
+  it('uniform path NOT affected when no vertexDistances given (no regression)', () => {
+    const f = buildChamferFeature(rectExtrude(), 1, 'all');
+    const scad = chamferToScad(f);
+    expect(scad).toContain('minkowski()');
+    expect(scad).not.toContain('hull()');
   });
 });

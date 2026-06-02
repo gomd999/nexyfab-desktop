@@ -170,6 +170,79 @@ describe('POST /api/fillet-render — validation', () => {
     expect(data.message).toMatch(/convex/i);
   });
 
+  it('Phase 3: accepts vertexRadii body', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [0.5, 1, 1.5, 1],
+      }) as never,
+    );
+    expect(r.status).not.toBe(400);
+    expect(r.status).not.toBe(422);
+  });
+
+  it('Phase 3: accepts edgeRadii body', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        radius: 2,
+        edgeSelection: 'vertical',
+        edgeRadii: [2, 2, 2, 2],
+      }) as never,
+    );
+    expect(r.status).not.toBe(400);
+    expect(r.status).not.toBe(422);
+  });
+
+  it('Phase 3: vertexRadii negative entry → 400 BAD_REQUEST', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [1, -1, 1, 1],
+      }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.message).toMatch(/vertexRadii\[1\]/);
+  });
+
+  it('Phase 3: vertexRadii length mismatch → 422 PIPELINE_ERROR', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [1, 1], // wrong length
+      }) as never,
+    );
+    expect(r.status).toBe(422);
+    const data = await r.json();
+    expect(data.message).toMatch(/vertexRadii length/);
+  });
+
+  it('Phase 3: variable max(vertexRadii) ≥ depth/3 → 400 with effective max', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 10,
+        radius: 1,
+        edgeSelection: 'all',
+        vertexRadii: [1, 1, 4, 1], // max=4 ≥ 10/3
+      }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.message).toMatch(/depth\/3/);
+  });
+
   it('valid rect fillet reaches the render step (openscad CLI not available → ENOENT 503)', async () => {
     const r = await POST(
       makeReq({

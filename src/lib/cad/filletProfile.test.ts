@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildFilletFeature,
+  edgeRadiiToVertexRadii,
   filletToScad,
   isConvexPolygon,
   offsetPolygonInward,
@@ -473,5 +474,235 @@ describe('filletToScad', () => {
     const t = filletToScad(buildFilletFeature(rectExtrude(), 1, 'top'));
     const b = filletToScad(buildFilletFeature(rectExtrude(), 1, 'bottom'));
     expect(new Set([a, v, t, b]).size).toBe(4);
+  });
+});
+
+// ─── Phase 3: variable radius per vertex / per edge ───────────────────────
+
+describe('edgeRadiiToVertexRadii (Phase 3)', () => {
+  it('converts uniform edgeRadii to a uniform vertexRadii array', () => {
+    expect(edgeRadiiToVertexRadii([2, 2, 2, 2])).toEqual([2, 2, 2, 2]);
+  });
+
+  it('picks max of two adjacent edges per corner', () => {
+    // edges: e0=loop[0]→loop[1], e1=loop[1]→loop[2], ...
+    // corner i sits between edge (i-1) and edge i.
+    expect(edgeRadiiToVertexRadii([1, 3, 2, 4])).toEqual([
+      Math.max(4, 1), // corner 0: edges 3 + 0 → max(4,1)=4
+      Math.max(1, 3), // corner 1: edges 0 + 1 → max(1,3)=3
+      Math.max(3, 2), // corner 2: edges 1 + 2 → max(3,2)=3
+      Math.max(2, 4), // corner 3: edges 2 + 3 → max(2,4)=4
+    ]);
+  });
+});
+
+describe('buildFilletFeature (Phase 3 variable radius)', () => {
+  it('accepts vertexRadii of correct length on rect', () => {
+    const f = buildFilletFeature(rectExtrude(), {
+      radius: 1,
+      edgeSelection: 'vertical',
+      vertexRadii: [0.5, 1, 1.5, 1],
+    });
+    expect(f.kind).toBe('fillet');
+    expect(f.vertexRadii).toEqual([0.5, 1, 1.5, 1]);
+  });
+
+  it('accepts edgeRadii [2,2,2,2] and produces uniform vertexRadii', () => {
+    const f = buildFilletFeature(rectExtrude(), {
+      radius: 2,
+      edgeSelection: 'vertical',
+      edgeRadii: [2, 2, 2, 2],
+    });
+    expect(f.vertexRadii).toEqual([2, 2, 2, 2]);
+  });
+
+  it('vertexRadii precedence over edgeRadii when both supplied', () => {
+    const f = buildFilletFeature(rectExtrude(), {
+      radius: 1,
+      edgeSelection: 'vertical',
+      vertexRadii: [0.5, 0.5, 0.5, 0.5],
+      edgeRadii: [9, 9, 9, 9], // would blow past bbox if used
+    });
+    expect(f.vertexRadii).toEqual([0.5, 0.5, 0.5, 0.5]);
+  });
+
+  it('rejects vertexRadii with wrong length', () => {
+    expect(() =>
+      buildFilletFeature(rectExtrude(), {
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [1, 1, 1], // 3 entries, rect has 4 vertices
+      }),
+    ).toThrow(/vertexRadii length/);
+  });
+
+  it('rejects vertexRadii with negative entry', () => {
+    expect(() =>
+      buildFilletFeature(rectExtrude(), {
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [1, -1, 1, 1],
+      }),
+    ).toThrow(/vertexRadii\[1\].*positive/);
+  });
+
+  it('rejects vertexRadii with zero entry', () => {
+    expect(() =>
+      buildFilletFeature(rectExtrude(), {
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [1, 0, 1, 1],
+      }),
+    ).toThrow(/vertexRadii\[1\].*positive/);
+  });
+
+  it('rejects vertexRadii entry ≥ min(bbox)/2', () => {
+    // rect 10×5 → min/2 = 2.5
+    expect(() =>
+      buildFilletFeature(rectExtrude(), {
+        radius: 1,
+        edgeSelection: 'vertical',
+        vertexRadii: [1, 1, 1, 3], // 3 > 2.5
+      }),
+    ).toThrow(/vertexRadii\[3\].*bbox/);
+  });
+
+  it('rejects vertexRadii entry ≥ depth/2 when filleting top/bottom', () => {
+    const wide: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 },
+      ],
+      depth: 4,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    expect(() =>
+      buildFilletFeature(wide, {
+        radius: 1,
+        edgeSelection: 'top',
+        vertexRadii: [1, 1, 3, 1], // 3 ≥ depth/2=2
+      }),
+    ).toThrow(/vertexRadii\[2\].*depth\/2/);
+  });
+
+  it('throws Phase 4 wishlist error for convex N-gon + vertexRadii', () => {
+    const tri: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 5, y: 5 },
+      ],
+      depth: 20,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    expect(() =>
+      buildFilletFeature(tri, {
+        radius: 0.3,
+        edgeSelection: 'vertical',
+        vertexRadii: [0.3, 0.3, 0.3],
+      }),
+    ).toThrow(/Phase 3 rect-only|Phase 4/);
+  });
+});
+
+describe('filletToScad (Phase 3 variable radius)', () => {
+  it('vertexRadii [0.5,1,1.5,1] vertical: emits hull of 4 circles with varying r', () => {
+    const f = buildFilletFeature(rectExtrude(), {
+      radius: 1,
+      edgeSelection: 'vertical',
+      vertexRadii: [0.5, 1, 1.5, 1],
+    });
+    const scad = filletToScad(f);
+    expect(scad).toContain('linear_extrude');
+    expect(scad).toContain('hull()');
+    expect(scad).toMatch(/circle\(r=0\.5/);
+    expect(scad).toMatch(/circle\(r=1\.5/);
+    expect(scad).toContain('NEXYFAB:FILLET vertexRadii=[0.5,1,1.5,1]');
+    // Must NOT use the uniform minkowski emission.
+    expect(scad).not.toContain('minkowski()');
+  });
+
+  it('vertexRadii [2,3,2,3] all on a tall rect: emits hull of 8 spheres', () => {
+    // 10×5 rect, depth=20. vertexRadii must satisfy < bbox/2 = 2.5; use
+    // [1,2,1,2] instead.
+    const f = buildFilletFeature(rectExtrude(20), {
+      radius: 1,
+      edgeSelection: 'all',
+      vertexRadii: [1, 2, 1, 2],
+    });
+    const scad = filletToScad(f);
+    expect(scad).toContain('hull()');
+    // Count sphere() occurrences — should be 8 (4 corners × top/bottom).
+    const sphereCount = (scad.match(/sphere\(/g) ?? []).length;
+    expect(sphereCount).toBe(8);
+    expect(scad).toMatch(/sphere\(r=1/);
+    expect(scad).toMatch(/sphere\(r=2/);
+  });
+
+  it('edgeRadii [2,2,2,2] vertical: result is identical shape to uniform r=2 (hull of 4 r=2 circles)', () => {
+    const f = buildFilletFeature(rectExtrude(), {
+      radius: 2,
+      edgeSelection: 'vertical',
+      edgeRadii: [2, 2, 2, 2],
+    });
+    const scad = filletToScad(f);
+    expect(scad).toContain('hull()');
+    // All four circles should have r=2.
+    const r2Count = (scad.match(/circle\(r=2,/g) ?? []).length;
+    expect(r2Count).toBe(4);
+  });
+
+  it('vertexRadii top: emits union of slab + hull of 4 top spheres', () => {
+    const f = buildFilletFeature(rectExtrude(20), {
+      radius: 1,
+      edgeSelection: 'top',
+      vertexRadii: [1, 2, 1, 2],
+    });
+    const scad = filletToScad(f);
+    expect(scad).toContain('union()');
+    expect(scad).toContain('hull()');
+    // Bottom slab height = depth - maxR = 20 - 2 = 18
+    expect(scad).toMatch(/cube\(\[10, 5, 18\]\)/);
+    // 4 top spheres in the hull
+    const sphereCount = (scad.match(/sphere\(/g) ?? []).length;
+    expect(sphereCount).toBe(4);
+  });
+
+  it('vertexRadii bottom: emits union of upper slab + hull of 4 bottom spheres', () => {
+    const f = buildFilletFeature(rectExtrude(20), {
+      radius: 1,
+      edgeSelection: 'bottom',
+      vertexRadii: [1, 2, 1, 2],
+    });
+    const scad = filletToScad(f);
+    expect(scad).toContain('union()');
+    expect(scad).toContain('hull()');
+    // Upper slab translated to z = maxR = 2
+    expect(scad).toMatch(/translate\(\[0, 0, 2\]\)[\s\S]*cube\(\[10, 5, 18\]\)/);
+  });
+
+  it('determistic for identical vertexRadii inputs', () => {
+    const opts = {
+      radius: 1,
+      edgeSelection: 'vertical' as const,
+      vertexRadii: [0.5, 1, 1.5, 1],
+    };
+    const a = filletToScad(buildFilletFeature(rectExtrude(), opts));
+    const b = filletToScad(buildFilletFeature(rectExtrude(), opts));
+    expect(a).toBe(b);
+  });
+
+  it('uniform radius path NOT affected when no vertexRadii given (no regression)', () => {
+    const f = buildFilletFeature(rectExtrude(), 1, 'all');
+    const scad = filletToScad(f);
+    // Uniform path still uses minkowski, not hull.
+    expect(scad).toContain('minkowski()');
+    expect(scad).not.toContain('hull()');
   });
 });

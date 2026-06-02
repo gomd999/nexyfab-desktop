@@ -52,8 +52,16 @@ export interface FilletFromSketchOptions {
   /** Extrude depth (mm) for the child body to be filleted. Must be > 0. */
   depth: number;
   /** Uniform fillet radius (mm). Must be > 0 and < min(profileBBox)/2;
-   *  for top/bottom edge selections also < depth/2. */
+   *  for top/bottom edge selections also < depth/2. Used when neither
+   *  vertexRadii nor edgeRadii is provided. */
   radius: number;
+  /** Phase 3 — per-vertex radii (rect-only). When supplied this takes
+   *  precedence over `radius` in the IR builder. Length must equal
+   *  the extracted loop vertex count; every entry > 0. */
+  vertexRadii?: ReadonlyArray<number>;
+  /** Phase 3 — per-edge radii (rect-only). When supplied (and vertexRadii
+   *  is not), the IR auto-converts via max(adjacent edge radii). */
+  edgeRadii?: ReadonlyArray<number>;
   edgeSelection: FilletEdgeSelection;
   featureName?: string;
 }
@@ -108,7 +116,16 @@ export function filletFromSketch(
 
   let fillet: FilletFeature;
   try {
-    fillet = buildFilletFeature(childExtrude, opts.radius, opts.edgeSelection);
+    if (opts.vertexRadii !== undefined || opts.edgeRadii !== undefined) {
+      fillet = buildFilletFeature(childExtrude, {
+        radius: opts.radius,
+        edgeSelection: opts.edgeSelection,
+        ...(opts.vertexRadii !== undefined ? { vertexRadii: opts.vertexRadii } : {}),
+        ...(opts.edgeRadii !== undefined ? { edgeRadii: opts.edgeRadii } : {}),
+      });
+    } else {
+      fillet = buildFilletFeature(childExtrude, opts.radius, opts.edgeSelection);
+    }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

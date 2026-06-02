@@ -162,4 +162,67 @@ describe('filletFromSketch', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/bbox|2\.5/);
   });
+
+  it('Phase 3: vertexRadii input → SCAD hull-of-circles output', () => {
+    const r = filletFromSketch(rectSketch(), {
+      depth: 20,
+      radius: 1,
+      edgeSelection: 'vertical',
+      vertexRadii: [0.5, 1, 1.5, 1],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('hull()');
+      expect(r.scad).toContain('NEXYFAB:FILLET vertexRadii');
+      expect(r.fillet.vertexRadii).toEqual([0.5, 1, 1.5, 1]);
+    }
+  });
+
+  it('Phase 3: edgeRadii input → vertexRadii via max(adjacent) in IR', () => {
+    const r = filletFromSketch(rectSketch(), {
+      depth: 20,
+      radius: 2,
+      edgeSelection: 'vertical',
+      edgeRadii: [1, 2, 1, 2],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      // corners: max(2,1)=2, max(1,2)=2, max(2,1)=2, max(1,2)=2
+      expect(r.fillet.vertexRadii).toEqual([2, 2, 2, 2]);
+    }
+  });
+
+  it('Phase 3: vertexRadii of wrong length → error', () => {
+    const r = filletFromSketch(rectSketch(), {
+      depth: 20,
+      radius: 1,
+      edgeSelection: 'vertical',
+      vertexRadii: [1, 1], // wrong length
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/vertexRadii length/);
+  });
+
+  it('Phase 3: convex N-gon + vertexRadii → Phase 4 wishlist error', () => {
+    const triangle = {
+      points: [
+        { id: 'p1', x: 0, y: 0 },
+        { id: 'p2', x: 10, y: 0 },
+        { id: 'p3', x: 5, y: 5 },
+      ],
+      lines: [
+        { id: 'l1', p1: 'p1', p2: 'p2' },
+        { id: 'l2', p1: 'p2', p2: 'p3' },
+        { id: 'l3', p1: 'p3', p2: 'p1' },
+      ],
+    };
+    const r = filletFromSketch(triangle, {
+      depth: 20,
+      radius: 0.3,
+      edgeSelection: 'vertical',
+      vertexRadii: [0.3, 0.3, 0.3],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/Phase 3 rect-only|Phase 4/);
+  });
 });

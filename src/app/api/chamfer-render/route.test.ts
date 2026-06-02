@@ -169,6 +169,79 @@ describe('POST /api/chamfer-render — validation', () => {
     expect(data.message).toMatch(/convex/i);
   });
 
+  it('Phase 3: accepts vertexDistances body', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [0.5, 1, 1.5, 1],
+      }) as never,
+    );
+    expect(r.status).not.toBe(400);
+    expect(r.status).not.toBe(422);
+  });
+
+  it('Phase 3: accepts edgeDistances body', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        distance: 2,
+        edgeSelection: 'vertical',
+        edgeDistances: [2, 2, 2, 2],
+      }) as never,
+    );
+    expect(r.status).not.toBe(400);
+    expect(r.status).not.toBe(422);
+  });
+
+  it('Phase 3: vertexDistances negative entry → 400 BAD_REQUEST', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [1, -1, 1, 1],
+      }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.message).toMatch(/vertexDistances\[1\]/);
+  });
+
+  it('Phase 3: vertexDistances length mismatch → 422 PIPELINE_ERROR', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 20,
+        distance: 1,
+        edgeSelection: 'vertical',
+        vertexDistances: [1, 1],
+      }) as never,
+    );
+    expect(r.status).toBe(422);
+    const data = await r.json();
+    expect(data.message).toMatch(/vertexDistances length/);
+  });
+
+  it('Phase 3: variable max(vertexDistances) ≥ depth/3 → 400 with effective max', async () => {
+    const r = await POST(
+      makeReq({
+        sketch: rectSketch,
+        depth: 10,
+        distance: 1,
+        edgeSelection: 'all',
+        vertexDistances: [1, 1, 4, 1],
+      }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.message).toMatch(/depth\/3/);
+  });
+
   it('valid rect chamfer reaches the render step (openscad CLI not available → ENOENT 503)', async () => {
     const r = await POST(
       makeReq({
