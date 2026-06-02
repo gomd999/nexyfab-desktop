@@ -113,6 +113,13 @@ interface PageDict {
   assemblyResultLabel: string;
   assemblyWarningsTitle: string;
   assemblyExportError: string;
+  editSheet: string;
+  removeSheet: string;
+  addAllSheets: string;
+  clearAllSheets: string;
+  confirmRemoveSheet: string;
+  confirmClearAllSheets: string;
+  closeEditor: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -152,6 +159,13 @@ const DICT: Record<string, PageDict> = {
     assemblyResultLabel: '조립체 내보내기 결과',
     assemblyWarningsTitle: '조립체 경고',
     assemblyExportError: '조립체 STEP 내보내기 실패',
+    editSheet: '시트 편집',
+    removeSheet: '시트 삭제',
+    addAllSheets: '모든 부품에 시트 추가',
+    clearAllSheets: '모든 시트 제거',
+    confirmRemoveSheet: '이 시트를 삭제하시겠습니까?',
+    confirmClearAllSheets: '모든 부품의 시트를 제거하시겠습니까?',
+    closeEditor: '닫기',
   },
   en: {
     title: 'Drawing Studio',
@@ -189,6 +203,13 @@ const DICT: Record<string, PageDict> = {
     assemblyResultLabel: 'Assembly export result',
     assemblyWarningsTitle: 'Assembly warnings',
     assemblyExportError: 'Assembly STEP export failed',
+    editSheet: 'Edit sheet',
+    removeSheet: 'Remove sheet',
+    addAllSheets: 'Add sheets for all parts',
+    clearAllSheets: 'Clear all sheets',
+    confirmRemoveSheet: 'Remove this sheet?',
+    confirmClearAllSheets: 'Remove sheets for all parts?',
+    closeEditor: 'Close',
   },
   ja: {
     title: '図面スタジオ',
@@ -226,6 +247,13 @@ const DICT: Record<string, PageDict> = {
     assemblyResultLabel: 'アセンブリ エクスポート結果',
     assemblyWarningsTitle: 'アセンブリ警告',
     assemblyExportError: 'アセンブリ STEP エクスポートに失敗しました',
+    editSheet: 'シート編集',
+    removeSheet: 'シート削除',
+    addAllSheets: 'すべての部品にシート追加',
+    clearAllSheets: 'すべてのシートを削除',
+    confirmRemoveSheet: 'このシートを削除しますか？',
+    confirmClearAllSheets: 'すべての部品のシートを削除しますか？',
+    closeEditor: '閉じる',
   },
   zh: {
     title: '图纸工作室',
@@ -263,6 +291,13 @@ const DICT: Record<string, PageDict> = {
     assemblyResultLabel: '装配导出结果',
     assemblyWarningsTitle: '装配警告',
     assemblyExportError: '装配 STEP 导出失败',
+    editSheet: '编辑图纸',
+    removeSheet: '删除图纸',
+    addAllSheets: '为所有零件添加图纸',
+    clearAllSheets: '清除所有图纸',
+    confirmRemoveSheet: '是否删除该图纸？',
+    confirmClearAllSheets: '是否删除所有零件的图纸？',
+    closeEditor: '关闭',
   },
   es: {
     title: 'Estudio de Planos',
@@ -300,6 +335,13 @@ const DICT: Record<string, PageDict> = {
     assemblyResultLabel: 'Resultado de exportación de ensamblaje',
     assemblyWarningsTitle: 'Advertencias de ensamblaje',
     assemblyExportError: 'Error al exportar STEP de ensamblaje',
+    editSheet: 'Editar hoja',
+    removeSheet: 'Eliminar hoja',
+    addAllSheets: 'Añadir hojas para todas las piezas',
+    clearAllSheets: 'Eliminar todas las hojas',
+    confirmRemoveSheet: '¿Eliminar esta hoja?',
+    confirmClearAllSheets: '¿Eliminar las hojas de todas las piezas?',
+    closeEditor: 'Cerrar',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -337,6 +379,13 @@ const DICT: Record<string, PageDict> = {
     assemblyResultLabel: 'نتيجة تصدير التجميع',
     assemblyWarningsTitle: 'تحذيرات التجميع',
     assemblyExportError: 'فشل تصدير STEP للتجميع',
+    editSheet: 'تحرير الورقة',
+    removeSheet: 'إزالة الورقة',
+    addAllSheets: 'إضافة أوراق لجميع الأجزاء',
+    clearAllSheets: 'مسح جميع الأوراق',
+    confirmRemoveSheet: 'هل تريد إزالة هذه الورقة؟',
+    confirmClearAllSheets: 'هل تريد إزالة أوراق جميع الأجزاء؟',
+    closeEditor: 'إغلاق',
   },
 };
 
@@ -613,6 +662,13 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   const [partSheets, setPartSheets] = useState<Record<string, Sheet>>({});
   /** The selected part whose sheet is shown in the centre canvas. */
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+  /**
+   * Inline-editor target: when set, the corresponding part row expands an
+   * inline panel exposing paper-size + scale controls. Only one part is
+   * editable at a time — clicking another part's "Edit sheet" replaces the
+   * target. Setting back to null collapses the panel.
+   */
+  const [editingPartId, setEditingPartId] = useState<string | null>(null);
   /** Result + warnings from the most recent writeAssemblyWithPmi call. */
   const [assemblyExport, setAssemblyExport] = useState<{
     ranges: AssemblyPmiResult['ranges'];
@@ -637,6 +693,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   React.useEffect(() => {
     setPartSheets({});
     setSelectedPartId(null);
+    setEditingPartId(null);
     setAssemblyExport(null);
     setAssemblyExportError(null);
   }, [sampleName]);
@@ -656,6 +713,96 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     // Auto-select the first part to gain a sheet.
     setSelectedPartId((cur) => cur ?? partId);
   }, []);
+
+  /**
+   * Rebuild the sheet for a single part with new paper size / scale. We call
+   * {@link standardThreeViewSheet} again so the viewport layout reflows for
+   * the new paper dimensions — keeping the per-part name (already encoded
+   * into the sheet id) stable across edits.
+   */
+  const handleEditSheet = useCallback(
+    (partId: string, partName: string, nextPaper: PaperSize, nextScale: number) => {
+      setPartSheets((prev) => {
+        const existing = prev[partId];
+        if (!existing) return prev;
+        const updated = standardThreeViewSheet({
+          id: existing.id,
+          name: existing.name.startsWith('Drawing — ')
+            ? existing.name
+            : `Drawing — ${partName}`,
+          sourceId: partId,
+          paperSize: nextPaper,
+          scale: nextScale,
+        });
+        return { ...prev, [partId]: updated };
+      });
+    },
+    [],
+  );
+
+  /**
+   * Remove a single part's sheet. Confirms first so a stray click doesn't
+   * silently discard annotation work. If the removed part is the currently
+   * selected preview part, we clear the selection so the centre canvas
+   * falls back to the "no sheet" placeholder.
+   */
+  const handleRemoveSheet = useCallback((partId: string) => {
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const ok = window.confirm(pickDict(lang).confirmRemoveSheet);
+      if (!ok) return;
+    }
+    setPartSheets((prev) => {
+      if (!prev[partId]) return prev;
+      // Object-rest spread is the idiomatic way to drop a single key from a
+      // record without mutating the source.
+      const next: Record<string, Sheet> = { ...prev };
+      delete next[partId];
+      return next;
+    });
+    setSelectedPartId((cur) => (cur === partId ? null : cur));
+    setEditingPartId((cur) => (cur === partId ? null : cur));
+  }, [lang]);
+
+  /**
+   * Bulk: add a sheet to every part that doesn't already have one. We never
+   * overwrite — operators who want to reset a sheet should use Clear-all
+   * first, then re-add. Auto-selects the first part to gain a sheet when
+   * nothing was selected.
+   */
+  const handleAddAllSheets = useCallback(() => {
+    const parts = sampleAssembly.state.parts;
+    if (parts.length === 0) return;
+    setPartSheets((prev) => {
+      const next: Record<string, Sheet> = { ...prev };
+      for (const p of parts) {
+        if (next[p.id]) continue;
+        next[p.id] = standardThreeViewSheet({
+          id: `assembly-sheet-${p.id}`,
+          name: `Drawing — ${p.name}`,
+          sourceId: p.id,
+          paperSize: 'A3',
+          scale: 1,
+        });
+      }
+      return next;
+    });
+    setSelectedPartId((cur) => cur ?? parts[0].id);
+  }, [sampleAssembly]);
+
+  /**
+   * Bulk: clear all part sheets after confirming. The selected preview part
+   * + the inline editor target both reset so the UI returns to its "no
+   * sheets" baseline.
+   */
+  const handleClearAllSheets = useCallback(() => {
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const ok = window.confirm(pickDict(lang).confirmClearAllSheets);
+      if (!ok) return;
+    }
+    setPartSheets({});
+    setSelectedPartId(null);
+    setEditingPartId(null);
+  }, [lang]);
 
   const onExportAssemblyStep = useCallback(() => {
     setAssemblyExportError(null);
@@ -923,6 +1070,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                   {sampleAssembly.state.parts.map((p) => {
                     const hasSheet = Boolean(partSheets[p.id]);
                     const selected = p.id === selectedPartId;
+                    const isEditing = editingPartId === p.id && hasSheet;
+                    const editingSheet = hasSheet ? partSheets[p.id] : null;
                     return (
                       <li
                         key={p.id}
@@ -930,8 +1079,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                         data-selected={selected ? 'true' : 'false'}
                         style={{
                           display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
+                          flexDirection: 'column',
+                          gap: 4,
                           padding: '6px 8px',
                           borderRadius: 4,
                           background: selected ? '#dbeafe' : '#f3f4f6',
@@ -942,49 +1091,200 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                           if (hasSheet) setSelectedPartId(p.id);
                         }}
                       >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span
-                            data-testid={`drawing-assembly-part-${p.id}-status`}
-                            aria-label={hasSheet ? 'sheet-added' : 'no-sheet'}
-                            style={{
-                              display: 'inline-block',
-                              width: 14,
-                              textAlign: 'center',
-                              color: hasSheet ? '#166534' : '#9ca3af',
-                              fontWeight: 700,
-                            }}
-                          >
-                            {hasSheet ? '✓' : '○'}
-                          </span>
-                          <strong>{p.name}</strong>
-                          {!hasSheet ? (
-                            <span style={{ color: '#9ca3af' }}> · {dict.noSheetAdded}</span>
-                          ) : null}
-                        </span>
-                        <button
-                          type="button"
-                          data-testid={`drawing-assembly-part-${p.id}-sheet`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddSheetForPart(p.id, p.name);
-                          }}
-                          disabled={hasSheet}
+                        <div
                           style={{
-                            padding: '2px 8px',
-                            background: hasSheet ? '#e5e7eb' : '#1d4ed8',
-                            color: hasSheet ? '#6b7280' : '#fff',
-                            border: 'none',
-                            borderRadius: 3,
-                            cursor: hasSheet ? 'not-allowed' : 'pointer',
-                            fontSize: 11,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 6,
                           }}
                         >
-                          {dict.addSheet}
-                        </button>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span
+                              data-testid={`drawing-assembly-part-${p.id}-status`}
+                              aria-label={hasSheet ? 'sheet-added' : 'no-sheet'}
+                              style={{
+                                display: 'inline-block',
+                                width: 14,
+                                textAlign: 'center',
+                                color: hasSheet ? '#166534' : '#9ca3af',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {hasSheet ? '✓' : '○'}
+                            </span>
+                            <strong>{p.name}</strong>
+                            {!hasSheet ? (
+                              <span style={{ color: '#9ca3af' }}> · {dict.noSheetAdded}</span>
+                            ) : null}
+                          </span>
+                          <span style={{ display: 'flex', gap: 4 }}>
+                            <button
+                              type="button"
+                              data-testid={`drawing-assembly-part-${p.id}-sheet`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddSheetForPart(p.id, p.name);
+                              }}
+                              disabled={hasSheet}
+                              style={{
+                                padding: '2px 8px',
+                                background: hasSheet ? '#e5e7eb' : '#1d4ed8',
+                                color: hasSheet ? '#6b7280' : '#fff',
+                                border: 'none',
+                                borderRadius: 3,
+                                cursor: hasSheet ? 'not-allowed' : 'pointer',
+                                fontSize: 11,
+                              }}
+                            >
+                              {dict.addSheet}
+                            </button>
+                            {hasSheet ? (
+                              <button
+                                type="button"
+                                data-testid={`drawing-assembly-part-${p.id}-edit-sheet`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPartId((cur) => (cur === p.id ? null : p.id));
+                                }}
+                                style={{
+                                  padding: '2px 8px',
+                                  background: isEditing ? '#0f172a' : '#475569',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: 3,
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                }}
+                              >
+                                {isEditing ? dict.closeEditor : dict.editSheet}
+                              </button>
+                            ) : null}
+                            {hasSheet ? (
+                              <button
+                                type="button"
+                                data-testid={`drawing-assembly-part-${p.id}-remove-sheet`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveSheet(p.id);
+                                }}
+                                style={{
+                                  padding: '2px 8px',
+                                  background: '#b91c1c',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: 3,
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                }}
+                              >
+                                {dict.removeSheet}
+                              </button>
+                            ) : null}
+                          </span>
+                        </div>
+                        {isEditing && editingSheet ? (
+                          <div
+                            data-testid={`drawing-assembly-part-${p.id}-sheet-editor`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                              padding: '6px 8px',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: 4,
+                            }}
+                          >
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
+                              <span style={{ fontWeight: 600 }}>{dict.paperLabel}</span>
+                              <select
+                                data-testid="drawing-assembly-sheet-paper-select"
+                                value={editingSheet.paperSize}
+                                onChange={(e) => {
+                                  const next = e.target.value as PaperSize;
+                                  // Pull the current scale from the first
+                                  // viewport — the sheet builder copies the
+                                  // same scale into every viewport, so any
+                                  // one of them is canonical.
+                                  const currentScale = editingSheet.viewports[0]?.scale ?? 1;
+                                  handleEditSheet(p.id, p.name, next, currentScale);
+                                }}
+                                style={{ padding: 4 }}
+                              >
+                                {PAPER_SIZES.map((sz) => (
+                                  <option key={sz} value={sz}>{sz}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
+                              <span style={{ fontWeight: 600 }}>{dict.scaleLabel}</span>
+                              <input
+                                data-testid="drawing-assembly-sheet-scale-input"
+                                type="number"
+                                min={0.1}
+                                max={10}
+                                step={0.1}
+                                value={editingSheet.viewports[0]?.scale ?? 1}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value);
+                                  if (!Number.isFinite(v) || v < 0.1 || v > 10) return;
+                                  handleEditSheet(p.id, p.name, editingSheet.paperSize, v);
+                                }}
+                                style={{ padding: 4 }}
+                              />
+                            </label>
+                          </div>
+                        ) : null}
                       </li>
                     );
                   })}
                 </ul>
+              </div>
+
+              <div
+                data-testid="drawing-assembly-bulk-actions"
+                style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+              >
+                <button
+                  type="button"
+                  data-testid="drawing-assembly-add-all-sheets"
+                  onClick={handleAddAllSheets}
+                  disabled={sampleAssembly.state.parts.length === 0}
+                  style={{
+                    flex: 1,
+                    padding: '6px 8px',
+                    background: '#1d4ed8',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 3,
+                    cursor:
+                      sampleAssembly.state.parts.length === 0 ? 'not-allowed' : 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  {dict.addAllSheets}
+                </button>
+                <button
+                  type="button"
+                  data-testid="drawing-assembly-clear-all-sheets"
+                  onClick={handleClearAllSheets}
+                  disabled={Object.keys(partSheets).length === 0}
+                  style={{
+                    flex: 1,
+                    padding: '6px 8px',
+                    background: Object.keys(partSheets).length === 0 ? '#e5e7eb' : '#b91c1c',
+                    color: Object.keys(partSheets).length === 0 ? '#6b7280' : '#fff',
+                    border: 'none',
+                    borderRadius: 3,
+                    cursor:
+                      Object.keys(partSheets).length === 0 ? 'not-allowed' : 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  {dict.clearAllSheets}
+                </button>
               </div>
 
               <button
