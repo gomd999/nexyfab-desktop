@@ -12,9 +12,12 @@
  * Used by the FilletModal UI to turn the current sketch + an extrude depth
  * + radius + edge selection into SCAD source ready for openscad rendering.
  *
- * Phase 1 limitations:
- *   - Profile must be an axis-aligned rectangle (exactly 1 closed loop with
- *     4 corners + 4 right angles). Any other profile yields an error.
+ * Phase 2 scope:
+ *   - Profile may be any convex N-vertex polygon (≥ 3 vertices). Axis-
+ *     aligned rectangles take the original Phase 1 cube-based fast path
+ *     in the IR; everything else uses the inward-offset Minkowski trick.
+ *   - Concave or self-intersecting profiles are rejected with a clear
+ *     error message bubbled from the IR builder.
  *   - Uniform radius only.
  *   - Single child extrude only — chained fillets (fillet-of-fillet) are
  *     not exposed in the wizard yet.
@@ -29,7 +32,6 @@ import {
   type FilletEdgeSelection,
   type FilletFeature,
 } from '@/lib/cad/filletProfile';
-import { isAxisAlignedRect } from '@/lib/cad/shellProfile';
 import { replayTree, type FeatureTree, type FeatureNode } from '@/lib/cad/featureTree';
 
 export type FilletFromSketchResult =
@@ -85,24 +87,13 @@ export function filletFromSketch(
     };
   }
   const loop = extraction.loops[0]!;
-  if (loop.points.length !== 4) {
+  if (loop.points.length < 3) {
     return {
       ok: false,
-      error: `Fillet Phase 1: profile must be a rectangle with 4 corners (got ${loop.points.length})`,
+      error: `Fillet: profile must have at least 3 vertices (got ${loop.points.length})`,
     };
   }
   const pointById = new Map(profileInput.points.map((p) => [p.id, p]));
-  const loopXY = loop.points.map((id) => {
-    const p = pointById.get(id)!;
-    return { x: p.x, y: p.y };
-  });
-  if (!isAxisAlignedRect(loopXY)) {
-    return {
-      ok: false,
-      error:
-        'Fillet Phase 1: profile must be an axis-aligned rectangle (4 corners + 4 right angles)',
-    };
-  }
 
   let childExtrude: ExtrudeFeature;
   try {

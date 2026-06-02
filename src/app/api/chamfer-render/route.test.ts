@@ -123,7 +123,7 @@ describe('POST /api/chamfer-render — validation', () => {
     expect(data.code).toBe('TOO_LARGE');
   });
 
-  it('rejects non-rect profile via pipeline error (Phase 1)', async () => {
+  it('accepts triangle profile (Phase 2 N-vertex polygon)', async () => {
     const triangleSketch = {
       points: [
         { id: 'p1', x: 0, y: 0 },
@@ -137,12 +137,36 @@ describe('POST /api/chamfer-render — validation', () => {
       ],
     };
     const r = await POST(
-      makeReq({ sketch: triangleSketch, depth: 20, distance: 1 }) as never,
+      makeReq({ sketch: triangleSketch, depth: 20, distance: 0.3, edgeSelection: 'vertical' }) as never,
+    );
+    expect(r.status).not.toBe(400);
+    expect(r.status).not.toBe(422);
+  });
+
+  it('rejects concave profile via pipeline error (Phase 2 requires convex)', async () => {
+    const concaveSketch = {
+      points: [
+        { id: 'p1', x: 0, y: 0 },
+        { id: 'p2', x: 10, y: 0 },
+        { id: 'p3', x: 5, y: 3 },
+        { id: 'p4', x: 10, y: 10 },
+        { id: 'p5', x: 0, y: 10 },
+      ],
+      lines: [
+        { id: 'l1', p1: 'p1', p2: 'p2' },
+        { id: 'l2', p1: 'p2', p2: 'p3' },
+        { id: 'l3', p1: 'p3', p2: 'p4' },
+        { id: 'l4', p1: 'p4', p2: 'p5' },
+        { id: 'l5', p1: 'p5', p2: 'p1' },
+      ],
+    };
+    const r = await POST(
+      makeReq({ sketch: concaveSketch, depth: 20, distance: 1, edgeSelection: 'vertical' }) as never,
     );
     expect(r.status).toBe(422);
     const data = await r.json();
     expect(data.code).toBe('PIPELINE_ERROR');
-    expect(data.message).toMatch(/(Phase 1|rectangle|4 corners)/i);
+    expect(data.message).toMatch(/convex/i);
   });
 
   it('valid rect chamfer reaches the render step (openscad CLI not available → ENOENT 503)', async () => {

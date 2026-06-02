@@ -4,8 +4,11 @@
  * Mirror of filletFromSketch.ts. Same shape, just builds a ChamferFeature
  * (45° beveled edges) instead of a rounded FilletFeature.
  *
- * Phase 1 limitations:
- *   - Profile must be an axis-aligned rectangle.
+ * Phase 2 scope:
+ *   - Profile may be any convex N-vertex polygon (≥ 3 vertices). Axis-
+ *     aligned rectangles take the original Phase 1 cube fast path.
+ *   - Concave or self-intersecting profiles are rejected with a clear
+ *     error message bubbled from the IR builder.
  *   - Uniform 45° chamfer only (no asymmetric distance/angle).
  *   - Single child extrude only.
  */
@@ -19,7 +22,6 @@ import {
   type ChamferEdgeSelection,
   type ChamferFeature,
 } from '@/lib/cad/chamferProfile';
-import { isAxisAlignedRect } from '@/lib/cad/shellProfile';
 import { replayTree, type FeatureTree, type FeatureNode } from '@/lib/cad/featureTree';
 
 export type ChamferFromSketchResult =
@@ -74,24 +76,13 @@ export function chamferFromSketch(
     };
   }
   const loop = extraction.loops[0]!;
-  if (loop.points.length !== 4) {
+  if (loop.points.length < 3) {
     return {
       ok: false,
-      error: `Chamfer Phase 1: profile must be a rectangle with 4 corners (got ${loop.points.length})`,
+      error: `Chamfer: profile must have at least 3 vertices (got ${loop.points.length})`,
     };
   }
   const pointById = new Map(profileInput.points.map((p) => [p.id, p]));
-  const loopXY = loop.points.map((id) => {
-    const p = pointById.get(id)!;
-    return { x: p.x, y: p.y };
-  });
-  if (!isAxisAlignedRect(loopXY)) {
-    return {
-      ok: false,
-      error:
-        'Chamfer Phase 1: profile must be an axis-aligned rectangle (4 corners + 4 right angles)',
-    };
-  }
 
   let childExtrude: ExtrudeFeature;
   try {

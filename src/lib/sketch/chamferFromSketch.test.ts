@@ -129,14 +129,44 @@ describe('chamferFromSketch', () => {
     if (!r.ok) expect(r.error).toMatch(/closed loop/i);
   });
 
-  it('returns Phase 1 error for non-rect (triangle) profile', () => {
+  it('Phase 2: accepts triangle (3-vertex) profile and emits polygon SCAD', () => {
     const r = chamferFromSketch(triangleSketch(), {
       depth: 20,
+      distance: 0.3,
+      edgeSelection: 'vertical',
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('minkowski()');
+      expect(r.scad).toContain('polygon(');
+      expect(r.scad).not.toContain('cube(');
+    }
+  });
+
+  it('Phase 2: rejects concave profile with convex-required error', () => {
+    const concaveSketch = {
+      points: [
+        { id: 'p1', x: 0, y: 0 },
+        { id: 'p2', x: 10, y: 0 },
+        { id: 'p3', x: 5, y: 3 },
+        { id: 'p4', x: 10, y: 10 },
+        { id: 'p5', x: 0, y: 10 },
+      ],
+      lines: [
+        { id: 'l1', p1: 'p1', p2: 'p2' },
+        { id: 'l2', p1: 'p2', p2: 'p3' },
+        { id: 'l3', p1: 'p3', p2: 'p4' },
+        { id: 'l4', p1: 'p4', p2: 'p5' },
+        { id: 'l5', p1: 'p5', p2: 'p1' },
+      ],
+    };
+    const r = chamferFromSketch(concaveSketch, {
+      depth: 20,
       distance: 1,
-      edgeSelection: 'all',
+      edgeSelection: 'vertical',
     });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/(Phase 1|rectangle|4 corners)/i);
+    if (!r.ok) expect(r.error).toMatch(/convex/i);
   });
 
   it('returns error when distance exceeds geometric bounds', () => {
