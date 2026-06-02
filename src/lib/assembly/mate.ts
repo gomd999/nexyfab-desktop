@@ -198,6 +198,16 @@ export interface SlotMate extends BaseMate {
   a: MateRef;
   /** Pin axis ref (refKind: 'axis'). */
   b: MateRef;
+  /**
+   * Optional slot length in mm (Phase 3.2.5.1). When set, the residual
+   * adds a penalty when the pin's projection onto the slot direction
+   * falls outside the segment `[0, slotLength]` (measured from the slot
+   * edge's origin point exposed by the geometry resolver).
+   *
+   * Undefined = open-ended slot (no segment clamp — back-compat with the
+   * Phase 3.2.5 baseline IR).
+   */
+  slotLength?: number;
 }
 
 /**
@@ -214,6 +224,18 @@ export interface GearMate extends BaseMate {
   /** When true, the gears rotate in opposite senses (default: external
    *  gear mesh = opposite; internal mesh = same direction). */
   reverse?: boolean;
+  /**
+   * Optional backlash zone in radians (Phase 3.2.5.1). Default 0 = no
+   * dead-band. The residual treats angular shaft-direction misalignment
+   * within `backlash` as zero-cost — i.e., it surfaces only the portion
+   * of the misalignment that exceeds the backlash band.
+   *
+   * Phase 1 caveat: gear placement is a no-op (velocity coupling only),
+   * so backlash currently affects RESIDUAL REPORTING only. A future
+   * dynamics pass (Phase 3.6 motion study) will model the backlash
+   * dead-zone in the kinematic transmission.
+   */
+  backlash?: number;
 }
 
 /**
@@ -229,6 +251,19 @@ export interface RackPinionMate extends BaseMate {
   /** Pinion pitch-circle radius in mm. Must be > 0. The linear/angular
    *  coupling is: linear_displacement = pinionRadius × angular_radians. */
   pinionRadius: number;
+  /**
+   * Optional rack travel limits in mm (Phase 3.2.5.1). When set, the
+   * residual adds a penalty when the rack's current linear position
+   * (derived from the pinion's rotation: `pos = pinion_angle_rad ×
+   * pinionRadius`) falls outside `[min, max]`. min must be < max.
+   *
+   * Undefined = unlimited travel (back-compat with Phase 3.2.5 baseline).
+   *
+   * Phase 1 caveat: the pinion angle is derived from the part's full
+   * orientation quaternion (proxy — no body-frame "zero" reference yet),
+   * so this is most useful as a relative travel check after assembly time.
+   */
+  rackTravel?: { min: number; max: number };
 }
 
 export type Mate =
@@ -295,9 +330,23 @@ export function validateMate(mate: Mate): void {
       );
     }
   }
+  if (mate.kind === 'slot' && mate.slotLength !== undefined) {
+    if (!Number.isFinite(mate.slotLength) || mate.slotLength <= 0) {
+      throw new MateValidationError(
+        `slot mate ${mate.id}: slotLength must be > 0`,
+      );
+    }
+  }
   if (mate.kind === 'gear') {
     if (!Number.isFinite(mate.ratio) || mate.ratio <= 0) {
       throw new MateValidationError(`gear mate ${mate.id}: ratio must be > 0`);
+    }
+    if (mate.backlash !== undefined) {
+      if (!Number.isFinite(mate.backlash) || mate.backlash < 0) {
+        throw new MateValidationError(
+          `gear mate ${mate.id}: backlash must be ≥ 0`,
+        );
+      }
     }
   }
   if (mate.kind === 'rack_pinion') {
@@ -305,6 +354,19 @@ export function validateMate(mate: Mate): void {
       throw new MateValidationError(
         `rack_pinion mate ${mate.id}: pinionRadius must be > 0`,
       );
+    }
+    if (mate.rackTravel !== undefined) {
+      const { min, max } = mate.rackTravel;
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        throw new MateValidationError(
+          `rack_pinion mate ${mate.id}: rackTravel bounds must be finite`,
+        );
+      }
+      if (min >= max) {
+        throw new MateValidationError(
+          `rack_pinion mate ${mate.id}: rackTravel.min (${min}) must be < max (${max})`,
+        );
+      }
     }
   }
 }

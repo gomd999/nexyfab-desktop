@@ -1,26 +1,38 @@
 /**
- * iterativeSolver — Phase 3.2.5 advanced-mate placeholder coverage.
+ * iterativeSolver — Phase 3.2.6 advanced-mate analytical coverage.
  *
- * The 4 advanced mate kinds (hinge / slot / gear / rack_pinion) have IR
- * support but NO analytical solver yet. The iterative solver must:
- *   - report `supported=false` for them in residuals,
- *   - not crash when given an assembly containing one,
- *   - leave the free part's placement essentially untouched (since no
- *     analytical correction fires).
- *
- * Analytical placements for these arrive in a follow-up Phase 3.2.6 task.
+ * The 4 advanced mate kinds (hinge / slot / gear / rack_pinion) now have
+ * analytical solver support:
+ *   - hinge: placement = concentric on shared axis (Phase 1: axial limit
+ *     enforced via residual only).
+ *   - slot: placement = project pin axis origin onto slot edge line and
+ *     align pin direction perpendicular to slot direction (Phase 1:
+ *     straight slot, no length / range clamping).
+ *   - gear: placement is a no-op (velocity coupling) — residual checks
+ *     the two shafts are coplanar (parallel or intersecting).
+ *   - rack_pinion: placement is a no-op (velocity coupling) — residual
+ *     checks pinion axis sits at distance == pinionRadius from rack.
  */
 import { describe, it, expect } from 'vitest';
 import { iterativeSolve, type GeometryResolver, type ResolvedGeometry } from './iterativeSolver';
 import {
   partInstance,
   IDENTITY_QUAT,
+  quat,
   type AssemblyState,
   type PartInstance,
+  type Quat,
 } from './assemblyState';
 import type { Mate, MateRef } from './mate';
 import { vec3 } from '@/lib/sketch/sketchPlane';
 import { rotateVec } from './mateSolver';
+
+// Axis-angle → unit quaternion (test-local helper).
+function quatAxisAngle(ax: number, ay: number, az: number, angleRad: number): Quat {
+  const h = angleRad / 2;
+  const s = Math.sin(h);
+  return quat(ax * s, ay * s, az * s, Math.cos(h));
+}
 
 // ─── fixtures (mirror of iterativeSolver.test.ts helpers) ────────────────
 
@@ -80,14 +92,18 @@ function transformInWorld(local: ResolvedGeometry, part: PartInstance): Resolved
 
 function makePart(
   id: string,
-  opts: { position?: { x: number; y: number; z: number }; fixed?: boolean } = {},
+  opts: {
+    position?: { x: number; y: number; z: number };
+    fixed?: boolean;
+    orientation?: Quat;
+  } = {},
 ): PartInstance {
   return partInstance({
     id,
     name: id,
     partTemplateId: 'tpl',
     position: opts.position ?? vec3(0, 0, 0),
-    orientation: IDENTITY_QUAT,
+    orientation: opts.orientation ?? IDENTITY_QUAT,
     fixed: opts.fixed,
   });
 }
@@ -98,9 +114,11 @@ function ref(partId: string, refId: string, refKind: MateRef['refKind']): MateRe
 
 // ─── solver-side coverage for advanced mates ─────────────────────────────
 
-describe('iterativeSolve — advanced mate placeholders', () => {
-  it('hinge mate is reported supported=false and does not crash the solver', () => {
+describe('iterativeSolve — advanced mate analytical solvers', () => {
+  it('hinge mate is supported and converges (shared axis collinear, residual ~0)', () => {
     const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    // Free part starts offset; the hinge should snap its axis onto the
+    // fixed part's axis (concentric-like placement).
     const free = makePart('g', { position: vec3(5, 5, 0) });
     const state: AssemblyState = {
       parts: [fixed, free],
@@ -120,12 +138,15 @@ describe('iterativeSolve — advanced mate placeholders', () => {
     const r = iterativeSolve(state, makeResolver(refs));
     expect(r.residuals).toHaveLength(1);
     expect(r.residuals[0]!.mateId).toBe('h1');
-    expect(r.residuals[0]!.supported).toBe(false);
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+    expect(r.success).toBe(true);
   });
 
-  it('slot mate is reported supported=false and does not crash the solver', () => {
+  it('slot mate is supported and residual reduces (pin snapped to slot line + perpendicular)', () => {
     const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
-    const free = makePart('g', { position: vec3(3, 0, 0) });
+    // Free pin starts offset by +y from the slot line (slot lies along x).
+    const free = makePart('g', { position: vec3(3, 5, 0) });
     const state: AssemblyState = {
       parts: [fixed, free],
       mates: [
@@ -138,21 +159,25 @@ describe('iterativeSolve — advanced mate placeholders', () => {
       ],
     };
     const refs = new Map<string, { local: ResolvedGeometry }>([
-      // Slot edge is exposed as an axis-like resolved geometry (the solver
-      // currently doesn't unpack 'edge' specially — this is fine; we only
-      // care that the call doesn't throw and that supported=false is set).
+      // Slot edge along +x at world origin
       ['f/slot_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+      // Pin along +z (already perpendicular to slot's +x — alignment OK)
       ['g/pin_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
     ]);
     const r = iterativeSolve(state, makeResolver(refs));
     expect(r.residuals).toHaveLength(1);
     expect(r.residuals[0]!.mateId).toBe('s1');
-    expect(r.residuals[0]!.supported).toBe(false);
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+    expect(r.success).toBe(true);
   });
 
-  it('gear mate is reported supported=false and does not crash the solver', () => {
+  it('gear mate is supported; residual ~0 for parallel coplanar shafts', () => {
     const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
-    const free = makePart('g', { position: vec3(10, 0, 0) });
+    // Free gear shaft is parallel to fixed gear shaft at offset (5, 0, 0).
+    // Both axes are along +z → parallel → skew distance = 0 (parallel
+    // shafts at any offset are coplanar in gear context).
+    const free = makePart('g', { position: vec3(5, 0, 0) });
     const state: AssemblyState = {
       parts: [fixed, free],
       mates: [
@@ -172,12 +197,48 @@ describe('iterativeSolve — advanced mate placeholders', () => {
     const r = iterativeSolve(state, makeResolver(refs));
     expect(r.residuals).toHaveLength(1);
     expect(r.residuals[0]!.mateId).toBe('gr1');
-    expect(r.residuals[0]!.supported).toBe(false);
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
   });
 
-  it('rack_pinion mate is reported supported=false and does not crash the solver', () => {
+  it('gear mate residual is nonzero for skew (non-parallel non-intersecting) axes', () => {
     const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    // Fixed: z-axis through origin. Free: x-axis through (0, 5, 0).
+    // These are genuinely skew (perpendicular directions; no point in
+    // common because the closest approach is 5 along +y at z=0).
     const free = makePart('g', { position: vec3(0, 5, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'gr_skew',
+          kind: 'gear',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          ratio: 2,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      // local +x stays +x in world; with part at (0, 5, 0) the axis is
+      // the line through (0,5,0) along +x — skew to the fixed z-axis.
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals).toHaveLength(1);
+    expect(r.residuals[0]!.supported).toBe(true);
+    // Gear placement is a no-op. Skew distance = 5 (perpendicular gap
+    // between the two skew lines).
+    expect(r.residuals[0]!.residual).toBeGreaterThan(4);
+    expect(r.residuals[0]!.residual).toBeLessThan(6);
+  });
+
+  it('rack_pinion mate is supported; residual ~0 when pinion axis is at pinionRadius from rack', () => {
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    // Pinion axis along +z at world (0, 10, 0) — perpendicular to rack
+    // edge (along +x at origin). Perpendicular distance = 10 = pinionRadius.
+    const free = makePart('g', { position: vec3(0, 10, 0) });
     const state: AssemblyState = {
       parts: [fixed, free],
       mates: [
@@ -197,6 +258,375 @@ describe('iterativeSolve — advanced mate placeholders', () => {
     const r = iterativeSolve(state, makeResolver(refs));
     expect(r.residuals).toHaveLength(1);
     expect(r.residuals[0]!.mateId).toBe('rp1');
-    expect(r.residuals[0]!.supported).toBe(false);
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('rack_pinion mate residual nonzero when pinion-to-rack distance mismatches pinionRadius', () => {
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    // Pinion sits 25 mm from rack, but pinionRadius is 10 → 15 mm mismatch.
+    const free = makePart('g', { position: vec3(0, 25, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'rp_off',
+          kind: 'rack_pinion',
+          a: ref('g', 'pinion_ax', 'axis'),
+          b: ref('f', 'rack_e', 'edge'),
+          pinionRadius: 10,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['g/pinion_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['f/rack_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals).toHaveLength(1);
+    expect(r.residuals[0]!.supported).toBe(true);
+    // |25 - 10| = 15, pin already perpendicular to rack (cos=0) → ~15.
+    expect(r.residuals[0]!.residual).toBeGreaterThan(10);
+  });
+});
+
+// ─── extra edge-case coverage ────────────────────────────────────────────
+
+describe('iterativeSolve — advanced mate edge cases', () => {
+  it('hinge mate with angular limit still converges on axis alignment (limit wide enough not to trigger)', () => {
+    // The hinge solver rotates the free part to align axes — this
+    // rotation is now visible to the Phase 3.2.5.1 limit-residual proxy.
+    // To keep this test focused on placement convergence (its original
+    // intent), use a wide limit that the post-alignment proxy angle
+    // stays inside.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(7, -3, 2) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'h_limit',
+          kind: 'hinge',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          limit: { minAngleDeg: -180, maxAngleDeg: 180 },
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('hinge mate aligns when fixed and free axes start non-parallel', () => {
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(2, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'h_skew',
+          kind: 'hinge',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      // Free part axis points along +x (90° off fixed)
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+    expect(r.success).toBe(true);
+  });
+
+  it('slot mate snaps pin direction perpendicular to slot when starting parallel', () => {
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    // Pin starts ALONG the slot direction (not perpendicular).
+    const free = makePart('g', { position: vec3(2, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 's_align',
+          kind: 'slot',
+          a: ref('f', 'slot_e', 'edge'),
+          b: ref('g', 'pin_ax', 'axis'),
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/slot_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+      // Pin direction local = +y; aligns perpendicular to +x slot, so
+      // residual should converge to ~0.
+      ['g/pin_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('hinge with limit [-30°, 30°] when within bounds → no extra residual', () => {
+    // Both parts identity orientation → proxy swing angle = 0° → inside
+    // limit → no length penalty. Residual = axis alignment only (≈ 0).
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(2, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'h_in',
+          kind: 'hinge',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          limit: { minAngleDeg: -30, maxAngleDeg: 30 },
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('hinge with limit [-30°, 30°] starting at proxy 60° → secondary > 0', () => {
+    // Free part is rotated 60° around z. Both local axes are (0,0,1) so
+    // the axis direction is invariant under z-rotation — solver's
+    // quatFromTo returns identity, leaving the free part's orientation
+    // intact. dot(q_a=identity, q_b=Rz(60°)) = cos(30°); proxy = 60°.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', {
+      position: vec3(0, 0, 0),
+      orientation: quatAxisAngle(0, 0, 1, (60 * Math.PI) / 180),
+    });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'h_over',
+          kind: 'hinge',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          limit: { minAngleDeg: -30, maxAngleDeg: 30 },
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    // Axes are coincident (alignErr ≈ 0); secondary should be the
+    // out-of-limit penalty = (60 - 30) deg → (30·π/180) ≈ 0.524 rad.
+    expect(r.residuals[0]!.residual).toBeGreaterThan(0.4);
+    expect(r.residuals[0]!.residual).toBeLessThan(0.7);
+  });
+
+  it('slot with slotLength=100, pin at parameter t=50 → no length penalty', () => {
+    // Slot from origin along +x. Pin sits 50 mm down the slot at (50,0,0).
+    // perpDist=0, perpErr=0 (pin along +z), t=50 in [0,100] → secondary=0.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(50, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 's_in',
+          kind: 'slot',
+          a: ref('f', 'slot_e', 'edge'),
+          b: ref('g', 'pin_ax', 'axis'),
+          slotLength: 100,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/slot_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+      ['g/pin_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('slot with slotLength=100, pin at parameter t=-10 → length penalty = 10', () => {
+    // Pin starts at (-10, 0, 0) → t = -10 < 0, penalty = 10.
+    // Solver's slot placement preserves the along-slot slide DoF, so
+    // after solve the pin's t stays at -10.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(-10, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 's_below',
+          kind: 'slot',
+          a: ref('f', 'slot_e', 'edge'),
+          b: ref('g', 'pin_ax', 'axis'),
+          slotLength: 100,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/slot_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+      ['g/pin_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    // perpDist=0, perpErr=0, lengthPenalty=|-10|=10.
+    expect(r.residuals[0]!.residual).toBeGreaterThan(9.99);
+    expect(r.residuals[0]!.residual).toBeLessThan(10.01);
+  });
+
+  it('slot with slotLength=100, pin at parameter t=120 → length penalty = 20', () => {
+    // Pin past the slot's end. t = 120, slotLength = 100 → penalty = 20.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(120, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 's_above',
+          kind: 'slot',
+          a: ref('f', 'slot_e', 'edge'),
+          b: ref('g', 'pin_ax', 'axis'),
+          slotLength: 100,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/slot_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+      ['g/pin_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeGreaterThan(19.99);
+    expect(r.residuals[0]!.residual).toBeLessThan(20.01);
+  });
+
+  it('gear with backlash=0.01rad, parallel-aligned shafts → residual ~0 (within zone)', () => {
+    // Parallel shafts (both +z) at offset → coplanarityErr=0 AND angular
+    // misalignment theta=0 ≤ backlash → backlashPenalty=0. Total ≈ 0.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(5, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'gr_back',
+          kind: 'gear',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          ratio: 2,
+          backlash: 0.01,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('rack_pinion with rackTravel within bounds → no travel penalty', () => {
+    // Pinion part orientation = IDENTITY → approxAngle = 0 → rackPos = 0,
+    // inside [-50, 50] → travelPenalty = 0. Mount geometry is correct
+    // (perpDist=10=pinionRadius, perpendicular). Residual ≈ 0.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', { position: vec3(0, 10, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'rp_in',
+          kind: 'rack_pinion',
+          a: ref('g', 'pinion_ax', 'axis'),
+          b: ref('f', 'rack_e', 'edge'),
+          pinionRadius: 10,
+          rackTravel: { min: -50, max: 50 },
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['g/pinion_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['f/rack_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
+  });
+
+  it('rack_pinion with rackTravel out-of-bounds → travel penalty > 0', () => {
+    // Pinion part rotated by π/2 around its pinion axis (the +z axis of
+    // part g, here at world origin). Since +z is invariant under +z-axis
+    // rotation, the solver's placement won't undo this. Pinion's part `a`
+    // (the part identified by mate.a.partId = 'g') has q.w = cos(π/4).
+    // approxAngle ≈ π/2 rad → rackPos = (π/2)·10 ≈ 15.7 > rackTravel.max=5
+    // → travelPenalty ≈ 10.7.
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    const free = makePart('g', {
+      position: vec3(0, 10, 0),
+      orientation: quatAxisAngle(0, 0, 1, Math.PI / 2),
+    });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'rp_over',
+          kind: 'rack_pinion',
+          a: ref('g', 'pinion_ax', 'axis'),
+          b: ref('f', 'rack_e', 'edge'),
+          pinionRadius: 10,
+          rackTravel: { min: -5, max: 5 },
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['g/pinion_ax', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['f/rack_e', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    expect(r.residuals[0]!.residual).toBeGreaterThan(5);
+  });
+
+  it('gear mate residual ~0 for intersecting (bevel-gear-like) axes', () => {
+    const fixed = makePart('f', { position: vec3(0, 0, 0), fixed: true });
+    // Free axis perpendicular to fixed axis but intersects at origin.
+    // Bevel-gear case: coplanar (intersecting) → mesh-compatible →
+    // residual ≈ 0.
+    const free = makePart('g', { position: vec3(0, 0, 0) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        {
+          id: 'gr_bevel',
+          kind: 'gear',
+          a: ref('f', 'ax_f', 'axis'),
+          b: ref('g', 'ax_g', 'axis'),
+          ratio: 1,
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, { local: ResolvedGeometry }>([
+      ['f/ax_f', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } } }],
+      ['g/ax_g', { local: { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.residuals[0]!.supported).toBe(true);
+    // Intersecting axes are coplanar → residual = 0.
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-4);
   });
 });
