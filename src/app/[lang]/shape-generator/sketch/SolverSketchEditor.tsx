@@ -49,7 +49,16 @@ import {
 
 export type EditorLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
-export type EntityTool = 'select' | 'line' | 'circle' | 'arc' | 'rect' | 'dimension';
+export type EntityTool =
+  | 'select'
+  | 'line'
+  | 'circle'
+  | 'arc'
+  | 'rect'
+  | 'dimension'
+  | 'trim'
+  | 'extend'
+  | 'offset';
 
 export type ConstraintTool =
   | 'horizontal'
@@ -79,6 +88,7 @@ export interface SolverSketchEditorProps {
 interface Dict {
   title: string;
   select: string; line: string; circle: string; arc: string; rect: string; dimension: string;
+  trim: string; extend: string; offset: string;
   horizontal: string; vertical: string; perpendicular: string; parallel: string; coincident: string;
   close: string;
   loading: string;
@@ -90,6 +100,7 @@ interface Dict {
   statusConflict: string;
   statusRedundant: string;
   promptDistance: string;
+  promptOffset: string;
   hint: string;
 }
 
@@ -97,6 +108,7 @@ const dict: Record<EditorLang, Dict> = {
   ko: {
     title: '솔버 스케치',
     select: '선택', line: '선', circle: '원', arc: '호', rect: '사각형', dimension: '치수',
+    trim: '자르기', extend: '연장', offset: '간격복사',
     horizontal: '수평', vertical: '수직', perpendicular: '수직(L)', parallel: '평행', coincident: '일치',
     close: '닫기',
     loading: '솔버 로딩 중...',
@@ -108,11 +120,13 @@ const dict: Record<EditorLang, Dict> = {
     statusConflict: '충돌 제약',
     statusRedundant: '중복 제약',
     promptDistance: '거리 (mm):',
+    promptOffset: '간격복사 거리 (mm):',
     hint: '도구를 선택하고 캔버스를 클릭하세요',
   },
   en: {
     title: 'Solver Sketch',
     select: 'Select', line: 'Line', circle: 'Circle', arc: 'Arc', rect: 'Rect', dimension: 'Dim',
+    trim: 'Trim', extend: 'Extend', offset: 'Offset',
     horizontal: 'Horiz', vertical: 'Vert', perpendicular: 'Perp', parallel: 'Para', coincident: 'Coinc',
     close: 'Close',
     loading: 'Loading solver...',
@@ -124,11 +138,13 @@ const dict: Record<EditorLang, Dict> = {
     statusConflict: 'conflicting constraints',
     statusRedundant: 'redundant constraints',
     promptDistance: 'Distance (mm):',
+    promptOffset: 'Offset distance (mm):',
     hint: 'Pick a tool and click the canvas',
   },
   ja: {
     title: 'ソルバースケッチ',
     select: '選択', line: '線', circle: '円', arc: '弧', rect: '矩形', dimension: '寸法',
+    trim: 'トリム', extend: '延長', offset: 'オフセット',
     horizontal: '水平', vertical: '垂直', perpendicular: '直角', parallel: '平行', coincident: '一致',
     close: '閉じる',
     loading: 'ソルバー読込中...',
@@ -140,11 +156,13 @@ const dict: Record<EditorLang, Dict> = {
     statusConflict: '矛盾制約',
     statusRedundant: '冗長制約',
     promptDistance: '距離 (mm):',
+    promptOffset: 'オフセット距離 (mm):',
     hint: 'ツールを選びキャンバスをクリック',
   },
   zh: {
     title: '求解器草图',
     select: '选择', line: '线', circle: '圆', arc: '弧', rect: '矩形', dimension: '尺寸',
+    trim: '修剪', extend: '延伸', offset: '偏移',
     horizontal: '水平', vertical: '垂直', perpendicular: '垂直(L)', parallel: '平行', coincident: '重合',
     close: '关闭',
     loading: '加载求解器...',
@@ -156,11 +174,13 @@ const dict: Record<EditorLang, Dict> = {
     statusConflict: '冲突约束',
     statusRedundant: '冗余约束',
     promptDistance: '距离 (mm):',
+    promptOffset: '偏移距离 (mm):',
     hint: '选择工具并点击画布',
   },
   es: {
     title: 'Boceto con solver',
     select: 'Sel', line: 'Línea', circle: 'Círc', arc: 'Arco', rect: 'Rect', dimension: 'Cota',
+    trim: 'Recortar', extend: 'Extender', offset: 'Desfase',
     horizontal: 'Horiz', vertical: 'Vert', perpendicular: 'Perp', parallel: 'Paral', coincident: 'Coinc',
     close: 'Cerrar',
     loading: 'Cargando solver...',
@@ -172,11 +192,13 @@ const dict: Record<EditorLang, Dict> = {
     statusConflict: 'restricciones en conflicto',
     statusRedundant: 'restricciones redundantes',
     promptDistance: 'Distancia (mm):',
+    promptOffset: 'Distancia de desfase (mm):',
     hint: 'Elige herramienta y haz clic',
   },
   ar: {
     title: 'رسم بمحلل',
     select: 'تحديد', line: 'خط', circle: 'دائرة', arc: 'قوس', rect: 'مستطيل', dimension: 'بعد',
+    trim: 'قص', extend: 'تمديد', offset: 'إزاحة',
     horizontal: 'أفقي', vertical: 'رأسي', perpendicular: 'متعامد', parallel: 'متوازي', coincident: 'متطابق',
     close: 'إغلاق',
     loading: 'تحميل المحلل...',
@@ -188,6 +210,7 @@ const dict: Record<EditorLang, Dict> = {
     statusConflict: 'قيود متعارضة',
     statusRedundant: 'قيود زائدة',
     promptDistance: 'المسافة (مم):',
+    promptOffset: 'مسافة الإزاحة (مم):',
     hint: 'اختر أداة وانقر على اللوحة',
   },
 };
@@ -237,6 +260,9 @@ const ENTITY_TOOLS: EntityToolDef[] = [
   { id: 'arc', label: (t) => t.arc },
   { id: 'rect', label: (t) => t.rect },
   { id: 'dimension', label: (t) => t.dimension },
+  { id: 'trim', label: (t) => t.trim },
+  { id: 'extend', label: (t) => t.extend },
+  { id: 'offset', label: (t) => t.offset },
 ];
 
 const CONSTRAINT_TOOLS: ConstraintToolDef[] = [
@@ -272,6 +298,56 @@ function eventToSvgPoint(
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(bx - ax, by - ay);
+}
+
+/**
+ * Intersection of two infinite lines defined by (a1→a2) and (b1→b2).
+ * Returns the intersection point + the parameter `t` along the first line
+ * (0 = a1, 1 = a2, >1 = past a2 in the a1→a2 direction).
+ * Returns null when the lines are parallel (denominator ~0).
+ */
+function lineLineIntersection(
+  a1: { x: number; y: number },
+  a2: { x: number; y: number },
+  b1: { x: number; y: number },
+  b2: { x: number; y: number },
+): { x: number; y: number; t: number } | null {
+  const dxA = a2.x - a1.x;
+  const dyA = a2.y - a1.y;
+  const dxB = b2.x - b1.x;
+  const dyB = b2.y - b1.y;
+  const denom = dxA * dyB - dyA * dxB;
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((b1.x - a1.x) * dyB - (b1.y - a1.y) * dxB) / denom;
+  return { x: a1.x + dxA * t, y: a1.y + dyA * t, t };
+}
+
+/**
+ * Perpendicular offset of a line segment by `distance` toward the side of
+ * `clickPoint`. Returns the two offset endpoints.
+ */
+function offsetLine(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  distance: number,
+  clickPoint: { x: number; y: number },
+): { a: { x: number; y: number }; b: { x: number; y: number } } | null {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return null;
+  // Unit perpendicular (rotated 90° CCW).
+  const nx = -dy / len;
+  const ny = dx / len;
+  // Side test: sign of dot((click - p1), normal). Positive → same side as +normal.
+  const side = (clickPoint.x - p1.x) * nx + (clickPoint.y - p1.y) * ny;
+  const sign = side >= 0 ? 1 : -1;
+  const ox = nx * distance * sign;
+  const oy = ny * distance * sign;
+  return {
+    a: { x: p1.x + ox, y: p1.y + oy },
+    b: { x: p2.x + ox, y: p2.y + oy },
+  };
 }
 
 // ─── pending tool state ───────────────────────────────────────────────────
@@ -468,6 +544,117 @@ export default function SolverSketchEditor({
     [solver, entities, solveAndApply],
   );
 
+  // ─── modification tool: trim (Phase 1 simplification = remove line entity) ───
+  // SW-style "trim to next intersection" is Phase 2. Here we drop the line
+  // primitive from the view model. The underlying solver line stays declared
+  // (planegcs has no remove API exposed yet) but it has no view surface, so
+  // DoF readout drops to zero contribution from it on next solve.
+  const commitTrim = useCallback(
+    (lineId: string): void => {
+      const ent = entities.find((e) => e.id === lineId);
+      if (!ent || ent.kind !== 'line') return;
+      const next = entities.filter((e) => e.id !== lineId);
+      // No new solver primitives — re-solve with the existing solver state
+      // so DoF readout stays consistent (the dropped view entity is purely
+      // a UI deletion in Phase 1).
+      solveAndApply(next);
+    },
+    [entities, solveAndApply],
+  );
+
+  // ─── modification tool: extend (move endpoint to nearest line intersection) ───
+  const commitExtend = useCallback(
+    (pointId: string): void => {
+      if (!solver) return;
+      const pt = entities.find((e) => e.id === pointId);
+      if (!pt || pt.kind !== 'point') return;
+
+      // Find lines that use this point as an endpoint.
+      const lines = entities.filter((e): e is ViewLine => e.kind === 'line');
+      const owning = lines.filter((l) => l.p1 === pt.id || l.p2 === pt.id);
+      if (owning.length === 0) return;
+      // Pick the first owning line — the "extended" line is unambiguous when
+      // a single segment terminates at the point. (Multi-line junction is
+      // Phase 2: would need disambiguation UI.)
+      const line = owning[0]!;
+      const other = lines.find((l) => l.id !== line.id);
+      if (!other) return;
+
+      const a1 = entities.find((e) => e.id === line.p1);
+      const a2 = entities.find((e) => e.id === line.p2);
+      const b1 = entities.find((e) => e.id === other.p1);
+      const b2 = entities.find((e) => e.id === other.p2);
+      if (
+        !a1 || !a2 || !b1 || !b2 ||
+        a1.kind !== 'point' || a2.kind !== 'point' ||
+        b1.kind !== 'point' || b2.kind !== 'point'
+      ) return;
+
+      const hit = lineLineIntersection(
+        { x: a1.x, y: a1.y },
+        { x: a2.x, y: a2.y },
+        { x: b1.x, y: b1.y },
+        { x: b2.x, y: b2.y },
+      );
+      if (!hit) return; // parallel
+
+      // We want to move `pt` (the clicked endpoint) to the intersection,
+      // but only if the intersection lies past the endpoint (i.e. extending
+      // outward, not shrinking). If it's between the two endpoints that's a
+      // shrink — disallow in Phase 1.
+      const isP1 = line.p1 === pt.id;
+      // Param `t` is along a1→a2. If extending p1, intersection must be at t<0;
+      // if extending p2, intersection must be at t>1.
+      if (isP1 && hit.t > 0) return;
+      if (!isP1 && hit.t < 1) return;
+
+      try {
+        solver.movePoint(pt.id as PointId, hit.x, hit.y);
+        solveAndApply();
+      } catch {
+        /* fixed point — ignore */
+      }
+    },
+    [solver, entities, solveAndApply],
+  );
+
+  // ─── modification tool: offset (parallel line at perpendicular distance) ───
+  const commitOffset = useCallback(
+    (lineId: string, clickPoint: { x: number; y: number }): void => {
+      if (!solver) return;
+      const ent = entities.find((e) => e.id === lineId);
+      if (!ent || ent.kind !== 'line') return;
+      const p1 = entities.find((e) => e.id === ent.p1);
+      const p2 = entities.find((e) => e.id === ent.p2);
+      if (!p1 || !p2 || p1.kind !== 'point' || p2.kind !== 'point') return;
+
+      const raw = window.prompt(t.promptOffset);
+      if (raw === null) return;
+      const d = Number(raw);
+      if (!Number.isFinite(d) || d <= 0) return;
+
+      const off = offsetLine(
+        { x: p1.x, y: p1.y },
+        { x: p2.x, y: p2.y },
+        d,
+        clickPoint,
+      );
+      if (!off) return;
+
+      const np1 = solver.addPoint(off.a.x, off.a.y);
+      const np2 = solver.addPoint(off.b.x, off.b.y);
+      const nl = solver.addLine(np1, np2);
+      const next: ViewEntity[] = [
+        ...entities,
+        { id: np1, kind: 'point', x: off.a.x, y: off.a.y, fixed: false },
+        { id: np2, kind: 'point', x: off.b.x, y: off.b.y, fixed: false },
+        { id: nl, kind: 'line', p1: np1, p2: np2 },
+      ];
+      solveAndApply(next);
+    },
+    [solver, entities, solveAndApply, t.promptOffset],
+  );
+
   // ─── canvas click ───
   const handleCanvasClick = useCallback(
     (evt: React.MouseEvent<SVGSVGElement>): void => {
@@ -563,9 +750,23 @@ export default function SolverSketchEditor({
           }
         }
         setPending(null);
+        return;
+      }
+      if (tool === 'trim') {
+        commitTrim(id);
+        return;
+      }
+      if (tool === 'extend') {
+        commitExtend(id);
+        return;
+      }
+      if (tool === 'offset') {
+        const pt = eventToSvgPoint(evt as React.MouseEvent<SVGElement>, svgRef.current);
+        commitOffset(id, pt);
+        return;
       }
     },
-    [tool, entities, pending, solver, solveAndApply, t.promptDistance],
+    [tool, entities, pending, solver, solveAndApply, t.promptDistance, commitTrim, commitExtend, commitOffset],
   );
 
   // ─── point mousedown → start drag ───
