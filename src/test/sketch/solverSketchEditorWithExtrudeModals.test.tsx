@@ -1788,3 +1788,382 @@ describe('SolverSketchEditorWithExtrude — Collab mode wiring', () => {
     expect(screen.queryByTestId('cursor-overlay')).toBeNull();
   });
 });
+
+// ─── Agent-YYYYY: FeatureTreeBranchManager wrapper integration ───────────
+
+/**
+ * The wrapper mounts FeatureTreeBranchManager behind the
+ * `solver-branches-toggle` button. Panel is hidden by default (compact
+ * mode). When shown, currentTree is fed from the wrapper's
+ * useFeatureTreeHistory present, and onLoadTree resetHistory()s then
+ * replays the loaded nodes as insert_node ops.
+ *
+ * Coverage:
+ *  - toggle visible + default off,
+ *  - on → BranchManager mounts,
+ *  - Load → wrapper tree is replaced with the branch payload,
+ *  - branches toggle is independent of collab / AI planner / examples,
+ *  - 6-lang label rendering of the toggle,
+ *  - storageKeyPrefix is projectId-scoped when projectId is supplied,
+ *  - currentTree is the wrapper's live featureTree (newly-added nodes are
+ *    visible to a freshly-opened panel),
+ *  - Load wipes the undo stack (subsequent undo cannot reach pre-load tree),
+ *  - existing wrapper tests still pass (no breakage of the toggle's default-off).
+ */
+describe('SolverSketchEditorWithExtrude — Agent-YYYYY branches panel wiring', () => {
+  // Clear localStorage between tests so saved branches do not bleed across
+  // test cases (FeatureTreeBranchManager persists to localStorage under the
+  // storageKeyPrefix; the wrapper passes either a project-scoped or the
+  // BranchManager-default prefix).
+  beforeEach(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+  });
+  afterEach(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+  });
+
+  it('branches toggle is visible and panel hidden by default', async () => {
+    await mountReady();
+    expect(screen.getByTestId('solver-branches-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('solver-branches-panel-host')).toBeNull();
+    expect(screen.queryByTestId('branch-manager-panel')).toBeNull();
+    // Default off → aria-expanded reflects state.
+    expect(
+      screen.getByTestId('solver-branches-toggle').getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  it('clicking the branches toggle mounts FeatureTreeBranchManager', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    expect(await screen.findByTestId('solver-branches-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('branch-manager-panel')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('solver-branches-toggle').getAttribute('aria-expanded'),
+    ).toBe('true');
+    // Empty state when no branches saved yet.
+    expect(screen.getByTestId('branch-manager-empty')).toBeInTheDocument();
+  });
+
+  it('clicking the toggle a second time unmounts the panel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await screen.findByTestId('branch-manager-panel');
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('branch-manager-panel')).toBeNull();
+    });
+    expect(
+      screen.getByTestId('solver-branches-toggle').getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  it('save → load round-trip replaces the wrapper tree with the loaded branch', async () => {
+    // Seed a pre-saved branch directly into localStorage. We use the
+    // BranchManager-default prefix (no projectId here). The payload must
+    // pass `validatePayload` (loop/depth/direction/mode) — the wrapper's
+    // own synthesised stubs (`{kind:'extrude'}` only) would be rejected
+    // on the deserialize round-trip, so we build a structurally valid
+    // fixture here. (FeatureTreeBranchManager.test.tsx uses the same
+    // pattern via makeExtrudePayload.)
+    const SEED: FeatureTree = {
+      nodes: [
+        {
+          id: 'extrude_seed',
+          name: 'Seeded',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }],
+            depth: 5,
+            direction: 'one_sided',
+            mode: 'add',
+          } as unknown as FeatureTree['nodes'][number]['payload'],
+        },
+      ],
+    };
+    window.localStorage.setItem(
+      'nexyfab:tree-branches:_index',
+      JSON.stringify(['snap-1']),
+    );
+    window.localStorage.setItem(
+      'nexyfab:tree-branches:snap-1',
+      serializeFeatureTree(SEED),
+    );
+
+    await mountReady();
+    // Open the branches panel and load the pre-seeded branch.
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await screen.findByTestId('branch-manager-panel');
+    expect(await screen.findByTestId('branch-manager-row-snap-1')).toBeInTheDocument();
+    // Live tree starts empty.
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+    // Load → the seeded node should appear in the live tree.
+    fireEvent.click(screen.getByTestId('branch-manager-row-snap-1-load'));
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_seed')).toBeInTheDocument(),
+    );
+  });
+
+  it('Load wipes the undo stack — Undo cannot walk back into the pre-load tree', async () => {
+    // Seed a one-node branch (validatePayload-clean) into the default
+    // BranchManager slot. We then build a live tree via the STEP-import
+    // flow (which inserts a structurally valid extrude payload too) so
+    // a save→load round-trip is not blocked by the wrapper's synthetic
+    // `{kind:'extrude'}` stubs.
+    const SEED: FeatureTree = {
+      nodes: [
+        {
+          id: 'branch_node',
+          name: 'Branch node',
+          dependencies: [],
+          payload: {
+            kind: 'extrude',
+            loop: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }],
+            depth: 2,
+            direction: 'one_sided',
+            mode: 'add',
+          } as unknown as FeatureTree['nodes'][number]['payload'],
+        },
+      ],
+    };
+    window.localStorage.setItem(
+      'nexyfab:tree-branches:_index',
+      JSON.stringify(['saved']),
+    );
+    window.localStorage.setItem(
+      'nexyfab:tree-branches:saved',
+      serializeFeatureTree(SEED),
+    );
+
+    // Build a different live tree via STEP import (creates `imported_0`).
+    const stepImportFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: {
+        nodes: [
+          {
+            id: 'imported_0',
+            name: 'Imported',
+            dependencies: [],
+            payload: {
+              kind: 'extrude' as const,
+              loop: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }],
+              depth: 1,
+              direction: 'one_sided' as const,
+              mode: 'add' as const,
+            },
+          },
+        ],
+      },
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        stepImportFetcher={stepImportFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+
+    // Import → live tree gets `imported_0`.
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    const fi = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi, 'files', {
+      value: [new File(['x'], 'p.step', { type: 'application/octet-stream' })],
+      configurable: true,
+    });
+    fireEvent.change(fi);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await screen.findByTestId('feature-tree-row-imported_0');
+
+    // Open branches panel and load the seeded branch.
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await screen.findByTestId('branch-manager-panel');
+    await screen.findByTestId('branch-manager-row-saved');
+    fireEvent.click(screen.getByTestId('branch-manager-row-saved-load'));
+
+    // After load: branch_node present, imported_0 wiped.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-branch_node')).toBeInTheDocument();
+      expect(screen.queryByTestId('feature-tree-row-imported_0')).not.toBeInTheDocument();
+    });
+    // Undo: the load inserted exactly one entry on top of the wiped
+    // history. Even if pressed many times, imported_0 must never reappear
+    // (resetHistory() inside onLoadTree wiped the prior STEP-import
+    // entry from the past stack). We press undo three times for safety.
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-imported_0')).not.toBeInTheDocument();
+    });
+  });
+
+  it('branches toggle is independent of AI planner and examples toggles', async () => {
+    await mountReady();
+    // Flip all three on; each should mount its own host.
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    // Wait for each dynamic chunk individually (await each panel mount
+    // via findByTestId, NOT just the wrapper host). The three are
+    // separate dynamic() chunks loading concurrently — synchronous
+    // getByTestId after the first findByTestId can race against the
+    // others' lazy load.
+    expect(await screen.findByTestId('solver-planner-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-planner-examples-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-branches-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('planner-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('planner-intent-examples-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('branch-manager-panel')).toBeInTheDocument();
+    // Toggle branches off — the other two stay mounted.
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('branch-manager-panel')).toBeNull();
+    });
+    expect(screen.getByTestId('planner-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-intent-examples-panel')).toBeInTheDocument();
+  });
+
+  it('storageKeyPrefix is project-scoped when projectId is supplied', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        projectId="proj-branches"
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await screen.findByTestId('branch-manager-panel');
+    // Save a branch.
+    fireEvent.change(screen.getByTestId('branch-manager-new-name'), {
+      target: { value: 'b1' },
+    });
+    fireEvent.click(screen.getByTestId('branch-manager-save'));
+    await screen.findByTestId('branch-manager-row-b1');
+    // The blob must live under the project-scoped prefix, NOT under the
+    // BranchManager's default 'nexyfab:tree-branches' slot.
+    const expectedPrefix = 'nexyfab:tree-branches:proj-branches';
+    expect(window.localStorage.getItem(`${expectedPrefix}:b1`)).not.toBeNull();
+    expect(
+      JSON.parse(window.localStorage.getItem(`${expectedPrefix}:_index`)!),
+    ).toEqual(['b1']);
+    // Default prefix must remain empty.
+    expect(window.localStorage.getItem('nexyfab:tree-branches:_index')).toBeNull();
+    expect(window.localStorage.getItem('nexyfab:tree-branches:b1')).toBeNull();
+  });
+
+  it('storageKeyPrefix falls back to BranchManager default when projectId is absent', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await screen.findByTestId('branch-manager-panel');
+    fireEvent.change(screen.getByTestId('branch-manager-new-name'), {
+      target: { value: 'g1' },
+    });
+    fireEvent.click(screen.getByTestId('branch-manager-save'));
+    await screen.findByTestId('branch-manager-row-g1');
+    // No-projectId mode → default slot is used.
+    expect(window.localStorage.getItem('nexyfab:tree-branches:g1')).not.toBeNull();
+    expect(
+      JSON.parse(window.localStorage.getItem('nexyfab:tree-branches:_index')!),
+    ).toEqual(['g1']);
+  });
+
+  it('currentTree reflects the wrapper live tree (newly-added nodes visible to a fresh save)', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    // Open branches panel BEFORE adding any nodes.
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    await screen.findByTestId('branch-manager-panel');
+    // Now add a node — currentTree prop should update reactively.
+    await drawRect();
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('solver-extrude-cancel'));
+    // Save → blob should contain the just-added node, not the empty seed
+    // the panel was first mounted against.
+    fireEvent.change(screen.getByTestId('branch-manager-new-name'), {
+      target: { value: 'after-add' },
+    });
+    fireEvent.click(screen.getByTestId('branch-manager-save'));
+    await screen.findByTestId('branch-manager-row-after-add');
+    const raw = window.localStorage.getItem('nexyfab:tree-branches:after-add')!;
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw) as { version: number; tree: { nodes: { id: string }[] } };
+    expect(parsed.tree.nodes.length).toBe(1);
+    expect(parsed.tree.nodes[0]!.id).toBe('extrude_0');
+  });
+
+  it('English i18n: "Branches" surfaces on the toggle', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-branches-toggle');
+    expect(toggle.textContent).toMatch(/Branches/);
+    expect(toggle.getAttribute('aria-label')).toBe('Show branches panel');
+  });
+
+  it('Korean i18n: 브랜치 surfaces on the toggle', async () => {
+    render(<SolverSketchEditorWithExtrude lang="ko" extrudeFetcher={vi.fn()} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    const toggle = screen.getByTestId('solver-branches-toggle');
+    expect(toggle.textContent).toMatch(/브랜치/);
+    expect(toggle.getAttribute('aria-label')).toBe('브랜치 패널 표시');
+  });
+
+  it('Japanese / Chinese / Spanish / Arabic i18n: toggle label is translated', async () => {
+    // Verify each remaining lang gets its own label (smoke covering all 6).
+    const cases: Array<{ lang: 'ja' | 'zh' | 'es' | 'ar'; label: RegExp; ariaContains: string }> = [
+      { lang: 'ja', label: /ブランチ/, ariaContains: 'ブランチパネル' },
+      { lang: 'zh', label: /分支/, ariaContains: '分支' },
+      { lang: 'es', label: /Ramas/, ariaContains: 'ramas' },
+      { lang: 'ar', label: /الفروع/, ariaContains: 'الفروع' },
+    ];
+    for (const { lang, label, ariaContains } of cases) {
+      const { unmount } = render(
+        <SolverSketchEditorWithExtrude lang={lang} extrudeFetcher={vi.fn()} />,
+      );
+      const editor = await screen.findByTestId('solver-sketch-editor');
+      await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+        timeout: 10000,
+      });
+      const toggle = screen.getByTestId('solver-branches-toggle');
+      expect(toggle.textContent).toMatch(label);
+      expect((toggle.getAttribute('aria-label') ?? '').toLowerCase()).toContain(
+        ariaContains.toLowerCase(),
+      );
+      unmount();
+    }
+  });
+});

@@ -32,6 +32,7 @@ import FeatureTreeView, { type FeatureTreeLang } from './FeatureTreeView';
 import type { PlannerLang } from './FeatureTreePlannerPanel';
 import type { PlanIntent, PlanStep } from '@/lib/ai/featureTreePlanner';
 import type { StepImportFetcher, StepImportLang } from './StepImportModal';
+import type { BranchManagerLang } from './FeatureTreeBranchManager';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
 import type { AxisLine2D } from '@/lib/cad/revolveProfile';
@@ -106,6 +107,18 @@ const IntentExamplesPanel = dynamic(() => import('./IntentExamplesPanel'), {
   ssr: false,
   loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
 });
+// FeatureTreeBranchManager (Agent-YYYYY) — standalone panel for snapshot /
+// load / diff / merge / delete of whole-tree branches. Hidden by default
+// (chunk loads only after the "Branches" toggle is clicked); kept fully
+// independent of the collab / AI planner / examples toggles per the
+// orthogonality contract in the task description.
+const FeatureTreeBranchManager = dynamic(
+  () => import('./FeatureTreeBranchManager'),
+  {
+    ssr: false,
+    loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  },
+);
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -157,6 +170,9 @@ interface Dict {
   collabConnected: string;
   /** `{N}` placeholder for peer count. */
   collabPeers: string;
+  /** Branches panel toggle (Agent-YYYYY — FeatureTreeBranchManager wiring). */
+  branches: string;
+  branchesToggle: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -185,6 +201,8 @@ const dict: Record<Lang, Dict> = {
     collabMode: '협업 모드',
     collabConnected: '연결됨',
     collabPeers: '{N}명 접속 중',
+    branches: '브랜치',
+    branchesToggle: '브랜치 패널 표시',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -211,6 +229,8 @@ const dict: Record<Lang, Dict> = {
     collabMode: 'Collab mode',
     collabConnected: 'Connected',
     collabPeers: '{N} peers',
+    branches: 'Branches',
+    branchesToggle: 'Show branches panel',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -237,6 +257,8 @@ const dict: Record<Lang, Dict> = {
     collabMode: 'コラボモード',
     collabConnected: '接続済み',
     collabPeers: '{N}人接続中',
+    branches: 'ブランチ',
+    branchesToggle: 'ブランチパネルを表示',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -263,6 +285,8 @@ const dict: Record<Lang, Dict> = {
     collabMode: '协作模式',
     collabConnected: '已连接',
     collabPeers: '{N}个用户',
+    branches: '分支',
+    branchesToggle: '显示分支面板',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -289,6 +313,8 @@ const dict: Record<Lang, Dict> = {
     collabMode: 'Modo colaboración',
     collabConnected: 'Conectado',
     collabPeers: '{N} usuarios',
+    branches: 'Ramas',
+    branchesToggle: 'Mostrar panel de ramas',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -315,6 +341,8 @@ const dict: Record<Lang, Dict> = {
     collabMode: 'وضع التعاون',
     collabConnected: 'متصل',
     collabPeers: '{N} مستخدمين',
+    branches: 'الفروع',
+    branchesToggle: 'إظهار لوحة الفروع',
   },
 };
 
@@ -867,6 +895,72 @@ export default function SolverSketchEditorWithExtrude(
     };
   }, []);
 
+  // ── Branches panel (Agent-YYYYY — FeatureTreeBranchManager wiring) ──────
+  // Default-off toggle. When on, FeatureTreeBranchManager mounts beneath
+  // the existing planner / examples panels (same "below toolbar" zone) so
+  // users see snapshot / load / merge controls alongside the live tree.
+  //
+  // Independent of the collab / AI planner / examples toggles per the
+  // orthogonality contract — all four can be on at once.
+  //
+  // storageKeyPrefix policy:
+  //   - projectId provided → `nexyfab:tree-branches:${projectId}` so each
+  //     project gets its own branch list (mirrors the per-project tree
+  //     storage key `nexyfab:tree:${projectId}` used by useFeatureTreeHistory).
+  //   - projectId omitted → fall through to the BranchManager default
+  //     (`nexyfab:tree-branches`) which is the global / no-project slot.
+  //
+  // onLoadTree contract (Load + Merge):
+  //   - useFeatureTreeHistory has no public "replace tree" setter; the only
+  //     ways to mutate are apply(EditOp), undo(), redo(), reset(). To swap
+  //     in a fresh tree from a branch payload we therefore:
+  //       1. resetHistory() — wipes past/future stacks AND collapses the
+  //          present to the EMPTY_TREE seed (history seedRef is captured
+  //          on mount with no initialTree → EMPTY_TREE).
+  //       2. for each node in the loaded tree, applyHistoryEdit({insert_node}).
+  //     The user gives up the prior undo trail on load (matches the
+  //     contract: loading a branch is a destructive "switch context" act
+  //     analogous to git checkout — the prior in-flight history would be
+  //     incoherent against a different node set).
+  //   - We also bump nextNodeIdRef past the loaded tree length so the next
+  //     modal-driven append does not collide with branch ids. Subsequent
+  //     fresh adds will sit at a higher numeric suffix — a gap in the id
+  //     sequence is harmless (ids only need uniqueness, not contiguity).
+  //   - selectedFeatureId is reset (selection is invalidated by the swap).
+  //   - persistError is cleared (a fresh tree may succeed where the prior
+  //     state was failing; if the new tree still fails to write, the
+  //     persistence side-channel effect will re-surface the banner).
+  const [showBranches, setShowBranches] = useState(false);
+
+  const branchStorageKeyPrefix =
+    projectId !== undefined
+      ? `nexyfab:tree-branches:${projectId}`
+      : undefined; // → BranchManager falls back to its DEFAULT_PREFIX.
+
+  const handleLoadTreeFromBranch = useCallback(
+    (loaded: FeatureTree) => {
+      // Reset first so the past/future stacks reflect a clean "loaded a
+      // branch" inflection point — undo will NOT walk back into the
+      // pre-load tree, which matches the documented "switch context"
+      // semantics. The BranchManager itself already handed us a deep
+      // clone via cloneTree, so we can hand the node references straight
+      // to insert_node without further copying.
+      resetHistory();
+      for (const node of loaded.nodes) {
+        applyHistoryEdit({ type: 'insert_node', node });
+      }
+      // Bump the id counter past the loaded tree size so subsequent
+      // modal-driven appends do not collide with branch-resident ids.
+      nextNodeIdRef.current = Math.max(
+        nextNodeIdRef.current,
+        loaded.nodes.length,
+      );
+      setSelectedFeatureId(undefined);
+      setPersistError(null);
+    },
+    [resetHistory, applyHistoryEdit],
+  );
+
   // ── Collab mode (Phase 1 wiring of useCrdtDoc + CursorOverlay) ──────────
   // The hook is ALWAYS called (Rules of Hooks). When `collabEnabled` is
   // false we never call `update`/`setLocal` and never render the overlay
@@ -1417,6 +1511,26 @@ export default function SolverSketchEditorWithExtrude(
           >
             💡 {showExamples ? t.hideExamples : t.showExamples}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowBranches((v) => !v)}
+            data-testid="solver-branches-toggle"
+            aria-label={t.branchesToggle}
+            aria-expanded={showBranches}
+            title={t.branchesToggle}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: showBranches ? '#0891b2' : '#fff',
+              border: '1px solid ' + (showBranches ? '#0e7490' : '#d1d5db'),
+              color: showBranches ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            🌿 {t.branches}
+          </button>
           <label
             data-testid="solver-collab-toggle-label"
             style={{
@@ -1533,6 +1647,19 @@ export default function SolverSketchEditorWithExtrude(
                 {examplePrefill}
               </div>
             )}
+          </div>
+        )}
+        {showBranches && (
+          <div
+            data-testid="solver-branches-panel-host"
+            style={{ marginTop: 8 }}
+          >
+            <FeatureTreeBranchManager
+              lang={(editorProps.lang ?? 'en') as BranchManagerLang}
+              currentTree={featureTree}
+              onLoadTree={handleLoadTreeFromBranch}
+              storageKeyPrefix={branchStorageKeyPrefix}
+            />
           </div>
         )}
         {plannerToast !== null && (
