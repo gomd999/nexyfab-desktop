@@ -79,6 +79,48 @@ function getPdfMockState(): PdfMockState {
   return (globalThis as unknown as { __pdfMock: PdfMockState }).__pdfMock;
 }
 
+// Phase 4.4.3 Phase 2 svg2pdfBridge mock — assembly tests for the vector
+// PDF route. Same shape as the raster mock above so tests can assert call
+// args / force-error implementations.
+vi.mock('@/lib/drawing/svg2pdfBridge', () => {
+  class MockVectorPdfError extends Error {
+    public readonly code: string;
+    constructor(code: string, message: string) {
+      super(message);
+      this.name = 'VectorPdfError';
+      this.code = code;
+    }
+  }
+  const defaultImpl = async (
+    _sheets: ReadonlyArray<unknown>,
+    _svgRefs: ReadonlyArray<unknown>,
+  ): Promise<Blob> => new Blob(['%PDF-1.4 vector'], { type: 'application/pdf' });
+  const mock = vi.fn<
+    (sheets: ReadonlyArray<unknown>, svgRefs: ReadonlyArray<unknown>) => Promise<Blob>
+  >(defaultImpl);
+  const state = { mock, MockVectorPdfError, defaultImpl };
+  (globalThis as unknown as { __svg2pdfMock: typeof state }).__svg2pdfMock = state;
+  return {
+    exportSheetsToPdfVector: (
+      sheets: ReadonlyArray<unknown>,
+      svgRefs: ReadonlyArray<unknown>,
+    ) => mock(sheets, svgRefs),
+    VectorPdfError: MockVectorPdfError,
+  };
+});
+
+type Svg2PdfMockState = {
+  mock: ReturnType<
+    typeof vi.fn<(s: ReadonlyArray<unknown>, r: ReadonlyArray<unknown>) => Promise<Blob>>
+  >;
+  MockVectorPdfError: new (code: string, msg: string) => Error & { code: string };
+  defaultImpl: (s: ReadonlyArray<unknown>, r: ReadonlyArray<unknown>) => Promise<Blob>;
+};
+
+function getSvg2PdfMockState(): Svg2PdfMockState {
+  return (globalThis as unknown as { __svg2pdfMock: Svg2PdfMockState }).__svg2pdfMock;
+}
+
 // Component must be imported AFTER vi.mock so its bound reference resolves
 // to the mock function.
 import { DrawingPageContent } from '@/app/[lang]/shape-generator/drawing/_content';
@@ -103,6 +145,10 @@ beforeEach(() => {
   const pdfState = getPdfMockState();
   pdfState.mock.mockReset();
   pdfState.mock.mockImplementation(pdfState.defaultImpl);
+
+  const svgState = getSvg2PdfMockState();
+  svgState.mock.mockReset();
+  svgState.mock.mockImplementation(svgState.defaultImpl);
 
   originalCreate = URL.createObjectURL;
   originalRevoke = URL.revokeObjectURL;
@@ -834,5 +880,120 @@ describe('DrawingPageContent assembly multi-sheet PDF export', () => {
     });
     selectSample('hinge-pair');
     expect(screen.queryByTestId('drawing-assembly-pdf-info')).toBeNull();
+  });
+});
+
+// ─── assembly PDF format radio + vector pipeline routing (Phase 2) ────────
+
+describe('DrawingPageContent assembly — PDF format radio', () => {
+  it('renders assembly raster + vector radio inputs when assembly mode is on', () => {
+    mount();
+    enableAssemblyMode();
+    expect(screen.getByTestId('drawing-assembly-pdf-format-raster')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-assembly-pdf-format-vector')).toBeInTheDocument();
+  });
+
+  it('defaults to raster (back-compat)', () => {
+    mount();
+    enableAssemblyMode();
+    const raster = screen.getByTestId('drawing-assembly-pdf-format-raster') as HTMLInputElement;
+    const vector = screen.getByTestId('drawing-assembly-pdf-format-vector') as HTMLInputElement;
+    expect(raster.checked).toBe(true);
+    expect(vector.checked).toBe(false);
+  });
+
+  it('raster path → exportSheetsToPdf is called, vector path is NOT', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(getPdfMockState().mock).toHaveBeenCalledTimes(1);
+    });
+    expect(getSvg2PdfMockState().mock).not.toHaveBeenCalled();
+  });
+
+  it('vector path → exportSheetsToPdfVector is called, raster path is NOT', async () => {
+    mount();
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    fireEvent.click(screen.getByTestId('drawing-assembly-pdf-format-vector'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(getSvg2PdfMockState().mock).toHaveBeenCalledTimes(1);
+    });
+    expect(getPdfMockState().mock).not.toHaveBeenCalled();
+  });
+
+  it('vector success → assembly info banner names the vector pipeline', async () => {
+    mount('en');
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    fireEvent.click(screen.getByTestId('drawing-assembly-pdf-format-vector'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-info')).toBeInTheDocument();
+    });
+    const info = screen.getByTestId('drawing-assembly-pdf-info');
+    expect(info.textContent ?? '').toMatch(/vector/i);
+  });
+
+  it('vector + svg2pdf-missing → falls back to raster + banner shows fallback', async () => {
+    const { mock, MockVectorPdfError } = getSvg2PdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockVectorPdfError(
+        'svg2pdf-missing',
+        'svg2pdf.js optional dependency is not installed',
+      );
+    });
+    mount('en');
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    fireEvent.click(screen.getByTestId('drawing-assembly-pdf-format-vector'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(getPdfMockState().mock).toHaveBeenCalledTimes(1);
+    });
+    // Both pipelines invoked: vector once (failed), raster once (fallback).
+    expect(mock).toHaveBeenCalledTimes(1);
+    const info = screen.getByTestId('drawing-assembly-pdf-info');
+    expect(info.textContent ?? '').toMatch(/fall(ing)? back to raster/i);
+  });
+
+  it('vector + render-failed → red error banner, no raster fallback', async () => {
+    const { mock, MockVectorPdfError } = getSvg2PdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockVectorPdfError('render-failed', 'svg2pdf failed — boom');
+    });
+    mount('en');
+    enableAssemblyMode();
+    fireEvent.click(screen.getByTestId('drawing-assembly-part-cube_a-sheet'));
+    fireEvent.click(screen.getByTestId('drawing-assembly-pdf-format-vector'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawing-assembly-export-pdf'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('drawing-assembly-pdf-error')).toBeInTheDocument();
+    });
+    expect(getPdfMockState().mock).not.toHaveBeenCalled();
+    const err = screen.getByTestId('drawing-assembly-pdf-error');
+    expect(err.textContent ?? '').toMatch(/boom/);
+  });
+
+  it('Korean i18n surfaces the assembly PDF 형식 group + 벡터/래스터', () => {
+    mount('ko');
+    enableAssemblyMode();
+    const group = screen.getByTestId('drawing-assembly-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/PDF 형식/);
+    expect(group.textContent ?? '').toMatch(/래스터/);
+    expect(group.textContent ?? '').toMatch(/벡터/);
   });
 });

@@ -11,10 +11,60 @@
  *   - The downloaded PDF page size matches the selected paperSize
  *   - When jspdf is missing, the error banner surfaces the i18n message
  *   - i18n covers ko / en / ja / zh
+ *   - Vector vs raster pdfFormat radio routing + automatic fallback
+ *     (Phase 4.4.3 Phase 2 svg2pdfBridge integration).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import React from 'react';
+
+// ─── svg2pdfBridge mock (Phase 2 vector pipeline) ────────────────────────
+//
+// Mocked BEFORE the component import so the bound reference inside
+// `_content.tsx` resolves to the mock. The factory stashes a handle on a
+// global symbol so individual tests can flip the implementation without
+// re-invoking vi.mock (which is hoisted and cannot capture test-local
+// closures).
+
+vi.mock('@/lib/drawing/svg2pdfBridge', () => {
+  class MockVectorPdfError extends Error {
+    public readonly code: string;
+    constructor(code: string, message: string) {
+      super(message);
+      this.name = 'VectorPdfError';
+      this.code = code;
+    }
+  }
+  const defaultImpl = async (
+    _sheets: ReadonlyArray<unknown>,
+    _svgRefs: ReadonlyArray<unknown>,
+  ): Promise<Blob> => new Blob(['%PDF-1.4 vector\n'], { type: 'application/pdf' });
+  const mock = vi.fn<
+    (sheets: ReadonlyArray<unknown>, svgRefs: ReadonlyArray<unknown>) => Promise<Blob>
+  >(defaultImpl);
+  const state = { mock, MockVectorPdfError, defaultImpl };
+  (globalThis as unknown as { __svg2pdfMock: typeof state }).__svg2pdfMock = state;
+  return {
+    exportSheetsToPdfVector: (
+      sheets: ReadonlyArray<unknown>,
+      svgRefs: ReadonlyArray<unknown>,
+    ) => mock(sheets, svgRefs),
+    VectorPdfError: MockVectorPdfError,
+  };
+});
+
+type Svg2PdfMockState = {
+  mock: ReturnType<
+    typeof vi.fn<(s: ReadonlyArray<unknown>, r: ReadonlyArray<unknown>) => Promise<Blob>>
+  >;
+  MockVectorPdfError: new (code: string, msg: string) => Error & { code: string };
+  defaultImpl: (s: ReadonlyArray<unknown>, r: ReadonlyArray<unknown>) => Promise<Blob>;
+};
+
+function getSvg2PdfMockState(): Svg2PdfMockState {
+  return (globalThis as unknown as { __svg2pdfMock: Svg2PdfMockState }).__svg2pdfMock;
+}
+
 import { DrawingPageContent } from '@/app/[lang]/shape-generator/drawing/_content';
 import { paperDimensions } from '@/lib/drawing/sheet';
 
@@ -60,6 +110,9 @@ let originalRevoke: typeof URL.revokeObjectURL | undefined;
 
 beforeEach(() => {
   ctorCalls.length = 0;
+  const svgState = getSvg2PdfMockState();
+  svgState.mock.mockReset();
+  svgState.mock.mockImplementation(svgState.defaultImpl);
   originalCreate = URL.createObjectURL;
   originalRevoke = URL.revokeObjectURL;
   createObjectUrlSpy = vi.fn(() => 'blob:mock-url');
@@ -175,5 +228,207 @@ describe('DrawingPageContent — PDF export', () => {
   it('English i18n renders the Export PDF label', () => {
     mount('en');
     expect(screen.getByTestId('drawing-export-pdf-button').textContent ?? '').toMatch(/Export PDF/);
+  });
+});
+
+// ─── PDF format radio + vector pipeline routing (Phase 2) ─────────────────
+
+/**
+ * Click Export PDF and wait until either the success info banner shows
+ * up OR an error banner appears, so each test can assert deterministic
+ * post-export UI state.
+ */
+async function clickPdfExportAndAwaitBanner() {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('drawing-export-pdf-button'));
+  });
+  await waitFor(() => {
+    const info = screen.queryByTestId('drawing-export-pdf-info');
+    const err = screen.queryByTestId('drawing-export-pdf-error');
+    expect(info || err).not.toBeNull();
+  });
+}
+
+describe('DrawingPageContent — PDF format radio', () => {
+  it('renders both raster + vector radio inputs', () => {
+    mount();
+    expect(screen.getByTestId('drawing-pdf-format-raster')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-pdf-format-vector')).toBeInTheDocument();
+  });
+
+  it('defaults to raster (back-compat) — raster checked, vector not', () => {
+    mount();
+    const raster = screen.getByTestId('drawing-pdf-format-raster') as HTMLInputElement;
+    const vector = screen.getByTestId('drawing-pdf-format-vector') as HTMLInputElement;
+    expect(raster.checked).toBe(true);
+    expect(vector.checked).toBe(false);
+  });
+
+  it('selecting vector flips the radios + selecting raster again switches back', () => {
+    mount();
+    const raster = screen.getByTestId('drawing-pdf-format-raster') as HTMLInputElement;
+    const vector = screen.getByTestId('drawing-pdf-format-vector') as HTMLInputElement;
+    fireEvent.click(vector);
+    expect(vector.checked).toBe(true);
+    expect(raster.checked).toBe(false);
+    fireEvent.click(raster);
+    expect(raster.checked).toBe(true);
+    expect(vector.checked).toBe(false);
+  });
+
+  it('raster path → exportSheetsToPdf via jspdf is called, vector path is NOT', async () => {
+    mount();
+    // Default = raster.
+    await clickPdfExportAndAwaitBanner();
+    expect(ctorCalls.length).toBeGreaterThan(0); // raster pipeline ran
+    expect(getSvg2PdfMockState().mock).not.toHaveBeenCalled();
+  });
+
+  it('vector path → exportSheetsToPdfVector is called, raster path is NOT', async () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    expect(getSvg2PdfMockState().mock).toHaveBeenCalledTimes(1);
+    // The raster constructor must not fire when the user opted into vector
+    // and the vector pipeline succeeded.
+    expect(ctorCalls.length).toBe(0);
+  });
+
+  it('vector success → info banner shows "Exported as vector PDF"', async () => {
+    mount('en');
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/Exported as vector PDF/);
+  });
+
+  it('raster success → info banner shows "Exported as raster PDF"', async () => {
+    mount('en');
+    await clickPdfExportAndAwaitBanner();
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/Exported as raster PDF/);
+  });
+
+  it('vector + svg2pdf-missing → automatic fallback to raster + fallback banner', async () => {
+    const { mock, MockVectorPdfError } = getSvg2PdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockVectorPdfError(
+        'svg2pdf-missing',
+        'svg2pdf.js optional dependency is not installed',
+      );
+    });
+    mount('en');
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    // The raster pipeline ran as fallback.
+    expect(ctorCalls.length).toBeGreaterThan(0);
+    // Vector was attempted exactly once.
+    expect(mock).toHaveBeenCalledTimes(1);
+    // Info banner names the fallback.
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/falling back to raster|fall back to raster/i);
+  });
+
+  it('vector + jspdf-missing → automatic fallback to raster', async () => {
+    const { mock, MockVectorPdfError } = getSvg2PdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockVectorPdfError(
+        'jspdf-missing',
+        'jspdf optional dependency is not installed',
+      );
+    });
+    mount('en');
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    expect(ctorCalls.length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('drawing-export-pdf-error')).toBeNull();
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/fall(ing)? back to raster/i);
+  });
+
+  it('vector + render-failed (non-fallback code) → red error banner, no fallback', async () => {
+    const { mock, MockVectorPdfError } = getSvg2PdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockVectorPdfError('render-failed', 'svg2pdf failed — boom');
+    });
+    mount('en');
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    // No fallback — raster pipeline must NOT run.
+    expect(ctorCalls.length).toBe(0);
+    const err = screen.getByTestId('drawing-export-pdf-error');
+    expect(err.textContent ?? '').toMatch(/boom/);
+  });
+
+  it('vector path → downloads an application/pdf blob via URL.createObjectURL', async () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    const calls = createObjectUrlSpy.mock.calls.map((c) => c[0] as Blob);
+    const pdfBlob = calls.find((b) => b?.type === 'application/pdf');
+    expect(pdfBlob).toBeInstanceOf(Blob);
+  });
+
+  it('a fresh export attempt clears the previous success info banner before re-running', async () => {
+    mount('en');
+    // First: raster success.
+    await clickPdfExportAndAwaitBanner();
+    expect(screen.getByTestId('drawing-export-pdf-info').textContent ?? '')
+      .toMatch(/raster/i);
+    // Switch to vector and re-export — banner must update to "vector".
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    expect(screen.getByTestId('drawing-export-pdf-info').textContent ?? '')
+      .toMatch(/vector/i);
+  });
+
+  // ─── 6-lang i18n for the new strings ────────────────────────────────────
+
+  it('Korean i18n surfaces the "PDF 형식" group legend + 벡터/래스터 labels', () => {
+    mount('ko');
+    const group = screen.getByTestId('drawing-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/PDF 형식/);
+    expect(group.textContent ?? '').toMatch(/래스터/);
+    expect(group.textContent ?? '').toMatch(/벡터/);
+  });
+
+  it('English i18n surfaces the "PDF format" group legend + Raster/Vector labels', () => {
+    mount('en');
+    const group = screen.getByTestId('drawing-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/PDF format/);
+    expect(group.textContent ?? '').toMatch(/Raster/);
+    expect(group.textContent ?? '').toMatch(/Vector/);
+  });
+
+  it('Japanese i18n surfaces "PDF 形式" + ラスター/ベクター', () => {
+    mount('ja');
+    const group = screen.getByTestId('drawing-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/PDF 形式/);
+    expect(group.textContent ?? '').toMatch(/ラスター/);
+    expect(group.textContent ?? '').toMatch(/ベクター/);
+  });
+
+  it('Chinese i18n surfaces "PDF 格式" + 光栅/矢量', () => {
+    mount('zh');
+    const group = screen.getByTestId('drawing-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/PDF 格式/);
+    expect(group.textContent ?? '').toMatch(/光栅/);
+    expect(group.textContent ?? '').toMatch(/矢量/);
+  });
+
+  it('Spanish i18n surfaces "Formato PDF" + Ráster/Vector', () => {
+    mount('es');
+    const group = screen.getByTestId('drawing-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/Formato PDF/);
+    expect(group.textContent ?? '').toMatch(/Ráster/);
+    expect(group.textContent ?? '').toMatch(/Vector/);
+  });
+
+  it('Arabic i18n surfaces "تنسيق PDF" + نقطي/متجه', () => {
+    mount('ar');
+    const group = screen.getByTestId('drawing-pdf-format-group');
+    expect(group.textContent ?? '').toMatch(/تنسيق PDF/);
+    expect(group.textContent ?? '').toMatch(/نقطي/);
+    expect(group.textContent ?? '').toMatch(/متجه/);
   });
 });

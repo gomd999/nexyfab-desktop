@@ -45,6 +45,7 @@ import { writeStepWithPmiBindings } from '@/lib/brep-bridge/stepWriteWithPmiBind
 import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
+import { exportSheetsToPdfVector, VectorPdfError } from '@/lib/drawing/svg2pdfBridge';
 import {
   getSampleAssembly,
   SAMPLE_ASSEMBLY_NAMES,
@@ -124,6 +125,12 @@ interface PageDict {
   assemblyPdfSuccess: string;
   assemblyPdfError: string;
   assemblyPdfNoSheets: string;
+  pdfFormat: string;
+  formatRaster: string;
+  formatVector: string;
+  fallbackToRaster: string;
+  exportedAsRaster: string;
+  exportedAsVector: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -174,6 +181,12 @@ const DICT: Record<string, PageDict> = {
     assemblyPdfSuccess: '페이지 PDF를 내보냈습니다',
     assemblyPdfError: '조립체 PDF 내보내기 실패',
     assemblyPdfNoSheets: '내보낼 시트가 없습니다',
+    pdfFormat: 'PDF 형식',
+    formatRaster: '래스터 (PNG 임베드)',
+    formatVector: '벡터 (선택 가능 텍스트)',
+    fallbackToRaster: '벡터 PDF 사용 불가 — 래스터로 대체',
+    exportedAsRaster: '래스터 PDF로 내보냈습니다',
+    exportedAsVector: '벡터 PDF로 내보냈습니다',
   },
   en: {
     title: 'Drawing Studio',
@@ -222,6 +235,12 @@ const DICT: Record<string, PageDict> = {
     assemblyPdfSuccess: 'Exported {n}-page PDF',
     assemblyPdfError: 'Assembly PDF export failed',
     assemblyPdfNoSheets: 'No sheets to export',
+    pdfFormat: 'PDF format',
+    formatRaster: 'Raster (PNG embed)',
+    formatVector: 'Vector (selectable text)',
+    fallbackToRaster: 'Vector PDF unavailable — falling back to raster',
+    exportedAsRaster: 'Exported as raster PDF',
+    exportedAsVector: 'Exported as vector PDF',
   },
   ja: {
     title: '図面スタジオ',
@@ -270,6 +289,12 @@ const DICT: Record<string, PageDict> = {
     assemblyPdfSuccess: 'ページPDFをエクスポートしました',
     assemblyPdfError: 'アセンブリ PDF エクスポートに失敗しました',
     assemblyPdfNoSheets: 'エクスポートするシートがありません',
+    pdfFormat: 'PDF 形式',
+    formatRaster: 'ラスター (PNG埋め込み)',
+    formatVector: 'ベクター (選択可能テキスト)',
+    fallbackToRaster: 'ベクターPDF利用不可 — ラスターで代替',
+    exportedAsRaster: 'ラスター PDF としてエクスポートしました',
+    exportedAsVector: 'ベクター PDF としてエクスポートしました',
   },
   zh: {
     title: '图纸工作室',
@@ -318,6 +343,12 @@ const DICT: Record<string, PageDict> = {
     assemblyPdfSuccess: '已导出 {n} 页 PDF',
     assemblyPdfError: '装配 PDF 导出失败',
     assemblyPdfNoSheets: '没有可导出的图纸',
+    pdfFormat: 'PDF 格式',
+    formatRaster: '光栅 (PNG 嵌入)',
+    formatVector: '矢量 (可选文本)',
+    fallbackToRaster: '矢量 PDF 不可用 — 回退到光栅',
+    exportedAsRaster: '已导出为光栅 PDF',
+    exportedAsVector: '已导出为矢量 PDF',
   },
   es: {
     title: 'Estudio de Planos',
@@ -366,6 +397,12 @@ const DICT: Record<string, PageDict> = {
     assemblyPdfSuccess: 'PDF de {n} páginas exportado',
     assemblyPdfError: 'Error al exportar PDF de ensamblaje',
     assemblyPdfNoSheets: 'No hay hojas para exportar',
+    pdfFormat: 'Formato PDF',
+    formatRaster: 'Ráster (PNG incrustado)',
+    formatVector: 'Vector (texto seleccionable)',
+    fallbackToRaster: 'PDF vectorial no disponible — recurriendo a ráster',
+    exportedAsRaster: 'Exportado como PDF ráster',
+    exportedAsVector: 'Exportado como PDF vectorial',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -414,6 +451,12 @@ const DICT: Record<string, PageDict> = {
     assemblyPdfSuccess: 'تم تصدير PDF بـ {n} صفحات',
     assemblyPdfError: 'فشل تصدير PDF التجميع',
     assemblyPdfNoSheets: 'لا توجد أوراق للتصدير',
+    pdfFormat: 'تنسيق PDF',
+    formatRaster: 'نقطي (تضمين PNG)',
+    formatVector: 'متجه (نص قابل للتحديد)',
+    fallbackToRaster: 'PDF المتجه غير متاح — الرجوع إلى النقطي',
+    exportedAsRaster: 'تم التصدير كـ PDF نقطي',
+    exportedAsVector: 'تم التصدير كـ PDF متجه',
   },
 };
 
@@ -680,6 +723,24 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * still flip it.
    */
   const [multiPagePdf, setMultiPagePdf] = useState<boolean>(false);
+  /**
+   * Phase 4.4.3 Phase 2 — user-selected PDF pipeline. Default 'raster'
+   * preserves back-compat with the 195 existing drawing-suite tests
+   * (none of which know about the vector path). When 'vector', the
+   * single-part and assembly export handlers route to
+   * {@link exportSheetsToPdfVector}. On VectorPdfError(svg2pdf-missing|
+   * jspdf-missing) the handler automatically retries with the raster
+   * pipeline and surfaces a "fallback to raster" notice — chosen over
+   * a manual retry button because the failure is purely about an
+   * unbundled optional dep, which the user can't action.
+   */
+  const [pdfFormat, setPdfFormat] = useState<'raster' | 'vector'>('raster');
+  /**
+   * Banner shown on success: identifies which pipeline produced the PDF,
+   * so users know whether their text will be selectable. Cleared at the
+   * start of every fresh export attempt.
+   */
+  const [pdfExportInfo, setPdfExportInfo] = useState<string | null>(null);
 
   // ─── Phase 5.3 assembly mode state ────────────────────────────────────
   const [assemblyMode, setAssemblyMode] = useState<boolean>(false);
@@ -938,26 +999,68 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       return;
     }
 
-    try {
-      const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
-      downloadBlob(blob, `${sampleName}.pdf`);
-      setAssemblyPdfInfo(
-        dict.assemblyPdfSuccess.replace('{n}', String(sheetsToExport.length)),
-      );
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      const prefix =
-        err instanceof PdfExportError && err.code === 'jspdf-missing'
-          ? `${dict.assemblyPdfError} (jspdf)`
-          : dict.assemblyPdfError;
-      setAssemblyPdfError(`${prefix}: ${detail}`);
+    /**
+     * Raster path — used as the default pipeline AND as the automatic
+     * fallback when the user picked 'vector' but the svg2pdf / jspdf
+     * optional dep failed to load. Mirrors the single-part handler.
+     */
+    const runRaster = async (fellBack: boolean): Promise<void> => {
+      try {
+        const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
+        downloadBlob(blob, `${sampleName}.pdf`);
+        const successMsg = dict.assemblyPdfSuccess.replace(
+          '{n}',
+          String(sheetsToExport.length),
+        );
+        setAssemblyPdfInfo(
+          fellBack
+            ? `${successMsg} — ${dict.fallbackToRaster}`
+            : `${successMsg} — ${dict.exportedAsRaster}`,
+        );
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        const prefix =
+          err instanceof PdfExportError && err.code === 'jspdf-missing'
+            ? `${dict.assemblyPdfError} (jspdf)`
+            : dict.assemblyPdfError;
+        setAssemblyPdfError(`${prefix}: ${detail}`);
+      }
+    };
+
+    if (pdfFormat === 'vector') {
+      try {
+        const blob = await exportSheetsToPdfVector(sheetsToExport, svgRefs);
+        downloadBlob(blob, `${sampleName}.pdf`);
+        const successMsg = dict.assemblyPdfSuccess.replace(
+          '{n}',
+          String(sheetsToExport.length),
+        );
+        setAssemblyPdfInfo(`${successMsg} — ${dict.exportedAsVector}`);
+      } catch (err) {
+        if (
+          err instanceof VectorPdfError
+          && (err.code === 'svg2pdf-missing' || err.code === 'jspdf-missing')
+        ) {
+          await runRaster(true);
+          return;
+        }
+        const detail = err instanceof Error ? err.message : String(err);
+        setAssemblyPdfError(`${dict.assemblyPdfError}: ${detail}`);
+      }
+      return;
     }
+
+    await runRaster(false);
   }, [
     partSheets,
     sampleName,
+    pdfFormat,
     dict.assemblyPdfError,
     dict.assemblyPdfSuccess,
     dict.assemblyPdfNoSheets,
+    dict.exportedAsRaster,
+    dict.exportedAsVector,
+    dict.fallbackToRaster,
   ]);
 
   const sheet: Sheet = useMemo(() => {
@@ -1064,6 +1167,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
 
   const onExportPdf = useCallback(async () => {
     setPdfExportError(null);
+    setPdfExportInfo(null);
     if (!sheetRef.current) return;
     const svgEl = sheetRef.current.querySelector(
       'svg[data-testid="sheet-renderer-root"]',
@@ -1074,18 +1178,61 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     // once it is, replace `[sheet]` / `[svgEl]` with the full arrays.
     const sheetsToExport = [sheet];
     const svgRefs: SVGElement[] = [svgEl];
-    try {
-      const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
-      downloadBlob(blob, `${sheet.id}.pdf`);
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      const prefix =
-        err instanceof PdfExportError && err.code === 'jspdf-missing'
-          ? `${dict.exportPdfError} (jspdf)`
-          : dict.exportPdfError;
-      setPdfExportError(`${prefix}: ${detail}`);
+
+    /**
+     * Raster path — used as the default pipeline AND as the automatic
+     * fallback when the user picked 'vector' but the svg2pdf / jspdf
+     * optional dep failed to load. The `fellBack` flag controls whether
+     * the banner shows the plain "Exported as raster" message or the
+     * "vector unavailable, fell back to raster" notice.
+     */
+    const runRaster = async (fellBack: boolean): Promise<void> => {
+      try {
+        const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
+        downloadBlob(blob, `${sheet.id}.pdf`);
+        setPdfExportInfo(
+          fellBack ? dict.fallbackToRaster : dict.exportedAsRaster,
+        );
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        const prefix =
+          err instanceof PdfExportError && err.code === 'jspdf-missing'
+            ? `${dict.exportPdfError} (jspdf)`
+            : dict.exportPdfError;
+        setPdfExportError(`${prefix}: ${detail}`);
+      }
+    };
+
+    if (pdfFormat === 'vector') {
+      try {
+        const blob = await exportSheetsToPdfVector(sheetsToExport, svgRefs);
+        downloadBlob(blob, `${sheet.id}.pdf`);
+        setPdfExportInfo(dict.exportedAsVector);
+      } catch (err) {
+        if (
+          err instanceof VectorPdfError
+          && (err.code === 'svg2pdf-missing' || err.code === 'jspdf-missing')
+        ) {
+          // Automatic fallback: the optional dep isn't installed. Re-run
+          // the raster pipeline and surface the bilingual fallback notice.
+          await runRaster(true);
+          return;
+        }
+        const detail = err instanceof Error ? err.message : String(err);
+        setPdfExportError(`${dict.exportPdfError}: ${detail}`);
+      }
+      return;
     }
-  }, [sheet, dict.exportPdfError]);
+
+    await runRaster(false);
+  }, [
+    sheet,
+    pdfFormat,
+    dict.exportPdfError,
+    dict.exportedAsRaster,
+    dict.exportedAsVector,
+    dict.fallbackToRaster,
+  ]);
 
   return (
     <main
@@ -1426,6 +1573,52 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               >
                 {dict.exportAssemblyStep}
               </button>
+              {/*
+                Assembly-mode PDF format radio. Shares the `pdfFormat`
+                state with the single-part footer so a user who picked
+                'vector' once continues to get vector PDFs across both
+                flows. Default raster.
+              */}
+              <fieldset
+                data-testid="drawing-assembly-pdf-format-group"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 4,
+                  padding: '4px 8px',
+                  margin: 0,
+                  fontSize: 11,
+                  color: '#374151',
+                }}
+              >
+                <legend style={{ padding: '0 4px', fontWeight: 600 }}>
+                  {dict.pdfFormat}
+                </legend>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input
+                    type="radio"
+                    name="drawing-assembly-pdf-format"
+                    data-testid="drawing-assembly-pdf-format-raster"
+                    value="raster"
+                    checked={pdfFormat === 'raster'}
+                    onChange={() => setPdfFormat('raster')}
+                  />
+                  {dict.formatRaster}
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input
+                    type="radio"
+                    name="drawing-assembly-pdf-format"
+                    data-testid="drawing-assembly-pdf-format-vector"
+                    value="vector"
+                    checked={pdfFormat === 'vector'}
+                    onChange={() => setPdfFormat('vector')}
+                  />
+                  {dict.formatVector}
+                </label>
+              </fieldset>
               <button
                 type="button"
                 data-testid="drawing-assembly-export-pdf"
@@ -1815,6 +2008,54 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               />
               {dict.multiPagePdfLabel}
             </label>
+            {/*
+              PDF format radio group — wired via `pdfFormat`. Default is
+              'raster' so the 195 pre-existing drawing-suite tests keep
+              passing without modification. The 'vector' option opts the
+              caller into `exportSheetsToPdfVector` (svg2pdf.js); if the
+              optional dep isn't installed, the export handler auto-falls
+              back to raster.
+            */}
+            <fieldset
+              data-testid="drawing-pdf-format-group"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                border: '1px solid #e5e7eb',
+                borderRadius: 4,
+                padding: '4px 8px',
+                margin: 0,
+                fontSize: 12,
+                color: '#374151',
+              }}
+            >
+              <legend style={{ padding: '0 4px', fontWeight: 600 }}>
+                {dict.pdfFormat}
+              </legend>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="radio"
+                  name="drawing-pdf-format"
+                  data-testid="drawing-pdf-format-raster"
+                  value="raster"
+                  checked={pdfFormat === 'raster'}
+                  onChange={() => setPdfFormat('raster')}
+                />
+                {dict.formatRaster}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="radio"
+                  name="drawing-pdf-format"
+                  data-testid="drawing-pdf-format-vector"
+                  value="vector"
+                  checked={pdfFormat === 'vector'}
+                  onChange={() => setPdfFormat('vector')}
+                />
+                {dict.formatVector}
+              </label>
+            </fieldset>
             <label
               style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
             >
@@ -1968,6 +2209,21 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               }}
             >
               {pdfExportError}
+            </p>
+          ) : null}
+          {pdfExportInfo ? (
+            <p
+              data-testid="drawing-export-pdf-info"
+              style={{
+                margin: 0,
+                padding: '6px 10px',
+                background: '#dcfce7',
+                color: '#166534',
+                borderRadius: 4,
+                fontSize: 12,
+              }}
+            >
+              {pdfExportInfo}
             </p>
           ) : null}
         </footer>
