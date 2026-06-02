@@ -45,6 +45,17 @@ import { writeStepWithPmiBindings } from '@/lib/brep-bridge/stepWriteWithPmiBind
 import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
+import {
+  getSampleAssembly,
+  SAMPLE_ASSEMBLY_NAMES,
+  type SampleAssemblyName,
+} from '@/lib/assembly/sampleAssemblies';
+import {
+  writeAssemblyWithPmi,
+  type AssemblyPmiResult,
+} from '@/lib/brep-bridge/stepWriteAssemblyWithPmi';
+import type { AssemblyPart } from '@/lib/brep-bridge/stepWrite';
+import type { PartInstance } from '@/lib/assembly/assemblyState';
 import { SheetRenderer } from './SheetRenderer';
 import DimensionAnnotationModal from './DimensionAnnotationModal';
 
@@ -93,6 +104,15 @@ interface PageDict {
   bindingsWarningTitle: string;
   dimensionTag: string;
   gdtTag: string;
+  assemblyMode: string;
+  addSheet: string;
+  exportAssemblyStep: string;
+  partListLabel: string;
+  noSheetAdded: string;
+  assemblySamplePickerLabel: string;
+  assemblyResultLabel: string;
+  assemblyWarningsTitle: string;
+  assemblyExportError: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -123,6 +143,15 @@ const DICT: Record<string, PageDict> = {
     bindingsWarningTitle: 'STEP 바인딩 경고',
     dimensionTag: '치수',
     gdtTag: 'GD&T',
+    assemblyMode: '조립체 모드',
+    addSheet: '시트 추가',
+    exportAssemblyStep: '조립체 STEP+PMI 내보내기',
+    partListLabel: '부품 목록',
+    noSheetAdded: '시트 없음',
+    assemblySamplePickerLabel: '조립체 샘플',
+    assemblyResultLabel: '조립체 내보내기 결과',
+    assemblyWarningsTitle: '조립체 경고',
+    assemblyExportError: '조립체 STEP 내보내기 실패',
   },
   en: {
     title: 'Drawing Studio',
@@ -151,6 +180,15 @@ const DICT: Record<string, PageDict> = {
     bindingsWarningTitle: 'STEP binding warnings',
     dimensionTag: 'DIM',
     gdtTag: 'GD&T',
+    assemblyMode: 'Assembly mode',
+    addSheet: 'Add sheet',
+    exportAssemblyStep: 'Export assembly STEP+PMI',
+    partListLabel: 'Parts',
+    noSheetAdded: 'No sheet',
+    assemblySamplePickerLabel: 'Assembly sample',
+    assemblyResultLabel: 'Assembly export result',
+    assemblyWarningsTitle: 'Assembly warnings',
+    assemblyExportError: 'Assembly STEP export failed',
   },
   ja: {
     title: '図面スタジオ',
@@ -179,6 +217,15 @@ const DICT: Record<string, PageDict> = {
     bindingsWarningTitle: 'STEPバインディング警告',
     dimensionTag: '寸法',
     gdtTag: 'GD&T',
+    assemblyMode: 'アセンブリモード',
+    addSheet: 'シート追加',
+    exportAssemblyStep: 'アセンブリ STEP+PMI エクスポート',
+    partListLabel: '部品一覧',
+    noSheetAdded: 'シートなし',
+    assemblySamplePickerLabel: 'アセンブリサンプル',
+    assemblyResultLabel: 'アセンブリ エクスポート結果',
+    assemblyWarningsTitle: 'アセンブリ警告',
+    assemblyExportError: 'アセンブリ STEP エクスポートに失敗しました',
   },
   zh: {
     title: '图纸工作室',
@@ -207,6 +254,15 @@ const DICT: Record<string, PageDict> = {
     bindingsWarningTitle: 'STEP 绑定警告',
     dimensionTag: '尺寸',
     gdtTag: 'GD&T',
+    assemblyMode: '装配模式',
+    addSheet: '添加图纸',
+    exportAssemblyStep: '导出装配 STEP+PMI',
+    partListLabel: '零件列表',
+    noSheetAdded: '无图纸',
+    assemblySamplePickerLabel: '装配示例',
+    assemblyResultLabel: '装配导出结果',
+    assemblyWarningsTitle: '装配警告',
+    assemblyExportError: '装配 STEP 导出失败',
   },
   es: {
     title: 'Estudio de Planos',
@@ -235,6 +291,15 @@ const DICT: Record<string, PageDict> = {
     bindingsWarningTitle: 'Advertencias de vínculos STEP',
     dimensionTag: 'DIM',
     gdtTag: 'GD&T',
+    assemblyMode: 'Modo ensamblaje',
+    addSheet: 'Añadir hoja',
+    exportAssemblyStep: 'Exportar STEP+PMI de ensamblaje',
+    partListLabel: 'Piezas',
+    noSheetAdded: 'Sin hoja',
+    assemblySamplePickerLabel: 'Ensamblaje de muestra',
+    assemblyResultLabel: 'Resultado de exportación de ensamblaje',
+    assemblyWarningsTitle: 'Advertencias de ensamblaje',
+    assemblyExportError: 'Error al exportar STEP de ensamblaje',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -263,6 +328,15 @@ const DICT: Record<string, PageDict> = {
     bindingsWarningTitle: 'تحذيرات روابط STEP',
     dimensionTag: 'البُعد',
     gdtTag: 'GD&T',
+    assemblyMode: 'وضع التجميع',
+    addSheet: 'إضافة ورقة',
+    exportAssemblyStep: 'تصدير تجميع STEP+PMI',
+    partListLabel: 'الأجزاء',
+    noSheetAdded: 'لا توجد ورقة',
+    assemblySamplePickerLabel: 'تجميع نموذج',
+    assemblyResultLabel: 'نتيجة تصدير التجميع',
+    assemblyWarningsTitle: 'تحذيرات التجميع',
+    assemblyExportError: 'فشل تصدير STEP للتجميع',
   },
 };
 
@@ -467,6 +541,40 @@ function exportSheetStepWithBindings(
   };
 }
 
+// ─── assembly helpers (Phase 5.3) ────────────────────────────────────────
+
+/**
+ * Phase 5.3 sample-assembly → AssemblyPart conversion.
+ *
+ * The assembly UI loads {@link getSampleAssembly} which produces PartInstances
+ * whose FeatureTree is a single 30 mm cube centred on the part's local
+ * origin (loop spans [-15,-15] → [15,15], depth 30 in +Z). The drawing-page
+ * STEP writer accepts only `AssemblyPart` records, so we walk every
+ * PartInstance and emit its world-space axis-aligned bbox (Phase 1 limit:
+ * orientation is dropped — only `position` participates).
+ *
+ * Returns a freshly allocated array so the caller can mutate it without
+ * disturbing the cached sample.
+ */
+function partInstanceToAssemblyPart(p: PartInstance): AssemblyPart {
+  // Cube feature is centred at the part local origin: x/y span [-15, +15],
+  // z span [0, +30] (one_sided +Z extrude, depth 30).
+  const px = p.position.x;
+  const py = p.position.y;
+  const pz = p.position.z;
+  return {
+    kind: 'box',
+    id: p.id,
+    name: p.name,
+    x0: px - 15,
+    y0: py - 15,
+    z0: pz,
+    x1: px + 15,
+    y1: py + 15,
+    z1: pz + 30,
+  };
+}
+
 // ─── component ───────────────────────────────────────────────────────────
 
 export function DrawingPageContent({ lang }: { lang: string }): React.ReactElement {
@@ -496,7 +604,94 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    */
   const [multiPagePdf, setMultiPagePdf] = useState<boolean>(false);
 
+  // ─── Phase 5.3 assembly mode state ────────────────────────────────────
+  const [assemblyMode, setAssemblyMode] = useState<boolean>(false);
+  const [sampleName, setSampleName] = useState<SampleAssemblyName>(
+    SAMPLE_ASSEMBLY_NAMES[0],
+  );
+  /** Per-part sheets keyed by partId. Empty by default. */
+  const [partSheets, setPartSheets] = useState<Record<string, Sheet>>({});
+  /** The selected part whose sheet is shown in the centre canvas. */
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+  /** Result + warnings from the most recent writeAssemblyWithPmi call. */
+  const [assemblyExport, setAssemblyExport] = useState<{
+    ranges: AssemblyPmiResult['ranges'];
+    warnings: ReadonlyArray<string>;
+    bindingsCount: number;
+  } | null>(null);
+  const [assemblyExportError, setAssemblyExportError] = useState<string | null>(null);
+
   const sheetRef = React.useRef<HTMLDivElement>(null);
+
+  /**
+   * Memoised sample assembly. Recomputed only when the user picks a new
+   * preset — partSheets edits don't re-run getSampleAssembly so the part
+   * list stays stable.
+   */
+  const sampleAssembly = useMemo(() => {
+    return getSampleAssembly(sampleName);
+  }, [sampleName]);
+
+  // Reset per-part sheets + selected part whenever the sample changes.
+  // Wrapped in useMemo above so this effect tracks the sample identity.
+  React.useEffect(() => {
+    setPartSheets({});
+    setSelectedPartId(null);
+    setAssemblyExport(null);
+    setAssemblyExportError(null);
+  }, [sampleName]);
+
+  const handleAddSheetForPart = useCallback((partId: string, partName: string) => {
+    setPartSheets((prev) => {
+      if (prev[partId]) return prev; // already has a sheet
+      const newSheet = standardThreeViewSheet({
+        id: `assembly-sheet-${partId}`,
+        name: `Drawing — ${partName}`,
+        sourceId: partId,
+        paperSize: 'A3',
+        scale: 1,
+      });
+      return { ...prev, [partId]: newSheet };
+    });
+    // Auto-select the first part to gain a sheet.
+    setSelectedPartId((cur) => cur ?? partId);
+  }, []);
+
+  const onExportAssemblyStep = useCallback(() => {
+    setAssemblyExportError(null);
+    setAssemblyExport(null);
+    try {
+      const parts: AssemblyPart[] = sampleAssembly.state.parts.map(
+        partInstanceToAssemblyPart,
+      );
+      const result = writeAssemblyWithPmi({
+        geometry: {
+          kind: 'assembly',
+          assemblyName: sampleName,
+          parts,
+        },
+        partSheets,
+        header: {
+          description: `NexyFab assembly export — ${sampleName}`,
+          filename: `${sampleName}.step`,
+        },
+      });
+      let bindingsCount = 0;
+      for (const m of result.pmiMappingByPart.values()) {
+        bindingsCount += m.size;
+      }
+      setAssemblyExport({
+        ranges: result.ranges,
+        warnings: result.warnings,
+        bindingsCount,
+      });
+      const blob = new Blob([result.source], { type: 'application/step' });
+      downloadBlob(blob, `${sampleName}.step`);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setAssemblyExportError(`${dict.assemblyExportError}: ${detail}`);
+    }
+  }, [sampleAssembly, sampleName, partSheets, dict.assemblyExportError]);
 
   const sheet: Sheet = useMemo(() => {
     const base = standardThreeViewSheet({
@@ -645,11 +840,271 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           gap: 12,
         }}
       >
-        <header data-testid="drawing-page-header">
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
+        <header
+          data-testid="drawing-page-header"
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}
+        >
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
+          </div>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 13,
+              color: '#374151',
+              fontWeight: 600,
+            }}
+          >
+            <input
+              type="checkbox"
+              data-testid="drawing-assembly-mode-toggle"
+              checked={assemblyMode}
+              onChange={(e) => setAssemblyMode(e.target.checked)}
+            />
+            {dict.assemblyMode}
+          </label>
         </header>
 
+        {assemblyMode ? (
+          <section
+            data-testid="drawing-assembly-section"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '280px 1fr',
+              gap: 12,
+              alignItems: 'flex-start',
+            }}
+          >
+            {/* ─── Left panel: sample picker + part list ─────────────── */}
+            <aside
+              data-testid="drawing-assembly-left-panel"
+              style={{
+                background: '#ffffff',
+                borderRadius: 6,
+                padding: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+            >
+              <label
+                style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}
+              >
+                <span style={{ fontWeight: 600 }}>{dict.assemblySamplePickerLabel}</span>
+                <select
+                  data-testid="drawing-assembly-sample-select"
+                  value={sampleName}
+                  onChange={(e) => setSampleName(e.target.value as SampleAssemblyName)}
+                  style={{ padding: 6 }}
+                >
+                  {SAMPLE_ASSEMBLY_NAMES.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontWeight: 600, fontSize: 12 }}>{dict.partListLabel}</span>
+                <ul
+                  data-testid="drawing-assembly-part-list"
+                  style={{
+                    listStyle: 'none',
+                    padding: 0,
+                    margin: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  {sampleAssembly.state.parts.map((p) => {
+                    const hasSheet = Boolean(partSheets[p.id]);
+                    const selected = p.id === selectedPartId;
+                    return (
+                      <li
+                        key={p.id}
+                        data-testid={`drawing-assembly-part-row-${p.id}`}
+                        data-selected={selected ? 'true' : 'false'}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '6px 8px',
+                          borderRadius: 4,
+                          background: selected ? '#dbeafe' : '#f3f4f6',
+                          fontSize: 12,
+                          cursor: hasSheet ? 'pointer' : 'default',
+                        }}
+                        onClick={() => {
+                          if (hasSheet) setSelectedPartId(p.id);
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span
+                            data-testid={`drawing-assembly-part-${p.id}-status`}
+                            aria-label={hasSheet ? 'sheet-added' : 'no-sheet'}
+                            style={{
+                              display: 'inline-block',
+                              width: 14,
+                              textAlign: 'center',
+                              color: hasSheet ? '#166534' : '#9ca3af',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {hasSheet ? '✓' : '○'}
+                          </span>
+                          <strong>{p.name}</strong>
+                          {!hasSheet ? (
+                            <span style={{ color: '#9ca3af' }}> · {dict.noSheetAdded}</span>
+                          ) : null}
+                        </span>
+                        <button
+                          type="button"
+                          data-testid={`drawing-assembly-part-${p.id}-sheet`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddSheetForPart(p.id, p.name);
+                          }}
+                          disabled={hasSheet}
+                          style={{
+                            padding: '2px 8px',
+                            background: hasSheet ? '#e5e7eb' : '#1d4ed8',
+                            color: hasSheet ? '#6b7280' : '#fff',
+                            border: 'none',
+                            borderRadius: 3,
+                            cursor: hasSheet ? 'not-allowed' : 'pointer',
+                            fontSize: 11,
+                          }}
+                        >
+                          {dict.addSheet}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <button
+                type="button"
+                data-testid="drawing-export-assembly-step"
+                onClick={onExportAssemblyStep}
+                disabled={sampleAssembly.state.parts.length === 0}
+                style={{
+                  padding: '8px 14px',
+                  background:
+                    sampleAssembly.state.parts.length === 0 ? '#9ca3af' : '#0f172a',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor:
+                    sampleAssembly.state.parts.length === 0 ? 'not-allowed' : 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                {dict.exportAssemblyStep}
+              </button>
+            </aside>
+
+            {/* ─── Centre: selected part's sheet preview ─────────────── */}
+            <div
+              data-testid="drawing-assembly-canvas"
+              style={{
+                background: '#e5e7eb',
+                padding: 12,
+                borderRadius: 6,
+                overflow: 'auto',
+                display: 'flex',
+                justifyContent: 'center',
+                minHeight: 200,
+              }}
+            >
+              {selectedPartId && partSheets[selectedPartId] ? (
+                <SheetRenderer sheet={partSheets[selectedPartId]} />
+              ) : (
+                <p
+                  data-testid="drawing-assembly-no-selection"
+                  style={{ fontSize: 12, color: '#6b7280', margin: 0 }}
+                >
+                  {dict.noSheetAdded}
+                </p>
+              )}
+            </div>
+
+            {/* ─── Export result + warnings ──────────────────────────── */}
+            {assemblyExport ? (
+              <div
+                data-testid="drawing-assembly-export-result"
+                style={{
+                  gridColumn: '1 / -1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    padding: '6px 10px',
+                    background: '#dcfce7',
+                    color: '#166534',
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  <strong>{dict.assemblyResultLabel}: </strong>
+                  parts={assemblyExport.ranges.length}, bindings={assemblyExport.bindingsCount}
+                </p>
+                {assemblyExport.warnings.length > 0 ? (
+                  <div
+                    data-testid="drawing-assembly-export-warnings"
+                    role="alert"
+                    style={{
+                      padding: '6px 10px',
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      borderRadius: 4,
+                      fontSize: 12,
+                    }}
+                  >
+                    <strong style={{ display: 'block', marginBottom: 2 }}>
+                      {dict.assemblyWarningsTitle}
+                    </strong>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {assemblyExport.warnings.map((w, i) => (
+                        <li
+                          key={`${i}-${w}`}
+                          data-testid={`drawing-assembly-warning-${i}`}
+                        >
+                          {w}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {assemblyExportError ? (
+              <p
+                data-testid="drawing-assembly-export-error"
+                role="alert"
+                style={{
+                  gridColumn: '1 / -1',
+                  margin: 0,
+                  padding: '6px 10px',
+                  background: '#fee2e2',
+                  color: '#991b1b',
+                  borderRadius: 4,
+                  fontSize: 12,
+                }}
+              >
+                {assemblyExportError}
+              </p>
+            ) : null}
+          </section>
+        ) : (
         <div
           style={{
             display: 'grid',
@@ -829,8 +1284,10 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             )}
           </aside>
         </div>
+        )}
 
         {/* ─── Bottom: export buttons + error banner ───────────────── */}
+        {!assemblyMode ? (
         <footer
           data-testid="drawing-page-footer"
           style={{
@@ -1011,6 +1468,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             </p>
           ) : null}
         </footer>
+        ) : null}
       </div>
 
       {modalOpen && firstViewportId ? (
