@@ -2816,4 +2816,415 @@ describe('AssemblyBrowserModal', () => {
       ).toMatch(re);
     });
   });
+
+  // ── Mate-row value cell inline editing (MMMM pattern) ───────────────────
+  //
+  /**
+   * The mate row's numeric value cell uses the same MMMM pattern as
+   * `SketchConstraintOverlay`'s inline dimension editor:
+   *
+   *   - Double-click selects the input contents + enters edit mode.
+   *   - Live keystrokes track a per-mate draft; invalid drafts (negative
+   *     distance / angle, non-positive ratio / pinionRadius) flag a red
+   *     border via `data-mate-value-invalid="true"`.
+   *   - Enter commits the draft via `recordChange` so Undo restores the
+   *     prior value; the input then returns to display mode.
+   *   - Esc cancels the edit (input reverts to the stored value).
+   *
+   * Mate kinds without a numeric value (`coincident`, `concentric`,
+   * `parallel`, `perpendicular`, `tangent`) do not render a value cell at
+   * all — verified separately so the pattern stays contained.
+   */
+  describe('Phase 3.A mate-value inline editor (MMMM pattern)', () => {
+    /**
+     * Build a distance-mate seed state with the supplied initial value. We
+     * use face/face refs (allowed by `validateMate`) so any `recordChange`
+     * triggered by Enter passes IR validation.
+     */
+    function distanceState(initial: number): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_d',
+            kind: 'distance',
+            a: { partId: 'p_a', refId: 'face_x', refKind: 'face' },
+            b: { partId: 'p_b', refId: 'face_y', refKind: 'face' },
+            value: initial,
+          },
+        ],
+      };
+    }
+
+    function gearState(initial: number): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_g',
+            kind: 'gear',
+            a: { partId: 'p_a', refId: 'axis_a', refKind: 'axis' },
+            b: { partId: 'p_b', refId: 'axis_b', refKind: 'axis' },
+            ratio: initial,
+          },
+        ],
+      };
+    }
+
+    function rackPinionState(initial: number): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_rp',
+            kind: 'rack_pinion',
+            a: { partId: 'p_a', refId: 'axis_a', refKind: 'axis' },
+            b: { partId: 'p_b', refId: 'edge_b', refKind: 'edge' },
+            pinionRadius: initial,
+          },
+        ],
+      };
+    }
+
+    function angleState(initial: number): AssemblyState {
+      return {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_a',
+            kind: 'angle',
+            a: { partId: 'p_a', refId: 'face_x', refKind: 'face' },
+            b: { partId: 'p_b', refId: 'face_y', refKind: 'face' },
+            value: initial,
+          },
+        ],
+      };
+    }
+
+    it('distance mate row exposes the value input cell with the seeded value', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(25)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      expect(input).toBeInTheDocument();
+      expect(input.value).toBe('25');
+    });
+
+    it('valueless mates (concentric) do NOT render a value cell', () => {
+      const state: AssemblyState = {
+        parts: [
+          {
+            id: 'p_a',
+            name: 'A',
+            partTemplateId: 'tpl_a',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_b',
+            name: 'B',
+            partTemplateId: 'tpl_b',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'm_c',
+            kind: 'concentric',
+            a: { partId: 'p_a', refId: 'axis_a', refKind: 'axis' },
+            b: { partId: 'p_b', refId: 'axis_b', refKind: 'axis' },
+          },
+        ],
+      };
+      render(<AssemblyBrowserModal lang="en" initialState={state} onClose={vi.fn()} />);
+      expect(screen.queryByTestId('solver-assembly-mate-value-m_c')).toBeNull();
+    });
+
+    it('double-click on the value input selects its text contents (enters edit mode)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      // jsdom doesn't implement input.select() side-effects, but the
+      // onDoubleClick handler should at least begin the edit (draft set).
+      // After dbl-click + a fireEvent.change, the input must still echo
+      // the typed value (proves we're in edit mode, not snapping back).
+      fireEvent.doubleClick(input);
+      fireEvent.change(input, { target: { value: '15' } });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('15');
+    });
+
+    it('Enter on a valid edited value commits via recordChange (Undo becomes enabled)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const undo = screen.getByTestId('solver-assembly-undo') as HTMLButtonElement;
+      expect(undo.disabled).toBe(true);
+
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '42' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+      // After commit the input is back in display mode reflecting the
+      // canonical mate value (42), and Undo is enabled.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('42');
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(false);
+      // History panel reads "Update mate m_d value → 42".
+      expect(
+        screen.getByTestId('solver-assembly-history-current').textContent,
+      ).toMatch(/Update mate m_d value/);
+    });
+
+    it('Ctrl+Z after a value commit restores the previous value', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '99' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('99');
+      // Click Undo (Ctrl+Z is also wired but the keyboard handler skips
+      // events whose focus is inside an INPUT — using the button is the
+      // equivalent surface that always fires).
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('10');
+    });
+
+    it('negative distance is rejected: red border + no history entry', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '-5' } });
+      // Red border flagged via the data-attribute (visual style: red border).
+      expect(input.getAttribute('data-mate-value-invalid')).toBe('true');
+      // Enter on invalid value does NOT advance history.
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+      // Red border still flagged after the rejected Enter.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement)
+          .getAttribute('data-mate-value-invalid'),
+      ).toBe('true');
+    });
+
+    it('Escape cancels the edit and reverts the input to the stored value', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '777' } });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('777');
+      fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+      // After cancel: input snaps back to the stored 10.
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('10');
+      // No history entry.
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('gear ratio inline edit: Enter commits and Undo restores', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={gearState(2)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_g') as HTMLInputElement;
+      expect(input.value).toBe('2');
+      fireEvent.change(input, { target: { value: '5' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_g') as HTMLInputElement).value,
+      ).toBe('5');
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_g') as HTMLInputElement).value,
+      ).toBe('2');
+    });
+
+    it('gear ratio = 0 is rejected (red border, no commit)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={gearState(2)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_g') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '0' } });
+      expect(input.getAttribute('data-mate-value-invalid')).toBe('true');
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('rack_pinion pinionRadius inline edit: Enter commits and Undo restores', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={rackPinionState(3)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_rp') as HTMLInputElement;
+      expect(input.value).toBe('3');
+      fireEvent.change(input, { target: { value: '8' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_rp') as HTMLInputElement).value,
+      ).toBe('8');
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_rp') as HTMLInputElement).value,
+      ).toBe('3');
+    });
+
+    it('rack_pinion negative pinionRadius is rejected (red border, no commit)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={rackPinionState(3)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_rp') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '-1' } });
+      expect(input.getAttribute('data-mate-value-invalid')).toBe('true');
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('angle negative input is rejected (red border, no commit)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={angleState(45)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_a') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '-30' } });
+      expect(input.getAttribute('data-mate-value-invalid')).toBe('true');
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('committing the same value as the existing one is a no-op (no history entry)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      // Type the same number, Enter — the modal should treat this as no
+      // actual change and skip the history push.
+      fireEvent.change(input, { target: { value: '10' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('changing mate kind clears any in-flight value draft (red border drops)', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '-5' } });
+      expect(input.getAttribute('data-mate-value-invalid')).toBe('true');
+      // Flip kind → distance stays valid but the draft is purged so the
+      // input snaps back to the canonical 10 with no red border.
+      fireEvent.change(screen.getByTestId('solver-assembly-mate-kind-m_d'), {
+        target: { value: 'distance' },
+      });
+      const after = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      expect(after.value).toBe('10');
+      expect(after.getAttribute('data-mate-value-invalid')).toBeNull();
+    });
+
+    it('zero distance is accepted (≥ 0) and commits to history', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={distanceState(10)} onClose={vi.fn()} />,
+      );
+      const input = screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '0' } });
+      // Zero is valid per IR (`distance.value ≥ 0`).
+      expect(input.getAttribute('data-mate-value-invalid')).toBeNull();
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(false);
+      expect(
+        (screen.getByTestId('solver-assembly-mate-value-m_d') as HTMLInputElement).value,
+      ).toBe('0');
+    });
+  });
 });

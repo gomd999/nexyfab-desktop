@@ -57,6 +57,7 @@ import {
 } from '@/lib/brep-bridge/stepAssemblyImport';
 import FeatureTreePlannerPanel from '../sketch/FeatureTreePlannerPanel';
 import type { PlanStep } from '@/lib/ai/featureTreePlanner';
+import { buildBom, bomToCsv, bomToJson } from '@/lib/assembly/bomExport';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,14 @@ interface Dict {
   descRemoveMate: (id: string) => string;
   descAcceptMate: (id: string) => string;
   descAcceptAllMates: (count: number) => string;
+  /**
+   * Description recorded in history when a mate's numeric value cell is
+   * committed via the MMMM inline-edit pattern (Enter on the value input).
+   * Takes the mate id and the new value so the history panel reads
+   * "Update mate m1 value → 25" — the inline edit goes through
+   * `recordChange` so Undo restores the prior value.
+   */
+  descUpdateMateValue: (id: string, value: number) => string;
   /** "Import STEP assembly" footer button label (Phase 4.B). */
   importStepAssembly: string;
   /** In-flight label while the file is being parsed. */
@@ -214,6 +223,20 @@ interface Dict {
    * doing something unexpected.
    */
   couldNotParse: string;
+  /**
+   * Phase 4.5 — Bill of Materials export. The footer "Export BOM" button
+   * reveals a small CSV / JSON sub-menu that triggers a download blob.
+   */
+  exportBom: string;
+  /** Sub-menu label for the CSV download. */
+  bomCsv: string;
+  /** Sub-menu label for the JSON download. */
+  bomJson: string;
+  /**
+   * Tooltip shown on the post-export inline summary. Wraps the total mass
+   * value in a localized "Total mass: X g" line.
+   */
+  bomTotalMass: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -281,6 +304,7 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `메이트 삭제 ${id}`,
     descAcceptMate: (id) => `추론 메이트 수락 ${id}`,
     descAcceptAllMates: (count) => `추론 메이트 일괄 수락 (${count})`,
+    descUpdateMateValue: (id, value) => `메이트 값 변경 ${id} → ${value}`,
     importStepAssembly: 'STEP 어셈블리 가져오기',
     importingAssembly: '어셈블리 가져오는 중...',
     importedSummary: (parts, warnings, unsupported) =>
@@ -298,6 +322,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     createAssemblyPrompt: '예: 3 stacked plates / 2 x 3 grid',
     createAssemblySubmit: '생성',
     couldNotParse: '입력을 이해할 수 없습니다',
+    exportBom: 'BOM 내보내기',
+    bomCsv: 'CSV',
+    bomJson: 'JSON',
+    bomTotalMass: '총 질량',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -363,6 +391,7 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `Remove mate ${id}`,
     descAcceptMate: (id) => `Accept inferred mate ${id}`,
     descAcceptAllMates: (count) => `Accept all inferred mates (${count})`,
+    descUpdateMateValue: (id, value) => `Update mate ${id} value → ${value}`,
     importStepAssembly: 'Import STEP assembly',
     importingAssembly: 'Importing assembly...',
     importedSummary: (parts, warnings, unsupported) =>
@@ -381,6 +410,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     createAssemblyPrompt: 'e.g., 3 stacked plates / 2 x 3 grid',
     createAssemblySubmit: 'Create',
     couldNotParse: 'Could not parse',
+    exportBom: 'Export BOM',
+    bomCsv: 'CSV',
+    bomJson: 'JSON',
+    bomTotalMass: 'Total mass',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -446,6 +479,7 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `メイト削除 ${id}`,
     descAcceptMate: (id) => `推論メイトを受入 ${id}`,
     descAcceptAllMates: (count) => `推論メイトを一括受入 (${count})`,
+    descUpdateMateValue: (id, value) => `メイト値変更 ${id} → ${value}`,
     importStepAssembly: 'STEP アセンブリ取込',
     importingAssembly: 'アセンブリ取込中...',
     importedSummary: (parts, warnings, unsupported) =>
@@ -464,6 +498,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     createAssemblyPrompt: '例: 3 stacked plates / 2 x 3 grid',
     createAssemblySubmit: '作成',
     couldNotParse: '入力を解析できません',
+    exportBom: 'BOM エクスポート',
+    bomCsv: 'CSV',
+    bomJson: 'JSON',
+    bomTotalMass: '総質量',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -529,6 +567,7 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `删除配合 ${id}`,
     descAcceptMate: (id) => `接受推断配合 ${id}`,
     descAcceptAllMates: (count) => `批量接受推断配合 (${count})`,
+    descUpdateMateValue: (id, value) => `更改配合数值 ${id} → ${value}`,
     importStepAssembly: '导入 STEP 装配',
     importingAssembly: '正在导入装配...',
     importedSummary: (parts, warnings, unsupported) =>
@@ -546,6 +585,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     createAssemblyPrompt: '例如: 3 stacked plates / 2 x 3 grid',
     createAssemblySubmit: '创建',
     couldNotParse: '无法解析输入',
+    exportBom: '导出 BOM',
+    bomCsv: 'CSV',
+    bomJson: 'JSON',
+    bomTotalMass: '总质量',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -611,6 +654,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `Eliminar restricción ${id}`,
     descAcceptMate: (id) => `Aceptar restricción inferida ${id}`,
     descAcceptAllMates: (count) => `Aceptar todas las restricciones inferidas (${count})`,
+    descUpdateMateValue: (id, value) =>
+      `Actualizar valor de la restricción ${id} → ${value}`,
     importStepAssembly: 'Importar ensamblaje STEP',
     importingAssembly: 'Importando ensamblaje...',
     importedSummary: (parts, warnings, unsupported) =>
@@ -629,6 +674,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     createAssemblyPrompt: 'p. ej., 3 stacked plates / 2 x 3 grid',
     createAssemblySubmit: 'Crear',
     couldNotParse: 'No se pudo analizar',
+    exportBom: 'Exportar BOM',
+    bomCsv: 'CSV',
+    bomJson: 'JSON',
+    bomTotalMass: 'Masa total',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -694,6 +743,7 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     descRemoveMate: (id) => `حذف قيد ${id}`,
     descAcceptMate: (id) => `قبول القيد المستنتج ${id}`,
     descAcceptAllMates: (count) => `قبول جميع القيود المستنتجة (${count})`,
+    descUpdateMateValue: (id, value) => `تحديث قيمة القيد ${id} → ${value}`,
     importStepAssembly: 'استيراد تجميع STEP',
     importingAssembly: 'جارٍ استيراد التجميع...',
     importedSummary: (parts, warnings, unsupported) =>
@@ -712,6 +762,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     createAssemblyPrompt: 'مثال: 3 stacked plates / 2 x 3 grid',
     createAssemblySubmit: 'إنشاء',
     couldNotParse: 'تعذّر التحليل',
+    exportBom: 'تصدير BOM',
+    bomCsv: 'CSV',
+    bomJson: 'JSON',
+    bomTotalMass: 'الكتلة الإجمالية',
   },
 };
 
@@ -984,6 +1038,31 @@ function setMateValue(m: Mate, v: number): Mate {
   if (m.kind === 'gear') return { ...m, ratio: v };
   if (m.kind === 'rack_pinion') return { ...m, pinionRadius: v };
   return m;
+}
+
+/**
+ * Validate a user-entered numeric value for a mate's value cell. The MMMM
+ * inline-edit pattern surfaces an invalid value with a red border and
+ * refuses to push it through `recordChange` (history would throw via
+ * `validateAssembly` anyway, but we catch it earlier so the UX is "input
+ * stays red while user is typing" rather than "history toast pops").
+ *
+ * Rules per task spec:
+ *   - distance.value:        finite, ≥ 0       (negative rejected)
+ *   - angle.value:           finite, ≥ 0       (negative rejected per UX policy
+ *                            even though the IR allows [-180, 180])
+ *   - gear.ratio:            finite, > 0       (zero rejected — division)
+ *   - rack_pinion.pinionR:   finite, > 0       (zero rejected — division)
+ *
+ * Returns `true` when the value is acceptable, `false` otherwise. Kinds
+ * without a value field (`coincident` / `concentric` / …) silently return
+ * `true` so the helper is no-op for the rows that don't render an input.
+ */
+function isMateValueValid(kind: MateKind, v: number): boolean {
+  if (!Number.isFinite(v)) return false;
+  if (kind === 'distance' || kind === 'angle') return v >= 0;
+  if (kind === 'gear' || kind === 'rack_pinion') return v > 0;
+  return true;
 }
 
 // ─── ref-selection helpers (mate-toolbar bridge) ─────────────────────────
@@ -1579,6 +1658,13 @@ export default function AssemblyBrowserModal({
         }),
         t.descRemoveMate(mateId),
       );
+      // MMMM — drop any in-flight value draft for the removed mate.
+      setMateValueDraft((prev) => {
+        if (!(mateId in prev)) return prev;
+        const { [mateId]: _drop, ...rest } = prev;
+        void _drop;
+        return rest;
+      });
     },
     [recordState, t],
   );
@@ -1590,6 +1676,15 @@ export default function AssemblyBrowserModal({
         m.id === mateId ? newMateOfKind(m.id, kind, m.a, m.b) : m,
       ),
     }));
+    // Drop any stale value draft for this mate — switching to a kind
+    // that exposes a different value (or none at all) makes the prior
+    // raw text meaningless and could pin a phantom red border.
+    setMateValueDraft((prev) => {
+      if (!(mateId in prev)) return prev;
+      const { [mateId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
   }, [setStateDirect]);
 
   const updateMateRef = useCallback(
@@ -1606,12 +1701,110 @@ export default function AssemblyBrowserModal({
     [setStateDirect],
   );
 
-  const updateMateValue = useCallback((mateId: string, value: number) => {
-    setStateDirect((prev) => ({
+  /**
+   * Per-mate inline-edit draft buffer for the value cell. Mirrors the
+   * MMMM pattern from `SketchConstraintOverlay`:
+   *
+   *   - Absent entry → the input reflects the canonical mate value
+   *     (`getMateValue(m)`) and is in "display" mode.
+   *   - Present entry → the input shows the user-typed draft `raw`; the
+   *     `invalid` flag drives the red border. Enter commits via
+   *     `recordChange` (parsed value); Escape clears the draft (revert).
+   *
+   * Held in the modal so a kind change that drops the value field can
+   * clean up the now-stale draft without leaking it into the next mate
+   * that re-acquires a value cell.
+   */
+  const [mateValueDraft, setMateValueDraft] = useState<
+    Record<string, { raw: string; invalid: boolean }>
+  >({});
+
+  const beginMateValueEdit = useCallback((mateId: string, seed: number) => {
+    setMateValueDraft((prev) => ({
       ...prev,
-      mates: prev.mates.map((m) => (m.id === mateId ? setMateValue(m, value) : m)),
+      [mateId]: { raw: String(seed), invalid: false },
     }));
-  }, [setStateDirect]);
+  }, []);
+
+  const cancelMateValueEdit = useCallback((mateId: string) => {
+    setMateValueDraft((prev) => {
+      if (!(mateId in prev)) return prev;
+      const { [mateId]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
+  }, []);
+
+  const onMateValueChange = useCallback(
+    (mateId: string, kind: MateKind, raw: string) => {
+      // Stay in edit mode for every keystroke. Parse + validate the new
+      // raw value so the red-border flag updates live (matches the
+      // MMMM SketchConstraintOverlay pattern where the badge highlights
+      // the invalid input on the way to commit).
+      const parsed = Number(raw);
+      const invalid = !isMateValueValid(kind, parsed);
+      setMateValueDraft((prev) => ({
+        ...prev,
+        [mateId]: { raw, invalid },
+      }));
+    },
+    [],
+  );
+
+  /**
+   * Commit a value draft to history via `recordChange` (so Undo restores
+   * the prior value). Rejects invalid drafts in-place — the red border
+   * stays, the history stack is untouched, and the next Enter retries.
+   *
+   * The override layer is cleared as soon as `recordChange` advances
+   * `history.state` (effect at `lastHistoryStateRef`), so any transient
+   * ref/kind edits the user made on this mate are folded into the same
+   * history entry — matching the "save on Enter" UX users expect from
+   * SolidWorks dimension cells.
+   */
+  const commitMateValueEdit = useCallback(
+    (mateId: string) => {
+      const draft = mateValueDraft[mateId];
+      if (draft === undefined) return;
+      const parsed = Number(draft.raw);
+      if (!Number.isFinite(parsed)) return;
+      const base = overrideState ?? history.state;
+      const target = base.mates.find((m) => m.id === mateId);
+      if (target === undefined) return;
+      if (!isMateValueValid(target.kind, parsed)) {
+        // Keep the draft so the red border stays visible.
+        setMateValueDraft((prev) => ({
+          ...prev,
+          [mateId]: { raw: draft.raw, invalid: true },
+        }));
+        return;
+      }
+      const currentValue = getMateValue(target);
+      if (currentValue === parsed) {
+        // No-op commit — drop the draft so the input goes back to display
+        // mode without polluting history.
+        cancelMateValueEdit(mateId);
+        return;
+      }
+      const next: AssemblyState = {
+        ...base,
+        mates: base.mates.map((m) => (m.id === mateId ? setMateValue(m, parsed) : m)),
+      };
+      try {
+        history.recordChange(next, t.descUpdateMateValue(mateId, parsed));
+        cancelMateValueEdit(mateId);
+      } catch {
+        // validateAssembly threw — keep the draft + flag invalid so the
+        // user sees the red border. Most likely a sibling override edit
+        // left the mate in an IR-invalid shape (e.g., refKind mismatch).
+        setMateValueDraft((prev) => ({
+          ...prev,
+          [mateId]: { raw: draft.raw, invalid: true },
+        }));
+      }
+    },
+    [mateValueDraft, overrideState, history, t, cancelMateValueEdit],
+  );
 
   // ── ref-selection / mate-toolbar ops ───────────────────────────────────
 
@@ -1677,6 +1870,10 @@ export default function AssemblyBrowserModal({
     setImportState({ status: 'idle' });
     setWarningsOpen(false);
     setUnsupportedOpen(false);
+    // MMMM inline value editor — drop any in-flight value drafts so a
+    // future mate that gains a value cell starts in display mode rather
+    // than inheriting a stale red border.
+    setMateValueDraft({});
     // AI assembly builder (Phase 3.AI.Assembly): clear transient NL state.
     // Toggle itself is preserved — user explicitly turned it on, so we
     // don't undo that just because they wiped the assembly contents.
@@ -2221,6 +2418,47 @@ export default function AssemblyBrowserModal({
       });
     }
   }, [onSolve, state, featureTrees, solverSelection, t.errorPrefix]);
+
+  // ── BOM export (Phase 4.5) ────────────────────────────────────────────
+  //
+  // Two-step UX:
+  //   1. Click "Export BOM" → reveal a small CSV / JSON sub-menu.
+  //   2. Click CSV or JSON → buildBom() against current state +
+  //      featureTrees, serialize, and trigger a download blob.
+  //
+  // The blob is created via URL.createObjectURL and revoked after the
+  // anchor click so we don't leak per-export object URLs into the tab's
+  // memory map. assemblyName defaults to the projectId (when present) so
+  // the downloaded file has a meaningful name out of the box.
+
+  const [bomMenuOpen, setBomMenuOpen] = useState(false);
+  const toggleBomMenu = useCallback(() => setBomMenuOpen((v) => !v), []);
+
+  const downloadBom = useCallback(
+    (format: 'csv' | 'json') => {
+      const assemblyName = projectId ?? 'assembly';
+      const bom = buildBom(state, {
+        assemblyName,
+        featureTrees,
+      });
+      const body = format === 'csv' ? bomToCsv(bom) : bomToJson(bom);
+      const mime = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json';
+      const blob = new Blob([body], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${assemblyName}-bom.${format}`;
+      // Some browsers / jsdom skip the navigation unless the anchor is
+      // briefly in the DOM. Append → click → remove keeps the side
+      // effects scoped to this function.
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setBomMenuOpen(false);
+    },
+    [projectId, state, featureTrees],
+  );
 
   // ── derived ────────────────────────────────────────────────────────────
 
@@ -2912,36 +3150,79 @@ export default function AssemblyBrowserModal({
                         );
                       })}
 
-                      {vSpec.needed && (
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            fontSize: 11,
-                          }}
-                        >
-                          <span style={{ width: 32 }}>{t.value}</span>
-                          <input
-                            type="number"
-                            value={v ?? 0}
-                            aria-label={`${t.value} ${m.id}`}
-                            data-testid={`solver-assembly-mate-value-${m.id}`}
-                            onChange={(e) =>
-                              updateMateValue(m.id, Number(e.target.value))
-                            }
-                            step="0.1"
+                      {vSpec.needed && (() => {
+                        // Inline value editor (MMMM pattern mirrored from
+                        // SketchConstraintOverlay). When a draft exists,
+                        // the input shows the user's raw text and turns
+                        // red on invalid; absent a draft, it reflects the
+                        // canonical mate value. Enter commits via
+                        // `recordChange` so Ctrl+Z restores the prior
+                        // value. Esc + onBlur discard the draft.
+                        const draft = mateValueDraft[m.id];
+                        const displayValue =
+                          draft !== undefined ? draft.raw : String(v ?? 0);
+                        const invalid = draft?.invalid === true;
+                        return (
+                          <label
                             style={{
-                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
                               fontSize: 11,
-                              padding: 3,
-                              border: '1px solid #d1d5db',
-                              borderRadius: 3,
                             }}
-                          />
-                          <span style={{ color: '#6b7280' }}>{vSpec.label}</span>
-                        </label>
-                      )}
+                          >
+                            <span style={{ width: 32 }}>{t.value}</span>
+                            <input
+                              type="number"
+                              value={displayValue}
+                              aria-label={`${t.value} ${m.id}`}
+                              aria-invalid={invalid || undefined}
+                              data-testid={`solver-assembly-mate-value-${m.id}`}
+                              data-mate-value-invalid={invalid ? 'true' : undefined}
+                              onChange={(e) =>
+                                onMateValueChange(m.id, m.kind, e.target.value)
+                              }
+                              onDoubleClick={(e) => {
+                                // Double-click selects the existing text +
+                                // ensures we're in edit mode so the user
+                                // can immediately type the new value.
+                                if (draft === undefined) {
+                                  beginMateValueEdit(m.id, v ?? 0);
+                                }
+                                (e.currentTarget as HTMLInputElement).select();
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (draft === undefined) {
+                                    // Enter with no draft = no-op; just
+                                    // blur to mirror native number input.
+                                    return;
+                                  }
+                                  commitMateValueEdit(m.id);
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  cancelMateValueEdit(m.id);
+                                }
+                              }}
+                              step="0.1"
+                              style={{
+                                flex: 1,
+                                fontSize: 11,
+                                padding: 3,
+                                border: `1px solid ${
+                                  invalid ? '#fca5a5' : '#d1d5db'
+                                }`,
+                                background: invalid ? '#fef2f2' : '#fff',
+                                borderRadius: 3,
+                              }}
+                            />
+                            <span style={{ color: '#6b7280' }}>{vSpec.label}</span>
+                          </label>
+                        );
+                      })()}
                     </div>
                   );
                 })
@@ -3693,6 +3974,82 @@ export default function AssemblyBrowserModal({
           >
             {t.reset}
           </button>
+          <div
+            data-testid="solver-assembly-export-bom-wrap"
+            style={{ position: 'relative', display: 'inline-block' }}
+          >
+            <button
+              type="button"
+              onClick={toggleBomMenu}
+              data-testid="solver-assembly-export-bom"
+              aria-haspopup="menu"
+              aria-expanded={bomMenuOpen}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                background: '#fff',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {t.exportBom}
+            </button>
+            {bomMenuOpen && (
+              <div
+                data-testid="solver-assembly-export-bom-menu"
+                role="menu"
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  right: 0,
+                  marginBottom: 4,
+                  background: '#fff',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minWidth: 100,
+                  zIndex: 1100,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => downloadBom('csv')}
+                  data-testid="solver-assembly-export-bom-csv"
+                  role="menuitem"
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    background: '#fff',
+                    border: 'none',
+                    borderBottom: '1px solid #f3f4f6',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t.bomCsv}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadBom('json')}
+                  data-testid="solver-assembly-export-bom-json"
+                  role="menuitem"
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    background: '#fff',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t.bomJson}
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
