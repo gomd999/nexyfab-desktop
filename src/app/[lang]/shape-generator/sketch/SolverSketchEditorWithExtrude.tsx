@@ -38,11 +38,13 @@ import {
   type FeatureNode,
   type FeatureTree,
 } from '@/lib/cad/featureTree';
-import { applyEdit, FeatureTreeEditError } from '@/lib/cad/featureTreeEdit';
+import { applyEdit, FeatureTreeEditError, type EditOp } from '@/lib/cad/featureTreeEdit';
 import {
-  useFeatureTreeStorage,
+  serializeFeatureTree,
+  writeToStorage,
   type SaveError,
 } from '@/lib/cad/featureTreePersist';
+import { useFeatureTreeHistory } from '@/lib/cad/featureTreeHistory';
 
 // StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
 // Sketch editor bundle small for users who never click Extrude.
@@ -120,6 +122,9 @@ interface Dict {
   savedAt: string;
   saveError: string;
   reset: string;
+  /** Undo / redo (Phase 2.7.1 — featureTreeHistory integration). */
+  undo: string;
+  redo: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -137,6 +142,8 @@ const dict: Record<Lang, Dict> = {
     savedAt: '저장됨',
     saveError: '저장 실패',
     reset: '초기화',
+    undo: '실행 취소',
+    redo: '다시 실행',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -152,6 +159,8 @@ const dict: Record<Lang, Dict> = {
     savedAt: 'Saved',
     saveError: 'Save failed',
     reset: 'Reset',
+    undo: 'Undo',
+    redo: 'Redo',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -167,6 +176,8 @@ const dict: Record<Lang, Dict> = {
     savedAt: '保存済み',
     saveError: '保存失敗',
     reset: 'リセット',
+    undo: '元に戻す',
+    redo: 'やり直す',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -182,6 +193,8 @@ const dict: Record<Lang, Dict> = {
     savedAt: '已保存',
     saveError: '保存失败',
     reset: '重置',
+    undo: '撤销',
+    redo: '重做',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -197,6 +210,8 @@ const dict: Record<Lang, Dict> = {
     savedAt: 'Guardado',
     saveError: 'Error al guardar',
     reset: 'Restablecer',
+    undo: 'Deshacer',
+    redo: 'Rehacer',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -212,6 +227,8 @@ const dict: Record<Lang, Dict> = {
     savedAt: 'تم الحفظ',
     saveError: 'فشل الحفظ',
     reset: 'إعادة تعيين',
+    undo: 'تراجع',
+    redo: 'إعادة',
   },
 };
 
@@ -353,47 +370,75 @@ export default function SolverSketchEditorWithExtrude(
   const [draftDegrees, setDraftDegrees] = useState<string>('0');
   const [render, setRender] = useState<RenderState>({ status: 'idle' });
 
-  // ── feature tree state (Phase 2.7 + 5.2 UI integration) ─────────────────
-  // Persistence toast (Phase 2.8) — shown for ~3 s when the storage hook
-  // surfaces a write error (quota_exceeded, no_storage, unknown).
+  // ── feature tree state (Phase 2.7 + 5.2 UI + 2.7.1 history) ─────────────
+  // Persistence toast (Phase 2.8) — shown when the side-channel write
+  // detector spots a `localStorage.setItem` failure (quota_exceeded,
+  // no_storage, unknown). The history hook (Phase 2.7.1) owns the primary
+  // debounced write; we run a sync re-write here purely for error capture
+  // because useFeatureTreeHistory does not surface onError today.
   const [persistError, setPersistError] = useState<{ error: SaveError; message: string } | null>(
     null,
   );
-  // Stable callback the storage hook calls on every save failure. We mirror
-  // both the structured error code AND the human-readable message so the
-  // toast can fall back to "Save failed" + the raw reason.
-  const onPersistError = useCallback((error: SaveError, message: string) => {
-    setPersistError({ error, message });
-  }, []);
 
-  // BOTH hooks run on every render to keep rules-of-hooks happy. The
-  // storage hook is keyed under a stable per-instance sentinel when no
-  // projectId is supplied; we never *read* its state in that case, so
-  // those writes never happen (we don't call its setter). When projectId
-  // IS supplied, we route both reads and writes through it.
-  const storageKey = projectId !== undefined ? `${STORAGE_KEY_PREFIX}${projectId}` : '';
-  const [storedFeatureTree, setStoredFeatureTree] = useFeatureTreeStorage(storageKey, {
-    onError: onPersistError,
+  // History hook (Phase 2.7.1) — wraps the prior raw `useFeatureTreeStorage`
+  // call. When `projectId` is supplied, the hook mirrors the *present* tree
+  // to localStorage under nexyfab:tree:${projectId} via its internal use of
+  // useFeatureTreeStorage. When `projectId` is absent the hook is in-memory
+  // only (storageKey passed as undefined). past/future stacks are session-
+  // only either way — re-mount starts with an empty undo history.
+  const historyStorageKey =
+    projectId !== undefined ? `${STORAGE_KEY_PREFIX}${projectId}` : undefined;
+  const {
+    tree: featureTree,
+    apply: applyHistoryEdit,
+    undo: undoHistory,
+    redo: redoHistory,
+    canUndo,
+    canRedo,
+    reset: resetHistory,
+  } = useFeatureTreeHistory(undefined, {
+    maxHistory: 50,
+    storageKey: historyStorageKey,
   });
-  const [memoryFeatureTree, setMemoryFeatureTree] = useState<FeatureTree>({ nodes: [] });
-  const featureTree = projectId !== undefined ? storedFeatureTree : memoryFeatureTree;
-  const setFeatureTree: typeof setMemoryFeatureTree =
-    projectId !== undefined
-      ? (setStoredFeatureTree as typeof setMemoryFeatureTree)
-      : setMemoryFeatureTree;
 
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | undefined>(undefined);
   /** Monotonic id generator for tree nodes created by modal submits. Seeded
    *  from the loaded tree size so a freshly rehydrated tree appends new
-   *  nodes after the persisted ones rather than colliding with them. */
+   *  nodes after the persisted ones rather than colliding with them.
+   *  Note: undo does NOT decrement this — a redo would replay the snapshot
+   *  with its original id, and a subsequent fresh add jumps to a higher id
+   *  (gap in id sequence is harmless, ids only need uniqueness). */
   const nextNodeIdRef = useRef<number>(featureTree.nodes.length);
+
+  // Pre-validating apply wrapper. Because useFeatureTreeHistory.apply
+  // delegates straight to featureTreeEdit.applyEdit (which throws on
+  // invalid ops via FeatureTreeEditError) inside a setState updater, an
+  // unhandled throw would crash React. We dry-run the same op first
+  // against the current tree; on FeatureTreeEditError we silently ignore
+  // (the prior UI did the same — e.g. delete blocked by dependents
+  // simply returned prev). All other errors propagate.
+  const safeApply = useCallback(
+    (edit: EditOp, treeForValidation: FeatureTree): boolean => {
+      try {
+        applyEdit(treeForValidation, edit);
+      } catch (e) {
+        if (e instanceof FeatureTreeEditError) return false;
+        throw e;
+      }
+      applyHistoryEdit(edit);
+      return true;
+    },
+    [applyHistoryEdit],
+  );
 
   // Synthetic-payload helper: each modal returns only SCAD+pngs, not a full
   // feature IR, so we synthesise a placeholder payload tagged by `kind`. The
   // SCAD render is owned by the modal preview pane; the tree node only
   // surfaces history + selection. Full IR threading lands in a later batch.
-  const appendNode = useCallback((kind: FeatureKind, labelBase: string): void => {
-    setFeatureTree((prev) => {
+  // The history hook receives this as an `insert_node` op so undo can roll
+  // it back and redo can restore it byte-for-byte.
+  const appendNode = useCallback(
+    (kind: FeatureKind, labelBase: string): void => {
       const idx = nextNodeIdRef.current++;
       const id = `${kind}_${idx}`;
       // Cast the synthesised stub to FeaturePayload — runtime tests do not
@@ -405,9 +450,10 @@ export default function SolverSketchEditorWithExtrude(
         dependencies: [],
         payload,
       };
-      return { nodes: [...prev.nodes, node] };
-    });
-  }, []);
+      applyHistoryEdit({ type: 'insert_node', node });
+    },
+    [applyHistoryEdit],
+  );
 
   // ── fetcher wrappers — intercept ok responses to append a tree node ────
   // Wrap each per-feature fetcher exactly once per identity change. We
@@ -520,84 +566,89 @@ export default function SolverSketchEditorWithExtrude(
   );
 
   // ── tree-row callbacks ──────────────────────────────────────────────────
-  // Reset = clear the tree + the local id counter. When persisted, also
-  // wipes the localStorage entry on the next debounce flush (the storage
-  // hook serialises the empty tree and writes it under the same key).
+  // Reset = clear the tree + the local id counter via the history hook's
+  // `reset()` (seed is the empty tree, so present collapses to {nodes: []}
+  // and past/future are wiped). When persisted, the empty tree is mirrored
+  // to localStorage on the next debounce flush.
   const handleResetTree = useCallback(() => {
     nextNodeIdRef.current = 0;
     setSelectedFeatureId(undefined);
     setPersistError(null);
-    setFeatureTree({ nodes: [] });
-  }, [setFeatureTree]);
+    resetHistory();
+  }, [resetHistory]);
   const handleSelectNode = useCallback((id: string) => {
     setSelectedFeatureId(id);
   }, []);
-  const handleToggleSuppress = useCallback((id: string) => {
-    setFeatureTree((prev) => {
-      const idx = prev.nodes.findIndex((n) => n.id === id);
-      if (idx < 0) return prev;
-      const node = prev.nodes[idx]!;
-      const next: FeatureNode = { ...node, suppressed: !(node.suppressed === true) };
-      const nodes = prev.nodes.slice();
-      nodes[idx] = next;
-      return { nodes };
-    });
-  }, []);
-  const handleDeleteNode = useCallback((id: string) => {
-    setFeatureTree((prev) => {
-      try {
-        return applyEdit(prev, { type: 'remove_node', nodeId: id });
-      } catch (e) {
-        if (e instanceof FeatureTreeEditError) {
-          // Dependents exist — refuse silently for now; UX surface comes
-          // in the next batch.
-          return prev;
-        }
-        throw e;
+  const handleToggleSuppress = useCallback(
+    (id: string) => {
+      const idx = featureTree.nodes.findIndex((n) => n.id === id);
+      if (idx < 0) return;
+      const node = featureTree.nodes[idx]!;
+      const nextSuppressed = !(node.suppressed === true);
+      safeApply(
+        { type: 'set_suppressed', nodeId: id, suppressed: nextSuppressed },
+        featureTree,
+      );
+    },
+    [featureTree, safeApply],
+  );
+  const handleDeleteNode = useCallback(
+    (id: string) => {
+      const ok = safeApply({ type: 'remove_node', nodeId: id }, featureTree);
+      if (ok) {
+        setSelectedFeatureId((curr) => (curr === id ? undefined : curr));
       }
-    });
-    setSelectedFeatureId((curr) => (curr === id ? undefined : curr));
-  }, []);
-  const handleReorderNodes = useCallback((fromIdx: number, toIdx: number) => {
-    setFeatureTree((prev) => {
-      const node = prev.nodes[fromIdx];
-      if (!node) return prev;
-      try {
-        return applyEdit(prev, { type: 'move_node', nodeId: node.id, toIndex: toIdx });
-      } catch (e) {
-        if (e instanceof FeatureTreeEditError) return prev;
-        throw e;
-      }
-    });
-  }, []);
+    },
+    [featureTree, safeApply],
+  );
+  const handleReorderNodes = useCallback(
+    (fromIdx: number, toIdx: number) => {
+      const node = featureTree.nodes[fromIdx];
+      if (!node) return;
+      safeApply({ type: 'move_node', nodeId: node.id, toIndex: toIdx }, featureTree);
+    },
+    [featureTree, safeApply],
+  );
 
   // ── STEP import — replace / merge into tree ─────────────────────────────
+  // Expressed as a sequence of EditOps so each import lands in the undo
+  // stack: Replace = remove every existing node (reverse order to satisfy
+  // dependent checks) then insert every imported node; Merge = insert
+  // every imported node, prefixing ids on collision with existing.
   const handleStepImport = useCallback(
     (importedTree: FeatureTree, _warnings: string[], _unsupported: string[]) => {
-      setFeatureTree((prev) => {
-        if (stepImportMode === 'replace') {
-          // Bump the id counter past any imported id so future modal
-          // appends do not collide with id-prefixed imports.
-          nextNodeIdRef.current = importedTree.nodes.length;
-          return { nodes: importedTree.nodes.slice() };
+      const prev = featureTree;
+      if (stepImportMode === 'replace') {
+        // Bump the id counter past any imported id so future modal
+        // appends do not collide with id-prefixed imports.
+        nextNodeIdRef.current = importedTree.nodes.length;
+        // Remove in reverse so a downstream node is gone before its dep.
+        for (let i = prev.nodes.length - 1; i >= 0; i--) {
+          applyHistoryEdit({ type: 'remove_node', nodeId: prev.nodes[i]!.id });
         }
-        // Merge mode — append, prefixing imported ids on collision.
+        for (const node of importedTree.nodes) {
+          applyHistoryEdit({ type: 'insert_node', node });
+        }
+      } else {
+        // Merge — append, prefixing imported ids on collision.
         const existing = new Set(prev.nodes.map((n) => n.id));
         const prefix = `imp${Date.now().toString(36)}_`;
         const remap = new Map<string, string>();
         for (const node of importedTree.nodes) {
           remap.set(node.id, existing.has(node.id) ? `${prefix}${node.id}` : node.id);
         }
-        const remapped: FeatureNode[] = importedTree.nodes.map((node) => ({
-          ...node,
-          id: remap.get(node.id) ?? node.id,
-          dependencies: node.dependencies.map((d) => remap.get(d) ?? d),
-        }));
-        return { nodes: [...prev.nodes, ...remapped] };
-      });
+        for (const node of importedTree.nodes) {
+          const remapped: FeatureNode = {
+            ...node,
+            id: remap.get(node.id) ?? node.id,
+            dependencies: node.dependencies.map((d) => remap.get(d) ?? d),
+          };
+          applyHistoryEdit({ type: 'insert_node', node: remapped });
+        }
+      }
       setStepImportOpen(false);
     },
-    [stepImportMode],
+    [featureTree, stepImportMode, applyHistoryEdit],
   );
 
   // Tracks the in-flight fetch's AbortController so cancel/unmount can abort
@@ -690,6 +741,64 @@ export default function SolverSketchEditorWithExtrude(
       abortRef.current = null;
     };
   }, []);
+
+  // Persistence error side-channel — useFeatureTreeHistory does not expose
+  // an onError option today, so the history hook's internal
+  // useFeatureTreeStorage swallows quota / unknown write failures. We
+  // re-write the same tree here purely to detect those failures and
+  // surface a banner. The write is the same shape the history hook writes
+  // (same key, same envelope), so the duplicate is harmless: either both
+  // succeed (no banner) or both fail (banner shown). Only runs when a
+  // projectId is present and the tree actually changed.
+  const lastErrorCheckTreeRef = useRef<FeatureTree | null>(null);
+  useEffect(() => {
+    if (projectId === undefined || historyStorageKey === undefined) {
+      // In-memory mode: no writes ever happen, no errors to surface.
+      if (persistError !== null) setPersistError(null);
+      return;
+    }
+    if (lastErrorCheckTreeRef.current === featureTree) return;
+    lastErrorCheckTreeRef.current = featureTree;
+    const json = serializeFeatureTree(featureTree);
+    const res = writeToStorage(historyStorageKey, json);
+    if (!res.ok) {
+      setPersistError({ error: res.error, message: res.message });
+    } else if (persistError !== null) {
+      setPersistError(null);
+    }
+  }, [featureTree, projectId, historyStorageKey, persistError]);
+
+  // ── Undo / Redo keyboard shortcut (Phase 2.7.1) ─────────────────────────
+  // Ctrl+Z → undo, Ctrl+Shift+Z or Ctrl+Y → redo (Cmd on macOS treated
+  // the same via metaKey). Skipped when focus is in a text-editing
+  // surface so users typing in an input field don't lose their text.
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (target.isContentEditable) return true;
+      return false;
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (isEditableTarget(e.target)) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoHistory();
+        return;
+      }
+      if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault();
+        redoHistory();
+        return;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undoHistory, redoHistory]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -909,6 +1018,46 @@ export default function SolverSketchEditorWithExtrude(
             }}
           >
             {t.reset}
+          </button>
+          <button
+            type="button"
+            onClick={undoHistory}
+            disabled={!canUndo}
+            data-testid="solver-undo-button"
+            aria-label={t.undo}
+            title={`${t.undo} (Ctrl+Z)`}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: canUndo ? '#fff' : '#f3f4f6',
+              border: '1px solid #d1d5db',
+              color: canUndo ? '#374151' : '#9ca3af',
+              borderRadius: 4,
+              cursor: canUndo ? 'pointer' : 'not-allowed',
+            }}
+          >
+            ↶ {t.undo}
+          </button>
+          <button
+            type="button"
+            onClick={redoHistory}
+            disabled={!canRedo}
+            data-testid="solver-redo-button"
+            aria-label={t.redo}
+            title={`${t.redo} (Ctrl+Y)`}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: canRedo ? '#fff' : '#f3f4f6',
+              border: '1px solid #d1d5db',
+              color: canRedo ? '#374151' : '#9ca3af',
+              borderRadius: 4,
+              cursor: canRedo ? 'pointer' : 'not-allowed',
+            }}
+          >
+            ↷ {t.redo}
           </button>
           {projectId !== undefined && persistError === null && (
             <span

@@ -1030,3 +1030,280 @@ describe('SolverSketchEditorWithExtrude — Phase 2.8 projectId persistence', ()
     );
   });
 });
+
+// ─── Phase 2.7.1: featureTreeHistory integration (undo / redo) ────────────
+
+/**
+ * Undo/Redo tests exercise the wrapper's integration of useFeatureTreeHistory:
+ *   - Undo/Redo buttons render alongside Reset.
+ *   - Buttons are disabled when canUndo/canRedo are false.
+ *   - Adding nodes via the extrude modal pushes onto history (each submit
+ *     produces one HistoryEntry via apply({type: 'insert_node', ...})).
+ *   - Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z) fire undo/redo.
+ *   - A new edit after undo wipes the redo stack (canRedo flips back to false).
+ *   - i18n surfaces the right labels for ko / en.
+ */
+describe('SolverSketchEditorWithExtrude — Phase 2.7.1 undo / redo history', () => {
+  async function setupWithExtrudeFetcher() {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      scad: 'linear_extrude(...);',
+      pngs: [],
+    });
+    render(<SolverSketchEditorWithExtrude lang="en" extrudeFetcher={fetcher} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    await drawRect();
+    await waitFor(() => {
+      expect((screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+    });
+    return fetcher;
+  }
+
+  async function submitExtrudeOnce() {
+    fireEvent.click(screen.getByTestId('solver-extrude-button'));
+    fireEvent.click(screen.getByTestId('solver-extrude-submit'));
+    fireEvent.click(screen.getByTestId('solver-extrude-cancel'));
+  }
+
+  it('Undo button is rendered and disabled when no edits have been made', async () => {
+    await mountReady();
+    const undoBtn = screen.getByTestId('solver-undo-button') as HTMLButtonElement;
+    const redoBtn = screen.getByTestId('solver-redo-button') as HTMLButtonElement;
+    expect(undoBtn).toBeInTheDocument();
+    expect(redoBtn).toBeInTheDocument();
+    expect(undoBtn.disabled).toBe(true);
+    expect(redoBtn.disabled).toBe(true);
+  });
+
+  it('Add box → tree gains a node → Undo button becomes enabled', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    const undoBtn = screen.getByTestId('solver-undo-button') as HTMLButtonElement;
+    await waitFor(() => {
+      expect(undoBtn.disabled).toBe(false);
+    });
+  });
+
+  it('Undo after an add removes the node from the tree', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument();
+    });
+    // Empty state restored.
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+    // Redo is now enabled.
+    expect(
+      (screen.getByTestId('solver-redo-button') as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('Redo after undo restores the previously-added node', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('solver-redo-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    // After redo, redo is again disabled (future emptied).
+    expect(
+      (screen.getByTestId('solver-redo-button') as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it('Add 2 nodes + Undo 2 → tree is empty, Redo enabled', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument();
+    });
+    await submitExtrudeOnce();
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-extrude_1')).toBeInTheDocument();
+    });
+    // Undo twice.
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-extrude_1')).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+    // Both Undo (disabled) and Redo (enabled).
+    expect(
+      (screen.getByTestId('solver-undo-button') as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByTestId('solver-redo-button') as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('Add 2 + Undo 2 + Redo 1 → first node restored', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_1')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument(),
+    );
+    // Redo once — restores extrude_0 (the first-applied snapshot).
+    fireEvent.click(screen.getByTestId('solver-redo-button'));
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    // extrude_1 still not present (only 1 redo).
+    expect(screen.queryByTestId('feature-tree-row-extrude_1')).not.toBeInTheDocument();
+    // Redo still enabled (one more redo waits).
+    expect(
+      (screen.getByTestId('solver-redo-button') as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('Ctrl+Z keyboard shortcut undoes the last edit', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument();
+    });
+  });
+
+  it('Ctrl+Y keyboard shortcut redoes a previously-undone edit', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    // Undo first.
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument(),
+    );
+    // Redo via keyboard.
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+  });
+
+  it('Ctrl+Shift+Z keyboard shortcut redoes a previously-undone edit', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument(),
+    );
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'z',
+          ctrlKey: true,
+          shiftKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+  });
+
+  it('Undo then new edit invalidates the redo stack (canRedo flips to false)', async () => {
+    await setupWithExtrudeFetcher();
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_0')).toBeInTheDocument(),
+    );
+    // Undo so Redo is enabled.
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('feature-tree-row-extrude_0')).not.toBeInTheDocument(),
+    );
+    expect(
+      (screen.getByTestId('solver-redo-button') as HTMLButtonElement).disabled,
+    ).toBe(false);
+    // New edit (submit extrude again). The counter advances → next id is
+    // extrude_1 (extrude_0 was emitted before the undo).
+    await submitExtrudeOnce();
+    await waitFor(() =>
+      expect(screen.getByTestId('feature-tree-row-extrude_1')).toBeInTheDocument(),
+    );
+    // Redo must now be disabled — future stack wiped by the new apply.
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('solver-redo-button') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+    // Undo is still enabled (we have one past entry: empty → 1 node).
+    expect(
+      (screen.getByTestId('solver-undo-button') as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('i18n English: Undo / Redo labels surface on the buttons', async () => {
+    await mountReady();
+    const undoBtn = screen.getByTestId('solver-undo-button');
+    const redoBtn = screen.getByTestId('solver-redo-button');
+    expect(undoBtn.textContent).toMatch(/Undo/);
+    expect(redoBtn.textContent).toMatch(/Redo/);
+    // Ariadne aria-label also surfaces.
+    expect(undoBtn.getAttribute('aria-label')).toBe('Undo');
+    expect(redoBtn.getAttribute('aria-label')).toBe('Redo');
+  });
+
+  it('i18n Korean: 실행 취소 / 다시 실행 labels surface on the buttons', async () => {
+    render(<SolverSketchEditorWithExtrude lang="ko" extrudeFetcher={vi.fn()} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    const undoBtn = screen.getByTestId('solver-undo-button');
+    const redoBtn = screen.getByTestId('solver-redo-button');
+    expect(undoBtn.textContent).toMatch(/실행 취소/);
+    expect(redoBtn.textContent).toMatch(/다시 실행/);
+    expect(undoBtn.getAttribute('aria-label')).toBe('실행 취소');
+    expect(redoBtn.getAttribute('aria-label')).toBe('다시 실행');
+  });
+});
