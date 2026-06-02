@@ -529,6 +529,256 @@ function gaussSolve(A: Float64Array, b: Float64Array, n: number): Float64Array |
   return x;
 }
 
+// ─── Phase 3.2 — analytic-Jacobian variant ──────────────────────────────-
+//
+// Sibling solver `lagrangianSolveAnalytic` reuses every other code path
+// (LM loop, residual evaluator, normal-equation assembly, Gaussian
+// elimination, fallback to Gauss-Seidel) but swaps in an ANALYTIC Jacobian
+// row per mate. Mate kinds without a closed-form derivative (tangent,
+// hinge, slot, gear, rack_pinion) gracefully fall back to numeric forward
+// differences ON A PER-ROW BASIS — a single advanced mate in an otherwise
+// standard assembly still benefits from the analytic speed-up on the rest
+// of the rows.
+//
+// Back-compat: the original `lagrangianSolve` above is unchanged.
+
+import { analyticJacobianRow, supportsAnalyticJacobian } from './lagrangianJacobian';
+
+/**
+ * Newton-Lagrange (LM-damped) solver that uses ANALYTIC Jacobian rows
+ * for the 7 standard mate kinds. Falls back to numeric forward differences
+ * per row for unsupported mates. Same signature as `lagrangianSolve`.
+ */
+export function lagrangianSolveAnalytic(
+  state: AssemblyState,
+  resolve: GeometryResolver,
+  opts: LagrangianSolverOptions = {},
+): IterativeSolveResult {
+  const maxIter = opts.maxIterations ?? 50;
+  const tol = opts.tolerance ?? 1e-6;
+  const damp = opts.dampingFactor ?? 1.0;
+
+  let parts: PartInstance[] = state.parts.map((p) => ({ ...p }));
+  const mates = state.mates.filter((m) => !m.suppressed);
+
+  const freeIdx = new Map<string, number>();
+  let dofCount = 0;
+  for (const p of parts) {
+    if (!p.fixed) {
+      freeIdx.set(p.id, dofCount);
+      dofCount += 6;
+    }
+  }
+  if (dofCount === 0) {
+    return {
+      state: { parts, mates: state.mates },
+      success: true,
+      iterations: 0,
+      finalMaxResidual: 0,
+      residuals: buildResiduals(state, parts, resolve),
+    };
+  }
+  const M = mates.length;
+  if (M === 0) {
+    return {
+      state: { parts, mates: state.mates },
+      success: true,
+      iterations: 0,
+      finalMaxResidual: 0,
+      residuals: buildResiduals(state, parts, resolve),
+    };
+  }
+
+  let lambda = INITIAL_LAMBDA;
+  let iter = 0;
+  let maxResidual = Infinity;
+
+  const evalR = (testParts: PartInstance[]): { vec: Float64Array; max: number } => {
+    const vec = new Float64Array(M);
+    let mx = 0;
+    const byId = new Map(testParts.map((p) => [p.id, p]));
+    for (let i = 0; i < M; i++) {
+      const mate = mates[i]!;
+      const a = byId.get(mate.a.partId);
+      const b = byId.get(mate.b.partId);
+      if (!a || !b) continue;
+      const r = computeResidualForMate(mate, a, b, resolve);
+      vec[i] = r;
+      if (r > mx) mx = r;
+    }
+    return { vec, max: mx };
+  };
+
+  let { vec: r, max: curMax } = evalR(parts);
+  maxResidual = curMax;
+  if (maxResidual < tol) {
+    return {
+      state: { parts, mates: state.mates },
+      success: true,
+      iterations: 0,
+      finalMaxResidual: maxResidual,
+      residuals: buildResiduals(state, parts, resolve),
+    };
+  }
+
+  for (; iter < maxIter; iter++) {
+    // ── Build Jacobian J (M × dofCount) using analytic rows where ──────
+    //    supported; fall back to numeric forward diff per-row otherwise.
+    const J = new Float64Array(M * dofCount);
+    const byId = new Map(parts.map((p) => [p.id, p]));
+
+    // Precompute the unperturbed residual once for any numeric fallback
+    // rows (reusable across DoF perturbations for that row).
+    for (let i = 0; i < M; i++) {
+      const mate = mates[i]!;
+      const a = byId.get(mate.a.partId);
+      const b = byId.get(mate.b.partId);
+      if (!a || !b) continue;
+
+      // mate.a is the "moved" side per analyticJacobianRow's contract,
+      // mate.b is the "fixed" side. Both can be free — the offsets carry
+      // that info; pass −1 for actually-fixed parts.
+      const aFree = !a.fixed;
+      const bFree = !b.fixed;
+      const aOff = aFree ? freeIdx.get(a.id)! : -1;
+      const bOff = bFree ? freeIdx.get(b.id)! : -1;
+
+      if (supportsAnalyticJacobian(mate.kind)) {
+        const ag = resolve(mate.a, a);
+        const bg = resolve(mate.b, b);
+        if (!ag || !bg) continue;
+        const row = analyticJacobianRow(mate, a, b, ag, bg, aOff, bOff);
+        if (row.cols.length === 0) {
+          // Analytic returned empty (degenerate); fall back to numeric.
+          numericRowFallback(J, M, dofCount, i, mates, parts, freeIdx, resolve, r);
+          continue;
+        }
+        for (let k = 0; k < row.cols.length; k++) {
+          J[i * dofCount + row.cols[k]!] = row.values[k]!;
+        }
+      } else {
+        // Unsupported kind — numeric per-row fallback.
+        numericRowFallback(J, M, dofCount, i, mates, parts, freeIdx, resolve, r);
+      }
+    }
+
+    // ── Normal equations A = J^T J + λI ; rhs = -J^T r ─────────────────
+    const A = new Float64Array(dofCount * dofCount);
+    const rhs = new Float64Array(dofCount);
+    for (let c = 0; c < dofCount; c++) {
+      for (let cc = 0; cc < dofCount; cc++) {
+        let sum = 0;
+        for (let i = 0; i < M; i++) {
+          sum += J[i * dofCount + c]! * J[i * dofCount + cc]!;
+        }
+        A[c * dofCount + cc] = sum;
+      }
+      A[c * dofCount + c] = A[c * dofCount + c]! + lambda;
+      let rs = 0;
+      for (let i = 0; i < M; i++) rs += J[i * dofCount + c]! * r[i]!;
+      rhs[c] = -rs;
+    }
+
+    const dq = gaussSolve(A, rhs, dofCount);
+    if (!dq) {
+      if (lambda >= MAX_LAMBDA) {
+        const fallback = iterativeSolve(state, resolve, {
+          maxIterations: 100,
+          tolerance: tol,
+        });
+        return { ...fallback, iterations: iter + fallback.iterations };
+      }
+      lambda *= 10;
+      continue;
+    }
+
+    if (damp !== 1.0) {
+      for (let i = 0; i < dq.length; i++) dq[i] = dq[i]! * damp;
+    }
+
+    const trialParts = parts.map((p) => {
+      const idx = freeIdx.get(p.id);
+      if (idx === undefined) return p;
+      return applyDelta(p, dq, idx);
+    });
+    const trial = evalR(trialParts);
+
+    if (trial.max < curMax) {
+      parts = trialParts;
+      r = trial.vec;
+      curMax = trial.max;
+      maxResidual = curMax;
+      lambda = Math.max(lambda / 10, 1e-12);
+      if (curMax < tol) {
+        iter += 1;
+        break;
+      }
+    } else {
+      if (lambda >= MAX_LAMBDA) {
+        const fallback = iterativeSolve(state, resolve, {
+          maxIterations: 100,
+          tolerance: tol,
+        });
+        return { ...fallback, iterations: iter + fallback.iterations };
+      }
+      lambda *= 10;
+    }
+  }
+
+  return {
+    state: { parts, mates: state.mates },
+    success: maxResidual < tol,
+    iterations: iter,
+    finalMaxResidual: maxResidual,
+    residuals: buildResiduals(state, parts, resolve),
+  };
+}
+
+/**
+ * Numeric forward-difference fallback for ONE Jacobian row (mate index i).
+ * Used when the mate's kind is not in the analytic-supported set, or when
+ * the analytic row degenerated to empty (e.g., coincident-at-zero-distance).
+ *
+ * Perturbs each global DoF column, recomputes only the i-th mate's
+ * residual (cheap — single mate evaluation), and writes (Δr / eps) into
+ * J[i, d]. The non-perturbed baseline r[i] is supplied by the caller so we
+ * don't recompute it 6N times.
+ */
+function numericRowFallback(
+  J: Float64Array,
+  _M: number,
+  dofCount: number,
+  i: number,
+  mates: ReadonlyArray<Mate>,
+  parts: ReadonlyArray<PartInstance>,
+  freeIdx: Map<string, number>,
+  resolve: GeometryResolver,
+  rBaseline: Float64Array,
+): void {
+  const mate = mates[i]!;
+  const baseR = rBaseline[i]!;
+  for (let d = 0; d < dofCount; d++) {
+    const perturbed = parts.map((p) => {
+      const idx = freeIdx.get(p.id);
+      if (idx === undefined) return p;
+      const localDof = d - idx;
+      if (localDof < 0 || localDof >= 6) return p;
+      const delta = new Float64Array(6);
+      delta[localDof] = JACOBIAN_EPS;
+      return applyDelta(p, delta, 0);
+    });
+    const byId = new Map(perturbed.map((p) => [p.id, p]));
+    const a = byId.get(mate.a.partId);
+    const b = byId.get(mate.b.partId);
+    if (!a || !b) {
+      J[i * dofCount + d] = 0;
+      continue;
+    }
+    const rNew = computeResidualForMate(mate, a, b, resolve);
+    J[i * dofCount + d] = (rNew - baseR) / JACOBIAN_EPS;
+  }
+}
+
 // ─── re-exports for type-checking convenience ────────────────────────────
 
 export type { IterativeSolveResult, MateResidual, GeometryResolver, ResolvedGeometry };
