@@ -7,20 +7,29 @@
  *
  *   - One PartInstance → one BomEntry (quantity always 1). Future phases
  *     will collapse identical part templates with quantity > 1.
- *   - Per-part volume is computed from the optional FeatureTree by walking
- *     extrude / revolve / hole nodes and accumulating an approximate
- *     bounding-box-style volume in mm³. Precise OCCT-derived volume is
- *     Phase 2 work.
+ *   - Per-part volume / surfaceArea / bbox are derived from
+ *     `featureTreeStats.computeStats(tree)` (Agent-JJJJJ / EEEEE) so all 8
+ *     Phase 1 feature kinds — extrude, revolve, sweep, loft, linear/circular
+ *     pattern, hole, fillet, chamfer — contribute uniformly. Earlier
+ *     iterations of this module hand-rolled an inline extrude+revolve
+ *     switch; that has been retired in favour of the shared stats walk so
+ *     hole subtractions and pattern multipliers now reach the BOM. The
+ *     inline path remains as a fallback for callers whose computeStats
+ *     throws on unexpected payload shapes (Phase 1 stats handles all 8
+ *     kinds; the fallback only fires if a future bad-IR edge sneaks in).
  *   - Mass = volume × density (g/mm³). When no material / density is
  *     supplied, mass stays undefined.
  *   - CSV uses RFC 4180 quoting (double quotes around any field that
  *     contains comma / quote / newline; quotes within escaped fields are
- *     doubled).
+ *     doubled). Columns include surfaceArea_mm2 (since 4.5.1) so the
+ *     downstream cost / coating cost UI can read off the wetted area
+ *     without re-running stats.
  *   - JSON is JSON.stringify(bom, null, 2).
  *
  * Out of scope:
  *   - Part templates with identical geometry → quantity > 1
- *   - Precise OCCT volume (Phase 2)
+ *   - Precise OCCT volume (Phase 2; computeStats values are Phase-1 coarse
+ *     estimates as documented in featureTreeStats.ts)
  *   - Cost / supplier columns (Phase 5)
  *   - Sub-assembly hierarchy
  */
@@ -31,6 +40,11 @@ import type {
   FeatureNode,
   FeaturePayload,
 } from '@/lib/cad/featureTree';
+import {
+  computeStats,
+  type Bbox,
+  isEmptyBbox,
+} from '@/lib/cad/featureTreeStats';
 
 // ─── BOM data shape ──────────────────────────────────────────────────────
 
@@ -44,6 +58,20 @@ export interface BomEntry {
   mass?: number;
   /** Volume in mm³. Present iff a FeatureTree was supplied for this part. */
   volume?: number;
+  /**
+   * Outer surface area in mm². Present iff a FeatureTree was supplied AND
+   * `featureTreeStats.computeStats` produced a finite surface-area total
+   * for the part. Coarse Phase 1 estimate — see featureTreeStats.ts for
+   * the per-kind accuracy caveats.
+   */
+  surfaceArea?: number;
+  /**
+   * Axis-aligned bounding box in world-space millimeters. Present iff a
+   * FeatureTree was supplied AND the resulting union bbox is non-empty.
+   * Surfaced for the 3D viewer (Agent-FFFFF) to drive viewport framing
+   * without re-walking the tree on the consumer side.
+   */
+  bbox?: Bbox;
   notes?: string;
 }
 
@@ -82,44 +110,142 @@ export const DEFAULT_DENSITIES: Readonly<Record<string, number>> = {
 /** When no material is supplied for a part, this label appears in the BOM. */
 export const DEFAULT_MATERIAL = 'unspecified';
 
-// ─── volume estimation ───────────────────────────────────────────────────
+// ─── per-part stats (delegates to featureTreeStats) ──────────────────────
+
+/**
+ * Aggregate stats for one part, derived from its FeatureTree via the
+ * shared `computeStats` walk. All fields are optional — undefined here
+ * means "could not compute" rather than "zero". Callers that only care
+ * about volume can still use `estimatePartVolume` (it is a thin wrapper
+ * around this function).
+ */
+export interface PartStats {
+  volume?: number;
+  surfaceArea?: number;
+  bbox?: Bbox;
+}
+
+/**
+ * Compute volume / surfaceArea / bbox for a single FeatureTree.
+ *
+ * Implementation strategy (Phase 1):
+ *   - Delegate to `featureTreeStats.computeStats(tree)` — this covers all
+ *     8 Phase 1 feature kinds (extrude, revolve, sweep, loft, linear /
+ *     circular pattern, hole, fillet, chamfer) with one unified walk.
+ *     Earlier iterations of this module hand-rolled a switch covering
+ *     only extrude + revolve; that has been retired so hole subtractions
+ *     and pattern multipliers reach the BOM.
+ *   - Floor the volume at 0 to preserve the historical contract that an
+ *     all-cut tree never surfaces a negative BOM volume.
+ *   - When the tree has zero non-suppressed nodes (empty / all-suppressed),
+ *     return undefined for every field so the BOM row legitimately shows
+ *     "no measurement" rather than "0 mm³".
+ *   - If `computeStats` throws for any reason (defensive guard against
+ *     future malformed IR), fall back to the legacy inline extrude+revolve
+ *     switch via {@link legacyPartVolume}. That keeps the BOM exporter
+ *     resilient — a single bad payload should not blank out the entire
+ *     export.
+ */
+export function estimatePartStats(tree: FeatureTree | undefined): PartStats {
+  if (!tree || tree.nodes.length === 0) return {};
+  // Quick check: are there any non-suppressed nodes? If not, every stat
+  // is "no measurement" and we exit early.
+  const hasActive = tree.nodes.some((n) => !n.suppressed);
+  if (!hasActive) return {};
+
+  try {
+    const stats = computeStats(tree);
+    if (stats.nodeCount === 0) return {};
+    // Did any per-node entry actually contribute a finite volume? Mirrors
+    // the legacy "no contribution → undefined" contract: a tree composed
+    // solely of fillet / chamfer wrappers (which intentionally skip
+    // volume) should keep `volume` undefined rather than show "0 mm³"
+    // which the user could read as "we measured zero". A negative
+    // aggregate (all-cut) IS a contribution and clamps to 0 below.
+    let anyVolumeContribution = false;
+    let anySurfaceContribution = false;
+    for (const fs of stats.perFeature.values()) {
+      if (fs.volume !== undefined && Number.isFinite(fs.volume)) {
+        anyVolumeContribution = true;
+      }
+      if (fs.surfaceArea !== undefined && Number.isFinite(fs.surfaceArea) && fs.surfaceArea > 0) {
+        anySurfaceContribution = true;
+      }
+    }
+    const out: PartStats = {};
+    if (anyVolumeContribution && Number.isFinite(stats.volume)) {
+      // Match the historical bomExport contract: never expose a negative
+      // BOM volume — clamp the floor at 0 for the BOM row even when the
+      // unified stats kept the sign.
+      out.volume = Math.max(0, stats.volume);
+    }
+    if (anySurfaceContribution && Number.isFinite(stats.surfaceArea) && stats.surfaceArea > 0) {
+      out.surfaceArea = stats.surfaceArea;
+    }
+    if (stats.bbox && !isEmptyBbox(stats.bbox) && isFiniteBbox(stats.bbox)) {
+      out.bbox = stats.bbox;
+    }
+    return out;
+  } catch {
+    // Defensive fallback — keep the BOM resilient if a malformed IR slips
+    // past validation. Only volume is recovered (surfaceArea / bbox were
+    // never in the legacy switch).
+    const v = legacyPartVolume(tree);
+    return v === undefined ? {} : { volume: v };
+  }
+}
 
 /**
  * Compute an approximate bounding-box volume (mm³) for one FeatureTree.
  *
- * Algorithm (Phase 1 — deliberately coarse, deterministic, kernel-free):
- *   1. Skip every suppressed node so the user's UI choice is respected.
- *   2. For each non-suppressed node, derive an "additive" volume from its
- *      payload kind:
- *        - extrude: signedArea(loop) × effectiveDepth.
- *          `two_sided` doubles the depth.
- *        - revolve: signedArea(loop) × 2π × centroidX × (angle / 360).
- *          (Pappus's theorem; accurate enough for axisymmetric profiles.)
- *        - sweep / loft: 0 (Phase 1 doesn't model curved sweeps — leaves
- *          the user with the underlying base-feature volume).
- *        - linear_pattern: ignored — the pattern multiplies an existing
- *          body but we lack the source-body volume in Phase 1.
- *        - circular_pattern: ignored — same caveat.
- *        - hole / fillet / chamfer: ignored — these are subtractive /
- *          edge-modifying, and capturing them without an OCCT kernel is a
- *          rabbit hole. Phase 2 will pull volumes from OCCT directly.
- *   3. `cut` mode on extrude / revolve produces a negative contribution
- *      (subtractive volume) so a part composed of one boss + one cut
- *      lines up roughly with reality.
- *   4. Sum every contribution. Floor at 0 — a pathological "all-cut"
- *      tree shouldn't surface a negative BOM volume.
+ * Phase 1 contract (preserved across the JJJJJ integration):
+ *   - Returns `undefined` for an empty tree / all-suppressed tree so the
+ *     BOM row shows "no measurement".
+ *   - Returns the non-negative `computeStats`-derived volume otherwise
+ *     (clamped at 0 for net-cut trees).
  *
- * Returns `undefined` when the tree has zero contributing nodes (so the
- * BOM row legitimately shows "no volume" rather than 0 mm³, which would
- * imply we measured and found nothing).
+ * Thin wrapper around {@link estimatePartStats} so existing call sites
+ * keep working without changes.
  */
 export function estimatePartVolume(tree: FeatureTree | undefined): number | undefined {
+  return estimatePartStats(tree).volume;
+}
+
+/**
+ * True iff every coordinate of the bbox is a finite number. Guards against
+ * NaN/Infinity leaking out of malformed IR (which {@link computeStats}
+ * may emit without throwing — its inner per-kind helpers do not validate
+ * input fields).
+ */
+function isFiniteBbox(b: Bbox): boolean {
+  return (
+    Number.isFinite(b.min.x) &&
+    Number.isFinite(b.min.y) &&
+    Number.isFinite(b.min.z) &&
+    Number.isFinite(b.max.x) &&
+    Number.isFinite(b.max.y) &&
+    Number.isFinite(b.max.z)
+  );
+}
+
+/**
+ * Legacy inline-switch volume estimator — retained as a defensive fallback
+ * for {@link estimatePartStats}. Covers only the extrude + revolve cases
+ * the original DDDDD implementation modelled; every other kind returns
+ * `undefined` (i.e., "nothing measurable here"). Floors the sum at 0 to
+ * match the historical no-negative-BOM contract.
+ *
+ * Exported for tests + diagnostics. Production code should prefer
+ * `estimatePartStats` / `estimatePartVolume` which route through the
+ * unified computeStats walk first.
+ */
+export function legacyPartVolume(tree: FeatureTree | undefined): number | undefined {
   if (!tree || tree.nodes.length === 0) return undefined;
   let total = 0;
   let contributed = false;
   for (const node of tree.nodes) {
     if (node.suppressed) continue;
-    const v = nodeVolume(node);
+    const v = legacyNodeVolume(node);
     if (v === undefined) continue;
     contributed = true;
     total += v;
@@ -128,7 +254,7 @@ export function estimatePartVolume(tree: FeatureTree | undefined): number | unde
   return Math.max(0, total);
 }
 
-function nodeVolume(node: FeatureNode): number | undefined {
+function legacyNodeVolume(node: FeatureNode): number | undefined {
   const p: FeaturePayload = node.payload;
   switch (p.kind) {
     case 'extrude': {
@@ -157,7 +283,7 @@ function nodeVolume(node: FeatureNode): number | undefined {
     case 'hole':
     case 'fillet':
     case 'chamfer':
-      // Not modelled in Phase 1.
+      // Not modelled by the legacy fallback (computeStats handles them).
       return undefined;
   }
 }
@@ -259,7 +385,8 @@ export function buildBom(state: AssemblyState, opts: BuildBomOptions = {}): BomE
 
   for (const part of state.parts) {
     const tree = featureTrees[part.id];
-    const volume = estimatePartVolume(tree);
+    const partStats = estimatePartStats(tree);
+    const { volume, surfaceArea, bbox } = partStats;
     const material = materials[part.id] ?? DEFAULT_MATERIAL;
     const density = densities[material];
     let mass: number | undefined;
@@ -278,6 +405,8 @@ export function buildBom(state: AssemblyState, opts: BuildBomOptions = {}): BomE
       entry.material = DEFAULT_MATERIAL;
     }
     if (volume !== undefined) entry.volume = volume;
+    if (surfaceArea !== undefined) entry.surfaceArea = surfaceArea;
+    if (bbox !== undefined) entry.bbox = bbox;
     if (mass !== undefined) entry.mass = mass;
     const note = notesMap[part.id];
     if (note !== undefined) entry.notes = note;
@@ -299,6 +428,15 @@ export function buildBom(state: AssemblyState, opts: BuildBomOptions = {}): BomE
 /**
  * Columns emitted by `bomToCsv`, in the order they appear. Exported so
  * callers / tests can assert column shape without re-declaring it.
+ *
+ * Schema history:
+ *   - 4.5.0 → `partId,name,quantity,material,volume_mm3,mass_g,notes`
+ *   - 4.5.1 → adds `surfaceArea_mm2` between `volume_mm3` and `mass_g`
+ *     once bomExport routed through featureTreeStats.computeStats and
+ *     started carrying a surface-area total per entry.
+ *
+ * The bbox is NOT projected to CSV (3 vectors × 3 floats would balloon
+ * the columns); JSON consumers see `entry.bbox` directly.
  */
 export const BOM_CSV_COLUMNS = [
   'partId',
@@ -306,6 +444,7 @@ export const BOM_CSV_COLUMNS = [
   'quantity',
   'material',
   'volume_mm3',
+  'surfaceArea_mm2',
   'mass_g',
   'notes',
 ] as const;
@@ -354,6 +493,7 @@ export function bomToCsv(bom: BomExport): string {
       e.quantity,
       e.material ?? '',
       e.volume ?? '',
+      e.surfaceArea ?? '',
       e.mass ?? '',
       e.notes ?? '',
     ];

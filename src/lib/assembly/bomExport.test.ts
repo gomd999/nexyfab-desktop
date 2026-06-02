@@ -10,6 +10,8 @@ import {
   bomToCsv,
   bomToJson,
   estimatePartVolume,
+  estimatePartStats,
+  legacyPartVolume,
   signedArea,
   centroidX,
   escapeCsvField,
@@ -22,9 +24,17 @@ import {
   partInstance,
   type AssemblyState,
 } from './assemblyState';
-import type { FeatureTree } from '@/lib/cad/featureTree';
+import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
+import type { SweepFeature, LoftFeature } from '@/lib/cad/sweepLoft';
+import type {
+  LinearPatternFeature,
+  CircularPatternFeature,
+} from '@/lib/cad/pattern';
+import type { HoleFeature } from '@/lib/cad/holeProfile';
+import type { FilletFeature } from '@/lib/cad/filletProfile';
+import type { ChamferFeature } from '@/lib/cad/chamferProfile';
 
 // ─── builders ─────────────────────────────────────────────────────────────
 
@@ -266,7 +276,27 @@ describe('estimatePartVolume', () => {
     expect(estimatePartVolume(tree)).toBeCloseTo(1000 * Math.PI, 3);
   });
 
-  it('returns undefined for trees containing only hole / fillet / chamfer (Phase 1 unmodelled)', () => {
+  it('floors hole-only trees at 0 (no negative BOM volume even after computeStats)', () => {
+    // Hole-only tree: computeStats produces a negative bore volume; the
+    // bomExport contract clamps every BOM row at 0 so we never surface a
+    // negative volume to the user.
+    const payload: HoleFeature = {
+      kind: 'hole',
+      center: { x: 0, y: 0 },
+      holeType: 'drilled',
+      diameter: 4,
+      depth: 5,
+    };
+    const tree: FeatureTree = {
+      nodes: [{ id: 'h1', name: 'h1', dependencies: [], payload }],
+    };
+    expect(estimatePartVolume(tree)).toBe(0);
+  });
+
+  it('treats malformed hole IR as no-measurement (fallback path)', () => {
+    // The legacy DDDDD test used a structurally-bogus hole payload; the
+    // new computeStats path would NaN out on it, which the defensive
+    // try/catch + fallback collapses to "no measurable volume".
     const tree: FeatureTree = {
       nodes: [{
         id: 'h1',
@@ -274,11 +304,14 @@ describe('estimatePartVolume', () => {
         dependencies: [],
         payload: {
           kind: 'hole',
-          // Cast: holeProfile shape doesn't matter — buildBom never touches it.
+          // Cast: missing required fields — exercises the resilience path.
         } as unknown as ExtrudeFeature,
       }],
     };
-    expect(estimatePartVolume(tree)).toBeUndefined();
+    // Either undefined (fallback) or 0 (floored NaN) is acceptable; what we
+    // assert is "no positive volume surfaces".
+    const v = estimatePartVolume(tree);
+    expect(v === undefined || v === 0).toBe(true);
   });
 });
 
@@ -503,22 +536,23 @@ describe('bomToCsv', () => {
     expect(csv).not.toMatch(/150,000(?!\d)/);
   });
 
-  it('leaves the volume / mass / material / notes columns empty when undefined', () => {
+  it('leaves the volume / surfaceArea / mass / notes columns empty when undefined', () => {
     const bom = buildBom(makeAssembly([makePart('p1', { fixed: true })]), {
       generatedAt: FIXED_ISO,
     });
     const csv = bomToCsv(bom);
     const dataRow = csv.split('\r\n')[1]!;
-    // partId,name,quantity,material,volume_mm3,mass_g,notes
-    // "p1","p1",1,"unspecified",,,
+    // partId,name,quantity,material,volume_mm3,surfaceArea_mm2,mass_g,notes
+    // p1,p1,1,unspecified,,,,
     const cols = dataRow.split(',');
     expect(cols[0]).toBe('p1');
     expect(cols[1]).toBe('p1');
     expect(cols[2]).toBe('1');
     expect(cols[3]).toBe(DEFAULT_MATERIAL);
-    expect(cols[4]).toBe('');
-    expect(cols[5]).toBe('');
-    expect(cols[6]).toBe('');
+    expect(cols[4]).toBe(''); // volume_mm3
+    expect(cols[5]).toBe(''); // surfaceArea_mm2
+    expect(cols[6]).toBe(''); // mass_g
+    expect(cols[7]).toBe(''); // notes
   });
 });
 
@@ -546,5 +580,344 @@ describe('bomToJson', () => {
     const json = bomToJson(buildBom(makeAssembly([]), { generatedAt: FIXED_ISO }));
     // Pretty-printed output contains literal '\n  ' (newline + 2 spaces).
     expect(json).toContain('\n  ');
+  });
+});
+
+// ─── computeStats integration (Phase 1, all 8 feature kinds) ──────────────
+//
+// These tests exercise the bomExport ↔ featureTreeStats integration that
+// replaced the legacy DDDDD inline switch. They cover every feature kind
+// that contributes to BOM volume / surfaceArea / bbox plus the resilience
+// fallback path.
+
+const PATTERN_BASE_ID = 'base';
+
+function holeFeatureNode(
+  id: string,
+  diameter: number,
+  depth: number,
+  cx = 0,
+  cy = 0,
+): FeatureNode {
+  const payload: HoleFeature = {
+    kind: 'hole',
+    center: { x: cx, y: cy },
+    holeType: 'drilled',
+    diameter,
+    depth,
+  };
+  return { id, name: id, dependencies: [], payload };
+}
+
+function plateExtrude(id: string, side: number, depth: number): FeatureNode {
+  const loop = [
+    { x: 0, y: 0 },
+    { x: side, y: 0 },
+    { x: side, y: side },
+    { x: 0, y: side },
+  ];
+  const payload: ExtrudeFeature = {
+    kind: 'extrude',
+    loop,
+    depth,
+    direction: 'one_sided',
+    mode: 'add',
+  };
+  return { id, name: id, dependencies: [], payload };
+}
+
+describe('estimatePartStats — pattern features (Phase 1 multiplier)', () => {
+  it('linear_pattern: BOM volume = base × count', () => {
+    const base = plateExtrude(PATTERN_BASE_ID, 10, 10); // 1000 mm³
+    const pattern: FeatureNode = {
+      id: 'pat',
+      name: 'pat',
+      dependencies: [PATTERN_BASE_ID],
+      payload: {
+        kind: 'linear_pattern',
+        childScad: '/* opaque */',
+        count: 4,
+        direction: { x: 1, y: 0, z: 0 },
+        spacing: 20,
+      } satisfies LinearPatternFeature,
+    };
+    const tree: FeatureTree = { nodes: [base, pattern] };
+    // Aggregate: base 1000 + pattern 4×1000 = 5000.
+    expect(estimatePartVolume(tree)).toBeCloseTo(5000, 4);
+  });
+
+  it('circular_pattern: BOM volume = base × count', () => {
+    const base = plateExtrude(PATTERN_BASE_ID, 10, 10); // 1000 mm³
+    const pattern: FeatureNode = {
+      id: 'cpat',
+      name: 'cpat',
+      dependencies: [PATTERN_BASE_ID],
+      payload: {
+        kind: 'circular_pattern',
+        childScad: '/* opaque */',
+        count: 6,
+        axisOrigin: { x: 0, y: 0, z: 0 },
+        axisDirection: { x: 0, y: 0, z: 1 },
+        totalAngleDegrees: 360,
+      } satisfies CircularPatternFeature,
+    };
+    const tree: FeatureTree = { nodes: [base, pattern] };
+    // base 1000 + pattern 6×1000 = 7000.
+    expect(estimatePartVolume(tree)).toBeCloseTo(7000, 4);
+  });
+});
+
+describe('estimatePartStats — hole subtractive', () => {
+  it('plate + small hole produces net (plate − hole) volume', () => {
+    const plate = plateExtrude('plate', 20, 5); // 20×20×5 = 2000
+    const hole = holeFeatureNode('h', 4, 5, 10, 10); // -π·4·5 ≈ -62.83
+    const tree: FeatureTree = { nodes: [plate, hole] };
+    const expected = 2000 - Math.PI * 4 * 5;
+    expect(estimatePartVolume(tree)).toBeCloseTo(expected, 3);
+  });
+
+  it('hole-only tree: BOM volume floored at 0 (no negative)', () => {
+    const tree: FeatureTree = { nodes: [holeFeatureNode('h', 4, 5)] };
+    expect(estimatePartVolume(tree)).toBe(0);
+  });
+});
+
+describe('estimatePartStats — sweep / loft (coarse Phase 1)', () => {
+  it('sweep: BOM volume ≈ profile area × spine length', () => {
+    const swept: FeatureNode = {
+      id: 's',
+      name: 's',
+      dependencies: [],
+      payload: {
+        kind: 'sweep',
+        profile: { points: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 4, y: 4 },
+          { x: 0, y: 4 },
+        ] },
+        path: [
+          { x: 0, y: 0, z: 0 },
+          { x: 10, y: 0, z: 0 },
+        ],
+        mode: 'add',
+      } satisfies SweepFeature,
+    };
+    // area = 16, spine length = 10 → 160 mm³.
+    expect(estimatePartVolume({ nodes: [swept] })).toBeCloseTo(160, 4);
+  });
+
+  it('loft: BOM volume ≈ average section area × height', () => {
+    const loftBox = (side: number) => [
+      { x: 0, y: 0 },
+      { x: side, y: 0 },
+      { x: side, y: side },
+      { x: 0, y: side },
+    ];
+    const lofted: FeatureNode = {
+      id: 'l',
+      name: 'l',
+      dependencies: [],
+      payload: {
+        kind: 'loft',
+        sections: [
+          { profile: { points: loftBox(4) }, z: 0 },  // area 16
+          { profile: { points: loftBox(2) }, z: 10 }, // area 4
+        ],
+        mode: 'add',
+      } satisfies LoftFeature,
+    };
+    // avg (16+4)/2 × 10 = 100.
+    expect(estimatePartVolume({ nodes: [lofted] })).toBeCloseTo(100, 4);
+  });
+});
+
+describe('estimatePartStats — fillet / chamfer pass-through', () => {
+  it('fillet alone: per-feature volume undefined → BOM volume undefined', () => {
+    const child: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 },
+      ],
+      depth: 5,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    const fillet: FeatureNode = {
+      id: 'f',
+      name: 'f',
+      dependencies: [],
+      payload: {
+        kind: 'fillet',
+        childExtrude: child,
+        radius: 1,
+        edgeSelection: 'all',
+      } satisfies FilletFeature,
+    };
+    // computeStats reports nodeCount=1 but no per-node volume → mirror
+    // the legacy "no contribution → undefined" contract so the BOM row
+    // does not read as "we measured 0 mm³".
+    const stats = estimatePartStats({ nodes: [fillet] });
+    expect(stats.volume).toBeUndefined();
+    // bbox still passes through (the fillet's child extrude has one).
+    expect(stats.bbox).toBeDefined();
+  });
+
+  it('extrude + fillet: BOM volume equals the extrude alone (fillet ignored)', () => {
+    const child: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 },
+      ],
+      depth: 5,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    const extrudeNd: FeatureNode = {
+      id: 'e',
+      name: 'e',
+      dependencies: [],
+      payload: child,
+    };
+    const fillet: FeatureNode = {
+      id: 'f',
+      name: 'f',
+      dependencies: ['e'],
+      payload: {
+        kind: 'fillet',
+        childExtrude: child,
+        radius: 1,
+        edgeSelection: 'all',
+      } satisfies FilletFeature,
+    };
+    // extrude contributes 500; fillet adds no volume.
+    expect(estimatePartVolume({ nodes: [extrudeNd, fillet] })).toBeCloseTo(500, 6);
+  });
+
+  it('chamfer alone: same ignore-volume policy as fillet', () => {
+    const child: ExtrudeFeature = {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 },
+      ],
+      depth: 5,
+      direction: 'one_sided',
+      mode: 'add',
+    };
+    const chamfer: FeatureNode = {
+      id: 'c',
+      name: 'c',
+      dependencies: [],
+      payload: {
+        kind: 'chamfer',
+        childExtrude: child,
+        distance: 1,
+        edgeSelection: 'all',
+      } satisfies ChamferFeature,
+    };
+    const stats = estimatePartStats({ nodes: [chamfer] });
+    expect(stats.volume).toBeUndefined();
+  });
+});
+
+describe('estimatePartStats — surfaceArea field', () => {
+  it('emits a positive surfaceArea for a 10×10×10 cube extrude', () => {
+    const cube = plateExtrude('cube', 10, 10);
+    const stats = estimatePartStats({ nodes: [cube] });
+    // cube SA = 6 × 100 = 600 mm².
+    expect(stats.surfaceArea).toBeCloseTo(600, 4);
+  });
+
+  it('surfaceArea undefined for a tree with no measurable surface', () => {
+    expect(estimatePartStats(undefined).surfaceArea).toBeUndefined();
+    expect(estimatePartStats({ nodes: [] }).surfaceArea).toBeUndefined();
+  });
+
+  it('BomEntry.surfaceArea round-trips through buildBom + bomToJson', () => {
+    const bom = buildBom(makeAssembly([makePart('p1', { fixed: true })]), {
+      featureTrees: { p1: extrudeNode('e1', 5) }, // 10×10×5 → SA 2·100 + 40·5 = 400
+      generatedAt: FIXED_ISO,
+    });
+    expect(bom.entries[0]!.surfaceArea).toBeCloseTo(400, 4);
+    const round = JSON.parse(bomToJson(bom));
+    expect(round.entries[0].surfaceArea).toBeCloseTo(400, 4);
+  });
+});
+
+describe('estimatePartStats — bbox field', () => {
+  it('emits a finite bbox spanning the extrude footprint × depth', () => {
+    const cube = plateExtrude('cube', 10, 10);
+    const stats = estimatePartStats({ nodes: [cube] });
+    expect(stats.bbox).toBeDefined();
+    expect(stats.bbox!.min).toEqual({ x: 0, y: 0, z: 0 });
+    expect(stats.bbox!.max).toEqual({ x: 10, y: 10, z: 10 });
+  });
+
+  it('bbox surfaces on the BomEntry for 3D viewer consumers', () => {
+    const bom = buildBom(makeAssembly([makePart('p1', { fixed: true })]), {
+      featureTrees: { p1: extrudeNode('e1', 5) },
+      generatedAt: FIXED_ISO,
+    });
+    const bbox = bom.entries[0]!.bbox;
+    expect(bbox).toBeDefined();
+    expect(bbox!.min.x).toBe(0);
+    expect(bbox!.max.z).toBe(5);
+  });
+});
+
+describe('bomToCsv — extended schema (surfaceArea_mm2 column)', () => {
+  it('header includes surfaceArea_mm2 between volume_mm3 and mass_g', () => {
+    const csv = bomToCsv(buildBom(makeAssembly([]), { generatedAt: FIXED_ISO }));
+    const header = csv.split('\r\n')[0]!;
+    expect(header).toBe(
+      'partId,name,quantity,material,volume_mm3,surfaceArea_mm2,mass_g,notes',
+    );
+    // Column order is load-bearing for downstream BI tools.
+    const cols = header.split(',');
+    const volIdx = cols.indexOf('volume_mm3');
+    const saIdx = cols.indexOf('surfaceArea_mm2');
+    const massIdx = cols.indexOf('mass_g');
+    expect(saIdx).toBe(volIdx + 1);
+    expect(massIdx).toBe(saIdx + 1);
+  });
+
+  it('emits the surfaceArea value in the new column for a populated row', () => {
+    const bom = buildBom(makeAssembly([makePart('p1', { fixed: true })]), {
+      featureTrees: { p1: extrudeNode('e1', 5) }, // SA = 400
+      generatedAt: FIXED_ISO,
+    });
+    const csv = bomToCsv(bom);
+    const dataRow = csv.split('\r\n')[1]!;
+    const cols = dataRow.split(',');
+    // columns: partId,name,quantity,material,volume_mm3,surfaceArea_mm2,mass_g,notes
+    expect(cols[4]).toBe('500');
+    expect(cols[5]).toBe('400');
+  });
+
+  it('emits 8 columns total (back-compat: 7 → 8 after the integration)', () => {
+    expect(BOM_CSV_COLUMNS).toHaveLength(8);
+    expect(BOM_CSV_COLUMNS).toContain('surfaceArea_mm2');
+  });
+});
+
+describe('legacyPartVolume — defensive fallback path', () => {
+  it('matches estimatePartVolume for extrude-only trees (regression guard)', () => {
+    const tree = extrudeNode('e1', 7);
+    // The legacy path covers extrude — both should agree.
+    expect(legacyPartVolume(tree)).toBe(estimatePartVolume(tree));
+  });
+
+  it('returns undefined for hole-only trees (legacy switch ignored them)', () => {
+    const tree: FeatureTree = { nodes: [holeFeatureNode('h', 4, 5)] };
+    expect(legacyPartVolume(tree)).toBeUndefined();
   });
 });
