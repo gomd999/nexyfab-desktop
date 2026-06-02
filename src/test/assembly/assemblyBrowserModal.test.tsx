@@ -1326,4 +1326,215 @@ describe('AssemblyBrowserModal', () => {
       ).toMatch(re);
     });
   });
+
+  // ── Phase 4.2: useAssemblyHistory integration (Undo/Redo/history panel) ──
+  //
+  /**
+   * The modal hosts a `useAssemblyHistory` instance — the 4 "structural"
+   * mutations (add part / remove part / add mate / accept suggestion +
+   * remove mate) push validated snapshots onto the history stack with a
+   * localized description. Non-structural edits (rename, fixed toggle,
+   * mate kind change, mate ref edit, mate value edit) bypass history via
+   * the override layer so transient IR-invalid edits don't throw.
+   *
+   * Undo/Redo are exposed both as footer buttons (disabled when the stack
+   * is empty) and as window-level Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z. The
+   * keyboard handler intentionally ignores keystrokes inside text-editing
+   * widgets so the browser's native input undo still works there.
+   */
+  describe('Phase 4.2 history (useAssemblyHistory integration)', () => {
+    it('Undo and Redo buttons render and start disabled', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      const undo = screen.getByTestId('solver-assembly-undo') as HTMLButtonElement;
+      const redo = screen.getByTestId('solver-assembly-redo') as HTMLButtonElement;
+      expect(undo).toBeInTheDocument();
+      expect(redo).toBeInTheDocument();
+      expect(undo.disabled).toBe(true);
+      expect(redo.disabled).toBe(true);
+    });
+
+    it('Add part enables Undo and shows "Add part" in the history panel', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      const undo = screen.getByTestId('solver-assembly-undo') as HTMLButtonElement;
+      expect(undo.disabled).toBe(false);
+      // History panel shows the most recent change description.
+      expect(screen.getByTestId('solver-assembly-history-current').textContent).toMatch(
+        /Add part part_1/,
+      );
+      expect(
+        screen.getByTestId('solver-assembly-history-entry-0').textContent,
+      ).toMatch(/Add part part_1/);
+    });
+
+    it('Undo after Add part removes the part and enables Redo', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      expect(screen.queryByTestId('solver-assembly-part-row-part_1')).toBeNull();
+      const redo = screen.getByTestId('solver-assembly-redo') as HTMLButtonElement;
+      expect(redo.disabled).toBe(false);
+    });
+
+    it('Redo after Undo replays the Add part', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      fireEvent.click(screen.getByTestId('solver-assembly-redo'));
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+      const redo = screen.getByTestId('solver-assembly-redo') as HTMLButtonElement;
+      expect(redo.disabled).toBe(true);
+    });
+
+    it('+ Add mate (via "+ Add mate" button) updates description with mate id', () => {
+      // Seed has 2 parts + 1 mate so the new mate id is mate_2 and validates.
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-add-mate'));
+      expect(screen.getByTestId('solver-assembly-history-current').textContent).toMatch(
+        /Add mate mate_2/,
+      );
+    });
+
+    it('Remove mate (per-row button) records "Remove mate <id>"', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-mate-remove-m1'));
+      expect(screen.getByTestId('solver-assembly-history-current').textContent).toMatch(
+        /Remove mate m1/,
+      );
+    });
+
+    it('Accept inferred suggestion records "Accept inferred mate ..."', () => {
+      // Use the onInferMates override path so we can know the suggestion id
+      // up-front and avoid coupling to the default inference algorithm.
+      const fake = vi.fn().mockReturnValue([
+        {
+          id: 'inferred_concentric_0',
+          kind: 'concentric',
+          a: { partId: 'p_base', refId: 'z_axis', refKind: 'axis' },
+          b: { partId: 'p_arm', refId: 'z_axis', refKind: 'axis' },
+        },
+      ]);
+      render(
+        <AssemblyBrowserModal
+          lang="en"
+          initialState={seedState()}
+          onClose={vi.fn()}
+          onInferMates={fake}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-infer-mates-button'));
+      fireEvent.click(
+        screen.getByTestId('solver-suggested-mate-inferred_concentric_0-accept'),
+      );
+      expect(screen.getByTestId('solver-assembly-history-current').textContent).toMatch(
+        /Accept inferred mate inferred_concentric_0/,
+      );
+    });
+
+    it('Ctrl+Z (window keydown) undoes when canUndo is true', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+      // Fire on window so the modal-level keydown listener catches it.
+      fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+      expect(screen.queryByTestId('solver-assembly-part-row-part_1')).toBeNull();
+    });
+
+    it('Ctrl+Y (window keydown) redoes when canRedo is true', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      fireEvent.keyDown(window, { key: 'y', ctrlKey: true });
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+    });
+
+    it('Ctrl+Shift+Z (window keydown) also redoes', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      fireEvent.click(screen.getByTestId('solver-assembly-undo'));
+      fireEvent.keyDown(window, { key: 'Z', ctrlKey: true, shiftKey: true });
+      expect(screen.getByTestId('solver-assembly-part-row-part_1')).toBeInTheDocument();
+    });
+
+    it('history list shows 3 entries after 3 structural changes', () => {
+      render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      const list = screen.getByTestId('solver-assembly-history-list');
+      // Present + 2 past entries should render (Initial is also a past entry
+      // so the actual count is 4 — we just assert at least 3 rows render and
+      // the most-recent is the third add).
+      const rows = within(list).queryAllByText(/Add part part_/);
+      expect(rows.length).toBeGreaterThanOrEqual(3);
+      expect(
+        screen.getByTestId('solver-assembly-history-entry-0').textContent,
+      ).toMatch(/Add part part_3/);
+    });
+
+    it('non-structural edits (rename) do NOT push to history', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      // Sanity — start with no recorded changes (only the synthetic Initial
+      // entry, which is the present and yields canUndo=false).
+      const undo = screen.getByTestId('solver-assembly-undo') as HTMLButtonElement;
+      expect(undo.disabled).toBe(true);
+      // Rename a part — direct edit, should NOT enable Undo.
+      const name = screen.getByTestId('solver-assembly-part-name-p_arm') as HTMLInputElement;
+      fireEvent.change(name, { target: { value: 'Crank Arm' } });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+      // Value persists despite no history entry.
+      expect(
+        (screen.getByTestId('solver-assembly-part-name-p_arm') as HTMLInputElement).value,
+      ).toBe('Crank Arm');
+    });
+
+    it('Undo button is disabled while Undo stack is empty even after non-tracked edits', () => {
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      fireEvent.change(screen.getByTestId('solver-assembly-mate-kind-m1'), {
+        target: { value: 'distance' },
+      });
+      expect(
+        (screen.getByTestId('solver-assembly-undo') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+
+    it('Ctrl+Z fired with focus inside an INPUT does NOT trigger modal undo', () => {
+      // Seed two parts so we can grab a stable text-input target. After the
+      // add-part click the new part is `part_3` (seedState had 2 parts).
+      render(
+        <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
+      );
+      fireEvent.click(screen.getByTestId('solver-assembly-add-part'));
+      const inp = screen.getByTestId('solver-assembly-part-name-p_arm') as HTMLInputElement;
+      inp.focus();
+      // Dispatch from the input element — handler should bail out.
+      fireEvent.keyDown(inp, { key: 'z', ctrlKey: true, bubbles: true });
+      // The newly added part row is still there (undo was suppressed).
+      expect(screen.getByTestId('solver-assembly-part-row-part_3')).toBeInTheDocument();
+    });
+
+    it.each<[AssemblyBrowserLang, RegExp, RegExp]>([
+      ['ko', /실행 취소/, /다시 실행/],
+      ['en', /Undo/, /Redo/],
+      ['ja', /元に戻す/, /やり直し/],
+      ['zh', /撤销/, /重做/],
+      ['es', /Deshacer/, /Rehacer/],
+      ['ar', /تراجع/, /إعادة/],
+    ])('i18n: lang %s localizes Undo / Redo button labels', (lang, undoRe, redoRe) => {
+      render(<AssemblyBrowserModal lang={lang} onClose={vi.fn()} />);
+      expect(screen.getByTestId('solver-assembly-undo').textContent).toMatch(undoRe);
+      expect(screen.getByTestId('solver-assembly-redo').textContent).toMatch(redoRe);
+    });
+  });
 });

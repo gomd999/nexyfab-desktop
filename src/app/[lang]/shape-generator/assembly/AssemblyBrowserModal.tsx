@@ -35,7 +35,7 @@ import {
   type PartInstance,
   IDENTITY_QUAT,
 } from '@/lib/assembly/assemblyState';
-import { useAssemblyStorage } from '@/lib/assembly/assemblyPersist';
+import { useAssemblyHistory } from '@/lib/assembly/assemblyHistory';
 import type { Mate, MateKind, MateRef, MateRefKind } from '@/lib/assembly/mate';
 import type { FeatureTree } from '@/lib/cad/featureTree';
 import type { SaveError } from '@/lib/cad/featureTreePersist';
@@ -119,6 +119,26 @@ interface Dict {
   suggestionsAvailable: string;
   /** Footer line shown above the panel when 0 mates were inferred. */
   noSuggestions: string;
+  /** Undo button label (Phase 4.2 history). */
+  undo: string;
+  /** Redo button label. */
+  redo: string;
+  /** History panel section heading. */
+  historyHeading: string;
+  /** Empty placeholder when no entries have been recorded. */
+  historyEmpty: string;
+  /**
+   * Templates used to build human-readable change descriptions stored in
+   * the history. They take the part / mate id (or pre-localized fragment)
+   * and return the localized full description. Kept as functions because
+   * many languages don't follow English word order.
+   */
+  descAddPart: (id: string) => string;
+  descRemovePart: (id: string) => string;
+  descAddMate: (id: string) => string;
+  descRemoveMate: (id: string) => string;
+  descAcceptMate: (id: string) => string;
+  descAcceptAllMates: (count: number) => string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -170,6 +190,16 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferring: '추론 중...',
     suggestionsAvailable: '추천 사용 가능',
     noSuggestions: '추천된 메이트가 없습니다',
+    undo: '실행 취소',
+    redo: '다시 실행',
+    historyHeading: '편집 기록',
+    historyEmpty: '아직 기록된 변경이 없습니다',
+    descAddPart: (id) => `부품 추가 ${id}`,
+    descRemovePart: (id) => `부품 삭제 ${id}`,
+    descAddMate: (id) => `메이트 추가 ${id}`,
+    descRemoveMate: (id) => `메이트 삭제 ${id}`,
+    descAcceptMate: (id) => `추론 메이트 수락 ${id}`,
+    descAcceptAllMates: (count) => `추론 메이트 일괄 수락 (${count})`,
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -219,6 +249,16 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferring: 'Inferring...',
     suggestionsAvailable: 'Suggestions available',
     noSuggestions: 'No mate suggestions found',
+    undo: 'Undo',
+    redo: 'Redo',
+    historyHeading: 'Recent changes',
+    historyEmpty: 'No recorded changes yet',
+    descAddPart: (id) => `Add part ${id}`,
+    descRemovePart: (id) => `Remove part ${id}`,
+    descAddMate: (id) => `Add mate ${id}`,
+    descRemoveMate: (id) => `Remove mate ${id}`,
+    descAcceptMate: (id) => `Accept inferred mate ${id}`,
+    descAcceptAllMates: (count) => `Accept all inferred mates (${count})`,
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -268,6 +308,16 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferring: '推論中...',
     suggestionsAvailable: '推奨が利用可能',
     noSuggestions: '推奨される合致はありません',
+    undo: '元に戻す',
+    redo: 'やり直し',
+    historyHeading: '編集履歴',
+    historyEmpty: 'まだ記録された変更はありません',
+    descAddPart: (id) => `パーツ追加 ${id}`,
+    descRemovePart: (id) => `パーツ削除 ${id}`,
+    descAddMate: (id) => `メイト追加 ${id}`,
+    descRemoveMate: (id) => `メイト削除 ${id}`,
+    descAcceptMate: (id) => `推論メイトを受入 ${id}`,
+    descAcceptAllMates: (count) => `推論メイトを一括受入 (${count})`,
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -317,6 +367,16 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferring: '推断中...',
     suggestionsAvailable: '建议可用',
     noSuggestions: '未找到配合建议',
+    undo: '撤销',
+    redo: '重做',
+    historyHeading: '编辑历史',
+    historyEmpty: '尚未记录任何更改',
+    descAddPart: (id) => `添加零件 ${id}`,
+    descRemovePart: (id) => `删除零件 ${id}`,
+    descAddMate: (id) => `添加配合 ${id}`,
+    descRemoveMate: (id) => `删除配合 ${id}`,
+    descAcceptMate: (id) => `接受推断配合 ${id}`,
+    descAcceptAllMates: (count) => `批量接受推断配合 (${count})`,
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -366,6 +426,16 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferring: 'Infiriendo...',
     suggestionsAvailable: 'Sugerencias disponibles',
     noSuggestions: 'No se encontraron sugerencias',
+    undo: 'Deshacer',
+    redo: 'Rehacer',
+    historyHeading: 'Cambios recientes',
+    historyEmpty: 'Aún no hay cambios registrados',
+    descAddPart: (id) => `Añadir pieza ${id}`,
+    descRemovePart: (id) => `Eliminar pieza ${id}`,
+    descAddMate: (id) => `Añadir restricción ${id}`,
+    descRemoveMate: (id) => `Eliminar restricción ${id}`,
+    descAcceptMate: (id) => `Aceptar restricción inferida ${id}`,
+    descAcceptAllMates: (count) => `Aceptar todas las restricciones inferidas (${count})`,
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -415,6 +485,16 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     inferring: 'يستنتج...',
     suggestionsAvailable: 'الاقتراحات متاحة',
     noSuggestions: 'لا توجد قيود مقترحة',
+    undo: 'تراجع',
+    redo: 'إعادة',
+    historyHeading: 'التغييرات الأخيرة',
+    historyEmpty: 'لا توجد تغييرات مسجلة بعد',
+    descAddPart: (id) => `إضافة جزء ${id}`,
+    descRemovePart: (id) => `حذف جزء ${id}`,
+    descAddMate: (id) => `إضافة قيد ${id}`,
+    descRemoveMate: (id) => `حذف قيد ${id}`,
+    descAcceptMate: (id) => `قبول القيد المستنتج ${id}`,
+    descAcceptAllMates: (count) => `قبول جميع القيود المستنتجة (${count})`,
   },
 };
 
@@ -769,39 +849,73 @@ export default function AssemblyBrowserModal({
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
 
-  // Persistence (Phase 4): when projectId is supplied we route assembly
-  // state through `useAssemblyStorage` (autosave to
-  // `nexyfab:assembly:${projectId}`) and per-part FeatureTrees through the
-  // simpler local-storage hook below. When absent both branches fall back
-  // to plain `useState`, preserving the existing 50 in-memory tests.
+  // Persistence + history (Phase 4 + 4.2): all assembly-state I/O now flows
+  // through `useAssemblyHistory`, which internally delegates persistence to
+  // `useAssemblyStorage` (when storageKey is set) and otherwise degrades to
+  // plain in-memory state. The hook owns the past/present/future stacks for
+  // Undo/Redo. Per-part FeatureTrees stay outside history (they're a side
+  // editor and not part of AssemblyState).
   const assemblyKey = projectId !== undefined ? `${ASSEMBLY_STORAGE_PREFIX}${projectId}` : '';
   const treesKey =
     projectId !== undefined ? `${ASSEMBLY_TREES_STORAGE_PREFIX}${projectId}` : '';
 
-  // Always-call both hooks — rules-of-hooks demands a stable call shape.
-  const [persistedState, setPersistedState] = useAssemblyStorage(
-    assemblyKey,
-    initialState ?? EMPTY_STATE,
-  );
-  const [memoryState, setMemoryState] = useState<AssemblyState>(initialState ?? EMPTY_STATE);
+  const history = useAssemblyHistory(initialState ?? EMPTY_STATE, {
+    maxHistory: 50,
+    storageKey: assemblyKey,
+  });
 
-  const state = projectId !== undefined ? persistedState : memoryState;
-  // Uniform `setState(prev => next)` adapter — `useAssemblyStorage`'s
-  // setter only takes a value, so we resolve the updater against the
-  // current `state` ourselves when in persisted mode.
-  const setState = useCallback(
+  /**
+   * Override layer for non-tracked edits (rename / fixed toggle / mate kind
+   * change / ref edit / value edit / mate remove via row button). These
+   * edits may produce IR-invalid intermediate states (e.g. typing a
+   * non-existent partId into a mate ref), so we cannot push them through
+   * `history.recordChange` (which would throw via `validateAssembly`). The
+   * override "wins" over `history.state` while present; whenever history
+   * advances (recordChange / undo / redo) the override is cleared so the
+   * canonical, validated state takes back over.
+   */
+  const [overrideState, setOverrideState] = useState<AssemblyState | null>(null);
+  const lastHistoryStateRef = useRef<AssemblyState>(history.state);
+  useEffect(() => {
+    if (lastHistoryStateRef.current !== history.state) {
+      lastHistoryStateRef.current = history.state;
+      setOverrideState(null);
+    }
+  }, [history.state]);
+
+  const state = overrideState ?? history.state;
+
+  /**
+   * Non-recording state setter. Used for transient edits that should NOT
+   * push to history (and must therefore bypass validateAssembly).
+   */
+  const setStateDirect = useCallback(
     (next: AssemblyState | ((prev: AssemblyState) => AssemblyState)) => {
-      if (projectId !== undefined) {
-        const resolved =
-          typeof next === 'function'
-            ? (next as (p: AssemblyState) => AssemblyState)(persistedState)
-            : next;
-        setPersistedState(resolved);
-      } else {
-        setMemoryState(next);
-      }
+      setOverrideState((prevOverride) => {
+        const base = prevOverride ?? lastHistoryStateRef.current;
+        return typeof next === 'function'
+          ? (next as (p: AssemblyState) => AssemblyState)(base)
+          : next;
+      });
     },
-    [projectId, persistedState, setPersistedState],
+    [],
+  );
+
+  /**
+   * Recording state setter. Pushes the new state onto the history stack
+   * with a localized description. The override layer (if any) is cleared
+   * via the effect above as soon as history.state advances.
+   */
+  const recordState = useCallback(
+    (next: AssemblyState | ((prev: AssemblyState) => AssemblyState), description: string) => {
+      const base = overrideState ?? history.state;
+      const resolved =
+        typeof next === 'function'
+          ? (next as (p: AssemblyState) => AssemblyState)(base)
+          : next;
+      history.recordChange(resolved, description);
+    },
+    [overrideState, history],
   );
 
   // Persistence toast for the trees-storage branch.
@@ -889,33 +1003,38 @@ export default function AssemblyBrowserModal({
   // ── parts ops ──────────────────────────────────────────────────────────
 
   const addPartLocal = useCallback(() => {
-    setState((prev) => {
-      const idx = prev.parts.length + 1;
-      const id = `part_${idx}`;
-      const part: PartInstance = {
-        id,
-        name: `Part ${idx}`,
-        partTemplateId: id,
-        position: { x: 0, y: 0, z: 0 },
-        orientation: IDENTITY_QUAT,
-        // First part is fixed so the IR-level invariant (>=1 fixed part)
-        // is satisfied as soon as the user picks Solve.
-        fixed: prev.parts.length === 0,
-      };
-      return { ...prev, parts: [...prev.parts, part] };
-    });
-  }, []);
+    const base = overrideState ?? history.state;
+    const idx = base.parts.length + 1;
+    const id = `part_${idx}`;
+    const part: PartInstance = {
+      id,
+      name: `Part ${idx}`,
+      partTemplateId: id,
+      position: { x: 0, y: 0, z: 0 },
+      orientation: IDENTITY_QUAT,
+      // First part is fixed so the IR-level invariant (>=1 fixed part)
+      // is satisfied as soon as the user picks Solve.
+      fixed: base.parts.length === 0,
+    };
+    recordState(
+      (prev) => ({ ...prev, parts: [...prev.parts, part] }),
+      t.descAddPart(id),
+    );
+  }, [overrideState, history.state, recordState, t]);
 
   const removePartLocal = useCallback((partId: string) => {
-    setState((prev) => ({
-      ...prev,
-      parts: prev.parts.filter((p) => p.id !== partId),
-      // Drop any mates that reference the removed part so the user isn't
-      // left with dangling refs they have to clean up manually.
-      mates: prev.mates.filter(
-        (m) => m.a.partId !== partId && m.b.partId !== partId,
-      ),
-    }));
+    recordState(
+      (prev) => ({
+        ...prev,
+        parts: prev.parts.filter((p) => p.id !== partId),
+        // Drop any mates that reference the removed part so the user isn't
+        // left with dangling refs they have to clean up manually.
+        mates: prev.mates.filter(
+          (m) => m.a.partId !== partId && m.b.partId !== partId,
+        ),
+      }),
+      t.descRemovePart(partId),
+    );
     // Also drop any associated FeatureTree / editor state for the removed
     // part so a future re-add of the same id starts fresh.
     setFeatureTrees((prev) => {
@@ -951,21 +1070,21 @@ export default function AssemblyBrowserModal({
     // Drop any selection entries pointing at the removed part so the mate
     // toolbar doesn't end up holding refs to a part that no longer exists.
     setSelection((prev) => prev.filter((s) => s.partId !== partId));
-  }, []);
+  }, [recordState, t]);
 
   const renamePart = useCallback((partId: string, name: string) => {
-    setState((prev) => ({
+    setStateDirect((prev) => ({
       ...prev,
       parts: prev.parts.map((p) => (p.id === partId ? { ...p, name } : p)),
     }));
-  }, []);
+  }, [setStateDirect]);
 
   const toggleFixed = useCallback((partId: string, fixed: boolean) => {
-    setState((prev) => ({
+    setStateDirect((prev) => ({
       ...prev,
       parts: prev.parts.map((p) => (p.id === partId ? { ...p, fixed } : p)),
     }));
-  }, []);
+  }, [setStateDirect]);
 
   // ── featureTree ops ────────────────────────────────────────────────────
 
@@ -1037,43 +1156,57 @@ export default function AssemblyBrowserModal({
   // ── mates ops ──────────────────────────────────────────────────────────
 
   const addMateLocal = useCallback(() => {
-    setState((prev) => {
-      const idx = prev.mates.length + 1;
-      const id = `mate_${idx}`;
-      const a: MateRef = {
-        partId: prev.parts[0]?.id ?? 'part_1',
-        refId: 'ref_a',
-        refKind: 'face',
-      };
-      const b: MateRef = {
-        partId: prev.parts[1]?.id ?? prev.parts[0]?.id ?? 'part_2',
-        refId: 'ref_b',
-        refKind: 'face',
-      };
-      const mate = newMateOfKind(id, 'coincident', a, b);
-      return { ...prev, mates: [...prev.mates, mate] };
-    });
-  }, []);
+    const base = overrideState ?? history.state;
+    const idx = base.mates.length + 1;
+    const id = `mate_${idx}`;
+    // Note: when no parts exist the fallback partIds 'part_1' / 'part_2'
+    // make the resulting state IR-invalid (mate refs an unknown part), so
+    // `history.recordChange` will throw via validateAssembly. That's the
+    // correct UX: clicking "+ Add mate" with zero parts is meaningless and
+    // the user must first add parts. We propagate the throw to surface it
+    // in tests / Sentry rather than silently dropping the click.
+    const a: MateRef = {
+      partId: base.parts[0]?.id ?? 'part_1',
+      refId: 'ref_a',
+      refKind: 'face',
+    };
+    const b: MateRef = {
+      partId: base.parts[1]?.id ?? base.parts[0]?.id ?? 'part_2',
+      refId: 'ref_b',
+      refKind: 'face',
+    };
+    const mate = newMateOfKind(id, 'coincident', a, b);
+    recordState(
+      (prev) => ({ ...prev, mates: [...prev.mates, mate] }),
+      t.descAddMate(id),
+    );
+  }, [overrideState, history.state, recordState, t]);
 
-  const removeMateLocal = useCallback((mateId: string) => {
-    setState((prev) => ({
-      ...prev,
-      mates: prev.mates.filter((m) => m.id !== mateId),
-    }));
-  }, []);
+  const removeMateLocal = useCallback(
+    (mateId: string) => {
+      recordState(
+        (prev) => ({
+          ...prev,
+          mates: prev.mates.filter((m) => m.id !== mateId),
+        }),
+        t.descRemoveMate(mateId),
+      );
+    },
+    [recordState, t],
+  );
 
   const changeMateKind = useCallback((mateId: string, kind: MateKind) => {
-    setState((prev) => ({
+    setStateDirect((prev) => ({
       ...prev,
       mates: prev.mates.map((m) =>
         m.id === mateId ? newMateOfKind(m.id, kind, m.a, m.b) : m,
       ),
     }));
-  }, []);
+  }, [setStateDirect]);
 
   const updateMateRef = useCallback(
     (mateId: string, side: 'a' | 'b', patch: Partial<MateRef>) => {
-      setState((prev) => ({
+      setStateDirect((prev) => ({
         ...prev,
         mates: prev.mates.map((m) =>
           m.id === mateId
@@ -1082,15 +1215,15 @@ export default function AssemblyBrowserModal({
         ),
       }));
     },
-    [],
+    [setStateDirect],
   );
 
   const updateMateValue = useCallback((mateId: string, value: number) => {
-    setState((prev) => ({
+    setStateDirect((prev) => ({
       ...prev,
       mates: prev.mates.map((m) => (m.id === mateId ? setMateValue(m, value) : m)),
     }));
-  }, []);
+  }, [setStateDirect]);
 
   // ── ref-selection / mate-toolbar ops ───────────────────────────────────
 
@@ -1114,10 +1247,16 @@ export default function AssemblyBrowserModal({
    * mate.ts validateMate is NOT re-run here because the toolbar guarantees
    * a cross-part, kind-compatible pair via canApply().
    */
-  const onAddMateFromToolbar = useCallback((mate: Mate) => {
-    setState((prev) => ({ ...prev, mates: [...prev.mates, mate] }));
-    setSelection([]);
-  }, []);
+  const onAddMateFromToolbar = useCallback(
+    (mate: Mate) => {
+      recordState(
+        (prev) => ({ ...prev, mates: [...prev.mates, mate] }),
+        t.descAddMate(mate.id),
+      );
+      setSelection([]);
+    },
+    [recordState, t],
+  );
 
   // ── reset (Phase 4) ───────────────────────────────────────────────────
 
@@ -1128,7 +1267,16 @@ export default function AssemblyBrowserModal({
    * localStorage — effectively clearing the slot.
    */
   const onResetAssembly = useCallback(() => {
-    setState(EMPTY_STATE);
+    // Reset blanks the assembly to EMPTY_STATE — independent of whatever
+    // initialState was seeded, matching the Phase 4 contract that "Reset"
+    // means "wipe everything". We record this as a history entry rather
+    // than calling `history.reset()` (which would only revert to the
+    // initial seed) so the user can Undo a stray reset click. The override
+    // layer is cleared via the effect on history.state change.
+    if (state.parts.length > 0 || state.mates.length > 0) {
+      history.recordChange(EMPTY_STATE, t.descRemovePart('*'));
+    }
+    setOverrideState(null);
     setFeatureTrees({});
     setFeatureTreeText({});
     setFeatureTreeOpen({});
@@ -1138,7 +1286,7 @@ export default function AssemblyBrowserModal({
     setTreesPersistError(null);
     setSuggestions([]);
     setHasInferred(false);
-  }, [setState, setFeatureTrees]);
+  }, [state.parts.length, state.mates.length, history, setFeatureTrees, t]);
 
   // ── infer-mates (Phase 5.2.3) ──────────────────────────────────────────
 
@@ -1179,10 +1327,13 @@ export default function AssemblyBrowserModal({
 
   const onAcceptSuggestion = useCallback(
     (mate: Mate) => {
-      setState((prev) => ({ ...prev, mates: [...prev.mates, mate] }));
+      recordState(
+        (prev) => ({ ...prev, mates: [...prev.mates, mate] }),
+        t.descAcceptMate(mate.id),
+      );
       setSuggestions((prev) => prev.filter((s) => s.id !== mate.id));
     },
-    [setState],
+    [recordState, t],
   );
 
   const onRejectSuggestion = useCallback((mateId: string) => {
@@ -1190,9 +1341,13 @@ export default function AssemblyBrowserModal({
   }, []);
 
   const onAcceptAllSuggestions = useCallback(() => {
-    setState((prev) => ({ ...prev, mates: [...prev.mates, ...suggestions] }));
+    const count = suggestions.length;
+    recordState(
+      (prev) => ({ ...prev, mates: [...prev.mates, ...suggestions] }),
+      t.descAcceptAllMates(count),
+    );
     setSuggestions([]);
-  }, [setState, suggestions]);
+  }, [recordState, suggestions, t]);
 
   const onRejectAllSuggestions = useCallback(() => {
     setSuggestions([]);
@@ -1240,6 +1395,44 @@ export default function AssemblyBrowserModal({
     () => !onSolve || solveState.status === 'loading' || hasFeatureTreeError,
     [onSolve, solveState.status, hasFeatureTreeError],
   );
+
+  // ── keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo) ────
+  //
+  // Scope: window-level keydown listener active while the modal is mounted.
+  // We deliberately do NOT swallow the keystroke when focus is inside a
+  // text-editing widget (input / textarea / contenteditable) — browser-native
+  // undo/redo on those fields is the user's expectation and overriding it
+  // would feel hostile. The modal-level shortcut therefore only fires when
+  // focus is on the document body or a non-editing element.
+  const onUndo = history.undo;
+  const onRedo = history.redo;
+  const canUndo = history.canUndo;
+  const canRedo = history.canRedo;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (target.isContentEditable) return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        if (canUndo) {
+          e.preventDefault();
+          onUndo();
+        }
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        if (canRedo) {
+          e.preventDefault();
+          onRedo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onUndo, onRedo, canUndo, canRedo]);
 
   return (
     <div
@@ -2040,6 +2233,77 @@ export default function AssemblyBrowserModal({
           </div>
         )}
 
+        {/* ── history panel (Phase 4.2) ────────────────────────────── */}
+        <div
+          data-testid="solver-assembly-history-panel"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            padding: 8,
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: 4,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <span>{t.historyHeading}</span>
+            <span
+              data-testid="solver-assembly-history-current"
+              style={{
+                fontWeight: 400,
+                color: '#6b7280',
+                fontStyle: 'italic',
+              }}
+            >
+              {history.description}
+            </span>
+          </div>
+          {history.canUndo || history.canRedo ? (
+            <ol
+              data-testid="solver-assembly-history-list"
+              style={{
+                listStyle: 'none',
+                margin: 0,
+                padding: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              {history.history.slice(0, 5).map((entry, idx) => (
+                <li
+                  key={`${entry.timestamp}-${idx}`}
+                  data-testid={`solver-assembly-history-entry-${idx}`}
+                  style={{
+                    fontSize: 11,
+                    color: idx === 0 ? '#111827' : '#6b7280',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {idx === 0 ? '▶ ' : '  '}
+                  {entry.description}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div
+              data-testid="solver-assembly-history-empty"
+              style={{ fontSize: 11, color: '#9ca3af' }}
+            >
+              {t.historyEmpty}
+            </div>
+          )}
+        </div>
+
         {/* ── footer ───────────────────────────────────────────────── */}
         <div
           style={{
@@ -2079,6 +2343,42 @@ export default function AssemblyBrowserModal({
                 : treesPersistError.message}
             </span>
           )}
+          <button
+            type="button"
+            onClick={history.undo}
+            disabled={!history.canUndo}
+            data-testid="solver-assembly-undo"
+            title={`${t.undo} (Ctrl+Z)`}
+            style={{
+              padding: '8px 12px',
+              fontSize: 13,
+              background: history.canUndo ? '#fff' : '#f3f4f6',
+              color: history.canUndo ? '#111827' : '#9ca3af',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: history.canUndo ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {t.undo}
+          </button>
+          <button
+            type="button"
+            onClick={history.redo}
+            disabled={!history.canRedo}
+            data-testid="solver-assembly-redo"
+            title={`${t.redo} (Ctrl+Y)`}
+            style={{
+              padding: '8px 12px',
+              fontSize: 13,
+              background: history.canRedo ? '#fff' : '#f3f4f6',
+              color: history.canRedo ? '#111827' : '#9ca3af',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: history.canRedo ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {t.redo}
+          </button>
           <button
             type="button"
             onClick={onResetAssembly}
