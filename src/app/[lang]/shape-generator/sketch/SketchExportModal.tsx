@@ -51,10 +51,11 @@ import {
   type SketchEntities,
   type SketchSvgOptions,
 } from '@/lib/sketch/sketchSvgExport';
+import { downloadSketchAsDxf } from '@/lib/sketch/sketchDxfExport';
 
 export type SketchExportLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
-export type SketchExportFormat = 'svg' | 'png' | 'json';
+export type SketchExportFormat = 'svg' | 'png' | 'json' | 'dxf';
 
 export type SketchExportUnit = 'mm' | 'inch';
 
@@ -96,6 +97,10 @@ const FORMAT_DEFAULTS: Record<SketchExportFormat, FormatDefaults> = {
   svg: { width: 200, height: 150, margin: 10, stroke: 0.2 },
   png: { width: 200, height: 150, margin: 10, stroke: 0.2 },
   json: { width: 200, height: 150, margin: 10, stroke: 0.2 },
+  // DXF has no concept of stroke width (entities are vector primitives with
+  // layer-driven appearance), so we keep stroke parity with the other formats
+  // for the input field default but the value is unused at export time.
+  dxf: { width: 200, height: 150, margin: 10, stroke: 0.2 },
 };
 
 // ─── i18n (6 langs) ──────────────────────────────────────────────────────
@@ -106,6 +111,7 @@ interface Dict {
   formatSvg: string;
   formatPng: string;
   formatJson: string;
+  formatDxf: string;
   widthLabel: string;
   heightLabel: string;
   marginLabel: string;
@@ -127,6 +133,7 @@ const dict: Record<SketchExportLang, Dict> = {
     formatSvg: 'SVG',
     formatPng: 'PNG',
     formatJson: 'JSON',
+    formatDxf: 'DXF',
     widthLabel: '폭',
     heightLabel: '높이',
     marginLabel: '여백',
@@ -146,6 +153,7 @@ const dict: Record<SketchExportLang, Dict> = {
     formatSvg: 'SVG',
     formatPng: 'PNG',
     formatJson: 'JSON',
+    formatDxf: 'DXF',
     widthLabel: 'Width',
     heightLabel: 'Height',
     marginLabel: 'Margin',
@@ -165,6 +173,7 @@ const dict: Record<SketchExportLang, Dict> = {
     formatSvg: 'SVG',
     formatPng: 'PNG',
     formatJson: 'JSON',
+    formatDxf: 'DXF',
     widthLabel: '幅',
     heightLabel: '高さ',
     marginLabel: '余白',
@@ -184,6 +193,7 @@ const dict: Record<SketchExportLang, Dict> = {
     formatSvg: 'SVG',
     formatPng: 'PNG',
     formatJson: 'JSON',
+    formatDxf: 'DXF',
     widthLabel: '宽度',
     heightLabel: '高度',
     marginLabel: '边距',
@@ -203,6 +213,7 @@ const dict: Record<SketchExportLang, Dict> = {
     formatSvg: 'SVG',
     formatPng: 'PNG',
     formatJson: 'JSON',
+    formatDxf: 'DXF',
     widthLabel: 'Ancho',
     heightLabel: 'Alto',
     marginLabel: 'Margen',
@@ -222,6 +233,7 @@ const dict: Record<SketchExportLang, Dict> = {
     formatSvg: 'SVG',
     formatPng: 'PNG',
     formatJson: 'JSON',
+    formatDxf: 'DXF',
     widthLabel: 'العرض',
     heightLabel: 'الارتفاع',
     marginLabel: 'الهامش',
@@ -453,6 +465,19 @@ export default function SketchExportModal({
       downloadBlob(blob, withExtension(filename, 'png'));
       return;
     }
+    if (format === 'dxf') {
+      // DXF emission delegates to Agent-QQQQQ's downloadSketchAsDxf, which
+      // owns its own Blob + anchor lifecycle (matching downloadSketchAsSvg
+      // for consistency). We pass the chosen unit through so $INSUNITS in
+      // the file reflects what the user selected. Layer '0' is the AutoCAD
+      // default and the contract for the modal's "single-layer export".
+      downloadSketchAsDxf(entities, withExtension(filename, 'dxf'), {
+        units: unit,
+        layer: '0',
+        title: filename,
+      });
+      return;
+    }
     // JSON: include a manifest envelope so the exported document is
     // self-describing (format version + chosen units alongside the raw
     // entities). Importers can branch on `version` if we ever change the
@@ -543,7 +568,7 @@ export default function SketchExportModal({
             {t.formatLabel}
           </legend>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {(['svg', 'png', 'json'] as const).map((f) => (
+            {(['svg', 'png', 'json', 'dxf'] as const).map((f) => (
               <label
                 key={f}
                 style={{
@@ -562,7 +587,13 @@ export default function SketchExportModal({
                   onChange={() => setFormat(f)}
                   data-testid={`sketch-export-format-${f}`}
                 />
-                {f === 'svg' ? t.formatSvg : f === 'png' ? t.formatPng : t.formatJson}
+                {f === 'svg'
+                  ? t.formatSvg
+                  : f === 'png'
+                    ? t.formatPng
+                    : f === 'json'
+                      ? t.formatJson
+                      : t.formatDxf}
               </label>
             ))}
           </div>
@@ -612,18 +643,27 @@ export default function SketchExportModal({
               style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-            {t.strokeLabel}
-            <input
-              type="number"
-              data-testid="sketch-export-stroke"
-              value={stroke}
-              min={0}
-              step="any"
-              onChange={numberOnChange(setStroke)}
-              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
-            />
-          </label>
+          {/* DXF is a pure-vector format with layer-driven line weights —
+              the stroke width control has no effect on the emitted file, so
+              we hide it entirely when DXF is selected to avoid confusing
+              users with a dead input. SVG/PNG/JSON all consume strokeWidth
+              (PNG via the rasterised SVG, JSON via the recorded page block).
+              The stroke state itself is preserved across format toggles so
+              the user doesn't lose their setting when bouncing through DXF. */}
+          {format !== 'dxf' && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+              {t.strokeLabel}
+              <input
+                type="number"
+                data-testid="sketch-export-stroke"
+                value={stroke}
+                min={0}
+                step="any"
+                onChange={numberOnChange(setStroke)}
+                style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+              />
+            </label>
+          )}
         </div>
 
         {/* Unit + filename row */}

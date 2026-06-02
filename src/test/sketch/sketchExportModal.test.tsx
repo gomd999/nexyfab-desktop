@@ -462,3 +462,204 @@ describe('SketchExportModal — close paths', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+// ─── DXF integration (Agent-QQQQQ → Agent-SSSSS) ─────────────────────────
+//
+// DXF is the 4th format. The brief contract:
+//   - Radio appears alongside SVG/PNG/JSON.
+//   - Selecting DXF hides the stroke-width input (DXF has no stroke weight).
+//   - Submit calls Agent-QQQQQ's downloadSketchAsDxf → emits an
+//     `application/dxf` blob whose body starts with the R12 DXF magic
+//     `  0\nSECTION\n  2\nHEADER` (group-code "0" is space-padded to 3
+//     chars by some emitters; Agent-QQQQQ emits unpadded "0" so we match
+//     `0\nSECTION`).
+//   - Filename gains the `.dxf` extension automatically.
+//   - The live preview keeps showing SVG (DXF preview is Phase 2).
+//   - 6-language formatDxf label is "DXF" everywhere (English-as-loanword).
+describe('SketchExportModal — DXF integration', () => {
+  let spy: UrlSpy;
+  beforeEach(() => { spy = installUrlSpy(); });
+  afterEach(() => { vi.restoreAllMocks(); cleanup(); });
+
+  it('shows the DXF radio option alongside SVG/PNG/JSON', () => {
+    render(
+      <SketchExportModal
+        lang="en"
+        entities={sampleEntities()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('sketch-export-format-dxf')).toBeInTheDocument();
+    // Co-existence with the existing three: still all rendered.
+    expect(screen.getByTestId('sketch-export-format-svg')).toBeInTheDocument();
+    expect(screen.getByTestId('sketch-export-format-png')).toBeInTheDocument();
+    expect(screen.getByTestId('sketch-export-format-json')).toBeInTheDocument();
+  });
+
+  it('selecting DXF hides the stroke-width input (DXF has no stroke weight)', () => {
+    render(
+      <SketchExportModal
+        lang="en"
+        entities={sampleEntities()}
+        onClose={vi.fn()}
+      />,
+    );
+    // Stroke is visible by default (SVG selected).
+    expect(screen.getByTestId('sketch-export-stroke')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sketch-export-format-dxf'));
+    // …and gone once DXF is selected.
+    expect(screen.queryByTestId('sketch-export-stroke')).toBeNull();
+    // Toggling back restores it (state is preserved across format switches).
+    fireEvent.click(screen.getByTestId('sketch-export-format-svg'));
+    expect(screen.getByTestId('sketch-export-stroke')).toBeInTheDocument();
+  });
+
+  it('DXF export → application/dxf blob with R12 magic + .dxf filename', async () => {
+    const cap = captureDownloadFilename();
+    try {
+      render(
+        <SketchExportModal
+          lang="en"
+          entities={sampleEntities()}
+          defaultFilename="cad-part"
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('sketch-export-format-dxf'));
+      fireEvent.click(screen.getByTestId('sketch-export-submit'));
+      await waitFor(() => expect(spy.createObjectURL).toHaveBeenCalled());
+
+      const blob = spy.lastBlob();
+      expect(blob).toBeTruthy();
+      expect(blob!.type).toContain('application/dxf');
+      expect(cap.filenames.some((f) => f === 'cad-part.dxf')).toBe(true);
+
+      const text = await spy.readBlobText(blob!);
+      // R12 DXF magic — group code 0 then the SECTION marker, then the
+      // HEADER section. Agent-QQQQQ emits unpadded group codes ("0\n"
+      // not "  0\n") and uses '\n' line endings.
+      expect(text.startsWith('0\nSECTION\n2\nHEADER')).toBe(true);
+      // The trailing EOF record proves we got a complete file (not a
+      // partial/aborted write).
+      expect(text).toMatch(/\n0\nEOF\n$/);
+      // Sample entities included a circle and 2 lines — both should appear
+      // in the ENTITIES section.
+      expect(text).toContain('\nCIRCLE\n');
+      expect(text).toContain('\nLINE\n');
+    } finally {
+      cap.restore();
+    }
+  });
+
+  it('DXF filename idempotent — does not append .dxf when already present', async () => {
+    const cap = captureDownloadFilename();
+    try {
+      render(
+        <SketchExportModal
+          lang="en"
+          entities={sampleEntities()}
+          defaultFilename="bracket.dxf"
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('sketch-export-format-dxf'));
+      fireEvent.click(screen.getByTestId('sketch-export-submit'));
+      await waitFor(() => expect(spy.createObjectURL).toHaveBeenCalled());
+      expect(cap.filenames.some((f) => f === 'bracket.dxf')).toBe(true);
+      expect(cap.filenames.some((f) => f.endsWith('.dxf.dxf'))).toBe(false);
+    } finally {
+      cap.restore();
+    }
+  });
+
+  it('DXF $INSUNITS follows the unit selector (mm → 4, inch → 1)', async () => {
+    render(
+      <SketchExportModal
+        lang="en"
+        entities={sampleEntities()}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('sketch-export-format-dxf'));
+    // Default unit is mm → $INSUNITS = 4.
+    fireEvent.click(screen.getByTestId('sketch-export-submit'));
+    await waitFor(() => expect(spy.createObjectURL).toHaveBeenCalled());
+    let blob = spy.lastBlob();
+    let text = await spy.readBlobText(blob!);
+    expect(text).toMatch(/\$INSUNITS\n70\n4\n/);
+
+    // Switch to inch → $INSUNITS = 1.
+    spy.createObjectURL.mockClear();
+    const unitSel = screen.getByTestId('sketch-export-unit') as HTMLSelectElement;
+    fireEvent.change(unitSel, { target: { value: 'inch' } });
+    fireEvent.click(screen.getByTestId('sketch-export-submit'));
+    await waitFor(() => expect(spy.createObjectURL).toHaveBeenCalled());
+    blob = spy.lastBlob();
+    text = await spy.readBlobText(blob!);
+    expect(text).toMatch(/\$INSUNITS\n70\n1\n/);
+  });
+
+  it('preview stays SVG when DXF is selected (DXF preview is Phase 2)', () => {
+    render(
+      <SketchExportModal
+        lang="en"
+        entities={sampleEntities()}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('sketch-export-format-dxf'));
+    // The preview SVG container is still mounted and still contains an
+    // <svg> root sourced from sketchSvgExport — no DXF text dump replaces it.
+    const preview = screen.getByTestId('sketch-export-preview-svg');
+    expect(preview.innerHTML).toMatch(/<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    expect(preview.innerHTML).not.toContain('SECTION');
+  });
+
+  it.each([
+    ['en'],
+    ['ko'],
+    ['ja'],
+    ['zh'],
+    ['es'],
+    ['ar'],
+  ] as const)('renders DXF radio label as "DXF" in %s', (lang) => {
+    render(
+      <SketchExportModal
+        lang={lang}
+        entities={sampleEntities()}
+        onClose={vi.fn()}
+      />,
+    );
+    // The label text is the <label> wrapping the radio — find by the
+    // radio and walk up to the parent label element.
+    const radio = screen.getByTestId('sketch-export-format-dxf') as HTMLInputElement;
+    const label = radio.closest('label');
+    expect(label).not.toBeNull();
+    expect(label!.textContent).toContain('DXF');
+  });
+
+  it('DXF export passes entities through to the underlying emitter (lines + circles round-trip)', async () => {
+    render(
+      <SketchExportModal
+        lang="en"
+        entities={sampleEntities()}
+        defaultFilename="shape"
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('sketch-export-format-dxf'));
+    fireEvent.click(screen.getByTestId('sketch-export-submit'));
+    await waitFor(() => expect(spy.createObjectURL).toHaveBeenCalled());
+    const text = await spy.readBlobText(spy.lastBlob()!);
+    // Two lines + one circle from sampleEntities. Count CIRCLE/LINE entity
+    // markers in the ENTITIES section.
+    const circleCount = (text.match(/\n0\nCIRCLE\n/g) ?? []).length;
+    const lineCount = (text.match(/\n0\nLINE\n/g) ?? []).length;
+    expect(circleCount).toBe(1);
+    expect(lineCount).toBe(2);
+    // The circle's radius (5) appears as the 40-group value. The DXF
+    // formatter forces a decimal point for unambiguous real-number parsing,
+    // so 5 is emitted as "5.0".
+    expect(text).toMatch(/\n40\n5\.0\n/);
+  });
+});
