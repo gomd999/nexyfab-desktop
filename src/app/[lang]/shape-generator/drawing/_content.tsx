@@ -47,6 +47,7 @@ import {
   type SheetTemplateTitleblock,
 } from '@/lib/drawing/sheetTemplate';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
+import type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
 import { writeStepWithPmi } from '@/lib/brep-bridge/stepWriteWithPmi';
 import { writeStepWithPmiBindings } from '@/lib/brep-bridge/stepWriteWithPmiBindings';
 import {
@@ -1129,7 +1130,9 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   const [annotations, setAnnotations] = useState<{
     dimensions: Dimension[];
     gdtCallouts: GdtCallout[];
-  }>({ dimensions: [], gdtCallouts: [] });
+    ordinateChains: OrdinateDimensionChain[];
+  }>({ dimensions: [], gdtCallouts: [], ordinateChains: [] });
+  const ordinateSeq = React.useRef<number>(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [stepExportError, setStepExportError] = useState<string | null>(null);
@@ -1634,6 +1637,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       ...base,
       dimensions: annotations.dimensions,
       gdtCallouts: annotations.gdtCallouts,
+      ordinateChains: annotations.ordinateChains,
     };
     if (templateKey === 'none') return withAnnotations;
     const registryTemplate = TEMPLATES[templateKey];
@@ -1722,8 +1726,25 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setAnnotations((prev) => ({
       dimensions: prev.dimensions.filter((d) => d.id !== id),
       gdtCallouts: prev.gdtCallouts.filter((g) => g.id !== id),
+      ordinateChains: prev.ordinateChains.filter((c) => c.id !== id),
     }));
     setSelectedAnnotationId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  /**
+   * Commit an ordinate chain built in the panel into the Sheet IR. We assign
+   * a fresh unique id (the panel always emits 'panel-chain') so multiple
+   * commits coexist; SheetRenderer then draws each chain's leader lines, and
+   * the JSON export carries them automatically (they're part of Sheet).
+   */
+  const handleAddOrdinateChain = useCallback((chain: OrdinateDimensionChain) => {
+    setAnnotations((prev) => ({
+      ...prev,
+      ordinateChains: [
+        ...prev.ordinateChains,
+        { ...chain, id: `ordinate-${++ordinateSeq.current}` },
+      ],
+    }));
   }, []);
 
   const allAnnotations: ReadonlyArray<{ id: string; tag: string; label: string }> = useMemo(() => {
@@ -3333,7 +3354,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
             }}
           >
-            <OrdinateDimensionPanel lang={lang} />
+            <OrdinateDimensionPanel lang={lang} onCommit={handleAddOrdinateChain} />
           </section>
         ) : null}
       </div>

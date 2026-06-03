@@ -167,6 +167,7 @@ export interface Viewport {
 
 import type { Dimension, GdtCallout } from './dimension';
 import { validateDimension, validateGdt } from './dimension';
+import type { OrdinateDimensionChain } from './ordinateDimension';
 
 export interface Sheet {
   id: string;
@@ -182,6 +183,13 @@ export interface Sheet {
   dimensions?: ReadonlyArray<Dimension>;
   /** Phase 4.2 GD&T callouts; same viewportId resolution as dimensions. */
   gdtCallouts?: ReadonlyArray<GdtCallout>;
+  /**
+   * Phase 4.2 ordinate (baseline / CMM-style) dimension chains. Each chain
+   * carries its own datum origin + points in sheet mm-space and is rendered
+   * by SheetRenderer's OrdinateChainLayer. Backward-compat: missing field is
+   * treated as an empty array.
+   */
+  ordinateChains?: ReadonlyArray<OrdinateDimensionChain>;
 }
 
 // ─── validation ──────────────────────────────────────────────────────────

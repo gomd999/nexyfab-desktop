@@ -42,6 +42,8 @@ import {
   type OrdinateDimensionChain,
 } from '@/lib/drawing/ordinateDimension';
 
+export type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
+
 // ─── i18n (6 langs) ────────────────────────────────────────────────────────
 
 export type DrawingLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -56,6 +58,7 @@ interface Dict {
   precision: string;
   unit: string;
   addPoint: string;
+  addToSheet: string;
   empty: string;
   values: string;
   point: string;
@@ -66,37 +69,37 @@ const dict: Record<DrawingLang, Dict> = {
   ko: {
     title: '기준선 치수', origin: '원점', axis: '축',
     axisX: 'X', axisY: 'Y', axisBoth: 'X+Y',
-    precision: '소수', unit: '단위', addPoint: '점 추가',
+    precision: '소수', unit: '단위', addPoint: '점 추가', addToSheet: '시트에 추가',
     empty: '점이 없습니다', values: '값', point: '점', preview: '미리보기',
   },
   en: {
     title: 'Ordinate Dimensions', origin: 'Origin', axis: 'Axis',
     axisX: 'X', axisY: 'Y', axisBoth: 'X+Y',
-    precision: 'Decimals', unit: 'Unit', addPoint: 'Add point',
+    precision: 'Decimals', unit: 'Unit', addPoint: 'Add point', addToSheet: 'Add to sheet',
     empty: 'No points yet', values: 'Values', point: 'Point', preview: 'Preview',
   },
   ja: {
     title: '基準線寸法', origin: '原点', axis: '軸',
     axisX: 'X', axisY: 'Y', axisBoth: 'X+Y',
-    precision: '小数', unit: '単位', addPoint: '点を追加',
+    precision: '小数', unit: '単位', addPoint: '点を追加', addToSheet: 'シートに追加',
     empty: '点がありません', values: '値', point: '点', preview: 'プレビュー',
   },
   zh: {
     title: '基准线尺寸', origin: '原点', axis: '轴',
     axisX: 'X', axisY: 'Y', axisBoth: 'X+Y',
-    precision: '小数', unit: '单位', addPoint: '添加点',
+    precision: '小数', unit: '单位', addPoint: '添加点', addToSheet: '添加到图纸',
     empty: '尚无点', values: '值', point: '点', preview: '预览',
   },
   es: {
     title: 'Cotas de ordenada', origin: 'Origen', axis: 'Eje',
     axisX: 'X', axisY: 'Y', axisBoth: 'X+Y',
-    precision: 'Decimales', unit: 'Unidad', addPoint: 'Añadir punto',
+    precision: 'Decimales', unit: 'Unidad', addPoint: 'Añadir punto', addToSheet: 'Añadir a la hoja',
     empty: 'Sin puntos', values: 'Valores', point: 'Punto', preview: 'Vista previa',
   },
   ar: {
     title: 'أبعاد خط الأساس', origin: 'الأصل', axis: 'المحور',
     axisX: 'X', axisY: 'Y', axisBoth: 'X+Y',
-    precision: 'الكسور', unit: 'الوحدة', addPoint: 'إضافة نقطة',
+    precision: 'الكسور', unit: 'الوحدة', addPoint: 'إضافة نقطة', addToSheet: 'إضافة إلى الورقة',
     empty: 'لا توجد نقاط بعد', values: 'القيم', point: 'نقطة', preview: 'معاينة',
   },
 };
@@ -115,6 +118,12 @@ export interface OrdinateDimensionPanelProps {
   /** Accepts the page's raw lang string; resolved via pickDict (default en). */
   lang?: string;
   initialPoints?: ReadonlyArray<{ id: string; x: number; y: number }>;
+  /**
+   * When provided, an "Add to sheet" button appears (enabled only while the
+   * chain is valid). It hands the current chain to the host, which assigns a
+   * unique id and appends it to the Sheet IR so SheetRenderer draws it.
+   */
+  onCommit?: (chain: OrdinateDimensionChain) => void;
 }
 
 /** Resolve a (possibly unknown) lang string to a dict, mirroring the sibling
@@ -136,6 +145,7 @@ function num(raw: string): number {
 export default function OrdinateDimensionPanel({
   lang = 'en',
   initialPoints,
+  onCommit,
 }: OrdinateDimensionPanelProps): React.ReactElement {
   const t = pickDict(lang);
   const counter = useRef<number>(0);
@@ -211,17 +221,38 @@ export default function OrdinateDimensionPanel({
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{t.title}</h3>
-        <button
-          type="button"
-          data-testid="drawing-ordinate-add-point"
-          onClick={addRow}
-          style={{
-            padding: '4px 10px', fontSize: 11, background: '#0f172a', color: '#fff',
-            border: 'none', borderRadius: 4, cursor: 'pointer',
-          }}
-        >
-          {t.addPoint}
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            data-testid="drawing-ordinate-add-point"
+            onClick={addRow}
+            style={{
+              padding: '4px 10px', fontSize: 11, background: '#0f172a', color: '#fff',
+              border: 'none', borderRadius: 4, cursor: 'pointer',
+            }}
+          >
+            {t.addPoint}
+          </button>
+          {onCommit && (
+            <button
+              type="button"
+              data-testid="drawing-ordinate-commit"
+              onClick={() => onCommit(chain)}
+              disabled={!validation.ok}
+              title={validation.ok ? undefined : validation.errors[0]}
+              style={{
+                padding: '4px 10px', fontSize: 11,
+                background: validation.ok ? '#0e7490' : '#f3f4f6',
+                color: validation.ok ? '#fff' : '#9ca3af',
+                border: '1px solid ' + (validation.ok ? '#0e7490' : '#e5e7eb'),
+                borderRadius: 4,
+                cursor: validation.ok ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {t.addToSheet}
+            </button>
+          )}
+        </div>
       </header>
 
       {/* datum + axis controls */}

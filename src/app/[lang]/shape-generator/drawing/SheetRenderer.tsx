@@ -35,6 +35,8 @@ import { paperDimensions, effectiveSectionType } from '@/lib/drawing/sheet';
 import { viewportSheetBox } from '@/lib/drawing/dxfExport';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { formatGdt, formatTolerance } from '@/lib/drawing/dimension';
+import type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
+import { buildOrdinateRenderHints } from '@/lib/drawing/ordinateDimension';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ const DIM_STROKE = '#0f172a';
 const DIM_TEXT_COLOR = '#0f172a';
 const GDT_STROKE = '#1e3a8a';
 const GDT_BG = '#eff6ff';
+const ORDINATE_STROKE = '#0e7490';
+const ORDINATE_TEXT_COLOR = '#0e7490';
 
 // ─── props ───────────────────────────────────────────────────────────────
 
@@ -167,6 +171,14 @@ export function SheetRenderer({
           />
         );
       })}
+
+      {/* Ordinate (baseline / CMM-style) dimension chains (Phase 4.2). Each
+          chain carries its own datum + points in sheet mm-space; we render
+          the leader lines + value labels from buildOrdinateRenderHints.
+          Additive — sheets with no chains render identically. */}
+      {(sheet.ordinateChains ?? []).map((chain) => (
+        <OrdinateChainLayer key={chain.id} chain={chain} paperHeightMm={dim.height} />
+      ))}
 
       {/* Title block placeholder (bottom-right). */}
       <TitleBlock paperWidthMm={dim.width} paperHeightMm={dim.height} />
@@ -661,6 +673,71 @@ function GdtLayer({ gdt, box, index }: GdtLayerProps): React.ReactElement {
       >
         {text}
       </text>
+    </g>
+  );
+}
+
+// ─── ordinate dimension chain ──────────────────────────────────────────────
+
+interface OrdinateChainLayerProps {
+  chain: OrdinateDimensionChain;
+  paperHeightMm: number;
+}
+
+/**
+ * Render one ordinate chain: the datum origin marker, a leader line per
+ * (point, axis), and the formatted value at each leader's text anchor. Chain
+ * coords are sheet mm-space with a bottom-left (Y-up) origin, so every Y is
+ * flipped to the SVG's top-left frame via `paperHeightMm - y` — the same
+ * convention the rest of the renderer uses. A malformed chain (which the
+ * engine would throw on) is skipped rather than crashing the whole sheet.
+ */
+function OrdinateChainLayer({
+  chain,
+  paperHeightMm,
+}: OrdinateChainLayerProps): React.ReactElement | null {
+  let hints: ReturnType<typeof buildOrdinateRenderHints>;
+  try {
+    hints = buildOrdinateRenderHints(chain);
+  } catch {
+    return null;
+  }
+  const flipY = (y: number): number => paperHeightMm - y;
+  const ox = chain.origin.x;
+  const oy = flipY(chain.origin.y);
+
+  return (
+    <g data-testid={`sheet-renderer-ordinate-${chain.id}`} data-ordinate-id={chain.id}>
+      {/* datum origin marker */}
+      <circle cx={ox} cy={oy} r={0.8} fill={ORDINATE_STROKE} />
+      {hints.map((hint, i) => {
+        const sx = hint.leaderStart.x;
+        const sy = flipY(hint.leaderStart.y);
+        const ex = hint.leaderEnd.x;
+        const ey = flipY(hint.leaderEnd.y);
+        return (
+          <g
+            key={`${hint.pointId}-${hint.axis}-${i}`}
+            data-ordinate-point={hint.pointId}
+            data-ordinate-axis={hint.axis}
+          >
+            <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={ORDINATE_STROKE} strokeWidth={0.3} />
+            <circle cx={sx} cy={sy} r={0.5} fill={ORDINATE_STROKE} />
+            <text
+              x={ex}
+              y={ey}
+              fontSize={2.6}
+              fontFamily="ui-sans-serif, system-ui, sans-serif"
+              fill={ORDINATE_TEXT_COLOR}
+              dominantBaseline="middle"
+              // Y-axis labels read bottom→top per ISO; rotate about the anchor.
+              transform={hint.axis === 'y' ? `rotate(-90 ${ex} ${ey})` : undefined}
+            >
+              {hint.formatted}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }

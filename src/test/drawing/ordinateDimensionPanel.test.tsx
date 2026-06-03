@@ -14,11 +14,12 @@
  *   5. 6-lang title localisation + RTL on Arabic
  *   6. DrawingPageContent — toggle mounts/unmounts the panel section
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import OrdinateDimensionPanel, {
   type DrawingLang,
+  type OrdinateDimensionChain,
 } from '@/app/[lang]/shape-generator/drawing/OrdinateDimensionPanel';
 import { DrawingPageContent } from '@/app/[lang]/shape-generator/drawing/_content';
 
@@ -99,6 +100,35 @@ describe('OrdinateDimensionPanel — validation', () => {
   });
 });
 
+describe('OrdinateDimensionPanel — commit (Add to sheet)', () => {
+  it('no commit button when onCommit is absent', () => {
+    mountPanel('en', [{ id: 'P1', x: 10, y: 0 }]);
+    expect(screen.queryByTestId('drawing-ordinate-commit')).toBeNull();
+  });
+
+  it('commit button hands the built chain to onCommit', () => {
+    const onCommit = vi.fn<(c: OrdinateDimensionChain) => void>();
+    render(
+      <OrdinateDimensionPanel
+        lang="en"
+        initialPoints={[{ id: 'P1', x: 30, y: 5 }]}
+        onCommit={onCommit}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('drawing-ordinate-commit'));
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    const chain = onCommit.mock.calls[0][0];
+    expect(chain.points).toHaveLength(1);
+    expect(chain.points[0]).toMatchObject({ id: 'P1', x: 30, y: 5 });
+    expect(chain.axis).toBe('x');
+  });
+
+  it('commit button is disabled while the chain is invalid (no points)', () => {
+    render(<OrdinateDimensionPanel lang="en" onCommit={vi.fn()} />);
+    expect((screen.getByTestId('drawing-ordinate-commit') as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
 describe('OrdinateDimensionPanel — i18n', () => {
   const cases: Array<[DrawingLang, RegExp]> = [
     ['ko', /기준선 치수/],
@@ -141,5 +171,18 @@ describe('DrawingPageContent — ordinate toggle integration', () => {
     expect(label.textContent ?? '').toMatch(/ordinate dimensions/i);
     fireEvent.click(toggle);
     expect(label.textContent ?? '').toMatch(/hide ordinate dimensions/i);
+  });
+
+  it('Add to sheet commits a chain that SheetRenderer then draws', () => {
+    const { container } = render(<DrawingPageContent lang="en" />);
+    // No ordinate groups in the live sheet yet.
+    expect(container.querySelectorAll('[data-testid^="sheet-renderer-ordinate-"]').length).toBe(0);
+
+    fireEvent.click(screen.getByTestId('drawing-ordinate-toggle'));
+    fireEvent.click(screen.getByTestId('drawing-ordinate-add-point')); // default P1 @ (0,0) → valid
+    fireEvent.click(screen.getByTestId('drawing-ordinate-commit'));
+
+    // The committed chain now renders in the on-screen SheetRenderer.
+    expect(container.querySelectorAll('[data-testid^="sheet-renderer-ordinate-"]').length).toBeGreaterThan(0);
   });
 });
