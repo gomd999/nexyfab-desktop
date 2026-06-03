@@ -98,8 +98,12 @@ describe('POST /api/step-import — validation', () => {
     expect(data.error).toBe('PAYLOAD_TOO_LARGE');
   });
 
-  it('rejects corrupt source with 400 PARSE_ERROR + message', async () => {
-    // STEP file without a DATA; section → importStep throws no_data_section.
+  it('rejects corrupt source with 400 + structural error code', async () => {
+    // STEP file without a DATA; section → validateStep flags
+    // `missing_data_section` BEFORE importStep is invoked. The pre-flight
+    // validator emits BAD_REQUEST with the structured `errors[]` array;
+    // the legacy PARSE_ERROR / no_data_section message is no longer reached
+    // for this case because importStep never runs.
     const broken = `ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION((''),'2;1');
@@ -111,8 +115,10 @@ END-ISO-10303-21;`;
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.ok).toBe(false);
-    expect(data.error).toBe('PARSE_ERROR');
-    expect(data.message).toMatch(/no_data_section/);
+    expect(data.error).toBe('BAD_REQUEST');
+    expect(Array.isArray(data.errors)).toBe(true);
+    expect(data.errors.some((e: string) => e.includes('missing_data_section'))).toBe(true);
+    expect(data.message).toMatch(/missing_data_section/);
   });
 });
 
@@ -217,5 +223,220 @@ describe('POST /api/step-import — multipart/form-data', () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('BAD_REQUEST');
+  });
+});
+
+// ─── pre-flight validation integration ───────────────────────────────────
+//
+// validateStep runs BEFORE importStep. Hard validation errors abort with
+// 400 BAD_REQUEST + errors[]; validator warnings are surfaced on the 200
+// success path inside the `validation` envelope and in the merged
+// `warnings[]` array (prefixed `validate:` so callers can disambiguate).
+
+describe('POST /api/step-import — validation integration', () => {
+  it('valid AP242 (long form) → 200 ok with validation envelope', async () => {
+    const source = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('AP242 part'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF { 1 0 10303 442 1 1 4 }'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=PRODUCT('part','part','',(#10));
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.validation).toBeDefined();
+    expect(data.validation.protocol).toBe('AP242');
+    expect(data.validation.entityCount).toBe(2);
+    expect(Array.isArray(data.validation.warnings)).toBe(true);
+  });
+
+  it('valid AP214 short form → validation.protocol="AP214"', async () => {
+    const source = writeExtrudeAsStep(rectExtrude(3, 4, 5));
+    const res = await POST(jsonReq({ source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.validation.protocol).toBe('AP214');
+    // writeExtrudeAsStep emits the AUTOMOTIVE_DESIGN schema literal.
+    expect(data.validation.schema).toMatch(/AUTOMOTIVE_DESIGN|AP214/i);
+  });
+
+  it('valid AP203 → validation.protocol="AP203"', async () => {
+    const source = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('CONFIG_CONTROL_DESIGN'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=PRODUCT('part','part','',(#10));
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.validation.protocol).toBe('AP203');
+  });
+
+  it('malformed STEP (missing END marker) → 400 BAD_REQUEST + errors[]', async () => {
+    const broken = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('AP214'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+ENDSEC;
+`;
+    const res = await POST(jsonReq({ source: broken }) as never);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.error).toBe('BAD_REQUEST');
+    expect(Array.isArray(data.errors)).toBe(true);
+    expect(data.errors.some((e: string) => e.includes('missing_end_iso'))).toBe(true);
+    // validation envelope is preserved on the error path so the UI can
+    // still surface partial detection (protocol, entity count).
+    expect(data.validation).toBeDefined();
+  });
+
+  it('unknown schema → 200 + warning surfaced in validation.warnings', async () => {
+    // Schema literal that matches no AP203/214/242 pattern but is otherwise
+    // structurally well-formed.
+    const source = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('SOME_EXOTIC_FUTURE_SCHEMA_99'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=PRODUCT('part','part','',(#10));
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.validation.protocol).toBeUndefined();
+    expect(data.validation.warnings.some((w: string) => w.includes('unknown_schema'))).toBe(true);
+    // merged warnings array also carries the validator hint, prefixed.
+    expect(data.warnings.some((w: string) => w.startsWith('validate:'))).toBe(true);
+  });
+
+  it('validation.entityCount reflects the number of #N= definitions', async () => {
+    const source = writeExtrudeAsStep(rectExtrude(2, 2, 2));
+    const res = await POST(jsonReq({ source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    // A box solid emits many entities (cartesian points, vertices, edges,
+    // faces, shell, brep). We only need to assert it's a positive integer.
+    expect(typeof data.validation.entityCount).toBe('number');
+    expect(data.validation.entityCount).toBeGreaterThan(10);
+  });
+
+  it('dangling reference → 400 BAD_REQUEST + dangling_reference error', async () => {
+    const broken = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('AP214'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=PRODUCT('part','part','',(#99));
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source: broken }) as never);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('BAD_REQUEST');
+    expect(data.errors.some((e: string) => e.includes('dangling_reference'))).toBe(true);
+  });
+
+  it('missing FILE_NAME header entity → 400 BAD_REQUEST', async () => {
+    const broken = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_SCHEMA(('AP214'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source: broken }) as never);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('BAD_REQUEST');
+    expect(data.errors.some((e: string) => e.includes('missing_file_name'))).toBe(true);
+  });
+
+  it('unbalanced parens → 400 BAD_REQUEST + unbalanced_parens error', async () => {
+    const broken = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('AP214'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.);
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source: broken }) as never);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('BAD_REQUEST');
+    expect(data.errors.some((e: string) => e.includes('unbalanced_parens'))).toBe(true);
+  });
+
+  it('surfaces missing_product recommendation warning when PRODUCT absent', async () => {
+    // Structurally valid AP214 file that intentionally omits the PRODUCT
+    // entity — the validator should flag the missing_product recommendation
+    // as a warning (not an error). Both the validation envelope and the
+    // merged warnings array should carry it.
+    const source = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('test'),'2;1');
+FILE_NAME('t.step','2026-06-01T00:00:00Z',(''),(''),'sys','sys','');
+FILE_SCHEMA(('AP214'));
+ENDSEC;
+DATA;
+#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=CARTESIAN_POINT('',(1.,0.,0.));
+ENDSEC;
+END-ISO-10303-21;
+`;
+    const res = await POST(jsonReq({ source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.validation.warnings.some((w: string) => w.includes('missing_product'))).toBe(true);
+    expect(data.warnings.some((w: string) => w.includes('missing_product'))).toBe(true);
+  });
+
+  it('multipart upload also carries validation envelope', async () => {
+    const source = writeExtrudeAsStep(rectExtrude(2, 3, 4));
+    const res = await POST(formReq({ name: 'p.step', content: source }) as never);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.validation).toBeDefined();
+    expect(data.validation.protocol).toBe('AP214');
+    expect(data.validation.entityCount).toBeGreaterThan(0);
   });
 });

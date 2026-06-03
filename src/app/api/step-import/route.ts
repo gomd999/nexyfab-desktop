@@ -18,18 +18,43 @@
  *
  * Either encoding flows into the same validator → importStep() pipeline.
  *
+ * Pipeline:
+ *   1. Pre-flight validation via `validateStep` (structural ISO-10303-21
+ *      compliance). Errors here ⇒ 400 BAD_REQUEST + `errors[]` (importStep
+ *      is NOT invoked — the file is unparseable as-is).
+ *   2. importStep on the source (only when validation passes).
+ *   3. Response merges importStep's `warnings` / `unsupported` with the
+ *      validator's `warnings`, plus a structured `validation` envelope
+ *      (protocol / schema / entityCount / warnings).
+ *
  * Response (success):
- *   { ok: true, tree: FeatureTree, warnings: string[], unsupported: string[] }
+ *   {
+ *     ok: true,
+ *     tree: FeatureTree,
+ *     warnings: string[],        // import-time + validator warnings (merged)
+ *     unsupported: string[],
+ *     validation: {
+ *       protocol?: 'AP203' | 'AP214' | 'AP242',
+ *       schema?: string,
+ *       entityCount: number,
+ *       warnings: string[],      // validator warnings only
+ *     },
+ *   }
  *
  * Response (error):
- *   { ok: false, error: 'BAD_REQUEST' | 'PAYLOAD_TOO_LARGE' | 'PARSE_ERROR',
- *     message: string }
+ *   {
+ *     ok: false,
+ *     error: 'BAD_REQUEST' | 'PAYLOAD_TOO_LARGE' | 'PARSE_ERROR',
+ *     message: string,
+ *     errors?: string[],         // structured validator errors when present
+ *     validation?: { protocol?, schema?, entityCount, warnings },
+ *   }
  *
  * The `error` field is an *English* code key — the UI is expected to map
  * codes to localised strings (Phase 5.2 ships six locales: ko / en / ja /
  * zh / es / ar). The free-form `message` field carries the underlying
- * StepImportError for debugging only; it should NOT be displayed verbatim
- * to end users in a localised UI.
+ * StepImportError / first validation error for debugging only; it should
+ * NOT be displayed verbatim to end users in a localised UI.
  *
  * Size cap rationale: the importer is a pure-JS regex walk over the entity
  * graph. At ~5 MB of STEP source the parser already churns through a few
@@ -44,6 +69,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { importStep, StepImportError } from '@/lib/brep-bridge/stepImport';
+import { validateStep } from '@/lib/brep-bridge/stepValidator';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -144,26 +170,69 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // ── pre-flight validation ───────────────────────────────────────────────
+  // Runs BEFORE importStep so we don't churn the heavier parser on files
+  // that already fail structural ISO-10303-21 checks. Hard errors abort
+  // with a 400 + `errors[]` payload; warnings are merged into the success
+  // response so callers always see compliance hints (unknown schema,
+  // missing PRODUCT, etc.).
+  const validation = validateStep(source);
+  const validationEnvelope = {
+    ...(validation.protocol ? { protocol: validation.protocol } : {}),
+    ...(validation.schema !== undefined ? { schema: validation.schema } : {}),
+    entityCount: validation.entityCount,
+    warnings: validation.warnings,
+  };
+
+  if (!validation.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'BAD_REQUEST',
+        message: `validation_failed: ${validation.errors[0] ?? 'unknown'}`,
+        errors: validation.errors,
+        validation: validationEnvelope,
+      },
+      { status: 400 },
+    );
+  }
+
   try {
     const result = importStep(source);
+    // Merge importer-time advisories with validator warnings. The importer
+    // warnings come first (they reflect heal/parse decisions the user might
+    // want to act on); validator warnings follow with a `validate:` prefix
+    // so callers can tell where each line originated.
+    const mergedWarnings = [
+      ...result.warnings,
+      ...validation.warnings.map((w) => `validate:${w}`),
+    ];
     return NextResponse.json({
       ok: true,
       tree: result.tree,
-      warnings: result.warnings,
+      warnings: mergedWarnings,
       unsupported: result.unsupported,
+      validation: validationEnvelope,
     });
   } catch (err) {
     // Only StepImportError (or other thrown errors from importStep) reach
     // here; per-solid issues are routed into `unsupported` and never
     // throw. Map everything to PARSE_ERROR so the UI can show the
-    // localised "Could not parse STEP file" copy.
+    // localised "Could not parse STEP file" copy. The validation envelope
+    // is preserved so the UI can still surface the detected protocol /
+    // entity count even when import fails downstream.
     const msg = err instanceof StepImportError
       ? err.message
       : err instanceof Error
         ? err.message
         : 'unknown parse error';
     return NextResponse.json(
-      { ok: false, error: 'PARSE_ERROR', message: msg },
+      {
+        ok: false,
+        error: 'PARSE_ERROR',
+        message: msg,
+        validation: validationEnvelope,
+      },
       { status: 400 },
     );
   }
