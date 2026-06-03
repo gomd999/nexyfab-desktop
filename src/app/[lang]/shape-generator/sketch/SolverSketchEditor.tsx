@@ -70,6 +70,11 @@ import {
   type SketchGroupManager,
 } from '@/lib/sketch/sketchGroup';
 import {
+  createSketchTransform,
+  type SketchTransform,
+  type TransformScope,
+} from '@/lib/sketch/sketchTransform';
+import {
   SELECTED_PLACEHOLDER,
   type SketchConstraintIntent,
 } from '@/lib/ai/sketchConstraintIntent';
@@ -214,6 +219,28 @@ interface Dict {
   groupSelected: string;
   groupName: string;
   showGroups: string;
+  transform: string;
+  opTranslate: string;
+  opRotate: string;
+  opScale: string;
+  opMirror: string;
+  showTransform: string;
+  transformScopeAll: string;
+  transformScopeSelection: string;
+  transformApply: string;
+  transformReset: string;
+  transformRecapture: string;
+  transformDx: string;
+  transformDy: string;
+  transformAngleDeg: string;
+  transformCenterX: string;
+  transformCenterY: string;
+  transformFactor: string;
+  transformMirrorAx: string;
+  transformMirrorAy: string;
+  transformMirrorBx: string;
+  transformMirrorBy: string;
+  transformMirrorUseSelected: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -254,6 +281,28 @@ const dict: Record<EditorLang, Dict> = {
     groupSelected: '선택 항목 그룹화',
     groupName: '그룹 이름',
     showGroups: '그룹 패널 표시',
+    transform: '변환',
+    opTranslate: '이동',
+    opRotate: '회전',
+    opScale: '크기',
+    opMirror: '대칭',
+    showTransform: '변환 패널 표시',
+    transformScopeAll: '전체',
+    transformScopeSelection: '선택',
+    transformApply: '적용',
+    transformReset: '초기화',
+    transformRecapture: '스냅샷 재기록',
+    transformDx: 'dx',
+    transformDy: 'dy',
+    transformAngleDeg: '각도(°)',
+    transformCenterX: '중심 x',
+    transformCenterY: '중심 y',
+    transformFactor: '배율',
+    transformMirrorAx: 'A x',
+    transformMirrorAy: 'A y',
+    transformMirrorBx: 'B x',
+    transformMirrorBy: 'B y',
+    transformMirrorUseSelected: '선택한 두 점 사용',
   },
   en: {
     title: 'Solver Sketch',
@@ -292,6 +341,28 @@ const dict: Record<EditorLang, Dict> = {
     groupSelected: 'Group selected',
     groupName: 'Group name',
     showGroups: 'Show groups panel',
+    transform: 'Transform',
+    opTranslate: 'Translate',
+    opRotate: 'Rotate',
+    opScale: 'Scale',
+    opMirror: 'Mirror',
+    showTransform: 'Show transform panel',
+    transformScopeAll: 'All',
+    transformScopeSelection: 'Selection',
+    transformApply: 'Apply',
+    transformReset: 'Reset',
+    transformRecapture: 'Recapture snapshot',
+    transformDx: 'dx',
+    transformDy: 'dy',
+    transformAngleDeg: 'angle (°)',
+    transformCenterX: 'cx',
+    transformCenterY: 'cy',
+    transformFactor: 'factor',
+    transformMirrorAx: 'A x',
+    transformMirrorAy: 'A y',
+    transformMirrorBx: 'B x',
+    transformMirrorBy: 'B y',
+    transformMirrorUseSelected: 'Use 2 selected points',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -330,6 +401,28 @@ const dict: Record<EditorLang, Dict> = {
     groupSelected: '選択をグループ化',
     groupName: 'グループ名',
     showGroups: 'グループパネル表示',
+    transform: '変換',
+    opTranslate: '移動',
+    opRotate: '回転',
+    opScale: '拡縮',
+    opMirror: 'ミラー',
+    showTransform: '変換パネル表示',
+    transformScopeAll: '全体',
+    transformScopeSelection: '選択',
+    transformApply: '適用',
+    transformReset: 'リセット',
+    transformRecapture: 'スナップショット再取得',
+    transformDx: 'dx',
+    transformDy: 'dy',
+    transformAngleDeg: '角度(°)',
+    transformCenterX: '中心x',
+    transformCenterY: '中心y',
+    transformFactor: '倍率',
+    transformMirrorAx: 'A x',
+    transformMirrorAy: 'A y',
+    transformMirrorBx: 'B x',
+    transformMirrorBy: 'B y',
+    transformMirrorUseSelected: '選択した2点を使用',
   },
   zh: {
     title: '求解器草图',
@@ -368,6 +461,28 @@ const dict: Record<EditorLang, Dict> = {
     groupSelected: '将所选编为组',
     groupName: '组名',
     showGroups: '显示分组面板',
+    transform: '变换',
+    opTranslate: '平移',
+    opRotate: '旋转',
+    opScale: '缩放',
+    opMirror: '镜像',
+    showTransform: '显示变换面板',
+    transformScopeAll: '全部',
+    transformScopeSelection: '选择',
+    transformApply: '应用',
+    transformReset: '重置',
+    transformRecapture: '重新捕获快照',
+    transformDx: 'dx',
+    transformDy: 'dy',
+    transformAngleDeg: '角度(°)',
+    transformCenterX: '中心 x',
+    transformCenterY: '中心 y',
+    transformFactor: '比例',
+    transformMirrorAx: 'A x',
+    transformMirrorAy: 'A y',
+    transformMirrorBx: 'B x',
+    transformMirrorBy: 'B y',
+    transformMirrorUseSelected: '使用所选两点',
   },
   es: {
     title: 'Boceto con solver',
@@ -406,6 +521,28 @@ const dict: Record<EditorLang, Dict> = {
     groupSelected: 'Agrupar selección',
     groupName: 'Nombre del grupo',
     showGroups: 'Mostrar panel de grupos',
+    transform: 'Transformar',
+    opTranslate: 'Trasladar',
+    opRotate: 'Rotar',
+    opScale: 'Escalar',
+    opMirror: 'Reflejar',
+    showTransform: 'Mostrar panel de transformación',
+    transformScopeAll: 'Todo',
+    transformScopeSelection: 'Selección',
+    transformApply: 'Aplicar',
+    transformReset: 'Restablecer',
+    transformRecapture: 'Recapturar instantánea',
+    transformDx: 'dx',
+    transformDy: 'dy',
+    transformAngleDeg: 'ángulo (°)',
+    transformCenterX: 'cx',
+    transformCenterY: 'cy',
+    transformFactor: 'factor',
+    transformMirrorAx: 'A x',
+    transformMirrorAy: 'A y',
+    transformMirrorBx: 'B x',
+    transformMirrorBy: 'B y',
+    transformMirrorUseSelected: 'Usar 2 puntos seleccionados',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -444,6 +581,28 @@ const dict: Record<EditorLang, Dict> = {
     groupSelected: 'تجميع المحدد',
     groupName: 'اسم المجموعة',
     showGroups: 'إظهار لوحة المجموعات',
+    transform: 'تحويل',
+    opTranslate: 'إزاحة',
+    opRotate: 'تدوير',
+    opScale: 'تكبير',
+    opMirror: 'انعكاس',
+    showTransform: 'إظهار لوحة التحويل',
+    transformScopeAll: 'الكل',
+    transformScopeSelection: 'المحدد',
+    transformApply: 'تطبيق',
+    transformReset: 'إعادة',
+    transformRecapture: 'إعادة التقاط',
+    transformDx: 'dx',
+    transformDy: 'dy',
+    transformAngleDeg: 'الزاوية (°)',
+    transformCenterX: 'cx',
+    transformCenterY: 'cy',
+    transformFactor: 'المعامل',
+    transformMirrorAx: 'A x',
+    transformMirrorAy: 'A y',
+    transformMirrorBx: 'B x',
+    transformMirrorBy: 'B y',
+    transformMirrorUseSelected: 'استخدم نقطتين محددتين',
   },
 };
 
@@ -1762,6 +1921,175 @@ export default function SolverSketchEditor({
     [groupManager, bumpGroups],
   );
 
+  // ─── transform panel (Phase 2.x sketchTransform integration) ────────────
+  //
+  // `createSketchTransform` snapshots the solver state at construction-time
+  // for its `reset()` to undo. The useMemo below only fires when the solver
+  // instance itself swaps (mount, replace-import), so a transform created
+  // at editor-open time only knows the *empty* sketch — calling reset() on
+  // it would not bring back later-created points. We therefore also keep a
+  // mutable `transformRef` that gets re-created whenever the user opens the
+  // panel OR clicks "Recapture snapshot", so reset always restores to the
+  // user's last marked baseline.
+  //
+  // scope = 'selection' when at least one entity is selected; the underlying
+  // SketchTransform.translate / rotate / scale / mirror all accept a
+  // ReadonlyArray<string> of entity ids (lines/circles/arcs expand to
+  // points). scope = 'all' when nothing is selected.
+  const transform = useMemo<SketchTransform | null>(
+    () => (solver ? createSketchTransform(solver) : null),
+    [solver],
+  );
+  const transformRef = useRef<SketchTransform | null>(null);
+  // Keep ref in sync with the latest memoized instance for the initial
+  // editor-mount case (recapture re-creates this on demand).
+  useEffect(() => {
+    transformRef.current = transform;
+  }, [transform]);
+
+  const [transformOpen, setTransformOpen] = useState<boolean>(false);
+  type TransformOp = 'translate' | 'rotate' | 'scale' | 'mirror';
+  const [transformOp, setTransformOp] = useState<TransformOp | null>(null);
+
+  // Op inputs — each kept as a string so the controlled input can show empty
+  // / partial entries. Parsed on Apply (NaN → no-op, lets user clear field
+  // without throwing). Defaults populate sensible centers (0,0) and a unit-
+  // factor scale so the first click does something non-trivial.
+  const [txDx, setTxDx] = useState<string>('10');
+  const [txDy, setTxDy] = useState<string>('0');
+  const [txAngleDeg, setTxAngleDeg] = useState<string>('90');
+  const [txCx, setTxCx] = useState<string>('0');
+  const [txCy, setTxCy] = useState<string>('0');
+  const [txFactor, setTxFactor] = useState<string>('2');
+  const [txMirrorAx, setTxMirrorAx] = useState<string>('0');
+  const [txMirrorAy, setTxMirrorAy] = useState<string>('0');
+  const [txMirrorBx, setTxMirrorBx] = useState<string>('1');
+  const [txMirrorBy, setTxMirrorBy] = useState<string>('0');
+
+  // Open / close the transform panel. Opening also recaptures the snapshot
+  // so the reset baseline matches the geometry currently on screen — same
+  // contract as a fresh "Open Transform" session in CAD apps.
+  const toggleTransform = useCallback((): void => {
+    setTransformOpen((prev) => {
+      const next = !prev;
+      if (next && solver) {
+        transformRef.current = createSketchTransform(solver);
+      }
+      if (!next) {
+        // Clear the active op so re-opening starts with the op-picker view.
+        setTransformOp(null);
+      }
+      return next;
+    });
+  }, [solver]);
+
+  // Manual snapshot recapture — exposed as its own button so users can
+  // re-baseline mid-session (e.g. after sketching a new fixture and wanting
+  // future transform ops to reset back to *this* state, not to the empty
+  // initial sketch).
+  const handleTransformRecapture = useCallback((): void => {
+    if (!solver) return;
+    transformRef.current = createSketchTransform(solver);
+  }, [solver]);
+
+  // Resolve scope from the current selection. Selection-bearing ids are
+  // passed straight through (lines/circles/arcs expand to points inside
+  // sketchTransform); empty selection ⇒ 'all'.
+  const resolveTransformScope = useCallback((): TransformScope => {
+    if (selection.length === 0) return 'all';
+    return selection.map((s) => s.id);
+  }, [selection]);
+
+  // Mirror-axis convenience: when exactly two points are selected, treat
+  // them as (p1, p2) of the mirror axis and ignore the typed A/B inputs.
+  // Otherwise fall back to the four input numbers. The button is shown
+  // only when the 2-point shortcut applies.
+  const mirrorAxisFromSelection = useMemo<
+    { p1: { x: number; y: number }; p2: { x: number; y: number } } | null
+  >(() => {
+    const ptRefs = selection.filter((r) => r.kind === 'point');
+    if (ptRefs.length !== 2) return null;
+    const a = entities.find((e) => e.id === ptRefs[0]!.id);
+    const b = entities.find((e) => e.id === ptRefs[1]!.id);
+    if (!a || a.kind !== 'point' || !b || b.kind !== 'point') return null;
+    if (a.x === b.x && a.y === b.y) return null; // degenerate
+    return { p1: { x: a.x, y: a.y }, p2: { x: b.x, y: b.y } };
+  }, [selection, entities]);
+
+  const handleTransformApply = useCallback((): void => {
+    const tx = transformRef.current;
+    if (!tx || !transformOp) return;
+    const scope = resolveTransformScope();
+    try {
+      if (transformOp === 'translate') {
+        const dx = Number(txDx);
+        const dy = Number(txDy);
+        if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+        tx.translate(dx, dy, scope);
+      } else if (transformOp === 'rotate') {
+        const deg = Number(txAngleDeg);
+        const cx = Number(txCx);
+        const cy = Number(txCy);
+        if (!Number.isFinite(deg) || !Number.isFinite(cx) || !Number.isFinite(cy)) return;
+        tx.rotate((deg * Math.PI) / 180, { x: cx, y: cy }, scope);
+      } else if (transformOp === 'scale') {
+        const f = Number(txFactor);
+        const cx = Number(txCx);
+        const cy = Number(txCy);
+        if (!Number.isFinite(f) || f === 0 || !Number.isFinite(cx) || !Number.isFinite(cy)) return;
+        tx.scale(f, { x: cx, y: cy }, scope);
+      } else if (transformOp === 'mirror') {
+        // Prefer 2-selected-points axis when available; else read inputs.
+        const axis = mirrorAxisFromSelection ?? {
+          p1: { x: Number(txMirrorAx), y: Number(txMirrorAy) },
+          p2: { x: Number(txMirrorBx), y: Number(txMirrorBy) },
+        };
+        if (
+          !Number.isFinite(axis.p1.x) || !Number.isFinite(axis.p1.y) ||
+          !Number.isFinite(axis.p2.x) || !Number.isFinite(axis.p2.y)
+        ) return;
+        if (axis.p1.x === axis.p2.x && axis.p1.y === axis.p2.y) return;
+        // When mirror axis is two selected points, don't include those two
+        // points in the moved scope (they ARE the axis — moving them would
+        // change the axis). Subtract them when scope was 'selection'.
+        let mirrorScope: TransformScope = scope;
+        if (mirrorAxisFromSelection && scope !== 'all') {
+          const axisIds = new Set(
+            selection.filter((r) => r.kind === 'point').map((r) => r.id),
+          );
+          const filtered = (scope as ReadonlyArray<string>).filter(
+            (id) => !axisIds.has(id),
+          );
+          // Empty after filtering → fall back to 'all' so the op still does
+          // something visible (matches user intent: "mirror across these
+          // two points; affect everything else").
+          mirrorScope = filtered.length === 0 ? 'all' : filtered;
+        }
+        tx.mirror(axis.p1, axis.p2, mirrorScope);
+      }
+      solveAndApply();
+    } catch {
+      /* sketchTransform validation rejected — keep panel state for retry */
+    }
+  }, [
+    transformOp,
+    resolveTransformScope,
+    txDx, txDy, txAngleDeg, txCx, txCy, txFactor,
+    txMirrorAx, txMirrorAy, txMirrorBx, txMirrorBy,
+    mirrorAxisFromSelection, selection, solveAndApply,
+  ]);
+
+  const handleTransformReset = useCallback((): void => {
+    const tx = transformRef.current;
+    if (!tx) return;
+    try {
+      tx.reset();
+      solveAndApply();
+    } catch {
+      /* defensive — reset never throws today but be safe */
+    }
+  }, [solveAndApply]);
+
   const handleApplyAiConstraints = useCallback(
     (intent: SketchConstraintIntent): void => {
       if (!solver) return;
@@ -2578,6 +2906,24 @@ export default function SolverSketchEditor({
           </button>
           <button
             type="button"
+            onClick={toggleTransform}
+            data-testid="solver-sketch-transform-toggle"
+            aria-pressed={transformOpen}
+            title={t.showTransform}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              background: transformOpen ? '#0e7490' : '#fff',
+              color: transformOpen ? '#fff' : '#111827',
+              border: '1px solid ' + (transformOpen ? '#0e7490' : '#d1d5db'),
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {t.transform}
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
             style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -2692,6 +3038,356 @@ export default function SolverSketchEditor({
         onClear={handleToolbarClear}
         disabled={!solver}
       />
+
+      {/*
+        Transform panel — Phase 2.x sketchTransform integration. Default OFF
+        (toggled via the "Transform" button in the title bar). When ON,
+        mounts inline beneath the constraint toolbar. The op picker (4
+        buttons) and op-specific input row share the same testid-tagged
+        container so tests can scope their queries cheaply.
+
+        Scope policy (badge): when at least one entity is in the selection,
+        the op runs against those ids (lines/circles/arcs expand to their
+        underlying points); otherwise it runs against every point in the
+        sketch. Mirror op has a second special case — see
+        handleTransformApply for the 2-selected-points axis shortcut.
+      */}
+      {transformOpen && (
+        <div
+          data-testid="solver-sketch-transform-panel"
+          data-scope={selection.length === 0 ? 'all' : 'selection'}
+          data-op={transformOp ?? 'none'}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            padding: 8,
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: 6,
+            fontSize: 11,
+          }}
+        >
+          {/* op picker + scope badge + reset/recapture */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, color: '#374151', marginRight: 4 }}>
+              {t.transform}:
+            </span>
+            {([
+              { id: 'translate' as const, label: t.opTranslate },
+              { id: 'rotate' as const, label: t.opRotate },
+              { id: 'scale' as const, label: t.opScale },
+              { id: 'mirror' as const, label: t.opMirror },
+            ]).map((op) => {
+              const active = transformOp === op.id;
+              return (
+                <button
+                  key={op.id}
+                  type="button"
+                  onClick={() => setTransformOp(op.id)}
+                  data-testid={`solver-sketch-transform-op-${op.id}`}
+                  aria-pressed={active}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    background: active ? '#0e7490' : '#fff',
+                    color: active ? '#fff' : '#111827',
+                    border: '1px solid ' + (active ? '#0e7490' : '#d1d5db'),
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {op.label}
+                </button>
+              );
+            })}
+            <span
+              data-testid="solver-sketch-transform-scope"
+              style={{
+                marginLeft: 8,
+                padding: '2px 6px',
+                fontSize: 10,
+                borderRadius: 10,
+                background: selection.length === 0 ? '#e0e7ff' : '#dcfce7',
+                color: selection.length === 0 ? '#3730a3' : '#166534',
+                border: '1px solid ' + (selection.length === 0 ? '#c7d2fe' : '#bbf7d0'),
+              }}
+            >
+              {selection.length === 0 ? t.transformScopeAll : `${t.transformScopeSelection} (${selection.length})`}
+            </span>
+            <span style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={handleTransformRecapture}
+              data-testid="solver-sketch-transform-recapture"
+              title={t.transformRecapture}
+              style={{
+                padding: '4px 8px',
+                fontSize: 11,
+                background: '#fff',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {t.transformRecapture}
+            </button>
+            <button
+              type="button"
+              onClick={handleTransformReset}
+              data-testid="solver-sketch-transform-reset"
+              title={t.transformReset}
+              style={{
+                padding: '4px 10px',
+                fontSize: 11,
+                background: '#fff',
+                color: '#b91c1c',
+                border: '1px solid #fecaca',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {t.transformReset}
+            </button>
+          </div>
+
+          {/* op-specific input row */}
+          {transformOp === 'translate' && (
+            <div
+              data-testid="solver-sketch-transform-inputs-translate"
+              style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
+            >
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformDx}
+                <input
+                  type="number"
+                  value={txDx}
+                  onChange={(e) => setTxDx(e.target.value)}
+                  data-testid="solver-sketch-transform-input-dx"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformDy}
+                <input
+                  type="number"
+                  value={txDy}
+                  onChange={(e) => setTxDy(e.target.value)}
+                  data-testid="solver-sketch-transform-input-dy"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleTransformApply}
+                data-testid="solver-sketch-transform-apply"
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: '1px solid #2563eb',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.transformApply}
+              </button>
+            </div>
+          )}
+
+          {transformOp === 'rotate' && (
+            <div
+              data-testid="solver-sketch-transform-inputs-rotate"
+              style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
+            >
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformAngleDeg}
+                <input
+                  type="number"
+                  value={txAngleDeg}
+                  onChange={(e) => setTxAngleDeg(e.target.value)}
+                  data-testid="solver-sketch-transform-input-angle"
+                  style={{ width: 70, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformCenterX}
+                <input
+                  type="number"
+                  value={txCx}
+                  onChange={(e) => setTxCx(e.target.value)}
+                  data-testid="solver-sketch-transform-input-cx"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformCenterY}
+                <input
+                  type="number"
+                  value={txCy}
+                  onChange={(e) => setTxCy(e.target.value)}
+                  data-testid="solver-sketch-transform-input-cy"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleTransformApply}
+                data-testid="solver-sketch-transform-apply"
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: '1px solid #2563eb',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.transformApply}
+              </button>
+            </div>
+          )}
+
+          {transformOp === 'scale' && (
+            <div
+              data-testid="solver-sketch-transform-inputs-scale"
+              style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
+            >
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformFactor}
+                <input
+                  type="number"
+                  value={txFactor}
+                  onChange={(e) => setTxFactor(e.target.value)}
+                  data-testid="solver-sketch-transform-input-factor"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformCenterX}
+                <input
+                  type="number"
+                  value={txCx}
+                  onChange={(e) => setTxCx(e.target.value)}
+                  data-testid="solver-sketch-transform-input-cx"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {t.transformCenterY}
+                <input
+                  type="number"
+                  value={txCy}
+                  onChange={(e) => setTxCy(e.target.value)}
+                  data-testid="solver-sketch-transform-input-cy"
+                  style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleTransformApply}
+                data-testid="solver-sketch-transform-apply"
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: '1px solid #2563eb',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.transformApply}
+              </button>
+            </div>
+          )}
+
+          {transformOp === 'mirror' && (
+            <div
+              data-testid="solver-sketch-transform-inputs-mirror"
+              style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
+            >
+              {mirrorAxisFromSelection ? (
+                <span
+                  data-testid="solver-sketch-transform-mirror-axis-from-selection"
+                  style={{
+                    padding: '2px 8px',
+                    fontSize: 10,
+                    borderRadius: 4,
+                    background: '#dcfce7',
+                    color: '#166534',
+                    border: '1px solid #bbf7d0',
+                  }}
+                >
+                  {t.transformMirrorUseSelected}
+                </span>
+              ) : (
+                <>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    {t.transformMirrorAx}
+                    <input
+                      type="number"
+                      value={txMirrorAx}
+                      onChange={(e) => setTxMirrorAx(e.target.value)}
+                      data-testid="solver-sketch-transform-input-mirror-ax"
+                      style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                    />
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    {t.transformMirrorAy}
+                    <input
+                      type="number"
+                      value={txMirrorAy}
+                      onChange={(e) => setTxMirrorAy(e.target.value)}
+                      data-testid="solver-sketch-transform-input-mirror-ay"
+                      style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                    />
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    {t.transformMirrorBx}
+                    <input
+                      type="number"
+                      value={txMirrorBx}
+                      onChange={(e) => setTxMirrorBx(e.target.value)}
+                      data-testid="solver-sketch-transform-input-mirror-bx"
+                      style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                    />
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    {t.transformMirrorBy}
+                    <input
+                      type="number"
+                      value={txMirrorBy}
+                      onChange={(e) => setTxMirrorBy(e.target.value)}
+                      data-testid="solver-sketch-transform-input-mirror-by"
+                      style={{ width: 60, padding: '2px 4px', fontSize: 11 }}
+                    />
+                  </label>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={handleTransformApply}
+                data-testid="solver-sketch-transform-apply"
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: '1px solid #2563eb',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.transformApply}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Canvas + property panel (Phase 1.B: side-by-side layout) */}
       <div
