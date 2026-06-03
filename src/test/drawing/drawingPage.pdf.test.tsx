@@ -432,3 +432,212 @@ describe('DrawingPageContent — PDF format radio', () => {
     expect(group.textContent ?? '').toMatch(/متجه/);
   });
 });
+
+// ─── Phase 4.4.3 Phase 3 — large-paper auto routing + resolution radio ───
+//
+// These tests assert paperSize-based routing into `exportLargeSheetToPdf`
+// for A2+ sheets while keeping the A4/A3 path on the legacy raster
+// pipeline (so the 199 pre-existing drawing-suite tests are unaffected).
+// The mocked `jspdf` constructor is shared with the raster mock above; the
+// pdfExportLarge wrapper uses the same default loader so we can assert
+// page format / addImage call counts directly from `ctorCalls`.
+
+describe('DrawingPageContent — large-paper auto routing', () => {
+  it('paperSize A4 → legacy exportSheetToPdf path (single addImage, A4 format)', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A4' },
+    });
+    await clickPdfExportAndAwait();
+    const a4 = paperDimensions('A4');
+    expect(ctorCalls.at(-1)?.format).toEqual([a4.width, a4.height]);
+    // svg2pdf vector mock must NOT be called for raster A4.
+    expect(getSvg2PdfMockState().mock).not.toHaveBeenCalled();
+  });
+
+  it('paperSize A0 + raster format → exportLargeSheetToPdf (jspdf ctor at A0 dims)', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    await clickPdfExportAndAwait();
+    const a0 = paperDimensions('A0');
+    // The large-paper wrapper still instantiates jsPDF at the page's mm
+    // format — tiling re-uses the same page, never addPage().
+    expect(ctorCalls.at(-1)?.format).toEqual([a0.width, a0.height]);
+    expect(ctorCalls.at(-1)?.unit).toBe('mm');
+  });
+
+  it('paperSize A0 + vector format → exportSheetsToPdfVector (no raster ctor)', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    expect(getSvg2PdfMockState().mock).toHaveBeenCalledTimes(1);
+    // Vector path produced the PDF — large-paper wrapper not engaged, so
+    // jsPDF must not have been constructed via the raster pipeline.
+    expect(ctorCalls.length).toBe(0);
+  });
+
+  it('vector available + A0 → banner names the vector pipeline', async () => {
+    mount('en');
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/Vector PDF/);
+  });
+
+  it('vector unavailable + A0 → falls back to raster + banner names tiled / single raster', async () => {
+    const { mock, MockVectorPdfError } = getSvg2PdfMockState();
+    mock.mockImplementation(async () => {
+      throw new MockVectorPdfError(
+        'svg2pdf-missing',
+        'svg2pdf.js optional dependency is not installed',
+      );
+    });
+    mount('en');
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-pdf-format-vector'));
+    await clickPdfExportAndAwaitBanner();
+    // Large-paper raster fallback ran.
+    expect(ctorCalls.length).toBeGreaterThan(0);
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    // The text must mention either "Tiled raster PDF" or "Single raster"
+    // — A0 @ standard (4 px/mm) = 4756×3364 ≈ 16M px, within the single-
+    // tile budget, so the tag is "Single raster" by default.
+    expect(info.textContent ?? '').toMatch(/Single raster|Tiled raster PDF/);
+  });
+
+  it('A0 + raster + standard resolution → banner shows "Single raster" (within tile budget)', async () => {
+    mount('en');
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    // Standard is default; assert + re-click for determinism.
+    const standard = screen.getByTestId('drawing-pdf-resolution-standard') as HTMLInputElement;
+    expect(standard.checked).toBe(true);
+    await clickPdfExportAndAwaitBanner();
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/Single raster/);
+  });
+
+  it('A0 + raster + high resolution (8 px/mm) → banner names "Tiled raster PDF"', async () => {
+    mount('en');
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-pdf-resolution-high'));
+    await clickPdfExportAndAwaitBanner();
+    // A0 @ 8 px/mm = 9512×6728 → 9512 exceeds MAX_TILE_EDGE 8192 → must tile.
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/Tiled raster PDF/);
+  });
+
+  it('A0 + raster + print resolution (12 px/mm) → multi-tile', async () => {
+    mount('en');
+    fireEvent.change(screen.getByTestId('drawing-paper-select'), {
+      target: { value: 'A0' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-pdf-resolution-print'));
+    await clickPdfExportAndAwaitBanner();
+    const info = screen.getByTestId('drawing-export-pdf-info');
+    expect(info.textContent ?? '').toMatch(/Tiled raster PDF/);
+  });
+});
+
+describe('DrawingPageContent — PDF resolution radio', () => {
+  it('renders all three resolution radio inputs', () => {
+    mount();
+    expect(screen.getByTestId('drawing-pdf-resolution-standard')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-pdf-resolution-high')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-pdf-resolution-print')).toBeInTheDocument();
+  });
+
+  it('defaults to standard (back-compat) — standard checked, others not', () => {
+    mount();
+    const standard = screen.getByTestId('drawing-pdf-resolution-standard') as HTMLInputElement;
+    const high = screen.getByTestId('drawing-pdf-resolution-high') as HTMLInputElement;
+    const print = screen.getByTestId('drawing-pdf-resolution-print') as HTMLInputElement;
+    expect(standard.checked).toBe(true);
+    expect(high.checked).toBe(false);
+    expect(print.checked).toBe(false);
+  });
+
+  it('selecting high then print flips the radios as a group', () => {
+    mount();
+    const standard = screen.getByTestId('drawing-pdf-resolution-standard') as HTMLInputElement;
+    const high = screen.getByTestId('drawing-pdf-resolution-high') as HTMLInputElement;
+    const print = screen.getByTestId('drawing-pdf-resolution-print') as HTMLInputElement;
+    fireEvent.click(high);
+    expect(high.checked).toBe(true);
+    expect(standard.checked).toBe(false);
+    expect(print.checked).toBe(false);
+    fireEvent.click(print);
+    expect(print.checked).toBe(true);
+    expect(high.checked).toBe(false);
+    expect(standard.checked).toBe(false);
+  });
+
+  // ─── 6-lang i18n for resolution group ───────────────────────────────────
+
+  it('Korean i18n surfaces "해상도" + 표준/고해상도/인쇄', () => {
+    mount('ko');
+    const group = screen.getByTestId('drawing-pdf-resolution-group');
+    expect(group.textContent ?? '').toMatch(/해상도/);
+    expect(group.textContent ?? '').toMatch(/표준/);
+    expect(group.textContent ?? '').toMatch(/고해상도/);
+    expect(group.textContent ?? '').toMatch(/인쇄/);
+  });
+
+  it('English i18n surfaces "Resolution" + Standard/High/Print', () => {
+    mount('en');
+    const group = screen.getByTestId('drawing-pdf-resolution-group');
+    expect(group.textContent ?? '').toMatch(/Resolution/);
+    expect(group.textContent ?? '').toMatch(/Standard/);
+    expect(group.textContent ?? '').toMatch(/High/);
+    expect(group.textContent ?? '').toMatch(/Print/);
+  });
+
+  it('Japanese i18n surfaces "解像度" + 標準/高解像度/印刷', () => {
+    mount('ja');
+    const group = screen.getByTestId('drawing-pdf-resolution-group');
+    expect(group.textContent ?? '').toMatch(/解像度/);
+    expect(group.textContent ?? '').toMatch(/標準/);
+    expect(group.textContent ?? '').toMatch(/高解像度/);
+    expect(group.textContent ?? '').toMatch(/印刷/);
+  });
+
+  it('Chinese i18n surfaces "分辨率" + 标准/高/打印', () => {
+    mount('zh');
+    const group = screen.getByTestId('drawing-pdf-resolution-group');
+    expect(group.textContent ?? '').toMatch(/分辨率/);
+    expect(group.textContent ?? '').toMatch(/标准/);
+    expect(group.textContent ?? '').toMatch(/高/);
+    expect(group.textContent ?? '').toMatch(/打印/);
+  });
+
+  it('Spanish i18n surfaces "Resolución" + Estándar/Alta/Impresión', () => {
+    mount('es');
+    const group = screen.getByTestId('drawing-pdf-resolution-group');
+    expect(group.textContent ?? '').toMatch(/Resolución/);
+    expect(group.textContent ?? '').toMatch(/Estándar/);
+    expect(group.textContent ?? '').toMatch(/Alta/);
+    expect(group.textContent ?? '').toMatch(/Impresión/);
+  });
+
+  it('Arabic i18n surfaces "الدقة" + قياسي/عالية/طباعة', () => {
+    mount('ar');
+    const group = screen.getByTestId('drawing-pdf-resolution-group');
+    expect(group.textContent ?? '').toMatch(/الدقة/);
+    expect(group.textContent ?? '').toMatch(/قياسي/);
+    expect(group.textContent ?? '').toMatch(/عالية/);
+    expect(group.textContent ?? '').toMatch(/طباعة/);
+  });
+});

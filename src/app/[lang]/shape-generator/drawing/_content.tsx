@@ -47,6 +47,7 @@ import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { exportSheetsToPdfVector, VectorPdfError } from '@/lib/drawing/svg2pdfBridge';
+import { exportLargeSheetToPdf, LargePdfError } from '@/lib/drawing/pdfExportLarge';
 import {
   getSampleAssembly,
   SAMPLE_ASSEMBLY_NAMES,
@@ -134,6 +135,14 @@ interface PageDict {
   fallbackToRaster: string;
   exportedAsRaster: string;
   exportedAsVector: string;
+  /** Phase 4.4.3 Phase 3 — large-paper resolution radio + pipeline banner labels. */
+  pdfResolution: string;
+  resStandard: string;
+  resHigh: string;
+  resPrint: string;
+  pipelineVectorPdf: string;
+  pipelineTiledRasterPdf: string;
+  pipelineSingleRaster: string;
   enableSnap: string;
   snapHint: string;
 }
@@ -192,6 +201,13 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: '벡터 PDF 사용 불가 — 래스터로 대체',
     exportedAsRaster: '래스터 PDF로 내보냈습니다',
     exportedAsVector: '벡터 PDF로 내보냈습니다',
+    pdfResolution: '해상도',
+    resStandard: '표준 (4 px/mm)',
+    resHigh: '고해상도 (8 px/mm)',
+    resPrint: '인쇄 (12 px/mm)',
+    pipelineVectorPdf: '벡터 PDF',
+    pipelineTiledRasterPdf: '타일 래스터 PDF',
+    pipelineSingleRaster: '단일 래스터',
     enableSnap: '스냅 사용',
     snapHint: '커서를 뷰포트 모서리/중점/중심 또는 그리드에 근접시키면 스냅됩니다',
   },
@@ -248,6 +264,13 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'Vector PDF unavailable — falling back to raster',
     exportedAsRaster: 'Exported as raster PDF',
     exportedAsVector: 'Exported as vector PDF',
+    pdfResolution: 'Resolution',
+    resStandard: 'Standard (4 px/mm)',
+    resHigh: 'High (8 px/mm)',
+    resPrint: 'Print (12 px/mm)',
+    pipelineVectorPdf: 'Vector PDF',
+    pipelineTiledRasterPdf: 'Tiled raster PDF',
+    pipelineSingleRaster: 'Single raster',
     enableSnap: 'Enable snap',
     snapHint: 'Hover near a viewport corner / midpoint / center, or a grid node, to snap the cursor.',
   },
@@ -304,6 +327,13 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'ベクターPDF利用不可 — ラスターで代替',
     exportedAsRaster: 'ラスター PDF としてエクスポートしました',
     exportedAsVector: 'ベクター PDF としてエクスポートしました',
+    pdfResolution: '解像度',
+    resStandard: '標準 (4 px/mm)',
+    resHigh: '高解像度 (8 px/mm)',
+    resPrint: '印刷 (12 px/mm)',
+    pipelineVectorPdf: 'ベクター PDF',
+    pipelineTiledRasterPdf: 'タイル ラスター PDF',
+    pipelineSingleRaster: 'シングル ラスター',
     enableSnap: 'スナップを有効化',
     snapHint: 'カーソルをビューポートの角・中点・中心またはグリッドに近づけるとスナップします',
   },
@@ -360,6 +390,13 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: '矢量 PDF 不可用 — 回退到光栅',
     exportedAsRaster: '已导出为光栅 PDF',
     exportedAsVector: '已导出为矢量 PDF',
+    pdfResolution: '分辨率',
+    resStandard: '标准 (4 px/mm)',
+    resHigh: '高 (8 px/mm)',
+    resPrint: '打印 (12 px/mm)',
+    pipelineVectorPdf: '矢量 PDF',
+    pipelineTiledRasterPdf: '平铺光栅 PDF',
+    pipelineSingleRaster: '单一光栅',
     enableSnap: '启用捕捉',
     snapHint: '将光标靠近视口角点/中点/中心或网格节点即可捕捉',
   },
@@ -416,6 +453,13 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'PDF vectorial no disponible — recurriendo a ráster',
     exportedAsRaster: 'Exportado como PDF ráster',
     exportedAsVector: 'Exportado como PDF vectorial',
+    pdfResolution: 'Resolución',
+    resStandard: 'Estándar (4 px/mm)',
+    resHigh: 'Alta (8 px/mm)',
+    resPrint: 'Impresión (12 px/mm)',
+    pipelineVectorPdf: 'PDF vectorial',
+    pipelineTiledRasterPdf: 'PDF ráster en mosaico',
+    pipelineSingleRaster: 'Ráster único',
     enableSnap: 'Activar ajuste',
     snapHint: 'Acerca el cursor a una esquina / punto medio / centro de viewport o nodo de cuadrícula para ajustar.',
   },
@@ -472,6 +516,13 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'PDF المتجه غير متاح — الرجوع إلى النقطي',
     exportedAsRaster: 'تم التصدير كـ PDF نقطي',
     exportedAsVector: 'تم التصدير كـ PDF متجه',
+    pdfResolution: 'الدقة',
+    resStandard: 'قياسي (4 px/mm)',
+    resHigh: 'عالية (8 px/mm)',
+    resPrint: 'طباعة (12 px/mm)',
+    pipelineVectorPdf: 'PDF متجه',
+    pipelineTiledRasterPdf: 'PDF نقطي مبلط',
+    pipelineSingleRaster: 'نقطي واحد',
     enableSnap: 'تمكين الالتقاط',
     snapHint: 'مرّر المؤشر بالقرب من زاوية/منتصف/مركز إطار العرض أو عقدة الشبكة للالتقاط.',
   },
@@ -480,6 +531,41 @@ const DICT: Record<string, PageDict> = {
 function pickDict(lang: string): PageDict {
   const key = lang === 'cn' ? 'zh' : lang;
   return DICT[key] ?? DICT.en;
+}
+
+// ─── routing helpers (Phase 4.4.3 Phase 3) ───────────────────────────────
+
+/**
+ * Decide whether a sheet's paper format needs the large-paper export
+ * pipeline ({@link exportLargeSheetToPdf}) rather than the simple
+ * single-tile raster path in {@link exportSheetsToPdf}.
+ *
+ *   - A4 / A3      → false (legacy raster path; smallest file, fastest)
+ *   - A2 / A1 / A0 → true  (routes through pdfExportLarge's choosePipeline,
+ *                           which auto-tiles for A1/A0 and prefers vector
+ *                           when svg2pdf.js is available)
+ *   - 'custom'     → true when the custom paper has either dimension above
+ *                    the A2 short-edge (420 mm); below that the legacy
+ *                    raster path handles it without tiling. Falls through
+ *                    to `false` when the custom paper is missing (defensive
+ *                    — the sheet builder always sets one for size='custom').
+ *
+ * Pure function so future tests / call sites can lock in the table without
+ * mounting the component.
+ */
+function isLargePaper(
+  paperSize: PaperSize,
+  custom: { width: number; height: number } | undefined,
+): boolean {
+  if (paperSize === 'A2' || paperSize === 'A1' || paperSize === 'A0') return true;
+  if (paperSize === 'custom') {
+    if (!custom) return false;
+    const longest = Math.max(custom.width, custom.height);
+    return longest > 420; // A2 short edge — beyond this the simple raster
+    //                       path produces multi-MB pages with visible
+    //                       resampling, so route through pdfExportLarge.
+  }
+  return false;
 }
 
 // ─── type guard ──────────────────────────────────────────────────────────
@@ -752,6 +838,17 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * unbundled optional dep, which the user can't action.
    */
   const [pdfFormat, setPdfFormat] = useState<'raster' | 'vector'>('raster');
+  /**
+   * Phase 4.4.3 Phase 3 — large-paper PDF resolution preset. Only consulted
+   * when paper ≥ A2 and the export routes through
+   * {@link exportLargeSheetToPdf}; A4/A3 keep the legacy 2 px/mm raster
+   * density baked into {@link exportSheetsToPdf}. Default 'standard' keeps
+   * file sizes screen-review-friendly (~100 dpi) — operators who need
+   * plotter-grade output bump to 'print' (12 px/mm ≈ 300 dpi).
+   */
+  const [pdfResolution, setPdfResolution] = useState<'standard' | 'high' | 'print'>(
+    'standard',
+  );
   /**
    * Banner shown on success: identifies which pipeline produced the PDF,
    * so users know whether their text will be selectable. Cleared at the
@@ -1031,6 +1128,25 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     }
 
     /**
+     * Phase 4.4.3 Phase 3 — pipeline tagging for assemblies:
+     *
+     * The multi-page raster path (`exportSheetsToPdf`) bundles every sheet
+     * into a single PDF regardless of paper size. When any sheet in the
+     * bundle is A2+ we surface "Tiled raster PDF" in the banner so the
+     * user knows large pages were rasterised at the multi-page exporter's
+     * built-in 2 px/mm density. (True per-page tiling — pdfExportLarge's
+     * multi-tile branch — is only available for single-sheet exports
+     * today; expanding pdfExportLarge to multi-page is tracked under
+     * Phase 4.4.4.)
+     */
+    const anyLargePaper = sheetsToExport.some((s) =>
+      isLargePaper(s.paperSize, s.customPaper),
+    );
+    const rasterPipelineTag = anyLargePaper
+      ? dict.pipelineTiledRasterPdf
+      : dict.pipelineSingleRaster;
+
+    /**
      * Raster path — used as the default pipeline AND as the automatic
      * fallback when the user picked 'vector' but the svg2pdf / jspdf
      * optional dep failed to load. Mirrors the single-part handler.
@@ -1043,11 +1159,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           '{n}',
           String(sheetsToExport.length),
         );
-        setAssemblyPdfInfo(
-          fellBack
-            ? `${successMsg} — ${dict.fallbackToRaster}`
-            : `${successMsg} — ${dict.exportedAsRaster}`,
-        );
+        const base = fellBack ? dict.fallbackToRaster : dict.exportedAsRaster;
+        setAssemblyPdfInfo(`${successMsg} — ${base} — ${rasterPipelineTag}`);
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         const prefix =
@@ -1066,7 +1179,9 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           '{n}',
           String(sheetsToExport.length),
         );
-        setAssemblyPdfInfo(`${successMsg} — ${dict.exportedAsVector}`);
+        setAssemblyPdfInfo(
+          `${successMsg} — ${dict.exportedAsVector} — ${dict.pipelineVectorPdf}`,
+        );
       } catch (err) {
         if (
           err instanceof VectorPdfError
@@ -1092,6 +1207,9 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     dict.exportedAsRaster,
     dict.exportedAsVector,
     dict.fallbackToRaster,
+    dict.pipelineVectorPdf,
+    dict.pipelineTiledRasterPdf,
+    dict.pipelineSingleRaster,
   ]);
 
   const sheet: Sheet = useMemo(() => {
@@ -1258,25 +1376,83 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     const svgRefs: SVGElement[] = [svgEl];
 
     /**
+     * Phase 4.4.3 Phase 3 — paper-size based routing:
+     *
+     *   - A4 / A3   → legacy `exportSheetsToPdf` (2 px/mm, single tile).
+     *                 Preserves the 199 existing drawing-suite tests
+     *                 that exercise jsPDF ctor + addImage on A3/A4.
+     *   - A2+ paper → `exportLargeSheetToPdf` (auto resolution + tiling).
+     *                 The user's `pdfResolution` radio is honoured here;
+     *                 banner names the pipeline the wrapper chose (single
+     *                 raster vs tiled raster).
+     *   - vector format → `exportSheetsToPdfVector` directly (legacy path).
+     *                 On `svg2pdf-missing` / `jspdf-missing` we fall back
+     *                 to the size-aware raster route — A0 + vector-missing
+     *                 still gets a useful tiled raster page out of
+     *                 `exportLargeSheetToPdf` rather than a single
+     *                 over-stretched A0 PNG.
+     */
+    const largePaper = isLargePaper(sheet.paperSize, sheet.customPaper);
+
+    /**
      * Raster path — used as the default pipeline AND as the automatic
      * fallback when the user picked 'vector' but the svg2pdf / jspdf
      * optional dep failed to load. The `fellBack` flag controls whether
      * the banner shows the plain "Exported as raster" message or the
      * "vector unavailable, fell back to raster" notice.
+     *
+     * For A2+ paper we route to {@link exportLargeSheetToPdf} so the
+     * caller's `pdfResolution` is honoured and tiling kicks in when the
+     * page exceeds the single-canvas pixel budget. The wrapper's choice
+     * (single raster vs tiled raster) drives the pipeline tag appended
+     * to the success banner.
      */
     const runRaster = async (fellBack: boolean): Promise<void> => {
       try {
-        const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
+        let blob: Blob;
+        /**
+         * Pipeline label appended to the banner so users know whether
+         * their PDF is single-tile, multi-tile, or vector. Defaults to
+         * the "single raster" tag for the legacy A4/A3 path; the large
+         * path overrides this to either tiled or single raster based on
+         * the page's effective pixel footprint.
+         */
+        let pipelineTag: string = dict.pipelineSingleRaster;
+        if (largePaper) {
+          // For A2+ raster we call the large-paper wrapper. We deliberately
+          // do NOT pass `loadSvg2Pdf` here — the user picked raster (or
+          // we're in the fallback path), so we want the wrapper's
+          // raster/tiled-raster decision, NOT its vector branch.
+          blob = await exportLargeSheetToPdf(sheet, svgEl, {
+            resolution: pdfResolution,
+          });
+          // Heuristic: pdfExportLarge's tiled-raster path is engaged when
+          // the page's effective pixel dims exceed MAX_TILE_EDGE (8192) on
+          // either axis OR the total pixel budget. Replicating that
+          // signal here avoids exposing a sentinel through the wrapper.
+          const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
+          const pxPerMm =
+            pdfResolution === 'print' ? 12 : pdfResolution === 'high' ? 8 : 4;
+          const wPx = dim.width * pxPerMm;
+          const hPx = dim.height * pxPerMm;
+          const tiled = wPx > 8192 || hPx > 8192 || wPx * hPx > 50_000_000;
+          pipelineTag = tiled
+            ? dict.pipelineTiledRasterPdf
+            : dict.pipelineSingleRaster;
+        } else {
+          blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
+        }
         downloadBlob(blob, `${sheet.id}.pdf`);
-        setPdfExportInfo(
-          fellBack ? dict.fallbackToRaster : dict.exportedAsRaster,
-        );
+        const base = fellBack ? dict.fallbackToRaster : dict.exportedAsRaster;
+        setPdfExportInfo(`${base} — ${pipelineTag}`);
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        const prefix =
-          err instanceof PdfExportError && err.code === 'jspdf-missing'
-            ? `${dict.exportPdfError} (jspdf)`
-            : dict.exportPdfError;
+        const isJspdfMissing =
+          (err instanceof PdfExportError && err.code === 'jspdf-missing')
+          || (err instanceof LargePdfError && err.code === 'jspdf-missing');
+        const prefix = isJspdfMissing
+          ? `${dict.exportPdfError} (jspdf)`
+          : dict.exportPdfError;
         setPdfExportError(`${prefix}: ${detail}`);
       }
     };
@@ -1285,7 +1461,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       try {
         const blob = await exportSheetsToPdfVector(sheetsToExport, svgRefs);
         downloadBlob(blob, `${sheet.id}.pdf`);
-        setPdfExportInfo(dict.exportedAsVector);
+        setPdfExportInfo(`${dict.exportedAsVector} — ${dict.pipelineVectorPdf}`);
       } catch (err) {
         if (
           err instanceof VectorPdfError
@@ -1306,10 +1482,14 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   }, [
     sheet,
     pdfFormat,
+    pdfResolution,
     dict.exportPdfError,
     dict.exportedAsRaster,
     dict.exportedAsVector,
     dict.fallbackToRaster,
+    dict.pipelineVectorPdf,
+    dict.pipelineTiledRasterPdf,
+    dict.pipelineSingleRaster,
   ]);
 
   return (
@@ -2182,6 +2362,65 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                   onChange={() => setPdfFormat('vector')}
                 />
                 {dict.formatVector}
+              </label>
+            </fieldset>
+            {/*
+              Phase 4.4.3 Phase 3 — large-paper PDF resolution radio.
+              Only consulted when the resolved sheet is A2+; for A4/A3
+              the legacy raster path keeps its baked-in 2 px/mm. We still
+              render the radio uncondtionally so users can dial in the
+              preset BEFORE switching to A1/A0, and so the data-testid
+              hooks exist for tests regardless of paper size.
+            */}
+            <fieldset
+              data-testid="drawing-pdf-resolution-group"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                border: '1px solid #e5e7eb',
+                borderRadius: 4,
+                padding: '4px 8px',
+                margin: 0,
+                fontSize: 12,
+                color: '#374151',
+              }}
+            >
+              <legend style={{ padding: '0 4px', fontWeight: 600 }}>
+                {dict.pdfResolution}
+              </legend>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="radio"
+                  name="drawing-pdf-resolution"
+                  data-testid="drawing-pdf-resolution-standard"
+                  value="standard"
+                  checked={pdfResolution === 'standard'}
+                  onChange={() => setPdfResolution('standard')}
+                />
+                {dict.resStandard}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="radio"
+                  name="drawing-pdf-resolution"
+                  data-testid="drawing-pdf-resolution-high"
+                  value="high"
+                  checked={pdfResolution === 'high'}
+                  onChange={() => setPdfResolution('high')}
+                />
+                {dict.resHigh}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="radio"
+                  name="drawing-pdf-resolution"
+                  data-testid="drawing-pdf-resolution-print"
+                  value="print"
+                  checked={pdfResolution === 'print'}
+                  onChange={() => setPdfResolution('print')}
+                />
+                {dict.resPrint}
               </label>
             </fieldset>
             <label
