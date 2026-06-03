@@ -62,4 +62,28 @@ describe('SolverSketchEditor + Variables panel integration', () => {
     await mountReady('en');
     expect(screen.getByTestId('solver-sketch-expressions-toggle').textContent ?? '').toMatch(/Variables/);
   });
+
+  it('evaluated row exposes an Apply button, disabled with no constraint selected', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-toggle'));
+    await waitFor(() =>
+      expect(screen.getByTestId('solver-sketch-expressions-panel')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-add'));
+    const nameInput = document.querySelector(
+      '[data-testid^="solver-sketch-expressions-name-"]',
+    ) as HTMLInputElement;
+    const defInput = document.querySelector(
+      '[data-testid^="solver-sketch-expressions-def-"]',
+    ) as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: 'w' } });
+    fireEvent.change(defInput, { target: { value: '50' } });
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
+    const apply = document.querySelector(
+      '[data-testid^="solver-sketch-expressions-apply-"]',
+    ) as HTMLButtonElement | null;
+    expect(apply).not.toBeNull();
+    // No dimensional constraint is selected → Apply is gated off.
+    expect(apply!.disabled).toBe(true);
+  });
 });

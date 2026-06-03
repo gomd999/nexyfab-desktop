@@ -11,7 +11,7 @@
  *   - duplicate-name flagging
  *   - i18n across 6 langs
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import SketchExpressionsPanel, {
@@ -120,6 +120,50 @@ describe('SketchExpressionsPanel — evaluation', () => {
     const errors = document.querySelectorAll('[data-testid^="solver-sketch-expressions-error-"]');
     expect(errors.length).toBe(2);
     expect(errors[0].textContent ?? '').toMatch(/duplicate/i);
+  });
+});
+
+describe('SketchExpressionsPanel — apply to constraint', () => {
+  it('no Apply button without onApply', () => {
+    mount('en', [{ name: 'w', def: '50' }]);
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
+    expect(document.querySelector('[data-testid^="solver-sketch-expressions-apply-"]')).toBeNull();
+  });
+
+  it('Apply appears only after a row evaluates ok, and fires onApply with the value', () => {
+    const onApply = vi.fn<(v: number) => void>();
+    render(
+      <SketchExpressionsPanel
+        lang="en"
+        initialRows={[{ name: 'w', def: '12.5' }]}
+        onApply={onApply}
+        canApply
+      />,
+    );
+    const key = rowKeyForName('w');
+    // Not evaluated yet → no Apply button.
+    expect(screen.queryByTestId(`solver-sketch-expressions-apply-${key}`)).toBeNull();
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
+    fireEvent.click(screen.getByTestId(`solver-sketch-expressions-apply-${key}`));
+    expect(onApply).toHaveBeenCalledWith(12.5);
+  });
+
+  it('Apply is disabled when canApply is false', () => {
+    render(
+      <SketchExpressionsPanel lang="en" initialRows={[{ name: 'w', def: '50' }]} onApply={vi.fn()} canApply={false} />,
+    );
+    const key = rowKeyForName('w');
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
+    expect((screen.getByTestId(`solver-sketch-expressions-apply-${key}`) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('no Apply button for a failed row even with onApply', () => {
+    render(
+      <SketchExpressionsPanel lang="en" initialRows={[{ name: 'x', def: 'missing + 1' }]} onApply={vi.fn()} canApply />,
+    );
+    const key = rowKeyForName('x');
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
+    expect(screen.queryByTestId(`solver-sketch-expressions-apply-${key}`)).toBeNull();
   });
 });
 

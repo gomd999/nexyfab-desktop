@@ -58,6 +58,8 @@ interface Dict {
   defPlaceholder: string;
   cycle: string;
   dupName: string;
+  apply: string;
+  applyHint: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -69,6 +71,7 @@ const dict: Record<EditorLang, Dict> = {
     namePlaceholder: '예: width', defPlaceholder: '예: width * 2',
     cycle: '순환 참조',
     dupName: '이름 중복',
+    apply: '적용', applyHint: '치수 제약을 먼저 선택하세요',
   },
   en: {
     title: 'Parametric Variables',
@@ -78,6 +81,7 @@ const dict: Record<EditorLang, Dict> = {
     namePlaceholder: 'e.g. width', defPlaceholder: 'e.g. width * 2',
     cycle: 'Circular reference',
     dupName: 'Duplicate name',
+    apply: 'Apply', applyHint: 'Select a dimensional constraint first',
   },
   ja: {
     title: 'パラメトリック変数',
@@ -87,6 +91,7 @@ const dict: Record<EditorLang, Dict> = {
     namePlaceholder: '例: width', defPlaceholder: '例: width * 2',
     cycle: '循環参照',
     dupName: '名前の重複',
+    apply: '適用', applyHint: '寸法拘束を先に選択してください',
   },
   zh: {
     title: '参数化变量',
@@ -96,6 +101,7 @@ const dict: Record<EditorLang, Dict> = {
     namePlaceholder: '例如 width', defPlaceholder: '例如 width * 2',
     cycle: '循环引用',
     dupName: '名称重复',
+    apply: '应用', applyHint: '请先选择一个尺寸约束',
   },
   es: {
     title: 'Variables Paramétricas',
@@ -105,6 +111,7 @@ const dict: Record<EditorLang, Dict> = {
     namePlaceholder: 'ej. width', defPlaceholder: 'ej. width * 2',
     cycle: 'Referencia circular',
     dupName: 'Nombre duplicado',
+    apply: 'Aplicar', applyHint: 'Selecciona primero una cota dimensional',
   },
   ar: {
     title: 'متغيرات معاملية',
@@ -114,6 +121,7 @@ const dict: Record<EditorLang, Dict> = {
     namePlaceholder: 'مثال: width', defPlaceholder: 'مثال: width * 2',
     cycle: 'مرجع دائري',
     dupName: 'اسم مكرر',
+    apply: 'تطبيق', applyHint: 'اختر قيدًا بُعديًا أولاً',
   },
 };
 
@@ -138,6 +146,16 @@ export interface SketchExpressionsPanelProps {
   lang?: EditorLang;
   /** Optional seed rows (mainly for tests / future constraint import). */
   initialRows?: ReadonlyArray<{ name: string; def: string }>;
+  /**
+   * When provided, each evaluated row shows an "Apply" button that pushes its
+   * resolved value (canonical units: mm for length, rad for angle) onto the
+   * host's currently-selected dimensional constraint. The host owns the
+   * solver + selection.
+   */
+  onApply?: (value: number) => void;
+  /** Whether a dimensional constraint is currently selected in the host —
+   *  gates the Apply buttons. */
+  canApply?: boolean;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -155,6 +173,8 @@ function fmt(n: number): string {
 export default function SketchExpressionsPanel({
   lang = 'en',
   initialRows,
+  onApply,
+  canApply = false,
 }: SketchExpressionsPanelProps): React.ReactElement {
   const t = dict[lang];
   const counter = useRef<number>(0);
@@ -346,6 +366,25 @@ export default function SketchExpressionsPanel({
                   >
                     {res && res.ok && res.value !== undefined ? fmt(res.value) : '—'}
                   </span>
+                  {onApply && res && res.ok && res.value !== undefined && (
+                    <button
+                      type="button"
+                      data-testid={`solver-sketch-expressions-apply-${r.key}`}
+                      onClick={() => onApply(res.value!)}
+                      disabled={!canApply}
+                      title={canApply ? undefined : t.applyHint}
+                      style={{
+                        padding: '2px 8px', fontSize: 11,
+                        background: canApply ? '#0e7490' : '#f3f4f6',
+                        color: canApply ? '#fff' : '#9ca3af',
+                        border: '1px solid ' + (canApply ? '#0e7490' : '#e5e7eb'),
+                        borderRadius: 3,
+                        cursor: canApply ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {t.apply}
+                    </button>
+                  )}
                   <button
                     type="button"
                     data-testid={`solver-sketch-expressions-delete-${r.key}`}

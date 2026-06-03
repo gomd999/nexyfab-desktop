@@ -2603,6 +2603,43 @@ export default function SolverSketchEditor({
     [solver, constraintSnapshot, solveAndApply],
   );
 
+  // ─── parametric-variable binding (SketchExpressionsPanel) ────────────────
+  //
+  // The currently-selected dimensional constraint (distance / angle / radius),
+  // or null. Gates the panel's "Apply" buttons.
+  const selectedDimensionalConstraint = useMemo(
+    () =>
+      constraintSnapshot.find(
+        (c) =>
+          c.id === selectedConstraintId &&
+          (c.kind === 'distance' || c.kind === 'angle' || c.kind === 'radius'),
+      ) ?? null,
+    [constraintSnapshot, selectedConstraintId],
+  );
+
+  // Push a computed variable value onto the selected dimensional constraint.
+  // The panel evaluates to canonical solver units (mm for length, rad for
+  // angle), so we call setConstraintValue DIRECTLY — no deg→rad conversion
+  // (unlike handleConstraintValueChange, which speaks the overlay's display
+  // units). No-op when nothing dimensional is selected or the value is
+  // rejected (non-finite / non-positive distance).
+  const handleApplyVariableValue = useCallback(
+    (value: number): void => {
+      if (!solver || !selectedDimensionalConstraint) return;
+      try {
+        const updated = solver.setConstraintValue(
+          selectedDimensionalConstraint.id as ConstraintId,
+          value,
+        );
+        if (!updated) return;
+        solveAndApply();
+      } catch {
+        // Invalid value — swallow; the status pill surfaces conflicts.
+      }
+    },
+    [solver, selectedDimensionalConstraint, solveAndApply],
+  );
+
   // ─── SketchEntityPropertyPanel bridge ──────────────────────────────────
   //
   // Derive an EntityData snapshot of the currently selected entities so the
@@ -3635,7 +3672,11 @@ export default function SolverSketchEditor({
             data-testid="solver-sketch-expressions-panel-wrapper"
             style={{ marginTop: 8 }}
           >
-            <SketchExpressionsPanel lang={lang} />
+            <SketchExpressionsPanel
+              lang={lang}
+              onApply={handleApplyVariableValue}
+              canApply={selectedDimensionalConstraint !== null}
+            />
           </div>
         )}
       </aside>
