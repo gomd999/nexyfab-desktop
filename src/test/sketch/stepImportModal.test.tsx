@@ -765,3 +765,229 @@ describe('StepImportModal — Phase 3 sweep + entry labels + wishlist', () => {
     expect(summary.textContent).toMatch(/선형 프리즘/);
   });
 });
+
+// ─── B31.2 Image tab (SketchInferFromImagePanel integration) ──────────────
+// The modal now exposes a tab strip at the top with two tabs: STEP (default,
+// active for back-compat) and Image. The Image tab mounts the standalone
+// SketchInferFromImagePanel; its onAccept(SolverViewState) is forwarded to
+// the modal's onImageAccept prop verbatim. STEP tab path is untouched ‒
+// zero regression for callers that never set onImageAccept.
+
+describe('StepImportModal — B31.2 Image tab', () => {
+  it('renders the tab strip with both STEP and Image tabs', () => {
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('step-import-tab-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('step-import-tab-step')).toBeInTheDocument();
+    expect(screen.getByTestId('step-import-tab-image')).toBeInTheDocument();
+  });
+
+  it('STEP tab is active by default (back-compat)', () => {
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('step-import-tab-step').getAttribute('data-active')).toBe('true');
+    expect(screen.getByTestId('step-import-tab-image').getAttribute('data-active')).toBe('false');
+    // STEP form elements visible on default tab.
+    expect(screen.getByTestId('step-import-file-input')).toBeInTheDocument();
+    expect(screen.getByTestId('step-import-submit')).toBeInTheDocument();
+    // Image panel NOT mounted.
+    expect(screen.queryByTestId('solver-sketch-infer-panel')).toBeNull();
+  });
+
+  it('clicking the Image tab mounts SketchInferFromImagePanel + unmounts the STEP form', () => {
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('step-import-tab-image'));
+    // Image panel mounted.
+    expect(screen.getByTestId('solver-sketch-infer-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-sketch-infer-file-input')).toBeInTheDocument();
+    // STEP form elements gone.
+    expect(screen.queryByTestId('step-import-file-input')).toBeNull();
+    expect(screen.queryByTestId('step-import-submit')).toBeNull();
+    expect(screen.queryByTestId('step-import-toggle-paste')).toBeNull();
+    // Active state flipped.
+    expect(screen.getByTestId('step-import-tab-image').getAttribute('data-active')).toBe('true');
+    expect(screen.getByTestId('step-import-tab-step').getAttribute('data-active')).toBe('false');
+  });
+
+  it('switching back to STEP tab unmounts the image panel + restores STEP form', () => {
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('step-import-tab-image'));
+    expect(screen.getByTestId('solver-sketch-infer-panel')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('step-import-tab-step'));
+    expect(screen.queryByTestId('solver-sketch-infer-panel')).toBeNull();
+    expect(screen.getByTestId('step-import-file-input')).toBeInTheDocument();
+    expect(screen.getByTestId('step-import-submit')).toBeInTheDocument();
+  });
+
+  it('image panel forwards onAccept → onImageAccept (SolverViewState contract)', async () => {
+    const onImageAccept = vi.fn();
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+        onImageAccept={onImageAccept}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('step-import-tab-image'));
+
+    // Pick a tiny image so the panel's file-reader path lights up the
+    // Infer button.
+    const input = screen.getByTestId('solver-sketch-infer-file-input') as HTMLInputElement;
+    const file = new File([new Uint8Array(64)], 'tiny.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    fireEvent.change(input);
+
+    // Wait for FileReader to produce the data URL → image preview renders.
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-sketch-infer-image-preview')).toBeInTheDocument();
+    });
+
+    // Click Infer → the Phase-1 fallback grid is returned synchronously by
+    // the inferer (no detector → 4-corner deterministic mock).
+    fireEvent.click(screen.getByTestId('solver-sketch-infer-infer-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-sketch-infer-svg-preview')).toBeInTheDocument();
+    });
+
+    // Click Accept → onAccept forwards verbatim to our onImageAccept.
+    fireEvent.click(screen.getByTestId('solver-sketch-infer-accept-button'));
+    expect(onImageAccept).toHaveBeenCalledTimes(1);
+    const arg = onImageAccept.mock.calls[0]![0];
+    // Contract: SolverViewState shape — { points: [...], lines: [...] }.
+    expect(arg).toHaveProperty('points');
+    expect(arg).toHaveProperty('lines');
+    expect(Array.isArray(arg.points)).toBe(true);
+    expect(Array.isArray(arg.lines)).toBe(true);
+  });
+
+  it('STEP tab path is not regressed — STEP submit + onImport still fires', async () => {
+    const tree = rectTree();
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    const onImport = vi.fn();
+    const onImageAccept = vi.fn();
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={onImport}
+        stepImportFetcher={fetcher}
+        onImageAccept={onImageAccept}
+      />,
+    );
+    // Confirm default tab is STEP (no tab click).
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    // onImageAccept must NOT fire from the STEP-tab path.
+    expect(onImageAccept).not.toHaveBeenCalled();
+  });
+
+  it('tab strip is i18n-aware — Korean labels render', () => {
+    render(
+      <StepImportModal
+        lang="ko"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('step-import-tab-step').textContent).toMatch(/STEP/);
+    expect(screen.getByTestId('step-import-tab-image').textContent).toMatch(/이미지/);
+  });
+
+  it('tab strip is i18n-aware — Japanese/Chinese/Spanish/Arabic labels', () => {
+    const cases: Array<{ lang: 'ja' | 'zh' | 'es' | 'ar'; image: RegExp }> = [
+      { lang: 'ja', image: /画像/ },
+      { lang: 'zh', image: /图像/ },
+      { lang: 'es', image: /Imagen/ },
+      { lang: 'ar', image: /صورة/ },
+    ];
+    for (const c of cases) {
+      const { unmount } = render(
+        <StepImportModal
+          lang={c.lang}
+          onClose={vi.fn()}
+          onImport={vi.fn()}
+          stepImportFetcher={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId('step-import-tab-image').textContent).toMatch(c.image);
+      unmount();
+    }
+  });
+
+  it('Image tab keeps the Cancel button visible (modal close still works)', () => {
+    const onClose = vi.fn();
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={onClose}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('step-import-tab-image'));
+    expect(screen.getByTestId('step-import-cancel')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('step-import-cancel'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Image tab without onImageAccept prop renders panel but disables Accept', async () => {
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('step-import-tab-image'));
+    const input = screen.getByTestId('solver-sketch-infer-file-input') as HTMLInputElement;
+    const file = new File([new Uint8Array(32)], 'tiny.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    fireEvent.change(input);
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-sketch-infer-image-preview')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('solver-sketch-infer-infer-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-sketch-infer-svg-preview')).toBeInTheDocument();
+    });
+    // Accept button is rendered but disabled because no onImageAccept was supplied.
+    const acceptBtn = screen.getByTestId('solver-sketch-infer-accept-button') as HTMLButtonElement;
+    expect(acceptBtn.disabled).toBe(true);
+  });
+});

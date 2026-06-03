@@ -39,11 +39,17 @@ import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { SweepFeature } from '@/lib/cad/sweepLoft';
+import type { SolverViewState } from '@/lib/sketch/solverToProfile';
+import SketchInferFromImagePanel from './SketchInferFromImagePanel';
 
 export type StepImportLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
 interface Dict {
   modalTitle: string;
+  /** Tab strip label for the STEP-file import sub-tab (default-active). */
+  tabStep: string;
+  /** Tab strip label for the image-inference sub-tab (Phase 3.AI.UI). */
+  tabImage: string;
   filePickerLabel: string;
   togglePaste: string;
   togglePicker: string;
@@ -97,6 +103,8 @@ interface Dict {
 const dict: Record<StepImportLang, Dict> = {
   ko: {
     modalTitle: 'STEP 가져오기',
+    tabStep: 'STEP',
+    tabImage: '이미지',
     filePickerLabel: 'STEP 파일 선택 (.step / .stp)',
     togglePaste: 'STEP 소스 붙여넣기',
     togglePicker: '파일 선택으로 돌아가기',
@@ -144,6 +152,8 @@ const dict: Record<StepImportLang, Dict> = {
   },
   en: {
     modalTitle: 'Import STEP',
+    tabStep: 'STEP',
+    tabImage: 'Image',
     filePickerLabel: 'Pick a STEP file (.step / .stp)',
     togglePaste: 'Paste STEP source instead',
     togglePicker: 'Back to file picker',
@@ -191,6 +201,8 @@ const dict: Record<StepImportLang, Dict> = {
   },
   ja: {
     modalTitle: 'STEPインポート',
+    tabStep: 'STEP',
+    tabImage: '画像',
     filePickerLabel: 'STEPファイルを選択 (.step / .stp)',
     togglePaste: 'STEPソースを貼り付け',
     togglePicker: 'ファイル選択に戻る',
@@ -238,6 +250,8 @@ const dict: Record<StepImportLang, Dict> = {
   },
   zh: {
     modalTitle: '导入 STEP',
+    tabStep: 'STEP',
+    tabImage: '图像',
     filePickerLabel: '选择 STEP 文件 (.step / .stp)',
     togglePaste: '改为粘贴 STEP 源',
     togglePicker: '返回文件选择',
@@ -285,6 +299,8 @@ const dict: Record<StepImportLang, Dict> = {
   },
   es: {
     modalTitle: 'Importar STEP',
+    tabStep: 'STEP',
+    tabImage: 'Imagen',
     filePickerLabel: 'Selecciona un archivo STEP (.step / .stp)',
     togglePaste: 'Pegar el código STEP en su lugar',
     togglePicker: 'Volver al selector de archivos',
@@ -332,6 +348,8 @@ const dict: Record<StepImportLang, Dict> = {
   },
   ar: {
     modalTitle: 'استيراد STEP',
+    tabStep: 'STEP',
+    tabImage: 'صورة',
     filePickerLabel: 'اختر ملف STEP (.step / .stp)',
     togglePaste: 'لصق مصدر STEP بدلاً من ذلك',
     togglePicker: 'العودة إلى اختيار الملف',
@@ -416,6 +434,14 @@ export interface StepImportModalProps {
   onImport: (tree: FeatureTree, warnings: string[], unsupported: string[]) => void;
   /** Injectable for tests. Defaults to POST /api/step-import. */
   stepImportFetcher?: StepImportFetcher;
+  /**
+   * Optional callback for the Image tab (B31.2 SketchInferFromImagePanel).
+   * Forwarded VERBATIM as the panel's `onAccept` so the host can route the
+   * inferred SolverViewState into its sketch state. When omitted the Image
+   * tab's Accept button is disabled — matching the standalone panel's own
+   * "no callback → no accept" contract.
+   */
+  onImageAccept?: (sketch: SolverViewState) => void;
 }
 
 /** 5 MB client-side cap matches the server-side limit. */
@@ -647,8 +673,17 @@ export default function StepImportModal({
   onClose,
   onImport,
   stepImportFetcher = defaultFetcher,
+  onImageAccept,
 }: StepImportModalProps): React.ReactElement {
   const t = dict[lang];
+
+  // Top-level tab — 'step' is the default so the legacy STEP-only contract
+  // is preserved (zero regression for callers that never touch onImageAccept).
+  // Switching to 'image' unmounts the STEP form below (the panel sits in its
+  // own subtree) so SketchInferFromImagePanel starts from a clean slate every
+  // time it's re-entered — matches user expectation of "switching tabs resets
+  // the inner workflow".
+  const [activeTab, setActiveTab] = useState<'step' | 'image'>('step');
 
   const [pasteMode, setPasteMode] = useState<boolean>(false);
   const [pastedSource, setPastedSource] = useState<string>('');
@@ -746,7 +781,64 @@ export default function StepImportModal({
           {t.modalTitle}
         </h3>
 
-        {!pasteMode && (
+        {/* B31.2 tab strip — switches between the legacy STEP import sub-form
+            and the SketchInferFromImagePanel (image-inference). Default tab
+            is 'step' so the modal is back-compatible (zero regression for
+            callers that don't supply onImageAccept). */}
+        <div
+          data-testid="step-import-tab-bar"
+          role="tablist"
+          style={{
+            display: 'flex',
+            gap: 4,
+            borderBottom: '1px solid #e5e7eb',
+            marginBottom: 4,
+          }}
+        >
+          {(['step', 'image'] as const).map((tab) => {
+            const active = activeTab === tab;
+            const label = tab === 'step' ? t.tabStep : t.tabImage;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-testid={`step-import-tab-${tab}`}
+                data-active={active ? 'true' : 'false'}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  fontWeight: active ? 600 : 400,
+                  background: active ? '#fff' : '#f3f4f6',
+                  color: active ? '#0284c7' : '#4b5563',
+                  border: '1px solid #e5e7eb',
+                  borderBottom: active ? '2px solid #0284c7' : '1px solid #e5e7eb',
+                  borderRadius: '4px 4px 0 0',
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Image tab — mounts SketchInferFromImagePanel verbatim. The panel's
+            onAccept(SolverViewState) is forwarded to our onImageAccept prop
+            unchanged; the host is responsible for routing the sketch into
+            its own state (we don't translate it into a FeatureTree here —
+            sketch ≠ feature tree, and forcing the conversion would tie this
+            modal to a specific extrude policy). */}
+        {activeTab === 'image' && (
+          <SketchInferFromImagePanel
+            lang={lang}
+            onAccept={onImageAccept}
+          />
+        )}
+
+        {activeTab === 'step' && !pasteMode && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
             {t.filePickerLabel}
             <input
@@ -763,7 +855,7 @@ export default function StepImportModal({
           </label>
         )}
 
-        {pasteMode && (
+        {activeTab === 'step' && pasteMode && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
             {t.togglePaste}
             <textarea
@@ -784,33 +876,35 @@ export default function StepImportModal({
           </label>
         )}
 
-        <button
-          type="button"
-          data-testid="step-import-toggle-paste"
-          onClick={() => {
-            setPasteMode((m) => !m);
-            setState({ status: 'idle' });
-          }}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '4px 8px',
-            fontSize: 11,
-            background: '#f3f4f6',
-            border: '1px solid #d1d5db',
-            borderRadius: 4,
-            cursor: 'pointer',
-          }}
-        >
-          {pasteMode ? t.togglePicker : t.togglePaste}
-        </button>
+        {activeTab === 'step' && (
+          <button
+            type="button"
+            data-testid="step-import-toggle-paste"
+            onClick={() => {
+              setPasteMode((m) => !m);
+              setState({ status: 'idle' });
+            }}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '4px 8px',
+              fontSize: 11,
+              background: '#f3f4f6',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {pasteMode ? t.togglePicker : t.togglePaste}
+          </button>
+        )}
 
-        {state.status === 'loading' && (
+        {activeTab === 'step' && state.status === 'loading' && (
           <div style={{ padding: 12, textAlign: 'center', color: '#6b7280', fontSize: 12 }}>
             {t.importing}
           </div>
         )}
 
-        {state.status === 'error' && (
+        {activeTab === 'step' && state.status === 'error' && (
           <div
             data-testid="step-import-error"
             style={{
@@ -826,7 +920,7 @@ export default function StepImportModal({
           </div>
         )}
 
-        {state.status === 'ok' && (
+        {activeTab === 'step' && state.status === 'ok' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div
               data-testid="step-import-summary"
@@ -967,24 +1061,26 @@ export default function StepImportModal({
           >
             {t.cancel}
           </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={state.status === 'loading'}
-            data-testid="step-import-submit"
-            style={{
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: 600,
-              background: state.status === 'loading' ? '#e5e7eb' : '#0ea5e9',
-              color: state.status === 'loading' ? '#9ca3af' : '#fff',
-              border: '1px solid #0284c7',
-              borderRadius: 4,
-              cursor: state.status === 'loading' ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {t.submit}
-          </button>
+          {activeTab === 'step' && (
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={state.status === 'loading'}
+              data-testid="step-import-submit"
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: state.status === 'loading' ? '#e5e7eb' : '#0ea5e9',
+                color: state.status === 'loading' ? '#9ca3af' : '#fff',
+                border: '1px solid #0284c7',
+                borderRadius: 4,
+                cursor: state.status === 'loading' ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {t.submit}
+            </button>
+          )}
         </div>
       </div>
     </div>
