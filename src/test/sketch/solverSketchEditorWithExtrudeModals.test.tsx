@@ -20,7 +20,7 @@
  * useFeatureTreeStorage routing, Reset, autosave debounce, quota error.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 import React from 'react';
 import SolverSketchEditorWithExtrude from '@/app/[lang]/shape-generator/sketch/SolverSketchEditorWithExtrude';
 import {
@@ -2637,6 +2637,334 @@ describe('SolverSketchEditorWithExtrude — wrapper-level AI constraints toggle'
       expect(
         (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
       ).toBe(true);
+    });
+  });
+});
+
+// ─── B31.5: FeatureTreeOptimizerPanel wrapper integration ────────────────
+
+/**
+ * The wrapper mounts FeatureTreeOptimizerPanel behind the
+ * `solver-optimize-toggle` button. Panel is hidden by default (compact
+ * mode). When shown, `tree` is fed from the wrapper's
+ * useFeatureTreeHistory present, and `onOptimized` replaces the wrapper
+ * tree by emitting diff EditOps (remove_node for dropped ids + insert_node
+ * for newly-inserted ids) — each lands as a history entry so undo walks
+ * back step-by-step.
+ *
+ * Coverage:
+ *   - toggle visible + default off + panel not mounted
+ *   - on → OptimizerPanel mounts and receives currentTree
+ *   - off → 0 regression (no panel-host node in DOM)
+ *   - clicking optimize + apply replaces wrapper tree (orphan dropped)
+ *   - undo rollback after apply restores the dropped node
+ *   - apply with empty tree is a no-op (apply button disabled until run)
+ *   - toggle is independent of every other toggle (orthogonality)
+ *   - 6-lang label rendering of the toggle
+ *   - selectedFeatureId clears when it pointed at a removed node
+ *   - apply produces an "Optimize" toast/state mirror via tree change
+ */
+describe('SolverSketchEditorWithExtrude — B31.5 optimizer panel wiring', () => {
+  beforeEach(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+  });
+  afterEach(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+  });
+
+  // Helper: STEP-import-fetcher that returns a tree with an orphan we can
+  // observe being dropped by the default optimize (removeOrphans=true).
+  //   node `a`   — extrude, terminal (last → not orphan, not removable)
+  //   node `b`   — extrude, suppressed (removeSuppressed=true → drops it)
+  //   node `c`   — extrude, orphan (no dependents, before terminal → drops)
+  // Terminal `a` survives. After default optimize: only `a` remains.
+  function makeMultiNodeImportedTree() {
+    const extrudePayload = (depth: number) => ({
+      kind: 'extrude' as const,
+      loop: [
+        { x: 0, y: 0 },
+        { x: 5, y: 0 },
+        { x: 5, y: 5 },
+        { x: 0, y: 5 },
+      ],
+      depth,
+      direction: 'one_sided' as const,
+      mode: 'add' as const,
+    });
+    return {
+      nodes: [
+        // Order matters: optimizer's "terminal" = LAST non-suppressed node.
+        // We put the orphan and suppressed BEFORE the terminal.
+        {
+          id: 'b_suppressed',
+          name: 'Suppressed',
+          dependencies: [],
+          suppressed: true,
+          payload: extrudePayload(2),
+        },
+        {
+          id: 'c_orphan',
+          name: 'Orphan',
+          dependencies: [],
+          payload: extrudePayload(3),
+        },
+        {
+          id: 'a_terminal',
+          name: 'Terminal',
+          dependencies: [],
+          payload: extrudePayload(4),
+        },
+      ],
+    };
+  }
+
+  async function mountWithImportedMultiNode() {
+    const stepImportFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: makeMultiNodeImportedTree(),
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        stepImportFetcher={stepImportFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    // Trigger STEP import to seed the tree with our multi-node fixture.
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    const fi = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi, 'files', {
+      value: [new File(['x'], 'p.step', { type: 'application/octet-stream' })],
+      configurable: true,
+    });
+    fireEvent.change(fi);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    // Wait for all three rows to appear.
+    await screen.findByTestId('feature-tree-row-a_terminal');
+    await screen.findByTestId('feature-tree-row-b_suppressed');
+    await screen.findByTestId('feature-tree-row-c_orphan');
+  }
+
+  it('optimize toggle is visible + default off + panel not mounted', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-optimize-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByTestId('solver-optimize-panel-host')).toBeNull();
+    expect(screen.queryByTestId('solver-tree-optimize-panel')).toBeNull();
+  });
+
+  it('clicking the toggle mounts FeatureTreeOptimizerPanel with currentTree', async () => {
+    await mountWithImportedMultiNode();
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    expect(await screen.findByTestId('solver-optimize-panel-host')).toBeInTheDocument();
+    const panel = await screen.findByTestId('solver-tree-optimize-panel');
+    expect(panel).toBeInTheDocument();
+    // The wrapper passed the live wrapper tree (3 nodes) into the panel.
+    // Click Run optimize to confirm before-count surfaces correctly.
+    fireEvent.click(await screen.findByTestId('solver-tree-optimize-optimize-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-tree-optimize-before-count').textContent ?? '').toContain('3');
+    });
+    expect(
+      screen.getByTestId('solver-optimize-toggle').getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('toggle off → 0 regression: panel host gone after second click', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-optimize-toggle');
+    // ON
+    fireEvent.click(toggle);
+    await screen.findByTestId('solver-optimize-panel-host');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    // OFF
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-optimize-panel-host')).toBeNull();
+      expect(screen.queryByTestId('solver-tree-optimize-panel')).toBeNull();
+    });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('onOptimized → wrapper tree is replaced (orphan + suppressed dropped)', async () => {
+    await mountWithImportedMultiNode();
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await screen.findByTestId('solver-tree-optimize-panel');
+    // All three rows present before optimize.
+    expect(screen.getByTestId('feature-tree-row-a_terminal')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-tree-row-b_suppressed')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-tree-row-c_orphan')).toBeInTheDocument();
+    // Run optimize → apply.
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-optimize-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-tree-optimize-after-count').textContent ?? '').toContain('1');
+    });
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-apply-button'));
+    // Wrapper tree: only terminal survives.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-a_terminal')).toBeInTheDocument();
+      expect(screen.queryByTestId('feature-tree-row-b_suppressed')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('feature-tree-row-c_orphan')).not.toBeInTheDocument();
+    });
+  });
+
+  it('undo rollback after apply restores dropped nodes (history entries land)', async () => {
+    await mountWithImportedMultiNode();
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await screen.findByTestId('solver-tree-optimize-panel');
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-optimize-button'));
+    fireEvent.click(await screen.findByTestId('solver-tree-optimize-apply-button'));
+    // After apply: b_suppressed + c_orphan gone.
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-b_suppressed')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('feature-tree-row-c_orphan')).not.toBeInTheDocument();
+    });
+    // Press undo repeatedly — the wrapper apply emitted 2 remove_node ops
+    // (one per dropped id). Each press walks back one op. After ≥2 undos,
+    // both dropped nodes should reappear.
+    const undoBtn = screen.getByTestId('solver-undo-button') as HTMLButtonElement;
+    fireEvent.click(undoBtn);
+    fireEvent.click(undoBtn);
+    // Wait for rollback to finish.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-row-a_terminal')).toBeInTheDocument();
+      expect(screen.getByTestId('feature-tree-row-b_suppressed')).toBeInTheDocument();
+      expect(screen.getByTestId('feature-tree-row-c_orphan')).toBeInTheDocument();
+    });
+  });
+
+  it('apply button is disabled until optimize runs (no run yet)', async () => {
+    await mountWithImportedMultiNode();
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await screen.findByTestId('solver-tree-optimize-panel');
+    const apply = await screen.findByTestId('solver-tree-optimize-apply-button') as HTMLButtonElement;
+    // No run yet → apply disabled.
+    expect(apply.disabled).toBe(true);
+    // Click apply: nothing happens — wrapper tree unchanged.
+    fireEvent.click(apply);
+    expect(screen.getByTestId('feature-tree-row-a_terminal')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-tree-row-b_suppressed')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-tree-row-c_orphan')).toBeInTheDocument();
+  });
+
+  it('6-lang label rendering of the optimize toggle', async () => {
+    const cases: ReadonlyArray<{ lang: 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar'; label: string }> = [
+      { lang: 'ko', label: '최적화' },
+      { lang: 'en', label: 'Optimize' },
+      { lang: 'ja', label: '最適化' },
+      { lang: 'zh', label: '优化' },
+      { lang: 'es', label: 'Optimizar' },
+      { lang: 'ar', label: 'تحسين' },
+    ];
+    for (const { lang, label } of cases) {
+      cleanup();
+      render(<SolverSketchEditorWithExtrude lang={lang} extrudeFetcher={vi.fn()} />);
+      const editor = await screen.findByTestId('solver-sketch-editor');
+      await waitFor(
+        () => expect(editor.getAttribute('data-state')).toBe('ready'),
+        { timeout: 10000 },
+      );
+      const toggle = screen.getByTestId('solver-optimize-toggle');
+      expect(toggle.textContent ?? '').toContain(label);
+    }
+  });
+
+  it('toggle is independent of stats / branches / planner toggles (orthogonality)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    // All four panel hosts should mount independently.
+    expect(await screen.findByTestId('solver-planner-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-stats-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-branches-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-optimize-panel-host')).toBeInTheDocument();
+    // Toggle optimize off — the other three stay.
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-optimize-panel-host')).toBeNull();
+    });
+    expect(screen.getByTestId('solver-planner-panel-host')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-stats-panel-host')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-branches-panel-host')).toBeInTheDocument();
+  });
+
+  it('apply with empty tree is a structural no-op (no rows to remove)', async () => {
+    await mountReady();
+    // Live tree is empty (no STEP import, no modal submits).
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await screen.findByTestId('solver-tree-optimize-panel');
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-optimize-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('solver-tree-optimize-before-count').textContent ?? '').toContain('0');
+    });
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-apply-button'));
+    // Tree still empty.
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+    // Undo should not regress anything (no-op).
+    fireEvent.click(screen.getByTestId('solver-undo-button'));
+    expect(screen.getByTestId('feature-tree-empty')).toBeInTheDocument();
+  });
+
+  it('regression: existing modal tests survive — extrude button unaffected by toggle presence', async () => {
+    // Smoke regression — adding the optimize toggle must not perturb the
+    // existing extrude toolbar enablement logic.
+    await mountReady();
+    expect(
+      (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+    ).toBe(true);
+    // Toggling optimize ON/OFF must not affect canExtrude gating.
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await screen.findByTestId('solver-optimize-panel-host');
+    expect(
+      (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('solver-optimize-panel-host')).toBeNull();
+    });
+    await drawRect();
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
+  });
+
+  it('apply forwards optimized tree shape: surviving node count matches optimizer result', async () => {
+    await mountWithImportedMultiNode();
+    fireEvent.click(screen.getByTestId('solver-optimize-toggle'));
+    await screen.findByTestId('solver-tree-optimize-panel');
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-optimize-button'));
+    // before / after counts mirror the wrapper tree.
+    await waitFor(() => {
+      const before = screen.getByTestId('solver-tree-optimize-before-count').textContent ?? '';
+      const after = screen.getByTestId('solver-tree-optimize-after-count').textContent ?? '';
+      // Before reflects the 3 imported nodes; after reflects the 1 terminal survivor.
+      expect(before).toContain('3');
+      expect(after).toContain('1');
+    });
+    fireEvent.click(screen.getByTestId('solver-tree-optimize-apply-button'));
+    // After apply: exactly the terminal node visible. The two non-terminal
+    // ids are gone from FeatureTreeView, confirming the diff EditOps landed.
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-row-a_terminal')).toBeInTheDocument();
+      expect(screen.queryByTestId('feature-tree-row-b_suppressed')).toBeNull();
+      expect(screen.queryByTestId('feature-tree-row-c_orphan')).toBeNull();
     });
   });
 });

@@ -34,6 +34,7 @@ import type { PlanIntent, PlanStep } from '@/lib/ai/featureTreePlanner';
 import type { StepImportFetcher, StepImportLang } from './StepImportModal';
 import type { BranchManagerLang } from './FeatureTreeBranchManager';
 import type { FeatureTreeStatsLang } from './FeatureTreeStatsPanel';
+import type { FeatureTreeOptimizerLang } from './FeatureTreeOptimizerPanel';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import {
   applyBooleanToSketch,
@@ -140,6 +141,19 @@ const FeatureTreeStatsPanel = dynamic(
     loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
   },
 );
+// FeatureTreeOptimizerPanel (B31.5 wrapper integration) — surfaces the
+// non-destructive whole-tree GC pass (remove suppressed / orphans / merge
+// patterns) next to the live FeatureTreeView. Hidden by default (chunk
+// loads only after the "Optimize" toggle is clicked); kept fully
+// independent of every other toggle per the orthogonality contract — all
+// six can be on at once.
+const FeatureTreeOptimizerPanel = dynamic(
+  () => import('./FeatureTreeOptimizerPanel'),
+  {
+    ssr: false,
+    loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  },
+);
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -198,6 +212,9 @@ interface Dict {
   stats: string;
   showStats: string;
   hideStats: string;
+  /** Optimizer panel toggle (B31.5 — FeatureTreeOptimizerPanel wiring). */
+  optimizeTree: string;
+  hideOptimize: string;
   /** Multi-loop boolean integration (sketchBoolean → ExtrudeModal). `{N}` is loop count. */
   multipleLoopsDetected: string;
   booleanOp: string;
@@ -242,6 +259,8 @@ const dict: Record<Lang, Dict> = {
     stats: '통계',
     showStats: '통계 표시',
     hideStats: '통계 숨기기',
+    optimizeTree: '최적화',
+    hideOptimize: '최적화 숨기기',
     multipleLoopsDetected: '여러 폐곡선 감지 ({N}개)',
     booleanOp: '불리언 연산',
     opUnion: '합집합',
@@ -281,6 +300,8 @@ const dict: Record<Lang, Dict> = {
     stats: 'Stats',
     showStats: 'Show stats',
     hideStats: 'Hide stats',
+    optimizeTree: 'Optimize',
+    hideOptimize: 'Hide optimize',
     multipleLoopsDetected: 'Multiple loops detected ({N})',
     booleanOp: 'Boolean op',
     opUnion: 'Union',
@@ -320,6 +341,8 @@ const dict: Record<Lang, Dict> = {
     stats: '統計',
     showStats: '統計を表示',
     hideStats: '統計を隠す',
+    optimizeTree: '最適化',
+    hideOptimize: '最適化を隠す',
     multipleLoopsDetected: '複数の閉ループを検出 ({N})',
     booleanOp: 'ブール演算',
     opUnion: '和',
@@ -359,6 +382,8 @@ const dict: Record<Lang, Dict> = {
     stats: '统计',
     showStats: '显示统计',
     hideStats: '隐藏统计',
+    optimizeTree: '优化',
+    hideOptimize: '隐藏优化',
     multipleLoopsDetected: '检测到多个闭合环 ({N}个)',
     booleanOp: '布尔运算',
     opUnion: '并集',
@@ -398,6 +423,8 @@ const dict: Record<Lang, Dict> = {
     stats: 'Estadísticas',
     showStats: 'Mostrar estadísticas',
     hideStats: 'Ocultar estadísticas',
+    optimizeTree: 'Optimizar',
+    hideOptimize: 'Ocultar optimización',
     multipleLoopsDetected: 'Se detectaron varios bucles ({N})',
     booleanOp: 'Operación booleana',
     opUnion: 'Unión',
@@ -437,6 +464,8 @@ const dict: Record<Lang, Dict> = {
     stats: 'إحصائيات',
     showStats: 'إظهار الإحصائيات',
     hideStats: 'إخفاء الإحصائيات',
+    optimizeTree: 'تحسين',
+    hideOptimize: 'إخفاء التحسين',
     multipleLoopsDetected: 'تم اكتشاف عدة حلقات ({N})',
     booleanOp: 'العملية المنطقية',
     opUnion: 'اتحاد',
@@ -1178,6 +1207,70 @@ export default function SolverSketchEditorWithExtrude(
   const [showStats, setShowStats] = useState(false);
   const statsLang = (editorProps.lang ?? 'en') as FeatureTreeStatsLang;
 
+  // ── Optimizer panel (B31.5 — FeatureTreeOptimizerPanel wiring) ─────────
+  // Default-off toggle. When on, FeatureTreeOptimizerPanel mounts beneath
+  // the other below-toolbar panels. Independent of every other toggle.
+  //
+  // onOptimized contract:
+  //   - The standalone panel ran `optimizeTree(tree, opts)` and handed us
+  //     a structurally clean optimized tree. We replace the wrapper's
+  //     history-managed tree with the optimized one by EMITTING DIFF
+  //     EditOps to the history hook — one remove_node per dropped id
+  //     followed by one insert_node per surviving / re-inserted node. Each
+  //     op lands on the past stack so undo can step BACK to the
+  //     pre-optimize tree (incrementally) and redo can re-apply.
+  //   - We dispatch removals in reverse declaration order so a downstream
+  //     dependent disappears before its dependency (matches the same
+  //     reverse-order strategy used by the STEP-import replace path).
+  //   - We bump nextNodeIdRef past the optimized tree length so subsequent
+  //     modal-driven appends do not collide with optimized ids.
+  //   - selectedFeatureId is cleared if it points at a removed node.
+  const [showOptimize, setShowOptimize] = useState(false);
+  const optimizerLang = (editorProps.lang ?? 'en') as FeatureTreeOptimizerLang;
+
+  const handleOptimizedTree = useCallback(
+    (optimized: FeatureTree) => {
+      const prev = featureTree;
+      const optimizedIds = new Set(optimized.nodes.map((n) => n.id));
+      // Step 1: remove every prior node that the optimizer dropped, in
+      // reverse order (so a downstream dependent is gone before its dep).
+      // We also re-emit removes for surviving ids — but only when the
+      // payload moved (uncommon); simpler is to ONLY remove the deltas
+      // and insert ONLY the newly-introduced ids. The optimizer is
+      // non-destructive (it never re-orders or re-payloads surviving
+      // nodes — see featureTreeOptimizer header), so we can safely scope
+      // the diff to additions/removals.
+      const removedIds: string[] = [];
+      for (let i = prev.nodes.length - 1; i >= 0; i--) {
+        const node = prev.nodes[i]!;
+        if (!optimizedIds.has(node.id)) {
+          removedIds.push(node.id);
+        }
+      }
+      for (const id of removedIds) {
+        applyHistoryEdit({ type: 'remove_node', nodeId: id });
+      }
+      // Step 2: insert any optimized node that did not already exist.
+      const priorIds = new Set(prev.nodes.map((n) => n.id));
+      for (const node of optimized.nodes) {
+        if (!priorIds.has(node.id)) {
+          applyHistoryEdit({ type: 'insert_node', node });
+        }
+      }
+      // Bump id counter past the optimized tree size so future modal
+      // appends do not collide with surviving / inserted optimizer ids.
+      nextNodeIdRef.current = Math.max(
+        nextNodeIdRef.current,
+        optimized.nodes.length,
+      );
+      // Clear selection if it referenced a removed node.
+      setSelectedFeatureId((curr) =>
+        curr !== undefined && !optimizedIds.has(curr) ? undefined : curr,
+      );
+    },
+    [featureTree, applyHistoryEdit],
+  );
+
   const branchStorageKeyPrefix =
     projectId !== undefined
       ? `nexyfab:tree-branches:${projectId}`
@@ -1849,6 +1942,26 @@ export default function SolverSketchEditorWithExtrude(
           >
             📊 {t.stats}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowOptimize((v) => !v)}
+            data-testid="solver-optimize-toggle"
+            aria-label={showOptimize ? t.hideOptimize : t.optimizeTree}
+            aria-expanded={showOptimize}
+            title={showOptimize ? t.hideOptimize : t.optimizeTree}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: showOptimize ? '#059669' : '#fff',
+              border: '1px solid ' + (showOptimize ? '#047857' : '#d1d5db'),
+              color: showOptimize ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            🧹 {t.optimizeTree}
+          </button>
           {/*
             Wrapper-level "AI constraints" toggle (Phase 3.AI). Flips the
             `defaultShowSketchAi` seed passed to the inner SolverSketchEditor,
@@ -2022,6 +2135,18 @@ export default function SolverSketchEditorWithExtrude(
               lang={statsLang}
               tree={featureTree}
               selectedNodeId={selectedFeatureId}
+            />
+          </div>
+        )}
+        {showOptimize && (
+          <div
+            data-testid="solver-optimize-panel-host"
+            style={{ marginTop: 8 }}
+          >
+            <FeatureTreeOptimizerPanel
+              lang={optimizerLang}
+              tree={featureTree}
+              onOptimized={handleOptimizedTree}
             />
           </div>
         )}
