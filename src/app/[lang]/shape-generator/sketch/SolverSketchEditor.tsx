@@ -62,6 +62,11 @@ import SketchConstraintOverlay, {
   type DisplayConstraint,
   type Pt as OverlayPt,
 } from './SketchConstraintOverlay';
+import SketchConstraintAiPanel from './SketchConstraintAiPanel';
+import {
+  SELECTED_PLACEHOLDER,
+  type SketchConstraintIntent,
+} from '@/lib/ai/sketchConstraintIntent';
 import SketchSnapIndicator from './SketchSnapIndicator';
 import {
   findSnapTarget,
@@ -187,6 +192,8 @@ interface Dict {
   importMode: string;
   importReplace: string;
   importMerge: string;
+  aiConstraint: string;
+  showAiConstraint: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -221,6 +228,8 @@ const dict: Record<EditorLang, Dict> = {
     importMode: '가져오기 방식',
     importReplace: '대체',
     importMerge: '병합',
+    aiConstraint: 'AI',
+    showAiConstraint: 'AI 제약 패널 표시',
   },
   en: {
     title: 'Solver Sketch',
@@ -253,6 +262,8 @@ const dict: Record<EditorLang, Dict> = {
     importMode: 'Import mode',
     importReplace: 'Replace',
     importMerge: 'Merge',
+    aiConstraint: 'AI',
+    showAiConstraint: 'Show AI constraint panel',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -285,6 +296,8 @@ const dict: Record<EditorLang, Dict> = {
     importMode: 'インポート方式',
     importReplace: '置換',
     importMerge: 'マージ',
+    aiConstraint: 'AI',
+    showAiConstraint: 'AI拘束パネルを表示',
   },
   zh: {
     title: '求解器草图',
@@ -317,6 +330,8 @@ const dict: Record<EditorLang, Dict> = {
     importMode: '导入模式',
     importReplace: '替换',
     importMerge: '合并',
+    aiConstraint: 'AI',
+    showAiConstraint: '显示AI约束面板',
   },
   es: {
     title: 'Boceto con solver',
@@ -349,6 +364,8 @@ const dict: Record<EditorLang, Dict> = {
     importMode: 'Modo de importación',
     importReplace: 'Reemplazar',
     importMerge: 'Combinar',
+    aiConstraint: 'IA',
+    showAiConstraint: 'Mostrar panel de restricciones IA',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -381,6 +398,8 @@ const dict: Record<EditorLang, Dict> = {
     importMode: 'وضع الاستيراد',
     importReplace: 'استبدال',
     importMerge: 'دمج',
+    aiConstraint: 'ذكاء',
+    showAiConstraint: 'إظهار لوحة قيود الذكاء',
   },
 };
 
@@ -1553,6 +1572,162 @@ export default function SolverSketchEditor({
   const openImportModal = useCallback((): void => setImportOpen(true), []);
   const closeImportModal = useCallback((): void => setImportOpen(false), []);
 
+  // ─── AI constraint panel (sketch-level NL → solver constraints) ───────
+  //
+  // The SketchConstraintAiPanel is mounted on demand behind an "AI" toggle
+  // button so it doesn't take up sidebar real-estate for users who don't
+  // need it. Default = OFF so existing test selectors / muscle memory are
+  // unchanged. When ON, the panel sits next to the property panel in the
+  // sidebar column.
+  //
+  // SELECTED_PLACEHOLDER substitution policy (see sketchConstraintIntent.ts):
+  //   - make_parallel / make_perpendicular: need 2 lines from current
+  //     selection. If selection has !== 2 lines, skip silently (the user
+  //     just hasn't picked the second line yet).
+  //   - fix_distance: need 2 points from current selection. Same skip rule.
+  //   - coincident_points: use ALL selected points (chained pairwise via
+  //     solver.addCoincident(anchor, other) — same n-ary pattern the
+  //     toolbar bridge uses for coincident).
+  //   - make_horizontal / make_vertical with lineIds=undefined → apply to
+  //     EVERY line currently in the sketch (no selection required).
+  //   - make_horizontal / make_vertical with lineIds[] → iterate those.
+  //
+  // Solver rejections (over-constrained, fixed point, etc.) are swallowed
+  // per-call so a single bad line doesn't abort the whole intent.
+  const [aiPanelOpen, setAiPanelOpen] = useState<boolean>(false);
+  const toggleAiPanel = useCallback((): void => {
+    setAiPanelOpen((prev) => !prev);
+  }, []);
+
+  const handleApplyAiConstraints = useCallback(
+    (intent: SketchConstraintIntent): void => {
+      if (!solver) return;
+      // Snapshot current selection by kind for SELECTED placeholder substitution.
+      const selectedLines = selection
+        .filter((r) => r.kind === 'line')
+        .map((r) => r.id as LineId);
+      const selectedPoints = selection
+        .filter((r) => r.kind === 'point')
+        .map((r) => r.id as PointId);
+      // All lines currently in the sketch — used when intent has no specific
+      // lineIds (e.g. "make all lines horizontal").
+      const allLines: LineId[] = entities
+        .filter((e): e is ViewLine => e.kind === 'line')
+        .map((l) => l.id);
+
+      try {
+        switch (intent.kind) {
+          case 'make_horizontal': {
+            const targets =
+              intent.lineIds && intent.lineIds.length > 0
+                ? (intent.lineIds as LineId[])
+                : allLines;
+            for (const lineId of targets) {
+              try {
+                solver.addHorizontal(lineId);
+              } catch {
+                /* over-constrained / unknown id — skip */
+              }
+            }
+            break;
+          }
+          case 'make_vertical': {
+            const targets =
+              intent.lineIds && intent.lineIds.length > 0
+                ? (intent.lineIds as LineId[])
+                : allLines;
+            for (const lineId of targets) {
+              try {
+                solver.addVertical(lineId);
+              } catch {
+                /* skip */
+              }
+            }
+            break;
+          }
+          case 'make_parallel': {
+            // Substitute SELECTED placeholders with the current selection's
+            // first two lines. If the intent already specifies concrete ids
+            // (defensive — current detector always emits placeholders),
+            // honor those instead.
+            const l1 =
+              intent.line1Id === SELECTED_PLACEHOLDER
+                ? selectedLines[0]
+                : (intent.line1Id as LineId);
+            const l2 =
+              intent.line2Id === SELECTED_PLACEHOLDER
+                ? selectedLines[1]
+                : (intent.line2Id as LineId);
+            if (!l1 || !l2) return; // not enough selection — silent no-op
+            solver.addParallel(l1, l2);
+            break;
+          }
+          case 'make_perpendicular': {
+            const l1 =
+              intent.line1Id === SELECTED_PLACEHOLDER
+                ? selectedLines[0]
+                : (intent.line1Id as LineId);
+            const l2 =
+              intent.line2Id === SELECTED_PLACEHOLDER
+                ? selectedLines[1]
+                : (intent.line2Id as LineId);
+            if (!l1 || !l2) return;
+            solver.addPerpendicular(l1, l2);
+            break;
+          }
+          case 'fix_distance': {
+            const a =
+              intent.pointAId === SELECTED_PLACEHOLDER
+                ? selectedPoints[0]
+                : (intent.pointAId as PointId);
+            const b =
+              intent.pointBId === SELECTED_PLACEHOLDER
+                ? selectedPoints[1]
+                : (intent.pointBId as PointId);
+            if (!a || !b) return;
+            solver.addDistance(a, b, intent.distance);
+            break;
+          }
+          case 'coincident_points': {
+            // Empty pointIds from the intent → use ALL selected points,
+            // chained pairwise to the first (anchor) — same n-ary pattern
+            // used by the SketchConstraintToolbar bridge above.
+            const pts =
+              intent.pointIds.length > 0
+                ? (intent.pointIds as PointId[])
+                : selectedPoints;
+            if (pts.length < 2) return;
+            const anchor = pts[0]!;
+            for (let i = 1; i < pts.length; i++) {
+              try {
+                solver.addCoincident(anchor, pts[i]!);
+              } catch {
+                /* skip */
+              }
+            }
+            break;
+          }
+        }
+        solveAndApply();
+      } catch {
+        /* outer guard — never throw from a UI click handler */
+      }
+    },
+    [solver, selection, entities, solveAndApply],
+  );
+
+  // Selection-count snapshot fed to the AI panel preview (the panel uses
+  // `lines` to show "Apply N horizontal constraints" instead of "Apply
+  // horizontal constraint to all lines" when something is selected). The
+  // panel only consumes `lines` today (see SketchConstraintAiPanelProps);
+  // future intents (e.g. coincident with N points) can add more keys here.
+  const aiSelectionCounts = useMemo(
+    () => ({
+      lines: selection.filter((r) => r.kind === 'line').length,
+    }),
+    [selection],
+  );
+
   // ─── import → solver bridge ───────────────────────────────────────────
   //
   // Wire the modal's `onImport(entities)` callback into solver mutations.
@@ -2204,6 +2379,24 @@ export default function SolverSketchEditor({
           </span>
           <button
             type="button"
+            onClick={toggleAiPanel}
+            data-testid="solver-sketch-ai-toggle"
+            aria-pressed={aiPanelOpen}
+            title={t.showAiConstraint}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              background: aiPanelOpen ? '#7c3aed' : '#fff',
+              color: aiPanelOpen ? '#fff' : '#111827',
+              border: '1px solid ' + (aiPanelOpen ? '#7c3aed' : '#d1d5db'),
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {t.aiConstraint}
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
             style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -2467,6 +2660,26 @@ export default function SolverSketchEditor({
           onChange={handlePanelChange}
           onDelete={handlePanelDelete}
         />
+        {/*
+          SketchConstraintAiPanel — Phase A NL surface for sketch-level
+          constraint commands. Default OFF (toggled via the "AI" button in
+          the title bar). When ON, mounts here in the sidebar column so it
+          sits visually next to the property panel — same column, same
+          width band. selectionCounts feeds the preview text ("Apply N
+          horizontal constraints" when a line selection is active).
+        */}
+        {aiPanelOpen && (
+          <div
+            data-testid="solver-sketch-ai-panel-wrapper"
+            style={{ marginTop: 8 }}
+          >
+            <SketchConstraintAiPanel
+              lang={lang}
+              onApplyConstraints={handleApplyAiConstraints}
+              selectionCounts={aiSelectionCounts}
+            />
+          </div>
+        )}
       </aside>
       </div>
 
