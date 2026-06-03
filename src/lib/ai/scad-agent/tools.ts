@@ -51,6 +51,7 @@ import type {
 } from './types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
+import { compositeIntentToScad, compositeExpectedBbox, type CompositePart } from './compositeIntent';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
 import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
 import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, type EstimateCostOptions } from './costEstimation';
@@ -430,6 +431,33 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
   };
 
   // X1 — Compare last intent's expected bbox against the measured bbox.
+  // W2 (ADR-015) — build a non-whitelisted shape as a boolean COMPOSITION of
+  // whitelisted primitives when no single primitive fits. The expected bbox
+  // (union of placed add-parts) is returned so the verifier can gate it.
+  const add_composite_intent: ToolExecutor = async (args, session) => {
+    const a = args as { parts?: unknown };
+    if (!Array.isArray(a.parts) || a.parts.length === 0) {
+      return { ok: false, error: 'add_composite_intent requires { parts: [{ intent, op?, at? }, ...] }', code: 'BAD_ARGS' };
+    }
+    const parts = a.parts as CompositePart[];
+    const result = compositeIntentToScad(parts);
+    if (!result.ok) {
+      return { ok: false, error: `composite rejected: ${result.reason}`, code: 'COMPOSITE_REJECTED' };
+    }
+    session.scadSource = result.scad;
+    session.render = { ok: null, errors: [] };
+    session.geometry = {};
+    // A composite is not a single intent → clear lastIntent so verify_spec
+    // doesn't compare against a stale primitive.
+    session.lastIntent = undefined;
+    const expectedBbox = compositeExpectedBbox(parts);
+    return {
+      ok: true,
+      output: `OK. Composite SCAD generated from ${parts.length} parts (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}). Call render to verify.`,
+      meta: { warnings: result.warnings, expectedBbox },
+    };
+  };
+
   // Reads `session.lastIntent` (populated by add_feature_intent) and
   // `session.geometry.bbox` (populated by get_geometry). Emits a
   // structured critique the agent uses to self-correct param values.
@@ -2898,6 +2926,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     render,
     get_geometry,
     add_feature_intent,
+    add_composite_intent,
     search_bosl2: search_bosl2_tool,
     read_dfm,
     plan_design,

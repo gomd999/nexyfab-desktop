@@ -29,6 +29,7 @@ export type ToolName =
   | 'render'
   | 'get_geometry'
   | 'add_feature_intent'
+  | 'add_composite_intent'
   | 'search_bosl2'
   | 'read_dfm'
   // ─── Stage 1 (assembly composition) ──────────────────────────────────
