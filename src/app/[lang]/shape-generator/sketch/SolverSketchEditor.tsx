@@ -94,6 +94,22 @@ const SketchExportModal = dynamic(() => import('./SketchExportModal'), {
   ),
 });
 
+// SketchImportModal — SVG → entities ingress. Mirrors the export modal's
+// dynamic-load pattern so import-dialog chunk is paid only when the user
+// actually opens the dialog. The modal itself is solver-agnostic; the
+// host (this editor) maps the returned entities into solver state.
+const SketchImportModal = dynamic(() => import('./SketchImportModal'), {
+  ssr: false,
+  loading: () => (
+    <div
+      data-testid="solver-sketch-import-modal-loading"
+      style={{ fontSize: 11, color: '#6b7280', padding: 12 }}
+    >
+      loading…
+    </div>
+  ),
+});
+
 // ─── public types ─────────────────────────────────────────────────────────
 
 export type EditorLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -166,6 +182,11 @@ interface Dict {
   exportSvg: string;
   svgFilename: string;
   exportModal: string;
+  import: string;
+  importSvg: string;
+  importMode: string;
+  importReplace: string;
+  importMerge: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -195,6 +216,11 @@ const dict: Record<EditorLang, Dict> = {
     exportSvg: 'SVG 내보내기',
     svgFilename: '스케치',
     exportModal: '내보내기...',
+    import: '가져오기...',
+    importSvg: 'SVG 가져오기',
+    importMode: '가져오기 방식',
+    importReplace: '대체',
+    importMerge: '병합',
   },
   en: {
     title: 'Solver Sketch',
@@ -222,6 +248,11 @@ const dict: Record<EditorLang, Dict> = {
     exportSvg: 'Export SVG',
     svgFilename: 'sketch',
     exportModal: 'Export...',
+    import: 'Import...',
+    importSvg: 'Import SVG',
+    importMode: 'Import mode',
+    importReplace: 'Replace',
+    importMerge: 'Merge',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -249,6 +280,11 @@ const dict: Record<EditorLang, Dict> = {
     exportSvg: 'SVG出力',
     svgFilename: 'スケッチ',
     exportModal: 'エクスポート...',
+    import: 'インポート...',
+    importSvg: 'SVGインポート',
+    importMode: 'インポート方式',
+    importReplace: '置換',
+    importMerge: 'マージ',
   },
   zh: {
     title: '求解器草图',
@@ -276,6 +312,11 @@ const dict: Record<EditorLang, Dict> = {
     exportSvg: '导出SVG',
     svgFilename: '草图',
     exportModal: '导出...',
+    import: '导入...',
+    importSvg: '导入SVG',
+    importMode: '导入模式',
+    importReplace: '替换',
+    importMerge: '合并',
   },
   es: {
     title: 'Boceto con solver',
@@ -303,6 +344,11 @@ const dict: Record<EditorLang, Dict> = {
     exportSvg: 'Exportar SVG',
     svgFilename: 'boceto',
     exportModal: 'Exportar...',
+    import: 'Importar...',
+    importSvg: 'Importar SVG',
+    importMode: 'Modo de importación',
+    importReplace: 'Reemplazar',
+    importMerge: 'Combinar',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -330,6 +376,11 @@ const dict: Record<EditorLang, Dict> = {
     exportSvg: 'تصدير SVG',
     svgFilename: 'رسم',
     exportModal: 'تصدير...',
+    import: 'استيراد...',
+    importSvg: 'استيراد SVG',
+    importMode: 'وضع الاستيراد',
+    importReplace: 'استبدال',
+    importMerge: 'دمج',
   },
 };
 
@@ -1486,6 +1537,169 @@ export default function SolverSketchEditor({
   const openExportModal = useCallback((): void => setModalOpen(true), []);
   const closeExportModal = useCallback((): void => setModalOpen(false), []);
 
+  // ─── import modal state + replace/merge mode ──────────────────────────
+  //
+  // The import dialog is dynamic-loaded (see top-of-file `SketchImportModal`).
+  // Mode = 'merge' keeps existing geometry and adds the imported entities on
+  // top; mode = 'replace' clears the current solver state before pasting in
+  // the import. Merge is the default because it's non-destructive and
+  // matches the muscle memory from SketchUp / Inkscape file-import flows.
+  //
+  // When the user toggles `replace`, we DO NOT immediately clear — clearing
+  // happens at import-commit time so an aborted import (cancel button) is
+  // harmless. The radio merely records intent.
+  const [importOpen, setImportOpen] = useState<boolean>(false);
+  const [importMode, setImportMode] = useState<'replace' | 'merge'>('merge');
+  const openImportModal = useCallback((): void => setImportOpen(true), []);
+  const closeImportModal = useCallback((): void => setImportOpen(false), []);
+
+  // ─── import → solver bridge ───────────────────────────────────────────
+  //
+  // Wire the modal's `onImport(entities)` callback into solver mutations.
+  // Per import-mode:
+  //   - 'replace' → wipe view+solver state first. We destroy the existing
+  //     solver instance and create a fresh one to guarantee planegcs's
+  //     internal tracking is clean (incremental remove of every entity
+  //     leaves orphan constraints behind — see solver.removeConstraint
+  //     caveat referenced in the overlay-bridge comments above).
+  //   - 'merge' → keep everything; just append the new entities. Imported
+  //     ids are namespaced by the importer (`imp1`, `iml2`, ...) so they
+  //     can't collide with the solver's own `p`/`l`/`c` sequence.
+  //
+  // SvgPoint → solver.addPoint  (preserves isFixed)
+  // SvgLine  → solver.addLine    (resolves endpoint ids; if either point id
+  //                                isn't present in the import, we synthesize
+  //                                new endpoints from the SvgLine's x1/y1/
+  //                                x2/y2 — the importer always writes those
+  //                                attributes for round-trip safety)
+  // SvgCircle → solver.addCircle (center synthesized from cx/cy since SVG
+  //                                circles don't carry a separate center-point id)
+  // SvgArc   → solver.addArc     (start/end points synthesized from radius +
+  //                                start/end angle; mirrors how the editor's
+  //                                own arc tool would build the entity)
+  //
+  // Each addX call is wrapped in try/catch so a single malformed entity
+  // can't tank the whole import — the user gets the entities the importer
+  // produced plus a console warning per failure.
+  const handleSketchImport = useCallback(
+    (imported: SvgSketchEntities): void => {
+      if (!solver) return;
+
+      // Decide working solver + starting entities up front so 'replace' and
+      // 'merge' share the same insertion loop below.
+      const target = solver;
+      let nextEntities: ViewEntity[];
+      if (importMode === 'replace') {
+        // Drop every tracked entity from the solver. We catch on a per-call
+        // basis because solver.removeX raises on already-cleared ids, and
+        // we don't want a stale id to abort the wipe partway through.
+        for (const e of entities) {
+          try {
+            if (e.kind === 'point') target.removePoint(e.id);
+            else if (e.kind === 'line') target.removeLine(e.id);
+            else if (e.kind === 'circle') target.removeCircle(e.id);
+          } catch {
+            /* already-removed or fixed — best-effort wipe */
+          }
+        }
+        nextEntities = [];
+      } else {
+        nextEntities = [...entities];
+      }
+
+      // SvgPoint → addPoint. Build a lookup so subsequent SvgLine refs can
+      // be resolved to the freshly-created PointIds.
+      const importedPointIdByOriginal = new Map<string, PointId>();
+      for (const p of imported.points) {
+        try {
+          const id = target.addPoint(p.x, p.y, p.isFixed ? { fixed: true } : {});
+          importedPointIdByOriginal.set(p.id, id);
+          nextEntities.push({ id, kind: 'point', x: p.x, y: p.y, fixed: !!p.isFixed });
+        } catch (err) {
+          console.warn('[SolverSketchEditor.import] failed to add point', p, err);
+        }
+      }
+
+      // SvgLine → addLine. Endpoint resolution policy:
+      //   1. if the SvgLine's p1/p2 strings match an imported point id we
+      //      just created → reuse that PointId (preserves the importer's
+      //      coincidence — same point shared by multiple lines stays shared);
+      //   2. otherwise synthesize a fresh point at x1/y1 (and x2/y2). This
+      //      is the common case for SVGs the importer received WITHOUT
+      //      separate `<circle data-kind="point">` entries — every line
+      //      stands alone with its own pair of endpoints.
+      for (const ln of imported.lines) {
+        try {
+          let p1Id = importedPointIdByOriginal.get(ln.p1);
+          if (!p1Id) {
+            p1Id = target.addPoint(ln.x1, ln.y1);
+            nextEntities.push({ id: p1Id, kind: 'point', x: ln.x1, y: ln.y1, fixed: false });
+          }
+          let p2Id = importedPointIdByOriginal.get(ln.p2);
+          if (!p2Id) {
+            p2Id = target.addPoint(ln.x2, ln.y2);
+            nextEntities.push({ id: p2Id, kind: 'point', x: ln.x2, y: ln.y2, fixed: false });
+          }
+          const lId = target.addLine(p1Id, p2Id);
+          nextEntities.push({ id: lId, kind: 'line', p1: p1Id, p2: p2Id });
+        } catch (err) {
+          console.warn('[SolverSketchEditor.import] failed to add line', ln, err);
+        }
+      }
+
+      // SvgCircle → addCircle. SVG circles carry a center point only as
+      // (cx,cy); we synthesize a PointId for it so the solver's relational
+      // model (radius constraint targets center point) stays consistent.
+      for (const c of imported.circles) {
+        try {
+          const ctrId = target.addPoint(c.cx, c.cy);
+          nextEntities.push({ id: ctrId, kind: 'point', x: c.cx, y: c.cy, fixed: false });
+          const cId = target.addCircle(ctrId, c.radius);
+          nextEntities.push({ id: cId, kind: 'circle', center: ctrId, radius: c.radius });
+        } catch (err) {
+          console.warn('[SolverSketchEditor.import] failed to add circle', c, err);
+        }
+      }
+
+      // SvgArc → addArc. Start/end points are derived from
+      // (cx + r·cos(angle), cy + r·sin(angle)) so the solver gets a
+      // well-formed 3-point arc. The view model in this editor doesn't yet
+      // render arcs (Phase 1.3 limitation — see top-of-file comment), but
+      // the solver-side entity is still created so downstream operations
+      // (export, profile extraction) can see it.
+      for (const a of imported.arcs) {
+        try {
+          const ctrId = target.addPoint(a.cx, a.cy);
+          const startPt = {
+            x: a.cx + a.radius * Math.cos(a.startAngle),
+            y: a.cy + a.radius * Math.sin(a.startAngle),
+          };
+          const endPt = {
+            x: a.cx + a.radius * Math.cos(a.endAngle),
+            y: a.cy + a.radius * Math.sin(a.endAngle),
+          };
+          const startId = target.addPoint(startPt.x, startPt.y);
+          const endId = target.addPoint(endPt.x, endPt.y);
+          // Push the synthesized points into the view so subsequent ref
+          // lookups (e.g. constraint overlay) can find them.
+          nextEntities.push({ id: ctrId, kind: 'point', x: a.cx, y: a.cy, fixed: false });
+          nextEntities.push({ id: startId, kind: 'point', x: startPt.x, y: startPt.y, fixed: false });
+          nextEntities.push({ id: endId, kind: 'point', x: endPt.x, y: endPt.y, fixed: false });
+          target.addArc(ctrId, startId, endId, a.radius, a.startAngle, a.endAngle);
+          // No arc ViewEntity kind in Phase 1.3 — solver-side only.
+        } catch (err) {
+          console.warn('[SolverSketchEditor.import] failed to add arc', a, err);
+        }
+      }
+
+      solveAndApply(nextEntities);
+      // Reset selection so a previously-selected entity that no longer
+      // exists after a 'replace' doesn't leave a dangling constraint UI.
+      setSelection([]);
+    },
+    [solver, entities, importMode, solveAndApply],
+  );
+
   // Bound to the toolbar "Export SVG" button. Builds entities + filename,
   // then defers to `downloadSketchAsSvg` (browser-only — throws in non-DOM
   // envs). bbox auto-fit with 10mm margin is the default, and 200×150 mm
@@ -1948,6 +2162,48 @@ export default function SolverSketchEditor({
           </button>
           <button
             type="button"
+            onClick={openImportModal}
+            data-testid="solver-sketch-import-button"
+            title={t.import}
+            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+          >
+            {t.import}
+          </button>
+          {/* Import mode radio — replace clears existing geometry before
+              pasting in the import; merge keeps it. Sits inline next to the
+              Import button so the user picks the mode in the same eye-fix
+              they pick the action. Defaults to 'merge' (non-destructive). */}
+          <span
+            role="radiogroup"
+            aria-label={t.importMode}
+            data-testid="solver-sketch-import-mode"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#374151' }}
+          >
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="solver-sketch-import-mode"
+                value="merge"
+                checked={importMode === 'merge'}
+                onChange={() => setImportMode('merge')}
+                data-testid="solver-sketch-import-mode-merge"
+              />
+              {t.importMerge}
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="solver-sketch-import-mode"
+                value="replace"
+                checked={importMode === 'replace'}
+                onChange={() => setImportMode('replace')}
+                data-testid="solver-sketch-import-mode-replace"
+              />
+              {t.importReplace}
+            </label>
+          </span>
+          <button
+            type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
             style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -2243,6 +2499,21 @@ export default function SolverSketchEditor({
           entities={buildSvgEntities()}
           defaultFilename={buildSvgFilename()}
           onClose={closeExportModal}
+        />
+      )}
+
+      {/*
+        Import modal — opened from the title-bar "Import..." button. The
+        modal handles file/text ingress + parse error display; the host
+        receives `entities` via `onImport` and maps them into solver state
+        via `handleSketchImport` (which honors the merge/replace mode
+        selected in the title-bar radio).
+      */}
+      {importOpen && (
+        <SketchImportModal
+          lang={lang}
+          onImport={handleSketchImport}
+          onClose={closeImportModal}
         />
       )}
     </div>
