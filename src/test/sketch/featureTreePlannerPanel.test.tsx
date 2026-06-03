@@ -26,7 +26,9 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import FeatureTreePlannerPanel from '@/app/[lang]/shape-generator/sketch/FeatureTreePlannerPanel';
-import type { FeatureTree } from '@/lib/cad/featureTree';
+import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
+import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { FilletFeature } from '@/lib/cad/filletProfile';
 import type { PlanIntent } from '@/lib/ai/featureTreePlanner';
 import {
   CHAT_HISTORY_AUTOSAVE_DEBOUNCE_MS,
@@ -38,6 +40,48 @@ import {
 
 function emptyTree(): FeatureTree {
   return { nodes: [] };
+}
+
+function boxExtrude(w = 50, h = 50, d = 30): ExtrudeFeature {
+  return {
+    kind: 'extrude',
+    loop: [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: h },
+      { x: 0, y: h },
+    ],
+    depth: d,
+    direction: 'one_sided',
+    mode: 'add',
+  };
+}
+
+function boxNode(id = 'box_1', w = 50, h = 50, d = 30): FeatureNode {
+  return {
+    id,
+    name: `Box ${w}x${h}x${d}`,
+    dependencies: [],
+    payload: boxExtrude(w, h, d),
+  };
+}
+
+function filletNode(id = 'fillet_1', parentId = 'box_1', r = 3): FeatureNode {
+  const payload: FilletFeature = {
+    kind: 'fillet',
+    childExtrude: boxExtrude(),
+    radius: r,
+    edgeSelection: 'all',
+  };
+  return { id, name: `Fillet r${r}`, dependencies: [parentId], payload };
+}
+
+function boxTree(): FeatureTree {
+  return { nodes: [boxNode()] };
+}
+
+function boxWithFilletTree(): FeatureTree {
+  return { nodes: [boxNode(), filletNode()] };
 }
 
 function typeInto(testId: string, value: string): void {
@@ -896,5 +940,243 @@ describe('FeatureTreePlannerPanel', () => {
     });
     // The second (older) entry is NOT marked applied.
     expect(screen.queryByTestId('planner-history-applied-1')).toBeNull();
+  });
+
+  // ─── Explain tree integration (scadIntentFromTree) ──────────────────────
+
+  describe('Explain tree button', () => {
+    it('Explain button is visible on mount', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={emptyTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      const btn = screen.getByTestId('planner-explain-button');
+      expect(btn).toBeInTheDocument();
+      expect(btn.textContent).toBe('Explain tree');
+    });
+
+    it('clicking Explain on empty tree shows the empty-tree explanation', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={emptyTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      expect(screen.getByTestId('planner-explain-panel')).toBeInTheDocument();
+      // Empty-tree designIntent + warning are both surfaced.
+      expect(
+        screen.getByTestId('planner-explain-design-intent').textContent,
+      ).toMatch(/empty/i);
+      expect(
+        screen.getByTestId('planner-explain-warnings'),
+      ).toBeInTheDocument();
+    });
+
+    it('Explain on a box tree shows designIntent + 1 feature', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={boxTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      const intent = screen.getByTestId('planner-explain-design-intent');
+      // The extrude description mentions Extrude/rectangle.
+      expect(intent.textContent).toMatch(/extrude/i);
+      expect(
+        screen.getByTestId('planner-explain-feature-0'),
+      ).toBeInTheDocument();
+      // [extrude] kind tag shown in the feature list row.
+      expect(
+        screen.getByTestId('planner-explain-feature-0').textContent,
+      ).toMatch(/extrude/i);
+    });
+
+    it('Explain on a box+fillet tree lists two features', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={boxWithFilletTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      expect(
+        screen.getByTestId('planner-explain-feature-0').textContent,
+      ).toMatch(/extrude/i);
+      expect(
+        screen.getByTestId('planner-explain-feature-1').textContent,
+      ).toMatch(/fillet/i);
+      // No third feature.
+      expect(screen.queryByTestId('planner-explain-feature-2')).toBeNull();
+    });
+
+    it('SCAD comments block is collapsed by default and toggles on click', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={boxTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      // Toggle button visible, content NOT in DOM yet.
+      const toggle = screen.getByTestId('planner-explain-toggle-scad');
+      expect(toggle).toBeInTheDocument();
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(
+        screen.queryByTestId('planner-explain-scad-comments'),
+      ).toBeNull();
+      // Expand.
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      const block = screen.getByTestId('planner-explain-scad-comments');
+      expect(block.textContent).toMatch(/Step 1/);
+      expect(block.textContent).toMatch(/extrude/);
+      // Collapse again.
+      fireEvent.click(toggle);
+      expect(
+        screen.queryByTestId('planner-explain-scad-comments'),
+      ).toBeNull();
+    });
+
+    it('Copy SCAD button writes scadComments to navigator.clipboard', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      const originalClipboard = (
+        navigator as unknown as { clipboard?: { writeText: typeof writeText } }
+      ).clipboard;
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText },
+      });
+      try {
+        render(
+          <FeatureTreePlannerPanel
+            lang="en"
+            currentTree={boxTree()}
+            onApply={vi.fn()}
+          />,
+        );
+        fireEvent.click(screen.getByTestId('planner-explain-button'));
+        const copyBtn = screen.getByTestId('planner-explain-copy-scad');
+        expect(copyBtn.textContent).toBe('Copy SCAD');
+        fireEvent.click(copyBtn);
+        await waitFor(() => {
+          expect(writeText).toHaveBeenCalledTimes(1);
+        });
+        const arg = writeText.mock.calls[0]![0];
+        expect(typeof arg).toBe('string');
+        expect(arg).toMatch(/Step 1/);
+        expect(arg).toMatch(/extrude/);
+        // Button flips to "Copied" feedback state.
+        await waitFor(() => {
+          expect(
+            screen.getByTestId('planner-explain-copy-scad').textContent,
+          ).toBe('Copied');
+        });
+      } finally {
+        if (originalClipboard) {
+          Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: originalClipboard,
+          });
+        } else {
+          delete (navigator as unknown as { clipboard?: unknown }).clipboard;
+        }
+      }
+    });
+
+    it('explanation is not shown until Explain is clicked', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={boxTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      expect(screen.queryByTestId('planner-explain-panel')).toBeNull();
+      expect(
+        screen.queryByTestId('planner-explain-design-intent'),
+      ).toBeNull();
+    });
+
+    it('renders Korean explain label when lang="ko"', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="ko"
+          currentTree={boxTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByTestId('planner-explain-button').textContent,
+      ).toBe('트리 설명');
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      // Korean dictionary produces Korean designIntent (extrude → '돌출').
+      const intent = screen.getByTestId('planner-explain-design-intent');
+      expect(intent.textContent).toMatch(/돌출/);
+      expect(
+        screen.getByTestId('planner-explain-copy-scad').textContent,
+      ).toBe('SCAD 복사');
+    });
+
+    it('non-ko/en langs fall back to English explainer text', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="ja"
+          currentTree={boxTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      // UI label is Japanese (from dict), narration falls back to English.
+      expect(
+        screen.getByTestId('planner-explain-button').textContent,
+      ).toBe('ツリーを説明');
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      const intent = screen.getByTestId('planner-explain-design-intent');
+      expect(intent.textContent).toMatch(/extrude/i);
+    });
+
+    it('warnings panel uses role="alert" when warnings exist', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={emptyTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      const warnings = screen.getByTestId('planner-explain-warnings');
+      expect(warnings.getAttribute('role')).toBe('alert');
+      expect(
+        screen.getByTestId('planner-explain-warning-0'),
+      ).toBeInTheDocument();
+    });
+
+    it('Explain refreshes when clicked again with same tree (idempotent re-render)', () => {
+      render(
+        <FeatureTreePlannerPanel
+          lang="en"
+          currentTree={boxTree()}
+          onApply={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      expect(
+        screen.getByTestId('planner-explain-feature-0'),
+      ).toBeInTheDocument();
+      // Click again — still 1 feature, panel still visible.
+      fireEvent.click(screen.getByTestId('planner-explain-button'));
+      expect(
+        screen.getByTestId('planner-explain-feature-0'),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('planner-explain-feature-1')).toBeNull();
+    });
   });
 });

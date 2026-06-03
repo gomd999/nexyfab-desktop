@@ -73,6 +73,11 @@ import {
   useChatHistory,
   type ChatHistorySaveError,
 } from '@/lib/ai/aiChatHistory';
+import {
+  explainFeatureTree,
+  type ScadExplanation,
+  type ExplainerLang,
+} from '@/lib/ai/scadIntentFromTree';
 import type { FeatureTree } from '@/lib/cad/featureTree';
 
 export type PlannerLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -99,6 +104,15 @@ interface Dict {
   stepMoveNode: string;
   stepToggleSuppress: string;
   errorPrefix: string;
+  explainTree: string;
+  designIntent: string;
+  featuresHeading: string;
+  scadComments: string;
+  copyToClipboard: string;
+  copied: string;
+  showScadComments: string;
+  hideScadComments: string;
+  explainEmpty: string;
 }
 
 const dict: Record<PlannerLang, Dict> = {
@@ -124,6 +138,15 @@ const dict: Record<PlannerLang, Dict> = {
     stepMoveNode: '노드 이동',
     stepToggleSuppress: '억제 토글',
     errorPrefix: '오류',
+    explainTree: '트리 설명',
+    designIntent: '설계 의도',
+    featuresHeading: '피처',
+    scadComments: 'SCAD 주석',
+    copyToClipboard: 'SCAD 복사',
+    copied: '복사됨',
+    showScadComments: 'SCAD 주석 보기',
+    hideScadComments: 'SCAD 주석 숨기기',
+    explainEmpty: '설명할 피처가 없습니다.',
   },
   en: {
     panelTitle: 'AI Planner',
@@ -147,6 +170,15 @@ const dict: Record<PlannerLang, Dict> = {
     stepMoveNode: 'Move node',
     stepToggleSuppress: 'Toggle suppress',
     errorPrefix: 'Error',
+    explainTree: 'Explain tree',
+    designIntent: 'Design intent',
+    featuresHeading: 'Features',
+    scadComments: 'SCAD comments',
+    copyToClipboard: 'Copy SCAD',
+    copied: 'Copied',
+    showScadComments: 'Show SCAD comments',
+    hideScadComments: 'Hide SCAD comments',
+    explainEmpty: 'No features to explain.',
   },
   ja: {
     panelTitle: 'AIプランナー',
@@ -170,6 +202,15 @@ const dict: Record<PlannerLang, Dict> = {
     stepMoveNode: 'ノード移動',
     stepToggleSuppress: '抑制切替',
     errorPrefix: 'エラー',
+    explainTree: 'ツリーを説明',
+    designIntent: '設計意図',
+    featuresHeading: 'フィーチャ',
+    scadComments: 'SCADコメント',
+    copyToClipboard: 'SCADコピー',
+    copied: 'コピー済み',
+    showScadComments: 'SCADコメント表示',
+    hideScadComments: 'SCADコメント非表示',
+    explainEmpty: '説明できるフィーチャがありません。',
   },
   zh: {
     panelTitle: 'AI规划器',
@@ -193,6 +234,15 @@ const dict: Record<PlannerLang, Dict> = {
     stepMoveNode: '移动节点',
     stepToggleSuppress: '切换抑制',
     errorPrefix: '错误',
+    explainTree: '解释树',
+    designIntent: '设计意图',
+    featuresHeading: '特征',
+    scadComments: 'SCAD注释',
+    copyToClipboard: '复制SCAD',
+    copied: '已复制',
+    showScadComments: '显示SCAD注释',
+    hideScadComments: '隐藏SCAD注释',
+    explainEmpty: '没有可解释的特征。',
   },
   es: {
     panelTitle: 'Planificador IA',
@@ -216,6 +266,15 @@ const dict: Record<PlannerLang, Dict> = {
     stepMoveNode: 'Mover nodo',
     stepToggleSuppress: 'Alternar supresión',
     errorPrefix: 'Error',
+    explainTree: 'Explicar árbol',
+    designIntent: 'Intención de diseño',
+    featuresHeading: 'Características',
+    scadComments: 'Comentarios SCAD',
+    copyToClipboard: 'Copiar SCAD',
+    copied: 'Copiado',
+    showScadComments: 'Mostrar comentarios SCAD',
+    hideScadComments: 'Ocultar comentarios SCAD',
+    explainEmpty: 'No hay características para explicar.',
   },
   ar: {
     panelTitle: 'مخطط الذكاء الاصطناعي',
@@ -239,6 +298,15 @@ const dict: Record<PlannerLang, Dict> = {
     stepMoveNode: 'نقل عقدة',
     stepToggleSuppress: 'تبديل الإخفاء',
     errorPrefix: 'خطأ',
+    explainTree: 'شرح الشجرة',
+    designIntent: 'نية التصميم',
+    featuresHeading: 'الميزات',
+    scadComments: 'تعليقات SCAD',
+    copyToClipboard: 'نسخ SCAD',
+    copied: 'تم النسخ',
+    showScadComments: 'إظهار تعليقات SCAD',
+    hideScadComments: 'إخفاء تعليقات SCAD',
+    explainEmpty: 'لا توجد ميزات للشرح.',
   },
 };
 
@@ -318,6 +386,12 @@ export default function FeatureTreePlannerPanel(
 
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<PanelStatus>({ kind: 'idle' });
+
+  // Explain state — populated when user clicks "Explain tree". Reset to null
+  // when the host swaps `currentTree` (caller may force re-explain).
+  const [explanation, setExplanation] = useState<ScadExplanation | null>(null);
+  const [scadCommentsExpanded, setScadCommentsExpanded] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
 
   // Agent-IIIII chat history hook — localStorage-backed, 50-entry cap by
   // default, 500 ms debounced auto-save. The hook handles all eviction
@@ -443,6 +517,43 @@ export default function FeatureTreePlannerPanel(
     }
   }, [exportHistoryJson]);
 
+  /**
+   * Map the panel's 6-lang surface to the explainer's 2-lang surface. Only
+   * Korean is its own bucket; everything else falls through to English. This
+   * is intentional — adding ja/zh/es/ar to the explainer dictionary is a
+   * future phase (see scadIntentFromTree.ts "Out of scope"). Keeps the UI
+   * localized while the long-form narration stays in English for non-ko.
+   */
+  const explainerLang: ExplainerLang = lang === 'ko' ? 'ko' : 'en';
+
+  const handleExplain = useCallback(() => {
+    const next = explainFeatureTree(currentTree, { lang: explainerLang });
+    setExplanation(next);
+    setScadCommentsExpanded(false);
+    setCopyState('idle');
+  }, [currentTree, explainerLang]);
+
+  const handleCopyScad = useCallback(async () => {
+    if (!explanation) return;
+    const text = explanation.scadComments;
+    try {
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function'
+      ) {
+        await navigator.clipboard.writeText(text);
+        setCopyState('copied');
+        // Auto-revert the "Copied" label after a short beat so the user can
+        // copy twice in a row and still see feedback.
+        setTimeout(() => setCopyState('idle'), 1500);
+      }
+    } catch {
+      // Browser blocked clipboard (e.g., insecure context). Silent — the
+      // user can fall back to selecting the visible SCAD block manually.
+    }
+  }, [explanation]);
+
   const maxCap = maxHistoryEntries ?? DEFAULT_MAX_HISTORY_ENTRIES;
 
   const applyDisabled =
@@ -527,6 +638,184 @@ export default function FeatureTreePlannerPanel(
           }}
         >
           {statusText}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          type="button"
+          data-testid="planner-explain-button"
+          onClick={handleExplain}
+          style={{
+            padding: '4px 10px',
+            border: '1px solid #6366f1',
+            background: '#eef2ff',
+            color: '#4338ca',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
+        >
+          {d.explainTree}
+        </button>
+      </div>
+
+      {explanation && (
+        <div
+          data-testid="planner-explain-panel"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: 8,
+            background: '#f5f3ff',
+            border: '1px solid #e0e7ff',
+            borderRadius: 4,
+          }}
+        >
+          <div style={{ fontSize: 11, color: '#6b7280' }}>{d.designIntent}</div>
+          <div
+            data-testid="planner-explain-design-intent"
+            style={{ fontSize: 12, lineHeight: 1.45 }}
+          >
+            {explanation.designIntent}
+          </div>
+
+          {explanation.features.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                {d.featuresHeading}
+              </div>
+              <ul
+                data-testid="planner-explain-features"
+                style={{ margin: 0, padding: 0, listStyle: 'none' }}
+              >
+                {explanation.features.map((f, idx) => (
+                  <li
+                    key={f.nodeId}
+                    data-testid={`planner-explain-feature-${idx}`}
+                    style={{
+                      fontSize: 12,
+                      padding: '2px 0',
+                      borderBottom:
+                        idx === explanation.features.length - 1
+                          ? 'none'
+                          : '1px solid #ede9fe',
+                    }}
+                  >
+                    <span style={{ color: '#6b7280' }}>[{f.kind}]</span>{' '}
+                    {f.intentDescription}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {explanation.warnings.length > 0 && (
+            <div
+              data-testid="planner-explain-warnings"
+              role="alert"
+              style={{
+                marginTop: 4,
+                padding: 6,
+                background: '#fffbeb',
+                border: '1px solid #fcd34d',
+                borderRadius: 4,
+                color: '#92400e',
+                fontSize: 12,
+              }}
+            >
+              <ul style={{ margin: 0, paddingInlineStart: 16 }}>
+                {explanation.warnings.map((w, idx) => (
+                  <li
+                    key={idx}
+                    data-testid={`planner-explain-warning-${idx}`}
+                  >
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {explanation.features.length === 0 &&
+            explanation.warnings.length === 0 && (
+              <div
+                data-testid="planner-explain-empty"
+                style={{ fontSize: 12, color: '#6b7280' }}
+              >
+                {d.explainEmpty}
+              </div>
+            )}
+
+          {explanation.scadComments !== '' && (
+            <div style={{ marginTop: 4 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 6,
+                }}
+              >
+                <button
+                  type="button"
+                  data-testid="planner-explain-toggle-scad"
+                  onClick={() => setScadCommentsExpanded((v) => !v)}
+                  aria-expanded={scadCommentsExpanded}
+                  style={{
+                    padding: '3px 8px',
+                    border: '1px solid #d1d5db',
+                    background: '#fff',
+                    color: '#374151',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  {scadCommentsExpanded
+                    ? d.hideScadComments
+                    : d.showScadComments}
+                </button>
+                <button
+                  type="button"
+                  data-testid="planner-explain-copy-scad"
+                  onClick={handleCopyScad}
+                  style={{
+                    padding: '3px 8px',
+                    border: '1px solid #059669',
+                    background: copyState === 'copied' ? '#d1fae5' : '#fff',
+                    color: '#059669',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  {copyState === 'copied' ? d.copied : d.copyToClipboard}
+                </button>
+              </div>
+              {scadCommentsExpanded && (
+                <pre
+                  data-testid="planner-explain-scad-comments"
+                  style={{
+                    marginTop: 6,
+                    padding: 8,
+                    background: '#1f2937',
+                    color: '#e5e7eb',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, monospace',
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: 200,
+                    overflow: 'auto',
+                  }}
+                >
+                  {explanation.scadComments}
+                </pre>
+              )}
+            </div>
+          )}
         </div>
       )}
 
