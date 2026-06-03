@@ -13,7 +13,7 @@
  *   2. Convex polygon PRISM (N side faces + 2 cap faces with ±Z normals)  →
  *      N-vertex `ExtrudeFeature` (loop = bottom cap polygon, depth = z1 - z0).
  *
- * Phase 2 (axis-aligned revolves — this module):
+ * Phase 2 (axis-aligned revolves):
  *   3. REVOLVED_AREA_SOLID with planar profile + axis aligned to ±X / ±Y / ±Z
  *      →  `RevolveFeature` (profile transformed into the canonical
  *      rotate_extrude frame: axis = +Y, profile in X ≥ 0 half).
@@ -22,12 +22,23 @@
  *      whose loop is the rectangle `[(0,0), (r,0), (r,h), (0,h)]` (axis-Y
  *      canonical).
  *
+ * Phase 3 (axis-aligned linear sweeps — this module):
+ *   5. SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID with planar profile + extrusion
+ *      direction aligned to ±X / ±Y / ±Z  →  `SweepFeature` whose path is the
+ *      2-point polyline `[[0,0,0], extrusion_axis * depth]`. The profile is
+ *      kept in its native 2D coordinates (no canonical re-frame — sweep
+ *      preserves the source plane for path-perpendicular sliding).
+ *   6. BREP SURFACE_OF_LINEAR_EXTRUSION — exactly 1 SURFACE_OF_LINEAR_EXTRUSION
+ *      side face + 2 PLANE cap faces with cap normals parallel to the
+ *      extrusion direction  →  `SweepFeature` (rectangle profile reconstructed
+ *      from the cap geometry, path = cap-centre-to-cap-centre).
+ *
  * Any other solid (BSPLINE / CONICAL / SPHERICAL / TOROIDAL surfaces,
- * non-axis-aligned revolution axes, lofts, swept profiles, fillets, drafts,
- * multi-loop faces with inner bounds) is SKIPPED and reported via the
- * `unsupported` channel — it does NOT abort the whole import. The caller
- * can surface those in the UI ("3 of 5 solids imported; 2 require Phase 3
- * OCCT B-rep round-trip").
+ * non-axis-aligned revolution / extrusion axes, lofts, swept-disk pipes,
+ * non-linear spine sweeps, fillets, drafts, multi-loop faces with inner
+ * bounds) is SKIPPED and reported via the `unsupported` channel — it does
+ * NOT abort the whole import. The caller can surface those in the UI
+ * ("3 of 5 solids imported; 2 require Phase 4 OCCT B-rep round-trip").
  *
  * PIPELINE
  * --------
@@ -58,16 +69,19 @@
  *   `axis not axis-aligned` reason — Phase 3 will compose a sketch-plane
  *   basis to recover the world-space axis.
  *
- * PHASE 3 WISHLIST (NOT implemented in this module)
+ * PHASE 4 WISHLIST (NOT implemented in this module)
  * -------------------------------------------------
  *   - BSPLINE_SURFACE_WITH_KNOTS / RATIONAL_B_SPLINE_SURFACE
  *   - CONICAL_SURFACE / SPHERICAL_SURFACE / TOROIDAL_SURFACE (parametric
  *     primitives beyond cylinder)
- *   - SURFACE_OF_REVOLUTION / SURFACE_OF_LINEAR_EXTRUSION when the basis
- *     curve is non-linear (Phase 2 only handles cylinders directly)
- *   - REVOLVED_AREA_SOLID with non-axis-aligned axis (composed sketch
- *     transform → world axis)
- *   - SWEPT_AREA_SOLID / SWEPT_DISK_SOLID (sweep IR in `sweepLoft.ts`)
+ *   - SURFACE_OF_REVOLUTION with non-linear basis curve (Phase 2/3 only
+ *     handles cylinders + linear extrusions directly)
+ *   - REVOLVED_AREA_SOLID / SWEPT_AREA_SOLID with non-axis-aligned axis
+ *     (composed sketch transform → world axis)
+ *   - SWEPT_DISK_SOLID (pipe / hose primitive) — recognised by name but
+ *     intentionally routed to `unsupported` until Phase 4 adds path solver
+ *   - Sweeps along non-linear (spline / arc) directrix curves — current
+ *     SweepFeature path is a polyline; arc paths need an extra IR layer
  *   - FACE_BOUND with inner-loop holes (HOLE feature IR exists)
  *   - FILLETED_EDGE / CHAMFERED_EDGE annotations  →  fillet/chamfer IRs
  *   - Concave polygon prisms (Phase 1 only verifies cap == cap; concave caps
@@ -85,6 +99,7 @@
 
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
+import type { SweepFeature } from '@/lib/cad/sweepLoft';
 import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import { healStepSource } from './stepRead';
 
@@ -162,28 +177,45 @@ export function importStep(
   const solidIds: number[] = [];
   // Find every REVOLVED_AREA_SOLID — Phase 2 direct-revolve entities.
   const revolveSolidIds: number[] = [];
+  // Find every SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID — Phase 3 direct-sweep
+  // entities. Both share the same swept_area + extrusion_direction shape.
+  const sweptAreaSolidIds: number[] = [];
+  // Find every SWEPT_DISK_SOLID — Phase 4 wishlist (recognised, not converted).
+  const sweptDiskSolidIds: number[] = [];
   for (const [id, ent] of entities) {
     if (ent.name === 'MANIFOLD_SOLID_BREP' || ent.name === 'BREP_WITH_VOIDS') {
       solidIds.push(id);
     } else if (ent.name === 'REVOLVED_AREA_SOLID') {
       revolveSolidIds.push(id);
+    } else if (ent.name === 'SWEPT_AREA_SOLID' || ent.name === 'EXTRUDED_AREA_SOLID') {
+      sweptAreaSolidIds.push(id);
+    } else if (ent.name === 'SWEPT_DISK_SOLID') {
+      sweptDiskSolidIds.push(id);
     }
   }
-  if (solidIds.length === 0 && revolveSolidIds.length === 0) {
+  if (
+    solidIds.length === 0 &&
+    revolveSolidIds.length === 0 &&
+    sweptAreaSolidIds.length === 0 &&
+    sweptDiskSolidIds.length === 0
+  ) {
     warnings.push('parse:no_manifold_solid_brep');
   }
   // Sort by id for deterministic node ordering across runs / serialisations.
   solidIds.sort((a, b) => a - b);
   revolveSolidIds.sort((a, b) => a - b);
+  sweptAreaSolidIds.sort((a, b) => a - b);
+  sweptDiskSolidIds.sort((a, b) => a - b);
 
   const prefix = opts.namePrefix ?? 'imported';
   const nodes: FeatureNode[] = [];
 
-  // ─── pass 1: BREP solids (boxes / polygon prisms / cylinders) ───────────
+  // ─── pass 1: BREP solids (boxes / polygon prisms / cylinders / sweeps) ──
   let extrudeIdx = 0;
   let cylinderRevolveIdx = 0;
+  let sweepIdx = 0;
   for (const solidId of solidIds) {
-    let feature: ExtrudeFeature | RevolveFeature | null = null;
+    let feature: ExtrudeFeature | RevolveFeature | SweepFeature | null = null;
     let reason: string | null = null;
     try {
       const result = solidToFeature(solidId, entities);
@@ -207,7 +239,7 @@ export function importStep(
         payload: feature,
       });
       extrudeIdx += 1;
-    } else {
+    } else if (feature.kind === 'revolve') {
       // BREP-derived revolve (cylinder primitive).
       nodes.push({
         id: `${prefix}_revolve_${cylinderRevolveIdx}`,
@@ -216,6 +248,15 @@ export function importStep(
         payload: feature,
       });
       cylinderRevolveIdx += 1;
+    } else {
+      // BREP-derived sweep (SURFACE_OF_LINEAR_EXTRUSION primitive).
+      nodes.push({
+        id: `${prefix}_sweep_${sweepIdx}`,
+        name: `Imported Swept Solid ${sweepIdx + 1}`,
+        dependencies: [],
+        payload: feature,
+      });
+      sweepIdx += 1;
     }
   }
 
@@ -246,10 +287,50 @@ export function importStep(
     cylinderRevolveIdx += 1;
   }
 
+  // ─── pass 3: direct SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID entities ────
+  for (const sweptId of sweptAreaSolidIds) {
+    let feature: SweepFeature | null = null;
+    let reason: string | null = null;
+    try {
+      const result = sweptAreaSolidToSweep(sweptId, entities);
+      if (result.kind === 'ok') {
+        feature = result.feature;
+      } else {
+        reason = result.reason;
+      }
+    } catch (err) {
+      reason = `parse_error: ${(err as Error).message}`;
+    }
+    if (!feature) {
+      unsupported.push(`#${sweptId}: ${reason ?? 'unknown'}`);
+      continue;
+    }
+    nodes.push({
+      id: `${prefix}_sweep_${sweepIdx}`,
+      name: `Imported Swept Solid ${sweepIdx + 1}`,
+      dependencies: [],
+      payload: feature,
+    });
+    sweepIdx += 1;
+  }
+
+  // ─── pass 4: SWEPT_DISK_SOLID — Phase 4 wishlist, surface a warning ────
+  for (const diskId of sweptDiskSolidIds) {
+    unsupported.push(
+      `#${diskId}: SWEPT_DISK_SOLID (pipe / hose primitive) — ` +
+        `Phase 4 wishlist (low frequency; needs path solver)`,
+    );
+  }
+
   // CLOSED_SHELL not referenced by any MANIFOLD_SOLID_BREP is a common
   // "headless" case (some viewers strip the BREP wrapper). Surface it so
   // the caller can hint at the issue.
-  if (solidIds.length === 0 && revolveSolidIds.length === 0) {
+  if (
+    solidIds.length === 0 &&
+    revolveSolidIds.length === 0 &&
+    sweptAreaSolidIds.length === 0 &&
+    sweptDiskSolidIds.length === 0
+  ) {
     let shellCount = 0;
     for (const ent of entities.values()) {
       if (ent.name === 'CLOSED_SHELL' || ent.name === 'OPEN_SHELL') shellCount++;
@@ -596,7 +677,7 @@ function parseSingleArg(s: string): StepArg {
 // ─── solid → feature classification ───────────────────────────────────────
 
 type SolidParseResult =
-  | { kind: 'ok'; feature: ExtrudeFeature | RevolveFeature }
+  | { kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature }
   | { kind: 'unsupported'; reason: string };
 
 /**
@@ -636,9 +717,10 @@ function solidToFeature(
   }
 
   // Decode every face. Surface type is captured so the classifier can route
-  // mixed planar + cylindrical solids to the cylinder branch.
+  // mixed planar + cylindrical / extrusion solids to the appropriate branch.
   const planeFaces: PlaneFace[] = [];
   const cylinderFaces: CylinderFace[] = [];
+  const extrusionFaces: LinearExtrusionFace[] = [];
   const otherSurfaces: string[] = [];
   for (const fr of faceRefs) {
     const decoded = decodeFace(fr, entities);
@@ -646,6 +728,8 @@ function solidToFeature(
       planeFaces.push(decoded.face);
     } else if (decoded.kind === 'cylinder') {
       cylinderFaces.push(decoded.face);
+    } else if (decoded.kind === 'linear_extrusion') {
+      extrusionFaces.push(decoded.face);
     } else if (decoded.kind === 'other_surface') {
       // Record but keep going — a single BSPLINE among 7 faces still aborts,
       // but we want the reason to name the surface kind exactly.
@@ -660,9 +744,10 @@ function solidToFeature(
   }
 
   if (otherSurfaces.length > 0) {
-    // Phase 2 only handles plane + cylinder; cone/sphere/torus/spline remain
-    // unsupported. Surface the FIRST exotic surface name so callers can
-    // hint at the actual blocker (helps debugging mixed-geometry STEP files).
+    // Phase 2/3 only handles plane + cylinder + linear-extrusion; cone /
+    // sphere / torus / spline / NURBS remain unsupported. Surface the FIRST
+    // exotic surface name so callers can hint at the actual blocker (helps
+    // debugging mixed-geometry STEP files).
     const uniq = Array.from(new Set(otherSurfaces));
     return {
       kind: 'unsupported',
@@ -714,12 +799,39 @@ function solidToFeature(
   if (cylinderFaces.length > 0) {
     // Cylindrical face present but doesn't match the clean 1+2 pattern
     // (multiple cylinders, mixed prism + cylinder, missing caps, etc.).
-    // Phase 3 will handle these via OCCT round-trip.
+    // Phase 4 will handle these via OCCT round-trip.
     return {
       kind: 'unsupported',
       reason:
         `${faceRefs.length} faces (${cylinderFaces.length} CYLINDRICAL_SURFACE, ` +
         `${planeFaces.length} PLANE) — cylinder detector wants exactly 1 cylinder + 2 caps`,
+    };
+  }
+
+  // ─── linear extrusion primitive: 1 SURFACE_OF_LINEAR_EXTRUSION + 2 PLANE
+  //     caps + nothing else ─────────────────────────────────────────────────
+  if (
+    extrusionFaces.length === 1 &&
+    planeFaces.length === 2 &&
+    faceRefs.length === 3
+  ) {
+    const ext = extrusionFaces[0]!;
+    const result = linearExtrusionToSweep(ext, planeFaces);
+    if (result.kind === 'ok') {
+      return { kind: 'ok', feature: result.feature };
+    }
+    return { kind: 'unsupported', reason: `linear extrusion: ${result.reason}` };
+  }
+
+  if (extrusionFaces.length > 0) {
+    // SURFACE_OF_LINEAR_EXTRUSION present but doesn't match the clean 1+2
+    // pattern (multiple extrusion surfaces, mixed extrusion + cylinder, etc.).
+    // Phase 4 will handle these via OCCT round-trip.
+    return {
+      kind: 'unsupported',
+      reason:
+        `${faceRefs.length} faces (${extrusionFaces.length} SURFACE_OF_LINEAR_EXTRUSION, ` +
+        `${planeFaces.length} PLANE) — extrusion detector wants exactly 1 extrusion + 2 caps`,
     };
   }
 
@@ -779,15 +891,28 @@ interface CylinderFace {
   radius: number;
 }
 
+interface LinearExtrusionFace {
+  /** Extrusion direction (world-space, unit-normalised). Sourced from the
+   *  underlying VECTOR's DIRECTION component. */
+  extrusionDir: [number, number, number];
+  /** Magnitude of the underlying VECTOR (defaults to 1 if unset / 0). The
+   *  effective sweep length is recomputed from the cap centres in the
+   *  classifier; this is recorded only for diagnostics. */
+  magnitude: number;
+}
+
 type FaceDecodeResult =
   /** Planar face with outer-bound loop decoded. */
   | { kind: 'plane'; face: PlaneFace }
   /** CYLINDRICAL_SURFACE face — outer-bound loop intentionally NOT decoded
    *  (would contain CIRCLE edges, which the linear-edge path rejects). */
   | { kind: 'cylinder'; face: CylinderFace }
-  /** Non-planar, non-cylinder surface we recognise but can't import yet
-   *  (BSPLINE / CONICAL / SPHERICAL / TOROIDAL / SURFACE_OF_REVOLUTION /
-   *  SURFACE_OF_LINEAR_EXTRUSION). */
+  /** SURFACE_OF_LINEAR_EXTRUSION face — outer-bound loop intentionally NOT
+   *  decoded; cap-plane geometry is used to reconstruct the rectangle. */
+  | { kind: 'linear_extrusion'; face: LinearExtrusionFace }
+  /** Non-planar, non-cylinder, non-extrusion surface we recognise but can't
+   *  import yet (BSPLINE / NURBS / CONICAL / SPHERICAL / TOROIDAL /
+   *  SURFACE_OF_REVOLUTION). */
   | { kind: 'other_surface'; surfaceName: string }
   /** Hard parse failure (missing entity, malformed loop, non-linear edge on
    *  a PLANE face) — aborts the entire solid with a specific reason. */
@@ -844,10 +969,30 @@ function decodeFace(
     };
   }
 
-  // ─── non-planar, non-cylinder surfaces ──────────────────────────────────
-  // Surface kinds that Phase 2 explicitly recognises but cannot import.
-  // Phase 3 will add BSPLINE / cone / sphere / torus / surface-of-revolution
-  // with a non-trivial profile.
+  // ─── SURFACE_OF_LINEAR_EXTRUSION branch ─────────────────────────────────
+  // SURFACE_OF_LINEAR_EXTRUSION('', #swept_curve, #extrusion_axis_vector)
+  // where #extrusion_axis_vector is typically VECTOR('', #direction, magnitude).
+  // We only record the direction + magnitude; the cap planes provide the
+  // actual sweep length.
+  if (surface && surface.name === 'SURFACE_OF_LINEAR_EXTRUSION') {
+    const vecRef = surface.args[2];
+    if (!vecRef || vecRef.kind !== 'ref') {
+      return { kind: 'unsupported', reason: `SURFACE_OF_LINEAR_EXTRUSION missing vector ref` };
+    }
+    const decoded = readExtrusionVector(vecRef.id, entities);
+    if (!decoded) {
+      return { kind: 'unsupported', reason: `SURFACE_OF_LINEAR_EXTRUSION bad VECTOR/DIRECTION` };
+    }
+    return {
+      kind: 'linear_extrusion',
+      face: { extrusionDir: decoded.direction, magnitude: decoded.magnitude },
+    };
+  }
+
+  // ─── non-planar, non-cylinder, non-extrusion surfaces ───────────────────
+  // Surface kinds that Phase 2/3 explicitly recognises but cannot import.
+  // Phase 4 will add BSPLINE / NURBS / cone / sphere / torus /
+  // surface-of-revolution with a non-trivial profile.
   if (surface && surface.name !== 'PLANE') {
     return { kind: 'other_surface', surfaceName };
   }
@@ -1041,6 +1186,37 @@ function readDirection(
   return [xs[0]!, xs[1]!, xs[2]!];
 }
 
+/**
+ * Decode a VECTOR entity (`VECTOR('', #direction, magnitude)`) into
+ * `{ direction (unit-normalised), magnitude }`. Returns null if any
+ * sub-entity is missing or malformed. The direction is normalised here so
+ * callers can use it directly as a unit vector; the magnitude is preserved
+ * for traceability (cap planes are still the authoritative sweep length).
+ */
+function readExtrusionVector(
+  id: number,
+  entities: Map<number, StepEntity>,
+): { direction: [number, number, number]; magnitude: number } | null {
+  const ent = entities.get(id);
+  if (!ent || ent.name !== 'VECTOR') return null;
+  const dirRef = ent.args[1];
+  const magArg = ent.args[2];
+  if (!dirRef || dirRef.kind !== 'ref') return null;
+  const dir = readDirection(dirRef.id, entities);
+  if (!dir) return null;
+  // Magnitude defaults to 1 when missing / non-numeric / 0 (some writers
+  // emit `$` because the cap planes carry the true length).
+  let magnitude = 1;
+  if (magArg && magArg.kind === 'number' && Number.isFinite(magArg.value) && magArg.value > 0) {
+    magnitude = magArg.value;
+  }
+  // Normalise the direction so callers can treat it as a unit vector.
+  const len = Math.hypot(dir[0], dir[1], dir[2]);
+  const unit: [number, number, number] =
+    len > 1e-12 ? [dir[0] / len, dir[1] / len, dir[2] / len] : [dir[0], dir[1], dir[2]];
+  return { direction: unit, magnitude };
+}
+
 function readVertexPoint(
   id: number,
   entities: Map<number, StepEntity>,
@@ -1145,6 +1321,325 @@ function cylinderToRevolve(
     mode: 'add',
   };
   return { kind: 'ok', feature };
+}
+
+// ─── linear extrusion primitive → SweepFeature ────────────────────────────
+
+type LinearExtrusionSweepResult =
+  | { kind: 'ok'; feature: SweepFeature }
+  | { kind: 'unsupported'; reason: string };
+
+/**
+ * Reconstruct a `SweepFeature` from a BREP linear-extrusion primitive: 1
+ * SURFACE_OF_LINEAR_EXTRUSION side face + 2 PLANE cap faces.
+ *
+ * Requirements (Phase 3):
+ *   - Extrusion direction MUST be ±X / ±Y / ±Z (axis-aligned).
+ *   - Both cap normals must be parallel (within AXIS_EPS) to the extrusion
+ *     direction, and the two caps must lie on opposite sides of the
+ *     swept-curve origin along the extrusion direction.
+ *   - The two cap planes must share the same vertex set (in the plane
+ *     perpendicular to the extrusion axis), so the rectangle / polygon
+ *     profile is well-defined.
+ *
+ * Output: a `SweepFeature` whose:
+ *   - `profile` is the bottom cap polygon projected into 2D (XY when
+ *     extruded along Z; XZ along Y; YZ along X);
+ *   - `path` is the 2-point polyline `[bottomCentre, topCentre]` in world
+ *     coordinates.
+ *
+ * Phase 3 limit: this branch fires only when the side face is a single
+ * SURFACE_OF_LINEAR_EXTRUSION — multiple extrusion surfaces or mixed
+ * extrusion + cylinder bodies (common for filleted prisms) are routed to
+ * `unsupported`.
+ */
+function linearExtrusionToSweep(
+  ext: LinearExtrusionFace,
+  caps: PlaneFace[],
+): LinearExtrusionSweepResult {
+  const axisKind = classifyAxisAlignment(ext.extrusionDir);
+  if (axisKind === null) {
+    return {
+      kind: 'unsupported',
+      reason:
+        `extrusion direction (${formatDir(ext.extrusionDir)}) is not axis-aligned ` +
+        `(Phase 3 limit: only ±X/±Y/±Z)`,
+    };
+  }
+  if (caps.length !== 2) {
+    return { kind: 'unsupported', reason: `expected 2 cap planes, got ${caps.length}` };
+  }
+  // Both cap normals must be parallel to the extrusion direction.
+  for (const cap of caps) {
+    if (!directionsParallel(cap.normal, ext.extrusionDir)) {
+      return {
+        kind: 'unsupported',
+        reason:
+          `cap plane normal (${formatDir(cap.normal)}) not parallel to extrusion direction ` +
+          `(${formatDir(ext.extrusionDir)})`,
+      };
+    }
+  }
+  // Sanity: caps must have matching vertex counts (the profile is uniform
+  // along the sweep — different counts mean it's actually a loft).
+  if (caps[0]!.loop.length !== caps[1]!.loop.length) {
+    return {
+      kind: 'unsupported',
+      reason:
+        `cap vertex counts differ (${caps[0]!.loop.length} vs ${caps[1]!.loop.length}) — ` +
+        `non-uniform profile (likely loft, Phase 4)`,
+    };
+  }
+  if (caps[0]!.loop.length < 3) {
+    return { kind: 'unsupported', reason: `cap has ${caps[0]!.loop.length} vertices, need ≥ 3` };
+  }
+  // Compute cap centroids and order: project along the extrusion axis and
+  // use the smaller projection as the bottom (path start).
+  const axisU = unitVec(ext.extrusionDir);
+  const projs: number[] = [];
+  const centres: Array<[number, number, number]> = [];
+  for (const cap of caps) {
+    const c = centroid(cap.loop);
+    centres.push(c);
+    projs.push(c[0] * axisU[0] + c[1] * axisU[1] + c[2] * axisU[2]);
+  }
+  const bottomIdx = projs[0]! <= projs[1]! ? 0 : 1;
+  const topIdx = 1 - bottomIdx;
+  const bottom = caps[bottomIdx]!;
+  const top = caps[topIdx]!;
+  const sweepLen = Math.abs(projs[topIdx]! - projs[bottomIdx]!);
+  if (!(sweepLen > POINT_EPS)) {
+    return { kind: 'unsupported', reason: `degenerate extrusion length: ${sweepLen}` };
+  }
+  // Verify the top cap's vertex set matches the bottom in the perpendicular
+  // plane (it's the same profile, just translated along the axis).
+  if (!vertexSetsMatchInPerpPlane(bottom.loop, top.loop, axisKind)) {
+    return {
+      kind: 'unsupported',
+      reason: `cap vertex sets do not match in plane perpendicular to ${axisKind.toUpperCase()} axis`,
+    };
+  }
+  // Project the bottom cap into the 2D plane perpendicular to the axis.
+  const profile2D: Array<{ x: number; y: number }> = [];
+  for (const v of bottom.loop) {
+    profile2D.push(perpProject(v, axisKind));
+  }
+  // Drop closing duplicate if present.
+  if (
+    profile2D.length > 3 &&
+    Math.abs(profile2D[0]!.x - profile2D[profile2D.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(profile2D[0]!.y - profile2D[profile2D.length - 1]!.y) <= POINT_EPS
+  ) {
+    profile2D.pop();
+  }
+  return {
+    kind: 'ok',
+    feature: {
+      kind: 'sweep',
+      profile: { points: profile2D },
+      path: [
+        { x: centres[bottomIdx]![0], y: centres[bottomIdx]![1], z: centres[bottomIdx]![2] },
+        { x: centres[topIdx]![0], y: centres[topIdx]![1], z: centres[topIdx]![2] },
+      ],
+      mode: 'add',
+    },
+  };
+}
+
+/**
+ * Project a 3D point into 2D by dropping the axis component:
+ *   - X axis → (Y, Z)
+ *   - Y axis → (X, Z)
+ *   - Z axis → (X, Y)
+ */
+function perpProject(
+  v: [number, number, number],
+  axisKind: 'x' | 'y' | 'z',
+): { x: number; y: number } {
+  if (axisKind === 'x') return { x: v[1], y: v[2] };
+  if (axisKind === 'y') return { x: v[0], y: v[2] };
+  return { x: v[0], y: v[1] };
+}
+
+/**
+ * Verify two loops have the same vertex set in the plane perpendicular to
+ * the extrusion axis (any rotation / reflection is fine — order will be
+ * fixed downstream by the loop walker). Equivalent to `xyVertexSetsMatch`
+ * but parameterised on which 2 components to compare.
+ */
+function vertexSetsMatchInPerpPlane(
+  a: Array<[number, number, number]>,
+  b: Array<[number, number, number]>,
+  axisKind: 'x' | 'y' | 'z',
+): boolean {
+  if (a.length !== b.length) return false;
+  const used = new Array<boolean>(b.length).fill(false);
+  for (const va of a) {
+    const va2 = perpProject(va, axisKind);
+    let matched = false;
+    for (let j = 0; j < b.length; j++) {
+      if (used[j]) continue;
+      const vb2 = perpProject(b[j]!, axisKind);
+      if (Math.abs(va2.x - vb2.x) <= POINT_EPS && Math.abs(va2.y - vb2.y) <= POINT_EPS) {
+        used[j] = true;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
+}
+
+// ─── SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID → SweepFeature ────────────────
+
+type SweptAreaSolidResult =
+  | { kind: 'ok'; feature: SweepFeature }
+  | { kind: 'unsupported'; reason: string };
+
+/**
+ * Parse a SWEPT_AREA_SOLID or EXTRUDED_AREA_SOLID entity directly into a
+ * `SweepFeature`.
+ *
+ * Entity shapes (ISO 10303-42 Part 4 §4.3.5):
+ *   EXTRUDED_AREA_SOLID('', #swept_area, #extruded_direction, depth)
+ *   SWEPT_AREA_SOLID   ('', #swept_area, #extrusion_axis)
+ *
+ * The arity differs by one (EXTRUDED has an explicit `depth` scalar after
+ * the direction; SWEPT_AREA_SOLID's "extrusion_axis" is sometimes a
+ * DIRECTION + magnitude-1, sometimes a VECTOR). We accept either: if arg[2]
+ * resolves to a DIRECTION we expect a depth in arg[3]; if it resolves to a
+ * VECTOR we take depth = |vector|.
+ *
+ * Where `#swept_area` is typically `PLANAR_FACE` referencing a
+ * `FACE_OUTER_BOUND` → `EDGE_LOOP` with linear `EDGE_CURVE`s (the same
+ * subset the revolve reader supports).
+ *
+ * Extrusion direction MUST be ±X / ±Y / ±Z. Arbitrary directions are
+ * routed to `unsupported` with a `not axis-aligned` reason.
+ *
+ * Output: a `SweepFeature` whose:
+ *   - `profile` is the swept_area's outer-loop vertex ring projected into
+ *     2D by dropping the extrusion-axis component (this preserves the
+ *     source-plane coordinates since axis-aligned extrusions fully
+ *     decouple);
+ *   - `path` is the 2-point polyline `[origin, origin + depth * axis]` in
+ *     world coordinates.
+ */
+function sweptAreaSolidToSweep(
+  sweptId: number,
+  entities: Map<number, StepEntity>,
+): SweptAreaSolidResult {
+  const ent = entities.get(sweptId);
+  if (!ent || (ent.name !== 'SWEPT_AREA_SOLID' && ent.name !== 'EXTRUDED_AREA_SOLID')) {
+    return { kind: 'unsupported', reason: `not a SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID` };
+  }
+  // args[0]=name, args[1]=swept_area, args[2]=direction-or-vector, args[3?]=depth.
+  const sweptAreaArg = ent.args[1];
+  const dirArg = ent.args[2];
+  const depthArg = ent.args[3];
+  if (!sweptAreaArg || sweptAreaArg.kind !== 'ref') {
+    return { kind: 'unsupported', reason: `${ent.name} missing swept_area ref` };
+  }
+  if (!dirArg || dirArg.kind !== 'ref') {
+    return { kind: 'unsupported', reason: `${ent.name} missing extrusion direction/vector ref` };
+  }
+  // Resolve the direction reference: it could point at either a DIRECTION
+  // (with depth in arg[3]) or a VECTOR (with magnitude = depth and arg[3]
+  // unused). Try DIRECTION first, then fall back to VECTOR.
+  let extrusionDir: [number, number, number] | null = null;
+  let depth = 0;
+  const dirEnt = entities.get(dirArg.id);
+  if (dirEnt && dirEnt.name === 'DIRECTION') {
+    extrusionDir = readDirection(dirArg.id, entities);
+    if (depthArg && depthArg.kind === 'number') {
+      // Honour the explicit depth, including 0 (which we reject below as
+      // degenerate). This is important for round-tripping SWEPT_AREA_SOLID
+      // files where depth=0 indicates "the producer wrote a malformed
+      // entity"; we should surface that, not silently default to 1.
+      depth = depthArg.value;
+    } else if (!depthArg || depthArg.kind === 'null') {
+      // No depth given: default to magnitude 1 — some viewers emit
+      // SWEPT_AREA_SOLID with no scalar at all (treating direction as a
+      // pre-scaled "translation vector").
+      depth = 1;
+    } else {
+      // Non-numeric depth (string / enum / list / ref) — reject explicitly.
+      return { kind: 'unsupported', reason: `${ent.name} has non-numeric depth` };
+    }
+  } else if (dirEnt && dirEnt.name === 'VECTOR') {
+    const decoded = readExtrusionVector(dirArg.id, entities);
+    if (decoded) {
+      extrusionDir = decoded.direction;
+      depth = decoded.magnitude;
+    }
+  }
+  if (!extrusionDir) {
+    return { kind: 'unsupported', reason: `${ent.name} extrusion ref is not DIRECTION or VECTOR` };
+  }
+  if (!(depth > POINT_EPS)) {
+    return { kind: 'unsupported', reason: `${ent.name} has degenerate depth ${depth}` };
+  }
+  const axisKind = classifyAxisAlignment(extrusionDir);
+  if (axisKind === null) {
+    return {
+      kind: 'unsupported',
+      reason:
+        `extrusion direction (${formatDir(extrusionDir)}) is not axis-aligned ` +
+        `(Phase 3 limit: only ±X/±Y/±Z)`,
+    };
+  }
+
+  // ─── decode the swept_area profile (re-uses the revolve helper) ─────────
+  const profile = readSweptAreaProfile(sweptAreaArg.id, entities);
+  if (profile.kind !== 'ok') {
+    return { kind: 'unsupported', reason: `swept_area: ${profile.reason}` };
+  }
+  if (profile.points.length < 3) {
+    return {
+      kind: 'unsupported',
+      reason: `swept_area has ${profile.points.length} points, need ≥ 3`,
+    };
+  }
+
+  // ─── project the profile into 2D (drop the axis component) ──────────────
+  // For axis-aligned extrusions the profile lies fully in the perpendicular
+  // plane (or is treated as such — any axial drift is ignored).
+  const profile2D: Array<{ x: number; y: number }> = [];
+  for (const p of profile.points) {
+    profile2D.push(perpProject(p, axisKind));
+  }
+  // Drop closing duplicate if present.
+  if (
+    profile2D.length > 3 &&
+    Math.abs(profile2D[0]!.x - profile2D[profile2D.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(profile2D[0]!.y - profile2D[profile2D.length - 1]!.y) <= POINT_EPS
+  ) {
+    profile2D.pop();
+  }
+
+  // ─── build the world-space path: [origin, origin + depth * axis] ────────
+  // The "origin" of the path is taken as the centroid of the swept_area in
+  // world coords; that places the path on the profile plane so a downstream
+  // CAD viewer can render the swept solid without an extra transform.
+  const origin = centroid(profile.points);
+  const axisU = unitVec(extrusionDir);
+  return {
+    kind: 'ok',
+    feature: {
+      kind: 'sweep',
+      profile: { points: profile2D },
+      path: [
+        { x: origin[0], y: origin[1], z: origin[2] },
+        {
+          x: origin[0] + depth * axisU[0],
+          y: origin[1] + depth * axisU[1],
+          z: origin[2] + depth * axisU[2],
+        },
+      ],
+      mode: 'add',
+    },
+  };
 }
 
 // ─── REVOLVED_AREA_SOLID → RevolveFeature ─────────────────────────────────

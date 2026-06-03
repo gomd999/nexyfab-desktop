@@ -25,6 +25,7 @@ import {
 } from './stepWrite';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
+import type { SweepFeature } from '@/lib/cad/sweepLoft';
 
 // ─── fixtures ─────────────────────────────────────────────────────────────
 
@@ -1183,5 +1184,542 @@ describe('importStep — Phase 2 still-unsupported surfaces', () => {
     expect(result.tree.nodes.every((n) => n.payload.kind === 'revolve')).toBe(true);
     expect(result.tree.nodes[0]!.id).toBe('imported_revolve_0');
     expect(result.tree.nodes[1]!.id).toBe('imported_revolve_1');
+  });
+});
+
+// ─── Phase 3: hand-built STEP fixtures (sweeps) ───────────────────────────
+//
+// Phase 3 adds two new families:
+//   1. SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID — direct extrusion entities
+//      with a planar profile + axis-aligned direction.
+//   2. SURFACE_OF_LINEAR_EXTRUSION BREP — 1 SURFACE_OF_LINEAR_EXTRUSION side
+//      face + 2 PLANE caps with cap normals parallel to the extrusion
+//      direction. Reconstructs a rectangle SweepFeature.
+//
+// Plus SWEPT_DISK_SOLID is recognised but routed to `unsupported` (Phase 4
+// wishlist — low frequency).
+
+/**
+ * Build a STEP file containing an EXTRUDED_AREA_SOLID with a rectangular
+ * profile (width × height in the perpendicular plane) extruded `depth` units
+ * along the given world axis.
+ *
+ * The profile rectangle is placed in the plane perpendicular to the
+ * extrusion axis at origin (0,0,0). Profile corners are emitted as
+ * (radial1, radial2) pairs in the plane perpendicular to `axis`.
+ *
+ * `useSweptAreaSolid` switches the entity name to SWEPT_AREA_SOLID (with
+ * a VECTOR encoding depth via |vec|) instead of EXTRUDED_AREA_SOLID.
+ */
+function makeExtrudedAreaSolidFile(opts: {
+  axis: '+x' | '-x' | '+y' | '-y' | '+z' | '-z' | [number, number, number];
+  width: number;
+  height: number;
+  depth: number;
+  useSweptAreaSolid?: boolean;
+}): string {
+  const { width: w, height: h, depth: d } = opts;
+  let axisDir: [number, number, number];
+  let p: Array<[number, number, number]>;
+  if (Array.isArray(opts.axis)) {
+    axisDir = opts.axis;
+    // Profile in XY plane.
+    p = [[0, 0, 0], [w, 0, 0], [w, h, 0], [0, h, 0]];
+  } else {
+    const sign = opts.axis.startsWith('-') ? -1 : 1;
+    const letter = opts.axis[1];
+    if (letter === 'z') {
+      axisDir = [0, 0, sign];
+      p = [[0, 0, 0], [w, 0, 0], [w, h, 0], [0, h, 0]];
+    } else if (letter === 'y') {
+      axisDir = [0, sign, 0];
+      p = [[0, 0, 0], [w, 0, 0], [w, 0, h], [0, 0, h]];
+    } else {
+      axisDir = [sign, 0, 0];
+      p = [[0, 0, 0], [0, w, 0], [0, w, h], [0, 0, h]];
+    }
+  }
+  const fmt = (n: number) => `${n}.`;
+  const lines: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    lines.push(`#${10 + i}=CARTESIAN_POINT('',(${fmt(p[i]![0])},${fmt(p[i]![1])},${fmt(p[i]![2])}));`);
+  }
+  for (let i = 0; i < 4; i++) {
+    lines.push(`#${20 + i}=VERTEX_POINT('',#${10 + i});`);
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = p[i]!;
+    const b = p[(i + 1) % 4]!;
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const len = Math.hypot(dx, dy, dz) || 1;
+    lines.push(`#${30 + i}=DIRECTION('',(${dx / len}.,${dy / len}.,${dz / len}.));`);
+  }
+  for (let i = 0; i < 4; i++) {
+    lines.push(`#${40 + i}=VECTOR('',#${30 + i},1.);`);
+  }
+  for (let i = 0; i < 4; i++) {
+    lines.push(`#${44 + i}=LINE('',#${10 + i},#${40 + i});`);
+  }
+  for (let i = 0; i < 4; i++) {
+    lines.push(`#${50 + i}=EDGE_CURVE('',#${20 + i},#${20 + ((i + 1) % 4)},#${44 + i},.T.);`);
+  }
+  for (let i = 0; i < 4; i++) {
+    lines.push(`#${60 + i}=ORIENTED_EDGE('',*,*,#${50 + i},.T.);`);
+  }
+  lines.push(`#70=EDGE_LOOP('',(#60,#61,#62,#63));`);
+  lines.push(`#71=FACE_OUTER_BOUND('',#70,.T.);`);
+  lines.push(`#72=PLANAR_FACE('',(#71));`);
+  lines.push(`#80=DIRECTION('',(${axisDir[0]}.,${axisDir[1]}.,${axisDir[2]}.));`);
+  if (opts.useSweptAreaSolid) {
+    // SWEPT_AREA_SOLID with VECTOR (depth = |vec|).
+    lines.push(`#81=VECTOR('',#80,${fmt(d)});`);
+    lines.push(`#90=SWEPT_AREA_SOLID('',#72,#81);`);
+  } else {
+    // EXTRUDED_AREA_SOLID with explicit depth.
+    lines.push(`#90=EXTRUDED_AREA_SOLID('',#72,#80,${fmt(d)});`);
+  }
+  return wrapStepFile(lines.join('\n'));
+}
+
+/**
+ * Build a STEP file with a SURFACE_OF_LINEAR_EXTRUSION-based BREP body:
+ * 1 SURFACE_OF_LINEAR_EXTRUSION side face + 2 PLANE caps. The two caps are
+ * 4-vertex squares (side = `size`) perpendicular to the extrusion axis,
+ * placed at z=0 and z=depth along the axis.
+ *
+ * Mirrors `makeCylinderBrepFile` in structure so the BREP path detector is
+ * exercised in the same way.
+ */
+function makeLinearExtrusionBrepFile(opts: {
+  axis: '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
+  size: number;
+  depth: number;
+}): string {
+  const { size, depth: d } = opts;
+  const sign = opts.axis.startsWith('-') ? -1 : 1;
+  const letter = opts.axis[1] as 'x' | 'y' | 'z';
+  let axisU: [number, number, number];
+  let perp1: [number, number, number];
+  let perp2: [number, number, number];
+  if (letter === 'z') {
+    axisU = [0, 0, sign];
+    perp1 = [1, 0, 0];
+    perp2 = [0, 1, 0];
+  } else if (letter === 'y') {
+    axisU = [0, sign, 0];
+    perp1 = [1, 0, 0];
+    perp2 = [0, 0, 1];
+  } else {
+    axisU = [sign, 0, 0];
+    perp1 = [0, 1, 0];
+    perp2 = [0, 0, 1];
+  }
+  const cb: [number, number, number] = [0, 0, 0];
+  const ct: [number, number, number] = [d * axisU[0], d * axisU[1], d * axisU[2]];
+  function squareAround(c: [number, number, number]): Array<[number, number, number]> {
+    const half = size / 2;
+    return [
+      [c[0] - half * perp1[0] - half * perp2[0], c[1] - half * perp1[1] - half * perp2[1], c[2] - half * perp1[2] - half * perp2[2]],
+      [c[0] + half * perp1[0] - half * perp2[0], c[1] + half * perp1[1] - half * perp2[1], c[2] + half * perp1[2] - half * perp2[2]],
+      [c[0] + half * perp1[0] + half * perp2[0], c[1] + half * perp1[1] + half * perp2[1], c[2] + half * perp1[2] + half * perp2[2]],
+      [c[0] - half * perp1[0] + half * perp2[0], c[1] - half * perp1[1] + half * perp2[1], c[2] - half * perp1[2] + half * perp2[2]],
+    ];
+  }
+  const bottomQuad = squareAround(cb);
+  const topQuad = squareAround(ct);
+
+  const fmt = (n: number) => `${n}.`;
+  const lines: string[] = [];
+
+  // ─── shared anchor + axis direction for extrusion + caps ───────────────
+  lines.push(`#10=CARTESIAN_POINT('',(0.,0.,0.));`);
+  lines.push(`#11=DIRECTION('',(${axisU[0]}.,${axisU[1]}.,${axisU[2]}.));`);
+  lines.push(`#12=VECTOR('',#11,1.);`);
+  // Swept curve (a LINE on the perpendicular plane — placeholder, never
+  // walked since the dispatcher reads SURFACE_OF_LINEAR_EXTRUSION first).
+  lines.push(`#13=DIRECTION('',(${perp1[0]}.,${perp1[1]}.,${perp1[2]}.));`);
+  lines.push(`#14=VECTOR('',#13,1.);`);
+  lines.push(`#15=LINE('',#10,#14);`);
+  lines.push(`#16=SURFACE_OF_LINEAR_EXTRUSION('',#15,#12);`);
+
+  // Side face stub loop — same trick as the cylinder fixture: the
+  // dispatcher does NOT descend into it for non-PLANE surfaces.
+  lines.push(`#20=VERTEX_POINT('',#10);`);
+  lines.push(`#21=EDGE_CURVE('',#20,#20,#15,.T.);`);
+  lines.push(`#22=ORIENTED_EDGE('',*,*,#21,.T.);`);
+  lines.push(`#23=EDGE_LOOP('',(#22));`);
+  lines.push(`#24=FACE_OUTER_BOUND('',#23,.T.);`);
+  lines.push(`#25=ADVANCED_FACE('',(#24),#16,.T.);`);
+
+  let nextId = 30;
+  function emitCap(
+    quad: Array<[number, number, number]>,
+    centre: [number, number, number],
+    normalDir: [number, number, number],
+    startId: number,
+  ): { faceId: number } {
+    const pIds = [startId, startId + 1, startId + 2, startId + 3];
+    for (let i = 0; i < 4; i++) {
+      lines.push(`#${pIds[i]}=CARTESIAN_POINT('',(${fmt(quad[i]![0])},${fmt(quad[i]![1])},${fmt(quad[i]![2])}));`);
+    }
+    const vIds = [startId + 4, startId + 5, startId + 6, startId + 7];
+    for (let i = 0; i < 4; i++) {
+      lines.push(`#${vIds[i]}=VERTEX_POINT('',#${pIds[i]});`);
+    }
+    const dirIds: number[] = [];
+    const vecIds: number[] = [];
+    const lineIds: number[] = [];
+    const ecIds: number[] = [];
+    const oeIds: number[] = [];
+    let id = startId + 8;
+    for (let i = 0; i < 4; i++) {
+      const a = quad[i]!;
+      const b = quad[(i + 1) % 4]!;
+      const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+      const len = Math.hypot(dx, dy, dz) || 1;
+      lines.push(`#${id}=DIRECTION('',(${dx / len}.,${dy / len}.,${dz / len}.));`);
+      dirIds.push(id);
+      id++;
+    }
+    for (let i = 0; i < 4; i++) {
+      lines.push(`#${id}=VECTOR('',#${dirIds[i]},1.);`);
+      vecIds.push(id);
+      id++;
+    }
+    for (let i = 0; i < 4; i++) {
+      lines.push(`#${id}=LINE('',#${pIds[i]},#${vecIds[i]});`);
+      lineIds.push(id);
+      id++;
+    }
+    for (let i = 0; i < 4; i++) {
+      lines.push(`#${id}=EDGE_CURVE('',#${vIds[i]},#${vIds[(i + 1) % 4]},#${lineIds[i]},.T.);`);
+      ecIds.push(id);
+      id++;
+    }
+    for (let i = 0; i < 4; i++) {
+      lines.push(`#${id}=ORIENTED_EDGE('',*,*,#${ecIds[i]},.T.);`);
+      oeIds.push(id);
+      id++;
+    }
+    lines.push(`#${id}=EDGE_LOOP('',(#${oeIds[0]},#${oeIds[1]},#${oeIds[2]},#${oeIds[3]}));`);
+    const loopId = id;
+    id++;
+    lines.push(`#${id}=FACE_OUTER_BOUND('',#${loopId},.T.);`);
+    const bndId = id;
+    id++;
+    lines.push(`#${id}=CARTESIAN_POINT('',(${fmt(centre[0])},${fmt(centre[1])},${fmt(centre[2])}));`);
+    const orgId = id;
+    id++;
+    lines.push(`#${id}=DIRECTION('',(${normalDir[0]}.,${normalDir[1]}.,${normalDir[2]}.));`);
+    const ndirId = id;
+    id++;
+    lines.push(`#${id}=DIRECTION('',(${perp1[0]}.,${perp1[1]}.,${perp1[2]}.));`);
+    const refDirId = id;
+    id++;
+    lines.push(`#${id}=AXIS2_PLACEMENT_3D('',#${orgId},#${ndirId},#${refDirId});`);
+    const axisId = id;
+    id++;
+    lines.push(`#${id}=PLANE('',#${axisId});`);
+    const planeId = id;
+    id++;
+    lines.push(`#${id}=ADVANCED_FACE('',(#${bndId}),#${planeId},.T.);`);
+    const faceId = id;
+    nextId = id + 1;
+    return { faceId };
+  }
+
+  const bottom = emitCap(bottomQuad, cb, [-axisU[0], -axisU[1], -axisU[2]], nextId);
+  const top = emitCap(topQuad, ct, axisU, nextId);
+
+  lines.push(`#${nextId}=CLOSED_SHELL('',(#25,#${bottom.faceId},#${top.faceId}));`);
+  const shellId = nextId++;
+  lines.push(`#${nextId}=MANIFOLD_SOLID_BREP('',#${shellId});`);
+  return wrapStepFile(lines.join('\n'));
+}
+
+// ─── Phase 3 — SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID ─────────────────────
+
+describe('importStep — Phase 3 SWEPT_AREA_SOLID', () => {
+  it('EXTRUDED_AREA_SOLID rectangle + +Z axis → SweepFeature', () => {
+    const file = makeExtrudedAreaSolidFile({ axis: '+z', width: 4, height: 6, depth: 10 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    const node = result.tree.nodes[0]!;
+    expect(node.payload.kind).toBe('sweep');
+    expect(node.id).toBe('imported_sweep_0');
+    expect(node.name).toBe('Imported Swept Solid 1');
+    const f = node.payload as SweepFeature;
+    expect(f.profile.points).toHaveLength(4);
+    expect(f.path).toHaveLength(2);
+    // Path along +Z: only z component changes.
+    const dz = f.path[1]!.z - f.path[0]!.z;
+    expect(Math.abs(dz)).toBeCloseTo(10, 5);
+    // x, y components of path delta should be 0.
+    expect(Math.abs(f.path[1]!.x - f.path[0]!.x)).toBeLessThan(1e-6);
+    expect(Math.abs(f.path[1]!.y - f.path[0]!.y)).toBeLessThan(1e-6);
+    expect(f.mode).toBe('add');
+  });
+
+  it('SWEPT_AREA_SOLID variant (VECTOR-encoded depth) → SweepFeature', () => {
+    const file = makeExtrudedAreaSolidFile({
+      axis: '+z', width: 3, height: 5, depth: 7, useSweptAreaSolid: true,
+    });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    const f = result.tree.nodes[0]!.payload as SweepFeature;
+    expect(f.kind).toBe('sweep');
+    const dz = f.path[1]!.z - f.path[0]!.z;
+    expect(Math.abs(dz)).toBeCloseTo(7, 5);
+  });
+
+  it('extrusion along +X axis → SweepFeature, profile in YZ plane', () => {
+    const file = makeExtrudedAreaSolidFile({ axis: '+x', width: 2, height: 3, depth: 8 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    const f = result.tree.nodes[0]!.payload as SweepFeature;
+    const dx = f.path[1]!.x - f.path[0]!.x;
+    expect(Math.abs(dx)).toBeCloseTo(8, 5);
+    expect(f.profile.points.length).toBe(4);
+  });
+
+  it('extrusion along -Y axis → SweepFeature with negative-Y path delta', () => {
+    const file = makeExtrudedAreaSolidFile({ axis: '-y', width: 2, height: 3, depth: 5 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    const f = result.tree.nodes[0]!.payload as SweepFeature;
+    const dy = f.path[1]!.y - f.path[0]!.y;
+    expect(dy).toBeCloseTo(-5, 5);
+  });
+
+  it('non-axis-aligned extrusion (diagonal) → unsupported', () => {
+    const file = makeExtrudedAreaSolidFile({
+      axis: [1, 1, 0], width: 2, height: 3, depth: 4,
+    });
+    const result = importStep(file);
+    expect(result.tree.nodes).toEqual([]);
+    expect(result.unsupported).toHaveLength(1);
+    expect(result.unsupported[0]).toMatch(/not axis-aligned/);
+  });
+
+  it('zero-depth extrusion → unsupported with degenerate-depth reason', () => {
+    const file = makeExtrudedAreaSolidFile({ axis: '+z', width: 1, height: 1, depth: 0 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toEqual([]);
+    expect(result.unsupported).toHaveLength(1);
+    expect(result.unsupported[0]).toMatch(/degenerate depth/);
+  });
+});
+
+// ─── Phase 3 — SURFACE_OF_LINEAR_EXTRUSION BREP ───────────────────────────
+
+describe('importStep — Phase 3 SURFACE_OF_LINEAR_EXTRUSION BREP', () => {
+  it('1 SURFACE_OF_LINEAR_EXTRUSION + 2 PLANE caps (+Z axis) → SweepFeature', () => {
+    const file = makeLinearExtrusionBrepFile({ axis: '+z', size: 4, depth: 6 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    const node = result.tree.nodes[0]!;
+    expect(node.payload.kind).toBe('sweep');
+    expect(node.id).toBe('imported_sweep_0');
+    const f = node.payload as SweepFeature;
+    expect(f.profile.points).toHaveLength(4);
+    expect(f.path).toHaveLength(2);
+    // Path length ≈ depth.
+    const len = Math.hypot(
+      f.path[1]!.x - f.path[0]!.x,
+      f.path[1]!.y - f.path[0]!.y,
+      f.path[1]!.z - f.path[0]!.z,
+    );
+    expect(len).toBeCloseTo(6, 5);
+  });
+
+  it('extrusion BREP +X axis → SweepFeature', () => {
+    const file = makeLinearExtrusionBrepFile({ axis: '+x', size: 2, depth: 4 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    const f = result.tree.nodes[0]!.payload as SweepFeature;
+    expect(f.kind).toBe('sweep');
+    const dx = Math.abs(f.path[1]!.x - f.path[0]!.x);
+    expect(dx).toBeCloseTo(4, 5);
+  });
+
+  it('extrusion BREP -Z axis → SweepFeature (sign-agnostic)', () => {
+    const file = makeLinearExtrusionBrepFile({ axis: '-z', size: 3, depth: 5 });
+    const result = importStep(file);
+    expect(result.tree.nodes).toHaveLength(1);
+    expect(result.tree.nodes[0]!.payload.kind).toBe('sweep');
+  });
+
+  it('profile rectangle preserved: 4 distinct 2D points in the perpendicular plane', () => {
+    const file = makeLinearExtrusionBrepFile({ axis: '+z', size: 4, depth: 1 });
+    const result = importStep(file);
+    const f = result.tree.nodes[0]!.payload as SweepFeature;
+    expect(f.profile.points.length).toBe(4);
+    // The square is side=4 centred at origin, so corners are at (±2, ±2).
+    const xs = f.profile.points.map((p) => p.x).sort();
+    const ys = f.profile.points.map((p) => p.y).sort();
+    expect(xs[0]).toBeCloseTo(-2, 4);
+    expect(xs[3]).toBeCloseTo(2, 4);
+    expect(ys[0]).toBeCloseTo(-2, 4);
+    expect(ys[3]).toBeCloseTo(2, 4);
+  });
+});
+
+// ─── Phase 3 — mixed files ────────────────────────────────────────────────
+
+describe('importStep — Phase 3 mixed files', () => {
+  it('box + sweep (EXTRUDED_AREA_SOLID) → tree has 2 nodes (extrude + sweep)', () => {
+    const boxFile = writeExtrudeAsStep(rectExtrude(4, 5, 6));
+    const sweepFile = makeExtrudedAreaSolidFile({ axis: '+z', width: 2, height: 3, depth: 4 });
+    // Splice sweep's DATA into box's file (offset ids by +500 to dodge collisions).
+    const boxDataStart = boxFile.search(/\bDATA\s*;/);
+    const boxEndsec = boxFile.indexOf('ENDSEC;', boxDataStart);
+    const sweepDataStart = sweepFile.search(/\bDATA\s*;/);
+    const sweepEndsec = sweepFile.indexOf('ENDSEC;', sweepDataStart);
+    const offset = 500;
+    const sweepBlock = sweepFile
+      .slice(sweepDataStart + 'DATA;'.length, sweepEndsec)
+      .replace(/#(\d+)/g, (_, n) => `#${Number(n) + offset}`);
+    const merged = boxFile.slice(0, boxEndsec) + sweepBlock + boxFile.slice(boxEndsec);
+    const result = importStep(merged);
+    expect(result.tree.nodes).toHaveLength(2);
+    const kinds = result.tree.nodes.map((n) => n.payload.kind).sort();
+    expect(kinds).toEqual(['extrude', 'sweep']);
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it('cylinder + sweep → tree has 2 nodes (revolve + sweep)', () => {
+    const cylFile = makeCylinderBrepFile({ axis: '+z', radius: 2, height: 4 });
+    const sweepFile = makeExtrudedAreaSolidFile({ axis: '+x', width: 1, height: 1, depth: 3 });
+    const cylDataStart = cylFile.search(/\bDATA\s*;/);
+    const cylEndsec = cylFile.indexOf('ENDSEC;', cylDataStart);
+    const sweepDataStart = sweepFile.search(/\bDATA\s*;/);
+    const sweepEndsec = sweepFile.indexOf('ENDSEC;', sweepDataStart);
+    const offset = 1000;
+    const sweepBlock = sweepFile
+      .slice(sweepDataStart + 'DATA;'.length, sweepEndsec)
+      .replace(/#(\d+)/g, (_, n) => `#${Number(n) + offset}`);
+    const merged = cylFile.slice(0, cylEndsec) + sweepBlock + cylFile.slice(cylEndsec);
+    const result = importStep(merged);
+    expect(result.tree.nodes).toHaveLength(2);
+    const kinds = result.tree.nodes.map((n) => n.payload.kind).sort();
+    expect(kinds).toEqual(['revolve', 'sweep']);
+  });
+
+  it('two extrusions in one file → 2 separate SweepFeature nodes', () => {
+    const a = makeExtrudedAreaSolidFile({ axis: '+z', width: 1, height: 1, depth: 2 });
+    const b = makeExtrudedAreaSolidFile({ axis: '+x', width: 1, height: 1, depth: 3 });
+    const aDataStart = a.search(/\bDATA\s*;/);
+    const aEndsec = a.indexOf('ENDSEC;', aDataStart);
+    const bDataStart = b.search(/\bDATA\s*;/);
+    const bEndsec = b.indexOf('ENDSEC;', bDataStart);
+    const offset = 1000;
+    const bBlock = b
+      .slice(bDataStart + 'DATA;'.length, bEndsec)
+      .replace(/#(\d+)/g, (_, n) => `#${Number(n) + offset}`);
+    const merged = a.slice(0, aEndsec) + bBlock + a.slice(aEndsec);
+    const result = importStep(merged);
+    expect(result.tree.nodes).toHaveLength(2);
+    expect(result.tree.nodes.every((n) => n.payload.kind === 'sweep')).toBe(true);
+    expect(result.tree.nodes[0]!.id).toBe('imported_sweep_0');
+    expect(result.tree.nodes[1]!.id).toBe('imported_sweep_1');
+  });
+});
+
+// ─── Phase 3 — SWEPT_DISK_SOLID (wishlist) ────────────────────────────────
+
+describe('importStep — Phase 3 SWEPT_DISK_SOLID', () => {
+  it('SWEPT_DISK_SOLID entity → unsupported with Phase 4 wishlist reason', () => {
+    // Minimal SWEPT_DISK_SOLID stub. We don't model the directrix curve in
+    // any detail since the importer rejects this entity by name before
+    // looking at the args.
+    const file = wrapStepFile(`#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=CARTESIAN_POINT('',(10.,0.,0.));
+#12=DIRECTION('',(1.,0.,0.));
+#13=VECTOR('',#12,10.);
+#14=LINE('',#10,#13);
+#20=SWEPT_DISK_SOLID('',#14,5.,3.,0.,1.);`);
+    const result = importStep(file);
+    expect(result.tree.nodes).toEqual([]);
+    expect(result.unsupported).toHaveLength(1);
+    expect(result.unsupported[0]).toMatch(/SWEPT_DISK_SOLID/);
+    expect(result.unsupported[0]).toMatch(/Phase 4 wishlist/);
+  });
+
+  it('SWEPT_DISK_SOLID + EXTRUDED_AREA_SOLID in same file → 1 sweep + 1 unsupported', () => {
+    const sweep = makeExtrudedAreaSolidFile({ axis: '+z', width: 2, height: 2, depth: 3 });
+    const diskBlock = `
+#900=CARTESIAN_POINT('',(0.,0.,0.));
+#901=DIRECTION('',(1.,0.,0.));
+#902=VECTOR('',#901,5.);
+#903=LINE('',#900,#902);
+#910=SWEPT_DISK_SOLID('',#903,2.,1.,0.,1.);`;
+    const sweepEndsec = sweep.indexOf('ENDSEC;', sweep.search(/\bDATA\s*;/));
+    const merged = sweep.slice(0, sweepEndsec) + diskBlock + '\n' + sweep.slice(sweepEndsec);
+    const result = importStep(merged);
+    expect(result.tree.nodes).toHaveLength(1);
+    expect(result.tree.nodes[0]!.payload.kind).toBe('sweep');
+    expect(result.unsupported).toHaveLength(1);
+    expect(result.unsupported[0]).toMatch(/SWEPT_DISK_SOLID/);
+  });
+});
+
+// ─── Phase 3 — unsupported surfaces (BSPLINE / NURBS) ─────────────────────
+
+describe('importStep — Phase 3 NURBS / BSPLINE surfaces still rejected', () => {
+  it('NURBS_SURFACE family → unsupported with named reason', () => {
+    // Plain NURBS_SURFACE — recognised but not importable in Phase 3.
+    const file = makeSingleFaceCurvedSurfaceFile(
+      `#15=B_SPLINE_SURFACE_WITH_KNOTS('',1,1,((#10,#10),(#10,#10)),.UNSPECIFIED.,.F.,.F.,.F.,(2,2),(2,2),(0.,1.),(0.,1.),.UNSPECIFIED.);`,
+    );
+    const result = importStep(file);
+    expect(result.tree.nodes).toEqual([]);
+    expect(result.unsupported).toHaveLength(1);
+    // Either uses the BSPLINE name or matches the generic unsupported channel.
+    expect(result.unsupported[0]).toMatch(/B_SPLINE|surface/i);
+  });
+
+  it('BSPLINE_SURFACE_WITH_KNOTS face in solid → unsupported (Phase 4 wishlist)', () => {
+    const file = makeSingleFaceCurvedSurfaceFile(
+      `#15=BSPLINE_SURFACE_WITH_KNOTS('',1,1,((#10,#10),(#10,#10)),.UNSPECIFIED.,.F.,.F.,.F.,(2,2),(2,2),(0.,1.),(0.,1.),.UNSPECIFIED.);`,
+    );
+    const result = importStep(file);
+    expect(result.unsupported[0]).toMatch(/BSPLINE_SURFACE/);
+  });
+
+  it('linear extrusion BREP with wrong cap-normal direction → unsupported', () => {
+    // Splice the cylinder cap-normal mismatch into a linear-extrusion fixture
+    // by swapping the SURFACE_OF_LINEAR_EXTRUSION direction's axis component
+    // so it no longer aligns with the cap normals.
+    const base = makeLinearExtrusionBrepFile({ axis: '+z', size: 2, depth: 3 });
+    // Replace the shared axis direction (#11 = DIRECTION (0,0,1)) with (1,0,0)
+    // so the extrusion vector ends up perpendicular to the cap normals.
+    const corrupted = base.replace(
+      `#11=DIRECTION('',(0.,0.,1.));`,
+      `#11=DIRECTION('',(1.,0.,0.));`,
+    );
+    const result = importStep(corrupted);
+    expect(result.tree.nodes).toEqual([]);
+    expect(result.unsupported).toHaveLength(1);
+    expect(result.unsupported[0]).toMatch(/not parallel|extrusion/);
+  });
+});
+
+// ─── Phase 3 — entry-format invariants ────────────────────────────────────
+
+describe('importStep — Phase 3 entry-format invariants', () => {
+  it('sweep nodes follow the imported_sweep_N id pattern', () => {
+    const file = makeExtrudedAreaSolidFile({ axis: '+z', width: 1, height: 1, depth: 2 });
+    const result = importStep(file, { namePrefix: 'cad' });
+    expect(result.tree.nodes[0]!.id).toBe('cad_sweep_0');
+  });
+
+  it('Phase 3 unsupported entries use the `#<id>: <reason>` format', () => {
+    const file = wrapStepFile(`#10=CARTESIAN_POINT('',(0.,0.,0.));
+#11=DIRECTION('',(1.,0.,0.));
+#12=VECTOR('',#11,1.);
+#13=LINE('',#10,#12);
+#20=SWEPT_DISK_SOLID('',#13,1.,0.5,0.,1.);`);
+    const result = importStep(file);
+    expect(result.unsupported[0]).toMatch(/^#\d+: /);
   });
 });
