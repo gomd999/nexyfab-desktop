@@ -64,6 +64,7 @@ import SketchConstraintOverlay, {
 } from './SketchConstraintOverlay';
 import SketchConstraintAiPanel from './SketchConstraintAiPanel';
 import SketchGroupPanel from './SketchGroupPanel';
+import SketchExpressionsPanel from './SketchExpressionsPanel';
 import {
   createSketchGroupManager,
   type SketchGroup,
@@ -225,6 +226,8 @@ interface Dict {
   opScale: string;
   opMirror: string;
   showTransform: string;
+  expressions: string;
+  showExpressions: string;
   transformScopeAll: string;
   transformScopeSelection: string;
   transformApply: string;
@@ -287,6 +290,8 @@ const dict: Record<EditorLang, Dict> = {
     opScale: '크기',
     opMirror: '대칭',
     showTransform: '변환 패널 표시',
+    expressions: '변수',
+    showExpressions: '변수 패널 표시',
     transformScopeAll: '전체',
     transformScopeSelection: '선택',
     transformApply: '적용',
@@ -347,6 +352,8 @@ const dict: Record<EditorLang, Dict> = {
     opScale: 'Scale',
     opMirror: 'Mirror',
     showTransform: 'Show transform panel',
+    expressions: 'Variables',
+    showExpressions: 'Show variables panel',
     transformScopeAll: 'All',
     transformScopeSelection: 'Selection',
     transformApply: 'Apply',
@@ -407,6 +414,8 @@ const dict: Record<EditorLang, Dict> = {
     opScale: '拡縮',
     opMirror: 'ミラー',
     showTransform: '変換パネル表示',
+    expressions: '変数',
+    showExpressions: '変数パネル表示',
     transformScopeAll: '全体',
     transformScopeSelection: '選択',
     transformApply: '適用',
@@ -467,6 +476,8 @@ const dict: Record<EditorLang, Dict> = {
     opScale: '缩放',
     opMirror: '镜像',
     showTransform: '显示变换面板',
+    expressions: '变量',
+    showExpressions: '显示变量面板',
     transformScopeAll: '全部',
     transformScopeSelection: '选择',
     transformApply: '应用',
@@ -527,6 +538,8 @@ const dict: Record<EditorLang, Dict> = {
     opScale: 'Escalar',
     opMirror: 'Reflejar',
     showTransform: 'Mostrar panel de transformación',
+    expressions: 'Variables',
+    showExpressions: 'Mostrar panel de variables',
     transformScopeAll: 'Todo',
     transformScopeSelection: 'Selección',
     transformApply: 'Aplicar',
@@ -587,6 +600,8 @@ const dict: Record<EditorLang, Dict> = {
     opScale: 'تكبير',
     opMirror: 'انعكاس',
     showTransform: 'إظهار لوحة التحويل',
+    expressions: 'متغيرات',
+    showExpressions: 'إظهار لوحة المتغيرات',
     transformScopeAll: 'الكل',
     transformScopeSelection: 'المحدد',
     transformApply: 'تطبيق',
@@ -1824,6 +1839,12 @@ export default function SolverSketchEditor({
   const toggleGroups = useCallback((): void => {
     setGroupsOpen((prev) => !prev);
   }, []);
+  // Parametric-expression scratchpad (lib/sketch/sketchExpressions). Default
+  // OFF; self-contained panel — no solver coupling, so no recapture on open.
+  const [expressionsOpen, setExpressionsOpen] = useState<boolean>(false);
+  const toggleExpressions = useCallback((): void => {
+    setExpressionsOpen((prev) => !prev);
+  }, []);
   // Re-read manager snapshot whenever a mutation bumps the counter.
   const groupSnapshot = useMemo<ReadonlyArray<SketchGroup>>(() => {
     if (!groupManager) return [];
@@ -2924,6 +2945,24 @@ export default function SolverSketchEditor({
           </button>
           <button
             type="button"
+            onClick={toggleExpressions}
+            data-testid="solver-sketch-expressions-toggle"
+            aria-pressed={expressionsOpen}
+            title={t.showExpressions}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              background: expressionsOpen ? '#0e7490' : '#fff',
+              color: expressionsOpen ? '#fff' : '#111827',
+              border: '1px solid ' + (expressionsOpen ? '#0e7490' : '#d1d5db'),
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {t.expressions}
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
             style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -3581,6 +3620,22 @@ export default function SolverSketchEditor({
               onScale={handleGroupScale}
               onToggleLock={handleGroupToggleLock}
             />
+          </div>
+        )}
+        {/*
+          SketchExpressionsPanel — Phase 2.x parametric-expression scratchpad.
+          Default OFF (toggled via the "Variables" button in the title bar).
+          Self-contained: the engine is pure + eval-free and owns its own row
+          state, so the panel never touches the live solver — it's a place to
+          work out dimension values (width * cols + gaps, 90deg, sin(pi/4))
+          before binding them to constraints in a later phase.
+        */}
+        {expressionsOpen && (
+          <div
+            data-testid="solver-sketch-expressions-panel-wrapper"
+            style={{ marginTop: 8 }}
+          >
+            <SketchExpressionsPanel lang={lang} />
           </div>
         )}
       </aside>
