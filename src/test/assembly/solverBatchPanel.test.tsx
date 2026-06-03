@@ -287,4 +287,260 @@ describe('SolverBatchPanel', () => {
     const reset = screen.getByTestId('solver-batch-reset') as HTMLButtonElement;
     expect(reset.disabled).toBe(true);
   });
+
+  // ─── constraint-check bolt-on (toggle defaults OFF, 2-kind inline form) ──
+  describe('constraint check integration', () => {
+    it('toggle is visible and defaults to off, so neither form nor column renders', async () => {
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      const toggle = screen.getByTestId(
+        'batch-constraint-toggle',
+      ) as HTMLInputElement;
+      expect(toggle).toBeInTheDocument();
+      expect(toggle.checked).toBe(false);
+      // Form not rendered while off.
+      expect(screen.queryByTestId('batch-constraint-form')).toBeNull();
+      // Run anyway: constraint column must NOT render → zero regression.
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-batch-table')).toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByTestId('batch-result-constraints-0'),
+      ).toBeNull();
+      expect(
+        screen.queryByTestId('batch-result-constraints-header'),
+      ).toBeNull();
+    });
+
+    it('toggling ON reveals the two-kind inline form (mass + part count)', () => {
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      const toggle = screen.getByTestId(
+        'batch-constraint-toggle',
+      ) as HTMLInputElement;
+      fireEvent.click(toggle);
+      expect(toggle.checked).toBe(true);
+      expect(screen.getByTestId('batch-constraint-form')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('batch-constraint-mass-input'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('batch-constraint-partcount-input'),
+      ).toBeInTheDocument();
+    });
+
+    it('after batch solve with toggle ON, every result row gets a constraint column', async () => {
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-batch-table')).toBeInTheDocument(),
+      );
+      // Column header rendered.
+      expect(
+        screen.getByTestId('batch-result-constraints-header'),
+      ).toBeInTheDocument();
+      // One cell per result row.
+      expect(
+        screen.getByTestId('batch-result-constraints-0'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('batch-result-constraints-1'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('batch-result-constraints-2'),
+      ).toBeInTheDocument();
+    });
+
+    it('classifies a passing assembly (empty parts under low limits) as PASS', async () => {
+      // SAMPLE_RESULTS each carry state.parts = []. With a mass cap > 0 and a
+      // part-count cap ≥ 0 every row should pass (empty parts → 0 mass, 0 count).
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      // Defaults (1000g, 50 parts) are already passing; explicit also fine.
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-batch-table')).toBeInTheDocument(),
+      );
+      const cell0 = screen.getByTestId('batch-result-constraints-0');
+      expect(cell0.getAttribute('data-constraint-pass')).toBe('true');
+      expect(cell0.textContent).toMatch(/pass/i);
+    });
+
+    it('classifies a failing assembly (part_count above limit) as FAIL with count', async () => {
+      // Stub solveBatch to return a result whose solved state carries enough
+      // parts to bust the part_count_limit=0 input below.
+      const fakeResult: BatchSolveResult = {
+        id: 'big',
+        durationMs: 1.0,
+        result: {
+          state: {
+            parts: [
+              {
+                id: 'p1',
+                name: 'p1',
+                partTemplateId: 'tpl',
+                position: { x: 0, y: 0, z: 0 },
+                orientation: { x: 0, y: 0, z: 0, w: 1 },
+                fixed: false,
+              },
+              {
+                id: 'p2',
+                name: 'p2',
+                partTemplateId: 'tpl',
+                position: { x: 0, y: 0, z: 0 },
+                orientation: { x: 0, y: 0, z: 0, w: 1 },
+                fixed: false,
+              },
+            ],
+            mates: [],
+          },
+          success: true,
+          iterations: 1,
+          finalMaxResidual: 1e-9,
+          residuals: [],
+        },
+      };
+      const onRun = vi.fn(async () => [fakeResult]);
+      render(
+        <SolverBatchPanel
+          lang="en"
+          items={[makeItem('big')]}
+          onRun={onRun}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      const partCountInput = screen.getByTestId(
+        'batch-constraint-partcount-input',
+      ) as HTMLInputElement;
+      // Force a failure: limit = 1, actual = 2.
+      fireEvent.change(partCountInput, { target: { value: '1' } });
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-batch-table')).toBeInTheDocument(),
+      );
+      const cell = screen.getByTestId('batch-result-constraints-0');
+      expect(cell.getAttribute('data-constraint-pass')).toBe('false');
+      // The part_count_limit (1) was busted, so failCount should be ≥ 1.
+      expect(
+        Number(cell.getAttribute('data-constraint-fail-count')),
+      ).toBeGreaterThanOrEqual(1);
+      expect(cell.textContent).toMatch(/fail/i);
+    });
+
+    it('reset clears constraint check results alongside the table', async () => {
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('batch-result-constraints-0'),
+        ).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByTestId('solver-batch-reset'));
+      // Whole table — including the constraint cell — should be gone.
+      expect(
+        screen.queryByTestId('batch-result-constraints-0'),
+      ).toBeNull();
+      expect(screen.queryByTestId('solver-batch-table')).toBeNull();
+    });
+
+    it('toggling OFF after a run hides the constraint column from the existing results', async () => {
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('batch-result-constraints-0'),
+        ).toBeInTheDocument(),
+      );
+      // Flip toggle off — the existing table re-renders without the column.
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      expect(
+        screen.queryByTestId('batch-result-constraints-0'),
+      ).toBeNull();
+      expect(
+        screen.queryByTestId('batch-result-constraints-header'),
+      ).toBeNull();
+      // But the rest of the table is intact (regression guard).
+      expect(screen.getByTestId('solver-batch-table')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-batch-row-0')).toBeInTheDocument();
+    });
+
+    it('inputs are disabled while a batch run is in flight', async () => {
+      let resolveRun: ((r: BatchSolveResult[]) => void) | null = null;
+      const onRun = vi.fn(
+        () =>
+          new Promise<BatchSolveResult[]>((resolve) => {
+            resolveRun = resolve;
+          }),
+      );
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-batch-spinner')).toBeInTheDocument(),
+      );
+      const massInput = screen.getByTestId(
+        'batch-constraint-mass-input',
+      ) as HTMLInputElement;
+      const partInput = screen.getByTestId(
+        'batch-constraint-partcount-input',
+      ) as HTMLInputElement;
+      expect(massInput.disabled).toBe(true);
+      expect(partInput.disabled).toBe(true);
+      resolveRun!([...SAMPLE_RESULTS]);
+      await waitFor(() =>
+        expect(screen.queryByTestId('solver-batch-spinner')).toBeNull(),
+      );
+    });
+
+    it.each<[SolverBatchLang, RegExp]>([
+      ['ko', /제약 조건 검사 추가/],
+      ['en', /Add constraint check/i],
+      ['ja', /制約チェックを追加/],
+      ['zh', /添加约束检查/],
+      ['es', /Añadir verificación/i],
+      ['ar', /إضافة فحص القيود/],
+    ])('renders the %s constraint toggle label from the dictionary', (lang, pattern) => {
+      render(<SolverBatchPanel lang={lang} items={SAMPLE_ITEMS} onRun={vi.fn()} />);
+      // Toggle label is rendered as a sibling <span> inside the <label>; we
+      // assert by walking from the testid checkbox to its parent label.
+      const toggle = screen.getByTestId('batch-constraint-toggle');
+      const labelText = toggle.parentElement?.textContent ?? '';
+      expect(labelText).toMatch(pattern);
+    });
+
+    it('non-numeric input is skipped from the built constraint list (no NaN poisoning)', async () => {
+      const onRun = vi.fn(async () => [...SAMPLE_RESULTS]);
+      render(<SolverBatchPanel lang="en" items={SAMPLE_ITEMS} onRun={onRun} />);
+      fireEvent.click(screen.getByTestId('batch-constraint-toggle'));
+      // Wipe both inputs to empty strings → Number('') === 0 which is fine
+      // for partCount but should be skipped for mass (≤ 0). With both inputs
+      // empty the constraint list is partial; the run must still succeed.
+      fireEvent.change(
+        screen.getByTestId('batch-constraint-mass-input'),
+        { target: { value: '' } },
+      );
+      fireEvent.click(screen.getByTestId('solver-batch-run'));
+      await waitFor(() =>
+        expect(screen.getByTestId('solver-batch-table')).toBeInTheDocument(),
+      );
+      // Constraint column still rendered (toggle is ON regardless of inputs).
+      expect(
+        screen.getByTestId('batch-result-constraints-0'),
+      ).toBeInTheDocument();
+      // Empty parts + zero-or-empty limits still pass.
+      expect(
+        screen.getByTestId('batch-result-constraints-0').getAttribute(
+          'data-constraint-pass',
+        ),
+      ).toBe('true');
+    });
+  });
 });

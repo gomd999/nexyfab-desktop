@@ -47,6 +47,11 @@ import {
   type BatchSolveResult,
   type SolveBatchOptions,
 } from '@/lib/assembly/solverBatch';
+import {
+  checkAssemblyConstraints,
+  type AssemblyConstraint,
+  type ConstraintCheckResult,
+} from '@/lib/assembly/assemblyConstraints';
 
 // ─── i18n ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +83,13 @@ interface PanelDict {
   statsAvg: string;
   statsFailures: string;
   statsItems: string;
+  // Constraint check (optional bolt-on UX — toggle defaults off)
+  addConstraintCheck: string;
+  constraintResults: string;
+  constraintPass: string;
+  constraintFail: string;
+  constraintMassLabel: string;
+  constraintPartCountLabel: string;
 }
 
 const DICT: Record<SolverBatchLang, PanelDict> = {
@@ -103,6 +115,12 @@ const DICT: Record<SolverBatchLang, PanelDict> = {
     statsAvg: '평균',
     statsFailures: '실패',
     statsItems: '항목',
+    addConstraintCheck: '제약 조건 검사 추가',
+    constraintResults: '제약 결과',
+    constraintPass: '통과',
+    constraintFail: '실패',
+    constraintMassLabel: '총 질량 한계(g)',
+    constraintPartCountLabel: '부품 수 한계',
   },
   en: {
     title: 'Solver batch',
@@ -126,6 +144,12 @@ const DICT: Record<SolverBatchLang, PanelDict> = {
     statsAvg: 'avg',
     statsFailures: 'failures',
     statsItems: 'items',
+    addConstraintCheck: 'Add constraint check',
+    constraintResults: 'constraints',
+    constraintPass: 'pass',
+    constraintFail: 'fail',
+    constraintMassLabel: 'total mass limit (g)',
+    constraintPartCountLabel: 'part count limit',
   },
   ja: {
     title: 'バッチソルバー',
@@ -149,6 +173,12 @@ const DICT: Record<SolverBatchLang, PanelDict> = {
     statsAvg: '平均',
     statsFailures: '失敗',
     statsItems: '項目',
+    addConstraintCheck: '制約チェックを追加',
+    constraintResults: '制約結果',
+    constraintPass: '合格',
+    constraintFail: '不合格',
+    constraintMassLabel: '総質量上限(g)',
+    constraintPartCountLabel: '部品数上限',
   },
   zh: {
     title: '批量求解',
@@ -172,6 +202,12 @@ const DICT: Record<SolverBatchLang, PanelDict> = {
     statsAvg: '平均',
     statsFailures: '失败',
     statsItems: '项目',
+    addConstraintCheck: '添加约束检查',
+    constraintResults: '约束结果',
+    constraintPass: '通过',
+    constraintFail: '失败',
+    constraintMassLabel: '总质量限制(g)',
+    constraintPartCountLabel: '零件数限制',
   },
   es: {
     title: 'Lote de solver',
@@ -195,6 +231,12 @@ const DICT: Record<SolverBatchLang, PanelDict> = {
     statsAvg: 'promedio',
     statsFailures: 'fallos',
     statsItems: 'elementos',
+    addConstraintCheck: 'Añadir verificación de restricciones',
+    constraintResults: 'restricciones',
+    constraintPass: 'aprobado',
+    constraintFail: 'fallido',
+    constraintMassLabel: 'límite de masa total (g)',
+    constraintPartCountLabel: 'límite de piezas',
   },
   ar: {
     title: 'تشغيل دفعة المحلل',
@@ -218,6 +260,12 @@ const DICT: Record<SolverBatchLang, PanelDict> = {
     statsAvg: 'المتوسط',
     statsFailures: 'الإخفاقات',
     statsItems: 'العناصر',
+    addConstraintCheck: 'إضافة فحص القيود',
+    constraintResults: 'نتائج القيود',
+    constraintPass: 'نجاح',
+    constraintFail: 'فشل',
+    constraintMassLabel: 'حد الكتلة الإجمالي (g)',
+    constraintPartCountLabel: 'حد عدد الأجزاء',
   },
 };
 
@@ -281,16 +329,63 @@ export function SolverBatchPanel({
     ReadonlyArray<BatchSolveItem>
   >([]);
 
+  // ─── constraint check bolt-on (toggle defaults off — zero regression on
+  //     existing batch UX) ─────────────────────────────────────────────────
+  const [constraintCheckEnabled, setConstraintCheckEnabled] = useState(false);
+  const [massLimitInput, setMassLimitInput] = useState('1000');
+  const [partCountLimitInput, setPartCountLimitInput] = useState('50');
+  // Snapshot of the constraints used for the most recent run, so the result
+  // column stays accurate even if the user edits inputs after solving.
+  const [resultConstraintChecks, setResultConstraintChecks] = useState<
+    ReadonlyArray<ConstraintCheckResult | null>
+  >([]);
+
   const handleRun = useCallback(async () => {
     if (items.length === 0) return;
     setRunning(true);
     setError(null);
     const snapshot = items;
+    // Build the constraint list ONCE per Run so each item is checked
+    // against the same set. Inputs are parsed defensively — a non-finite
+    // value skips the constraint entirely (rather than poisoning the
+    // checker with NaN, which would silently pass numeric comparisons).
+    let constraints: ReadonlyArray<AssemblyConstraint> = [];
+    if (constraintCheckEnabled) {
+      const built: AssemblyConstraint[] = [];
+      const mass = Number(massLimitInput);
+      if (Number.isFinite(mass) && mass > 0) {
+        built.push({ kind: 'total_mass_limit', maxGrams: mass });
+      }
+      const partCount = Number(partCountLimitInput);
+      if (Number.isFinite(partCount) && partCount >= 0) {
+        built.push({ kind: 'part_count_limit', max: Math.floor(partCount) });
+      }
+      constraints = built;
+    }
     try {
       const runFn = onRun ?? solveBatch;
       const next = await runFn(snapshot, { maxParallel });
       setResults(next);
       setSolvedItems(snapshot);
+      // Compute constraint check per result. We check against the SOLVED
+      // state (next[i].result.state) so post-solve part positions feed
+      // bbox-aware constraints when those are added later. Toggle off →
+      // map of nulls so the result column stays absent (no regression).
+      if (constraintCheckEnabled && constraints.length > 0) {
+        const checks: (ConstraintCheckResult | null)[] = next.map((r) => {
+          try {
+            return checkAssemblyConstraints(r.result.state, constraints, {});
+          } catch {
+            // Defensive: the checker is pure but a malformed state could
+            // surface here once additional kinds are wired in. Treat as
+            // "no result" rather than blowing up the whole batch row.
+            return null;
+          }
+        });
+        setResultConstraintChecks(checks);
+      } else {
+        setResultConstraintChecks(next.map(() => null));
+      }
     } catch (e) {
       // Surface the message but keep the panel functional — Run again is
       // the expected recovery path. Matches SolverBenchmarkPanel UX.
@@ -298,12 +393,20 @@ export function SolverBatchPanel({
     } finally {
       setRunning(false);
     }
-  }, [items, onRun, maxParallel]);
+  }, [
+    items,
+    onRun,
+    maxParallel,
+    constraintCheckEnabled,
+    massLimitInput,
+    partCountLimitInput,
+  ]);
 
   const handleReset = useCallback(() => {
     setResults([]);
     setSolvedItems([]);
     setError(null);
+    setResultConstraintChecks([]);
   }, []);
 
   const handleSliderChange = useCallback(
@@ -483,6 +586,95 @@ export function SolverBatchPanel({
           don't need a stylesheet wired up. */}
       <style>{`@keyframes solver-batch-spin { to { transform: rotate(360deg); } }`}</style>
 
+      {/* Constraint check bolt-on. Toggle defaults OFF; when OFF the form
+          and the per-row column never render so existing UX is byte-for-byte
+          identical. */}
+      <div
+        style={{
+          marginBottom: 12,
+          fontSize: 12,
+          color: '#374151',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            data-testid="batch-constraint-toggle"
+            checked={constraintCheckEnabled}
+            onChange={(e) => setConstraintCheckEnabled(e.target.checked)}
+            disabled={running}
+          />
+          <span>{dict.addConstraintCheck}</span>
+        </label>
+        {constraintCheckEnabled && (
+          <div
+            data-testid="batch-constraint-form"
+            style={{
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              padding: '8px 10px',
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+            }}
+          >
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span>{dict.constraintMassLabel}</span>
+              <input
+                type="number"
+                data-testid="batch-constraint-mass-input"
+                value={massLimitInput}
+                onChange={(e) => setMassLimitInput(e.target.value)}
+                disabled={running}
+                min={0}
+                step={1}
+                style={{
+                  width: 90,
+                  padding: '2px 4px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 3,
+                  fontSize: 12,
+                }}
+              />
+            </label>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span>{dict.constraintPartCountLabel}</span>
+              <input
+                type="number"
+                data-testid="batch-constraint-partcount-input"
+                value={partCountLimitInput}
+                onChange={(e) => setPartCountLimitInput(e.target.value)}
+                disabled={running}
+                min={0}
+                step={1}
+                style={{
+                  width: 90,
+                  padding: '2px 4px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 3,
+                  fontSize: 12,
+                }}
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
       {itemsEmpty && (
         <div
           data-testid="solver-batch-empty-items"
@@ -582,6 +774,14 @@ export function SolverBatchPanel({
                 <th style={th}>{dict.colDuration}</th>
                 <th style={th}>{dict.colSuccess}</th>
                 <th style={th}>{dict.colResidual}</th>
+                {constraintCheckEnabled && (
+                  <th
+                    style={th}
+                    data-testid="batch-result-constraints-header"
+                  >
+                    {dict.constraintResults}
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -620,6 +820,35 @@ export function SolverBatchPanel({
                     >
                       {r.result.finalMaxResidual.toExponential(3)}
                     </td>
+                    {constraintCheckEnabled && (() => {
+                      const check = resultConstraintChecks[i] ?? null;
+                      // Errors are the only "fail" signal — warnings do
+                      // not flip ok=false in the checker either, so we keep
+                      // the binary classification consistent. The failCount
+                      // exposes the raw number for the UI badge.
+                      const failCount = check
+                        ? check.violations.filter(
+                            (v) => v.severity === 'error',
+                          ).length
+                        : 0;
+                      const passed = check?.ok ?? false;
+                      return (
+                        <td
+                          style={{
+                            ...td,
+                            color: passed ? '#16a34a' : '#b91c1c',
+                            fontWeight: 600,
+                          }}
+                          data-testid={`batch-result-constraints-${i}`}
+                          data-constraint-pass={passed ? 'true' : 'false'}
+                          data-constraint-fail-count={failCount}
+                        >
+                          {passed
+                            ? dict.constraintPass
+                            : `${dict.constraintFail} (${failCount})`}
+                        </td>
+                      );
+                    })()}
                   </tr>
                 );
               })}
