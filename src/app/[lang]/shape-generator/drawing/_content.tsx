@@ -40,6 +40,12 @@ import {
   type PaperSize,
   type Sheet,
 } from '@/lib/drawing/sheet';
+import {
+  applyTemplate,
+  TEMPLATES,
+  type SheetTemplate,
+  type SheetTemplateTitleblock,
+} from '@/lib/drawing/sheetTemplate';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { writeStepWithPmi } from '@/lib/brep-bridge/stepWriteWithPmi';
 import { writeStepWithPmiBindings } from '@/lib/brep-bridge/stepWriteWithPmiBindings';
@@ -84,6 +90,22 @@ const SAMPLE_PARTS: ReadonlyArray<{ sourceId: string; labelKey: string }> = [
 ];
 
 const PAPER_SIZES: ReadonlyArray<PaperSize> = ['A4', 'A3', 'A2', 'A1', 'A0'];
+
+// ─── Phase 4.1.3 sheet-template picker keys ──────────────────────────────
+/**
+ * Ordered list of template keys exposed in the dropdown. `'none'` is the
+ * sentinel for "no template applied" — it preserves the original sheet's
+ * paperSize/customPaper untouched. The remaining four entries map 1:1 to
+ * the {@link TEMPLATES} registry.
+ */
+type TemplateKey = 'none' | 'engineering' | 'architectural' | 'minimal' | 'isoA3';
+const TEMPLATE_KEYS: ReadonlyArray<TemplateKey> = [
+  'none',
+  'engineering',
+  'architectural',
+  'minimal',
+  'isoA3',
+];
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -159,6 +181,17 @@ interface PageDict {
   occtBindingsInputLabel: string;
   occtBindingsPlaceholder: string;
   occtBindingsParseError: string;
+  /** Phase 4.1.3 sheet template picker. */
+  templatePicker: string;
+  templateNone: string;
+  templateEngineering: string;
+  templateArchitectural: string;
+  templateMinimal: string;
+  templateIsoA3: string;
+  titleblockSectionLabel: string;
+  titleblockTitle: string;
+  titleblockDrawnBy: string;
+  titleblockProject: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -232,6 +265,16 @@ const DICT: Record<string, PageDict> = {
     occtBindingsInputLabel: 'OCCT 바인딩 (JSON 배열)',
     occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
     occtBindingsParseError: 'OCCT 바인딩 입력 파싱 실패',
+    templatePicker: '시트 템플릿',
+    templateNone: '없음',
+    templateEngineering: '엔지니어링',
+    templateArchitectural: '건축',
+    templateMinimal: '미니멀',
+    templateIsoA3: 'ISO A3',
+    titleblockSectionLabel: '제목 블록',
+    titleblockTitle: '제목',
+    titleblockDrawnBy: '작성자',
+    titleblockProject: '프로젝트',
   },
   en: {
     title: 'Drawing Studio',
@@ -303,6 +346,16 @@ const DICT: Record<string, PageDict> = {
     occtBindingsInputLabel: 'OCCT bindings (JSON array)',
     occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
     occtBindingsParseError: 'Failed to parse OCCT bindings input',
+    templatePicker: 'Sheet template',
+    templateNone: 'None',
+    templateEngineering: 'Engineering',
+    templateArchitectural: 'Architectural',
+    templateMinimal: 'Minimal',
+    templateIsoA3: 'ISO A3',
+    titleblockSectionLabel: 'Title block',
+    titleblockTitle: 'Title',
+    titleblockDrawnBy: 'Drawn by',
+    titleblockProject: 'Project',
   },
   ja: {
     title: '図面スタジオ',
@@ -374,6 +427,16 @@ const DICT: Record<string, PageDict> = {
     occtBindingsInputLabel: 'OCCT バインディング (JSON 配列)',
     occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
     occtBindingsParseError: 'OCCT バインディング入力の解析に失敗しました',
+    templatePicker: 'シートテンプレート',
+    templateNone: 'なし',
+    templateEngineering: 'エンジニアリング',
+    templateArchitectural: '建築',
+    templateMinimal: 'ミニマル',
+    templateIsoA3: 'ISO A3',
+    titleblockSectionLabel: 'タイトルブロック',
+    titleblockTitle: 'タイトル',
+    titleblockDrawnBy: '作成者',
+    titleblockProject: 'プロジェクト',
   },
   zh: {
     title: '图纸工作室',
@@ -445,6 +508,16 @@ const DICT: Record<string, PageDict> = {
     occtBindingsInputLabel: 'OCCT 绑定 (JSON 数组)',
     occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
     occtBindingsParseError: 'OCCT 绑定输入解析失败',
+    templatePicker: '图纸模板',
+    templateNone: '无',
+    templateEngineering: '工程',
+    templateArchitectural: '建筑',
+    templateMinimal: '极简',
+    templateIsoA3: 'ISO A3',
+    titleblockSectionLabel: '标题栏',
+    titleblockTitle: '标题',
+    titleblockDrawnBy: '绘制者',
+    titleblockProject: '项目',
   },
   es: {
     title: 'Estudio de Planos',
@@ -516,6 +589,16 @@ const DICT: Record<string, PageDict> = {
     occtBindingsInputLabel: 'Vínculos OCCT (matriz JSON)',
     occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
     occtBindingsParseError: 'Error al analizar los vínculos OCCT',
+    templatePicker: 'Plantilla de hoja',
+    templateNone: 'Ninguna',
+    templateEngineering: 'Ingeniería',
+    templateArchitectural: 'Arquitectónica',
+    templateMinimal: 'Mínima',
+    templateIsoA3: 'ISO A3',
+    titleblockSectionLabel: 'Cuadro de título',
+    titleblockTitle: 'Título',
+    titleblockDrawnBy: 'Dibujado por',
+    titleblockProject: 'Proyecto',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -587,6 +670,16 @@ const DICT: Record<string, PageDict> = {
     occtBindingsInputLabel: 'روابط OCCT (مصفوفة JSON)',
     occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
     occtBindingsParseError: 'فشل تحليل إدخال روابط OCCT',
+    templatePicker: 'قالب الورقة',
+    templateNone: 'بلا',
+    templateEngineering: 'هندسي',
+    templateArchitectural: 'معماري',
+    templateMinimal: 'بسيط',
+    templateIsoA3: 'ISO A3',
+    titleblockSectionLabel: 'كتلة العنوان',
+    titleblockTitle: 'العنوان',
+    titleblockDrawnBy: 'رسم بواسطة',
+    titleblockProject: 'المشروع',
   },
 };
 
@@ -1081,6 +1174,44 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   /** Screen-space pixel position of the current snap (passed to the indicator). */
   const [snapScreenPos, setSnapScreenPos] = useState<{ x: number; y: number } | null>(null);
 
+  // ─── Phase 4.1.3 sheet template picker state ─────────────────────────
+  /**
+   * Currently-selected template key. Default `'none'` preserves the
+   * original drawing-page behaviour (no titleblock, sheet uses the
+   * user-picked `paperSize`). Selecting any other key routes the
+   * memoised `sheet` through {@link applyTemplate} so the SheetRenderer
+   * receives a {@link TemplatedSheet} carrying the template's
+   * titleblock + border metadata.
+   */
+  const [templateKey, setTemplateKey] = useState<TemplateKey>('none');
+  /**
+   * Editable overlay applied on top of the registry template's titleblock
+   * fields. Only `title` / `drawnBy` / `project` are user-editable here —
+   * `checkedBy`, `date`, `scale`, and `sheetNumber` keep the registry
+   * defaults until a richer titleblock editor lands.
+   */
+  const [titleblockOverrides, setTitleblockOverrides] = useState<{
+    title: string;
+    drawnBy: string;
+    project: string;
+  }>({ title: '', drawnBy: '', project: '' });
+
+  // Whenever the template selection changes, seed the editable overlay
+  // with the registry's titleblock fields so the inputs reflect the
+  // current state. `none` clears the overlay entirely.
+  React.useEffect(() => {
+    if (templateKey === 'none') {
+      setTitleblockOverrides({ title: '', drawnBy: '', project: '' });
+      return;
+    }
+    const tb = TEMPLATES[templateKey]?.titleblock;
+    setTitleblockOverrides({
+      title: tb?.title ?? '',
+      drawnBy: tb?.drawnBy ?? '',
+      project: tb?.project ?? '',
+    });
+  }, [templateKey]);
+
   // ─── Phase 5.3 assembly mode state ────────────────────────────────────
   const [assemblyMode, setAssemblyMode] = useState<boolean>(false);
   const [sampleName, setSampleName] = useState<SampleAssemblyName>(
@@ -1431,12 +1562,34 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       paperSize,
       scale,
     });
-    return {
+    const withAnnotations: Sheet = {
       ...base,
       dimensions: annotations.dimensions,
       gdtCallouts: annotations.gdtCallouts,
     };
-  }, [sourceId, paperSize, scale, annotations]);
+    if (templateKey === 'none') return withAnnotations;
+    const registryTemplate = TEMPLATES[templateKey];
+    if (!registryTemplate) return withAnnotations;
+    /**
+     * Splice the editable title / drawnBy / project overrides on top of
+     * the registry titleblock so the resulting sheet.template carries the
+     * user's edits. `applyTemplate` deep-clones internally, so passing a
+     * freshly-built template here doesn't mutate the registry.
+     */
+    const mergedTitleblock: SheetTemplateTitleblock | undefined = registryTemplate.titleblock
+      ? {
+          ...registryTemplate.titleblock,
+          title: titleblockOverrides.title,
+          drawnBy: titleblockOverrides.drawnBy,
+          project: titleblockOverrides.project,
+        }
+      : undefined;
+    const merged: SheetTemplate = {
+      ...registryTemplate,
+      titleblock: mergedTitleblock,
+    };
+    return applyTemplate(withAnnotations, merged);
+  }, [sourceId, paperSize, scale, annotations, templateKey, titleblockOverrides]);
 
   const firstViewportId = sheet.viewports[0]?.id ?? '';
 
@@ -2383,6 +2536,103 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 style={{ padding: 6 }}
               />
             </label>
+
+            {/*
+              Phase 4.1.3 sheet-template picker. Default 'none' preserves
+              the legacy behaviour byte-for-byte (no template metadata
+              attached, paperSize follows the user-picked dropdown).
+              Selecting any other key routes the memoised `sheet` through
+              applyTemplate so the SheetRenderer receives a TemplatedSheet
+              carrying the registry's titleblock + border metadata,
+              spliced with the user-editable title/drawnBy/project fields
+              from the inline inputs below.
+            */}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+              <span style={{ fontWeight: 600 }}>{dict.templatePicker}</span>
+              <select
+                data-testid="drawing-template-select"
+                value={templateKey}
+                onChange={(e) => setTemplateKey(e.target.value as TemplateKey)}
+                style={{ padding: 6 }}
+              >
+                {TEMPLATE_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {k === 'none'
+                      ? dict.templateNone
+                      : k === 'engineering'
+                        ? dict.templateEngineering
+                        : k === 'architectural'
+                          ? dict.templateArchitectural
+                          : k === 'minimal'
+                            ? dict.templateMinimal
+                            : dict.templateIsoA3}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/*
+              Editable titleblock fields — only rendered when the active
+              template carries a titleblock (engineering / architectural /
+              isoA3). Minimal + none templates have no titleblock so the
+              section collapses to nothing.
+            */}
+            {templateKey !== 'none' && TEMPLATES[templateKey]?.titleblock ? (
+              <fieldset
+                data-testid="drawing-template-titleblock-editor"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 4,
+                  padding: '6px 8px',
+                  margin: 0,
+                  fontSize: 12,
+                  color: '#374151',
+                }}
+              >
+                <legend style={{ padding: '0 4px', fontWeight: 600 }}>
+                  {dict.titleblockSectionLabel}
+                </legend>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontWeight: 600 }}>{dict.titleblockTitle}</span>
+                  <input
+                    type="text"
+                    data-testid="drawing-template-title-input"
+                    value={titleblockOverrides.title}
+                    onChange={(e) =>
+                      setTitleblockOverrides((prev) => ({ ...prev, title: e.target.value }))
+                    }
+                    style={{ padding: 4 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontWeight: 600 }}>{dict.titleblockDrawnBy}</span>
+                  <input
+                    type="text"
+                    data-testid="drawing-template-drawnBy-input"
+                    value={titleblockOverrides.drawnBy}
+                    onChange={(e) =>
+                      setTitleblockOverrides((prev) => ({ ...prev, drawnBy: e.target.value }))
+                    }
+                    style={{ padding: 4 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontWeight: 600 }}>{dict.titleblockProject}</span>
+                  <input
+                    type="text"
+                    data-testid="drawing-template-project-input"
+                    value={titleblockOverrides.project}
+                    onChange={(e) =>
+                      setTitleblockOverrides((prev) => ({ ...prev, project: e.target.value }))
+                    }
+                    style={{ padding: 4 }}
+                  />
+                </label>
+              </fieldset>
+            ) : null}
 
             {/*
               Snap toggle — opt-in cursor snapping for dimension /

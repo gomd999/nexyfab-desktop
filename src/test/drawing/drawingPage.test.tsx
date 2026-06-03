@@ -372,3 +372,194 @@ describe('DrawingPageContent — cursor snap (Phase 4.7)', () => {
     }
   });
 });
+
+// ─── Phase 4.1.3 sheet template picker ──────────────────────────────────
+/**
+ * Sheet template picker UX:
+ *   - The `drawing-template-select` dropdown is always visible (under the
+ *     scale input) defaulting to `'none'`. While 'none' is selected the
+ *     resulting Sheet IR carries NO `template` field, preserving the
+ *     legacy behaviour byte-for-byte (the 46 pre-existing tests above
+ *     don't see the titleblock editor mounted).
+ *   - Selecting `engineering` / `architectural` / `isoA3` reveals the
+ *     inline `drawing-template-titleblock-editor` fieldset with three
+ *     editable inputs (`title`, `drawnBy`, `project`). Edits surface in
+ *     the Sheet IR's `template.titleblock.*` fields via applyTemplate.
+ *   - `minimal` is a valid selection that intentionally has NO
+ *     titleblock — the editor stays collapsed.
+ *
+ * The Sheet IR is observed through the JSON export blob (already wired
+ * for tests above) so we don't need a new DOM surface to assert the
+ * template metadata reached the Sheet.
+ */
+describe('DrawingPageContent — sheet template picker (Phase 4.1.3)', () => {
+  /**
+   * Read back the JSON sheet payload from the most recent
+   * URL.createObjectURL call. The drawing-page JSON export wraps the
+   * `Sheet` IR (or `TemplatedSheet` once a template is applied) as a
+   * `application/json` Blob — this jsdom build does NOT expose
+   * `.text()` on Blob, so we use FileReader#readAsText to pull the
+   * UTF-8 source out. Mirrors the pattern in `drawingPage.step.test.tsx`.
+   */
+  async function blobToText(blob: Blob): Promise<string> {
+    if (typeof (blob as Blob & { text?: () => Promise<string> }).text === 'function') {
+      return (blob as Blob & { text: () => Promise<string> }).text();
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(blob);
+    });
+  }
+  async function exportedSheetJson(): Promise<Record<string, unknown>> {
+    const blob = createObjectUrlSpy.mock.calls.at(-1)?.[0] as Blob | undefined;
+    if (!blob) throw new Error('no blob captured');
+    const text = await blobToText(blob);
+    return JSON.parse(text) as Record<string, unknown>;
+  }
+
+  it('template dropdown is visible by default with none selected', () => {
+    mount();
+    const select = screen.getByTestId('drawing-template-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    expect(select.value).toBe('none');
+    // Titleblock editor stays collapsed at the default selection.
+    expect(screen.queryByTestId('drawing-template-titleblock-editor')).toBeNull();
+  });
+
+  it('selecting engineering exposes the inline titleblock editor with 3 inputs', () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'engineering' },
+    });
+    expect(screen.getByTestId('drawing-template-titleblock-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-template-title-input')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-template-drawnBy-input')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-template-project-input')).toBeInTheDocument();
+  });
+
+  it('engineering selection seeds the title input with the registry default (UNTITLED)', () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'engineering' },
+    });
+    const titleInput = screen.getByTestId('drawing-template-title-input') as HTMLInputElement;
+    expect(titleInput.value).toBe('UNTITLED');
+  });
+
+  it('selecting minimal does NOT mount the titleblock editor (template has no titleblock)', () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'minimal' },
+    });
+    expect(screen.queryByTestId('drawing-template-titleblock-editor')).toBeNull();
+  });
+
+  it('all four registry templates are reachable from the dropdown', () => {
+    mount();
+    const select = screen.getByTestId('drawing-template-select') as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value).sort();
+    expect(values).toEqual(['architectural', 'engineering', 'isoA3', 'minimal', 'none'].sort());
+  });
+
+  it('selecting engineering attaches template metadata to the exported JSON sheet (paperSize=A3)', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'engineering' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-export-json-button'));
+    const sheet = await exportedSheetJson();
+    expect(sheet.paperSize).toBe('A3');
+    const tpl = sheet.template as { name?: string; titleblock?: { title?: string }; border?: { margin?: number } };
+    expect(tpl).toBeDefined();
+    expect(tpl.name).toBe('engineering');
+    expect(tpl.border?.margin).toBeGreaterThan(0);
+  });
+
+  it('selecting architectural overrides paperSize to A1 in the exported sheet', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'architectural' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-export-json-button'));
+    const sheet = await exportedSheetJson();
+    expect(sheet.paperSize).toBe('A1');
+    const tpl = sheet.template as { name?: string };
+    expect(tpl?.name).toBe('architectural');
+  });
+
+  it('selecting isoA3 surfaces the ISO 7200 titleblock title in the editor input', () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'isoA3' },
+    });
+    const titleInput = screen.getByTestId('drawing-template-title-input') as HTMLInputElement;
+    expect(titleInput.value).toBe('ISO 7200');
+  });
+
+  it('editing the title input flows the new value into the exported sheet template', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'engineering' },
+    });
+    fireEvent.change(screen.getByTestId('drawing-template-title-input'), {
+      target: { value: 'Bracket A' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-export-json-button'));
+    const sheet = await exportedSheetJson();
+    const tpl = sheet.template as { titleblock?: { title?: string } };
+    expect(tpl.titleblock?.title).toBe('Bracket A');
+  });
+
+  it('editing drawnBy + project flows both into the exported sheet template', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'engineering' },
+    });
+    fireEvent.change(screen.getByTestId('drawing-template-drawnBy-input'), {
+      target: { value: 'Kim' },
+    });
+    fireEvent.change(screen.getByTestId('drawing-template-project-input'), {
+      target: { value: 'Apollo' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-export-json-button'));
+    const sheet = await exportedSheetJson();
+    const tpl = sheet.template as { titleblock?: { drawnBy?: string; project?: string } };
+    expect(tpl.titleblock?.drawnBy).toBe('Kim');
+    expect(tpl.titleblock?.project).toBe('Apollo');
+  });
+
+  it('switching back to none clears the template metadata from the exported sheet', async () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'engineering' },
+    });
+    fireEvent.change(screen.getByTestId('drawing-template-select'), {
+      target: { value: 'none' },
+    });
+    expect(screen.queryByTestId('drawing-template-titleblock-editor')).toBeNull();
+    fireEvent.click(screen.getByTestId('drawing-export-json-button'));
+    const sheet = await exportedSheetJson();
+    expect(sheet.template).toBeUndefined();
+  });
+
+  it('template picker label is localised for ko / en / ja / zh / es / ar', () => {
+    const cases: Array<[string, RegExp]> = [
+      ['ko', /템플릿/],
+      ['en', /template/i],
+      ['ja', /テンプレート/],
+      ['zh', /模板/],
+      ['es', /plantilla/i],
+      ['ar', /قالب/],
+    ];
+    for (const [lang, re] of cases) {
+      const { unmount } = mount(lang);
+      const select = screen.getByTestId('drawing-template-select');
+      const label = select.closest('label');
+      expect(label).not.toBeNull();
+      expect(label!.textContent ?? '').toMatch(re);
+      unmount();
+    }
+  });
+});
