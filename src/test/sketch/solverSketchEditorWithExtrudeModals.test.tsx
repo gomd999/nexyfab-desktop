@@ -2493,3 +2493,150 @@ describe('SolverSketchEditorWithExtrude — CollabStatusBadge integration', () =
     expect(await screen.findByTestId('solver-collab-status')).toBeInTheDocument();
   });
 });
+
+/**
+ * Wrapper-level `defaultShowSketchAi` prop + matching
+ * `solver-wrapper-ai-constraints-toggle` button (Phase 3.AI).
+ *
+ * The wrapper exposes a top-level "AI constraints" toggle that seeds the
+ * inner SolverSketchEditor's `defaultShowSketchAi` prop. Flipping the
+ * wrapper toggle bumps a remount key on the editor so the new seed takes
+ * effect on first paint. The editor's own title-bar "AI" toggle continues
+ * to operate on internal state after that.
+ *
+ * Default behavior is OFF — every prior wrapper test that asserted no
+ * `sketch-ai-panel` on first paint keeps passing.
+ */
+describe('SolverSketchEditorWithExtrude — wrapper-level AI constraints toggle', () => {
+  it('default (prop omitted) → no sketch-ai-panel mounted, wrapper toggle aria-pressed=false', async () => {
+    await mountReady();
+    expect(screen.queryByTestId('sketch-ai-panel')).toBeNull();
+    const toggle = screen.getByTestId('solver-wrapper-ai-constraints-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('defaultShowSketchAi=true → editor mounts with sketch-ai-panel already visible', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        defaultShowSketchAi={true}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(
+      () => expect(editor.getAttribute('data-state')).toBe('ready'),
+      { timeout: 10000 },
+    );
+    // Panel auto-mounts because the inner editor seeded aiPanelOpen=true.
+    expect(screen.getByTestId('sketch-ai-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('sketch-ai-input')).toBeInTheDocument();
+    // Wrapper toggle reflects the on state.
+    expect(
+      screen.getByTestId('solver-wrapper-ai-constraints-toggle').getAttribute('aria-pressed'),
+    ).toBe('true');
+    // The editor's own title-bar toggle is also pressed (state mirrors seed).
+    expect(
+      screen.getByTestId('solver-sketch-ai-toggle').getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('clicking the wrapper toggle from off → on mounts the panel via remount', async () => {
+    await mountReady();
+    // Confirm baseline: panel hidden.
+    expect(screen.queryByTestId('sketch-ai-panel')).toBeNull();
+    const toggle = screen.getByTestId('solver-wrapper-ai-constraints-toggle');
+    fireEvent.click(toggle);
+    // Wait for the remount to finish + solver to come back ready.
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(
+      () => expect(editor.getAttribute('data-state')).toBe('ready'),
+      { timeout: 10000 },
+    );
+    // Panel now visible because the seeded defaultShowSketchAi=true took effect.
+    expect(await screen.findByTestId('sketch-ai-panel')).toBeInTheDocument();
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('clicking the wrapper toggle from on → off unmounts the panel via remount', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        defaultShowSketchAi={true}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(
+      () => expect(editor.getAttribute('data-state')).toBe('ready'),
+      { timeout: 10000 },
+    );
+    expect(screen.getByTestId('sketch-ai-panel')).toBeInTheDocument();
+    const toggle = screen.getByTestId('solver-wrapper-ai-constraints-toggle');
+    fireEvent.click(toggle);
+    // After remount + ready, panel should be gone.
+    const editor2 = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(
+      () => expect(editor2.getAttribute('data-state')).toBe('ready'),
+      { timeout: 10000 },
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('sketch-ai-panel')).toBeNull();
+    });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('after seeding via prop, the editor\'s own title-bar AI toggle still works', async () => {
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        defaultShowSketchAi={true}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(
+      () => expect(editor.getAttribute('data-state')).toBe('ready'),
+      { timeout: 10000 },
+    );
+    // Panel mounted via the seed.
+    expect(screen.getByTestId('sketch-ai-panel')).toBeInTheDocument();
+    // Editor's own toggle flips it OFF.
+    fireEvent.click(screen.getByTestId('solver-sketch-ai-toggle'));
+    expect(screen.queryByTestId('sketch-ai-panel')).toBeNull();
+    // And ON again.
+    fireEvent.click(screen.getByTestId('solver-sketch-ai-toggle'));
+    expect(screen.getByTestId('sketch-ai-panel')).toBeInTheDocument();
+  });
+
+  it('regression: wrapper toggle button does not blow up extrude button wiring', async () => {
+    // Smoke regression — adding the wrapper AI toggle must not perturb the
+    // existing extrude / sweep / loft / pattern toolbar enablement logic.
+    await mountReady();
+    expect(
+      (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await drawRect();
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
+    // Flipping the wrapper AI toggle remounts the editor — sketch state is
+    // lost, so the extrude button returns to disabled. This is the documented
+    // tradeoff of the remount approach (preserves simplicity in the editor's
+    // self-managed state model). The user re-draws as needed.
+    fireEvent.click(screen.getByTestId('solver-wrapper-ai-constraints-toggle'));
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(
+      () => expect(editor.getAttribute('data-state')).toBe('ready'),
+      { timeout: 10000 },
+    );
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('solver-extrude-button') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
+  });
+});

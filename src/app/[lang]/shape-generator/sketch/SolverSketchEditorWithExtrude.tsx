@@ -491,6 +491,22 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
    *   - throw to surface an error in the panel.
    */
   plannerLlmFetcher?: ((text: string) => Promise<PlanIntent | null>) | null;
+  /**
+   * Phase 3.AI convenience prop — when `true`, the inner SolverSketchEditor
+   * mounts with the SketchConstraintAiPanel open by default (vs the prior
+   * default of hidden behind the title-bar "AI" toggle). The wrapper also
+   * exposes a `solver-wrapper-ai-constraints-toggle` button so callers can
+   * flip the seed value at runtime; flipping it bumps a remount key on the
+   * editor so the new default takes effect immediately.
+   *
+   * Forwarded directly to `SolverSketchEditor.defaultShowSketchAi`; the
+   * editor's title-bar "AI" toggle still works as before — it operates on
+   * the editor's internal state after the seed is applied.
+   *
+   * Default: `false` (back-compat — every prior test that asserted the AI
+   * panel is NOT mounted on first paint keeps passing).
+   */
+  defaultShowSketchAi?: boolean;
 }
 
 export default function SolverSketchEditorWithExtrude(
@@ -510,8 +526,22 @@ export default function SolverSketchEditorWithExtrude(
     stepImportFetcher,
     revolveAxisHint,
     plannerLlmFetcher,
+    defaultShowSketchAi = false,
     ...editorProps
   } = props;
+  // Wrapper-level state for the AI constraints toggle. Seeded from the
+  // `defaultShowSketchAi` prop and flipped via the wrapper toggle button.
+  // The value is passed down as `defaultShowSketchAi` to the editor and is
+  // paired with a remount key (incremented on every toggle) so the new
+  // seed takes effect on first paint of the remounted editor. The editor's
+  // own title-bar "AI" toggle continues to flip its internal state
+  // independently after that.
+  const [wrapperAiOn, setWrapperAiOn] = useState<boolean>(defaultShowSketchAi);
+  const [editorRemountKey, setEditorRemountKey] = useState<number>(0);
+  const toggleWrapperAi = useCallback(() => {
+    setWrapperAiOn((prev) => !prev);
+    setEditorRemountKey((k) => k + 1);
+  }, []);
   const t = dict[(editorProps.lang ?? 'en') as Lang];
   const treeLang = (editorProps.lang ?? 'en') as FeatureTreeLang;
   const plannerLang = (editorProps.lang ?? 'en') as PlannerLang;
@@ -1272,7 +1302,12 @@ export default function SolverSketchEditorWithExtrude(
         onMouseMove={handleSketchMouseMove}
         style={{ position: 'relative' }}
       >
-        <SolverSketchEditor {...editorProps} onSketchChange={composedOnSketchChange} />
+        <SolverSketchEditor
+          key={`editor-${editorRemountKey}`}
+          {...editorProps}
+          onSketchChange={composedOnSketchChange}
+          defaultShowSketchAi={wrapperAiOn}
+        />
         {collabEnabled && (
           <CursorOverlay
             awareness={{ remoteStates: crdtAwareness.remoteStates }}
@@ -1615,6 +1650,34 @@ export default function SolverSketchEditorWithExtrude(
             }}
           >
             📊 {t.stats}
+          </button>
+          {/*
+            Wrapper-level "AI constraints" toggle (Phase 3.AI). Flips the
+            `defaultShowSketchAi` seed passed to the inner SolverSketchEditor,
+            paired with a remount key bump so the new seed takes effect on
+            next paint. The editor's own title-bar "AI" button keeps working
+            independently after that. Default-off — back-compat with every
+            prior wrapper test that asserted no AI panel on first paint.
+          */}
+          <button
+            type="button"
+            onClick={toggleWrapperAi}
+            data-testid="solver-wrapper-ai-constraints-toggle"
+            aria-pressed={wrapperAiOn}
+            aria-label="Toggle sketch AI constraints panel default"
+            title="Toggle sketch AI constraints panel default"
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: wrapperAiOn ? '#7c3aed' : '#fff',
+              border: '1px solid ' + (wrapperAiOn ? '#6d28d9' : '#d1d5db'),
+              color: wrapperAiOn ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            🪄 AI constraints
           </button>
           <label
             data-testid="solver-collab-toggle-label"

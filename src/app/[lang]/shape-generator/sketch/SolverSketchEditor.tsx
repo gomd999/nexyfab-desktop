@@ -63,6 +63,12 @@ import SketchConstraintOverlay, {
   type Pt as OverlayPt,
 } from './SketchConstraintOverlay';
 import SketchConstraintAiPanel from './SketchConstraintAiPanel';
+import SketchGroupPanel from './SketchGroupPanel';
+import {
+  createSketchGroupManager,
+  type SketchGroup,
+  type SketchGroupManager,
+} from '@/lib/sketch/sketchGroup';
 import {
   SELECTED_PLACEHOLDER,
   type SketchConstraintIntent,
@@ -157,6 +163,16 @@ export interface SolverSketchEditorProps {
     points: ReadonlyArray<{ id: string; x: number; y: number }>;
     lines: ReadonlyArray<{ id: string; p1: string; p2: string }>;
   }) => void;
+  /**
+   * Optional initial open-state for the SketchConstraintAiPanel. Defaults to
+   * `false` (panel hidden behind the "AI" toggle in the title bar). When
+   * `true`, the panel mounts on first paint — useful for wrapper components
+   * (e.g. SolverSketchEditorWithExtrude) that want to expose an
+   * "AI constraints on by default" option at a higher level without
+   * touching SketchConstraintAiPanel itself. The toggle button continues to
+   * flip the live state from whichever side the prop seeds.
+   */
+  defaultShowSketchAi?: boolean;
 }
 
 // ─── i18n (6 langs) ───────────────────────────────────────────────────────
@@ -194,6 +210,10 @@ interface Dict {
   importMerge: string;
   aiConstraint: string;
   showAiConstraint: string;
+  groups: string;
+  groupSelected: string;
+  groupName: string;
+  showGroups: string;
 }
 
 const dict: Record<EditorLang, Dict> = {
@@ -230,6 +250,10 @@ const dict: Record<EditorLang, Dict> = {
     importMerge: '병합',
     aiConstraint: 'AI',
     showAiConstraint: 'AI 제약 패널 표시',
+    groups: '그룹',
+    groupSelected: '선택 항목 그룹화',
+    groupName: '그룹 이름',
+    showGroups: '그룹 패널 표시',
   },
   en: {
     title: 'Solver Sketch',
@@ -264,6 +288,10 @@ const dict: Record<EditorLang, Dict> = {
     importMerge: 'Merge',
     aiConstraint: 'AI',
     showAiConstraint: 'Show AI constraint panel',
+    groups: 'Groups',
+    groupSelected: 'Group selected',
+    groupName: 'Group name',
+    showGroups: 'Show groups panel',
   },
   ja: {
     title: 'ソルバースケッチ',
@@ -298,6 +326,10 @@ const dict: Record<EditorLang, Dict> = {
     importMerge: 'マージ',
     aiConstraint: 'AI',
     showAiConstraint: 'AI拘束パネルを表示',
+    groups: 'グループ',
+    groupSelected: '選択をグループ化',
+    groupName: 'グループ名',
+    showGroups: 'グループパネル表示',
   },
   zh: {
     title: '求解器草图',
@@ -332,6 +364,10 @@ const dict: Record<EditorLang, Dict> = {
     importMerge: '合并',
     aiConstraint: 'AI',
     showAiConstraint: '显示AI约束面板',
+    groups: '组',
+    groupSelected: '将所选编为组',
+    groupName: '组名',
+    showGroups: '显示分组面板',
   },
   es: {
     title: 'Boceto con solver',
@@ -366,6 +402,10 @@ const dict: Record<EditorLang, Dict> = {
     importMerge: 'Combinar',
     aiConstraint: 'IA',
     showAiConstraint: 'Mostrar panel de restricciones IA',
+    groups: 'Grupos',
+    groupSelected: 'Agrupar selección',
+    groupName: 'Nombre del grupo',
+    showGroups: 'Mostrar panel de grupos',
   },
   ar: {
     title: 'رسم بمحلل',
@@ -400,6 +440,10 @@ const dict: Record<EditorLang, Dict> = {
     importMerge: 'دمج',
     aiConstraint: 'ذكاء',
     showAiConstraint: 'إظهار لوحة قيود الذكاء',
+    groups: 'مجموعات',
+    groupSelected: 'تجميع المحدد',
+    groupName: 'اسم المجموعة',
+    showGroups: 'إظهار لوحة المجموعات',
   },
 };
 
@@ -590,6 +634,7 @@ export default function SolverSketchEditor({
   height = DEFAULT_HEIGHT,
   onClose,
   projectId,
+  defaultShowSketchAi = false,
 }: SolverSketchEditorProps): React.ReactElement {
   const t = dict[lang];
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -1594,10 +1639,128 @@ export default function SolverSketchEditor({
   //
   // Solver rejections (over-constrained, fixed point, etc.) are swallowed
   // per-call so a single bad line doesn't abort the whole intent.
-  const [aiPanelOpen, setAiPanelOpen] = useState<boolean>(false);
+  // Initial state seeded from `defaultShowSketchAi` so wrappers can expose a
+  // top-level "AI constraints on by default" prop. The toggle button below
+  // continues to flip the live state regardless of the seed value.
+  const [aiPanelOpen, setAiPanelOpen] = useState<boolean>(defaultShowSketchAi);
   const toggleAiPanel = useCallback((): void => {
     setAiPanelOpen((prev) => !prev);
   }, []);
+
+  // ─── group manager (Phase 2.x sketchGroup integration) ──────────────────
+  //
+  // The SketchGroupManager is an external layer over the solver — it mutates
+  // group state in place. We bump `groupsVersion` after every mutation to
+  // force a re-render so the panel sees fresh `manager.groups` snapshots.
+  // Default OFF — "Groups" toggle button gates panel mount.
+  const groupManager = useMemo<SketchGroupManager | null>(
+    () => (solver ? createSketchGroupManager(solver) : null),
+    [solver],
+  );
+  const [groupsOpen, setGroupsOpen] = useState<boolean>(false);
+  const [groupsVersion, setGroupsVersion] = useState<number>(0);
+  const bumpGroups = useCallback((): void => {
+    setGroupsVersion((v) => v + 1);
+  }, []);
+  const toggleGroups = useCallback((): void => {
+    setGroupsOpen((prev) => !prev);
+  }, []);
+  // Re-read manager snapshot whenever a mutation bumps the counter.
+  const groupSnapshot = useMemo<ReadonlyArray<SketchGroup>>(() => {
+    if (!groupManager) return [];
+    void groupsVersion;
+    return groupManager.groups;
+  }, [groupManager, groupsVersion]);
+
+  const handleGroupCreate = useCallback(
+    (defaultName: string, entityIds: string[]): void => {
+      if (!groupManager) return;
+      // Optional user-override prompt: lets the user rename the default
+      // "Group N" before the entry lands. Cancel → abort. Empty string
+      // → keep default. Same pattern as the dimension/offset prompts.
+      let name = defaultName;
+      try {
+        const raw =
+          typeof window !== 'undefined' && typeof window.prompt === 'function'
+            ? window.prompt(t.groupName, defaultName)
+            : defaultName;
+        if (raw === null) return;
+        if (raw.trim() !== '') name = raw.trim();
+      } catch {
+        /* non-DOM env — keep default */
+      }
+      try {
+        groupManager.create(name, entityIds);
+        bumpGroups();
+        // Clear selection after grouping so the user can re-select to issue
+        // a follow-up grouping or per-entity edits.
+        setSelection([]);
+      } catch {
+        /* unknown id / empty list — manager throws; surface nothing */
+      }
+    },
+    [groupManager, t.groupName, bumpGroups],
+  );
+
+  const handleGroupRemove = useCallback(
+    (groupId: string): void => {
+      if (!groupManager) return;
+      groupManager.remove(groupId);
+      bumpGroups();
+    },
+    [groupManager, bumpGroups],
+  );
+
+  const handleGroupTranslate = useCallback(
+    (groupId: string, dx: number, dy: number): void => {
+      if (!groupManager) return;
+      try {
+        groupManager.translate(groupId, dx, dy);
+        solveAndApply();
+        bumpGroups();
+      } catch {
+        /* locked / non-finite — swallow */
+      }
+    },
+    [groupManager, solveAndApply, bumpGroups],
+  );
+
+  const handleGroupRotate = useCallback(
+    (groupId: string, angleRad: number): void => {
+      if (!groupManager) return;
+      try {
+        groupManager.rotate(groupId, angleRad);
+        solveAndApply();
+        bumpGroups();
+      } catch {
+        /* locked / non-finite — swallow */
+      }
+    },
+    [groupManager, solveAndApply, bumpGroups],
+  );
+
+  const handleGroupScale = useCallback(
+    (groupId: string, factor: number): void => {
+      if (!groupManager) return;
+      try {
+        groupManager.scale(groupId, factor);
+        solveAndApply();
+        bumpGroups();
+      } catch {
+        /* locked / factor=0 / non-finite — swallow */
+      }
+    },
+    [groupManager, solveAndApply, bumpGroups],
+  );
+
+  const handleGroupToggleLock = useCallback(
+    (groupId: string): void => {
+      if (!groupManager) return;
+      groupManager.toggleLock(groupId);
+      bumpGroups();
+    },
+    [groupManager, bumpGroups],
+  );
 
   const handleApplyAiConstraints = useCallback(
     (intent: SketchConstraintIntent): void => {
@@ -2397,6 +2560,24 @@ export default function SolverSketchEditor({
           </button>
           <button
             type="button"
+            onClick={toggleGroups}
+            data-testid="solver-sketch-groups-toggle"
+            aria-pressed={groupsOpen}
+            title={t.showGroups}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              background: groupsOpen ? '#0e7490' : '#fff',
+              color: groupsOpen ? '#fff' : '#111827',
+              border: '1px solid ' + (groupsOpen ? '#0e7490' : '#d1d5db'),
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            {t.groups}
+          </button>
+          <button
+            type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
             style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -2677,6 +2858,32 @@ export default function SolverSketchEditor({
               lang={lang}
               onApplyConstraints={handleApplyAiConstraints}
               selectionCounts={aiSelectionCounts}
+            />
+          </div>
+        )}
+        {/*
+          SketchGroupPanel — Phase 2.x sketchGroup surface. Default OFF
+          (toggled via the "Groups" button in the title bar). When ON,
+          mounts below the property/AI panels in the same sidebar column.
+          Selection drives the "Group selected (N)" button; transforms
+          re-solve the solver through handleGroupTranslate / Rotate /
+          Scale.
+        */}
+        {groupsOpen && groupManager && (
+          <div
+            data-testid="solver-sketch-group-panel-wrapper"
+            style={{ marginTop: 8 }}
+          >
+            <SketchGroupPanel
+              lang={lang}
+              groups={groupSnapshot}
+              selection={selection}
+              onCreate={handleGroupCreate}
+              onRemove={handleGroupRemove}
+              onTranslate={handleGroupTranslate}
+              onRotate={handleGroupRotate}
+              onScale={handleGroupScale}
+              onToggleLock={handleGroupToggleLock}
             />
           </div>
         )}
