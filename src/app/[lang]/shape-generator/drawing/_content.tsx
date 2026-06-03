@@ -76,6 +76,7 @@ import { SheetSnapIndicator } from './SheetSnapIndicator';
 import { findSheetSnapTarget, type SheetSnapTarget } from '@/lib/drawing/sheetSnap';
 import { SheetPngExportButton } from './SheetPngExportButton';
 import StepCompareVersionPanel from './StepCompareVersionPanel';
+import OrdinateDimensionPanel from './OrdinateDimensionPanel';
 
 // ─── sample parts ────────────────────────────────────────────────────────
 
@@ -199,6 +200,8 @@ interface PageDict {
   hideCompareButton: string;
   /** B31.6 dedicated PNG-export button section toggle. */
   enablePngExport: string;
+  enableOrdinateChain: string;
+  hideOrdinateChain: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -285,6 +288,8 @@ const DICT: Record<string, PageDict> = {
     compareVersions: '버전 비교',
     hideCompareButton: '비교 패널 숨기기',
     enablePngExport: '고해상도 PNG 내보내기',
+    enableOrdinateChain: '기준선 치수',
+    hideOrdinateChain: '기준선 치수 숨기기',
   },
   en: {
     title: 'Drawing Studio',
@@ -369,6 +374,8 @@ const DICT: Record<string, PageDict> = {
     compareVersions: 'Compare versions',
     hideCompareButton: 'Hide compare panel',
     enablePngExport: 'High-res PNG export',
+    enableOrdinateChain: 'Ordinate dimensions',
+    hideOrdinateChain: 'Hide ordinate dimensions',
   },
   ja: {
     title: '図面スタジオ',
@@ -453,6 +460,8 @@ const DICT: Record<string, PageDict> = {
     compareVersions: 'バージョン比較',
     hideCompareButton: '比較パネルを非表示',
     enablePngExport: '高解像度PNG出力',
+    enableOrdinateChain: '基準線寸法',
+    hideOrdinateChain: '基準線寸法を非表示',
   },
   zh: {
     title: '图纸工作室',
@@ -537,6 +546,8 @@ const DICT: Record<string, PageDict> = {
     compareVersions: '版本对比',
     hideCompareButton: '隐藏对比面板',
     enablePngExport: '高分辨率PNG导出',
+    enableOrdinateChain: '基准线尺寸',
+    hideOrdinateChain: '隐藏基准线尺寸',
   },
   es: {
     title: 'Estudio de Planos',
@@ -621,6 +632,8 @@ const DICT: Record<string, PageDict> = {
     compareVersions: 'Comparar versiones',
     hideCompareButton: 'Ocultar panel de comparación',
     enablePngExport: 'Exportación PNG alta resolución',
+    enableOrdinateChain: 'Cotas de ordenada',
+    hideOrdinateChain: 'Ocultar cotas de ordenada',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -705,6 +718,8 @@ const DICT: Record<string, PageDict> = {
     compareVersions: 'مقارنة الإصدارات',
     hideCompareButton: 'إخفاء لوحة المقارنة',
     enablePngExport: 'تصدير PNG بدقة عالية',
+    enableOrdinateChain: 'أبعاد خط الأساس',
+    hideOrdinateChain: 'إخفاء أبعاد خط الأساس',
   },
 };
 
@@ -1204,6 +1219,14 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * `drawing-png-export-toggle` checkbox.
    */
   const [pngExportEnabled, setPngExportEnabled] = useState<boolean>(false);
+
+  /**
+   * Phase 4.2 ordinate-dimension scratchpad. Default OFF (toggle in the
+   * footer next to the PNG-export toggle). When ON, mounts the standalone
+   * OrdinateDimensionPanel below the footer — a working surface for laying
+   * out a baseline/CMM-style chain without touching the live sheet IR.
+   */
+  const [ordinateEnabled, setOrdinateEnabled] = useState<boolean>(false);
 
   // ─── Phase 4.7 cursor snap state ───────────────────────────────────────
   /**
@@ -3065,6 +3088,17 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               />
               {dict.enablePngExport}
             </label>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-ordinate-toggle"
+                checked={ordinateEnabled}
+                onChange={(e) => setOrdinateEnabled(e.target.checked)}
+              />
+              {ordinateEnabled ? dict.hideOrdinateChain : dict.enableOrdinateChain}
+            </label>
             <button
               type="button"
               data-testid="drawing-export-png-button"
@@ -3280,6 +3314,26 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             }}
           >
             <StepCompareVersionPanel lang={lang} />
+          </section>
+        ) : null}
+        {/*
+          Phase 4.2 ordinate-dimension scratchpad. Mounts the standalone
+          {@link OrdinateDimensionPanel} as a sibling section beneath the
+          footer. Default OFF (toggle in the footer next to the PNG-export
+          toggle). Self-contained: the engine is pure, so the panel never
+          touches the live sheet IR.
+        */}
+        {ordinateEnabled ? (
+          <section
+            data-testid="drawing-ordinate-panel-section"
+            style={{
+              padding: 12,
+              background: '#ffffff',
+              borderRadius: 6,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
+            <OrdinateDimensionPanel lang={lang} />
           </section>
         ) : null}
       </div>
