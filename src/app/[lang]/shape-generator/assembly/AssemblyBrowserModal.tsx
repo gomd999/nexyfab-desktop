@@ -62,6 +62,12 @@ import { buildBom, bomToCsv, bomToJson } from '@/lib/assembly/bomExport';
 import Assembly3DViewer from './Assembly3DViewer';
 import AssemblyAiPanel from './AssemblyAiPanel';
 import AssemblyConstraintsPanel from './AssemblyConstraintsPanel';
+import AssemblyExplodePanel from './AssemblyExplodePanel';
+import {
+  buildExplodedState,
+  interpolateExplode,
+  type ExplodeAxisHeuristic,
+} from '@/lib/assembly/explodeView';
 import PartManipulatorGizmo, {
   type PartManipulatorMode,
   type Vec3,
@@ -303,6 +309,9 @@ interface Dict {
   constraintsPanel: string;
   /** Toggle label when the constraints panel is already mounted. */
   hideConstraintsPanel: string;
+  /** Phase 3.4 — exploded-view panel toggle labels. */
+  explodePanel: string;
+  hideExplodePanel: string;
   /**
    * Phase B31.1 — checkbox label that toggles the grouped-solve (partition)
    * path on the assembly solver. When ON the modal forwards `useGroups:
@@ -428,6 +437,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: '적용',
     constraintsPanel: '제약 패널',
     hideConstraintsPanel: '제약 패널 닫기',
+    explodePanel: '분해 보기',
+    hideExplodePanel: '분해 보기 닫기',
     useGroupPartition: '그룹 분할 사용',
     maxParallel: '최대 병렬',
     partitionSummary: (groups, durationMs, parallel) =>
@@ -532,6 +543,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: 'Apply',
     constraintsPanel: 'Constraints',
     hideConstraintsPanel: 'Hide constraints',
+    explodePanel: 'Exploded view',
+    hideExplodePanel: 'Hide exploded view',
     useGroupPartition: 'Use group partition',
     maxParallel: 'Max parallel',
     partitionSummary: (groups, durationMs, parallel) =>
@@ -636,6 +649,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: '適用',
     constraintsPanel: '制約パネル',
     hideConstraintsPanel: '制約パネルを閉じる',
+    explodePanel: '分解表示',
+    hideExplodePanel: '分解表示を閉じる',
     useGroupPartition: 'グループ分割を使用',
     maxParallel: '最大並列数',
     partitionSummary: (groups, durationMs, parallel) =>
@@ -739,6 +754,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: '应用',
     constraintsPanel: '约束面板',
     hideConstraintsPanel: '关闭约束面板',
+    explodePanel: '爆炸视图',
+    hideExplodePanel: '关闭爆炸视图',
     useGroupPartition: '使用分组分区',
     maxParallel: '最大并行',
     partitionSummary: (groups, durationMs, parallel) =>
@@ -845,6 +862,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: 'Aplicar',
     constraintsPanel: 'Restricciones',
     hideConstraintsPanel: 'Ocultar restricciones',
+    explodePanel: 'Vista explosionada',
+    hideExplodePanel: 'Ocultar vista explosionada',
     useGroupPartition: 'Usar partición de grupos',
     maxParallel: 'Máx. paralelo',
     partitionSummary: (groups, durationMs, parallel) =>
@@ -949,6 +968,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: 'تطبيق',
     constraintsPanel: 'القيود',
     hideConstraintsPanel: 'إخفاء القيود',
+    explodePanel: 'عرض مفكك',
+    hideExplodePanel: 'إخفاء العرض المفكك',
     useGroupPartition: 'استخدام تقسيم المجموعات',
     maxParallel: 'الحد الأقصى للتوازي',
     partitionSummary: (groups, durationMs, parallel) =>
@@ -2905,6 +2926,31 @@ export default function AssemblyBrowserModal({
     [],
   );
 
+  // ── Phase 3.4 exploded-view (lib/assembly/explodeView) ──
+  // Default OFF; when ON we blend the assembled state (t=0) with the fully-
+  // exploded state (t=1) via interpolateExplode and feed the result to the
+  // viewer, so the amount slider scrubs the disassembly. explodeView.ts +
+  // Assembly3DViewer.tsx stay UNCHANGED.
+  const [explodeOpen, setExplodeOpen] = useState<boolean>(false);
+  const toggleExplode = useCallback(() => setExplodeOpen((v) => !v), []);
+  const [explodeHeuristic, setExplodeHeuristic] = useState<ExplodeAxisHeuristic>('mate_axes');
+  const [explodeScale, setExplodeScale] = useState<number>(1.5);
+  const [explodeAmount, setExplodeAmount] = useState<number>(1);
+
+  const explodedState = useMemo(
+    () => buildExplodedState({ state, axisHeuristic: explodeHeuristic, scale: explodeScale }),
+    [state, explodeHeuristic, explodeScale],
+  );
+  const explodeMovingCount = useMemo(
+    () => explodedState.steps.filter((s) => s.distance > 0).length,
+    [explodedState],
+  );
+  /** State handed to Assembly3DViewer — displaced while explode is ON. */
+  const viewerState = useMemo(
+    () => (explodeOpen ? interpolateExplode(state, explodedState, explodeAmount) : state),
+    [explodeOpen, state, explodedState, explodeAmount],
+  );
+
   /**
    * AssemblyAiPanel.onBuildAssembly handler. Translates an {@link
    * AssemblyPlan} (stacked | grid | ring | pair) into PartInstance + Mate
@@ -3353,6 +3399,25 @@ export default function AssemblyBrowserModal({
           >
             {constraintsPanelOn ? t.hideConstraintsPanel : t.constraintsPanel}
           </button>
+          <button
+            type="button"
+            onClick={toggleExplode}
+            data-testid="solver-assembly-explode-toggle"
+            aria-pressed={explodeOpen}
+            title={explodeOpen ? t.hideExplodePanel : t.explodePanel}
+            style={{
+              fontSize: 11,
+              padding: '4px 10px',
+              background: explodeOpen ? '#cffafe' : '#fff',
+              color: explodeOpen ? '#155e75' : '#374151',
+              border: `1px solid ${explodeOpen ? '#67e8f9' : '#d1d5db'}`,
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {explodeOpen ? t.hideExplodePanel : t.explodePanel}
+          </button>
         </div>
 
         <div
@@ -3762,7 +3827,7 @@ export default function AssemblyBrowserModal({
               }}
             >
               <Assembly3DViewer
-                state={state}
+                state={viewerState}
                 featureTrees={featureTrees}
                 selectedPartId={selectedPartId ?? undefined}
                 onSelectPart={onSelectPartFromViewer}
@@ -4229,6 +4294,28 @@ export default function AssemblyBrowserModal({
               lang={lang}
               state={state}
               featureTrees={featureTrees}
+            />
+          </div>
+        )}
+
+        {explodeOpen && (
+          <div
+            data-testid="solver-assembly-explode-host"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
+            <AssemblyExplodePanel
+              lang={lang}
+              heuristic={explodeHeuristic}
+              scale={explodeScale}
+              amount={explodeAmount}
+              movingCount={explodeMovingCount}
+              onHeuristicChange={setExplodeHeuristic}
+              onScaleChange={setExplodeScale}
+              onAmountChange={setExplodeAmount}
             />
           </div>
         )}
