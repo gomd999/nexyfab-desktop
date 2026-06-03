@@ -41,6 +41,7 @@ import type { Polyhedron } from '@/lib/cad/featureMesh';
 import { projectPolyhedron } from '@/lib/drawing/projectView';
 import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
+import { buildLinearDimension, type Pt } from '@/lib/drawing/dimensionAnchor';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -78,6 +79,12 @@ export interface SheetRendererProps {
    * Omitted → every viewport falls back to the placeholder box (back-compat).
    */
   geometry?: ReadonlyMap<string, Polyhedron>;
+  /**
+   * When true, standard-view viewports that have geometry also get auto
+   * overall width + height dimensions (built via dimensionAnchor on the
+   * projected bbox; values are true mm). Default off.
+   */
+  autoDimension?: boolean;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────
@@ -103,6 +110,7 @@ export function SheetRenderer({
   scale = DEFAULT_PX_PER_MM,
   className,
   geometry,
+  autoDimension = false,
 }: SheetRendererProps): React.ReactElement {
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
   const widthPx = dim.width * scale;
@@ -153,6 +161,7 @@ export function SheetRenderer({
           // Detail-view marker letters cycle A, B, C, ... per detail viewport.
           detailLetter={letterForIndex(idx)}
           geometry={geometry?.get(vp.sourceId) ?? null}
+          autoDimension={autoDimension}
         />
       ))}
 
@@ -245,6 +254,7 @@ interface ViewportLayerProps {
   paperHeightMm: number;
   detailLetter: string;
   geometry?: Polyhedron | null;
+  autoDimension?: boolean;
 }
 
 function ViewportLayer({
@@ -252,6 +262,7 @@ function ViewportLayer({
   paperHeightMm,
   detailLetter,
   geometry,
+  autoDimension,
 }: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
   // Real projected geometry for standard views when a polyhedron is supplied.
@@ -262,6 +273,7 @@ function ViewportLayer({
           poly={geometry}
           view={viewport.projection.view}
           box={box}
+          autoDimension={autoDimension}
         />
       : null;
   const labelHeight = Math.max(3, box.h * 0.05);
@@ -326,11 +338,14 @@ interface ProjectedGeometryProps {
   poly: Polyhedron;
   view: 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right' | 'iso';
   box: ResolvedBox;
+  autoDimension?: boolean;
 }
 
 const GEOM_VISIBLE_STROKE = '#0f172a';
 const GEOM_HIDDEN_STROKE = '#94a3b8';
 const GEOM_MARGIN_FRAC = 0.08;
+const GEOM_DIM_MARGIN_FRAC = 0.18;
+const GEOM_DIM_COLOR = '#1d4ed8';
 
 /**
  * Project `poly` to the viewport's view, fit the result into the box (uniform
@@ -342,13 +357,16 @@ function ProjectedGeometry({
   poly,
   view,
   box,
+  autoDimension,
 }: ProjectedGeometryProps): React.ReactElement | null {
   const { visible, hidden, bbox } = projectPolyhedron(poly, view);
   const geomW = bbox.maxX - bbox.minX;
   const geomH = bbox.maxY - bbox.minY;
   if (!(geomW > 0) && !(geomH > 0)) return null;
 
-  const margin = Math.min(box.w, box.h) * GEOM_MARGIN_FRAC;
+  // Reserve extra margin for the dimension lines when auto-dimensioning.
+  const marginFrac = autoDimension ? GEOM_DIM_MARGIN_FRAC : GEOM_MARGIN_FRAC;
+  const margin = Math.min(box.w, box.h) * marginFrac;
   const availW = Math.max(1e-6, box.w - 2 * margin);
   const availH = Math.max(1e-6, box.h - 2 * margin);
   const s = Math.min(geomW > 0 ? availW / geomW : Infinity, geomH > 0 ? availH / geomH : Infinity);
@@ -360,6 +378,13 @@ function ProjectedGeometry({
   const ty = (v: number): number => offY + (bbox.maxY - v) * s;
 
   const strokeW = Math.max(0.15, Math.min(box.w, box.h) * 0.006);
+
+  // Auto overall dimensions (width below, height to the left) from the
+  // projected bbox, built via dimensionAnchor (values are true mm).
+  const dims =
+    autoDimension && geomW > 0 && geomH > 0
+      ? renderAutoDimensions({ viewportId, bbox, geomW, geomH, s, tx, ty, strokeW })
+      : null;
 
   return (
     <g
@@ -384,6 +409,75 @@ function ProjectedGeometry({
           strokeWidth={strokeW}
         />
       ))}
+      {dims}
+    </g>
+  );
+}
+
+interface AutoDimArgs {
+  viewportId: string;
+  bbox: { minX: number; minY: number; maxX: number; maxY: number };
+  geomW: number;
+  geomH: number;
+  s: number;
+  tx: (u: number) => number;
+  ty: (v: number) => number;
+  strokeW: number;
+}
+
+/**
+ * Overall width (along the bottom) + height (along the left) dimensions built
+ * from the projected bbox. dimensionAnchor computes the geometry in view-plane
+ * mm; we map each point through the same fit transform and label with the
+ * true-mm formatted value.
+ */
+function renderAutoDimensions(a: AutoDimArgs): React.ReactElement {
+  const { viewportId, bbox, geomW, geomH, s, tx, ty, strokeW } = a;
+  const span = Math.max(geomW, geomH);
+  const off = span * 0.12; // perpendicular offset in view-plane mm
+  const gap = span * 0.02;
+  const widthDim = buildLinearDimension(
+    { x: bbox.minX, y: bbox.minY },
+    { x: bbox.maxX, y: bbox.minY },
+    { axis: 'x', offset: -off, extensionGap: gap, extensionOverrun: gap },
+  );
+  const heightDim = buildLinearDimension(
+    { x: bbox.minX, y: bbox.minY },
+    { x: bbox.minX, y: bbox.maxY },
+    { axis: 'y', offset: -off, extensionGap: gap, extensionOverrun: gap },
+  );
+  const map = (p: Pt): Pt => ({ x: tx(p.x), y: ty(p.y) });
+  const seg = (key: string, p: Pt, q: Pt): React.ReactElement => {
+    const a2 = map(p);
+    const b2 = map(q);
+    return <line key={key} x1={a2.x} y1={a2.y} x2={b2.x} y2={b2.y} stroke={GEOM_DIM_COLOR} strokeWidth={strokeW * 0.7} />;
+  };
+  const fontSize = Math.max(2, s * span * 0.05);
+  const renderOne = (id: string, g: ReturnType<typeof buildLinearDimension>): React.ReactElement => {
+    const anchor = map(g.textAnchor);
+    return (
+      <g key={id} data-testid={`sheet-renderer-vp-dim-${viewportId}-${id}`} data-dim-value={g.formatted}>
+        {seg(`${id}-e1`, g.extension1[0], g.extension1[1])}
+        {seg(`${id}-e2`, g.extension2[0], g.extension2[1])}
+        {seg(`${id}-d`, g.dimensionLine[0], g.dimensionLine[1])}
+        <text
+          x={anchor.x}
+          y={anchor.y}
+          fontSize={fontSize}
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+          fill={GEOM_DIM_COLOR}
+          textAnchor="middle"
+          transform={id === 'h' ? `rotate(-90 ${anchor.x} ${anchor.y})` : undefined}
+        >
+          {g.formatted}
+        </text>
+      </g>
+    );
+  };
+  return (
+    <g data-testid={`sheet-renderer-vp-dim-${viewportId}`}>
+      {renderOne('w', widthDim)}
+      {renderOne('h', heightDim)}
     </g>
   );
 }

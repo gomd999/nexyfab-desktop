@@ -794,4 +794,13 @@ describe('DrawingPageContent — B31.6 PNG export button integration', () => {
     expect(front).not.toBeNull();
     expect(front!.querySelectorAll('line').length).toBeGreaterThanOrEqual(4);
   });
+
+  it('auto overall dimensions are drawn on the default part (Phase 4.2)', () => {
+    const { container } = mount();
+    // autoDimension is on for the main view → each geometry viewport gets W+H dims.
+    expect(container.querySelectorAll('[data-testid^="sheet-renderer-vp-dim-"]').length).toBeGreaterThan(0);
+    const frontW = container.querySelector('[data-testid="sheet-renderer-vp-dim-front-w"]');
+    expect(frontW).not.toBeNull();
+    expect(frontW!.getAttribute('data-dim-value') ?? '').toMatch(/mm/);
+  });
 });

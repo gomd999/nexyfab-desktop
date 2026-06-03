@@ -2856,7 +2856,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               position: 'relative',
             }}
           >
-            <SheetRenderer sheet={sheet} geometry={sheetGeometry} />
+            <SheetRenderer sheet={sheet} geometry={sheetGeometry} autoDimension />
             {snapEnabled ? (
               <SheetSnapIndicator
                 snap={snapTarget}

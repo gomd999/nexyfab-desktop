@@ -65,4 +65,23 @@ describe('SheetRenderer projected geometry (Phase 4.1.2)', () => {
     const dashed = Array.from(front.querySelectorAll('line')).filter((l) => l.getAttribute('stroke-dasharray'));
     expect(dashed.length).toBeGreaterThan(0);
   });
+
+  it('autoDimension off (default) → no auto-dimension group', () => {
+    const geometry = new Map<string, Polyhedron>([['p1', cube()]]);
+    const { container } = render(<SheetRenderer sheet={sheet()} geometry={geometry} />);
+    expect(container.querySelectorAll('[data-testid^="sheet-renderer-vp-dim-"]').length).toBe(0);
+  });
+
+  it('autoDimension on → overall W + H dims labelled with the true mm size', () => {
+    const geometry = new Map<string, Polyhedron>([['p1', cube()]]);
+    const { container } = render(<SheetRenderer sheet={sheet()} geometry={geometry} autoDimension />);
+    const dimGroup = container.querySelector('[data-testid="sheet-renderer-vp-dim-front"]')!;
+    expect(dimGroup).not.toBeNull();
+    const w = container.querySelector('[data-testid="sheet-renderer-vp-dim-front-w"]')!;
+    const h = container.querySelector('[data-testid="sheet-renderer-vp-dim-front-h"]')!;
+    // Cube face is 10×10 mm.
+    expect(w.getAttribute('data-dim-value')).toMatch(/10\.00 mm/);
+    expect(h.getAttribute('data-dim-value')).toMatch(/10\.00 mm/);
+    expect(w.textContent ?? '').toMatch(/10\.00 mm/);
+  });
 });
