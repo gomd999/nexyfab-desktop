@@ -42,6 +42,7 @@ import { projectPolyhedron } from '@/lib/drawing/projectView';
 import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
 import { buildLinearDimension, type Pt } from '@/lib/drawing/dimensionAnchor';
+import { buildHoleTable } from '@/lib/drawing/holeTable';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -240,6 +241,11 @@ export function SheetRenderer({
       {(sheet.ordinateChains ?? []).map((chain) => (
         <OrdinateChainLayer key={chain.id} chain={chain} paperHeightMm={dim.height} />
       ))}
+
+      {/* Hole table (Phase 4.3) — top-right corner, grouped identical holes. */}
+      {sheet.holes && sheet.holes.length > 0 ? (
+        <HoleTableLayer holes={sheet.holes} paperWidthMm={dim.width} />
+      ) : null}
 
       {/* Title block placeholder (bottom-right). */}
       <TitleBlock paperWidthMm={dim.width} paperHeightMm={dim.height} />
@@ -1014,6 +1020,92 @@ function OrdinateChainLayer({
             >
               {hint.formatted}
             </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+// ─── hole table ────────────────────────────────────────────────────────────
+
+interface HoleTableLayerProps {
+  holes: NonNullable<Sheet['holes']>;
+  paperWidthMm: number;
+}
+
+const HOLE_TABLE_STROKE = '#334155';
+
+/**
+ * Render a hole schedule (Phase 4.3) as a small grid in the top-right corner.
+ * Rows come from buildHoleTable (identical holes grouped + auto-tagged). A
+ * malformed hole list throws inside buildHoleTable; we guard and skip.
+ */
+function HoleTableLayer({ holes, paperWidthMm }: HoleTableLayerProps): React.ReactElement | null {
+  let rows: ReturnType<typeof buildHoleTable>;
+  try {
+    rows = buildHoleTable(holes, { groupIdentical: true });
+  } catch {
+    return null;
+  }
+  if (rows.length === 0) return null;
+
+  const cols: Array<{ key: keyof (typeof rows)[number] | 'qty'; label: string; w: number }> = [
+    { key: 'tag', label: 'TAG', w: 10 },
+    { key: 'x', label: 'X', w: 14 },
+    { key: 'y', label: 'Y', w: 14 },
+    { key: 'diameter', label: '⌀', w: 12 },
+    { key: 'depthLabel', label: 'DEPTH', w: 18 },
+    { key: 'qty', label: 'QTY', w: 10 },
+  ];
+  const tableW = cols.reduce((a, c) => a + c.w, 0);
+  const rowH = 5;
+  const x0 = paperWidthMm - tableW - 6;
+  const y0 = 8;
+  const fontSize = 3;
+
+  const cellText = (r: (typeof rows)[number], key: string): string => {
+    switch (key) {
+      case 'tag': return r.tag;
+      case 'x': return r.x.toString();
+      case 'y': return r.y.toString();
+      case 'diameter': return `⌀${r.diameter}`;
+      case 'depthLabel': return r.depthLabel;
+      case 'qty': return String(r.count);
+      default: return '';
+    }
+  };
+
+  return (
+    <g data-testid="sheet-renderer-hole-table" data-rows={rows.length}>
+      {/* header + body rows */}
+      {[{ header: true }, ...rows.map((r) => ({ header: false, r }))].map((entry, ri) => {
+        const y = y0 + ri * rowH;
+        let cx = x0;
+        return (
+          <g key={ri} data-hole-row={ri === 0 ? 'header' : (entry as { r: (typeof rows)[number] }).r.tag}>
+            <rect
+              x={x0} y={y} width={tableW} height={rowH}
+              fill={ri === 0 ? '#e2e8f0' : '#ffffff'}
+              stroke={HOLE_TABLE_STROKE} strokeWidth={0.2}
+            />
+            {cols.map((c) => {
+              const tx = cx + 1;
+              cx += c.w;
+              const text = ri === 0 ? c.label : cellText((entry as { r: (typeof rows)[number] }).r, c.key as string);
+              return (
+                <text
+                  key={c.key as string}
+                  x={tx} y={y + rowH / 2}
+                  fontSize={fontSize}
+                  fontFamily="ui-monospace, SFMono-Regular, monospace"
+                  fill={HOLE_TABLE_STROKE}
+                  dominantBaseline="middle"
+                >
+                  {text}
+                </text>
+              );
+            })}
           </g>
         );
       })}

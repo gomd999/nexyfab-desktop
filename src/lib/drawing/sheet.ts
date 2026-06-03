@@ -170,6 +170,7 @@ import { validateDimension, validateGdt } from './dimension';
 import type { OrdinateDimensionChain } from './ordinateDimension';
 import type { SurfaceFinishSymbol } from './surfaceFinishSymbol';
 import type { WeldSymbol } from './weldSymbol';
+import type { HoleSpec } from './holeTable';
 
 export interface Sheet {
   id: string;
@@ -196,6 +197,8 @@ export interface Sheet {
   surfaceFinishSymbols?: ReadonlyArray<SurfaceFinishSymbol>;
   /** Phase 4.2 AWS/ISO weld callouts (anchored by viewportId). */
   weldSymbols?: ReadonlyArray<WeldSymbol>;
+  /** Phase 4.3 hole schedule — rendered as a hole table in a sheet corner. */
+  holes?: ReadonlyArray<HoleSpec>;
 }
 
 // ─── validation ──────────────────────────────────────────────────────────
