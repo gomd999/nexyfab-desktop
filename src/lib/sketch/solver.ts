@@ -129,7 +129,10 @@ export type SerializedConstraintKind =
   | 'tangent'
   | 'distance'
   | 'angle'
-  | 'radius';
+  | 'radius'
+  | 'equal'
+  | 'symmetric'
+  | 'concentric';
 
 export interface SerializedConstraint {
   id: ConstraintId;
@@ -163,8 +166,9 @@ export class SketchSolver {
   private nextId = 1;
   private readonly points = new Map<PointId, PointRecord>();
   private readonly lines = new Set<LineId>();
-  private readonly circles = new Set<CircleId>();
-  private readonly arcs = new Set<ArcId>();
+  // Circles / arcs track their center point id (needed for concentric).
+  private readonly circles = new Map<CircleId, { center: PointId }>();
+  private readonly arcs = new Map<ArcId, { center: PointId }>();
   private readonly constraints = new Map<ConstraintId, ConstraintRecord>();
 
   /** Last-pushed batch — primitives waiting to be sent to planegcs on next solve(). */
@@ -209,7 +213,7 @@ export class SketchSolver {
     this.assertAlive();
     this.assertPoint(center);
     const id = this.fresh<CircleId>('c');
-    this.circles.add(id);
+    this.circles.set(id, { center });
     const prim: SketchCircle = { id, type: 'circle', c_id: center, radius };
     this.pending.push(prim);
     return id;
@@ -228,7 +232,7 @@ export class SketchSolver {
     this.assertPoint(start);
     this.assertPoint(end);
     const id = this.fresh<ArcId>('a');
-    this.arcs.add(id);
+    this.arcs.set(id, { center });
     const prim: SketchArc = {
       id,
       type: 'arc',
@@ -356,6 +360,60 @@ export class SketchSolver {
       );
     }
     throw new Error(`addRadius: ${geometry} is neither circle nor arc`);
+  }
+
+  // ----- constraints: geometric (Phase 1.3 additions) -----
+
+  /** Two lines have equal length. */
+  addEqualLength(l1: LineId, l2: LineId): ConstraintId {
+    return this.pushConstraint(
+      { type: 'equal_length', l1_id: l1, l2_id: l2 },
+      'equal',
+      [l1, l2],
+    );
+  }
+
+  /** Two circles have equal radius. */
+  addEqualRadius(c1: CircleId, c2: CircleId): ConstraintId {
+    return this.pushConstraint(
+      { type: 'equal_radius_cc', c1_id: c1, c2_id: c2 },
+      'equal',
+      [c1, c2],
+    );
+  }
+
+  /** Two points are symmetric about a line. */
+  addSymmetric(p1: PointId, p2: PointId, line: LineId): ConstraintId {
+    this.assertPoint(p1);
+    this.assertPoint(p2);
+    return this.pushConstraint(
+      { type: 'p2p_symmetric_ppl', p1_id: p1, p2_id: p2, l_id: line },
+      'symmetric',
+      [p1, p2, line],
+    );
+  }
+
+  /**
+   * Two circles / arcs are concentric — implemented as a coincidence of their
+   * center points (planegcs has no dedicated concentric primitive, and
+   * collocating centers is the exact definition).
+   */
+  addConcentric(a: CircleId | ArcId, b: CircleId | ArcId): ConstraintId {
+    const centerA = this.centerOf(a);
+    const centerB = this.centerOf(b);
+    return this.pushConstraint(
+      { type: 'p2p_coincident', p1_id: centerA, p2_id: centerB },
+      'concentric',
+      [a, b],
+    );
+  }
+
+  private centerOf(id: CircleId | ArcId): PointId {
+    const c = this.circles.get(id as CircleId);
+    if (c) return c.center;
+    const a = this.arcs.get(id as ArcId);
+    if (a) return a.center;
+    throw new Error(`addConcentric: ${id} is neither circle nor arc`);
   }
 
   // ----- solve + read -----
