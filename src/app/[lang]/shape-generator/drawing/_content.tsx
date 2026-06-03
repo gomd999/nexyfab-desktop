@@ -36,6 +36,7 @@ import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import {
   standardThreeViewSheet,
+  paperDimensions,
   type PaperSize,
   type Sheet,
 } from '@/lib/drawing/sheet';
@@ -59,6 +60,8 @@ import type { AssemblyPart } from '@/lib/brep-bridge/stepWrite';
 import type { PartInstance } from '@/lib/assembly/assemblyState';
 import { SheetRenderer } from './SheetRenderer';
 import DimensionAnnotationModal from './DimensionAnnotationModal';
+import { SheetSnapIndicator } from './SheetSnapIndicator';
+import { findSheetSnapTarget, type SheetSnapTarget } from '@/lib/drawing/sheetSnap';
 
 // ─── sample parts ────────────────────────────────────────────────────────
 
@@ -131,6 +134,8 @@ interface PageDict {
   fallbackToRaster: string;
   exportedAsRaster: string;
   exportedAsVector: string;
+  enableSnap: string;
+  snapHint: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -187,6 +192,8 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: '벡터 PDF 사용 불가 — 래스터로 대체',
     exportedAsRaster: '래스터 PDF로 내보냈습니다',
     exportedAsVector: '벡터 PDF로 내보냈습니다',
+    enableSnap: '스냅 사용',
+    snapHint: '커서를 뷰포트 모서리/중점/중심 또는 그리드에 근접시키면 스냅됩니다',
   },
   en: {
     title: 'Drawing Studio',
@@ -241,6 +248,8 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'Vector PDF unavailable — falling back to raster',
     exportedAsRaster: 'Exported as raster PDF',
     exportedAsVector: 'Exported as vector PDF',
+    enableSnap: 'Enable snap',
+    snapHint: 'Hover near a viewport corner / midpoint / center, or a grid node, to snap the cursor.',
   },
   ja: {
     title: '図面スタジオ',
@@ -295,6 +304,8 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'ベクターPDF利用不可 — ラスターで代替',
     exportedAsRaster: 'ラスター PDF としてエクスポートしました',
     exportedAsVector: 'ベクター PDF としてエクスポートしました',
+    enableSnap: 'スナップを有効化',
+    snapHint: 'カーソルをビューポートの角・中点・中心またはグリッドに近づけるとスナップします',
   },
   zh: {
     title: '图纸工作室',
@@ -349,6 +360,8 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: '矢量 PDF 不可用 — 回退到光栅',
     exportedAsRaster: '已导出为光栅 PDF',
     exportedAsVector: '已导出为矢量 PDF',
+    enableSnap: '启用捕捉',
+    snapHint: '将光标靠近视口角点/中点/中心或网格节点即可捕捉',
   },
   es: {
     title: 'Estudio de Planos',
@@ -403,6 +416,8 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'PDF vectorial no disponible — recurriendo a ráster',
     exportedAsRaster: 'Exportado como PDF ráster',
     exportedAsVector: 'Exportado como PDF vectorial',
+    enableSnap: 'Activar ajuste',
+    snapHint: 'Acerca el cursor a una esquina / punto medio / centro de viewport o nodo de cuadrícula para ajustar.',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -457,6 +472,8 @@ const DICT: Record<string, PageDict> = {
     fallbackToRaster: 'PDF المتجه غير متاح — الرجوع إلى النقطي',
     exportedAsRaster: 'تم التصدير كـ PDF نقطي',
     exportedAsVector: 'تم التصدير كـ PDF متجه',
+    enableSnap: 'تمكين الالتقاط',
+    snapHint: 'مرّر المؤشر بالقرب من زاوية/منتصف/مركز إطار العرض أو عقدة الشبكة للالتقاط.',
   },
 };
 
@@ -741,6 +758,20 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * start of every fresh export attempt.
    */
   const [pdfExportInfo, setPdfExportInfo] = useState<string | null>(null);
+
+  // ─── Phase 4.7 cursor snap state ───────────────────────────────────────
+  /**
+   * Whether the sheet-snap pass runs on mousemove. Default off so the
+   * 195 existing drawing-suite tests don't see the new DOM. Users opt
+   * in via the `drawing-snap-toggle` checkbox before placing a
+   * dimension / GD&T — turning it on triggers the indicator to show
+   * the nearest snap target (corner / midpoint / center / grid).
+   */
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(false);
+  /** Latest snap target from findSheetSnapTarget (null when nothing in range). */
+  const [snapTarget, setSnapTarget] = useState<SheetSnapTarget | null>(null);
+  /** Screen-space pixel position of the current snap (passed to the indicator). */
+  const [snapScreenPos, setSnapScreenPos] = useState<{ x: number; y: number } | null>(null);
 
   // ─── Phase 5.3 assembly mode state ────────────────────────────────────
   const [assemblyMode, setAssemblyMode] = useState<boolean>(false);
@@ -1079,6 +1110,53 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   }, [sourceId, paperSize, scale, annotations]);
 
   const firstViewportId = sheet.viewports[0]?.id ?? '';
+
+  /**
+   * Mouse-move handler for the single-part canvas. When snap is enabled
+   * we project the cursor's screen-px position back into sheet mm using
+   * the SheetRenderer's viewBox + bounding rect, then call
+   * findSheetSnapTarget. The returned target (or null) drives the
+   * SheetSnapIndicator and is stored alongside the screen-px position
+   * for absolute marker placement. When snap is disabled we keep the
+   * handler a no-op so the host can still attach it without churn.
+   */
+  const handleCanvasMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!snapEnabled) return;
+      const svgEl = (e.currentTarget.querySelector(
+        'svg[data-testid="sheet-renderer-root"]',
+      ) as SVGSVGElement | null);
+      if (!svgEl) return;
+      const rect = svgEl.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
+      // SVG viewBox is `0 0 width(mm) height(mm)` with top-left origin;
+      // Sheet IR uses bottom-left mm so the y-axis is flipped here.
+      const xMm = ((e.clientX - rect.left) / rect.width) * dim.width;
+      const yMmTop = ((e.clientY - rect.top) / rect.height) * dim.height;
+      const yMm = dim.height - yMmTop;
+      const target = findSheetSnapTarget({ x: xMm, y: yMm }, sheet);
+      setSnapTarget(target);
+      if (target) {
+        // Convert the snap's sheet-mm pos back to screen px so the
+        // indicator can be absolutely positioned over the canvas.
+        const snapXPx = rect.left + (target.pos.x / dim.width) * rect.width;
+        const snapYPx = rect.top + ((dim.height - target.pos.y) / dim.height) * rect.height;
+        setSnapScreenPos({
+          x: snapXPx - rect.left,
+          y: snapYPx - rect.top,
+        });
+      } else {
+        setSnapScreenPos(null);
+      }
+    },
+    [snapEnabled, sheet],
+  );
+
+  const handleCanvasMouseLeave = useCallback(() => {
+    setSnapTarget(null);
+    setSnapScreenPos(null);
+  }, []);
 
   const handleAdd = useCallback((annotation: Dimension | GdtCallout) => {
     setAnnotations((prev) => {
@@ -1867,12 +1945,55 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 style={{ padding: 6 }}
               />
             </label>
+
+            {/*
+              Snap toggle — opt-in cursor snapping for dimension /
+              GD&T placement. Defaults OFF so the 195 pre-existing
+              drawing-suite tests don't see the new DOM, and so a
+              user who hasn't asked for snap doesn't get an unexpected
+              indicator chasing the cursor. The hint below is only
+              shown when snap is on.
+            */}
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color: '#374151',
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-snap-toggle"
+                checked={snapEnabled}
+                onChange={(e) => {
+                  setSnapEnabled(e.target.checked);
+                  if (!e.target.checked) {
+                    setSnapTarget(null);
+                    setSnapScreenPos(null);
+                  }
+                }}
+              />
+              {dict.enableSnap}
+            </label>
+            {snapEnabled ? (
+              <p
+                data-testid="drawing-snap-hint"
+                style={{ margin: 0, fontSize: 11, color: '#6b7280' }}
+              >
+                {dict.snapHint}
+              </p>
+            ) : null}
           </aside>
 
           {/* ─── Main canvas ─────────────────────────────────────────── */}
           <div
             ref={sheetRef}
             data-testid="drawing-page-canvas"
+            onMouseMove={handleCanvasMouseMove}
+            onMouseLeave={handleCanvasMouseLeave}
             style={{
               background: '#e5e7eb',
               padding: 12,
@@ -1880,9 +2001,16 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               overflow: 'auto',
               display: 'flex',
               justifyContent: 'center',
+              position: 'relative',
             }}
           >
             <SheetRenderer sheet={sheet} />
+            {snapEnabled ? (
+              <SheetSnapIndicator
+                snap={snapTarget}
+                screenPos={snapScreenPos ?? undefined}
+              />
+            ) : null}
           </div>
 
           {/* ─── Right panel: annotation list + add button ──────────── */}

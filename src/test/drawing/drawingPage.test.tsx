@@ -215,3 +215,160 @@ describe('DrawingPageContent', () => {
     expect(screen.getByTestId('drawing-add-annotation-button').textContent ?? '').toMatch(/添加注释/);
   });
 });
+
+// ─── Phase 4.7 cursor-snap integration ──────────────────────────────────
+/**
+ * Cursor-snap UX:
+ *   - The snap toggle (`drawing-snap-toggle`) is always present in
+ *     single-part mode, defaulting OFF so the 195 pre-existing
+ *     drawing-suite tests don't see the indicator DOM.
+ *   - With snap ON, mousemove over the canvas projects the cursor back
+ *     into sheet mm via the SVG's bounding rect → viewBox mapping, then
+ *     hands it to `findSheetSnapTarget`. The matched target drives the
+ *     `<SheetSnapIndicator>` (data-testid `sheet-snap-indicator`) and
+ *     carries its kind as `data-snap-kind`.
+ *
+ * Tests below use a stubbed `getBoundingClientRect` to put the SVG at a
+ * known 0,0 → paperWidth,paperHeight pixel rect (1:1 px/mm) so the
+ * client→sheet mapping is trivial and stable across jsdom versions.
+ */
+
+import { paperDimensions as _pd } from '@/lib/drawing/sheet';
+
+function stubSvgRect(container: HTMLElement, paperWidthMm: number, paperHeightMm: number): void {
+  const svg = container.querySelector('svg[data-testid="sheet-renderer-root"]');
+  if (!svg) throw new Error('SVG not found');
+  // 1px-per-mm at origin so clientX/Y == mm coords (top-left origin).
+  (svg as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    right: paperWidthMm,
+    bottom: paperHeightMm,
+    width: paperWidthMm,
+    height: paperHeightMm,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
+
+describe('DrawingPageContent — cursor snap (Phase 4.7)', () => {
+  it('snap toggle is visible by default and unchecked', () => {
+    mount();
+    const toggle = screen.getByTestId('drawing-snap-toggle') as HTMLInputElement;
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.checked).toBe(false);
+    // The hint is gated on the toggle being on.
+    expect(screen.queryByTestId('drawing-snap-hint')).toBeNull();
+    // No indicator while snap is off.
+    expect(screen.queryByTestId('sheet-snap-indicator')).toBeNull();
+  });
+
+  it('with snap OFF, mousemove does not mount the indicator', () => {
+    const { container } = mount();
+    const a3 = _pd('A3');
+    stubSvgRect(container, a3.width, a3.height);
+    const canvas = screen.getByTestId('drawing-page-canvas');
+    fireEvent.mouseMove(canvas, { clientX: 200, clientY: 50 });
+    expect(screen.queryByTestId('sheet-snap-indicator')).toBeNull();
+  });
+
+  it('turning snap ON reveals the hint text and arms the indicator', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    expect(screen.getByTestId('drawing-snap-hint')).toBeInTheDocument();
+  });
+
+  it('mousemove with snap ON over a viewport corner shows a viewport_corner indicator', () => {
+    const { container } = mount();
+    const a3 = _pd('A3');
+    stubSvgRect(container, a3.width, a3.height);
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    // standardThreeViewSheet builds viewports inside the sheet — we don't
+    // care about the specific corner, just that mousing somewhere on the
+    // canvas yields some snap (grid will always win on an empty miss).
+    // Aim at a known grid node first (5 mm spacing default) at sheet (10, 10).
+    // sheet (10, 10) bottom-left → screen y = paperHeight - 10.
+    const canvas = screen.getByTestId('drawing-page-canvas');
+    fireEvent.mouseMove(canvas, { clientX: 10, clientY: a3.height - 10 });
+    const ind = screen.getByTestId('sheet-snap-indicator');
+    expect(ind).toBeInTheDocument();
+  });
+
+  it('mousing near a viewport corner produces a viewport_corner snap kind', () => {
+    const { container } = mount();
+    const a3 = _pd('A3');
+    stubSvgRect(container, a3.width, a3.height);
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    // Pull the first viewport's box from the rendered group so we don't
+    // hard-code paper-specific math. The data-vp-id group wraps the
+    // ViewportLayer; we read its first <rect> for x/y/w/h (in SVG mm).
+    const vpGroup = container.querySelector('g[data-vp-id]');
+    expect(vpGroup).not.toBeNull();
+    const rect = vpGroup!.querySelector('rect');
+    expect(rect).not.toBeNull();
+    const xMm = Number(rect!.getAttribute('x'));
+    const yMmSvg = Number(rect!.getAttribute('y'));
+    // Sheet IR origin is bottom-left; SVG is top-left. The host's mousemove
+    // converts back so we feed clientX/Y in screen-px (= mm under our stub).
+    const canvas = screen.getByTestId('drawing-page-canvas');
+    fireEvent.mouseMove(canvas, { clientX: xMm, clientY: yMmSvg });
+    const ind = screen.getByTestId('sheet-snap-indicator');
+    expect(ind.getAttribute('data-snap-kind')).toBe('viewport_corner');
+  });
+
+  it('mousing over an arbitrary empty point produces a grid snap', () => {
+    const { container } = mount();
+    const a3 = _pd('A3');
+    stubSvgRect(container, a3.width, a3.height);
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    const canvas = screen.getByTestId('drawing-page-canvas');
+    // Sheet (5, 5) — far from any viewport corner in a standardThreeViewSheet.
+    fireEvent.mouseMove(canvas, { clientX: 5, clientY: a3.height - 5 });
+    const ind = screen.getByTestId('sheet-snap-indicator');
+    expect(ind.getAttribute('data-snap-kind')).toBe('grid');
+  });
+
+  it('turning snap OFF after a hover removes the indicator', () => {
+    const { container } = mount();
+    const a3 = _pd('A3');
+    stubSvgRect(container, a3.width, a3.height);
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    const canvas = screen.getByTestId('drawing-page-canvas');
+    fireEvent.mouseMove(canvas, { clientX: 5, clientY: a3.height - 5 });
+    expect(screen.queryByTestId('sheet-snap-indicator')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    expect(screen.queryByTestId('sheet-snap-indicator')).toBeNull();
+  });
+
+  it('mouseleave clears the indicator', () => {
+    const { container } = mount();
+    const a3 = _pd('A3');
+    stubSvgRect(container, a3.width, a3.height);
+    fireEvent.click(screen.getByTestId('drawing-snap-toggle'));
+    const canvas = screen.getByTestId('drawing-page-canvas');
+    fireEvent.mouseMove(canvas, { clientX: 5, clientY: a3.height - 5 });
+    expect(screen.queryByTestId('sheet-snap-indicator')).toBeInTheDocument();
+    fireEvent.mouseLeave(canvas);
+    expect(screen.queryByTestId('sheet-snap-indicator')).toBeNull();
+  });
+
+  it('snap toggle label is localised for ko / en / ja / zh / es / ar', () => {
+    const cases: Array<[string, RegExp]> = [
+      ['ko', /스냅/],
+      ['en', /snap/i],
+      ['ja', /スナップ/],
+      ['zh', /捕捉/],
+      ['es', /ajuste/i],
+      ['ar', /الالتقاط/],
+    ];
+    for (const [lang, re] of cases) {
+      const { unmount } = mount(lang);
+      const toggle = screen.getByTestId('drawing-snap-toggle');
+      const label = toggle.closest('label');
+      expect(label).not.toBeNull();
+      expect(label!.textContent ?? '').toMatch(re);
+      unmount();
+    }
+  });
+});
