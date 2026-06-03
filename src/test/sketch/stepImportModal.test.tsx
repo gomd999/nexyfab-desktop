@@ -12,7 +12,7 @@ import React from 'react';
 import StepImportModal, {
   type StepImportResponse,
 } from '@/app/[lang]/shape-generator/sketch/StepImportModal';
-import type { FeatureTree } from '@/lib/cad/featureTree';
+import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 
 function rectTree(): FeatureTree {
   return {
@@ -404,5 +404,364 @@ describe('StepImportModal — size cap + paste mode + i18n', () => {
     const summary = await screen.findByTestId('step-import-summary');
     expect(summary.textContent).toMatch(/已导入 1 个实体/);
     expect(summary.textContent).toMatch(/长方体/);
+  });
+});
+
+// ─── Phase 3 sweep + entry kind labels + Phase 3 wishlist ─────────────────
+// VVVVVV (Phase 3) added BREP sweep recognition (SURFACE_OF_LINEAR_EXTRUSION
+// + 2 PLANE caps, or direct SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID). The
+// modal now needs to:
+//   1. label each imported entry by kind (Box / Polygon prism / Cylinder /
+//      Body of revolution / Linear prism),
+//   2. count kinds in the summary ("Imported N: 2 boxes, 1 cylinder, 1 sweep"),
+//   3. surface a Phase 3 wishlist of known-unsupported features under the
+//      unsupported list so users understand which limitations are known.
+
+/** Build a BREP cylinder node — VVVVVV emits these with the canonical
+ *  rectangle [(0,0),(r,0),(r,h),(0,h)] in the rotate_extrude frame. */
+function cylinderNode(id: string, r: number, h: number): FeatureNode {
+  return {
+    id,
+    name: `Imported Revolved Solid (cyl)`,
+    dependencies: [],
+    payload: {
+      kind: 'revolve',
+      loop: [
+        { x: 0, y: 0 },
+        { x: r, y: 0 },
+        { x: r, y: h },
+        { x: 0, y: h },
+      ],
+      angleDegrees: 360,
+      mode: 'add',
+    },
+  };
+}
+
+/** Build a non-rectangular revolve (i.e. an actual body of revolution, not
+ *  the canonical cylinder rectangle). */
+function bodyOfRevolutionNode(id: string): FeatureNode {
+  return {
+    id,
+    name: `Imported Revolved Solid (vase)`,
+    dependencies: [],
+    payload: {
+      kind: 'revolve',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 5, y: 0 },
+        { x: 8, y: 5 },
+        { x: 3, y: 10 },
+        { x: 0, y: 10 },
+      ],
+      angleDegrees: 360,
+      mode: 'add',
+    },
+  };
+}
+
+/** Build a sweep (linear prism) node — VVVVVV's Phase 3 output for a
+ *  SURFACE_OF_LINEAR_EXTRUSION BREP or a SWEPT_AREA_SOLID. */
+function sweepNode(id: string): FeatureNode {
+  return {
+    id,
+    name: `Imported Swept Solid`,
+    dependencies: [],
+    payload: {
+      kind: 'sweep',
+      profile: {
+        points: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 4, y: 4 },
+          { x: 0, y: 4 },
+        ],
+      },
+      path: [
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0, z: 10 },
+      ],
+      mode: 'add',
+    },
+  };
+}
+
+function rectNode(id: string): FeatureNode {
+  return {
+    id,
+    name: `Imported Solid (box)`,
+    dependencies: [],
+    payload: {
+      kind: 'extrude',
+      loop: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 5 },
+        { x: 0, y: 5 },
+      ],
+      depth: 3,
+      direction: 'one_sided',
+      mode: 'add',
+    },
+  };
+}
+
+describe('StepImportModal — Phase 3 sweep + entry labels + wishlist', () => {
+  it('sweep entry renders "Linear prism" label', async () => {
+    const tree: FeatureTree = { nodes: [sweepNode('imported_sweep_0')] };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const entries = await screen.findByTestId('step-import-entries');
+    expect(entries).toBeInTheDocument();
+    const entry0 = screen.getByTestId('step-import-entry-0');
+    expect(entry0.textContent).toMatch(/Linear prism/);
+    expect(entry0.getAttribute('data-entry-kind')).toBe('sweep');
+  });
+
+  it('cylinder entry renders "Cylinder" label (canonical rectangle revolve)', async () => {
+    const tree: FeatureTree = { nodes: [cylinderNode('imported_revolve_0', 4, 7)] };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const entry0 = await screen.findByTestId('step-import-entry-0');
+    expect(entry0.textContent).toMatch(/Cylinder/);
+    expect(entry0.getAttribute('data-entry-kind')).toBe('cylinder');
+  });
+
+  it('non-canonical revolve entry renders "Body of revolution" label', async () => {
+    const tree: FeatureTree = { nodes: [bodyOfRevolutionNode('imported_revolve_0')] };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const entry0 = await screen.findByTestId('step-import-entry-0');
+    expect(entry0.textContent).toMatch(/Body of revolution/);
+    expect(entry0.getAttribute('data-entry-kind')).toBe('revolve');
+  });
+
+  it('summary count is accurate for mixed entries (2 boxes + 1 cylinder + 1 sweep)', async () => {
+    const tree: FeatureTree = {
+      nodes: [
+        rectNode('imported_0'),
+        rectNode('imported_1'),
+        cylinderNode('imported_revolve_0', 3, 5),
+        sweepNode('imported_sweep_0'),
+      ],
+    };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const summary = await screen.findByTestId('step-import-summary');
+    expect(summary.textContent).toMatch(/Imported 4 solids/);
+    // Pluralised box count.
+    expect(summary.textContent).toMatch(/2 boxes/);
+    // Singular cylinder.
+    expect(summary.textContent).toMatch(/1 cylinder/);
+    // Sweep count.
+    expect(summary.textContent).toMatch(/1 sweep/);
+  });
+
+  it('mixed entries list renders one row per node with correct kinds', async () => {
+    const tree: FeatureTree = {
+      nodes: [
+        rectNode('imported_0'),
+        cylinderNode('imported_revolve_0', 2, 8),
+        sweepNode('imported_sweep_0'),
+      ],
+    };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await screen.findByTestId('step-import-entries');
+    expect(screen.getByTestId('step-import-entry-0').getAttribute('data-entry-kind')).toBe('box');
+    expect(screen.getByTestId('step-import-entry-1').getAttribute('data-entry-kind')).toBe('cylinder');
+    expect(screen.getByTestId('step-import-entry-2').getAttribute('data-entry-kind')).toBe('sweep');
+  });
+
+  it('entry tooltip surfaces kind detail (cylinder radius + height)', async () => {
+    const tree: FeatureTree = { nodes: [cylinderNode('imported_revolve_0', 4, 7)] };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const entry0 = await screen.findByTestId('step-import-entry-0');
+    const tooltip = entry0.getAttribute('title');
+    expect(tooltip).toMatch(/radius/);
+    expect(tooltip).toMatch(/4/);
+    expect(tooltip).toMatch(/height/);
+    expect(tooltip).toMatch(/7/);
+  });
+
+  it('entry tooltip for sweep mentions vertex count + length', async () => {
+    const tree: FeatureTree = { nodes: [sweepNode('imported_sweep_0')] };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const entry0 = await screen.findByTestId('step-import-entry-0');
+    const tooltip = entry0.getAttribute('title');
+    expect(tooltip).toMatch(/4-vertex/);
+    expect(tooltip).toMatch(/length 10/);
+  });
+
+  it('unsupported list shows Phase 3 wishlist hints below the unsupported entries', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: { nodes: [] },
+      warnings: [],
+      unsupported: ['#42: SWEPT_DISK_SOLID (pipe / hose primitive)'],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await screen.findByTestId('step-import-unsupported');
+    const wishlist = screen.getByTestId('step-import-phase3-wishlist');
+    expect(wishlist).toBeInTheDocument();
+    // The wishlist must mention SWEPT_DISK_SOLID as a known Phase 3 limit.
+    expect(wishlist.textContent).toMatch(/SWEPT_DISK_SOLID/);
+    // Multiple specific wishlist items are surfaced.
+    expect(screen.getByTestId('step-import-wishlist-0')).toBeInTheDocument();
+    expect(screen.getByTestId('step-import-wishlist-1')).toBeInTheDocument();
+  });
+
+  it('wishlist is hidden when there are no unsupported entries', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: { nodes: [sweepNode('imported_sweep_0')] },
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="en"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await screen.findByTestId('step-import-entries');
+    expect(screen.queryByTestId('step-import-phase3-wishlist')).toBeNull();
+  });
+
+  it('Korean lang sweep label uses 선형 프리즘', async () => {
+    const tree: FeatureTree = { nodes: [sweepNode('imported_sweep_0')] };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree,
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <StepImportModal
+        lang="ko"
+        onClose={vi.fn()}
+        onImport={vi.fn()}
+        stepImportFetcher={fetcher}
+      />,
+    );
+    pickFile(screen.getByTestId('step-import-file-input') as HTMLInputElement, 'src');
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    const entry0 = await screen.findByTestId('step-import-entry-0');
+    expect(entry0.textContent).toMatch(/선형 프리즘/);
+    const summary = screen.getByTestId('step-import-summary');
+    expect(summary.textContent).toMatch(/선형 프리즘/);
   });
 });
