@@ -17,9 +17,11 @@
  */
 
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
-import { sub, cross, dot, lengthOf, scale } from '@/lib/sketch/sketchPlane';
+import { add, sub, cross, dot, lengthOf, scale, normalize } from '@/lib/sketch/sketchPlane';
 import type { ExtrudeFeature } from './extrudeProfile';
 import type { RevolveFeature } from './revolveProfile';
+import type { SweepFeature } from './sweepLoft';
+import type { SweepPathFeature } from './sweepPath';
 
 // ─── types ───────────────────────────────────────────────────────────────
 
@@ -152,24 +154,141 @@ export function revolvePolyhedron(
   return { vertices, faces };
 }
 
+// ─── sweep → profile swept along a 3D path ───────────────────────────────────
+
+/** Per-station unit tangents (averaged at interior stations). */
+function pathTangents(path: Vec3[]): Vec3[] {
+  const n = path.length;
+  const out: Vec3[] = [];
+  for (let i = 0; i < n; i++) {
+    let dir: Vec3;
+    if (i === 0) dir = sub(path[1], path[0]);
+    else if (i === n - 1) dir = sub(path[n - 1], path[n - 2]);
+    else dir = add(sub(path[i], path[i - 1]), sub(path[i + 1], path[i]));
+    out.push(normalize(dir));
+  }
+  return out;
+}
+
+/** Rotate v about unit axis k by (cos, sin) via Rodrigues' formula. */
+function rodrigues(v: Vec3, k: Vec3, cos: number, sin: number): Vec3 {
+  return add(add(scale(v, cos), scale(cross(k, v), sin)), scale(k, dot(k, v) * (1 - cos)));
+}
+
+/**
+ * Parallel-transport frames along the path so the profile doesn't twist: the
+ * initial normal is seeded from a reference up, then rotated minimally to
+ * follow each tangent change.
+ */
+function transportFrames(tangents: Vec3[]): Array<{ n: Vec3; b: Vec3 }> {
+  const frames: Array<{ n: Vec3; b: Vec3 }> = [];
+  const t0 = tangents[0];
+  const up: Vec3 = Math.abs(dot(t0, { x: 0, y: 0, z: 1 })) > 0.9 ? { x: 1, y: 0, z: 0 } : { x: 0, y: 0, z: 1 };
+  let n = normalize(sub(up, scale(t0, dot(up, t0))));
+  let b = cross(t0, n);
+  frames.push({ n, b });
+  for (let i = 1; i < tangents.length; i++) {
+    const axis = cross(tangents[i - 1], tangents[i]);
+    const al = lengthOf(axis);
+    if (al < 1e-9) {
+      frames.push({ n, b });
+      continue;
+    }
+    const k = scale(axis, 1 / al);
+    const cos = Math.max(-1, Math.min(1, dot(tangents[i - 1], tangents[i])));
+    n = normalize(rodrigues(n, k, cos, al)); // |axis| == sin for unit tangents
+    b = cross(tangents[i], n);
+    frames.push({ n, b });
+  }
+  return frames;
+}
+
+function dedupePath(path: ReadonlyArray<{ x: number; y: number; z: number }>): Vec3[] {
+  const out: Vec3[] = [];
+  for (const p of path) {
+    const prev = out[out.length - 1];
+    if (prev && Math.hypot(prev.x - p.x, prev.y - p.y, prev.z - p.z) < 1e-9) continue;
+    out.push({ x: p.x, y: p.y, z: p.z });
+  }
+  return out;
+}
+
+/**
+ * Sweep a closed 2D profile along a 3D polyline path, keeping the profile
+ * plane perpendicular to the path tangent (parallel-transport frames avoid
+ * twist). End caps close the swept tube. Shared by `sweep` and `sweep_path`.
+ */
+function sweepAlongPath(
+  profile2d: ReadonlyArray<{ x: number; y: number }>,
+  path3d: ReadonlyArray<{ x: number; y: number; z: number }>,
+): Polyhedron {
+  const profile = dedupeLoop(profile2d);
+  if (profile.length < 3) {
+    throw new Error(`featureMesh: sweep profile needs ≥ 3 distinct points, got ${profile.length}`);
+  }
+  const path = dedupePath(path3d);
+  if (path.length < 2) {
+    throw new Error(`featureMesh: sweep path needs ≥ 2 distinct points, got ${path.length}`);
+  }
+  const frames = transportFrames(pathTangents(path));
+  const m = profile.length;
+
+  const vertices: Vec3[] = [];
+  for (let si = 0; si < path.length; si++) {
+    const s = path[si];
+    const f = frames[si];
+    for (const p of profile) {
+      vertices.push(add(add({ x: s.x, y: s.y, z: s.z }, scale(f.n, p.x)), scale(f.b, p.y)));
+    }
+  }
+  const idx = (pi: number, si: number): number => si * m + pi;
+  const centroid = polyCentroid(vertices);
+  const faces: PolyFace[] = [];
+  for (let si = 0; si < path.length - 1; si++) {
+    for (let pi = 0; pi < m; pi++) {
+      const pin = (pi + 1) % m;
+      faces.push(orientedFace([idx(pi, si), idx(pin, si), idx(pin, si + 1), idx(pi, si + 1)], vertices, centroid));
+    }
+  }
+  // End caps.
+  faces.push(orientedFace([...Array(m).keys()].map((pi) => idx(pi, 0)), vertices, centroid));
+  faces.push(orientedFace([...Array(m).keys()].map((pi) => idx(pi, path.length - 1)), vertices, centroid));
+  return { vertices, faces };
+}
+
+/** Mesh a sweep feature (profile.points swept along path). */
+export function sweepPolyhedron(feature: SweepFeature): Polyhedron {
+  return sweepAlongPath(feature.profile.points, feature.path);
+}
+
+/** Mesh a sweep-along-path feature. */
+export function sweepPathPolyhedron(feature: SweepPathFeature): Polyhedron {
+  return sweepAlongPath(feature.profile, feature.path);
+}
+
 // ─── dispatcher ────────────────────────────────────────────────────────────
 
 /** Feature kinds featureToPolyhedron can currently mesh. */
-export type MeshableFeature = ExtrudeFeature | RevolveFeature;
+export type MeshableFeature = ExtrudeFeature | RevolveFeature | SweepFeature | SweepPathFeature;
 
 /**
  * Convert a feature to a polyhedron, or null when the kind is not meshable
- * yet (sweep / loft land in later phases). Callers that need a hard failure
- * can check for null.
+ * yet (loft lands in a later phase). Callers that need a hard failure can
+ * check for null.
  */
 export function featureToPolyhedron(feature: { kind: string }): Polyhedron | null {
-  if (feature.kind === 'extrude') {
-    return extrudePolyhedron(feature as ExtrudeFeature);
+  switch (feature.kind) {
+    case 'extrude':
+      return extrudePolyhedron(feature as ExtrudeFeature);
+    case 'revolve':
+      return revolvePolyhedron(feature as RevolveFeature);
+    case 'sweep':
+      return sweepPolyhedron(feature as SweepFeature);
+    case 'sweep_path':
+      return sweepPathPolyhedron(feature as SweepPathFeature);
+    default:
+      return null;
   }
-  if (feature.kind === 'revolve') {
-    return revolvePolyhedron(feature as RevolveFeature);
-  }
-  return null;
 }
 
 // ─── derived edges ──────────────────────────────────────────────────────────

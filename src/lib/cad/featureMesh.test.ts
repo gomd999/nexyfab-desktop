@@ -5,11 +5,13 @@ import { describe, it, expect } from 'vitest';
 import {
   extrudePolyhedron,
   revolvePolyhedron,
+  sweepPolyhedron,
   featureToPolyhedron,
   polyhedronEdges,
 } from './featureMesh';
 import type { ExtrudeFeature } from './extrudeProfile';
 import type { RevolveFeature } from './revolveProfile';
+import type { SweepFeature } from './sweepLoft';
 import { dot, sub } from '@/lib/sketch/sketchPlane';
 
 const UNIT_SQUARE: ReadonlyArray<{ x: number; y: number }> = [
@@ -125,6 +127,36 @@ describe('revolvePolyhedron', () => {
   });
 });
 
+function sweepFeat(path: Array<{ x: number; y: number; z: number }>): SweepFeature {
+  return {
+    kind: 'sweep',
+    profile: { points: [{ x: -1, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 1 }, { x: -1, y: 1 }] },
+    path,
+    mode: 'add',
+  };
+}
+
+describe('sweepPolyhedron', () => {
+  it('a square swept along a straight path is a closed prism', () => {
+    const poly = sweepPolyhedron(sweepFeat([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }]));
+    expect(poly.vertices).toHaveLength(4 * 2);
+    expect(poly.faces).toHaveLength(4 + 2); // 4 sides + 2 caps
+    expect(polyhedronEdges(poly).every((e) => e.faces.length === 2)).toBe(true);
+  });
+
+  it('an L-shaped path stays a closed manifold (parallel-transport frames)', () => {
+    const poly = sweepPolyhedron(
+      sweepFeat([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }, { x: 8, y: 0, z: 10 }]),
+    );
+    expect(poly.vertices).toHaveLength(4 * 3);
+    expect(polyhedronEdges(poly).every((e) => e.faces.length === 2)).toBe(true);
+  });
+
+  it('rejects a too-short profile or path', () => {
+    expect(() => sweepPolyhedron(sweepFeat([{ x: 0, y: 0, z: 0 }]))).toThrow(/≥ 2/);
+  });
+});
+
 describe('featureToPolyhedron dispatcher', () => {
   it('meshes extrude', () => {
     expect(featureToPolyhedron(extrude())).not.toBeNull();
@@ -132,7 +164,10 @@ describe('featureToPolyhedron dispatcher', () => {
   it('meshes revolve', () => {
     expect(featureToPolyhedron(revolveFeat())).not.toBeNull();
   });
-  it('returns null for not-yet-meshable kinds (sweep/loft)', () => {
-    expect(featureToPolyhedron({ kind: 'sweep' })).toBeNull();
+  it('meshes sweep', () => {
+    expect(featureToPolyhedron(sweepFeat([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 5 }]))).not.toBeNull();
+  });
+  it('returns null for not-yet-meshable kinds (loft)', () => {
+    expect(featureToPolyhedron({ kind: 'loft' })).toBeNull();
   });
 });
