@@ -6,12 +6,13 @@ import {
   extrudePolyhedron,
   revolvePolyhedron,
   sweepPolyhedron,
+  loftPolyhedron,
   featureToPolyhedron,
   polyhedronEdges,
 } from './featureMesh';
 import type { ExtrudeFeature } from './extrudeProfile';
 import type { RevolveFeature } from './revolveProfile';
-import type { SweepFeature } from './sweepLoft';
+import type { SweepFeature, LoftFeature } from './sweepLoft';
 import { dot, sub } from '@/lib/sketch/sketchPlane';
 
 const UNIT_SQUARE: ReadonlyArray<{ x: number; y: number }> = [
@@ -157,6 +158,49 @@ describe('sweepPolyhedron', () => {
   });
 });
 
+function sq(half: number): Array<{ x: number; y: number }> {
+  return [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }];
+}
+function loftFeat(): LoftFeature {
+  return {
+    kind: 'loft',
+    sections: [
+      { profile: { points: sq(5) }, z: 0 },
+      { profile: { points: sq(3) }, z: 10 }, // tapers inward
+    ],
+    mode: 'add',
+  };
+}
+
+describe('loftPolyhedron', () => {
+  it('two stacked square sections form a closed tapered prism', () => {
+    const poly = loftPolyhedron(loftFeat());
+    expect(poly.vertices).toHaveLength(4 * 2);
+    expect(poly.faces).toHaveLength(4 + 2); // 4 sides + 2 caps
+    expect(polyhedronEdges(poly).every((e) => e.faces.length === 2)).toBe(true);
+  });
+
+  it('sections sit at their declared z planes', () => {
+    const poly = loftPolyhedron(loftFeat());
+    const zs = new Set(poly.vertices.map((v) => v.z));
+    expect(zs).toEqual(new Set([0, 10]));
+  });
+
+  it('rejects <2 sections or mismatched point counts', () => {
+    expect(() => loftPolyhedron({ kind: 'loft', sections: [{ profile: { points: sq(5) }, z: 0 }], mode: 'add' })).toThrow(/≥ 2/);
+    expect(() =>
+      loftPolyhedron({
+        kind: 'loft',
+        sections: [
+          { profile: { points: sq(5) }, z: 0 },
+          { profile: { points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }, { x: -1, y: 0 }] }, z: 5 },
+        ],
+        mode: 'add',
+      }),
+    ).toThrow(/same point count/);
+  });
+});
+
 describe('featureToPolyhedron dispatcher', () => {
   it('meshes extrude', () => {
     expect(featureToPolyhedron(extrude())).not.toBeNull();
@@ -167,7 +211,10 @@ describe('featureToPolyhedron dispatcher', () => {
   it('meshes sweep', () => {
     expect(featureToPolyhedron(sweepFeat([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 5 }]))).not.toBeNull();
   });
-  it('returns null for not-yet-meshable kinds (loft)', () => {
-    expect(featureToPolyhedron({ kind: 'loft' })).toBeNull();
+  it('meshes loft', () => {
+    expect(featureToPolyhedron(loftFeat())).not.toBeNull();
+  });
+  it('returns null for non-meshable kinds (fillet)', () => {
+    expect(featureToPolyhedron({ kind: 'fillet' })).toBeNull();
   });
 });

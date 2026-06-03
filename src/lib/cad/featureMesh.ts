@@ -20,7 +20,7 @@ import type { Vec3 } from '@/lib/sketch/sketchPlane';
 import { add, sub, cross, dot, lengthOf, scale, normalize } from '@/lib/sketch/sketchPlane';
 import type { ExtrudeFeature } from './extrudeProfile';
 import type { RevolveFeature } from './revolveProfile';
-import type { SweepFeature } from './sweepLoft';
+import type { SweepFeature, LoftFeature } from './sweepLoft';
 import type { SweepPathFeature } from './sweepPath';
 
 // ─── types ───────────────────────────────────────────────────────────────
@@ -266,15 +266,62 @@ export function sweepPathPolyhedron(feature: SweepPathFeature): Polyhedron {
   return sweepAlongPath(feature.profile, feature.path);
 }
 
+// ─── loft → stacked sections ──────────────────────────────────────────────
+
+/**
+ * Mesh a loft: 2+ profile sections stacked along z, connected section-to-
+ * section by side quads + end caps. v1 requires all sections to share the
+ * same point count (corresponding-vertex lofting); mismatched counts throw
+ * (resampling lands in a later phase).
+ */
+export function loftPolyhedron(feature: LoftFeature): Polyhedron {
+  const sections = feature.sections;
+  if (sections.length < 2) {
+    throw new Error(`featureMesh: loft needs ≥ 2 sections, got ${sections.length}`);
+  }
+  const n = sections[0].profile.points.length;
+  if (n < 3) {
+    throw new Error(`featureMesh: loft section needs ≥ 3 points, got ${n}`);
+  }
+  for (const s of sections) {
+    if (s.profile.points.length !== n) {
+      throw new Error('featureMesh: all loft sections must share the same point count (v1)');
+    }
+  }
+
+  const vertices: Vec3[] = [];
+  for (const s of sections) {
+    for (const p of s.profile.points) vertices.push({ x: p.x, y: p.y, z: s.z });
+  }
+  const idx = (pi: number, si: number): number => si * n + pi;
+  const centroid = polyCentroid(vertices);
+  const faces: PolyFace[] = [];
+  for (let si = 0; si < sections.length - 1; si++) {
+    for (let pi = 0; pi < n; pi++) {
+      const pin = (pi + 1) % n;
+      faces.push(orientedFace([idx(pi, si), idx(pin, si), idx(pin, si + 1), idx(pi, si + 1)], vertices, centroid));
+    }
+  }
+  // End caps (first + last section).
+  faces.push(orientedFace([...Array(n).keys()].map((pi) => idx(pi, 0)), vertices, centroid));
+  faces.push(orientedFace([...Array(n).keys()].map((pi) => idx(pi, sections.length - 1)), vertices, centroid));
+  return { vertices, faces };
+}
+
 // ─── dispatcher ────────────────────────────────────────────────────────────
 
 /** Feature kinds featureToPolyhedron can currently mesh. */
-export type MeshableFeature = ExtrudeFeature | RevolveFeature | SweepFeature | SweepPathFeature;
+export type MeshableFeature =
+  | ExtrudeFeature
+  | RevolveFeature
+  | SweepFeature
+  | SweepPathFeature
+  | LoftFeature;
 
 /**
  * Convert a feature to a polyhedron, or null when the kind is not meshable
- * yet (loft lands in a later phase). Callers that need a hard failure can
- * check for null.
+ * (e.g. fillet / chamfer / hole / pattern, which transform other bodies).
+ * Callers that need a hard failure can check for null.
  */
 export function featureToPolyhedron(feature: { kind: string }): Polyhedron | null {
   switch (feature.kind) {
@@ -286,6 +333,8 @@ export function featureToPolyhedron(feature: { kind: string }): Polyhedron | nul
       return sweepPolyhedron(feature as SweepFeature);
     case 'sweep_path':
       return sweepPathPolyhedron(feature as SweepPathFeature);
+    case 'loft':
+      return loftPolyhedron(feature as LoftFeature);
     default:
       return null;
   }
