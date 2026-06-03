@@ -44,6 +44,8 @@ interface Dict {
   spread: string;
   amount: string;
   reset: string;
+  play: string;
+  exportSteps: string;
   partsMove: string; // "{n} parts move" — {n} substituted by caller
 }
 
@@ -51,32 +53,32 @@ const dict: Record<AssemblyLang, Dict> = {
   ko: {
     title: '분해 보기', axis: '축',
     axisMateAxes: '메이트 축', axisBboxCenter: 'BBox 중심', axisGravityNormal: '중력 법선',
-    spread: '간격', amount: '분해 정도', reset: '초기화', partsMove: '개 부품 이동',
+    spread: '간격', amount: '분해 정도', reset: '초기화', play: '재생', exportSteps: '단계 내보내기', partsMove: '개 부품 이동',
   },
   en: {
     title: 'Exploded View', axis: 'Axis',
     axisMateAxes: 'Mate axes', axisBboxCenter: 'BBox center', axisGravityNormal: 'Gravity normal',
-    spread: 'Spread', amount: 'Amount', reset: 'Reset', partsMove: 'parts move',
+    spread: 'Spread', amount: 'Amount', reset: 'Reset', play: 'Play', exportSteps: 'Export steps', partsMove: 'parts move',
   },
   ja: {
     title: '分解表示', axis: '軸',
     axisMateAxes: 'メイト軸', axisBboxCenter: 'BBox中心', axisGravityNormal: '重力法線',
-    spread: '間隔', amount: '分解量', reset: 'リセット', partsMove: '個の部品が移動',
+    spread: '間隔', amount: '分解量', reset: 'リセット', play: '再生', exportSteps: 'ステップ出力', partsMove: '個の部品が移動',
   },
   zh: {
     title: '爆炸视图', axis: '轴',
     axisMateAxes: '配合轴', axisBboxCenter: 'BBox 中心', axisGravityNormal: '重力法线',
-    spread: '间距', amount: '分解程度', reset: '重置', partsMove: '个零件移动',
+    spread: '间距', amount: '分解程度', reset: '重置', play: '播放', exportSteps: '导出步骤', partsMove: '个零件移动',
   },
   es: {
     title: 'Vista explosionada', axis: 'Eje',
     axisMateAxes: 'Ejes de unión', axisBboxCenter: 'Centro BBox', axisGravityNormal: 'Normal de gravedad',
-    spread: 'Separación', amount: 'Cantidad', reset: 'Reiniciar', partsMove: 'piezas se mueven',
+    spread: 'Separación', amount: 'Cantidad', reset: 'Reiniciar', play: 'Reproducir', exportSteps: 'Exportar pasos', partsMove: 'piezas se mueven',
   },
   ar: {
     title: 'عرض مفكك', axis: 'محور',
     axisMateAxes: 'محاور التزاوج', axisBboxCenter: 'مركز BBox', axisGravityNormal: 'العمودي للجاذبية',
-    spread: 'تباعد', amount: 'المقدار', reset: 'إعادة', partsMove: 'قطعة تتحرك',
+    spread: 'تباعد', amount: 'المقدار', reset: 'إعادة', play: 'تشغيل', exportSteps: 'تصدير الخطوات', partsMove: 'قطعة تتحرك',
   },
 };
 
@@ -99,6 +101,10 @@ export interface AssemblyExplodePanelProps {
   onHeuristicChange: (h: ExplodeAxisHeuristic) => void;
   onScaleChange: (scale: number) => void;
   onAmountChange: (t: number) => void;
+  /** Animate the assembly apart (host ramps amount 0 → 1). */
+  onPlay?: () => void;
+  /** Download the ordered explode steps as a JSON keyframe sequence. */
+  onExport?: () => void;
 }
 
 // ─── component ────────────────────────────────────────────────────────────
@@ -112,6 +118,8 @@ export default function AssemblyExplodePanel({
   onHeuristicChange,
   onScaleChange,
   onAmountChange,
+  onPlay,
+  onExport,
 }: AssemblyExplodePanelProps): React.ReactElement {
   const t = dict[lang];
 
@@ -209,23 +217,55 @@ export default function AssemblyExplodePanel({
         </span>
       </label>
 
-      <button
-        type="button"
-        data-testid="solver-assembly-explode-reset"
-        onClick={() => onAmountChange(0)}
-        disabled={amount === 0}
-        style={{
-          alignSelf: 'flex-start',
-          padding: '4px 10px', fontSize: 11,
-          background: amount === 0 ? '#f3f4f6' : '#fff',
-          color: amount === 0 ? '#9ca3af' : '#374151',
-          border: '1px solid ' + (amount === 0 ? '#e5e7eb' : '#d1d5db'),
-          borderRadius: 4,
-          cursor: amount === 0 ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {t.reset}
-      </button>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          type="button"
+          data-testid="solver-assembly-explode-reset"
+          onClick={() => onAmountChange(0)}
+          disabled={amount === 0}
+          style={{
+            padding: '4px 10px', fontSize: 11,
+            background: amount === 0 ? '#f3f4f6' : '#fff',
+            color: amount === 0 ? '#9ca3af' : '#374151',
+            border: '1px solid ' + (amount === 0 ? '#e5e7eb' : '#d1d5db'),
+            borderRadius: 4,
+            cursor: amount === 0 ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {t.reset}
+        </button>
+        {onPlay && (
+          <button
+            type="button"
+            data-testid="solver-assembly-explode-play"
+            onClick={onPlay}
+            style={{
+              padding: '4px 10px', fontSize: 11, background: '#0e7490', color: '#fff',
+              border: '1px solid #0e7490', borderRadius: 4, cursor: 'pointer',
+            }}
+          >
+            ▶ {t.play}
+          </button>
+        )}
+        {onExport && (
+          <button
+            type="button"
+            data-testid="solver-assembly-explode-export"
+            onClick={onExport}
+            disabled={movingCount === 0}
+            style={{
+              padding: '4px 10px', fontSize: 11,
+              background: movingCount === 0 ? '#f3f4f6' : '#fff',
+              color: movingCount === 0 ? '#9ca3af' : '#374151',
+              border: '1px solid ' + (movingCount === 0 ? '#e5e7eb' : '#d1d5db'),
+              borderRadius: 4,
+              cursor: movingCount === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {t.exportSteps}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

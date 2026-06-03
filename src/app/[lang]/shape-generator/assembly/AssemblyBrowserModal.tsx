@@ -2951,6 +2951,66 @@ export default function AssemblyBrowserModal({
     [explodeOpen, state, explodedState, explodeAmount],
   );
 
+  // Play: ramp the explode amount 0 → 1 over ~700ms via rAF. Falls back to an
+  // instant jump where requestAnimationFrame is unavailable (older jsdom).
+  const explodeRafRef = useRef<number | null>(null);
+  const handlePlayExplode = useCallback(() => {
+    if (typeof requestAnimationFrame !== 'function') {
+      setExplodeAmount(1);
+      return;
+    }
+    if (explodeRafRef.current !== null) cancelAnimationFrame(explodeRafRef.current);
+    const durationMs = 700;
+    let startTs: number | null = null;
+    setExplodeAmount(0);
+    const tick = (ts: number): void => {
+      if (startTs === null) startTs = ts;
+      const t = Math.min(1, (ts - startTs) / durationMs);
+      setExplodeAmount(t);
+      explodeRafRef.current = t < 1 ? requestAnimationFrame(tick) : null;
+    };
+    explodeRafRef.current = requestAnimationFrame(tick);
+  }, []);
+  useEffect(
+    () => () => {
+      if (explodeRafRef.current !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(explodeRafRef.current);
+      }
+    },
+    [],
+  );
+
+  // Export: download the ordered explode steps as a JSON keyframe sequence
+  // (assembled `from` → exploded `to` per part), consumable by an external
+  // animator or as an exploded-BOM manifest.
+  const handleExplodeExport = useCallback(() => {
+    const fromById = new Map(state.parts.map((p) => [p.id, p.position]));
+    const toById = new Map(explodedState.displacedState.parts.map((p) => [p.id, p.position]));
+    const name = projectId ?? 'assembly';
+    const payload = {
+      assembly: name,
+      heuristic: explodeHeuristic,
+      scale: explodeScale,
+      steps: explodedState.steps.map((s) => ({
+        partId: s.partId,
+        order: s.order,
+        axis: s.axis,
+        distance: s.distance,
+        from: fromById.get(s.partId) ?? null,
+        to: toById.get(s.partId) ?? null,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name}-explode.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [state, explodedState, explodeHeuristic, explodeScale, projectId]);
+
   /**
    * AssemblyAiPanel.onBuildAssembly handler. Translates an {@link
    * AssemblyPlan} (stacked | grid | ring | pair) into PartInstance + Mate
@@ -4316,6 +4376,8 @@ export default function AssemblyBrowserModal({
               onHeuristicChange={setExplodeHeuristic}
               onScaleChange={setExplodeScale}
               onAmountChange={setExplodeAmount}
+              onPlay={handlePlayExplode}
+              onExport={handleExplodeExport}
             />
           </div>
         )}

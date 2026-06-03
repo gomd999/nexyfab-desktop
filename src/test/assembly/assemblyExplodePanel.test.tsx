@@ -15,7 +15,7 @@
  *   6. 6-lang title localisation
  *   7. AssemblyBrowserModal — toggle mounts/unmounts the explode host
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
 import React from 'react';
 import AssemblyExplodePanel, {
@@ -129,6 +129,25 @@ describe('AssemblyExplodePanel — controls', () => {
     renderPanel({ lang });
     expect(screen.getByTestId('solver-assembly-explode-panel').textContent ?? '').toMatch(re);
   });
+
+  it('play / export buttons appear only when their callbacks are provided', () => {
+    renderPanel();
+    expect(screen.queryByTestId('solver-assembly-explode-play')).toBeNull();
+    expect(screen.queryByTestId('solver-assembly-explode-export')).toBeNull();
+    cleanup();
+    const onPlay = vi.fn();
+    const onExport = vi.fn();
+    renderPanel({ onPlay, onExport });
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-play'));
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-export'));
+    expect(onPlay).toHaveBeenCalledTimes(1);
+    expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it('export is disabled when no part moves', () => {
+    renderPanel({ onExport: vi.fn(), movingCount: 0 });
+    expect((screen.getByTestId('solver-assembly-explode-export') as HTMLButtonElement).disabled).toBe(true);
+  });
 });
 
 // ─── modal integration ──────────────────────────────────────────────────────
@@ -154,4 +173,38 @@ describe('AssemblyBrowserModal — Explode toggle integration', () => {
     fireEvent.click(toggle);
     expect(toggle.textContent ?? '').toMatch(/Hide exploded view/i);
   });
+
+  it('Export steps downloads a JSON blob (createObjectURL invoked)', () => {
+    const createSpy = vi.fn(() => 'blob:explode');
+    const revokeSpy = vi.fn();
+    const origCreate = URL.createObjectURL;
+    const origRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = createSpy as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = revokeSpy as unknown as typeof URL.revokeObjectURL;
+    // Stub the anchor navigation so jsdom doesn't log "navigation not implemented".
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    try {
+      render(<AssemblyBrowserModal lang="en" initialState={makeState()} onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('solver-assembly-explode-toggle'));
+      const exportBtn = screen.getByTestId('solver-assembly-explode-export') as HTMLButtonElement;
+      expect(exportBtn.disabled).toBe(false); // B + C move
+      fireEvent.click(exportBtn);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(revokeSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      URL.createObjectURL = origCreate;
+      URL.revokeObjectURL = origRevoke;
+      clickSpy.mockRestore();
+    }
+  });
+
+  it('Play does not throw and the panel stays mounted', () => {
+    render(<AssemblyBrowserModal lang="en" initialState={makeState()} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-toggle'));
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-play'));
+    expect(screen.getByTestId('solver-assembly-explode-panel')).toBeInTheDocument();
+  });
 });
+
+afterEach(cleanup);
