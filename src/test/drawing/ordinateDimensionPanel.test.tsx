@@ -129,6 +129,29 @@ describe('OrdinateDimensionPanel — commit (Add to sheet)', () => {
   });
 });
 
+describe('OrdinateDimensionPanel — initialChain seeding (edit flow)', () => {
+  it('seeds origin / axis / precision / unit / points from a chain', () => {
+    render(
+      <OrdinateDimensionPanel
+        lang="en"
+        initialChain={{
+          id: 'c', origin: { x: 10, y: 5 }, axis: 'both', precision: 1, unit: 'in',
+          points: [{ id: 'A', x: 30, y: 25 }],
+        }}
+      />,
+    );
+    expect((screen.getByTestId('drawing-ordinate-origin-x') as HTMLInputElement).value).toBe('10');
+    expect((screen.getByTestId('drawing-ordinate-origin-y') as HTMLInputElement).value).toBe('5');
+    expect((screen.getByTestId('drawing-ordinate-axis') as HTMLSelectElement).value).toBe('both');
+    expect((screen.getByTestId('drawing-ordinate-precision') as HTMLInputElement).value).toBe('1');
+    expect((screen.getByTestId('drawing-ordinate-unit') as HTMLSelectElement).value).toBe('in');
+    const idInput = document.querySelector('[data-testid^="drawing-ordinate-point-id-"]') as HTMLInputElement;
+    expect(idInput.value).toBe('A');
+    // value = A.x - origin.x = 20, precision 1, unit in.
+    expect(screen.getByTestId('drawing-ordinate-value-A-x').textContent ?? '').toMatch(/20\.0 in/);
+  });
+});
+
 describe('OrdinateDimensionPanel — i18n', () => {
   const cases: Array<[DrawingLang, RegExp]> = [
     ['ko', /기준선 치수/],
@@ -184,5 +207,36 @@ describe('DrawingPageContent — ordinate toggle integration', () => {
 
     // The committed chain now renders in the on-screen SheetRenderer.
     expect(container.querySelectorAll('[data-testid^="sheet-renderer-ordinate-"]').length).toBeGreaterThan(0);
+  });
+
+  it('committed chain shows in the annotation list; delete removes list item + drawing', () => {
+    const { container } = render(<DrawingPageContent lang="en" />);
+    fireEvent.click(screen.getByTestId('drawing-ordinate-toggle'));
+    fireEvent.click(screen.getByTestId('drawing-ordinate-add-point'));
+    fireEvent.click(screen.getByTestId('drawing-ordinate-commit'));
+
+    expect(screen.getByTestId('drawing-page-annotation-item-ordinate-1')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-page-annotation-item-ordinate-1').textContent ?? '').toMatch(/ORD/);
+
+    fireEvent.click(screen.getByTestId('drawing-page-delete-annotation-ordinate-1'));
+    expect(screen.queryByTestId('drawing-page-annotation-item-ordinate-1')).toBeNull();
+    expect(container.querySelectorAll('[data-testid^="sheet-renderer-ordinate-"]').length).toBe(0);
+  });
+
+  it('edit pulls the chain back into the panel; re-commit re-adds with a new id', () => {
+    render(<DrawingPageContent lang="en" />);
+    fireEvent.click(screen.getByTestId('drawing-ordinate-toggle'));
+    fireEvent.click(screen.getByTestId('drawing-ordinate-add-point'));
+    fireEvent.click(screen.getByTestId('drawing-ordinate-commit'));
+
+    fireEvent.click(screen.getByTestId('drawing-page-edit-annotation-ordinate-1'));
+    // Pulled out of the sheet → no longer listed.
+    expect(screen.queryByTestId('drawing-page-annotation-item-ordinate-1')).toBeNull();
+    // Panel re-seeded with the chain's point (default id 'P1').
+    const idInput = document.querySelector('[data-testid^="drawing-ordinate-point-id-"]') as HTMLInputElement;
+    expect(idInput.value).toBe('P1');
+    // Re-commit → fresh id ordinate-2.
+    fireEvent.click(screen.getByTestId('drawing-ordinate-commit'));
+    expect(screen.getByTestId('drawing-page-annotation-item-ordinate-2')).toBeInTheDocument();
   });
 });

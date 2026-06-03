@@ -140,6 +140,8 @@ interface PageDict {
   bindingsWarningTitle: string;
   dimensionTag: string;
   gdtTag: string;
+  ordinateTag: string;
+  editAnnotation: string;
   assemblyMode: string;
   addSheet: string;
   exportAssemblyStep: string;
@@ -232,6 +234,8 @@ const DICT: Record<string, PageDict> = {
     bindingsApplied: '바인딩 적용됨',
     bindingsWarningTitle: 'STEP 바인딩 경고',
     dimensionTag: '치수',
+    ordinateTag: '기준선',
+    editAnnotation: '편집',
     gdtTag: 'GD&T',
     assemblyMode: '조립체 모드',
     addSheet: '시트 추가',
@@ -374,6 +378,8 @@ const DICT: Record<string, PageDict> = {
     titleblockProject: 'Project',
     compareVersions: 'Compare versions',
     hideCompareButton: 'Hide compare panel',
+    ordinateTag: 'ORD',
+    editAnnotation: 'Edit',
     enablePngExport: 'High-res PNG export',
     enableOrdinateChain: 'Ordinate dimensions',
     hideOrdinateChain: 'Hide ordinate dimensions',
@@ -404,6 +410,8 @@ const DICT: Record<string, PageDict> = {
     bindingsApplied: 'バインディング適用済み',
     bindingsWarningTitle: 'STEPバインディング警告',
     dimensionTag: '寸法',
+    ordinateTag: '基準線',
+    editAnnotation: '編集',
     gdtTag: 'GD&T',
     assemblyMode: 'アセンブリモード',
     addSheet: 'シート追加',
@@ -490,6 +498,8 @@ const DICT: Record<string, PageDict> = {
     bindingsApplied: '已应用绑定',
     bindingsWarningTitle: 'STEP 绑定警告',
     dimensionTag: '尺寸',
+    ordinateTag: '基准线',
+    editAnnotation: '编辑',
     gdtTag: 'GD&T',
     assemblyMode: '装配模式',
     addSheet: '添加图纸',
@@ -632,6 +642,8 @@ const DICT: Record<string, PageDict> = {
     titleblockProject: 'Proyecto',
     compareVersions: 'Comparar versiones',
     hideCompareButton: 'Ocultar panel de comparación',
+    ordinateTag: 'ORD',
+    editAnnotation: 'Editar',
     enablePngExport: 'Exportación PNG alta resolución',
     enableOrdinateChain: 'Cotas de ordenada',
     hideOrdinateChain: 'Ocultar cotas de ordenada',
@@ -662,6 +674,8 @@ const DICT: Record<string, PageDict> = {
     bindingsApplied: 'تم تطبيق الروابط',
     bindingsWarningTitle: 'تحذيرات روابط STEP',
     dimensionTag: 'البُعد',
+    ordinateTag: 'خط الأساس',
+    editAnnotation: 'تعديل',
     gdtTag: 'GD&T',
     assemblyMode: 'وضع التجميع',
     addSheet: 'إضافة ورقة',
@@ -1230,6 +1244,10 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * out a baseline/CMM-style chain without touching the live sheet IR.
    */
   const [ordinateEnabled, setOrdinateEnabled] = useState<boolean>(false);
+  // Edit flow: a chain pulled back out of the sheet to seed the panel. The
+  // bump key forces a panel remount so the seed re-applies.
+  const [editingOrdinateChain, setEditingOrdinateChain] = useState<OrdinateDimensionChain | null>(null);
+  const [ordinateSeedKey, setOrdinateSeedKey] = useState<number>(0);
 
   // ─── Phase 4.7 cursor snap state ───────────────────────────────────────
   /**
@@ -1745,26 +1763,50 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
         { ...chain, id: `ordinate-${++ordinateSeq.current}` },
       ],
     }));
+    // Clear any edit seed so a later toggle-off/on starts blank.
+    setEditingOrdinateChain(null);
   }, []);
 
-  const allAnnotations: ReadonlyArray<{ id: string; tag: string; label: string }> = useMemo(() => {
-    const out: Array<{ id: string; tag: string; label: string }> = [];
+  /**
+   * Edit a committed ordinate chain: pull it out of the sheet and seed the
+   * panel with it (origin / axis / precision / unit / points). Bumping the
+   * seed key forces the panel to remount and re-read the seed; opening the
+   * toggle makes sure the panel is visible. Re-committing assigns a fresh id.
+   */
+  const handleEditOrdinateChain = useCallback((id: string) => {
+    setAnnotations((prev) => {
+      const target = prev.ordinateChains.find((c) => c.id === id);
+      if (target) setEditingOrdinateChain(target);
+      return { ...prev, ordinateChains: prev.ordinateChains.filter((c) => c.id !== id) };
+    });
+    setOrdinateSeedKey((k) => k + 1);
+    setOrdinateEnabled(true);
+    setSelectedAnnotationId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  const allAnnotations: ReadonlyArray<{
+    id: string;
+    tag: string;
+    label: string;
+    kind: 'dimension' | 'gdt' | 'ordinate';
+  }> = useMemo(() => {
+    const out: Array<{ id: string; tag: string; label: string; kind: 'dimension' | 'gdt' | 'ordinate' }> = [];
     for (const d of annotations.dimensions) {
-      out.push({
-        id: d.id,
-        tag: dict.dimensionTag,
-        label: `${d.kind} · ${d.viewportId}`,
-      });
+      out.push({ id: d.id, tag: dict.dimensionTag, label: `${d.kind} · ${d.viewportId}`, kind: 'dimension' });
     }
     for (const g of annotations.gdtCallouts) {
+      out.push({ id: g.id, tag: dict.gdtTag, label: `${g.kind} · ${g.viewportId}`, kind: 'gdt' });
+    }
+    for (const c of annotations.ordinateChains) {
       out.push({
-        id: g.id,
-        tag: dict.gdtTag,
-        label: `${g.kind} · ${g.viewportId}`,
+        id: c.id,
+        tag: dict.ordinateTag,
+        label: `${c.axis} · ${c.points.length} pt`,
+        kind: 'ordinate',
       });
     }
     return out;
-  }, [annotations, dict.dimensionTag, dict.gdtTag]);
+  }, [annotations, dict.dimensionTag, dict.gdtTag, dict.ordinateTag]);
 
   const onExportPng = useCallback(() => {
     if (!sheetRef.current) return;
@@ -2879,25 +2921,48 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                         <strong style={{ marginRight: 6 }}>{a.tag}</strong>
                         {a.label}
                       </span>
-                      <button
-                        type="button"
-                        data-testid={`drawing-page-delete-annotation-${a.id}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(a.id);
-                        }}
-                        style={{
-                          padding: '2px 8px',
-                          background: '#b91c1c',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 3,
-                          cursor: 'pointer',
-                          fontSize: 11,
-                        }}
-                      >
-                        {dict.deleteAnnotation}
-                      </button>
+                      <span style={{ display: 'flex', gap: 4 }}>
+                        {a.kind === 'ordinate' ? (
+                          <button
+                            type="button"
+                            data-testid={`drawing-page-edit-annotation-${a.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditOrdinateChain(a.id);
+                            }}
+                            style={{
+                              padding: '2px 8px',
+                              background: '#0e7490',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 3,
+                              cursor: 'pointer',
+                              fontSize: 11,
+                            }}
+                          >
+                            {dict.editAnnotation}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          data-testid={`drawing-page-delete-annotation-${a.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(a.id);
+                          }}
+                          style={{
+                            padding: '2px 8px',
+                            background: '#b91c1c',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                            fontSize: 11,
+                          }}
+                        >
+                          {dict.deleteAnnotation}
+                        </button>
+                      </span>
                     </li>
                   );
                 })}
@@ -3354,7 +3419,12 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
             }}
           >
-            <OrdinateDimensionPanel lang={lang} onCommit={handleAddOrdinateChain} />
+            <OrdinateDimensionPanel
+              key={ordinateSeedKey}
+              lang={lang}
+              initialChain={editingOrdinateChain ?? undefined}
+              onCommit={handleAddOrdinateChain}
+            />
           </section>
         ) : null}
       </div>

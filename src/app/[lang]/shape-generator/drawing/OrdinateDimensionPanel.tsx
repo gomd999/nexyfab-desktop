@@ -119,6 +119,13 @@ export interface OrdinateDimensionPanelProps {
   lang?: string;
   initialPoints?: ReadonlyArray<{ id: string; x: number; y: number }>;
   /**
+   * Seed the whole panel (origin / axis / precision / unit / points) from an
+   * existing chain — used by the host's "edit" flow to pull a committed chain
+   * back in. Wins over initialPoints. Remount (via a changing React key) to
+   * re-seed after the first mount.
+   */
+  initialChain?: OrdinateDimensionChain;
+  /**
    * When provided, an "Add to sheet" button appears (enabled only while the
    * chain is valid). It hands the current chain to the host, which assigns a
    * unique id and appends it to the Sheet IR so SheetRenderer draws it.
@@ -145,20 +152,24 @@ function num(raw: string): number {
 export default function OrdinateDimensionPanel({
   lang = 'en',
   initialPoints,
+  initialChain,
   onCommit,
 }: OrdinateDimensionPanelProps): React.ReactElement {
   const t = pickDict(lang);
   const counter = useRef<number>(0);
   const nextKey = useCallback((): string => `p${counter.current++}`, []);
 
-  const [originX, setOriginX] = useState<string>('0');
-  const [originY, setOriginY] = useState<string>('0');
-  const [axis, setAxis] = useState<OrdinateAxis>('x');
-  const [precision, setPrecision] = useState<string>('2');
-  const [unit, setUnit] = useState<'mm' | 'in'>('mm');
-  const [rows, setRows] = useState<PointRow[]>(() =>
-    (initialPoints ?? []).map((p) => ({ key: nextKey(), id: p.id, x: String(p.x), y: String(p.y) })),
+  const [originX, setOriginX] = useState<string>(initialChain ? String(initialChain.origin.x) : '0');
+  const [originY, setOriginY] = useState<string>(initialChain ? String(initialChain.origin.y) : '0');
+  const [axis, setAxis] = useState<OrdinateAxis>(initialChain?.axis ?? 'x');
+  const [precision, setPrecision] = useState<string>(
+    initialChain?.precision !== undefined ? String(initialChain.precision) : '2',
   );
+  const [unit, setUnit] = useState<'mm' | 'in'>(initialChain?.unit ?? 'mm');
+  const [rows, setRows] = useState<PointRow[]>(() => {
+    const pts = initialChain?.points ?? initialPoints ?? [];
+    return pts.map((p) => ({ key: nextKey(), id: p.id, x: String(p.x), y: String(p.y) }));
+  });
 
   const addRow = useCallback((): void => {
     setRows((prev) => [...prev, { key: nextKey(), id: `P${prev.length + 1}`, x: '0', y: '0' }]);
