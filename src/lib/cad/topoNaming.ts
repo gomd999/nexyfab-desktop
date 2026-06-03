@@ -20,6 +20,8 @@
 import type { Polyhedron, PolyFace, PolyEdge } from './featureMesh';
 import { extrudePolyhedron, polyhedronEdges } from './featureMesh';
 import type { ExtrudeFeature } from './extrudeProfile';
+import type { Vec3 } from '@/lib/sketch/sketchPlane';
+import { add, scale } from '@/lib/sketch/sketchPlane';
 
 export type TopoKind = 'face' | 'edge';
 
@@ -86,6 +88,19 @@ export function resolveFace(topo: NamedTopology, name: string): PolyFace | null 
 export function resolveEdge(topo: NamedTopology, name: string): PolyEdge | null {
   const loc = topo.byName.get(name);
   return loc && loc.kind === 'edge' ? topo.edges[loc.index] : null;
+}
+
+/**
+ * 3D midpoint of a named edge on the current polyhedron, or null. This is the
+ * bridge to a kernel: a stable name resolves to a geometric anchor, which the
+ * OCCT layer (K3) matches against the kernel's own re-indexed edges to pick the
+ * right `TopoDS_Edge` for a fillet/chamfer.
+ */
+export function edgeMidpoint(topo: NamedTopology, name: string): Vec3 | null {
+  const loc = topo.byName.get(name);
+  if (!loc || loc.kind !== 'edge') return null;
+  const e = topo.edges[loc.index];
+  return scale(add(topo.poly.vertices[e.a], topo.poly.vertices[e.b]), 0.5);
 }
 
 /** All stable names of a given kind (for UI pickers / fillet selection). */

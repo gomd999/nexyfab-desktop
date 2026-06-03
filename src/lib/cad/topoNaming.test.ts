@@ -2,7 +2,7 @@
  * topoNaming — stable names survive a parameter rebuild (K2, ADR-014).
  */
 import { describe, it, expect } from 'vitest';
-import { buildExtrudeTopo, resolveFace, resolveEdge, namesOf } from './topoNaming';
+import { buildExtrudeTopo, resolveFace, resolveEdge, namesOf, edgeMidpoint } from './topoNaming';
 import type { ExtrudeFeature } from './extrudeProfile';
 import { dot } from '@/lib/sketch/sketchPlane';
 
@@ -71,5 +71,16 @@ describe('buildExtrudeTopo', () => {
     const t = buildExtrudeTopo(box(5, 5));
     expect(resolveFace(t, 'f.side.99')).toBeNull();
     expect(resolveEdge(t, 'nope')).toBeNull();
+  });
+
+  // ─── K3 anchor: name → 3D midpoint for kernel edge matching ────────────────
+  it('edgeMidpoint anchors a vertical edge at the loop corner, mid-height', () => {
+    const t = buildExtrudeTopo(box(5, 5)); // 10×10×5, corners at ±5, z 0..5
+    const m = edgeMidpoint(t, 'e.vert.0')!;
+    expect(m).not.toBeNull();
+    expect(m.z).toBeCloseTo(2.5, 6);                 // mid-height
+    expect(Math.hypot(m.x, m.y)).toBeCloseTo(Math.hypot(5, 5), 6); // a corner
+    expect(edgeMidpoint(t, 'f.cap.top')).toBeNull(); // not an edge
+    expect(edgeMidpoint(t, 'nope')).toBeNull();
   });
 });

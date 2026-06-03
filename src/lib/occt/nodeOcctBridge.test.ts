@@ -68,11 +68,41 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(r.finalShape?.volume).toBeCloseTo(420, 1);
   });
 
-  it('fillet reports needs-K2 (stable edge ids) rather than a wrong result', async () => {
+  it('K3: fillet rounds the named vertical edges (stable name → real OCCT edge)', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    // The 4 vertical corner edges by their stable topoNaming names.
+    const f = await bridge.fillet(box.shape!, ['e.vert.0', 'e.vert.1', 'e.vert.2', 'e.vert.3'], 1);
+    expect(f.ok).toBe(true);
+    // 500 − 4 corners each losing (1 − π/4)·r²·h = (1−0.7854)·1·5 ≈ 1.073 → ≈ 495.71
+    expect(f.shape?.volume).toBeCloseTo(495.71, 1);
+  });
+
+  it('K3: fillet sel:all rounds every edge', async () => {
     if (!okLoad) return;
     const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
     const f = await bridge.fillet(box.shape!, ['sel:all'], 1);
+    expect(f.ok).toBe(true);
+    expect(f.shape!.volume).toBeLessThan(500);   // material removed
+    expect(f.shape!.volume).toBeGreaterThan(470);
+  });
+
+  it('K3: chamfer the named vertical edges', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const c = await bridge.chamfer(box.shape!, ['e.vert.0', 'e.vert.1', 'e.vert.2', 'e.vert.3'], 1);
+    expect(c.ok).toBe(true);
+    // 45° chamfer dist 1 removes a triangular prism per corner: 0.5·1·1·5 = 2.5 → 500 − 4·2.5 = 490
+    expect(c.shape?.volume).toBeCloseTo(490, 0);
+  });
+
+  it('K3: name-based fillet on a composed (boolean) shape reports K2.2 cleanly', async () => {
+    if (!okLoad) return;
+    const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 7, direction: 'one_sided', mode: 'add' });
+    const cut = await bridge.boolean.subtract(base.shape!, tool.shape!);
+    const f = await bridge.fillet(cut.shape!, ['e.vert.0'], 1);
     expect(f.ok).toBe(false);
-    expect(f.error).toMatch(/K2|edge/);
+    expect(f.error).toMatch(/K2\.2|stable topology/);
   });
 });

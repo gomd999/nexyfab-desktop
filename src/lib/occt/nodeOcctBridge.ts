@@ -17,6 +17,8 @@ import type { OcctShape, OcctOperationResult, Vec3 } from './types';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { OcctModule } from './nodeOcctLoader';
+import { buildExtrudeTopo, edgeMidpoint, namesOf, type NamedTopology } from '@/lib/cad/topoNaming';
+import { nearestByMidpoint } from '@/lib/cad/edgeMatch';
 
 // ─── embind typing helpers (no `any`) ──────────────────────────────────────
 
@@ -75,20 +77,53 @@ function bboxOf(oc: OcctModule, shape: OcctInstance): { min: Vec3; max: Vec3 } |
   }
 }
 
+/**
+ * Enumerate a shape's UNIQUE edges with their 3D midpoints. TopExp_Explorer
+ * yields each edge once per adjacent face, so we dedupe by quantised midpoint.
+ * The midpoint is the anchor edgeMatch uses to bind a stable name to a
+ * kernel-reindexed `TopoDS_Edge`.
+ */
+function uniqueEdges(oc: OcctModule, shape: OcctInstance): Array<{ edge: OcctInstance; mid: Vec3 }> {
+  const m = maker(oc);
+  const shapeEnum = oc.TopAbs_ShapeEnum as unknown as { TopAbs_EDGE: unknown; TopAbs_SHAPE: unknown };
+  const topoDS = oc.TopoDS as unknown as { Edge_1: (s: unknown) => OcctInstance };
+  const exp = m.inst('TopExp_Explorer_2', shape, shapeEnum.TopAbs_EDGE, shapeEnum.TopAbs_SHAPE);
+  const seen = new Set<string>();
+  const out: Array<{ edge: OcctInstance; mid: Vec3 }> = [];
+  while (exp.More()) {
+    const edge = topoDS.Edge_1(exp.Current());
+    const curve = m.inst('BRepAdaptor_Curve_2', edge);
+    const t0 = curve.FirstParameter() as number;
+    const t1 = curve.LastParameter() as number;
+    const p = curve.Value((t0 + t1) / 2) as OcctInstance;
+    const mid: Vec3 = { x: p.X() as number, y: p.Y() as number, z: p.Z() as number };
+    const key = `${Math.round(mid.x * 1000)},${Math.round(mid.y * 1000)},${Math.round(mid.z * 1000)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push({ edge, mid });
+    }
+    exp.Next();
+  }
+  return out;
+}
+
 // ─── bridge ─────────────────────────────────────────────────────────────────
 
 export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
   const m = maker(oc);
   const registry = new Map<string, OcctInstance>();
+  /** Stable-named topology of shapes built directly from a primitive feature. */
+  const topos = new Map<string, NamedTopology>();
   let seq = 0;
 
-  const register = (shape: OcctInstance): OcctShape => {
+  const register = (shape: OcctInstance, topo?: NamedTopology): OcctShape => {
     const id = `occt_${++seq}`;
     registry.set(id, shape);
+    if (topo) topos.set(id, topo);
     return { id, kind: 'solid', volume: volumeOf(oc, shape), bbox: bboxOf(oc, shape) };
   };
-  const result = (shape: OcctInstance, warnings: string[] = []): OcctOperationResult => ({
-    ok: true, shape: register(shape), warnings,
+  const result = (shape: OcctInstance, warnings: string[] = [], topo?: NamedTopology): OcctOperationResult => ({
+    ok: true, shape: register(shape, topo), warnings,
   });
   const lookup = (s: OcctShape, where: string): OcctInstance => {
     const live = registry.get(s.id);
@@ -110,11 +145,85 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     }
   }
 
+  /**
+   * Fillet/chamfer the selected edges. `edgeIds` are stable topoNaming names
+   * (e.g. `e.vert.0`) resolved to a 3D anchor against the shape's stored
+   * topology, then matched to the kernel's re-indexed edges by midpoint (K3).
+   * `['sel:all']` rounds every edge (no topology needed).
+   */
+  function roundEdges(
+    op: 'fillet' | 'chamfer',
+    shape: OcctShape,
+    edgeIds: string[],
+    size: number,
+  ): OcctOperationResult {
+    if (!(size > 0) || !Number.isFinite(size)) {
+      return { ok: false, error: `${op} size must be positive finite, got ${size}`, warnings: [] };
+    }
+    let live: OcctInstance;
+    try {
+      live = lookup(shape, op);
+    } catch (e) {
+      return { ok: false, error: `${op}: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+
+    const occtEdges = uniqueEdges(oc, live);
+    const all = edgeIds.length === 1 && edgeIds[0] === 'sel:all';
+
+    // Resolve the requested edges (or take all of them).
+    let picked: OcctInstance[];
+    if (all) {
+      picked = occtEdges.map((e) => e.edge);
+    } else {
+      const topo = topos.get(shape.id);
+      if (!topo) {
+        return {
+          ok: false,
+          error: `${op}: shape ${shape.id} has no stable topology (composed/boolean result) — name-based selection needs K2.2; use ['sel:all']`,
+          warnings: [],
+        };
+      }
+      const mids = occtEdges.map((e) => e.mid);
+      picked = [];
+      const missing: string[] = [];
+      for (const name of edgeIds) {
+        const anchor = edgeMidpoint(topo, name);
+        if (!anchor) { missing.push(`${name} (unknown)`); continue; }
+        const match = nearestByMidpoint(mids, anchor, 1e-3);
+        if (match.index < 0) { missing.push(`${name} (no kernel edge near anchor)`); continue; }
+        picked.push(occtEdges[match.index].edge);
+      }
+      if (missing.length) {
+        return { ok: false, error: `${op}: unresolved edges — ${missing.join(', ')}. known: ${namesOf(topo, 'edge').join(',')}`, warnings: [] };
+      }
+    }
+    if (picked.length === 0) {
+      return { ok: false, error: `${op}: no edges selected`, warnings: [] };
+    }
+
+    try {
+      // ChFi3d_Rational = 0 (second ctor arg) for fillet.
+      const mk = op === 'fillet'
+        ? m.inst('BRepFilletAPI_MakeFillet', live, 0)
+        : m.inst('BRepFilletAPI_MakeChamfer', live);
+      for (const edge of picked) mk.Add_2(size, edge);
+      mk.Build();
+      if (!(mk.IsDone() as boolean)) {
+        return { ok: false, error: `${op}: kernel failed (radius/distance too large for edge?)`, warnings: [] };
+      }
+      return result(mk.Shape() as OcctInstance, [`${op}ed ${picked.length} edge(s) @ ${size}`]);
+    } catch (e) {
+      return { ok: false, error: `${op}: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+  }
+
   return {
     async buildFromExtrude(feature: ExtrudeFeature) {
       try {
         const { z0, h } = extrudeZRange(feature);
-        return result(buildPrism(oc, feature.loop, z0, h));
+        const shape = buildPrism(oc, feature.loop, z0, h);
+        // Stable-named topology so fillet/chamfer can pick edges by name (K3).
+        return result(shape, [], buildExtrudeTopo(feature));
       } catch (e) {
         return { ok: false, error: `extrude: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
       }
@@ -138,11 +247,11 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
 
     boolean,
 
-    async fillet() {
-      return { ok: false, error: 'fillet needs stable edge ids (K2) — not implemented', warnings: [] };
+    async fillet(shape, edgeIds, radius) {
+      return roundEdges('fillet', shape, edgeIds, radius);
     },
-    async chamfer() {
-      return { ok: false, error: 'chamfer needs stable edge ids (K2) — not implemented', warnings: [] };
+    async chamfer(shape, edgeIds, distance) {
+      return roundEdges('chamfer', shape, edgeIds, distance);
     },
     async exportSTEP() {
       throw new Error('exportSTEP via OCCT is K4 — not implemented');
