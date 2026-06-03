@@ -130,8 +130,8 @@ describe('SketchExpressionsPanel — apply to constraint', () => {
     expect(document.querySelector('[data-testid^="solver-sketch-expressions-apply-"]')).toBeNull();
   });
 
-  it('Apply appears only after a row evaluates ok, and fires onApply with the value', () => {
-    const onApply = vi.fn<(v: number) => void>();
+  it('Apply appears only after a row evaluates ok, and fires onApply with name + value', () => {
+    const onApply = vi.fn<(name: string, value: number) => void>();
     render(
       <SketchExpressionsPanel
         lang="en"
@@ -145,7 +145,25 @@ describe('SketchExpressionsPanel — apply to constraint', () => {
     expect(screen.queryByTestId(`solver-sketch-expressions-apply-${key}`)).toBeNull();
     fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
     fireEvent.click(screen.getByTestId(`solver-sketch-expressions-apply-${key}`));
-    expect(onApply).toHaveBeenCalledWith(12.5);
+    expect(onApply).toHaveBeenCalledWith('w', 12.5);
+  });
+
+  it('a bound row mirrors the live constraint value (🔗) over its evaluated one', () => {
+    // w evaluates to 50, but it is bound and the constraint now reads 88.
+    render(
+      <SketchExpressionsPanel
+        lang="en"
+        initialRows={[{ name: 'w', def: '50' }]}
+        boundValues={{ w: 88 }}
+      />,
+    );
+    const key = rowKeyForName('w');
+    fireEvent.click(screen.getByTestId('solver-sketch-expressions-evaluate'));
+    const valueCell = screen.getByTestId(`solver-sketch-expressions-value-${key}`);
+    expect(valueCell.textContent ?? '').toMatch(/🔗/);
+    expect(valueCell.textContent ?? '').toMatch(/88/);
+    expect(valueCell.textContent ?? '').not.toMatch(/50/);
+    expect(screen.getByTestId(`solver-sketch-expressions-row-${key}`).getAttribute('data-bound')).toBe('true');
   });
 
   it('Apply is disabled when canApply is false', () => {

@@ -152,10 +152,19 @@ export interface SketchExpressionsPanelProps {
    * host's currently-selected dimensional constraint. The host owns the
    * solver + selection.
    */
-  onApply?: (value: number) => void;
+  onApply?: (varName: string, value: number) => void;
   /** Whether a dimensional constraint is currently selected in the host —
    *  gates the Apply buttons. */
   canApply?: boolean;
+  /**
+   * Live values of variables bound to a constraint (canonical units: mm /
+   * rad), keyed by variable name. A bound row shows this value (with a 🔗
+   * marker) instead of its evaluated one — this is the constraint→variable
+   * half of the two-way binding (the variable mirrors the live constraint
+   * even when the constraint is edited elsewhere). The host owns the binding
+   * map and recomputes these from the solver snapshot.
+   */
+  boundValues?: Record<string, number>;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -175,6 +184,7 @@ export default function SketchExpressionsPanel({
   initialRows,
   onApply,
   canApply = false,
+  boundValues,
 }: SketchExpressionsPanelProps): React.ReactElement {
   const t = dict[lang];
   const counter = useRef<number>(0);
@@ -329,10 +339,15 @@ export default function SketchExpressionsPanel({
           {rows.map((r) => {
             const res = results[r.key];
             const isDup = r.name.trim() !== '' && dupNames.has(r.name.trim());
+            // Constraint→variable half of the binding: a bound row mirrors the
+            // live constraint value, overriding its own evaluated value.
+            const boundVal = boundValues?.[r.name.trim()];
+            const isBound = boundVal !== undefined;
             return (
               <li
                 key={r.key}
                 data-testid={`solver-sketch-expressions-row-${r.key}`}
+                data-bound={isBound ? 'true' : 'false'}
                 style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -359,18 +374,23 @@ export default function SketchExpressionsPanel({
                   />
                   <span
                     data-testid={`solver-sketch-expressions-value-${r.key}`}
+                    title={isBound ? '🔗' : undefined}
                     style={{
-                      width: 64, textAlign: 'right', fontVariantNumeric: 'tabular-nums',
+                      width: 70, textAlign: 'right', fontVariantNumeric: 'tabular-nums',
                       color: res && !res.ok ? '#dc2626' : '#0e7490', fontWeight: 600,
                     }}
                   >
-                    {res && res.ok && res.value !== undefined ? fmt(res.value) : '—'}
+                    {isBound
+                      ? `🔗 ${fmt(boundVal)}`
+                      : res && res.ok && res.value !== undefined
+                        ? fmt(res.value)
+                        : '—'}
                   </span>
                   {onApply && res && res.ok && res.value !== undefined && (
                     <button
                       type="button"
                       data-testid={`solver-sketch-expressions-apply-${r.key}`}
-                      onClick={() => onApply(res.value!)}
+                      onClick={() => onApply(r.name.trim(), res.value!)}
                       disabled={!canApply}
                       title={canApply ? undefined : t.applyHint}
                       style={{

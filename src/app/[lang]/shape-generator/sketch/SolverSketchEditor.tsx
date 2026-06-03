@@ -2617,21 +2617,25 @@ export default function SolverSketchEditor({
     [constraintSnapshot, selectedConstraintId],
   );
 
-  // Push a computed variable value onto the selected dimensional constraint.
-  // The panel evaluates to canonical solver units (mm for length, rad for
-  // angle), so we call setConstraintValue DIRECTLY — no deg→rad conversion
-  // (unlike handleConstraintValueChange, which speaks the overlay's display
-  // units). No-op when nothing dimensional is selected or the value is
+  // Persistent variable↔constraint bindings (variable name → constraint id).
+  // A binding is created on Apply and survives subsequent solves, so the panel
+  // can mirror the live constraint value back (the constraint→variable half).
+  const [variableBindings, setVariableBindings] = useState<Record<string, string>>({});
+
+  // Push a computed variable value onto the selected dimensional constraint AND
+  // record the binding. The panel evaluates to canonical solver units (mm for
+  // length, rad for angle), so we call setConstraintValue DIRECTLY — no deg→rad
+  // conversion (unlike handleConstraintValueChange, which speaks the overlay's
+  // display units). No-op when nothing dimensional is selected or the value is
   // rejected (non-finite / non-positive distance).
   const handleApplyVariableValue = useCallback(
-    (value: number): void => {
+    (varName: string, value: number): void => {
       if (!solver || !selectedDimensionalConstraint) return;
       try {
-        const updated = solver.setConstraintValue(
-          selectedDimensionalConstraint.id as ConstraintId,
-          value,
-        );
+        const cid = selectedDimensionalConstraint.id;
+        const updated = solver.setConstraintValue(cid as ConstraintId, value);
         if (!updated) return;
+        if (varName) setVariableBindings((prev) => ({ ...prev, [varName]: cid }));
         solveAndApply();
       } catch {
         // Invalid value — swallow; the status pill surfaces conflicts.
@@ -2639,6 +2643,20 @@ export default function SolverSketchEditor({
     },
     [solver, selectedDimensionalConstraint, solveAndApply],
   );
+
+  // constraint→variable: live value (canonical units, same as the snapshot)
+  // for every bound variable whose constraint still exists. Recomputed from the
+  // post-solve snapshot, so editing the constraint elsewhere updates the panel.
+  const boundVariableValues = useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    for (const [varName, cid] of Object.entries(variableBindings)) {
+      const rec = constraintSnapshot.find((c) => c.id === cid);
+      if (rec && typeof rec.value === 'number' && Number.isFinite(rec.value)) {
+        out[varName] = rec.value;
+      }
+    }
+    return out;
+  }, [variableBindings, constraintSnapshot]);
 
   // ─── SketchEntityPropertyPanel bridge ──────────────────────────────────
   //
@@ -3676,6 +3694,7 @@ export default function SolverSketchEditor({
               lang={lang}
               onApply={handleApplyVariableValue}
               canApply={selectedDimensionalConstraint !== null}
+              boundValues={boundVariableValues}
             />
           </div>
         )}
