@@ -57,6 +57,7 @@ import {
 import type { OcctPmiBinding, OcctShapeMeta } from '@/lib/brep-bridge/pmiOcctBinding';
 import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
+import { featureToPolyhedron, type Polyhedron } from '@/lib/cad/featureMesh';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { exportSheetsToPdfVector, VectorPdfError } from '@/lib/drawing/svg2pdfBridge';
 import { exportLargeSheetToPdf, LargePdfError } from '@/lib/drawing/pdfExportLarge';
@@ -1808,6 +1809,18 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     return out;
   }, [annotations, dict.dimensionTag, dict.gdtTag, dict.ordinateTag]);
 
+  /**
+   * Polyhedron for the active part, keyed by its sourceId, so SheetRenderer can
+   * draw real projected HLR edges in the standard views. All sample parts are
+   * extrude features (cube / N-gon prisms), so featureToPolyhedron meshes them.
+   */
+  const sheetGeometry = useMemo<ReadonlyMap<string, Polyhedron> | undefined>(() => {
+    const geo = sampleGeometryForSourceId(sourceId);
+    // Single-part geometries carry a `feature`; assembly inputs don't.
+    const poly = 'feature' in geo ? featureToPolyhedron(geo.feature) : null;
+    return poly ? new Map([[sourceId, poly]]) : undefined;
+  }, [sourceId]);
+
   const onExportPng = useCallback(() => {
     if (!sheetRef.current) return;
     void exportSheetPng(sheetRef.current, `${sheet.id}.png`);
@@ -2843,7 +2856,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               position: 'relative',
             }}
           >
-            <SheetRenderer sheet={sheet} />
+            <SheetRenderer sheet={sheet} geometry={sheetGeometry} />
             {snapEnabled ? (
               <SheetSnapIndicator
                 snap={snapTarget}

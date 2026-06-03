@@ -783,4 +783,15 @@ describe('DrawingPageContent — B31.6 PNG export button integration', () => {
     // worth of viewport groups.
     expect(viewportIds(container)).toHaveLength(8);
   });
+
+  it('draws real projected HLR geometry for the default part (Phase 4.1.2)', () => {
+    const { container } = mount();
+    // Default part (sample-cube) is an extrude → meshed → projected in each view.
+    const geomGroups = container.querySelectorAll('[data-testid^="sheet-renderer-vp-geometry-"]');
+    expect(geomGroups.length).toBeGreaterThanOrEqual(4); // front/top/right/iso
+    // The front view shows ≥4 visible outline edges (the cube face).
+    const front = container.querySelector('[data-testid="sheet-renderer-vp-geometry-front"]');
+    expect(front).not.toBeNull();
+    expect(front!.querySelectorAll('line').length).toBeGreaterThanOrEqual(4);
+  });
 });
