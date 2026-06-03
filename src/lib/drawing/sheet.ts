@@ -168,6 +168,8 @@ export interface Viewport {
 import type { Dimension, GdtCallout } from './dimension';
 import { validateDimension, validateGdt } from './dimension';
 import type { OrdinateDimensionChain } from './ordinateDimension';
+import type { SurfaceFinishSymbol } from './surfaceFinishSymbol';
+import type { WeldSymbol } from './weldSymbol';
 
 export interface Sheet {
   id: string;
@@ -190,6 +192,10 @@ export interface Sheet {
    * treated as an empty array.
    */
   ordinateChains?: ReadonlyArray<OrdinateDimensionChain>;
+  /** Phase 4.2 ISO 1302 surface-finish callouts (anchored by viewportId). */
+  surfaceFinishSymbols?: ReadonlyArray<SurfaceFinishSymbol>;
+  /** Phase 4.2 AWS/ISO weld callouts (anchored by viewportId). */
+  weldSymbols?: ReadonlyArray<WeldSymbol>;
 }
 
 // ─── validation ──────────────────────────────────────────────────────────

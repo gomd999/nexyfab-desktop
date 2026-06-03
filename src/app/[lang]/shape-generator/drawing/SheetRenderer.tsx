@@ -39,6 +39,8 @@ import type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
 import { buildOrdinateRenderHints } from '@/lib/drawing/ordinateDimension';
 import type { Polyhedron } from '@/lib/cad/featureMesh';
 import { projectPolyhedron } from '@/lib/drawing/projectView';
+import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
+import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -59,6 +61,8 @@ const GDT_STROKE = '#1e3a8a';
 const GDT_BG = '#eff6ff';
 const ORDINATE_STROKE = '#0e7490';
 const ORDINATE_TEXT_COLOR = '#0e7490';
+const SURFACE_FINISH_COLOR = '#0f766e';
+const WELD_COLOR = '#7c2d12';
 
 // ─── props ───────────────────────────────────────────────────────────────
 
@@ -179,6 +183,43 @@ export function SheetRenderer({
             gdt={g}
             box={resolveViewportBox(targetVp, dim.height)}
             index={idx}
+          />
+        );
+      })}
+
+      {/* Surface-finish callouts (Phase 4.2, ISO 1302) — text anchored at the
+          target viewport's lower-left, stacked downward. */}
+      {(sheet.surfaceFinishSymbols ?? []).map((s, idx) => {
+        const targetVp = sheet.viewports.find((v) => v.id === s.viewportId);
+        if (!targetVp) return null;
+        return (
+          <SymbolCallout
+            key={s.id}
+            testid={`sheet-renderer-surface-finish-${s.id}`}
+            dataKind="surface-finish"
+            targetId={s.viewportId}
+            box={resolveViewportBox(targetVp, dim.height)}
+            index={idx}
+            text={`⌵ ${formatSurfaceFinish(s)}`}
+            color={SURFACE_FINISH_COLOR}
+          />
+        );
+      })}
+
+      {/* Weld callouts (Phase 4.2, AWS/ISO). */}
+      {(sheet.weldSymbols ?? []).map((w, idx) => {
+        const targetVp = sheet.viewports.find((v) => v.id === w.viewportId);
+        if (!targetVp) return null;
+        return (
+          <SymbolCallout
+            key={w.id}
+            testid={`sheet-renderer-weld-${w.id}`}
+            dataKind="weld"
+            targetId={w.viewportId}
+            box={resolveViewportBox(targetVp, dim.height)}
+            index={idx}
+            text={`⊳ ${formatWeldSymbol(w)}`}
+            color={WELD_COLOR}
           />
         );
       })}
@@ -772,6 +813,52 @@ function GdtLayer({ gdt, box, index }: GdtLayerProps): React.ReactElement {
         {text}
       </text>
     </g>
+  );
+}
+
+// ─── manufacturing-symbol callout (surface finish / weld) ───────────────────
+
+interface SymbolCalloutProps {
+  testid: string;
+  dataKind: string;
+  targetId: string;
+  box: ResolvedBox;
+  index: number;
+  text: string;
+  color: string;
+}
+
+/**
+ * A single text callout (surface-finish or weld) anchored just below the
+ * target viewport's lower-left corner, stacked downward by index so multiple
+ * callouts on one viewport don't overlap. Phase 4.2 renders the formatted text
+ * with a leading glyph; a graphical renderer can swap in true ISO/AWS symbols.
+ */
+function SymbolCallout({
+  testid,
+  dataKind,
+  targetId,
+  box,
+  index,
+  text,
+  color,
+}: SymbolCalloutProps): React.ReactElement {
+  const fontSize = Math.max(2.5, box.h * 0.045);
+  const x = box.x + 1;
+  const y = box.y + box.h + fontSize * (1.4 + index * 1.4);
+  return (
+    <text
+      data-testid={testid}
+      data-symbol-kind={dataKind}
+      data-symbol-target={targetId}
+      x={x}
+      y={y}
+      fontSize={fontSize}
+      fontFamily="ui-sans-serif, system-ui, sans-serif"
+      fill={color}
+    >
+      {text}
+    </text>
   );
 }
 
