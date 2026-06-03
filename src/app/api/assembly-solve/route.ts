@@ -61,13 +61,24 @@ import {
   AssemblyValidationError,
   validateAssembly,
 } from '@/lib/assembly/assemblyState';
-import { iterativeSolve, type IterativeSolverOptions } from '@/lib/assembly/iterativeSolver';
+import {
+  iterativeSolve,
+  type GeometryResolver,
+  type IterativeSolveResult,
+  type IterativeSolverOptions,
+} from '@/lib/assembly/iterativeSolver';
 import {
   lagrangianSolve,
   lagrangianSolveAdaptive,
 } from '@/lib/assembly/lagrangianSolver';
 import { recommendSolver } from '@/lib/assembly/solverBenchmark';
 import { featureTreeGeometryResolver } from '@/lib/assembly/geometryResolver';
+import {
+  partitionAssembly,
+  solveByGroups,
+  type GroupSolverKind,
+  type GroupedSolveOptions,
+} from '@/lib/assembly/mateGroupSolver';
 import type { FeatureTree } from '@/lib/cad/featureTree';
 
 export const runtime = 'nodejs';
@@ -111,6 +122,15 @@ interface AssemblySolveBody {
   /** Phase 3.2 — solver selection. Default 'gauss_seidel' for back-compat
    *  with pre-Phase-3.2 clients. */
   solver?: unknown;
+  /** Phase 3.3.x — opt into the partitioned grouped-solve path. When true
+   *  the endpoint runs `partitionAssembly` + `solveByGroups` so each
+   *  connectivity-island sub-assembly is solved independently (and, on
+   *  async-capable underlying solvers, concurrently up to `maxParallel`).
+   *  Default false → existing single-solve path is unchanged for back-compat. */
+  useGroups?: unknown;
+  /** Phase 3.3.x — concurrency cap for the grouped path. Only meaningful
+   *  when `useGroups: true`. Default 4. */
+  maxParallel?: unknown;
 }
 
 /**
@@ -193,6 +213,122 @@ function looksLikeSolverRequest(v: unknown): v is SolverRequest {
   return VALID_SOLVERS.has(v as SolverRequest);
 }
 
+function looksLikeBoolOrUndefined(v: unknown): v is boolean | undefined {
+  return v === undefined || typeof v === 'boolean';
+}
+
+function looksLikeMaxParallel(v: unknown): v is number | undefined {
+  if (v === undefined) return true;
+  return typeof v === 'number' && Number.isFinite(v) && v >= 1 && Math.floor(v) === v;
+}
+
+/**
+ * Map the route's `SolverUsed` choice to the `GroupSolverKind` accepted by
+ * `solveByGroups`. They are identical string-unions today (gauss_seidel |
+ * lagrangian | adaptive) but the indirection makes the dependency explicit
+ * and survives any future renames in either module.
+ */
+function toGroupSolverKind(s: SolverUsed): GroupSolverKind {
+  switch (s) {
+    case 'gauss_seidel':
+      return 'gauss_seidel';
+    case 'lagrangian':
+      return 'lagrangian';
+    case 'adaptive':
+      return 'adaptive';
+  }
+}
+
+/**
+ * Drive the grouped solver while capping in-flight per-group solves at
+ * `maxParallel`. Approach:
+ *
+ *   1. `partitionAssembly(state)` discovers the connectivity islands.
+ *   2. Chunk the resulting `MateGroup[]` into batches of size ≤ maxParallel.
+ *   3. For each batch, materialize a sub-AssemblyState containing only that
+ *      batch's parts + mates, and call `solveByGroups` on it. Each batch
+ *      thus runs (up to) `maxParallel` per-group solves concurrently via
+ *      the wrapper's internal Promise.all — and batches run sequentially.
+ *   4. Merge per-batch outputs back into a single output (parts re-indexed
+ *      to original ordering; groups concatenated in batch order).
+ *
+ * When `maxParallel ≥ groups.length` this degenerates to a single
+ * solveByGroups call — i.e., the wrapper's native behaviour with one
+ * Promise.all over every group. The function returns the merged state +
+ * the *full* group decomposition + flat `groupResults` array suitable for
+ * direct serialization in the response.
+ *
+ * NOTE: today's underlying solvers (iterativeSolve, lagrangianSolve,
+ * lagrangianSolveAdaptive) are synchronous, so even Promise.all over many
+ * groups is single-threaded under the hood. The chunking is a structural
+ * concurrency cap that becomes meaningful the moment any underlying solver
+ * becomes truly async (e.g. worker-thread offload), and exposes the
+ * contract today so callers can rely on it.
+ */
+async function runGroupedRespectingMaxParallel(
+  state: AssemblyState,
+  resolver: GeometryResolver,
+  opts: GroupedSolveOptions,
+  maxParallel: number,
+): Promise<{
+  state: AssemblyState;
+  groups: number;
+  groupResults: IterativeSolveResult[];
+}> {
+  const allGroups = partitionAssembly(state);
+
+  // Fast path: single batch — delegate to solveByGroups directly so we
+  // don't pay the extra map/merge overhead when no chunking is needed.
+  if (allGroups.length <= maxParallel) {
+    const wrapped = await solveByGroups(state, resolver, opts);
+    return {
+      state: wrapped.state,
+      groups: wrapped.groups.length,
+      groupResults: Array.from(wrapped.groupResults.values()),
+    };
+  }
+
+  // Chunked path. Build a partId → PartInstance and mateId → Mate index
+  // once so each sub-state assembly is O(group size), not O(N).
+  const partById = new Map(state.parts.map((p) => [p.id, p]));
+  const mateById = new Map(state.mates.map((m) => [m.id, m]));
+
+  // Carry forward placements between chunks — fixed parts in a later chunk
+  // never appear in an earlier one (different connectivity islands), but
+  // we use the working `mergedParts` map so later chunks see the latest
+  // placements for any part they reference. This is defensive: today's
+  // partition is by connected component so no part can appear in two
+  // chunks. The merge below preserves original ordering regardless.
+  const solvedById = new Map<string, AssemblyState['parts'][number]>();
+  const flatGroupResults: IterativeSolveResult[] = [];
+
+  for (let i = 0; i < allGroups.length; i += maxParallel) {
+    const chunkGroups = allGroups.slice(i, i + maxParallel);
+
+    // Sub-state for this chunk. Parts/mates limited to the chunk's groups.
+    const subParts = chunkGroups.flatMap((g) =>
+      g.partIds.map((id) => partById.get(id)!).filter(Boolean),
+    );
+    const subMates = chunkGroups.flatMap((g) =>
+      g.mateIds.map((id) => mateById.get(id)!).filter(Boolean),
+    );
+    const subState: AssemblyState = { parts: subParts, mates: subMates };
+
+    const wrapped = await solveByGroups(subState, resolver, opts);
+    for (const p of wrapped.state.parts) solvedById.set(p.id, p);
+    for (const r of wrapped.groupResults.values()) flatGroupResults.push(r);
+  }
+
+  // Re-merge into a single AssemblyState preserving original part order.
+  const mergedParts = state.parts.map((p) => solvedById.get(p.id) ?? p);
+
+  return {
+    state: { parts: mergedParts, mates: state.mates },
+    groups: allGroups.length,
+    groupResults: flatGroupResults,
+  };
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: AssemblySolveBody;
   try {
@@ -256,6 +392,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const solverReq: SolverRequest = (body.solver as SolverRequest | undefined) ?? 'gauss_seidel';
 
+  // ── Phase 3.3.x — grouped-solve option validation (applies to both
+  //    'real' and 'stub' paths so a misspelled value surfaces a 400 even
+  //    on the cheap stub). Default `useGroups = false` keeps the existing
+  //    single-solve behaviour for pre-Phase-3.3.x clients. ─────────────────
+  if (!looksLikeBoolOrUndefined(body.useGroups)) {
+    return err('BAD_REQUEST', 'useGroups must be a boolean', 400);
+  }
+  if (!looksLikeMaxParallel(body.maxParallel)) {
+    return err(
+      'BAD_REQUEST',
+      'maxParallel must be a positive integer',
+      400,
+    );
+  }
+  const useGroups: boolean = body.useGroups === true;
+  const maxParallel: number = (body.maxParallel as number | undefined) ?? 4;
+
   // ── 'real' phase: featureTrees provided ─────────────────────────────────
   if (body.featureTrees !== undefined) {
     if (!looksLikeFeatureTreeMap(body.featureTrees)) {
@@ -291,6 +444,79 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       tolerance: 1e-4,
       ...(body.solverOptions as IterativeSolverOptions | undefined),
     };
+
+    // ── Phase 3.3.x — grouped-solve path ───────────────────────────────
+    // Wraps the existing per-solver dispatch with
+    // `solveByGroups(state, resolver, { solver, perGroupOptions })`. The
+    // wrapper internally:
+    //   1) partitions the mate graph into connectivity islands,
+    //   2) builds a sub-AssemblyState per island,
+    //   3) Promise.all-runs the underlying solver on each sub-state, and
+    //   4) merges placements back preserving original `parts` order.
+    //
+    // `maxParallel` caps in-flight tasks by chunking the partition list
+    // into batches of size ≤ maxParallel. Each batch is awaited before the
+    // next starts. With chunk size = total groups it degenerates to a
+    // single Promise.all (the wrapper's native behaviour) — which is what
+    // we want when maxParallel ≥ groups.length.
+    if (useGroups) {
+      const t0 = performance.now();
+      let groupedResult;
+      try {
+        groupedResult = await runGroupedRespectingMaxParallel(
+          state,
+          resolver,
+          { solver: toGroupSolverKind(solverUsed), perGroupOptions: opts },
+          maxParallel,
+        );
+      } catch (e) {
+        return err(
+          'INVALID_ASSEMBLY',
+          e instanceof Error ? e.message : String(e),
+          400,
+        );
+      }
+      const totalDurationMs = performance.now() - t0;
+
+      // Flatten per-group residuals into a single list so the response
+      // shape stays compatible with the single-solve path (UI iterates
+      // residuals[]). Order is grouped-by-group then by-mate-within-group;
+      // mate id is the stable join key for downstream consumers.
+      const flatResiduals: { mateId: string; residual: number; supported: boolean }[] = [];
+      let finalMaxResidual = 0;
+      let allSuccess = true;
+      for (const r of groupedResult.groupResults) {
+        if (!r.success) allSuccess = false;
+        if (r.finalMaxResidual > finalMaxResidual) finalMaxResidual = r.finalMaxResidual;
+        for (const mr of r.residuals) flatResiduals.push(mr);
+      }
+      // Iterations = max across groups (groups run in parallel, so the
+      // wall-clock iteration cost is bounded by the slowest group).
+      const iterations = groupedResult.groupResults.reduce(
+        (mx, r) => (r.iterations > mx ? r.iterations : mx),
+        0,
+      );
+
+      return NextResponse.json({
+        ok: true,
+        success: allSuccess,
+        iterations,
+        finalMaxResidual,
+        dof,
+        residuals: flatResiduals,
+        state: groupedResult.state,
+        phase: 'real' as const,
+        solverUsed,
+        // Phase 3.3.x grouped-solve extras. `groups` is the count of
+        // connectivity-island partitions; `groupResults` carries the
+        // per-island IterativeSolveResult (state field on each is the
+        // sub-state placement — flatten via `residuals` for UI).
+        groups: groupedResult.groups,
+        groupResults: groupedResult.groupResults,
+        totalDurationMs,
+      });
+    }
+
     let result;
     try {
       if (solverUsed === 'lagrangian') {

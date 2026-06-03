@@ -753,3 +753,312 @@ describe('POST /api/assembly-solve — solver selection', () => {
     expect(data.iterations).toBeLessThanOrEqual(1);
   });
 });
+
+// ─── Phase 3.3.x grouped-solve tests ─────────────────────────────────────
+//
+// Verify that `useGroups: true` routes through partitionAssembly +
+// solveByGroups and surfaces the new response fields (groups, groupResults,
+// totalDurationMs) — while `useGroups` omitted preserves the existing
+// single-solve response shape for full back-compat with pre-3.3.x clients.
+
+/** Build N disjoint base+pin pairs joined by one concentric mate each.
+ *  Each pair is its own connectivity island, so partitionAssembly returns
+ *  N groups. Used to exercise multi-partition + maxParallel paths. */
+function buildDisjointPairs(n: number): {
+  state: AssemblyState;
+  trees: Record<string, FeatureTree>;
+} {
+  const parts = [];
+  const mates = [];
+  const trees: Record<string, FeatureTree> = {};
+  for (let i = 0; i < n; i++) {
+    const baseId = `base_${i}`;
+    const pinId = `pin_${i}`;
+    parts.push({
+      id: baseId,
+      name: `Base ${i}`,
+      partTemplateId: 'tpl',
+      position: { x: i * 100, y: 0, z: 0 },
+      orientation: IDENTITY_QUAT,
+      fixed: true,
+    });
+    parts.push({
+      id: pinId,
+      name: `Pin ${i}`,
+      partTemplateId: 'tpl',
+      position: { x: i * 100 + 5, y: 3, z: 0 },
+      orientation: IDENTITY_QUAT,
+    });
+    mates.push({
+      id: `c_${i}`,
+      kind: 'concentric' as const,
+      a: { partId: baseId, refId: 'z_axis', refKind: 'axis' as const },
+      b: { partId: pinId, refId: 'z_axis', refKind: 'axis' as const },
+    });
+    trees[baseId] = { nodes: [] };
+    trees[pinId] = { nodes: [] };
+  }
+  return { state: { parts, mates }, trees };
+}
+
+describe('POST /api/assembly-solve — grouped-solve (useGroups)', () => {
+  // Single connected concentric pair fixture — exactly 1 partition.
+  function twoPart(): { state: AssemblyState; trees: Record<string, FeatureTree> } {
+    return {
+      state: {
+        parts: [
+          {
+            id: 'p_base',
+            name: 'Base',
+            partTemplateId: 'tpl',
+            position: { x: 0, y: 0, z: 0 },
+            orientation: IDENTITY_QUAT,
+            fixed: true,
+          },
+          {
+            id: 'p_pin',
+            name: 'Pin',
+            partTemplateId: 'tpl',
+            position: { x: 5, y: 3, z: 0 },
+            orientation: IDENTITY_QUAT,
+          },
+        ],
+        mates: [
+          {
+            id: 'c1',
+            kind: 'concentric',
+            a: { partId: 'p_base', refId: 'z_axis', refKind: 'axis' },
+            b: { partId: 'p_pin', refId: 'z_axis', refKind: 'axis' },
+          },
+        ],
+      },
+      trees: { p_base: { nodes: [] }, p_pin: { nodes: [] } },
+    };
+  }
+
+  it('omitting useGroups → response shape unchanged (back-compat)', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(makeReq({ state, featureTrees: trees }) as never);
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('real');
+    expect(data.solverUsed).toBe('gauss_seidel');
+    expect(data.success).toBe(true);
+    // The grouped-solve extras must NOT be present in the legacy path.
+    expect(data).not.toHaveProperty('groups');
+    expect(data).not.toHaveProperty('groupResults');
+    expect(data).not.toHaveProperty('totalDurationMs');
+  });
+
+  it('useGroups=false (explicit) keeps response shape unchanged', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: false }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data).not.toHaveProperty('groups');
+    expect(data).not.toHaveProperty('groupResults');
+  });
+
+  it('useGroups=true on a single-partition assembly → groups=1', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: true }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('real');
+    expect(data.success).toBe(true);
+    expect(data.groups).toBe(1);
+    expect(Array.isArray(data.groupResults)).toBe(true);
+    expect(data.groupResults).toHaveLength(1);
+    expect(typeof data.totalDurationMs).toBe('number');
+    expect(data.totalDurationMs).toBeGreaterThanOrEqual(0);
+    expect(data.finalMaxResidual).toBeLessThan(1e-4);
+  });
+
+  it('useGroups=true on multi-partition → groups>1, parallel solve', async () => {
+    const { state, trees } = buildDisjointPairs(3);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: true }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('real');
+    expect(data.success).toBe(true);
+    expect(data.groups).toBe(3);
+    expect(data.groupResults).toHaveLength(3);
+    // Each pin should have snapped onto its base's z_axis (x ≈ base.x, y ≈ 0).
+    for (let i = 0; i < 3; i++) {
+      const pin = data.state.parts.find((p: { id: string }) => p.id === `pin_${i}`);
+      expect(pin).toBeDefined();
+      expect(Math.abs(pin.position.x - i * 100)).toBeLessThan(1e-4);
+      expect(Math.abs(pin.position.y)).toBeLessThan(1e-4);
+    }
+  });
+
+  it('useGroups=true preserves original parts ordering in merged state', async () => {
+    const { state, trees } = buildDisjointPairs(2);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: true }) as never,
+    );
+    const data = await r.json();
+    const orderedIds = data.state.parts.map((p: { id: string }) => p.id);
+    expect(orderedIds).toEqual(['base_0', 'pin_0', 'base_1', 'pin_1']);
+  });
+
+  it('maxParallel=1 forces sequential chunked execution but still solves all groups', async () => {
+    // 5 disjoint pairs, maxParallel=1 → 5 sequential batches.
+    const { state, trees } = buildDisjointPairs(5);
+    const r = await POST(
+      makeReq({
+        state,
+        featureTrees: trees,
+        useGroups: true,
+        maxParallel: 1,
+      }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.success).toBe(true);
+    expect(data.groups).toBe(5);
+    expect(data.groupResults).toHaveLength(5);
+  });
+
+  it('maxParallel defaults to 4 when omitted (no explicit cap from client)', async () => {
+    // Exercise the default-path branch by omitting maxParallel entirely.
+    const { state, trees } = buildDisjointPairs(2);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: true }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.groups).toBe(2);
+    expect(data.success).toBe(true);
+  });
+
+  it('useGroups=true + solver=lagrangian passes solver-kind through to per-group dispatch', async () => {
+    const { state, trees } = buildDisjointPairs(2);
+    const r = await POST(
+      makeReq({
+        state,
+        featureTrees: trees,
+        useGroups: true,
+        solver: 'lagrangian',
+      }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('lagrangian');
+    expect(data.groups).toBe(2);
+    expect(data.success).toBe(true);
+    // Newton-LM takes ≥ 1 iteration on a real Jacobian step.
+    expect(data.iterations).toBeGreaterThanOrEqual(1);
+  });
+
+  it('useGroups=true + solver=adaptive routes to lagrangianSolveAdaptive per group', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({
+        state,
+        featureTrees: trees,
+        useGroups: true,
+        solver: 'adaptive',
+      }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.solverUsed).toBe('adaptive');
+    expect(data.groups).toBe(1);
+    expect(data.success).toBe(true);
+  });
+
+  it('useGroups=true + solver=auto resolves auto BEFORE dispatching to per-group solver', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({
+        state,
+        featureTrees: trees,
+        useGroups: true,
+        solver: 'auto',
+      }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    // 2-part / 1-concentric / well-constrained → auto = 'gauss_seidel'.
+    expect(data.solverUsed).toBe('gauss_seidel');
+    expect(data.groups).toBe(1);
+  });
+
+  it('rejects useGroups with a non-boolean value (BAD_REQUEST)', async () => {
+    const { state, trees } = twoPart();
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: 'yes' }) as never,
+    );
+    expect(r.status).toBe(400);
+    const data = await r.json();
+    expect(data.code).toBe('BAD_REQUEST');
+    expect(data.message).toMatch(/useGroups/i);
+  });
+
+  it('rejects maxParallel with a zero / negative / non-integer value', async () => {
+    const { state, trees } = twoPart();
+    for (const bad of [0, -1, 1.5, 'four', NaN]) {
+      const r = await POST(
+        makeReq({
+          state,
+          featureTrees: trees,
+          useGroups: true,
+          maxParallel: bad,
+        }) as never,
+      );
+      expect(r.status).toBe(400);
+      const data = await r.json();
+      expect(data.code).toBe('BAD_REQUEST');
+      expect(data.message).toMatch(/maxParallel/i);
+    }
+  });
+
+  it('useGroups=true on a chain assembly (one big partition) → groups=1, all parts solved', async () => {
+    // 4-part chain — all connected, so partition collapses to one group
+    // regardless of how many parts/mates there are.
+    const { state, trees } = buildChain(4);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: true }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.groups).toBe(1);
+    expect(data.success).toBe(true);
+    expect(data.groupResults).toHaveLength(1);
+  });
+
+  it('useGroups=true on stub phase (no featureTrees) → stub path, no grouped-solve extras', async () => {
+    // useGroups only takes effect on the real-solve path; the stub
+    // response (deterministic zero-residual) is unchanged so pre-3.3.x
+    // UIs see the exact same payload they always did.
+    const { state } = twoPart();
+    const r = await POST(
+      makeReq({ state, useGroups: true }) as never,
+    );
+    expect(r.status).toBe(200);
+    const data = await r.json();
+    expect(data.phase).toBe('stub');
+    expect(data).not.toHaveProperty('groups');
+    expect(data).not.toHaveProperty('groupResults');
+    expect(data).not.toHaveProperty('totalDurationMs');
+  });
+
+  it('useGroups=true reports per-group residuals flattened in the residuals array', async () => {
+    const { state, trees } = buildDisjointPairs(3);
+    const r = await POST(
+      makeReq({ state, featureTrees: trees, useGroups: true }) as never,
+    );
+    const data = await r.json();
+    // Three pairs, one concentric mate each → 3 residual entries total.
+    expect(data.residuals).toHaveLength(3);
+    const mateIds = data.residuals.map((r: { mateId: string }) => r.mateId).sort();
+    expect(mateIds).toEqual(['c_0', 'c_1', 'c_2']);
+  });
+});
