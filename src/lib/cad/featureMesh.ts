@@ -19,6 +19,7 @@
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
 import { sub, cross, dot, lengthOf, scale } from '@/lib/sketch/sketchPlane';
 import type { ExtrudeFeature } from './extrudeProfile';
+import type { RevolveFeature } from './revolveProfile';
 
 // ─── types ───────────────────────────────────────────────────────────────
 
@@ -93,19 +94,80 @@ export function extrudePolyhedron(feature: ExtrudeFeature): Polyhedron {
   return { vertices, faces };
 }
 
+// ─── revolve → solid of revolution ──────────────────────────────────────────
+
+const DEFAULT_REVOLVE_SEGMENTS = 32;
+
+/**
+ * Mesh a revolve feature: the canonical profile loop (axis = Y, X ≥ 0) swept
+ * around the Y axis. A full 360° sweep wraps into a closed torus-like surface
+ * (no caps); a partial sweep adds the two end-cap profile faces. The result is
+ * faceted — projectView suppresses the smooth tessellation edges so drawings
+ * read as a clean silhouette.
+ */
+export function revolvePolyhedron(
+  feature: RevolveFeature,
+  segments: number = DEFAULT_REVOLVE_SEGMENTS,
+): Polyhedron {
+  const loop = dedupeLoop(feature.loop);
+  if (loop.length < 3) {
+    throw new Error(`featureMesh: revolve loop needs ≥ 3 distinct points, got ${loop.length}`);
+  }
+  if (!Number.isInteger(segments) || segments < 3) {
+    throw new Error(`featureMesh: revolve segments must be an integer ≥ 3, got ${segments}`);
+  }
+  const angle = Math.max(0, Math.min(360, feature.angleDegrees));
+  const full = angle >= 360 - 1e-9;
+  const n = loop.length;
+  const rings = full ? segments : segments + 1;
+
+  const vertices: Vec3[] = [];
+  for (let j = 0; j < rings; j++) {
+    const t = (angle * (j / segments) * Math.PI) / 180;
+    const c = Math.cos(t);
+    const s = Math.sin(t);
+    for (const p of loop) {
+      // radius = p.x (X≥0), height = p.y, rotate about Y into XZ.
+      vertices.push({ x: p.x * c, y: p.y, z: p.x * s });
+    }
+  }
+  const idx = (i: number, j: number): number => j * n + i;
+  const centroid = polyCentroid(vertices);
+  const faces: PolyFace[] = [];
+
+  // Side quads.
+  for (let j = 0; j < segments; j++) {
+    const jn = full ? (j + 1) % segments : j + 1;
+    for (let i = 0; i < n; i++) {
+      const inx = (i + 1) % n;
+      faces.push(orientedFace([idx(i, j), idx(inx, j), idx(inx, jn), idx(i, jn)], vertices, centroid));
+    }
+  }
+  // End caps for a partial sweep (the profile face at θ=0 and θ=angle).
+  if (!full) {
+    faces.push(orientedFace([...Array(n).keys()].map((i) => idx(i, 0)), vertices, centroid));
+    faces.push(orientedFace([...Array(n).keys()].map((i) => idx(i, segments)), vertices, centroid));
+  }
+
+  return { vertices, faces };
+}
+
 // ─── dispatcher ────────────────────────────────────────────────────────────
 
 /** Feature kinds featureToPolyhedron can currently mesh. */
-export type MeshableFeature = ExtrudeFeature;
+export type MeshableFeature = ExtrudeFeature | RevolveFeature;
 
 /**
  * Convert a feature to a polyhedron, or null when the kind is not meshable
- * yet (revolve / sweep / loft land in later phases). Callers that need a hard
- * failure can check for null.
+ * yet (sweep / loft land in later phases). Callers that need a hard failure
+ * can check for null.
  */
 export function featureToPolyhedron(feature: { kind: string }): Polyhedron | null {
   if (feature.kind === 'extrude') {
     return extrudePolyhedron(feature as ExtrudeFeature);
+  }
+  if (feature.kind === 'revolve') {
+    return revolvePolyhedron(feature as RevolveFeature);
   }
   return null;
 }

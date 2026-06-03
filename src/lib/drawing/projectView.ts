@@ -50,6 +50,14 @@ interface Basis {
 }
 
 const EPS = 1e-7;
+/**
+ * Edges between two like-facing faces that meet at a dihedral shallower than
+ * this are treated as smooth tessellation artifacts and suppressed (a faceted
+ * cylinder then reads as a clean silhouette, not N facet lines). cos(25°).
+ * Sharp feature edges (e.g. a prism's 90° corners) are well above this and
+ * always drawn; silhouette edges (front-vs-back) are always drawn regardless.
+ */
+const SMOOTH_DIHEDRAL_COS = Math.cos((25 * Math.PI) / 180);
 
 // ─── view bases ──────────────────────────────────────────────────────────
 
@@ -162,6 +170,15 @@ export function projectPolyhedron(poly: Polyhedron, view: ProjectionView): Proje
     const b = uv[e.b];
     minX = Math.min(minX, a.x, b.x); maxX = Math.max(maxX, a.x, b.x);
     minY = Math.min(minY, a.y, b.y); maxY = Math.max(maxY, a.y, b.y);
+
+    // Suppress smooth interior tessellation edges (keep silhouettes + sharp).
+    if (e.faces.length === 2) {
+      const [f0, f1] = e.faces;
+      const silhouette = faceFront[f0] !== faceFront[f1];
+      if (!silhouette && dot(poly.faces[f0].normal, poly.faces[f1].normal) > SMOOTH_DIHEDRAL_COS) {
+        continue;
+      }
+    }
 
     const anyFront = e.faces.some((fi) => faceFront[fi]);
     let isVisible = anyFront; // both-back edges are hidden

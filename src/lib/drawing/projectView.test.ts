@@ -3,8 +3,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { projectPolyhedron, type Segment2D } from './projectView';
-import { extrudePolyhedron } from '@/lib/cad/featureMesh';
+import { extrudePolyhedron, revolvePolyhedron } from '@/lib/cad/featureMesh';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 
 /** A 10×10×10 cube (XY square extruded 10 in Z). */
 function cube(): ReturnType<typeof extrudePolyhedron> {
@@ -73,6 +74,55 @@ describe('projectPolyhedron — other views', () => {
     expect(proj.visible.length).toBeGreaterThan(0);
     // Iso of a cube is wider/taller than a single face (≈ √2..√3 × edge).
     expect(proj.bbox.maxX - proj.bbox.minX).toBeGreaterThan(10);
+  });
+});
+
+describe('projectPolyhedron — silhouette HLR (smooth-edge suppression)', () => {
+  // A tube: rectangle [4..6]×[0..10] revolved 360° about Y (avoids axis
+  // degeneracy; the cross-section is an annulus).
+  function tube(segments: number): ReturnType<typeof revolvePolyhedron> {
+    const f: RevolveFeature = {
+      kind: 'revolve',
+      loop: [{ x: 4, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 10 }, { x: 4, y: 10 }],
+      angleDegrees: 360,
+      mode: 'add',
+    };
+    return revolvePolyhedron(f, segments);
+  }
+
+  it('a 32-facet tube drops the smooth wall facet edges (visible ≪ total edges)', () => {
+    const poly = tube(32);
+    const totalEdges = poly.faces.reduce((n, f) => n + f.vertices.length, 0); // upper bound
+    const proj = projectPolyhedron(poly, 'front');
+    expect(proj.visible.length).toBeGreaterThan(0);
+    // Smooth suppression keeps only rim arcs + sharp edges — far fewer than the
+    // raw per-face edge incidences (which include every smooth wall edge).
+    expect(proj.visible.length).toBeLessThan(totalEdges / 2);
+  });
+
+  it('no visible edge degenerates to the projected axis centre', () => {
+    // Tube min radius is 4, so nothing should project onto (0,0).
+    const proj = projectPolyhedron(tube(24), 'front');
+    const touchesCentre = proj.visible.some(
+      (s) => Math.hypot(s.x1, s.y1) < 0.5 || Math.hypot(s.x2, s.y2) < 0.5,
+    );
+    expect(touchesCentre).toBe(false);
+  });
+
+  it('top view (side-on) spans the full outer diameter', () => {
+    const proj = projectPolyhedron(tube(32), 'top');
+    expect(proj.bbox.maxX - proj.bbox.minX).toBeCloseTo(12, 1); // 2 × outer r 6
+    expect(proj.visible.length).toBeGreaterThan(0);
+  });
+
+  it('a prism is unaffected — its 90° edges are all kept', () => {
+    const prism = extrudePolyhedron({
+      kind: 'extrude',
+      loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+      depth: 10, direction: 'one_sided', mode: 'add',
+    });
+    // Front view outline is still the full 4-edge square (no over-suppression).
+    expect(projectPolyhedron(prism, 'front').visible.length).toBe(4);
   });
 });
 

@@ -4,10 +4,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   extrudePolyhedron,
+  revolvePolyhedron,
   featureToPolyhedron,
   polyhedronEdges,
 } from './featureMesh';
 import type { ExtrudeFeature } from './extrudeProfile';
+import type { RevolveFeature } from './revolveProfile';
 import { dot, sub } from '@/lib/sketch/sketchPlane';
 
 const UNIT_SQUARE: ReadonlyArray<{ x: number; y: number }> = [
@@ -78,11 +80,59 @@ describe('extrudePolyhedron', () => {
   });
 });
 
+// A rectangular profile offset from the axis → revolves into a hollow-ish
+// ring / tube cross-section (a closed loop in the X≥0 half-plane).
+function revolveFeat(angle = 360): RevolveFeature {
+  return {
+    kind: 'revolve',
+    loop: [{ x: 4, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 4, y: 3 }],
+    angleDegrees: angle,
+    mode: 'add',
+  };
+}
+
+describe('revolvePolyhedron', () => {
+  it('full 360° wraps into a closed manifold (every edge shared by 2 faces)', () => {
+    const poly = revolvePolyhedron(revolveFeat(360), 16);
+    // 16 rings × 4 profile pts; 16 segments × 4 side quads, no caps.
+    expect(poly.vertices).toHaveLength(16 * 4);
+    expect(poly.faces).toHaveLength(16 * 4);
+    const edges = polyhedronEdges(poly);
+    expect(edges.every((e) => e.faces.length === 2)).toBe(true);
+  });
+
+  it('partial sweep adds two end caps and is open at the seam', () => {
+    const poly = revolvePolyhedron(revolveFeat(90), 8);
+    // 9 rings × 4 pts; 8×4 side quads + 2 caps.
+    expect(poly.vertices).toHaveLength(9 * 4);
+    expect(poly.faces).toHaveLength(8 * 4 + 2);
+  });
+
+  it('all face normals point outward', () => {
+    const poly = revolvePolyhedron(revolveFeat(360), 12);
+    const c = poly.vertices.reduce(
+      (a, v) => ({ x: a.x + v.x / poly.vertices.length, y: a.y + v.y / poly.vertices.length, z: a.z + v.z / poly.vertices.length }),
+      { x: 0, y: 0, z: 0 },
+    );
+    for (const f of poly.faces) {
+      const p0 = poly.vertices[f.vertices[0]];
+      expect(dot(f.normal, sub(c, p0))).toBeLessThan(1e-6);
+    }
+  });
+
+  it('rejects too few segments', () => {
+    expect(() => revolvePolyhedron(revolveFeat(360), 2)).toThrow(/≥ 3/);
+  });
+});
+
 describe('featureToPolyhedron dispatcher', () => {
   it('meshes extrude', () => {
     expect(featureToPolyhedron(extrude())).not.toBeNull();
   });
-  it('returns null for not-yet-meshable kinds', () => {
-    expect(featureToPolyhedron({ kind: 'revolve' })).toBeNull();
+  it('meshes revolve', () => {
+    expect(featureToPolyhedron(revolveFeat())).not.toBeNull();
+  });
+  it('returns null for not-yet-meshable kinds (sweep/loft)', () => {
+    expect(featureToPolyhedron({ kind: 'sweep' })).toBeNull();
   });
 });
