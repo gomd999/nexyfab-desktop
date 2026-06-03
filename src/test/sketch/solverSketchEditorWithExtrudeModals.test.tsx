@@ -2167,3 +2167,208 @@ describe('SolverSketchEditorWithExtrude — Agent-YYYYY branches panel wiring', 
     }
   });
 });
+
+// ─── Agent-EEEEEE: FeatureTreeStatsPanel wrapper integration ─────────────
+//
+// Mounts FeatureTreeStatsPanel beneath the toolbar when the "Stats" toggle
+// is on. Independent of every other toggle (collab / AI planner / examples
+// / branches). The panel itself is dynamic-loaded, so findByTestId is used
+// to await the lazy chunk before asserting on its internals.
+
+describe('SolverSketchEditorWithExtrude — Agent-EEEEEE stats panel wiring', () => {
+  it('Stats toggle is visible and default off (panel host not mounted)', async () => {
+    await mountReady();
+    expect(screen.getByTestId('solver-stats-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('solver-stats-panel-host')).toBeNull();
+    expect(screen.queryByTestId('feature-tree-stats-panel')).toBeNull();
+    expect(
+      screen.getByTestId('solver-stats-toggle').getAttribute('aria-expanded'),
+    ).toBe('false');
+    // Default English label surfaces the 📊 icon (per agent contract).
+    expect(screen.getByTestId('solver-stats-toggle').textContent).toMatch(/📊/);
+    expect(screen.getByTestId('solver-stats-toggle').textContent).toMatch(/Stats/);
+  });
+
+  it('clicking the stats toggle mounts FeatureTreeStatsPanel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    expect(await screen.findByTestId('solver-stats-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('feature-tree-stats-panel')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('solver-stats-toggle').getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('clicking the toggle a second time unmounts the panel', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    await screen.findByTestId('feature-tree-stats-panel');
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-stats-panel')).toBeNull();
+      expect(screen.queryByTestId('solver-stats-panel-host')).toBeNull();
+    });
+  });
+
+  it('empty live tree → panel renders the empty state (0/0/empty)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    // The panel's own empty surrogate test id surfaces the "Add a feature…" copy.
+    expect(await screen.findByTestId('feature-tree-stats-empty')).toBeInTheDocument();
+    // Aggregate rows must NOT appear when the tree is empty.
+    expect(screen.queryByTestId('feature-tree-stats-total-volume')).toBeNull();
+    expect(screen.queryByTestId('feature-tree-stats-bbox')).toBeNull();
+    // No selected sub-section either (nothing selectable).
+    expect(screen.queryByTestId('feature-tree-stats-selected')).toBeNull();
+  });
+
+  it('selectedFeatureId set → "Selected feature" sub-section surfaces with per-node stats', async () => {
+    // Build a live tree via STEP import so the payload passes
+    // validatePayload (the wrapper's modal-driven append synthesises
+    // `{kind:'extrude'}` only — that stub would crash computeStats'
+    // signedArea walk on `p.loop.length`). The seeded extrude is a
+    // 10×10×5 box centered at origin.
+    const stepImportFetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      tree: {
+        nodes: [
+          {
+            id: 'imported_0',
+            name: 'Box',
+            dependencies: [],
+            payload: {
+              kind: 'extrude' as const,
+              loop: [
+                { x: 0, y: 0 },
+                { x: 10, y: 0 },
+                { x: 10, y: 10 },
+                { x: 0, y: 10 },
+              ],
+              depth: 5,
+              direction: 'one_sided' as const,
+              mode: 'add' as const,
+            },
+          },
+        ],
+      },
+      warnings: [],
+      unsupported: [],
+    });
+    render(
+      <SolverSketchEditorWithExtrude
+        lang="en"
+        extrudeFetcher={vi.fn()}
+        stepImportFetcher={stepImportFetcher}
+      />,
+    );
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+
+    // Import → live tree gets `imported_0`.
+    fireEvent.click(screen.getByTestId('solver-import-step-button'));
+    await screen.findByTestId('step-import-modal');
+    const fi = screen.getByTestId('step-import-file-input') as HTMLInputElement;
+    Object.defineProperty(fi, 'files', {
+      value: [new File(['x'], 'p.step', { type: 'application/octet-stream' })],
+      configurable: true,
+    });
+    fireEvent.change(fi);
+    fireEvent.click(screen.getByTestId('step-import-submit'));
+    await screen.findByTestId('feature-tree-row-imported_0');
+
+    // Open stats panel: aggregate rows surface (no selection yet → no
+    // selected sub-section).
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    await screen.findByTestId('feature-tree-stats-panel');
+    expect(await screen.findByTestId('feature-tree-stats-total-volume')).toBeInTheDocument();
+    expect(screen.queryByTestId('feature-tree-stats-selected')).toBeNull();
+
+    // Click the tree row → selectedFeatureId propagates → selected
+    // sub-section mounts.
+    fireEvent.click(screen.getByTestId('feature-tree-row-imported_0'));
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-tree-stats-selected')).toBeInTheDocument();
+    });
+    // The selected-kind row should surface 'extrude'.
+    expect(screen.getByTestId('feature-tree-stats-selected-kind').textContent).toMatch(
+      /extrude/i,
+    );
+  });
+
+  it('stats toggle is independent of AI planner / examples / branches toggles', async () => {
+    await mountReady();
+    // Flip all four on; each should mount its own host.
+    fireEvent.click(screen.getByTestId('solver-planner-toggle'));
+    fireEvent.click(screen.getByTestId('solver-planner-examples-toggle'));
+    fireEvent.click(screen.getByTestId('solver-branches-toggle'));
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    expect(await screen.findByTestId('solver-planner-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-planner-examples-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-branches-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('solver-stats-panel-host')).toBeInTheDocument();
+    expect(await screen.findByTestId('planner-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('planner-intent-examples-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('branch-manager-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('feature-tree-stats-panel')).toBeInTheDocument();
+    // Toggle stats off — the other three stay mounted.
+    fireEvent.click(screen.getByTestId('solver-stats-toggle'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('feature-tree-stats-panel')).toBeNull();
+    });
+    expect(screen.getByTestId('planner-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-intent-examples-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-manager-panel')).toBeInTheDocument();
+  });
+
+  it('English i18n: "Stats" surfaces on the toggle with show/hide aria-label flip', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-stats-toggle');
+    expect(toggle.textContent).toMatch(/Stats/);
+    // Default off → aria-label is "Show stats".
+    expect(toggle.getAttribute('aria-label')).toBe('Show stats');
+    // Flip on → aria-label changes to "Hide stats".
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('solver-stats-toggle').getAttribute('aria-label'),
+      ).toBe('Hide stats');
+    });
+  });
+
+  it('Korean i18n: 통계 surfaces on the toggle', async () => {
+    render(<SolverSketchEditorWithExtrude lang="ko" extrudeFetcher={vi.fn()} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+      timeout: 10000,
+    });
+    const toggle = screen.getByTestId('solver-stats-toggle');
+    expect(toggle.textContent).toMatch(/통계/);
+    expect(toggle.getAttribute('aria-label')).toBe('통계 표시');
+  });
+
+  it('Japanese / Chinese / Spanish / Arabic i18n: toggle label is translated', async () => {
+    const cases: Array<{ lang: 'ja' | 'zh' | 'es' | 'ar'; label: RegExp; ariaContains: string }> = [
+      { lang: 'ja', label: /統計/, ariaContains: '統計' },
+      { lang: 'zh', label: /统计/, ariaContains: '统计' },
+      { lang: 'es', label: /Estadísticas/, ariaContains: 'estadísticas' },
+      { lang: 'ar', label: /إحصائيات/, ariaContains: 'إحصائيات' },
+    ];
+    for (const { lang, label, ariaContains } of cases) {
+      const { unmount } = render(
+        <SolverSketchEditorWithExtrude lang={lang} extrudeFetcher={vi.fn()} />,
+      );
+      const editor = await screen.findByTestId('solver-sketch-editor');
+      await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), {
+        timeout: 10000,
+      });
+      const toggle = screen.getByTestId('solver-stats-toggle');
+      expect(toggle.textContent).toMatch(label);
+      expect((toggle.getAttribute('aria-label') ?? '').toLowerCase()).toContain(
+        ariaContains.toLowerCase(),
+      );
+      unmount();
+    }
+  });
+});

@@ -33,6 +33,7 @@ import type { PlannerLang } from './FeatureTreePlannerPanel';
 import type { PlanIntent, PlanStep } from '@/lib/ai/featureTreePlanner';
 import type { StepImportFetcher, StepImportLang } from './StepImportModal';
 import type { BranchManagerLang } from './FeatureTreeBranchManager';
+import type { FeatureTreeStatsLang } from './FeatureTreeStatsPanel';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
 import type { AxisLine2D } from '@/lib/cad/revolveProfile';
@@ -119,6 +120,18 @@ const FeatureTreeBranchManager = dynamic(
     loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
   },
 );
+// FeatureTreeStatsPanel (Agent-EEEEEE) — surfaces aggregate + selected-node
+// stats (volume/area/bbox/mass/...) for the live FeatureTree. Hidden by
+// default (chunk loads only after the "Stats" toggle is clicked); kept
+// fully independent of the collab / AI planner / examples / branches
+// toggles per the orthogonality contract — all five can be on at once.
+const FeatureTreeStatsPanel = dynamic(
+  () => import('./FeatureTreeStatsPanel'),
+  {
+    ssr: false,
+    loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  },
+);
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -173,6 +186,10 @@ interface Dict {
   /** Branches panel toggle (Agent-YYYYY — FeatureTreeBranchManager wiring). */
   branches: string;
   branchesToggle: string;
+  /** Stats panel toggle (Agent-EEEEEE — FeatureTreeStatsPanel wiring). */
+  stats: string;
+  showStats: string;
+  hideStats: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -203,6 +220,9 @@ const dict: Record<Lang, Dict> = {
     collabPeers: '{N}명 접속 중',
     branches: '브랜치',
     branchesToggle: '브랜치 패널 표시',
+    stats: '통계',
+    showStats: '통계 표시',
+    hideStats: '통계 숨기기',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -231,6 +251,9 @@ const dict: Record<Lang, Dict> = {
     collabPeers: '{N} peers',
     branches: 'Branches',
     branchesToggle: 'Show branches panel',
+    stats: 'Stats',
+    showStats: 'Show stats',
+    hideStats: 'Hide stats',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -259,6 +282,9 @@ const dict: Record<Lang, Dict> = {
     collabPeers: '{N}人接続中',
     branches: 'ブランチ',
     branchesToggle: 'ブランチパネルを表示',
+    stats: '統計',
+    showStats: '統計を表示',
+    hideStats: '統計を隠す',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -287,6 +313,9 @@ const dict: Record<Lang, Dict> = {
     collabPeers: '{N}个用户',
     branches: '分支',
     branchesToggle: '显示分支面板',
+    stats: '统计',
+    showStats: '显示统计',
+    hideStats: '隐藏统计',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -315,6 +344,9 @@ const dict: Record<Lang, Dict> = {
     collabPeers: '{N} usuarios',
     branches: 'Ramas',
     branchesToggle: 'Mostrar panel de ramas',
+    stats: 'Estadísticas',
+    showStats: 'Mostrar estadísticas',
+    hideStats: 'Ocultar estadísticas',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -343,6 +375,9 @@ const dict: Record<Lang, Dict> = {
     collabPeers: '{N} مستخدمين',
     branches: 'الفروع',
     branchesToggle: 'إظهار لوحة الفروع',
+    stats: 'إحصائيات',
+    showStats: 'إظهار الإحصائيات',
+    hideStats: 'إخفاء الإحصائيات',
   },
 };
 
@@ -931,6 +966,22 @@ export default function SolverSketchEditorWithExtrude(
   //     state was failing; if the new tree still fails to write, the
   //     persistence side-channel effect will re-surface the banner).
   const [showBranches, setShowBranches] = useState(false);
+
+  // ── Stats panel (Agent-EEEEEE — FeatureTreeStatsPanel wiring) ───────────
+  // Default-off toggle. When on, FeatureTreeStatsPanel mounts beneath the
+  // existing planner / examples / branches panels (same "below toolbar"
+  // zone). Independent of every other toggle per the orthogonality
+  // contract — all five can be on at once.
+  //
+  // Wiring:
+  //   - `tree` is the live history-managed featureTree.
+  //   - `selectedNodeId` is forwarded as the wrapper's selectedFeatureId
+  //     so clicking a row in FeatureTreeView highlights the "Selected
+  //     feature" sub-section inside the panel.
+  //   - `lang` mirrors the wrapper lang (FeatureTreeStatsLang shares the
+  //     same 6-lang shape).
+  const [showStats, setShowStats] = useState(false);
+  const statsLang = (editorProps.lang ?? 'en') as FeatureTreeStatsLang;
 
   const branchStorageKeyPrefix =
     projectId !== undefined
@@ -1531,6 +1582,26 @@ export default function SolverSketchEditorWithExtrude(
           >
             🌿 {t.branches}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowStats((v) => !v)}
+            data-testid="solver-stats-toggle"
+            aria-label={showStats ? t.hideStats : t.showStats}
+            aria-expanded={showStats}
+            title={showStats ? t.hideStats : t.showStats}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: showStats ? '#2563eb' : '#fff',
+              border: '1px solid ' + (showStats ? '#1d4ed8' : '#d1d5db'),
+              color: showStats ? '#fff' : '#374151',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            📊 {t.stats}
+          </button>
           <label
             data-testid="solver-collab-toggle-label"
             style={{
@@ -1659,6 +1730,18 @@ export default function SolverSketchEditorWithExtrude(
               currentTree={featureTree}
               onLoadTree={handleLoadTreeFromBranch}
               storageKeyPrefix={branchStorageKeyPrefix}
+            />
+          </div>
+        )}
+        {showStats && (
+          <div
+            data-testid="solver-stats-panel-host"
+            style={{ marginTop: 8 }}
+          >
+            <FeatureTreeStatsPanel
+              lang={statsLang}
+              tree={featureTree}
+              selectedNodeId={selectedFeatureId}
             />
           </div>
         )}
