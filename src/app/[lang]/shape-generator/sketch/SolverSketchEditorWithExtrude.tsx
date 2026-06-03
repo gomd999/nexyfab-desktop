@@ -50,7 +50,8 @@ import {
 } from '@/lib/cad/featureTreePersist';
 import { useFeatureTreeHistory } from '@/lib/cad/featureTreeHistory';
 import { useCrdtDoc } from '@/lib/collab/useCrdtDoc';
-import { CursorOverlay } from '@/app/[lang]/shape-generator/_shared/CursorOverlay';
+import { CursorOverlay, colorForUserId } from '@/app/[lang]/shape-generator/_shared/CursorOverlay';
+import { CollabStatusBadge } from '@/app/[lang]/shape-generator/_shared/CollabStatusBadge';
 
 // StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
 // Sketch editor bundle small for users who never click Extrude.
@@ -1099,7 +1100,20 @@ export default function SolverSketchEditorWithExtrude(
     [collabEnabled, crdtAwareness],
   );
 
-  const peerCount = Object.keys(crdtAwareness.remoteStates).length;
+  // Peer derivation for the embedded CollabStatusBadge (JJJJJJ × VVVVV
+  // integration). Pulled directly from useCrdtDoc's awareness snapshot so
+  // the badge re-renders on every presence delta. userColors mirrors the
+  // deterministic colorForUserId hash from CursorOverlay so the badge
+  // tooltip swatches match the live cursor markers.
+  const peerIds = Object.keys(crdtAwareness.remoteStates);
+  const peerCount = peerIds.length;
+  const peerUserColors = useMemo<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const id of peerIds) {
+      out[id] = colorForUserId(id);
+    }
+    return out;
+  }, [peerIds]);
 
   // Tracks the in-flight fetch's AbortController so cancel/unmount can abort
   // it AND so we can suppress late setState after the controller is aborted.
@@ -1629,19 +1643,24 @@ export default function SolverSketchEditorWithExtrude(
             🌐 {t.collabMode}
           </label>
           {collabEnabled && (
+            // CollabStatusBadge (JJJJJJ) embedded inside the existing
+            // `solver-collab-status` slot. The outer span is preserved as a
+            // hosting wrapper so prior tests that query this testid keep
+            // matching; the badge supplies the headline + status dot + peer
+            // tooltip on top of that. Badge i18n keys (Collab / Connected /
+            // peers / 연결됨 / 명 …) overlap the prior inline string, so
+            // back-compat assertions still pass against `.textContent`.
             <span
               data-testid="solver-collab-status"
-              role="status"
-              style={{
-                fontSize: 11,
-                color: crdtConnected ? '#0e7490' : '#6b7280',
-                padding: '2px 6px',
-                background: crdtConnected ? '#ecfeff' : '#f3f4f6',
-                border: '1px solid ' + (crdtConnected ? '#a5f3fc' : '#e5e7eb'),
-                borderRadius: 4,
-              }}
+              style={{ display: 'inline-flex', alignItems: 'center' }}
             >
-              {t.collabMode}: {t.collabConnected} ({t.collabPeers.replace('{N}', String(peerCount))})
+              <CollabStatusBadge
+                lang={(editorProps.lang ?? 'en') as Lang}
+                isConnected={crdtConnected}
+                peerCount={peerCount}
+                peerIds={peerIds}
+                userColors={peerUserColors}
+              />
             </span>
           )}
           {projectId !== undefined && persistError === null && (

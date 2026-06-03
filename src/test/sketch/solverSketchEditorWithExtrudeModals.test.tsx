@@ -2372,3 +2372,124 @@ describe('SolverSketchEditorWithExtrude — Agent-EEEEEE stats panel wiring', ()
     }
   });
 });
+
+// ─── JJJJJJ × VVVVV: CollabStatusBadge integration ───────────────────────
+
+/**
+ * Phase: JJJJJJ (standalone badge) × VVVVV (collab-wired wrapper).
+ *
+ * The wrapper now mounts CollabStatusBadge inside the `solver-collab-status`
+ * slot when collab mode is on. The badge supplies:
+ *   - the status dot (green / blue / red)
+ *   - the connection headline ("Collab: Connected (N peers)" etc.)
+ *   - the peer-list tooltip (hover/focus)
+ *
+ * Wiring contract:
+ *   - isConnected  ← useCrdtDoc.isConnected (memory transport == true)
+ *   - peerCount    ← Object.keys(awareness.remoteStates).length
+ *   - peerIds      ← Object.keys(awareness.remoteStates)
+ *   - userColors   ← Map<peerId, colorForUserId(peerId)>
+ *
+ * Coverage:
+ *   - collab off → badge absent (regression-safe);
+ *   - collab on → badge present inside the existing status slot;
+ *   - peerCount 0 → blue (idle);
+ *   - the disconnected / 3-peer / colour-matrix branches are exhaustively
+ *     pinned by the standalone unit suite (collabStatusBadge.test.tsx);
+ *     here we focus on the wrapper-side wiring + back-compat.
+ *   - toggling collab off tears the badge down;
+ *   - i18n: badge headline reflects wrapper lang (Korean / English).
+ */
+describe('SolverSketchEditorWithExtrude — CollabStatusBadge integration', () => {
+  it('collab off → CollabStatusBadge is not mounted', async () => {
+    await mountReady();
+    expect(screen.queryByTestId('collab-status-badge')).toBeNull();
+  });
+
+  it('collab on → CollabStatusBadge mounts inside the status slot', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const badge = await screen.findByTestId('collab-status-badge');
+    expect(badge).toBeInTheDocument();
+    // Badge lives inside the wrapper's existing solver-collab-status host
+    // so prior tests querying that testid still find a node.
+    const host = screen.getByTestId('solver-collab-status');
+    expect(host.contains(badge)).toBe(true);
+  });
+
+  it('peerCount 0 → badge resolves to the blue idle status', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const badge = await screen.findByTestId('collab-status-badge');
+    // Memory transport is up immediately AND no peers joined → idle (blue).
+    expect(badge.getAttribute('data-status')).toBe('idle');
+    expect(badge.getAttribute('data-color')).toBe('#3b82f6');
+    expect(badge.getAttribute('data-peer-count')).toBe('0');
+    expect(badge.getAttribute('data-connected')).toBe('true');
+  });
+
+  it('peerCount 0 status text includes "(0 peers)" in English', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const text = await screen.findByTestId('collab-status-text');
+    expect(text.textContent).toBe('Collab: Connected (0 peers)');
+  });
+
+  it('memory transport keeps the badge connected (data-connected=true)', async () => {
+    // Direct mirror of the useCrdtDoc memory-transport guarantee: the wrapper
+    // ALWAYS instantiates with transport='memory' (see the useCrdtDoc call),
+    // so isConnected is true on first paint — the red disconnected branch is
+    // unreachable from this wrapper without swapping the transport. The unit
+    // suite (collabStatusBadge.test.tsx) covers the red branch directly.
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const badge = await screen.findByTestId('collab-status-badge');
+    expect(badge.getAttribute('data-connected')).toBe('true');
+    // Inverse: NOT the offline red.
+    expect(badge.getAttribute('data-color')).not.toBe('#ef4444');
+  });
+
+  it('hover on the badge reveals the empty-peer tooltip', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const badge = await screen.findByTestId('collab-status-badge');
+    fireEvent.mouseEnter(badge);
+    const tooltip = await screen.findByTestId('collab-status-tooltip');
+    expect(tooltip).toBeInTheDocument();
+    // With 0 peers the noPeers variant surfaces (English).
+    expect(tooltip.textContent ?? '').toContain('No other peers connected');
+  });
+
+  it('toggling collab off tears the badge down', async () => {
+    await mountReady();
+    const toggle = screen.getByTestId('solver-collab-toggle');
+    fireEvent.click(toggle);
+    await screen.findByTestId('collab-status-badge');
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(screen.queryByTestId('collab-status-badge')).toBeNull();
+    });
+  });
+
+  it('Korean i18n: badge headline uses the Korean dictionary (협업 / 연결됨)', async () => {
+    render(<SolverSketchEditorWithExtrude lang="ko" extrudeFetcher={vi.fn()} />);
+    const editor = await screen.findByTestId('solver-sketch-editor');
+    await waitFor(() => expect(editor.getAttribute('data-state')).toBe('ready'), { timeout: 10000 });
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    const text = await screen.findByTestId('collab-status-text');
+    // Badge's Korean dict: '협업: 연결됨 (0명 접속 중)'
+    expect(text.textContent ?? '').toContain('협업');
+    expect(text.textContent ?? '').toContain('연결됨');
+    expect(text.textContent ?? '').toContain('0');
+    expect(text.textContent ?? '').toContain('명');
+  });
+
+  it('back-compat: legacy `solver-collab-status` testid is still queryable', async () => {
+    // Regression guard for the 11 prior collab-mode tests that look up the
+    // status banner via `solver-collab-status`. The wrapper still emits that
+    // testid as the badge's host element.
+    await mountReady();
+    fireEvent.click(screen.getByTestId('solver-collab-toggle'));
+    expect(await screen.findByTestId('solver-collab-status')).toBeInTheDocument();
+  });
+});
