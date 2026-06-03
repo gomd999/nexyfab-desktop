@@ -17,8 +17,9 @@ import type { OcctShape, OcctOperationResult, Vec3 } from './types';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { OcctModule } from './nodeOcctLoader';
-import { buildExtrudeTopo, edgeMidpoint, namesOf, type NamedTopology } from '@/lib/cad/topoNaming';
+import { buildExtrudeTopo, edgeMidpoint, namesOf } from '@/lib/cad/topoNaming';
 import { nearestByMidpoint } from '@/lib/cad/edgeMatch';
+import { composeBooleanTopo, fromAnchors, type EdgeAnchorSource } from '@/lib/cad/composedTopo';
 
 // ─── embind typing helpers (no `any`) ──────────────────────────────────────
 
@@ -112,17 +113,17 @@ function uniqueEdges(oc: OcctModule, shape: OcctInstance): Array<{ edge: OcctIns
 export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
   const m = maker(oc);
   const registry = new Map<string, OcctInstance>();
-  /** Stable-named topology of shapes built directly from a primitive feature. */
-  const topos = new Map<string, NamedTopology>();
+  /** Stable edge-name source per shape (primitive provenance or composed). */
+  const topos = new Map<string, EdgeAnchorSource>();
   let seq = 0;
 
-  const register = (shape: OcctInstance, topo?: NamedTopology): OcctShape => {
+  const register = (shape: OcctInstance, topo?: EdgeAnchorSource): OcctShape => {
     const id = `occt_${++seq}`;
     registry.set(id, shape);
     if (topo) topos.set(id, topo);
     return { id, kind: 'solid', volume: volumeOf(oc, shape), bbox: bboxOf(oc, shape) };
   };
-  const result = (shape: OcctInstance, warnings: string[] = [], topo?: NamedTopology): OcctOperationResult => ({
+  const result = (shape: OcctInstance, warnings: string[] = [], topo?: EdgeAnchorSource): OcctOperationResult => ({
     ok: true, shape: register(shape, topo), warnings,
   });
   const lookup = (s: OcctShape, where: string): OcctInstance => {
@@ -139,7 +140,23 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
   function runBool(kind: 'Fuse' | 'Cut' | 'Common', a: OcctShape, b: OcctShape): OcctOperationResult {
     try {
       const algo = m.inst(`BRepAlgoAPI_${kind}_3`, lookup(a, kind), lookup(b, kind));
-      return result(algo.Shape() as OcctInstance);
+      const shape = algo.Shape() as OcctInstance;
+      // K2.2: re-derive a stable naming for the composed result by inheriting
+      // the operands' edge names onto whichever edges survived the boolean.
+      const topoA = topos.get(a.id);
+      const topoB = topos.get(b.id);
+      let composed: EdgeAnchorSource | undefined;
+      if (topoA || topoB) {
+        const resultMids = uniqueEdges(oc, shape).map((e) => e.mid);
+        composed = composeBooleanTopo(
+          [
+            { role: 'a', names: topoA ? topoA.names() : [], anchorOf: (n) => (topoA ? topoA.anchor(n) : null) },
+            { role: 'b', names: topoB ? topoB.names() : [], anchorOf: (n) => (topoB ? topoB.anchor(n) : null) },
+          ],
+          resultMids,
+        );
+      }
+      return result(shape, [], composed);
     } catch (e) {
       return { ok: false, error: `${kind}: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
     }
@@ -179,7 +196,7 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
       if (!topo) {
         return {
           ok: false,
-          error: `${op}: shape ${shape.id} has no stable topology (composed/boolean result) — name-based selection needs K2.2; use ['sel:all']`,
+          error: `${op}: shape ${shape.id} has no stable topology — name-based selection unavailable; use ['sel:all']`,
           warnings: [],
         };
       }
@@ -187,14 +204,14 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
       picked = [];
       const missing: string[] = [];
       for (const name of edgeIds) {
-        const anchor = edgeMidpoint(topo, name);
+        const anchor = topo.anchor(name);
         if (!anchor) { missing.push(`${name} (unknown)`); continue; }
         const match = nearestByMidpoint(mids, anchor, 1e-3);
         if (match.index < 0) { missing.push(`${name} (no kernel edge near anchor)`); continue; }
         picked.push(occtEdges[match.index].edge);
       }
       if (missing.length) {
-        return { ok: false, error: `${op}: unresolved edges — ${missing.join(', ')}. known: ${namesOf(topo, 'edge').join(',')}`, warnings: [] };
+        return { ok: false, error: `${op}: unresolved edges — ${missing.join(', ')}. known: ${topo.names().join(',')}`, warnings: [] };
       }
     }
     if (picked.length === 0) {
@@ -223,7 +240,13 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         const { z0, h } = extrudeZRange(feature);
         const shape = buildPrism(oc, feature.loop, z0, h);
         // Stable-named topology so fillet/chamfer can pick edges by name (K3).
-        return result(shape, [], buildExtrudeTopo(feature));
+        const topo = buildExtrudeTopo(feature);
+        const anchors = new Map<string, Vec3>();
+        for (const name of namesOf(topo, 'edge')) {
+          const mid = edgeMidpoint(topo, name);
+          if (mid) anchors.set(name, mid);
+        }
+        return result(shape, [], fromAnchors(anchors));
       } catch (e) {
         return { ok: false, error: `extrude: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
       }

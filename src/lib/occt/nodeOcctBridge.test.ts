@@ -96,13 +96,25 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(c.shape?.volume).toBeCloseTo(490, 0);
   });
 
-  it('K3: name-based fillet on a composed (boolean) shape reports K2.2 cleanly', async () => {
+  it('K2.2: name-based fillet works on a composed (boolean) shape', async () => {
+    if (!okLoad) return;
+    const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 7, direction: 'one_sided', mode: 'add' });
+    const cut = await bridge.boolean.subtract(base.shape!, tool.shape!); // 420, with a 4×4 through-pocket
+    // The base's outer vertical edges survived the cut → inherited as a/e.vert.*.
+    const f = await bridge.fillet(cut.shape!, ['a/e.vert.0'], 1);
+    expect(f.ok).toBe(true);
+    expect(f.shape!.volume).toBeLessThan(420);   // one corner rounded
+    expect(f.shape!.volume).toBeGreaterThan(415);
+  });
+
+  it('K2.2: an unknown name on a composed shape still errors clearly', async () => {
     if (!okLoad) return;
     const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
     const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 7, direction: 'one_sided', mode: 'add' });
     const cut = await bridge.boolean.subtract(base.shape!, tool.shape!);
-    const f = await bridge.fillet(cut.shape!, ['e.vert.0'], 1);
+    const f = await bridge.fillet(cut.shape!, ['e.vert.0'], 1); // un-prefixed → not a composed name
     expect(f.ok).toBe(false);
-    expect(f.error).toMatch(/K2\.2|stable topology/);
+    expect(f.error).toMatch(/unresolved|unknown/);
   });
 });
