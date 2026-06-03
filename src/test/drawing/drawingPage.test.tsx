@@ -563,3 +563,224 @@ describe('DrawingPageContent — sheet template picker (Phase 4.1.3)', () => {
     }
   });
 });
+
+// ─── B31.4 StepCompareVersionPanel integration ──────────────────────────
+/**
+ * Compare-versions UX:
+ *   - `drawing-compare-toggle` checkbox lives in the page header next to
+ *     the assembly-mode toggle, defaulting OFF so the legacy 46 tests
+ *     don't see the heavy compare panel DOM.
+ *   - Flipping it ON mounts the panel as a bottom-of-page section
+ *     (`drawing-compare-panel-section`) which wraps the standalone
+ *     {@link StepCompareVersionPanel} (`drawing-step-compare-panel`).
+ *   - The toggle label flips to `hideCompareButton` when ON so a second
+ *     click clearly reads as "hide".
+ *   - 6-lang dictionary entries flow through both `compareVersions` and
+ *     `hideCompareButton`.
+ */
+describe('DrawingPageContent — B31.4 compare panel integration', () => {
+  it('compare toggle is visible by default and unchecked', () => {
+    mount();
+    const toggle = screen.getByTestId('drawing-compare-toggle') as HTMLInputElement;
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.checked).toBe(false);
+    expect(screen.queryByTestId('drawing-compare-panel-section')).toBeNull();
+    expect(screen.queryByTestId('drawing-step-compare-panel')).toBeNull();
+  });
+
+  it('flipping compare toggle ON mounts the StepCompareVersionPanel', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-compare-toggle'));
+    expect(screen.getByTestId('drawing-compare-panel-section')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-step-compare-panel')).toBeInTheDocument();
+    // Confirms the mounted panel exposes both side inputs from B31.
+    expect(screen.getByTestId('drawing-step-compare-old-textarea')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-step-compare-new-textarea')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-step-compare-compare-button')).toBeInTheDocument();
+  });
+
+  it('toggling compare OFF unmounts the panel', () => {
+    mount();
+    const toggle = screen.getByTestId('drawing-compare-toggle');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('drawing-compare-panel-section')).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('drawing-compare-panel-section')).toBeNull();
+    expect(screen.queryByTestId('drawing-step-compare-panel')).toBeNull();
+  });
+
+  it('toggle label flips to "hide" copy when compare is open (en)', () => {
+    mount('en');
+    const toggle = screen.getByTestId('drawing-compare-toggle');
+    const label = toggle.closest('label');
+    expect(label).not.toBeNull();
+    expect(label!.textContent ?? '').toMatch(/compare versions/i);
+    fireEvent.click(toggle);
+    expect(label!.textContent ?? '').toMatch(/hide compare panel/i);
+  });
+
+  it('compare toggle label is localised for ko / en / ja / zh / es / ar (default OFF text)', () => {
+    const cases: Array<[string, RegExp]> = [
+      ['ko', /버전 비교/],
+      ['en', /compare versions/i],
+      ['ja', /バージョン比較/],
+      ['zh', /版本对比/],
+      ['es', /comparar versiones/i],
+      ['ar', /مقارنة الإصدارات/],
+    ];
+    for (const [lang, re] of cases) {
+      const { unmount } = mount(lang);
+      const toggle = screen.getByTestId('drawing-compare-toggle');
+      const label = toggle.closest('label');
+      expect(label).not.toBeNull();
+      expect(label!.textContent ?? '').toMatch(re);
+      unmount();
+    }
+  });
+
+  it('compare toggle "hide" copy is localised for ko / en / ja / zh / es / ar', () => {
+    const cases: Array<[string, RegExp]> = [
+      ['ko', /비교 패널 숨기기/],
+      ['en', /hide compare panel/i],
+      ['ja', /比較パネルを非表示/],
+      ['zh', /隐藏对比面板/],
+      ['es', /ocultar panel de comparación/i],
+      ['ar', /إخفاء لوحة المقارنة/],
+    ];
+    for (const [lang, re] of cases) {
+      const { unmount } = mount(lang);
+      fireEvent.click(screen.getByTestId('drawing-compare-toggle'));
+      const label = screen.getByTestId('drawing-compare-toggle').closest('label');
+      expect(label).not.toBeNull();
+      expect(label!.textContent ?? '').toMatch(re);
+      unmount();
+    }
+  });
+
+  it('mounted panel propagates the host lang prop (ko surfaces 비교 button)', () => {
+    mount('ko');
+    fireEvent.click(screen.getByTestId('drawing-compare-toggle'));
+    const compareBtn = screen.getByTestId('drawing-step-compare-compare-button');
+    expect(compareBtn.textContent ?? '').toMatch(/비교/);
+  });
+
+  it('compare panel does NOT add extra viewport groups to the host DOM', () => {
+    const { container } = mount();
+    fireEvent.click(screen.getByTestId('drawing-compare-toggle'));
+    // StepCompareVersionPanel renders no SheetRenderer — main canvas
+    // still owns the only 4 viewport groups.
+    expect(viewportIds(container)).toHaveLength(4);
+  });
+});
+
+// ─── B31.6 SheetPngExportButton integration ─────────────────────────────
+/**
+ * PNG export toggle UX:
+ *   - `drawing-png-export-toggle` checkbox lives in the footer (next to
+ *     the legacy PNG/JSON/PDF/STEP buttons), defaulting OFF so the
+ *     button's off-screen SheetRenderer does NOT double the
+ *     viewport-group count and break the legacy `viewportIds` length
+ *     assertions in the 46 pre-existing tests.
+ *   - Flipping it ON mounts the dedicated B31.6 button (DPI picker +
+ *     spinner + iOS canvas-cap hint). The button carries the
+ *     `drawing-png-export-button` testid — distinct from the legacy
+ *     `drawing-export-png-button` so both can coexist in the footer.
+ */
+describe('DrawingPageContent — B31.6 PNG export button integration', () => {
+  it('PNG export toggle is visible by default and unchecked', () => {
+    mount();
+    const toggle = screen.getByTestId('drawing-png-export-toggle') as HTMLInputElement;
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.checked).toBe(false);
+    expect(screen.queryByTestId('drawing-png-export-section')).toBeNull();
+    expect(screen.queryByTestId('drawing-png-export-button')).toBeNull();
+  });
+
+  it('legacy drawing-export-png-button still mounts unconditionally', () => {
+    mount();
+    expect(screen.getByTestId('drawing-export-png-button')).toBeInTheDocument();
+  });
+
+  it('flipping PNG toggle ON mounts the SheetPngExportButton section', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-png-export-toggle'));
+    expect(screen.getByTestId('drawing-png-export-section')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-png-export-button')).toBeInTheDocument();
+    expect(screen.getByTestId('drawing-png-export-resolution-select')).toBeInTheDocument();
+  });
+
+  it('toggling PNG OFF unmounts the section + button', () => {
+    mount();
+    const toggle = screen.getByTestId('drawing-png-export-toggle');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('drawing-png-export-section')).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('drawing-png-export-section')).toBeNull();
+    expect(screen.queryByTestId('drawing-png-export-button')).toBeNull();
+  });
+
+  it('PNG export button label is the English default after toggle ON', () => {
+    mount('en');
+    fireEvent.click(screen.getByTestId('drawing-png-export-toggle'));
+    expect(screen.getByTestId('drawing-png-export-button').textContent ?? '')
+      .toMatch(/Export PNG/);
+  });
+
+  it('PNG export button surfaces the Korean label via the host lang prop', () => {
+    mount('ko');
+    fireEvent.click(screen.getByTestId('drawing-png-export-toggle'));
+    expect(screen.getByTestId('drawing-png-export-button').textContent ?? '')
+      .toMatch(/PNG 내보내기/);
+  });
+
+  it('PNG export resolution select offers 72 / 96 / 150 / 300 with 150 default', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-png-export-toggle'));
+    const select = screen.getByTestId('drawing-png-export-resolution-select') as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(['72', '96', '150', '300']);
+    expect(select.value).toBe('150');
+  });
+
+  it('PNG toggle label is localised for ko / en / ja / zh / es / ar', () => {
+    const cases: Array<[string, RegExp]> = [
+      ['ko', /고해상도 PNG/],
+      ['en', /high-res png/i],
+      ['ja', /高解像度PNG/],
+      ['zh', /高分辨率PNG/],
+      ['es', /exportación png alta resolución/i],
+      ['ar', /تصدير PNG بدقة عالية/],
+    ];
+    for (const [lang, re] of cases) {
+      const { unmount } = mount(lang);
+      const toggle = screen.getByTestId('drawing-png-export-toggle');
+      const label = toggle.closest('label');
+      expect(label).not.toBeNull();
+      expect(label!.textContent ?? '').toMatch(re);
+      unmount();
+    }
+  });
+
+  it('mounted PNG button section is positioned inside the footer', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('drawing-png-export-toggle'));
+    const section = screen.getByTestId('drawing-png-export-section');
+    const footer = screen.getByTestId('drawing-page-footer');
+    expect(footer.contains(section)).toBe(true);
+  });
+
+  it('with PNG toggle OFF, viewport-group count stays at the legacy 4', () => {
+    const { container } = mount();
+    // Sanity baseline + confirms the off-screen SheetRenderer is NOT mounted.
+    expect(viewportIds(container)).toHaveLength(4);
+  });
+
+  it('with PNG toggle ON, the off-screen SheetRenderer doubles the viewport-group count to 8', () => {
+    const { container } = mount();
+    fireEvent.click(screen.getByTestId('drawing-png-export-toggle'));
+    // The B31.6 button mounts its own off-screen SheetRenderer so the
+    // SVG-ref capture works at click time. We expect exactly 2 sheets'
+    // worth of viewport groups.
+    expect(viewportIds(container)).toHaveLength(8);
+  });
+});

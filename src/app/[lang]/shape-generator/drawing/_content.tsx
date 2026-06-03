@@ -74,6 +74,8 @@ import { SheetRenderer } from './SheetRenderer';
 import DimensionAnnotationModal from './DimensionAnnotationModal';
 import { SheetSnapIndicator } from './SheetSnapIndicator';
 import { findSheetSnapTarget, type SheetSnapTarget } from '@/lib/drawing/sheetSnap';
+import { SheetPngExportButton } from './SheetPngExportButton';
+import StepCompareVersionPanel from './StepCompareVersionPanel';
 
 // ─── sample parts ────────────────────────────────────────────────────────
 
@@ -192,6 +194,11 @@ interface PageDict {
   titleblockTitle: string;
   titleblockDrawnBy: string;
   titleblockProject: string;
+  /** B31.4 STEP version compare toggle labels. */
+  compareVersions: string;
+  hideCompareButton: string;
+  /** B31.6 dedicated PNG-export button section toggle. */
+  enablePngExport: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -275,6 +282,9 @@ const DICT: Record<string, PageDict> = {
     titleblockTitle: '제목',
     titleblockDrawnBy: '작성자',
     titleblockProject: '프로젝트',
+    compareVersions: '버전 비교',
+    hideCompareButton: '비교 패널 숨기기',
+    enablePngExport: '고해상도 PNG 내보내기',
   },
   en: {
     title: 'Drawing Studio',
@@ -356,6 +366,9 @@ const DICT: Record<string, PageDict> = {
     titleblockTitle: 'Title',
     titleblockDrawnBy: 'Drawn by',
     titleblockProject: 'Project',
+    compareVersions: 'Compare versions',
+    hideCompareButton: 'Hide compare panel',
+    enablePngExport: 'High-res PNG export',
   },
   ja: {
     title: '図面スタジオ',
@@ -437,6 +450,9 @@ const DICT: Record<string, PageDict> = {
     titleblockTitle: 'タイトル',
     titleblockDrawnBy: '作成者',
     titleblockProject: 'プロジェクト',
+    compareVersions: 'バージョン比較',
+    hideCompareButton: '比較パネルを非表示',
+    enablePngExport: '高解像度PNG出力',
   },
   zh: {
     title: '图纸工作室',
@@ -518,6 +534,9 @@ const DICT: Record<string, PageDict> = {
     titleblockTitle: '标题',
     titleblockDrawnBy: '绘制者',
     titleblockProject: '项目',
+    compareVersions: '版本对比',
+    hideCompareButton: '隐藏对比面板',
+    enablePngExport: '高分辨率PNG导出',
   },
   es: {
     title: 'Estudio de Planos',
@@ -599,6 +618,9 @@ const DICT: Record<string, PageDict> = {
     titleblockTitle: 'Título',
     titleblockDrawnBy: 'Dibujado por',
     titleblockProject: 'Proyecto',
+    compareVersions: 'Comparar versiones',
+    hideCompareButton: 'Ocultar panel de comparación',
+    enablePngExport: 'Exportación PNG alta resolución',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -680,6 +702,9 @@ const DICT: Record<string, PageDict> = {
     titleblockTitle: 'العنوان',
     titleblockDrawnBy: 'رسم بواسطة',
     titleblockProject: 'المشروع',
+    compareVersions: 'مقارنة الإصدارات',
+    hideCompareButton: 'إخفاء لوحة المقارنة',
+    enablePngExport: 'تصدير PNG بدقة عالية',
   },
 };
 
@@ -1159,6 +1184,26 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * start of every fresh export attempt.
    */
   const [pdfExportInfo, setPdfExportInfo] = useState<string | null>(null);
+
+  // ─── B31.4 STEP version-compare panel state ────────────────────────────
+  /**
+   * Default OFF — the panel is bulky (two large textareas + result block)
+   * and unrelated to the 46 pre-existing drawing-suite tests. Flipping
+   * the toggle mounts {@link StepCompareVersionPanel} as a bottom-of-page
+   * section so the comparison sits below the main drawing without
+   * stealing canvas real estate.
+   */
+  const [compareOpen, setCompareOpen] = useState<boolean>(false);
+
+  // ─── B31.6 high-res PNG export button state ─────────────────────────────
+  /**
+   * Default OFF so the off-screen `SheetRenderer` inside
+   * {@link SheetPngExportButton} does NOT add a second viewport-group set
+   * to the DOM that would break the 46 pre-existing drawing-suite tests
+   * (`viewportIds(container)` expects exactly 4). Users opt in via the
+   * `drawing-png-export-toggle` checkbox.
+   */
+  const [pngExportEnabled, setPngExportEnabled] = useState<boolean>(false);
 
   // ─── Phase 4.7 cursor snap state ───────────────────────────────────────
   /**
@@ -1931,24 +1976,44 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
             <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
           </div>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              color: '#374151',
-              fontWeight: 600,
-            }}
-          >
-            <input
-              type="checkbox"
-              data-testid="drawing-assembly-mode-toggle"
-              checked={assemblyMode}
-              onChange={(e) => setAssemblyMode(e.target.checked)}
-            />
-            {dict.assemblyMode}
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-compare-toggle"
+                checked={compareOpen}
+                onChange={(e) => setCompareOpen(e.target.checked)}
+              />
+              {compareOpen ? dict.hideCompareButton : dict.compareVersions}
+            </label>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-assembly-mode-toggle"
+                checked={assemblyMode}
+                onChange={(e) => setAssemblyMode(e.target.checked)}
+              />
+              {dict.assemblyMode}
+            </label>
+          </div>
         </header>
 
         {assemblyMode ? (
@@ -2989,6 +3054,17 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 {dict.includeOcctBindings}
               </label>
             ) : null}
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-png-export-toggle"
+                checked={pngExportEnabled}
+                onChange={(e) => setPngExportEnabled(e.target.checked)}
+              />
+              {dict.enablePngExport}
+            </label>
             <button
               type="button"
               data-testid="drawing-export-png-button"
@@ -3166,7 +3242,45 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               {pdfExportInfo}
             </p>
           ) : null}
+          {/*
+            B31.6 standalone high-res PNG export. Mounts the dedicated
+            SheetPngExportButton (DPI picker + spinner + iOS canvas-cap
+            hint) on demand. Default OFF because the button mounts its
+            own off-screen SheetRenderer — leaving it always-on would
+            double the viewport-group count and break the legacy
+            drawing-suite tests that assert `viewportIds(container)`
+            length 4.
+          */}
+          {pngExportEnabled ? (
+            <div
+              data-testid="drawing-png-export-section"
+              style={{ display: 'flex', justifyContent: 'flex-end' }}
+            >
+              <SheetPngExportButton lang={lang} sheet={sheet} />
+            </div>
+          ) : null}
         </footer>
+        ) : null}
+        {/*
+          B31.4 STEP version-compare side panel. Mounts the standalone
+          {@link StepCompareVersionPanel} as a sibling section beneath
+          the footer — keeps it visible alongside the live drawing for
+          quick before/after comparison without overlapping the canvas
+          or stealing the footer's export controls. Default OFF (toggle
+          lives in the header next to the assembly-mode toggle).
+        */}
+        {compareOpen ? (
+          <section
+            data-testid="drawing-compare-panel-section"
+            style={{
+              padding: 12,
+              background: '#ffffff',
+              borderRadius: 6,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
+            <StepCompareVersionPanel lang={lang} />
+          </section>
         ) : null}
       </div>
 
