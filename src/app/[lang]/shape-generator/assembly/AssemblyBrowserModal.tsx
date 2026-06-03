@@ -67,7 +67,12 @@ import {
   buildExplodedState,
   interpolateExplode,
   type ExplodeAxisHeuristic,
+  type ExplodedState,
 } from '@/lib/assembly/explodeView';
+import {
+  explodedStateFromImport,
+  type ImportedExplode,
+} from '@/lib/assembly/explodeImport';
 import PartManipulatorGizmo, {
   type PartManipulatorMode,
   type Vec3,
@@ -2941,14 +2946,27 @@ export default function AssemblyBrowserModal({
     () => buildExplodedState({ state, axisHeuristic: explodeHeuristic, scale: explodeScale }),
     [state, explodeHeuristic, explodeScale],
   );
+  // An imported keyframe sequence (from a prior Export) replayed against the
+  // current assembly. When present it OVERRIDES the freshly-computed explode.
+  const [importedExplodeState, setImportedExplodeState] = useState<ExplodedState | null>(null);
+  const handleExplodeImport = useCallback(
+    (imported: ImportedExplode) => {
+      setImportedExplodeState(explodedStateFromImport(state, imported));
+    },
+    [state],
+  );
+  const handleClearExplodeImport = useCallback(() => setImportedExplodeState(null), []);
+  /** Computed explode, or the imported one when a sequence is loaded. */
+  const effectiveExploded = importedExplodeState ?? explodedState;
+
   const explodeMovingCount = useMemo(
-    () => explodedState.steps.filter((s) => s.distance > 0).length,
-    [explodedState],
+    () => effectiveExploded.steps.filter((s) => s.distance > 0).length,
+    [effectiveExploded],
   );
   /** State handed to Assembly3DViewer — displaced while explode is ON. */
   const viewerState = useMemo(
-    () => (explodeOpen ? interpolateExplode(state, explodedState, explodeAmount) : state),
-    [explodeOpen, state, explodedState, explodeAmount],
+    () => (explodeOpen ? interpolateExplode(state, effectiveExploded, explodeAmount) : state),
+    [explodeOpen, state, effectiveExploded, explodeAmount],
   );
 
   // Play: ramp the explode amount 0 → 1 over ~700ms via rAF. Falls back to an
@@ -2985,13 +3003,13 @@ export default function AssemblyBrowserModal({
   // animator or as an exploded-BOM manifest.
   const handleExplodeExport = useCallback(() => {
     const fromById = new Map(state.parts.map((p) => [p.id, p.position]));
-    const toById = new Map(explodedState.displacedState.parts.map((p) => [p.id, p.position]));
+    const toById = new Map(effectiveExploded.displacedState.parts.map((p) => [p.id, p.position]));
     const name = projectId ?? 'assembly';
     const payload = {
       assembly: name,
       heuristic: explodeHeuristic,
       scale: explodeScale,
-      steps: explodedState.steps.map((s) => ({
+      steps: effectiveExploded.steps.map((s) => ({
         partId: s.partId,
         order: s.order,
         axis: s.axis,
@@ -3009,7 +3027,7 @@ export default function AssemblyBrowserModal({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [state, explodedState, explodeHeuristic, explodeScale, projectId]);
+  }, [state, effectiveExploded, explodeHeuristic, explodeScale, projectId]);
 
   /**
    * AssemblyAiPanel.onBuildAssembly handler. Translates an {@link
@@ -4378,6 +4396,9 @@ export default function AssemblyBrowserModal({
               onAmountChange={setExplodeAmount}
               onPlay={handlePlayExplode}
               onExport={handleExplodeExport}
+              onImport={handleExplodeImport}
+              imported={importedExplodeState !== null}
+              onClearImport={handleClearExplodeImport}
             />
           </div>
         )}

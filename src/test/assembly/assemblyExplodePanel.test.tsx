@@ -16,7 +16,7 @@
  *   7. AssemblyBrowserModal — toggle mounts/unmounts the explode host
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, within, cleanup, waitFor } from '@testing-library/react';
 import React from 'react';
 import AssemblyExplodePanel, {
   type AssemblyLang,
@@ -148,6 +148,44 @@ describe('AssemblyExplodePanel — controls', () => {
     renderPanel({ onExport: vi.fn(), movingCount: 0 });
     expect((screen.getByTestId('solver-assembly-explode-export') as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('import button + hidden file input appear only with onImport', () => {
+    renderPanel();
+    expect(screen.queryByTestId('solver-assembly-explode-import')).toBeNull();
+    cleanup();
+    renderPanel({ onImport: vi.fn() });
+    expect(screen.getByTestId('solver-assembly-explode-import')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-explode-file')).toBeInTheDocument();
+  });
+
+  it('selecting a valid JSON file fires onImport with the parsed steps', async () => {
+    const onImport = vi.fn();
+    renderPanel({ onImport });
+    const json = JSON.stringify({ steps: [{ partId: 'B', order: 0, axis: { x: 0, y: 0, z: 1 }, distance: 5 }] });
+    const file = new File([json], 'explode.json', { type: 'application/json' });
+    fireEvent.change(screen.getByTestId('solver-assembly-explode-file'), { target: { files: [file] } });
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    expect(onImport.mock.calls[0][0].steps[0]).toMatchObject({ partId: 'B', distance: 5 });
+  });
+
+  it('selecting a malformed file shows an inline error and does not fire onImport', async () => {
+    const onImport = vi.fn();
+    renderPanel({ onImport });
+    const file = new File(['{bad'], 'explode.json', { type: 'application/json' });
+    fireEvent.change(screen.getByTestId('solver-assembly-explode-file'), { target: { files: [file] } });
+    await waitFor(() =>
+      expect(screen.getByTestId('solver-assembly-explode-import-error')).toBeInTheDocument(),
+    );
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
+  it('imported badge + Clear button show when imported', () => {
+    const onClearImport = vi.fn();
+    renderPanel({ onImport: vi.fn(), imported: true, onClearImport });
+    expect(screen.getByTestId('solver-assembly-explode-imported-badge')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-clear-import'));
+    expect(onClearImport).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ─── modal integration ──────────────────────────────────────────────────────
@@ -204,6 +242,34 @@ describe('AssemblyBrowserModal — Explode toggle integration', () => {
     fireEvent.click(screen.getByTestId('solver-assembly-explode-toggle'));
     fireEvent.click(screen.getByTestId('solver-assembly-explode-play'));
     expect(screen.getByTestId('solver-assembly-explode-panel')).toBeInTheDocument();
+  });
+
+  it('importing a sequence overrides the computed explode; Clear reverts', async () => {
+    render(<AssemblyBrowserModal lang="en" initialState={makeState()} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-toggle'));
+    // Computed: B + C both move → count 2, no imported badge.
+    expect(screen.getByTestId('solver-assembly-explode-count').textContent ?? '').toMatch(/2 /);
+    expect(screen.queryByTestId('solver-assembly-explode-imported-badge')).toBeNull();
+
+    // Import a sequence where only B moves.
+    const json = JSON.stringify({
+      steps: [
+        { partId: 'B', order: 0, axis: { x: 1, y: 0, z: 0 }, distance: 12 },
+        { partId: 'C', order: 1, axis: { x: 1, y: 0, z: 0 }, distance: 0 },
+      ],
+    });
+    const file = new File([json], 'explode.json', { type: 'application/json' });
+    fireEvent.change(screen.getByTestId('solver-assembly-explode-file'), { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('solver-assembly-explode-imported-badge')).toBeInTheDocument(),
+    );
+    // Imported movingCount = 1 (only B).
+    expect(screen.getByTestId('solver-assembly-explode-count').textContent ?? '').toMatch(/1 /);
+
+    fireEvent.click(screen.getByTestId('solver-assembly-explode-clear-import'));
+    expect(screen.queryByTestId('solver-assembly-explode-imported-badge')).toBeNull();
+    expect(screen.getByTestId('solver-assembly-explode-count').textContent ?? '').toMatch(/2 /);
   });
 });
 
