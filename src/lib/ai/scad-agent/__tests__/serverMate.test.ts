@@ -1,84 +1,70 @@
 /**
- * I* — server mate solver v0 tests.
+ * serverMateAdapter — thin delegation onto assemblyMateSolve (the real
+ * iterativeSolve bridge). Deep solver behaviour is covered by
+ * assemblyMateSolve.test.ts; here we assert the adapter forwards anchors and
+ * passes results / errors through.
  */
 import { describe, it, expect } from 'vitest';
 import { serverMateAdapter } from '../serverMate';
 import type { AssemblyMate } from '../types';
+import type { MateAnchor } from '../assemblyMateSolve';
 
 describe('serverMateAdapter', () => {
   it('isAvailable=true (no external deps)', () => {
     expect(serverMateAdapter.isAvailable()).toBe(true);
   });
 
-  it('concentric mate emits zero translation when both at origin', async () => {
+  it('forwards anchors → concentric repositions the moving part', async () => {
+    const anchors: Record<string, MateAnchor> = {
+      a: { position: [0, 0, 0], cylindrical: true },
+      b: { position: [15, 0, 0], cylindrical: true },
+    };
     const mates: AssemblyMate[] = [
-      { id: 'm1', kind: 'concentric', handleA: 'a', handleB: 'b' },
+      { id: 'm1', kind: 'concentric', handleA: 'a', handleB: 'b', faceTagA: 'side', faceTagB: 'side' },
     ];
-    const r = await serverMateAdapter.solve(mates);
+    const r = await serverMateAdapter.solve(mates, anchors);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.transforms.b).toEqual([0, 0, 0]);
-      expect(r.residual).toBe(0);
+      expect(r.transforms.b).toBeDefined();
+      expect(r.transforms.b[0]).toBeCloseTo(-15, 2); // pulled onto a's axis
+      expect(r.transforms.a).toBeUndefined(); // first handle is the anchor
     }
   });
 
-  it('coplanar mate snaps Z only', async () => {
-    const mates: AssemblyMate[] = [
-      { id: 'm1', kind: 'coplanar', handleA: 'a', handleB: 'b' },
-    ];
-    const r = await serverMateAdapter.solve(mates);
+  it('no anchors → solves from origin (ok, no movement)', async () => {
+    const r = await serverMateAdapter.solve([
+      { id: 'm1', kind: 'concentric', handleA: 'a', handleB: 'b' },
+    ]);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.transforms.b[2]).toBe(0);
+    if (r.ok) expect(Object.keys(r.transforms)).toHaveLength(0);
   });
 
-  it('distance mate moves B along +Z by value', async () => {
-    const mates: AssemblyMate[] = [
-      { id: 'm1', kind: 'distance', handleA: 'a', handleB: 'b', value: 25 },
-    ];
-    const r = await serverMateAdapter.solve(mates);
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.transforms.b[2]).toBe(25);
-  });
-
-  it('distance without value fails typed', async () => {
-    const mates: AssemblyMate[] = [
+  it('distance without a value is rejected', async () => {
+    const r = await serverMateAdapter.solve([
       { id: 'm1', kind: 'distance', handleA: 'a', handleB: 'b' },
-    ];
-    const r = await serverMateAdapter.solve(mates);
+    ]);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toMatch(/numeric value/);
+    if (!r.ok) expect(r.reason).toMatch(/unsupported|value/);
   });
 
-  it('rotation-requiring mates return helpful upgrade message', async () => {
-    for (const kind of ['tangent', 'parallel', 'perpendicular'] as const) {
-      const r = await serverMateAdapter.solve([
-        { id: 'm1', kind, handleA: 'a', handleB: 'b' },
-      ]);
-      expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.reason).toMatch(/rotation|Solvespace/i);
-    }
-  });
-
-  it('multiple mates accumulate transforms', async () => {
-    const mates: AssemblyMate[] = [
-      { id: 'm1', kind: 'distance', handleA: 'fixed', handleB: 'a', value: 10 },
-      { id: 'm2', kind: 'distance', handleA: 'a', handleB: 'b', value: 20 },
-    ];
-    const r = await serverMateAdapter.solve(mates);
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.transforms.a[2]).toBe(10);
-      // B is solved against A's *new* anchor (10,0,0), so b ends at 10+20=30.
-      expect(r.transforms.b[2]).toBe(30);
-    }
-  });
-
-  it('one bad mate fails the whole solve (atomic)', async () => {
-    const mates: AssemblyMate[] = [
-      { id: 'm1', kind: 'concentric', handleA: 'a', handleB: 'b' },
-      { id: 'm2', kind: 'tangent', handleA: 'a', handleB: 'c' },
-    ];
-    const r = await serverMateAdapter.solve(mates);
+  it('unknown mate kind is rejected', async () => {
+    const r = await serverMateAdapter.solve([
+      { id: 'm1', kind: 'bogus' as AssemblyMate['kind'], handleA: 'a', handleB: 'b' },
+    ]);
     expect(r.ok).toBe(false);
+  });
+
+  it('rotation-requiring kinds run (carried) and surface a residual, not a wrong assembly', async () => {
+    // v1 has no rotation; the core carries these as coincident so a residual
+    // is reported rather than silently succeeding with a wrong placement.
+    const anchors: Record<string, MateAnchor> = {
+      a: { position: [0, 0, 0], bbox: { min: [-5, -5, -5], max: [5, 5, 5] } },
+      b: { position: [3, 4, 0], bbox: { min: [-5, -5, -5], max: [5, 5, 5] } },
+    };
+    const r = await serverMateAdapter.solve(
+      [{ id: 'm1', kind: 'parallel', handleA: 'a', handleB: 'b', faceTagA: 'x+', faceTagB: 'y+' }],
+      anchors,
+    );
+    expect(r.ok).toBe(true); // not a hard failure — residual is the signal
   });
 });

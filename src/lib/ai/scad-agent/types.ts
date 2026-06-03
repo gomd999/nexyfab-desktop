@@ -194,6 +194,15 @@ export interface ReadDfmArgs { processes?: string[]; }
 export interface PlanDesignArgs { goal: string; }
 export interface WriteModuleArgs { name: string; code: string; }
 export type ListModulesArgs = Record<string, never>;
+/** World placement of a part, used as a mate-solver anchor. */
+export interface AgentPlacement {
+  position: [number, number, number];
+  /** Local-frame AABB (mm); when absent the solver assumes a unit cube. */
+  bbox?: { min: [number, number, number]; max: [number, number, number] };
+  /** True for cylinder-like parts (axis face tags resolve to the +Z axis). */
+  cylindrical?: boolean;
+}
+
 export interface AssemblyPlacement {
   moduleName: string;
   position?: [number, number, number];
@@ -909,6 +918,13 @@ export interface AgentSession {
    * brepEntries' implicit positions.
    */
   mates: AssemblyMate[];
+  /**
+   * I* — World placements per part identifier (handle / moduleName), set by
+   * compose_assembly and updated by solve_mates. Feeds the real mate solver's
+   * anchors so mates actually reposition parts (not the origin-stub). Optional
+   * for back-compat: sessions without placements solve from origin.
+   */
+  placements?: Record<string, AgentPlacement>;
   /**
    * P (Stage 4) — GD&T frames attached to features for the drawing
    * studio to render. The frames are session-scoped so the agent can

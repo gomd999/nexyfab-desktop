@@ -179,7 +179,15 @@ export interface SolverAdapter {
  */
 export interface MateAdapter {
   isAvailable(): boolean;
-  solve(mates: import('./types').AssemblyMate[]): Promise<
+  /**
+   * Solve the mate system. `anchors` (optional) supplies per-handle world
+   * placements so the solver can actually reposition parts; adapters that
+   * ignore it fall back to their own geometry source.
+   */
+  solve(
+    mates: import('./types').AssemblyMate[],
+    anchors?: Record<string, import('./types').AgentPlacement>,
+  ): Promise<
     | { ok: true; transforms: Record<string, [number, number, number]>; residual: number }
     | { ok: false; reason: string }
   >;
@@ -1192,6 +1200,18 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     for (const p of a.parts) lines.push(emitPlacement(p));
     session.composition = lines.join('\n');
+    // Retain structured placements (keyed by moduleName) so solve_mates has
+    // real anchors. Arrays keep the base instance position; cylinder-like
+    // modules are flagged from their brep entry kind when known.
+    const placements: Record<string, import('./types').AgentPlacement> = { ...(session.placements ?? {}) };
+    for (const p of a.parts) {
+      const kind = session.brepEntries.find((e) => e.label === p.moduleName || e.handle === p.moduleName)?.kind ?? '';
+      placements[p.moduleName] = {
+        position: p.position ?? [0, 0, 0],
+        cylindrical: /cylinder|helix|round/i.test(kind) || undefined,
+      };
+    }
+    session.placements = placements;
     session.render = { ok: null, errors: [] };
     session.geometry = {};
     return {
@@ -2470,8 +2490,19 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       return { ok: true, output: 'No mates to solve.' };
     }
     try {
-      const r = await host.mateSolver.solve(session.mates);
+      const anchors = session.placements ?? {};
+      const r = await host.mateSolver.solve(session.mates, anchors);
       if (!r.ok) return { ok: false, error: `mate solver: ${r.reason}`, code: 'SOLVE_FAILED' };
+      // Reflect the solved deltas back into the session placements so chained
+      // solves + later compose see the new positions.
+      session.placements = session.placements ?? {};
+      for (const [handle, delta] of Object.entries(r.transforms)) {
+        const cur = session.placements[handle]?.position ?? [0, 0, 0];
+        session.placements[handle] = {
+          ...session.placements[handle],
+          position: [cur[0] + delta[0], cur[1] + delta[1], cur[2] + delta[2]],
+        };
+      }
       const moved = Object.keys(r.transforms).length;
       return {
         ok: true,
