@@ -61,6 +61,7 @@ import type { PlanStep } from '@/lib/ai/featureTreePlanner';
 import { buildBom, bomToCsv, bomToJson } from '@/lib/assembly/bomExport';
 import Assembly3DViewer from './Assembly3DViewer';
 import AssemblyAiPanel from './AssemblyAiPanel';
+import AssemblyConstraintsPanel from './AssemblyConstraintsPanel';
 import PartManipulatorGizmo, {
   type PartManipulatorMode,
   type Vec3,
@@ -292,6 +293,16 @@ interface Dict {
    * to every selected mate via one `recordChange` (single history entry).
    */
   bulkApply: string;
+  /**
+   * Phase 4.7 — top-bar toggle that mounts the standalone
+   * {@link AssemblyConstraintsPanel} (assembly-wide constraint checker
+   * for the 6 NNNNNNN kinds). Default off so the modal's existing layout
+   * and the 210 pre-existing tests are untouched for consumers that
+   * don't opt in.
+   */
+  constraintsPanel: string;
+  /** Toggle label when the constraints panel is already mounted. */
+  hideConstraintsPanel: string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -391,6 +402,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkEditMates: (count, kind) => `메이트 ${count}개 일괄 편집 (종류: ${kind})`,
     mixedSelection: '서로 다른 종류 — 같은 종류만 선택하세요',
     bulkApply: '적용',
+    constraintsPanel: '제약 패널',
+    hideConstraintsPanel: '제약 패널 닫기',
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -489,6 +502,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkEditMates: (count, kind) => `Bulk edit ${count} mates (kind: ${kind})`,
     mixedSelection: 'Mixed selection — pick same kind',
     bulkApply: 'Apply',
+    constraintsPanel: 'Constraints',
+    hideConstraintsPanel: 'Hide constraints',
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -587,6 +602,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkEditMates: (count, kind) => `${count} 件のメイトを一括編集 (種類: ${kind})`,
     mixedSelection: '種類が混在 — 同じ種類のみ選択してください',
     bulkApply: '適用',
+    constraintsPanel: '制約パネル',
+    hideConstraintsPanel: '制約パネルを閉じる',
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -684,6 +701,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkEditMates: (count, kind) => `批量编辑 ${count} 个配合 (类型: ${kind})`,
     mixedSelection: '类型混合 — 请选择同一类型',
     bulkApply: '应用',
+    constraintsPanel: '约束面板',
+    hideConstraintsPanel: '关闭约束面板',
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -784,6 +803,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
       `Edición masiva de ${count} restricciones (tipo: ${kind})`,
     mixedSelection: 'Selección mixta — elige el mismo tipo',
     bulkApply: 'Aplicar',
+    constraintsPanel: 'Restricciones',
+    hideConstraintsPanel: 'Ocultar restricciones',
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -882,6 +903,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkEditMates: (count, kind) => `تحرير ${count} قيود دفعةً واحدة (النوع: ${kind})`,
     mixedSelection: 'تحديد مختلط — اختر النوع نفسه',
     bulkApply: 'تطبيق',
+    constraintsPanel: 'القيود',
+    hideConstraintsPanel: 'إخفاء القيود',
   },
 };
 
@@ -2739,6 +2762,19 @@ export default function AssemblyBrowserModal({
   const [aiPanelOn, setAiPanelOn] = useState<boolean>(false);
   const toggleAiPanel = useCallback(() => setAiPanelOn((v) => !v), []);
 
+  // ── Constraints panel (Phase 4.7 NNNNNNN integration) ────────────────
+  //
+  // Default off so the modal's pre-existing layout + the 210 tests are
+  // untouched for consumers that don't opt in. Toggle button lives in the
+  // same top-bar strip as the 3D-view / AI-panel toggles. The panel owns
+  // its own constraint list state — the modal forwards `state +
+  // featureTrees` so the pure checker has the data it needs.
+  const [constraintsPanelOn, setConstraintsPanelOn] = useState<boolean>(false);
+  const toggleConstraintsPanel = useCallback(
+    () => setConstraintsPanelOn((v) => !v),
+    [],
+  );
+
   /**
    * AssemblyAiPanel.onBuildAssembly handler. Translates an {@link
    * AssemblyPlan} (stacked | grid | ring | pair) into PartInstance + Mate
@@ -3167,6 +3203,25 @@ export default function AssemblyBrowserModal({
             }}
           >
             {aiPanelOn ? t.hideAiPanel : t.aiPanel}
+          </button>
+          <button
+            type="button"
+            onClick={toggleConstraintsPanel}
+            data-testid="solver-assembly-constraints-toggle"
+            aria-pressed={constraintsPanelOn}
+            title={constraintsPanelOn ? t.hideConstraintsPanel : t.constraintsPanel}
+            style={{
+              fontSize: 11,
+              padding: '4px 10px',
+              background: constraintsPanelOn ? '#fef3c7' : '#fff',
+              color: constraintsPanelOn ? '#92400e' : '#374151',
+              border: `1px solid ${constraintsPanelOn ? '#fcd34d' : '#d1d5db'}`,
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {constraintsPanelOn ? t.hideConstraintsPanel : t.constraintsPanel}
           </button>
         </div>
 
@@ -4024,6 +4079,27 @@ export default function AssemblyBrowserModal({
             }}
           >
             <AssemblyAiPanel lang={lang} onBuildAssembly={onBuildAssemblyFromPlan} />
+          </div>
+        )}
+
+        {/* ── NNNNNNN Agent: AssemblyConstraintsPanel mount ───────────
+            Same layout slot as the AI panel — full-width strip below the
+            main 2D/3D grid so toggling it doesn't reshuffle the parts /
+            mates columns. Default off. */}
+        {constraintsPanelOn && (
+          <div
+            data-testid="solver-assembly-constraints-host"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
+            <AssemblyConstraintsPanel
+              lang={lang}
+              state={state}
+              featureTrees={featureTrees}
+            />
           </div>
         )}
 
