@@ -35,6 +35,13 @@ import type { StepImportFetcher, StepImportLang } from './StepImportModal';
 import type { BranchManagerLang } from './FeatureTreeBranchManager';
 import type { FeatureTreeStatsLang } from './FeatureTreeStatsPanel';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
+import {
+  applyBooleanToSketch,
+  detectLoopsAsPolygons,
+  combineLoops,
+  type SketchBooleanOp,
+} from '@/lib/sketch/sketchLoopsBoolean';
+import type { SketchLoop } from '@/lib/sketch/sketchBoolean';
 import type { ExtrudeDirection, ExtrudeMode } from '@/lib/cad/extrudeProfile';
 import type { AxisLine2D } from '@/lib/cad/revolveProfile';
 import {
@@ -191,6 +198,17 @@ interface Dict {
   stats: string;
   showStats: string;
   hideStats: string;
+  /** Multi-loop boolean integration (sketchBoolean → ExtrudeModal). `{N}` is loop count. */
+  multipleLoopsDetected: string;
+  booleanOp: string;
+  opUnion: string;
+  opSubtract: string;
+  opIntersect: string;
+  opSeparate: string;
+  /** Surfaced when the chosen boolean op collapses every loop (e.g., intersect of disjoint inputs). */
+  booleanEmptyWarning: string;
+  /** Preview heading above the combined SVG. */
+  booleanPreviewHeading: string;
 }
 
 const dict: Record<Lang, Dict> = {
@@ -224,6 +242,14 @@ const dict: Record<Lang, Dict> = {
     stats: '통계',
     showStats: '통계 표시',
     hideStats: '통계 숨기기',
+    multipleLoopsDetected: '여러 폐곡선 감지 ({N}개)',
+    booleanOp: '불리언 연산',
+    opUnion: '합집합',
+    opSubtract: '차집합',
+    opIntersect: '교집합',
+    opSeparate: '개별 유지',
+    booleanEmptyWarning: '선택한 연산의 결과가 비었습니다 — 다른 연산을 선택하세요.',
+    booleanPreviewHeading: '결합 결과 미리보기',
   },
   en: {
     extrude: 'Extrude', revolve: 'Revolve', sweep: 'Sweep', loft: 'Loft', pattern: 'Pattern', shell: 'Shell', hole: 'Hole', fillet: 'Fillet', chamfer: 'Chamfer',
@@ -255,6 +281,14 @@ const dict: Record<Lang, Dict> = {
     stats: 'Stats',
     showStats: 'Show stats',
     hideStats: 'Hide stats',
+    multipleLoopsDetected: 'Multiple loops detected ({N})',
+    booleanOp: 'Boolean op',
+    opUnion: 'Union',
+    opSubtract: 'Subtract',
+    opIntersect: 'Intersect',
+    opSeparate: 'All separate',
+    booleanEmptyWarning: 'Selected operation produced an empty result — try another op.',
+    booleanPreviewHeading: 'Combined preview',
   },
   ja: {
     extrude: '押し出し', revolve: '回転', sweep: 'スイープ', loft: 'ロフト', pattern: 'パターン', shell: 'シェル', hole: '穴', fillet: 'フィレット', chamfer: '面取り',
@@ -286,6 +320,14 @@ const dict: Record<Lang, Dict> = {
     stats: '統計',
     showStats: '統計を表示',
     hideStats: '統計を隠す',
+    multipleLoopsDetected: '複数の閉ループを検出 ({N})',
+    booleanOp: 'ブール演算',
+    opUnion: '和',
+    opSubtract: '差',
+    opIntersect: '積',
+    opSeparate: '個別に保持',
+    booleanEmptyWarning: '選択した演算の結果が空です — 別の演算を試してください。',
+    booleanPreviewHeading: '結合プレビュー',
   },
   zh: {
     extrude: '拉伸', revolve: '旋转', sweep: '扫掠', loft: '放样', pattern: '阵列', shell: '抽壳', hole: '孔', fillet: '圆角', chamfer: '倒角',
@@ -317,6 +359,14 @@ const dict: Record<Lang, Dict> = {
     stats: '统计',
     showStats: '显示统计',
     hideStats: '隐藏统计',
+    multipleLoopsDetected: '检测到多个闭合环 ({N}个)',
+    booleanOp: '布尔运算',
+    opUnion: '并集',
+    opSubtract: '差集',
+    opIntersect: '交集',
+    opSeparate: '保持独立',
+    booleanEmptyWarning: '所选运算结果为空 — 请尝试其他运算。',
+    booleanPreviewHeading: '组合预览',
   },
   es: {
     extrude: 'Extruir', revolve: 'Revolver', sweep: 'Barrido', loft: 'Loft', pattern: 'Patrón', shell: 'Vaciar', hole: 'Agujero', fillet: 'Redondeo', chamfer: 'Chaflán',
@@ -348,6 +398,14 @@ const dict: Record<Lang, Dict> = {
     stats: 'Estadísticas',
     showStats: 'Mostrar estadísticas',
     hideStats: 'Ocultar estadísticas',
+    multipleLoopsDetected: 'Se detectaron varios bucles ({N})',
+    booleanOp: 'Operación booleana',
+    opUnion: 'Unión',
+    opSubtract: 'Resta',
+    opIntersect: 'Intersección',
+    opSeparate: 'Todos por separado',
+    booleanEmptyWarning: 'La operación seleccionada produjo un resultado vacío — pruebe otra.',
+    booleanPreviewHeading: 'Vista previa combinada',
   },
   ar: {
     extrude: 'بثق', revolve: 'دوران', sweep: 'كنس', loft: 'لوفت', pattern: 'نمط', shell: 'قشرة', hole: 'ثقب', fillet: 'تدوير', chamfer: 'شطف',
@@ -379,6 +437,14 @@ const dict: Record<Lang, Dict> = {
     stats: 'إحصائيات',
     showStats: 'إظهار الإحصائيات',
     hideStats: 'إخفاء الإحصائيات',
+    multipleLoopsDetected: 'تم اكتشاف عدة حلقات ({N})',
+    booleanOp: 'العملية المنطقية',
+    opUnion: 'اتحاد',
+    opSubtract: 'طرح',
+    opIntersect: 'تقاطع',
+    opSeparate: 'كل على حدة',
+    booleanEmptyWarning: 'أسفرت العملية المحددة عن نتيجة فارغة — جرّب عملية أخرى.',
+    booleanPreviewHeading: 'معاينة مدمجة',
   },
 };
 
@@ -509,6 +575,96 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
   defaultShowSketchAi?: boolean;
 }
 
+/**
+ * Tiny in-modal SVG preview for the boolean-combined loops. Auto-fits the
+ * polygon bbox into a 240×140 viewport with 6 px padding. Pure presentation
+ * — no event handlers, no editor coupling. Caller passes a stable test id
+ * so multiple instances (current + future) can be independently asserted.
+ */
+function BooleanPreviewSvg({
+  loops,
+  testid,
+}: {
+  loops: ReadonlyArray<SketchLoop>;
+  testid: string;
+}): React.ReactElement {
+  const width = 240;
+  const height = 140;
+  const padding = 6;
+  // Compute combined bbox across every loop.
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const loop of loops) {
+    for (const p of loop) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+  }
+  const hasFiniteBbox =
+    Number.isFinite(minX) && Number.isFinite(maxX) &&
+    Number.isFinite(minY) && Number.isFinite(maxY);
+  const bboxW = hasFiniteBbox ? Math.max(maxX - minX, 1e-6) : 1;
+  const bboxH = hasFiniteBbox ? Math.max(maxY - minY, 1e-6) : 1;
+  const scale = hasFiniteBbox
+    ? Math.min((width - 2 * padding) / bboxW, (height - 2 * padding) / bboxH)
+    : 1;
+  // Centered with Y flipped (SVG y goes down, sketch y goes up).
+  const cx = hasFiniteBbox ? (minX + maxX) / 2 : 0;
+  const cy = hasFiniteBbox ? (minY + maxY) / 2 : 0;
+  const project = (p: { x: number; y: number }): { x: number; y: number } => ({
+    x: width / 2 + (p.x - cx) * scale,
+    y: height / 2 - (p.y - cy) * scale,
+  });
+  const palette = ['#0284c7', '#16a34a', '#dc2626', '#7c3aed', '#d97706', '#0891b2'];
+  return (
+    <svg
+      data-testid={testid}
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{
+        background: '#fff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 4,
+        display: 'block',
+      }}
+    >
+      {loops.length === 0 && (
+        <text
+          x={width / 2}
+          y={height / 2}
+          fontSize={11}
+          fill="#9ca3af"
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          ∅
+        </text>
+      )}
+      {loops.map((loop, i) => {
+        if (loop.length < 3) return null;
+        const projected = loop.map((p) => project(p));
+        const pts = projected.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+        const color = palette[i % palette.length];
+        return (
+          <polygon
+            key={i}
+            data-testid={`${testid}-loop-${i}`}
+            points={pts}
+            fill={`${color}22`}
+            stroke={color}
+            strokeWidth={1.4}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 export default function SolverSketchEditorWithExtrude(
   props: SolverSketchEditorWithExtrudeProps,
 ): React.ReactElement {
@@ -564,6 +720,14 @@ export default function SolverSketchEditorWithExtrude(
   const [mode, setMode] = useState<ExtrudeMode>('add');
   const [draftDegrees, setDraftDegrees] = useState<string>('0');
   const [render, setRender] = useState<RenderState>({ status: 'idle' });
+  /**
+   * Boolean op selected in the modal when the sketch has > 1 closed loop.
+   * Defaults to 'union' — the most common "combine multiple parts of a
+   * sketch into a single profile" intent. When the sketch has 0 or 1 loops
+   * the op is effectively ignored (applyBooleanToSketch short-circuits to
+   * the input sketch) so this state has no observable effect.
+   */
+  const [booleanOp, setBooleanOp] = useState<SketchBooleanOp>('union');
 
   // ── feature tree state (Phase 2.7 + 5.2 UI + 2.7.1 history) ─────────────
   // Persistence toast (Phase 2.8) — shown when the side-channel write
@@ -1174,6 +1338,22 @@ export default function SolverSketchEditorWithExtrude(
   const canFillet = canExtrude;
   const canChamfer = canExtrude;
 
+  /**
+   * Detected closed loops (computed once per sketch change). When the user
+   * has drawn > 1 closed loop, the modal surfaces a boolean op selector +
+   * a combined-preview SVG. With 0 or 1 loops these are silently inert and
+   * the wrapper behaves byte-for-byte like before.
+   */
+  const detectedLoops: ReadonlyArray<SketchLoop> = useMemo(
+    () => detectLoopsAsPolygons(sketch).loops,
+    [sketch],
+  );
+  const hasMultipleLoops = detectedLoops.length > 1;
+  const combinedPreviewLoops: ReadonlyArray<SketchLoop> = useMemo(() => {
+    if (!hasMultipleLoops) return detectedLoops;
+    return combineLoops(detectedLoops, booleanOp);
+  }, [hasMultipleLoops, detectedLoops, booleanOp]);
+
   const onSubmit = useCallback(async () => {
     const d = Number(depth);
     if (!Number.isFinite(d) || d <= 0) {
@@ -1190,10 +1370,24 @@ export default function SolverSketchEditorWithExtrude(
     // ignore this entry (they aren't the defaultFetcher reference).
     fetcherSignals.set(extrudeFetcher, controller.signal);
 
+    // Apply multi-loop boolean if applicable. With 0 or 1 loop the helper
+    // returns the input sketch by referential equality so existing single-
+    // loop callers see no behavioural change. Empty combined result (e.g.,
+    // intersect of disjoint inputs) surfaces as a user-facing error and
+    // skips the network call entirely.
+    const { sketch: sketchToSend, combinedLoops } = applyBooleanToSketch(sketch, booleanOp);
+    if (hasMultipleLoops && combinedLoops.length === 0) {
+      setRender({
+        status: 'error',
+        message: `${t.errorPrefix}: ${t.booleanEmptyWarning}`,
+      });
+      return;
+    }
+
     setRender({ status: 'loading' });
     try {
       const res = await wrappedExtrudeFetcher({
-        sketch,
+        sketch: sketchToSend,
         depth: d,
         draftDegrees: Number.isFinite(draftN) && draftN !== 0 ? draftN : undefined,
         direction,
@@ -1215,7 +1409,11 @@ export default function SolverSketchEditorWithExtrude(
       }
       fetcherSignals.delete(extrudeFetcher);
     }
-  }, [depth, draftDegrees, direction, mode, sketch, extrudeFetcher, wrappedExtrudeFetcher, t.errorPrefix, t.errorDepthInvalid]);
+  }, [
+    depth, draftDegrees, direction, mode, sketch, extrudeFetcher, wrappedExtrudeFetcher,
+    booleanOp, hasMultipleLoops,
+    t.errorPrefix, t.errorDepthInvalid, t.booleanEmptyWarning,
+  ]);
 
   // Reset preview when modal closes; also abort any in-flight fetch so a
   // late setState after the user clicked Cancel does NOT land on a closed
@@ -2067,6 +2265,92 @@ export default function SolverSketchEditorWithExtrude(
                 style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
               />
             </label>
+
+            {hasMultipleLoops && (
+              <div
+                data-testid="solver-extrude-boolean-section"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  padding: 10,
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: 4,
+                }}
+              >
+                <div
+                  data-testid="solver-extrude-boolean-banner"
+                  style={{ fontSize: 12, fontWeight: 600, color: '#075985' }}
+                >
+                  {t.multipleLoopsDetected.replace('{N}', String(detectedLoops.length))}
+                </div>
+                <div style={{ fontSize: 11, color: '#374151' }}>{t.booleanOp}</div>
+                <div
+                  role="radiogroup"
+                  aria-label={t.booleanOp}
+                  data-testid="solver-extrude-boolean-op-row"
+                  style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12 }}
+                >
+                  {(
+                    [
+                      { id: 'union', label: t.opUnion },
+                      { id: 'subtract', label: t.opSubtract },
+                      { id: 'intersect', label: t.opIntersect },
+                      { id: 'separate', label: t.opSeparate },
+                    ] as ReadonlyArray<{ id: SketchBooleanOp; label: string }>
+                  ).map((entry) => (
+                    <label
+                      key={entry.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <input
+                        type="radio"
+                        name="solver-extrude-boolean-op"
+                        value={entry.id}
+                        checked={booleanOp === entry.id}
+                        onChange={() => setBooleanOp(entry.id)}
+                        data-testid={`extrude-boolean-op-${entry.id}`}
+                      />
+                      {entry.label}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#374151',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t.booleanPreviewHeading}
+                  </div>
+                  <BooleanPreviewSvg
+                    loops={combinedPreviewLoops}
+                    testid="solver-extrude-boolean-preview"
+                  />
+                  {combinedPreviewLoops.length === 0 && (
+                    <div
+                      data-testid="solver-extrude-boolean-empty"
+                      role="alert"
+                      style={{
+                        marginTop: 6,
+                        padding: 6,
+                        fontSize: 11,
+                        color: '#b45309',
+                        background: '#fef3c7',
+                        border: '1px solid #fde68a',
+                        borderRadius: 4,
+                      }}
+                    >
+                      {t.booleanEmptyWarning}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {render.status === 'loading' && (
               <div style={{ padding: 12, textAlign: 'center', color: '#6b7280' }}>
