@@ -91,7 +91,7 @@
  *   branch-manager-row-{name}-diff-result
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   cloneTree,
   diffTrees,
@@ -103,6 +103,7 @@ import {
   serializeFeatureTree,
 } from '@/lib/cad/featureTreePersist';
 import type { FeatureTree } from '@/lib/cad/featureTree';
+import FeatureTreeMergePanel from './FeatureTreeMergePanel';
 
 export type BranchManagerLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -141,6 +142,20 @@ interface Dict {
   deleteOk: string;
   evictedOldest: string;
   confirmDelete: string;
+  /** "Merge branches" — open the semantic merge panel. */
+  mergeBranches: string;
+  /** "Hide merge panel" — close the semantic merge panel. */
+  mergeHideButton: string;
+  /** Destination radio: replace the current tree with the merged result. */
+  mergeTargetReplace: string;
+  /** Destination radio: save the merged result as a new branch. */
+  mergeTargetSaveBranch: string;
+  /** Placeholder for the new-branch name when target=save-branch. */
+  mergeBranchNamePlaceholder: string;
+  /** Status message after onMerged → replace current tree. */
+  mergeSavedAsCurrent: string;
+  /** Status message after onMerged → saved as new branch (with {name}). */
+  mergeSavedAsBranch: string;
 }
 
 const dict: Record<BranchManagerLang, Dict> = {
@@ -173,6 +188,13 @@ const dict: Record<BranchManagerLang, Dict> = {
     deleteOk: '삭제됨',
     evictedOldest: '오래된 브랜치 {n} 자동 삭제',
     confirmDelete: '정말 삭제하시겠습니까?',
+    mergeBranches: '브랜치 병합',
+    mergeHideButton: '병합 패널 닫기',
+    mergeTargetReplace: '현재 트리 교체',
+    mergeTargetSaveBranch: '새 브랜치로 저장',
+    mergeBranchNamePlaceholder: '새 브랜치 이름',
+    mergeSavedAsCurrent: '병합 결과를 현재 트리로 적용',
+    mergeSavedAsBranch: '병합 결과를 브랜치 {name}로 저장',
   },
   en: {
     branches: 'Branches',
@@ -203,6 +225,13 @@ const dict: Record<BranchManagerLang, Dict> = {
     deleteOk: 'Deleted',
     evictedOldest: 'Evicted oldest branch {n}',
     confirmDelete: 'Delete this branch?',
+    mergeBranches: 'Merge branches',
+    mergeHideButton: 'Hide merge panel',
+    mergeTargetReplace: 'Replace current tree',
+    mergeTargetSaveBranch: 'Save as new branch',
+    mergeBranchNamePlaceholder: 'New branch name',
+    mergeSavedAsCurrent: 'Merge result applied to current tree',
+    mergeSavedAsBranch: 'Merge result saved as branch {name}',
   },
   ja: {
     branches: 'ブランチ',
@@ -233,6 +262,13 @@ const dict: Record<BranchManagerLang, Dict> = {
     deleteOk: '削除しました',
     evictedOldest: '最古のブランチ {n} を自動削除',
     confirmDelete: '本当に削除しますか?',
+    mergeBranches: 'ブランチを統合',
+    mergeHideButton: '統合パネルを閉じる',
+    mergeTargetReplace: '現在のツリーを置換',
+    mergeTargetSaveBranch: '新ブランチとして保存',
+    mergeBranchNamePlaceholder: '新ブランチ名',
+    mergeSavedAsCurrent: '統合結果を現在のツリーに適用',
+    mergeSavedAsBranch: '統合結果をブランチ {name} として保存',
   },
   zh: {
     branches: '分支',
@@ -263,6 +299,13 @@ const dict: Record<BranchManagerLang, Dict> = {
     deleteOk: '已删除',
     evictedOldest: '已自动移除最旧的分支 {n}',
     confirmDelete: '确定要删除该分支吗？',
+    mergeBranches: '合并分支',
+    mergeHideButton: '关闭合并面板',
+    mergeTargetReplace: '替换当前树',
+    mergeTargetSaveBranch: '另存为新分支',
+    mergeBranchNamePlaceholder: '新分支名称',
+    mergeSavedAsCurrent: '合并结果已应用到当前树',
+    mergeSavedAsBranch: '合并结果已另存为分支 {name}',
   },
   es: {
     branches: 'Ramas',
@@ -293,6 +336,13 @@ const dict: Record<BranchManagerLang, Dict> = {
     deleteOk: 'Eliminado',
     evictedOldest: 'Se eliminó la rama más antigua {n}',
     confirmDelete: '¿Eliminar esta rama?',
+    mergeBranches: 'Fusionar ramas',
+    mergeHideButton: 'Ocultar panel de fusión',
+    mergeTargetReplace: 'Reemplazar árbol actual',
+    mergeTargetSaveBranch: 'Guardar como nueva rama',
+    mergeBranchNamePlaceholder: 'Nombre de la nueva rama',
+    mergeSavedAsCurrent: 'Resultado de fusión aplicado al árbol actual',
+    mergeSavedAsBranch: 'Resultado de fusión guardado como rama {name}',
   },
   ar: {
     branches: 'الفروع',
@@ -323,6 +373,13 @@ const dict: Record<BranchManagerLang, Dict> = {
     deleteOk: 'تم الحذف',
     evictedOldest: 'تم حذف أقدم فرع {n} تلقائياً',
     confirmDelete: 'هل تريد حذف هذا الفرع؟',
+    mergeBranches: 'دمج الفروع',
+    mergeHideButton: 'إغلاق لوحة الدمج',
+    mergeTargetReplace: 'استبدال الشجرة الحالية',
+    mergeTargetSaveBranch: 'حفظ كفرع جديد',
+    mergeBranchNamePlaceholder: 'اسم الفرع الجديد',
+    mergeSavedAsCurrent: 'تم تطبيق نتيجة الدمج على الشجرة الحالية',
+    mergeSavedAsBranch: 'تم حفظ نتيجة الدمج كفرع {name}',
   },
 };
 
@@ -396,6 +453,16 @@ export default function FeatureTreeBranchManager(
   const [diffPreview, setDiffPreview] = useState<DiffPreview | null>(null);
   const [renamingName, setRenamingName] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  // Merge-panel UX state (B31.3 integration). The panel itself is a sibling
+  // component (FeatureTreeMergePanel) — we do NOT modify it. We track:
+  //   - mergeOpen     : whether the panel is mounted.
+  //   - mergeTarget   : 'replace' (default) feeds onLoadTree;
+  //                     'branch'  saves the merged tree as a new branch
+  //                     under `mergeBranchName`.
+  //   - mergeBranchName: pending branch name for target='branch'.
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState<'replace' | 'branch'>('replace');
+  const [mergeBranchName, setMergeBranchName] = useState('');
 
   // Re-read the index if the storage prefix prop changes — keeps the
   // component honest if the host swaps storage scopes.
@@ -406,64 +473,70 @@ export default function FeatureTreeBranchManager(
     setRenamingName(null);
   }, [storageKeyPrefix]);
 
+  // Shared save helper — used by both "save current as branch" and the
+  // merge-panel onMerged='branch' target. Returns the success / error info
+  // so callers can compose their own status messages (the merge flow wants
+  // to say "merge saved as branch X", not just "saved").
+  const persistBranch = useCallback(
+    (name: string, tree: FeatureTree): {
+      ok: boolean;
+      evicted: string | null;
+      errorKey?: 'empty' | 'duplicate' | 'quota';
+    } => {
+      const trimmed = name.trim();
+      if (!trimmed) return { ok: false, evicted: null, errorKey: 'empty' };
+      const existing = readIndex(storageKeyPrefix);
+      if (existing.includes(trimmed)) {
+        return { ok: false, evicted: null, errorKey: 'duplicate' };
+      }
+      const snapshot = cloneTree(tree);
+      const json = serializeFeatureTree(snapshot);
+
+      let evicted: string | null = null;
+      const nextIndex = existing.slice();
+      if (nextIndex.length >= MAX_BRANCHES) {
+        evicted = nextIndex.shift() ?? null;
+        if (evicted) {
+          try { window.localStorage.removeItem(branchKey(storageKeyPrefix, evicted)); }
+          catch { /* ignore */ }
+        }
+      }
+      nextIndex.push(trimmed);
+
+      try {
+        window.localStorage.setItem(branchKey(storageKeyPrefix, trimmed), json);
+        writeIndex(storageKeyPrefix, nextIndex);
+      } catch {
+        return { ok: false, evicted, errorKey: 'quota' };
+      }
+      setBranches(nextIndex);
+      return { ok: true, evicted };
+    },
+    [storageKeyPrefix],
+  );
+
   // ─── save current as branch ─────────────────────────────────────────────
   const handleSave = useCallback(() => {
-    const name = newName.trim();
-    if (!name) {
-      setStatus({ kind: 'error', message: t.saveErrorEmpty });
+    const result = persistBranch(newName, currentTree);
+    if (!result.ok) {
+      const errMsg = result.errorKey === 'empty'
+        ? t.saveErrorEmpty
+        : result.errorKey === 'duplicate'
+          ? t.saveErrorDuplicate
+          : t.saveErrorQuota;
+      setStatus({ kind: 'error', message: errMsg });
       return;
     }
-    const existing = readIndex(storageKeyPrefix);
-    if (existing.includes(name)) {
-      setStatus({ kind: 'error', message: t.saveErrorDuplicate });
-      return;
-    }
-
-    // Snapshot via cloneTree so the in-memory branch payload is a true
-    // deep copy. (The serialize call below would also detach references,
-    // but cloning first matches the Agent-TTTTT documented contract for
-    // "snapshot before transform".)
-    const snapshot = cloneTree(currentTree);
-    const json = serializeFeatureTree(snapshot);
-
-    // Evict oldest if at the cap — perform the eviction BEFORE the write
-    // so a quota-exceeded write doesn't strand the new branch in the
-    // index without a payload.
-    let evicted: string | null = null;
-    const nextIndex = existing.slice();
-    if (nextIndex.length >= MAX_BRANCHES) {
-      evicted = nextIndex.shift() ?? null;
-      if (evicted) {
-        try { window.localStorage.removeItem(branchKey(storageKeyPrefix, evicted)); }
-        catch { /* ignore */ }
-      }
-    }
-    nextIndex.push(name);
-
-    try {
-      window.localStorage.setItem(branchKey(storageKeyPrefix, name), json);
-      writeIndex(storageKeyPrefix, nextIndex);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (/quota/i.test(msg)) {
-        setStatus({ kind: 'error', message: t.saveErrorQuota });
-      } else {
-        setStatus({ kind: 'error', message: t.saveErrorQuota });
-      }
-      return;
-    }
-
-    setBranches(nextIndex);
     setNewName('');
-    if (evicted) {
+    if (result.evicted) {
       setStatus({
         kind: 'info',
-        message: `${t.saveOk} · ${t.evictedOldest.replace('{n}', evicted)}`,
+        message: `${t.saveOk} · ${t.evictedOldest.replace('{n}', result.evicted)}`,
       });
     } else {
       setStatus({ kind: 'info', message: t.saveOk });
     }
-  }, [currentTree, newName, storageKeyPrefix, t]);
+  }, [currentTree, newName, persistBranch, t]);
 
   // ─── load ───────────────────────────────────────────────────────────────
   const handleLoad = useCallback((name: string) => {
@@ -590,6 +663,62 @@ export default function FeatureTreeBranchManager(
     setRenameDraft('');
   }, [diffPreview, renameDraft, storageKeyPrefix, t]);
 
+  // ─── merge panel wiring (B31.3) ─────────────────────────────────────────
+  // Build the FeatureTree[] catalogue for the merge panel: deserialize each
+  // saved branch on demand. We exclude branches whose blob is missing or
+  // corrupt — silently dropping is fine here because the BranchRow list
+  // already surfaces those entries; the merge panel just sees one fewer
+  // selectable option. Memoize on the `branches` list + storage prefix so
+  // toggling the panel open/closed doesn't re-decode 20 blobs each render.
+  const branchTrees: FeatureTree[] = useMemo(() => {
+    if (!mergeOpen) return [];
+    const out: FeatureTree[] = [];
+    for (const name of branches) {
+      const tree = readBranchTree(storageKeyPrefix, name);
+      if (tree) out.push(tree);
+    }
+    return out;
+  }, [branches, mergeOpen, storageKeyPrefix]);
+
+  // Build a name lookup keyed by tree-reference identity so the result
+  // status can echo the user's chosen "save as new branch" name. The merge
+  // panel itself passes us a freshly-allocated `merged` tree, not one of
+  // these references, so we only use this for selection echoing (currently
+  // unused — kept for future "merged X with Y" status copy).
+
+  const handleMergePanelResult = useCallback(
+    (merged: FeatureTree) => {
+      if (mergeTarget === 'replace') {
+        onLoadTree(merged);
+        setStatus({ kind: 'info', message: t.mergeSavedAsCurrent });
+        return;
+      }
+      // target === 'branch'
+      const result = persistBranch(mergeBranchName, merged);
+      if (!result.ok) {
+        const errMsg = result.errorKey === 'empty'
+          ? t.saveErrorEmpty
+          : result.errorKey === 'duplicate'
+            ? t.saveErrorDuplicate
+            : t.saveErrorQuota;
+        setStatus({ kind: 'error', message: errMsg });
+        return;
+      }
+      const finalName = mergeBranchName.trim();
+      setMergeBranchName('');
+      const baseMsg = t.mergeSavedAsBranch.replace('{name}', finalName);
+      if (result.evicted) {
+        setStatus({
+          kind: 'info',
+          message: `${baseMsg} · ${t.evictedOldest.replace('{n}', result.evicted)}`,
+        });
+      } else {
+        setStatus({ kind: 'info', message: baseMsg });
+      }
+    },
+    [mergeBranchName, mergeTarget, onLoadTree, persistBranch, t],
+  );
+
   // ─── render ─────────────────────────────────────────────────────────────
   return (
     <div
@@ -689,6 +818,31 @@ export default function FeatureTreeBranchManager(
         </div>
       )}
 
+      {/* merge panel toggle (B31.3) */}
+      <div style={{ marginBottom: 8 }}>
+        <button
+          data-testid="branch-manager-merge-toggle"
+          type="button"
+          onClick={() => setMergeOpen((v) => !v)}
+          aria-pressed={mergeOpen}
+          aria-expanded={mergeOpen}
+          aria-controls="branch-manager-merge-panel-wrap"
+          style={{
+            fontSize: 11,
+            padding: '4px 8px',
+            background: mergeOpen
+              ? 'var(--nx-accent, #2563eb)'
+              : 'var(--nx-button, #1f2937)',
+            color: mergeOpen ? 'white' : 'var(--nx-text-2, #d1d5db)',
+            border: '1px solid var(--nx-border, #374151)',
+            borderRadius: 3,
+            cursor: 'pointer',
+          }}
+        >
+          {mergeOpen ? t.mergeHideButton : t.mergeBranches}
+        </button>
+      </div>
+
       {/* branch list */}
       {branches.length === 0 ? (
         <div
@@ -724,6 +878,99 @@ export default function FeatureTreeBranchManager(
               onDelete={handleDelete}
             />
           ))}
+        </div>
+      )}
+
+      {/* merge panel mount (B31.3) */}
+      {mergeOpen && (
+        <div
+          id="branch-manager-merge-panel-wrap"
+          data-testid="branch-manager-merge-panel-wrap"
+          style={{
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: '1px solid var(--nx-border, #374151)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          {/* destination chooser — controls what onMerged does */}
+          <fieldset
+            data-testid="branch-manager-merge-target"
+            style={{
+              border: '1px solid var(--nx-border, #374151)',
+              borderRadius: 4,
+              padding: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                data-testid="branch-manager-merge-target-replace"
+                type="radio"
+                name="branch-manager-merge-target"
+                value="replace"
+                checked={mergeTarget === 'replace'}
+                onChange={() => setMergeTarget('replace')}
+              />
+              <span>{t.mergeTargetReplace}</span>
+            </label>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                data-testid="branch-manager-merge-target-branch"
+                type="radio"
+                name="branch-manager-merge-target"
+                value="branch"
+                checked={mergeTarget === 'branch'}
+                onChange={() => setMergeTarget('branch')}
+              />
+              <span>{t.mergeTargetSaveBranch}</span>
+            </label>
+            {mergeTarget === 'branch' && (
+              <input
+                data-testid="branch-manager-merge-branch-name"
+                type="text"
+                value={mergeBranchName}
+                onChange={(e) => setMergeBranchName(e.target.value)}
+                placeholder={t.mergeBranchNamePlaceholder}
+                aria-label={t.mergeBranchNamePlaceholder}
+                style={{
+                  fontSize: 11,
+                  padding: '3px 5px',
+                  background: 'var(--nx-input, #1f2937)',
+                  color: 'inherit',
+                  border: '1px solid var(--nx-border, #374151)',
+                  borderRadius: 3,
+                }}
+              />
+            )}
+          </fieldset>
+
+          <FeatureTreeMergePanel
+            lang={lang}
+            base={currentTree}
+            trees={[currentTree, ...branchTrees]}
+            onMerged={handleMergePanelResult}
+          />
         </div>
       )}
     </div>

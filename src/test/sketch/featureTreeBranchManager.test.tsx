@@ -462,3 +462,285 @@ describe('FeatureTreeBranchManager', () => {
     expect(screen.getByTestId('branch-manager-row-scope-b')).toBeInTheDocument();
   });
 });
+
+// ─── B31.3 integration tests: FeatureTreeMergePanel wired into manager ────
+//
+// These verify that:
+//   - The toggle button exists, defaults to OFF, and shows the right copy in
+//     each language.
+//   - Toggling ON mounts the merge panel (and a destination chooser); toggling
+//     OFF unmounts it (zero regression on the base panel — no merge-related
+//     testids leak when closed).
+//   - The merge panel receives `currentTree + branches[]` as its catalogue
+//     (count = 1 + branchCount), so the user can merge any pair from "live
+//     working tree + every saved branch".
+//   - onMerged routes to:
+//       * onLoadTree (replace) by default,
+//       * a NEW branch save when the radio is flipped to 'branch' and a
+//         name is provided. The new branch becomes a row + a localStorage
+//         entry.
+//   - Empty branch name on the 'branch' destination surfaces a name-error
+//     status (mirrors the regular save path).
+//   - The toggle copy localizes (smoke: en/ko/ja/zh/es/ar).
+describe('FeatureTreeBranchManager — merge panel integration', () => {
+  it('merge toggle is visible and default off (panel not mounted)', () => {
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('a')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    const toggle = screen.getByTestId('branch-manager-merge-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.textContent).toMatch(/Merge branches/);
+    expect(screen.queryByTestId('solver-tree-merge-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('branch-manager-merge-panel-wrap')).not.toBeInTheDocument();
+  });
+
+  it('toggle ON → mounts FeatureTreeMergePanel + destination chooser', () => {
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('a')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    expect(screen.getByTestId('branch-manager-merge-panel-wrap')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-tree-merge-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-manager-merge-target')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-manager-merge-target-replace')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-manager-merge-target-branch')).toBeInTheDocument();
+    // Default destination = replace (mirrors existing branch-row 'merge' UX).
+    expect(
+      (screen.getByTestId('branch-manager-merge-target-replace') as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+
+  it('toggle OFF after ON → panel unmounted, no testids leak', () => {
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('a')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    const toggle = screen.getByTestId('branch-manager-merge-toggle');
+    fireEvent.click(toggle); // ON
+    expect(screen.getByTestId('solver-tree-merge-panel')).toBeInTheDocument();
+    fireEvent.click(toggle); // OFF
+    expect(screen.queryByTestId('solver-tree-merge-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('branch-manager-merge-panel-wrap')).not.toBeInTheDocument();
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.textContent).toMatch(/Merge branches/);
+  });
+
+  it('with 2 branches saved → merge panel catalogue has 3 entries (current + 2 branches)', () => {
+    // Seed two branches so the panel's trees prop has content.
+    seedBranch('br-1', makeTree([makeNode('x1')]));
+    seedBranch('br-2', makeTree([makeNode('x2')]));
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('cur')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    const baseSel = screen.getByTestId('solver-tree-merge-base-select') as HTMLSelectElement;
+    // current + br-1 + br-2 = 3 selectable trees.
+    expect(baseSel.options.length).toBe(3);
+  });
+
+  it('with 0 branches → catalogue still includes currentTree (1 entry)', () => {
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('only-current')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    const baseSel = screen.getByTestId('solver-tree-merge-base-select') as HTMLSelectElement;
+    expect(baseSel.options.length).toBe(1);
+  });
+
+  it('onMerged with target=replace → onLoadTree fires with merged tree', () => {
+    seedBranch('br-merge', makeTree([makeNode('b1')]));
+    const onLoad = vi.fn();
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('c1')])}
+        onLoadTree={onLoad}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    // base = currentTree (index 0), other = the saved branch (index 1).
+    fireEvent.change(screen.getByTestId('solver-tree-merge-other-select'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByTestId('solver-tree-merge-strategy-structural'));
+    fireEvent.click(screen.getByTestId('solver-tree-merge-merge-button'));
+    fireEvent.click(screen.getByTestId('solver-tree-merge-accept-button'));
+
+    expect(onLoad).toHaveBeenCalledTimes(1);
+    const arg = onLoad.mock.calls[0]?.[0] as FeatureTree;
+    expect(arg.nodes.map((n) => n.id).sort()).toEqual(['b1', 'c1']);
+    expect(screen.getByTestId('branch-manager-status').textContent).toMatch(/current tree/);
+  });
+
+  it('onMerged with target=branch + name → saves a NEW branch row + localStorage entry', () => {
+    seedBranch('br-saveas', makeTree([makeNode('b1')]));
+    const onLoad = vi.fn();
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('c1')])}
+        onLoadTree={onLoad}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    fireEvent.click(screen.getByTestId('branch-manager-merge-target-branch'));
+    fireEvent.change(screen.getByTestId('branch-manager-merge-branch-name'), {
+      target: { value: 'merged-branch-1' },
+    });
+    fireEvent.change(screen.getByTestId('solver-tree-merge-other-select'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByTestId('solver-tree-merge-strategy-structural'));
+    fireEvent.click(screen.getByTestId('solver-tree-merge-merge-button'));
+    fireEvent.click(screen.getByTestId('solver-tree-merge-accept-button'));
+
+    // onLoadTree must NOT be called in this mode — we're saving, not loading.
+    expect(onLoad).not.toHaveBeenCalled();
+    // New branch row visible in the list + persisted blob present.
+    expect(screen.getByTestId('branch-manager-row-merged-branch-1')).toBeInTheDocument();
+    expect(window.localStorage.getItem(`${PREFIX}:merged-branch-1`)).toBeTruthy();
+    expect(screen.getByTestId('branch-manager-status').textContent).toMatch(/merged-branch-1/);
+  });
+
+  it('onMerged with target=branch but empty name → error status, no new branch', () => {
+    seedBranch('br-noname', makeTree([makeNode('b1')]));
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('c1')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    fireEvent.click(screen.getByTestId('branch-manager-merge-target-branch'));
+    // Intentionally leave the name input empty.
+    fireEvent.change(screen.getByTestId('solver-tree-merge-other-select'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByTestId('solver-tree-merge-strategy-structural'));
+    fireEvent.click(screen.getByTestId('solver-tree-merge-merge-button'));
+    fireEvent.click(screen.getByTestId('solver-tree-merge-accept-button'));
+
+    expect(screen.getByTestId('branch-manager-status').getAttribute('data-status-kind')).toBe(
+      'error',
+    );
+    // Branch index unchanged (still just the seed).
+    expect(JSON.parse(window.localStorage.getItem(`${PREFIX}:_index`) ?? '[]')).toEqual([
+      'br-noname',
+    ]);
+  });
+
+  it('branch-name input is only visible when target=branch is selected', () => {
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('a')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    // Default = replace → name input absent.
+    expect(
+      screen.queryByTestId('branch-manager-merge-branch-name'),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('branch-manager-merge-target-branch'));
+    expect(screen.getByTestId('branch-manager-merge-branch-name')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('branch-manager-merge-target-replace'));
+    expect(
+      screen.queryByTestId('branch-manager-merge-branch-name'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('corrupt branch blob is silently dropped from merge catalogue (still listed in row UI)', () => {
+    // Seed a clean branch + a corrupt one. The merge panel catalogue should
+    // only include the clean one (+ currentTree); the row UI still shows
+    // the corrupt branch so the user can delete it.
+    seedBranch('clean', makeTree([makeNode('a')]));
+    const idx = JSON.parse(window.localStorage.getItem(`${PREFIX}:_index`) ?? '[]');
+    idx.push('rotten');
+    window.localStorage.setItem(`${PREFIX}:_index`, JSON.stringify(idx));
+    window.localStorage.setItem(`${PREFIX}:rotten`, '{not-json');
+
+    render(
+      <FeatureTreeBranchManager
+        lang="en"
+        currentTree={makeTree([makeNode('c')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    // Both rows present (corrupt branch still listed).
+    expect(screen.getByTestId('branch-manager-row-clean')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-manager-row-rotten')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('branch-manager-merge-toggle'));
+    const baseSel = screen.getByTestId('solver-tree-merge-base-select') as HTMLSelectElement;
+    // currentTree + clean = 2 (rotten dropped).
+    expect(baseSel.options.length).toBe(2);
+  });
+
+  it.each([
+    ['ko', /브랜치 병합/],
+    ['en', /Merge branches/],
+    ['ja', /ブランチを統合/],
+    ['zh', /合并分支/],
+    ['es', /Fusionar ramas/],
+    ['ar', /دمج الفروع/],
+  ] as const)('lang=%s renders localized merge toggle copy', (lang, pattern) => {
+    render(
+      <FeatureTreeBranchManager
+        lang={lang}
+        currentTree={makeTree([makeNode('a')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    expect(
+      screen.getByTestId('branch-manager-merge-toggle').textContent ?? '',
+    ).toMatch(pattern);
+  });
+
+  it('toggle ON shows localized "hide" copy in each language', () => {
+    render(
+      <FeatureTreeBranchManager
+        lang="ko"
+        currentTree={makeTree([makeNode('a')])}
+        onLoadTree={vi.fn()}
+        storageKeyPrefix={PREFIX}
+      />,
+    );
+    const toggle = screen.getByTestId('branch-manager-merge-toggle');
+    expect(toggle.textContent).toMatch(/병합/);
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle.textContent).toMatch(/닫기/);
+  });
+});
