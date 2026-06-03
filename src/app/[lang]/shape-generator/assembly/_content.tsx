@@ -66,11 +66,14 @@ const defaultOnSolve: AssemblyBrowserOnSolve = async (
   state,
   featureTrees,
   solver,
+  groupOptions,
 ) => {
   const body: {
     state: AssemblyState;
     featureTrees?: Record<string, FeatureTree>;
     solver?: AssemblySolverSelection;
+    useGroups?: boolean;
+    maxParallel?: number;
   } = {
     state,
   };
@@ -83,6 +86,14 @@ const defaultOnSolve: AssemblyBrowserOnSolve = async (
   // the API's back-compat 'gauss_seidel' default.
   if (solver !== undefined) {
     body.solver = solver;
+  }
+  // Phase B31.1 — only attach the grouped-solve fields when the user
+  // checked the "Use group partition" box in the modal. Omitting them
+  // keeps the body byte-identical to the pre-B31.1 path so the route's
+  // default `useGroups = false` takes over server-side (zero-regression).
+  if (groupOptions) {
+    body.useGroups = true;
+    body.maxParallel = groupOptions.maxParallel;
   }
   const res = await fetch('/api/assembly-solve', {
     method: 'POST',

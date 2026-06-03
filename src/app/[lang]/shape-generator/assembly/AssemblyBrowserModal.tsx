@@ -303,6 +303,30 @@ interface Dict {
   constraintsPanel: string;
   /** Toggle label when the constraints panel is already mounted. */
   hideConstraintsPanel: string;
+  /**
+   * Phase B31.1 — checkbox label that toggles the grouped-solve (partition)
+   * path on the assembly solver. When ON the modal forwards `useGroups:
+   * true` plus the user's `maxParallel` value to the onSolve handler so the
+   * /api/assembly-solve route runs `partitionAssembly + solveByGroups`
+   * (each connectivity-island sub-assembly solved independently). Default
+   * off so existing callers see no behavioural change.
+   */
+  useGroupPartition: string;
+  /**
+   * Phase B31.1 — number-input label for the per-batch concurrency cap that
+   * accompanies `useGroupPartition`. Only meaningful when `useGroups` is
+   * ON; the field is hidden otherwise. Range 1-8, default 4.
+   */
+  maxParallel: string;
+  /**
+   * Phase B31.1 — localized partition summary line shown beneath the solve
+   * result when the response carries `groups` + `groupResults` from the
+   * grouped-solve path. Takes the partition count, the total wall-clock
+   * duration (ms) and the parallel cap so each language can phrase the
+   * three numbers naturally. Function-style (not template) for the same
+   * word-order reason the history descriptors are functions.
+   */
+  partitionSummary: (groups: number, durationMs: number, parallel: number) => string;
 }
 
 const dict: Record<AssemblyBrowserLang, Dict> = {
@@ -404,6 +428,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: '적용',
     constraintsPanel: '제약 패널',
     hideConstraintsPanel: '제약 패널 닫기',
+    useGroupPartition: '그룹 분할 사용',
+    maxParallel: '최대 병렬',
+    partitionSummary: (groups, durationMs, parallel) =>
+      `${groups}개 파티션을 ${durationMs.toFixed(0)}ms에 풀었습니다 (병렬: ${parallel})`,
   },
   en: {
     modalTitle: 'Assembly Browser',
@@ -504,6 +532,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: 'Apply',
     constraintsPanel: 'Constraints',
     hideConstraintsPanel: 'Hide constraints',
+    useGroupPartition: 'Use group partition',
+    maxParallel: 'Max parallel',
+    partitionSummary: (groups, durationMs, parallel) =>
+      `Solved as ${groups} partitions in ${durationMs.toFixed(0)}ms (parallel: ${parallel})`,
   },
   ja: {
     modalTitle: 'アセンブリブラウザ',
@@ -604,6 +636,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: '適用',
     constraintsPanel: '制約パネル',
     hideConstraintsPanel: '制約パネルを閉じる',
+    useGroupPartition: 'グループ分割を使用',
+    maxParallel: '最大並列数',
+    partitionSummary: (groups, durationMs, parallel) =>
+      `${groups} パーティションを ${durationMs.toFixed(0)}ms で解きました (並列: ${parallel})`,
   },
   zh: {
     modalTitle: '装配浏览器',
@@ -703,6 +739,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: '应用',
     constraintsPanel: '约束面板',
     hideConstraintsPanel: '关闭约束面板',
+    useGroupPartition: '使用分组分区',
+    maxParallel: '最大并行',
+    partitionSummary: (groups, durationMs, parallel) =>
+      `已将 ${groups} 个分区在 ${durationMs.toFixed(0)}ms 内求解 (并行: ${parallel})`,
   },
   es: {
     modalTitle: 'Navegador de Ensamblaje',
@@ -805,6 +845,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: 'Aplicar',
     constraintsPanel: 'Restricciones',
     hideConstraintsPanel: 'Ocultar restricciones',
+    useGroupPartition: 'Usar partición de grupos',
+    maxParallel: 'Máx. paralelo',
+    partitionSummary: (groups, durationMs, parallel) =>
+      `Resuelto como ${groups} particiones en ${durationMs.toFixed(0)}ms (paralelo: ${parallel})`,
   },
   ar: {
     modalTitle: 'متصفح التجميع',
@@ -905,6 +949,10 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
     bulkApply: 'تطبيق',
     constraintsPanel: 'القيود',
     hideConstraintsPanel: 'إخفاء القيود',
+    useGroupPartition: 'استخدام تقسيم المجموعات',
+    maxParallel: 'الحد الأقصى للتوازي',
+    partitionSummary: (groups, durationMs, parallel) =>
+      `تم الحل في ${groups} أقسام خلال ${durationMs.toFixed(0)}ms (التوازي: ${parallel})`,
   },
 };
 
@@ -944,6 +992,31 @@ export interface AssemblyBrowserSolveResult {
    * stub path that predates the picker) still type-check.
    */
   solverUsed?: AssemblySolverChoice;
+  /**
+   * Phase B31.1 — count of connectivity-island partitions the grouped
+   * solver ran (mirrors `/api/assembly-solve`'s `groups` field). Present
+   * iff the request opted into `useGroups: true`. Absent on the
+   * single-solve path so legacy callers still type-check.
+   */
+  groups?: number;
+  /**
+   * Phase B31.1 — per-group IterativeSolveResult list. Loose shape (only
+   * the fields the UI actually surfaces) so we don't pull in the full
+   * IterativeSolveResult type — the route emits it verbatim and the modal
+   * only needs the count via `.length`. Present iff `groups` is.
+   */
+  groupResults?: ReadonlyArray<{
+    success: boolean;
+    iterations: number;
+    finalMaxResidual: number;
+  }>;
+  /**
+   * Phase B31.1 — total wall-clock duration of the grouped solve in ms
+   * (mirrors `/api/assembly-solve`'s `totalDurationMs` field). Shown in
+   * the partition summary so the user can see the cost of toggling
+   * `useGroups`. Present iff `groups` is.
+   */
+  totalDurationMs?: number;
 }
 
 /**
@@ -972,19 +1045,39 @@ export const ASSEMBLY_SOLVER_SELECTIONS: ReadonlyArray<AssemblySolverSelection> 
 ];
 
 /**
+ * Phase B31.1 — grouped-solve options forwarded as the optional 4th
+ * `onSolve` argument. The modal ONLY passes this when the user has
+ * checked the "Use group partition" box (see {@link
+ * AssemblyBrowserModalProps}); when the box is off the arg is omitted
+ * so the wire payload stays byte-identical to the pre-B31.1 path
+ * (zero-regression contract).
+ */
+export interface AssemblyBrowserGroupOptions {
+  /** Mirrors the API's `useGroups` body field. Always `true` when this
+   *  options bag is forwarded — the modal omits the whole bag when off. */
+  useGroups: true;
+  /** Mirrors the API's `maxParallel` body field. Integer in [1, 8]. */
+  maxParallel: number;
+}
+
+/**
  * onSolve receives the current AssemblyState plus the per-part FeatureTree
  * map. The map may be empty (no part has a tree yet) — callers decide
  * whether to send `featureTrees` over the wire or omit it for the stub
  * path. The optional 3rd `solver` argument carries the user's solver
  * picker choice ('auto' | 'gauss_seidel' | 'lagrangian' | 'adaptive');
  * legacy callers that ignore it default to the API's 'gauss_seidel'
- * back-compat path. Three args (instead of one bag) keep the signature
- * ergonomic for tests that only care about state.
+ * back-compat path. The optional 4th `groupOptions` argument (Phase
+ * B31.1) is only forwarded when the user opts into the grouped-solve
+ * path — see {@link AssemblyBrowserGroupOptions}. Four args (instead of
+ * one bag) keep the signature ergonomic for tests that only care about
+ * state, and means a 3-arg legacy mock is still type-compatible.
  */
 export type AssemblyBrowserOnSolve = (
   state: AssemblyState,
   featureTrees: Record<string, FeatureTree>,
   solver?: AssemblySolverSelection,
+  groupOptions?: AssemblyBrowserGroupOptions,
 ) => Promise<AssemblyBrowserSolveResult>;
 
 export interface AssemblyBrowserModalProps {
@@ -1605,6 +1698,28 @@ export default function AssemblyBrowserModal({
   const [solverSelection, setSolverSelection] = useState<AssemblySolverSelection>(
     'auto',
   );
+
+  /**
+   * Phase B31.1 — grouped-solve UI state.
+   *
+   * `useGroupsOn` defaults OFF so existing onSolve callers see byte-identical
+   * inputs (no 4th arg). When ON the Solve dispatcher forwards a
+   * {@link AssemblyBrowserGroupOptions} bag with the current `maxParallel`.
+   * `maxParallel` is clamped client-side to [1, 8] to match the task spec
+   * (the API itself only enforces `>= 1`, but capping at 8 matches the
+   * realistic concurrency a single-process Node solver can usefully run).
+   */
+  const [useGroupsOn, setUseGroupsOn] = useState<boolean>(false);
+  const [maxParallel, setMaxParallel] = useState<number>(4);
+  const MAX_PARALLEL_MIN = 1;
+  const MAX_PARALLEL_MAX = 8;
+  const clampedMaxParallel = useMemo(() => {
+    if (!Number.isFinite(maxParallel)) return 4;
+    const i = Math.floor(maxParallel);
+    if (i < MAX_PARALLEL_MIN) return MAX_PARALLEL_MIN;
+    if (i > MAX_PARALLEL_MAX) return MAX_PARALLEL_MAX;
+    return i;
+  }, [maxParallel]);
 
   // ── parts ops ──────────────────────────────────────────────────────────
 
@@ -2701,8 +2816,15 @@ export default function AssemblyBrowserModal({
   const onSolveClick = useCallback(async () => {
     if (!onSolve) return;
     setSolveState({ status: 'loading' });
+    // Phase B31.1 — only forward the groupOptions bag when the user has
+    // opted in. Omitting it when off keeps the wire payload byte-identical
+    // to the pre-B31.1 path (the route's default `useGroups = false` then
+    // takes over server-side), preserving the zero-regression contract.
+    const groupOptions: AssemblyBrowserGroupOptions | undefined = useGroupsOn
+      ? { useGroups: true, maxParallel: clampedMaxParallel }
+      : undefined;
     try {
-      const result = await onSolve(state, featureTrees, solverSelection);
+      const result = await onSolve(state, featureTrees, solverSelection, groupOptions);
       setSolveState({ status: 'ok', result });
     } catch (e) {
       setSolveState({
@@ -2710,7 +2832,15 @@ export default function AssemblyBrowserModal({
         message: `${t.errorPrefix}: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
-  }, [onSolve, state, featureTrees, solverSelection, t.errorPrefix]);
+  }, [
+    onSolve,
+    state,
+    featureTrees,
+    solverSelection,
+    useGroupsOn,
+    clampedMaxParallel,
+    t.errorPrefix,
+  ]);
 
   // ── BOM export (Phase 4.5) ────────────────────────────────────────────
   //
@@ -4320,6 +4450,25 @@ export default function AssemblyBrowserModal({
                 </>
               )}
             </div>
+            {/* Phase B31.1 — grouped-solve partition summary. Rendered iff
+                the response carries `groups` (i.e. the request opted into
+                `useGroups: true`); absent on the single-solve path so legacy
+                onSolve responses without the field render unchanged. */}
+            {solveState.result.groups !== undefined && (
+              <div
+                data-testid="solver-assembly-groups-summary"
+                style={{ fontSize: 11, color: '#1e3a8a', fontWeight: 600 }}
+              >
+                {t.partitionSummary(
+                  solveState.result.groups,
+                  solveState.result.totalDurationMs ?? 0,
+                  // Echo back the user's current cap — the response itself
+                  // doesn't carry the request's maxParallel, but the user's
+                  // current setting is the one that was just sent.
+                  clampedMaxParallel,
+                )}
+              </div>
+            )}
             {solveState.result.residuals.length > 0 && (
               <div
                 data-testid="solver-assembly-solve-residuals"
@@ -4954,6 +5103,66 @@ export default function AssemblyBrowserModal({
               <option value="adaptive">{t.solverAdaptive}</option>
             </select>
           </label>
+          {/* Phase B31.1 — grouped-solve opt-in (checkbox + maxParallel
+              number input). Default OFF: the body forwarded to /api/assembly-solve
+              stays byte-identical to the pre-B31.1 path. When ON the modal
+              passes the groupOptions bag to `onSolve` as the 4th arg. */}
+          <label
+            data-testid="solver-assembly-use-groups-label"
+            htmlFor="solver-assembly-use-groups"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11,
+              color: '#374151',
+            }}
+          >
+            <input
+              id="solver-assembly-use-groups"
+              data-testid="solver-assembly-use-groups"
+              type="checkbox"
+              checked={useGroupsOn}
+              onChange={(e) => setUseGroupsOn(e.target.checked)}
+            />
+            {t.useGroupPartition}
+          </label>
+          {useGroupsOn && (
+            <label
+              data-testid="solver-assembly-max-parallel-label"
+              htmlFor="solver-assembly-max-parallel"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                color: '#374151',
+              }}
+            >
+              {t.maxParallel}
+              <input
+                id="solver-assembly-max-parallel"
+                data-testid="solver-assembly-max-parallel"
+                type="number"
+                min={MAX_PARALLEL_MIN}
+                max={MAX_PARALLEL_MAX}
+                step={1}
+                value={maxParallel}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMaxParallel(Number.isFinite(v) ? v : 4);
+                }}
+                style={{
+                  width: 56,
+                  fontSize: 12,
+                  padding: '4px 6px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: '#fff',
+                }}
+              />
+            </label>
+          )}
           <button
             type="button"
             onClick={onSolveClick}
