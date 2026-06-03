@@ -327,3 +327,222 @@ describe('DrawingPageContent STEP+PMI export — bindings + saved view', () => {
     expect(screen.queryByTestId('drawing-export-step-warnings')).toBeNull();
   });
 });
+
+// ─── Phase 5.3.5 OCCT-direct hybrid-mode tests ───────────────────────────
+
+describe('DrawingPageContent STEP+PMI export — Phase 5.3.5 OCCT hybrid mode', () => {
+  /** Add one linear dim with refs [e1,e2] so the sheet has a real PMI body. */
+  function addLinearDim(): void {
+    fireEvent.click(screen.getByTestId('drawing-add-annotation-button'));
+    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'e1' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'e2' } });
+    fireEvent.click(screen.getByTestId('solver-dim-submit'));
+  }
+
+  it('hybridMode dropdown renders in the footer and defaults to shape_aspect', () => {
+    mount();
+    const sel = screen.getByTestId('drawing-hybrid-mode-select') as HTMLSelectElement;
+    expect(sel).toBeInTheDocument();
+    expect(sel.tagName).toBe('SELECT');
+    // Default must be 'shape_aspect' for back-compat with the NNN tests.
+    expect(sel.value).toBe('shape_aspect');
+    // All three options must exist.
+    expect(sel.querySelectorAll('option')).toHaveLength(3);
+  });
+
+  it('default mode (shape_aspect) + no checkboxes → legacy writeStepWithPmi path (no SHAPE_ASPECT)', async () => {
+    mount();
+    addLinearDim();
+    // No checkbox flips — pure legacy path.
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const text = await blobToText(lastBlob());
+    expect(text).toContain('DIMENSIONAL_SIZE');
+    expect(text).not.toContain('SHAPE_ASPECT');
+    expect(text).not.toContain('DRAUGHTING_MODEL');
+  });
+
+  it("hybridMode='shape_aspect' + Include shape bindings → SHAPE_ASPECT present (NNN behaviour preserved)", async () => {
+    mount();
+    addLinearDim();
+    // Default mode is shape_aspect — flipping the include-bindings checkbox
+    // must route through the NNN/Phase-1 path exactly like before.
+    fireEvent.click(screen.getByTestId('drawing-include-bindings'));
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const text = await blobToText(lastBlob());
+    expect(text).toContain('SHAPE_ASPECT(');
+    expect(text).toContain("'e1'");
+  });
+
+  it("hybridMode='occt' → orchestrator path engaged (no SHAPE_ASPECT rows even with includeBindings)", async () => {
+    mount();
+    addLinearDim();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'occt' },
+    });
+    // includeBindings on, but orchestrator runs in 'occt' mode so the
+    // shapeAspectBindings input is warned-out (no SHAPE_ASPECT rows in
+    // the file).
+    fireEvent.click(screen.getByTestId('drawing-include-bindings'));
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const text = await blobToText(lastBlob());
+    expect(text).toMatch(/^ISO-10303-21;/);
+    expect(text).toMatch(/END-ISO-10303-21;/);
+    expect(text).toContain('DIMENSIONAL_SIZE');
+    expect(text).not.toContain('SHAPE_ASPECT');
+    // The orchestrator warns out the SA bindings; the banner should show it.
+    const warningsBlock = screen.queryByTestId('drawing-export-step-warnings');
+    expect(warningsBlock?.textContent ?? '').toMatch(/shapeAspectBindings ignored/);
+  });
+
+  it("hybridMode='both' + includeBindings → SHAPE_ASPECT rows still emitted", async () => {
+    mount();
+    addLinearDim();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'both' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-include-bindings'));
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const text = await blobToText(lastBlob());
+    expect(text).toContain('SHAPE_ASPECT(');
+    expect(text).toContain("'e1'");
+  });
+
+  it('OCCT bindings checkbox is hidden when hybridMode is shape_aspect', () => {
+    mount();
+    // Default mode → checkbox absent.
+    expect(screen.queryByTestId('drawing-include-occt-bindings')).toBeNull();
+    expect(screen.queryByTestId('drawing-occt-bindings-input')).toBeNull();
+  });
+
+  it('switching to occt mode reveals the Include OCCT bindings checkbox', () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'occt' },
+    });
+    const cb = screen.getByTestId('drawing-include-occt-bindings') as HTMLInputElement;
+    expect(cb).toBeInTheDocument();
+    expect(cb.type).toBe('checkbox');
+    expect(cb.checked).toBe(false);
+    // Textarea is still hidden until the checkbox flips on.
+    expect(screen.queryByTestId('drawing-occt-bindings-input')).toBeNull();
+  });
+
+  it('flipping Include OCCT bindings reveals the JSON textarea', () => {
+    mount();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'occt' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-include-occt-bindings'));
+    const ta = screen.getByTestId('drawing-occt-bindings-input') as HTMLTextAreaElement;
+    expect(ta).toBeInTheDocument();
+    expect(ta.tagName).toBe('TEXTAREA');
+  });
+
+  it('valid OCCT bindings JSON parses and is forwarded to the orchestrator', async () => {
+    mount();
+    addLinearDim();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'occt' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-include-occt-bindings'));
+    // Bind ref 'e1' to face 0 of the sample 6-face meta. The face entityId
+    // is resolved via the placeholder meta {faceEntityIds:[1..6]} so the
+    // patched PMI source will mention '#1'.
+    fireEvent.change(screen.getByTestId('drawing-occt-bindings-input'), {
+      target: {
+        value: JSON.stringify([{ pmiRefId: 'e1', faceRef: { faceIdx: 0 } }]),
+      },
+    });
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const text = await blobToText(lastBlob());
+    expect(text).toMatch(/^ISO-10303-21;/);
+    // The OCCT patcher rewrites the Phase-1 TODO comment to mention the
+    // resolved entity id. With faceEntityIds[0]=1, the comment should
+    // include '#1 (e1)'.
+    expect(text).toContain('#1 (e1)');
+  });
+
+  it('invalid OCCT bindings JSON surfaces a parse-error banner and skips the download', () => {
+    mount();
+    addLinearDim();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'occt' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-include-occt-bindings'));
+    fireEvent.change(screen.getByTestId('drawing-occt-bindings-input'), {
+      target: { value: '{not valid json' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const alert = screen.getByTestId('drawing-export-step-error');
+    expect(alert).toBeInTheDocument();
+    expect(alert.textContent ?? '').toMatch(/parse|JSON/i);
+    // No blob was downloaded — createObjectURL was not called for the step
+    // export (other downloads may have happened, but the Blob arg list
+    // should not include an application/step blob).
+    const stepCalls = createObjectUrlSpy.mock.calls.filter((args) => {
+      const arg = args[0];
+      return arg instanceof Blob && arg.type === 'application/step';
+    });
+    expect(stepCalls).toHaveLength(0);
+  });
+
+  it('empty textarea + includeOcct on → treated as no bindings, export still succeeds', async () => {
+    mount();
+    addLinearDim();
+    fireEvent.change(screen.getByTestId('drawing-hybrid-mode-select'), {
+      target: { value: 'occt' },
+    });
+    fireEvent.click(screen.getByTestId('drawing-include-occt-bindings'));
+    // Textarea left blank.
+    fireEvent.click(screen.getByTestId('drawing-export-step-button'));
+    const text = await blobToText(lastBlob());
+    expect(text).toMatch(/^ISO-10303-21;/);
+    expect(text).toContain('DIMENSIONAL_SIZE');
+    // No parse-error banner.
+    expect(screen.queryByTestId('drawing-export-step-error')).toBeNull();
+  });
+
+  it('English i18n surfaces "Binding mode" + "Include OCCT bindings" labels', () => {
+    mount('en');
+    const sel = screen.getByTestId('drawing-hybrid-mode-select');
+    const parent = sel.parentElement;
+    expect(parent?.textContent ?? '').toMatch(/Binding mode/);
+    fireEvent.change(sel, { target: { value: 'occt' } });
+    const cbLabel = screen.getByTestId('drawing-include-occt-bindings').parentElement;
+    expect(cbLabel?.textContent ?? '').toMatch(/Include OCCT bindings/);
+  });
+
+  it('Korean i18n surfaces "바인딩 모드" + "OCCT 바인딩 포함" labels', () => {
+    mount('ko');
+    const sel = screen.getByTestId('drawing-hybrid-mode-select');
+    const parent = sel.parentElement;
+    expect(parent?.textContent ?? '').toMatch(/바인딩 모드/);
+    fireEvent.change(sel, { target: { value: 'occt' } });
+    const cbLabel = screen.getByTestId('drawing-include-occt-bindings').parentElement;
+    expect(cbLabel?.textContent ?? '').toMatch(/OCCT 바인딩 포함/);
+  });
+
+  it('Japanese i18n surfaces "バインディングモード" label', () => {
+    mount('ja');
+    const sel = screen.getByTestId('drawing-hybrid-mode-select');
+    expect(sel.parentElement?.textContent ?? '').toMatch(/バインディングモード/);
+  });
+
+  it('Chinese i18n surfaces "绑定模式" label', () => {
+    mount('zh');
+    const sel = screen.getByTestId('drawing-hybrid-mode-select');
+    expect(sel.parentElement?.textContent ?? '').toMatch(/绑定模式/);
+  });
+
+  it('Spanish i18n surfaces "Modo de vínculo" label', () => {
+    mount('es');
+    const sel = screen.getByTestId('drawing-hybrid-mode-select');
+    expect(sel.parentElement?.textContent ?? '').toMatch(/Modo de vínculo/);
+  });
+
+  it('Arabic i18n surfaces "وضع الربط" label', () => {
+    mount('ar');
+    const sel = screen.getByTestId('drawing-hybrid-mode-select');
+    expect(sel.parentElement?.textContent ?? '').toMatch(/وضع الربط/);
+  });
+});

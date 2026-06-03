@@ -43,6 +43,11 @@ import {
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { writeStepWithPmi } from '@/lib/brep-bridge/stepWriteWithPmi';
 import { writeStepWithPmiBindings } from '@/lib/brep-bridge/stepWriteWithPmiBindings';
+import {
+  writeStepWithPmiOcctBindings,
+  type HybridBindingMode,
+} from '@/lib/brep-bridge/stepWriteWithPmiOcctBindings';
+import type { OcctPmiBinding, OcctShapeMeta } from '@/lib/brep-bridge/pmiOcctBinding';
 import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
@@ -145,6 +150,15 @@ interface PageDict {
   pipelineSingleRaster: string;
   enableSnap: string;
   snapHint: string;
+  /** Phase 5.3.5 OCCT-direct hybrid mode UI. */
+  hybridMode: string;
+  shapeAspectOnly: string;
+  occtDirect: string;
+  bothMode: string;
+  includeOcctBindings: string;
+  occtBindingsInputLabel: string;
+  occtBindingsPlaceholder: string;
+  occtBindingsParseError: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -210,6 +224,14 @@ const DICT: Record<string, PageDict> = {
     pipelineSingleRaster: '단일 래스터',
     enableSnap: '스냅 사용',
     snapHint: '커서를 뷰포트 모서리/중점/중심 또는 그리드에 근접시키면 스냅됩니다',
+    hybridMode: '바인딩 모드',
+    shapeAspectOnly: 'SHAPE_ASPECT (Phase 1)',
+    occtDirect: 'OCCT 직접 (Phase 2)',
+    bothMode: '양쪽 (호환성 최대)',
+    includeOcctBindings: 'OCCT 바인딩 포함',
+    occtBindingsInputLabel: 'OCCT 바인딩 (JSON 배열)',
+    occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
+    occtBindingsParseError: 'OCCT 바인딩 입력 파싱 실패',
   },
   en: {
     title: 'Drawing Studio',
@@ -273,6 +295,14 @@ const DICT: Record<string, PageDict> = {
     pipelineSingleRaster: 'Single raster',
     enableSnap: 'Enable snap',
     snapHint: 'Hover near a viewport corner / midpoint / center, or a grid node, to snap the cursor.',
+    hybridMode: 'Binding mode',
+    shapeAspectOnly: 'SHAPE_ASPECT (Phase 1)',
+    occtDirect: 'OCCT direct (Phase 2)',
+    bothMode: 'Both (max compatibility)',
+    includeOcctBindings: 'Include OCCT bindings',
+    occtBindingsInputLabel: 'OCCT bindings (JSON array)',
+    occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
+    occtBindingsParseError: 'Failed to parse OCCT bindings input',
   },
   ja: {
     title: '図面スタジオ',
@@ -336,6 +366,14 @@ const DICT: Record<string, PageDict> = {
     pipelineSingleRaster: 'シングル ラスター',
     enableSnap: 'スナップを有効化',
     snapHint: 'カーソルをビューポートの角・中点・中心またはグリッドに近づけるとスナップします',
+    hybridMode: 'バインディングモード',
+    shapeAspectOnly: 'SHAPE_ASPECT (Phase 1)',
+    occtDirect: 'OCCT 直接 (Phase 2)',
+    bothMode: '両方 (最大互換性)',
+    includeOcctBindings: 'OCCT バインディングを含める',
+    occtBindingsInputLabel: 'OCCT バインディング (JSON 配列)',
+    occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
+    occtBindingsParseError: 'OCCT バインディング入力の解析に失敗しました',
   },
   zh: {
     title: '图纸工作室',
@@ -399,6 +437,14 @@ const DICT: Record<string, PageDict> = {
     pipelineSingleRaster: '单一光栅',
     enableSnap: '启用捕捉',
     snapHint: '将光标靠近视口角点/中点/中心或网格节点即可捕捉',
+    hybridMode: '绑定模式',
+    shapeAspectOnly: 'SHAPE_ASPECT (Phase 1)',
+    occtDirect: 'OCCT 直接 (Phase 2)',
+    bothMode: '两者 (最大兼容性)',
+    includeOcctBindings: '包含 OCCT 绑定',
+    occtBindingsInputLabel: 'OCCT 绑定 (JSON 数组)',
+    occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
+    occtBindingsParseError: 'OCCT 绑定输入解析失败',
   },
   es: {
     title: 'Estudio de Planos',
@@ -462,6 +508,14 @@ const DICT: Record<string, PageDict> = {
     pipelineSingleRaster: 'Ráster único',
     enableSnap: 'Activar ajuste',
     snapHint: 'Acerca el cursor a una esquina / punto medio / centro de viewport o nodo de cuadrícula para ajustar.',
+    hybridMode: 'Modo de vínculo',
+    shapeAspectOnly: 'SHAPE_ASPECT (Fase 1)',
+    occtDirect: 'OCCT directo (Fase 2)',
+    bothMode: 'Ambos (máxima compatibilidad)',
+    includeOcctBindings: 'Incluir vínculos OCCT',
+    occtBindingsInputLabel: 'Vínculos OCCT (matriz JSON)',
+    occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
+    occtBindingsParseError: 'Error al analizar los vínculos OCCT',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -525,6 +579,14 @@ const DICT: Record<string, PageDict> = {
     pipelineSingleRaster: 'نقطي واحد',
     enableSnap: 'تمكين الالتقاط',
     snapHint: 'مرّر المؤشر بالقرب من زاوية/منتصف/مركز إطار العرض أو عقدة الشبكة للالتقاط.',
+    hybridMode: 'وضع الربط',
+    shapeAspectOnly: 'SHAPE_ASPECT (المرحلة 1)',
+    occtDirect: 'OCCT مباشر (المرحلة 2)',
+    bothMode: 'كلاهما (أقصى توافق)',
+    includeOcctBindings: 'تضمين روابط OCCT',
+    occtBindingsInputLabel: 'روابط OCCT (مصفوفة JSON)',
+    occtBindingsPlaceholder: '[{"pmiRefId":"e1","faceRef":{"faceIdx":0}}]',
+    occtBindingsParseError: 'فشل تحليل إدخال روابط OCCT',
   },
 };
 
@@ -764,6 +826,132 @@ function exportSheetStepWithBindings(
   };
 }
 
+// ─── Phase 5.3.5 OCCT-direct helpers ─────────────────────────────────────
+
+/**
+ * Sample 6-face metadata for the box-like sample parts (cube / step-001).
+ * Mirrors `OcctShapeMeta` — index `i` is the STEP `#N` id of the i-th
+ * ADVANCED_FACE in `TopExp_Explorer(TopAbs_FACE)` order. Phase 1 placeholder:
+ * the ids `[1..6]` are not actual entity ids of the box writer's output but
+ * they satisfy the contract (length 6, integers ≥ 1) so the binder's
+ * lookup table is valid. When a real OCCT walk lands the table is replaced;
+ * for the UI the contract is what matters: callers can index `faceIdx`
+ * into `[0..5]` without `out of range` throws.
+ */
+function buildSampleShapeMeta(): OcctShapeMeta {
+  return { faceEntityIds: [1, 2, 3, 4, 5, 6] };
+}
+
+/**
+ * Parse the textarea content into an `OcctPmiBinding[]`. Accepts strict
+ * JSON (object or array form) — empty / whitespace string returns an empty
+ * array (treated as "no bindings"). Throws with a human-readable message
+ * on invalid JSON or shape mismatch so the caller can surface it in the
+ * UI banner.
+ *
+ * Accepted shapes:
+ *   - `[{"pmiRefId":"e1","faceRef":{"faceIdx":0}},...]`           (array)
+ *   - `{"pmiRefId":"e1","faceRef":{"faceIdx":0}}`                 (single)
+ *
+ * Field validation:
+ *   - `pmiRefId` must be a non-empty string
+ *   - `faceRef` must be an object with `faceIdx` (non-negative int) and
+ *     optional `entityId` (positive int)
+ */
+function parseOcctBindingsInput(raw: string): OcctPmiBinding[] {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`invalid JSON: ${detail}`);
+  }
+  const items: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+  const out: OcctPmiBinding[] = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const it = items[i];
+    if (typeof it !== 'object' || it === null) {
+      throw new Error(`entry #${i} is not an object`);
+    }
+    const obj = it as { pmiRefId?: unknown; faceRef?: unknown };
+    if (typeof obj.pmiRefId !== 'string' || obj.pmiRefId.length === 0) {
+      throw new Error(`entry #${i}: pmiRefId must be a non-empty string`);
+    }
+    if (typeof obj.faceRef !== 'object' || obj.faceRef === null) {
+      throw new Error(`entry #${i}: faceRef must be an object`);
+    }
+    const fr = obj.faceRef as { faceIdx?: unknown; entityId?: unknown };
+    if (
+      typeof fr.faceIdx !== 'number'
+      || !Number.isInteger(fr.faceIdx)
+      || fr.faceIdx < 0
+    ) {
+      throw new Error(`entry #${i}: faceRef.faceIdx must be a non-negative integer`);
+    }
+    const binding: OcctPmiBinding = {
+      pmiRefId: obj.pmiRefId,
+      faceRef:
+        typeof fr.entityId === 'number'
+          ? { faceIdx: fr.faceIdx, entityId: fr.entityId }
+          : { faceIdx: fr.faceIdx },
+    };
+    out.push(binding);
+  }
+  return out;
+}
+
+/**
+ * Phase 5.3.5 STEP+PMI+OCCT-direct exporter. Routes through the
+ * {@link writeStepWithPmiOcctBindings} orchestrator so the caller can
+ * pick 'occt' (Phase 2 only), 'shape_aspect' (Phase 1 only — equivalent
+ * to NNN) or 'both' (Phase 1 + Phase 2 in-place). Returns the merged
+ * mapping count + warnings for the inline banners.
+ *
+ * The Phase-1 fallback bindings (from {@link buildSampleBindings}) are
+ * forwarded as `shapeAspectBindings` when the mode is `'shape_aspect'`
+ * or `'both'` AND `includeBindings` is on. The OCCT-direct bindings come
+ * from the parsed textarea content; the sample shape-meta is always
+ * supplied (the orchestrator only consults it when a binding lacks
+ * `entityId`).
+ */
+function exportSheetStepWithOcctBindings(
+  sourceId: string,
+  sheet: Sheet,
+  filename: string,
+  opts: {
+    hybridMode: HybridBindingMode;
+    occtBindings: ReadonlyArray<OcctPmiBinding>;
+    includeShapeAspectBindings: boolean;
+    withSavedView: boolean;
+  },
+): { warnings: ReadonlyArray<string>; bindingsCount: number } {
+  const geometry = sampleGeometryForSourceId(sourceId);
+  const saBindings = opts.includeShapeAspectBindings
+    ? buildSampleBindings(sheet)
+    : undefined;
+  const result = writeStepWithPmiOcctBindings({
+    geometry,
+    pmi: { sheet },
+    hybridMode: opts.hybridMode,
+    occtBindings: opts.occtBindings,
+    shapeMeta: buildSampleShapeMeta(),
+    ...(saBindings ? { shapeAspectBindings: saBindings } : {}),
+    withSavedView: opts.withSavedView,
+    header: {
+      description: `NexyFab drawing export — ${sheet.name}`,
+      filename,
+    },
+  });
+  const blob = new Blob([result.source], { type: 'application/step' });
+  downloadBlob(blob, filename);
+  return {
+    warnings: result.warnings,
+    bindingsCount: result.pmiMapping.size,
+  };
+}
+
 // ─── assembly helpers (Phase 5.3) ────────────────────────────────────────
 
 /**
@@ -816,6 +1004,29 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   const [stepExportInfo, setStepExportInfo] = useState<string | null>(null);
   const [includeBindings, setIncludeBindings] = useState<boolean>(false);
   const [useSavedView, setUseSavedView] = useState<boolean>(false);
+  /**
+   * Phase 5.3.5 OCCT-direct hybrid mode selector. Default 'shape_aspect'
+   * preserves NNN behaviour byte-for-byte — the existing footer route
+   * (`exportSheetStepWithBindings`) is engaged whenever this stays at
+   * 'shape_aspect' AND no OCCT bindings are supplied, so the 195
+   * pre-existing drawing-suite tests keep passing untouched.
+   *
+   * Selecting 'occt' or 'both' switches the export handler to the
+   * Phase-2 orchestrator ({@link writeStepWithPmiOcctBindings}), which
+   * supports OCCT-direct face anchors AND, in 'both' mode, the Phase-1
+   * SHAPE_ASPECT side-channel alongside.
+   */
+  const [hybridMode, setHybridMode] = useState<HybridBindingMode>('shape_aspect');
+  /**
+   * Phase 5.3.5 toggle: when 'occt' or 'both' is active, this opts the
+   * user into supplying explicit OCCT bindings via the textarea below.
+   * When off, the orchestrator runs with `occtBindings: []`, which
+   * (per its spec) collapses to the equivalent of the underlying PMI
+   * writer for `mode='occt'` and to NNN for `mode='shape_aspect'`.
+   */
+  const [includeOcctBindings, setIncludeOcctBindings] = useState<boolean>(false);
+  /** Raw textarea content for the OCCT bindings JSON. Parsed at export time. */
+  const [occtBindingsInput, setOcctBindingsInput] = useState<string>('');
   const [pdfExportError, setPdfExportError] = useState<string | null>(null);
   /**
    * Phase 4.4.3 PDF export — when true, the future multi-sheet UI will
@@ -1328,11 +1539,54 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setStepExportWarnings([]);
     setStepExportInfo(null);
     try {
-      // Route through the bindings orchestrator only when the user opted in
-      // to either of the new options. Otherwise preserve the existing
-      // (legacy) `writeStepWithPmi` path so the 146 drawing-suite tests that
-      // exercise it continue to pass unchanged.
-      if (includeBindings || useSavedView) {
+      /**
+       * Phase 5.3.5 routing matrix:
+       *   - hybridMode='shape_aspect' (default) AND not includeOcctBindings
+       *     → preserve the existing NNN/legacy routes. This is the
+       *       back-compat path that the 195 drawing-suite tests exercise.
+       *   - hybridMode='occt' OR 'both' OR includeOcctBindings on
+       *     → route through {@link writeStepWithPmiOcctBindings}. The
+       *       textarea is parsed here; a parse failure is surfaced via the
+       *       inline error banner (NO blob download in that case).
+       *
+       * The OCCT bindings array is empty when `includeOcctBindings` is
+       * off — the orchestrator handles that as a no-op for Phase-2
+       * (collapses to the underlying PMI writer).
+       */
+      const useOcctOrchestrator =
+        hybridMode === 'occt' || hybridMode === 'both' || includeOcctBindings;
+
+      if (useOcctOrchestrator) {
+        let parsedOcctBindings: OcctPmiBinding[] = [];
+        if (includeOcctBindings) {
+          try {
+            parsedOcctBindings = parseOcctBindingsInput(occtBindingsInput);
+          } catch (err) {
+            const detail = err instanceof Error ? err.message : String(err);
+            setStepExportError(`${dict.occtBindingsParseError}: ${detail}`);
+            return;
+          }
+        }
+        const res = exportSheetStepWithOcctBindings(
+          sourceId,
+          sheet,
+          `${sheet.id}.step`,
+          {
+            hybridMode,
+            occtBindings: parsedOcctBindings,
+            includeShapeAspectBindings: includeBindings,
+            withSavedView: useSavedView,
+          },
+        );
+        setStepExportWarnings(res.warnings);
+        if (res.bindingsCount > 0) {
+          setStepExportInfo(`${dict.bindingsApplied}: ${res.bindingsCount}`);
+        }
+      } else if (includeBindings || useSavedView) {
+        // Legacy Phase-1 NNN path — mode is 'shape_aspect' AND user opted
+        // into bindings/saved-view but NOT OCCT. Keep this distinct from
+        // the orchestrator path so the byte-for-byte STEP output that the
+        // existing tests assert against is preserved.
         const res = exportSheetStepWithBindings(
           sourceId,
           sheet,
@@ -1357,8 +1611,12 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     sheet,
     includeBindings,
     useSavedView,
+    hybridMode,
+    includeOcctBindings,
+    occtBindingsInput,
     dict.exportStepError,
     dict.bindingsApplied,
+    dict.occtBindingsParseError,
   ]);
 
   const onExportPdf = useCallback(async () => {
@@ -2445,6 +2703,42 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               />
               {dict.useSavedView}
             </label>
+            {/*
+              Phase 5.3.5 hybridMode dropdown. Default 'shape_aspect'
+              preserves the NNN flow byte-for-byte; switching to 'occt'
+              or 'both' routes the next Export STEP+PMI click through
+              the OCCT orchestrator. Wrapped in a `<label>` so the
+              accessible name matches the dict entry (mirrors the
+              pattern used by the surrounding checkboxes).
+            */}
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <span style={{ fontWeight: 600 }}>{dict.hybridMode}</span>
+              <select
+                data-testid="drawing-hybrid-mode-select"
+                value={hybridMode}
+                onChange={(e) => setHybridMode(e.target.value as HybridBindingMode)}
+                style={{ padding: 4 }}
+              >
+                <option value="shape_aspect">{dict.shapeAspectOnly}</option>
+                <option value="occt">{dict.occtDirect}</option>
+                <option value="both">{dict.bothMode}</option>
+              </select>
+            </label>
+            {hybridMode === 'occt' || hybridMode === 'both' ? (
+              <label
+                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#374151' }}
+              >
+                <input
+                  type="checkbox"
+                  data-testid="drawing-include-occt-bindings"
+                  checked={includeOcctBindings}
+                  onChange={(e) => setIncludeOcctBindings(e.target.checked)}
+                />
+                {dict.includeOcctBindings}
+              </label>
+            ) : null}
             <button
               type="button"
               data-testid="drawing-export-png-button"
@@ -2506,6 +2800,35 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               {dict.exportStepPmi}
             </button>
           </div>
+          {/*
+            Phase 5.3.5 OCCT bindings textarea. Only rendered when the
+            hybrid mode is 'occt' or 'both' AND the user explicitly
+            opted in via the include-occt checkbox. Free-form JSON
+            input — the export handler parses on click and surfaces
+            parse failures via the same error banner used for STEP
+            writer throws.
+          */}
+          {(hybridMode === 'occt' || hybridMode === 'both') && includeOcctBindings ? (
+            <label
+              data-testid="drawing-occt-bindings-input-label"
+              style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#374151' }}
+            >
+              <span style={{ fontWeight: 600 }}>{dict.occtBindingsInputLabel}</span>
+              <textarea
+                data-testid="drawing-occt-bindings-input"
+                value={occtBindingsInput}
+                onChange={(e) => setOcctBindingsInput(e.target.value)}
+                placeholder={dict.occtBindingsPlaceholder}
+                rows={4}
+                style={{
+                  padding: 6,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 11,
+                  resize: 'vertical',
+                }}
+              />
+            </label>
+          ) : null}
           {stepExportError ? (
             <p
               data-testid="drawing-export-step-error"
