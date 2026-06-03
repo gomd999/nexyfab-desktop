@@ -37,6 +37,8 @@ import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { formatGdt, formatTolerance } from '@/lib/drawing/dimension';
 import type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
 import { buildOrdinateRenderHints } from '@/lib/drawing/ordinateDimension';
+import type { Polyhedron } from '@/lib/cad/featureMesh';
+import { projectPolyhedron } from '@/lib/drawing/projectView';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -65,6 +67,13 @@ export interface SheetRendererProps {
   /** Pixels per millimetre. Higher = larger on-screen sheet. */
   scale?: number;
   className?: string;
+  /**
+   * Per-sourceId polyhedra (from lib/cad/featureMesh). When a standard-view
+   * viewport's sourceId is present, its real projected edges (HLR: solid +
+   * dashed) are drawn fitted into the viewport box instead of the placeholder.
+   * Omitted → every viewport falls back to the placeholder box (back-compat).
+   */
+  geometry?: ReadonlyMap<string, Polyhedron>;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────
@@ -89,6 +98,7 @@ export function SheetRenderer({
   sheet,
   scale = DEFAULT_PX_PER_MM,
   className,
+  geometry,
 }: SheetRendererProps): React.ReactElement {
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
   const widthPx = dim.width * scale;
@@ -138,6 +148,7 @@ export function SheetRenderer({
           paperHeightMm={dim.height}
           // Detail-view marker letters cycle A, B, C, ... per detail viewport.
           detailLetter={letterForIndex(idx)}
+          geometry={geometry?.get(vp.sourceId) ?? null}
         />
       ))}
 
@@ -192,10 +203,26 @@ interface ViewportLayerProps {
   viewport: Viewport;
   paperHeightMm: number;
   detailLetter: string;
+  geometry?: Polyhedron | null;
 }
 
-function ViewportLayer({ viewport, paperHeightMm, detailLetter }: ViewportLayerProps): React.ReactElement {
+function ViewportLayer({
+  viewport,
+  paperHeightMm,
+  detailLetter,
+  geometry,
+}: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
+  // Real projected geometry for standard views when a polyhedron is supplied.
+  const projected =
+    geometry && viewport.projection.kind === 'standard'
+      ? <ProjectedGeometry
+          viewportId={viewport.id}
+          poly={geometry}
+          view={viewport.projection.view}
+          box={box}
+        />
+      : null;
   const labelHeight = Math.max(3, box.h * 0.05);
   // Label sits BELOW the viewport rect in display (Sheet IR origin was
   // bottom-left, so "below in IR" is "above in SVG"). dxfExport.ts places
@@ -209,9 +236,9 @@ function ViewportLayer({ viewport, paperHeightMm, detailLetter }: ViewportLayerP
       data-vp-kind={viewport.projection.kind}
     >
       {/*
-        Phase 1 stub: the rectangle below is the viewport's bounding box.
-        The actual projected 3D edges are NOT rendered here — that wires
-        in at Phase 2 (OCCT HLR / HLRBRep_Algo edge stream).
+        Viewport bounding box. When a polyhedron is supplied for a standard
+        view, real projected HLR edges are drawn inside it (see
+        ProjectedGeometry below); otherwise the box is the placeholder.
       */}
       <rect
         data-testid={`sheet-renderer-viewport-border-${viewport.id}`}
@@ -223,6 +250,8 @@ function ViewportLayer({ viewport, paperHeightMm, detailLetter }: ViewportLayerP
         stroke={VP_BORDER_STROKE}
         strokeWidth={VP_BORDER_WIDTH}
       />
+
+      {projected}
 
       {viewport.label ? (
         <text
@@ -245,6 +274,75 @@ function ViewportLayer({ viewport, paperHeightMm, detailLetter }: ViewportLayerP
       {viewport.projection.kind === 'detail' ? (
         <DetailCircle viewport={viewport} box={box} letter={detailLetter} />
       ) : null}
+    </g>
+  );
+}
+
+// ─── projected geometry (real HLR edges fitted into a viewport) ──────────────
+
+interface ProjectedGeometryProps {
+  viewportId: string;
+  poly: Polyhedron;
+  view: 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right' | 'iso';
+  box: ResolvedBox;
+}
+
+const GEOM_VISIBLE_STROKE = '#0f172a';
+const GEOM_HIDDEN_STROKE = '#94a3b8';
+const GEOM_MARGIN_FRAC = 0.08;
+
+/**
+ * Project `poly` to the viewport's view, fit the result into the box (uniform
+ * scale, centered, with a margin), and draw visible (solid) + hidden (dashed)
+ * edges. View-plane Y is up; the SVG box is Y-down, so v is flipped.
+ */
+function ProjectedGeometry({
+  viewportId,
+  poly,
+  view,
+  box,
+}: ProjectedGeometryProps): React.ReactElement | null {
+  const { visible, hidden, bbox } = projectPolyhedron(poly, view);
+  const geomW = bbox.maxX - bbox.minX;
+  const geomH = bbox.maxY - bbox.minY;
+  if (!(geomW > 0) && !(geomH > 0)) return null;
+
+  const margin = Math.min(box.w, box.h) * GEOM_MARGIN_FRAC;
+  const availW = Math.max(1e-6, box.w - 2 * margin);
+  const availH = Math.max(1e-6, box.h - 2 * margin);
+  const s = Math.min(geomW > 0 ? availW / geomW : Infinity, geomH > 0 ? availH / geomH : Infinity);
+  // Center the scaled geometry inside the box.
+  const offX = box.x + (box.w - geomW * s) / 2;
+  const offY = box.y + (box.h - geomH * s) / 2;
+  const tx = (u: number): number => offX + (u - bbox.minX) * s;
+  // Flip Y: larger v (up) → smaller SVG-y.
+  const ty = (v: number): number => offY + (bbox.maxY - v) * s;
+
+  const strokeW = Math.max(0.15, Math.min(box.w, box.h) * 0.006);
+
+  return (
+    <g
+      data-testid={`sheet-renderer-vp-geometry-${viewportId}`}
+      data-visible={visible.length}
+      data-hidden={hidden.length}
+    >
+      {hidden.map((e, i) => (
+        <line
+          key={`h${i}`}
+          x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+          stroke={GEOM_HIDDEN_STROKE}
+          strokeWidth={strokeW}
+          strokeDasharray={`${strokeW * 4} ${strokeW * 3}`}
+        />
+      ))}
+      {visible.map((e, i) => (
+        <line
+          key={`v${i}`}
+          x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+          stroke={GEOM_VISIBLE_STROKE}
+          strokeWidth={strokeW}
+        />
+      ))}
     </g>
   );
 }
