@@ -131,6 +131,8 @@ const KIND_ICON: Record<FeatureKind, string> = {
   hole: '⊙',
   fillet: '◜',
   chamfer: '◢',
+  rib: '▮',
+  sweep_path: '〰',
 };
 
 // ─── component ────────────────────────────────────────────────────────────

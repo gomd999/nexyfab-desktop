@@ -42,6 +42,10 @@ import type { FilletFeature } from './filletProfile';
 import { filletToScad } from './filletProfile';
 import type { ChamferFeature } from './chamferProfile';
 import { chamferToScad } from './chamferProfile';
+import type { RibFeature } from './ribFeature';
+import { ribToScad } from './ribFeature';
+import type { SweepPathFeature } from './sweepPath';
+import { sweepPathToScad } from './sweepPath';
 
 // ─── IR ───────────────────────────────────────────────────────────────────
 
@@ -54,7 +58,9 @@ export type FeatureKind =
   | 'circular_pattern'
   | 'hole'
   | 'fillet'
-  | 'chamfer';
+  | 'chamfer'
+  | 'rib'
+  | 'sweep_path';
 
 export type FeaturePayload =
   | ExtrudeFeature
@@ -65,7 +71,9 @@ export type FeaturePayload =
   | CircularPatternFeature
   | HoleFeature
   | FilletFeature
-  | ChamferFeature;
+  | ChamferFeature
+  | RibFeature
+  | SweepPathFeature;
 
 export interface FeatureNode {
   /** Stable id within the tree. Used for dependency refs + UI selection. */
@@ -184,6 +192,10 @@ function renderNode(node: FeatureNode): string {
       return filletToScad(p);
     case 'chamfer':
       return chamferToScad(p);
+    case 'rib':
+      return ribToScad(p);
+    case 'sweep_path':
+      return sweepPathToScad(p);
   }
 }
 

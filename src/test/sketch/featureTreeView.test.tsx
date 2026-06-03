@@ -173,6 +173,8 @@ describe('FeatureTreeView', () => {
       hole: '⊙',
       fillet: '◜',
       chamfer: '◢',
+      rib: '▮',
+      sweep_path: '〰',
     };
     kinds.forEach((k, i) => {
       const icon = screen.getByTestId(`feature-tree-row-n${i}-icon`);

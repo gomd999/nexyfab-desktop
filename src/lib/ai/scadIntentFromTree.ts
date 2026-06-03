@@ -173,7 +173,34 @@ function describeNode(
       return describeFillet(p, lang);
     case 'chamfer':
       return describeChamfer(p, lang);
+    case 'rib':
+      return describeRib(p, lang);
+    case 'sweep_path':
+      return describeSweepPath(p, lang);
   }
+}
+
+function describeRib(
+  p: Extract<FeaturePayload, { kind: 'rib' }>,
+  lang: ExplainerLang,
+): NodeDescription {
+  const len = Math.hypot(p.end.x - p.start.x, p.end.y - p.start.y);
+  const text =
+    lang === 'ko'
+      ? `리브(보강대): 길이 ${fmt(len)}mm · 두께 ${fmt(p.thickness)}mm · 높이 ${fmt(p.height)}mm`
+      : `Rib (stiffener): ${fmt(len)}mm long, ${fmt(p.thickness)}mm thick, ${fmt(p.height)}mm tall`;
+  return { text, params: { length: len, thickness: p.thickness, height: p.height } };
+}
+
+function describeSweepPath(
+  p: Extract<FeaturePayload, { kind: 'sweep_path' }>,
+  lang: ExplainerLang,
+): NodeDescription {
+  const text =
+    lang === 'ko'
+      ? `경로 스윕: ${p.profile.length}점 프로파일을 ${p.path.length}점 경로를 따라 스윕`
+      : `Path sweep: a ${p.profile.length}-pt profile swept along a ${p.path.length}-pt path`;
+  return { text, params: { profilePoints: p.profile.length, pathPoints: p.path.length } };
 }
 
 function describeExtrude(

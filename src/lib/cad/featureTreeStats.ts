@@ -321,7 +321,59 @@ function computeNodeStats(
       return filletStats(p);
     case 'chamfer':
       return chamferStats(p);
+    case 'rib':
+      return ribStats(p);
+    case 'sweep_path':
+      return sweepPathStats(p);
   }
+}
+
+/** Rib = a box (length × thickness × height) standing on the XY plane. */
+function ribStats(p: Extract<FeaturePayload, { kind: 'rib' }>): FeatureStats {
+  const len = Math.hypot(p.end.x - p.start.x, p.end.y - p.start.y);
+  const v = len * p.thickness * p.height;
+  const sa = 2 * (len * p.thickness + len * p.height + p.thickness * p.height);
+  const half = p.thickness / 2;
+  const bbox: Bbox = {
+    min: { x: Math.min(p.start.x, p.end.x) - half, y: Math.min(p.start.y, p.end.y) - half, z: 0 },
+    max: { x: Math.max(p.start.x, p.end.x) + half, y: Math.max(p.start.y, p.end.y) + half, z: p.height },
+  };
+  return { kind: 'rib', volume: v, surfaceArea: sa, bbox };
+}
+
+/**
+ * Sweep-along-path = profile area × path length (same coarse model as
+ * `sweepStats`; bbox is path ⊕ profile half-extent, conservative).
+ */
+function sweepPathStats(p: Extract<FeaturePayload, { kind: 'sweep_path' }>): FeatureStats {
+  const area = Math.abs(signedArea(p.profile));
+  let len = 0;
+  for (let i = 1; i < p.path.length; i++) {
+    const a = p.path[i - 1]!;
+    const b = p.path[i]!;
+    len += Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+  }
+  const perim = polygonPerimeter(p.profile);
+  const profBb = loopBbox2D(p.profile);
+  const halfExtent = Math.max(
+    Math.abs(profBb.minX), Math.abs(profBb.maxX),
+    Math.abs(profBb.minY), Math.abs(profBb.maxY),
+  );
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (const pt of p.path) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.y > maxY) maxY = pt.y;
+    if (pt.z < minZ) minZ = pt.z;
+    if (pt.z > maxZ) maxZ = pt.z;
+  }
+  const bbox: Bbox = {
+    min: { x: minX - halfExtent, y: minY - halfExtent, z: minZ - halfExtent },
+    max: { x: maxX + halfExtent, y: maxY + halfExtent, z: maxZ + halfExtent },
+  };
+  return { kind: 'sweep_path', volume: area * len, surfaceArea: 2 * area + perim * len, bbox };
 }
 
 function extrudeStats(p: Extract<FeaturePayload, { kind: 'extrude' }>): FeatureStats {
