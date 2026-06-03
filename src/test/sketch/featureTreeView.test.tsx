@@ -175,6 +175,7 @@ describe('FeatureTreeView', () => {
       chamfer: '◢',
       rib: '▮',
       sweep_path: '〰',
+      boolean: '∪',
     };
     kinds.forEach((k, i) => {
       const icon = screen.getByTestId(`feature-tree-row-n${i}-icon`);

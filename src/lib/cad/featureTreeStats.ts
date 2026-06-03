@@ -325,7 +325,40 @@ function computeNodeStats(
       return ribStats(p);
     case 'sweep_path':
       return sweepPathStats(p);
+    case 'boolean':
+      return booleanStats(p, prior);
   }
+}
+
+/**
+ * Boolean combine. bbox = union of body bboxes (conservative — never
+ * under-estimates, safe for culling). Volume is coarse: union ≈ Σ bodies
+ * (ignores overlap), difference ≈ base body, intersection undefined (needs
+ * real geometry).
+ */
+function booleanStats(
+  p: Extract<FeaturePayload, { kind: 'boolean' }>,
+  prior: ReadonlyMap<string, FeatureStats>,
+): FeatureStats {
+  let acc: Bbox = EMPTY_BBOX;
+  let anyBbox = false;
+  const vols: number[] = [];
+  for (const bid of p.bodies) {
+    const s = prior.get(bid);
+    if (!s) continue;
+    if (s.bbox && !isEmptyBbox(s.bbox)) {
+      acc = unionBbox(acc, s.bbox);
+      anyBbox = true;
+    }
+    if (typeof s.volume === 'number') vols.push(s.volume);
+  }
+  let volume: number | undefined;
+  if (p.op === 'union') {
+    volume = vols.length > 0 ? vols.reduce((a, b) => a + b, 0) : undefined;
+  } else if (p.op === 'difference') {
+    volume = prior.get(p.bodies[0])?.volume;
+  }
+  return { kind: 'boolean', volume, bbox: anyBbox ? acc : undefined };
 }
 
 /** Rib = a box (length × thickness × height) standing on the XY plane. */

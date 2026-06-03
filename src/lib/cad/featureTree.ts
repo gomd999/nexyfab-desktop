@@ -46,6 +46,8 @@ import type { RibFeature } from './ribFeature';
 import { ribToScad } from './ribFeature';
 import type { SweepPathFeature } from './sweepPath';
 import { sweepPathToScad } from './sweepPath';
+import type { BooleanFeature } from './booleanFeature';
+import { booleanToScad } from './booleanFeature';
 
 // ─── IR ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +62,8 @@ export type FeatureKind =
   | 'fillet'
   | 'chamfer'
   | 'rib'
-  | 'sweep_path';
+  | 'sweep_path'
+  | 'boolean';
 
 export type FeaturePayload =
   | ExtrudeFeature
@@ -73,7 +76,8 @@ export type FeaturePayload =
   | FilletFeature
   | ChamferFeature
   | RibFeature
-  | SweepPathFeature;
+  | SweepPathFeature
+  | BooleanFeature;
 
 export interface FeatureNode {
   /** Stable id within the tree. Used for dependency refs + UI selection. */
@@ -159,12 +163,27 @@ export interface ReplayResult {
 export function replayTree(tree: FeatureTree): ReplayResult {
   validateTree(tree);
   const perNode = new Map<string, string>();
+  // Body nodes consumed by a boolean are rendered INSIDE the boolean's
+  // combinator, so they are not also emitted as standalone top-level parts.
+  const consumed = new Set<string>();
+  for (const node of tree.nodes) {
+    if (node.payload.kind === 'boolean') {
+      for (const b of node.payload.bodies) consumed.add(b);
+    }
+  }
   const emitted: string[] = [];
   const parts: string[] = [];
   for (const node of tree.nodes) {
-    const body = renderNode(node);
+    let body: string;
+    if (node.payload.kind === 'boolean') {
+      // Topological order guarantees the body nodes were rendered already.
+      const childScads = node.payload.bodies.map((bid) => perNode.get(bid) ?? '');
+      body = booleanToScad(node.payload, childScads);
+    } else {
+      body = renderNode(node);
+    }
     perNode.set(node.id, body);
-    if (node.suppressed) continue;
+    if (node.suppressed || consumed.has(node.id)) continue;
     emitted.push(node.id);
     parts.push(`// === ${node.id} (${node.name}) ===\n${body}`);
   }
@@ -196,6 +215,10 @@ function renderNode(node: FeatureNode): string {
       return ribToScad(p);
     case 'sweep_path':
       return sweepPathToScad(p);
+    case 'boolean':
+      // Booleans need their body nodes' SCAD, which only replayTree has; it
+      // intercepts this kind before renderNode is reached.
+      throw new FeatureTreeError('boolean features are resolved by replayTree, not renderNode');
   }
 }
 

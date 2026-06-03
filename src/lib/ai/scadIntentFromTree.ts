@@ -177,7 +177,21 @@ function describeNode(
       return describeRib(p, lang);
     case 'sweep_path':
       return describeSweepPath(p, lang);
+    case 'boolean':
+      return describeBoolean(p, lang);
   }
+}
+
+function describeBoolean(
+  p: Extract<FeaturePayload, { kind: 'boolean' }>,
+  lang: ExplainerLang,
+): NodeDescription {
+  const opKo = p.op === 'union' ? '합집합' : p.op === 'difference' ? '차집합' : '교집합';
+  const text =
+    lang === 'ko'
+      ? `불리언 ${opKo}: ${p.bodies.length}개 바디 결합`
+      : `Boolean ${p.op}: combine ${p.bodies.length} bodies`;
+  return { text, params: { op: p.op, bodyCount: p.bodies.length } };
 }
 
 function describeRib(

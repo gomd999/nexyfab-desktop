@@ -133,6 +133,7 @@ const KIND_ICON: Record<FeatureKind, string> = {
   chamfer: '◢',
   rib: '▮',
   sweep_path: '〰',
+  boolean: '∪',
 };
 
 // ─── component ────────────────────────────────────────────────────────────

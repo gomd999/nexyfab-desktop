@@ -158,3 +158,38 @@ describe('downstreamOf', () => {
     expect(downstreamOf(tree, 'a')).toEqual(new Set(['b', 'c', 'd']));
   });
 });
+
+// ─── boolean replay (Phase 2.x) ─────────────────────────────────────────────
+
+import type { BooleanFeature } from './booleanFeature';
+
+function booleanNode(id: string, op: BooleanFeature['op'], bodies: string[]): FeatureNode {
+  const payload: BooleanFeature = { kind: 'boolean', op, bodies };
+  return { id, name: id, dependencies: bodies, payload };
+}
+
+describe('replayTree — boolean', () => {
+  it('wraps its body nodes in the op combinator and consumes them (not emitted standalone)', () => {
+    const tree: FeatureTree = {
+      nodes: [
+        extrudeNode('a', 'A'),
+        extrudeNode('b', 'B'),
+        booleanNode('u', 'union', ['a', 'b']),
+      ],
+    };
+    const { scad, emittedOrder } = replayTree(tree);
+    // Only the boolean is a top-level part; a + b are consumed.
+    expect(emittedOrder).toEqual(['u']);
+    expect(scad).toMatch(/union\(\)/);
+    // Both bodies' extrude SCAD appears inside the union.
+    expect(scad.match(/linear_extrude/g)?.length).toBe(2);
+  });
+
+  it('difference preserves base-first order', () => {
+    const tree: FeatureTree = {
+      nodes: [extrudeNode('base', 'base'), extrudeNode('tool', 'tool'), booleanNode('d', 'difference', ['base', 'tool'])],
+    };
+    const { scad } = replayTree(tree);
+    expect(scad).toMatch(/difference\(\)/);
+  });
+});
