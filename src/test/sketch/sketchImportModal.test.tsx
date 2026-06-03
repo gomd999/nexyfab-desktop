@@ -244,3 +244,234 @@ describe('SketchImportModal — i18n (6 languages)', () => {
     });
   }
 });
+
+// ─── DXF integration + format detection tests ────────────────────────────
+// Below this line: SketchDxfImport integration. Added when SketchImportModal
+// was extended to handle both SVG and DXF in addition to the original SVG-
+// only ingress. Coverage targets the public contract of the new code path:
+//   - file extension → correct importer routed
+//   - content sniffing on paste → correct importer routed
+//   - detected-format badge surfaces the auto-detection result
+//   - unknown-format fallback try-both (SVG first, DXF second) — first
+//     success wins, both-fail surfaces a user-facing error
+//   - 6-lang detectedFormat / unknownFormat labels
+
+/** Minimal valid DXF with one LINE entity in the ENTITIES section. The DXF
+ *  parser is whitespace-tolerant so a few extra blank lines don't matter. */
+const VALID_DXF = `0
+SECTION
+2
+ENTITIES
+0
+LINE
+8
+0
+10
+0.0
+20
+0.0
+11
+50.0
+21
+50.0
+0
+ENDSEC
+0
+EOF`;
+
+/** DXF with one CIRCLE entity — used to verify the parsed result reaches
+ *  onImport with the right entity count. */
+const VALID_DXF_CIRCLE = `0
+SECTION
+2
+ENTITIES
+0
+CIRCLE
+8
+0
+10
+10.0
+20
+10.0
+40
+5.0
+0
+ENDSEC
+0
+EOF`;
+
+describe('SketchImportModal — file extension routing', () => {
+  it('file picker accepts .svg, .dxf, .stp, .step, and svg+xml mime', () => {
+    renderModal('en');
+    const fileInput = screen.getByTestId('sketch-import-file') as HTMLInputElement;
+    // The HTML accept attribute is exposed verbatim.
+    expect(fileInput.accept).toContain('.svg');
+    expect(fileInput.accept).toContain('.dxf');
+    expect(fileInput.accept).toContain('.stp');
+    expect(fileInput.accept).toContain('.step');
+    expect(fileInput.accept).toContain('image/svg+xml');
+  });
+
+  it('.svg file routes through importSketchFromSvg (line entity recovered)', async () => {
+    const { onImport, onClose } = renderModal('en');
+    const fileInput = screen.getByTestId('sketch-import-file') as HTMLInputElement;
+    const file = new File([VALID_SVG], 'sketch.svg', { type: 'image/svg+xml' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fireEvent.change(fileInput);
+    await waitFor(() => {
+      const ta = screen.getByTestId('sketch-import-textarea') as HTMLTextAreaElement;
+      expect(ta.value).toContain('<svg');
+    });
+    // After file load, the detected-format badge should read "Detected: SVG".
+    const badge = screen.getByTestId('sketch-import-detected-format');
+    expect(badge.getAttribute('data-format')).toBe('svg');
+    expect(badge.textContent).toMatch(/SVG/);
+
+    fireEvent.click(screen.getByTestId('sketch-import-submit'));
+    expect(onImport).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    const [entities] = onImport.mock.calls[0]!;
+    // VALID_SVG carries 1 line + 1 point — confirms SVG importer was used.
+    expect(entities.lines.length).toBe(1);
+    expect(entities.points.length).toBe(1);
+  });
+
+  it('.dxf file routes through importSketchFromDxf (line entity recovered)', async () => {
+    const { onImport, onClose } = renderModal('en');
+    const fileInput = screen.getByTestId('sketch-import-file') as HTMLInputElement;
+    const file = new File([VALID_DXF], 'sketch.dxf', { type: 'application/dxf' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fireEvent.change(fileInput);
+    await waitFor(() => {
+      const ta = screen.getByTestId('sketch-import-textarea') as HTMLTextAreaElement;
+      // DXF content begins with "0\nSECTION".
+      expect(ta.value.startsWith('0')).toBe(true);
+    });
+    // Filename ".dxf" → detection locks to DXF even though textarea content
+    // would also sniff as DXF; either way badge says DXF.
+    const badge = screen.getByTestId('sketch-import-detected-format');
+    expect(badge.getAttribute('data-format')).toBe('dxf');
+    expect(badge.textContent).toMatch(/DXF/);
+
+    fireEvent.click(screen.getByTestId('sketch-import-submit'));
+    expect(onImport).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    const [entities] = onImport.mock.calls[0]!;
+    // VALID_DXF has exactly one LINE entity.
+    expect(entities.lines.length).toBe(1);
+    expect(entities.lines[0].x1).toBe(0);
+    expect(entities.lines[0].x2).toBe(50);
+  });
+});
+
+describe('SketchImportModal — paste content sniffing', () => {
+  it('pasting SVG content (<svg…>) → SVG detected', () => {
+    renderModal('en');
+    pasteSvg(VALID_SVG);
+    const badge = screen.getByTestId('sketch-import-detected-format');
+    expect(badge.getAttribute('data-format')).toBe('svg');
+  });
+
+  it('pasting SVG content (<?xml…>) → SVG detected', () => {
+    renderModal('en');
+    pasteSvg('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><circle cx="0" cy="0" r="5"/></svg>');
+    const badge = screen.getByTestId('sketch-import-detected-format');
+    expect(badge.getAttribute('data-format')).toBe('svg');
+  });
+
+  it('pasting DXF content (0\\nSECTION…) → DXF detected and routed to DXF importer', () => {
+    const { onImport } = renderModal('en');
+    pasteSvg(VALID_DXF_CIRCLE);
+    const badge = screen.getByTestId('sketch-import-detected-format');
+    expect(badge.getAttribute('data-format')).toBe('dxf');
+    fireEvent.click(screen.getByTestId('sketch-import-submit'));
+    expect(onImport).toHaveBeenCalledTimes(1);
+    const [entities] = onImport.mock.calls[0]!;
+    // CIRCLE in DXF → one entity in `circles`, no lines.
+    expect(entities.circles.length).toBe(1);
+    expect(entities.lines.length).toBe(0);
+    expect(entities.circles[0].radius).toBe(5);
+  });
+
+  it('detected-format badge updates as user edits the textarea (svg → dxf)', () => {
+    renderModal('en');
+    pasteSvg(VALID_SVG);
+    expect(screen.getByTestId('sketch-import-detected-format').getAttribute('data-format'))
+      .toBe('svg');
+    pasteSvg(VALID_DXF);
+    expect(screen.getByTestId('sketch-import-detected-format').getAttribute('data-format'))
+      .toBe('dxf');
+  });
+});
+
+describe('SketchImportModal — unknown-format fallback (try both)', () => {
+  it('garbage input → unknown format badge AND both importers tried; user-facing error appears', () => {
+    const { onImport, onClose } = renderModal('en');
+    pasteSvg('this is neither SVG nor DXF, just a random sentence');
+    // Badge says unknown.
+    const badge = screen.getByTestId('sketch-import-detected-format');
+    expect(badge.getAttribute('data-format')).toBe('unknown');
+    // Clicking Import tries SVG first, fails; tries DXF, also fails; modal
+    // stays open with an error explaining both were attempted.
+    fireEvent.click(screen.getByTestId('sketch-import-submit'));
+    expect(onImport).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    const err = screen.getByTestId('sketch-import-error');
+    expect(err).toBeInTheDocument();
+    // The error message mentions the unknown-format hint AND surfaces the
+    // SVG-importer's underlying failure (since SVG is the primary attempt).
+    expect(err.textContent?.toLowerCase()).toMatch(/unknown|svg/);
+  });
+
+  it('unknown-format but SVG-parseable content (no recognized prefix) → SVG importer wins', () => {
+    // Carefully-crafted input: starts with whitespace + something that
+    // doesn't match either sniff signature, but the SVG importer's tolerant
+    // regex still finds an <svg> tag once it scans. We use a leading
+    // garbage line followed by valid SVG.
+    const { onImport } = renderModal('en');
+    // Wrap valid SVG in leading garbage — sniff returns 'unknown' (no
+    // <svg or <?xml at start, no 0\nSECTION at start) BUT once the SVG
+    // importer's regex scans, it locates the <svg> root and parses ok.
+    const tricky = `garbage prefix line\n<svg xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="0" x2="1" y2="1"/></svg>`;
+    pasteSvg(tricky);
+    expect(screen.getByTestId('sketch-import-detected-format').getAttribute('data-format'))
+      .toBe('unknown');
+    fireEvent.click(screen.getByTestId('sketch-import-submit'));
+    // Try-both fallback: SVG attempt succeeds, so onImport fires.
+    expect(onImport).toHaveBeenCalledTimes(1);
+    const [entities] = onImport.mock.calls[0]!;
+    expect(entities.lines.length).toBe(1);
+  });
+});
+
+describe('SketchImportModal — i18n detected-format + unknown-format labels', () => {
+  const detectedCases: Array<{ lang: 'en' | 'ko' | 'ja' | 'zh' | 'es' | 'ar'; svgPrefix: RegExp; dxfPrefix: RegExp; unknownLabel: RegExp }> = [
+    // Each entry: the locale, what the SVG badge text should match,
+    // what the DXF badge text should match, and what the unknown advisory
+    // looks like. We use loose RegExp tests so cosmetic punctuation tweaks
+    // don't fight the lockstep i18n updates.
+    { lang: 'en', svgPrefix: /Detected:\s*SVG/, dxfPrefix: /Detected:\s*DXF/, unknownLabel: /Unknown format/i },
+    { lang: 'ko', svgPrefix: /감지됨:\s*SVG/, dxfPrefix: /감지됨:\s*DXF/, unknownLabel: /형식을 알 수 없음/ },
+    { lang: 'ja', svgPrefix: /検出:\s*SVG/, dxfPrefix: /検出:\s*DXF/, unknownLabel: /形式不明/ },
+    { lang: 'zh', svgPrefix: /已检测:\s*SVG/, dxfPrefix: /已检测:\s*DXF/, unknownLabel: /格式未知/ },
+    { lang: 'es', svgPrefix: /Detectado:\s*SVG/, dxfPrefix: /Detectado:\s*DXF/, unknownLabel: /Formato desconocido/i },
+    { lang: 'ar', svgPrefix: /تم الاكتشاف:\s*SVG/, dxfPrefix: /تم الاكتشاف:\s*DXF/, unknownLabel: /صيغة غير معروفة/ },
+  ];
+  for (const { lang, svgPrefix, dxfPrefix, unknownLabel } of detectedCases) {
+    it(`${lang}: badge surfaces SVG / DXF / unknown labels in locale`, () => {
+      renderModal(lang);
+      // SVG sniff.
+      pasteSvg(VALID_SVG);
+      expect(screen.getByTestId('sketch-import-detected-format').textContent ?? '')
+        .toMatch(svgPrefix);
+      // DXF sniff.
+      pasteSvg(VALID_DXF);
+      expect(screen.getByTestId('sketch-import-detected-format').textContent ?? '')
+        .toMatch(dxfPrefix);
+      // Unknown sniff.
+      pasteSvg('totally not a sketch file payload of any kind');
+      expect(screen.getByTestId('sketch-import-detected-format').textContent ?? '')
+        .toMatch(unknownLabel);
+    });
+  }
+});
