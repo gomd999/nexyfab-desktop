@@ -25,6 +25,12 @@ export interface Topology3DConfig {
    *  so every solid element is supported from the build plate within ~45° — i.e.
    *  the result prints WITHOUT support structures. */
   overhang?: BuildAxis;
+  /** Minimum-feature-size control via density filtering + Heaviside projection.
+   *  The filter radius (rmin) sets the length scale; the projection sharpens the
+   *  design to near black-and-white so no member is thinner than the tool/nozzle.
+   *  `beta` controls sharpness (higher ⇒ more discrete). When set, the optimiser
+   *  uses the density-filter + projection path instead of sensitivity filtering. */
+  projection?: { beta?: number; eta?: number };
 }
 
 export interface BoundaryConditions3D {
@@ -291,6 +297,46 @@ export function countUnsupportedOverhang(
   return count;
 }
 
+// ─── minimum-feature-size: density filter + Heaviside projection ────────────
+
+type Filter = { idx: Int32Array[]; w: Float64Array[] };
+
+/** Density filter x̃ = (H x)/(Hs). Smooths features below the radius — the basis
+ *  for a minimum length scale (combined with projection). */
+function densityFilter(x: Float32Array, filter: Filter): Float32Array {
+  const out = new Float32Array(x.length);
+  for (let e = 0; e < x.length; e++) {
+    const ii = filter.idx[e], ww = filter.w[e];
+    let num = 0, den = 0;
+    for (let k = 0; k < ii.length; k++) { num += ww[k] * x[ii[k]]; den += ww[k]; }
+    out[e] = num / den;
+  }
+  return out;
+}
+
+/** Transpose of the density filter applied to a chained sensitivity dc/dx̃. */
+function densityFilterT(g: Float64Array, filter: Filter): Float64Array {
+  const out = new Float64Array(g.length);
+  for (let e = 0; e < g.length; e++) {
+    const ii = filter.idx[e], ww = filter.w[e];
+    let den = 0; for (let k = 0; k < ii.length; k++) den += ww[k];
+    const ge = g[e] / den;
+    for (let k = 0; k < ii.length; k++) out[ii[k]] += ww[k] * ge;
+  }
+  return out;
+}
+
+const HS_DEN = (beta: number, eta: number) => Math.tanh(beta * eta) + Math.tanh(beta * (1 - eta));
+/** Smooth Heaviside projection: pushes x̃ toward 0/1 about the threshold η. */
+function heaviside(x: number, beta: number, eta: number): number {
+  return (Math.tanh(beta * eta) + Math.tanh(beta * (x - eta))) / HS_DEN(beta, eta);
+}
+/** d(projection)/dx̃. */
+function dHeaviside(x: number, beta: number, eta: number): number {
+  const s = Math.tanh(beta * (x - eta));
+  return (beta * (1 - s * s)) / HS_DEN(beta, eta);
+}
+
 // ─── the optimiser ──────────────────────────────────────────────────────────
 
 export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions3D): Topology3DResult {
@@ -307,13 +353,29 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
   const filter = buildFilter(grid, rmin);
   let xE = new Float32Array(nE).fill(cfg.volfrac);
   const complianceHistory: number[] = [];
+  const proj = cfg.projection;
+  const betaMax = proj?.beta ?? 16, eta = proj?.eta ?? 0.5;
+  // β-continuation: start soft (≈ no projection) and sharpen toward betaMax so the
+  // design goes black-and-white gradually — a fixed high β traps the optimiser in
+  // a poor local minimum.
+  const betaAt = (it: number) => Math.min(betaMax, Math.pow(2, Math.floor(it / Math.max(1, Math.floor(maxIter / 5)))));
 
   let iter = 0;
   for (; iter < maxIter; iter++) {
-    // Physical (printable) density: with an AM build direction, unsupported
-    // material is suppressed, so the FEA "sees" only what will actually print —
-    // the optimiser then has no incentive to place material it can't support.
-    const xPhys = cfg.overhang ? amOverhangFilter(xE, grid, cfg.overhang) : xE;
+    const beta = betaAt(iter);
+    // Physical density seen by the FEA:
+    //  - projection: density-filter (length scale) then Heaviside-project (discrete);
+    //  - overhang: suppress unsupported material;
+    //  - else: the design density itself.
+    let xTilde: Float32Array | null = null;
+    let xPhys: Float32Array;
+    if (proj) {
+      xTilde = densityFilter(xE, filter);
+      xPhys = new Float32Array(nE);
+      for (let e = 0; e < nE; e++) xPhys[e] = heaviside(xTilde[e], beta, eta);
+    } else {
+      xPhys = cfg.overhang ? amOverhangFilter(xE, grid, cfg.overhang) : xE;
+    }
     const u = pcg(grid, K0, xPhys, p, f, fixed);
 
     // Element compliance + raw sensitivity (wrt the physical density).
@@ -333,13 +395,22 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
     }
     complianceHistory.push(compliance);
 
-    // Sensitivity filtering: (Σ w·x·dc)/(x·Σ w).
-    const dcf = new Float64Array(nE);
-    for (let e = 0; e < nE; e++) {
-      let num = 0, den = 0;
-      const ii = filter.idx[e], ww = filter.w[e];
-      for (let k = 0; k < ii.length; k++) { num += ww[k] * xPhys[ii[k]] * dc[ii[k]]; den += ww[k]; }
-      dcf[e] = num / (Math.max(1e-9, xPhys[e]) * den);
+    // Sensitivity wrt the DESIGN variable.
+    let dcf: Float64Array;
+    if (proj && xTilde) {
+      // Chain through the projection (dc/dx̃ = dc/dxPhys · H′) then the filter transpose.
+      const dcChain = new Float64Array(nE);
+      for (let e = 0; e < nE; e++) dcChain[e] = dc[e] * dHeaviside(xTilde[e], beta, eta);
+      dcf = densityFilterT(dcChain, filter);
+    } else {
+      // Sensitivity filtering: (Σ w·x·dc)/(x·Σ w).
+      dcf = new Float64Array(nE);
+      for (let e = 0; e < nE; e++) {
+        let num = 0, den = 0;
+        const ii = filter.idx[e], ww = filter.w[e];
+        for (let k = 0; k < ii.length; k++) { num += ww[k] * xPhys[ii[k]] * dc[ii[k]]; den += ww[k]; }
+        dcf[e] = num / (Math.max(1e-9, xPhys[e]) * den);
+      }
     }
 
     // Optimality-Criteria update with a bisection on the Lagrange multiplier.
@@ -363,9 +434,17 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
     if (change < 0.01) { iter++; break; }
   }
 
-  // Return the PRINTABLE design. The final projection uses the HARD AM filter so
-  // the output is GUARANTEED support-free (no overhang exceeds the 45° cone).
-  const out = cfg.overhang ? amOverhangFilter(xE, grid, cfg.overhang, 50, true) : xE;
+  // Final physical design: projected (min-feature) → overhang-hard-projected → raw.
+  let out: Float32Array;
+  if (proj) {
+    const xt = densityFilter(xE, filter);
+    out = new Float32Array(nE);
+    for (let e = 0; e < nE; e++) out[e] = heaviside(xt[e], betaMax, eta);
+  } else if (cfg.overhang) {
+    out = amOverhangFilter(xE, grid, cfg.overhang, 50, true); // hard ⇒ guaranteed support-free
+  } else {
+    out = xE;
+  }
   let vol = 0; for (let e = 0; e < nE; e++) vol += out[e];
   return { density: out, complianceHistory, volumeFraction: vol / nE, iterations: iter };
 }
