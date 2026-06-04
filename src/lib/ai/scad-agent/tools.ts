@@ -412,6 +412,22 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     const result = intentToScad(a.intent);
     if (!result.ok) {
+      // W4 — an unsupported shapeId is no longer a dead end. Route the agent to
+      // the composite fallback (add_composite_intent) instead of leaving
+      // write_scad as the only escape, so non-whitelisted shapes still reach a
+      // closed-loop-gated build. NB: gate on intentToScad's own support set, not
+      // the (narrower) schema allow-list, so renderable shapes aren't misrouted.
+      const unsupportedShape = /not yet supported by the deterministic SCAD converter/.test(result.reason);
+      if (unsupportedShape) {
+        return {
+          ok: false,
+          error: `'${(a.intent as { shapeId?: unknown }).shapeId}' is not a single whitelisted primitive. `
+            + `Build it as a boolean composition of primitives with add_composite_intent `
+            + `(e.g. an L-bracket = two boxes; a holed plate = box minus a cylinder). `
+            + `Fall back to write_scad only if it can't be composed.`,
+          code: 'USE_COMPOSITE',
+        };
+      }
       return {
         ok: false,
         error: `intent rejected: ${result.reason}. Use write_scad to author SCAD by hand if shape isn't supported.`,

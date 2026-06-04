@@ -149,6 +149,31 @@ describe('verify_spec tool', () => {
     expect(out.output).toMatch(/spec mismatch/);
   });
 
+  // ─── W4 — schema gate routes unknown shapes to the composite fallback ────
+  it('add_feature_intent routes an unsupported shape to add_composite_intent', async () => {
+    const tools = makeTools(noopHost());
+    const session = blankSession();
+    const r = asErr(await tool(tools, 'add_feature_intent')(
+      { intent: { shapeId: 'flying-saucer', params: { radius: 100 } } },
+      session,
+    ));
+    expect(r.code).toBe('USE_COMPOSITE');
+    expect(r.error).toMatch(/add_composite_intent/);
+  });
+
+  it('add_feature_intent still accepts a renderable shape outside the schema allow-list', async () => {
+    // 'tBeam' is in intentToScad's SUPPORTED_SHAPES but not the schema's
+    // narrower KNOWN_SHAPE_IDS — it must NOT be misrouted to composite.
+    const tools = makeTools(noopHost());
+    const session = blankSession();
+    const r = asOk(await tool(tools, 'add_feature_intent')(
+      { intent: { shapeId: 'tBeam', params: { width: 60, height: 100, length: 200 } } },
+      session,
+    ));
+    expect(r.output).toMatch(/SCAD generated/);
+    expect(session.lastIntent).toBeDefined();
+  });
+
   it('add_feature_intent clears a prior composite (mutual exclusivity)', async () => {
     const tools = makeTools(noopHost());
     const session = blankSession();

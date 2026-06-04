@@ -13,7 +13,7 @@ describe('validateIntent · shape allow-list', () => {
     expect(r.issues.filter(i => i.severity === 'error')).toHaveLength(0);
   });
 
-  it('rejects an unknown shapeId', () => {
+  it('rejects an unknown shapeId and routes to the composite fallback (W4)', () => {
     const r = validateIntent({
       shapeId: 'flying-saucer',
       params: { radius_mm: 100 },
@@ -21,7 +21,14 @@ describe('validateIntent · shape allow-list', () => {
     expect(r.ok).toBe(false);
     expect(r.parsed).toBeNull();
     expect(r.issues[0].code).toBe('shape-id-unknown');
-    expect(r.issues[0].hint).toContain('Supported');
+    expect(r.issues[0].hint).toContain('add_composite_intent');
+    expect(r.suggestComposite).toBe(true);
+  });
+
+  it('does NOT flag composite for a known shape with bad params (W4 scoping)', () => {
+    const r = validateIntent({ shapeId: 'box', params: 'not-an-object' });
+    expect(r.ok).toBe(false);
+    expect(r.suggestComposite).toBeFalsy(); // wrong params ≠ "needs composition"
   });
 
   it('rejects empty / non-string shapeId', () => {

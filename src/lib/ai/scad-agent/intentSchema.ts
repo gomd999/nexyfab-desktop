@@ -71,6 +71,13 @@ export interface IntentValidationResult {
   /** The (possibly null) parsed intent. `null` when the input was not
    *  a JSON object or critical fields were missing. */
   parsed: IntentInput | null;
+  /**
+   * W4 (ADR-015) — true when the only thing wrong is an unknown shapeId. The
+   * shape isn't a single whitelisted primitive, but it may still be buildable
+   * as a boolean COMPOSITION of primitives — the tool layer routes the agent to
+   * add_composite_intent instead of dead-ending on write_scad.
+   */
+  suggestComposite?: boolean;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -208,8 +215,10 @@ export function validateIntent(candidate: unknown): IntentValidationResult {
   if (!KNOWN_SHAPE_IDS.has(shapeId)) {
     pushIssue(issues, 'error', 'shape-id-unknown', 'shapeId',
       `'shapeId' = '${shapeId}' is not in the supported shape allow-list.`,
-      `Supported: ${Array.from(KNOWN_SHAPE_IDS).slice(0, 12).join(', ')}, …`);
-    return { ok: false, issues, parsed: null };
+      `Not a single primitive — build it as a boolean composition of primitives via add_composite_intent, ` +
+      `or pick from: ${Array.from(KNOWN_SHAPE_IDS).slice(0, 12).join(', ')}, …`);
+    // W4 — unknown shape is the ONLY error → flag the composite fallback.
+    return { ok: false, issues, parsed: null, suggestComposite: true };
   }
 
   const params = validateParams(candidate.params, issues, 'params');
