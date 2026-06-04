@@ -31,6 +31,11 @@ export interface Topology3DConfig {
    *  `beta` controls sharpness (higher ⇒ more discrete). When set, the optimiser
    *  uses the density-filter + projection path instead of sensitivity filtering. */
   projection?: { beta?: number; eta?: number };
+  /** Passive (non-design) regions, by element index. `solid` is forced full —
+   *  mounting bosses, bearing seats — `void` is forced empty — clearance holes,
+   *  keep-out zones. The optimiser routes material around them. */
+  passiveSolid?: Iterable<number>;
+  passiveVoid?: Iterable<number>;
 }
 
 export interface BoundaryConditions3D {
@@ -351,7 +356,14 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
   for (const [d, v] of bc.loads) f[d] += v;
 
   const filter = buildFilter(grid, rmin);
-  let xE = new Float32Array(nE).fill(cfg.volfrac);
+  const pSolid = new Set<number>(cfg.passiveSolid ?? []);
+  const pVoid = new Set<number>(cfg.passiveVoid ?? []);
+  const applyPassive = (x: Float32Array): Float32Array => {
+    for (const e of pSolid) x[e] = 1;
+    for (const e of pVoid) x[e] = 0;
+    return x;
+  };
+  let xE = applyPassive(new Float32Array(nE).fill(cfg.volfrac));
   const complianceHistory: number[] = [];
   const proj = cfg.projection;
   const betaMax = proj?.beta ?? 16, eta = proj?.eta ?? 0.5;
@@ -376,6 +388,7 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
     } else {
       xPhys = cfg.overhang ? amOverhangFilter(xE, grid, cfg.overhang) : xE;
     }
+    if (pSolid.size || pVoid.size) { xPhys = xPhys === xE ? Float32Array.from(xE) : xPhys; applyPassive(xPhys); }
     const u = pcg(grid, K0, xPhys, p, f, fixed);
 
     // Element compliance + raw sensitivity (wrt the physical density).
@@ -428,6 +441,7 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
       }
       if (vol / nE > cfg.volfrac) lo = lmid; else hi = lmid;
     }
+    applyPassive(xNew); // keep-in/keep-out regions are not design variables
     let change = 0;
     for (let e = 0; e < nE; e++) { change = Math.max(change, Math.abs(xNew[e] - xE[e])); }
     xE = xNew;
@@ -443,8 +457,9 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
   } else if (cfg.overhang) {
     out = amOverhangFilter(xE, grid, cfg.overhang, 50, true); // hard ⇒ guaranteed support-free
   } else {
-    out = xE;
+    out = Float32Array.from(xE);
   }
+  applyPassive(out); // passive regions are exact in the final design too
   let vol = 0; for (let e = 0; e < nE; e++) vol += out[e];
   return { density: out, complianceHistory, volumeFraction: vol / nE, iterations: iter };
 }
