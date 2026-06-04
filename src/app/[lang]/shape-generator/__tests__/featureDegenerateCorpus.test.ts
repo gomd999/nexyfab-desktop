@@ -118,4 +118,24 @@ describe('feature degenerate-input corpus (F2 robustness)', () => {
       }
     }
   }, 120_000);
+
+  // The interaction surface: a degenerate solid AND rail params at once. Single-axis
+  // tests pass each in isolation; bugs often hide in the cross (e.g. a beyond-range
+  // tool on a sub-millimetre solid).
+  it('every feature × (degenerate geometry × rail params) stays sane-or-blocked', () => {
+    const geos = degenerateGeometries().filter((g) => g.name !== 'normal-box');
+    const strats = ['zeros', 'beyondMax', 'beyondMin'] as const;
+    for (const ft of FEATURES) {
+      const def = FEATURE_MAP[ft as keyof typeof FEATURE_MAP];
+      for (const strat of strats) {
+        const p = params(def.params as ParamDef[], PARAM_STRATEGIES[strat]);
+        for (const { name, geo } of geos) {
+          assertSaneOrBlocked(
+            () => def.apply(geo.clone(), p),
+            `${ft} / geo:${name} × params:${strat} ${JSON.stringify(p)}`,
+          );
+        }
+      }
+    }
+  }, 120_000);
 });
