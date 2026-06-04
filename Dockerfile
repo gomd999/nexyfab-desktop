@@ -12,10 +12,10 @@ RUN npm ci --legacy-peer-deps
 # Copy source
 COPY . .
 
-# Build (4GB heap for large Next.js projects)
+# Build (8GB heap — the project outgrew 4GB; webpack OOMs mid-compile at 4096).
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_OPTIONS=--max-old-space-size=4096
+ENV NODE_OPTIONS=--max-old-space-size=8192
 RUN npm run build
 
 # ---- Runner stage ----
