@@ -294,6 +294,79 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     }
   }
 
+  /** Outward unit normal of a planar face (null for non-planar / failure). */
+  function planarFaceNormal(face: OcctInstance): Vec3 | null {
+    try {
+      const brepTool = oc.BRep_Tool as unknown as { Surface_2?: (f: unknown) => OcctInstance; Surface?: (f: unknown) => OcctInstance };
+      const handle = (brepTool.Surface_2 ? brepTool.Surface_2(face) : brepTool.Surface!(face)) as OcctInstance;
+      const surf = (typeof handle.get === 'function' ? handle.get() : handle) as OcctInstance;
+      if (typeof surf.Pln !== 'function') return null; // non-planar
+      const pln = surf.Pln() as OcctInstance;
+      const dir = (pln.Axis() as OcctInstance).Direction() as OcctInstance;
+      return { x: dir.X() as number, y: dir.Y() as number, z: dir.Z() as number };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Draft (taper) the side walls of a solid for moulding/casting. Every planar
+   * face whose normal is roughly perpendicular to the pull direction is tilted
+   * by `angleDeg`, pivoting about the neutral plane (z = neutralZ, normal =
+   * pull). Real OCCT BRepOffsetAPI_DraftAngle. Real-kernel only.
+   */
+  function draftImpl(
+    shape: OcctShape,
+    opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number },
+  ): OcctOperationResult {
+    const angleDeg = opts.angleDeg;
+    if (!Number.isFinite(angleDeg) || angleDeg <= 0 || angleDeg >= 90) {
+      return { ok: false, error: `draft: angleDeg must be in (0, 90), got ${angleDeg}`, warnings: [] };
+    }
+    let live: OcctInstance;
+    try {
+      live = lookup(shape, 'draft');
+    } catch (e) {
+      return { ok: false, error: `draft: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+    const pull = opts.pullDir ?? [0, 0, 1];
+    const neutralZ = opts.neutralZ ?? 0;
+    const angle = (angleDeg * Math.PI) / 180;
+
+    try {
+      const draft = m.inst('BRepOffsetAPI_DraftAngle_2', live);
+      const pullDir = m.inst('gp_Dir_4', pull[0], pull[1], pull[2]);
+      const neutralPln = m.inst('gp_Pln_3', m.inst('gp_Pnt_3', 0, 0, neutralZ), m.inst('gp_Dir_4', pull[0], pull[1], pull[2]));
+
+      const shapeEnum = oc.TopAbs_ShapeEnum as unknown as { TopAbs_FACE: unknown; TopAbs_SHAPE: unknown };
+      const topoDS = oc.TopoDS as unknown as { Face_1: (s: unknown) => OcctInstance };
+      const exp = m.inst('TopExp_Explorer_2', live, shapeEnum.TopAbs_FACE, shapeEnum.TopAbs_SHAPE);
+      let added = 0;
+      while (exp.More()) {
+        const face = topoDS.Face_1(exp.Current());
+        const n = planarFaceNormal(face);
+        // Side wall: normal roughly perpendicular to the pull direction.
+        if (n && Math.abs(n.x * pull[0] + n.y * pull[1] + n.z * pull[2]) < 0.5) {
+          try {
+            draft.Add(face, pullDir, angle, neutralPln, true);
+            added++;
+          } catch { /* face the kernel can't draft (e.g. already tapered) — skip */ }
+        }
+        exp.Next();
+      }
+      if (added === 0) {
+        return { ok: false, error: 'draft: no draftable side faces found for the given pull direction', warnings: [] };
+      }
+      draft.Build();
+      if (!(draft.IsDone() as boolean)) {
+        return { ok: false, error: 'draft: kernel failed (angle too large / self-intersection?)', warnings: [] };
+      }
+      return result(draft.Shape() as OcctInstance, [`drafted ${added} wall(s) @ ${angleDeg}°`]);
+    } catch (e) {
+      return { ok: false, error: `draft: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+  }
+
   return {
     async buildFromExtrude(feature: ExtrudeFeature) {
       try {
@@ -338,6 +411,9 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     },
     async variableFillet(shape, edges) {
       return variableFilletImpl(shape, edges);
+    },
+    async draft(shape, opts) {
+      return draftImpl(shape, opts);
     },
     async exportSTEP(shape: OcctShape): Promise<string> {
       const live = lookup(shape, 'exportSTEP');

@@ -85,6 +85,15 @@ export interface OcctBridge {
     shape: OcctShape,
     edges: ReadonlyArray<{ edgeId: string; radius: number }>,
   ): Promise<OcctOperationResult>;
+  /**
+   * Draft (taper) the side walls of a solid for moulding/casting: planar faces
+   * perpendicular-ish to `pullDir` (default +Z) tilt by `angleDeg`, pivoting
+   * about the neutral plane at `neutralZ`. Real-kernel only → OPTIONAL.
+   */
+  draft?(
+    shape: OcctShape,
+    opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number },
+  ): Promise<OcctOperationResult>;
   exportSTEP(shape: OcctShape): Promise<string>;
   importSTEP(source: string): Promise<OcctOperationResult>;
   /**

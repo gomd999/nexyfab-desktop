@@ -104,6 +104,24 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(unknown.error).toMatch(/unresolved|unknown/);
   });
 
+  it('K7: draft tapers the side walls of a box (volume shrinks)', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const r = await bridge.draft!(box.shape!, { angleDeg: 5 }); // pull +Z, neutral z=0
+    expect(r.ok).toBe(true);
+    // 5° inward taper on all 4 walls removes material: 500 → ~457
+    expect(r.shape!.volume).toBeLessThan(500);
+    expect(r.shape!.volume).toBeGreaterThan(440);
+  });
+
+  it('K7: draft rejects an out-of-range angle', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const r = await bridge.draft!(box.shape!, { angleDeg: 120 });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/\(0, 90\)/);
+  });
+
   it('K3: fillet sel:all rounds every edge', async () => {
     if (!okLoad) return;
     const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
