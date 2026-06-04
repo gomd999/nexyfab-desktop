@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { TopologyGrid } from '../analysis/topology3D';
-import { hex8Modes, hex8Participation, fixedFaceNodes } from './modalFEM';
+import { hex8Modes, hex8Participation, hex8HarmonicResponse, fixedFaceNodes } from './modalFEM';
 
 const E = 210000, nu = 0.3, rho = 7.85e-9; // steel, N-mm-tonne-MPa units
 
@@ -83,5 +83,38 @@ describe('modalFEM — modal mass participation (resonance assessment)', () => {
     }
     // with 8 modes a slender cantilever reaches the response-spectrum 90% target in Y.
     expect(part.cumulativeFraction[part.cumulativeFraction.length - 1].y).toBeGreaterThan(0.85);
+  });
+});
+
+describe('modalFEM — harmonic (frequency) response by modal superposition', () => {
+  const nx = 16, ny = 2, nz = 4, h = 10;
+  const grid = new TopologyGrid(nx, ny, nz);
+  const fixed = fixedFaceNodes(grid, 'x');
+  const mat = { E: 210000, nu: 0.3, rho: 7.85e-9, cell: h, fixed };
+  const f1 = hex8Modes(grid, { ...mat, nModes: 1 }).frequenciesHz[0];
+  const tip = grid.node(nx, 1, 2);
+  const freqsHz: number[] = [];
+  for (let f = 10; f <= 2000; f += 10) freqsHz.push(f);
+  const zeta = 0.02;
+  const resp = hex8HarmonicResponse(grid, {
+    ...mat, nModes: 8, loadNode: tip, loadAxis: 1, loadMag: 1000, probeNode: tip, probeAxis: 1, freqsHz, zeta,
+  });
+  const peak = resp.amplitude.reduce((acc, a, i) => (a > acc.a ? { a, f: resp.freqHz[i] } : acc), { a: 0, f: 0 });
+
+  it('resonates at the first natural frequency (peak amplitude near f1)', () => {
+    expect(peak.f).toBeGreaterThan(f1 * 0.9);
+    expect(peak.f).toBeLessThan(f1 * 1.1);
+  });
+
+  it('the ω→0 response equals the static deflection', () => {
+    expect(resp.amplitude[0]).toBeGreaterThan(0);
+    expect(Math.abs(resp.amplitude[0] - resp.staticAmplitude) / resp.staticAmplitude).toBeLessThan(0.02);
+  });
+
+  it('amplifies at resonance by ~the quality factor Q = 1/(2ζ)', () => {
+    const Q = 1 / (2 * zeta); // = 25
+    const amp = peak.a / resp.staticAmplitude;
+    expect(amp).toBeGreaterThan(0.5 * Q);   // dominant-mode amplification
+    expect(amp).toBeLessThan(1.3 * Q);
   });
 });

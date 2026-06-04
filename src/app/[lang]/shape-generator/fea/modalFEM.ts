@@ -30,6 +30,7 @@ interface AssembledModal {
   Kff: number[];       // reduced stiffness (nFree × nFree, row-major)
   Mdiag: number[];     // reduced lumped mass (nFree)
   freeAxis: Int8Array; // 0/1/2 (x/y/z) per free DOF
+  dofToFree: Int32Array; // full DOF (node*3+axis) → free index, or -1 if fixed
   nFree: number;
 }
 
@@ -73,7 +74,7 @@ function assembleHex8Modal(grid: TopologyGrid, opts: Hex8ModalOptions): Assemble
       if (dd >= 0) Mdiag[dd] += lumpedNodeMass;
     }
   }
-  return { Kff, Mdiag, freeAxis, nFree };
+  return { Kff, Mdiag, freeAxis, dofToFree: freeIdx, nFree };
 }
 
 /** Lowest natural frequencies (Hz) of a uniform solid grid. */
@@ -132,4 +133,65 @@ export function fixedFaceNodes(grid: TopologyGrid, axis: 'x' | 'y' | 'z' = 'x'):
     if (on) fixed.add(grid.node(ix, iy, iz));
   }
   return fixed;
+}
+
+export type Axis3 = 0 | 1 | 2;
+
+export interface HarmonicOptions extends Hex8ModalOptions {
+  /** Harmonic point force: magnitude `loadMag` at node `loadNode`, axis `loadAxis`. */
+  loadNode: number; loadAxis: Axis3; loadMag: number;
+  /** Response is reported at node `probeNode`, axis `probeAxis`. */
+  probeNode: number; probeAxis: Axis3;
+  /** Excitation frequencies to sweep (Hz). */
+  freqsHz: number[];
+  /** Modal damping ratio ζ (default 0.02). */
+  zeta?: number;
+}
+
+export interface HarmonicResult {
+  freqHz: number[];
+  /** Steady-state response amplitude |u| at the probe per excitation frequency. */
+  amplitude: number[];
+  /** ω→0 (static) response amplitude — the static deflection. */
+  staticAmplitude: number;
+}
+
+/**
+ * Steady-state HARMONIC (frequency) response by modal superposition. For a force
+ * F·e^{iωt} the response is u(ω) = Σ_i (φ_iᵀF) φ_i / (ω_i² − ω² + 2iζω_iω). The
+ * amplitude peaks at each natural frequency (resonance); the ω→0 limit is the
+ * static deflection. Reuses the verified modal solve.
+ */
+export function hex8HarmonicResponse(grid: TopologyGrid, opts: HarmonicOptions): HarmonicResult {
+  const { Kff, Mdiag, dofToFree, nFree } = assembleHex8Modal(grid, opts);
+  const zeros = () => ({ freqHz: opts.freqsHz, amplitude: opts.freqsHz.map(() => 0), staticAmplitude: 0 });
+  if (nFree === 0) return zeros();
+  const loadDof = dofToFree[opts.loadNode * 3 + opts.loadAxis];
+  const probeDof = dofToFree[opts.probeNode * 3 + opts.probeAxis];
+  if (loadDof < 0 || probeDof < 0) return zeros();
+
+  const modes = computeModes({ stiffness: Kff, massDiag: Mdiag, modeCount: opts.nModes ?? 8, maxIters: 300 });
+  const zeta = opts.zeta ?? 0.02;
+  const wi = modes.map((m) => 2 * Math.PI * m.frequencyHz);   // modal ω
+  const fi = modes.map((m) => m.vector[loadDof]! * opts.loadMag); // modal force φ_iᵀF
+  const pi = modes.map((m) => m.vector[probeDof]!);            // probe component of φ_i
+
+  const amplitude = opts.freqsHz.map((fHz) => {
+    const w = 2 * Math.PI * fHz;
+    let re = 0, im = 0;
+    for (let i = 0; i < modes.length; i++) {
+      if (wi[i] <= 0) continue;
+      const dRe = wi[i] * wi[i] - w * w;
+      const dIm = 2 * zeta * wi[i] * w;
+      const d2 = dRe * dRe + dIm * dIm || 1e-300;
+      // q_i = f_i / (dRe + i·dIm); u_probe += q_i · p_i
+      re += (fi[i] * dRe / d2) * pi[i];
+      im += (-fi[i] * dIm / d2) * pi[i];
+    }
+    return Math.hypot(re, im);
+  });
+
+  let staticAmp = 0;
+  for (let i = 0; i < modes.length; i++) if (wi[i] > 0) staticAmp += (fi[i] * pi[i]) / (wi[i] * wi[i]);
+  return { freqHz: opts.freqsHz, amplitude, staticAmplitude: Math.abs(staticAmp) };
 }
