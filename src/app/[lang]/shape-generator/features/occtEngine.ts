@@ -789,6 +789,59 @@ export function occtLoftProfiles(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+// ─── Kernel-backed filled surface (Track S — surfacing on the OCCT kernel) ──
+
+export interface OcctSurfaceResult extends OcctExtrudeResult {
+  /** The B-rep surface type OCCT assigned (e.g. BSPLINE_SURFACE) — proves the
+   *  result is a real kernel surface, not a tessellated approximation. */
+  surfaceType: string | null;
+}
+
+interface BSplineEdge { /* opaque replicad Edge */ _e?: never }
+interface FilledFace {
+  geomType: string;
+  mesh: (cfg?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] };
+}
+
+/**
+ * Build a real B-rep surface FACE filling a 4-sided boundary of (possibly
+ * curved) edges, on the OCCT kernel — `makeBSplineApproximation` fits each
+ * boundary as a B-spline edge, `assembleWire` closes them, `makeNonPlanarFace`
+ * fills the wire (BRepFill). The result is a genuine `Geom_BSplineSurface`-backed
+ * face with exact UV/normals, not a tessellated patch — so trims/knits/offsets
+ * downstream are kernel-exact (Track S goal). Returns the tessellation + a
+ * registry handle + the OCCT surface type. Requires `isOcctReady()`.
+ */
+export function occtFilledSurface(
+  boundary: Array<Array<{ x: number; y: number; z: number }>>,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctSurfaceResult {
+  const rc = requireReplicad();
+  const makeApprox = rc.makeBSplineApproximation as ((pts: Array<[number, number, number]>, cfg?: unknown) => BSplineEdge) | undefined;
+  const assemble = rc.assembleWire as ((edges: BSplineEdge[]) => unknown) | undefined;
+  const makeNonPlanar = rc.makeNonPlanarFace as ((wire: unknown) => FilledFace) | undefined;
+  if (typeof makeApprox !== 'function' || typeof assemble !== 'function' || typeof makeNonPlanar !== 'function'
+      || boundary.length !== 4) {
+    return { geometry: new BufferGeometry(), handle: null, surfaceType: null };
+  }
+  try {
+    const edges = boundary.map((curve) => {
+      if (curve.length < 2) throw new Error('boundary curve needs ≥2 points');
+      return makeApprox(curve.map((p) => [p.x, p.y, p.z] as [number, number, number]));
+    });
+    const wire = assemble(edges);
+    const face = makeNonPlanar(wire);
+    const mesh = face.mesh({
+      tolerance: tessellation.tolerance ?? 0.1,
+      angularTolerance: tessellation.angularTolerance ?? 0.2,
+    });
+    return { geometry: meshToBufferGeometry(mesh), handle: registerShape(face), surfaceType: face.geomType ?? null };
+  } catch (err) {
+    console.warn('[occtFilledSurface] kernel fill failed:', err);
+    return { geometry: new BufferGeometry(), handle: null, surfaceType: null };
+  }
+}
+
 interface SweepSketch {
   sweepSketch: (
     fn: (plane: unknown, origin: unknown) => unknown,
