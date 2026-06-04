@@ -60,6 +60,7 @@ interface WorkerIntrospect {
     filletOrChamfer: (op: string, h: number, edgeIds: string[], dim: number) => { ok: boolean; handle?: number; kind?: string; error?: string; warnings: string[] };
     exportSTEP: (h: number) => { ok: boolean; step?: string; error?: string; warnings: string[] };
     importSTEP: (s: string) => { ok: boolean; handle?: number; kind?: string; error?: string; warnings: string[] };
+    tessellate: (h: number, deflection?: number) => { ok: boolean; mesh?: unknown; error?: string; warnings: string[] };
     freeHandle: (h: number) => boolean;
     alloc: (s: unknown) => number;
     shapeMetrics: (s: unknown) => unknown;
@@ -124,6 +125,7 @@ describe('occt-worker-real.js: 11-op handler presence', () => {
       'chamfer',
       'exportSTEP',
       'importSTEP',
+      'tessellate',
       'release',
     ]) {
       expect(WORKER_REAL_SOURCE).toContain("'" + op + "'");
@@ -147,6 +149,7 @@ describe('occt-worker-real.js: 11-op handler presence', () => {
     expect(typeof introspect.ops.filletOrChamfer).toBe('function');
     expect(typeof introspect.ops.exportSTEP).toBe('function');
     expect(typeof introspect.ops.importSTEP).toBe('function');
+    expect(typeof introspect.ops.tessellate).toBe('function');
     expect(typeof introspect.ops.freeHandle).toBe('function');
   });
 });

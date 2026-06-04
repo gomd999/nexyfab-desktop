@@ -534,6 +534,155 @@
     }
   }
 
+  /**
+   * Tessellate a live B-rep into viewer buffers (OcctTessellation): flat-shaded
+   * triangles + feature (sharp/boundary) edges + framing bounds. Real BRepMesh +
+   * per-face triangulation, welded into a manifold — the same algorithm as
+   * src/lib/occt/occtTessellate.ts (which is unit-tested against real OCCT),
+   * transcribed for the classic worker.
+   */
+  function tessellate(handle, deflection) {
+    if (!occt) return notReady();
+    var shape = handles.get(handle);
+    if (!shape) return { ok: false, error: 'tessellate: unknown handle (' + handle + ')', warnings: [] };
+    var defl = (typeof deflection === 'number' && deflection > 0) ? deflection : 0.1;
+
+    var IncMesh = occt.BRepMesh_IncrementalMesh_2 || occt.BRepMesh_IncrementalMesh;
+    var ExpCtor = occt.TopExp_Explorer_2 || occt.TopExp_Explorer;
+    var LocCtor = occt.TopLoc_Location_1 || occt.TopLoc_Location;
+    if (!IncMesh || !ExpCtor || !LocCtor || !occt.TopAbs_ShapeEnum || !occt.TopAbs_Orientation || !occt.TopoDS || !occt.BRep_Tool) {
+      return { ok: false, error: 'tessellate: required OCCT symbol missing', warnings: [] };
+    }
+    var FACE = occt.TopAbs_ShapeEnum.TopAbs_FACE;
+    var SHAPE = occt.TopAbs_ShapeEnum.TopAbs_SHAPE;
+    var REVERSED = occt.TopAbs_Orientation.TopAbs_REVERSED;
+
+    var verts = [];
+    var vmap = Object.create(null);
+    function weld(x, y, z) {
+      var key = Math.round(x * 1e4) + ',' + Math.round(y * 1e4) + ',' + Math.round(z * 1e4);
+      var hit = vmap[key];
+      if (hit !== undefined) return hit;
+      var i = verts.length / 3;
+      verts.push(x, y, z);
+      vmap[key] = i;
+      return i;
+    }
+    var tris = [];          // welded indices, 3 per triangle
+    var triNormals = [];    // 3 per triangle (flat)
+    var edgeFaces = Object.create(null);
+    function addEdge(u, w, nx, ny, nz) {
+      var lo = u < w ? u : w, hi = u < w ? w : u;
+      var k = lo + '-' + hi;
+      (edgeFaces[k] || (edgeFaces[k] = [])).push([nx, ny, nz, lo, hi]);
+    }
+
+    var mesher = null, exp = null;
+    try {
+      mesher = new IncMesh(shape, defl, false, 0.5, false);
+      exp = new ExpCtor(shape, FACE, SHAPE);
+      while (exp.More()) {
+        var faceShape = occt.TopoDS.Face_1 ? occt.TopoDS.Face_1(exp.Current()) : occt.TopoDS.Face(exp.Current());
+        var reversed = faceShape.Orientation_1 ? (faceShape.Orientation_1() === REVERSED) : (faceShape.Orientation() === REVERSED);
+        var loc = new LocCtor();
+        var triHandle = occt.BRep_Tool.Triangulation(faceShape, loc);
+        if (triHandle && !triHandle.IsNull()) {
+          var tri = triHandle.get();
+          var trsf = loc.Transformation();
+          var nbTri = tri.NbTriangles();
+          var globalOf = function (localIdx) {
+            var n = tri.Node(localIdx);
+            var nt = n.Transformed(trsf);
+            var gi = weld(nt.X(), nt.Y(), nt.Z());
+            if (typeof nt.delete === 'function') nt.delete();
+            return gi;
+          };
+          for (var t = 1; t <= nbTri; t++) {
+            var trg = tri.Triangle(t);
+            var a = globalOf(trg.Value(1));
+            var b = globalOf(trg.Value(2));
+            var c = globalOf(trg.Value(3));
+            if (a === b || b === c || a === c) continue;
+            var ax = verts[a * 3], ay = verts[a * 3 + 1], az = verts[a * 3 + 2];
+            var bx = verts[b * 3], by = verts[b * 3 + 1], bz = verts[b * 3 + 2];
+            var cx = verts[c * 3], cy = verts[c * 3 + 1], cz = verts[c * 3 + 2];
+            var ux = bx - ax, uy = by - ay, uz = bz - az;
+            var vx = cx - ax, vy = cy - ay, vz = cz - az;
+            var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+            var L = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+            nx /= L; ny /= L; nz /= L;
+            var ib = b, ic = c;
+            if (reversed) { nx = -nx; ny = -ny; nz = -nz; ib = c; ic = b; }
+            tris.push(a, ib, ic);
+            triNormals.push(nx, ny, nz);
+          }
+        }
+        if (loc && typeof loc.delete === 'function') loc.delete();
+        exp.Next();
+      }
+
+      var positions = [], normals = [];
+      var triangleCount = tris.length / 3;
+      for (var ti = 0; ti < triangleCount; ti++) {
+        var i0 = tris[ti * 3], i1 = tris[ti * 3 + 1], i2 = tris[ti * 3 + 2];
+        var Nx = triNormals[ti * 3], Ny = triNormals[ti * 3 + 1], Nz = triNormals[ti * 3 + 2];
+        var idxs = [i0, i1, i2];
+        for (var q = 0; q < 3; q++) {
+          var vi = idxs[q];
+          positions.push(verts[vi * 3], verts[vi * 3 + 1], verts[vi * 3 + 2]);
+          normals.push(Nx, Ny, Nz);
+        }
+        addEdge(i0, i1, Nx, Ny, Nz);
+        addEdge(i1, i2, Nx, Ny, Nz);
+        addEdge(i2, i0, Nx, Ny, Nz);
+      }
+      if (triangleCount === 0) return { ok: false, error: 'tessellate: empty mesh', warnings: [] };
+
+      // Feature edges: boundary, or dihedral > 25°.
+      var COS = Math.cos(25 * Math.PI / 180);
+      var edges = [], edgeCount = 0;
+      for (var key in edgeFaces) {
+        var arr = edgeFaces[key];
+        var keep = true;
+        if (arr.length >= 2) {
+          var d = arr[0][0] * arr[1][0] + arr[0][1] * arr[1][1] + arr[0][2] * arr[1][2];
+          keep = d < COS;
+        }
+        if (!keep) continue;
+        var lo = arr[0][3], hi = arr[0][4];
+        edges.push(verts[lo * 3], verts[lo * 3 + 1], verts[lo * 3 + 2], verts[hi * 3], verts[hi * 3 + 1], verts[hi * 3 + 2]);
+        edgeCount++;
+      }
+
+      var minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      for (var vj = 0; vj < verts.length / 3; vj++) {
+        var x = verts[vj * 3], y = verts[vj * 3 + 1], z = verts[vj * 3 + 2];
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+      }
+      var sx = maxX - minX, sy = maxY - minY, sz = maxZ - minZ;
+      return {
+        ok: true,
+        mesh: {
+          positions: positions, normals: normals, edges: edges,
+          triangleCount: triangleCount, edgeCount: edgeCount,
+          bounds: {
+            center: [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2],
+            size: [sx, sy, sz],
+            radius: 0.5 * Math.sqrt(sx * sx + sy * sy + sz * sz),
+          },
+        },
+        warnings: [],
+      };
+    } catch (err) {
+      return { ok: false, error: 'tessellate: ' + (err && err.message), warnings: [] };
+    } finally {
+      if (mesher && typeof mesher.delete === 'function') mesher.delete();
+      if (exp && typeof exp.delete === 'function') exp.delete();
+    }
+  }
+
   // ─── dispatch ──────────────────────────────────────────────────────────
 
   function reply(msg) {
@@ -606,6 +755,13 @@
           makeShapePayload(reqId, importSTEP(args.source));
           return;
 
+        case 'tessellate': {
+          const tr = tessellate(args.handle, args.deflection);
+          if (!tr.ok) { reply({ reqId: reqId, ok: false, error: tr.error, warnings: tr.warnings || [] }); return; }
+          reply({ reqId: reqId, ok: true, mesh: tr.mesh, warnings: tr.warnings || [] });
+          return;
+        }
+
         case 'release': {
           const h = typeof args.handle === 'number' ? args.handle : -1;
           freeHandle(h);
@@ -651,6 +807,7 @@
           filletOrChamfer: filletOrChamfer,
           exportSTEP: exportSTEP,
           importSTEP: importSTEP,
+          tessellate: tessellate,
           freeHandle: freeHandle,
           alloc: alloc,
           shapeMetrics: shapeMetrics,
