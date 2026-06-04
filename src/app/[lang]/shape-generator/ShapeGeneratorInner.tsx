@@ -120,6 +120,7 @@ import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
 import GetQuoteButton from './export/GetQuoteButton';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
+import { parseFeatureEditPrompt } from './ai/nlFeatureEditParser';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
@@ -10076,10 +10077,12 @@ export function ShapeGeneratorInner() {
         onRequestQuote={() => requirePro('rfq', () => setShowRfqPanel(true))}
       />
 
-      {/* Phase-2/3 floating AI shell — viewport-overlay prompt +
-          intent dispatcher. promptToIntents is a placeholder stub
-          until the LLM pipeline (lib/ai/scad-agent) is wired through;
-          for now it returns an empty intent list with a help message. */}
+      {/* Phase-2/3 floating AI shell — viewport-overlay prompt + intent
+          dispatcher. promptToIntents is wired to the deterministic
+          natural-language feature-edit parser (nlFeatureEditParser): common
+          commands — "add a 5mm fillet", "make it 8mm", "remove the last
+          feature", "clear all" (EN + KR) — apply instantly with no API cost.
+          An LLM fallback for the long tail can layer on top later. */}
       <AiAssistantShell
         lang={lang}
         store={{
@@ -10092,10 +10095,7 @@ export function ShapeGeneratorInner() {
           toggleFeature,
           clearAll,
         }}
-        promptToIntents={async (prompt) => ({
-          intents: [],
-          explanation: `Received: "${prompt}" — AI pipeline wiring in progress.`,
-        })}
+        promptToIntents={async (prompt) => parseFeatureEditPrompt(prompt, features)}
       />
 
       {/* ═══ AI Process Router Panel ═══ */}
