@@ -207,8 +207,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       - run: npm ci --legacy-peer-deps
-      - name: OCCT burn-in (pipeline + STEP round-trip + B-rep chain/extrude + F1 perf-guard probe)
-        run: npx vitest run src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.burnin.test.ts src/app/\[lang\]/shape-generator/__tests__/step.roundTrip.test.ts src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.chain.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngine.extrude.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngineSelection.probe.test.ts
+      - name: OCCT burn-in (pipeline + STEP round-trip + B-rep chain/extrude + F1 perf-guard probe + F3 selection-survival)
+        run: npx vitest run src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.burnin.test.ts src/app/\[lang\]/shape-generator/__tests__/step.roundTrip.test.ts src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.chain.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngine.extrude.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngineSelection.probe.test.ts src/app/\[lang\]/shape-generator/__tests__/selectionSurvivesParamChange.test.ts
         env:
           RUN_OCCT_FEASIBILITY: '1'
           NODE_ENV: test
