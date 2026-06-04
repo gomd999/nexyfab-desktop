@@ -98,6 +98,12 @@ function applyChamferMeshCsg(
   configureEvaluatorForProvenance(evaluator, expanded, geometry);
   const result = evaluator.evaluate(makeBrush(expanded), makeBrush(geometry), INTERSECTION);
   propagateFeatureIdMap(result.geometry, expanded, geometry);
+  // Guard a degenerate CSG result rather than returning an empty solid. A large
+  // distance can self-intersect the offset shell so the intersection collapses;
+  // block it with a structured error instead of silently destroying the part.
+  if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
+    throw new Error(`Chamfer distance ${dist.toFixed(2)} is too large for this solid — the bevel produced no geometry`);
+  }
   if (guardNoOp) assertRoundingApplied(geometry, result.geometry, 'Chamfer');
   return result.geometry;
 }
