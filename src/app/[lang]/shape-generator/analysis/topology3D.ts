@@ -59,7 +59,7 @@ const HEX_CORNERS: ReadonlyArray<readonly [number, number, number]> = [
   [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
 ];
 
-function buildHex8K0(nu: number): Float64Array {
+export function buildHex8K0(nu: number): Float64Array {
   const lam = nu / ((1 + nu) * (1 - 2 * nu)), mu = 1 / (2 * (1 + nu)); // E = 1
   const D = [
     [lam + 2*mu, lam, lam, 0, 0, 0], [lam, lam + 2*mu, lam, 0, 0, 0], [lam, lam, lam + 2*mu, 0, 0, 0],

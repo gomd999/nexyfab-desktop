@@ -38,19 +38,6 @@ export interface ModeShape {
   vector: number[];
 }
 
-/** Simple matrix-vector mul (dense, row-major). */
-function matVec(A: number[], x: number[], n: number): number[] {
-  const out = new Array(n).fill(0);
-  for (let i = 0; i < n; i++) {
-    let s = 0;
-    for (let j = 0; j < n; j++) {
-      s += A[i * n + j]! * x[j]!;
-    }
-    out[i] = s;
-  }
-  return out;
-}
-
 function dot(a: number[], b: number[]): number {
   let s = 0;
   for (let i = 0; i < a.length; i++) s += a[i]! * b[i]!;
@@ -63,33 +50,45 @@ function normalize(v: number[]): { v: number[]; norm: number } {
   return { v: v.map(x => x / n), norm: n };
 }
 
-/** Subtract projections onto a list of previously found vectors
- *  (Gram-Schmidt — keeps iteration on the next-lowest eigenspace). */
-function deflate(v: number[], priors: number[][]): number[] {
+/** M-orthogonal Gram-Schmidt: subtract the M-weighted projection onto each
+ *  previously found (M-normalised) mode, so iteration moves to the next-lowest
+ *  eigenspace. For the GENERALISED problem K φ = λ M φ the eigenvectors are
+ *  M-orthogonal, not Euclidean-orthogonal — plain dot-product deflation leaves
+ *  spurious near-zero modes. */
+function deflate(v: number[], priors: number[][], M: number[]): number[] {
   const out = v.slice();
   for (const p of priors) {
-    const c = dot(out, p);
+    let c = 0;
+    for (let i = 0; i < out.length; i++) c += p[i]! * M[i]! * out[i]!; // pᵀ M v
     for (let i = 0; i < out.length; i++) out[i] -= c * p[i]!;
   }
   return out;
 }
 
-/** Solve K·x = b by Jacobi iteration (very crude — fine for small
- *  matrices in a preview). Returns x; converges for diagonally
- *  dominant K, which most FEA stiffness matrices approximately are. */
-function jacobiSolve(K: number[], b: number[], n: number, iters = 100): number[] {
-  let x = new Array(n).fill(0);
+/** Solve K·x = b by Jacobi-preconditioned Conjugate Gradient. K is symmetric
+ *  positive-definite (a real FEA stiffness matrix is NOT diagonally dominant, so
+ *  plain Jacobi iteration does not converge — CG does). Dense n×n, row-major. */
+function cgSolve(K: number[], b: number[], n: number, iters = Math.max(200, n * 2), tol = 1e-10): number[] {
+  const x = new Array<number>(n).fill(0);
+  const r = b.slice();
+  const Minv = new Array<number>(n);
+  for (let i = 0; i < n; i++) { const d = K[i * n + i]!; Minv[i] = d !== 0 ? 1 / d : 1; }
+  const z = r.map((ri, i) => ri * Minv[i]!);
+  const p = z.slice();
+  let rz = dot(r, z);
+  const b2 = Math.max(dot(b, b), 1e-300);
   for (let it = 0; it < iters; it++) {
-    const xn = new Array(n).fill(0);
-    for (let i = 0; i < n; i++) {
-      let s = b[i]!;
-      for (let j = 0; j < n; j++) {
-        if (j !== i) s -= K[i * n + j]! * x[j]!;
-      }
-      const diag = K[i * n + i]!;
-      xn[i] = diag !== 0 ? s / diag : 0;
-    }
-    x = xn;
+    // Ap = K·p
+    const Ap = new Array<number>(n).fill(0);
+    for (let i = 0; i < n; i++) { const row = i * n; let s = 0; for (let j = 0; j < n; j++) s += K[row + j]! * p[j]!; Ap[i] = s; }
+    const alpha = rz / (dot(p, Ap) || 1e-300);
+    for (let i = 0; i < n; i++) { x[i]! += alpha * p[i]!; r[i]! -= alpha * Ap[i]!; }
+    if (dot(r, r) / b2 < tol * tol) break;
+    for (let i = 0; i < n; i++) z[i] = r[i]! * Minv[i]!;
+    const rzNew = dot(r, z);
+    const beta = rzNew / (rz || 1e-300);
+    for (let i = 0; i < n; i++) p[i] = z[i]! + beta * p[i]!;
+    rz = rzNew;
   }
   return x;
 }
@@ -109,15 +108,15 @@ export function computeModes(input: ModalAnalysisInput): ModeShape[] {
     // Initial vector — random but deterministic across runs.
     let x: number[] = Array.from({ length: n }, (_, i) => Math.sin((i + 1) * (m + 1) * 0.7));
     x = normalize(x).v;
-    x = deflate(x, priorVectors);
+    x = deflate(x, priorVectors, M);
     x = normalize(x).v;
 
     let lambda = 0;
     for (let iter = 0; iter < maxIters; iter++) {
       // y = M⁻¹·x (since M is diagonal, just divide). Then z = K⁻¹·y.
       const y = x.map((xi, i) => xi * M[i]!);
-      const z = jacobiSolve(K, y, n);
-      const zd = deflate(z, priorVectors);
+      const z = cgSolve(K, y, n);
+      const zd = deflate(z, priorVectors, M);
       const norm = Math.sqrt(dot(zd, zd));
       if (norm < 1e-30) break;
       const zn = zd.map(v => v / norm);
