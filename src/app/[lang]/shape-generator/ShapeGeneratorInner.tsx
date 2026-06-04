@@ -120,7 +120,7 @@ import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
 import GetQuoteButton from './export/GetQuoteButton';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
-import { parseFeatureEditPrompt } from './ai/nlFeatureEditParser';
+import { resolveFeatureEditPrompt } from './ai/featureEditFromPrompt';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
@@ -10078,11 +10078,11 @@ export function ShapeGeneratorInner() {
       />
 
       {/* Phase-2/3 floating AI shell — viewport-overlay prompt + intent
-          dispatcher. promptToIntents is wired to the deterministic
-          natural-language feature-edit parser (nlFeatureEditParser): common
-          commands — "add a 5mm fillet", "make it 8mm", "remove the last
-          feature", "clear all" (EN + KR) — apply instantly with no API cost.
-          An LLM fallback for the long tail can layer on top later. */}
+          dispatcher. promptToIntents resolves a prompt parser-first
+          (nlFeatureEditParser: "add a 5mm fillet", "make it 8mm", "clear all" —
+          EN + KR, instant/offline) then escalates the long tail to the
+          regex→LLM /api/featureTree-intent endpoint, mapping its PlanIntent to
+          feature edits (patterns, fuzzier phrasings). */}
       <AiAssistantShell
         lang={lang}
         store={{
@@ -10095,7 +10095,7 @@ export function ShapeGeneratorInner() {
           toggleFeature,
           clearAll,
         }}
-        promptToIntents={async (prompt) => parseFeatureEditPrompt(prompt, features)}
+        promptToIntents={async (prompt) => resolveFeatureEditPrompt(prompt, features)}
       />
 
       {/* ═══ AI Process Router Panel ═══ */}
