@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   ensureOcctReady, isOcctReady,
-  occtFilledSurface, occtLoftProfiles, occtExtrudeProfile, occtBooleanSolids,
+  occtFilledSurface, occtLoftProfiles, occtExtrudeProfile, occtBooleanSolids, occtKnitSolidFaces,
 } from '../features/occtEngine';
 import { meshVolume } from '../features/roundingGuard';
 
@@ -75,5 +75,23 @@ describeMaybe('OCCT surfacing probe (Track S)', () => {
     const interVol = meshVolume(inter.geometry);
     expect(interVol).toBeGreaterThan(0);
     expect(interVol).toBeLessThan(loftVol); // the intersection removed material
+  });
+
+  it('KNITS faces into a watertight solid (sew round-trips by exact volume)', () => {
+    // a real box B-rep → decompose to faces → sew them back into a solid.
+    const box = occtExtrudeProfile(
+      [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }, { x: -10, y: -10 }],
+      40,
+    );
+    expect(box.handle).not.toBeNull();
+
+    const knit = occtKnitSolidFaces(box.handle);
+    expect(knit.handle, 'a handle proves a watertight solid was sewn').not.toBeNull();
+    expect(knit.faceCount).toBe(6);                 // a box has 6 faces
+    // the sewn solid is exactly the original box: 20 × 20 × 40 = 16000.
+    expect(knit.volume).not.toBeNull();
+    expect(knit.volume!).toBeGreaterThan(16000 * 0.99);
+    expect(knit.volume!).toBeLessThan(16000 * 1.01);
+    expect(knit.geometry.attributes.position.count).toBeGreaterThan(0);
   });
 });

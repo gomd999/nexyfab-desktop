@@ -842,6 +842,52 @@ export function occtFilledSurface(
   }
 }
 
+export interface OcctKnitResult extends OcctExtrudeResult {
+  /** Number of faces that were knit. */
+  faceCount: number;
+  /** Exact B-rep volume of the sewn solid (kernel measure), or null. */
+  volume: number | null;
+}
+
+interface ShapeWithFaces { faces: unknown[] }
+interface MeshableSolid { mesh: (cfg?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] } }
+
+/**
+ * KNIT (sew) the faces of a registered B-rep shape into a watertight shell and
+ * close it into a Solid on the OCCT kernel — `weldShellsAndFaces` stitches shared
+ * edges within tolerance, `makeSolid` caps the shell (Track S surfacing op). The
+ * round-trip (decompose a solid → re-sew) is the cleanest proof the knit is
+ * kernel-exact: the sewn solid's `measureVolume` must match the original. Returns
+ * the tessellation, a handle, the face count and the exact B-rep volume.
+ */
+export function occtKnitSolidFaces(
+  handle: string | null | undefined,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctKnitResult {
+  const rc = requireReplicad();
+  const shape = getShape(handle) as ShapeWithFaces | null;
+  const weld = rc.weldShellsAndFaces as ((fs: unknown[], ignore?: boolean) => unknown) | undefined;
+  const makeSolid = rc.makeSolid as ((fs: unknown[]) => unknown) | undefined;
+  const measureVolume = rc.measureVolume as ((s: unknown) => number) | undefined;
+  if (!shape || typeof weld !== 'function' || typeof makeSolid !== 'function' || !Array.isArray(shape.faces)) {
+    return { geometry: new BufferGeometry(), handle: null, faceCount: 0, volume: null };
+  }
+  try {
+    const faces = shape.faces;
+    const shell = weld(faces, true);
+    const solid = makeSolid([shell]) as MeshableSolid;
+    const volume = typeof measureVolume === 'function' ? measureVolume(solid) : null;
+    const mesh = solid.mesh({
+      tolerance: tessellation.tolerance ?? 0.1,
+      angularTolerance: tessellation.angularTolerance ?? 0.2,
+    });
+    return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid), faceCount: faces.length, volume };
+  } catch (err) {
+    console.warn('[occtKnitSolidFaces] sew/knit failed:', err);
+    return { geometry: new BufferGeometry(), handle: null, faceCount: 0, volume: null };
+  }
+}
+
 interface SweepSketch {
   sweepSketch: (
     fn: (plane: unknown, origin: unknown) => unknown,
