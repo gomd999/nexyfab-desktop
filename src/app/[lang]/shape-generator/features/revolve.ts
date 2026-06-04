@@ -29,6 +29,13 @@ function extractProfile(geometry: THREE.BufferGeometry, axis: number): THREE.Vec
 }
 
 function applyRevolveMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
+  // Block degenerate sweep parameters rather than handing THREE.LatheGeometry a
+  // zero angle / zero segment count, which silently produces NaN vertices.
+  if (!(params.angle > 0) || !(Math.round(params.segments) >= 3)) {
+    throw new Error(
+      `Revolve needs a positive angle and at least 3 segments (got angle=${params.angle}, segments=${params.segments})`,
+    );
+  }
   const angle = (params.angle / 360) * Math.PI * 2;
   const segments = Math.round(params.segments);
   const axis = Math.round(params.axis);

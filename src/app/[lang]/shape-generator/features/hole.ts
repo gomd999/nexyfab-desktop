@@ -153,6 +153,11 @@ export const holeFeature: FeatureDefinition = {
       propagateFeatureIdMap(result.geometry, prev, cone);
     }
 
+    // Block a hole that swallows the whole part (e.g. a default-diameter hole on
+    // a sub-millimetre solid) rather than returning a silent empty body.
+    if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
+      throw new Error('Hole is larger than the part — it would remove all material; reduce the diameter or depth');
+    }
     return result.geometry;
   },
 };
