@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtRevolveProfile } from './occtEngine';
+import { occtRevolveProfile } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 /** Extract the (radius, height) profile of a geometry about the chosen axis. */
 function extractProfile(geometry: THREE.BufferGeometry, axis: number): THREE.Vector2[] {
@@ -108,7 +109,7 @@ export const revolveFeature: FeatureDefinition = {
     return applyRevolveMesh(geometry, params);
   },
   async applyAsync(geometry, params) {
-    if (isOcctReady() && isOcctGlobalMode()) {
+    if (shouldUseOcctEngine()) {
       const brep = applyRevolveOcct(geometry, params);
       if (brep) return brep;
     }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtSweepProfile, occtSweepHelix } from './occtEngine';
+import { occtSweepProfile, occtSweepHelix } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 /** Rectangular cross-section half-extents from the input geometry bbox. */
 function crossSection(geometry: THREE.BufferGeometry): { hw: number; hh: number } | null {
@@ -140,7 +141,7 @@ export const sweepFeature: FeatureDefinition = {
     return applySweepMesh(geometry, params);
   },
   async applyAsync(geometry, params) {
-    if (isOcctReady() && isOcctGlobalMode()) {
+    if (shouldUseOcctEngine()) {
       const brep = applySweepOcct(geometry, params);
       if (brep) return brep;
     }

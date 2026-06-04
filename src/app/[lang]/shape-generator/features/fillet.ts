@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { isOcctReady, isOcctGlobalMode, occtFilletBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { occtFilletBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
 import { tryMeshFillet } from './meshRounding';
@@ -125,8 +126,8 @@ function applyFilletSync(
   const engine = Math.round(params.engine ?? 0);
   // Sync path: no EdgeFinder (can't await dynamic replicad import).
   // OCCT still runs globally if engine === 1.
-  const wantedOcct = engine === 1 || isOcctGlobalMode();
-  if (wantedOcct && isOcctReady()) {
+  const wantedOcct = wantsOcctEngine(engine);
+  if (shouldUseOcctEngine(engine)) {
     const out = applyFilletOcct(geometry, radius, null);
     if (out) return out;
   }
@@ -143,8 +144,8 @@ async function applyFilletWithEdgeFinder(
   const radius = params.radius!;
   const segments = Math.round(params.segments!);
   const engine = Math.round(params.engine ?? 0);
-  const wantedOcct = engine === 1 || isOcctGlobalMode();
-  if (wantedOcct && isOcctReady()) {
+  const wantedOcct = wantsOcctEngine(engine);
+  if (shouldUseOcctEngine(engine)) {
     const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
     const out = applyFilletOcct(geometry, radius, edgeFinder);
     if (out) return out;

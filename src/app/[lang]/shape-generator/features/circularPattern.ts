@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtCircularPattern } from './occtEngine';
+import { occtCircularPattern } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 export const circularPatternFeature: FeatureDefinition = {
   type: 'circularPattern',
@@ -41,7 +42,7 @@ export const circularPatternFeature: FeatureDefinition = {
     return merged;
   },
   async applyAsync(geometry, params) {
-    if (isOcctReady() && isOcctGlobalMode()) {
+    if (shouldUseOcctEngine()) {
       const handle = geometry.userData?.occtHandle as string | undefined;
       if (handle) {
         try {

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -65,7 +66,7 @@ export const holeFeature: FeatureDefinition = {
     const actualDepth = depth >= 999 ? (topY - bottomY) + 10 : depth;
     const engine = Math.round(params.engine ?? 0);
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       try {
         let currentHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         let currentGeo = geometry;

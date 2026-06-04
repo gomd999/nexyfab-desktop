@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { isOcctReady, isOcctGlobalMode, occtChamferBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { occtChamferBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
 import { tryMeshChamfer } from './meshRounding';
@@ -115,8 +116,8 @@ function applyChamferSync(
 ): THREE.BufferGeometry {
   const dist = params.distance!;
   const engine = Math.round(params.engine ?? 0);
-  const wantedOcct = engine === 1 || isOcctGlobalMode();
-  if (wantedOcct && isOcctReady()) {
+  const wantedOcct = wantsOcctEngine(engine);
+  if (shouldUseOcctEngine(engine)) {
     const out = applyChamferOcct(geometry, dist, null);
     if (out) return out;
   }
@@ -130,8 +131,8 @@ async function applyChamferWithEdgeFinder(
 ): Promise<THREE.BufferGeometry> {
   const dist = params.distance!;
   const engine = Math.round(params.engine ?? 0);
-  const wantedOcct = engine === 1 || isOcctGlobalMode();
-  if (wantedOcct && isOcctReady()) {
+  const wantedOcct = wantsOcctEngine(engine);
+  if (shouldUseOcctEngine(engine)) {
     const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
     const out = applyChamferOcct(geometry, dist, edgeFinder);
     if (out) return out;

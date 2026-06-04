@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
+import { occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 import { buildFaceFinderBySignature } from './topologyEdgeFinder';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
@@ -47,7 +48,7 @@ export const shellFeature: FeatureDefinition = {
     const openFace = Math.round(params.openFace);
     const engine = Math.round(params.engine ?? 0);
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       try {
         const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         const host = hostBoxFromGeometry(geometry);
@@ -141,7 +142,7 @@ export const shellFeature: FeatureDefinition = {
     const openFace = Math.round(params.openFace);
     const engine = Math.round(params.engine ?? 0);
     const sel = ctx?.faceSelections?.[0];
-    if (sel && (engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (sel && shouldUseOcctEngine(engine)) {
       try {
         const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         if (upstreamHandle) {

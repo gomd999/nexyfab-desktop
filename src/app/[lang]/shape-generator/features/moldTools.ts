@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 export const moldToolsFeature: FeatureDefinition = {
   type: 'moldTools',
@@ -107,7 +108,7 @@ export const moldToolsFeature: FeatureDefinition = {
       cz = operation === 1 ? splitVal + half : splitVal - half;
     }
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       try {
         const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         const host = hostBoxFromGeometry(geometry);
