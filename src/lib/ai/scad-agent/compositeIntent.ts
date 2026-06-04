@@ -13,7 +13,13 @@
 
 import type { IntentInput } from '../../openscad-render/intentToScad';
 import { intentToScad } from '../../openscad-render/intentToScad';
-import { expectedBboxFromIntent, type ExpectedBbox } from './specVerification';
+import {
+  expectedBboxFromIntent,
+  compareBbox,
+  type ExpectedBbox,
+  type MeasuredBbox,
+  type SpecVerificationResult,
+} from './specVerification';
 
 export type CompositeOp = 'add' | 'subtract' | 'intersect';
 
@@ -102,4 +108,57 @@ export function compositeExpectedBbox(parts: ReadonlyArray<CompositePart>): Expe
   }
   if (!any) return null;
   return { centered: false, wMm: maxX - minX, hMm: maxY - minY, dMm: maxZ - minZ };
+}
+
+export interface VerifyCompositeOptions {
+  tolMm?: number;
+  tolPct?: number;
+}
+
+/**
+ * Closed-loop spec gate for a composite (W2.1 of ADR-015). A composite is not a
+ * single whitelisted shapeId, so the central `verifyAgainstSpec` skips it
+ * (verifiable=false) and a wrong-sized composition would slip through ungated.
+ * This applies the same bbox check using the composite's expected envelope.
+ *
+ * `compositeExpectedBbox` is the union of the ADD parts — a CONSERVATIVE upper
+ * bound, since subtract/intersect only ever shrink the result. So:
+ *   - a pure union (every part `add`) → the envelope is exact → two-sided check;
+ *   - otherwise → only flag an axis where the MEASURED bbox EXCEEDS the
+ *     envelope (a too-big result is a real error; a smaller one is the expected
+ *     effect of a subtract/intersect, not a mismatch).
+ */
+export function verifyCompositeAgainstSpec(
+  parts: ReadonlyArray<CompositePart>,
+  measured: MeasuredBbox,
+  opts: VerifyCompositeOptions = {},
+): SpecVerificationResult {
+  const expected = compositeExpectedBbox(parts);
+  if (!expected) {
+    return {
+      ok: true,
+      verifiable: false,
+      skipReason: 'composite bbox not derivable (an add part has no closed-form bbox, or there is no add part)',
+      mismatches: [],
+    };
+  }
+
+  const pureUnion = parts.every((part) => (part.op ?? 'add') === 'add');
+  const all = compareBbox(expected, measured, opts.tolMm, opts.tolPct);
+  // For non-pure composites the envelope over-estimates, so a measured-SMALLER
+  // axis (deltaMm < 0) is legitimate shrink from subtract/intersect — keep only
+  // envelope violations (measured bigger than any add part can account for).
+  const mismatches = pureUnion ? all : all.filter((m) => m.deltaMm > 0);
+
+  return {
+    ok: mismatches.length === 0,
+    verifiable: true,
+    expected,
+    measured: {
+      wMm: measured.max[0] - measured.min[0],
+      hMm: measured.max[1] - measured.min[1],
+      dMm: measured.max[2] - measured.min[2],
+    },
+    mismatches,
+  };
 }

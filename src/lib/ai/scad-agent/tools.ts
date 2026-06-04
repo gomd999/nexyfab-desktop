@@ -51,7 +51,7 @@ import type {
 } from './types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
-import { compositeIntentToScad, compositeExpectedBbox, type CompositePart } from './compositeIntent';
+import { compositeIntentToScad, compositeExpectedBbox, verifyCompositeAgainstSpec, type CompositePart } from './compositeIntent';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
 import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
 import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, type EstimateCostOptions } from './costEstimation';
@@ -293,6 +293,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     // X1 — raw write breaks the intent↔SCAD coupling; spec verification
     // would compare against a stale intent and emit nonsense critique.
     session.lastIntent = undefined;
+    session.lastCompositeParts = undefined; // W2.1 — same for a composite
     return {
       ok: true,
       output: `OK. SCAD source replaced (${a.code.length} bytes). Call render to verify.`,
@@ -311,6 +312,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       session.geometry = {};
       // X1 — diff edits invalidate intent-derived expectations.
       session.lastIntent = undefined;
+      session.lastCompositeParts = undefined; // W2.1 — same for a composite
       return {
         ok: true,
         output: `OK. Diff applied (source now ${next.length} bytes). Call render to verify.`,
@@ -423,6 +425,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     // X1 — remember the intent so verify_spec can compare measured bbox
     // against the closed-form expected bbox derived from these params.
     session.lastIntent = a.intent;
+    session.lastCompositeParts = undefined; // mutually exclusive with a composite
     return {
       ok: true,
       output: `OK. SCAD generated from intent (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}). Call render to verify.`,
@@ -447,9 +450,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     session.scadSource = result.scad;
     session.render = { ok: null, errors: [] };
     session.geometry = {};
-    // A composite is not a single intent → clear lastIntent so verify_spec
-    // doesn't compare against a stale primitive.
+    // A composite is not a single intent → clear lastIntent and remember the
+    // parts so verify_spec gates it against the composite envelope (W2.1).
     session.lastIntent = undefined;
+    session.lastCompositeParts = parts;
     const expectedBbox = compositeExpectedBbox(parts);
     return {
       ok: true,
@@ -462,10 +466,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
   // `session.geometry.bbox` (populated by get_geometry). Emits a
   // structured critique the agent uses to self-correct param values.
   const verify_spec: ToolExecutor = async (_args, session) => {
-    if (!session.lastIntent) {
+    if (!session.lastIntent && !session.lastCompositeParts) {
       return {
         ok: false,
-        error: 'verify_spec requires a prior add_feature_intent call (session has no lastIntent).',
+        error: 'verify_spec requires a prior add_feature_intent or add_composite_intent call (session has no intent).',
         code: 'NO_INTENT',
       };
     }
@@ -476,6 +480,30 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         error: 'verify_spec requires a measured bbox. Call render → get_geometry first.',
         code: 'NO_BBOX',
       };
+    }
+
+    // W2.1 — composite path: gate the measured bbox against the composite
+    // envelope. (Hole/volume/thread sub-checks are intent-shape specific and
+    // don't apply to an arbitrary composition.)
+    if (!session.lastIntent && session.lastCompositeParts) {
+      const compResult = verifyCompositeAgainstSpec(session.lastCompositeParts, bbox);
+      return {
+        ok: true,
+        output: formatSpecCritique(compResult),
+        meta: {
+          verifiable: compResult.verifiable,
+          passed: compResult.ok,
+          mismatchCount: compResult.mismatches.length,
+          expected: compResult.expected,
+          measured: compResult.measured,
+          composite: true,
+        },
+      };
+    }
+    // Past the composite branch, a single intent is guaranteed.
+    const intent = session.lastIntent;
+    if (!intent) {
+      return { ok: false, error: 'verify_spec: no single intent to verify.', code: 'NO_INTENT' };
     }
     // X2 — pull the topological genus stashed by the geometry adapter
     // and let verifyAgainstSpec compare against the intent's hole count.
@@ -492,7 +520,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     // skips the check when either is missing.
     const detectedMinWallMm = session.geometry?.minWallThicknessMm;
     const processForDfm = mapUserPrefToProcess(session.userPrefs?.default_process);
-    const result = verifyAgainstSpec(session.lastIntent, bbox, {
+    const result = verifyAgainstSpec(intent, bbox, {
       detectedGenus,
       detectedVolumeMm3,
       detectedSurfaceAreaMm2,

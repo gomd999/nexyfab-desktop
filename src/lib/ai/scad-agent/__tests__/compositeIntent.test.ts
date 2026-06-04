@@ -5,8 +5,10 @@ import { describe, it, expect } from 'vitest';
 import {
   compositeIntentToScad,
   compositeExpectedBbox,
+  verifyCompositeAgainstSpec,
   type CompositePart,
 } from '../compositeIntent';
+import type { MeasuredBbox } from '../specVerification';
 
 const box = (w: number, h: number, d: number): CompositePart['intent'] => ({
   shapeId: 'box', params: { width: w, height: h, depth: d },
@@ -91,5 +93,52 @@ describe('compositeExpectedBbox', () => {
       { intent: { shapeId: 'mystery', params: {} } as CompositePart['intent'] },
     ]);
     expect(bb).toBeNull();
+  });
+});
+
+describe('verifyCompositeAgainstSpec (W2.1)', () => {
+  const bbox = (w: number, h: number, d: number): MeasuredBbox => ({
+    min: [-w / 2, -h / 2, -d / 2],
+    max: [w / 2, h / 2, d / 2],
+  });
+
+  it('pure union: passes when the measured bbox matches the envelope', () => {
+    const parts: CompositePart[] = [{ intent: box(10, 10, 10) }, { intent: box(10, 10, 10), at: [20, 0, 0] }];
+    // envelope = x[-5..25] = 30 wide, 10 tall, 10 deep
+    const r = verifyCompositeAgainstSpec(parts, { min: [-5, -5, -5], max: [25, 5, 5] });
+    expect(r.verifiable).toBe(true);
+    expect(r.ok).toBe(true);
+    expect(r.expected).toMatchObject({ wMm: 30, hMm: 10, dMm: 10 });
+  });
+
+  it('pure union: flags a measured axis that is too SMALL (two-sided)', () => {
+    const parts: CompositePart[] = [{ intent: box(10, 10, 10) }, { intent: box(10, 10, 10), at: [20, 0, 0] }];
+    const r = verifyCompositeAgainstSpec(parts, { min: [0, -5, -5], max: [20, 5, 5] }); // w=20, expected 30
+    expect(r.ok).toBe(false);
+    expect(r.mismatches.map((m) => m.axis)).toContain('width');
+  });
+
+  it('with subtract: a SMALLER measured bbox is legitimate shrink, not a mismatch', () => {
+    const parts: CompositePart[] = [{ intent: box(10, 10, 10) }, { intent: cyl(6, 20), op: 'subtract' }];
+    const r = verifyCompositeAgainstSpec(parts, bbox(8, 10, 10)); // width shrank below envelope 10
+    expect(r.verifiable).toBe(true);
+    expect(r.ok).toBe(true);          // envelope is conservative → no false positive
+    expect(r.mismatches).toHaveLength(0);
+  });
+
+  it('with subtract: a measured bbox that EXCEEDS the envelope is a real error', () => {
+    const parts: CompositePart[] = [{ intent: box(10, 10, 10) }, { intent: cyl(6, 20), op: 'subtract' }];
+    const r = verifyCompositeAgainstSpec(parts, bbox(14, 10, 10)); // 14 > 10 envelope → too big
+    expect(r.ok).toBe(false);
+    expect(r.mismatches.map((m) => m.axis)).toContain('width');
+  });
+
+  it('skips (verifiable=false) when an add part bbox is unknown', () => {
+    const parts: CompositePart[] = [
+      { intent: { shapeId: 'mystery', params: {} } as CompositePart['intent'] },
+    ];
+    const r = verifyCompositeAgainstSpec(parts, bbox(10, 10, 10));
+    expect(r.verifiable).toBe(false);
+    expect(r.ok).toBe(true); // skipped, not failed
   });
 });

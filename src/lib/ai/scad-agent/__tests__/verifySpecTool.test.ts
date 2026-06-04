@@ -50,7 +50,7 @@ function noopHost(): ToolHostAdapters {
 /** Type-narrow getter — every tool is registered, so `!` is safe. */
 function tool(
   tools: ReturnType<typeof makeTools>,
-  name: 'verify_spec' | 'add_feature_intent' | 'write_scad' | 'apply_diff',
+  name: 'verify_spec' | 'add_feature_intent' | 'add_composite_intent' | 'write_scad' | 'apply_diff',
 ): ToolExecutor {
   return tools[name]!;
 }
@@ -111,6 +111,58 @@ describe('verify_spec tool', () => {
     expect(out.output).toMatch(/width.*expected 50\.00.*measured 5\.00/);
     expect(out.meta?.passed).toBe(false);
     expect(out.meta?.mismatchCount).toBe(1);
+  });
+
+  // ─── W2.1 — composite gating ────────────────────────────────────────────
+  it('gates a composite against its envelope (passes when measured matches)', async () => {
+    const tools = makeTools(noopHost());
+    const session = blankSession();
+    await tool(tools, 'add_composite_intent')(
+      { parts: [
+        { intent: { shapeId: 'box', params: { width: 10, height: 10, depth: 10 } } },
+        { intent: { shapeId: 'box', params: { width: 10, height: 10, depth: 10 } }, at: [20, 0, 0] },
+      ] },
+      session,
+    );
+    expect(session.lastCompositeParts).toBeDefined();
+    expect(session.lastIntent).toBeUndefined();
+    session.geometry = { bbox: { min: [-5, -5, -5], max: [25, 5, 5] } }; // 30×10×10 envelope
+    const out = asOk(await tool(tools, 'verify_spec')({}, session));
+    expect(out.meta?.composite).toBe(true);
+    expect(out.meta?.passed).toBe(true);
+  });
+
+  it('flags a composite whose measured bbox exceeds the envelope', async () => {
+    const tools = makeTools(noopHost());
+    const session = blankSession();
+    await tool(tools, 'add_composite_intent')(
+      { parts: [
+        { intent: { shapeId: 'box', params: { width: 10, height: 10, depth: 10 } } },
+        { intent: { shapeId: 'cylinder', params: { diameter: 6, height: 20 } }, op: 'subtract' },
+      ] },
+      session,
+    );
+    session.geometry = { bbox: { min: [-7, -5, -5], max: [7, 5, 5] } }; // w=14 > 10 envelope
+    const out = asOk(await tool(tools, 'verify_spec')({}, session));
+    expect(out.meta?.composite).toBe(true);
+    expect(out.meta?.passed).toBe(false);
+    expect(out.output).toMatch(/spec mismatch/);
+  });
+
+  it('add_feature_intent clears a prior composite (mutual exclusivity)', async () => {
+    const tools = makeTools(noopHost());
+    const session = blankSession();
+    await tool(tools, 'add_composite_intent')(
+      { parts: [{ intent: { shapeId: 'box', params: { width: 10, height: 10, depth: 10 } } }] },
+      session,
+    );
+    expect(session.lastCompositeParts).toBeDefined();
+    await tool(tools, 'add_feature_intent')(
+      { intent: { shapeId: 'box', params: { width: 50, height: 50, depth: 50 } } },
+      session,
+    );
+    expect(session.lastCompositeParts).toBeUndefined();
+    expect(session.lastIntent).toBeDefined();
   });
 
   it('reports unverifiable for shapes outside the closed-form catalog', async () => {

@@ -967,6 +967,13 @@ export interface AgentSession {
    * said 50). Cleared when write_scad / apply_diff replace the source.
    */
   lastIntent?: import('../../openscad-render/intentToScad').IntentInput;
+  /**
+   * W2.1 (ADR-015) — parts of the most recent add_composite_intent. A composite
+   * is not a single primitive, so verify_spec compares the measured bbox against
+   * the composite's expected envelope via verifyCompositeAgainstSpec instead of
+   * lastIntent. Mutually exclusive with lastIntent (each tool clears the other).
+   */
+  lastCompositeParts?: import('./compositeIntent').CompositePart[];
   /** Conversation messages, including tool_call / tool_result envelopes. */
   history: AgentMessage[];
   render: RenderState;
