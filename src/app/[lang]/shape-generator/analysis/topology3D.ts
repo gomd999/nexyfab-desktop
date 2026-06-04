@@ -12,6 +12,8 @@
  * Pure + dependency-free (no THREE), so it unit-tests headlessly.
  */
 
+export type BuildAxis = 'X' | 'Y' | 'Z';
+
 export interface Topology3DConfig {
   nx: number; ny: number; nz: number; // element grid
   volfrac: number;                    // target volume fraction (0..1)
@@ -19,6 +21,10 @@ export interface Topology3DConfig {
   rmin?: number;                      // filter radius in elements (default 1.5)
   maxIter?: number;                   // OC iterations (default 40)
   nu?: number;                        // Poisson ratio (default 0.3)
+  /** Additive-manufacturing build direction. When set, the design is constrained
+   *  so every solid element is supported from the build plate within ~45° — i.e.
+   *  the result prints WITHOUT support structures. */
+  overhang?: BuildAxis;
 }
 
 export interface BoundaryConditions3D {
@@ -201,6 +207,90 @@ function buildFilter(grid: TopologyGrid, rmin: number): { idx: Int32Array[]; w: 
   return { idx, w };
 }
 
+// ─── additive-manufacturing overhang filter (Langelaar-style) ───────────────
+
+const axisIdxOf = (a: BuildAxis): number => (a === 'X' ? 0 : a === 'Y' ? 1 : 2);
+
+/** Smooth max via log-sum-exp (numerically stabilised). P→∞ ⇒ hard max. */
+function smax(vals: number[], P: number): number {
+  if (vals.length === 0) return 0;
+  let m = vals[0];
+  for (const v of vals) if (v > m) m = v;
+  let s = 0;
+  for (const v of vals) s += Math.exp(P * (v - m));
+  return m + Math.log(s) / P;
+}
+const smin = (a: number, b: number, P: number): number => -smax([-a, -b], P);
+
+/**
+ * Printable-density transform: every layer above the build plate may only be as
+ * solid as the material SUPPORTING it from the layer below (the directly-below
+ * element + its 4 face-neighbours ≈ a 45° support cone). So a floating overhang
+ * is suppressed — the result prints without supports. Build plate = the `axis=0`
+ * face. `P` controls how sharp the smooth min/max is.
+ */
+export function amOverhangFilter(
+  density: Float32Array, grid: TopologyGrid, axis: BuildAxis, P = 50, hard = false,
+): Float32Array {
+  const dims = [grid.nx, grid.ny, grid.nz];
+  const ai = axisIdxOf(axis);
+  const [p0, p1] = [0, 1, 2].filter((d) => d !== ai); // the two perpendicular axes
+  const nLayers = dims[ai];
+  const printable = Float32Array.from(density);
+  const at = (c: number[]): number => grid.eIdx(c[0], c[1], c[2]);
+  // Smooth min/max for gradient flow during optimisation; hard min/max for the
+  // final projection, which GUARANTEES a support-free result (printable ≤ the max
+  // support below ⇒ a solid element always has a solid element below it).
+  const sMax = (v: number[]) => (hard ? Math.max(...v) : smax(v, P));
+  const sMin = (a: number, b: number) => (hard ? Math.min(a, b) : smin(a, b, P));
+
+  for (let layer = 1; layer < nLayers; layer++) {
+    for (let a = 0; a < dims[p0]; a++) {
+      for (let b = 0; b < dims[p1]; b++) {
+        const c = [0, 0, 0];
+        c[ai] = layer; c[p0] = a; c[p1] = b;
+        const support: number[] = [];
+        for (const [da, db] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const sa = a + da, sb = b + db;
+          if (sa < 0 || sb < 0 || sa >= dims[p0] || sb >= dims[p1]) continue;
+          const sc = [0, 0, 0];
+          sc[ai] = layer - 1; sc[p0] = sa; sc[p1] = sb;
+          support.push(printable[at(sc)]);
+        }
+        printable[at(c)] = sMin(density[at(c)], support.length ? sMax(support) : 0);
+      }
+    }
+  }
+  return printable;
+}
+
+/** Count solid elements (> threshold) that lack any solid support directly below
+ *  within the 45° stencil — i.e. unprintable overhangs. 0 ⇒ support-free print. */
+export function countUnsupportedOverhang(
+  density: Float32Array, grid: TopologyGrid, axis: BuildAxis, threshold = 0.5,
+): number {
+  const dims = [grid.nx, grid.ny, grid.nz];
+  const ai = axisIdxOf(axis);
+  const [p0, p1] = [0, 1, 2].filter((d) => d !== ai);
+  const at = (c: number[]): number => grid.eIdx(c[0], c[1], c[2]);
+  let count = 0;
+  for (let layer = 1; layer < dims[ai]; layer++) {
+    for (let a = 0; a < dims[p0]; a++) for (let b = 0; b < dims[p1]; b++) {
+      const c = [0, 0, 0]; c[ai] = layer; c[p0] = a; c[p1] = b;
+      if (density[at(c)] <= threshold) continue;
+      let supported = false;
+      for (const [da, db] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const sa = a + da, sb = b + db;
+        if (sa < 0 || sb < 0 || sa >= dims[p0] || sb >= dims[p1]) continue;
+        const sc = [0, 0, 0]; sc[ai] = layer - 1; sc[p0] = sa; sc[p1] = sb;
+        if (density[at(sc)] > threshold) { supported = true; break; }
+      }
+      if (!supported) count++;
+    }
+  }
+  return count;
+}
+
 // ─── the optimiser ──────────────────────────────────────────────────────────
 
 export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions3D): Topology3DResult {
@@ -220,9 +310,13 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
 
   let iter = 0;
   for (; iter < maxIter; iter++) {
-    const u = pcg(grid, K0, xE, p, f, fixed);
+    // Physical (printable) density: with an AM build direction, unsupported
+    // material is suppressed, so the FEA "sees" only what will actually print —
+    // the optimiser then has no incentive to place material it can't support.
+    const xPhys = cfg.overhang ? amOverhangFilter(xE, grid, cfg.overhang) : xE;
+    const u = pcg(grid, K0, xPhys, p, f, fixed);
 
-    // Element compliance + raw sensitivity.
+    // Element compliance + raw sensitivity (wrt the physical density).
     const dc = new Float64Array(nE);
     let compliance = 0;
     const edof = new Int32Array(24), ue = new Float64Array(24);
@@ -233,9 +327,9 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
       let ueKue = 0;
       for (let i = 0; i < 24; i++) { let s = 0; const row = i*24; for (let j = 0; j < 24; j++) s += K0[row+j]*ue[j]; ueKue += ue[i]*s; }
       const e = grid.eIdx(ex, ey, ez);
-      const dens = Math.pow(xE[e], p);
+      const dens = Math.pow(xPhys[e], p);
       compliance += (EMIN + dens * (1 - EMIN)) * ueKue;
-      dc[e] = -p * Math.pow(xE[e], p - 1) * (1 - EMIN) * ueKue;
+      dc[e] = -p * Math.pow(xPhys[e], p - 1) * (1 - EMIN) * ueKue;
     }
     complianceHistory.push(compliance);
 
@@ -244,8 +338,8 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
     for (let e = 0; e < nE; e++) {
       let num = 0, den = 0;
       const ii = filter.idx[e], ww = filter.w[e];
-      for (let k = 0; k < ii.length; k++) { num += ww[k] * xE[ii[k]] * dc[ii[k]]; den += ww[k]; }
-      dcf[e] = num / (Math.max(1e-9, xE[e]) * den);
+      for (let k = 0; k < ii.length; k++) { num += ww[k] * xPhys[ii[k]] * dc[ii[k]]; den += ww[k]; }
+      dcf[e] = num / (Math.max(1e-9, xPhys[e]) * den);
     }
 
     // Optimality-Criteria update with a bisection on the Lagrange multiplier.
@@ -269,8 +363,11 @@ export function optimizeTopology3D(cfg: Topology3DConfig, bc: BoundaryConditions
     if (change < 0.01) { iter++; break; }
   }
 
-  let vol = 0; for (let e = 0; e < nE; e++) vol += xE[e];
-  return { density: xE, complianceHistory, volumeFraction: vol / nE, iterations: iter };
+  // Return the PRINTABLE design. The final projection uses the HARD AM filter so
+  // the output is GUARANTEED support-free (no overhang exceeds the 45° cone).
+  const out = cfg.overhang ? amOverhangFilter(xE, grid, cfg.overhang, 50, true) : xE;
+  let vol = 0; for (let e = 0; e < nE; e++) vol += out[e];
+  return { density: out, complianceHistory, volumeFraction: vol / nE, iterations: iter };
 }
 
 /** Cantilever BC helper: the x=0 face fully fixed, a downward (−Y) point load
