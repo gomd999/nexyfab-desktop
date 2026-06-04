@@ -17,6 +17,7 @@ import {
   ensureOcctReady,
   resetShapeRegistry,
   occtExtrudeProfile,
+  occtBooleanSolids,
   occtExtrudeCircle,
   occtExtrudeWithHoles,
   occtRevolveProfile,
@@ -703,5 +704,47 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const v = meshVolume(filleted.geometry);
     expect(v).toBeGreaterThan(3600);  // close to 4000…
     expect(v).toBeLessThan(4000);     // …but less, since fillet removed material
+  });
+});
+
+describeMaybe('occtBooleanSolids — arbitrary solid-vs-solid boolean (#1-D)', () => {
+  beforeAll(async () => {
+    await ensureOcctReady();
+  });
+
+  /** Two 20×20×10 boxes overlapping by x∈[10,20] (overlap volume 2000). */
+  function twoOverlappingBoxes() {
+    resetShapeRegistry();
+    const host = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 10);
+    const tool = occtExtrudeProfile([{ x: 10, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 20 }, { x: 10, y: 20 }], 10);
+    return { host, tool };
+  }
+
+  it('union of two arbitrary solids = 4000 + 4000 − 2000 overlap = 6000', () => {
+    const { host, tool } = twoOverlappingBoxes();
+    const r = occtBooleanSolids('union', host.handle, tool.handle);
+    expect(r.handle).toBeTruthy();
+    expect(meshVolume(r.geometry)).toBeGreaterThan(5800);
+    expect(meshVolume(r.geometry)).toBeLessThan(6200);
+  });
+
+  it('subtract removes the overlap (4000 − 2000 = 2000)', () => {
+    const { host, tool } = twoOverlappingBoxes();
+    const r = occtBooleanSolids('subtract', host.handle, tool.handle);
+    expect(meshVolume(r.geometry)).toBeGreaterThan(1900);
+    expect(meshVolume(r.geometry)).toBeLessThan(2100);
+  });
+
+  it('intersect keeps only the overlap (2000)', () => {
+    const { host, tool } = twoOverlappingBoxes();
+    const r = occtBooleanSolids('intersect', host.handle, tool.handle);
+    expect(meshVolume(r.geometry)).toBeGreaterThan(1900);
+    expect(meshVolume(r.geometry)).toBeLessThan(2100);
+  });
+
+  it('returns a null handle when a handle is unknown', () => {
+    const { host } = twoOverlappingBoxes();
+    const r = occtBooleanSolids('union', host.handle, 'nonexistent-handle');
+    expect(r.handle).toBeNull();
   });
 });

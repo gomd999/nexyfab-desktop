@@ -331,6 +331,52 @@ export function occtBoxBooleanWithPrimitive(
   };
 }
 
+/**
+ * General solid-vs-solid boolean: combine TWO arbitrary registered OCCT solids
+ * (by handle), not just a primitive tool. This lifts the box-host/primitive-tool
+ * limitation of occtBoxBooleanWithPrimitive — either operand can be any
+ * feature-built B-rep (extrude, revolve, sweep, loft, a prior boolean…), so
+ * multi-body booleans compose precisely. Returns geometry + a fresh handle for
+ * chaining, or { handle: null } when a handle is unknown / inputs don't intersect.
+ */
+export function occtBooleanSolids(
+  type: OcctBooleanType,
+  hostHandle: string | null | undefined,
+  toolHandle: string | null | undefined,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctBooleanResult {
+  const host = getShape(hostHandle);
+  const tool = getShape(toolHandle);
+  if (!host || !tool) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  type BoolOps = {
+    cut: (other: unknown) => unknown;
+    fuse: (other: unknown) => unknown;
+    intersect: (other: unknown) => unknown;
+    mesh: (opts?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] };
+  };
+  const hostOps = host as BoolOps;
+  let result: unknown;
+  if (type === 'subtract') result = hostOps.cut(tool);
+  else if (type === 'union') result = hostOps.fuse(tool);
+  else result = hostOps.intersect(tool);
+
+  const mesh = (result as BoolOps).mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(mesh.vertices, 3));
+  if (mesh.normals && mesh.normals.length === mesh.vertices.length) {
+    geometry.setAttribute('normal', new Float32BufferAttribute(mesh.normals, 3));
+  }
+  geometry.setIndex(new Uint32BufferAttribute(mesh.triangles, 1));
+  if (!geometry.attributes.normal) geometry.computeVertexNormals();
+
+  return { geometry, handle: registerShape(result) };
+}
+
 // ─── Fillet / Chamfer via OCCT ──────────────────────────────────────────────
 
 interface MeshedShape {
