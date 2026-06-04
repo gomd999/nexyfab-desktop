@@ -158,6 +158,15 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Mobile safety net: on marketing/content pages (NOT the shape-generator or app
+   shells, which manage their own scroll) clip any accidental horizontal overflow
+   so a single too-wide element can never make the whole page scroll sideways on a
+   phone. `clip` (not `hidden`) so it never starts a scroll container; there are
+   no position:sticky elements to break. */
+body:not(.sg-mode):not(.nf-app-mode) {
+  overflow-x: clip;
+}
+
 /* ── 포커스 링 (접근성) ── */
 :focus-visible {
   outline: 2px solid var(--color-primary);

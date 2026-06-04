@@ -104,7 +104,7 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       <section style={{
         position: 'relative', overflow: 'hidden',
         background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 40%, #0b1a38 100%)',
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '120px 24px 80px',
       }}>
         {/* Animated grid background */}
