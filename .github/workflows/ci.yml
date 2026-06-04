@@ -86,10 +86,33 @@ jobs:
       # Re-enable with --bail + --reporter=verbose once the hang root cause
       # is identified and fixed; track via a follow-up issue not this PR.
 
+  robustness:
+    # Foundation robustness gate (commercial-parity F2/F1/F3). Runs the fuzz +
+    # degenerate-input corpus + the kernel-of-record / tolerance policy suites on
+    # EVERY PR. Headless mesh path only — no OCCT WASM, no Tauri — so it is fast
+    # and cannot hang like the (disabled) full vitest suite: a bounded, named set
+    # of files, not a glob. A silent-empty / NaN / non-structured-throw regression,
+    # or a drift in the welding tolerance, fails the build here.
+    name: Robustness gate (fuzz + corpus + policies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Fuzz + degenerate corpus + foundation policies
+        run: npm run test:robustness
+        env:
+          NODE_ENV: test
+
   build:
     name: Build Check
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test, security]
+    needs: [typecheck, lint, test, robustness, security]
     env:
       JWT_SECRET: ci-test-secret-at-least-32-chars
       NEXYFAB_DB_PATH: /tmp/nexyfab-ci.db
