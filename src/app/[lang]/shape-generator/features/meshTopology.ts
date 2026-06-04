@@ -22,6 +22,7 @@
  */
 
 import * as THREE from 'three';
+import { weldKey } from './tolerancePolicy';
 
 export type EdgeKind = 'boundary' | 'manifold' | 'non-manifold';
 
@@ -106,11 +107,10 @@ export function analyzeTopology(
   // map each vertex to a canonical index by position and key edges on that, so
   // manifold/boundary classification reflects real geometry. (Isolated-vertex
   // reporting below still uses raw indices.)
-  const QUANT = 1e5; // 1e-5 mm buckets
   const canon = new Int32Array(vertexCount);
   const posKeyToCanon = new Map<string, number>();
   for (let i = 0; i < vertexCount; i++) {
-    const pk = `${Math.round(pos.getX(i) * QUANT)},${Math.round(pos.getY(i) * QUANT)},${Math.round(pos.getZ(i) * QUANT)}`;
+    const pk = weldKey(pos.getX(i), pos.getY(i), pos.getZ(i));
     const existing = posKeyToCanon.get(pk);
     if (existing === undefined) { posKeyToCanon.set(pk, i); canon[i] = i; }
     else canon[i] = existing;
