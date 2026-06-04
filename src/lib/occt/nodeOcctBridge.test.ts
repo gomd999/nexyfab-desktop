@@ -78,6 +78,32 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(f.shape?.volume).toBeCloseTo(495.71, 1);
   });
 
+  it('K7: variableFillet applies a different radius per named edge', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const r = await bridge.variableFillet!(box.shape!, [
+      { edgeId: 'e.vert.0', radius: 1 },
+      { edgeId: 'e.vert.1', radius: 1.5 },
+      { edgeId: 'e.vert.2', radius: 0.5 },
+      { edgeId: 'e.vert.3', radius: 2 },
+    ]);
+    expect(r.ok).toBe(true);
+    // mixed radii (incl. larger than 1) remove more than the uniform-1mm 495.71
+    expect(r.shape!.volume).toBeLessThan(495.71);
+    expect(r.shape!.volume).toBeGreaterThan(485);
+  });
+
+  it('K7: variableFillet rejects a non-positive radius and unknown edges', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const bad = await bridge.variableFillet!(box.shape!, [{ edgeId: 'e.vert.0', radius: 0 }]);
+    expect(bad.ok).toBe(false);
+    expect(bad.error).toMatch(/positive finite/);
+    const unknown = await bridge.variableFillet!(box.shape!, [{ edgeId: 'e.nope', radius: 1 }]);
+    expect(unknown.ok).toBe(false);
+    expect(unknown.error).toMatch(/unresolved|unknown/);
+  });
+
   it('K3: fillet sel:all rounds every edge', async () => {
     if (!okLoad) return;
     const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });

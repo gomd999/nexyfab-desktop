@@ -76,6 +76,15 @@ export interface OcctBridge {
   readonly boolean: OcctBooleanOps;
   fillet(shape: OcctShape, edgeIds: string[], radius: number): Promise<OcctOperationResult>;
   chamfer(shape: OcctShape, edgeIds: string[], distance: number): Promise<OcctOperationResult>;
+  /**
+   * Variable-radius fillet — each named edge gets its own radius. Real-kernel
+   * only (the stub/approx bridges have no exact equivalent), so OPTIONAL: a
+   * bridge that can't do it omits the method and callers feature-detect.
+   */
+  variableFillet?(
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; radius: number }>,
+  ): Promise<OcctOperationResult>;
   exportSTEP(shape: OcctShape): Promise<string>;
   importSTEP(source: string): Promise<OcctOperationResult>;
   /**

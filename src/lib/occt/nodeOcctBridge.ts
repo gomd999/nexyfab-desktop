@@ -188,6 +188,46 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
    * topology, then matched to the kernel's re-indexed edges by midpoint (K3).
    * `['sel:all']` rounds every edge (no topology needed).
    */
+  /**
+   * Resolve a list of stable edge names (or ['sel:all']) to live OCCT edges on
+   * `shape`, IN INPUT ORDER (so callers can pair per-edge data like radii).
+   * Returns the live shape + picked edges, or an error string.
+   */
+  function resolvePickedEdges(
+    op: string,
+    shape: OcctShape,
+    edgeIds: string[],
+  ): { live: OcctInstance; picked: OcctInstance[] } | { error: string } {
+    let live: OcctInstance;
+    try {
+      live = lookup(shape, op);
+    } catch (e) {
+      return { error: `${op}: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    const occtEdges = uniqueEdges(oc, live);
+    if (edgeIds.length === 1 && edgeIds[0] === 'sel:all') {
+      return { live, picked: occtEdges.map((e) => e.edge) };
+    }
+    const topo = topos.get(shape.id);
+    if (!topo) {
+      return { error: `${op}: shape ${shape.id} has no stable topology — name-based selection unavailable; use ['sel:all']` };
+    }
+    const mids = occtEdges.map((e) => e.mid);
+    const picked: OcctInstance[] = [];
+    const missing: string[] = [];
+    for (const name of edgeIds) {
+      const anchor = topo.anchor(name);
+      if (!anchor) { missing.push(`${name} (unknown)`); continue; }
+      const match = nearestByMidpoint(mids, anchor, 1e-3);
+      if (match.index < 0) { missing.push(`${name} (no kernel edge near anchor)`); continue; }
+      picked.push(occtEdges[match.index].edge);
+    }
+    if (missing.length) {
+      return { error: `${op}: unresolved edges — ${missing.join(', ')}. known: ${topo.names().join(',')}` };
+    }
+    return { live, picked };
+  }
+
   function roundEdges(
     op: 'fillet' | 'chamfer',
     shape: OcctShape,
@@ -197,43 +237,9 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     if (!(size > 0) || !Number.isFinite(size)) {
       return { ok: false, error: `${op} size must be positive finite, got ${size}`, warnings: [] };
     }
-    let live: OcctInstance;
-    try {
-      live = lookup(shape, op);
-    } catch (e) {
-      return { ok: false, error: `${op}: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
-    }
-
-    const occtEdges = uniqueEdges(oc, live);
-    const all = edgeIds.length === 1 && edgeIds[0] === 'sel:all';
-
-    // Resolve the requested edges (or take all of them).
-    let picked: OcctInstance[];
-    if (all) {
-      picked = occtEdges.map((e) => e.edge);
-    } else {
-      const topo = topos.get(shape.id);
-      if (!topo) {
-        return {
-          ok: false,
-          error: `${op}: shape ${shape.id} has no stable topology — name-based selection unavailable; use ['sel:all']`,
-          warnings: [],
-        };
-      }
-      const mids = occtEdges.map((e) => e.mid);
-      picked = [];
-      const missing: string[] = [];
-      for (const name of edgeIds) {
-        const anchor = topo.anchor(name);
-        if (!anchor) { missing.push(`${name} (unknown)`); continue; }
-        const match = nearestByMidpoint(mids, anchor, 1e-3);
-        if (match.index < 0) { missing.push(`${name} (no kernel edge near anchor)`); continue; }
-        picked.push(occtEdges[match.index].edge);
-      }
-      if (missing.length) {
-        return { ok: false, error: `${op}: unresolved edges — ${missing.join(', ')}. known: ${topo.names().join(',')}`, warnings: [] };
-      }
-    }
+    const resolved = resolvePickedEdges(op, shape, edgeIds);
+    if ('error' in resolved) return { ok: false, error: resolved.error, warnings: [] };
+    const { live, picked } = resolved;
     if (picked.length === 0) {
       return { ok: false, error: `${op}: no edges selected`, warnings: [] };
     }
@@ -251,6 +257,40 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
       return result(mk.Shape() as OcctInstance, [`${op}ed ${picked.length} edge(s) @ ${size}`]);
     } catch (e) {
       return { ok: false, error: `${op}: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+  }
+
+  /**
+   * Variable-radius fillet: each named edge gets its OWN radius (BRepFilletAPI
+   * MakeFillet.Add_2 per edge). The kernel blends the differing radii across
+   * shared vertices. Real OCCT only — no stub/approx equivalent.
+   */
+  function variableFilletImpl(
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; radius: number }>,
+  ): OcctOperationResult {
+    if (edges.length === 0) {
+      return { ok: false, error: 'variableFillet: no edges given', warnings: [] };
+    }
+    for (const e of edges) {
+      if (!(e.radius > 0) || !Number.isFinite(e.radius)) {
+        return { ok: false, error: `variableFillet: radius for ${e.edgeId} must be positive finite, got ${e.radius}`, warnings: [] };
+      }
+    }
+    const resolved = resolvePickedEdges('variableFillet', shape, edges.map((e) => e.edgeId));
+    if ('error' in resolved) return { ok: false, error: resolved.error, warnings: [] };
+    const { live, picked } = resolved;
+
+    try {
+      const mk = m.inst('BRepFilletAPI_MakeFillet', live, 0);
+      picked.forEach((edge, i) => mk.Add_2(edges[i].radius, edge));
+      mk.Build();
+      if (!(mk.IsDone() as boolean)) {
+        return { ok: false, error: 'variableFillet: kernel failed (radius too large for edge / blend conflict?)', warnings: [] };
+      }
+      return result(mk.Shape() as OcctInstance, [`variable-filleted ${picked.length} edge(s)`]);
+    } catch (e) {
+      return { ok: false, error: `variableFillet: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
     }
   }
 
@@ -295,6 +335,9 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     },
     async chamfer(shape, edgeIds, distance) {
       return roundEdges('chamfer', shape, edgeIds, distance);
+    },
+    async variableFillet(shape, edges) {
+      return variableFilletImpl(shape, edges);
     },
     async exportSTEP(shape: OcctShape): Promise<string> {
       const live = lookup(shape, 'exportSTEP');
