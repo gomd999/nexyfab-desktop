@@ -55,9 +55,9 @@ function checkSane(g: THREE.BufferGeometry, ctx: string): void {
 }
 
 // Mesh-path-robust primitives + features (no OCCT dependency).
-const FUZZ_SHAPES = ['box', 'cylinder', 'sphere', 'cone'];
+const FUZZ_SHAPES = ['box', 'cylinder', 'sphere', 'cone', 'torus', 'wedge', 'pipe', 'disk', 'ellipsoid'];
 const FUZZ_FEATURES: FeatureType[] = [
-  'boolean', 'hole', 'mirror', 'linearPattern', 'circularPattern', 'scale', 'chamfer', 'draft',
+  'boolean', 'hole', 'mirror', 'linearPattern', 'circularPattern', 'scale', 'chamfer', 'draft', 'revolve',
 ];
 
 describe('feature pipeline fuzz (F2 robustness)', () => {
