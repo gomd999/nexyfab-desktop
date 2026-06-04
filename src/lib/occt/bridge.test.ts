@@ -334,6 +334,36 @@ describe('stub.release', () => {
   });
 });
 
+// ─── tessellate ───────────────────────────────────────────────────────────
+
+describe('stub.tessellate', () => {
+  it('meshes an extrude into viewer buffers via featureMesh', async () => {
+    const bridge = createStubBridge();
+    const built = await bridge.buildFromExtrude(rectExtrude()); // 10×5×7 box
+    const res = await bridge.tessellate(built.shape!);
+    expect(res.ok).toBe(true);
+    expect(res.mesh!.triangleCount).toBe(12);       // 6 faces → 12 triangles
+    expect(res.mesh!.edgeCount).toBe(12);           // box has 12 feature edges
+    expect(res.mesh!.positions).toHaveLength(12 * 9);
+    expect(res.mesh!.bounds.size).toEqual([10, 5, 7]);
+    expect(res.warnings.some((w) => /featureMesh/.test(w))).toBe(true);
+  });
+
+  it('errors on a released shape', async () => {
+    const bridge = createStubBridge();
+    const built = await bridge.buildFromExtrude(rectExtrude());
+    bridge.release(built.shape!);
+    await expect(bridge.tessellate(built.shape!)).rejects.toThrow();
+  });
+
+  it('errors on a shape with no tracked feature', async () => {
+    const bridge = createStubBridge();
+    const res = await bridge.tessellate({ id: 'stub_999', kind: 'solid' });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/tessellate/);
+  });
+});
+
 // ─── WASM bridge stub ─────────────────────────────────────────────────────
 
 describe('createWasmBridge', () => {

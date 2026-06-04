@@ -106,3 +106,26 @@ export interface OcctOperationResult {
   /** Non-fatal advisories (e.g. "stub: no actual fillet"). Always present. */
   warnings: string[];
 }
+
+/**
+ * Renderable tessellation of a shape — plain arrays so it crosses the worker
+ * postMessage boundary and feeds a THREE.BufferAttribute directly. `positions`
+ * / `normals` are flat XYZ (flat-shaded, 9 floats per triangle); `edges` are
+ * flat XYZ endpoint pairs of the feature (sharp/boundary) edges for the CAD
+ * overlay; `bounds` frames the camera.
+ */
+export interface OcctTessellation {
+  positions: number[];
+  normals: number[];
+  edges: number[];
+  triangleCount: number;
+  edgeCount: number;
+  bounds: { center: [number, number, number]; size: [number, number, number]; radius: number };
+}
+
+export interface OcctTessellationResult {
+  ok: boolean;
+  mesh?: OcctTessellation;
+  error?: string;
+  warnings: string[];
+}

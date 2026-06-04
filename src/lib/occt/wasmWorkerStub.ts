@@ -55,7 +55,7 @@
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import { createStubBridge, type OcctBridge } from './bridge';
-import type { OcctShape, OcctShapeKind, Vec3 } from './types';
+import type { OcctShape, OcctShapeKind, OcctTessellation, Vec3 } from './types';
 
 // ─── shared wire types ────────────────────────────────────────────────────
 
@@ -101,6 +101,8 @@ export interface WireOkResponse {
   ok: true;
   shape?: WireShapePayload;
   step?: string;
+  /** tessellate payload (plain arrays — postMessage-safe). */
+  mesh?: OcctTessellation;
   warnings?: string[];
 }
 

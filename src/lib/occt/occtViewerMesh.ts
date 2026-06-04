@@ -35,20 +35,27 @@ export interface ViewerMesh extends MeshBuffers {
   bounds: { center: [number, number, number]; size: [number, number, number]; radius: number };
 }
 
-/** Flat-shaded triangle soup. Triangular faces only (tessellation output). */
+/**
+ * Flat-shaded triangle soup. Triangulates each (convex) face as a fan from its
+ * first vertex — a no-op for the triangles tessellation emits, and correct for
+ * the convex prism/cap polygons featureMesh emits. Every sub-triangle carries
+ * its parent face's normal (flat shading).
+ */
 export function polyhedronToMesh(poly: Polyhedron): MeshBuffers {
   const positions: number[] = [];
   const normals: number[] = [];
   let triangleCount = 0;
   for (const f of poly.faces) {
-    if (f.vertices.length !== 3) continue; // tessellation is all triangles
-    const [a, b, c] = f.vertices;
-    for (const vi of [a, b, c]) {
-      const v = poly.vertices[vi];
-      positions.push(v.x, v.y, v.z);
-      normals.push(f.normal.x, f.normal.y, f.normal.z);
+    const loop = f.vertices;
+    if (loop.length < 3) continue;
+    for (let i = 1; i < loop.length - 1; i++) {
+      for (const vi of [loop[0], loop[i], loop[i + 1]]) {
+        const v = poly.vertices[vi];
+        positions.push(v.x, v.y, v.z);
+        normals.push(f.normal.x, f.normal.y, f.normal.z);
+      }
+      triangleCount++;
     }
-    triangleCount++;
   }
   return { positions, normals, triangleCount };
 }

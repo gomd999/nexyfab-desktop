@@ -154,4 +154,24 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(back.ok).toBe(false);
     expect(back.error).toMatch(/importSTEP/);
   });
+
+  it('K5/K6: tessellate yields viewer buffers for a real solid', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const res = await bridge.tessellate(box.shape!);
+    expect(res.ok).toBe(true);
+    expect(res.mesh!.triangleCount).toBe(12);
+    expect(res.mesh!.edgeCount).toBe(12);
+    expect(res.mesh!.bounds.center[2]).toBeCloseTo(2.5, 6);
+  });
+
+  it('K5/K6: tessellate works on an imported STEP shape (no provenance)', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const step = await bridge.exportSTEP(box.shape!);
+    const back = await bridge.importSTEP(step);
+    const res = await bridge.tessellate(back.shape!);
+    expect(res.ok).toBe(true);
+    expect(res.mesh!.triangleCount).toBeGreaterThanOrEqual(12);
+  });
 });

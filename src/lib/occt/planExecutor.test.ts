@@ -43,6 +43,7 @@ function makeMockBridge(opts: { failOn?: string } = {}): { bridge: OcctBridge; t
     async chamfer() { track.calls.push('chamfer'); return failIf('chamfer') ?? ok(); },
     async exportSTEP() { return ''; },
     async importSTEP() { return ok(); },
+    async tessellate() { track.calls.push('tessellate'); return { ok: true, mesh: { positions: [], normals: [], edges: [], triangleCount: 0, edgeCount: 0, bounds: { center: [0, 0, 0], size: [0, 0, 0], radius: 0 } }, warnings: [] }; },
     release(s) { track.released.push(s.id); },
   };
   return { bridge, track };

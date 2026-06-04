@@ -58,7 +58,9 @@ import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import { writeExtrudeAsStep } from '@/lib/brep-bridge/stepWrite';
 import { importStep } from '@/lib/brep-bridge/stepImport';
-import type { OcctOperationResult, OcctShape, Vec3 } from './types';
+import type { OcctOperationResult, OcctShape, OcctTessellationResult, Vec3 } from './types';
+import { featureToPolyhedron } from '@/lib/cad/featureMesh';
+import { polyhedronToMesh, polyhedronFeatureEdges, meshBounds } from './occtViewerMesh';
 
 // ─── public bridge interface ──────────────────────────────────────────────
 
@@ -76,6 +78,12 @@ export interface OcctBridge {
   chamfer(shape: OcctShape, edgeIds: string[], distance: number): Promise<OcctOperationResult>;
   exportSTEP(shape: OcctShape): Promise<string>;
   importSTEP(source: string): Promise<OcctOperationResult>;
+  /**
+   * Tessellate `shape` into renderable buffers (triangles + feature edges +
+   * camera bounds) for the 3D viewer and for drawing projection. `deflection`
+   * is the chord tolerance in mm (smaller = finer).
+   */
+  tessellate(shape: OcctShape, deflection?: number): Promise<OcctTessellationResult>;
   /** Release any native handle backing `shape`. After release the handle MUST NOT be re-used. No-op for the stub. */
   release(shape: OcctShape): void;
 }
@@ -336,6 +344,31 @@ function makeStubBridge(): OcctBridge {
     return { ok: true, shape, warnings };
   };
 
+  const tessellate = async (shape: OcctShape, _deflection?: number): Promise<OcctTessellationResult> => {
+    assertLive(shape, 'tessellate');
+    // The stub has no kernel, but it CAN mesh shapes built from a tracked
+    // primitive feature via featureMesh — same buffer shape as the real bridge.
+    const feature = internals.featureOf.get(shape);
+    if (!feature) {
+      return {
+        ok: false,
+        error: `tessellate: stub can only mesh shapes built via buildFromExtrude/buildFromRevolve (got ${shape.id})`,
+        warnings: [],
+      };
+    }
+    const poly = featureToPolyhedron(feature);
+    if (!poly) {
+      return { ok: false, error: `tessellate: stub cannot mesh feature kind '${feature.kind}'`, warnings: [] };
+    }
+    const mesh = polyhedronToMesh(poly);
+    const edges = polyhedronFeatureEdges(poly);
+    return {
+      ok: true,
+      mesh: { ...mesh, edges, edgeCount: edges.length / 6, bounds: meshBounds(poly) },
+      warnings: ['stub: featureMesh tessellation (no kernel deflection control)'],
+    };
+  };
+
   const release = (shape: OcctShape): void => {
     // No native memory to free; mark id as released so use-after-release
     // throws (matches the real bridge contract).
@@ -350,6 +383,7 @@ function makeStubBridge(): OcctBridge {
     chamfer,
     exportSTEP,
     importSTEP,
+    tessellate,
     release,
   };
 }

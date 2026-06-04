@@ -20,6 +20,7 @@ import type { OcctModule } from './nodeOcctLoader';
 import { buildExtrudeTopo, edgeMidpoint, namesOf } from '@/lib/cad/topoNaming';
 import { nearestByMidpoint } from '@/lib/cad/edgeMatch';
 import { composeBooleanTopo, fromAnchors, type EdgeAnchorSource } from '@/lib/cad/composedTopo';
+import { tessellateToMesh } from './occtViewerMesh';
 
 // ─── embind typing helpers (no `any`) ──────────────────────────────────────
 
@@ -337,6 +338,19 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         return { ok: false, error: `importSTEP: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
       }
     },
+    async tessellate(shape: OcctShape, deflection = 0.1) {
+      try {
+        const live = lookup(shape, 'tessellate');
+        const mesh = tessellateToMesh(oc, live, deflection);
+        if (mesh.triangleCount === 0) {
+          return { ok: false, error: `tessellate: empty mesh for ${shape.id}`, warnings: [] };
+        }
+        return { ok: true, mesh, warnings: [] };
+      } catch (e) {
+        return { ok: false, error: `tessellate: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+      }
+    },
+
     release(shape: OcctShape) {
       const live = registry.get(shape.id);
       if (live && typeof live.delete === 'function') live.delete();

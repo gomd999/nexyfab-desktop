@@ -61,7 +61,7 @@
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { OcctBooleanOps, OcctBridge } from './bridge';
-import type { OcctOperationResult, OcctShape } from './types';
+import type { OcctOperationResult, OcctShape, OcctTessellationResult } from './types';
 import {
   createWasmWorkerStub,
   type WireRequest,
@@ -344,6 +344,19 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     return toOperationResult(resp);
   };
 
+  const tessellate = async (shape: OcctShape, deflection = 0.1): Promise<OcctTessellationResult> => {
+    await ensureReady();
+    const handle = wireHandleOf(shape, 'tessellate');
+    const resp = await sendRequest('tessellate', { handle, deflection });
+    if (!resp.ok) {
+      return { ok: false, error: resp.error, warnings: resp.warnings ?? [] };
+    }
+    if (!resp.mesh) {
+      return { ok: false, error: 'occt-wasm: tessellate returned no mesh payload', warnings: resp.warnings ?? [] };
+    }
+    return { ok: true, mesh: resp.mesh, warnings: resp.warnings ?? [] };
+  };
+
   const release = (shape: OcctShape): void => {
     const h = idToHandle.get(shape.id);
     if (h === undefined) return; // idempotent
@@ -379,6 +392,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     chamfer,
     exportSTEP,
     importSTEP,
+    tessellate,
     release,
     dispose,
     get liveShapeCount() { return liveCount; },

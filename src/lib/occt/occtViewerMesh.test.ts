@@ -34,9 +34,11 @@ describe('polyhedronToMesh', () => {
     expect(m.normals.slice(0, 9)).toEqual([0, 0, -1, 0, 0, -1, 0, 0, -1]);
   });
 
-  it('skips non-triangular faces', () => {
+  it('fan-triangulates a polygonal face (quad → 2 triangles, same normal)', () => {
     const quad: Polyhedron = { vertices: tetra.vertices, faces: [{ vertices: [0, 1, 2, 3], normal: { x: 0, y: 0, z: 1 } }] };
-    expect(polyhedronToMesh(quad).triangleCount).toBe(0);
+    const m = polyhedronToMesh(quad);
+    expect(m.triangleCount).toBe(2);
+    expect(m.normals.slice(0, 3)).toEqual([0, 0, 1]);
   });
 });
 
