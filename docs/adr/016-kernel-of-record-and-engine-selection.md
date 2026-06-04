@@ -45,12 +45,32 @@ kernel on **commit**. The phase defaults to `'commit'`, so the centralisation is
 ## Why the default is NOT being flipped ON in this change
 
 Roadmap F1 step 2 ("flip `occtGlobalMode` default ON") is deliberately **not**
-done here. Turning it on requires `ensureOcctReady()` (browser WASM init) to
-succeed and changes behaviour across every feature — neither is verifiable in the
-headless test suite (OCCT-gated tests are skipped). Flipping a global we cannot
-verify end-to-end is exactly the risk this program avoids. The pieces that make a
-*later, verified* flip a one-liner are landed instead: the single policy, the
-perf-guard scaffold, and the documented kernel of record.
+done here. Turning it on changes behaviour across every feature in a real browser
+(a 10 MB WASM pull on load, the full feature visual matrix routed through the
+kernel) — that browser UX matrix is not verifiable in the headless suite. Flipping
+a global whose user-facing effect we cannot verify end-to-end is the risk this
+program avoids. The pieces that make a *later, verified* flip a one-liner are
+landed instead: the single policy, the perf-guard scaffold, and the documented
+kernel of record.
+
+### What the probe now PROVES (so only browser QA remains)
+
+`__tests__/occtEngineSelection.probe.test.ts` (gated by `RUN_OCCT_FEASIBILITY=1`,
+runs in the occt-burnin CI job) verifies against the REAL kernel — and is green:
+
+1. **WASM init works headlessly** — `ensureOcctReady()` initialises the in-process
+   replicad kernel; `isOcctReady()` becomes true. The "does the kernel even load"
+   risk is retired.
+2. **The perf guard holds end-to-end** — with OCCT loaded and global mode on, a
+   boolean at `commit` phase carries an `occtHandle` (ran B-rep), and the SAME
+   boolean during a `drag` does NOT (stayed on the fast mesh path). The safety
+   property a default-ON depends on — *a slider drag can never trigger the slow
+   kernel* — is proven, not assumed.
+
+Remaining before the flip: (a) wire `setInteractionPhase('drag'|'commit')` to the
+slider pointer-down/up in `FeatureParams` (paired with the flip — it is inert while
+`occtMode` is off, and its commit-rebuild trigger needs the real rebuild path to
+verify), and (b) a browser QA pass over the feature visual matrix in OCCT mode.
 
 ## Acceptance (this change)
 
