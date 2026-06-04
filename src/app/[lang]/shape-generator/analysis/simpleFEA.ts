@@ -358,7 +358,24 @@ export function runSimpleFEA(
   options: FEAOptions,
 ): FEAResult {
   try {
-    return { ...runFEM(geometry, options.material, options.conditions, 1200), method: 'linear-fem-tet' as const };
+    const fem = runFEM(geometry, options.material, options.conditions, 1200);
+    // A non-converged CG solve (or a non-finite / wildly implausible result) is
+    // NOT a usable answer — the penalty-method system can leave under-constrained
+    // or sliver-tet nodes with astronomically large spurious displacement. Surfacing
+    // that as real stress/displacement is a silent-wrong, so fall back to the
+    // beam-theory approximation instead (block-rather-than-silently-wrong).
+    const usable = fem.converged
+      && Number.isFinite(fem.maxDisplacement)
+      && Number.isFinite(fem.maxStress)
+      && fem.maxDisplacement < 1e6; // mm — no real part deflects a kilometre
+    if (!usable) {
+      console.warn(
+        `[FEA] Linear FEM did not produce a usable result (converged=${fem.converged}, ` +
+        `maxDisp=${fem.maxDisplacement}); falling back to beam theory.`,
+      );
+      return runBeamTheoryFallback(geometry, options);
+    }
+    return { ...fem, method: 'linear-fem-tet' as const };
   } catch (e) {
     console.warn('[FEA] Linear FEM failed, falling back to beam theory:', e);
     return runBeamTheoryFallback(geometry, options);
