@@ -14,7 +14,8 @@
  *   - env-var resolution prefers NEXYFAB_ANTHROPIC_KEY over ANTHROPIC_API_KEY
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { POST, handleAssemblyIntent } from './route';
+import { POST } from './route';
+import { handleAssemblyIntent } from './handler';
 
 function makeReq(body: unknown): Request {
   return new Request('http://localhost/api/assembly-intent', {
