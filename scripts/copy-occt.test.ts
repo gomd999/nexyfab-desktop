@@ -25,12 +25,15 @@ interface CopyResult {
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const script = req('./copy-occt.js') as {
   copyOcct: (opts: { root?: string; fs?: FakeFs }) => CopyResult;
+  copyWorkerScripts: (opts: { root?: string; fs?: FakeFs }) => CopyResult;
   SRC_DIR_REL: string;
   DST_DIR_REL: string;
+  WORKER_SRC_DIR_REL: string;
   FILES: Array<{ src: string; dst: string }>;
+  WORKER_FILES: string[];
 };
 
-const { copyOcct, SRC_DIR_REL, DST_DIR_REL, FILES } = script;
+const { copyOcct, copyWorkerScripts, SRC_DIR_REL, DST_DIR_REL, WORKER_SRC_DIR_REL, FILES, WORKER_FILES } = script;
 
 const ROOT = path.resolve('/fake-repo-root');
 
@@ -266,5 +269,57 @@ describe('copyOcct', () => {
       expect(Array.isArray(out.skipped)).toBe(true);
       expect(Array.isArray(out.warnings)).toBe(true);
     });
+  });
+});
+
+describe('copyWorkerScripts', () => {
+  const allWorkers = (): Record<string, number> =>
+    Object.fromEntries(WORKER_FILES.map((n) => [path.join(WORKER_SRC_DIR_REL, n), 10_000]));
+
+  it('copies all three worker dispatchers from occt-worker/ → public/occt-worker/', () => {
+    const fs = makeFs(allWorkers());
+    const out = copyWorkerScripts({ root: ROOT, fs });
+    expect(out.copied).toEqual(WORKER_FILES);
+    expect(out.skipped).toEqual([]);
+    expect(out.warnings).toEqual([]);
+    const dstDir = path.join(ROOT, DST_DIR_REL);
+    for (const name of WORKER_FILES) {
+      expect(fs.__copies).toContainEqual({
+        src: path.join(ROOT, WORKER_SRC_DIR_REL, name),
+        dst: path.join(dstDir, name),
+      });
+    }
+  });
+
+  it('serves the real dispatcher + launcher (not just the stub)', () => {
+    expect(WORKER_FILES).toContain('occt-worker-real.js');
+    expect(WORKER_FILES).toContain('occt-worker-launcher.js');
+  });
+
+  it('warns + skips a missing worker file but keeps copying the rest', () => {
+    const initial = allWorkers();
+    delete initial[path.join(WORKER_SRC_DIR_REL, 'occt-worker-real.js')];
+    const fs = makeFs(initial);
+    const out = copyWorkerScripts({ root: ROOT, fs });
+    expect(out.copied).toContain('occt-worker.js');
+    expect(out.copied).toContain('occt-worker-launcher.js');
+    expect(out.skipped).toEqual(['occt-worker-real.js']);
+    expect(out.warnings.some((w) => w.includes('occt-worker-real.js'))).toBe(true);
+  });
+
+  it('is non-fatal when mkdirSync throws', () => {
+    const fs = makeFs(allWorkers(), { __throwOnMkdir: true });
+    const out = copyWorkerScripts({ root: ROOT, fs });
+    expect(out.copied).toEqual([]);
+    expect(out.skipped).toEqual(WORKER_FILES);
+    expect(out.warnings.some((w) => w.includes('failed to create destination dir'))).toBe(true);
+  });
+
+  it('warns per-file when copyFileSync throws but continues', () => {
+    const fs = makeFs(allWorkers(), { __throwOnCopy: 'occt-worker-real.js' });
+    const out = copyWorkerScripts({ root: ROOT, fs });
+    expect(out.copied).toContain('occt-worker.js');
+    expect(out.skipped).toContain('occt-worker-real.js');
+    expect(out.warnings.some((w) => w.includes('copy failed for worker occt-worker-real.js'))).toBe(true);
   });
 });

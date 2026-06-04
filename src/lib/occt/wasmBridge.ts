@@ -113,7 +113,20 @@ interface Pending {
   op: string;
 }
 
+/** Phase-4 stub dispatcher — the safe default (no WASM, no CSP requirements). */
 const DEFAULT_WORKER_URL = '/occt-worker/occt-worker.js';
+
+/**
+ * Phase-5 activation URL. Point the bridge here (`workerUrl: LAUNCHER_WORKER_URL`)
+ * to feature-detect the real OCCT kernel: the launcher tries opencascade.js +
+ * occt-worker-real.js and falls back to the stub on any failure (404 / MIME /
+ * CSP / WASM-instantiation), so flipping is safe even before CSP is updated —
+ * worst case it behaves exactly like the stub. Both files are served by
+ * scripts/copy-occt.js. Activation is gated on the CSP change
+ * (`script-src 'wasm-unsafe-eval'`, `worker-src 'self' blob:`) + a Playwright
+ * burn-in against the real binary (see occt-worker/PHASE_5_INTEGRATION.md).
+ */
+export const LAUNCHER_WORKER_URL = '/occt-worker/occt-worker-launcher.js';
 
 /**
  * Build a WASM-backed `OcctBridge`. The bridge spawns a worker (real `Worker`

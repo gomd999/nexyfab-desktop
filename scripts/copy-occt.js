@@ -61,6 +61,20 @@ const FILES = [
   { src: 'opencascade.wasm.wasm', dst: 'opencascade.wasm' },
 ];
 
+/** Repo-root-relative source dir for the hand-authored worker dispatchers. */
+const WORKER_SRC_DIR_REL = 'occt-worker';
+
+/**
+ * Worker dispatcher files served from `public/occt-worker/`. Unlike the npm
+ * kernel above, these live in the repo (`occt-worker/`) and are ALWAYS present,
+ * so they copy unconditionally — this keeps the served bytes in lock-step with
+ * source instead of hand-syncing public/. Names are copied verbatim.
+ *   - occt-worker.js          → the Phase-4 stub dispatcher (frozen)
+ *   - occt-worker-real.js     → the real-OCCT dispatcher (loads opencascade.js)
+ *   - occt-worker-launcher.js → feature-detect wrapper (real → stub fallback)
+ */
+const WORKER_FILES = ['occt-worker.js', 'occt-worker-real.js', 'occt-worker-launcher.js'];
+
 /**
  * Run the copy.
  *
@@ -137,6 +151,55 @@ function copyOcct(opts) {
   return { copied, skipped, warnings, srcDir, dstDir };
 }
 
+/**
+ * Copy the repo's worker dispatcher files (occt-worker/*.js) into
+ * public/occt-worker/. Separate from copyOcct (whose source is node_modules and
+ * may be absent) — these are committed repo files, so a missing one is a real
+ * error worth a warning, not a clean skip. Same non-throwing contract.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.root]
+ * @param {object} [opts.fs]
+ * @returns {{ copied: string[], skipped: string[], warnings: string[], srcDir: string, dstDir: string }}
+ */
+function copyWorkerScripts(opts) {
+  const options = opts || {};
+  const root = options.root != null ? options.root : process.cwd();
+  const fs = options.fs != null ? options.fs : realFs;
+
+  const srcDir = path.join(root, WORKER_SRC_DIR_REL);
+  const dstDir = path.join(root, DST_DIR_REL);
+  const copied = [];
+  const skipped = [];
+  const warnings = [];
+
+  try {
+    fs.mkdirSync(dstDir, { recursive: true });
+  } catch (err) {
+    warnings.push(`failed to create destination dir ${DST_DIR_REL}: ` + errMsg(err) + ' — skipping worker copies.');
+    return { copied, skipped: WORKER_FILES.slice(), warnings, srcDir, dstDir };
+  }
+
+  for (const name of WORKER_FILES) {
+    const srcAbs = path.join(srcDir, name);
+    const dstAbs = path.join(dstDir, name);
+    if (!safeExists(fs, srcAbs)) {
+      warnings.push(`worker file missing: ${path.join(WORKER_SRC_DIR_REL, name)} — repo may be incomplete. Skipping.`);
+      skipped.push(name);
+      continue;
+    }
+    try {
+      fs.copyFileSync(srcAbs, dstAbs);
+      copied.push(name);
+    } catch (err) {
+      warnings.push(`copy failed for worker ${name}: ` + errMsg(err));
+      skipped.push(name);
+    }
+  }
+
+  return { copied, skipped, warnings, srcDir, dstDir };
+}
+
 /** existsSync wrapped so a mock that throws is treated as "missing". */
 function safeExists(fs, p) {
   try {
@@ -155,15 +218,16 @@ function errMsg(err) {
 /** CLI entry — runs the copy, logs human-readable summary, exits 0. */
 function main() {
   const result = copyOcct({});
+  const workers = copyWorkerScripts({});
 
-  for (const w of result.warnings) {
+  for (const w of result.warnings.concat(workers.warnings)) {
     // Single prefix so log aggregators can grep one tag.
     process.stderr.write(`[copy-occt] WARN: ${w}\n`);
   }
-  for (const f of result.copied) {
+  for (const f of result.copied.concat(workers.copied)) {
     process.stdout.write(`[copy-occt] copied ${f}\n`);
   }
-  if (result.copied.length === 0 && result.warnings.length === 0) {
+  if (result.copied.length === 0 && workers.copied.length === 0 && result.warnings.length === 0 && workers.warnings.length === 0) {
     process.stdout.write('[copy-occt] no files to copy (unexpected)\n');
   }
 
@@ -175,9 +239,12 @@ function main() {
 
 module.exports = {
   copyOcct,
+  copyWorkerScripts,
   SRC_DIR_REL,
   DST_DIR_REL,
+  WORKER_SRC_DIR_REL,
   FILES,
+  WORKER_FILES,
 };
 
 if (require.main === module) {
