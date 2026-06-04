@@ -13,7 +13,7 @@ import {
   type BuildAxis, type BoundaryConditions3D,
 } from './topology3D';
 import {
-  extractSolidSurface, taubinSmooth, thresholdForFraction, type ExtractedMesh,
+  extractManifoldSurface, taubinSmooth, thresholdForFraction, type ExtractedMesh,
 } from './topologyExtract';
 
 export interface GenerativeSpec {
@@ -74,7 +74,7 @@ export function runGenerativeDesign(spec: GenerativeSpec): GenerativeResult {
   // Extract at the threshold that realises the achieved volume, so the mesh
   // matches the optimised material distribution.
   const thr = thresholdForFraction(opt.density, opt.volumeFraction);
-  let mesh = extractSolidSurface(opt.density, grid, thr, spec.cell ?? 1);
+  let mesh = extractManifoldSurface(opt.density, grid, thr, spec.cell ?? 1);
   if (spec.smooth && spec.smooth > 0 && mesh.indices.length > 0) {
     mesh = taubinSmooth(mesh, spec.smooth);
   }

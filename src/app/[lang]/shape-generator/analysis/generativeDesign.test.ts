@@ -38,11 +38,10 @@ describe('generativeDesign — one-call pipeline (Track G)', () => {
     // and the pipeline still yields a finite, non-empty mesh.
     expect(r.mesh.indices.length).toBeGreaterThan(0);
     expect(r.mesh.positions.every((v) => Number.isFinite(v))).toBe(true);
-    // No open boundary (no holes). NOTE: an AM design's 45° supports make voxels
-    // touch diagonally, which can leave non-manifold EDGES — strict
-    // closed-manifold extraction for diagonal features needs manifold repair
-    // (a documented follow-up); the surface is still hole-free here.
-    expect(analyzeTopology(toGeo(r.mesh)).boundaryEdgeCount).toBe(0);
+    // STRICTLY watertight — even for the 45° diagonal steps an AM design makes.
+    // (extractManifoldSurface face-connects the diagonal voxels; the old
+    // non-manifold-edge limitation is now fixed.)
+    expect(analyzeTopology(toGeo(r.mesh)).isClosedManifold).toBe(true);
   });
 
   it('honours passive keep-out / keep-in regions', () => {

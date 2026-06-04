@@ -65,6 +65,58 @@ export function extractSolidSurface(
   return { positions: new Float32Array(coords), indices: new Uint32Array(tris) };
 }
 
+/**
+ * Make a voxel density field FACE-connected so its extracted surface is a clean
+ * 2-manifold. Two solid voxels that touch only along an edge (a checkerboard —
+ * common where a 45°-overhang AM design steps diagonally) leave four boundary
+ * faces meeting at one edge, which is non-manifold and trips watertightness
+ * checks / slicers. The geometry, not just the indexing, has to change: this
+ * fills one of the two void voxels of each in-plane checkerboard, turning the
+ * edge-touch into a face connection (a tiny notch fill — slightly more material
+ * at a junction, never less). Returns a new density; iterates a few times since a
+ * fill can create a new neighbour to resolve.
+ */
+export function fillDiagonalGaps(density: Float32Array, grid: TopologyGrid, threshold = 0.5, passes = 3): Float32Array {
+  const { nx, ny, nz } = grid;
+  const out = Float32Array.from(density);
+  const solid = (e: number) => out[e] > threshold;
+  // the three in-plane 2×2 checkerboards (perpendicular to z, y, x).
+  for (let pass = 0; pass < passes; pass++) {
+    let filled = 0;
+    // XY plane (fixed z)
+    for (let z = 0; z < nz; z++) for (let y = 0; y < ny - 1; y++) for (let x = 0; x < nx - 1; x++) {
+      const a = grid.eIdx(x, y, z), b = grid.eIdx(x+1, y, z), c = grid.eIdx(x, y+1, z), d = grid.eIdx(x+1, y+1, z);
+      if (solid(a) && solid(d) && !solid(b) && !solid(c)) { out[b] = 1; filled++; }
+      else if (solid(b) && solid(c) && !solid(a) && !solid(d)) { out[a] = 1; filled++; }
+    }
+    // XZ plane (fixed y)
+    for (let y = 0; y < ny; y++) for (let z = 0; z < nz - 1; z++) for (let x = 0; x < nx - 1; x++) {
+      const a = grid.eIdx(x, y, z), b = grid.eIdx(x+1, y, z), c = grid.eIdx(x, y, z+1), d = grid.eIdx(x+1, y, z+1);
+      if (solid(a) && solid(d) && !solid(b) && !solid(c)) { out[b] = 1; filled++; }
+      else if (solid(b) && solid(c) && !solid(a) && !solid(d)) { out[a] = 1; filled++; }
+    }
+    // YZ plane (fixed x)
+    for (let x = 0; x < nx; x++) for (let z = 0; z < nz - 1; z++) for (let y = 0; y < ny - 1; y++) {
+      const a = grid.eIdx(x, y, z), b = grid.eIdx(x, y+1, z), c = grid.eIdx(x, y, z+1), d = grid.eIdx(x, y+1, z+1);
+      if (solid(a) && solid(d) && !solid(b) && !solid(c)) { out[b] = 1; filled++; }
+      else if (solid(b) && solid(c) && !solid(a) && !solid(d)) { out[a] = 1; filled++; }
+    }
+    if (filled === 0) break;
+  }
+  return out;
+}
+
+/**
+ * Watertight surface of a density field with diagonal gaps filled — a clean
+ * 2-manifold even for AM-overhang / diagonal designs. Use this when the mesh must
+ * be strictly manifold (STEP export, slicing).
+ */
+export function extractManifoldSurface(
+  density: Float32Array, grid: TopologyGrid, threshold = 0.5, cell = 1,
+): ExtractedMesh {
+  return extractSolidSurface(fillDiagonalGaps(density, grid, threshold), grid, threshold, cell);
+}
+
 /** Build the vertex→neighbour adjacency from the triangle list. */
 function buildAdjacency(mesh: ExtractedMesh): number[][] {
   const n = mesh.positions.length / 3;
