@@ -117,4 +117,41 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(f.ok).toBe(false);
     expect(f.error).toMatch(/unresolved|unknown/);
   });
+
+  it('K4: exportSTEP emits an ISO-10303-21 part', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const step = await bridge.exportSTEP(box.shape!);
+    expect(step.startsWith('ISO-10303-21')).toBe(true);
+    expect(step).toMatch(/MANIFOLD_SOLID_BREP|ADVANCED_BREP_SHAPE_REPRESENTATION|CLOSED_SHELL/);
+    expect(step).toContain('END-ISO-10303-21');
+  });
+
+  it('K4: STEP round-trips a real solid with volume preserved', async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const step = await bridge.exportSTEP(box.shape!);
+    const back = await bridge.importSTEP(step);
+    expect(back.ok).toBe(true);
+    expect(back.shape?.kind).toBe('solid');
+    expect(back.shape?.volume).toBeCloseTo(500, 1);
+  });
+
+  it('K4: a holed solid survives the STEP round trip', async () => {
+    if (!okLoad) return;
+    const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 7, direction: 'one_sided', mode: 'add' });
+    const cut = await bridge.boolean.subtract(base.shape!, tool.shape!);
+    const step = await bridge.exportSTEP(cut.shape!);
+    const back = await bridge.importSTEP(step);
+    expect(back.ok).toBe(true);
+    expect(back.shape?.volume).toBeCloseTo(420, 1);
+  });
+
+  it('K4: importSTEP rejects garbage cleanly', async () => {
+    if (!okLoad) return;
+    const back = await bridge.importSTEP('not a step file at all');
+    expect(back.ok).toBe(false);
+    expect(back.error).toMatch(/importSTEP/);
+  });
 });

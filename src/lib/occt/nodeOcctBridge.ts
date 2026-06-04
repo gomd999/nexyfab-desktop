@@ -26,6 +26,25 @@ import { composeBooleanTopo, fromAnchors, type EdgeAnchorSource } from '@/lib/ca
 type OcctInstance = Record<string, (...args: unknown[]) => unknown>;
 type OcctCtor = new (...args: unknown[]) => OcctInstance;
 
+/** Emscripten MEMFS surface used for STEP I/O (K4). */
+interface OcctFS {
+  writeFile(path: string, data: string): void;
+  readFile(path: string, opts: { encoding: 'utf8' }): string;
+  unlink(path: string): void;
+}
+
+/**
+ * Fixed MEMFS scratch paths for STEP I/O. This opencascade.js build's STEP
+ * Writer/Reader silently mis-handle many filenames (Write returns RetDone but
+ * writes nothing; Reader returns RetError on a valid file — e.g. any path with
+ * "_in_", or various digit-suffixed basenames). These two short names are
+ * verified to round-trip reliably; each call unlinks after use so the next
+ * Write always targets a fresh path. STEP ops are synchronous server-side, so
+ * the shared scratch names never race.
+ */
+const STEP_WRITE_PATH = 'cadw.step';
+const STEP_READ_PATH = 'cadr.step';
+
 function maker(oc: OcctModule) {
   const ctor = (name: string): OcctCtor => oc[name] as OcctCtor;
   const stat = (name: string): OcctInstance => oc[name] as unknown as OcctInstance;
@@ -276,11 +295,47 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     async chamfer(shape, edgeIds, distance) {
       return roundEdges('chamfer', shape, edgeIds, distance);
     },
-    async exportSTEP() {
-      throw new Error('exportSTEP via OCCT is K4 — not implemented');
+    async exportSTEP(shape: OcctShape): Promise<string> {
+      const live = lookup(shape, 'exportSTEP');
+      const fs = (oc as unknown as { FS: OcctFS }).FS;
+      const modelType = oc.STEPControl_StepModelType as unknown as { STEPControl_AsIs: unknown };
+      const path = STEP_WRITE_PATH;
+      const writer = m.inst('STEPControl_Writer_1');
+      writer.Transfer(live, modelType.STEPControl_AsIs, true);
+      writer.Write(path);
+      const text = fs.readFile(path, { encoding: 'utf8' });
+      // STEPControl_Writer/Reader share a global XSControl session — a leaked
+      // instance corrupts the next read. Free it so only one is ever live.
+      if (typeof writer.delete === 'function') writer.delete();
+      try { fs.unlink(path); } catch { /* best-effort cleanup */ }
+      if (typeof text !== 'string' || !text.startsWith('ISO-10303-21')) {
+        throw new Error(`exportSTEP: writer produced no STEP for ${shape.id}`);
+      }
+      return text;
     },
-    async importSTEP() {
-      return { ok: false, error: 'importSTEP via OCCT is K4 — not implemented', warnings: [] };
+    async importSTEP(source: string): Promise<OcctOperationResult> {
+      try {
+        const fs = (oc as unknown as { FS: OcctFS }).FS;
+        const path = STEP_READ_PATH;
+        fs.writeFile(path, source);
+        const reader = m.inst('STEPControl_Reader_1');
+        reader.ReadFile(path);
+        const n = reader.TransferRoots() as number;
+        if (!n || n < 1) {
+          if (typeof reader.delete === 'function') reader.delete();
+          try { fs.unlink(path); } catch { /* best-effort cleanup */ }
+          return { ok: false, error: 'importSTEP: no transferable roots in STEP', warnings: [] };
+        }
+        const imported = reader.OneShape() as OcctInstance;
+        // Register (copies volume/bbox) before freeing the reader; the underlying
+        // TopoDS_Shape is refcounted so it survives the reader's release.
+        const out = result(imported, ['imported B-rep — no stable edge names (use sel:all)']);
+        if (typeof reader.delete === 'function') reader.delete();
+        try { fs.unlink(path); } catch { /* best-effort cleanup */ }
+        return out;
+      } catch (e) {
+        return { ok: false, error: `importSTEP: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+      }
     },
     release(shape: OcctShape) {
       const live = registry.get(shape.id);
