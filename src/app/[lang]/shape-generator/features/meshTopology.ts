@@ -98,8 +98,26 @@ export function analyzeTopology(
   const vertexCount = pos.count;
   const triCount = idx ? idx.count / 3 : pos.count / 3;
 
-  // Edge map: key = `v0|v1` (sorted), value = list of (face, fromV, toV)
-  // tuples. Tracking from→to lets us detect winding flips on shared edges.
+  // Weld coincident vertices by quantised position. THREE primitives (and STL
+  // imports) duplicate face-corner vertices — a BoxGeometry has 24 positions,
+  // not 8 — so two faces meeting at an edge reference DIFFERENT indices for the
+  // same point. Keying edges by raw index would then read every shared edge as
+  // two boundary edges, falsely classifying every closed solid as "open". We
+  // map each vertex to a canonical index by position and key edges on that, so
+  // manifold/boundary classification reflects real geometry. (Isolated-vertex
+  // reporting below still uses raw indices.)
+  const QUANT = 1e5; // 1e-5 mm buckets
+  const canon = new Int32Array(vertexCount);
+  const posKeyToCanon = new Map<string, number>();
+  for (let i = 0; i < vertexCount; i++) {
+    const pk = `${Math.round(pos.getX(i) * QUANT)},${Math.round(pos.getY(i) * QUANT)},${Math.round(pos.getZ(i) * QUANT)}`;
+    const existing = posKeyToCanon.get(pk);
+    if (existing === undefined) { posKeyToCanon.set(pk, i); canon[i] = i; }
+    else canon[i] = existing;
+  }
+
+  // Edge map: key = `v0|v1` (sorted canonical indices), value = list of
+  // (face, fromV, toV) tuples. Tracking from→to lets us detect winding flips.
   interface EdgeOccurrence { face: number; from: number; to: number; }
   const edgeMap = new Map<string, EdgeOccurrence[]>();
   const referenced = new Set<number>();
@@ -111,8 +129,10 @@ export function analyzeTopology(
     const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
     const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
     referenced.add(i0); referenced.add(i1); referenced.add(i2);
-    const edges: Array<[number, number]> = [[i0, i1], [i1, i2], [i2, i0]];
+    const c0 = canon[i0], c1 = canon[i1], c2 = canon[i2];
+    const edges: Array<[number, number]> = [[c0, c1], [c1, c2], [c2, c0]];
     for (const [from, to] of edges) {
+      if (from === to) continue; // degenerate (welded-collapsed) edge
       const k = key(from, to);
       const occs = edgeMap.get(k);
       const occ: EdgeOccurrence = { face: t, from, to };
