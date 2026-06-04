@@ -13,7 +13,8 @@
  *   - each PlanIntent kind round-trips through LLM validation
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { POST, handleFeatureTreeIntent } from './route';
+import { POST } from './route';
+import { handleFeatureTreeIntent } from './handler';
 import { INTENT_KINDS } from '@/lib/ai/featureTreeIntentDetector';
 
 function makeReq(body: unknown): Request {
