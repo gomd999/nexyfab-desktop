@@ -11,6 +11,7 @@ import { executeOcctPlan } from './planExecutor';
 import type { OcctBridge } from './bridge';
 import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 
 let okLoad = false;
 let bridge: OcctBridge;
@@ -42,6 +43,35 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(r.shape!.bbox!.max.y).toBeCloseTo(10, 1);
     expect(r.shape!.bbox!.max.z).toBeCloseTo(5, 1);
     expect(r.shape!.bbox!.min.x).toBeCloseTo(0, 1);
+  });
+
+  it('buildFromRevolve makes a real solid of revolution with the right volume', async () => {
+    if (!okLoad) return;
+    // Rectangle profile (X≥0, axis = Y) → full 360° revolve about Y = a cylinder
+    // of radius 10, height 20. Volume = π·10²·20 ≈ 6283.
+    const feature: RevolveFeature = {
+      kind: 'revolve',
+      loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }],
+      angleDegrees: 360,
+      mode: 'add',
+    };
+    const r = await bridge.buildFromRevolve(feature);
+    expect(r.ok).toBe(true);
+    expect(r.shape?.kind).toBe('solid');
+    expect(r.shape?.volume).toBeCloseTo(Math.PI * 100 * 20, -1); // ≈6283, ±~5
+  });
+
+  it('buildFromRevolve at 180° yields half the full-revolve volume', async () => {
+    if (!okLoad) return;
+    const half: RevolveFeature = {
+      kind: 'revolve',
+      loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }],
+      angleDegrees: 180,
+      mode: 'add',
+    };
+    const r = await bridge.buildFromRevolve(half);
+    expect(r.ok).toBe(true);
+    expect(r.shape!.volume).toBeCloseTo((Math.PI * 100 * 20) / 2, -1); // ≈3142
   });
 
   it('real boolean subtract removes the tool volume', async () => {
