@@ -187,94 +187,140 @@ function generateTetMesh(
   return { nodes: new Float32Array(coords), tets };
 }
 
-/**
- * Compute the 12×12 element stiffness matrix for a linear tetrahedral element.
- * Returns both the Ke matrix and the B (strain-displacement) matrix for
- * later stress recovery.
- */
-function computeTetStiffness(
-  nodes: Float32Array,
-  tet: Tet,
-  E: number,   // MPa (or any consistent unit)
-  nu: number,
-): { Ke: number[][]; B: number[][] } {
-  const [n0, n1, n2, n3] = tet.nodes;
+// ─── TET10 (10-node quadratic tetrahedron) ──────────────────────────────────
+//
+// Linear (TET4) elements have a CONSTANT strain field, so they lock in bending —
+// a cantilever comes out far too stiff (~50% under-predicted). TET10 carries
+// edge-midside nodes and quadratic shape functions ⇒ a LINEAR strain field,
+// which represents bending well (cantilever within a few %). Stiffness is
+// integrated with a 4-point Gauss rule (the integrand is quadratic).
 
-  const x = [nodes[n0*3], nodes[n1*3], nodes[n2*3], nodes[n3*3]];
-  const y = [nodes[n0*3+1], nodes[n1*3+1], nodes[n2*3+1], nodes[n3*3+1]];
-  const z = [nodes[n0*3+2], nodes[n1*3+2], nodes[n2*3+2], nodes[n3*3+2]];
+/** The 6 edges of a tet as local corner-index pairs (midside node ordering). */
+const TET_EDGES: ReadonlyArray<readonly [number, number]> = [
+  [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3],
+];
 
-  // Determinant of Jacobian (= 6 * volume)
-  const V6 = (
-    (x[1]-x[0]) * ((y[2]-y[0])*(z[3]-z[0]) - (y[3]-y[0])*(z[2]-z[0]))
-    - (x[2]-x[0]) * ((y[1]-y[0])*(z[3]-z[0]) - (y[3]-y[0])*(z[1]-z[0]))
-    + (x[3]-x[0]) * ((y[1]-y[0])*(z[2]-z[0]) - (y[2]-y[0])*(z[1]-z[0]))
-  );
+/** 4-point Gauss quadrature for a tet (degree-2 exact), in barycentric coords. */
+const G_A = 0.5854101966249685, G_B = 0.1381966011250105;
+const TET10_GAUSS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [G_A, G_B, G_B, G_B], [G_B, G_A, G_B, G_B], [G_B, G_B, G_A, G_B], [G_B, G_B, G_B, G_A],
+];
 
-  const V = Math.abs(V6) / 6;
-  const zero12 = (): number[] => Array(12).fill(0);
-
-  if (V < 1e-20) {
-    return {
-      Ke: Array(12).fill(null).map(zero12),
-      B: Array(6).fill(null).map(zero12),
-    };
+/** Augment a TET4 mesh with SHARED edge-midside nodes → TET10 connectivity.
+ *  Midsides are cached by sorted corner-pair so adjacent elements share them
+ *  (the mesh stays conforming). */
+function buildTet10Mesh(nodes: Float32Array, tets: Tet[]): { nodes: Float32Array; elems: Int32Array[] } {
+  const coords: number[] = Array.from(nodes);
+  let nNodes = nodes.length / 3;
+  const midCache = new Map<number, number>();
+  const getMid = (a: number, b: number): number => {
+    const key = a < b ? a * 1e7 + b : b * 1e7 + a;
+    let idx = midCache.get(key);
+    if (idx === undefined) {
+      idx = nNodes++;
+      coords.push(
+        (nodes[a*3] + nodes[b*3]) / 2,
+        (nodes[a*3+1] + nodes[b*3+1]) / 2,
+        (nodes[a*3+2] + nodes[b*3+2]) / 2,
+      );
+      midCache.set(key, idx);
+    }
+    return idx;
+  };
+  const elems: Int32Array[] = [];
+  for (const tet of tets) {
+    const c = tet.nodes;
+    const e = new Int32Array(10);
+    e[0] = c[0]; e[1] = c[1]; e[2] = c[2]; e[3] = c[3];
+    for (let k = 0; k < 6; k++) e[4 + k] = getMid(c[TET_EDGES[k][0]], c[TET_EDGES[k][1]]);
+    elems.push(e);
   }
+  return { nodes: new Float32Array(coords), elems };
+}
 
-  // Shape function natural-coordinate derivatives (dN/dx, dN/dy, dN/dz)
-  // For a linear tet these are constant — computed from cofactors.
-  const b = new Array<number>(4);
-  const c = new Array<number>(4);
-  const d = new Array<number>(4);
-
-  for (let i = 0; i < 4; i++) {
-    const j = (i + 1) % 4, k = (i + 2) % 4, l = (i + 3) % 4;
-    const sign = i % 2 === 0 ? 1 : -1;
-    b[i] = sign * ((y[k]-y[j])*(z[l]-z[j]) - (y[l]-y[j])*(z[k]-z[j])) / V6;
-    c[i] = -sign * ((x[k]-x[j])*(z[l]-z[j]) - (x[l]-x[j])*(z[k]-z[j])) / V6;
-    d[i] = sign * ((x[k]-x[j])*(y[l]-y[j]) - (x[l]-x[j])*(y[k]-y[j])) / V6;
+/** TET10 shape-function derivatives wrt natural coords (r=L2,s=L3,t=L4) at the
+ *  barycentric point (L1..L4). Returns dN/dr, dN/ds, dN/dt (each length 10). */
+function tet10ShapeDeriv(L: readonly [number, number, number, number]): { dr: number[]; ds: number[]; dt: number[] } {
+  // dL_i/d(r,s,t): L1=1−r−s−t, L2=r, L3=s, L4=t.
+  const dL = [[-1, -1, -1], [1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const dr = new Array<number>(10), ds = new Array<number>(10), dt = new Array<number>(10);
+  for (let i = 0; i < 4; i++) {                 // corners: N_i = L_i(2L_i−1)
+    const f = 4 * L[i] - 1;
+    dr[i] = f * dL[i][0]; ds[i] = f * dL[i][1]; dt[i] = f * dL[i][2];
   }
-
-  // B matrix (6 rows × 12 cols)
-  const B: number[][] = Array(6).fill(null).map(zero12);
-  for (let i = 0; i < 4; i++) {
-    B[0][i*3]   = b[i];
-    B[1][i*3+1] = c[i];
-    B[2][i*3+2] = d[i];
-    B[3][i*3]   = c[i]; B[3][i*3+1] = b[i];
-    B[4][i*3+1] = d[i]; B[4][i*3+2] = c[i];
-    B[5][i*3]   = d[i]; B[5][i*3+2] = b[i];
+  for (let k = 0; k < 6; k++) {                 // midsides: N = 4 L_a L_b
+    const a = TET_EDGES[k][0], b = TET_EDGES[k][1], m = 4 + k;
+    dr[m] = 4 * (dL[a][0] * L[b] + L[a] * dL[b][0]);
+    ds[m] = 4 * (dL[a][1] * L[b] + L[a] * dL[b][1]);
+    dt[m] = 4 * (dL[a][2] * L[b] + L[a] * dL[b][2]);
   }
+  return { dr, ds, dt };
+}
 
-  // Isotropic constitutive matrix D (6×6)
-  const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
-  const mu  = E / (2 * (1 + nu));
-  const D: number[][] = [
-    [lam+2*mu, lam,      lam,      0,  0,  0 ],
-    [lam,      lam+2*mu, lam,      0,  0,  0 ],
-    [lam,      lam,      lam+2*mu, 0,  0,  0 ],
-    [0,        0,        0,        mu, 0,  0 ],
-    [0,        0,        0,        0,  mu, 0 ],
-    [0,        0,        0,        0,  0,  mu],
+/** Build the 6×30 strain–displacement matrix B at one quadrature point, given
+ *  the inverse Jacobian. Returns B and detJ (caller skips degenerate points). */
+function tet10B(coords: Float32Array, elem: Int32Array, L: readonly [number, number, number, number]):
+  { B: number[][]; detJ: number } {
+  const { dr, ds, dt } = tet10ShapeDeriv(L);
+  // Jacobian J_ij = Σ_k dN_k/dξ_j · x_{k,i}
+  const J = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let k = 0; k < 10; k++) {
+    const n = elem[k], dξ = [dr[k], ds[k], dt[k]];
+    const xi = coords[n*3], yi = coords[n*3+1], zi = coords[n*3+2];
+    for (let j = 0; j < 3; j++) { J[0][j] += dξ[j]*xi; J[1][j] += dξ[j]*yi; J[2][j] += dξ[j]*zi; }
+  }
+  const detJ = J[0][0]*(J[1][1]*J[2][2]-J[1][2]*J[2][1])
+             - J[0][1]*(J[1][0]*J[2][2]-J[1][2]*J[2][0])
+             + J[0][2]*(J[1][0]*J[2][1]-J[1][1]*J[2][0]);
+  const B: number[][] = Array(6).fill(null).map(() => new Array<number>(30).fill(0));
+  if (Math.abs(detJ) < 1e-18) return { B, detJ: 0 };
+  const id = 1 / detJ;
+  const inv = [
+    [(J[1][1]*J[2][2]-J[1][2]*J[2][1])*id, (J[0][2]*J[2][1]-J[0][1]*J[2][2])*id, (J[0][1]*J[1][2]-J[0][2]*J[1][1])*id],
+    [(J[1][2]*J[2][0]-J[1][0]*J[2][2])*id, (J[0][0]*J[2][2]-J[0][2]*J[2][0])*id, (J[0][2]*J[1][0]-J[0][0]*J[1][2])*id],
+    [(J[1][0]*J[2][1]-J[1][1]*J[2][0])*id, (J[0][1]*J[2][0]-J[0][0]*J[2][1])*id, (J[0][0]*J[1][1]-J[0][1]*J[1][0])*id],
   ];
+  for (let k = 0; k < 10; k++) {
+    // dN/dx_i = Σ_j inv[j][i] · dN/dξ_j
+    const dξ = [dr[k], ds[k], dt[k]];
+    const nx = inv[0][0]*dξ[0] + inv[1][0]*dξ[1] + inv[2][0]*dξ[2];
+    const ny = inv[0][1]*dξ[0] + inv[1][1]*dξ[1] + inv[2][1]*dξ[2];
+    const nz = inv[0][2]*dξ[0] + inv[1][2]*dξ[1] + inv[2][2]*dξ[2];
+    const cx = k*3, cy = k*3+1, cz = k*3+2;
+    B[0][cx] = nx; B[1][cy] = ny; B[2][cz] = nz;
+    B[3][cx] = ny; B[3][cy] = nx;
+    B[4][cy] = nz; B[4][cz] = ny;
+    B[5][cx] = nz; B[5][cz] = nx;
+  }
+  return { B, detJ };
+}
 
-  // Ke = V * B^T * D * B
-  const Ke: number[][] = Array(12).fill(null).map(zero12);
-  for (let i = 0; i < 12; i++) {
-    for (let j = 0; j < 12; j++) {
-      let sum = 0;
-      for (let k = 0; k < 6; k++) {
-        let db = 0;
-        for (let l = 0; l < 6; l++) {
-          db += D[k][l] * B[l][j];
-        }
-        sum += B[k][i] * db;
-      }
-      Ke[i][j] = V * sum;
+/** TET10 element stiffness (30×30) via 4-point Gauss + a centroid B for stress. */
+function computeTet10Stiffness(
+  coords: Float32Array, elem: Int32Array, E: number, nu: number,
+): { Ke: number[][]; Bc: number[][] } {
+  const lam = E * nu / ((1 + nu) * (1 - 2 * nu)), mu = E / (2 * (1 + nu));
+  const D = [
+    [lam+2*mu, lam, lam, 0, 0, 0], [lam, lam+2*mu, lam, 0, 0, 0], [lam, lam, lam+2*mu, 0, 0, 0],
+    [0, 0, 0, mu, 0, 0], [0, 0, 0, 0, mu, 0], [0, 0, 0, 0, 0, mu],
+  ];
+  const Ke = Array(30).fill(null).map(() => new Array<number>(30).fill(0));
+  for (const L of TET10_GAUSS) {
+    const { B, detJ } = tet10B(coords, elem, L);
+    if (detJ === 0) continue;
+    const w = detJ / 24; // (ref-tet volume 1/6) × (weight 1/4) × |J|
+    // DB = D·B (6×30), then Ke += w·Bᵀ·DB
+    const DB = Array(6).fill(null).map(() => new Array<number>(30).fill(0));
+    for (let r = 0; r < 6; r++) for (let j = 0; j < 30; j++) {
+      let s = 0; for (let l = 0; l < 6; l++) s += D[r][l] * B[l][j]; DB[r][j] = s;
+    }
+    for (let i = 0; i < 30; i++) for (let j = 0; j < 30; j++) {
+      let s = 0; for (let r = 0; r < 6; r++) s += B[r][i] * DB[r][j];
+      Ke[i][j] += w * s;
     }
   }
-
-  return { Ke, B };
+  const { B: Bc } = tet10B(coords, elem, [0.25, 0.25, 0.25, 0.25]);
+  return { Ke, Bc };
 }
 
 /**
@@ -506,13 +552,17 @@ export function runFEM(
   const yieldStr = material.yieldStrength; // MPa
 
   // Generate tet mesh
-  const { nodes, tets } = generateTetMesh(pos, maxNodes);
+  // Conforming TET4 grid mesh, then upgrade to quadratic TET10 (edge-midside
+  // nodes) — linear tets lock in bending; TET10 represents a linear strain field
+  // so cantilevers come out within a few %. Grid is sized smaller so the TET10
+  // DOF count stays near maxNodes.
+  const tet4 = generateTetMesh(pos, Math.max(64, Math.floor(maxNodes / 3)));
+  const nCornerNodes = tet4.nodes.length / 3; // nodes [0,nCornerNodes) are corners; the rest are edge midsides
+  const { nodes, elems } = buildTet10Mesh(tet4.nodes, tet4.tets);
   const nNodes = nodes.length / 3;
   const nDOF   = nNodes * 3;
 
   // --- Assemble global stiffness matrix K (CSR sparse) ---
-  // Sparse assembly: accumulate into Map<row, Map<col, value>> first,
-  // then construct CSRMatrix. Memory: O(nnz) ≈ O(27*nNodes) instead of O(nDOF²).
   const entries = new Map<number, Map<number, number>>();
 
   const addToSparse = (row: number, col: number, val: number) => {
@@ -521,19 +571,17 @@ export function runFEM(
     rowMap.set(col, (rowMap.get(col) ?? 0) + val);
   };
 
-  const tetStiffnesses: Array<{ Ke: number[][]; B: number[][] }> = [];
+  const elemStiffnesses: Array<{ Bc: number[][] }> = [];
 
-  for (const tet of tets) {
-    const { Ke, B } = computeTetStiffness(nodes, tet, E, nu);
-    tetStiffnesses.push({ Ke, B });
+  for (const elem of elems) {
+    const { Ke, Bc } = computeTet10Stiffness(nodes, elem, E, nu);
+    elemStiffnesses.push({ Bc });
 
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 4; j++) {
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
         for (let di = 0; di < 3; di++) {
           for (let dj = 0; dj < 3; dj++) {
-            const row = tet.nodes[i] * 3 + di;
-            const col = tet.nodes[j] * 3 + dj;
-            addToSparse(row, col, Ke[i*3+di][j*3+dj]);
+            addToSparse(elem[i] * 3 + di, elem[j] * 3 + dj, Ke[i*3+di][j*3+dj]);
           }
         }
       }
@@ -587,9 +635,15 @@ export function runFEM(
     if (cond.type === 'fixed') {
       for (const n of onPlane) { fixedDOFs.add(n*3); fixedDOFs.add(n*3+1); fixedDOFs.add(n*3+2); }
     } else if (cond.type === 'force' && cond.value) {
-      // cond.value is the TOTAL force on the face, distributed equally over its nodes.
-      const per = onPlane.length;
-      for (const n of onPlane) {
+      // cond.value is the TOTAL force on the face. For quadratic (TET10) elements
+      // the CONSISTENT nodal load of a uniform face traction is carried by the
+      // edge-MIDSIDE nodes (corner nodes get ~0); distributing equally over all
+      // face nodes instead makes the loaded face dish and over-reports the peak
+      // displacement. So load the midside face nodes when present.
+      const mids = onPlane.filter((n) => n >= nCornerNodes);
+      const target = mids.length > 0 ? mids : onPlane;
+      const per = target.length;
+      for (const n of target) {
         F[n*3]   += cond.value[0] / per;
         F[n*3+1] += cond.value[1] / per;
         F[n*3+2] += cond.value[2] / per;
@@ -650,46 +704,34 @@ export function runFEM(
   const nodeDispVec = new Float32Array(nNodes * 3);
   const nodeCount   = new Float32Array(nNodes);
 
-  for (let ti = 0; ti < tets.length; ti++) {
-    const tet = tets[ti];
-    const { B } = tetStiffnesses[ti];
+  const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
+  const mu  = E / (2 * (1 + nu));
+  for (let ti = 0; ti < elems.length; ti++) {
+    const elem = elems[ti];
+    const { Bc } = elemStiffnesses[ti];
 
-    // Element displacement vector (12 DOF)
-    const ue = new Array<number>(12);
-    for (let i = 0; i < 4; i++) {
-      const n = tet.nodes[i];
-      ue[i*3]   = u[n*3];
-      ue[i*3+1] = u[n*3+1];
-      ue[i*3+2] = u[n*3+2];
-    }
-
-    // Strain vector: eps = B * ue (6 components)
+    // Element displacement vector (30 DOF) + centroid strain eps = Bc · ue.
     const eps = new Array<number>(6).fill(0);
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 12; c++) eps[r] += B[r][c] * ue[c];
+    for (let i = 0; i < 10; i++) {
+      const n = elem[i];
+      const ux = u[n*3], uy = u[n*3+1], uz = u[n*3+2];
+      for (let r = 0; r < 6; r++) eps[r] += Bc[r][i*3]*ux + Bc[r][i*3+1]*uy + Bc[r][i*3+2]*uz;
     }
 
-    // Constitutive matrix to get stress sigma = D * eps
-    const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
-    const mu  = E / (2 * (1 + nu));
     const sx = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[0];
     const sy = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[1];
     const sz = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[2];
-    const txy = mu * eps[3];
-    const tyz = mu * eps[4];
-    const txz = mu * eps[5];
+    const txy = mu * eps[3], tyz = mu * eps[4], txz = mu * eps[5];
 
-    // Von Mises stress
     const vonMises = Math.sqrt(0.5 * (
-      (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 +
-      6 * (txy**2 + tyz**2 + txz**2)
+      (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 + 6 * (txy**2 + tyz**2 + txz**2)
     ));
 
-    // Distribute to element nodes
-    for (const n of tet.nodes) {
+    // Distribute to all 10 element nodes.
+    for (let i = 0; i < 10; i++) {
+      const n = elem[i];
       nodeStress[n] += vonMises;
-      const dm = Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
-      nodeDisp[n]    += dm;
+      nodeDisp[n]    += Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
       nodeDispVec[n*3]   += u[n*3];
       nodeDispVec[n*3+1] += u[n*3+1];
       nodeDispVec[n*3+2] += u[n*3+2];
@@ -752,7 +794,7 @@ export function runFEM(
     minStress,
     safetyFactor,
     dofCount:    nDOF,
-    elementCount: tets.length,
+    elementCount: elems.length,
     converged,
     iterations: solverIterations,
   };

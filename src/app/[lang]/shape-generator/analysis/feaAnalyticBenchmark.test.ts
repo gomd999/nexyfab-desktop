@@ -7,12 +7,12 @@
  * solver this is a clean correctness benchmark: the result must CONVERGE, match δ
  * to engineering accuracy, and obey the exact scaling laws δ ∝ F, δ ∝ L, δ ∝ 1/A.
  *
- * Before the solver fix this diverged to ~1e16 mm garbage (non-conforming mesh +
- * 1e30 penalty BC). After it (conforming structured-grid tets, robust
- * Möller–Trumbore inside test, full-face BC, Dirichlet elimination) it converges
- * and lands within ~10% — the linear-tet discretization is slightly soft; sub-%
- * accuracy would need TET10 / finer meshes (a documented follow-up). 10% is solid
- * engineering accuracy and a night-and-day improvement over divergence.
+ * Solver evolution: it first diverged to ~1e16 mm garbage (non-conforming mesh +
+ * 1e30 penalty BC); the mesh/BC fix made it converge but the linear TET4 element
+ * locked in bending (cantilever ~50% under-predicted). It now uses QUADRATIC
+ * TET10 elements with consistent midside face loading, so BOTH the axial bar AND
+ * the bending cantilever land within a few % of closed form — the roadmap M1
+ * acceptance.
  *
  * faceIndices are computed on the NON-INDEXED geometry, matching how runFEM reads
  * them (it calls toNonIndexed internally).
@@ -55,13 +55,13 @@ function axialDisp(L: number, a: number, F: number): { fem: number; method: stri
 }
 
 describe('FEA analytic benchmark — axial bar (Track M, M1)', () => {
-  it('converges via the linear-tet solver (not the beam fallback) and matches FL/AE within ~12%', () => {
+  it('converges via the 3D FEM (not the beam fallback) and matches FL/AE within ~8%', () => {
     const L = 100, a = 20, F = 80000;
     const analytic = (F * L) / (a * a * E_MPA); // 0.1 mm
     const { fem, method } = axialDisp(L, a, F);
     expect(method).toBe('linear-fem-tet');           // it actually ran the 3D FEM
-    expect(fem / analytic).toBeGreaterThan(0.88);
-    expect(fem / analytic).toBeLessThan(1.12);
+    expect(fem / analytic).toBeGreaterThan(0.92);
+    expect(fem / analytic).toBeLessThan(1.08);
   });
 
   it('obeys δ ∝ F (linearity) to <1%', () => {
@@ -86,5 +86,25 @@ describe('FEA analytic benchmark — axial bar (Track M, M1)', () => {
     expect(thick).toBeLessThan(thin);
     expect(thick / thin).toBeGreaterThan(0.2);
     expect(thick / thin).toBeLessThan(0.32);
+  });
+
+  // The headline M1 case: BENDING. A linear (TET4) element locks here and
+  // under-predicts the tip deflection by ~30–50%; quadratic TET10 captures it.
+  it('cantilever tip deflection matches PL³/3EI within a few % (the M1 acceptance)', () => {
+    const L = 100, b = 20, h = 20, P = 20000;
+    const bendMat: FEAMaterial = { youngsModulus: 200, poissonRatio: 0.3, yieldStrength: 250, density: 7.85 };
+    const I = (b * h * h * h) / 12;
+    const analytic = (P * L ** 3) / (3 * (bendMat.youngsModulus * 1000) * I); // Euler–Bernoulli
+    const g = new THREE.BoxGeometry(L, h, b, 12, 3, 3).toNonIndexed();
+    const res = runSimpleFEA(g, {
+      material: bendMat,
+      conditions: [
+        { type: 'fixed', faceIndices: facesByX(g, true) },                 // root clamped
+        { type: 'force', faceIndices: facesByX(g, false), value: [0, -P, 0] }, // transverse tip load
+      ],
+    });
+    expect(res.method).toBe('linear-fem-tet');
+    expect(res.maxDisplacement / analytic).toBeGreaterThan(0.9);
+    expect(res.maxDisplacement / analytic).toBeLessThan(1.1);
   });
 });
