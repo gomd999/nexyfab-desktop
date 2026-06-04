@@ -104,6 +104,8 @@ import {
   saveSketchHistory } from './sketch/SketchHistory';
 const Sketch3DCanvas = dynamic(() => import('./sketch/Sketch3DCanvas'), { ssr: false });
 const DrawingView = dynamic(() => import('./sketch/DrawingView'), { ssr: false });
+const MobileModelViewer = dynamic(() => import('./responsive/MobileModelViewer'), { ssr: false });
+import { hasViewableGeometry, mobileViewerLabels } from './responsive/mobileViewer';
 // Editing imports
 import type { EditMode } from './editing/types';
 // Custom hooks
@@ -7213,6 +7215,45 @@ export function ShapeGeneratorInner() {
   // ══════════════════════════════════════════════════════════════════════════
 
   if (isMobile) {
+    // Read-only mobile 3D viewer: editing is desktop-only, but a phone user who
+    // opened a (shared) design can still rotate/zoom it with touch instead of
+    // hitting a pure "use a desktop" wall. Falls back to the wall when there's
+    // no model to show.
+    const mobileGeo = effectiveResult?.geometry;
+    const hasViewableModel = hasViewableGeometry(mobileGeo);
+    const vl = mobileViewerLabels(lang);
+
+    if (hasViewableModel && mobileGeo) {
+      return (
+        <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#0d1117', color: 'var(--nx-text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--nx-panel)', borderBottom: '1px solid var(--nx-border)', flexShrink: 0 }}>
+            <span style={{ fontSize: 17, fontWeight: 800 }}><span style={{ color: 'var(--nx-accent-2)' }}>Nexy</span>Fab</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 8, background: 'rgba(59,130,246,0.18)', color: 'var(--nx-accent-2)' }}>{vl.badge}</span>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <MobileModelViewer geometry={mobileGeo} />
+            <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.55)', pointerEvents: 'none' }}>
+              {vl.gesture}
+            </div>
+          </div>
+          <div style={{ padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', background: 'var(--nx-panel)', borderTop: '1px solid var(--nx-border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--nx-text-2)', textAlign: 'center', fontWeight: 600 }}>✏️ {vl.edit}</div>
+            <MobileSendToDesktop
+              labels={{
+                title: lt.mobileSendToDesktopTitle,
+                body: lt.mobileSendToDesktopBody,
+                qrAlt: lt.mobileQrAlt,
+                copyUrl: lt.mobileCopyUrl,
+                copyUrlDone: lt.mobileCopyUrlDone,
+                emailSelf: lt.mobileEmailSelf,
+                emailSubject: lt.mobileEmailSubject,
+                emailBody: lt.mobileEmailBody,
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{
         minHeight: '100dvh', background: 'var(--nx-bg)', color: 'var(--nx-text)',
