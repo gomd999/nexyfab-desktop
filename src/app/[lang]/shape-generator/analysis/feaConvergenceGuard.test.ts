@@ -1,20 +1,15 @@
 /**
- * feaConvergenceGuard — Track M (FEA, the weakest link) hardening.
+ * feaConvergenceGuard — Track M (FEA) defence-in-depth.
  *
- * FINDING (2026-06-04): the 3D linear-tet FEM (femSolver.runFEM) does NOT
- * reliably converge on a simple axial bar — a coarse box mesh leaves
- * under-constrained / sliver-tet nodes, so the CG solve hits its iteration cap
- * and returns an astronomically large spurious maxDisplacement (~1e12–1e16 mm).
- * Even when it does converge it can be ~10–80× off the analytic δ = FL/AE. The
- * 3D solver is therefore not yet trustworthy (roadmap M1 remains open).
- *
- * The robustness bug this pins: runSimpleFEA used to surface that garbage as a
- * real result (it ignored `converged`). The guard now treats a non-converged /
- * non-finite / kilometre-scale result as unusable and falls back to beam theory,
- * so the UI never shows fabricated stress. block-rather-than-silently-wrong.
- *
- * The analytic-accuracy benchmark (δ within a few % of FL/AE) is the M1 acceptance
- * gate and is intentionally `.skip`-documented below until the solver is fixed.
+ * History: the 3D linear-tet FEM used to return astronomically large spurious
+ * displacements (~1e12–1e16 mm) and runSimpleFEA surfaced that garbage as real
+ * (it ignored `converged`). The solver itself was since fixed (conforming
+ * structured-grid mesh + robust inside test + full-face BC + Dirichlet
+ * elimination — see femSolver + feaAnalyticBenchmark), so it now converges and
+ * lands within ~10% of analytic. This guard stays as defence-in-depth: any input
+ * that still produces a non-converged / non-finite / kilometre-scale result must
+ * fall back to beam theory rather than show fabricated stress.
+ * block-rather-than-silently-wrong.
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
@@ -72,23 +67,4 @@ describe('FEA convergence guard (Track M weakest-link hardening)', () => {
     expect(['linear-fem-tet', 'beam-theory']).toContain(res.method);
   });
 
-  // M1 ACCEPTANCE GATE (roadmap) — re-enable when the 3D solver is trustworthy:
-  // a cantilever / axial bar must land within a few % of the analytic deflection.
-  // Skipped today because the linear-tet solver is ~10–80× off and often diverges.
-  it.skip('M1: axial bar tip deflection within a few % of FL/AE', () => {
-    const L = 100, a = 20, F = 80000;
-    const g = new THREE.BoxGeometry(L, a, a, 25, 5, 5);
-    const E = steel.youngsModulus * 1000, A = a * a;
-    const analytic = (F * L) / (A * E);
-    const res = runSimpleFEA(g, {
-      material: steel,
-      conditions: [
-        { type: 'fixed', faceIndices: facesByX(g, true) },
-        { type: 'force', faceIndices: facesByX(g, false), value: [F, 0, 0] },
-      ],
-    });
-    expect(res.method).toBe('linear-fem-tet');
-    expect(res.maxDisplacement).toBeGreaterThan(analytic * 0.9);
-    expect(res.maxDisplacement).toBeLessThan(analytic * 1.1);
-  });
 });

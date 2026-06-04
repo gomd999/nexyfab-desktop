@@ -41,158 +41,150 @@ interface Tet {
   volume: number;
 }
 
-/** Simple spatial hash for fast nearest-vertex lookup. */
-class SpatialHash {
-  private cells = new Map<string, number[]>();
-  private cellSize: number;
-
-  constructor(cellSize: number) {
-    this.cellSize = cellSize;
+/** Parity of forward ray–triangle crossings (Möller–Trumbore) for a GENERIC ray
+ *  direction. A generic (non-axis-aligned) direction makes grazing a shared
+ *  edge of axis-aligned coplanar surface triangles a measure-zero event, so the
+ *  count is robust where a +X/+Y/+Z projection parity is not. Odd ⇒ inside. */
+function rayParity(
+  ox: number, oy: number, oz: number,
+  dx: number, dy: number, dz: number,
+  tri: Float32Array, triCount: number,
+): boolean {
+  const EPS = 1e-12;
+  let crossings = 0;
+  for (let t = 0; t < triCount; t++) {
+    const o = t * 9;
+    const v0x = tri[o], v0y = tri[o + 1], v0z = tri[o + 2];
+    const e1x = tri[o + 3] - v0x, e1y = tri[o + 4] - v0y, e1z = tri[o + 5] - v0z;
+    const e2x = tri[o + 6] - v0x, e2y = tri[o + 7] - v0y, e2z = tri[o + 8] - v0z;
+    // p = dir × e2
+    const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+    const det = e1x * px + e1y * py + e1z * pz;
+    if (det > -EPS && det < EPS) continue;
+    const inv = 1 / det;
+    const tx = ox - v0x, ty = oy - v0y, tz = oz - v0z;
+    const u = (tx * px + ty * py + tz * pz) * inv;
+    if (u < 0 || u > 1) continue;
+    const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+    const v = (dx * qx + dy * qy + dz * qz) * inv;
+    if (v < 0 || u + v > 1) continue;
+    const s = (e2x * qx + e2y * qy + e2z * qz) * inv;
+    if (s > EPS) crossings++; // forward hit only
   }
+  return (crossings & 1) === 1;
+}
 
-  private key(x: number, y: number, z: number): string {
-    return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)},${Math.floor(z / this.cellSize)}`;
-  }
-
-  add(x: number, y: number, z: number, index: number) {
-    const k = this.key(x, y, z);
-    if (!this.cells.has(k)) this.cells.set(k, []);
-    this.cells.get(k)!.push(index);
-  }
-
-  /** Returns all indices in the 3×3×3 neighbourhood. */
-  query(x: number, y: number, z: number): number[] {
-    const result: number[] = [];
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dz = -1; dz <= 1; dz++) {
-          const k = this.key(
-            x + dx * this.cellSize,
-            y + dy * this.cellSize,
-            z + dz * this.cellSize,
-          );
-          const cell = this.cells.get(k);
-          if (cell) result.push(...cell);
-        }
-      }
-    }
-    return result;
-  }
+/** Robust point-in-solid: majority vote of three generic ray directions. */
+function pointInsideSurface(
+  px: number, py: number, pz: number,
+  tri: Float32Array, triCount: number,
+): boolean {
+  let votes = 0;
+  if (rayParity(px, py, pz, 1, 0.017, 0.011, tri, triCount)) votes++;
+  if (rayParity(px, py, pz, 0.013, 1, 0.019, tri, triCount)) votes++;
+  if (rayParity(px, py, pz, 0.021, 0.014, 1, tri, triCount)) votes++;
+  return votes >= 2;
 }
 
 /**
- * Generate a simple tetrahedral mesh from a surface triangle mesh.
- * Each surface triangle is connected to one interior "hub" node to form a tet.
- * Interior nodes are placed on a regular grid inside the bounding box.
+ * Generate a CONFORMING tetrahedral mesh by structured-grid decomposition.
+ *
+ * Each grid cell whose centre is inside the solid is split into 6 tets sharing a
+ * common diagonal (Freudenthal/Kuhn), with cells referencing SHARED grid nodes —
+ * so the mesh is globally conforming (adjacent cells share faces) and has NO
+ * floating, zero-stiffness nodes. (The previous "fan each surface triangle to its
+ * nearest interior hub" approach produced a non-conforming shell with unreferenced
+ * interior nodes → a singular stiffness matrix, CG non-convergence, and
+ * astronomically large spurious displacements. This is the M1 mesh fix.)
  */
 function generateTetMesh(
   pos: THREE.BufferAttribute,
   maxNodes = 1500,
 ): { nodes: Float32Array; tets: Tet[] } {
   const surfaceVertCount = pos.count;
-  const MERGE_EPS = 1e-4;
-  const hash = new SpatialHash(MERGE_EPS * 10);
+  const triCount = surfaceVertCount / 3;
 
-  // --- Step 1: deduplicate surface vertices ---
-  const uniqueVerts: THREE.Vector3[] = [];
-  const surfIndexMap = new Int32Array(surfaceVertCount); // raw index -> unique index
-
-  for (let i = 0; i < surfaceVertCount; i++) {
-    const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
-    const nearby = hash.query(v.x, v.y, v.z);
-    let found = -1;
-    for (const idx of nearby) {
-      if (uniqueVerts[idx].distanceTo(v) < MERGE_EPS) { found = idx; break; }
-    }
-    if (found === -1) {
-      found = uniqueVerts.length;
-      hash.add(v.x, v.y, v.z, found);
-      uniqueVerts.push(v);
-    }
-    surfIndexMap[i] = found;
-  }
-
-  const totalSurface = uniqueVerts.length;
-
-  // --- Step 2: add interior nodes via grid sampling ---
+  // Surface triangles (flat) + bbox.
+  const tri = new Float32Array(surfaceVertCount * 3);
   const bb = new THREE.Box3();
-  for (const v of uniqueVerts) bb.expandByPoint(v);
-  const bbSize = new THREE.Vector3();
-  bb.getSize(bbSize);
+  const tmp = new THREE.Vector3();
+  for (let i = 0; i < surfaceVertCount; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    tri[i * 3] = x; tri[i * 3 + 1] = y; tri[i * 3 + 2] = z;
+    bb.expandByPoint(tmp.set(x, y, z));
+  }
+  const size = new THREE.Vector3(); bb.getSize(size);
+  const sx = Math.max(size.x, 1e-9), sy = Math.max(size.y, 1e-9), sz = Math.max(size.z, 1e-9);
 
-  const interiorTarget = Math.min(maxNodes - totalSurface, 600);
-  const gridN = Math.max(2, Math.cbrt(interiorTarget) | 0);
+  // Divisions per axis, ~uniform cell size, total grid nodes ≤ maxNodes.
+  let div = Math.max(2, Math.floor(Math.cbrt(maxNodes)) - 1);
+  let nx = 0, ny = 0, nz = 0;
+  const maxDim = Math.max(sx, sy, sz);
+  for (; div >= 1; div--) {
+    nx = Math.max(1, Math.round((div * sx) / maxDim));
+    ny = Math.max(1, Math.round((div * sy) / maxDim));
+    nz = Math.max(1, Math.round((div * sz) / maxDim));
+    if ((nx + 1) * (ny + 1) * (nz + 1) <= maxNodes) break;
+  }
+  const hx = sx / nx, hy = sy / ny, hz = sz / nz;
+  const nodeAt = (ix: number, iy: number, iz: number): [number, number, number] => [
+    bb.min.x + ix * hx, bb.min.y + iy * hy, bb.min.z + iz * hz,
+  ];
 
-  for (let ix = 0; ix < gridN && uniqueVerts.length < maxNodes; ix++) {
-    for (let iy = 0; iy < gridN && uniqueVerts.length < maxNodes; iy++) {
-      for (let iz = 0; iz < gridN && uniqueVerts.length < maxNodes; iz++) {
-        uniqueVerts.push(new THREE.Vector3(
-          bb.min.x + (ix + 0.5) / gridN * bbSize.x,
-          bb.min.y + (iy + 0.5) / gridN * bbSize.y,
-          bb.min.z + (iz + 0.5) / gridN * bbSize.z,
-        ));
+  // Lazily allocate only the grid nodes that an included cell actually uses.
+  const nodeIndex = new Map<number, number>();
+  const coords: number[] = [];
+  const gridKey = (ix: number, iy: number, iz: number) => (iz * (ny + 1) + iy) * (nx + 1) + ix;
+  const getNode = (ix: number, iy: number, iz: number): number => {
+    const key = gridKey(ix, iy, iz);
+    let idx = nodeIndex.get(key);
+    if (idx === undefined) {
+      idx = coords.length / 3;
+      const [x, y, z] = nodeAt(ix, iy, iz);
+      coords.push(x, y, z);
+      nodeIndex.set(key, idx);
+    }
+    return idx;
+  };
+
+  // 8 cube corners by (di, dj, dk) bits → corner index; the 6-tet Freudenthal split.
+  const CORNER: Array<[number, number, number]> = [
+    [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],
+  ];
+  const SPLIT: Array<[number, number, number, number]> = [
+    [0, 1, 3, 7], [0, 3, 2, 7], [0, 2, 6, 7], [0, 6, 4, 7], [0, 4, 5, 7], [0, 5, 1, 7],
+  ];
+
+  const tets: Tet[] = [];
+  for (let iz = 0; iz < nz; iz++) {
+    for (let iy = 0; iy < ny; iy++) {
+      for (let ix = 0; ix < nx; ix++) {
+        // Jitter the sample off the cell centre by irrational fractions so the
+        // +X ray never aligns with a surface-subdivision grid line (which would
+        // graze a shared triangle edge and miscount the parity).
+        const cxw = bb.min.x + (ix + 0.5) * hx;
+        const cyw = bb.min.y + (iy + 0.5 + 0.0137) * hy;
+        const czw = bb.min.z + (iz + 0.5 + 0.0237) * hz;
+        if (!pointInsideSurface(cxw, cyw, czw, tri, triCount)) continue;
+
+        const corner = CORNER.map(([di, dj, dk]) => getNode(ix + di, iy + dj, iz + dk));
+        for (const [a, b, c, dd] of SPLIT) {
+          tets.push({ nodes: [corner[a], corner[b], corner[c], corner[dd]], volume: (hx * hy * hz) / 6 });
+        }
       }
     }
   }
 
-  // Pack into flat array
-  const nodes = new Float32Array(uniqueVerts.length * 3);
-  for (let i = 0; i < uniqueVerts.length; i++) {
-    nodes[i * 3] = uniqueVerts[i].x;
-    nodes[i * 3 + 1] = uniqueVerts[i].y;
-    nodes[i * 3 + 2] = uniqueVerts[i].z;
-  }
-
-  const interiorStart = totalSurface;
-  const interiorEnd = uniqueVerts.length;
-
-  // --- Step 3: build tets — each surface tri + nearest interior hub ---
-  const triCount = surfaceVertCount / 3;
-  const tets: Tet[] = [];
-
-  for (let t = 0; t < triCount; t++) {
-    const ri0 = t * 3, ri1 = t * 3 + 1, ri2 = t * 3 + 2;
-    const n0 = surfIndexMap[ri0];
-    const n1 = surfIndexMap[ri1];
-    const n2 = surfIndexMap[ri2];
-    if (n0 === n1 || n0 === n2 || n1 === n2) continue;
-
-    // Centroid of the triangle
-    const cx = (uniqueVerts[n0].x + uniqueVerts[n1].x + uniqueVerts[n2].x) / 3;
-    const cy = (uniqueVerts[n0].y + uniqueVerts[n1].y + uniqueVerts[n2].y) / 3;
-    const cz = (uniqueVerts[n0].z + uniqueVerts[n1].z + uniqueVerts[n2].z) / 3;
-
-    // Find nearest interior node
-    let nearestIdx = interiorStart;
-    let nearestDist2 = Infinity;
-    for (let n = interiorStart; n < interiorEnd; n++) {
-      const dx = cx - nodes[n * 3];
-      const dy = cy - nodes[n * 3 + 1];
-      const dz = cz - nodes[n * 3 + 2];
-      const d2 = dx * dx + dy * dy + dz * dz;
-      if (d2 < nearestDist2) { nearestDist2 = d2; nearestIdx = n; }
+  // Fallback: a degenerate/open surface where no cell tested inside — wrap the
+  // whole bbox as a single 6-tet cell so the solver still returns something.
+  if (tets.length === 0) {
+    const corner = CORNER.map(([di, dj, dk]) => getNode(di * nx, dj * ny, dk * nz));
+    for (const [a, b, c, dd] of SPLIT) {
+      tets.push({ nodes: [corner[a], corner[b], corner[c], corner[dd]], volume: (sx * sy * sz) / 6 });
     }
-
-    const n3 = nearestIdx;
-    if (n3 === n0 || n3 === n1 || n3 === n2) continue;
-
-    // Compute signed volume
-    const p0 = uniqueVerts[n0], p1 = uniqueVerts[n1], p2 = uniqueVerts[n2], p3 = uniqueVerts[n3];
-    const e1x = p1.x - p0.x, e1y = p1.y - p0.y, e1z = p1.z - p0.z;
-    const e2x = p2.x - p0.x, e2y = p2.y - p0.y, e2z = p2.z - p0.z;
-    const e3x = p3.x - p0.x, e3y = p3.y - p0.y, e3z = p3.z - p0.z;
-    // cross(e2, e3)
-    const cx2 = e2y * e3z - e2z * e3y;
-    const cy2 = e2z * e3x - e2x * e3z;
-    const cz2 = e2x * e3y - e2y * e3x;
-    const vol = Math.abs(e1x * cx2 + e1y * cy2 + e1z * cz2) / 6;
-
-    if (vol < 1e-18) continue;
-
-    tets.push({ nodes: [n0, n1, n2, n3], volume: vol });
   }
 
-  return { nodes, tets };
+  return { nodes: new Float32Array(coords), tets };
 }
 
 /**
@@ -552,59 +544,97 @@ export function runFEM(
   const F = new Float64Array(nDOF);
   const fixedDOFs = new Set<number>();
 
-  // Build a lookup: surface raw vertex index -> tet node index
-  // (reuse the surfIndexMap logic implicitly via nearest-node search)
-  // For conditions with faceIndices we find the tet nodes near each face centroid.
+  // Boundary conditions are applied over a whole FACE, not a single nearest node.
+  // Fixing only the node nearest each face-centroid left the structure
+  // under-constrained (rigid-body modes survive ⇒ singular K ⇒ CG diverges). We
+  // instead infer the axis-aligned face plane from the selected triangles and
+  // constrain / load EVERY mesh node lying on that plane.
+  let span = 0;
+  for (let d = 0; d < 3; d++) {
+    let lo = Infinity, hi = -Infinity;
+    for (let n = 0; n < nNodes; n++) { const v = nodes[n*3+d]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    span = Math.max(span, hi - lo);
+  }
+  const planeTol = Math.max(1e-4, 1e-3 * span);
 
   for (const cond of conditions) {
+    // Infer the face plane: the axis with the least vertex spread is the normal;
+    // its mean coordinate is the plane value.
+    const sum = [0, 0, 0]; const sum2 = [0, 0, 0]; let cnt = 0;
     for (const fi of cond.faceIndices) {
       const base = fi * 3;
       if (base + 2 >= surfaceVertCount) continue;
-
-      // Face centroid in surface geometry
-      const cx = (pos.getX(base) + pos.getX(base+1) + pos.getX(base+2)) / 3;
-      const cy = (pos.getY(base) + pos.getY(base+1) + pos.getY(base+2)) / 3;
-      const cz = (pos.getZ(base) + pos.getZ(base+1) + pos.getZ(base+2)) / 3;
-
-      // Find nearest tet node
-      let nearest = 0;
-      let nearestD2 = Infinity;
-      for (let n = 0; n < nNodes; n++) {
-        const dx = cx - nodes[n*3], dy = cy - nodes[n*3+1], dz = cz - nodes[n*3+2];
-        const d2 = dx*dx + dy*dy + dz*dz;
-        if (d2 < nearestD2) { nearestD2 = d2; nearest = n; }
+      for (let k = 0; k < 3; k++) {
+        const vi = base + k;
+        const c = [pos.getX(vi), pos.getY(vi), pos.getZ(vi)];
+        for (let d = 0; d < 3; d++) { sum[d] += c[d]; sum2[d] += c[d] * c[d]; }
+        cnt++;
       }
+    }
+    if (cnt === 0) continue;
+    const mean = [sum[0]/cnt, sum[1]/cnt, sum[2]/cnt];
+    const variance = [0, 1, 2].map((d) => sum2[d]/cnt - mean[d]*mean[d]);
+    const axis = variance[0] <= variance[1] && variance[0] <= variance[2] ? 0 : variance[1] <= variance[2] ? 1 : 2;
+    const planeVal = mean[axis];
 
-      if (cond.type === 'fixed') {
-        fixedDOFs.add(nearest*3);
-        fixedDOFs.add(nearest*3+1);
-        fixedDOFs.add(nearest*3+2);
-      } else if (cond.type === 'force' && cond.value) {
-        // Distribute over faces — each face contributes 1/faceCount of total
-        const nFaces = cond.faceIndices.length;
-        F[nearest*3]   += cond.value[0] / nFaces;
-        F[nearest*3+1] += cond.value[1] / nFaces;
-        F[nearest*3+2] += cond.value[2] / nFaces;
-      } else if (cond.type === 'pressure' && cond.value) {
-        // Compute face normal
-        const v0 = new THREE.Vector3(pos.getX(base),   pos.getY(base),   pos.getZ(base));
-        const v1 = new THREE.Vector3(pos.getX(base+1), pos.getY(base+1), pos.getZ(base+1));
-        const v2 = new THREE.Vector3(pos.getX(base+2), pos.getY(base+2), pos.getZ(base+2));
-        const normal = new THREE.Vector3().subVectors(v1, v0).cross(new THREE.Vector3().subVectors(v2, v0)).normalize();
-        const pressureMag = new THREE.Vector3(cond.value[0], cond.value[1], cond.value[2]).length();
-        const nFaces = cond.faceIndices.length;
-        F[nearest*3]   += normal.x * pressureMag / nFaces;
-        F[nearest*3+1] += normal.y * pressureMag / nFaces;
-        F[nearest*3+2] += normal.z * pressureMag / nFaces;
+    // Every mesh node on that plane.
+    const onPlane: number[] = [];
+    for (let n = 0; n < nNodes; n++) {
+      if (Math.abs(nodes[n*3+axis] - planeVal) < planeTol) onPlane.push(n);
+    }
+    if (onPlane.length === 0) continue;
+
+    if (cond.type === 'fixed') {
+      for (const n of onPlane) { fixedDOFs.add(n*3); fixedDOFs.add(n*3+1); fixedDOFs.add(n*3+2); }
+    } else if (cond.type === 'force' && cond.value) {
+      // cond.value is the TOTAL force on the face, distributed equally over its nodes.
+      const per = onPlane.length;
+      for (const n of onPlane) {
+        F[n*3]   += cond.value[0] / per;
+        F[n*3+1] += cond.value[1] / per;
+        F[n*3+2] += cond.value[2] / per;
       }
+    } else if (cond.type === 'pressure' && cond.value) {
+      // Pressure × face area → a total force along the OUTWARD plane normal,
+      // distributed over the plane nodes.
+      const perp = [0, 1, 2].filter((d) => d !== axis);
+      let lo0 = Infinity, hi0 = -Infinity, lo1 = Infinity, hi1 = -Infinity;
+      let axLo = Infinity, axHi = -Infinity;
+      for (let n = 0; n < nNodes; n++) { const a = nodes[n*3+axis]; if (a < axLo) axLo = a; if (a > axHi) axHi = a; }
+      for (const n of onPlane) {
+        const a = nodes[n*3+perp[0]], b = nodes[n*3+perp[1]];
+        if (a < lo0) lo0 = a; if (a > hi0) hi0 = a;
+        if (b < lo1) lo1 = b; if (b > hi1) hi1 = b;
+      }
+      const area = Math.max(hi0 - lo0, planeTol) * Math.max(hi1 - lo1, planeTol);
+      const pressureMag = Math.hypot(cond.value[0], cond.value[1], cond.value[2]);
+      // Outward normal: +1 on the max side of the part, −1 on the min side.
+      const sign = Math.abs(planeVal - axHi) <= Math.abs(planeVal - axLo) ? 1 : -1;
+      const per = onPlane.length;
+      for (const n of onPlane) F[n*3+axis] += (sign * pressureMag * area) / per;
     }
   }
 
-  // --- Apply fixed DOF constraints via large-number (penalty) method ---
-  const LARGE = 1e30;
+  // --- Apply fixed DOF constraints by Dirichlet ELIMINATION (u = 0) ---
+  // The old 1e30 penalty wrecked the conditioning (1e30 on the diagonal vs ~1e5
+  // real stiffness → condition number ~1e25), so the Jacobi-PCG converged only
+  // intermittently across mesh resolutions. Proper elimination — zero the row and
+  // column of each fixed DOF and put a representative value on the diagonal —
+  // keeps the system well-conditioned and the fixed DOF trivially u = 0.
+  let diagSum = 0, diagCnt = 0;
+  for (const [r, rowMap] of entries) {
+    const dv = rowMap.get(r);
+    if (dv && !fixedDOFs.has(r)) { diagSum += dv; diagCnt++; }
+  }
+  const diagScale = diagCnt > 0 ? diagSum / diagCnt : 1;
+  // Zero the COLUMN of every fixed DOF in the remaining (free) rows.
+  for (const [r, rowMap] of entries) {
+    if (fixedDOFs.has(r)) continue;
+    for (const c of [...rowMap.keys()]) if (fixedDOFs.has(c)) rowMap.delete(c);
+  }
+  // Replace each fixed ROW with a single diagonal entry; RHS already 0.
   for (const dof of fixedDOFs) {
-    if (!entries.has(dof)) entries.set(dof, new Map());
-    entries.get(dof)!.set(dof, LARGE);
+    entries.set(dof, new Map([[dof, diagScale]]));
     F[dof] = 0;
   }
 
