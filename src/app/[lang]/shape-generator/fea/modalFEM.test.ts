@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { TopologyGrid } from '../analysis/topology3D';
-import { hex8Modes, fixedFaceNodes } from './modalFEM';
+import { hex8Modes, hex8Participation, fixedFaceNodes } from './modalFEM';
 
 const E = 210000, nu = 0.3, rho = 7.85e-9; // steel, N-mm-tonne-MPa units
 
@@ -51,5 +51,37 @@ describe('modalFEM — cantilever natural frequency (FEA, verified)', () => {
     const f4E = hex8Modes(grid, { E: 4 * E, nu, rho, cell: 10, fixed, nModes: 1 }).frequenciesHz[0];
     expect(f4E / fE).toBeGreaterThan(1.95);      // ideal 2 (×4 stiffness → ×√4)
     expect(f4E / fE).toBeLessThan(2.05);
+  });
+});
+
+describe('modalFEM — modal mass participation (resonance assessment)', () => {
+  // A cantilever thin in Y (ny < nz) → the lowest mode is bending in Y.
+  const grid = new TopologyGrid(16, 2, 4);
+  const part = hex8Participation(grid, { E: 210000, nu: 0.3, rho: 7.85e-9, cell: 10, fixed: fixedFaceNodes(grid, 'x'), nModes: 8 });
+
+  it("the first bending mode captures ~the analytic 61% of the section's mass, in its bending direction only", () => {
+    const m1 = part.perMode[0];
+    const fy = m1.effectiveMass.y / part.totalMass.y;
+    expect(fy).toBeGreaterThan(0.55);            // Euler–Bernoulli first mode ≈ 0.613
+    expect(fy).toBeLessThan(0.70);
+    // it's a pure-Y bending mode: negligible participation in x and z.
+    expect(m1.effectiveMass.x / part.totalMass.x).toBeLessThan(0.02);
+    expect(m1.effectiveMass.z / part.totalMass.z).toBeLessThan(0.02);
+  });
+
+  it('finds an axial mode dominating the X direction', () => {
+    const axial = part.perMode.find((m) => m.effectiveMass.x / part.totalMass.x > 0.5);
+    expect(axial, 'an axial mode should appear with > 50% X effective mass').toBeTruthy();
+  });
+
+  it('cumulative effective mass rises monotonically toward 100% and is bounded by 1', () => {
+    let prev = 0;
+    for (const c of part.cumulativeFraction) {
+      expect(c.y).toBeGreaterThanOrEqual(prev - 1e-9); // monotonic
+      expect(c.y).toBeLessThan(1.02);                  // can't exceed total mass
+      prev = c.y;
+    }
+    // with 8 modes a slender cantilever reaches the response-spectrum 90% target in Y.
+    expect(part.cumulativeFraction[part.cumulativeFraction.length - 1].y).toBeGreaterThan(0.85);
   });
 });
