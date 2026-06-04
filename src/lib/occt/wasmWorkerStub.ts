@@ -79,6 +79,7 @@ export type WireOp =
   | 'chamfer'
   | 'exportSTEP'
   | 'importSTEP'
+  | 'tessellate'
   | 'release';
 
 export interface WireRequest {
@@ -255,6 +256,22 @@ export function createWasmWorkerStub(opts: CreateStubOpts = {}): WorkerLike {
             return;
           }
           reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'tessellate': {
+          const s = resolveHandle(args.handle);
+          if (!s) {
+            reply({ reqId, ok: false, error: `tessellate: unknown handle (${String(args.handle)})` });
+            return;
+          }
+          const deflection = typeof args.deflection === 'number' ? args.deflection : undefined;
+          const r = await inner.tessellate(s, deflection);
+          if (!r.ok || !r.mesh) {
+            reply({ reqId, ok: false, error: r.error ?? 'tessellate failed', warnings: r.warnings });
+            return;
+          }
+          reply({ reqId, ok: true, mesh: r.mesh, warnings: r.warnings });
           return;
         }
 

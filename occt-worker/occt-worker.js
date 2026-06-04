@@ -241,6 +241,65 @@
     };
   }
 
+  // ─── tessellation (stub: axis-aligned box from the tracked bbox) ─────────
+
+  /**
+   * Build viewer buffers (OcctTessellation) for a record's bounding box: a
+   * flat-shaded 12-triangle box + its 12 feature edges + framing bounds. The
+   * stub has no real B-rep, so it draws the envelope. Phase 5 swap: tessellate
+   * the live TopoDS_Shape with BRepMesh and extract triangulation.
+   */
+  function tessellateBoxFromBbox(bbox) {
+    var lo = bbox.min, hi = bbox.max;
+    var x0 = lo.x, y0 = lo.y, z0 = lo.z, x1 = hi.x, y1 = hi.y, z1 = hi.z;
+    var v = [
+      [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
+      [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1],
+    ];
+    // [a,b,c, normal] per triangle (CCW seen from outside).
+    var tris = [
+      [0, 3, 2, [0, 0, -1]], [0, 2, 1, [0, 0, -1]], // bottom
+      [4, 5, 6, [0, 0, 1]], [4, 6, 7, [0, 0, 1]],   // top
+      [0, 1, 5, [0, -1, 0]], [0, 5, 4, [0, -1, 0]], // -Y
+      [3, 7, 6, [0, 1, 0]], [3, 6, 2, [0, 1, 0]],   // +Y
+      [0, 4, 7, [-1, 0, 0]], [0, 7, 3, [-1, 0, 0]], // -X
+      [1, 2, 6, [1, 0, 0]], [1, 6, 5, [1, 0, 0]],   // +X
+    ];
+    var positions = [];
+    var normals = [];
+    for (var t = 0; t < tris.length; t++) {
+      var tri = tris[t];
+      for (var k = 0; k < 3; k++) {
+        var p = v[tri[k]];
+        positions.push(p[0], p[1], p[2]);
+        normals.push(tri[3][0], tri[3][1], tri[3][2]);
+      }
+    }
+    var edgePairs = [
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      [0, 4], [1, 5], [2, 6], [3, 7],
+    ];
+    var edges = [];
+    for (var e = 0; e < edgePairs.length; e++) {
+      var a = v[edgePairs[e][0]], b = v[edgePairs[e][1]];
+      edges.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+    }
+    var sx = x1 - x0, sy = y1 - y0, sz = z1 - z0;
+    return {
+      positions: positions,
+      normals: normals,
+      edges: edges,
+      triangleCount: tris.length,
+      edgeCount: edgePairs.length,
+      bounds: {
+        center: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2],
+        size: [sx, sy, sz],
+        radius: 0.5 * Math.sqrt(sx * sx + sy * sy + sz * sz),
+      },
+    };
+  }
+
   // ─── dispatch ──────────────────────────────────────────────────────────
 
   function reply(msg) {
@@ -350,6 +409,16 @@
           if (!parsed.ok) { reply({ reqId: reqId, ok: false, error: parsed.error, warnings: [] }); return; }
           var h3 = allocShape(parsed.record);
           reply({ reqId: reqId, ok: true, shape: shapeToWire(h3, parsed.record), warnings: parsed.warnings });
+          return;
+        }
+
+        case 'tessellate': {
+          var recT = resolveHandle(args.handle);
+          if (!recT) {
+            reply({ reqId: reqId, ok: false, error: 'tessellate: unknown handle (' + args.handle + ')', warnings: [] });
+            return;
+          }
+          reply({ reqId: reqId, ok: true, mesh: tessellateBoxFromBbox(recT.bbox), warnings: ['stub: bbox box mesh; no BREP tessellation'] });
           return;
         }
 

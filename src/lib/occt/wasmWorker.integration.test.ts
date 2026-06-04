@@ -140,6 +140,7 @@ describe('occt-worker.js: source presence', () => {
       'chamfer',
       'exportSTEP',
       'importSTEP',
+      'tessellate',
       'release',
     ]) {
       expect(WORKER_SOURCE).toContain("'" + op + "'");
@@ -298,6 +299,28 @@ describe('occt-worker.js: STEP I/O', () => {
     const r = await bridge.importSTEP('not a step file at all');
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/ISO-10303-21/);
+    bridge.dispose();
+  });
+});
+
+describe('occt-worker.js: tessellate', () => {
+  it('returns viewer buffers (box mesh) for a built shape', async () => {
+    const bridge = createWasmBridge({ workerFactory: buildFileBackedWorker });
+    const a = (await bridge.buildFromExtrude(rectExtrude())).shape!; // 10×5×7 envelope
+    const r = await bridge.tessellate(a);
+    expect(r.ok).toBe(true);
+    expect(r.mesh!.triangleCount).toBe(12);
+    expect(r.mesh!.edgeCount).toBe(12);
+    expect(r.mesh!.positions).toHaveLength(12 * 9);
+    expect(r.mesh!.normals).toHaveLength(12 * 9);
+    expect(r.mesh!.bounds.size).toEqual([10, 5, 7]);
+    bridge.dispose();
+  });
+
+  it('rejects an unknown shape id before it reaches the worker', async () => {
+    const bridge = createWasmBridge({ workerFactory: buildFileBackedWorker });
+    await bridge.buildFromExtrude(rectExtrude()); // ensure worker is ready
+    await expect(bridge.tessellate({ id: 'occt_999', kind: 'solid' })).rejects.toThrow(/unknown shape id/);
     bridge.dispose();
   });
 });
