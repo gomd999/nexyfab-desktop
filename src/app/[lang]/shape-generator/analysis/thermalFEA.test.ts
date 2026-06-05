@@ -9,11 +9,10 @@
  * never sampled the last grid plane and a fixed cold face read ~14% warm. The clamp now
  * lets boundary vertices reach the BC plane (fixed in this change).
  *
- * SCOPE / honest limits (asserted only on what is physical): the conduction core + fixed-
- * temperature BCs are verified here. The heat-source and convection terms remain
- * dimensional proxies. The solver now masks grid nodes OUTSIDE the solid via point-in-solid
- * (so a non-convex part no longer conducts through the empty bounding box) — the
- * two-separated-bodies test below pins that behaviour.
+ * The solver is a finite-volume balance (half-cell control volumes, SI conductances,
+ * Gauss–Seidel + SOR) with point-in-solid masking. Verified against the analytic 1-D
+ * conduction profile + flux, the heat-source end temperature Q·L/(k·A), the
+ * conduction↔convection balance at a film boundary, and the two-separated-bodies isolation.
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
@@ -97,6 +96,41 @@ describe('thermalFEA — 1-D conduction (verified vs closed form)', () => {
     const fxAl = al.heatFlux.reduce((s, f) => s + f.x, 0) / al.heatFlux.length;
     const fxSt = st.heatFlux.reduce((s, f) => s + f.x, 0) / st.heatFlux.length;
     expect(fxAl / fxSt).toBeCloseTo(205 / 50, 1);        // flux ratio = conductivity ratio
+  });
+
+  it('reaches the analytic end temperature Q·L/(k·A) under a face heat source', () => {
+    // A bar fixed at 0 °C on +X with a total heat Q on the −X face: all Q flows axially, so
+    // the hot end sits at T = Q·L/(k·A). The half-cell FV makes the section conductance
+    // exactly k·A/L (the old full-width node sum was ~50× off here).
+    const L = 100, a = 20, Q = 50;          // mm, mm, W
+    const k = 205;                          // aluminium, W/(m·K)
+    const g = bar(L, a);
+    const r = runThermalFEA(g, [
+      { type: 'fixed_temp', faceIndex: 3, value: 0 },
+      { type: 'heat_source', faceIndex: 2, value: Q },
+    ], THERMAL_MATERIALS.aluminum);
+    const A = (a * 1e-3) ** 2, Lm = L * 1e-3;
+    const Thot = (Q * Lm) / (k * A);        // ~61 °C
+    expect(r.maxTemp / Thot).toBeGreaterThan(0.97);
+    expect(r.maxTemp / Thot).toBeLessThan(1.03);
+  });
+
+  it('balances conduction against a convective film: T_c = (G·T_hot + hA·T_amb)/(G + hA)', () => {
+    const L = 100, a = 20, k = 205, hA = 0.5; // film conductance W/K
+    const g = bar(L, a);
+    const r = runThermalFEA(g, [
+      { type: 'fixed_temp', faceIndex: 2, value: 100 },
+      { type: 'convection', faceIndex: 3, value: hA, ambientTemp: 25 },
+    ], THERMAL_MATERIALS.aluminum, 25);
+    const G = (k * (a * 1e-3) ** 2) / (L * 1e-3);     // axial conduction conductance k·A/L
+    const Tc = (G * 100 + hA * 25) / (G + hA);         // series conduction↔convection balance
+    expect(r.minTemp).toBeGreaterThan(Tc - 3);         // cold (film) end ≈ Tc
+    expect(r.minTemp).toBeLessThan(Tc + 3);
+    // limits: a near-zero film barely cools (≈100), an enormous film pins to ambient
+    const weak = runThermalFEA(g, [{ type: 'fixed_temp', faceIndex: 2, value: 100 }, { type: 'convection', faceIndex: 3, value: 1e-3, ambientTemp: 25 }], THERMAL_MATERIALS.aluminum, 25);
+    expect(weak.minTemp).toBeGreaterThan(97);
+    const strong = runThermalFEA(g, [{ type: 'fixed_temp', faceIndex: 2, value: 100 }, { type: 'convection', faceIndex: 3, value: 1e6, ambientTemp: 25 }], THERMAL_MATERIALS.aluminum, 25);
+    expect(strong.minTemp).toBeLessThan(26);
   });
 
   it('does NOT conduct heat through the empty gap between two separated bodies', () => {

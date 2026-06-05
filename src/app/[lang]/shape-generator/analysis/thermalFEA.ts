@@ -154,80 +154,98 @@ export function runThermalFEA(
     return result;
   }
 
+  // ── Finite-volume control-volume weights ──
+  // Cell sizes in METRES (geometry is mm) so conductances come out in SI (W/K). A node on a
+  // grid-boundary plane owns a HALF control volume in that direction — this makes the
+  // cross-section conductance Σ g_x exactly k·A/L (the old full-width node sum over-counted
+  // the section by ~30%, so a heat source read ~50× wrong). cvW = control-volume widths.
+  const hxm = sx * 1e-3, hym = sy * 1e-3, hzm = sz * 1e-3;
+  const wfac = (i: number) => (i === 0 || i === gridSize - 1) ? 0.5 : 1.0;
+  const gs2 = gridSize * gridSize;
+  const decode = (n: number): [number, number, number] => [Math.floor(n / gs2), Math.floor((n % gs2) / gridSize), n % gridSize];
+  const FACE_AXIS: Record<number, number> = { 0: 1, 1: 1, 2: 0, 3: 0, 4: 2, 5: 2 };
+  // The control-volume face area a node presents on a given BC face (m²), used to split a
+  // total face heat load / film conductance over the face's nodes by area.
+  function bcNodeArea(n: number, faceIndex: number): number {
+    const [ix, iy, iz] = decode(n);
+    const wx = hxm * wfac(ix), wy = hym * wfac(iy), wz = hzm * wfac(iz);
+    const a = FACE_AXIS[faceIndex];
+    if (a === undefined) return wx * wy * wz;          // volumetric source ⇒ weight by volume
+    return a === 0 ? wy * wz : a === 1 ? wx * wz : wx * wy;
+  }
+
   for (const bc of boundaries) {
     const faceNodes = getFaceNodes(bc.faceIndex);
-    for (const n of faceNodes) {
-      if (bc.type === 'fixed_temp') {
-        temps[n] = bc.value;
-        fixedNodes.add(n);
-      } else if (bc.type === 'heat_source') {
-        heatSources[n] += bc.value / faceNodes.length;
+    if (bc.type === 'fixed_temp') {
+      for (const n of faceNodes) { temps[n] = bc.value; fixedNodes.add(n); }
+      continue;
+    }
+    // Split the total load over the face by control-volume area so boundary/corner nodes
+    // get their proper share (bc.value = total W for a source, total h·A [W/K] for convection).
+    const weights = faceNodes.map(n => bcNodeArea(n, bc.faceIndex));
+    const totalW = weights.reduce((s, w) => s + w, 0);
+    if (totalW <= 0) continue;
+    for (let i = 0; i < faceNodes.length; i++) {
+      const n = faceNodes[i], frac = weights[i] / totalW;
+      if (bc.type === 'heat_source') {
+        heatSources[n] += bc.value * frac;             // W
       } else if (bc.type === 'convection') {
         const amb = bc.ambientTemp ?? ambientTemp;
-        // Accumulate convection contributions (multiple BCs on same node sum up)
+        const hA = bc.value * frac;                    // W/K for this node's CV face
         const existing = convectionNodes.get(n);
         if (existing) {
-          existing.h += bc.value;
-          // weighted average of ambient temps proportional to h
-          existing.amb = (existing.amb * (existing.h - bc.value) + amb * bc.value) / existing.h;
+          const newH = existing.h + hA;
+          existing.amb = (existing.amb * existing.h + amb * hA) / newH;
+          existing.h = newH;
         } else {
-          convectionNodes.set(n, { h: bc.value, amb });
+          convectionNodes.set(n, { h: hA, amb });
         }
       }
     }
   }
 
-  // Jacobi iteration (steady-state heat conduction)
-  // Governing equation per interior node (finite difference):
-  //   k * (sum of 6 neighbour temps - 6*T) / h² = -Q   (Q = volumetric source)
-  // With convection BC on boundary/surface node:
-  //   adds h_conv*(T_amb - T) to the RHS, modifies effective diagonal
-  const MAX_ITER = 500;
-  const tolerance = 0.01;
-  const conductance = k; // simplified: uniform conductance
+  // ── Steady-state solve: finite-volume balance by Gauss–Seidel with SOR ──
+  //   Σ_d g_d (T_j − T_i) + Q_i + hA_i (T_amb − T_i) = 0
+  //   g_d = k · (perpendicular CV face area) / (node spacing)   [W/K]
+  // Gauss–Seidel (in-place) + over-relaxation converges far faster than Jacobi for the
+  // anisotropic conductances of a long thin part (where the old isotropic average stalled).
+  const MAX_ITER = 3000;
+  const tolerance = 1e-3;
+  const omega = 1.8;
 
   for (let iter = 0; iter < MAX_ITER; iter++) {
-    const newTemps = new Float32Array(temps);
     let maxDelta = 0;
-
     for (let ix = 0; ix < gridSize; ix++) {
       for (let iy = 0; iy < gridSize; iy++) {
         for (let iz = 0; iz < gridSize; iz++) {
           const n = idx(ix, iy, iz);
-          if (fixedNodes.has(n)) continue;
-          if (!active[n]) continue; // outside the solid — does not conduct
+          if (fixedNodes.has(n) || !active[n]) continue;
 
-          // Collect available SOLID neighbours (boundary/void nodes excluded). A node with
-          // only inactive (void) neighbours on one side gets an insulated boundary there.
-          const neighbourTemps: number[] = [];
-          if (ix > 0            && active[idx(ix-1,iy,iz)]) neighbourTemps.push(temps[idx(ix-1,iy,iz)]);
-          if (ix < gridSize - 1 && active[idx(ix+1,iy,iz)]) neighbourTemps.push(temps[idx(ix+1,iy,iz)]);
-          if (iy > 0            && active[idx(ix,iy-1,iz)]) neighbourTemps.push(temps[idx(ix,iy-1,iz)]);
-          if (iy < gridSize - 1 && active[idx(ix,iy+1,iz)]) neighbourTemps.push(temps[idx(ix,iy+1,iz)]);
-          if (iz > 0            && active[idx(ix,iy,iz-1)]) neighbourTemps.push(temps[idx(ix,iy,iz-1)]);
-          if (iz < gridSize - 1 && active[idx(ix,iy,iz+1)]) neighbourTemps.push(temps[idx(ix,iy,iz+1)]);
+          const gx = (k * (hym * wfac(iy)) * (hzm * wfac(iz))) / hxm;
+          const gy = (k * (hxm * wfac(ix)) * (hzm * wfac(iz))) / hym;
+          const gz = (k * (hxm * wfac(ix)) * (hym * wfac(iy))) / hzm;
 
-          const numNeighbours = neighbourTemps.length;
-          if (numNeighbours === 0) continue; // isolated node — nothing to average
-          const sumNeighbours = neighbourTemps.reduce((s, v) => s + v, 0);
-          const source = heatSources[n] / (conductance * (sx + sy + sz) / 3);
+          let num = 0, den = 0;
+          if (ix > 0            && active[idx(ix-1,iy,iz)]) { num += gx * temps[idx(ix-1,iy,iz)]; den += gx; }
+          if (ix < gridSize - 1 && active[idx(ix+1,iy,iz)]) { num += gx * temps[idx(ix+1,iy,iz)]; den += gx; }
+          if (iy > 0            && active[idx(ix,iy-1,iz)]) { num += gy * temps[idx(ix,iy-1,iz)]; den += gy; }
+          if (iy < gridSize - 1 && active[idx(ix,iy+1,iz)]) { num += gy * temps[idx(ix,iy+1,iz)]; den += gy; }
+          if (iz > 0            && active[idx(ix,iy,iz-1)]) { num += gz * temps[idx(ix,iy,iz-1)]; den += gz; }
+          if (iz < gridSize - 1 && active[idx(ix,iy,iz+1)]) { num += gz * temps[idx(ix,iy,iz+1)]; den += gz; }
+          if (den === 0) continue; // isolated node
 
-          // Apply convection BC (Newton's law of cooling):
-          //   q_conv = h * (T_amb - T)  →  modify diagonal and RHS
-          //   newT = (sumNeighbours + source + h*T_amb) / (numNeighbours + h)
+          num += heatSources[n]; // W
           const conv = convectionNodes.get(n);
-          if (conv) {
-            newTemps[n] = (sumNeighbours + source + conv.h * conv.amb) / (numNeighbours + conv.h);
-          } else {
-            newTemps[n] = (sumNeighbours + source) / numNeighbours;
-          }
+          if (conv) { num += conv.h * conv.amb; den += conv.h; }
 
-          maxDelta = Math.max(maxDelta, Math.abs(newTemps[n] - temps[n]));
+          const tStar = num / den;
+          const tNew = temps[n] + omega * (tStar - temps[n]); // SOR, in-place (Gauss–Seidel)
+          const d = Math.abs(tNew - temps[n]);
+          if (d > maxDelta) maxDelta = d;
+          temps[n] = tNew;
         }
       }
     }
-
-    temps.set(newTemps);
     if (maxDelta < tolerance) break;
   }
 
