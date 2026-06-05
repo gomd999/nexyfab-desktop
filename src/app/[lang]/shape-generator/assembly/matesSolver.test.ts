@@ -404,6 +404,61 @@ describe('solveAssembly · belt / pulley (radius-derived ratio)', () => {
   });
 });
 
+describe('solveAssembly · slider (1 translational DOF along the axis)', () => {
+  // A slider pins the perpendicular offset to zero but leaves translation ALONG
+  // the shared axis free — the defining difference from concentric, which also
+  // pulls the origins together (zero axial offset). With axis = Y, body B may
+  // slide in Y but its X/Z offset from A's axis line must collapse to 0.
+  it('collapses the perpendicular (X,Z) offset while preserving axial Y travel', () => {
+    const a = body('a', 0, 0, 0, /* fixed */ true);
+    const b = body('b', 5, 50, 3); // 5 in +x, 3 in +z off the Y axis, 50 up the axis
+    const state: AssemblyState = {
+      bodies: [a, b],
+      mates: [mate('m', 'slider',
+        sel(0, [0, 0, 0], [0, 1, 0], [0, 1, 0]),
+        sel(1, [0, 0, 0], [0, 1, 0], [0, 1, 0])),
+      ],
+    };
+    const r = solveAssembly(state);
+    const p = r.bodies[1].position;
+    expect(p.x).toBeCloseTo(0, 3);  // perpendicular offset removed
+    expect(p.z).toBeCloseTo(0, 3);
+    expect(p.y).toBeCloseTo(50, 3); // axial travel left untouched (the free DOF)
+  });
+
+  it('does NOT force the bodies coincident (Y is free, unlike concentric)', () => {
+    // Same setup as the concentric test (B at y=30) — concentric pulls the
+    // origin to <0.5; a correct slider keeps the 30-unit axial separation.
+    const state: AssemblyState = {
+      bodies: [body('a', 0, 0, 0, true), body('b', 50, 30, 0)],
+      mates: [mate('m', 'slider',
+        sel(0, [0, 0, 0], [0, 1, 0], [0, 1, 0]),
+        sel(1, [0, 0, 0], [0, 1, 0], [0, 1, 0])),
+      ],
+    };
+    const r = solveAssembly(state);
+    expect(r.bodies[1].position.x).toBeCloseTo(0, 3); // perpendicular pinned
+    expect(r.bodies[1].position.y).toBeCloseTo(30, 3); // axial NOT collapsed
+  });
+});
+
+describe('solveAssembly · hinge (1 rotational DOF — delegates to concentric)', () => {
+  // A hinge is concentric in disguise: it pins the origin onto the shared axis
+  // and aligns the axes, leaving a single rotational DOF. It must therefore
+  // reproduce concentric's origin-coincidence behaviour.
+  it('pulls body B`s origin onto body A`s axis (like concentric)', () => {
+    const state: AssemblyState = {
+      bodies: [body('a', 0, 0, 0, true), body('b', 50, 30, 0)],
+      mates: [mate('m', 'hinge',
+        sel(0, [0, 0, 0], [0, 1, 0], [0, 1, 0]),
+        sel(1, [0, 0, 0], [0, 1, 0], [0, 1, 0])),
+      ],
+    };
+    const r = solveAssembly(state);
+    expect(r.bodies[1].position.length()).toBeLessThan(0.5); // origin coincident
+  });
+});
+
 describe('solveAssembly · iteration limits', () => {
   it('reports iterations used (≤ maxIterations)', () => {
     const state: AssemblyState = {
