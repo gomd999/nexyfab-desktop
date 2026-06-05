@@ -66,6 +66,21 @@ describe('modalSolver — natural frequency (verified vs closed form)', () => {
     expect(res.modes[2].frequencyHz / f2).toBeLessThan(1.04);
   });
 
+  it('captures the longitudinal (axial) mode at c/(4L) for a fixed-free bar', () => {
+    // A short stubby bar so the axial resonance is among the lowest modes. The axial wave
+    // speed c=√(E/ρ) and the fixed-free fundamental f = c/(4L) are independent of
+    // slenderness (unlike the bending formula, which would need a slender bar).
+    const L = 40, b = 30;
+    const c = Math.sqrt(steel.youngsModulus / steel.density);
+    const fAxial = c / (4 * (L * 1e-3));               // ~31.5 kHz
+    const g = new THREE.BoxGeometry(L, b, b, 6, 4, 4).toNonIndexed();
+    const res = computeNaturalFrequencies(g, steel, facesByX(g, true), 6, 1200);
+    const closest = Math.min(...res.modes.map(m => Math.abs(m.frequencyHz / fAxial - 1)));
+    expect(closest).toBeLessThan(0.04);                // a mode lands within 4% of c/(4L)
+    // the axial resonance is a higher mode than the 1st bending pair
+    expect(fAxial).toBeGreaterThan(res.modes[0].frequencyHz);
+  });
+
   it('conserves the exact total mass (consistent mass, ΣC=1)', () => {
     const L = 200, b = 20, h = 20;
     const g = new THREE.BoxGeometry(L, h, b, 16, 3, 3).toNonIndexed();
