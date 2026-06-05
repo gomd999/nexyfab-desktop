@@ -52,6 +52,47 @@ export interface ModalMaterialSI {
   density: number;
 }
 
+// ─── TET10 consistent mass coefficient matrix C ──────────────────────────────
+// For straight-edged TET10 the geometry map is affine (constant Jacobian), so the element
+// consistent mass is M_e[i][j] = ρ·V·C[i][j] with C a FIXED 10×10 matrix, C = 6·∫_ref N_i
+// N_j dV_ref. Each shape function is a sum of barycentric monomials; the reference moment
+// of L1^a L2^b L3^c L4^d over the unit tet is a!b!c!d!/(a+b+c+d+3)!. We build C once at load
+// from those exact moments (no quadrature, no transcription of a printed table). A lumped
+// mass under-predicts higher modes (a cantilever's 2nd bending mode came out ~5% low at any
+// mesh resolution); the consistent mass fixes that.
+
+const FACT = [1, 1, 2, 6, 24, 120, 720, 5040];
+/** ∫_ref L1^e0 L2^e1 L3^e2 L4^e3 dV_ref over the unit tetrahedron. */
+function refMoment(e: number[]): number {
+  const s = e[0] + e[1] + e[2] + e[3];
+  return (FACT[e[0]] * FACT[e[1]] * FACT[e[2]] * FACT[e[3]]) / FACT[s + 3];
+}
+// Each shape function as monomial terms {coef, exponents[4]} (corner i: 2L_i²−L_i; mid a,b: 4L_aL_b).
+const SHAPE_TERMS: Array<Array<{ c: number; e: [number, number, number, number] }>> = (() => {
+  const corner = (i: number) => {
+    const e2: [number, number, number, number] = [0, 0, 0, 0]; e2[i] = 2;
+    const e1: [number, number, number, number] = [0, 0, 0, 0]; e1[i] = 1;
+    return [{ c: 2, e: e2 }, { c: -1, e: e1 }];
+  };
+  const edges: Array<[number, number]> = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+  const mid = ([a, b]: [number, number]) => {
+    const e: [number, number, number, number] = [0, 0, 0, 0]; e[a] += 1; e[b] += 1;
+    return [{ c: 4, e }];
+  };
+  return [corner(0), corner(1), corner(2), corner(3), ...edges.map(mid)];
+})();
+const MASS_C: number[][] = (() => {
+  const C = Array.from({ length: 10 }, () => new Array<number>(10).fill(0));
+  for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) {
+    let s = 0;
+    for (const ti of SHAPE_TERMS[i]) for (const tj of SHAPE_TERMS[j]) {
+      s += ti.c * tj.c * refMoment([ti.e[0] + tj.e[0], ti.e[1] + tj.e[1], ti.e[2] + tj.e[2], ti.e[3] + tj.e[3]]);
+    }
+    C[i][j] = 6 * s; // ×6 so Σ_ij C = 1 (mass conservation): M_e = ρ·V·C
+  }
+  return C;
+})();
+
 /** Signed volume (m³) of the corner tet of a TET10 element, given metre coords. */
 function tetVolume(nodes: Float32Array, a: number, b: number, c: number, d: number): number {
   const ax = nodes[a*3], ay = nodes[a*3+1], az = nodes[a*3+2];
@@ -123,51 +164,50 @@ export function computeNaturalFrequencies(
     }
   }
 
-  // --- Assemble global K (sparse) and lumped diagonal M ---
+  // --- Assemble global K and CONSISTENT M (both sparse) ---
   const entries = new Map<number, Map<number, number>>();
-  const add = (r: number, c: number, v: number) => {
-    let row = entries.get(r); if (!row) { row = new Map(); entries.set(r, row); }
+  const mEntries = new Map<number, Map<number, number>>();
+  const addTo = (map: Map<number, Map<number, number>>, r: number, c: number, v: number) => {
+    let row = map.get(r); if (!row) { row = new Map(); map.set(r, row); }
     row.set(c, (row.get(c) ?? 0) + v);
   };
-  const Mdiag = new Float64Array(nDOF);
+  let totalMassKg = 0;
   for (const elem of elems) {
     const { Ke } = computeTet10Stiffness(nodesM, elem, E, nu);
     for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++)
       for (let di = 0; di < 3; di++) for (let dj = 0; dj < 3; dj++)
-        add(elem[i]*3+di, elem[j]*3+dj, Ke[i*3+di][j*3+dj]);
-    // lumped element mass: ρ·V split equally over the 10 nodes
+        addTo(entries, elem[i]*3+di, elem[j]*3+dj, Ke[i*3+di][j*3+dj]);
+    // consistent element mass M_e[3i+d][3j+d] = ρ·V·C[i][j] (translational DOFs decouple)
     const me = rho * tetVolume(nodesM, elem[0], elem[1], elem[2], elem[3]);
-    const per = me / 10;
-    for (let i = 0; i < 10; i++) { const n = elem[i]; Mdiag[n*3] += per; Mdiag[n*3+1] += per; Mdiag[n*3+2] += per; }
+    totalMassKg += me;
+    for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) {
+      const mij = me * MASS_C[i][j];
+      for (let d = 0; d < 3; d++) addTo(mEntries, elem[i]*3+d, elem[j]*3+d, mij);
+    }
   }
 
-  // --- Reduce to free DOFs ---
+  // --- Reduce K and M to free DOFs ---
   const g2r = new Int32Array(nDOF).fill(-1);
   const free: number[] = [];
   for (let d = 0; d < nDOF; d++) if (!fixed.has(d)) { g2r[d] = free.length; free.push(d); }
   const nf = free.length;
-  const Mr = new Float64Array(nf);
-  for (let i = 0; i < nf; i++) Mr[i] = Mdiag[free[i]] || 1e-30;
-  const rEntries = new Map<number, Map<number, number>>();
-  for (let i = 0; i < nf; i++) {
-    const gr = free[i];
-    const row = entries.get(gr); if (!row) continue;
-    const rr = new Map<number, number>();
-    for (const [c, v] of row) { const rc = g2r[c]; if (rc >= 0) rr.set(rc, v); }
-    rEntries.set(i, rr);
-  }
-  const Kr = new CSRMatrix(nf, nf, rEntries);
-
-  // total physical mass (kg): each node carries its lumped mass on all 3 DOFs, so the
-  // sum over DOFs triple-counts ⇒ divide by 3.
-  let totalMassKg = 0;
-  for (let d = 0; d < nDOF; d++) totalMassKg += Mdiag[d];
-  totalMassKg /= 3;
+  const reduce = (src: Map<number, Map<number, number>>): Map<number, Map<number, number>> => {
+    const out = new Map<number, Map<number, number>>();
+    for (let i = 0; i < nf; i++) {
+      const row = src.get(free[i]); if (!row) continue;
+      const rr = new Map<number, number>();
+      for (const [c, v] of row) { const rc = g2r[c]; if (rc >= 0) rr.set(rc, v); }
+      out.set(i, rr);
+    }
+    return out;
+  };
+  const Kr = new CSRMatrix(nf, nf, reduce(entries));
+  const Mr = new CSRMatrix(nf, nf, reduce(mEntries));
 
   // --- Inverse iteration with M-orthogonal deflation for the lowest modes ---
   const modes: ModalMode[] = [];
   const found: Float64Array[] = [];
-  const mDot = (a: Float64Array, b: Float64Array) => { let s = 0; for (let i = 0; i < nf; i++) s += a[i]*Mr[i]*b[i]; return s; };
+  const mDot = (a: Float64Array, b: Float64Array) => { const Mb = Mr.multiply(b); let s = 0; for (let i = 0; i < nf; i++) s += a[i] * Mb[i]; return s; };
 
   for (let mode = 0; mode < numModes && nf > 0; mode++) {
     let v: Float64Array = new Float64Array(nf);
@@ -181,8 +221,7 @@ export function computeNaturalFrequencies(
       // deflate the seed against found modes
       for (const phi of found) { const c = mDot(phi, v); for (let i = 0; i < nf; i++) v[i] -= c * phi[i]; }
       // solve K x = M v
-      const b = new Float64Array(nf);
-      for (let i = 0; i < nf; i++) b[i] = Mr[i] * v[i];
+      const b = Mr.multiply(v);
       const { x } = sparsePCG(Kr, b, 3000, 1e-9);
       // deflate the result too
       for (const phi of found) { const c = mDot(phi, x); for (let i = 0; i < nf; i++) x[i] -= c * phi[i]; }
@@ -201,10 +240,11 @@ export function computeNaturalFrequencies(
     // expand the reduced free-DOF shape to the full DOF vector (fixed DOFs = 0)
     const full = new Float64Array(nDOF);
     for (let i = 0; i < nf; i++) full[free[i]] = v[i];
-    // modal participation factor per axis L_d = Σ m·φ (v is M-normalised ⇒ φᵀMφ=1);
-    // effective modal mass = L_d², fraction = L_d²/totalMass in the dominant direction.
+    // modal participation factor per axis L_d = φᵀM·r_d = Σ_{axis(i)=d} (Mφ)_i (v is
+    // M-normalised ⇒ φᵀMφ=1); effective modal mass = L_d², fraction = L_d²/totalMass.
+    const Mv = Mr.multiply(v);
     const L = [0, 0, 0];
-    for (let i = 0; i < nf; i++) { const axis = free[i] % 3; L[axis] += Mr[i] * v[i]; }
+    for (let i = 0; i < nf; i++) { const axis = free[i] % 3; L[axis] += Mv[i]; }
     const effFrac = totalMassKg > 0
       ? Math.min(1, Math.max(L[0]*L[0], L[1]*L[1], L[2]*L[2]) / totalMassKg)
       : 0;

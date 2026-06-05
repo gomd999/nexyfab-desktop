@@ -30,13 +30,13 @@ function facesByX(g: THREE.BufferGeometry, wantMin: boolean): number[] {
   return out;
 }
 
-/** Analytic cantilever fundamental frequency (Hz). dims in mm, E in Pa, ρ in kg/m³. */
-function analyticF1(L: number, b: number, h: number): number {
+/** Analytic cantilever bending frequency for eigenvalue βL (Hz). dims mm, E Pa, ρ kg/m³. */
+function analyticBending(L: number, b: number, h: number, betaL: number): number {
   const Lm = L * 1e-3, bm = b * 1e-3, hm = h * 1e-3;
   const I = (bm * hm ** 3) / 12, A = bm * hm;
-  const beta = 1.875104;
-  return (beta * beta) / (2 * Math.PI) * Math.sqrt((steel.youngsModulus * I) / (steel.density * A * Lm ** 4));
+  return (betaL * betaL) / (2 * Math.PI) * Math.sqrt((steel.youngsModulus * I) / (steel.density * A * Lm ** 4));
 }
+const analyticF1 = (L: number, b: number, h: number) => analyticBending(L, b, h, 1.875104);
 
 function cantileverModes(L: number, b: number, h: number) {
   const g = new THREE.BoxGeometry(L, h, b, 16, 3, 3).toNonIndexed();
@@ -52,6 +52,26 @@ describe('modalSolver — natural frequency (verified vs closed form)', () => {
     expect(res.freeDofCount).toBeGreaterThan(0);
     expect(res.modes[0].frequencyHz / f1).toBeGreaterThan(0.9);
     expect(res.modes[0].frequencyHz / f1).toBeLessThan(1.1);
+  });
+
+  it('matches the 2nd bending mode within ~4% (the consistent mass matrix)', () => {
+    // The lumped mass under-predicted the 2nd bending mode by ~5% at ANY mesh resolution
+    // (a mass-matrix error, not a mesh error). The consistent TET10 mass brings it under 4%.
+    const L = 200, b = 20, h = 20;
+    const g = new THREE.BoxGeometry(L, h, b, 20, 4, 4).toNonIndexed();
+    const res = computeNaturalFrequencies(g, steel, facesByX(g, true), 4, 9000);
+    const f2 = analyticBending(L, b, h, 4.694091);   // second cantilever eigenvalue
+    // modes[2] is the first of the 2nd-bending degenerate pair (modes[0],[1] are the 1st pair)
+    expect(res.modes[2].frequencyHz / f2).toBeGreaterThan(0.96);
+    expect(res.modes[2].frequencyHz / f2).toBeLessThan(1.04);
+  });
+
+  it('conserves the exact total mass (consistent mass, ΣC=1)', () => {
+    const L = 200, b = 20, h = 20;
+    const g = new THREE.BoxGeometry(L, h, b, 16, 3, 3).toNonIndexed();
+    const res = computeNaturalFrequencies(g, steel, facesByX(g, true), 1);
+    const exactMass = steel.density * (L * 1e-3) * (b * 1e-3) * (h * 1e-3); // ρ·V (kg)
+    expect(res.totalMassKg).toBeCloseTo(exactMass, 6);
   });
 
   it('finds the two transverse bending modes as a near-degenerate pair (square section)', () => {
