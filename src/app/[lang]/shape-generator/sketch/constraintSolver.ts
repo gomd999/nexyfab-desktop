@@ -822,10 +822,16 @@ function findRedundantConstraints(
   return redundant;
 }
 
-/** Estimate numerical rank of J via diagonal of Jᵀ J with column-scaled tolerance. */
+/** Estimate the numerical rank of J = the number of pivots (above `tol`) of the
+ *  Gram matrix Jᵀ J under symmetric Gaussian elimination with diagonal (full
+ *  symmetric) pivoting. Counting pivots of the FULL Gram matrix — not just its
+ *  diagonal — is what makes coupled/linearly-dependent constraint rows reduce
+ *  rank correctly. (Squaring into Jᵀ J squares the conditioning, but the
+ *  diagonal pivot keeps verified analytic cases — including ~10³ scale spreads —
+ *  correct; see the DOF & diagnostics tests.) */
 function estimateRank(J: Float64Array, m: number, n: number): number {
   if (m === 0 || n === 0) return 0;
-  // Gram matrix diagonals as column norms, then Gram-Schmidt-ish reduction.
+  // Full Gram matrix M = JᵀJ (n×n), then pivoted symmetric elimination below.
   const M = new Float64Array(n * n);
   for (let i = 0; i < n; i++) {
     for (let j = i; j < n; j++) {
