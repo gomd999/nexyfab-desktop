@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
@@ -109,17 +110,26 @@ function cotAngle(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): number 
  * - Principal curvatures derived from Gaussian and mean
  */
 export function computeVertexCurvature(geometry: THREE.BufferGeometry): CurvatureData {
-  const geo = geometry.index ? geometry : geometry.toNonIndexed();
-  // Ensure we have indexed geometry for adjacency; if not, create index
-  if (!geo.index) {
-    const posCount = geo.attributes.position.count;
-    const indices = new Uint32Array(posCount);
-    for (let i = 0; i < posCount; i++) indices[i] = i;
-    geo.setIndex(new THREE.BufferAttribute(indices, 1));
+  // The angle-deficit Gaussian curvature and the cotangent-Laplacian mean curvature both
+  // require a MANIFOLD-WELDED mesh: every vertex must see ALL the triangles around it. THREE
+  // primitives duplicate vertices along UV seams and at poles, so each duplicate sees only a
+  // partial angle sum over a near-zero mixed area — the curvature there blows up (a sphere
+  // read K ~ 1e10 instead of 1/R², which also wrecked the colormap normalisation). Weld the
+  // mesh, compute on it, then map the result back onto the ORIGINAL vertices so callers
+  // (colormap, stats) still get one value per original vertex.
+  const origPos = geometry.attributes.position as THREE.BufferAttribute;
+  const origCount = origPos.count;
+
+  const welded = mergeVertices(geometry.index ? geometry : geometry.toNonIndexed());
+  if (!welded.index) {
+    const c = welded.attributes.position.count;
+    const indices = new Uint32Array(c);
+    for (let i = 0; i < c; i++) indices[i] = i;
+    welded.setIndex(new THREE.BufferAttribute(indices, 1));
   }
 
-  const pos = geo.attributes.position as THREE.BufferAttribute;
-  const idx = geo.index!;
+  const pos = welded.attributes.position as THREE.BufferAttribute;
+  const idx = welded.index!;
   const vertCount = pos.count;
   const faceCount = idx.count / 3;
 
@@ -220,7 +230,22 @@ export function computeVertexCurvature(geometry: THREE.BufferGeometry): Curvatur
     minPrincipal[i] = H - sqrtDisc;
   }
 
-  return { gaussian, mean, maxPrincipal, minPrincipal };
+  // Map welded-vertex curvature back to the original vertex ordering by position so the
+  // output length matches geometry (the colormap colours the original vertices).
+  const EPS = 1e-4;
+  const keyOf = (x: number, y: number, z: number) =>
+    `${Math.round(x / EPS)}_${Math.round(y / EPS)}_${Math.round(z / EPS)}`;
+  const wIndexByKey = new Map<string, number>();
+  for (let i = 0; i < vertCount; i++) wIndexByKey.set(keyOf(pos.getX(i), pos.getY(i), pos.getZ(i)), i);
+
+  const oG = new Float32Array(origCount), oM = new Float32Array(origCount);
+  const oMax = new Float32Array(origCount), oMin = new Float32Array(origCount);
+  for (let i = 0; i < origCount; i++) {
+    const wi = wIndexByKey.get(keyOf(origPos.getX(i), origPos.getY(i), origPos.getZ(i))) ?? 0;
+    oG[i] = gaussian[wi]; oM[i] = mean[wi]; oMax[i] = maxPrincipal[wi]; oMin[i] = minPrincipal[wi];
+  }
+
+  return { gaussian: oG, mean: oM, maxPrincipal: oMax, minPrincipal: oMin };
 }
 
 /* ─── Colormap Application ───────────────────────────────────────────────── */
