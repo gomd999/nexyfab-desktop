@@ -16,11 +16,30 @@
  *   - shouldUseOcctEngine(engine): should this .apply() ACTUALLY run OCCT right now?
  *     = wanted AND the kernel is loaded AND we are not mid-interaction.
  *
- * Perf guard (the enabler for a future default-ON): during a slider DRAG we keep
- * the fast mesh preview even when B-rep is wanted, and upgrade to the exact
- * kernel on COMMIT. The phase defaults to 'commit', so until the UI opts in by
- * calling setInteractionPhase('drag'), behaviour is identical to the old
- * open-coded checks — this is a behaviour-preserving centralisation.
+ * Perf guard: during a slider DRAG keep the fast mesh preview even when B-rep is
+ * wanted, and upgrade to the exact kernel on COMMIT. The phase defaults to
+ * 'commit', so until the UI opts in by calling setInteractionPhase('drag'),
+ * behaviour is identical to the old open-coded checks — a behaviour-preserving
+ * centralisation.
+ *
+ * ⚠️ Scope (verified 2026-06-06): this phase guard governs only the IN-PROCESS
+ * `.apply()` path. `setInteractionPhase` currently has NO production callsite —
+ * it is inert until a UI drag handler wires it. The PRIMARY production eval runs
+ * in the pipeline WORKER (runPipeline via usePipelineWorker), which is handed
+ * `occtMode` as explicit data and is fed `debouncedParams` behind a
+ * `paramDragging` (≈200 ms idle) gate — so worker-path drags are already
+ * coalesced and OCCT runs on settle, not per-tick. That debounce, NOT this
+ * singleton, is the de-facto drag guard for the path users actually hit.
+ *
+ * Default-ON readiness (F1): the blockers are PRODUCT/perf, not correctness —
+ * the OCCT B-rep kernel is verified (see test:occt:feasibility, ~0.1% vs the
+ * three-bvh-csg golden) and the uiStore toggle loads the 10 MB WASM before
+ * enabling + fails safe to mesh. What still gates a default flip is (a) paying
+ * that WASM load on every session (today it is lazy, opt-in only) and (b)
+ * real-browser perf validation of commit-time B-rep on representative models.
+ * Flipping `occtGlobalMode`'s default without (a)/(b) is a policy call, not a
+ * code fix; wiring `setInteractionPhase` only helps the secondary in-process
+ * path, so do not treat it as the enabler.
  */
 import { isOcctGlobalMode, isOcctReady } from './occtEngine';
 
