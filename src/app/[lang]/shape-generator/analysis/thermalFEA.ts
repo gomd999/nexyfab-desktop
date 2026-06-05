@@ -3,6 +3,7 @@
 // Uses simplified FD/lumped-node approach for web performance
 
 import * as THREE from 'three';
+import { pointInsideSurface } from './femSolver';
 
 export interface ThermalBoundary {
   type: 'heat_source' | 'fixed_temp' | 'convection';
@@ -60,6 +61,46 @@ export function runThermalFEA(
   function idx(ix: number, iy: number, iz: number) {
     return ix * gridSize * gridSize + iy * gridSize + iz;
   }
+
+  // ── Point-in-solid mask ──
+  // The grid spans the bounding box; only nodes INSIDE the actual solid should conduct.
+  // Without this, a non-convex part (L-bracket, two separated bodies, a notch) would
+  // diffuse heat across the empty bounding-box volume — heat flowing through air. We mark
+  // each grid node inside/outside via ray-parity (the same test femSolver uses) and treat
+  // outside nodes as inactive: they don't conduct and are excluded from neighbour averages
+  // and from the grid→vertex interpolation.
+  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
+  const fp = flat.attributes.position as THREE.BufferAttribute;
+  const triCountSolid = Math.floor(fp.count / 3);
+  const tri = new Float32Array(fp.count * 3);
+  for (let i = 0; i < fp.count; i++) { tri[i*3] = fp.getX(i); tri[i*3+1] = fp.getY(i); tri[i*3+2] = fp.getZ(i); }
+  // Mark by CELL CENTRE (jittered), not by node: a node is active if any of the up-to-8
+  // cells touching it has its centre inside the solid. Testing nodes directly is
+  // degenerate on the bounding-box boundary planes — with +X-ish rays the −X faces test
+  // "inside" but the +X faces test "outside", which would silently drop the Dirichlet BC
+  // on a max face. Cell-centre sampling (femSolver's approach) avoids that entirely and a
+  // solid box keeps every node active.
+  const active = new Uint8Array(nodes);
+  let activeCount = 0;
+  const mark = (ix: number, iy: number, iz: number) => {
+    const n = idx(ix, iy, iz); if (!active[n]) { active[n] = 1; activeCount++; }
+  };
+  for (let cx = 0; cx < gridSize - 1; cx++) {
+    for (let cy = 0; cy < gridSize - 1; cy++) {
+      for (let cz = 0; cz < gridSize - 1; cz++) {
+        const px = bb.min.x + (cx + 0.5 + 0.0137) * sx;
+        const py = bb.min.y + (cy + 0.5 + 0.0237) * sy;
+        const pz = bb.min.z + (cz + 0.5 + 0.0111) * sz;
+        if (pointInsideSurface(px, py, pz, tri, triCountSolid)) {
+          for (let di = 0; di < 2; di++) for (let dj = 0; dj < 2; dj++) for (let dk = 0; dk < 2; dk++)
+            mark(cx + di, cy + dj, cz + dk);
+        }
+      }
+    }
+  }
+  // Fallback: if the sampling found nothing inside (tiny/thin part vs coarse grid), treat
+  // every node as active so the solver still returns a field rather than all-ambient.
+  if (activeCount === 0) active.fill(1);
 
   // Apply boundary conditions
   const fixedNodes = new Set<number>();
@@ -154,17 +195,20 @@ export function runThermalFEA(
         for (let iz = 0; iz < gridSize; iz++) {
           const n = idx(ix, iy, iz);
           if (fixedNodes.has(n)) continue;
+          if (!active[n]) continue; // outside the solid — does not conduct
 
-          // Collect available neighbours (handles boundary nodes with fewer than 6)
+          // Collect available SOLID neighbours (boundary/void nodes excluded). A node with
+          // only inactive (void) neighbours on one side gets an insulated boundary there.
           const neighbourTemps: number[] = [];
-          if (ix > 0)            neighbourTemps.push(temps[idx(ix-1,iy,iz)]);
-          if (ix < gridSize - 1) neighbourTemps.push(temps[idx(ix+1,iy,iz)]);
-          if (iy > 0)            neighbourTemps.push(temps[idx(ix,iy-1,iz)]);
-          if (iy < gridSize - 1) neighbourTemps.push(temps[idx(ix,iy+1,iz)]);
-          if (iz > 0)            neighbourTemps.push(temps[idx(ix,iy,iz-1)]);
-          if (iz < gridSize - 1) neighbourTemps.push(temps[idx(ix,iy,iz+1)]);
+          if (ix > 0            && active[idx(ix-1,iy,iz)]) neighbourTemps.push(temps[idx(ix-1,iy,iz)]);
+          if (ix < gridSize - 1 && active[idx(ix+1,iy,iz)]) neighbourTemps.push(temps[idx(ix+1,iy,iz)]);
+          if (iy > 0            && active[idx(ix,iy-1,iz)]) neighbourTemps.push(temps[idx(ix,iy-1,iz)]);
+          if (iy < gridSize - 1 && active[idx(ix,iy+1,iz)]) neighbourTemps.push(temps[idx(ix,iy+1,iz)]);
+          if (iz > 0            && active[idx(ix,iy,iz-1)]) neighbourTemps.push(temps[idx(ix,iy,iz-1)]);
+          if (iz < gridSize - 1 && active[idx(ix,iy,iz+1)]) neighbourTemps.push(temps[idx(ix,iy,iz+1)]);
 
           const numNeighbours = neighbourTemps.length;
+          if (numNeighbours === 0) continue; // isolated node — nothing to average
           const sumNeighbours = neighbourTemps.reduce((s, v) => s + v, 0);
           const source = heatSources[n] / (conductance * (sx + sy + sz) / 3);
 
@@ -210,20 +254,29 @@ export function runThermalFEA(
     const iy = Math.min(gridSize - 2, Math.floor(fy)), ty = fy - iy;
     const iz = Math.min(gridSize - 2, Math.floor(fz)), tz = fz - iz;
 
-    const t000 = temps[idx(ix,iy,iz)];
-    const t100 = temps[idx(ix+1,iy,iz)];
-    const t010 = temps[idx(ix,iy+1,iz)];
-    const t110 = temps[idx(ix+1,iy+1,iz)];
-    const t001 = temps[idx(ix,iy,iz+1)];
-    const t101 = temps[idx(ix+1,iy,iz+1)];
-    const t011 = temps[idx(ix,iy+1,iz+1)];
-    const t111 = temps[idx(ix+1,iy+1,iz+1)];
-
-    vertexTemps[i] =
-      t000*(1-tx)*(1-ty)*(1-tz) + t100*tx*(1-ty)*(1-tz) +
-      t010*(1-tx)*ty*(1-tz) + t110*tx*ty*(1-tz) +
-      t001*(1-tx)*(1-ty)*tz + t101*tx*(1-ty)*tz +
-      t011*(1-tx)*ty*tz + t111*tx*ty*tz;
+    // Trilinear blend over the 8 cell corners, but weight only ACTIVE (in-solid) corners
+    // and renormalise — a surface vertex next to the void must not blend in an inactive
+    // node still sitting at the ambient seed value.
+    const corners: Array<[number, number, number, number]> = [
+      [idx(ix,iy,iz),       (1-tx)*(1-ty)*(1-tz), 0, 0],
+      [idx(ix+1,iy,iz),     tx*(1-ty)*(1-tz),     0, 0],
+      [idx(ix,iy+1,iz),     (1-tx)*ty*(1-tz),     0, 0],
+      [idx(ix+1,iy+1,iz),   tx*ty*(1-tz),         0, 0],
+      [idx(ix,iy,iz+1),     (1-tx)*(1-ty)*tz,     0, 0],
+      [idx(ix+1,iy,iz+1),   tx*(1-ty)*tz,         0, 0],
+      [idx(ix,iy+1,iz+1),   (1-tx)*ty*tz,         0, 0],
+      [idx(ix+1,iy+1,iz+1), tx*ty*tz,             0, 0],
+    ];
+    let wSum = 0, tSum = 0;
+    for (const [ci, w] of corners) { if (active[ci]) { wSum += w; tSum += w * temps[ci]; } }
+    if (wSum > 1e-9) {
+      vertexTemps[i] = tSum / wSum;
+    } else {
+      // all corners inactive (vertex sits between cells) — use the nearest grid node
+      let best = idx(ix,iy,iz), bestW = -1;
+      for (const [ci, w] of corners) { if (w > bestW) { bestW = w; best = ci; } }
+      vertexTemps[i] = temps[best];
+    }
   }
 
   const maxTemp = Math.max(...vertexTemps);

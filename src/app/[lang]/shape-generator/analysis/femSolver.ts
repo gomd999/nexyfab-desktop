@@ -75,7 +75,7 @@ function rayParity(
 }
 
 /** Robust point-in-solid: majority vote of three generic ray directions. */
-function pointInsideSurface(
+export function pointInsideSurface(
   px: number, py: number, pz: number,
   tri: Float32Array, triCount: number,
 ): boolean {
