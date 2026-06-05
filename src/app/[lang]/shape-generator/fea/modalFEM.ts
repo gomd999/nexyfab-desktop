@@ -26,7 +26,7 @@ export interface Hex8ModalResult {
   frequenciesHz: number[];
 }
 
-interface AssembledModal {
+export interface AssembledModal {
   Kff: number[];       // reduced stiffness (nFree × nFree, row-major)
   Mdiag: number[];     // reduced lumped mass (nFree)
   freeAxis: Int8Array; // 0/1/2 (x/y/z) per free DOF
@@ -36,7 +36,7 @@ interface AssembledModal {
 
 /** Assemble the reduced (free-DOF) HEX8 stiffness + lumped mass for a uniform
  *  solid grid, tracking each free DOF's axis. */
-function assembleHex8Modal(grid: TopologyGrid, opts: Hex8ModalOptions): AssembledModal {
+export function assembleHex8Modal(grid: TopologyGrid, opts: Hex8ModalOptions): AssembledModal {
   const K0 = buildHex8K0(opts.nu);     // unit cube, E = 1
   const h = opts.cell;
   const kScale = opts.E * h;           // K_e = E·h·K0 (3-D elasticity scaling)
