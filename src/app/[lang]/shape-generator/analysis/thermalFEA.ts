@@ -197,13 +197,18 @@ export function runThermalFEA(
     const vz = positions.getZ(i);
 
     // Trilinear interpolation from grid to vertex
-    const fx = Math.min(gridSize - 2, Math.max(0, (vx - bb.min.x) / sx));
-    const fy = Math.min(gridSize - 2, Math.max(0, (vy - bb.min.y) / sy));
-    const fz = Math.min(gridSize - 2, Math.max(0, (vz - bb.min.z) / sz));
+    // Clamp the fractional coordinate to [0, gridSize-1] (so a vertex on the high-side
+    // face can reach the last grid plane and pick up a fixed-temperature BC there), but
+    // keep the stencil base index ≤ gridSize-2 so ix+1 stays in range. The previous
+    // clamp capped fx at gridSize-2, leaving tx=0 on the max faces — surface vertices
+    // never sampled the boundary plane, so a fixed cold face read one step in (~14% off).
+    const fx = Math.max(0, Math.min(gridSize - 1, (vx - bb.min.x) / sx));
+    const fy = Math.max(0, Math.min(gridSize - 1, (vy - bb.min.y) / sy));
+    const fz = Math.max(0, Math.min(gridSize - 1, (vz - bb.min.z) / sz));
 
-    const ix = Math.floor(fx), tx = fx - ix;
-    const iy = Math.floor(fy), ty = fy - iy;
-    const iz = Math.floor(fz), tz = fz - iz;
+    const ix = Math.min(gridSize - 2, Math.floor(fx)), tx = fx - ix;
+    const iy = Math.min(gridSize - 2, Math.floor(fy)), ty = fy - iy;
+    const iz = Math.min(gridSize - 2, Math.floor(fz)), tz = fz - iz;
 
     const t000 = temps[idx(ix,iy,iz)];
     const t100 = temps[idx(ix+1,iy,iz)];
@@ -231,13 +236,21 @@ export function runThermalFEA(
   const gridFlux = new Array<THREE.Vector3>(nodes);
   for (let i = 0; i < nodes; i++) gridFlux[i] = new THREE.Vector3(0, 0, 0);
 
-  for (let ix = 1; ix < gridSize - 1; ix++) {
-    for (let iy = 1; iy < gridSize - 1; iy++) {
-      for (let iz = 1; iz < gridSize - 1; iz++) {
+  // Compute flux at EVERY grid node (central difference in the interior, one-sided at the
+  // faces). Boundary nodes used to be left at zero flux, which — together with the fixed
+  // trilinear clamp that now reaches the last plane — would make surface flux read zero.
+  // The (hi−lo) step is 2 cells in the interior and 1 at a face, so the difference is
+  // correctly scaled either way.
+  for (let ix = 0; ix < gridSize; ix++) {
+    for (let iy = 0; iy < gridSize; iy++) {
+      for (let iz = 0; iz < gridSize; iz++) {
         const n = idx(ix, iy, iz);
-        const dTdx = (temps[idx(ix+1,iy,iz)] - temps[idx(ix-1,iy,iz)]) / (2 * sx);
-        const dTdy = (temps[idx(ix,iy+1,iz)] - temps[idx(ix,iy-1,iz)]) / (2 * sy);
-        const dTdz = (temps[idx(ix,iy,iz+1)] - temps[idx(ix,iy,iz-1)]) / (2 * sz);
+        const xp = Math.min(gridSize - 1, ix + 1), xm = Math.max(0, ix - 1);
+        const yp = Math.min(gridSize - 1, iy + 1), ym = Math.max(0, iy - 1);
+        const zp = Math.min(gridSize - 1, iz + 1), zm = Math.max(0, iz - 1);
+        const dTdx = (temps[idx(xp,iy,iz)] - temps[idx(xm,iy,iz)]) / ((xp - xm) * sx);
+        const dTdy = (temps[idx(ix,yp,iz)] - temps[idx(ix,ym,iz)]) / ((yp - ym) * sy);
+        const dTdz = (temps[idx(ix,iy,zp)] - temps[idx(ix,iy,zm)]) / ((zp - zm) * sz);
         gridFlux[n].set(-k * dTdx, -k * dTdy, -k * dTdz);
       }
     }
@@ -250,13 +263,18 @@ export function runThermalFEA(
     const vy = positions.getY(i);
     const vz = positions.getZ(i);
 
-    const fx = Math.min(gridSize - 2, Math.max(0, (vx - bb.min.x) / sx));
-    const fy = Math.min(gridSize - 2, Math.max(0, (vy - bb.min.y) / sy));
-    const fz = Math.min(gridSize - 2, Math.max(0, (vz - bb.min.z) / sz));
+    // Clamp the fractional coordinate to [0, gridSize-1] (so a vertex on the high-side
+    // face can reach the last grid plane and pick up a fixed-temperature BC there), but
+    // keep the stencil base index ≤ gridSize-2 so ix+1 stays in range. The previous
+    // clamp capped fx at gridSize-2, leaving tx=0 on the max faces — surface vertices
+    // never sampled the boundary plane, so a fixed cold face read one step in (~14% off).
+    const fx = Math.max(0, Math.min(gridSize - 1, (vx - bb.min.x) / sx));
+    const fy = Math.max(0, Math.min(gridSize - 1, (vy - bb.min.y) / sy));
+    const fz = Math.max(0, Math.min(gridSize - 1, (vz - bb.min.z) / sz));
 
-    const ix = Math.floor(fx), tx = fx - ix;
-    const iy = Math.floor(fy), ty = fy - iy;
-    const iz = Math.floor(fz), tz = fz - iz;
+    const ix = Math.min(gridSize - 2, Math.floor(fx)), tx = fx - ix;
+    const iy = Math.min(gridSize - 2, Math.floor(fy)), ty = fy - iy;
+    const iz = Math.min(gridSize - 2, Math.floor(fz)), tz = fz - iz;
 
     // Trilinear interpolation weights
     const w000 = (1-tx)*(1-ty)*(1-tz);
