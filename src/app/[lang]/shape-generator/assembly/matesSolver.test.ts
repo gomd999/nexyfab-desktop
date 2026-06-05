@@ -459,6 +459,65 @@ describe('solveAssembly · hinge (1 rotational DOF — delegates to concentric)'
   });
 });
 
+describe('solveAssembly · tangent (faces touch on a common tangent plane)', () => {
+  // Tangent opposes the outward normals (the two solids sit on either side of
+  // the shared plane) and zeroes the gap ALONG that normal, leaving the two
+  // in-plane translations free. Previously a silent no-op; now a real solve.
+  it('flips B`s normal anti-parallel and brings the faces into contact', () => {
+    // A fixed (face normal +Y at the origin). B floats at (7,20,4) with its
+    // face normal also +Y — must rotate to −Y and drop onto y=0.
+    const a = body('a', 0, 0, 0, /* fixed */ true);
+    const b = body('b', 7, 20, 4);
+    const state: AssemblyState = {
+      bodies: [a, b],
+      mates: [mate('m', 'tangent',
+        sel(0, [0, 0, 0], [0, 1, 0]),
+        sel(1, [0, 0, 0], [0, 1, 0])),
+      ],
+    };
+    const r = solveAssembly(state);
+    expect(r.converged).toBe(true);
+    expect(r.unsatisfied).toHaveLength(0);
+    const q = new THREE.Quaternion().setFromEuler(r.bodies[1].rotation);
+    const n1 = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    expect(n1.y).toBeCloseTo(-1, 3);          // opposed to A's +Y
+    expect(r.bodies[1].position.y).toBeCloseTo(0, 3); // touching
+    // The in-plane (X,Z) offset is a free DOF — tangent must NOT collapse it.
+    expect(r.bodies[1].position.x).toBeCloseTo(7, 3);
+    expect(r.bodies[1].position.z).toBeCloseTo(4, 3);
+  });
+
+  it('already-opposed faces are only pulled together (no spurious rotation)', () => {
+    const state: AssemblyState = {
+      bodies: [body('a', 0, 0, 0, true), body('b', 3, 5, 2)],
+      mates: [mate('m', 'tangent',
+        sel(0, [0, 0, 0], [0, 1, 0]),
+        sel(1, [0, 0, 0], [0, -1, 0])),  // normal already −Y
+      ],
+    };
+    const r = solveAssembly(state);
+    expect(r.bodies[1].position.y).toBeCloseTo(0, 3); // gap of 5 removed
+    expect(r.bodies[1].position.x).toBeCloseTo(3, 3); // in-plane preserved
+    expect(r.bodies[1].position.z).toBeCloseTo(2, 3);
+    expect(r.bodies[1].rotation.x).toBeCloseTo(0, 5); // no rotation introduced
+    expect(r.bodies[1].rotation.z).toBeCloseTo(0, 5);
+  });
+
+  it('is no longer a silent no-op (an unsatisfiable gap is reported)', () => {
+    // Two fixed bodies separated along the normal: tangent cannot close the
+    // gap, so it must surface as unsatisfied rather than falsely "satisfied".
+    const state: AssemblyState = {
+      bodies: [body('a', 0, 0, 0, true), body('b', 0, 50, 0, /* fixed */ true)],
+      mates: [mate('m', 'tangent',
+        sel(0, [0, 0, 0], [0, 1, 0]),
+        sel(1, [0, 0, 0], [0, -1, 0])),
+      ],
+    };
+    const r = solveAssembly(state);
+    expect(r.unsatisfied).toContain('m'); // honestly flagged, not rubber-stamped
+  });
+});
+
 describe('solveAssembly · iteration limits', () => {
   it('reports iterations used (≤ maxIterations)', () => {
     const state: AssemblyState = {

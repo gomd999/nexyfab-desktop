@@ -462,6 +462,83 @@ function applySliderConstraint(bodies: AssemblyBody[], mate: Mate): number {
   return posResidual + axisResidual;
 }
 
+/**
+ * Tangent: the two selected faces touch along a common tangent plane.
+ * Enforced as (a) the outward normals OPPOSE (anti-parallel — the two solids
+ * sit on either side of the shared tangent plane, "touching without
+ * penetration") and (b) the contact points have zero separation ALONG that
+ * normal, while the in-plane offset stays free (a cylinder may roll or slide
+ * along a flat face).
+ *
+ * Scope: this uses only the contact point + normal carried by the selection,
+ * so it is exact for planar-to-planar contact and for the contact-point
+ * tangency of curved faces. It deliberately does NOT read a curvature radius
+ * (the selection carries none), so it will not park a free-floating cylinder
+ * at `distance = radius` from an axis without a contact point — that needs a
+ * radius the picker does not yet supply. Previously tangent fell through to a
+ * silent no-op (reported satisfied while consuming a DOF); this makes it a
+ * real, convergent constraint.
+ */
+function applyTangentConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const [s0, s1] = mate.selections;
+  const b0 = bodies[s0.bodyIndex];
+  const b1 = bodies[s1.bodyIndex];
+
+  const n0 = worldNormal(b0, s0.localNormal);
+  const n1 = worldNormal(b1, s1.localNormal);
+
+  // (a) Drive the normals anti-parallel (n1 → −n0).
+  const dot = Math.min(1, Math.max(-1, n0.dot(n1)));
+  const alignResidual = 1 + dot;                 // 0 when opposed (dot = −1)
+  if (alignResidual > 1e-6) {
+    const target = n0.clone().negate();          // where n1 should point
+    let rotAxis = new THREE.Vector3().crossVectors(n1, target);
+    if (rotAxis.lengthSq() < 1e-10) {
+      // n1 is exactly +n0 (a 180° flip): pick any axis ⟂ n0.
+      const fallback = Math.abs(n0.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      rotAxis = new THREE.Vector3().crossVectors(n0, fallback);
+    }
+    rotAxis.normalize();
+    const rotAngle = Math.acos(Math.min(1, Math.max(-1, n1.dot(target))));
+    if (!b0.fixed && !b1.fixed) {
+      const half = new THREE.Quaternion().setFromAxisAngle(rotAxis, rotAngle * 0.5);
+      const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
+      q1.premultiply(half); b1.rotation.setFromQuaternion(q1);
+      const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
+      q0.premultiply(half.clone().invert()); b0.rotation.setFromQuaternion(q0);
+    } else if (!b1.fixed) {
+      const full = new THREE.Quaternion().setFromAxisAngle(rotAxis, rotAngle);
+      const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
+      q1.premultiply(full); b1.rotation.setFromQuaternion(q1);
+    } else if (!b0.fixed) {
+      const full = new THREE.Quaternion().setFromAxisAngle(rotAxis, -rotAngle);
+      const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
+      q0.premultiply(full); b0.rotation.setFromQuaternion(q0);
+    }
+  }
+
+  // (b) Zero the separation along the (now opposed) reference normal; in-plane
+  // translation is left free. Recompute n0 after the rotation above.
+  const nRef = worldNormal(b0, s0.localNormal);
+  const p0 = worldPoint(b0, s0.localPoint);
+  const p1 = worldPoint(b1, s1.localPoint);
+  const sep = p1.clone().sub(p0).dot(nRef);
+  const posResidual = Math.abs(sep);
+  if (posResidual > 1e-6) {
+    const corr = nRef.clone().multiplyScalar(sep);
+    if (!b0.fixed && !b1.fixed) {
+      b0.position.add(corr.clone().multiplyScalar(0.5));
+      b1.position.sub(corr.clone().multiplyScalar(0.5));
+    } else if (!b1.fixed) {
+      b1.position.sub(corr);
+    } else if (!b0.fixed) {
+      b0.position.add(corr);
+    }
+  }
+
+  return alignResidual + posResidual;
+}
+
 /** Twist component of a quaternion around a given axis. Decomposes Q
  *  into swing × twist where twist is rotation purely around `axis` and
  *  returns the twist angle in radians (signed by right-hand rule).
@@ -658,6 +735,9 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
           case 'belt':
             residual = applyBeltConstraint(bodies, mate);
             break;
+          case 'tangent':
+            residual = applyTangentConstraint(bodies, mate);
+            break;
           default:
             break;
         }
@@ -719,6 +799,19 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
         const targetRad = (mate.angle ?? 0) * (Math.PI / 180);
         const currentAngle = Math.acos(Math.min(1, Math.max(-1, n0.dot(n1))));
         if (Math.abs(currentAngle - targetRad) > 0.01) unsatisfied.push(mate.id);
+        break;
+      }
+      case 'tangent': {
+        // Honest check: the normals must oppose (anti-parallel) AND the gap
+        // along that normal must close. Either failing → report unsatisfied
+        // rather than silently rubber-stamping the mate.
+        const n0 = worldNormal(b0, mate.selections[0].localNormal);
+        const n1 = worldNormal(b1, mate.selections[1].localNormal);
+        const p0 = worldPoint(b0, mate.selections[0].localPoint);
+        const p1 = worldPoint(b1, mate.selections[1].localPoint);
+        const opposed = 1 + Math.min(1, Math.max(-1, n0.dot(n1))); // 0 when anti-parallel
+        const sep = Math.abs(p1.clone().sub(p0).dot(n0));
+        if (opposed > 0.01 || sep > 0.01) unsatisfied.push(mate.id);
         break;
       }
       default:
