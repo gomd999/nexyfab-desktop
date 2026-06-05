@@ -36,7 +36,7 @@ export interface FEMResult {
   iterations: number;
 }
 
-interface Tet {
+export interface Tet {
   nodes: [number, number, number, number];
   volume: number;
 }
@@ -97,7 +97,7 @@ function pointInsideSurface(
  * interior nodes → a singular stiffness matrix, CG non-convergence, and
  * astronomically large spurious displacements. This is the M1 mesh fix.)
  */
-function generateTetMesh(
+export function generateTetMesh(
   pos: THREE.BufferAttribute,
   maxNodes = 1500,
 ): { nodes: Float32Array; tets: Tet[] } {
@@ -209,7 +209,7 @@ const TET10_GAUSS: ReadonlyArray<readonly [number, number, number, number]> = [
 /** Augment a TET4 mesh with SHARED edge-midside nodes → TET10 connectivity.
  *  Midsides are cached by sorted corner-pair so adjacent elements share them
  *  (the mesh stays conforming). */
-function buildTet10Mesh(nodes: Float32Array, tets: Tet[]): { nodes: Float32Array; elems: Int32Array[] } {
+export function buildTet10Mesh(nodes: Float32Array, tets: Tet[]): { nodes: Float32Array; elems: Int32Array[] } {
   const coords: number[] = Array.from(nodes);
   let nNodes = nodes.length / 3;
   const midCache = new Map<number, number>();
@@ -296,7 +296,7 @@ function tet10B(coords: Float32Array, elem: Int32Array, L: readonly [number, num
 }
 
 /** TET10 element stiffness (30×30) via 4-point Gauss + a centroid B for stress. */
-function computeTet10Stiffness(
+export function computeTet10Stiffness(
   coords: Float32Array, elem: Int32Array, E: number, nu: number,
 ): { Ke: number[][]; Bc: number[][] } {
   const lam = E * nu / ((1 + nu) * (1 - 2 * nu)), mu = E / (2 * (1 + nu));
@@ -328,7 +328,7 @@ function computeTet10Stiffness(
  * Memory: O(nnz) instead of O(n²).
  * For FEM stiffness matrices, nnz ≈ 27*n (bandwidth of typical tet mesh).
  */
-class CSRMatrix {
+export class CSRMatrix {
   readonly nRows: number;
   readonly nCols: number;
   /** Non-zero values */
@@ -402,7 +402,7 @@ class CSRMatrix {
  * Convergence: O(√κ) iterations vs O(κ) for plain CG,
  * where κ is the condition number.
  */
-function sparsePCG(
+export function sparsePCG(
   A: CSRMatrix,
   b: Float64Array,
   maxIter = 2000,

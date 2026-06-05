@@ -1,5 +1,15 @@
 // ─── Modal Analysis — Natural Frequency & Mode Shape Calculation ─────────────
-// Simplified eigenvalue solver for vibration analysis on voxel grids.
+//
+// ⚠️ DEPRECATED / NON-PHYSICAL. The stiffness matrix below is a hand-tuned diagonal
+// proxy (kLocal = E·vol/dx²·0.5 with neighbour terms ·0.3) — these magic constants are
+// NOT derived from any element formulation, so the resulting "frequencies" do not match
+// closed-form results and must not be reported as engineering values.
+//
+// Use the REAL solver instead: `computeNaturalFrequencies` in ./modalSolver.ts, which
+// assembles the verified TET10 stiffness (shared with femSolver) + a lumped mass matrix
+// and solves K·φ = ω²·M·φ. It matches the analytic cantilever fundamental within a few %
+// (see modalSolver.test.ts). This file is retained only until the voxel-grid UI that
+// calls runModalAnalysis() is migrated to the geometry-based solver.
 
 import * as THREE from 'three';
 
