@@ -1487,7 +1487,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     tags: ['boolean', 'union', 'subtract', 'intersect', 'plane-plane', 'topology-preserve', 'provenance', 'in-out-test'],
     license: 'pro-plus',
     entryHint: 'features/brepBoolean',
-    description: 'Topology-level boolean ops on half-edge B-rep. Plane-plane intersection, face-provenance tagging (fromA/fromB/cut), divergence-theorem signed volume, Möller-Trumbore ray-cast point-in-shell test.',
+    description: 'Half-edge B-rep boolean ANALYSIS layer: plane-plane intersection lines, face-provenance tagging (fromA/fromB/cut), divergence-theorem signed volume, Möller-Trumbore ray-cast point-in-shell test. Does NOT split faces — watertight CSG is delegated to the OCCT B-rep kernel; this layer flags un-split results as non-watertight.',
   },
   {
     id: 'features.lattice', name: 'Additive-Manufacturing Lattice (TPMS + Strut)', category: 'modeling',

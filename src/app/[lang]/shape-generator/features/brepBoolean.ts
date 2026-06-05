@@ -100,6 +100,19 @@ export function brepBoolean(
     intersectionEdges.push(edgeId);
   }
 
+  // Honesty gate: this kernel computes intersection geometry + provenance, but
+  // does NOT split the faces along those intersection edges or re-classify
+  // in/out — the input faces are carried through un-split. So whenever crossing
+  // geometry is detected the output is NOT a guaranteed-watertight CSG solid.
+  // Surface that explicitly instead of letting validateBooleanResult silently
+  // certify the un-split result as valid. Production watertight booleans run
+  // through the OCCT B-rep kernel (occtBooleanSolids); see occtEngine.ts.
+  if (intersectionEdges.length > 0) {
+    warnings.push(
+      `Face splitting not implemented: ${intersectionEdges.length} intersection edge(s) detected but the ${op} carried faces through un-split — result is NOT a watertight boolean. Use the OCCT kernel (occtBooleanSolids) for production CSG.`,
+    );
+  }
+
   return { model: out, faceProvenance: provenance, intersectionEdges, warnings };
 }
 

@@ -36,6 +36,29 @@ function buildSquareShell(size = 1, z = 0) {
   return { model: m, shell: s };
 }
 
+/** Build a planar square in the Y-Z plane (normal +X) — non-parallel to
+ *  buildSquareShell's Z-normal face, so their planes genuinely cross. */
+function buildSquareShellYZ(size = 1, x = 0) {
+  const m = new BrepModel();
+  const s = m.newShell();
+  const v0 = createVertex(m, s, [x, -size, -size]);
+  const v1 = createVertex(m, s, [x, size, -size]);
+  const v2 = createVertex(m, s, [x, size, size]);
+  const v3 = createVertex(m, s, [x, -size, size]);
+  const e01 = createEdgePair(m, s, v0, v1);
+  const e12 = createEdgePair(m, s, v1, v2);
+  const e23 = createEdgePair(m, s, v2, v3);
+  const e30 = createEdgePair(m, s, v3, v0);
+  e01.next = e12; e12.prev = e01;
+  e12.next = e23; e23.prev = e12;
+  e23.next = e30; e30.prev = e23;
+  e30.next = e01; e01.prev = e30;
+  const face = createFace(m, s, e01);
+  face.normal = [1, 0, 0];
+  face.surfaceKind = 'planar';
+  return { model: m, shell: s };
+}
+
 describe('planePlaneIntersect', () => {
   it('two perpendicular planes share a line along z axis', () => {
     const r = planePlaneIntersect(
@@ -139,5 +162,19 @@ describe('validateBooleanResult', () => {
     const v = validateBooleanResult(r);
     // Warnings present → issues > 0.
     expect(v.issues.length).toBeGreaterThan(0);
+  });
+
+  it('does NOT silently certify an un-split intersecting boolean as valid', () => {
+    // Two genuinely crossing faces (Z-normal × X-normal): planePlaneIntersect
+    // succeeds, so an intersection edge is added — but the kernel never splits
+    // the faces. The result must be flagged non-watertight, not rubber-stamped.
+    const a = buildSquareShell(1, 0).shell;
+    const b = buildSquareShellYZ(1, 0).shell;
+    const r = brepBoolean(a, b, 'subtract');
+    expect(r.intersectionEdges.length).toBeGreaterThan(0); // crossing detected
+    expect(r.warnings.some(w => w.includes('Face splitting not implemented'))).toBe(true);
+    const v = validateBooleanResult(r);
+    expect(v.valid).toBe(false); // honest: not a watertight boolean
+    expect(v.issues.some(i => i.includes('Face splitting not implemented'))).toBe(true);
   });
 });
