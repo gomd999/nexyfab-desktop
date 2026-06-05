@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { TopologyGrid } from '../analysis/topology3D';
-import { hex8LinearBuckling, fixedRootFace } from './buckling';
+import { hex8LinearBuckling, hex8BucklingFromLoad, axialEndLoad, fixedRootFace } from './buckling';
 
 const E = 210000, nu = 0.3;
 
@@ -49,5 +49,45 @@ describe('buckling — Euler column (FEA, verified)', () => {
     // σxx = +1 (tension): the geometric stiffness stabilises, so there is no
     // positive compressive multiplier — the lowest factor is ≤ 0.
     expect(lam(20, 2, 2, 5, E, { xx: 1, yy: 0, zz: 0 })).toBeLessThanOrEqual(1e-6);
+  });
+});
+
+describe('buckling — prestress from a real static solve (uniform assumption removed)', () => {
+  const cfgs = [[20, 2, 2, 5], [24, 2, 2, 5], [16, 2, 3, 6]] as const;
+
+  it('recovers the EXACT uniform axial stress -F/A from the static solve', () => {
+    for (const [nx, ny, nz, h] of cfgs) {
+      const grid = new TopologyGrid(nx, ny, nz);
+      const F = 1000, A = (ny * h) * (nz * h);
+      const load = axialEndLoad(grid, 'x', true, -F);  // compress the far face
+      const r = hex8BucklingFromLoad(grid, { E, nu, cell: h, fixed: fixedRootFace(grid, 'x'), load });
+      expect(r.meanStress.xx).toBeCloseTo(-F / A, 4);  // stress recovery is exact
+    }
+  });
+
+  it('buckling load (λ_cr·F) brackets Euler with the same locking offset', () => {
+    for (const [nx, ny, nz, h] of cfgs) {
+      const grid = new TopologyGrid(nx, ny, nz);
+      const F = 1000;
+      const load = axialEndLoad(grid, 'x', true, -F);
+      const r = hex8BucklingFromLoad(grid, { E, nu, cell: h, fixed: fixedRootFace(grid, 'x'), load });
+      const Wy = ny * h, Wz = nz * h, L = nx * h, Iz = (Wz * Wy ** 3) / 12;
+      const eulerP = (Math.PI ** 2 * E * Iz) / (4 * L ** 2);
+      const ratio = (r.criticalLoadFactor * F) / eulerP;
+      expect(ratio).toBeGreaterThan(1.0);
+      expect(ratio).toBeLessThan(1.25);
+    }
+  });
+
+  it('agrees with the uniform-prestress solver to <1% (two independent paths)', () => {
+    for (const [nx, ny, nz, h] of cfgs) {
+      const grid = new TopologyGrid(nx, ny, nz);
+      const F = 1000, A = (ny * h) * (nz * h);
+      const fromLoad = hex8BucklingFromLoad(grid, { E, nu, cell: h, fixed: fixedRootFace(grid, 'x'), load: axialEndLoad(grid, 'x', true, -F) });
+      const uniform = hex8LinearBuckling(grid, { E, nu, cell: h, fixed: fixedRootFace(grid, 'x'), prestress: { xx: -1, yy: 0, zz: 0 } });
+      const pcrFromLoad = fromLoad.criticalLoadFactor * F;
+      const pcrUniform = uniform.criticalLoadFactor * A; // σ=-1 over A ⇒ load magnitude A
+      expect(Math.abs(pcrFromLoad - pcrUniform) / pcrUniform).toBeLessThan(0.01);
+    }
   });
 });
