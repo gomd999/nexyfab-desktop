@@ -529,3 +529,64 @@ describe('solveAssembly · iteration limits', () => {
     expect(r.iterations).toBeLessThanOrEqual(50);
   });
 });
+
+/**
+ * Performance characteristics — pins the Gauss-Seidel solver's two regimes so a
+ * future change can't silently regress them:
+ *   - GROUNDED / star topology (the common real case: parts mated to a frame)
+ *     converges in a couple of sweeps regardless of part count — independent of
+ *     N because every correction reaches its fixed reference in one hop.
+ *   - A deep mate CHAIN propagates one link per sweep, so it needs O(depth²)
+ *     sweeps and does NOT converge inside the default budget — but that is
+ *     reported HONESTLY via converged===false (the panel shows "Not Converged
+ *     ⚠"), never silently presented as solved with wrong positions.
+ * (Acceleration was evaluated — global SOR/momentum — but it overshoots into NaN
+ *  on the nonlinear rotation-coupled mates, so the stable GS baseline stands;
+ *  a real fix is a sparse linear / Newton solve, tracked as future work.)
+ */
+describe('solveAssembly · performance characteristics (verified)', () => {
+  function star(n: number): AssemblyState {
+    const bodies: AssemblyBody[] = [body('base', 0, 0, 0, /* fixed */ true)];
+    const mates = [];
+    for (let i = 1; i < n; i++) {
+      bodies.push(body(`b${i}`, i * 10, i * 7, 0));
+      mates.push(mate(`m${i}`, 'coincident', sel(0, [i * 2, i, 0]), sel(i, [0, 0, 0])));
+    }
+    return { bodies, mates };
+  }
+
+  function chain(n: number): AssemblyState {
+    const bodies: AssemblyBody[] = [body('b0', 0, 0, 0, /* fixed */ true)];
+    const mates = [];
+    for (let i = 1; i < n; i++) {
+      bodies.push(body(`b${i}`, i * 10, 0, 0));
+      mates.push(mate(`m${i}`, 'coincident', sel(i - 1, [0, 0, 0]), sel(i, [0, 0, 0])));
+    }
+    return { bodies, mates };
+  }
+
+  it('grounded/star topology converges in a few sweeps, independent of part count', () => {
+    const small = solveAssembly(star(20));
+    const large = solveAssembly(star(200));
+    expect(small.converged).toBe(true);
+    expect(large.converged).toBe(true);
+    expect(small.iterations).toBeLessThan(10);
+    expect(large.iterations).toBeLessThan(10);      // O(1) in N — the fast path
+    // Each part lands on its own fixed base anchor (not collapsed to origin).
+    expect(large.bodies[5].position.x).toBeCloseTo(10, 3); // sel(0,[10,5,0]) → b5
+    expect(large.bodies[5].position.y).toBeCloseTo(5, 3);
+  });
+
+  it('a deep chain is reported Not-Converged at the default budget — never silently wrong', () => {
+    const r = solveAssembly(chain(30)); // default 200 sweeps; depth 29 needs far more
+    expect(r.converged).toBe(false);     // honest: the panel surfaces this as ⚠
+    expect(r.iterations).toBe(200);      // budget exhausted, not a false early "ok"
+    // And given a large enough budget it DOES settle to the exact solution,
+    // proving the non-convergence is a budget/rate limit, not a wrong fixed point.
+    const settled = solveAssembly(chain(30), 20000);
+    expect(settled.converged).toBe(true);
+    let maxErr = 0;
+    for (const b of settled.bodies) maxErr = Math.max(maxErr, b.position.length());
+    expect(maxErr).toBeLessThan(1e-2);   // whole chain collapses onto the fixed base
+  });
+});
