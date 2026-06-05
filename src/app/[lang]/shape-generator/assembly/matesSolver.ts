@@ -347,6 +347,7 @@ function applyAngleConstraint(bodies: AssemblyBody[], mate: Mate): number {
   const n0 = worldNormal(b0, s0.localNormal);
   const n1 = worldNormal(bodies[s1.bodyIndex], s1.localNormal);
 
+  const b1 = bodies[s1.bodyIndex];
   const targetRad = (mate.angle ?? 0) * (Math.PI / 180);
   const clampedDot = Math.min(1, Math.max(-1, n0.dot(n1)));
   const currentAngle = Math.acos(clampedDot);
@@ -354,19 +355,36 @@ function applyAngleConstraint(bodies: AssemblyBody[], mate: Mate): number {
 
   if (residual < 1e-6) return residual;
 
-  const rotAxis = new THREE.Vector3().crossVectors(n0, n1);
-  if (rotAxis.lengthSq() < 1e-10) return residual;
+  let correction = (targetRad - currentAngle) * 0.5;
+  let rotAxis = new THREE.Vector3().crossVectors(n0, n1);
+  if (rotAxis.lengthSq() < 1e-10) {
+    // n0 ∥ n1 (the common parallel start, or anti-parallel): the cross product is zero,
+    // so there is no natural rotation plane. The old code just returned here, so the
+    // bodies never rotated and the angle stayed at 0 (the angle mate did nothing). Mirror
+    // the perpendicular constraint: pick a fallback axis ⟂ n0 and apply the FULL target
+    // angle in one step.
+    const fallback = Math.abs(n0.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    rotAxis = new THREE.Vector3().crossVectors(n0, fallback);
+    if (rotAxis.lengthSq() < 1e-10) return residual;
+    correction = targetRad - currentAngle; // full (currentAngle ≈ 0 or π)
+  }
   rotAxis.normalize();
 
-  const correction = (targetRad - currentAngle) * 0.5;
-  const rotQuat = new THREE.Quaternion().setFromAxisAngle(rotAxis, correction);
-
-  if (!b0.fixed) {
+  // Distribute the correction across whichever bodies are free (the old code only ever
+  // rotated b0, so a fixed b0 left a free b1 untouched). Both free ⇒ each takes half
+  // (opposite signs); one free ⇒ it absorbs the full correction.
+  const for0 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b0.fixed ? correction : 0);
+  const for1 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b1.fixed ? correction : 0);
+  if (for0 !== 0) {
     const q = new THREE.Quaternion().setFromEuler(b0.rotation);
-    q.premultiply(rotQuat);
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, for0));
     b0.rotation.setFromQuaternion(q);
   }
-
+  if (for1 !== 0) {
+    const q = new THREE.Quaternion().setFromEuler(b1.rotation);
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, -for1));
+    b1.rotation.setFromQuaternion(q);
+  }
   return residual;
 }
 

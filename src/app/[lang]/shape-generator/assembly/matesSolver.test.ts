@@ -150,6 +150,37 @@ describe('solveAssembly · perpendicular', () => {
   });
 });
 
+describe('solveAssembly · angle', () => {
+  // The angle mate previously did nothing from a parallel start: cross(n0,n1)=0 returned
+  // early, and only b0 was ever rotated, so a fixed b0 left a free b1 untouched (measured
+  // angle stayed 0). Now it falls back to a ⟂ axis and rotates whichever body is free.
+  for (const target of [30, 45, 60, 90]) {
+    it(`rotates a free body to ${target}° from a fixed reference`, () => {
+      const state: AssemblyState = {
+        bodies: [body('a', 0, 0, 0, true), body('b')],
+        mates: [mate('m', 'angle', sel(0, [0, 0, 0], [0, 1, 0]), sel(1, [0, 0, 0], [0, 1, 0]), { angle: target })],
+      };
+      const r = solveAssembly(state);
+      expect(r.unsatisfied).not.toContain('m');
+      const q = new THREE.Quaternion().setFromEuler(r.bodies[1].rotation);
+      const worldY = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+      const deg = Math.acos(Math.min(1, Math.max(-1, worldY.dot(new THREE.Vector3(0, 1, 0))))) * 180 / Math.PI;
+      expect(deg).toBeCloseTo(target, 0);
+    });
+  }
+
+  it('splits the angle between two free bodies', () => {
+    const state: AssemblyState = {
+      bodies: [body('a'), body('b')],
+      mates: [mate('m', 'angle', sel(0, [0, 0, 0], [0, 1, 0]), sel(1, [0, 0, 0], [0, 1, 0]), { angle: 50 })],
+    };
+    const r = solveAssembly(state);
+    const wy = (i: number) => new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion().setFromEuler(r.bodies[i].rotation));
+    const deg = Math.acos(Math.min(1, Math.max(-1, wy(0).dot(wy(1))))) * 180 / Math.PI;
+    expect(deg).toBeCloseTo(50, 0);
+  });
+});
+
 describe('solveAssembly · concentric', () => {
   it('aligns body B`s axis with body A`s and brings origins together', () => {
     const state: AssemblyState = {
