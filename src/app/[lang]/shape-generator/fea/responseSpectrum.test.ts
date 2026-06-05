@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { TopologyGrid } from '../analysis/topology3D';
-import { hex8ResponseSpectrum, plateauSpectrum } from './responseSpectrum';
+import { hex8ResponseSpectrum, plateauSpectrum, modalCorrelation, cqcCombine } from './responseSpectrum';
 import { fixedFaceNodes } from './modalFEM';
 
 const mat = { E: 210000, nu: 0.3, rho: 7.85e-9 };
@@ -47,5 +47,43 @@ describe('responseSpectrum — design-spectrum analysis (verified)', () => {
     const r = hex8ResponseSpectrum(grid, { ...base, spectrum: plateauSpectrum(Sa0, 500) });
     expect(r.baseShearSRSS).toBeGreaterThan(0);
     expect(r.baseShearSRSS).toBeLessThanOrEqual(r.baseShearSum + 1e-9);
+  });
+});
+
+describe('responseSpectrum — CQC modal combination (closely-spaced-mode correlation)', () => {
+  it('correlation ρ_ij = 1 at equal frequencies, → 0 when well separated, symmetric', () => {
+    expect(modalCorrelation(100, 100, 0.05)).toBeCloseTo(1, 10);
+    expect(modalCorrelation(100, 100000, 0.05)).toBeLessThan(1e-4);
+    expect(modalCorrelation(100, 130, 0.05)).toBeCloseTo(modalCorrelation(130, 100, 0.05), 10);
+    const r = modalCorrelation(100, 110, 0.05);
+    expect(r).toBeGreaterThan(0);
+    expect(r).toBeLessThan(1);
+  });
+
+  it('CQC reduces to SRSS for well-separated modes', () => {
+    // ρ_ij ≈ 0 ⇒ only the diagonal survives ⇒ CQC = SRSS = √(3²+4²) = 5.
+    expect(cqcCombine([3, 4], [10, 1000], 0.05)).toBeCloseTo(5, 4);
+  });
+
+  it('CQC captures correlation for closely-spaced modes (→ algebraic sum)', () => {
+    // ρ_ij ≈ 1 for nearly-equal frequencies ⇒ CQC → |Σ R_i| = 2, far above SRSS √2.
+    const cqc = cqcCombine([1, 1], [100, 100.01], 0.05);
+    expect(cqc).toBeCloseTo(2, 3);
+    expect(cqc).toBeGreaterThan(Math.SQRT2 + 0.1); // strictly above SRSS
+  });
+
+  it('CQC → SRSS as damping → 0 (correlation vanishes)', () => {
+    const srss = Math.SQRT2; // [1,1]
+    const lowZeta = cqcCombine([1, 1], [100, 105], 0.001);
+    const highZeta = cqcCombine([1, 1], [100, 105], 0.05);
+    expect(lowZeta).toBeCloseTo(srss, 2);     // negligible correlation
+    expect(highZeta).toBeGreaterThan(lowZeta); // more damping → more correlation
+  });
+
+  it('the FEM base shear: SRSS ≤ CQC ≤ algebraic sum; CQC ≈ SRSS for this well-separated cantilever', () => {
+    expect(flat.baseShearCQC).toBeGreaterThanOrEqual(flat.baseShearSRSS - 1e-6);
+    expect(flat.baseShearCQC).toBeLessThanOrEqual(flat.baseShearSum + 1e-6);
+    // a slender cantilever's modes are well separated ⇒ CQC within a few % of SRSS.
+    expect(flat.baseShearCQC / flat.baseShearSRSS).toBeLessThan(1.1);
   });
 });
