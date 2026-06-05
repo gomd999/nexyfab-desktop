@@ -1,15 +1,32 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
-import {
-  runModalAnalysis,
-  MODAL_MATERIALS,
-  applyModeShapeColor,
-  type ModalResult,
-} from './modalAnalysis';
+// MODAL_MATERIALS + ModalResult type are reused for the UI; the actual eigen-solve now
+// runs through the REAL geometry-coupled solver (computeModalForPanel), replacing the
+// old non-physical voxel proxy (runModalAnalysis).
+import { MODAL_MATERIALS, type ModalResult } from './modalAnalysis';
+import { computeModalForPanel } from './modalSolver';
 import { useAnalysisStore } from '../store/analysisStore';
+
+/** Colour a geometry's vertices blue→cyan→green→yellow→red by a normalised magnitude
+ *  field (one value per surface vertex) — the real mode-shape displacement. */
+function colorByMagnitude(geometry: THREE.BufferGeometry, mags: Float32Array): void {
+  const pos = geometry.getAttribute('position');
+  if (!pos || mags.length !== pos.count) return;
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const v = Math.max(0, Math.min(1, mags[i]));
+    let r: number, g: number, b: number;
+    if (v < 0.25) { r = 0; g = v * 4; b = 1; }
+    else if (v < 0.5) { r = 0; g = 1; b = 1 - (v - 0.25) * 4; }
+    else if (v < 0.75) { r = (v - 0.5) * 4; g = 1; b = 0; }
+    else { r = 1; g = 1 - (v - 0.75) * 4; b = 0; }
+    colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
@@ -189,7 +206,8 @@ interface ModalAnalysisPanelProps {
 export default function ModalAnalysisPanel({
   lang,
   geometry,
-  dimensions,
+  // `dimensions` is no longer needed for the solve (the real solver meshes the geometry
+  // directly) but stays in the props for API compatibility.
   onResult,
   onClose,
   result: propResult,
@@ -212,6 +230,9 @@ export default function ModalAnalysisPanel({
   const result = propResult ?? storeResult;
   const setResult = setStoreResult;
   const [selectedMode, setSelectedMode] = useState(0);
+  // Per-mode, per-surface-vertex normalised displacement from the real solver, used to
+  // colour the mesh. Kept in a ref (transient, not persisted in the store).
+  const modeMagsRef = useRef<Float32Array[] | null>(null);
 
   const isRunning = progress >= 0 && progress < 100;
 
@@ -228,39 +249,46 @@ export default function ModalAnalysisPanel({
     setProgress(0);
     setResult(null);
     try {
-      const res = await runModalAnalysis(
-        {
-          material: materialKey,
-          numModes,
-          gridSize,
-          fixedFaces,
-          dimensions,
-        },
-        pct => setProgress(pct),
-      );
+      // Real geometry-coupled eigen-solve (TET10 stiffness + lumped mass). Run off the
+      // paint frame so the spinner shows; the solver itself is synchronous.
+      setProgress(20);
+      await new Promise(r => setTimeout(r, 0));
+      const real = computeModalForPanel(geometry, materialKey, fixedFaces, numModes);
+      modeMagsRef.current = real.modeVertexMagnitudes;
+
+      // Adapt to the panel's ModalResult shape (frequencies + participation + mass).
+      const res: ModalResult = {
+        frequencies: real.frequencies,
+        modeShapes: real.modeVertexMagnitudes,
+        participationFactors: real.participationFactors,
+        totalMass: real.totalMassKg,
+        gridSize: 0,
+      };
       setResult(res);
       setSelectedMode(0);
       setProgress(-1);
 
-      // Apply first mode shape
+      // Colour by the real first-mode displacement field.
       const cloned = geometry.clone();
-      applyModeShapeColor(cloned, res.modeShapes[0], res.gridSize);
+      if (real.modeVertexMagnitudes[0]) colorByMagnitude(cloned, real.modeVertexMagnitudes[0]);
       onResult(cloned);
     } catch {
       setProgress(-1);
     }
-  }, [geometry, materialKey, numModes, gridSize, fixedFaces, dimensions, onResult]);
+  }, [geometry, materialKey, numModes, fixedFaces, onResult, setResult]);
 
   /* ── select mode ── */
   const handleModeSelect = useCallback(
     (idx: number) => {
       setSelectedMode(idx);
-      if (!result || !geometry) return;
+      if (!geometry) return;
+      const mags = modeMagsRef.current?.[idx];
+      if (!mags) return;
       const cloned = geometry.clone();
-      applyModeShapeColor(cloned, result.modeShapes[idx], result.gridSize);
+      colorByMagnitude(cloned, mags);
       onResult(cloned);
     },
-    [result, geometry, onResult],
+    [geometry, onResult],
   );
 
   /* ── bar chart max ── */

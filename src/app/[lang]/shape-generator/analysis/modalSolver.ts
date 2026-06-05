@@ -27,6 +27,10 @@ export interface ModalMode {
   frequencyHz: number;
   /** Mass-normalised mode shape over the free DOFs (reduced ordering). */
   shape: Float64Array;
+  /** Full nodal displacement over ALL mesh DOFs (fixed DOFs = 0), length = dofCount. */
+  displacement: Float64Array;
+  /** Effective modal mass fraction in the dominant translational direction (0..1). */
+  effectiveMassFraction: number;
 }
 
 export interface ModalSolverResult {
@@ -34,6 +38,10 @@ export interface ModalSolverResult {
   dofCount: number;
   freeDofCount: number;
   elementCount: number;
+  /** Tet-mesh node coordinates in mm (length = dofCount), for mapping shapes to vertices. */
+  nodesMM: Float32Array;
+  /** Total physical mass of the part (kg). */
+  totalMassKg: number;
 }
 
 export interface ModalMaterialSI {
@@ -150,6 +158,12 @@ export function computeNaturalFrequencies(
   }
   const Kr = new CSRMatrix(nf, nf, rEntries);
 
+  // total physical mass (kg): each node carries its lumped mass on all 3 DOFs, so the
+  // sum over DOFs triple-counts ⇒ divide by 3.
+  let totalMassKg = 0;
+  for (let d = 0; d < nDOF; d++) totalMassKg += Mdiag[d];
+  totalMassKg /= 3;
+
   // --- Inverse iteration with M-orthogonal deflation for the lowest modes ---
   const modes: ModalMode[] = [];
   const found: Float64Array[] = [];
@@ -184,9 +198,125 @@ export function computeNaturalFrequencies(
     }
     found.push(v);
     const omega = Math.sqrt(Math.max(lambda, 0));
-    modes.push({ frequencyHz: omega / (2 * Math.PI), shape: v });
+    // expand the reduced free-DOF shape to the full DOF vector (fixed DOFs = 0)
+    const full = new Float64Array(nDOF);
+    for (let i = 0; i < nf; i++) full[free[i]] = v[i];
+    // modal participation factor per axis L_d = Σ m·φ (v is M-normalised ⇒ φᵀMφ=1);
+    // effective modal mass = L_d², fraction = L_d²/totalMass in the dominant direction.
+    const L = [0, 0, 0];
+    for (let i = 0; i < nf; i++) { const axis = free[i] % 3; L[axis] += Mr[i] * v[i]; }
+    const effFrac = totalMassKg > 0
+      ? Math.min(1, Math.max(L[0]*L[0], L[1]*L[1], L[2]*L[2]) / totalMassKg)
+      : 0;
+    modes.push({ frequencyHz: omega / (2 * Math.PI), shape: v, displacement: full, effectiveMassFraction: effFrac });
   }
 
   modes.sort((a, b) => a.frequencyHz - b.frequencyHz);
-  return { modes, dofCount: nDOF, freeDofCount: nf, elementCount: elems.length };
+  return { modes, dofCount: nDOF, freeDofCount: nf, elementCount: elems.length, nodesMM, totalMassKg };
+}
+
+// ─── Panel adapter ───────────────────────────────────────────────────────────
+// Bridges the ModalAnalysisPanel's config (material key + named fixed faces +
+// geometry) to the real solver, returning frequencies plus a per-surface-vertex
+// displacement magnitude (0..1) per mode so the panel can colour the mesh from the
+// REAL mode shape instead of the old voxel proxy.
+
+/** SI material table mirrored from the (deprecated) modalAnalysis MODAL_MATERIALS. */
+const PANEL_MATERIALS: Record<string, ModalMaterialSI> = {
+  steel:    { youngsModulus: 200e9, poissonRatio: 0.3, density: 7850 },
+  aluminum: { youngsModulus: 69e9, poissonRatio: 0.33, density: 2700 },
+  titanium: { youngsModulus: 116e9, poissonRatio: 0.34, density: 4500 },
+  copper:   { youngsModulus: 130e9, poissonRatio: 0.34, density: 8960 },
+  abs:      { youngsModulus: 2.3e9, poissonRatio: 0.35, density: 1050 },
+  pla:      { youngsModulus: 3.5e9, poissonRatio: 0.36, density: 1240 },
+};
+
+const FACE_AXIS: Record<string, { axis: 0 | 1 | 2; side: 'min' | 'max' }> = {
+  left:   { axis: 0, side: 'min' }, right: { axis: 0, side: 'max' },
+  bottom: { axis: 1, side: 'min' }, top:   { axis: 1, side: 'max' },
+  front:  { axis: 2, side: 'min' }, back:  { axis: 2, side: 'max' },
+};
+
+export interface PanelModalResult {
+  frequencies: number[];
+  /** Per-mode, per-surface-vertex normalised displacement magnitude (0..1). */
+  modeVertexMagnitudes: Float32Array[];
+  /** Per-mode effective modal mass fraction (0..1) in the dominant direction. */
+  participationFactors: number[];
+  /** Total physical mass of the part (kg). */
+  totalMassKg: number;
+  elementCount: number;
+}
+
+/** Map named faces ('bottom'…) to surface-triangle indices on the matching bbox plane. */
+function namedFacesToIndices(pos: THREE.BufferAttribute, faces: string[]): number[] {
+  if (faces.length === 0) return [];
+  const tris = pos.count / 3;
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < pos.count; i++) {
+    const c = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    for (let d = 0; d < 3; d++) { if (c[d] < lo[d]) lo[d] = c[d]; if (c[d] > hi[d]) hi[d] = c[d]; }
+  }
+  const span = Math.max(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2]);
+  const tol = Math.max(1e-4, 1e-3 * span);
+  const out: number[] = [];
+  for (let f = 0; f < tris; f++) {
+    const b = f * 3;
+    for (const name of faces) {
+      const fa = FACE_AXIS[name]; if (!fa) continue;
+      const plane = fa.side === 'min' ? lo[fa.axis] : hi[fa.axis];
+      const cx = (pos.getX(b) + pos.getX(b+1) + pos.getX(b+2)) / 3 * (fa.axis === 0 ? 1 : 0)
+               + (pos.getY(b) + pos.getY(b+1) + pos.getY(b+2)) / 3 * (fa.axis === 1 ? 1 : 0)
+               + (pos.getZ(b) + pos.getZ(b+1) + pos.getZ(b+2)) / 3 * (fa.axis === 2 ? 1 : 0);
+      if (Math.abs(cx - plane) < tol) { out.push(f); break; }
+    }
+  }
+  return out;
+}
+
+export function computeModalForPanel(
+  geometry: THREE.BufferGeometry,
+  materialKey: string,
+  fixedFaces: string[],
+  numModes: number,
+): PanelModalResult {
+  const material = PANEL_MATERIALS[materialKey] ?? PANEL_MATERIALS.steel;
+  const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+  const pos = nonIndexed.attributes.position as THREE.BufferAttribute;
+  const fixedIdx = namedFacesToIndices(pos, fixedFaces);
+
+  const res = computeNaturalFrequencies(geometry, material, fixedIdx, numModes);
+  const nNodes = res.nodesMM.length / 3;
+
+  // For each mode, map every surface vertex to its nearest tet node and read the
+  // displacement magnitude there, normalised to the mode's peak.
+  const modeVertexMagnitudes = res.modes.map((mode) => {
+    const mag = new Float32Array(nNodes);
+    let peak = 0;
+    for (let n = 0; n < nNodes; n++) {
+      const m = Math.hypot(mode.displacement[n*3], mode.displacement[n*3+1], mode.displacement[n*3+2]);
+      mag[n] = m; if (m > peak) peak = m;
+    }
+    const inv = peak > 1e-30 ? 1 / peak : 0;
+    const out = new Float32Array(pos.count);
+    for (let v = 0; v < pos.count; v++) {
+      const px = pos.getX(v), py = pos.getY(v), pz = pos.getZ(v);
+      let bestD2 = Infinity, bestN = 0;
+      for (let n = 0; n < nNodes; n++) {
+        const dx = px - res.nodesMM[n*3], dy = py - res.nodesMM[n*3+1], dz = pz - res.nodesMM[n*3+2];
+        const d2 = dx*dx + dy*dy + dz*dz;
+        if (d2 < bestD2) { bestD2 = d2; bestN = n; }
+      }
+      out[v] = mag[bestN] * inv;
+    }
+    return out;
+  });
+
+  return {
+    frequencies: res.modes.map((m) => m.frequencyHz),
+    modeVertexMagnitudes,
+    participationFactors: res.modes.map((m) => m.effectiveMassFraction),
+    totalMassKg: res.totalMassKg,
+    elementCount: res.elementCount,
+  };
 }
