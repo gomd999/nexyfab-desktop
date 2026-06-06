@@ -113,4 +113,36 @@ describe('detectCircularFeatures', () => {
     g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
     expect(detectCircularFeatures(g)).toEqual([]);
   });
+
+  // ── Real-primitive meshes (the path the drawing pipeline actually feeds) ──
+  // These carry non-ring vertices in the ring's plane — the cap-CENTRE fan
+  // vertex (radius ≈ 0) above all — which a raw mean/std uniformity test let
+  // wreck the ratio, so a plain THREE cylinder used to detect ZERO rings and
+  // its holes got no centermarks. The median-based ring filter fixes that.
+  it('detects the cap rings of a real THREE.CylinderGeometry (cap-centre vertex and all)', () => {
+    const g = new THREE.CylinderGeometry(10, 10, 20, 32); // axis +Y, R10
+    const found = detectCircularFeatures(g);
+    // Two caps at y = ±10, both radius ~10, axis +Y.
+    expect(found.length).toBeGreaterThanOrEqual(2);
+    for (const f of found) {
+      expect(Math.abs(f.axis.y)).toBe(1);
+      expect(f.radius).toBeCloseTo(10, 0);
+    }
+    expect(found.some(f => Math.abs(f.center.y - 10) < 0.5)).toBe(true);
+    expect(found.some(f => Math.abs(f.center.y + 10) < 0.5)).toBe(true);
+  });
+
+  it('a real THREE.BoxGeometry yields no false circles', () => {
+    expect(detectCircularFeatures(new THREE.BoxGeometry(20, 30, 40))).toEqual([]);
+  });
+
+  it('ignores sub-0.5mm features (a 0.3mm-radius pin)', () => {
+    expect(detectCircularFeatures(new THREE.CylinderGeometry(0.3, 0.3, 5, 32))).toEqual([]);
+  });
+
+  it('a detected Y-axis hole shows a centermark in top view but not front', () => {
+    const found = detectCircularFeatures(new THREE.CylinderGeometry(10, 10, 20, 32));
+    expect(generateCentermarks(found, 'top', 1).length).toBeGreaterThan(0);  // axis ∥ view
+    expect(generateCentermarks(found, 'front', 1).length).toBe(0);           // axis ⊥ view
+  });
 });

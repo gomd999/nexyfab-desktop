@@ -141,24 +141,33 @@ export function detectCircularFeatures(
       }
       const ca = sumA / verts.length;
       const cb = sumB / verts.length;
-      // Check radial uniformity — std-dev of distances should be small.
-      const dists = verts.map(v => {
-        const a = axis === 'x' ? v.y : v.x;
-        const b = axis === 'x' ? v.z : axis === 'y' ? v.z : v.y;
-        return Math.hypot(a - ca, b - cb);
+      // Distance of every bucket vertex from the in-plane centroid.
+      const ab = (v: { x: number; y: number; z: number }) => ({
+        a: axis === 'x' ? v.y : v.x,
+        b: axis === 'x' ? v.z : axis === 'y' ? v.z : v.y,
       });
-      const meanR = dists.reduce((s, d) => s + d, 0) / dists.length;
-      if (meanR < 0.5) continue; // too small to matter
-      const stdR = Math.sqrt(dists.reduce((s, d) => s + (d - meanR) ** 2, 0) / dists.length);
+      const dists = verts.map(v => { const { a, b } = ab(v); return Math.hypot(a - ca, b - cb); });
+
+      // Keep only the RING members before the uniformity test. A real mesh ring
+      // is contaminated by non-ring vertices that share the plane — most
+      // commonly the cap-CENTRE vertex of a cylinder/cone fan (radius ≈ 0) and
+      // axial spokes. A single r≈0 outlier wrecks the std/mean ratio, so the
+      // raw test rejected even a clean cylinder (→ no centermarks on holes).
+      // Filter to vertices within 10% of the MEDIAN radius (robust to outliers),
+      // then measure uniformity / angular spread on that ring only.
+      const sortedD = [...dists].sort((p, q) => p - q);
+      const medR = sortedD[Math.floor(sortedD.length / 2)];
+      if (medR < 0.5) continue; // too small to matter
+      const ringV = verts.filter((_, i) => Math.abs(dists[i] - medR) <= 0.1 * medR);
+      if (ringV.length < minPts) continue;
+      const ringDists = ringV.map(v => { const { a, b } = ab(v); return Math.hypot(a - ca, b - cb); });
+      const meanR = ringDists.reduce((s, d) => s + d, 0) / ringDists.length;
+      const stdR = Math.sqrt(ringDists.reduce((s, d) => s + (d - meanR) ** 2, 0) / ringDists.length);
       if (stdR / meanR > 0.05) continue; // not circular by radius
       // Angular spread check — points must wrap most of the circle, not
       // just cluster at a few angles. Without this, four corners of a
       // box test as "circular" because they're equidistant from centre.
-      const angles = verts.map(v => {
-        const a = axis === 'x' ? v.y : v.x;
-        const b = axis === 'x' ? v.z : axis === 'y' ? v.z : v.y;
-        return Math.atan2(b - cb, a - ca);
-      });
+      const angles = ringV.map(v => { const { a, b } = ab(v); return Math.atan2(b - cb, a - ca); });
       angles.sort((a, b) => a - b);
       let maxGap = 0;
       for (let i = 0; i < angles.length; i++) {
