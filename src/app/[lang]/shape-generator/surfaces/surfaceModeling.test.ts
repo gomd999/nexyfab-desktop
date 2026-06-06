@@ -75,6 +75,30 @@ describe('Network surface', () => {
     const m = tessellateNetworkSurface(net, 4, 4);
     expect(m.positions.length).toBe(5 * 5 * 3);
   });
+
+  it('Gordon surface interpolates a CURVED network curve exactly (not just intersections)', () => {
+    // u-curve at v=0 is an arch peaking at z=4; the surface must reproduce it
+    // along v=0, not sag to z=2 like the old (U+V)/2 average did.
+    const archZ = (u: number) => 4 * Math.sin(Math.PI * u);
+    const curved: NetworkInput = {
+      uCurves: [
+        (u) => ({ x: 10 * u, y: 0, z: archZ(u) }),
+        (u) => ({ x: 10 * u, y: 10, z: 0 }),
+      ],
+      vCurves: [
+        (v) => ({ x: 0, y: 10 * v, z: 0 }),
+        (v) => ({ x: 10, y: 10 * v, z: 0 }),
+      ],
+      vSamples: [0, 1], uSamples: [0, 1],
+    };
+    for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+      const p = evalNetworkSurface(curved, u, 0);
+      expect(p.z).toBeCloseTo(archZ(u), 6); // on the arch curve, exact
+      expect(p.x).toBeCloseTo(10 * u, 6);
+    }
+    // Peak is the full arch height, not half.
+    expect(evalNetworkSurface(curved, 0.5, 0).z).toBeCloseTo(4, 6);
+  });
 });
 
 // ── Trim / Offset ──────────────────────────────────────────────────
