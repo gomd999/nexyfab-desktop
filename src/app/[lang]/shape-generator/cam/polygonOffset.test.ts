@@ -4,7 +4,7 @@
  * contour-parallel toolpath.
  */
 import { describe, it, expect } from 'vitest';
-import { offsetPolygonInward, insetContours, signedArea, ensureCcw } from './polygonOffset';
+import { offsetPolygonInward, insetContours, signedArea, ensureCcw, loopSelfIntersects } from './polygonOffset';
 
 const P = (x: number, y: number) => ({ x, y });
 const square = (s: number) => [P(0, 0), P(s, 0), P(s, s), P(0, s)];
@@ -73,5 +73,38 @@ describe('insetContours', () => {
   it('degenerate input yields no contours', () => {
     expect(insetContours([P(0, 0), P(1, 0)], 2, 3)).toEqual([]); // < 3 verts
     expect(insetContours(square(40), 0, 3)).toEqual([]);          // no first offset
+  });
+});
+
+describe('concave safety — never emit a self-intersecting (gouging) loop', () => {
+  // A U-shaped pocket: a deep narrow notch cut into the top of a 40×40 block.
+  const U = [
+    P(0, 0), P(40, 0), P(40, 40), P(24, 40),
+    P(24, 12), P(16, 12), P(16, 40), P(0, 40),
+  ];
+
+  it('a simple concave (single reflex) offset stays simple at moderate depth', () => {
+    for (const d of [1, 3, 5]) {
+      const r = offsetPolygonInward(U, d)!;
+      expect(r).not.toBeNull();
+      expect(loopSelfIntersects(r)).toBe(false);
+    }
+  });
+
+  it('rejects the offset once the notch would collapse into a bowtie', () => {
+    // At d=6 the 8mm notch (offset 6 each wall) over-runs → self-intersection.
+    expect(offsetPolygonInward(U, 6)).toBeNull();
+  });
+
+  it('every contour from a concave pocket is a simple polygon', () => {
+    const contours = insetContours(U, 2, 3);
+    expect(contours.length).toBeGreaterThan(0);
+    for (const c of contours) expect(loopSelfIntersects(c)).toBe(false);
+  });
+
+  it('loopSelfIntersects flags a hand-built bowtie', () => {
+    const bowtie = [P(0, 0), P(10, 10), P(10, 0), P(0, 10)];
+    expect(loopSelfIntersects(bowtie)).toBe(true);
+    expect(loopSelfIntersects(square(10))).toBe(false);
   });
 });

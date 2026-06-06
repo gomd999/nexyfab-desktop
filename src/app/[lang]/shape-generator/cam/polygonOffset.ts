@@ -34,6 +34,23 @@ export function ensureCcw(poly: Pt2[]): Pt2[] {
   return signedArea(poly) < 0 ? [...poly].reverse() : [...poly];
 }
 
+/** True when any two non-adjacent edges of the loop cross — i.e. the loop is not
+ *  a simple polygon. A concave polygon's inward offset produces such a bowtie
+ *  once a thin notch collapses; emitting it would gouge the part. */
+export function loopSelfIntersects(loop: Pt2[]): boolean {
+  const n = loop.length;
+  const ccw = (a: Pt2, b: Pt2, c: Pt2) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
+  for (let i = 0; i < n; i++) {
+    const a = loop[i]!, b = loop[(i + 1) % n]!;
+    for (let j = i + 1; j < n; j++) {
+      if (j === i || (j + 1) % n === i || (i + 1) % n === j) continue; // adjacent / shared vertex
+      const c = loop[j]!, d = loop[(j + 1) % n]!;
+      if (ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d)) return true;
+    }
+  }
+  return false;
+}
+
 function lineIntersect(p0: Pt2, d0: Pt2, p1: Pt2, d1: Pt2): Pt2 | null {
   const den = d0.x * d1.y - d0.y * d1.x;
   if (Math.abs(den) < 1e-9) return null; // parallel edges (collinear after offset)
@@ -74,11 +91,16 @@ export function offsetPolygonInward(polyIn: Pt2[], distance: number): Pt2[] | nu
     out.push(v);
   }
 
-  // Collapse guards: the inset must stay CCW (same orientation) and keep a
-  // meaningful area; a flipped/!finite result means the offset over-ran.
+  // Collapse guards: the inset must stay CCW with meaningful area, and must be a
+  // SIMPLE polygon. A concave polygon's offset can self-intersect (a notch
+  // collapses into a bowtie) while still reporting positive area; emitting that
+  // would gouge, so reject it. Splitting such an offset into several valid
+  // pockets needs a clipping / straight-skeleton solver (a documented follow-up);
+  // until then the safe behaviour is to stop offsetting before the gouge.
   const area = signedArea(out);
   if (!Number.isFinite(area) || area <= 1e-6) return null;
   for (const v of out) if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) return null;
+  if (loopSelfIntersects(out)) return null;
   return out;
 }
 
@@ -91,7 +113,10 @@ export function insetContours(boundary: Pt2[], firstOffset: number, step: number
   const contours: Pt2[][] = [];
   if (boundary.length < 3 || firstOffset <= 0 || step <= 0) return contours;
   let d = firstOffset;
-  // Cap iterations defensively (boundary span / step is the natural bound).
+  // Stop at the first offset that no longer yields a simple interior loop — for a
+  // concave pocket this is where a notch would start to gouge (see
+  // offsetPolygonInward); the wider regions are already cleared by the rings up
+  // to here. Cap iterations defensively.
   for (let guard = 0; guard < 10000; guard++) {
     const c = offsetPolygonInward(boundary, d);
     if (!c) break;
