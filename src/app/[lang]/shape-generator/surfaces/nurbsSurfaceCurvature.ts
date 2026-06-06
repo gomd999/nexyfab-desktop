@@ -159,6 +159,26 @@ function rationalDerivs(SKL: Hom[][]): {
  * Analytic Gaussian / mean / principal curvature of the surface at (u, v) via
  * the first and second fundamental forms.
  */
+/**
+ * Analytic NORMAL curvature κ_n at (u, v) in the parametric tangent direction
+ * (a·∂u + b·∂v) = II(d,d) / I(d,d). The direction (1,0) gives the curvature
+ * along the u-parameter line (L/E), (0,1) along v (N/G); κ_n is even in the
+ * direction so the sign of (a,b) does not matter. Used by the G2 continuity
+ * check for the exact cross-seam curvature.
+ */
+export function normalCurvature(s: NurbsSurface, u: number, v: number, a: number, b: number): number {
+  const { Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
+  const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
+  const nLen = nVec.length();
+  if (nLen < 1e-12) return 0;
+  const N = nVec.divideScalar(nLen);
+  const E = Pu.dot(Pu), F = Pu.dot(Pv), G = Pv.dot(Pv);
+  const L = Puu.dot(N), M = Puv.dot(N), Nf = Pvv.dot(N);
+  const I = E * a * a + 2 * F * a * b + G * b * b;
+  if (Math.abs(I) < 1e-12) return 0;
+  return (L * a * a + 2 * M * a * b + Nf * b * b) / I;
+}
+
 export function nurbsSurfaceCurvature(s: NurbsSurface, u: number, v: number): SurfaceCurvature {
   const { Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
   const nVec = new THREE.Vector3().crossVectors(Pu, Pv);

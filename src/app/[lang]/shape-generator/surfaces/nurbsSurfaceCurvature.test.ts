@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { nurbsSurfaceCurvature } from './nurbsSurfaceCurvature';
+import { nurbsSurfaceCurvature, normalCurvature } from './nurbsSurfaceCurvature';
 import type { NurbsSurface } from './nurbsSurface';
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -79,6 +79,39 @@ describe('nurbsSurfaceCurvature — closed-form validation', () => {
       expect(c.k1).toBeCloseTo(1 / R, 3);             // 0.1
       expect(c.k2).toBeCloseTo(1 / R, 3);
       expect(c.normal.length()).toBeCloseTo(1, 6);
+    }
+  });
+});
+
+describe('normalCurvature — directional', () => {
+  it('on a cylinder: ~1/R around the circumference, ~0 along the axis', () => {
+    const R = 10, w = Math.SQRT1_2;
+    const cyl: NurbsSurface = {
+      controlPoints: [
+        [V(0, R, 0), V(0, R, R), V(0, 0, R)],
+        [V(20, R, 0), V(20, R, R), V(20, 0, R)],
+      ],
+      weights: [[1, w, 1], [1, w, 1]],
+      degreeU: 1, degreeV: 2, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 0, 1, 1, 1],
+    };
+    // U is the axis (straight) → 0; V is the circle → 1/R.
+    expect(Math.abs(normalCurvature(cyl, 0.5, 0.5, 1, 0))).toBeCloseTo(0, 3);
+    expect(Math.abs(normalCurvature(cyl, 0.5, 0.5, 0, 1))).toBeCloseTo(1 / R, 3);
+  });
+
+  it('on a sphere: 1/R in every tangent direction', () => {
+    const R = 10, w = Math.SQRT1_2;
+    const sphere: NurbsSurface = {
+      controlPoints: [
+        [V(R, 0, 0), V(R, R, 0), V(0, R, 0)],
+        [V(R, 0, R), V(R, R, R), V(0, R, R)],
+        [V(0, 0, R), V(0, 0, R), V(0, 0, R)],
+      ],
+      weights: [[1, w, 1], [w, 0.5, w], [1, w, 1]],
+      degreeU: 2, degreeV: 2, knotsU: [0, 0, 0, 1, 1, 1], knotsV: [0, 0, 0, 1, 1, 1],
+    };
+    for (const [a, b] of [[1, 0], [0, 1], [1, 1], [1, -1]] as Array<[number, number]>) {
+      expect(Math.abs(normalCurvature(sphere, 0.5, 0.5, a, b))).toBeCloseTo(1 / R, 3);
     }
   });
 });

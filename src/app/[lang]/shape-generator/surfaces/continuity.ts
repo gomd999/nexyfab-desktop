@@ -29,6 +29,7 @@
 
 import * as THREE from 'three';
 import { evalNurbsSurface, evalNurbsSurfaceNormal, type NurbsSurface } from './nurbsSurface';
+import { normalCurvature } from './nurbsSurfaceCurvature';
 
 export type BoundaryEdge = 'u0' | 'u1' | 'v0' | 'v1';
 
@@ -63,29 +64,16 @@ export interface ContinuityOptions {
 }
 
 /** Magnitude of the surface's normal curvature in the cross-SEAM direction at
- *  boundary parameter `t`, by finite differences stepping INWARD from the edge.
- *  κ_n = |P''·N| / |P'|² (second fundamental form over the first). */
-function crossSeamCurvature(s: NurbsSurface, edge: BoundaryEdge, t: number, eps: number): number {
-  const uvAt = (k: number): { u: number; v: number } => {
-    switch (edge) {
-      case 'u0': return { u: k, v: t };
-      case 'u1': return { u: 1 - k, v: t };
-      case 'v0': return { u: t, v: k };
-      case 'v1': return { u: t, v: 1 - k };
-    }
-  };
-  const p0uv = uvAt(0);
-  const P0 = evalNurbsSurface(s, p0uv.u, p0uv.v);
-  const p1uv = uvAt(eps), p2uv = uvAt(2 * eps);
-  const P1 = evalNurbsSurface(s, p1uv.u, p1uv.v);
-  const P2 = evalNurbsSurface(s, p2uv.u, p2uv.v);
-  // One-sided, 2nd-order: P' ≈ (−3P0 + 4P1 − P2)/(2ε); P'' ≈ (P0 − 2P1 + P2)/ε².
-  const d1 = P1.clone().multiplyScalar(4).sub(P2).sub(P0.clone().multiplyScalar(3)).multiplyScalar(1 / (2 * eps));
-  const d2 = P0.clone().sub(P1.clone().multiplyScalar(2)).add(P2).multiplyScalar(1 / (eps * eps));
-  const speed2 = d1.lengthSq();
-  if (speed2 < 1e-12) return 0;
-  const N = evalNurbsSurfaceNormal(s, p0uv.u, p0uv.v);
-  return Math.abs(d2.dot(N)) / speed2;
+ *  boundary parameter `t`. Computed ANALYTICALLY (second fundamental form over
+ *  the first) — the seam runs along one parameter, so the cross direction is the
+ *  OTHER parameter: (1,0) for a u-edge, (0,1) for a v-edge. */
+function crossSeamCurvature(s: NurbsSurface, edge: BoundaryEdge, t: number): number {
+  switch (edge) {
+    case 'u0': return Math.abs(normalCurvature(s, 0, t, 1, 0));
+    case 'u1': return Math.abs(normalCurvature(s, 1, t, 1, 0));
+    case 'v0': return Math.abs(normalCurvature(s, t, 0, 0, 1));
+    case 'v1': return Math.abs(normalCurvature(s, t, 1, 0, 1));
+  }
 }
 
 /** Map a boundary parameter t (0..1) to the (u, v) point that lies on
@@ -116,7 +104,6 @@ export function checkSurfaceContinuity(
   const angTol = opts.normalAngleTolerance ?? (Math.PI / 180); // 1°
 
   const curvTol = opts.curvatureTolerance ?? 0.05;
-  const eps = 5e-3; // parameter step for the curvature finite difference
 
   const samples: ContinuitySample[] = [];
   let maxPositionGap = 0;
@@ -139,9 +126,9 @@ export function checkSurfaceContinuity(
     const dot = Math.abs(THREE.MathUtils.clamp(normalA.dot(normalB), -1, 1));
     const angle = Math.acos(dot);
 
-    // Geometric cross-seam curvature on each side (parametrisation-invariant).
-    const kA = crossSeamCurvature(a, edgeA, t, eps);
-    const kB = crossSeamCurvature(b, edgeB, t, eps);
+    // Geometric cross-seam curvature on each side (analytic, parametrisation-invariant).
+    const kA = crossSeamCurvature(a, edgeA, t);
+    const kB = crossSeamCurvature(b, edgeB, t);
     const relCurv = Math.abs(kA - kB) / Math.max(kA, kB, 1e-4);
 
     samples.push({ t, positionGap: gap, normalAngle: angle });
