@@ -163,14 +163,22 @@ export function computeCurvature(mesh: SurfaceMesh): CurvatureResult {
   const k1 = new Array(vCount).fill(0);
   const k2 = new Array(vCount).fill(0);
   for (let i = 0; i < vCount; i++) {
-    const A = areaSum[i] || 1e-9;
+    const A = areaSum[i]!;
+    // Degenerate vertex (isolated / pole-duplicate / seam): area collapses, so
+    // the 1/A curvature would blow up. Curvature is undefined there → report 0
+    // rather than a spurious ~1/ε spike.
+    if (!(A > 1e-12)) { gaussian[i] = 0; mean[i] = 0; k1[i] = 0; k2[i] = 0; continue; }
     gaussian[i] = (2 * Math.PI - angleSum[i]) / A;
-    // Mean = 1/(2A) × || laplacian || · sign(n · L).
+    // Discrete mean-curvature normal (Meyer 2003):
+    //   K⃗ = (1/2A) Σ(cotα+cotβ)(x_i−x_j) = 2·H·n̂ ⇒ H = ½|K⃗|.
+    // The cotangent sum accumulated in laplace[] already carries the inner ½
+    // (cot/2 per triangle), so laplace = Σ((cotα+cotβ)/2)(x_j−x_i) and
+    // |laplace|/(2A) = H directly — no extra ÷2 (that was halving H).
     const lx = laplaceX[i]! / (2 * A);
     const ly = laplaceY[i]! / (2 * A);
     const lz = laplaceZ[i]! / (2 * A);
     const sign = Math.sign(dot(normals[i * 3]!, normals[i * 3 + 1]!, normals[i * 3 + 2]!, lx, ly, lz));
-    mean[i] = (sign || 1) * Math.hypot(lx, ly, lz) / 2;
+    mean[i] = (sign || 1) * Math.hypot(lx, ly, lz);
     // Principal curvatures from κ² - 2Hκ + K = 0.
     const disc = Math.max(0, mean[i] ** 2 - gaussian[i]);
     const sqrtDisc = Math.sqrt(disc);

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
 import {
   computeVertexNormals,
   computeCurvature,
@@ -8,6 +9,20 @@ import {
   sampleIsoCurve,
   type SurfaceMesh,
 } from './classASurfaceAnalysis';
+
+/** Convert an indexed THREE geometry into the SurfaceMesh shape. */
+function meshFrom(geo: THREE.BufferGeometry): SurfaceMesh {
+  return {
+    positions: Array.from(geo.attributes.position.array as Float32Array),
+    indices: Array.from(geo.index!.array as Uint16Array | Uint32Array),
+  };
+}
+
+/** Median of an array (sorts a copy). */
+function median(arr: number[]): number {
+  const s = [...arr].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)]!;
+}
 
 /** Flat plane in z=0: 2 triangles. */
 function flatPlane(): SurfaceMesh {
@@ -72,6 +87,53 @@ describe('computeCurvature', () => {
     for (let i = 0; i < r.k1.length; i++) {
       expect(r.k1[i]!).toBeGreaterThanOrEqual(r.k2[i]!);
     }
+  });
+
+  // Closed-form validation against the analytic curvature of canonical surfaces.
+  // (These guard the Meyer 2003 mean-curvature normalisation: the old code
+  // halved H and let degenerate pole/seam vertices blow K up to ~1/ε.)
+  it('a fine sphere of radius R has median K≈1/R² and |H|≈1/R', () => {
+    const R = 5;
+    const r = computeCurvature(meshFrom(new THREE.SphereGeometry(R, 48, 32)));
+    const pos = new THREE.SphereGeometry(R, 48, 32).attributes.position.array as Float32Array;
+    const Ks: number[] = [], Hs: number[] = [];
+    for (let i = 0; i < pos.length / 3; i++) {
+      const x = pos[i * 3]!, y = pos[i * 3 + 1]!, z = pos[i * 3 + 2]!;
+      if (Math.abs(z) > 0.7 * R) continue;          // skip poles
+      if (Math.abs(x) < 0.05 && y < 0) continue;    // skip the seam
+      Ks.push(r.gaussian[i]!); Hs.push(Math.abs(r.mean[i]!));
+    }
+    expect(median(Ks)).toBeCloseTo(1 / (R * R), 2);  // 0.04
+    expect(median(Hs)).toBeCloseTo(1 / R, 1);        // 0.2 (was ~0.1 before the fix)
+  });
+
+  it('a collapsed (zero-area) vertex reports 0 instead of a 1/ε spike', () => {
+    // Triangle whose two vertices coincide → zero area at every incident vertex.
+    // The old `areaSum[i] || 1e-9` turned that into a ~1/ε curvature; the guard
+    // now returns 0 there.
+    const degenerate: SurfaceMesh = {
+      positions: [0, 0, 0, 1, 0, 0, 1, 0, 0],
+      indices: [0, 1, 2],
+    };
+    const r = computeCurvature(degenerate);
+    for (const k of r.gaussian) { expect(Number.isFinite(k)).toBe(true); expect(k).toBe(0); }
+    for (const h of r.mean) { expect(Number.isFinite(h)).toBe(true); expect(h).toBe(0); }
+  });
+
+  it('a fine cylinder of radius R has median K≈0 and |H|≈1/(2R)', () => {
+    const R = 4, H = 20;
+    // Open-ended cylinder so the wall has no caps; radial segments fine.
+    const geo = new THREE.CylinderGeometry(R, R, H, 48, 12, true);
+    const r = computeCurvature(meshFrom(geo));
+    const pos = geo.attributes.position.array as Float32Array;
+    const Ks: number[] = [], Hs: number[] = [];
+    for (let i = 0; i < pos.length / 3; i++) {
+      const yy = pos[i * 3 + 1]!;
+      if (Math.abs(yy) > 0.7 * (H / 2)) continue;    // skip the open rim rings
+      Ks.push(r.gaussian[i]!); Hs.push(Math.abs(r.mean[i]!));
+    }
+    expect(median(Ks)).toBeCloseTo(0, 2);            // developable
+    expect(median(Hs)).toBeCloseTo(1 / (2 * R), 1);  // 0.125
   });
 });
 
