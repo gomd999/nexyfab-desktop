@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { buildLoft } from './loft';
-import type { NurbsCurve3D } from './nurbsCurve';
+import { sampleNurbsCurve3D, type NurbsCurve3D } from './nurbsCurve';
 
 /** Circle-ish quadratic NURBS at height z. Not a true circle, but
  *  closed-loop enough for loft tests. */
@@ -83,6 +83,29 @@ describe('buildLoft · geometry correctness', () => {
     expect(pos.getZ(3)).toBeCloseTo(2.5);
     // Row 3 → z = 5
     expect(pos.getZ(6)).toBeCloseTo(5);
+  });
+
+  it('passes through EVERY section exactly — interior sections pinned too', () => {
+    // The defining loft property: the surface interpolates each input section
+    // at its row, not just the first/last. Use 3 curved sections + subdivision.
+    const sections = [ringCurve(10, 0), ringCurve(6, 5), ringCurve(8, 12)];
+    const N = 8, seg = 3;
+    const r = buildLoft(sections, { sectionSampleCount: N, segmentsBetweenSections: seg });
+    const pos = r.geometry.getAttribute('position');
+    // Section s sits at row index s*seg (0, 3, 6); that row must equal the
+    // section's own sampled points exactly.
+    const expectRowEqualsSection = (rowIdx: number, section: NurbsCurve3D) => {
+      const samples = sampleNurbsCurve3D(section, N);
+      for (let i = 0; i < N; i++) {
+        const k = rowIdx * N + i;
+        expect(pos.getX(k)).toBeCloseTo(samples[i]!.x, 4);
+        expect(pos.getY(k)).toBeCloseTo(samples[i]!.y, 4);
+        expect(pos.getZ(k)).toBeCloseTo(samples[i]!.z, 4);
+      }
+    };
+    expectRowEqualsSection(0, sections[0]!);
+    expectRowEqualsSection(seg, sections[1]!);       // interior section, exactly pinned
+    expectRowEqualsSection(2 * seg, sections[2]!);   // last section
   });
 
   it('handles two ring sections (varying radius)', () => {
