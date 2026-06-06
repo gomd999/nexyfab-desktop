@@ -128,4 +128,39 @@ describe('buildSweep · invariants', () => {
       expect(Math.abs(cz)).toBeLessThan(0.5);
     }
   });
+
+  it('on a rational-circle path every ring is ⟂ the tangent and keeps the profile radius', () => {
+    // Parallel-transport frame correctness, against closed forms: a circle
+    // profile swept along a planar quarter-circle path must give rings that are
+    // perpendicular to the path tangent (frame N,B ⟂ T) with every vertex at the
+    // exact profile radius (orthonormal frame, no distortion).
+    const R = 10, w = Math.SQRT1_2, rProf = 1, NP = 16, M = 12;
+    const path: NurbsCurve3D = {
+      controlPoints: [new THREE.Vector3(R, 0, 0), new THREE.Vector3(R, R, 0), new THREE.Vector3(0, R, 0)],
+      degree: 2, knots: [0, 0, 0, 1, 1, 1], weights: [1, w, 1],
+    };
+    const profile = Array.from({ length: NP }, (_, i) => {
+      const a = (i / NP) * 2 * Math.PI;
+      return { x: rProf * Math.cos(a), y: rProf * Math.sin(a) };
+    });
+    const r = buildSweep(path, profile, { pathSampleCount: M });
+    const pos = r.geometry.getAttribute('position');
+    const get = (k: number) => new THREE.Vector3(pos.getX(k), pos.getY(k), pos.getZ(k));
+    for (let ring = 0; ring < M; ring++) {
+      const base = ring * NP;
+      // ring centroid + plane normal
+      const c = new THREE.Vector3();
+      for (let i = 0; i < NP; i++) c.add(get(base + i));
+      c.divideScalar(NP);
+      const nrm = new THREE.Vector3().crossVectors(
+        get(base + 1).sub(get(base)), get(base + 2).sub(get(base)),
+      ).normalize();
+      for (let i = 0; i < NP; i++) {
+        const v = get(base + i);
+        expect(v.distanceTo(c)).toBeCloseTo(rProf, 4);   // exact profile radius
+        // vertex lies in the ring plane (⟂ normal through centroid)
+        expect(Math.abs(v.clone().sub(c).dot(nrm))).toBeLessThan(1e-5);
+      }
+    }
+  });
 });
