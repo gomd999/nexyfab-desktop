@@ -219,4 +219,30 @@ describe('Surface fillet', () => {
     });
     expect(r.positions.length).toBe(2 * 13 * 3);
   });
+
+  it('a 90° fillet cross-section is a true radius-R circular arc, G1 to both faces', () => {
+    // Rolling-ball fillet of radius R between two perpendicular planes. Tangent
+    // points (R,0) and (0,R); the arc is a quarter circle about (R,R). The
+    // angle-based handle makes the cubic Bézier hug that circle (a fixed
+    // 0.55·chord handle bulged ~12% past it).
+    const R = 10;
+    const st: BlendStation = {
+      pointA: { x: R, y: 0, z: 0 }, pointB: { x: 0, y: R, z: 0 },
+      tangentA: { x: -1, y: 0, z: 0 }, tangentB: { x: 0, y: -1, z: 0 },
+    };
+    const m = buildSurfaceFillet({ stations: [st, { ...st, pointA: { x: R, y: 0, z: 5 }, pointB: { x: 0, y: R, z: 5 } }], crossSamples: 32 });
+    const pt = (k: number) => ({ x: m.positions[k * 3]!, y: m.positions[k * 3 + 1]!, z: m.positions[k * 3 + 2]! });
+    // Every cross-section point lies on the radius-R circle about (R,R).
+    for (let k = 0; k <= 32; k++) {
+      const p = pt(k);
+      expect(Math.hypot(p.x - R, p.y - R)).toBeCloseTo(R, 1); // within ~0.05
+    }
+    // C0 + G1: endpoints exact, start direction along tangentA.
+    const c0 = pt(0), c1 = pt(1), cN = pt(32);
+    expect(Math.hypot(c0.x - R, c0.y - 0)).toBeLessThan(1e-6);
+    expect(Math.hypot(cN.x - 0, cN.y - R)).toBeLessThan(1e-6);
+    const dir0 = { x: c1.x - c0.x, y: c1.y - c0.y };
+    const dl = Math.hypot(dir0.x, dir0.y);
+    expect(dir0.x / dl).toBeLessThan(-0.99); // leaves P0 along (−1,0) = tangentA
+  });
 });

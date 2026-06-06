@@ -62,24 +62,42 @@ function bezier3(p0: PatchPoint, p1: PatchPoint, p2: PatchPoint, p3: PatchPoint,
   };
 }
 
+function unit(v: PatchPoint): PatchPoint {
+  const l = Math.hypot(v.x, v.y, v.z) || 1;
+  return { x: v.x / l, y: v.y / l, z: v.z / l };
+}
+
 /** Compute the fillet's cross-section curve at a single station. */
 function crossSectionAt(station: BlendStation, samples: number, centerBias: number): PatchPoint[] {
   // P0 = A point, P3 = B point. P1, P2 = control points pulled along
   // each surface's tangent so the cross-section meets G1.
   const p0 = station.pointA;
   const p3 = station.pointB;
+  const ta = unit(station.tangentA);
+  const tb = unit(station.tangentB);
   // Effective chord between A and B.
   const chord = Math.hypot(p3.x - p0.x, p3.y - p0.y, p3.z - p0.z);
-  const handleLen = chord * 0.55; // approximate G1 round arc
+  // Handle length for a cubic Bézier that approximates a CIRCULAR arc (the
+  // "rolling-ball" cross-section), not a fixed fraction of the chord. The curve
+  // leaves P0 along ta and arrives at P3 along −tb, so it turns by the angle θ
+  // between ta and −tb. The optimal handle is (4/3)R·tan(θ/4); with chord =
+  // 2R·sin(θ/2) that is chord·(2/3)·tan(θ/4)/sin(θ/2). (A flat fixed 0.55·chord
+  // over-bulged a 90° fillet ~12% past the true arc.)
+  const cosTurn = Math.max(-1, Math.min(1, -(ta.x * tb.x + ta.y * tb.y + ta.z * tb.z)));
+  const theta = Math.acos(cosTurn);
+  const halfSin = Math.sin(theta / 2);
+  const handleLen = halfSin < 1e-4
+    ? chord / 3 // nearly straight — uniform cubic spacing
+    : chord * (2 / 3) * Math.tan(theta / 4) / halfSin;
   const p1 = {
-    x: p0.x + station.tangentA.x * handleLen,
-    y: p0.y + station.tangentA.y * handleLen,
-    z: p0.z + station.tangentA.z * handleLen,
+    x: p0.x + ta.x * handleLen,
+    y: p0.y + ta.y * handleLen,
+    z: p0.z + ta.z * handleLen,
   };
   const p2 = {
-    x: p3.x + station.tangentB.x * handleLen,
-    y: p3.y + station.tangentB.y * handleLen,
-    z: p3.z + station.tangentB.z * handleLen,
+    x: p3.x + tb.x * handleLen,
+    y: p3.y + tb.y * handleLen,
+    z: p3.z + tb.z * handleLen,
   };
   // Bias the curve toward A or B by re-aiming center handles.
   if (centerBias !== 0.5) {
