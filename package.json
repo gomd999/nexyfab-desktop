@@ -59,7 +59,7 @@
     "test:tauri-unit": "cargo test --manifest-path src-tauri/Cargo.toml -- --test-threads=1",
     "test:step-roundtrip": "cross-env RUN_STEP_IMPORT=1 vitest run src/test/m1/stepRoundtrip.guarded.test.ts",
     "test:occt:real": "cross-env NEXYFAB_OCCT_REAL=1 vitest run src/lib/occt/wasmReal.placeholder.test.ts",
-    "test:occt:feasibility": "cross-env RUN_OCCT_FEASIBILITY=1 vitest run occtEngine.extrude occtEngineSelection occtSurface pipeline.occt replicad.feasibility stepRoundtripWasm --reporter=dot",
+    "test:occt:feasibility": "cross-env RUN_OCCT_FEASIBILITY=1 vitest run occtEngine.extrude occtEngineSelection occtSurface pipeline.occt replicad.feasibility stepRoundtripWasm occtCommitPerf --reporter=dot",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
