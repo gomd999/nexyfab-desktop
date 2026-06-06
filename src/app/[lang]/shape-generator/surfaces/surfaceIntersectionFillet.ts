@@ -126,16 +126,24 @@ export function rollingBallSpine(
     const nB = curve.normalsB[i]!;
     // Bisector — average of the two normals, normalized.
     const bisect = normalize({ x: nA.x + nB.x, y: nA.y + nB.y, z: nA.z + nB.z });
-    // Half-angle between normals.
-    const cosAngle = dot(nA, nB);
-    const sinHalf = Math.sqrt(Math.max(0, (1 - cosAngle) / 2));
-    if (sinHalf < 1e-6) {
+    // Half-angle α/2 between the normals. The ball centre lies along the
+    // bisector at the distance that puts each foot exactly on its surface:
+    //   foot_A = centre − r·n_A must satisfy (foot_A − p)·n_A = 0
+    //   ⇒ offsetMag·(bisect·n_A) = r, and bisect·n_A = cos(α/2)
+    //   ⇒ offsetMag = r / cos(α/2).
+    // (The old code used r / sin(α/2); the two coincide only at α = 90°, so
+    // every other dihedral left the feet floating off / penetrating the faces.)
+    const cosAngle = clampUnit(dot(nA, nB));
+    const cosHalf = Math.sqrt(Math.max(0, (1 + cosAngle) / 2)); // cos(α/2)
+    const sinHalf = Math.sqrt(Math.max(0, (1 - cosAngle) / 2)); // sin(α/2)
+    // Degenerate: α→0 (no real dihedral) or α→π (razor edge, fillet diverges).
+    if (sinHalf < 1e-6 || cosHalf < 1e-6) {
       centers.push(p);
       feetA.push(p);
       feetB.push(p);
       continue;
     }
-    const offsetMag = radius / sinHalf;
+    const offsetMag = radius / cosHalf;
     const center: Vec3 = {
       x: p.x + bisect.x * offsetMag,
       y: p.y + bisect.y * offsetMag,
