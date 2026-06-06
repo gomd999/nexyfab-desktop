@@ -149,7 +149,9 @@ describe('Trim / Offset', () => {
     expect(offset.positions[5]).toBe(2);
   });
 
-  it('thickenSurface doubles vertex count + adds top triangles', () => {
+  it('thickenSurface doubles vertex count + builds a CLOSED (watertight) solid', () => {
+    // A single triangle thickened becomes a triangular prism: bottom + flipped
+    // top + 3 side-wall quads. Every edge must be shared by exactly 2 triangles.
     const mesh: SurfaceMesh = {
       positions: [0, 0, 0,  1, 0, 0,  0, 1, 0],
       normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
@@ -157,8 +159,46 @@ describe('Trim / Offset', () => {
       indices: [0, 1, 2],
     };
     const thick = thickenSurface(mesh, 2);
-    expect(thick.positions.length).toBe(mesh.positions.length * 2);
-    expect(thick.indices.length).toBe(mesh.indices.length * 2);
+    expect(thick.positions.length).toBe(mesh.positions.length * 2); // verts doubled (walls reuse them)
+    // prism = 2 caps + 3 quads·2 = 8 triangles.
+    expect(thick.indices.length).toBe(8 * 3);
+    // Watertight: no boundary edges, no non-manifold edges.
+    const cnt = new Map<string, number>();
+    for (let i = 0; i < thick.indices.length; i += 3) {
+      const t = [thick.indices[i]!, thick.indices[i + 1]!, thick.indices[i + 2]!];
+      for (let e = 0; e < 3; e++) {
+        const u = t[e]!, v = t[(e + 1) % 3]!;
+        const k = u < v ? `${u}-${v}` : `${v}-${u}`;
+        cnt.set(k, (cnt.get(k) ?? 0) + 1);
+      }
+    }
+    for (const c of cnt.values()) expect(c).toBe(2);
+  });
+
+  it('thickenSurface closes the boundary of a multi-triangle grid surface', () => {
+    // 4×4 grid → thicken → watertight shell (regression guard for the missing
+    // side walls; the old version left 24 open boundary edges).
+    const n = 4;
+    const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { positions.push(i, j, 0); normals.push(0, 0, 1); uvs.push(0, 0); }
+    for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
+      const a = j * n + i, b = a + 1, c = a + n, d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+    const thick = thickenSurface({ positions, normals, uvs, indices }, 1.5);
+    const cnt = new Map<string, number>();
+    for (let i = 0; i < thick.indices.length; i += 3) {
+      const t = [thick.indices[i]!, thick.indices[i + 1]!, thick.indices[i + 2]!];
+      for (let e = 0; e < 3; e++) {
+        const u = t[e]!, v = t[(e + 1) % 3]!;
+        const k = u < v ? `${u}-${v}` : `${v}-${u}`;
+        cnt.set(k, (cnt.get(k) ?? 0) + 1);
+      }
+    }
+    let boundary = 0, nonManifold = 0;
+    for (const c of cnt.values()) { if (c === 1) boundary++; else if (c > 2) nonManifold++; }
+    expect(boundary).toBe(0);
+    expect(nonManifold).toBe(0);
   });
 });
 
