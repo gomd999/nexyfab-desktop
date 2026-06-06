@@ -1752,6 +1752,22 @@ export function ShapeGeneratorInner() {
   const occtInitPending = useUIStore(s => s.occtInitPending);
   const occtInitError = useUIStore(s => s.occtInitError);
   const setOcctMode = useUIStore(s => s.setOcctMode);
+  // Kernel of record (Phase 0): the OCCT B-rep kernel is the DEFAULT. It is
+  // verified correct (test:occt:feasibility) and perf-cleared (WASM cold load
+  // ~300 ms one-time, per-commit eval 25–59 ms — see occtCommitPerf). Auto-
+  // enable on boot, deferred to idle so the 10 MB WASM load never blocks first
+  // paint, and skip it if the user has deliberately switched back to the mesh
+  // path (nf_occt_pref='off'). setOcctMode fails safe to mesh if the load errors.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let pref: string | null = null;
+    try { pref = window.localStorage.getItem('nf_occt_pref'); } catch { /* private mode */ }
+    if (pref === 'off') return;
+    const enable = () => { if (!useUIStore.getState().occtMode) void setOcctMode(true); };
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    if (ric) ric(enable);
+    else window.setTimeout(enable, 400);
+  }, [setOcctMode]);
   const multiView = useUIStore(s => s.multiView);
   const setMultiView = useUIStore(s => s.setMultiView);
   const showVersionPanel = useUIStore(s => s.showVersionPanel);

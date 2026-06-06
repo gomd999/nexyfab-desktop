@@ -749,6 +749,11 @@ export const useUIStore = create<UIStore>()(
       if (get().occtMode !== on) {
         cacheClear();
       }
+      // Remember the choice so the kernel-of-record default (auto-enable on
+      // boot) respects a user who deliberately switched back to the mesh path.
+      if (typeof window !== 'undefined') {
+        try { window.localStorage.setItem('nf_occt_pref', on ? 'on' : 'off'); } catch { /* private mode */ }
+      }
       if (!on) {
         setOcctGlobalMode(false)
         set((state) => {
