@@ -5,6 +5,7 @@ import {
   computeDrawingGeometryFingerprint,
   type ProjectionView,
 } from './autoDrawing';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildDrawingSvgString } from './drawingExport';
 
 function makeBox(w = 60, h = 40, d = 20): THREE.BufferGeometry {
@@ -72,6 +73,45 @@ describe('projectGeometry · view-direction sanity', () => {
   it('returns empty for geometry without a position attribute', () => {
     const empty = new THREE.BufferGeometry();
     expect(projectGeometry(empty, 'front', 1)).toEqual([]);
+  });
+});
+
+describe('projectGeometry · unwelded mesh weld (no triangulation artifacts)', () => {
+  // An L-shaped profile extruded with THREE — like every primitive / Extrude /
+  // boolean result the drawing pipeline actually feeds in — comes out UNWELDED
+  // (each triangle owns its vertices). projectGeometry keys edges by vertex
+  // index, so without an internal weld the front face's triangulation diagonals
+  // survive as spurious "feature" lines. The clean L outline has exactly 6
+  // edges; the face has 4 fan triangles → 3 interior diagonals that must NOT
+  // appear. Front view also bounds 40 × 40.
+  function lProfile(): THREE.BufferGeometry {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0); s.lineTo(40, 0); s.lineTo(40, 20); s.lineTo(20, 20);
+    s.lineTo(20, 40); s.lineTo(0, 40); s.lineTo(0, 0);
+    return new THREE.ExtrudeGeometry(s, { depth: 10, bevelEnabled: false });
+  }
+  const bbox = (lines: { x1: number; y1: number; x2: number; y2: number }[]) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const l of lines) {
+      minX = Math.min(minX, l.x1, l.x2); maxX = Math.max(maxX, l.x1, l.x2);
+      minY = Math.min(minY, l.y1, l.y2); maxY = Math.max(maxY, l.y1, l.y2);
+    }
+    return { w: maxX - minX, h: maxY - minY };
+  };
+
+  it('an unwelded L-extrusion front view is the clean 6-edge outline, not 9', () => {
+    const lines = projectGeometry(lProfile(), 'front', 1);
+    expect(lines.length).toBe(6);                 // 6 outline edges, 0 diagonals
+    const b = bbox(lines);
+    expect(b.w).toBeCloseTo(40, 3);
+    expect(b.h).toBeCloseTo(40, 3);
+  });
+
+  it('is idempotent: pre-welding the same mesh yields the identical line count', () => {
+    const raw = lProfile();
+    const welded = mergeVertices(raw);
+    expect(projectGeometry(welded, 'front', 1).length)
+      .toBe(projectGeometry(raw, 'front', 1).length);
   });
 });
 

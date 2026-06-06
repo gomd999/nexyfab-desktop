@@ -3,6 +3,7 @@
 // with hidden-line detection, dimension annotations, and centerlines.
 
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
@@ -236,13 +237,26 @@ export function getProjectionDef(view: ProjectionView): ProjectionDef {
  * Uses face-normal direction to classify edges as visible or hidden.
  */
 export function projectGeometry(
-  geometry: THREE.BufferGeometry,
+  geometryIn: THREE.BufferGeometry,
   projection: ProjectionView,
   scale: number,
 ): DrawingLine[] {
+  if (!geometryIn.attributes.position) return [];
+
+  // Weld coincident vertices first. Edges are keyed by vertex INDEX, and shared
+  // edges are recognised (and their two face normals collected) only when the
+  // adjacent triangles reference the SAME indices. Mesh sources here are mostly
+  // unwelded — THREE primitives, ExtrudeGeometry, boolean output — where every
+  // triangle owns its own vertices, so a manifold edge looks like two distinct
+  // single-face boundary edges. The consequence: interior triangulation
+  // diagonals on a flat face (e.g. the front face of an L-profile) survive as
+  // spurious "feature" lines instead of being suppressed as coplanar. Welding
+  // makes coincident vertices share an index so each manifold edge gets both
+  // normals and the dot-product feature test works. Idempotent for already-
+  // welded input. (Same unwelded-primitive class as the surfaceQuality fix.)
+  const geometry = mergeVertices(geometryIn.index ? geometryIn : geometryIn.toNonIndexed());
   const pos = geometry.attributes.position;
   const idx = geometry.index;
-  if (!pos) return [];
 
   const triCount = idx ? idx.count / 3 : pos.count / 3;
   const def = getProjectionDef(projection);
