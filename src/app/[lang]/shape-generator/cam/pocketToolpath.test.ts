@@ -139,4 +139,28 @@ describe('buildPolygonPocketToolpath · arbitrary (non-rectangular) pockets', ()
     expect(r.segments).toHaveLength(0);
     expect(r.toolTooLarge).toBe(true);
   });
+
+  it('topologyAware clears both sides of a pocket that pinches off', () => {
+    // Dumbbell: two boxes joined by a thin neck. A tool that over-runs the neck
+    // would stop the conservative path at the pinch; topologyAware keeps cutting
+    // both lobes.
+    const dumbbell = [
+      { x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 8 }, { x: 40, y: 8 }, { x: 40, y: 0 }, { x: 60, y: 0 },
+      { x: 60, y: 20 }, { x: 40, y: 20 }, { x: 40, y: 12 }, { x: 20, y: 12 }, { x: 20, y: 20 }, { x: 0, y: 20 },
+    ];
+    const tool: ToolingParams = { diameter: 6, stepdown: 2, stepoverFraction: 0.5 };
+    const aware = buildPolygonPocketToolpath(dumbbell, tool, 4, 0, { topologyAware: true });
+    expect(aware.segments.length).toBeGreaterThan(0);
+    const feeds = aware.segments.filter(s => s.kind === 'feed');
+    // feeds reach both the left lobe (x<20) and the right lobe (x>40).
+    expect(feeds.some(s => s.start[0] < 20)).toBe(true);
+    expect(feeds.some(s => s.start[0] > 40)).toBe(true);
+    // every feed point stays inside the boundary's bounding box.
+    for (const s of feeds) for (const p of [s.start, s.end]) {
+      expect(p[0]).toBeGreaterThanOrEqual(-1e-6);
+      expect(p[0]).toBeLessThanOrEqual(60 + 1e-6);
+      expect(p[1]).toBeGreaterThanOrEqual(-1e-6);
+      expect(p[1]).toBeLessThanOrEqual(20 + 1e-6);
+    }
+  });
 });

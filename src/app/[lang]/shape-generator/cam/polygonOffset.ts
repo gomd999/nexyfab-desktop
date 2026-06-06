@@ -104,6 +104,187 @@ export function offsetPolygonInward(polyIn: Pt2[], distance: number): Pt2[] | nu
   return out;
 }
 
+// ── Topology-aware offset (handles concave splits / collapses) ──────────────
+
+/** Distance from point p to segment ab. */
+function distToSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay;
+  const L2 = dx * dx + dy * dy;
+  let t = L2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+
+/** Min distance from p to the polygon's boundary (over all edges as segments). */
+function distToBoundary(poly: Pt2[], px: number, py: number): number {
+  let m = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!, b = poly[(i + 1) % poly.length]!;
+    const dd = distToSeg(px, py, a.x, a.y, b.x, b.y);
+    if (dd < m) m = dd;
+  }
+  return m;
+}
+
+/** Even-odd point-in-polygon. */
+function pointInPoly(poly: Pt2[], px: number, py: number): boolean {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i]!, b = poly[j]!;
+    if ((a.y > py) !== (b.y > py) && px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y) + a.x) c = !c;
+  }
+  return c;
+}
+
+/** Drop interior points that are collinear with their neighbours. */
+function simplifyCollinear(loop: Pt2[], tol = 1e-6): Pt2[] {
+  if (loop.length < 3) return loop;
+  const out: Pt2[] = [];
+  const n = loop.length;
+  for (let i = 0; i < n; i++) {
+    const a = loop[(i - 1 + n) % n]!, b = loop[i]!, c = loop[(i + 1) % n]!;
+    const cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    const scale = Math.hypot(b.x - a.x, b.y - a.y) * Math.hypot(c.x - b.x, c.y - b.y);
+    if (Math.abs(cross) > tol * Math.max(scale, 1)) out.push(b);
+  }
+  return out.length >= 3 ? out : loop;
+}
+
+/** Signed distance to the source: +inside, −outside, zero on the boundary. */
+function signedDist(poly: Pt2[], px: number, py: number): number {
+  const d = distToBoundary(poly, px, py);
+  return pointInPoly(poly, px, py) ? d : -d;
+}
+
+/** Marching-squares segment table. Corner bits: 1=BL, 2=BR, 4=TR, 8=TL (a
+ *  corner bit is set when its field value is ≥ 0). Each entry lists segments as
+ *  pairs of cell-edge ids: 0=bottom, 1=right, 2=top, 3=left. Saddles (5,10) are
+ *  resolved by the caller using the cell-centre sign. */
+const MS_TABLE: number[][][] = [
+  [], [[3, 0]], [[0, 1]], [[3, 1]], [[1, 2]], [], [[0, 2]], [[3, 2]],
+  [[2, 3]], [[2, 0]], [], [[2, 1]], [[1, 3]], [[1, 0]], [[0, 3]], [],
+];
+
+/** Extract the closed boundary loops of the region { signedDist ≥ distance }
+ *  via marching squares on a regular grid. Robust to any topology — splits,
+ *  collapses, multiple components — at the cost of a resolution-limited result. */
+function marchingSquaresOffset(poly: Pt2[], distance: number, res: number): Pt2[][] {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of poly) {
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+  }
+  // Pad by one cell so the region never touches the grid border (→ closed loops).
+  minX -= res; minY -= res; maxX += res; maxY += res;
+  const nx = Math.min(2000, Math.max(2, Math.ceil((maxX - minX) / res)));
+  const ny = Math.min(2000, Math.max(2, Math.ceil((maxY - minY) / res)));
+  const dx = (maxX - minX) / nx, dy = (maxY - minY) / ny;
+
+  // Field f = signedDist − distance, sampled at every grid node.
+  const f: number[] = new Array((nx + 1) * (ny + 1));
+  const at = (i: number, j: number) => f[j * (nx + 1) + i]!;
+  for (let j = 0; j <= ny; j++) {
+    const y = minY + j * dy;
+    for (let i = 0; i <= nx; i++) {
+      f[j * (nx + 1) + i] = signedDist(poly, minX + i * dx, y) - distance;
+    }
+  }
+
+  // Per cell, emit contour segments where f crosses 0.
+  const segs: Array<[Pt2, Pt2]> = [];
+  const lerp = (xa: number, ya: number, va: number, xb: number, yb: number, vb: number): Pt2 => {
+    const t = va / (va - vb);
+    return { x: xa + (xb - xa) * t, y: ya + (yb - ya) * t };
+  };
+  for (let j = 0; j < ny; j++) {
+    for (let i = 0; i < nx; i++) {
+      const x0 = minX + i * dx, y0 = minY + j * dy, x1 = x0 + dx, y1 = y0 + dy;
+      const v00 = at(i, j), v10 = at(i + 1, j), v11 = at(i + 1, j + 1), v01 = at(i, j + 1);
+      let ci = 0;
+      if (v00 >= 0) ci |= 1; if (v10 >= 0) ci |= 2; if (v11 >= 0) ci |= 4; if (v01 >= 0) ci |= 8;
+      if (ci === 0 || ci === 15) continue;
+      // Edge crossing points (only computed when that edge actually flips).
+      const edgePt = (e: number): Pt2 => {
+        switch (e) {
+          case 0: return lerp(x0, y0, v00, x1, y0, v10); // bottom
+          case 1: return lerp(x1, y0, v10, x1, y1, v11); // right
+          case 2: return lerp(x0, y1, v01, x1, y1, v11); // top
+          default: return lerp(x0, y0, v00, x0, y1, v01); // left
+        }
+      };
+      let pairs = MS_TABLE[ci]!;
+      if (ci === 5 || ci === 10) {
+        const center = (v00 + v10 + v11 + v01) / 4;
+        // Connect so the positive region stays consistent across the saddle.
+        if (ci === 5) pairs = center >= 0 ? [[3, 2], [1, 0]] : [[3, 0], [1, 2]];
+        else pairs = center >= 0 ? [[2, 1], [0, 3]] : [[0, 1], [2, 3]];
+      }
+      for (const [ea, eb] of pairs) segs.push([edgePt(ea), edgePt(eb)]);
+    }
+  }
+  if (segs.length === 0) return [];
+
+  // Chain the undirected segments into closed loops by endpoint matching.
+  const q = Math.max(res * 1e-4, 1e-9);
+  const key = (p: Pt2) => `${Math.round(p.x / q)}_${Math.round(p.y / q)}`;
+  const adj = new Map<string, Array<{ to: string; pt: Pt2; seg: number }>>();
+  const pts = new Map<string, Pt2>();
+  segs.forEach(([a, b], s) => {
+    const ka = key(a), kb = key(b);
+    pts.set(ka, a); pts.set(kb, b);
+    (adj.get(ka) ?? adj.set(ka, []).get(ka)!).push({ to: kb, pt: b, seg: s });
+    (adj.get(kb) ?? adj.set(kb, []).get(kb)!).push({ to: ka, pt: a, seg: s });
+  });
+  const usedSeg = new Array(segs.length).fill(false);
+  const loops: Pt2[][] = [];
+  for (let s = 0; s < segs.length; s++) {
+    if (usedSeg[s]) continue;
+    const loop: Pt2[] = [];
+    let curKey = key(segs[s]![0]);
+    const startKey = curKey;
+    loop.push(pts.get(curKey)!);
+    let guard = 0;
+    while (guard++ < segs.length + 5) {
+      const nbrs = adj.get(curKey);
+      if (!nbrs) break;
+      const next = nbrs.find(e => !usedSeg[e.seg]);
+      if (!next) break;
+      usedSeg[next.seg] = true;
+      loop.push(next.pt);
+      curKey = next.to;
+      if (curKey === startKey) break;
+    }
+    const simp = simplifyCollinear(ensureCcw(loop));
+    if (simp.length >= 3 && signedArea(simp) > res * res) loops.push(simp);
+  }
+  return loops;
+}
+
+/**
+ * Topology-aware inward offset. Where `offsetPolygonInward` rejects any
+ * self-intersecting result, this resolves the topology so the hard concave
+ * cases come out correct instead of dropped:
+ *   - a thin neck pinches off  → the pocket splits into SEVERAL valid loops;
+ *   - a notch collapses inward → the over-run middle vanishes and the
+ *                                salvageable side regions are each kept.
+ *
+ * Method: contour the region { distance-to-boundary ≥ `distance`, inside } with
+ * marching squares on a distance-field grid (cell ≈ `opts.resolution`, default
+ * `distance/10`). That is topology-exact (any number of resulting pockets,
+ * including a clean pinch-off) but geometrically resolution-limited — the
+ * boundary is piecewise-linear at grid scale, not an analytic straight skeleton.
+ * Returns every offset pocket as a CCW loop.
+ */
+export function offsetPolygonInwardMulti(
+  polyIn: Pt2[], distance: number, opts: { resolution?: number } = {},
+): Pt2[][] {
+  if (polyIn.length < 3) return [];
+  if (distance <= 0) return [ensureCcw(polyIn)];
+  const poly = ensureCcw(polyIn);
+  const res = Math.max(opts.resolution ?? distance / 10, 1e-3);
+  return marchingSquaresOffset(poly, distance, res);
+}
+
 /**
  * Concentric inset contours, `step` mm apart, starting `firstOffset` in from the
  * boundary (= tool radius for a pocket). Stops when the polygon closes up. This
@@ -121,6 +302,26 @@ export function insetContours(boundary: Pt2[], firstOffset: number, step: number
     const c = offsetPolygonInward(boundary, d);
     if (!c) break;
     contours.push(c);
+    d += step;
+  }
+  return contours;
+}
+
+/**
+ * Topology-aware concentric inset. Like `insetContours` but uses
+ * `offsetPolygonInwardMulti`, so a concave pocket that pinches into separate
+ * regions keeps being cleared on both sides instead of stopping at the pinch.
+ * Each entry is one CCW loop; a single depth can contribute several. Stops once
+ * a depth produces no loops at all.
+ */
+export function insetContoursMulti(boundary: Pt2[], firstOffset: number, step: number): Pt2[][] {
+  const contours: Pt2[][] = [];
+  if (boundary.length < 3 || firstOffset <= 0 || step <= 0) return contours;
+  let d = firstOffset;
+  for (let guard = 0; guard < 10000; guard++) {
+    const loops = offsetPolygonInwardMulti(boundary, d);
+    if (loops.length === 0) break;
+    for (const l of loops) contours.push(l);
     d += step;
   }
   return contours;

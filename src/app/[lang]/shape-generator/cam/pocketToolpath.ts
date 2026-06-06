@@ -21,7 +21,7 @@
  *   - Rest-machining / adaptive clearing.
  */
 
-import { insetContours, type Pt2 } from './polygonOffset';
+import { insetContours, insetContoursMulti, type Pt2 } from './polygonOffset';
 
 export interface RectPocket {
   /** Pocket extent on X (mm). */
@@ -217,17 +217,24 @@ export function buildPocketToolpath(
  * contours by the tool radius then the stepover, feeding each as a closed loop
  * at every Z level. Returns toolTooLarge when the tool radius already closes the
  * pocket (no contour fits).
+ *
+ * With `topologyAware`, a concave pocket that pinches into separate regions is
+ * cleared on BOTH sides (insetContoursMulti) instead of stopping at the pinch —
+ * at the cost of a resolution-limited offset boundary.
  */
 export function buildPolygonPocketToolpath(
   boundary: Pt2[],
   tool: ToolingParams,
   depth: number,
   topZ = 0,
+  opts: { topologyAware?: boolean } = {},
 ): ToolpathResult {
   const radius = tool.diameter / 2;
   const stepover = tool.diameter * Math.max(0.05, Math.min(1, tool.stepoverFraction ?? 0.4));
   const stepdown = Math.max(0.01, tool.stepdown);
-  const contours = insetContours(boundary, radius, stepover);
+  const contours = opts.topologyAware
+    ? insetContoursMulti(boundary, radius, stepover)
+    : insetContours(boundary, radius, stepover);
   if (contours.length === 0) {
     return { segments: [], cutLengthMm: 0, rapidLengthMm: 0, passCount: 0, toolTooLarge: true };
   }

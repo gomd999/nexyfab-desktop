@@ -4,10 +4,29 @@
  * contour-parallel toolpath.
  */
 import { describe, it, expect } from 'vitest';
-import { offsetPolygonInward, insetContours, signedArea, ensureCcw, loopSelfIntersects } from './polygonOffset';
+import {
+  offsetPolygonInward, offsetPolygonInwardMulti, insetContours, insetContoursMulti,
+  signedArea, ensureCcw, loopSelfIntersects, type Pt2,
+} from './polygonOffset';
 
 const P = (x: number, y: number) => ({ x, y });
 const square = (s: number) => [P(0, 0), P(s, 0), P(s, s), P(0, s)];
+
+/** Even-odd point-in-polygon (for containment assertions). */
+function inside(poly: Pt2[], pt: Pt2): boolean {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i]!, b = poly[j]!;
+    if ((a.y > pt.y) !== (b.y > pt.y) &&
+        pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y) + a.x) c = !c;
+  }
+  return c;
+}
+function centroid(loop: Pt2[]): Pt2 {
+  let x = 0, y = 0;
+  for (const p of loop) { x += p.x; y += p.y; }
+  return { x: x / loop.length, y: y / loop.length };
+}
 
 describe('signedArea / ensureCcw', () => {
   it('signed area is positive for CCW, negative for CW', () => {
@@ -106,5 +125,84 @@ describe('concave safety — never emit a self-intersecting (gouging) loop', () 
     const bowtie = [P(0, 0), P(10, 10), P(10, 0), P(0, 10)];
     expect(loopSelfIntersects(bowtie)).toBe(true);
     expect(loopSelfIntersects(square(10))).toBe(false);
+  });
+});
+
+describe('offsetPolygonInwardMulti — topology-aware (splits + recovery)', () => {
+  // Dumbbell: two 10×10 boxes joined by a 10×2 neck (y∈[4,6]). Offsetting by
+  // more than half the neck height (1) pinches the neck and splits the pocket.
+  const dumbbell: Pt2[] = [
+    P(0, 0), P(10, 0), P(10, 4), P(20, 4), P(20, 0), P(30, 0),
+    P(30, 10), P(20, 10), P(20, 6), P(10, 6), P(10, 10), P(0, 10),
+  ];
+
+  it('keeps a single loop while the neck still survives (d < half-neck)', () => {
+    const loops = offsetPolygonInwardMulti(dumbbell, 0.5);
+    expect(loops).toHaveLength(1);
+    expect(loopSelfIntersects(loops[0]!)).toBe(false);
+    expect(signedArea(loops[0]!)).toBeGreaterThan(0);
+  });
+
+  it('splits into two CCW pockets once the neck pinches off (d > half-neck)', () => {
+    const loops = offsetPolygonInwardMulti(dumbbell, 1.5);
+    expect(loops.length).toBe(2);
+    for (const l of loops) {
+      expect(signedArea(l)).toBeGreaterThan(0);     // CCW (folds filtered)
+      expect(loopSelfIntersects(l)).toBe(false);    // each simple
+    }
+    // one pocket sits on the left, the other on the right of the pinch.
+    const cx = loops.map(l => centroid(l).x).sort((a, b) => a - b);
+    expect(cx[0]!).toBeLessThan(12);
+    expect(cx[1]!).toBeGreaterThan(18);
+    // every vertex of every loop lies inside the source pocket.
+    for (const l of loops) for (const p of l) expect(inside(dumbbell, p)).toBe(true);
+  });
+
+  // A U-pocket whose 8-wide notch over-runs at d=6: the conservative single
+  // solver gives null; the topology-aware one recovers the salvageable region.
+  const U: Pt2[] = [
+    P(0, 0), P(40, 0), P(40, 40), P(24, 40),
+    P(24, 12), P(16, 12), P(16, 40), P(0, 40),
+  ];
+
+  it('recovers a valid loop where offsetPolygonInward bailed out (null)', () => {
+    expect(offsetPolygonInward(U, 6)).toBeNull();
+    const loops = offsetPolygonInwardMulti(U, 6);
+    expect(loops.length).toBeGreaterThanOrEqual(1);
+    for (const l of loops) {
+      expect(loopSelfIntersects(l)).toBe(false);
+      expect(signedArea(l)).toBeGreaterThan(0);
+      for (const p of l) expect(inside(U, p)).toBe(true);
+    }
+  });
+
+  it('agrees with the simple solver when there is no self-intersection', () => {
+    const single = offsetPolygonInward(square(10), 2)!; // 6×6 = 36
+    const multi = offsetPolygonInwardMulti(square(10), 2, { resolution: 0.1 });
+    expect(multi).toHaveLength(1);
+    // marching-squares is resolution-limited, so compare within a grid-scale band.
+    const area = signedArea(multi[0]!), target = signedArea(single); // 36
+    expect(area).toBeGreaterThan(target - 1.5);
+    expect(area).toBeLessThan(target + 1.5);
+  });
+
+  it('empty when the offset over-runs a convex polygon entirely', () => {
+    expect(offsetPolygonInwardMulti(square(10), 5)).toEqual([]); // no interior
+  });
+});
+
+describe('insetContoursMulti — clears both sides of a pinch', () => {
+  const dumbbell: Pt2[] = [
+    P(0, 0), P(10, 0), P(10, 4), P(20, 4), P(20, 0), P(30, 0),
+    P(30, 10), P(20, 10), P(20, 6), P(10, 6), P(10, 10), P(0, 10),
+  ];
+
+  it('produces loops past the pinch on BOTH sides (left and right pockets)', () => {
+    const contours = insetContoursMulti(dumbbell, 1.5, 1.5);
+    expect(contours.length).toBeGreaterThan(2);
+    for (const c of contours) expect(loopSelfIntersects(c)).toBe(false);
+    const anyLeft = contours.some(c => centroid(c).x < 12);
+    const anyRight = contours.some(c => centroid(c).x > 18);
+    expect(anyLeft && anyRight).toBe(true);
   });
 });
