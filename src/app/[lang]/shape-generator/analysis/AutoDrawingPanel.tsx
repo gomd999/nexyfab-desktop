@@ -44,6 +44,7 @@ const dict = {
     title: '자동 도면 생성', views: '투영 뷰',
     front: '정면', top: '평면', right: '우측면', iso: '등각',
     scale: '축척', paper: '용지', dimensions: '치수', centerlines: '중심선',
+    hiddenLines: '숨은선(정밀 HLR)', hiddenLinesHint: '다른 형상 뒤에 가려진 모서리를 깊이 기준으로 은선 처리합니다 (느리지만 정확).',
     generate: '도면 생성', download: 'SVG 다운로드', printPDF: 'PDF 다운로드', downloadDXF: 'DXF 다운로드',
     titleBlock: '표제란', partName: '부품명', material: '재질', drawnBy: '작성자', date: '날짜', revision: '리비전',
     close: '닫기', landscape: '가로', portrait: '세로', noGeometry: '지오메트리 없음',
@@ -69,6 +70,7 @@ const dict = {
     title: 'Auto Drawing', views: 'Views',
     front: 'Front', top: 'Top', right: 'Right', iso: 'Isometric',
     scale: 'Scale', paper: 'Paper', dimensions: 'Dimensions', centerlines: 'Centerlines',
+    hiddenLines: 'Hidden lines (HLR)', hiddenLinesHint: 'Removes edges occluded behind other geometry using a true depth test (slower, accurate).',
     generate: 'Generate', download: 'Download SVG', printPDF: 'Download PDF', downloadDXF: 'Download DXF',
     titleBlock: 'Title Block', partName: 'Part Name', material: 'Material', drawnBy: 'Drawn By', date: 'Date', revision: 'Revision',
     close: 'Close', landscape: 'Landscape', portrait: 'Portrait', noGeometry: 'No geometry',
@@ -94,6 +96,7 @@ const dict = {
     title: '自動図面生成', views: 'ビュー',
     front: '正面', top: '平面', right: '右側面', iso: 'アイソメ',
     scale: 'スケール', paper: '用紙', dimensions: '寸法', centerlines: '中心線',
+    hiddenLines: '隠れ線(HLR)', hiddenLinesHint: '他の形状の背後に隠れたエッジを深度判定で陰線処理します (低速・高精度)。',
     generate: '生成', download: 'SVGダウンロード', printPDF: 'PDFダウンロード', downloadDXF: 'DXFダウンロード',
     titleBlock: '表題欄', partName: '部品名', material: '材質', drawnBy: '作成者', date: '日付', revision: 'リビジョン',
     close: '閉じる', landscape: '横', portrait: '縦', noGeometry: 'ジオメトリなし',
@@ -119,6 +122,7 @@ const dict = {
     title: '自动工程图', views: '视图',
     front: '正面', top: '顶面', right: '右侧', iso: '等轴测',
     scale: '比例', paper: '纸张', dimensions: '尺寸', centerlines: '中心线',
+    hiddenLines: '隐藏线(HLR)', hiddenLinesHint: '使用真实深度测试隐藏被其他几何体遮挡的边 (较慢但精确)。',
     generate: '生成', download: '下载SVG', printPDF: '下载PDF', downloadDXF: '下载DXF',
     titleBlock: '标题栏', partName: '零件名', material: '材料', drawnBy: '绘制人', date: '日期', revision: '版本',
     close: '关闭', landscape: '横向', portrait: '纵向', noGeometry: '无几何体',
@@ -144,6 +148,7 @@ const dict = {
     title: 'Dibujo Auto', views: 'Vistas',
     front: 'Frontal', top: 'Superior', right: 'Derecha', iso: 'Isométrica',
     scale: 'Escala', paper: 'Papel', dimensions: 'Cotas', centerlines: 'Ejes',
+    hiddenLines: 'Líneas ocultas (HLR)', hiddenLinesHint: 'Oculta las aristas tapadas por otra geometría con una prueba de profundidad real (más lento, preciso).',
     generate: 'Generar', download: 'Descargar SVG', printPDF: 'Descargar PDF', downloadDXF: 'Descargar DXF',
     titleBlock: 'Cuadro título', partName: 'Pieza', material: 'Material', drawnBy: 'Dibujado por', date: 'Fecha', revision: 'Revisión',
     close: 'Cerrar', landscape: 'Horizontal', portrait: 'Vertical', noGeometry: 'Sin geometría',
@@ -169,6 +174,7 @@ const dict = {
     title: 'رسم تلقائي', views: 'المناظر',
     front: 'أمامي', top: 'علوي', right: 'يمين', iso: 'متساوي القياس',
     scale: 'مقياس', paper: 'ورقة', dimensions: 'أبعاد', centerlines: 'خطوط المركز',
+    hiddenLines: 'الخطوط المخفية (HLR)', hiddenLinesHint: 'يخفي الحواف المحجوبة خلف أشكال أخرى باختبار عمق حقيقي (أبطأ، دقيق).',
     generate: 'توليد', download: 'تحميل SVG', printPDF: 'تحميل PDF', downloadDXF: 'تحميل DXF',
     titleBlock: 'كتلة العنوان', partName: 'اسم الجزء', material: 'مادة', drawnBy: 'رسم بواسطة', date: 'تاريخ', revision: 'مراجعة',
     close: 'إغلاق', landscape: 'أفقي', portrait: 'عمودي', noGeometry: 'لا هندسة',
@@ -291,6 +297,7 @@ export default function AutoDrawingPanel({
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [showDimensions, setShowDimensions] = useState(true);
   const [showCenterlines, setShowCenterlines] = useState(true);
+  const [trueHlr, setTrueHlr] = useState(false);
 
   // Title block
   const [tbPartName, setTbPartName] = useState(partName || '');
@@ -432,6 +439,7 @@ export default function AutoDrawingPanel({
     orientation,
     showDimensions,
     showCenterlines,
+    trueHlr,
     tolerance: { linear: linearTol, angular: angularTol },
     roughness: [{ ra: raValue, nx: 0.85, ny: 0.15 }],
     titleBlock: {
@@ -442,7 +450,7 @@ export default function AutoDrawingPanel({
       scale: `${scaleVal}:1`,
       revision: tbRevision,
     },
-  }), [selectedViews, scaleVal, paperSize, orientation, showDimensions, showCenterlines, linearTol, angularTol, raValue, tbPartName, tbMaterial, tbDrawnBy, tbDate, tbRevision]);
+  }), [selectedViews, scaleVal, paperSize, orientation, showDimensions, showCenterlines, trueHlr, linearTol, angularTol, raValue, tbPartName, tbMaterial, tbDrawnBy, tbDate, tbRevision]);
 
   const handleGenerate = useCallback(() => {
     if (!geometry) return;
@@ -472,6 +480,7 @@ export default function AutoDrawingPanel({
     }
     if (typeof prefs.showDimensions === 'boolean') setShowDimensions(prefs.showDimensions);
     if (typeof prefs.showCenterlines === 'boolean') setShowCenterlines(prefs.showCenterlines);
+    if (typeof prefs.trueHlr === 'boolean') setTrueHlr(prefs.trueHlr);
     if (prefs.tolerance?.linear) setLinearTol(prefs.tolerance.linear);
     if (prefs.tolerance?.angular) setAngularTol(prefs.tolerance.angular);
     const ra = prefs.roughness?.[0]?.ra;
@@ -732,6 +741,15 @@ export default function AutoDrawingPanel({
           <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
             <input type="checkbox" checked={showCenterlines} onChange={() => setShowCenterlines(!showCenterlines)} />
             {tt.centerlines}
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }} title={tt.hiddenLinesHint}>
+            <input
+              type="checkbox"
+              data-testid="auto-drawing-truehlr"
+              checked={trueHlr}
+              onChange={() => setTrueHlr(!trueHlr)}
+            />
+            {tt.hiddenLines}
           </label>
         </div>
       </div>
