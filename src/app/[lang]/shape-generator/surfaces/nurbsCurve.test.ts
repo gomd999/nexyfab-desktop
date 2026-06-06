@@ -147,6 +147,25 @@ describe('evalNurbsCurve3DDerivative', () => {
     const expected = new THREE.Vector3(5, 10, 0).normalize();
     expect(d.dot(expected)).toBeGreaterThan(0.99);
   });
+
+  it('rational quarter circle: every point on the circle, tangent ⟂ radius', () => {
+    // Standard exact rational circle arc: 3 CPs, weights [1, √2/2, 1], degree 2.
+    const R = 10, w = Math.SQRT1_2;
+    const curve: NurbsCurve3D = {
+      controlPoints: [
+        new THREE.Vector3(R, 0, 0), new THREE.Vector3(R, R, 0), new THREE.Vector3(0, R, 0),
+      ],
+      degree: 2, knots: [0, 0, 0, 1, 1, 1], weights: [1, w, 1],
+    };
+    for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+      const p = evalNurbsCurve3D(curve, u);
+      expect(Math.hypot(p.x, p.y)).toBeCloseTo(R, 3);           // exactly on the circle
+      const d = evalNurbsCurve3DDerivative(curve, u);
+      const radial = new THREE.Vector3(p.x, p.y, 0).normalize();
+      const tangent = d.clone().normalize();
+      expect(Math.abs(radial.dot(tangent))).toBeLessThan(5e-3); // tangent ⟂ radius
+    }
+  });
 });
 
 describe('sampleNurbsCurve3D', () => {

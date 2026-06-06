@@ -53,6 +53,39 @@ describe('evalCoonsPatch · square boundary → flat plane', () => {
   });
 });
 
+describe('evalCoonsPatch · exact boundary interpolation', () => {
+  // A Coons patch must reproduce each of its four boundary curves exactly along
+  // the corresponding edge. Use a CURVED bottom edge so this is non-trivial
+  // (the square test only exercises straight edges).
+  it('S(u,0) traces the curved bottom edge c0(u) exactly', () => {
+    // Bottom edge: quadratic Bézier arching up in Z. Other edges close the loop.
+    const c0: NurbsCurve3D = {
+      controlPoints: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(5, 0, 6), new THREE.Vector3(10, 0, 0)],
+      degree: 2, knots: [0, 0, 0, 1, 1, 1],
+    };
+    const c1 = lineCurve(new THREE.Vector3(0, 10, 0), new THREE.Vector3(10, 10, 0));
+    const d0 = lineCurve(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10, 0));
+    const d1 = lineCurve(new THREE.Vector3(10, 0, 0), new THREE.Vector3(10, 10, 0));
+    const b: CoonsBoundary = { c0, c1, d0, d1 };
+    for (const u of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
+      const patch = evalCoonsPatch(b, u, 0);
+      // Quadratic Bézier closed form: x = 10u, z = 12u(1−u).
+      expect(patch.x).toBeCloseTo(10 * u, 4);
+      expect(patch.y).toBeCloseTo(0, 4);
+      expect(patch.z).toBeCloseTo(12 * u * (1 - u), 4);
+    }
+  });
+
+  it('S(0,v) traces the left edge d0(v) exactly', () => {
+    const b = squareBoundary(10);
+    for (const v of [0, 0.3, 0.6, 1]) {
+      const patch = evalCoonsPatch(b, 0, v);
+      expect(patch.x).toBeCloseTo(0, 4);
+      expect(patch.y).toBeCloseTo(10 * v, 4); // left edge runs (0,0)→(0,10)
+    }
+  });
+});
+
 describe('evalCoonsPatch · non-planar boundary', () => {
   it('produces a non-planar patch when one edge is lifted in Z', () => {
     const b: CoonsBoundary = {
