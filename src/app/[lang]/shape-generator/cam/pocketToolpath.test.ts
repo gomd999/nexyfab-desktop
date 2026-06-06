@@ -86,3 +86,28 @@ describe('buildPocketToolpath · all-cut segments stay inside the offset rectang
     }
   });
 });
+
+describe('buildPocketToolpath · full coverage + fit guard', () => {
+  it('the zigzag final pass reaches the far inset wall (no uncut ridge)', () => {
+    // 20×13 pocket, Ø4 tool → inset Y [2, 11]; stepover 1.6 does not divide the
+    // 9mm span, so a naïve loop would stop at y=10 and leave a 1mm strip.
+    const r = buildPocketToolpath({ width: 20, height: 13, depth: 2 }, { diameter: 4, stepdown: 2, stepoverFraction: 0.4 }, 'zigzag');
+    const passY = r.segments
+      .filter(s => s.kind === 'feed' && Math.abs(s.start[1] - s.end[1]) < 1e-6)
+      .map(s => s.start[1]);
+    expect(Math.max(...passY)).toBeCloseTo(11, 3); // inset y1 — clears to the wall
+  });
+
+  it('refuses a tool larger than the pocket instead of emitting a bogus plunge', () => {
+    // Ø4 tool, 3mm-wide pocket → inverted inset; must produce nothing.
+    const r = buildPocketToolpath({ width: 3, height: 3, depth: 2 }, { diameter: 4, stepdown: 2, stepoverFraction: 0.4 }, 'zigzag');
+    expect(r.segments).toHaveLength(0);
+    expect(r.cutLengthMm).toBe(0);
+    expect(r.toolTooLarge).toBe(true);
+  });
+
+  it('a tool that exactly spans the pocket (no room) is also rejected', () => {
+    const r = buildPocketToolpath({ width: 6, height: 20, depth: 2 }, { diameter: 6, stepdown: 2 }, 'zigzag');
+    expect(r.toolTooLarge).toBe(true); // width 6 − 2·3 = 0 inset → no path
+  });
+});

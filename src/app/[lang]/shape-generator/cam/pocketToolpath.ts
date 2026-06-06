@@ -61,6 +61,8 @@ export interface ToolpathResult {
   rapidLengthMm: number;
   /** Pass count along Z. */
   passCount: number;
+  /** Set when the tool is too large for the pocket — no toolpath was produced. */
+  toolTooLarge?: boolean;
 }
 
 const SAFE_Z_CLEARANCE = 5; // mm above topZ for rapids
@@ -100,12 +102,15 @@ function zigzagAtZ(
   // Rapid to start.
   out.push({ kind: 'rapid', start: [rect.x0, y, topZ + SAFE_Z_CLEARANCE], end: [rect.x0, y, topZ + SAFE_Z_CLEARANCE] });
   out.push({ kind: 'plunge', start: [rect.x0, y, topZ + SAFE_Z_CLEARANCE], end: [rect.x0, y, z] });
-  while (y <= rect.y1 + 1e-6) {
+  while (true) {
     const fromX = dir === 1 ? rect.x0 : rect.x1;
     const toX = dir === 1 ? rect.x1 : rect.x0;
     out.push({ kind: 'feed', start: [fromX, y, z], end: [toX, y, z] });
-    const nextY = y + stepover;
-    if (nextY > rect.y1 + 1e-6) break;
+    if (y >= rect.y1 - 1e-6) break; // reached the far inset wall
+    // Clamp the last step to y1 so the final pass clears the strip against the
+    // far wall — otherwise (y1−y0) not being a multiple of the stepover leaves an
+    // uncut ridge up to one stepover wide.
+    const nextY = Math.min(y + stepover, rect.y1);
     out.push({ kind: 'feed', start: [toX, y, z], end: [toX, nextY, z] });
     y = nextY;
     dir = dir === 1 ? -1 : 1;
@@ -168,6 +173,14 @@ export function buildPocketToolpath(
   const topZ = pocket.topZ ?? 0;
   const stepdown = Math.max(0.01, tool.stepdown);
   const rect = effectiveRect(pocket, radius);
+
+  // The tool does not fit: a pocket narrower than the tool diameter on either
+  // axis insets to an inverted rectangle. Emit nothing rather than a meaningless
+  // plunge (which the old code counted as cutting) — the caller must pick a
+  // smaller tool.
+  if (rect.x1 <= rect.x0 + 1e-9 || rect.y1 <= rect.y0 + 1e-9) {
+    return { segments: [], cutLengthMm: 0, rapidLengthMm: 0, passCount: 0, toolTooLarge: true };
+  }
 
   const segments: ToolpathSegment[] = [];
   let passCount = 0;
