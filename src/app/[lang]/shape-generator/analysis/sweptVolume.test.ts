@@ -49,6 +49,23 @@ describe('computeSweptVolume', () => {
     expect(r.axisRanges.x).toBeGreaterThan(1);
   });
 
+  it('a single 45° rotation about Z gives the exact √2 diagonal extent', () => {
+    // A 1×1 (XY) box rotated 45° has its corners at ±(√2/2) on each axis, so the
+    // axis range is √2. Validates the quaternion→matrix rotation exactly.
+    const rotPose: Pose = { translation: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, angleDeg: 45 };
+    const r = computeSweptVolume(unitBbox(), [rotPose], { interpolationSamples: 0 });
+    expect(r.axisRanges.x).toBeCloseTo(Math.SQRT2, 6);
+    expect(r.axisRanges.y).toBeCloseTo(Math.SQRT2, 6);
+    expect(r.axisRanges.z).toBeCloseTo(1, 6); // Z unchanged by a Z-rotation
+  });
+
+  it('a 90° rotation about Z maps the box back onto itself (extent 1)', () => {
+    const rotPose: Pose = { translation: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 0, z: 1 }, angleDeg: 90 };
+    const r = computeSweptVolume(unitBbox(), [rotPose], { interpolationSamples: 0 });
+    expect(r.axisRanges.x).toBeCloseTo(1, 6);
+    expect(r.axisRanges.y).toBeCloseTo(1, 6);
+  });
+
   it('records 8 corners per pose', () => {
     const r = computeSweptVolume(unitBbox(), [identityPose()], { interpolationSamples: 0 });
     expect(r.cornerSamples).toHaveLength(8);
