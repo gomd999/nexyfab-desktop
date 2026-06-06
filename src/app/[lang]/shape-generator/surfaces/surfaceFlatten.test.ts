@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
 import { flattenSurface, gaussianCurvature, isDevelopable, type SurfaceMesh } from './surfaceFlatten';
+
+function meshFrom(geo: THREE.BufferGeometry): SurfaceMesh {
+  return {
+    positions: Array.from(geo.attributes.position.array as Float32Array),
+    indices: Array.from(geo.index!.array as Uint16Array | Uint32Array),
+  };
+}
+function median(a: number[]): number {
+  const s = [...a].sort((x, y) => x - y);
+  return s[Math.floor(s.length / 2)]!;
+}
 
 /** Single triangle in xy-plane (z=0). */
 const triangleMesh: SurfaceMesh = {
@@ -69,6 +81,24 @@ describe('flattenSurface', () => {
     // Cone with apex angle defect — stretch should grow.
     expect(r.maxStretch).toBeGreaterThanOrEqual(1);
   });
+
+  // Closed-form validation: a developable surface flattens isometrically; a
+  // doubly-curved one cannot, and the distortion must show up in the metric.
+  it('a cylinder (developable) flattens with stretch ≈ 1 on every triangle', () => {
+    const cyl = meshFrom(new THREE.CylinderGeometry(5, 5, 20, 48, 8, true));
+    const r = flattenSurface(cyl);
+    expect(r.maxStretch).toBeLessThan(1.05);                       // isometric
+    for (const ratio of r.areaRatioPerTriangle) expect(ratio).toBeCloseTo(1, 1);
+  });
+
+  it('a sphere (non-developable) cannot flatten — the metric flags heavy stretch', () => {
+    const sph = meshFrom(new THREE.SphereGeometry(5, 32, 24));
+    const flat = flattenSurface(sph);
+    const cyl = flattenSurface(meshFrom(new THREE.CylinderGeometry(5, 5, 20, 48, 8, true)));
+    // The sphere must distort far more than the developable cylinder.
+    expect(flat.maxStretch).toBeGreaterThan(1.5);
+    expect(flat.maxStretch).toBeGreaterThan(cyl.maxStretch * 5);
+  });
 });
 
 describe('gaussianCurvature', () => {
@@ -89,6 +119,21 @@ describe('gaussianCurvature', () => {
   it('returns one value per vertex', () => {
     const k = gaussianCurvature(coneMesh());
     expect(k).toHaveLength(5);
+  });
+
+  it('a sphere of radius R reads interior K ≈ 1/R² (angle-defect estimator)', () => {
+    const R = 5;
+    const geo = new THREE.SphereGeometry(R, 48, 32);
+    const k = gaussianCurvature(meshFrom(geo));
+    const pos = geo.attributes.position.array as Float32Array;
+    const interior: number[] = [];
+    for (let i = 0; i < pos.length / 3; i++) {
+      const x = pos[i * 3]!, y = pos[i * 3 + 1]!, z = pos[i * 3 + 2]!;
+      if (Math.abs(y) > 0.7 * R) continue;        // skip the pole fans (Y axis)
+      if (Math.abs(x) < 0.05 && z < 0) continue;  // skip the seam
+      interior.push(k[i]!);
+    }
+    expect(median(interior)).toBeCloseTo(1 / (R * R), 2); // 0.04
   });
 });
 
