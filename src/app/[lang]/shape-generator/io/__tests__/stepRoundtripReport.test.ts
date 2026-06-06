@@ -1,10 +1,10 @@
 /**
  * stepRoundtripReport.test.ts — pure-math drift tests.
  *
- * The WASM chain (`runStepRoundtripReport`) lives in the existing
- * RUN_OCCT_FEASIBILITY=1 gated suite; this file covers the
- * `computeRoundtripDrift` math without loading WASM so it runs in the
- * default CI suite.
+ * The WASM chain (`runStepRoundtripReport`) is exercised by the sibling
+ * `stepRoundtripWasm.feasibility.test.ts` (RUN_OCCT_FEASIBILITY=1, via
+ * `npm run test:occt:feasibility`); this file covers the `computeRoundtripDrift`
+ * math without loading WASM so it runs in the default CI suite.
  *
  * Covers:
  *  - perfect match → verdict='clean', all zeroes
