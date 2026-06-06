@@ -86,4 +86,51 @@ describe('SemanticTagRegistry', () => {
     r.clear();
     expect(r.entries()).toEqual([]);
   });
+
+  // ── Boolean SPLIT propagation (the module's actual purpose) ──────────────
+  // A real split moves each fragment's midpoint well away from the original
+  // click, so point-proximity alone tags neither half (the C0-kink bug). A
+  // fragment is the same edge when it is COLLINEAR and within the original's
+  // reach; that tags both halves while off-line siblings keep their distance.
+  const edge = (pos: [number, number, number], length: number, direction: [number, number, number]): EdgeSelectionInfo =>
+    ({ type: 'edge', position: pos, length, direction, normal: [0, 1, 0] });
+
+  it('tags BOTH halves when a boolean splits an edge at its centre', () => {
+    const r = new SemanticTagRegistry();
+    const orig = edge([0, 0, 0], 40, [1, 0, 0]); // clicked mid of a 40mm +X edge
+    const tag = mintSemanticTag(orig);
+    r.register(tag, orig);
+    // Split at x=0 → fragments at x=−10 and x=+10 (each midpoint 10mm from click).
+    const report = r.propagateAfterBoolean([
+      edge([-10, 0, 0], 20, [1, 0, 0]),
+      edge([10, 0, 0], 20, [1, 0, 0]),
+    ]);
+    expect(report.taggedFragments).toBe(2);
+    expect(report.orphans).toHaveLength(0);
+    expect(r.resolve(tag)).toHaveLength(3); // original + two halves
+  });
+
+  it('tags both fragments of an off-centre (end-clicked) split', () => {
+    const r = new SemanticTagRegistry();
+    const orig = edge([-18, 0, 0], 40, [1, 0, 0]);
+    const tag = mintSemanticTag(orig);
+    r.register(tag, orig);
+    const report = r.propagateAfterBoolean([
+      edge([-19, 0, 0], 4, [1, 0, 0]),
+      edge([10, 0, 0], 32, [1, 0, 0]),
+    ]);
+    expect(report.taggedFragments).toBe(2);
+    expect(report.orphans).toHaveLength(0);
+  });
+
+  it('a parallel but OFF-LINE edge (opposite side) does not steal the tag', () => {
+    const r = new SemanticTagRegistry();
+    const orig = edge([0, 0, 20], 40, [1, 0, 0]); // top-front +X edge (z=+20)
+    const tag = mintSemanticTag(orig);
+    r.register(tag, orig);
+    // top-back edge: same +X direction, but 40mm off the line in z.
+    const report = r.propagateAfterBoolean([edge([0, 0, -20], 40, [1, 0, 0])]);
+    expect(report.taggedFragments).toBe(0);
+    expect(report.orphans).toHaveLength(1);
+  });
 });
