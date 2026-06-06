@@ -280,6 +280,12 @@ export function auditCurveJunction(curveA: CurveSample[], curveB: CurveSample[])
   const tangentDeg = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
   const curvRatio = b.curvature !== 0 ? a.curvature / b.curvature : (a.curvature === 0 ? 1 : 0);
 
+  // This audit compares position, tangent and curvature at the junction, so it
+  // can certify up to G2 (curvature continuity). It deliberately does NOT claim
+  // G3: G3 is curvature-DERIVATIVE (dκ/ds) continuity, which cannot be told from
+  // the junction curvatures alone — and the two curves are signed against
+  // independent reference binormals, so a cross-curve dκ/ds comparison would be
+  // unreliable anyway. Reporting G3 from a tighter ratio (as before) overclaimed.
   let level: GLevel = 'G0';
   if (posGap < 0.01) {
     level = 'G0';
@@ -287,9 +293,6 @@ export function auditCurveJunction(curveA: CurveSample[], curveB: CurveSample[])
       level = 'G1';
       if (Math.abs(curvRatio - 1) < 0.05) {
         level = 'G2';
-        if (Math.abs(curvRatio - 1) < 0.01) {
-          level = 'G3';
-        }
       }
     }
   }

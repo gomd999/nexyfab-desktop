@@ -191,7 +191,19 @@ describe('auditCurveJunction', () => {
     ];
     const r = auditCurveJunction(a, b);
     expect(r.positionGapMm).toBeCloseTo(0, 6);
-    expect(['G1', 'G2', 'G3']).toContain(r.achievedLevel);
+    // Position + tangent + equal curvature → G2 exactly. The audit must NOT
+    // overclaim G3 (curvature-derivative continuity is not assessable here).
+    expect(r.achievedLevel).toBe('G2');
+  });
+
+  it('never returns G3 — even with an exact curvature match', () => {
+    const mk = (t: number, k: number): CurveSample => ({
+      t, position: { x: 0, y: 0, z: 0 }, tangent: { x: 1, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 }, curvature: k,
+    });
+    // Identical curvature (ratio exactly 1) used to be mislabelled G3.
+    const r = auditCurveJunction([mk(1, 0.5)], [mk(0, 0.5)]);
+    expect(r.curvatureRatio).toBeCloseTo(1, 6);
+    expect(r.achievedLevel).toBe('G2');
   });
 
   it('big gap → G0', () => {
