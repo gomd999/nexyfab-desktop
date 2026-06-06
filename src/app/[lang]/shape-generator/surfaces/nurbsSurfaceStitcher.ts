@@ -87,13 +87,14 @@ export function stitch(patches: Patch[], options: Partial<StitchOptions> = {}): 
       if (matched.has(j)) continue;
       const b = allBoundaries[j]!;
       if (a.patchId === b.patchId) continue;
-      const direct = polylineDistance(a.points, b.points);
-      const reversed = polylineDistance(a.points, [...b.points].reverse());
-      const gap = Math.min(direct, reversed);
+      // Sampling-independent gap (point-to-segment, see polylineDistance).
+      const gap = polylineDistance(a.points, b.points);
       if (gap < bestGap) {
         bestGap = gap;
         bestJ = j;
-        bestReversed = reversed < direct;
+        // The gap metric is direction-agnostic, so detect a flipped seam from
+        // which endpoints line up rather than from the distance.
+        bestReversed = boundariesReversed(a.points, b.points);
       }
     }
     if (bestJ >= 0 && bestGap <= opts.toleranceMm) {
@@ -165,32 +166,56 @@ export function polylineDistance(
   a: Array<[number, number, number]>,
   b: Array<[number, number, number]>,
 ): number {
-  // Symmetric average sampling distance — robust if polylines have
-  // similar lengths but small offset.
+  // Symmetric mean point-to-POLYLINE distance. Using distance to the nearest
+  // SEGMENT (not to a same-parameter sample) makes the gap independent of how
+  // each boundary happened to be sampled — two patches trimmed independently
+  // produce the same curve at different point densities, and that must still
+  // read as a zero gap. (The old same-parameter-sample average reported 0.67 mm
+  // for one identical line sampled 2 vs 3 points, so real seams were missed.)
   if (a.length === 0 || b.length === 0) return Infinity;
-  const n = Math.max(a.length, b.length);
-  let total = 0;
-  for (let i = 0; i < n; i++) {
-    const ta = i / Math.max(1, n - 1);
-    const pa = sampleAt(a, ta);
-    const pb = sampleAt(b, ta);
-    total += Math.hypot(pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]);
-  }
-  return total / n;
+  return (directedMeanDistance(a, b) + directedMeanDistance(b, a)) / 2;
 }
 
-function sampleAt(poly: Array<[number, number, number]>, t: number): [number, number, number] {
-  if (poly.length === 1) return poly[0]!;
-  const u = Math.max(0, Math.min(0.9999, t)) * (poly.length - 1);
-  const i = Math.floor(u);
-  const f = u - i;
-  const a = poly[i]!;
-  const b = poly[Math.min(poly.length - 1, i + 1)]!;
-  return [
-    a[0] + (b[0] - a[0]) * f,
-    a[1] + (b[1] - a[1]) * f,
-    a[2] + (b[2] - a[2]) * f,
-  ];
+/** Mean over points of `from` of the distance to the nearest segment of `to`. */
+function directedMeanDistance(
+  from: Array<[number, number, number]>,
+  to: Array<[number, number, number]>,
+): number {
+  let total = 0;
+  for (const p of from) total += pointToPolylineDistance(p, to);
+  return total / from.length;
+}
+
+function pointToPolylineDistance(p: [number, number, number], poly: Array<[number, number, number]>): number {
+  if (poly.length === 1) return Math.hypot(p[0] - poly[0]![0], p[1] - poly[0]![1], p[2] - poly[0]![2]);
+  let min = Infinity;
+  for (let i = 0; i < poly.length - 1; i++) {
+    const d = pointToSegmentDistance(p, poly[i]!, poly[i + 1]!);
+    if (d < min) min = d;
+  }
+  return min;
+}
+
+function pointToSegmentDistance(
+  p: [number, number, number], a: [number, number, number], b: [number, number, number],
+): number {
+  const abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
+  const apx = p[0] - a[0], apy = p[1] - a[1], apz = p[2] - a[2];
+  const L2 = abx * abx + aby * aby + abz * abz;
+  let t = L2 > 0 ? (apx * abx + apy * aby + apz * abz) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - (a[0] + abx * t), p[1] - (a[1] + aby * t), p[2] - (a[2] + abz * t));
+}
+
+/** Decide whether boundary B runs opposite to A by which endpoints align. */
+function boundariesReversed(
+  a: Array<[number, number, number]>, b: Array<[number, number, number]>,
+): boolean {
+  if (a.length < 1 || b.length < 1) return false;
+  const a0 = a[0]!, a1 = a[a.length - 1]!, b0 = b[0]!, b1 = b[b.length - 1]!;
+  const d = (p: [number, number, number], q: [number, number, number]) =>
+    Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  return d(a0, b1) + d(a1, b0) < d(a0, b0) + d(a1, b1);
 }
 
 // ── Snap helper ────────────────────────────────────────────────
