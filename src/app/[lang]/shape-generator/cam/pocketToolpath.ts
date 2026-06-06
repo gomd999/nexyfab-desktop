@@ -12,11 +12,16 @@
  *   - Z stepdown via repeated planar passes.
  *   - Stepover = tool diameter × fraction (default 0.4 = 40%).
  *
+ * Arbitrary (non-rectangular) pockets are now handled by
+ * `buildPolygonPocketToolpath`, which drives the polygon offset solver
+ * (`polygonOffset.ts`) for a contour-parallel path.
+ *
  * Out of scope:
- *   - Arbitrary 2D pocket profile (would need an offset solver).
  *   - 3-axis surface machining.
  *   - Rest-machining / adaptive clearing.
  */
+
+import { insetContours, type Pt2 } from './polygonOffset';
 
 export interface RectPocket {
   /** Pocket extent on X (mm). */
@@ -203,5 +208,50 @@ export function buildPocketToolpath(
     else rapidLen += len;
   }
 
+  return { segments, cutLengthMm: cutLen, rapidLengthMm: rapidLen, passCount };
+}
+
+/**
+ * Contour-parallel toolpath for an ARBITRARY (non-rectangular) pocket given its
+ * 2D boundary polygon. Uses the polygon offset solver to inset concentric
+ * contours by the tool radius then the stepover, feeding each as a closed loop
+ * at every Z level. Returns toolTooLarge when the tool radius already closes the
+ * pocket (no contour fits).
+ */
+export function buildPolygonPocketToolpath(
+  boundary: Pt2[],
+  tool: ToolingParams,
+  depth: number,
+  topZ = 0,
+): ToolpathResult {
+  const radius = tool.diameter / 2;
+  const stepover = tool.diameter * Math.max(0.05, Math.min(1, tool.stepoverFraction ?? 0.4));
+  const stepdown = Math.max(0.01, tool.stepdown);
+  const contours = insetContours(boundary, radius, stepover);
+  if (contours.length === 0) {
+    return { segments: [], cutLengthMm: 0, rapidLengthMm: 0, passCount: 0, toolTooLarge: true };
+  }
+
+  const segments: ToolpathSegment[] = [];
+  let passCount = 0;
+  for (let dz = stepdown; dz <= depth + 1e-9; dz += stepdown) {
+    const z = topZ - dz;
+    for (const c of contours) {
+      const start = c[0]!;
+      segments.push({ kind: 'rapid', start: [start.x, start.y, topZ + SAFE_Z_CLEARANCE], end: [start.x, start.y, topZ + SAFE_Z_CLEARANCE] });
+      segments.push({ kind: 'plunge', start: [start.x, start.y, topZ + SAFE_Z_CLEARANCE], end: [start.x, start.y, z] });
+      for (let i = 0; i < c.length; i++) {
+        const a = c[i]!, b = c[(i + 1) % c.length]!;
+        segments.push({ kind: 'feed', start: [a.x, a.y, z], end: [b.x, b.y, z] });
+      }
+    }
+    passCount++;
+  }
+
+  let cutLen = 0, rapidLen = 0;
+  for (const s of segments) {
+    const len = segLength(s);
+    if (s.kind === 'feed' || s.kind === 'plunge') cutLen += len; else rapidLen += len;
+  }
   return { segments, cutLengthMm: cutLen, rapidLengthMm: rapidLen, passCount };
 }

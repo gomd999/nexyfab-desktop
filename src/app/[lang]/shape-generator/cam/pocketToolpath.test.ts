@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPocketToolpath, type RectPocket, type ToolingParams } from './pocketToolpath';
+import { buildPocketToolpath, buildPolygonPocketToolpath, type RectPocket, type ToolingParams } from './pocketToolpath';
 
 const pocket: RectPocket = { width: 50, height: 30, depth: 6 };
 const tool: ToolingParams = { diameter: 6, stepdown: 2, stepoverFraction: 0.5 };
@@ -109,5 +109,34 @@ describe('buildPocketToolpath · full coverage + fit guard', () => {
   it('a tool that exactly spans the pocket (no room) is also rejected', () => {
     const r = buildPocketToolpath({ width: 6, height: 20, depth: 2 }, { diameter: 6, stepdown: 2 }, 'zigzag');
     expect(r.toolTooLarge).toBe(true); // width 6 − 2·3 = 0 inset → no path
+  });
+});
+
+describe('buildPolygonPocketToolpath · arbitrary (non-rectangular) pockets', () => {
+  const L = [
+    { x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 20 },
+    { x: 20, y: 20 }, { x: 20, y: 40 }, { x: 0, y: 40 },
+  ];
+
+  it('clears an L-shaped pocket with a contour-parallel path inside the boundary', () => {
+    const r = buildPolygonPocketToolpath(L, { diameter: 4, stepdown: 2, stepoverFraction: 0.4 }, 6, 0);
+    expect(r.passCount).toBe(3);
+    const feeds = r.segments.filter(s => s.kind === 'feed');
+    expect(feeds.length).toBeGreaterThan(0);
+    expect(r.cutLengthMm).toBeGreaterThan(0);
+    // every feed point stays within the L's bounding box (and offset in from it).
+    for (const s of feeds) for (const p of [s.start, s.end]) {
+      expect(p[0]).toBeGreaterThanOrEqual(-1e-6);
+      expect(p[0]).toBeLessThanOrEqual(40 + 1e-6);
+      expect(p[1]).toBeGreaterThanOrEqual(-1e-6);
+      expect(p[1]).toBeLessThanOrEqual(40 + 1e-6);
+    }
+  });
+
+  it('rejects a tool wider than the polygon', () => {
+    const thin = [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 30 }, { x: 0, y: 30 }];
+    const r = buildPolygonPocketToolpath(thin, { diameter: 4, stepdown: 2 }, 6, 0);
+    expect(r.segments).toHaveLength(0);
+    expect(r.toolTooLarge).toBe(true);
   });
 });
