@@ -229,6 +229,130 @@ export function nurbsIsoCurvatureComb(
   return out;
 }
 
+/** Renderable line geometry for a curvature comb overlay. */
+export interface CurvatureCombGeometry {
+  /** Spike segments — flat [x,y,z,...], two vertices per station (base, tip). */
+  spikes: number[];
+  /** Envelope polyline through the spike tips — flat xyz, one vertex per station. */
+  envelope: number[];
+  /** Per-vertex RGB (0..1) for the spike segments, two per station, ramped by |κ|. */
+  spikeColors: number[];
+  /** Spike scale actually used (mm of spike per 1/mm of curvature). */
+  scale: number;
+  /** Max |κ| across the stations — for the legend. */
+  maxCurvature: number;
+}
+
+/** Blue→green→red ramp for t∈[0,1] (low→high curvature). */
+function curvatureColor(t: number): [number, number, number] {
+  const x = Math.max(0, Math.min(1, t));
+  // Two-segment lerp: blue(0,0.3,1)→green(0,0.9,0.2)→red(1,0.15,0).
+  if (x < 0.5) {
+    const k = x / 0.5;
+    return [0 + k * 0, 0.3 + k * 0.6, 1 + k * (0.2 - 1)];
+  }
+  const k = (x - 0.5) / 0.5;
+  return [0 + k * 1, 0.9 + k * (0.15 - 0.9), 0.2 + k * (0 - 0.2)];
+}
+
+/**
+ * Build renderable comb geometry from analytic isocurve samples.
+ *
+ * Each station gets a spike from the surface point to `point + normal·κ·scale`
+ * — the spike is drawn on the SIGNED side of κ, so an inflection flips the comb
+ * across the curve (the whole point of a comb). The envelope polyline joins the
+ * tips. When `scale` is omitted it auto-fits so the longest spike spans
+ * `targetFraction` (default 0.25) of the curve's bounding-box diagonal. Feed
+ * `spikes`/`spikeColors` to a THREE.LineSegments and `envelope` to a Line.
+ */
+export function buildCurvatureCombGeometry(
+  samples: IsoCombSample[],
+  opts: { scale?: number; targetFraction?: number } = {},
+): CurvatureCombGeometry {
+  const spikes: number[] = [];
+  const envelope: number[] = [];
+  const spikeColors: number[] = [];
+  let maxK = 0;
+  for (const s of samples) maxK = Math.max(maxK, Math.abs(s.curvature));
+
+  let scale = opts.scale ?? 0;
+  if (!opts.scale) {
+    // Bounding-box diagonal of the curve points → auto spike length.
+    const lo = new THREE.Vector3(Infinity, Infinity, Infinity);
+    const hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    for (const s of samples) { lo.min(s.position); hi.max(s.position); }
+    const diag = lo.distanceTo(hi);
+    const frac = opts.targetFraction ?? 0.25;
+    scale = maxK > 1e-9 && diag > 0 ? (diag * frac) / maxK : 0;
+  }
+
+  for (const s of samples) {
+    const ext = s.curvature * scale; // signed
+    const tipx = s.position.x + s.normal.x * ext;
+    const tipy = s.position.y + s.normal.y * ext;
+    const tipz = s.position.z + s.normal.z * ext;
+    spikes.push(s.position.x, s.position.y, s.position.z, tipx, tipy, tipz);
+    envelope.push(tipx, tipy, tipz);
+    const [r, g, b] = curvatureColor(maxK > 1e-9 ? Math.abs(s.curvature) / maxK : 0);
+    spikeColors.push(r, g, b, r, g, b);
+  }
+  return { spikes, envelope, spikeColors, scale, maxCurvature: maxK };
+}
+
+/** Flat buffers for a multi-isocurve comb overlay, ready for BufferGeometry. */
+export interface CombScene {
+  /** Spike line-segment vertices (2 per station, all combs concatenated). */
+  spikePositions: number[];
+  /** Per-vertex RGB matching spikePositions. */
+  spikeColors: number[];
+  /** Envelope line-SEGMENT vertices (consecutive tips expanded to pairs). */
+  envelopeSegments: number[];
+  /** Max |κ| across every station of every comb. */
+  maxCurvature: number;
+}
+
+/**
+ * Assemble a render-ready comb scene over several isocurves at once — the data
+ * the R3F `CurvatureCombOverlay` feeds straight into two `lineSegments`. Each
+ * fixed parameter in `isoParams` draws one comb; the envelope polyline is
+ * expanded into discrete segments here so the overlay can avoid R3F's `<line>`
+ * (which collides with the DOM SVGLineElement type).
+ */
+export function buildCombScene(
+  surface: NurbsSurface,
+  opts: {
+    isoDirection?: 'u' | 'v';
+    isoParams?: number[];
+    sampleCount?: number;
+    scale?: number;
+    targetFraction?: number;
+  } = {},
+): CombScene {
+  const isoDirection = opts.isoDirection ?? 'u';
+  const isoParams = opts.isoParams && opts.isoParams.length ? opts.isoParams : [0.25, 0.5, 0.75];
+  const sampleCount = opts.sampleCount ?? 24;
+  const spikePositions: number[] = [];
+  const spikeColors: number[] = [];
+  const envelopeSegments: number[] = [];
+  let maxCurvature = 0;
+  for (const p of isoParams) {
+    const comb = nurbsIsoCurvatureComb(surface, isoDirection, p, sampleCount);
+    const g = buildCurvatureCombGeometry(
+      comb, opts.scale != null ? { scale: opts.scale } : { targetFraction: opts.targetFraction },
+    );
+    maxCurvature = Math.max(maxCurvature, g.maxCurvature);
+    spikePositions.push(...g.spikes);
+    spikeColors.push(...g.spikeColors);
+    for (let i = 0; i + 1 < comb.length; i++) {
+      envelopeSegments.push(
+        g.envelope[i * 3]!, g.envelope[i * 3 + 1]!, g.envelope[i * 3 + 2]!,
+        g.envelope[(i + 1) * 3]!, g.envelope[(i + 1) * 3 + 1]!, g.envelope[(i + 1) * 3 + 2]!,
+      );
+    }
+  }
+  return { spikePositions, spikeColors, envelopeSegments, maxCurvature };
+}
+
 export function nurbsSurfaceCurvature(s: NurbsSurface, u: number, v: number): SurfaceCurvature {
   const { Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
   const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
