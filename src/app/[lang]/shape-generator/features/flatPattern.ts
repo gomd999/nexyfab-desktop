@@ -38,7 +38,7 @@ export interface FlatPatternResult {
  * Calculate bend allowance using K-factor method
  * BA = π × (R + K×T) × (A/180)
  */
-function calcBendAllowance(
+export function calcBendAllowance(
   innerRadius: number,
   thickness: number,
   angle: number,
