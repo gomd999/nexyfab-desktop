@@ -299,6 +299,57 @@ export function buildCurvatureCombGeometry(
   return { spikes, envelope, spikeColors, scale, maxCurvature: maxK };
 }
 
+/** An inflection of a surface isocurve — where its normal curvature κ_n
+ *  changes sign (the comb flips across the curve there). */
+export interface IsoInflection {
+  /** Boundary parameter t∈(0,1) of the inflection. */
+  t: number;
+  /** Surface point at the inflection. */
+  position: THREE.Vector3;
+}
+
+/**
+ * Find the inflections of a NURBS surface isocurve — the parameters where the
+ * analytic normal curvature κ_n crosses zero (a sign change), which is exactly
+ * where a curvature comb flips from one side of the curve to the other. The
+ * class-A "no unwanted inflection" check. Samples κ_n densely, then bisects each
+ * sign change to a tight tolerance. Flat (κ≈0) stretches are not reported as
+ * inflections — only genuine sign reversals.
+ */
+export function findIsoInflections(
+  s: NurbsSurface, isoDirection: 'u' | 'v', fixedParam: number, samples = 64,
+): IsoInflection[] {
+  const a = isoDirection === 'u' ? 0 : 1;
+  const b = isoDirection === 'u' ? 1 : 0;
+  const uvOf = (t: number) => (isoDirection === 'u' ? { u: fixedParam, v: t } : { u: t, v: fixedParam });
+  const kappaAt = (t: number): number => { const { u, v } = uvOf(t); return normalCurvature(s, u, v, a, b); };
+  const pointAt = (t: number): THREE.Vector3 => { const { u, v } = uvOf(t); return rationalDerivs(homogeneousDerivs(s, u, v)).P; };
+
+  const n = Math.max(4, samples);
+  const ks: number[] = [];
+  for (let i = 0; i < n; i++) ks.push(kappaAt(i / (n - 1)));
+  const maxAbs = Math.max(...ks.map(Math.abs), 1e-12);
+  const eps = maxAbs * 1e-3; // ignore near-zero noise / tangent touches
+
+  const out: IsoInflection[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const ka = ks[i]!, kb = ks[i + 1]!;
+    if (Math.abs(ka) < eps || Math.abs(kb) < eps) continue;
+    if (Math.sign(ka) === Math.sign(kb)) continue;
+    // Bisect the sign change between t_i and t_{i+1}.
+    let lo = i / (n - 1), hi = (i + 1) / (n - 1), klo = ka;
+    for (let it = 0; it < 50; it++) {
+      const mid = (lo + hi) / 2;
+      const km = kappaAt(mid);
+      if (km === 0) { lo = hi = mid; break; }
+      if (Math.sign(km) === Math.sign(klo)) { lo = mid; klo = km; } else hi = mid;
+    }
+    const t = (lo + hi) / 2;
+    out.push({ t, position: pointAt(t) });
+  }
+  return out;
+}
+
 /** Flat buffers for a multi-isocurve comb overlay, ready for BufferGeometry. */
 export interface CombScene {
   /** Spike line-segment vertices (2 per station, all combs concatenated). */
@@ -307,6 +358,9 @@ export interface CombScene {
   spikeColors: number[];
   /** Envelope line-SEGMENT vertices (consecutive tips expanded to pairs). */
   envelopeSegments: number[];
+  /** Inflection-marker line-SEGMENT vertices — a small screen-agnostic cross
+   *  on the surface at each isocurve inflection (κ_n sign change). */
+  inflectionMarkers: number[];
   /** Max |κ| across every station of every comb. */
   maxCurvature: number;
 }
@@ -334,6 +388,7 @@ export function buildCombScene(
   const spikePositions: number[] = [];
   const spikeColors: number[] = [];
   const envelopeSegments: number[] = [];
+  const inflectionMarkers: number[] = [];
   let maxCurvature = 0;
   for (const p of isoParams) {
     const comb = nurbsIsoCurvatureComb(surface, isoDirection, p, sampleCount);
@@ -349,8 +404,14 @@ export function buildCombScene(
         g.envelope[(i + 1) * 3]!, g.envelope[(i + 1) * 3 + 1]!, g.envelope[(i + 1) * 3 + 2]!,
       );
     }
+    // Inflection crosses, sized from the comb scale so they read at any zoom.
+    const r = (g.scale > 0 ? g.scale : 1) * (maxCurvature > 0 ? maxCurvature : 1) * 0.15 + 1e-3;
+    for (const inf of findIsoInflections(surface, isoDirection, p, Math.max(48, sampleCount * 2))) {
+      const c = inf.position;
+      inflectionMarkers.push(c.x - r, c.y, c.z, c.x + r, c.y, c.z, c.x, c.y - r, c.z, c.x, c.y + r, c.z);
+    }
   }
-  return { spikePositions, spikeColors, envelopeSegments, maxCurvature };
+  return { spikePositions, spikeColors, envelopeSegments, inflectionMarkers, maxCurvature };
 }
 
 export function nurbsSurfaceCurvature(s: NurbsSurface, u: number, v: number): SurfaceCurvature {

@@ -56,10 +56,10 @@ describe('CurvatureCombOverlay', () => {
     expect(props['data-testid']).toBe('curvature-comb-overlay');
   });
 
-  it('renders two lineSegments children (spikes + envelope)', () => {
+  it('renders two lineSegments children (spikes + envelope) when there is no inflection', () => {
     const out = runOverlay({ surface: cylinder(), isoParams: [0.5], sampleCount: 8 });
     const rootProps = (out as React.ReactElement).props as { children?: React.ReactNode };
-    const children = React.Children.toArray(rootProps.children) as React.ReactElement[];
+    const children = (React.Children.toArray(rootProps.children) as React.ReactElement[]).filter(Boolean);
     expect(children).toHaveLength(2);
     for (const c of children) expect(c.type).toBe('lineSegments');
     // Both carry a BufferGeometry with a position attribute.
@@ -67,5 +67,22 @@ describe('CurvatureCombOverlay', () => {
       const geo = (c.props as { geometry: THREE.BufferGeometry }).geometry;
       expect(geo.getAttribute('position')).toBeTruthy();
     }
+  });
+
+  it('adds an inflection-marker lineSegments for an S-profile surface', () => {
+    const V0 = (y: number, z: number, x: number) => new THREE.Vector3(x, y, z);
+    const sCurve: NurbsSurface = {
+      controlPoints: [
+        [V0(0, 0, 0), V0(1, 1, 0), V0(2, -1, 0), V0(3, 0, 0)],
+        [V0(0, 0, 10), V0(1, 1, 10), V0(2, -1, 10), V0(3, 0, 10)],
+      ],
+      degreeU: 1, degreeV: 3, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 0, 0, 1, 1, 1, 1],
+    };
+    const out = runOverlay({ surface: sCurve, isoDirection: 'u', isoParams: [0.5], sampleCount: 16 });
+    const rootProps = (out as React.ReactElement).props as { children?: React.ReactNode };
+    const children = (React.Children.toArray(rootProps.children) as React.ReactElement[]).filter(Boolean);
+    expect(children).toHaveLength(3); // spikes + envelope + inflection crosses
+    const infl = children.find(c => (c.props as { userData?: { inflectionMarkers?: boolean } }).userData?.inflectionMarkers);
+    expect(infl).toBeTruthy();
   });
 });

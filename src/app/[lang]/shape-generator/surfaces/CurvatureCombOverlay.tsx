@@ -41,6 +41,10 @@ export interface CurvatureCombOverlayProps {
   spikeOpacity?: number;
   /** Envelope polyline colour (default '#f8fafc'). */
   envelopeColor?: string;
+  /** Draw inflection-point crosses (κ_n sign changes). Default true. */
+  showInflections?: boolean;
+  /** Inflection cross colour (default '#fbbf24'). */
+  inflectionColor?: string;
 }
 
 export function CurvatureCombOverlay({
@@ -53,6 +57,8 @@ export function CurvatureCombOverlay({
   visible = true,
   spikeOpacity = 0.95,
   envelopeColor = '#f8fafc',
+  showInflections = true,
+  inflectionColor = '#fbbf24',
 }: CurvatureCombOverlayProps): React.ReactElement | null {
   const built = useMemo(() => {
     if (!surface) return null;
@@ -64,7 +70,12 @@ export function CurvatureCombOverlay({
     spikeGeo.setAttribute('color', new THREE.Float32BufferAttribute(scene.spikeColors, 3));
     const envGeo = new THREE.BufferGeometry();
     envGeo.setAttribute('position', new THREE.Float32BufferAttribute(scene.envelopeSegments, 3));
-    return { spikeGeo, envGeo };
+    let inflGeo: THREE.BufferGeometry | null = null;
+    if (scene.inflectionMarkers.length > 0) {
+      inflGeo = new THREE.BufferGeometry();
+      inflGeo.setAttribute('position', new THREE.Float32BufferAttribute(scene.inflectionMarkers, 3));
+    }
+    return { spikeGeo, envGeo, inflGeo };
   }, [surface, isoDirection, isoParams, sampleCount, scale, targetFraction]);
 
   if (!surface || !visible || !built) return null;
@@ -77,6 +88,11 @@ export function CurvatureCombOverlay({
       <lineSegments geometry={built.envGeo}>
         <lineBasicMaterial color={envelopeColor} transparent opacity={0.9} depthTest={false} />
       </lineSegments>
+      {showInflections && built.inflGeo && (
+        <lineSegments geometry={built.inflGeo} userData={{ inflectionMarkers: true }}>
+          <lineBasicMaterial color={inflectionColor} transparent opacity={0.95} depthTest={false} />
+        </lineSegments>
+      )}
     </group>
   );
 }

@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
   nurbsSurfaceCurvature, normalCurvature, nurbsIsoCurvatureComb,
-  buildCurvatureCombGeometry, buildCombScene,
+  buildCurvatureCombGeometry, buildCombScene, findIsoInflections,
 } from './nurbsSurfaceCurvature';
 import type { NurbsSurface } from './nurbsSurface';
 
@@ -220,6 +220,38 @@ describe('buildCurvatureCombGeometry — overlay geometry', () => {
   });
 });
 
+describe('findIsoInflections — analytic curvature sign changes', () => {
+  it('an S-profile extrusion has exactly one inflection at the symmetric centre', () => {
+    // Cubic Bézier profile in (y,z) that is point-symmetric about (1.5, 0):
+    // (0,0)(1,1)(2,−1)(3,0) — an S, so its signed curvature is zero at v=0.5.
+    // Extruded along x (degree 1). The v-isocurve inflects at the centre.
+    const V0 = (y: number, z: number, x: number) => new THREE.Vector3(x, y, z);
+    const s: NurbsSurface = {
+      controlPoints: [
+        [V0(0, 0, 0), V0(1, 1, 0), V0(2, -1, 0), V0(3, 0, 0)],
+        [V0(0, 0, 10), V0(1, 1, 10), V0(2, -1, 10), V0(3, 0, 10)],
+      ],
+      degreeU: 1, degreeV: 3, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 0, 0, 1, 1, 1, 1],
+    };
+    const infl = findIsoInflections(s, 'u', 0.5, 64);
+    expect(infl).toHaveLength(1);
+    expect(infl[0]!.t).toBeCloseTo(0.5, 3);
+  });
+
+  it('a constant-curvature cylinder isocurve has no inflection', () => {
+    const R = 10, w = Math.SQRT1_2;
+    const cyl: NurbsSurface = {
+      controlPoints: [
+        [V(0, R, 0), V(0, R, R), V(0, 0, R)],
+        [V(20, R, 0), V(20, R, R), V(20, 0, R)],
+      ],
+      weights: [[1, w, 1], [1, w, 1]],
+      degreeU: 1, degreeV: 2, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 0, 1, 1, 1],
+    };
+    expect(findIsoInflections(cyl, 'u', 0.5, 48)).toHaveLength(0);
+  });
+});
+
 describe('buildCombScene — multi-isocurve overlay assembly', () => {
   const R = 10, w = Math.SQRT1_2;
   const cyl: NurbsSurface = {
@@ -244,6 +276,25 @@ describe('buildCombScene — multi-isocurve overlay assembly', () => {
     const scene = buildCombScene(cyl);
     expect(scene.spikePositions).toHaveLength(6 * 24 * 3);
     expect(scene.envelopeSegments).toHaveLength(6 * 23 * 3);
+  });
+
+  it('emits no inflection markers for a constant-curvature cylinder', () => {
+    const scene = buildCombScene(cyl, { isoParams: [0.5], sampleCount: 16 });
+    expect(scene.inflectionMarkers).toHaveLength(0);
+  });
+
+  it('emits an inflection cross (4 segment-vertex pairs) for an S-profile', () => {
+    const V0 = (y: number, z: number, x: number) => new THREE.Vector3(x, y, z);
+    const sCurve: NurbsSurface = {
+      controlPoints: [
+        [V0(0, 0, 0), V0(1, 1, 0), V0(2, -1, 0), V0(3, 0, 0)],
+        [V0(0, 0, 10), V0(1, 1, 10), V0(2, -1, 10), V0(3, 0, 10)],
+      ],
+      degreeU: 1, degreeV: 3, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 0, 0, 1, 1, 1, 1],
+    };
+    const scene = buildCombScene(sCurve, { isoDirection: 'u', isoParams: [0.5], sampleCount: 24 });
+    // One inflection → one cross = 2 segments = 4 vertices = 12 numbers.
+    expect(scene.inflectionMarkers).toHaveLength(12);
   });
 
   it('envelope segments are contiguous (each tip shared by adjacent pairs)', () => {
