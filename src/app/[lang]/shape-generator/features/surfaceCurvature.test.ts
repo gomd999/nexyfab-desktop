@@ -63,6 +63,32 @@ describe('sampleCurveFromPolyline', () => {
   it('empty input → empty output', () => {
     expect(sampleCurveFromPolyline([])).toEqual([]);
   });
+
+  it('circle: the normal is the in-plane principal normal toward the centre', () => {
+    // Half-circle centred at the origin. At each interior sample the unit
+    // normal must lie in the curve plane (z≈0) and point radially inward — NOT
+    // the binormal (±Z), which the old code returned.
+    const r = sampleCurveFromPolyline(arc(0, 0, 10, 50));
+    for (const s of r.slice(5, -5)) {
+      expect(Math.abs(s.normal.z)).toBeLessThan(1e-6);             // in the plane
+      const radial = -(s.position.x * s.normal.x + s.position.y * s.normal.y);
+      expect(radial).toBeGreaterThan(0.99 * 10);                   // points to centre
+    }
+  });
+
+  it('S-curve: the sampler produces a genuine curvature SIGN change', () => {
+    // y = sin(x) over [0, 2π] inflects at x = π. The Menger magnitude is
+    // unsigned, so the sampler must sign it (via the reference binormal) or
+    // findInflectionPoints can never fire on real data.
+    const pts: Point3D[] = [];
+    for (let i = 0; i <= 60; i++) { const x = (i / 60) * 2 * Math.PI; pts.push({ x, y: Math.sin(x), z: 0 }); }
+    const s = sampleCurveFromPolyline(pts);
+    const signs = new Set(s.slice(1, -1).map(p => Math.sign(p.curvature)).filter(v => v !== 0));
+    expect(signs.has(1) && signs.has(-1)).toBe(true);              // both signs occur
+    const infl = findInflectionPoints(s);
+    expect(infl.length).toBeGreaterThanOrEqual(1);
+    expect(infl.some(p => Math.abs(p.t - 0.5) < 0.1)).toBe(true);  // near x=π
+  });
 });
 
 describe('generateCurvatureComb', () => {
