@@ -133,4 +133,32 @@ describe('SemanticTagRegistry', () => {
     expect(report.taggedFragments).toBe(0);
     expect(report.orphans).toHaveLength(1);
   });
+
+  it('a MERGE (reverse split) lets a longer combined edge inherit the tag', () => {
+    const r = new SemanticTagRegistry();
+    const a = edge([-10, 0, 0], 20, [1, 0, 0]); // short edge spanning x[-20,0]
+    const tag = mintSemanticTag(a);
+    r.register(tag, a);
+    // a boolean joins it with a collinear neighbour into one 40mm edge.
+    const report = r.propagateAfterBoolean([edge([0, 0, 0], 40, [1, 0, 0])]);
+    expect(report.taggedFragments).toBe(1);
+    expect(r.resolve(tag)).toHaveLength(2);
+  });
+
+  it('merges far past the original reach still match when the spans overlap', () => {
+    const r = new SemanticTagRegistry();
+    const a = edge([-30, 0, 0], 10, [1, 0, 0]); // x[-35,-25]
+    const tag = mintSemanticTag(a);
+    r.register(tag, a);
+    // merged super-edge x[-35,35] (mid 0) overlaps a → overlap-reach tags it.
+    expect(r.propagateAfterBoolean([edge([0, 0, 0], 70, [1, 0, 0])]).taggedFragments).toBe(1);
+  });
+
+  it('a separate collinear edge with a real GAP is rejected (not a fragment)', () => {
+    const r = new SemanticTagRegistry();
+    const a = edge([0, 0, 0], 10, [1, 0, 0]);
+    r.register(mintSemanticTag(a), a);
+    // 100mm down the same line, no span overlap → orphan.
+    expect(r.propagateAfterBoolean([edge([100, 0, 0], 10, [1, 0, 0])]).taggedFragments).toBe(0);
+  });
 });

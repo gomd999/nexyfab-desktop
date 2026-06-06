@@ -47,9 +47,12 @@ function fragmentLiesOnEdge(
   const perpX = wx - along * ux, perpY = wy - along * uy, perpZ = wz - along * uz;
   const perp = Math.hypot(perpX, perpY, perpZ);
   if (perp > tolMm) return false;                 // not on the same line
-  // Within the original edge's reach (position need not be the midpoint, so this
-  // is generous — the original length bounds how far a fragment can sit).
-  return Math.abs(along) <= orig.length + tolMm;
+  // The two must OVERLAP along the line, not just be collinear: the gap between
+  // their reference points may not exceed their combined half-extents. This
+  // tags a split fragment (shorter, inside) AND a merged super-edge (longer,
+  // straddling) while a genuinely separate edge further down the same line —
+  // beyond both half-lengths — is rejected.
+  return Math.abs(along) <= (orig.length + frag.length) / 2 + tolMm;
 }
 
 export type SemanticTag = string & { readonly __brand: 'SemanticTag' };
