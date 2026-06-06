@@ -577,16 +577,21 @@ describe('solveAssembly · performance characteristics (verified)', () => {
     expect(large.bodies[5].position.y).toBeCloseTo(5, 3);
   });
 
-  it('a deep chain is reported Not-Converged at the default budget — never silently wrong', () => {
-    const r = solveAssembly(chain(30)); // default 200 sweeps; depth 29 needs far more
-    expect(r.converged).toBe(false);     // honest: the panel surfaces this as ⚠
-    expect(r.iterations).toBe(200);      // budget exhausted, not a false early "ok"
-    // And given a large enough budget it DOES settle to the exact solution,
-    // proving the non-convergence is a budget/rate limit, not a wrong fixed point.
-    const settled = solveAssembly(chain(30), 20000);
-    expect(settled.converged).toBe(true);
+  it('a deep grounded chain now converges in ONE sweep via the BFS warm-start', () => {
+    // Previously O(N²): a depth-29 chain blew past the default 200 budget. The
+    // warm-start places the whole tree in one O(N) pass from the fixed base, so
+    // the relaxation has nothing left to do.
+    const r = solveAssembly(chain(30));
+    expect(r.converged).toBe(true);
+    expect(r.iterations).toBe(1);
     let maxErr = 0;
-    for (const b of settled.bodies) maxErr = Math.max(maxErr, b.position.length());
+    for (const b of r.bodies) maxErr = Math.max(maxErr, b.position.length());
     expect(maxErr).toBeLessThan(1e-2);   // whole chain collapses onto the fixed base
+  });
+
+  it('warm-start scales: a 200-deep chain still solves in one sweep', () => {
+    const r = solveAssembly(chain(200));
+    expect(r.converged).toBe(true);
+    expect(r.iterations).toBe(1);
   });
 });

@@ -671,6 +671,74 @@ export function calculateDOF(state: AssemblyState): number {
  * corrections until the maximum residual drops below 1e-5 or maxIterations
  * is reached.
  */
+/** Dispatch one mate to its applier, returning the residual. Shared by the
+ *  warm-start placement pass and the relaxation sweep. */
+function dispatchMate(bodies: AssemblyBody[], mate: Mate): number {
+  switch (mate.type) {
+    case 'coincident':   return applyCoincidentConstraint(bodies, mate);
+    case 'concentric':   return applyConcentricConstraint(bodies, mate);
+    case 'parallel':     return applyParallelConstraint(bodies, mate);
+    case 'perpendicular': return applyPerpendicularConstraint(bodies, mate);
+    case 'distance':     return applyDistanceConstraint(bodies, mate);
+    case 'angle':        return applyAngleConstraint(bodies, mate);
+    case 'fixed':        return 0; // handled by body.fixed flag
+    case 'hinge':        return applyHingeConstraint(bodies, mate);
+    case 'slider':       return applySliderConstraint(bodies, mate);
+    case 'gear':         return applyGearConstraint(bodies, mate);
+    case 'belt':         return applyBeltConstraint(bodies, mate);
+    case 'tangent':      return applyTangentConstraint(bodies, mate);
+    default:             return 0;
+  }
+}
+
+/**
+ * Warm-start: place bodies in BFS order outward from the grounded (fixed)
+ * bodies, treating each already-placed body as fixed so the whole correction
+ * goes to the body being placed. For a tree/chain assembly this positions every
+ * body in a SINGLE O(N) pass (a depth-N chain otherwise needs O(N²) relaxation
+ * sweeps to propagate). Closed loops and over-constraints are left for the
+ * relaxation that follows — this only provides a near-solved starting point, so
+ * the converged result is unchanged; it just removes the chain-propagation cost.
+ */
+function warmStartPlacement(bodies: AssemblyBody[], mates: Mate[]): void {
+  const n = bodies.length;
+  if (n === 0) return;
+  // Adjacency: body → mates touching it (with the index of the other body).
+  const adj: Array<Array<{ mate: Mate; other: number }>> = Array.from({ length: n }, () => []);
+  for (const m of mates) {
+    const a = m.selections[0].bodyIndex, b = m.selections[1].bodyIndex;
+    if (a < 0 || a >= n || b < 0 || b >= n || a === b) continue;
+    adj[a]!.push({ mate: m, other: b });
+    adj[b]!.push({ mate: m, other: a });
+  }
+  const origFixed = bodies.map(b => b.fixed);
+  const placed = new Uint8Array(n);
+  const queue: number[] = [];
+  for (let i = 0; i < n; i++) if (bodies[i]!.fixed) { placed[i] = 1; queue.push(i); }
+  // No ground → no anchor to propagate from, and the final pose is arbitrary
+  // (only relative positions are constrained). Skip the warm-start and let the
+  // symmetric relaxation place a free-floating assembly; this preserves the
+  // "both free bodies meet in the middle" behaviour. The O(N²) chain cost we are
+  // removing is a GROUNDED-assembly concern (a chain attached to a frame).
+  if (queue.length === 0) return;
+
+  while (queue.length > 0) {
+    const p = queue.shift()!;
+    for (const { mate, other } of adj[p]!) {
+      if (placed[other]) continue;
+      // Place `other` against the already-placed `p`: pin every placed body so
+      // the applier routes the full correction onto `other`.
+      bodies[other]!.fixed = false;
+      try { dispatchMate(bodies, mate); } catch { /* leave for relaxation */ }
+      bodies[other]!.fixed = true; // now placed → fixed for its own children
+      placed[other] = 1;
+      queue.push(other);
+    }
+  }
+  // Restore the real fixed flags so relaxation only pins genuinely-grounded bodies.
+  for (let i = 0; i < n; i++) bodies[i]!.fixed = origFixed[i]!;
+}
+
 export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveResult {
   // Deep-clone body transforms to avoid mutating the input
   const bodies: AssemblyBody[] = state.bodies.map(b => ({
@@ -684,6 +752,11 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
   let converged = false;
 
   const enabledMates = state.mates.filter(m => m.enabled);
+
+  // O(N) warm-start: position the dependency tree in one BFS pass so the
+  // relaxation below only has to clean up closed loops, not propagate a chain
+  // one link per sweep.
+  warmStartPlacement(bodies, enabledMates);
 
   for (let iter = 0; iter < maxIterations; iter++) {
     let maxResidual = 0;
@@ -700,47 +773,7 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
           if (!conflicts.includes(mate.id)) conflicts.push(mate.id);
           continue;
         }
-        switch (mate.type) {
-          case 'coincident':
-            residual = applyCoincidentConstraint(bodies, mate);
-            break;
-          case 'concentric':
-            residual = applyConcentricConstraint(bodies, mate);
-            break;
-          case 'parallel':
-            residual = applyParallelConstraint(bodies, mate);
-            break;
-          case 'perpendicular':
-            residual = applyPerpendicularConstraint(bodies, mate);
-            break;
-          case 'distance':
-            residual = applyDistanceConstraint(bodies, mate);
-            break;
-          case 'angle':
-            residual = applyAngleConstraint(bodies, mate);
-            break;
-          case 'fixed':
-            // Handled by body.fixed flag; no per-iteration work needed
-            residual = 0;
-            break;
-          case 'hinge':
-            residual = applyHingeConstraint(bodies, mate);
-            break;
-          case 'slider':
-            residual = applySliderConstraint(bodies, mate);
-            break;
-          case 'gear':
-            residual = applyGearConstraint(bodies, mate);
-            break;
-          case 'belt':
-            residual = applyBeltConstraint(bodies, mate);
-            break;
-          case 'tangent':
-            residual = applyTangentConstraint(bodies, mate);
-            break;
-          default:
-            break;
-        }
+        residual = dispatchMate(bodies, mate);
       } catch {
         if (!conflicts.includes(mate.id)) conflicts.push(mate.id);
         continue;
