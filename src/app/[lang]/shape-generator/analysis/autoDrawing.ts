@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { removeHiddenLinesProjected, trianglesFromArrays } from './hiddenLineRemoval';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
@@ -53,6 +54,10 @@ export interface DrawingConfig {
   orientation: 'landscape' | 'portrait';
   showDimensions: boolean;
   showCenterlines: boolean;
+  /** Use true depth-occlusion hidden-line removal instead of the face-normal
+   *  heuristic. More accurate (resolves edges hidden behind other geometry) at
+   *  an O(edges·triangles) cost; defaults off. */
+  trueHlr?: boolean;
   tolerance?: ToleranceSpec;
   roughness?: RoughnessSpec[];
   titleBlock: {
@@ -236,10 +241,20 @@ export function getProjectionDef(view: ProjectionView): ProjectionDef {
  * Project 3D mesh edges onto a 2D plane for the given view direction.
  * Uses face-normal direction to classify edges as visible or hidden.
  */
+/** View direction (toward the viewer) for each orthographic projection — used by
+ *  the optional true-HLR pass to compute depth. */
+const PROJECTION_VIEW_DIR: Record<ProjectionView, [number, number, number]> = {
+  front: [0, 0, 1], back: [0, 0, -1],
+  top: [0, 1, 0], bottom: [0, -1, 0],
+  right: [1, 0, 0], left: [-1, 0, 0],
+  iso: [1, 1, 1],
+};
+
 export function projectGeometry(
   geometryIn: THREE.BufferGeometry,
   projection: ProjectionView,
   scale: number,
+  opts: { trueHlr?: boolean } = {},
 ): DrawingLine[] {
   if (!geometryIn.attributes.position) return [];
 
@@ -302,6 +317,9 @@ export function projectGeometry(
 
   // Project edges and classify
   const lines: DrawingLine[] = [];
+  // When true-HLR is requested we collect the SELECTED 3D edges here and resolve
+  // their visibility by depth occlusion (below) instead of the face-normal sign.
+  const hlrEdges: Array<[[number, number, number], [number, number, number]]> = [];
 
   for (const [, edge] of edgeMap) {
     const p1 = def.project(edge.a);
@@ -342,6 +360,13 @@ export function projectGeometry(
     // Skip non-feature interior edges
     if (!silhouette) continue;
 
+    if (opts.trueHlr) {
+      // Defer: the edge is a drawn feature; its visibility is decided by
+      // occlusion against the whole solid, not its own face normals.
+      hlrEdges.push([[edge.a.x, edge.a.y, edge.a.z], [edge.b.x, edge.b.y, edge.b.z]]);
+      continue;
+    }
+
     lines.push({
       x1: p1.x * scale,
       y1: p1.y * scale,
@@ -349,6 +374,24 @@ export function projectGeometry(
       y2: p2.y * scale,
       type: visible ? 'visible' : 'hidden',
     });
+  }
+
+  // True HLR: resolve the collected feature edges by depth occlusion against the
+  // whole solid, emitting visible / hidden segments in this view's page frame.
+  if (opts.trueHlr) {
+    const tris = trianglesFromArrays(
+      pos.array as ArrayLike<number>,
+      idx ? (idx.array as ArrayLike<number>) : null,
+    );
+    const viewDir = PROJECTION_VIEW_DIR[projection];
+    // Project consistently with getProjectionDef (page x,y) + depth toward viewer.
+    const project = (v: [number, number, number]) => {
+      const p = def.project(new THREE.Vector3(v[0], v[1], v[2]));
+      return { x: p.x, y: p.y, depth: v[0] * viewDir[0] + v[1] * viewDir[1] + v[2] * viewDir[2] };
+    };
+    const { visible: vis, hidden: hid } = removeHiddenLinesProjected(hlrEdges, tris, project);
+    for (const s of vis) lines.push({ x1: s.a.x * scale, y1: s.a.y * scale, x2: s.b.x * scale, y2: s.b.y * scale, type: 'visible' });
+    for (const s of hid) lines.push({ x1: s.a.x * scale, y1: s.a.y * scale, x2: s.b.x * scale, y2: s.b.y * scale, type: 'hidden' });
   }
 
   return deduplicateLines(lines);
@@ -615,7 +658,7 @@ export function generateDrawing(
   // Project each view
   const rawViews: { projection: ProjectionView; lines: DrawingLine[]; texts: DrawingText[]; w: number; h: number }[] = [];
   for (const v of sortedViews) {
-    let lines = projectGeometry(geometry, v, config.scale);
+    let lines = projectGeometry(geometry, v, config.scale, { trueHlr: config.trueHlr });
     let texts: DrawingText[] = [];
     if (config.showDimensions) {
       const dimResult = generateAutoKeyDimensions(geometry, v, config.scale, config.tolerance);

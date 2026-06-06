@@ -83,9 +83,13 @@ function triDepthAt(t: ProjTri, px: number, py: number): number | null {
   return wa * t.ad + wb * t.bd + wc * t.cd;
 }
 
+/** A projection: world point → page (x, y) + depth (larger = closer to viewer). */
+export type ProjectFn = (p: Vec3) => ProjPt;
+
 /**
  * Split `edges` into visible and hidden 2D segments by depth occlusion against
- * `triangles`, viewed along `viewDir` (pointing toward the viewer).
+ * `triangles`, viewed along `viewDir` (pointing toward the viewer). Standalone
+ * entry — builds an orthonormal page basis from `viewDir`.
  */
 export function removeHiddenLines(
   edges: Array<[Vec3, Vec3]>,
@@ -93,12 +97,27 @@ export function removeHiddenLines(
   viewDir: Vec3,
   options: HlrOptions = {},
 ): HlrResult {
-  const opts = { ...DEFAULT_OPTS, ...options };
   const basis = viewBasis(viewDir);
+  return removeHiddenLinesProjected(edges, triangles, p => projectPoint(p, basis), options);
+}
+
+/**
+ * Same occlusion split, but with a CALLER-SUPPLIED projection so the 2D output
+ * lands in the caller's page frame (e.g. autoDrawing's getProjectionDef axes)
+ * rather than this module's internal basis. `project` must return page (x, y)
+ * plus a depth that grows toward the viewer.
+ */
+export function removeHiddenLinesProjected(
+  edges: Array<[Vec3, Vec3]>,
+  triangles: Array<[Vec3, Vec3, Vec3]>,
+  project: ProjectFn,
+  options: HlrOptions = {},
+): HlrResult {
+  const opts = { ...DEFAULT_OPTS, ...options };
 
   // Pre-project the triangles once.
   const tris: ProjTri[] = triangles.map(([a, b, c]) => {
-    const pa = projectPoint(a, basis), pb = projectPoint(b, basis), pc = projectPoint(c, basis);
+    const pa = project(a), pb = project(b), pc = project(c);
     return {
       ax: pa.x, ay: pa.y, ad: pa.depth,
       bx: pb.x, by: pb.y, bd: pb.depth,
@@ -113,8 +132,8 @@ export function removeHiddenLines(
   const hidden: HlrSegment[] = [];
 
   for (const [a, b] of edges) {
-    const pa = projectPoint(a, basis);
-    const pb = projectPoint(b, basis);
+    const pa = project(a);
+    const pb = project(b);
     const len2d = Math.hypot(pb.x - pa.x, pb.y - pa.y);
     const samples = Math.max(opts.minSamples, Math.ceil(len2d / opts.sampleSpacing) + 1);
 

@@ -116,6 +116,36 @@ describe('projectGeometry · unwelded mesh weld (no triangulation artifacts)', (
   });
 });
 
+describe('projectGeometry · true HLR opt-in (depth occlusion)', () => {
+  it('a convex box is unchanged — no edge is falsely hidden by its own faces', () => {
+    const box = makeBox(20, 30, 40);
+    const def = projectGeometry(box, 'front', 1);
+    const hlr = projectGeometry(box, 'front', 1, { trueHlr: true });
+    // Same 4-edge silhouette, all visible either way (no self-occlusion).
+    expect(hlr.filter(l => l.type === 'hidden')).toHaveLength(0);
+    expect(hlr.filter(l => l.type === 'visible').length).toBe(def.filter(l => l.type === 'visible').length);
+  });
+
+  it('a box parked behind a larger box has its edges marked hidden', () => {
+    // Front block 40×40×10 at the origin; a smaller block behind it at z=−30.
+    const front = new THREE.BoxGeometry(40, 40, 10).toNonIndexed();
+    const back = new THREE.BoxGeometry(20, 20, 10); back.translate(0, 0, -30);
+    const backNI = back.toNonIndexed();
+    const fa = front.getAttribute('position').array as Float32Array;
+    const ba = backNI.getAttribute('position').array as Float32Array;
+    const merged = new Float32Array(fa.length + ba.length);
+    merged.set(fa, 0); merged.set(ba, fa.length);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(merged, 3));
+
+    const hlr = projectGeometry(g, 'front', 1, { trueHlr: true });
+    // The back block's silhouette is occluded → some hidden lines appear, which
+    // the face-normal pass alone never produces here.
+    expect(hlr.filter(l => l.type === 'hidden').length).toBeGreaterThan(0);
+    expect(hlr.filter(l => l.type === 'visible').length).toBeGreaterThan(0);
+  });
+});
+
 describe('generateAutoKeyDimensions · per-view dimension VALUES (verified)', () => {
   // The dimension TEXT must report the projected extents of THIS view, not a
   // fixed pair of world axes. For a 20(X) × 30(Y) × 40(Z) box: front sees X×Y,
