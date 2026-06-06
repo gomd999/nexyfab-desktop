@@ -17,7 +17,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { matchEdgeBySignature, type EdgeSig } from '../features/edgeCorrespondence';
+import { matchEdgeBySignature, matchFaceBySignature, type EdgeSig, type FaceSig } from '../features/edgeCorrespondence';
 import { remapPointThroughBbox } from '../features/topologyEdgeFinder';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import { filletFeature } from '../features/fillet';
@@ -45,6 +45,26 @@ function boxEdgeSigs(b: Box): EdgeSig[] {
   for (const sx of [-1, 1]) for (const sy of [-1, 1])
     sigs.push({ mid: [sx * x, sy * y, 0], dir: [0, 0, 1], length: b.d });
   return sigs;
+}
+
+/** The 6 face signatures of an origin-centred box (signed outward normals). */
+function boxFaceSigs(b: Box): FaceSig[] {
+  const x = b.w / 2, y = b.h / 2, z = b.d / 2;
+  return [
+    { center: [x, 0, 0], normal: [1, 0, 0], geomType: 'PLANE' },
+    { center: [-x, 0, 0], normal: [-1, 0, 0], geomType: 'PLANE' },
+    { center: [0, y, 0], normal: [0, 1, 0], geomType: 'PLANE' },
+    { center: [0, -y, 0], normal: [0, -1, 0], geomType: 'PLANE' },
+    { center: [0, 0, z], normal: [0, 0, 1], geomType: 'PLANE' },
+    { center: [0, 0, -z], normal: [0, 0, -1], geomType: 'PLANE' },
+  ];
+}
+
+/** Re-resolve a stored edge click through a bbox change, returning the matched edge. */
+function reanchorEdge(before: Box, after: Box, pos: [number, number, number], dir: [number, number, number], len: number): EdgeSig | null {
+  const remapped = remapPointThroughBbox(pos, bboxOf(before), bboxOf(after));
+  const idx = matchEdgeBySignature({ mid: remapped, dir, length: len }, boxEdgeSigs(after));
+  return idx >= 0 ? boxEdgeSigs(after)[idx]! : null;
 }
 
 describe('F3 step-1 — selection survives an upstream parameter (dimension) change', () => {
@@ -98,6 +118,45 @@ describe('F3 step-1 — selection survives an upstream parameter (dimension) cha
 
       // front edge sits at z=+40 in the deeper box; must NOT resolve to z=−40.
       expect(matched.mid[2]).toBeGreaterThan(0);
+    });
+
+    it('re-anchors through a simultaneous THREE-axis edit (40³ → 60×30×50)', () => {
+      // The top-front X edge (y=+, z=+) must follow all three axes at once.
+      const m = reanchorEdge({ w: 40, h: 40, d: 40 }, { w: 60, h: 30, d: 50 }, [10, 20, 20], [1, 0, 0], 40);
+      expect(m).not.toBeNull();
+      expect(m!.dir).toEqual([1, 0, 0]);
+      expect(m!.mid[1]).toBeCloseTo(15, 5); // h/2 of the new box
+      expect(m!.mid[2]).toBeCloseTo(25, 5); // d/2 of the new box
+      expect(m!.length).toBeCloseTo(60, 5);
+    });
+
+    it('survives an extreme aspect-ratio change (40³ → 200 long) without losing the edge', () => {
+      const m = reanchorEdge({ w: 40, h: 40, d: 40 }, { w: 200, h: 40, d: 40 }, [10, 20, 20], [1, 0, 0], 40);
+      expect(m).not.toBeNull();
+      expect(m!.mid[1]).toBeCloseTo(20, 5);
+      expect(m!.mid[2]).toBeCloseTo(20, 5);
+      expect(m!.length).toBeCloseTo(200, 5);
+    });
+
+    it('a deep shrink (d 40 → 8) keeps a Z-edge on its own side, not the opposite', () => {
+      // Z-edge at the +x,+y corner. After the part gets thin in Z it stays put.
+      const m = reanchorEdge({ w: 40, h: 40, d: 40 }, { w: 40, h: 40, d: 8 }, [20, 20, 0], [0, 0, 1], 40);
+      expect(m).not.toBeNull();
+      expect(m!.dir).toEqual([0, 0, 1]);
+      expect(m!.mid[0]).toBeCloseTo(20, 5);
+      expect(m!.mid[1]).toBeCloseTo(20, 5);
+      expect(m!.length).toBeCloseTo(8, 5);
+    });
+
+    it('a FACE selection (e.g. shell / sketch-on-face) survives a widen, no jump to the opposite face', () => {
+      // Stored: the +Y top face. After widening it must stay +Y, not flip to −Y.
+      const before: Box = { w: 40, h: 40, d: 40 };
+      const after: Box = { w: 60, h: 40, d: 40 };
+      const storedCenter = remapPointThroughBbox([0, 20, 0], bboxOf(before), bboxOf(after));
+      const target: FaceSig = { center: storedCenter, normal: [0, 1, 0], geomType: 'PLANE' };
+      const idx = matchFaceBySignature(target, boxFaceSigs(after), { scale: 60 });
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(boxFaceSigs(after)[idx]!.normal).toEqual([0, 1, 0]); // still the top face
     });
   });
 
