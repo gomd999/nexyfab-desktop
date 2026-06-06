@@ -198,11 +198,11 @@ export function recognizePockets(mesh: MeshArrays, options: Partial<PocketOption
         }
       }
     }
-    // Halve because each interior boundary edge would be counted once;
-    // boundary edges are only seen once already, but double-counts can creep
-    // in from shared edges between adjacent floor triangles when one
-    // candidate is left out. Halve to compensate as a rough estimate.
-    boundaryLen *= 1;
+    // No correction factor: a boundary edge (one side in the component, the
+    // other a non-candidate wall or the mesh border) belongs to exactly ONE
+    // component triangle, so the loop above visits and adds it exactly once.
+    // Interior edges shared by two component triangles are rejected by the
+    // `otherInComp` test from both sides, so they are never added.
 
     // Aspect ratio from floor bbox.
     let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
