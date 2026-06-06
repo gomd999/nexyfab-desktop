@@ -242,6 +242,22 @@ describe('Knit', () => {
     expect(report.isClosed).toBe(true);
     expect(report.boundaryEdges).toHaveLength(0);
   });
+
+  it('welds vertices within tolerance even when they straddle a grid cell', () => {
+    // Mesh B's shared edge is nudged 0.0006 mm — inside the 0.001 mm tolerance
+    // but across the rounding boundary (cell 0 vs cell 1). The old exact-cell
+    // key left these unwelded, so the seam read as open.
+    const tol = 0.001, eps = 0.0006;
+    const a: SurfaceMesh = { positions: [0, 0, 0, 0, 1, 0, -1, 0, 0], normals: new Array(9).fill(0), uvs: new Array(6).fill(0), indices: [0, 1, 2] };
+    const b: SurfaceMesh = { positions: [eps, 0, 0, eps, 1, 0, 1, 0, 0], normals: new Array(9).fill(0), uvs: new Array(6).fill(0), indices: [0, 1, 2] };
+    const within = knitSurfaces([a, b], { toleranceMm: tol });
+    expect(within.report.mergedVertices).toBe(2);          // both shared verts welded
+    expect(within.report.finalVertexCount).toBe(4);
+    // Beyond tolerance the vertices must stay distinct.
+    const far: SurfaceMesh = { positions: [0.002, 0, 0, 0.002, 1, 0, 1, 0, 0], normals: new Array(9).fill(0), uvs: new Array(6).fill(0), indices: [0, 1, 2] };
+    const beyond = knitSurfaces([a, far], { toleranceMm: tol });
+    expect(beyond.report.mergedVertices).toBe(0);
+  });
 });
 
 // ── Surface fillet ─────────────────────────────────────────────────

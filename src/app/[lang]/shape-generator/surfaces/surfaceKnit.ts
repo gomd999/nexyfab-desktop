@@ -28,11 +28,6 @@ export interface KnitReport {
   boundaryEdges: Array<[number, number]>;
 }
 
-function vKey(x: number, y: number, z: number, tol: number): string {
-  const q = (n: number) => Math.round(n / tol);
-  return `${q(x)}|${q(y)}|${q(z)}`;
-}
-
 /** Combine N surfaces into one mesh with welded vertices. */
 export function knitSurfaces(
   meshes: SurfaceMesh[],
@@ -42,8 +37,29 @@ export function knitSurfaces(
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
-  const remap = new Map<string, number>();
   const indices: number[] = [];
+
+  // Spatial hash: cell (size tol) → indices of welded vertices in that cell.
+  // Welding by exact cell key alone is wrong — two vertices within tol can
+  // straddle a cell boundary (e.g. 0.4·tol and 0.6·tol land in cells 0 and 1)
+  // and would never merge, leaving a seam open. Two points ≤ tol apart differ
+  // by at most one cell per axis, so we search the 3×3×3 neighbourhood and weld
+  // to any existing vertex within the actual `tol` distance.
+  const cellVerts = new Map<string, number[]>();
+  const cellOf = (n: number) => Math.round(n / tol);
+  const cellKey = (cx: number, cy: number, cz: number) => `${cx}|${cy}|${cz}`;
+  const findWeld = (x: number, y: number, z: number): number | undefined => {
+    const cx = cellOf(x), cy = cellOf(y), cz = cellOf(z);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+      const list = cellVerts.get(cellKey(cx + dx, cy + dy, cz + dz));
+      if (!list) continue;
+      for (const gi of list) {
+        const ddx = x - positions[gi * 3]!, ddy = y - positions[gi * 3 + 1]!, ddz = z - positions[gi * 3 + 2]!;
+        if (ddx * ddx + ddy * ddy + ddz * ddz <= tol * tol) return gi;
+      }
+    }
+    return undefined;
+  };
 
   let merged = 0;
   for (const m of meshes) {
@@ -52,14 +68,15 @@ export function knitSurfaces(
       const x = m.positions[i]!;
       const y = m.positions[i + 1]!;
       const z = m.positions[i + 2]!;
-      const key = vKey(x, y, z, tol);
-      let idx = remap.get(key);
+      let idx = findWeld(x, y, z);
       if (idx === undefined) {
         idx = positions.length / 3;
         positions.push(x, y, z);
         normals.push(m.normals[i]!, m.normals[i + 1]!, m.normals[i + 2]!);
         uvs.push(m.uvs[(i / 3) * 2] ?? 0, m.uvs[(i / 3) * 2 + 1] ?? 0);
-        remap.set(key, idx);
+        const ck = cellKey(cellOf(x), cellOf(y), cellOf(z));
+        const bucket = cellVerts.get(ck);
+        if (bucket) bucket.push(idx); else cellVerts.set(ck, [idx]);
       } else {
         merged++;
       }
