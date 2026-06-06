@@ -399,7 +399,8 @@ export function generateAutoKeyDimensions(
   if (!bb) return { lines: [], texts: [] };
 
   const def = getProjectionDef(projection);
-  let { x0, y0, x1, y1 } = viewBounds2D(geometry, def);
+  const proj = viewBounds2D(geometry, def);
+  let { x0, y0, x1, y1 } = proj;
   x0 *= scale; y0 *= scale; x1 *= scale; y1 *= scale;
 
   const dimLines: DrawingLine[] = [];
@@ -419,12 +420,16 @@ export function generateAutoKeyDimensions(
   const aw = Math.max(0.8, fontSize * 0.5);
   const tolStr = tolerance ? ` ${tolerance.linear}` : '';
 
-  // Real model dimensions (in mm). Note: width/height/depth in WORLD space —
-  // their meaning in the 2D drawing depends on projection (front view: realW,
-  // realH dimensioned; depth orthogonal). We rely on top + right views to
-  // capture depth so we no longer emit a redundant "D:" note here.
-  const realW = Math.abs(bb.max.x - bb.min.x);
-  const realH = Math.abs(bb.max.y - bb.min.y);
+  // Real model dimensions (mm) for THIS view = the PROJECTED extents in model
+  // units. Orthographic views have no foreshortening, so the projected width /
+  // height equal the true model lengths along whichever axes the view exposes:
+  // front X×Y, top X×Z, right Z×Y, etc. (Previously hardcoded to world X/Y,
+  // which mislabeled the height on top/bottom and the width on left/right —
+  // a top view of a 20×30×40 box reported its 40 mm depth as "30.0".) Using the
+  // projected bounds also keeps the number consistent with the dimension line,
+  // which spans those same bounds.
+  const realW = Math.abs(proj.x1 - proj.x0);
+  const realH = Math.abs(proj.y1 - proj.y0);
 
   // Width dimension (horizontal, below the part)
   dimLines.push(

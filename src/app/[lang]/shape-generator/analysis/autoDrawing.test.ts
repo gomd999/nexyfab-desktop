@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
   projectGeometry,
+  generateAutoKeyDimensions,
   computeDrawingGeometryFingerprint,
   type ProjectionView,
 } from './autoDrawing';
@@ -112,6 +113,37 @@ describe('projectGeometry · unwelded mesh weld (no triangulation artifacts)', (
     const welded = mergeVertices(raw);
     expect(projectGeometry(welded, 'front', 1).length)
       .toBe(projectGeometry(raw, 'front', 1).length);
+  });
+});
+
+describe('generateAutoKeyDimensions · per-view dimension VALUES (verified)', () => {
+  // The dimension TEXT must report the projected extents of THIS view, not a
+  // fixed pair of world axes. For a 20(X) × 30(Y) × 40(Z) box: front sees X×Y,
+  // top sees X×Z, right sees Z×Y, etc. Regression: width/height were hardcoded
+  // to world X/Y, so a top view labeled its 40 mm depth as "30.0".
+  const box = () => new THREE.BoxGeometry(20, 30, 40);
+  const dimValues = (view: ProjectionView, scale = 1): [number, number] => {
+    const { texts } = generateAutoKeyDimensions(box(), view, scale);
+    return [parseFloat(texts[0].text), parseFloat(texts[1].text)];
+  };
+
+  it.each([
+    ['front', 20, 30],
+    ['top', 20, 40],
+    ['right', 40, 30],
+    ['left', 40, 30],
+    ['bottom', 20, 40],
+  ] as [ProjectionView, number, number][])(
+    '%s view labels [W=%d, H=%d] matching its projected axes',
+    (view, w, h) => {
+      const [vw, vh] = dimValues(view);
+      expect(vw).toBeCloseTo(w, 1);
+      expect(vh).toBeCloseTo(h, 1);
+    },
+  );
+
+  it('reports the true model length regardless of drawing scale', () => {
+    expect(dimValues('top', 1)).toEqual(dimValues('top', 3)); // scale-invariant text
   });
 });
 
