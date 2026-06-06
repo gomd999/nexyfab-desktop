@@ -254,7 +254,8 @@ export function projectGeometry(
   // makes coincident vertices share an index so each manifold edge gets both
   // normals and the dot-product feature test works. Idempotent for already-
   // welded input. (Same unwelded-primitive class as the surfaceQuality fix.)
-  const geometry = mergeVertices(geometryIn.index ? geometryIn : geometryIn.toNonIndexed());
+  // mergeVertices accepts indexed or non-indexed input directly.
+  const geometry = mergeVertices(geometryIn);
   const pos = geometry.attributes.position;
   const idx = geometry.index;
 
