@@ -165,32 +165,41 @@ export function consistentNormals(indices: number[]): { indices: number[]; flipp
   const visited = new Uint8Array(triCount);
   const flipped = new Uint8Array(triCount);
   let flippedCount = 0;
-  const queue: number[] = [0];
-  visited[0] = 1;
 
-  while (queue.length > 0) {
-    const t = queue.shift()!;
-    const a = newIndices[t * 3]!, b = newIndices[t * 3 + 1]!, c = newIndices[t * 3 + 2]!;
-    const tOrient = [[a, b], [b, c], [c, a]] as Array<[number, number]>;
-    for (const [u, v] of tOrient) {
-      const k = edgeKey(u, v);
-      const neighbours = edgeTris.get(k) ?? [];
-      for (const n of neighbours) {
-        if (n === t || visited[n]) continue;
-        visited[n] = 1;
-        // Check neighbour's orientation on this edge — if it traverses
-        // the edge the same direction as `t`, normals disagree → flip.
-        const na = newIndices[n * 3]!, nb = newIndices[n * 3 + 1]!, nc = newIndices[n * 3 + 2]!;
-        const nOrient = [[na, nb], [nb, nc], [nc, na]] as Array<[number, number]>;
-        const sameDir = nOrient.some(([nu, nv]) => nu === u && nv === v);
-        if (sameDir) {
-          newIndices[n * 3]     = na;
-          newIndices[n * 3 + 1] = nc;
-          newIndices[n * 3 + 2] = nb;
-          flipped[n] = 1;
-          flippedCount++;
+  // Re-seed the BFS from every unvisited triangle so EVERY connected
+  // component is harmonised, not just the one containing triangle 0. A
+  // multi-body mesh (assembly / multi-solid STEP import) has several
+  // disconnected shells; a single seed left every shell but the first with
+  // its imported — possibly inconsistent — winding untouched.
+  for (let seed = 0; seed < triCount; seed++) {
+    if (visited[seed]) continue;
+    visited[seed] = 1;
+    const queue: number[] = [seed];
+
+    while (queue.length > 0) {
+      const t = queue.shift()!;
+      const a = newIndices[t * 3]!, b = newIndices[t * 3 + 1]!, c = newIndices[t * 3 + 2]!;
+      const tOrient = [[a, b], [b, c], [c, a]] as Array<[number, number]>;
+      for (const [u, v] of tOrient) {
+        const k = edgeKey(u, v);
+        const neighbours = edgeTris.get(k) ?? [];
+        for (const n of neighbours) {
+          if (n === t || visited[n]) continue;
+          visited[n] = 1;
+          // Check neighbour's orientation on this edge — if it traverses
+          // the edge the same direction as `t`, normals disagree → flip.
+          const na = newIndices[n * 3]!, nb = newIndices[n * 3 + 1]!, nc = newIndices[n * 3 + 2]!;
+          const nOrient = [[na, nb], [nb, nc], [nc, na]] as Array<[number, number]>;
+          const sameDir = nOrient.some(([nu, nv]) => nu === u && nv === v);
+          if (sameDir) {
+            newIndices[n * 3]     = na;
+            newIndices[n * 3 + 1] = nc;
+            newIndices[n * 3 + 2] = nb;
+            flipped[n] = 1;
+            flippedCount++;
+          }
+          queue.push(n);
         }
-        queue.push(n);
       }
     }
   }
