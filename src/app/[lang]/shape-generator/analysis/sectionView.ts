@@ -113,10 +113,13 @@ function intersectTrianglesWithPlane(
   return out;
 }
 
-/** Hatch the bounding box of the section outline with parallel 45°
- *  lines. Proper polygon-interior clipping requires stitching the
- *  segments into closed loops, which we defer; for axis-aligned cuts
- *  through convex bodies the bbox approximation is visually correct. */
+/** Hatch the section INTERIOR with parallel 45° lines, clipped to the actual
+ *  cross-section outline (not just its bounding box). Each 45° line x − y = c is
+ *  intersected with every projected outline segment; the crossings are sorted
+ *  along the line and filled in even-odd pairs, so the hatch stays inside the
+ *  real cut — correct for round, non-convex, and multi-loop sections, where a
+ *  bbox fill used to spill hatching into the empty corners of e.g. a circular
+ *  bore. (Works directly off the segment soup — no loop stitching needed.) */
 function generateHatch(
   outline: Array<{ a: THREE.Vector3; b: THREE.Vector3 }>,
   projection: ProjectionView,
@@ -126,50 +129,47 @@ function generateHatch(
   if (outline.length === 0) return [];
   const def = getProjectionDef(projection);
 
+  // Project the outline segments once.
+  const segs = outline.map(s => ({ p: def.project(s.a), q: def.project(s.b) }));
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const seg of outline) {
-    const p1 = def.project(seg.a);
-    const p2 = def.project(seg.b);
-    minX = Math.min(minX, p1.x, p2.x);
-    minY = Math.min(minY, p1.y, p2.y);
-    maxX = Math.max(maxX, p1.x, p2.x);
-    maxY = Math.max(maxY, p1.y, p2.y);
+  for (const { p, q } of segs) {
+    minX = Math.min(minX, p.x, q.x); minY = Math.min(minY, p.y, q.y);
+    maxX = Math.max(maxX, p.x, q.x); maxY = Math.max(maxY, p.y, q.y);
   }
   if (!Number.isFinite(minX)) return [];
 
   const lines: DrawingLine[] = [];
-  // 45° lines: y = x + c. We sweep c from (minX − maxY) to (maxX − minY)
-  // in `spacing` increments and clip each line to the bbox.
-  const cStart = (minX - maxY);
-  const cEnd = (maxX - minY);
+  // 45° lines have constant x − y = c (slope dy/dx = 1). Sweep c across the
+  // section extent; for each line collect its crossings with the outline.
+  const cStart = minX - maxY;
+  const cEnd = maxX - minY;
   for (let c = cStart; c <= cEnd; c += spacing) {
-    // Intersect with bbox edges:
-    //   left  x=minX → y = minX − c   (must lie in [minY, maxY])
-    //   right x=maxX → y = maxX − c
-    //   bottom y=minY → x = minY + c
-    //   top   y=maxY → x = maxY + c
-    const points: Array<{ x: number; y: number }> = [];
-    const tryPt = (x: number, y: number) => {
-      if (x >= minX - 1e-6 && x <= maxX + 1e-6 && y >= minY - 1e-6 && y <= maxY + 1e-6) {
-        points.push({ x, y });
-      }
-    };
-    tryPt(minX, minX - c);
-    tryPt(maxX, maxX - c);
-    tryPt(minY + c, minY);
-    tryPt(maxY + c, maxY);
-    if (points.length < 2) continue;
-    // Pick the two extreme points (could be 2–4 from corner cases).
-    points.sort((p, q) => p.x - q.x || p.y - q.y);
-    const p1 = points[0];
-    const p2 = points[points.length - 1];
-    lines.push({
-      x1: p1.x * scale,
-      y1: p1.y * scale,
-      x2: p2.x * scale,
-      y2: p2.y * scale,
-      type: 'dimension',
-    });
+    const xs: number[] = [];
+    for (const { p, q } of segs) {
+      const fp = p.x - p.y - c;
+      const fq = q.x - q.y - c;
+      // The line separates the segment's endpoints iff fp and fq differ in sign.
+      if ((fp > 0 && fq > 0) || (fp < 0 && fq < 0)) continue;
+      if (fp === fq) continue; // segment lies along the hatch direction — skip
+      const tt = fp / (fp - fq);
+      if (tt < 0 || tt > 1) continue;
+      xs.push(p.x + (q.x - p.x) * tt); // crossing x (its y is x − c)
+    }
+    if (xs.length < 2) continue;
+    xs.sort((m, n) => m - n);
+    // Dedupe crossings that coincide at a shared vertex (counted on both of the
+    // segments meeting there) so the even-odd parity stays correct.
+    const uniq: number[] = [];
+    for (const x of xs) if (!uniq.length || x - uniq[uniq.length - 1] > 1e-6) uniq.push(x);
+    // Fill between consecutive inside pairs (even-odd rule).
+    for (let i = 0; i + 1 < uniq.length; i += 2) {
+      const x1 = uniq[i], x2 = uniq[i + 1];
+      lines.push({
+        x1: x1 * scale, y1: (x1 - c) * scale,
+        x2: x2 * scale, y2: (x2 - c) * scale,
+        type: 'dimension',
+      });
+    }
   }
   return lines;
 }
