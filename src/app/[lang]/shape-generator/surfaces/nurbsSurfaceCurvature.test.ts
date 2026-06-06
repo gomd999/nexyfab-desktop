@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { nurbsSurfaceCurvature, normalCurvature } from './nurbsSurfaceCurvature';
+import { nurbsSurfaceCurvature, normalCurvature, nurbsIsoCurvatureComb } from './nurbsSurfaceCurvature';
 import type { NurbsSurface } from './nurbsSurface';
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -112,6 +112,49 @@ describe('normalCurvature — directional', () => {
     };
     for (const [a, b] of [[1, 0], [0, 1], [1, 1], [1, -1]] as Array<[number, number]>) {
       expect(Math.abs(normalCurvature(sphere, 0.5, 0.5, a, b))).toBeCloseTo(1 / R, 3);
+    }
+  });
+});
+
+describe('nurbsIsoCurvatureComb — analytic comb', () => {
+  const R = 10, w = Math.SQRT1_2;
+  const cyl: NurbsSurface = {
+    controlPoints: [
+      [V(0, R, 0), V(0, R, R), V(0, 0, R)],
+      [V(20, R, 0), V(20, R, R), V(20, 0, R)],
+    ],
+    weights: [[1, w, 1], [1, w, 1]],
+    degreeU: 1, degreeV: 2, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 0, 1, 1, 1],
+  };
+
+  it('along the circular (v) isocurve: κ_n = 1/R, unit tangent ⟂ unit normal', () => {
+    const comb = nurbsIsoCurvatureComb(cyl, 'u', 0.5, 12); // fixed u, sweep v = circle
+    expect(comb).toHaveLength(12);
+    for (const c of comb) {
+      expect(Math.abs(c.curvature)).toBeCloseTo(1 / R, 3);
+      expect(c.tangent.length()).toBeCloseTo(1, 6);
+      expect(c.normal.length()).toBeCloseTo(1, 6);
+      expect(Math.abs(c.tangent.dot(c.normal))).toBeLessThan(1e-6);
+    }
+  });
+
+  it('along the straight (u) axis isocurve: κ_n = 0 (developable direction)', () => {
+    const comb = nurbsIsoCurvatureComb(cyl, 'v', 0.5, 8); // fixed v, sweep u = axis
+    for (const c of comb) expect(Math.abs(c.curvature)).toBeCloseTo(0, 3);
+  });
+
+  it('on a sphere every isocurve station reads κ_n = 1/R', () => {
+    const sphere: NurbsSurface = {
+      controlPoints: [
+        [V(R, 0, 0), V(R, R, 0), V(0, R, 0)],
+        [V(R, 0, R), V(R, R, R), V(0, R, R)],
+        [V(0, 0, R), V(0, 0, R), V(0, 0, R)],
+      ],
+      weights: [[1, w, 1], [w, 0.5, w], [1, w, 1]],
+      degreeU: 2, degreeV: 2, knotsU: [0, 0, 0, 1, 1, 1], knotsV: [0, 0, 0, 1, 1, 1],
+    };
+    for (const c of nurbsIsoCurvatureComb(sphere, 'u', 0.4, 6)) {
+      expect(Math.abs(c.curvature)).toBeCloseTo(1 / R, 3);
     }
   });
 });

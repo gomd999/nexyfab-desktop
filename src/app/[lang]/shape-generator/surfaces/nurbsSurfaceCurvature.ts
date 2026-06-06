@@ -179,6 +179,56 @@ export function normalCurvature(s: NurbsSurface, u: number, v: number, a: number
   return (L * a * a + 2 * M * a * b + Nf * b * b) / I;
 }
 
+/** One station of an analytic curvature comb sampled along a surface isocurve. */
+export interface IsoCombSample {
+  /** Surface point at this station. */
+  position: THREE.Vector3;
+  /** Unit tangent of the isocurve (direction of travel). */
+  tangent: THREE.Vector3;
+  /** Unit surface normal — the comb spike stands off along this. */
+  normal: THREE.Vector3;
+  /** Surface NORMAL curvature κ_n along the isocurve tangent (1/mm, signed). */
+  curvature: number;
+}
+
+/**
+ * Analytic curvature comb along an isoparametric curve of a NURBS surface.
+ *
+ * Unlike the mesh angle-defect comb (classASurfaceAnalysis.computeCurvature),
+ * this evaluates the EXACT surface normal curvature κ_n = II(d,d)/I(d,d) at each
+ * station from the analytic fundamental forms — the comb a Class-A reviewer
+ * trusts. `isoDirection: 'u'` holds u fixed and sweeps v (tangent = ∂P/∂v,
+ * direction (0,1)); `'v'` holds v fixed and sweeps u (tangent = ∂P/∂u, (1,0)).
+ */
+export function nurbsIsoCurvatureComb(
+  s: NurbsSurface,
+  isoDirection: 'u' | 'v',
+  fixedParam: number,
+  samples = 32,
+): IsoCombSample[] {
+  const out: IsoCombSample[] = [];
+  const n = Math.max(2, samples);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const u = isoDirection === 'u' ? fixedParam : t;
+    const v = isoDirection === 'u' ? t : fixedParam;
+    const { P, Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
+    const tangentRaw = isoDirection === 'u' ? Pv : Pu;
+    const tangent = tangentRaw.lengthSq() > 1e-24 ? tangentRaw.clone().normalize() : new THREE.Vector3(1, 0, 0);
+    const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
+    const normal = nVec.lengthSq() > 1e-24 ? nVec.normalize() : new THREE.Vector3(0, 0, 1);
+    // κ_n in the iso direction: (0,1) → N_form/G, (1,0) → L/E.
+    const E = Pu.dot(Pu), F = Pu.dot(Pv), G = Pv.dot(Pv);
+    const L = Puu.dot(normal), M = Puv.dot(normal), Nf = Pvv.dot(normal);
+    const a = isoDirection === 'u' ? 0 : 1;
+    const b = isoDirection === 'u' ? 1 : 0;
+    const I = E * a * a + 2 * F * a * b + G * b * b;
+    const curvature = Math.abs(I) > 1e-12 ? (L * a * a + 2 * M * a * b + Nf * b * b) / I : 0;
+    out.push({ position: P, tangent, normal, curvature });
+  }
+  return out;
+}
+
 export function nurbsSurfaceCurvature(s: NurbsSurface, u: number, v: number): SurfaceCurvature {
   const { Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
   const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
