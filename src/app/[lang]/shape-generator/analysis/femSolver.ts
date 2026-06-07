@@ -323,6 +323,64 @@ export function computeTet10Stiffness(
   return { Ke, Bc };
 }
 
+/** Cartesian shape-function gradients (∂N/∂x,∂N/∂y,∂N/∂z per node) + |J| at one
+ *  barycentric point — the raw gradients tet10B folds into the symmetric B. Used
+ *  by the geometric-stiffness (buckling) assembly. */
+function tet10Gradients(coords: Float32Array, elem: Int32Array, L: readonly [number, number, number, number]):
+  { dNx: number[]; dNy: number[]; dNz: number[]; detJ: number } {
+  const { dr, ds, dt } = tet10ShapeDeriv(L);
+  const J = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let k = 0; k < 10; k++) {
+    const n = elem[k], dξ = [dr[k], ds[k], dt[k]];
+    const xi = coords[n * 3], yi = coords[n * 3 + 1], zi = coords[n * 3 + 2];
+    for (let j = 0; j < 3; j++) { J[0][j] += dξ[j] * xi; J[1][j] += dξ[j] * yi; J[2][j] += dξ[j] * zi; }
+  }
+  const detJ = J[0][0] * (J[1][1] * J[2][2] - J[1][2] * J[2][1])
+             - J[0][1] * (J[1][0] * J[2][2] - J[1][2] * J[2][0])
+             + J[0][2] * (J[1][0] * J[2][1] - J[1][1] * J[2][0]);
+  const dNx = new Array<number>(10).fill(0), dNy = new Array<number>(10).fill(0), dNz = new Array<number>(10).fill(0);
+  if (Math.abs(detJ) < 1e-18) return { dNx, dNy, dNz, detJ: 0 };
+  const id = 1 / detJ;
+  const inv = [
+    [(J[1][1]*J[2][2]-J[1][2]*J[2][1])*id, (J[0][2]*J[2][1]-J[0][1]*J[2][2])*id, (J[0][1]*J[1][2]-J[0][2]*J[1][1])*id],
+    [(J[1][2]*J[2][0]-J[1][0]*J[2][2])*id, (J[0][0]*J[2][2]-J[0][2]*J[2][0])*id, (J[0][2]*J[1][0]-J[0][0]*J[1][2])*id],
+    [(J[1][0]*J[2][1]-J[1][1]*J[2][0])*id, (J[0][1]*J[2][0]-J[0][0]*J[2][1])*id, (J[0][0]*J[1][1]-J[0][1]*J[1][0])*id],
+  ];
+  for (let k = 0; k < 10; k++) {
+    const dξ = [dr[k], ds[k], dt[k]];
+    dNx[k] = inv[0][0]*dξ[0] + inv[1][0]*dξ[1] + inv[2][0]*dξ[2];
+    dNy[k] = inv[0][1]*dξ[0] + inv[1][1]*dξ[1] + inv[2][1]*dξ[2];
+    dNz[k] = inv[0][2]*dξ[0] + inv[1][2]*dξ[1] + inv[2][2]*dξ[2];
+  }
+  return { dNx, dNy, dNz, detJ };
+}
+
+/** Uniform stress tensor (MPa); compression negative. */
+export interface StressTensor3 { xx: number; yy: number; zz: number; xy?: number; yz?: number; zx?: number }
+
+/** TET10 geometric-stiffness scalar matrix (10×10): kg(a,b) = ∫ ∇N_a·(σ ∇N_b) dV
+ *  over the element, via the 4-point Gauss rule. Couples same-direction DOFs —
+ *  the caller scatters each scalar onto the x-x, y-y, z-z slots of the (a,b)
+ *  nodal block to form the 30×30 geometric stiffness. */
+export function computeTet10GeomScalar(
+  coords: Float32Array, elem: Int32Array, s: StressTensor3,
+): number[][] {
+  const sxx = s.xx, syy = s.yy, szz = s.zz, sxy = s.xy ?? 0, syz = s.yz ?? 0, szx = s.zx ?? 0;
+  const Kg = Array(10).fill(null).map(() => new Array<number>(10).fill(0));
+  for (const L of TET10_GAUSS) {
+    const { dNx, dNy, dNz, detJ } = tet10Gradients(coords, elem, L);
+    if (detJ === 0) continue;
+    const w = detJ / 24;
+    for (let a = 0; a < 10; a++) for (let b = 0; b < 10; b++) {
+      const sbx = sxx * dNx[b] + sxy * dNy[b] + szx * dNz[b];
+      const sby = sxy * dNx[b] + syy * dNy[b] + syz * dNz[b];
+      const sbz = szx * dNx[b] + syz * dNy[b] + szz * dNz[b];
+      Kg[a][b] += w * (dNx[a] * sbx + dNy[a] * sby + dNz[a] * sbz);
+    }
+  }
+  return Kg;
+}
+
 /**
  * CSR (Compressed Sparse Row) sparse matrix.
  * Memory: O(nnz) instead of O(n²).
