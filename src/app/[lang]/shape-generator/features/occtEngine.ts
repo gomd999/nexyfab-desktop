@@ -405,7 +405,7 @@ export type ReplicadEdgeFinder = { readonly [ReplicadEdgeFinderBrand]: 'Replicad
 interface FilletChamferShape extends MeshedShape {
   /** replicad accepts `(radius, predicate?)`; predicate is an EdgeFinder
    *  or `(edge) => boolean`. NexyFab passes it through opaquely. */
-  fillet: (radius: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
+  fillet: (radius: number | [number, number], predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
   chamfer: (distance: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
   translate: (v: [number, number, number]) => FilletChamferShape;
 }
@@ -956,6 +956,10 @@ export function occtSweepHelix(
   height: number,
   radius: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  /** Helix axis direction (default +Y, matching the legacy sweep wiring). */
+  axisDir: [number, number, number] = [0, 1, 0],
+  /** Left-handed helix (default right-handed). */
+  lefthand = false,
 ): OcctExtrudeResult {
   const rc = requireReplicad();
   const sketchHelix = rc.sketchHelix as
@@ -965,7 +969,7 @@ export function occtSweepHelix(
     || profile.length < 3 || !(radius > 0) || !(height > 0) || !(pitch > 0)) {
     return { geometry: new BufferGeometry(), handle: null };
   }
-  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], [0, 1, 0]);
+  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], axisDir, lefthand);
   const last = profile.length - 1;
   const solid = spine.sweepSketch((plane) => {
     let pp = draw([profile[0]!.x, profile[0]!.y]);
@@ -1200,6 +1204,118 @@ export function occtMirror(
   const mirrored = base.clone().mirror(planeName, [0, 0, 0]);
   const fused = base.clone().fuse(mirrored);
   return meshAndRegister(fused, tessellation);
+}
+
+/** Face selector handed to replicad's `draft` — only the methods we call. */
+interface FaceFinderLike {
+  atAngleWith: (direction: [number, number, number], angle?: number) => FaceFinderLike;
+}
+
+/** B-rep solid that supports replicad's native draft (OCCT BRepOffsetAPI_DraftAngle). */
+interface DraftableSolid extends MeshedShape {
+  draft: (
+    angle: number,
+    faceFinder: (f: FaceFinderLike) => FaceFinderLike,
+    neutralPlane?: string,
+  ) => MeshedShape;
+}
+
+/**
+ * Draft as a real B-rep: taper the host solid's side walls by `angleDeg` about a
+ * neutral plane, via replicad's native draft (OCCT BRepOffsetAPI_DraftAngle).
+ *
+ * The legacy mesh path (draft.ts) just shears every vertex relative to Y=0,
+ * which is geometrically wrong for anything but the simplest box. Here the side
+ * walls — faces whose normal is perpendicular to the +Y pull direction — are the
+ * ones tilted, and the XZ neutral plane (Y=0) keeps the cross-section fixed
+ * there and tapers away from it. `direction` flips the taper sense (0 vs 1).
+ *
+ * Returns a null handle when the host can't be drafted (no faces matched, the
+ * op fails, …) so the caller falls back to the mesh path.
+ */
+export function occtDraft(
+  handle: string | null | undefined,
+  angleDeg: number,
+  direction: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const host = getShape(handle) as DraftableSolid | null;
+  if (!host || typeof host.draft !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const signed = direction === 0 ? angleDeg : -angleDeg;
+  const drafted = host.draft(signed, (f) => f.atAngleWith([0, 1, 0], 90), 'XZ');
+  return meshAndRegister(drafted, tessellation);
+}
+
+/** B-rep solid that supports replicad's uniform scale. */
+interface ScalableSolid extends MeshedShape {
+  scale: (factor: number, center?: [number, number, number]) => MeshedShape;
+}
+
+/**
+ * Scale as a real B-rep so the OCCT chain survives a scale feature (a mesh scale
+ * in the middle of the tree drops the handle and forces everything downstream to
+ * mesh). replicad exposes UNIFORM scale only (`scale(factor)` about the origin,
+ * matching the mesh `makeScale`); a non-uniform (sx≠sy≠sz) scale needs OCCT
+ * `GTransform`, which replicad doesn't surface, so we return a null handle and
+ * the caller meshes. Uniform is the common, feature-safe case.
+ */
+export function occtScale(
+  handle: string | null | undefined,
+  sx: number,
+  sy: number,
+  sz: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const host = getShape(handle) as ScalableSolid | null;
+  if (!host || typeof host.scale !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const eps = 1e-6;
+  if (Math.abs(sx - sy) > eps || Math.abs(sy - sz) > eps) {
+    // Non-uniform: not expressible via replicad's uniform scale → mesh fallback.
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  return meshAndRegister(host.scale(sx), tessellation);
+}
+
+/** B-rep solid that supports translate + fuse (move / copy). */
+interface MovableSolid extends MeshedShape {
+  clone: () => MovableSolid;
+  translate: (v: [number, number, number]) => MovableSolid;
+  fuse: (other: unknown) => MovableSolid;
+}
+
+/**
+ * Move / copy as a real B-rep (another chain-breaker if left to mesh).
+ *   operation 0 (move) → translate the solid in place; one handle.
+ *   operation 1 (copy) → fuse the original with a translated copy into one
+ *     B-rep (a compound when the two are disjoint), matching the mesh path that
+ *     merges original+copy into one geometry.
+ * Null handle if the host can't be translated (caller meshes).
+ */
+export function occtMoveCopy(
+  handle: string | null | undefined,
+  offsetX: number,
+  offsetY: number,
+  offsetZ: number,
+  operation: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const host = getShape(handle) as MovableSolid | null;
+  if (!host || typeof host.translate !== 'function' || typeof host.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const offset: [number, number, number] = [offsetX, offsetY, offsetZ];
+  if (operation === 0) {
+    return meshAndRegister(host.clone().translate(offset), tessellation);
+  }
+  if (typeof host.fuse !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const moved = host.clone().translate(offset);
+  return meshAndRegister(host.clone().fuse(moved), tessellation);
 }
 
 /**
@@ -1479,6 +1595,41 @@ export function occtFilletBox(
   // the returned finder, so a pre-built EdgeFinder must be handed back via a
   // wrapper fn (not passed directly). No finder → fillet every edge.
   const filleted = edgeFinder !== undefined ? source.fillet(radius, () => edgeFinder) : source.fillet(radius);
+  const mesh = filleted.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(filleted) };
+}
+
+/**
+ * Variable-radius fillet: round the selected edge with a radius that varies
+ * linearly from `startRadius` (edge start) to `endRadius` (edge end). replicad's
+ * fillet accepts a `[r1, r2]` radius (FilletRadius) for exactly this — a real
+ * B-rep variable fillet, not the mesh-offset approximation.
+ *
+ * Variable radius is only meaningful along a SINGLE edge, so an `edgeFinder`
+ * (re-resolved from the stored selection by signature, like occtFilletBox)
+ * should restrict it to the picked edge. With no finder it applies to every
+ * edge, which replicad may reject for some solids → the caller's try/catch
+ * falls back to the mesh path.
+ */
+export function occtVariableFillet(
+  hostBox: { w: number; h: number; d: number; cx: number; cy: number; cz: number },
+  startRadius: number,
+  endRadius: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  hostHandle?: string | null,
+  edgeFinder?: ReplicadEdgeFinder,
+): OcctBooleanResult {
+  const rc = requireReplicad();
+  const chained = getShape(hostHandle) as FilletChamferShape | null;
+  const source: FilletChamferShape = chained ?? (() => {
+    const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
+    return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
+  })();
+  const r: [number, number] = [startRadius, endRadius];
+  const filleted = edgeFinder !== undefined ? source.fillet(r, () => edgeFinder) : source.fillet(r);
   const mesh = filleted.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,

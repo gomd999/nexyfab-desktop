@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
+import { occtDraft } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
   const angleDeg = params.angle;
@@ -45,6 +47,23 @@ export const draftFeature: FeatureDefinition = {
     },
   ],
   apply(geometry, params) {
+    return applyDraftMesh(geometry, params);
+  },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          const r = occtDraft(handle, params.angle, Math.round(params.direction));
+          if (r.handle) {
+            r.geometry.userData.occtHandle = r.handle;
+            return r.geometry;
+          }
+        } catch (err) {
+          console.warn('[draft] OCCT path failed, falling back to mesh:', err);
+        }
+      }
+    }
     return applyDraftMesh(geometry, params);
   },
 };

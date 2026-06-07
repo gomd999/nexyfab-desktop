@@ -36,6 +36,10 @@ import {
   occtCircularPattern,
   occtMirror,
   occtRib,
+  occtDraft,
+  occtScale,
+  occtMoveCopy,
+  occtVariableFillet,
   occtBoxBooleanWithPrimitive,
   exportOcctStep,
   getShape,
@@ -561,6 +565,148 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
     const box = occtExtrudeProfile([{ x: 5, y: 0 }, { x: 25, y: 0 }, { x: 25, y: 20 }, { x: 5, y: 20 }], 20);
     // Box at x ∈ [5,25] mirrored across YZ → copy at x ∈ [−25,−5], disjoint → 16000.
     const r = occtMirror(box.handle, 0);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(15000);
+    expect(vol).toBeLessThan(17000);
+  });
+
+  it('occtDraft tapers the side walls into a real B-rep (volume changes, Y span preserved)', () => {
+    resetShapeRegistry();
+    // 20-cube (x,y,z ∈ [0,20], 8000 mm³) with a handle.
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    expect(box.handle).toBeTruthy();
+    const baseVol = 8000;
+
+    const up = occtDraft(box.handle, 10, 0);
+    expect(up.handle).toBeTruthy();
+    const volUp = meshVolume(up.geometry);
+    // A 10° draft over the 20 mm height tilts the 4 side walls — the volume must
+    // actually change (proves faces were selected & drafted, not a no-op) and
+    // stay in a sane band (tan10°·20 ≈ 3.5 mm taper per wall).
+    expect(Math.abs(volUp - baseVol)).toBeGreaterThan(50);
+    expect(volUp).toBeGreaterThan(3000);
+    expect(volUp).toBeLessThan(14000);
+    // Draft is about the XZ neutral plane (Y=0) — it tilts walls, it doesn't move
+    // material in Y, so the Y extent is preserved.
+    up.geometry.computeBoundingBox();
+    const yb = up.geometry.boundingBox!;
+    expect(Math.abs((yb.max.y - yb.min.y) - 20)).toBeLessThan(1.0);
+
+    // The opposite direction tapers the other way → a different volume, proving
+    // the direction/sign convention is wired (one narrows the top, one widens it).
+    resetShapeRegistry();
+    const box2 = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    const down = occtDraft(box2.handle, 10, 1);
+    expect(down.handle).toBeTruthy();
+    const volDown = meshVolume(down.geometry);
+    expect(Math.abs(volDown - volUp)).toBeGreaterThan(50);
+  });
+
+  it('occtSweepHelix respects axis direction + handedness (helix feature B-rep params)', () => {
+    const circle: { x: number; y: number }[] = [];
+    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; circle.push({ x: 1.2 * Math.cos(a), y: 1.2 * Math.sin(a) }); }
+
+    // The helix HEIGHT (≈30) runs along its axis; the RADIUS (20) spans the plane
+    // perpendicular to the axis (≈2·(20+1.2)=42.4). Swapping the axis must swap
+    // which dimension carries the height vs the radial extent.
+    const span = (b: { min: THREE.Vector3; max: THREE.Vector3 }, ax: 'x' | 'y' | 'z') => b.max[ax] - b.min[ax];
+
+    // Default axis (+Y): height along Y (~30), radial in X/Z (~42).
+    resetShapeRegistry();
+    const yHelix = occtSweepHelix(circle, 5, 30, 20);
+    expect(yHelix.handle).toBeTruthy();
+    const yb = bboxOf(yHelix.geometry);
+    expect(span(yb, 'y')).toBeGreaterThan(28);
+    expect(span(yb, 'y')).toBeLessThan(36);   // height, not radial
+    expect(span(yb, 'z')).toBeGreaterThan(40); // radial
+
+    // Z-axis helix: height now along Z (~30), radial in X/Y (~42).
+    resetShapeRegistry();
+    const zHelix = occtSweepHelix(circle, 5, 30, 20, undefined, [0, 0, 1]);
+    expect(zHelix.handle).toBeTruthy();
+    const zb = bboxOf(zHelix.geometry);
+    expect(span(zb, 'z')).toBeGreaterThan(28);
+    expect(span(zb, 'z')).toBeLessThan(36);   // height moved to Z
+    expect(span(zb, 'y')).toBeGreaterThan(40); // Y is now radial, not the height
+    // The axis genuinely swapped: Y carries height for +Y, radial for +Z.
+    expect(span(yb, 'y')).toBeLessThan(span(zb, 'y'));
+    expect(span(yb, 'z')).toBeGreaterThan(span(zb, 'z'));
+
+    // Left-handed helix builds a valid B-rep too (opposite winding).
+    resetShapeRegistry();
+    const left = occtSweepHelix(circle, 5, 30, 20, undefined, [0, 1, 0], true);
+    expect(left.handle).toBeTruthy();
+  });
+
+  it('occtVariableFillet rounds the selected edge with a radius between the constant ends', async () => {
+    // 20-cube; the x=10,y=10 vertical edge (z∈[−20,0]) from makeBaseBox+translate.
+    const host = { w: 20, h: 20, d: 20, cx: 0, cy: 0, cz: 0 };
+    const sel = { type: 'edge' as const, position: [10, 10, -10] as [number, number, number], length: 20, normal: [1, 0, 0] as [number, number, number] };
+
+    // Constant r=2 on that one edge (replicad deletes the finder after use, so
+    // each fillet gets its own freshly-built finder).
+    resetShapeRegistry();
+    const f2 = await buildEdgeFinderFromSelection(sel);
+    const vol2 = meshVolume(occtFilletBox(host, 2, {}, null, f2!).geometry);
+
+    // Constant r=6 on the same edge → removes more material → lower volume.
+    resetShapeRegistry();
+    const f6 = await buildEdgeFinderFromSelection(sel);
+    const vol6 = meshVolume(occtFilletBox(host, 6, {}, null, f6!).geometry);
+
+    // Variable [2,6] on the same edge → a real B-rep, material removal BETWEEN
+    // the two constants (radius genuinely ramps 2→6 along the edge).
+    resetShapeRegistry();
+    const fv = await buildEdgeFinderFromSelection(sel);
+    const rv = occtVariableFillet(host, 2, 6, {}, null, fv!);
+    expect(rv.handle).toBeTruthy();
+    const volVar = meshVolume(rv.geometry);
+
+    expect(vol6).toBeLessThan(vol2);       // sanity: bigger radius removes more
+    expect(volVar).toBeLessThan(vol2 - 5); // variable removes more than r=2…
+    expect(volVar).toBeGreaterThan(vol6 + 5); // …but less than r=6 → it varies
+  });
+
+  it('occtScale uniformly scales a solid into a real B-rep (volume ∝ factor³)', () => {
+    resetShapeRegistry();
+    // 20-cube (8000 mm³) with a handle, scaled ×2 uniformly → 8× volume = 64000.
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    expect(box.handle).toBeTruthy();
+    const r = occtScale(box.handle, 2, 2, 2);
+    expect(r.handle).toBeTruthy();
+    const vol = meshVolume(r.geometry);
+    expect(vol).toBeGreaterThan(62000);
+    expect(vol).toBeLessThan(66000);
+  });
+
+  it('occtScale returns a null handle for a non-uniform scale (mesh fallback)', () => {
+    resetShapeRegistry();
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    // replicad has uniform scale only → non-uniform must decline (handle null).
+    const r = occtScale(box.handle, 2, 1, 1);
+    expect(r.handle).toBeNull();
+  });
+
+  it('occtMoveCopy move translates the solid (handle + volume preserved)', () => {
+    resetShapeRegistry();
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    // Move +50 in Z: same 8000 mm³ solid, shifted; box spans z∈[0,20] → [50,70].
+    const r = occtMoveCopy(box.handle, 0, 0, 50, 0);
+    expect(r.handle).toBeTruthy();
+    expect(meshVolume(r.geometry)).toBeGreaterThan(7800);
+    expect(meshVolume(r.geometry)).toBeLessThan(8200);
+    r.geometry.computeBoundingBox();
+    const b = r.geometry.boundingBox!;
+    expect(b.min.z).toBeGreaterThan(49);
+    expect(b.max.z).toBeLessThan(71);
+  });
+
+  it('occtMoveCopy copy fuses original + translated copy (≈2× volume, one B-rep)', () => {
+    resetShapeRegistry();
+    const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
+    // Copy +60 in Z (disjoint from the original) → 8000 + 8000 = 16000, one handle.
+    const r = occtMoveCopy(box.handle, 0, 0, 60, 1);
     expect(r.handle).toBeTruthy();
     const vol = meshVolume(r.geometry);
     expect(vol).toBeGreaterThan(15000);

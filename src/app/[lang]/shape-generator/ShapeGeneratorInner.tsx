@@ -1685,7 +1685,7 @@ export function ShapeGeneratorInner() {
     // Frozen in this closure so undo→redo replays the same selection.
     let edgeSel: import('./editing/selectionInfo').EdgeSelectionInfo[] | undefined;
     let faceSel: import('./editing/selectionInfo').FaceSelectionInfo[] | undefined;
-    if (featType === 'fillet' || featType === 'chamfer') {
+    if (featType === 'fillet' || featType === 'chamfer' || featType === 'variableFillet') {
       const el = useSelectionStore.getState().selectedElement;
       if (el && el.type === 'edge') edgeSel = [el];
     } else if (featType === 'shell') {

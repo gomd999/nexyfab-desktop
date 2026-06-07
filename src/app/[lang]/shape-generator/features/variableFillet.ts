@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
-import type { FeatureDefinition } from './types';
+import type { FeatureDefinition, FeatureApplyContext } from './types';
+import { occtVariableFillet, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { buildEdgeFinderFromSelection, buildEdgeFinderBySignature } from './topologyEdgeFinder';
 
 // ─── Variable Fillet Types ─────────────────────────────────────────────────────
 
@@ -74,6 +77,34 @@ export function applyVariableFillet(
   return resultBrush.geometry;
 }
 
+// ─── OCCT B-rep path (real variable-radius fillet on the selected edge) ──────────
+
+/** World bbox so the finder can remap a stored click point through a resize. */
+function currentBboxOf(geometry: THREE.BufferGeometry):
+  { min: [number, number, number]; max: [number, number, number] } | undefined {
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return undefined;
+  return { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
+}
+
+/** Re-resolve the stored edge selection to a replicad EdgeFinder. A variable
+ *  radius varies along ONE edge, so only the first selection is used. */
+async function buildEdgeFinder(
+  ctx: FeatureApplyContext | undefined,
+  geometry: THREE.BufferGeometry,
+): Promise<ReplicadEdgeFinder | null> {
+  const sels = ctx?.edgeSelections;
+  if (!sels || sels.length === 0) return null;
+  const currentBbox = currentBboxOf(geometry);
+  const handle = geometry.userData?.occtHandle as string | undefined;
+  if (handle) {
+    const bySig = await buildEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    if (bySig) return bySig;
+  }
+  return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
+}
+
 // ─── Feature Definition ────────────────────────────────────────────────────────
 
 export const variableFilletFeature: FeatureDefinition = {
@@ -83,8 +114,51 @@ export const variableFilletFeature: FeatureDefinition = {
     { key: 'startRadius', labelKey: 'paramVarFilletStart', default: 2, min: 0.5, max: 20, step: 0.5, unit: 'mm' },
     { key: 'endRadius', labelKey: 'paramVarFilletEnd', default: 6, min: 0.5, max: 20, step: 0.5, unit: 'mm' },
     { key: 'segments', labelKey: 'paramFilletSegments', default: 3, min: 1, max: 5, step: 1, unit: '' },
+    {
+      key: 'engine',
+      labelKey: 'paramBoolEngine',
+      default: 1,
+      min: 0,
+      max: 1,
+      step: 1,
+      unit: '',
+      options: [
+        { value: 0, labelKey: 'enumEngineMeshCsg' },
+        { value: 1, labelKey: 'enumEngineOcct' },
+      ],
+    },
   ],
   apply(geometry, params) {
+    return applyVariableFillet(geometry, {
+      edgeIndex: 0,
+      startRadius: params.startRadius,
+      endRadius: params.endRadius,
+      segments: Math.round(params.segments),
+    });
+  },
+  async applyAsync(geometry, params, ctx) {
+    const engine = Math.round(params.engine ?? 1);
+    if (shouldUseOcctEngine(engine)) {
+      try {
+        const edgeFinder = await buildEdgeFinder(ctx, geometry);
+        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        const host = hostBoxFromGeometry(geometry);
+        const result = occtVariableFillet(
+          host,
+          params.startRadius,
+          params.endRadius,
+          {},
+          upstreamHandle,
+          edgeFinder ?? undefined,
+        );
+        if (result.handle) {
+          result.geometry.userData.occtHandle = result.handle;
+          return result.geometry;
+        }
+      } catch (err) {
+        console.warn('[variableFillet] OCCT path failed, falling back to mesh:', err);
+      }
+    }
     return applyVariableFillet(geometry, {
       edgeIndex: 0,
       startRadius: params.startRadius,
