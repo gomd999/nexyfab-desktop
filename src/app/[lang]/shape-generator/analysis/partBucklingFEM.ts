@@ -1,7 +1,8 @@
 /**
  * partBucklingFEM.ts — linear (eigenvalue) buckling on the REAL TET10 part FEM.
  *
- * Track M / M2, the buckling half (modal is partModalFEM). Solves the geometric-
+ * Track M / M2, the buckling half (part modal lives in the existing
+ * `modalSolver.ts`). Solves the geometric-
  * stiffness eigenproblem  K φ = λ (−K_g) φ  for the lowest positive load factor
  * λ_cr: the multiplier on a uniform reference stress at which the part first
  * buckles. Mirrors the verified HEX8 path (`fea/buckling.ts`) but on an arbitrary
