@@ -8,6 +8,8 @@ import {
   K_FACTOR_TABLE,
   SPRINGBACK_DEG,
   BEND_TYPE_K_MULTIPLIER,
+  checkMinBendRadius,
+  minBendRadiusMm,
   type MaterialName,
 } from './bendDeductionCalculator';
 import {
@@ -182,6 +184,32 @@ describe('K-factor drift — Schema C → Schema A delegation', () => {
       const canonical = getKFactor(schemaA, 2, 1);
       expect(Math.abs(snapshot - canonical)).toBeLessThan(1e-9);
     }
+  });
+});
+
+describe('minimum bend radius DFM check', () => {
+  it('mild steel: R_min = 1.0·t — flags a too-tight radius, passes an adequate one', () => {
+    expect(minBendRadiusMm('mild-steel', 2)).toBeCloseTo(2, 6);
+    const tight = checkMinBendRadius(1, 2, 'mild-steel'); // R=1 < R_min=2
+    expect(tight.ok).toBe(false);
+    expect(tight.marginMm).toBeCloseTo(-1, 6);
+    const ok = checkMinBendRadius(3, 2, 'mild-steel'); // R=3 > R_min=2
+    expect(ok.ok).toBe(true);
+    expect(ok.marginMm).toBeCloseTo(1, 6);
+  });
+
+  it('exactly at R_min passes (margin 0)', () => {
+    const r = checkMinBendRadius(2, 2, 'mild-steel');
+    expect(r.ok).toBe(true);
+    expect(r.marginMm).toBeCloseTo(0, 9);
+  });
+
+  it('stainless needs a larger radius (1.5·t); brass bends tighter (0.5·t)', () => {
+    expect(minBendRadiusMm('stainless-304', 2)).toBeCloseTo(3, 6);
+    expect(minBendRadiusMm('brass', 2)).toBeCloseTo(1, 6);
+    // a radius fine for brass can be too tight for stainless at the same t.
+    expect(checkMinBendRadius(1.2, 2, 'brass').ok).toBe(true);
+    expect(checkMinBendRadius(1.2, 2, 'stainless-304').ok).toBe(false);
   });
 });
 

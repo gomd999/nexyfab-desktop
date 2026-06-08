@@ -34,7 +34,7 @@
  */
 
 import { aliasSheetMetalMaterialId } from '@/lib/migrations/sheetMetalMaterialId';
-import { getKFactor } from '../features/sheetMetalTables';
+import { getKFactor, SHEET_METAL_MATERIALS } from '../features/sheetMetalTables';
 
 export type BendType = 'air-bend' | 'coined' | 'bottom-bend';
 export type MaterialName = 'mild-steel' | 'stainless-304' | 'aluminum-5052' | 'aluminum-6061' | 'copper' | 'brass';
@@ -161,6 +161,44 @@ export function estimateAirBendRadius(dieWidthMm: number, material: MaterialName
   if (material === 'aluminum-5052' || material === 'aluminum-6061') return dieWidthMm * 0.20;
   if (material === 'copper' || material === 'brass') return dieWidthMm * 0.18;
   return dieWidthMm * 0.16;
+}
+
+// ── Minimum bend radius (DFM manufacturability check) ──────────
+
+export interface MinBendRadiusCheck {
+  /** Minimum allowed inside radius = factor · thickness (mm). */
+  minRadiusMm: number;
+  /** Material's min-radius factor (× thickness). */
+  factor: number;
+  /** insideRadius − minRadius (negative ⇒ too tight, cracking risk). */
+  marginMm: number;
+  ok: boolean;
+}
+
+function minRadiusFactor(material: MaterialName): number {
+  const info = SHEET_METAL_MATERIALS[aliasSheetMetalMaterialId(material)];
+  return info?.minBendRadiusFactor ?? 1.0;
+}
+
+/** Minimum bendable inside radius for a material + thickness (mm). */
+export function minBendRadiusMm(material: MaterialName, thicknessMm: number): number {
+  return minRadiusFactor(material) * thicknessMm;
+}
+
+/**
+ * DFM check: bending tighter than R_min = factor·t cracks the outer fibre. The
+ * factor was in the material table but never validated against geometry — this
+ * closes that gap. `ok=false` (negative margin) means the bend is too tight.
+ */
+export function checkMinBendRadius(
+  insideRadiusMm: number,
+  thicknessMm: number,
+  material: MaterialName,
+): MinBendRadiusCheck {
+  const factor = minRadiusFactor(material);
+  const minRadiusMm = factor * thicknessMm;
+  const marginMm = insideRadiusMm - minRadiusMm;
+  return { minRadiusMm, factor, marginMm, ok: marginMm >= -1e-9 };
 }
 
 // ── Springback compensation ───────────────────────────────────
