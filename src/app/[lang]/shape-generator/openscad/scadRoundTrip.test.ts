@@ -265,6 +265,57 @@ describe('Phase 2 — for-loop patterns → linearPattern / circularPattern', ()
   });
 });
 
+describe('Phase 2 — union / intersection → boolean feature', () => {
+  it('emit→parse round-trips a union with a box tool', () => {
+    const features = [feat('b', 'boolean', { operation: 0, toolShape: 0, toolWidth: 20, toolDepth: 15, toolHeight: 10, posX: 5, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('union()');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.features![0]!).toMatchObject({
+        type: 'boolean',
+        params: { operation: 0, toolShape: 0, toolWidth: 20, toolDepth: 15, toolHeight: 10, posX: 5 },
+      });
+    }
+  });
+
+  it('round-trips a union with a cylinder tool (diameter = 2r)', () => {
+    const features = [feat('b', 'boolean', { operation: 0, toolShape: 1, toolWidth: 10, toolHeight: 30, toolDepth: 10, posX: 0, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('r=5');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.features![0]!.params).toMatchObject({ operation: 0, toolShape: 1, toolWidth: 10, toolHeight: 30 });
+  });
+
+  it('round-trips an intersection with a sphere tool', () => {
+    const features = [feat('b', 'boolean', { operation: 2, toolShape: 2, toolWidth: 16, toolHeight: 16, toolDepth: 16, posX: 0, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('intersection()');
+    expect(scad).toContain('sphere(r=8');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.features![0]!).toMatchObject({ type: 'boolean', params: { operation: 2, toolShape: 2, toolWidth: 16 } });
+  });
+
+  it('parses a hand-written union with a translated box tool', () => {
+    const r = parseScadToFeatures(
+      'union() {\n  cube([40, 40, 40], center=true);\n  translate([10, 0, 5]) cube([8, 6, 4], center=true);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      // translate([10,0,5]) → posX=10, posZ(=scad y)=0, posY(=scad z)=5
+      expect(r.features![0]!).toMatchObject({
+        type: 'boolean',
+        params: { operation: 0, toolShape: 0, toolWidth: 8, toolDepth: 6, toolHeight: 4, posX: 10, posY: 5, posZ: 0 },
+      });
+    }
+  });
+});
+
 describe('O1 — fast box fillet (hull, not minkowski)', () => {
   it('emitRoundedBoxFilletScad uses hull() of 8 corner spheres, no minkowski', () => {
     const scad = emitRoundedBoxFilletScad(60, 40, 30, 4);

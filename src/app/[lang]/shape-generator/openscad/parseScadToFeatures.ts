@@ -46,7 +46,7 @@ export interface ScadRecognisedShape {
  *  NexyFab's FeatureInstance params so the caller can
  *  `addFeatureWithParams(type, params)` directly. */
 export interface ScadRecognisedFeature {
-  type: 'hole' | 'linearPattern' | 'circularPattern';
+  type: 'hole' | 'linearPattern' | 'circularPattern' | 'boolean';
   params: Record<string, number>;
 }
 
@@ -263,6 +263,38 @@ function unwrapForPattern(src: string): { feature: ScadRecognisedFeature; body: 
   return null;
 }
 
+/** Recognise a `union()` / `intersection()` tool statement as a NexyFab
+ *  `boolean` feature: a translated box / cylinder / sphere combined with the
+ *  base via `operation` (0=union, 2=intersect). The inverse of emitFeature's
+ *  boolean tool. Returns null for non-primitive tools (e.g. linear_extrude
+ *  stubs), which are skipped so the base still applies. */
+function parseBooleanTool(stmt: string, operation: number): ScadRecognisedFeature | null {
+  const { rest, offset } = stripTransforms(stmt);
+  // SCAD vector is [posX, posZ, posY] (Y-up↔Z-up) → invert, as for holes.
+  const pos = { posX: offset.x, posY: offset.z, posZ: offset.y };
+  let m = CUBE_ARRAY_RE.exec(rest);
+  if (m) {
+    // emit wrote cube([toolWidth, toolDepth, toolHeight]).
+    return { type: 'boolean', params: { operation, toolShape: 0, toolWidth: parseFloat(m[1]!), toolDepth: parseFloat(m[2]!), toolHeight: parseFloat(m[3]!), ...pos } };
+  }
+  m = CUBE_SCALAR_RE.exec(rest);
+  if (m) {
+    const s = parseFloat(m[1]!);
+    return { type: 'boolean', params: { operation, toolShape: 0, toolWidth: s, toolDepth: s, toolHeight: s, ...pos } };
+  }
+  m = HOLE_CYL_RE.exec(rest); // cylinder(h, r) — tool diameter = 2r in toolWidth.
+  if (m) {
+    const h = parseFloat(m[1]!), r = parseFloat(m[2]!);
+    return { type: 'boolean', params: { operation, toolShape: 1, toolWidth: r * 2, toolHeight: h, toolDepth: r * 2, ...pos } };
+  }
+  m = SPHERE_RE.exec(rest);
+  if (m) {
+    const r = parseFloat(m[1]!);
+    return { type: 'boolean', params: { operation, toolShape: 2, toolWidth: r * 2, toolHeight: r * 2, toolDepth: r * 2, ...pos } };
+  }
+  return null;
+}
+
 export function parseScadToFeatures(scad: string): ScadParseResult {
   if (!scad || !scad.trim()) return { ok: false, reason: 'empty' };
 
@@ -301,6 +333,22 @@ export function parseScadToFeatures(scad: string): ScadParseResult {
       return features.length
         ? { ok: true, shape: baseRes.shape, features }
         : baseRes;
+    }
+    if (wrapped.kind === 'union' || wrapped.kind === 'intersection') {
+      // base + additive/intersect primitive tool(s) → boolean feature(s).
+      const op = wrapped.kind === 'union' ? 0 : 2;
+      const children = splitTopLevelChildren(wrapped.body);
+      if (children.length === 0) {
+        return { ok: false, reason: 'unsupported', detail: `empty ${wrapped.kind} body` };
+      }
+      const baseRes = parseScadToFeatures(children[0]!);
+      if (!baseRes.ok) return baseRes;
+      const features: ScadRecognisedFeature[] = [...(baseRes.features ?? [])];
+      for (const tool of children.slice(1)) {
+        const bf = parseBooleanTool(tool, op);
+        if (bf) features.push(bf); // non-primitive tools (extrude stubs) skipped
+      }
+      return features.length ? { ok: true, shape: baseRes.shape, features } : baseRes;
     }
     return parseScadToFeatures(wrapped.body);
   }

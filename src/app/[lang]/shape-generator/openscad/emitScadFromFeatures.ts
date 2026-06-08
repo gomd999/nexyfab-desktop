@@ -59,6 +59,18 @@ function radFromDia(dia: number | undefined, fallbackDia: number): string {
   return fmt(d / 2);
 }
 
+/** Emit a boolean feature's tool primitive at its position. Mirrors
+ *  buildToolGeometry: box = W×H×D, cylinder = Ø toolWidth × toolHeight,
+ *  sphere = Ø toolWidth. parseBooleanTool inverts this. The SCAD translate
+ *  swaps Y-up↔Z-up ([posX, posZ, posY]) like the hole/base emitters. */
+function emitBooleanTool(p: Record<string, number>): string {
+  const shape = Math.round(p.toolShape ?? 0);
+  const t = `translate([${fmt(p.posX)}, ${fmt(p.posZ)}, ${fmt(p.posY)}])`;
+  if (shape === 1) return `${t} cylinder(h=${fmt(p.toolHeight, 50)}, r=${fmt((p.toolWidth ?? 50) / 2)}, center=true, $fn=32);`;
+  if (shape === 2) return `${t} sphere(r=${fmt((p.toolWidth ?? 50) / 2)}, $fn=32);`;
+  return `${t} cube([${fmt(p.toolWidth, 50)}, ${fmt(p.toolDepth, 50)}, ${fmt(p.toolHeight, 50)}], center=true);`;
+}
+
 function emitBase(baseShapeId: string, p: Record<string, number>): string {
   switch (baseShapeId) {
     case 'box':
@@ -113,10 +125,16 @@ function emitFeature(f: FeatureInstance, prior: string): string {
       return `for (a = [0 : ${count - 1}]) rotate([0, ${fmt(angle / count)}*a, 0]) ${prior}`;
     }
     case 'boolean': {
-      // Without the other operand inline, mark as op-only — round-trip
-      // editor will resolve operand bodies once that exists.
-      const op = p.op === 1 ? 'difference' : p.op === 2 ? 'intersection' : 'union';
-      return `// boolean ${op} with auxiliary body (see feature tree)\n${prior}`;
+      // Emit the actual tool primitive (box/cylinder/sphere) so a union/intersect
+      // round-trips into the tree. (Prior code read a non-existent `p.op` key and
+      // dropped the tool entirely.) Subtract stays an op-only marker — a
+      // cylindrical subtract round-trips through the `hole` path instead.
+      const operation = Math.round(p.operation ?? 0);
+      if (operation === 0 || operation === 2) {
+        const kind = operation === 2 ? 'intersection' : 'union';
+        return `${kind}() {\n${INDENT}${prior}\n${INDENT}${emitBooleanTool(p)}\n}`;
+      }
+      return `// boolean difference with auxiliary body (see feature tree)\n${prior}`;
     }
     case 'scale': {
       return `scale([${fmt(p.x, 1)}, ${fmt(p.y, 1)}, ${fmt(p.z, 1)}]) ${prior}`;
