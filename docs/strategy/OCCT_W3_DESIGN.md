@@ -167,3 +167,21 @@ so the worker's heavier latency never hits the interactive path.
 Everything in this PR except the cross-kernel browser diff is headless-testable —
 so W3a can land + be verified here; only the replicad-vs-K-series numeric diff
 needs the user's browser.
+
+### W3a status (2026-06-08) — facade + parity harness SHIPPED (headless)
+
+`features/solidKernel.ts` + `solidKernel.test.ts` (10 green):
+- **`SolidKernel`** facade (string-id ops: extrude / boolean / buildPlanarFace /
+  thicken / surfaceTrim / tessellate / release).
+- **`createKSeriesKernel(bridge)`** — wraps any `OcctBridge`; verified over the
+  REAL `opencascade.js` via `createNodeOcctBridge`: extrude→500, boolean→420,
+  buildPlanarFace→thicken→200, tessellate+release.
+- **`kernelParity(a, b, tol)`** — pure verdict (volRelErr ≤ 0.5%, bboxErr ≤
+  0.01 mm); passes identical/within-tol, fails volume/bbox divergence + missing
+  volume.
+
+**Remaining W3a (browser-gated, NOT wired here):** `createReplicadKernel`
+(wraps the sync `occtEngine`) + routing `occtExtrudeProfile` through the facade
+behind `?occtWorker=1` in the pipeline, + the cross-kernel parity burn-in. These
+touch the production pipeline + need replicad (browser), so they land with
+real-browser verification — deliberately not blind-wired.
