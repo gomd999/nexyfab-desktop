@@ -188,8 +188,15 @@ INJECTED deps (`ReplicadKernelDeps`) so the adapter logic is headless-verified
 with mocks (id threading, abs-volume, ceiling-null, exportStep) — only the real
 `occtExtrudeProfile`/`meshVolume` BINDINGS are browser-supplied. 21/21.
 
-**Remaining W3a (browser-gated):** inject the real `ReplicadKernelDeps`, route
-`occtExtrudeProfile` through the facade behind `?occtWorker=1` in the pipeline,
-and run the cross-kernel parity burn-in. These touch the production pipeline +
-need replicad (browser) — deliberately not blind-wired; they land with
-real-browser verification.
+**Pipeline glue DONE (2026-06-08):** `features/solidKernelBindings.ts` —
+`replicadDeps()` injects the live `occtEngine` ops (+ `meshVolume`/`boundsOf`)
+into `ReplicadKernelDeps`, and `selectSolidKernel(useWorker)` is the
+`?occtWorker=1` switch (K-series worker bridge on / replicad kernel off). The
+mesh helpers + selector are headless-verified (`solidKernelBindings.test.ts`
+5/5); the occtEngine mapping is tsc-checked.
+
+**Remaining W3a (browser-gated, thin):** swap ONE pipeline call site from
+`occtExtrudeProfile(...)` to `selectSolidKernel(flag).extrude(...)`, then run the
+cross-kernel parity burn-in. That call-site swap + parity touch the production
+pipeline and need replicad (browser) — deliberately not blind-wired; they land
+with real-browser verification.
