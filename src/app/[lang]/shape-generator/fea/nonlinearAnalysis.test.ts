@@ -4,6 +4,7 @@ import {
   vonMises,
   radialReturn,
   runIncrementalLoading,
+  uniaxialElastoPlastic,
   greenLagrangeStrain1D,
   rodriguesRotation,
   deformedPosition,
@@ -96,6 +97,36 @@ describe('runIncrementalLoading', () => {
     );
     // Should stop after step 1 since plastic strain > threshold.
     expect(r.steps.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('uniaxialElastoPlastic (coupled loop vs analytic bilinear)', () => {
+  // Mild steel: E=200000, σy=250, H=2000.
+  const STRESSES = [150, 240, 300, 360, 420];
+
+  it('stays elastic below yield, flows plastically above (per-step)', () => {
+    const r = uniaxialElastoPlastic(mildSteel, STRESSES);
+    // 150, 240 MPa < σy=250 → no plastic strain.
+    expect(r.steps[0]!.plasticStrain).toBe(0);
+    expect(r.steps[1]!.plasticStrain).toBe(0);
+    // 300, 360, 420 MPa > σy → monotonically accumulating plastic strain.
+    expect(r.steps[2]!.plasticStrain).toBeGreaterThan(0);
+    expect(r.steps[3]!.plasticStrain).toBeGreaterThan(r.steps[2]!.plasticStrain);
+    expect(r.steps[4]!.plasticStrain).toBeGreaterThan(r.steps[3]!.plasticStrain);
+  });
+
+  it('hardens to the applied stress with the analytic plastic strain (420 → ε_p=0.085)', () => {
+    const r = uniaxialElastoPlastic(mildSteel, STRESSES);
+    expect(r.fullyConverged).toBe(true);
+    // Stress-controlled: the yield surface hardens up to the final applied stress.
+    expect(r.final.currentYield).toBeCloseTo(420, 0);
+    // Bilinear law: ε_p = (σ − σy0) / H = (420 − 250) / 2000 = 0.085.
+    expect(r.final.plasticStrain).toBeCloseTo(0.085, 3);
+  });
+
+  it('respects the isotropic-hardening law currentYield = σy0 + H·ε_p exactly', () => {
+    const r = uniaxialElastoPlastic(mildSteel, STRESSES);
+    expect(r.final.currentYield).toBeCloseTo(250 + 2000 * r.final.plasticStrain, 6);
   });
 });
 
