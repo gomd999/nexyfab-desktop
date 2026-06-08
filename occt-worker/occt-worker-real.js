@@ -685,6 +685,123 @@
 
   // ─── dispatch ──────────────────────────────────────────────────────────
 
+  // ─── W2 ceiling ops (mirror src/lib/occt/nodeOcctBridge.ts) ───────────────
+
+  /** Planar face (sheet body) from a 2D loop at height z — input to thicken/trim. */
+  function buildPlanarFace(loop, z) {
+    if (!occt) return notReady();
+    if (!Array.isArray(loop) || loop.length < 3) {
+      return { ok: false, error: 'buildPlanarFace: loop must have >=3 points', warnings: [] };
+    }
+    var zz = typeof z === 'number' ? z : 0;
+    var Polygon = occt.BRepBuilderAPI_MakePolygon_1 || occt.BRepBuilderAPI_MakePolygon;
+    var Pnt = occt.gp_Pnt_3 || occt.gp_Pnt;
+    var MakeFace = occt.BRepBuilderAPI_MakeFace_15 || occt.BRepBuilderAPI_MakeFace;
+    if (!Polygon || !Pnt || !MakeFace) {
+      return { ok: false, error: 'buildPlanarFace: required OCCT symbol missing', warnings: [] };
+    }
+    var polygon = null, points = [], wire = null, faceBuilder = null;
+    try {
+      polygon = new Polygon();
+      for (var i = 0; i < loop.length; i++) {
+        var p = loop[i];
+        var pnt = new Pnt(p.x, p.y, zz);
+        points.push(pnt);
+        if (typeof polygon.Add_1 === 'function') polygon.Add_1(pnt); else polygon.Add(pnt);
+      }
+      polygon.Close();
+      wire = polygon.Wire();
+      faceBuilder = new MakeFace(wire, true);
+      var face = faceBuilder.Face();
+      var h = alloc(face);
+      return { ok: true, handle: h, kind: 'face', warnings: ['planar surface (sheet body)'] };
+    } catch (err) {
+      return { ok: false, error: 'buildPlanarFace: ' + (err && err.message), warnings: [] };
+    } finally {
+      if (faceBuilder && faceBuilder.delete) faceBuilder.delete();
+      if (wire && wire.delete) wire.delete();
+      if (polygon && polygon.delete) polygon.delete();
+      for (var j = 0; j < points.length; j++) { if (points[j] && points[j].delete) points[j].delete(); }
+    }
+  }
+
+  /** Thicken an open surface/shell into a solid (BRepOffsetAPI_MakeThickSolid). */
+  function thicken(handle, thickness) {
+    if (!occt) return notReady();
+    var src = handles.get(handle);
+    if (!src) return { ok: false, error: 'thicken: unknown handle (' + handle + ')', warnings: [] };
+    if (!(thickness > 0) || !isFinite(thickness)) {
+      return { ok: false, error: 'thicken: thickness must be positive finite, got ' + thickness, warnings: [] };
+    }
+    var MTS = occt.BRepOffsetAPI_MakeThickSolid_1 || occt.BRepOffsetAPI_MakeThickSolid;
+    if (!MTS) return { ok: false, error: 'thicken: BRepOffsetAPI_MakeThickSolid unavailable', warnings: [] };
+    // Prefer the offset sign that yields a positively-oriented solid (+volume).
+    var chosen = null, fallback = null;
+    var offs = [thickness, -thickness];
+    for (var k = 0; k < offs.length && !chosen; k++) {
+      var mts = null;
+      try {
+        mts = new MTS();
+        if (typeof mts.MakeThickSolidBySimple !== 'function') {
+          if (mts.delete) mts.delete();
+          return { ok: false, error: 'thicken: MakeThickSolidBySimple unavailable', warnings: [] };
+        }
+        mts.MakeThickSolidBySimple(src, offs[k]);
+        if (typeof mts.Build === 'function') mts.Build();
+        if (typeof mts.IsDone === 'function' && !mts.IsDone()) { if (mts.delete) mts.delete(); continue; }
+        var shape = mts.Shape();
+        var v = shapeMetrics(shape).volume;
+        if (isFinite(v) && Math.abs(v) > 1e-9) {
+          if (v > 0) chosen = shape;
+          else if (!fallback) fallback = shape;
+        }
+      } catch (err) {
+        void err; // try the other sign
+      } finally {
+        if (mts && mts.delete) mts.delete();
+      }
+    }
+    var result = chosen || fallback;
+    if (!result) return { ok: false, error: 'thicken: kernel produced no solid for +/-thickness', warnings: [] };
+    var h = alloc(result);
+    return { ok: true, handle: h, kind: 'solid', warnings: ['thickened surface -> solid'] };
+  }
+
+  /** Surface-surface trim: section (intersection edges) of two shapes. */
+  function surfaceTrim(handleA, handleB) {
+    if (!occt) return notReady();
+    var a = handles.get(handleA);
+    var b = handles.get(handleB);
+    if (!a || !b) return { ok: false, error: 'surfaceTrim: unknown handle (a=' + handleA + ', b=' + handleB + ')', warnings: [] };
+    var Section = occt.BRepAlgoAPI_Section_3;
+    if (!Section) return { ok: false, error: 'surfaceTrim: BRepAlgoAPI_Section_3 unavailable', warnings: [] };
+    var sec = null;
+    try {
+      sec = new Section(a, b, true);
+      if (typeof sec.Build === 'function') sec.Build();
+      var shape = sec.Shape();
+      // Count section edges to distinguish "trimmed" from "disjoint".
+      var edges = 0;
+      try {
+        var en = occt.TopAbs_ShapeEnum;
+        if (occt.TopExp_Explorer_2 && en) {
+          var exp = new occt.TopExp_Explorer_2(shape, en.TopAbs_EDGE, en.TopAbs_SHAPE);
+          while (exp.More()) { edges++; exp.Next(); }
+          if (exp.delete) exp.delete();
+        } else {
+          edges = 1; // can't count — assume intersection present
+        }
+      } catch (_e) { void _e; edges = 1; }
+      if (edges === 0) return { ok: false, error: 'surfaceTrim: shapes do not intersect (no section edges)', warnings: [] };
+      var h = alloc(shape);
+      return { ok: true, handle: h, kind: 'compound', warnings: ['section: ' + edges + ' intersection edge(s)'] };
+    } catch (err) {
+      return { ok: false, error: 'surfaceTrim: ' + (err && err.message), warnings: [] };
+    } finally {
+      if (sec && sec.delete) sec.delete();
+    }
+  }
+
   function reply(msg) {
     self.postMessage(msg);
   }
@@ -742,6 +859,18 @@
         case 'fillet':
         case 'chamfer':
           makeShapePayload(reqId, filletOrChamfer(op, args.handle, args.edgeIds || [], args.dim));
+          return;
+
+        case 'buildPlanarFace':
+          makeShapePayload(reqId, buildPlanarFace(args.loop, args.z));
+          return;
+
+        case 'thicken':
+          makeShapePayload(reqId, thicken(args.handle, args.dim));
+          return;
+
+        case 'surfaceTrim':
+          makeShapePayload(reqId, surfaceTrim(args.handleA, args.handleB));
           return;
 
         case 'exportSTEP': {

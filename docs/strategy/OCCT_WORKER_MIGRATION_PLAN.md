@@ -82,7 +82,7 @@ same code behind one `OcctBridge`.
 | Phase | Deliverable | Acceptance gate |
 |---|---|---|
 | **W1 — browser boot** ✅ *(largely pre-existing; gate strengthened 2026-06-08)* | `occt-worker/occt-worker-real.js` already boots `opencascade.js` (65 MB wasm staged in `public/occt-worker/`) and maps the 11 ops; `e2e/occt/wasm-real.spec.ts` boots it in real chromium. **Added:** a real-VOLUME + ceiling-op gate (box=500, holed=420, **thicken-ceiling=200**) mirroring the headless `nodeOcctBridge`/`ceilingSpike` asserts | `NEXYFAB_OCCT_REAL=1 npm run test:e2e:occt` (user-run): in-browser volumes match node exactly, incl. the thicken ceiling op. The prior spec only checked non-null shapes |
-| **W2 — RPC + registry** | Promise-keyed RPC over MessageChannel; shape registry + `release`; reuse `createNodeOcctBridge` in-worker | boolean subtract round-trips a holed solid (volume) **through the worker**; released handle throws on reuse |
+| **W2 — RPC + ceiling ops** ✅ *(wire plumbing 2026-06-08)* | RPC + registry already shipped (`wasmBridge`/`wasmWorkerStub`/`occt-worker*.js`). **Added the ceiling ops `buildPlanarFace`/`thicken`/`surfaceTrim` across the whole wire**: `OcctBridge` interface + bridge.ts stub (synthetic) + wasmWorkerStub (TS) + wasmBridge client + `occt-worker.js` (JS stub) + `occt-worker-real.js` (real embind, mirrors nodeOcctBridge) | **headless: 123 green** (bridge.test + wasmBridge.test + wasmWorker.integration JS-stub-in-node + nodeOcctBridge). **browser (user-run):** `e2e/occt` W2 drives the real worker over postMessage — thicken returns ~200 volume |
 | **W3 — occtEngine async swap** | `occtEngine` ops return Promises wired to the worker; mesh stays the drag fast-path; one feature (boolean) fully migrated behind `?occtWorker=1` | parity: replicad vs worker boolean agree on volume within tol (a CI parity gate); drag stays <16 ms (mesh), commit produces B-rep |
 | **W4 — coverage** | Migrate the remaining ops (extrude/revolve/sweep/loft/fillet/chamfer/shell/draft/pattern) op-by-op behind the flag | every solid op returns a worker B-rep handle in OCCT mode; STEP export uses the worker writer |
 | **W5 — Track S ceiling** | Surface the proven `thicken` / `surfaceTrim` (+ exact offset / production fillet) to the surfaces UI through the worker | thicken a surface→solid + trim two surfaces **in the browser**, volume/edge verified (the headless asserts, now live) |
@@ -123,7 +123,17 @@ holed=420, and the **thicken ceiling op = 200** — mirroring the headless
 `nodeOcctBridge`/`ceilingSpike` asserts so node↔browser drift is caught (run:
 `NEXYFAB_OCCT_REAL=1 npm run test:e2e:occt`).
 
-**Next (W2):** drive these ops through the actual worker RPC (`createWasmBridge`)
-rather than inline `page.evaluate`, and converge the hand-written
-`occt-worker-real.js` dispatcher with the typed `createNodeOcctBridge` so the
-worker gains `thicken`/`surfaceTrim`/`buildPlanarFace` (currently node-only).
+## 9. W2 status (2026-06-08)
+
+The ceiling ops `buildPlanarFace`/`thicken`/`surfaceTrim` now cross the **entire
+wire** (interface → stub → TS worker-stub → client → JS stub → real dispatcher).
+Headless-verified at the stub level (123 green: the JS stub `occt-worker.js` runs
+in a Node sandbox via `wasmWorker.integration.test.ts`); the real
+`occt-worker-real.js` embind port mirrors the node-proven `nodeOcctBridge` and is
+browser-verified by the user (`e2e/occt` W2 drives the real worker over
+postMessage → thicken volume ≈ 200).
+
+**Next (W3):** route `occtEngine` ops through `createWasmBridge` behind
+`?occtWorker=1` (the async refactor), with a replicad-vs-worker parity gate; keep
+mesh the drag fast-path. Then surface `thicken`/`surfaceTrim` to the surfaces UI
+(W5) — the logic is now reachable through the worker.

@@ -368,3 +368,43 @@ describe('occt-worker.js: protocol robustness', () => {
     worker.terminate();
   });
 });
+
+// W2 — the ceiling ops (buildPlanarFace / thicken / surfaceTrim) over the EXACT
+// shipped occt-worker.js stub bytes. Real geometry is the occt-worker-real.js
+// browser path (e2e); here we verify the wire protocol + stub dispatch.
+describe('occt-worker.js: W2 ceiling ops', () => {
+  const SQ = (a: number, b: number) => [{ x: a, y: a }, { x: b, y: a }, { x: b, y: b }, { x: a, y: b }];
+
+  it('buildPlanarFace → face; thicken → solid', async () => {
+    const bridge = createWasmBridge({ workerFactory: buildFileBackedWorker });
+    const face = await bridge.buildPlanarFace!(SQ(0, 10), 0);
+    expect(face.ok).toBe(true);
+    expect(face.shape!.kind).toBe('face');
+    const solid = await bridge.thicken!(face.shape!, 2);
+    expect(solid.ok).toBe(true);
+    expect(solid.shape!.kind).toBe('solid');
+  });
+
+  it('thicken rejects a non-positive thickness through the wire', async () => {
+    const bridge = createWasmBridge({ workerFactory: buildFileBackedWorker });
+    const face = (await bridge.buildPlanarFace!(SQ(0, 10), 0)).shape!;
+    const bad = await bridge.thicken!(face, -1);
+    expect(bad.ok).toBe(false);
+    expect(bad.error).toMatch(/positive finite/);
+  });
+
+  it('surfaceTrim → compound for overlapping shapes; disjoint reports no intersection', async () => {
+    const bridge = createWasmBridge({ workerFactory: buildFileBackedWorker });
+    const a = (await bridge.buildFromExtrude(rectExtrude())).shape!;
+    const b = (await bridge.buildFromExtrude(rectExtrude())).shape!;
+    const sec = await bridge.surfaceTrim!(a, b);
+    expect(sec.ok).toBe(true);
+    expect(sec.shape!.kind).toBe('compound');
+
+    const far1 = (await bridge.buildPlanarFace!(SQ(0, 1), 0)).shape!;
+    const far2 = (await bridge.buildPlanarFace!(SQ(100, 101), 50)).shape!;
+    const none = await bridge.surfaceTrim!(far1, far2);
+    expect(none.ok).toBe(false);
+    expect(none.error).toMatch(/do not intersect|disjoint/);
+  });
+});

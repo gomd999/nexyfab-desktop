@@ -282,6 +282,54 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
     expect(Math.abs(r.thicken), 'thicken surface→solid volume (10×10×2)').toBeCloseTo(200, 0);
   });
 
+  /**
+   * W2 de-risking: drive the ACTUAL worker (`occt-worker-real.js`) over the
+   * postMessage RPC — not inline page.evaluate — and assert the newly-ported
+   * ceiling op `thicken` returns a real volume. This exercises the wire protocol
+   * end-to-end through the launcher → real dispatcher, the path the UI kernel
+   * will use (createWasmBridge). Stub-level wire plumbing is already covered
+   * headlessly (wasmBridge.test.ts / wasmWorker.integration.test.ts).
+   */
+  test('W2: worker RPC — buildPlanarFace → thicken returns ~200 volume', async ({ page, request }) => {
+    const diag = await request.get('/api/occt/diagnostic');
+    const body = await diag.json() as { mode: string };
+    test.skip(body.mode !== 'wasm', `mode=${body.mode}; worker-RPC thicken requires real OCCT.`);
+
+    await page.goto('/');
+
+    const r: { ok: boolean; volume: number; reason: string } = await page.evaluate(async () => {
+      const SQ = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+      const w = new Worker('/occt-worker/occt-worker-launcher.js');
+      let id = 0;
+      const rpc = (op: string, args?: Record<string, unknown>): Promise<Record<string, unknown>> =>
+        new Promise((resolve, reject) => {
+          const reqId = ++id;
+          const timer = setTimeout(() => { w.removeEventListener('message', onMsg); reject(new Error(`${op} timed out`)); }, 90_000);
+          const onMsg = (e: MessageEvent): void => {
+            const d = e.data as { reqId?: number };
+            if (d && d.reqId === reqId) { clearTimeout(timer); w.removeEventListener('message', onMsg); resolve(e.data as Record<string, unknown>); }
+          };
+          w.addEventListener('message', onMsg);
+          w.postMessage({ reqId, op, args });
+        });
+      try {
+        await rpc('init');
+        const face = await rpc('buildPlanarFace', { loop: SQ, z: 0 }) as { ok: boolean; shape?: { handle: number } };
+        if (!face.ok || !face.shape) return { ok: false, volume: 0, reason: 'buildPlanarFace failed' };
+        const solid = await rpc('thicken', { handle: face.shape.handle, dim: 2 }) as { ok: boolean; shape?: { volume?: number }; error?: string };
+        if (!solid.ok || !solid.shape) return { ok: false, volume: 0, reason: 'thicken failed: ' + (solid.error ?? '') };
+        return { ok: true, volume: solid.shape.volume ?? 0, reason: '' };
+      } catch (e) {
+        return { ok: false, volume: 0, reason: (e as Error).message };
+      } finally {
+        w.terminate();
+      }
+    });
+
+    expect(r.ok, `worker thicken failed: ${r.reason || 'n/a'}`).toBe(true);
+    expect(Math.abs(r.volume), 'thickened 10×10 sheet by 2 → ~200').toBeCloseTo(200, 0);
+  });
+
   test('cylinder revolve via real OCCT', async ({ page, request }) => {
     const diag = await request.get('/api/occt/diagnostic');
     const body = await diag.json() as { mode: string };

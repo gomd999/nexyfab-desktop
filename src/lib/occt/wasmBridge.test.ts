@@ -520,3 +520,51 @@ describe('createWasmBridge: runtime detection', () => {
     }
   });
 });
+
+// ─── W2: ceiling ops over the wire (buildPlanarFace / thicken / surfaceTrim) ──
+const SQ = (a: number, b: number) => [{ x: a, y: a }, { x: b, y: a }, { x: b, y: b }, { x: a, y: b }];
+
+describe('createWasmBridge: W2 ceiling ops (wire round-trip via stub)', () => {
+  it('buildPlanarFace returns a face shape', async () => {
+    const bridge = createWasmBridge();
+    const r = await bridge.buildPlanarFace!(SQ(0, 10), 0);
+    expect(r.ok).toBe(true);
+    expect(r.shape?.kind).toBe('face');
+  });
+
+  it('thicken a face → solid through the wire', async () => {
+    const bridge = createWasmBridge();
+    const face = await bridge.buildPlanarFace!(SQ(0, 10), 0);
+    const solid = await bridge.thicken!(face.shape!, 2);
+    expect(solid.ok).toBe(true);
+    expect(solid.shape?.kind).toBe('solid');
+    // released handle still works (registry plumbing intact)
+    bridge.release(solid.shape!);
+  });
+
+  it('thicken rejects a non-positive thickness', async () => {
+    const bridge = createWasmBridge();
+    const face = await bridge.buildPlanarFace!(SQ(0, 10), 0);
+    const bad = await bridge.thicken!(face.shape!, 0);
+    expect(bad.ok).toBe(false);
+    expect(bad.error).toMatch(/positive finite/);
+  });
+
+  it('surfaceTrim of two overlapping shapes → compound', async () => {
+    const bridge = createWasmBridge();
+    const a = await bridge.buildFromExtrude(rectExtrude());
+    const b = await bridge.buildFromExtrude(rectExtrude());
+    const sec = await bridge.surfaceTrim!(a.shape!, b.shape!);
+    expect(sec.ok).toBe(true);
+    expect(sec.shape?.kind).toBe('compound');
+  });
+
+  it('surfaceTrim of disjoint shapes reports no intersection', async () => {
+    const bridge = createWasmBridge();
+    const a = await bridge.buildPlanarFace!(SQ(0, 1), 0);
+    const b = await bridge.buildPlanarFace!(SQ(100, 101), 50);
+    const sec = await bridge.surfaceTrim!(a.shape!, b.shape!);
+    expect(sec.ok).toBe(false);
+    expect(sec.error).toMatch(/do not intersect|disjoint/);
+  });
+});

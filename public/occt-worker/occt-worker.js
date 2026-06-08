@@ -394,6 +394,47 @@
           return;
         }
 
+        case 'buildPlanarFace': {
+          var loop = Array.isArray(args.loop) ? args.loop : [];
+          if (loop.length < 3) { reply({ reqId: reqId, ok: false, error: 'buildPlanarFace: loop must have >=3 points, got ' + loop.length, warnings: [] }); return; }
+          var zPF = typeof args.z === 'number' ? args.z : 0;
+          var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          for (var ip = 0; ip < loop.length; ip++) {
+            var pp = loop[ip];
+            if (pp.x < minX) minX = pp.x; if (pp.x > maxX) maxX = pp.x;
+            if (pp.y < minY) minY = pp.y; if (pp.y > maxY) maxY = pp.y;
+          }
+          var recF = { kind: 'face', bbox: { min: { x: minX, y: minY, z: zPF }, max: { x: maxX, y: maxY, z: zPF } }, feature: undefined };
+          var hF = allocShape(recF);
+          reply({ reqId: reqId, ok: true, shape: shapeToWire(hF, recF), warnings: ['stub: synthetic planar face; no real BREP'] });
+          return;
+        }
+
+        case 'thicken': {
+          var srcT = resolveHandle(args.handle);
+          if (!srcT) { reply({ reqId: reqId, ok: false, error: 'thicken: unknown handle (' + args.handle + ')', warnings: [] }); return; }
+          var th = typeof args.dim === 'number' ? args.dim : NaN;
+          if (!(th > 0) || !isFinite(th)) { reply({ reqId: reqId, ok: false, error: 'thicken: thickness must be positive finite, got ' + th, warnings: [] }); return; }
+          var bbT = cloneBBox(srcT.bbox);
+          var outBbox = bbT ? { min: { x: bbT.min.x, y: bbT.min.y, z: bbT.min.z }, max: { x: bbT.max.x, y: bbT.max.y, z: bbT.min.z + th } } : undefined;
+          var recTh = { kind: 'solid', bbox: outBbox, feature: undefined };
+          var hTh = allocShape(recTh);
+          reply({ reqId: reqId, ok: true, shape: shapeToWire(hTh, recTh), warnings: ['stub: synthetic thicken (no real BREP)'] });
+          return;
+        }
+
+        case 'surfaceTrim': {
+          var sa = resolveHandle(args.handleA);
+          var sb = resolveHandle(args.handleB);
+          if (!sa || !sb) { reply({ reqId: reqId, ok: false, error: 'surfaceTrim: unknown handle (a=' + args.handleA + ', b=' + args.handleB + ')', warnings: [] }); return; }
+          var secBbox = bboxIntersection(sa.bbox, sb.bbox);
+          if (!secBbox) { reply({ reqId: reqId, ok: false, error: 'surfaceTrim: shapes do not intersect (stub: bbox disjoint)', warnings: [] }); return; }
+          var recSec = { kind: 'compound', bbox: secBbox, feature: undefined };
+          var hSec = allocShape(recSec);
+          reply({ reqId: reqId, ok: true, shape: shapeToWire(hSec, recSec), warnings: ['stub: synthetic surface trim (bbox section)'] });
+          return;
+        }
+
         case 'exportSTEP': {
           var rec3 = resolveHandle(args.handle);
           if (!rec3) {
