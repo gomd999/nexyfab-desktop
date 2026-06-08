@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
+import { FACT_DICT, pickFactLang, type FactDict, type FactLang } from './factoriesDict';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 
@@ -62,12 +64,15 @@ function MaskedName({ name, fontSize = 14, bold = true }: { name: string; fontSi
 
 // ── 카드 ──────────────────────────────────────────────────────────────────────
 
-function FactoryCard({ factory, view, search, field, region: filterRegion }: {
+function FactoryCard({ factory, view, search, field, region: filterRegion, t, lang }: {
   factory: Factory; view: 'grid' | 'list';
   search: string; field: string; region: string;
+  t: FactDict; lang: FactLang;
 }) {
   const isKo = factory.country === 'ko';
   const region = isKo ? (factory as KoFactory).region : (factory as CnFactory).regionKo;
+  const countryLabel = isKo ? `🇰🇷 ${t.cardKo}` : `🇨🇳 ${t.cardCn}`;
+  const langSeg = lang === 'ko' ? 'kr' : lang;
 
   const contactParams = new URLSearchParams({
     from: 'factory',
@@ -81,7 +86,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
   if (field) contactParams.set('field', field);
   if (filterRegion) contactParams.set('filterRegion', filterRegion);
 
-  const contactUrl = `/kr/project-inquiry/?${contactParams.toString()}`;
+  const contactUrl = `/${langSeg}/project-inquiry/?${contactParams.toString()}`;
   const accentColor = isKo ? '#2563eb' : '#ea580c';
   const accentBg = isKo ? '#eff6ff' : '#fff7ed';
   const badgeBg = isKo ? '#dbeafe' : '#fed7aa';
@@ -121,7 +126,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
             <span style={{
               fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700,
               background: badgeBg, color: badgeColor, letterSpacing: '0.02em',
-            }}>{isKo ? '🇰🇷 국내' : '🇨🇳 중국'}</span>
+            }}>{countryLabel}</span>
             {region && (
               <span style={{
                 fontSize: 11, color: '#9ca3af',
@@ -157,7 +162,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
         }}
           onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.85'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
-        >문의하기</a>
+        >{t.inquiry}</a>
       </div>
     );
   }
@@ -205,7 +210,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
             <span style={{
               fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700,
               background: badgeBg, color: badgeColor,
-            }}>{isKo ? '🇰🇷 국내' : '🇨🇳 중국'}</span>
+            }}>{countryLabel}</span>
             {region && (
               <span style={{ fontSize: 11, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 2 }}>
                 <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -249,7 +254,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
         <svg width="9" height="9" fill="currentColor" viewBox="0 0 24 24">
           <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
         </svg>
-        회원가입 후 전체 정보 열람 가능
+        {t.lockNotice}
       </div>
 
       <a href={contactUrl} style={{
@@ -263,7 +268,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
         onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.85'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
       >
-        문의하기
+        {t.inquiry}
         <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
           <path d="M5 12h14M12 5l7 7-7 7"/>
         </svg>
@@ -275,6 +280,11 @@ function FactoryCard({ factory, view, search, field, region: filterRegion }: {
 // ── 메인 ──────────────────────────────────────────────────────────────────────
 
 export default function FactoriesPage() {
+  const pathname = usePathname();
+  const lang = pickFactLang(pathname);
+  const t = FACT_DICT[lang];
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
+
   const [factories, setFactories] = useState<Factory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -309,11 +319,11 @@ export default function FactoriesPage() {
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 0);
     } catch {
-      setError('공장 정보를 불러오지 못했습니다.');
+      setError(t.loadError);
     } finally {
       setLoading(false);
     }
-  }, [country, field, region, search]);
+  }, [country, field, region, search, t]);
 
   useEffect(() => {
     if (!hasSearched && !search && !field && !region) return;
@@ -358,7 +368,7 @@ export default function FactoriesPage() {
   const cnTotal = 8860;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Pretendard', system-ui, -apple-system, sans-serif" }}>
+    <div dir={dir} style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Pretendard', system-ui, -apple-system, sans-serif" }}>
       {/* ── 히어로 헤더 ── */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%)',
@@ -386,15 +396,15 @@ export default function FactoriesPage() {
           }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }} />
             <span style={{ fontSize: 11, color: '#93c5fd', fontWeight: 600, letterSpacing: '0.05em' }}>
-              VERIFIED · 검증된 제조사
+              {t.badge}
             </span>
           </div>
 
           <h1 style={{ fontSize: 32, fontWeight: 900, color: '#fff', margin: '0 0 8px', letterSpacing: '-0.03em' }}>
-            제조사 디렉터리
+            {t.title}
           </h1>
           <p style={{ fontSize: 14, color: '#94a3b8', margin: '0 0 28px' }}>
-            국내 {koTotal.toLocaleString()}개 · 중국 {cnTotal.toLocaleString()}개 공장 데이터베이스
+            {t.subtitle(koTotal.toLocaleString(), cnTotal.toLocaleString())}
           </p>
 
           {/* 검색창 */}
@@ -406,7 +416,7 @@ export default function FactoriesPage() {
             <input
               type="text" value={searchInput}
               onChange={e => handleSearchInput(e.target.value)}
-              placeholder="공장명, 제품, 업종으로 검색..."
+              placeholder={t.searchPlaceholder}
               style={{
                 width: '100%', paddingLeft: 48, paddingRight: 20, paddingTop: 15, paddingBottom: 15,
                 fontSize: 15, border: '2px solid rgba(255,255,255,0.1)',
@@ -429,8 +439,8 @@ export default function FactoriesPage() {
           {/* 국가 탭 */}
           <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             {[
-              { key: 'ko' as const, flag: '🇰🇷', label: '국내', count: koTotal },
-              { key: 'cn' as const, flag: '🇨🇳', label: '중국', count: cnTotal },
+              { key: 'ko' as const, flag: '🇰🇷', label: t.tabKo, count: koTotal },
+              { key: 'cn' as const, flag: '🇨🇳', label: t.tabCn, count: cnTotal },
             ].map(tab => (
               <button key={tab.key} onClick={() => switchCountry(tab.key)} style={{
                 padding: '13px 28px', fontSize: 14, fontWeight: 700,
@@ -459,7 +469,7 @@ export default function FactoriesPage() {
           {/* 업종 (한국만) */}
           {country === 'ko' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', minWidth: 28, textTransform: 'uppercase' }}>업종</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', minWidth: 28, textTransform: 'uppercase' }}>{t.industryLabel}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {KO_INDUSTRIES.map(ind => (
                   <button key={ind.key} onClick={() => handleFilter('field', ind.key)} style={{
@@ -481,7 +491,7 @@ export default function FactoriesPage() {
 
           {/* 지역 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', minWidth: 28, textTransform: 'uppercase' }}>지역</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', minWidth: 28, textTransform: 'uppercase' }}>{t.regionLabel}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['전체', ...regionList].map(r => {
                 const isAll = r === '전체';
@@ -502,7 +512,7 @@ export default function FactoriesPage() {
                     color: active ? '#fff' : '#475569',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}>
-                    {r}
+                    {isAll ? t.all : r}
                   </button>
                 );
               })}
@@ -517,8 +527,10 @@ export default function FactoriesPage() {
         {hasSearched && !loading && !error && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ fontSize: 13, color: '#64748b' }}>
-              총 <strong style={{ color: '#0f172a', fontSize: 15 }}>{total.toLocaleString()}</strong>개 공장
-              {totalPages > 1 && <span style={{ color: '#94a3b8' }}> · {page}/{totalPages} 페이지</span>}
+              {t.resultTotal(`__N__`).split('__N__').map((part, i) => i === 0
+                ? <span key={i}>{part}</span>
+                : <span key={i}><strong style={{ color: '#0f172a', fontSize: 15 }}>{total.toLocaleString()}</strong>{part}</span>)}
+              {totalPages > 1 && <span style={{ color: '#94a3b8' }}> · {t.pageOf(page, totalPages)}</span>}
             </div>
             <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 3 }}>
               {(['grid', 'list'] as const).map(v => (
@@ -545,10 +557,10 @@ export default function FactoriesPage() {
           <div style={{ textAlign: 'center', padding: '80px 24px' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>🔍</div>
             <p style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
-              {country === 'ko' ? '국내 277,532개' : '중국 8,860개'} 공장을 검색해보세요
+              {t.emptyTitle(country, koTotal.toLocaleString(), cnTotal.toLocaleString())}
             </p>
             <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 28 }}>
-              공장명, 제품명, 업종으로 검색하거나 위 필터를 선택하세요
+              {t.emptySub}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               {(country === 'ko'
@@ -606,8 +618,8 @@ export default function FactoriesPage() {
         {!loading && !error && hasSearched && factories.length === 0 && (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>😔</div>
-            <div style={{ fontWeight: 600, color: '#64748b' }}>조건에 맞는 공장이 없습니다</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>검색어나 필터를 바꿔보세요</div>
+            <div style={{ fontWeight: 600, color: '#64748b' }}>{t.noResults}</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>{t.noResultsSub}</div>
           </div>
         )}
 
@@ -621,7 +633,7 @@ export default function FactoriesPage() {
             } : {
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
-              {factories.map(f => <FactoryCard key={f.id} factory={f} view={view} search={search} field={field} region={region} />)}
+              {factories.map(f => <FactoryCard key={f.id} factory={f} view={view} search={search} field={field} region={region} t={t} lang={lang} />)}
             </div>
 
             {/* ── 페이지네이션 ── */}
@@ -633,7 +645,7 @@ export default function FactoriesPage() {
                   background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer',
                   color: page <= 1 ? '#cbd5e1' : '#475569',
                   transition: 'all 0.15s',
-                }}>← 이전</button>
+                }}>{t.prev}</button>
 
                 {(() => {
                   const pages: number[] = [];
@@ -660,7 +672,7 @@ export default function FactoriesPage() {
                   background: '#fff', cursor: page >= totalPages ? 'not-allowed' : 'pointer',
                   color: page >= totalPages ? '#cbd5e1' : '#475569',
                   transition: 'all 0.15s',
-                }}>다음 →</button>
+                }}>{t.next}</button>
               </div>
             )}
           </div>
