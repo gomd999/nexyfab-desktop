@@ -254,7 +254,13 @@ now be made with evidence: **adopt (b)**.
 **Tier 3 — kernel-gated depth (after Tier 0 path chosen):**
 - [ ] Surface-surface trim, exact offset, thicken-to-solid, production
       rolling-ball fillet (Track S 🧱).
-- [ ] FEA Kt≈3.0 via boundary-conforming mesh (Track M 🧱, path c).
+- [~] **FEA Kt path-c DE-RISKED (2026-06-08)** — `analysis/feaPlateHoleKt.ts`:
+      a boundary-conforming polar mesh + real Q4 plane-stress FEA (reusing
+      femSolver's CSR+PCG) recovers the **Kirsch Kt ≈ 3.0** (test asserts
+      2.8–3.2, refines toward 3, hoop at load axis ≈ −σ) — decisively clearing
+      the structured-voxel 1.8–2.2 ceiling. Proves the conforming-mesh path
+      closes the gap; production needs the XL TetGen-wasm 3D mesher (this spike
+      is 2D, standalone, and does NOT touch the validated TET10 solver).
 - [ ] Contact / nonlinear FEM solver loop (Track M depth).
 
 ---
