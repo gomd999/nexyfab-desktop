@@ -8,6 +8,7 @@ export const springManifest: PluginManifest = {
   name: 'Spring Shape',
   version: '1.0.0',
   author: 'NexyFab',
+  apiVersion: '1.0.0',
   description: 'Adds a parametric helical spring shape to the shape library',
 };
 
