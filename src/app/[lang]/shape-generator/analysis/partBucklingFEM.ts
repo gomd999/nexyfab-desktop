@@ -137,3 +137,70 @@ export function runPartBuckling(geometry: THREE.BufferGeometry, opts: PartBuckli
   const lambda = bucklingEigen(K, B, nf, iters);
   return { criticalLoadFactor: lambda, nodeCount: nNodes, freeDofCount: nf };
 }
+
+// ─── panel adapter (last-mile: verified solver → UI) ────────────────────────
+
+/** Material table in solver units (E in MPa). Mirrors modalSolver's table. */
+export const BUCKLING_MATERIALS: Record<string, { name: string; E: number; nu: number }> = {
+  steel:    { name: 'Steel',    E: 200_000, nu: 0.3 },
+  aluminum: { name: 'Aluminum', E: 69_000,  nu: 0.33 },
+  titanium: { name: 'Titanium', E: 116_000, nu: 0.34 },
+  copper:   { name: 'Copper',   E: 130_000, nu: 0.34 },
+  abs:      { name: 'ABS',      E: 2_300,   nu: 0.35 },
+  pla:      { name: 'PLA',      E: 3_500,   nu: 0.36 },
+};
+
+/** Named face → clamp axis + side (matches modalSolver's FACE_AXIS). */
+const BUCKLING_FACE_AXIS: Record<string, { axis: 0 | 1 | 2; side: 'min' | 'max' }> = {
+  left:   { axis: 0, side: 'min' }, right: { axis: 0, side: 'max' },
+  bottom: { axis: 1, side: 'min' }, top:   { axis: 1, side: 'max' },
+  front:  { axis: 2, side: 'min' }, back:  { axis: 2, side: 'max' },
+};
+
+export interface PanelBucklingResult {
+  /** Lowest positive buckling load factor λ_cr. */
+  criticalLoadFactor: number;
+  /** Critical buckling stress (MPa) = λ_cr · |reference stress|. */
+  bucklingStressMPa: number;
+  /** The reference compression stress applied (MPa, magnitude). */
+  refStressMPa: number;
+  /** Loaded/clamped axis (0=X,1=Y,2=Z). */
+  loadAxis: 0 | 1 | 2;
+  nodeCount: number;
+  freeDofCount: number;
+}
+
+/**
+ * Panel-facing adapter: run linear buckling on a part clamped at one named face
+ * and uniformly compressed along that face's axis (the classic fixed-free column
+ * load). Maps a material key + face name to the verified {@link runPartBuckling}
+ * solver. `refStressMPa` is the reference compression magnitude that λ_cr scales.
+ */
+export function computeBucklingForPanel(
+  geometry: THREE.BufferGeometry,
+  materialKey: string,
+  fixedFace: string,
+  refStressMPa = 1,
+): PanelBucklingResult {
+  const mat = BUCKLING_MATERIALS[materialKey] ?? BUCKLING_MATERIALS.steel!;
+  const fa = BUCKLING_FACE_AXIS[fixedFace] ?? BUCKLING_FACE_AXIS.left!;
+  const mag = Math.abs(refStressMPa) || 1;
+  const sigma = -mag; // compression
+  const prestress: StressTensor3 = {
+    xx: fa.axis === 0 ? sigma : 0,
+    yy: fa.axis === 1 ? sigma : 0,
+    zz: fa.axis === 2 ? sigma : 0,
+  };
+  const geo = geometry.index ? geometry.toNonIndexed() : geometry;
+  const res = runPartBuckling(geo, {
+    E: mat.E, nu: mat.nu, prestress, fixedAxis: fa.axis, fixedSide: fa.side,
+  });
+  return {
+    criticalLoadFactor: res.criticalLoadFactor,
+    bucklingStressMPa: res.criticalLoadFactor * mag,
+    refStressMPa: mag,
+    loadAxis: fa.axis,
+    nodeCount: res.nodeCount,
+    freeDofCount: res.freeDofCount,
+  };
+}

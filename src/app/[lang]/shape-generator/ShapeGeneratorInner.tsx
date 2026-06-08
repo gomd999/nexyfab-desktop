@@ -2344,6 +2344,8 @@ export function ShapeGeneratorInner() {
   const [motionPartTransforms, setMotionPartTransforms] = useState<Record<string, import('three').Matrix4> | null>(null);
   const showModalAnalysis    = useUIStore(s => s.showModalAnalysis);
   const setShowModalAnalysis = useUIStore(s => s.setShowModalAnalysis);
+  const showBucklingAnalysis = useUIStore(s => s.showBucklingAnalysis);
+  const setShowBucklingAnalysis = useUIStore(s => s.setShowBucklingAnalysis);
   const showParametricSweep  = useUIStore(s => s.showParametricSweep);
   const setShowParametricSweep = useUIStore(s => s.setShowParametricSweep);
   const showToleranceStackup = useUIStore(s => s.showToleranceStackup);
@@ -2369,6 +2371,7 @@ export function ShapeGeneratorInner() {
         { id: 'gen', active: showGenDesign },
         { id: 'motion', active: showMotionStudy },
         { id: 'modal', active: showModalAnalysis },
+        { id: 'buckling', active: showBucklingAnalysis },
         { id: 'tol', active: showToleranceStackup },
         { id: 'surf', active: showSurfaceQuality },
         { id: 'mfgpipe', active: showMfgPipeline },
@@ -2384,6 +2387,7 @@ export function ShapeGeneratorInner() {
       showGenDesign,
       showMotionStudy,
       showModalAnalysis,
+      showBucklingAnalysis,
       showToleranceStackup,
       showSurfaceQuality,
       showMfgPipeline,
@@ -6284,6 +6288,7 @@ export function ShapeGeneratorInner() {
     ecad:             () => setShowECADPanel(true),
     motionStudy:      () => setShowMotionStudy(true),
     modalAnalysis:    () => setShowModalAnalysis(true),
+    bucklingAnalysis: () => setShowBucklingAnalysis(true),
     parametricSweep:  () => setShowParametricSweep(true),
     toleranceStackup: () => setShowToleranceStackup(true),
     surfaceQuality:   () => setShowSurfaceQuality(true),
@@ -6298,7 +6303,7 @@ export function ShapeGeneratorInner() {
   // opening the panel if `effectiveResult.geometry` is missing.
   const PANELS_REQUIRING_GEO = new Set([
     'fea', 'massProperties', 'gdt', 'dfm', 'thermal',
-    'generativeDesign', 'ecad', 'motionStudy', 'modalAnalysis',
+    'generativeDesign', 'ecad', 'motionStudy', 'modalAnalysis', 'bucklingAnalysis',
     'parametricSweep', 'toleranceStackup', 'surfaceQuality',
     'autoDrawing', 'mfgPipeline',
   ]);
@@ -10494,6 +10499,8 @@ export function ShapeGeneratorInner() {
         setMotionPartTransforms={setMotionPartTransforms}
         showModalAnalysis={showModalAnalysis}
         setShowModalAnalysis={setShowModalAnalysis}
+        showBucklingAnalysis={showBucklingAnalysis}
+        setShowBucklingAnalysis={setShowBucklingAnalysis}
         showToleranceStackup={showToleranceStackup}
         setShowToleranceStackup={setShowToleranceStackup}
         showSurfaceQuality={showSurfaceQuality}
