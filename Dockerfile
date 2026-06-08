@@ -5,9 +5,13 @@ WORKDIR /app
 # Native module build tools (better-sqlite3 needs python3 + build-essential)
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install dependencies.
+# `npm install` (not `npm ci`): the lock drifts on platform-specific optional
+# wasm deps (@emnapi/*, generated on a Windows dev box), which makes the strict
+# `npm ci` fail on Linux. `npm install` reconciles the lock at build time and
+# still installs the full tree (webpack, replicad-opencascadejs, etc.).
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Copy source
 COPY . .
