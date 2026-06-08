@@ -119,7 +119,7 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
    *  same thing (incl. the translate → moveCopy side-effect). Returns
    *  the human-readable status the caller writes into applyMsg. */
   const applyParsedResult = (
-    shape: { baseShapeId: 'box' | 'cylinder' | 'sphere'; params: Record<string, number>; translate?: { x: number; y: number; z: number } },
+    shape: { baseShapeId: 'box' | 'cylinder' | 'sphere' | 'cone' | 'torus'; params: Record<string, number>; translate?: { x: number; y: number; z: number } },
     features: ScadRecognisedFeature[] | undefined,
     manual: boolean,
   ): string => {

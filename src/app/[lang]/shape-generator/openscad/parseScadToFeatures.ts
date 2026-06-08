@@ -23,8 +23,8 @@
 // primitives, expression evaluator, and feature tree round-trip.
 
 export interface ScadRecognisedShape {
-  /** Maps to the existing base shape id in NexyFab (`box`, `cylinder`, `sphere`). */
-  baseShapeId: 'box' | 'cylinder' | 'sphere';
+  /** Maps to the existing base shape id in NexyFab. */
+  baseShapeId: 'box' | 'cylinder' | 'sphere' | 'cone' | 'torus';
   /** Numeric params keyed by NexyFab parameter name. */
   params: Record<string, number>;
   /** Phase 2-b — translate prefix offset captured during stripping. Caller
@@ -83,6 +83,19 @@ const CYL_RE = new RegExp(
 );
 // `sphere(r=r, ...)`.
 const SPHERE_RE = new RegExp('^sphere\\s*\\([^\\)]*?r\\s*=\\s*' + NUM);
+// `cylinder(h=h, r1=br, r2=tr, ...)` — a cone (tapered). Distinct from CYL_RE:
+// the `r1=`/`r2=` keys mean CYL_RE's bare `r=` never matches this, so order is
+// irrelevant, but we test cone first for clarity.
+const CONE_RE = new RegExp(
+  '^cylinder\\s*\\([^\\)]*?h\\s*=\\s*' + NUM + '[^\\)]*?r1\\s*=\\s*' + NUM + '[^\\)]*?r2\\s*=\\s*' + NUM,
+);
+// `rotate_extrude(...) translate([majorR, 0, 0]) circle(r=minorR, ...)` — the
+// torus idiom our emitter writes (the inner translate is part of the idiom, not
+// a transform prefix, so it isn't peeled by stripTransforms).
+const TORUS_RE = new RegExp(
+  '^rotate_extrude\\s*\\([^\\)]*\\)\\s*translate\\s*\\(\\s*\\[\\s*' + NUM + '\\s*,\\s*' + NUM + '\\s*,\\s*' + NUM +
+  '\\s*\\]\\s*\\)\\s*circle\\s*\\(\\s*r\\s*=\\s*' + NUM,
+);
 
 interface StrippedTransforms {
   rest: string;
@@ -263,6 +276,17 @@ export function parseScadToFeatures(scad: string): ScadParseResult {
     if (m) {
       const s = parseFloat(m[1]);
       return { ok: true, shape: { baseShapeId: 'box', params: { width: s, depth: s, height: s }, ...tf } };
+    }
+    m = CONE_RE.exec(line);
+    if (m) {
+      const [h, r1, r2] = [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])];
+      // SCAD radii → NexyFab diameters (scene stores bottom/topDiameter).
+      return { ok: true, shape: { baseShapeId: 'cone', params: { height: h, bottomDiameter: r1 * 2, topDiameter: r2 * 2 }, ...tf } };
+    }
+    m = TORUS_RE.exec(line);
+    if (m) {
+      const [majorR, , , minorR] = [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])];
+      return { ok: true, shape: { baseShapeId: 'torus', params: { majorDiameter: majorR * 2, tubeDiameter: minorR * 2 }, ...tf } };
     }
     m = CYL_RE.exec(line);
     if (m) {

@@ -167,6 +167,58 @@ describe('Phase 2 — difference() → base + hole features', () => {
   });
 });
 
+describe('Phase 2 — cone / torus recognition + diameter↔radius symmetry', () => {
+  it('emit→parse round-trips a cone (bottom/top diameter, height)', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'cone', baseParams: { bottomDiameter: 60, topDiameter: 20, height: 40 } });
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('cone');
+      expect(r.shape.params).toMatchObject({ height: 40, bottomDiameter: 60, topDiameter: 20 });
+    }
+  });
+
+  it('emit→parse round-trips a torus (major / tube diameter)', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'torus', baseParams: { majorDiameter: 80, tubeDiameter: 24 } });
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('torus');
+      expect(r.shape.params).toMatchObject({ majorDiameter: 80, tubeDiameter: 24 });
+    }
+  });
+
+  it('cylinder diameter survives emit→parse (was emitting a stale default radius)', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'cylinder', baseParams: { diameter: 30, height: 20 } });
+    expect(scad).toContain('r=15'); // 30mm diameter → 15mm radius, not the old default 25
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.shape.params).toMatchObject({ diameter: 30, height: 20 });
+  });
+
+  it('sphere diameter survives emit→parse', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'sphere', baseParams: { diameter: 18 } });
+    expect(scad).toContain('r=9');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.shape.params).toMatchObject({ diameter: 18 });
+  });
+
+  it('parses a hand-written cone and a pointed cone (r2=0)', () => {
+    const taper = parseScadToFeatures('cylinder(h=50, r1=20, r2=8, center=true, $fn=64);');
+    expect(taper.ok && taper.shape.baseShapeId).toBe('cone');
+    if (taper.ok) expect(taper.shape.params).toMatchObject({ bottomDiameter: 40, topDiameter: 16 });
+    const pointed = parseScadToFeatures('cylinder(h=30, r1=15, r2=0, center=true, $fn=64);');
+    expect(pointed.ok && pointed.shape.baseShapeId).toBe('cone');
+    if (pointed.ok) expect(pointed.shape.params.topDiameter).toBe(0);
+  });
+
+  it('a plain cylinder is NOT mis-read as a cone', () => {
+    const r = parseScadToFeatures('cylinder(h=50, r=25, center=true, $fn=64);');
+    expect(r.ok && r.shape.baseShapeId).toBe('cylinder');
+  });
+});
+
 describe('O1 — fast box fillet (hull, not minkowski)', () => {
   it('emitRoundedBoxFilletScad uses hull() of 8 corner spheres, no minkowski', () => {
     const scad = emitRoundedBoxFilletScad(60, 40, 30, 4);

@@ -49,18 +49,28 @@ export function nfabTag(type: string, params: Record<string, number | undefined>
   return `// @nfab ${type}${parts.length ? ' ' + parts.join(' ') : ''}`;
 }
 
+/** OpenSCAD primitives take radii; the NexyFab scene stores DIAMETERS
+ *  (cylinder.diameter, cone.bottomDiameter, torus.tubeDiameter, …). Convert so
+ *  the emitted SCAD reflects the real model size instead of a stale default —
+ *  the prior code read non-existent `p.radius`/`p.bottomRadius` keys and always
+ *  fell back to the hard-coded radius. parseScadToFeatures inverts this (r·2). */
+function radFromDia(dia: number | undefined, fallbackDia: number): string {
+  const d = typeof dia === 'number' && Number.isFinite(dia) ? dia : fallbackDia;
+  return fmt(d / 2);
+}
+
 function emitBase(baseShapeId: string, p: Record<string, number>): string {
   switch (baseShapeId) {
     case 'box':
       return `cube([${fmt(p.width, 50)}, ${fmt(p.depth, 50)}, ${fmt(p.height, 50)}], center=true);`;
     case 'cylinder':
-      return `cylinder(h=${fmt(p.height, 50)}, r=${fmt(p.radius, 25)}, center=true, $fn=64);`;
+      return `cylinder(h=${fmt(p.height, 50)}, r=${radFromDia(p.diameter, 50)}, center=true, $fn=64);`;
     case 'sphere':
-      return `sphere(r=${fmt(p.radius, 25)}, $fn=64);`;
+      return `sphere(r=${radFromDia(p.diameter, 50)}, $fn=64);`;
     case 'cone':
-      return `cylinder(h=${fmt(p.height, 50)}, r1=${fmt(p.bottomRadius, 25)}, r2=${fmt(p.topRadius, 0)}, center=true, $fn=64);`;
+      return `cylinder(h=${fmt(p.height, 50)}, r1=${radFromDia(p.bottomDiameter, 50)}, r2=${radFromDia(p.topDiameter, 0)}, center=true, $fn=64);`;
     case 'torus':
-      return `rotate_extrude($fn=64) translate([${fmt(p.majorRadius, 30)}, 0, 0]) circle(r=${fmt(p.minorRadius, 8)}, $fn=32);`;
+      return `rotate_extrude($fn=64) translate([${radFromDia(p.majorDiameter, 80)}, 0, 0]) circle(r=${radFromDia(p.tubeDiameter, 20)}, $fn=32);`;
     default:
       return `// unsupported base shape: ${baseShapeId}\ncube([10, 10, 10], center=true);`;
   }
