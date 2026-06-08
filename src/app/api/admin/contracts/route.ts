@@ -148,6 +148,75 @@ export async function POST(req: NextRequest) {
     ).catch(() => {});
   }
 
+  // 계약 체결 → 추적 가능한 주문 자동 생성.
+  // 이전에는 계약만 만들고 nf_orders 행이 없어, "계약 체결" 알림이 가리키는
+  // /nexyfab/orders 에 정작 주문이 없었다. 여기서 그 연결을 만든다.
+  // (계약 저장이 성공한 뒤 best-effort — 주문 생성 실패가 계약을 깨지 않는다.)
+  try {
+    const nowMs = Date.now();
+    const DAY = 86_400_000;
+    // 멱등성: 같은 견적으로 이미 주문이 있으면 중복 생성하지 않는다.
+    await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
+    const existingOrder = quoteId
+      ? await db.queryOne<{ id: string }>('SELECT id FROM nf_orders WHERE quote_id = ?', quoteId).catch(() => null)
+      : null;
+    const custRow = customerEmail
+      ? await db.queryOne<{ id: string }>('SELECT id FROM nf_users WHERE email = ?', customerEmail).catch(() => null)
+      : null;
+
+    if (!existingOrder && custRow?.id) {
+      // 수량/부품명/RFQ는 원본 견적 → RFQ 에서 끌어온다(없으면 합리적 기본값).
+      let rfqId: string | null = null;
+      let quantity = 1;
+      let partName = projectName;
+      if (quoteId) {
+        const q = await db.queryOne<{ inquiry_id: string | null }>(
+          'SELECT inquiry_id FROM nf_quotes WHERE id = ?', quoteId,
+        ).catch(() => null);
+        if (q?.inquiry_id) {
+          rfqId = q.inquiry_id;
+          const rfq = await db.queryOne<{ quantity: number | null; shape_name: string | null }>(
+            'SELECT quantity, shape_name FROM nf_rfqs WHERE id = ?', rfqId,
+          ).catch(() => null);
+          if (rfq?.quantity && rfq.quantity > 0) quantity = rfq.quantity;
+          if (rfq?.shape_name) partName = rfq.shape_name;
+        }
+      }
+      // 납기일이 있으면 그날까지, 없으면 14일.
+      const deadlineMs = deadline ? Date.parse(deadline) : NaN;
+      const leadDays = Number.isFinite(deadlineMs) && deadlineMs > nowMs
+        ? Math.max(1, Math.ceil((deadlineMs - nowMs) / DAY))
+        : 14;
+      const steps = [
+        { label: 'Order Placed',  labelKo: '주문 완료', completedAt: nowMs },
+        { label: 'In Production', labelKo: '생산 중',   estimatedAt: nowMs + 2 * DAY },
+        { label: 'QC',            labelKo: '품질 검사', estimatedAt: nowMs + Math.max(0, leadDays - 4) * DAY },
+        { label: 'Shipped',       labelKo: '배송 시작', estimatedAt: nowMs + Math.max(0, leadDays - 2) * DAY },
+        { label: 'Delivered',     labelKo: '배송 완료', estimatedAt: nowMs + leadDays * DAY },
+      ];
+      const orderId = `ORD-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+      await db.execute(
+        `INSERT INTO nf_orders
+          (id, rfq_id, quote_id, user_id, part_name, manufacturer_name, quantity,
+           total_price_krw, status, steps, created_at, estimated_delivery_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'placed', ?, ?, ?)`,
+        orderId,
+        rfqId,
+        quoteId ?? null,
+        custRow.id,
+        partName,
+        factoryName ?? '제조사',
+        quantity,
+        Number(contractAmount),
+        JSON.stringify(steps),
+        nowMs,
+        nowMs + leadDays * DAY,
+      );
+    }
+  } catch (err) {
+    console.error('[admin/contracts POST] 주문 자동 생성 실패(계약은 유지):', err);
+  }
+
   const resolvedLang = lang.startsWith('ko') ? 'ko' : 'en';
 
   // 고객 이메일 발송
