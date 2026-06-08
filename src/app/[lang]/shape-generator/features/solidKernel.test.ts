@@ -10,9 +10,11 @@ import { loadOcctNode } from '@/lib/occt/nodeOcctLoader';
 import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
 import {
   createKSeriesKernel,
+  createReplicadKernel,
   kernelParity,
   type SolidKernel,
   type KernelShape,
+  type ReplicadKernelDeps,
 } from './solidKernel';
 
 // ─── parity harness (pure, no WASM) ─────────────────────────────────────────
@@ -52,6 +54,50 @@ describe('kernelParity', () => {
     const v = kernelParity({ id: 'a', kind: 'solid' }, shape(500));
     expect(v.ok).toBe(false);
     expect(v.volRelErr).toBe(Infinity);
+  });
+});
+
+// ─── replicad kernel adapter (mock occtEngine deps, headless) ───────────────
+
+describe('createReplicadKernel (W3 first-consumer subset, mocked deps)', () => {
+  const mockDeps: ReplicadKernelDeps = {
+    extrudeProfile: () => ({ geometry: { t: 'ex' }, handle: 'occt_1' }),
+    revolveProfile: () => ({ geometry: { t: 'rev' }, handle: 'occt_2' }),
+    booleanSolids: (op, a, b) => ({ geometry: { t: `${op}:${a}:${b}` }, handle: 'occt_3' }),
+    exportStep: async (h) => `ISO-10303-21;${h}`,
+    meshVolume: () => -500, // signed → adapter takes abs
+    boundsOf: () => ({ min: { x: 0, y: 0, z: 0 }, max: { x: 10, y: 10, z: 5 } }),
+  };
+
+  it('extrude returns a positive-volume solid keyed by the occtEngine handle', async () => {
+    const k = createReplicadKernel(mockDeps);
+    const s = await k.extrude([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], 5);
+    expect(s).toEqual({ id: 'occt_1', kind: 'solid', volume: 500, bbox: mockDeps.boundsOf({}) });
+  });
+
+  it('boolean threads the op + handle ids through to occtEngine', async () => {
+    let seen = '';
+    const k = createReplicadKernel({ ...mockDeps, booleanSolids: (op, a, b) => { seen = `${op}:${a}:${b}`; return { geometry: {}, handle: 'occt_9' }; } });
+    const r = await k.boolean('subtract', 'occt_1', 'occt_2');
+    expect(seen).toBe('subtract:occt_1:occt_2');
+    expect(r!.id).toBe('occt_9');
+  });
+
+  it('a null handle (failed build) → null shape', async () => {
+    const k = createReplicadKernel({ ...mockDeps, extrudeProfile: () => ({ geometry: {}, handle: null }) });
+    expect(await k.extrude([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], 1)).toBeNull();
+  });
+
+  it('ceiling ops (thicken/surfaceTrim/buildPlanarFace) are null BY DESIGN', async () => {
+    const k = createReplicadKernel(mockDeps);
+    expect(await k.thicken('occt_1', 2)).toBeNull();
+    expect(await k.surfaceTrim('occt_1', 'occt_2')).toBeNull();
+    expect(await k.buildPlanarFace([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }])).toBeNull();
+  });
+
+  it('exportStep delegates to occtEngine', async () => {
+    const k = createReplicadKernel(mockDeps);
+    expect(await k.exportStep('occt_1')).toBe('ISO-10303-21;occt_1');
   });
 });
 

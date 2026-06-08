@@ -180,8 +180,16 @@ needs the user's browser.
   0.01 mm); passes identical/within-tol, fails volume/bbox divergence + missing
   volume.
 
-**Remaining W3a (browser-gated, NOT wired here):** `createReplicadKernel`
-(wraps the sync `occtEngine`) + routing `occtExtrudeProfile` through the facade
-behind `?occtWorker=1` in the pipeline, + the cross-kernel parity burn-in. These
-touch the production pipeline + need replicad (browser), so they land with
-real-browser verification — deliberately not blind-wired.
+**`createReplicadKernel` DONE (2026-06-08, dependency-injected):** wraps the
+in-process `occtEngine` behind the same facade — extrude/revolve/boolean/
+exportStep wired; the ceiling ops (thicken/surfaceTrim/buildPlanarFace) are
+`null` BY DESIGN (replicad can't — the reason for the migration). Built with
+INJECTED deps (`ReplicadKernelDeps`) so the adapter logic is headless-verified
+with mocks (id threading, abs-volume, ceiling-null, exportStep) — only the real
+`occtExtrudeProfile`/`meshVolume` BINDINGS are browser-supplied. 21/21.
+
+**Remaining W3a (browser-gated):** inject the real `ReplicadKernelDeps`, route
+`occtExtrudeProfile` through the facade behind `?occtWorker=1` in the pipeline,
+and run the cross-kernel parity burn-in. These touch the production pipeline +
+need replicad (browser) — deliberately not blind-wired; they land with
+real-browser verification.

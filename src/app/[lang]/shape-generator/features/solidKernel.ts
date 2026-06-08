@@ -143,6 +143,62 @@ export function createKSeriesKernel(bridge: OcctBridge): SolidKernel {
   };
 }
 
+// ─── replicad kernel (wraps the in-process occtEngine) ──────────────────────
+
+/**
+ * Build a `SolidKernel` over the in-process replicad path (`occtEngine`) — the
+ * browser-side half of the parity gate. occtEngine's string handle IS the
+ * facade id, so ids thread 1:1; volume/bbox come from the returned mesh
+ * (occtEngine doesn't surface them uniformly).
+ *
+ * Only the W3 first-consumer ops (extrude/revolve/boolean) + STEP export are
+ * wired. The kernel-CEILING ops (`thicken`/`surfaceTrim`/`buildPlanarFace`) are
+ * `null` BY DESIGN — replicad's high-level API cannot express them, which is the
+ * entire reason for the K-series migration. The parity gate only compares ops
+ * both kernels support.
+ *
+ * Browser-only (replicad WASM); not headless-runnable here. Unconsumed by the
+ * pipeline until W3 routing lands — this is the adapter the routing will use.
+ */
+export function createReplicadKernel(deps: ReplicadKernelDeps): SolidKernel {
+  const { extrudeProfile, revolveProfile, booleanSolids, exportStep, meshVolume, boundsOf } = deps;
+  const shapeOf = (geometry: unknown, handle: string | null): KernelShape | null => {
+    if (!handle) return null;
+    return { id: handle, kind: 'solid', volume: Math.abs(meshVolume(geometry)), bbox: boundsOf(geometry) };
+  };
+  const unsupported = async (): Promise<KernelShape | null> => null;
+  return {
+    async extrude(loop, depth) { const r = extrudeProfile([...loop], depth); return shapeOf(r.geometry, r.handle); },
+    async revolve(loop) { const r = revolveProfile([...loop]); return shapeOf(r.geometry, r.handle); }, // 360° only
+    async boolean(op, a, b) { const r = booleanSolids(op, a, b); return shapeOf(r.geometry, r.handle); },
+    fillet: unsupported,
+    chamfer: unsupported,
+    variableFillet: unsupported,
+    draft: unsupported,
+    buildPlanarFace: unsupported,
+    thicken: unsupported,     // replicad ceiling — null by design
+    surfaceTrim: unsupported, // replicad ceiling — null by design
+    async exportStep(id) { return exportStep(id); },
+    async importStep() { return null; },
+    async tessellate() { return null; }, // geometry comes back from each op
+    release() { /* occtEngine clears its own registry per pipeline run */ },
+  };
+}
+
+/**
+ * Injected occtEngine surface for {@link createReplicadKernel}. Passed in (not
+ * imported) so this module stays free of the browser-only occtEngine + THREE at
+ * type-check time; the pipeline supplies the real bindings.
+ */
+export interface ReplicadKernelDeps {
+  extrudeProfile: (points: Array<{ x: number; y: number }>, depth: number) => { geometry: unknown; handle: string | null };
+  revolveProfile: (points: Array<{ x: number; y: number }>) => { geometry: unknown; handle: string | null };
+  booleanSolids: (op: BooleanKind, a: string, b: string) => { geometry: unknown; handle: string | null };
+  exportStep: (handle: string) => Promise<string | null>;
+  meshVolume: (geometry: unknown) => number;
+  boundsOf: (geometry: unknown) => KernelBBox | undefined;
+}
+
 // ─── parity harness (replicad vs K-series) ──────────────────────────────────
 
 export interface ParityVerdict {
