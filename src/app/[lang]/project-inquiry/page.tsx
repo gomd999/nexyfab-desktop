@@ -232,6 +232,10 @@ function ProjectInquiryPageInner() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [simBanner, setSimBanner] = useState('');
+  // The factory the customer clicked "문의하기" on in the directory. Submitted as
+  // a hidden field so the inquiry can be routed back to that specific partner
+  // (the FactoryCard passes it in the URL; it used to be dropped here).
+  const [factoryId, setFactoryId] = useState('');
   const searchParams = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -240,6 +244,7 @@ function ProjectInquiryPageInner() {
     const from = searchParams.get('from');
     if (from !== 'factory') return;
 
+    const fId       = searchParams.get('factoryId')    || '';
     const industry  = searchParams.get('industry')     || '';
     const tags      = searchParams.get('tags')         || '';
     const region    = searchParams.get('region')       || '';
@@ -248,10 +253,14 @@ function ProjectInquiryPageInner() {
     const country   = searchParams.get('country')      || 'ko';
     const countryLabel = country === 'cn' ? '중국' : '국내';
 
+    // Keep the clicked factory's id so the submit carries it (hidden field).
+    setFactoryId(fId);
+
     if (formRef.current) {
       const messageArea = formRef.current.querySelector('textarea[name="message"]') as HTMLTextAreaElement | null;
       if (messageArea) {
         const lines = ['[공장 DB 연동 자동 작성]'];
+        if (fId)      lines.push(`공장 ID: ${fId}`);
         if (search)   lines.push(`검색어: ${search}`);
         if (field)    lines.push(`업종 필터: ${field}`);
         if (industry) lines.push(`공장 업종: ${industry}`);
@@ -404,6 +413,7 @@ function ProjectInquiryPageInner() {
           )}
 
           <form className="hat-form" ref={formRef} onSubmit={handleSubmit}>
+            {factoryId && <input type="hidden" name="factory_id" value={factoryId} />}
             <input name="action" type="hidden" value="send_project_inquiry" />
             <div style={{ display: "none" }}>
               <label>Website</label>

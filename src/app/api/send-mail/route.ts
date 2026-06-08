@@ -44,6 +44,15 @@ function saveInquiry(data: Record<string, unknown>): void {
   const id = `inquiry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const now = new Date().toISOString();
 
+  // Directory inquiries carry the clicked factory's id. Until nf_inquiries has a
+  // dedicated column, pin it to the top of the message so ops can route the
+  // inquiry to that specific partner instead of guessing from free text.
+  const factoryId = String(data.factory_id ?? '').trim();
+  const baseMessage = String(data.message ?? data.content ?? '');
+  const message = factoryId && !baseMessage.includes(factoryId)
+    ? `[공장 ID: ${factoryId}]\n${baseMessage}`
+    : baseMessage;
+
   const db = getDbAdapter();
   db.execute(
     `INSERT INTO nf_inquiries
@@ -55,7 +64,7 @@ function saveInquiry(data: Record<string, unknown>): void {
     String(data.email ?? ''),
     String(data.project_name ?? data.company ?? ''),
     String(data.budget ?? data.budget_range ?? ''),
-    String(data.message ?? data.content ?? ''),
+    message,
     String(data.phone ?? ''),
     now,
   ).catch(err => console.error('saveInquiry DB write failed:', err));
