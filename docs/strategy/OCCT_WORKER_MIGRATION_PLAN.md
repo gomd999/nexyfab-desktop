@@ -81,7 +81,7 @@ same code behind one `OcctBridge`.
 
 | Phase | Deliverable | Acceptance gate |
 |---|---|---|
-| **W1 — browser boot** | Worker loads `opencascade.js` (wasmBinary, no fetch-of-fetch), runs ONE op (extrude box) → returns real volume + mesh | Playwright: in a real chromium, a box extrude returns volume≈expected from the worker (not synthetic bbox) |
+| **W1 — browser boot** ✅ *(largely pre-existing; gate strengthened 2026-06-08)* | `occt-worker/occt-worker-real.js` already boots `opencascade.js` (65 MB wasm staged in `public/occt-worker/`) and maps the 11 ops; `e2e/occt/wasm-real.spec.ts` boots it in real chromium. **Added:** a real-VOLUME + ceiling-op gate (box=500, holed=420, **thicken-ceiling=200**) mirroring the headless `nodeOcctBridge`/`ceilingSpike` asserts | `NEXYFAB_OCCT_REAL=1 npm run test:e2e:occt` (user-run): in-browser volumes match node exactly, incl. the thicken ceiling op. The prior spec only checked non-null shapes |
 | **W2 — RPC + registry** | Promise-keyed RPC over MessageChannel; shape registry + `release`; reuse `createNodeOcctBridge` in-worker | boolean subtract round-trips a holed solid (volume) **through the worker**; released handle throws on reuse |
 | **W3 — occtEngine async swap** | `occtEngine` ops return Promises wired to the worker; mesh stays the drag fast-path; one feature (boolean) fully migrated behind `?occtWorker=1` | parity: replicad vs worker boolean agree on volume within tol (a CI parity gate); drag stays <16 ms (mesh), commit produces B-rep |
 | **W4 — coverage** | Migrate the remaining ops (extrude/revolve/sweep/loft/fillet/chamfer/shell/draft/pattern) op-by-op behind the flag | every solid op returns a worker B-rep handle in OCCT mode; STEP export uses the worker writer |
@@ -113,9 +113,17 @@ gated on the browser visual-regression matrix. Total ≈ **a quarter** for one
 engineer — matching the ADR-014 "multi-quarter rewrite" estimate, now de-risked
 at the kernel-capability level (the spike proved the ops; this is plumbing+UX).
 
-## 8. First concrete step
+## 8. First concrete step — DONE (W1 gate, 2026-06-08)
 
-Implement **W1** as a Playwright-gated spike: a `/occt-worker` message that runs
-`createNodeOcctBridge(browserOc).buildFromExtrude(...)` and posts back the real
-volume + mesh — proving the exact `nodeOcctBridge` code runs in a browser worker.
-Mirror the `nodeOcctBridge.test.ts` assertions in an `e2e/occt` spec.
+W1's browser-boot infra already existed (`occt-worker-real.js` + the wasm in
+`public/`). The missing piece was a gate proving **correct geometry** (the prior
+`e2e/occt/wasm-real.spec.ts` only checked non-null shapes). Added a Playwright
+test that, in real chromium, computes real `VolumeProperties` and asserts box=500,
+holed=420, and the **thicken ceiling op = 200** — mirroring the headless
+`nodeOcctBridge`/`ceilingSpike` asserts so node↔browser drift is caught (run:
+`NEXYFAB_OCCT_REAL=1 npm run test:e2e:occt`).
+
+**Next (W2):** drive these ops through the actual worker RPC (`createWasmBridge`)
+rather than inline `page.evaluate`, and converge the hand-written
+`occt-worker-real.js` dispatcher with the typed `createNodeOcctBridge` so the
+worker gains `thicken`/`surfaceTrim`/`buildPlanarFace` (currently node-only).

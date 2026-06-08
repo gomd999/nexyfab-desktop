@@ -196,6 +196,92 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
     expect(stepResult.hasReader, 'STEPControl_Reader_1 must be bound').toBe(true);
   });
 
+  /**
+   * W1 de-risking (OCCT_WORKER_MIGRATION_PLAN): the existing tests above prove
+   * the browser builds NON-NULL shapes. This one proves it builds shapes with
+   * the CORRECT GEOMETRY — real VolumeProperties — mirroring the headless
+   * nodeOcctBridge/ceilingSpike assertions, so node↔browser drift is caught.
+   * Crucially it includes the kernel-CEILING op (thicken surface→solid) the
+   * whole migration exists to surface.
+   */
+  test('W1: real volumes in-browser — box 500, holed 420, thicken-ceiling 200', async ({ page, request }) => {
+    const diag = await request.get('/api/occt/diagnostic');
+    const body = await diag.json() as { mode: string };
+    test.skip(body.mode !== 'wasm', `mode=${body.mode}; real-volume gate requires real OCCT.`);
+
+    await page.goto('/');
+
+    const r: { ok: boolean; box: number; holed: number; thicken: number; reason: string } =
+      await page.evaluate(async () => {
+        await new Promise<void>((resolve, reject) => {
+          if (typeof (window as unknown as { Module?: unknown }).Module === 'function') { resolve(); return; }
+          const s = document.createElement('script');
+          s.src = '/occt-worker/opencascade.js';
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error('loader script failed'));
+          document.head.appendChild(s);
+        });
+        const Factory = (window as unknown as { Module?: (cfg: unknown) => Promise<Record<string, unknown>> }).Module;
+        if (typeof Factory !== 'function') return { ok: false, box: 0, holed: 0, thicken: 0, reason: 'no Module factory' };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p}` }) as any;
+
+        const vol = (shape: unknown): number => {
+          const props = new m.GProp_GProps_1();
+          m.BRepGProp.VolumeProperties_1(shape, props, false, false, false);
+          const v = props.Mass();
+          try { props.delete(); } catch { /* noop */ }
+          return v;
+        };
+        const face = (loop: Array<[number, number]>, z: number): unknown => {
+          const poly = new m.BRepBuilderAPI_MakePolygon_1();
+          for (const [x, y] of loop) { const p = new m.gp_Pnt_3(x, y, z); poly.Add_1(p); }
+          poly.Close();
+          return new m.BRepBuilderAPI_MakeFace_15(poly.Wire(), false).Face();
+        };
+        const prism = (loop: Array<[number, number]>, h: number): unknown => {
+          const f = face(loop, 0);
+          const vec = new m.gp_Vec_4(0, 0, h);
+          return new m.BRepPrimAPI_MakePrism_1(f, vec, false, true).Shape();
+        };
+        const SQ = (a: number, b: number): Array<[number, number]> => [[a, a], [b, a], [b, b], [a, b]];
+
+        try {
+          // 1) box 10×10×5 = 500
+          const box = prism(SQ(0, 10), 5);
+          const boxVol = vol(box);
+
+          // 2) box − tool(4×4×5 through) = 420
+          const tool = prism(SQ(3, 7), 7);
+          const cut = new m.BRepAlgoAPI_Cut_3(box, tool).Shape();
+          const holedVol = vol(cut);
+
+          // 3) CEILING op: thicken a 10×10 sheet by 2 → solid ≈ 200
+          const sheet = face(SQ(0, 10), 0);
+          let thickenVol = 0;
+          const mts = new m.BRepOffsetAPI_MakeThickSolid_1();
+          for (const off of [2, -2]) {
+            try {
+              mts.MakeThickSolidBySimple(sheet, off);
+              if (typeof mts.Build === 'function') mts.Build();
+              const s = mts.Shape();
+              const v = Math.abs(vol(s));
+              if (Number.isFinite(v) && v > 1e-6) { thickenVol = v; break; }
+            } catch { /* try other sign */ }
+          }
+          return { ok: true, box: boxVol, holed: holedVol, thicken: thickenVol, reason: '' };
+        } catch (e) {
+          return { ok: false, box: 0, holed: 0, thicken: 0, reason: (e as Error).message };
+        }
+      });
+
+    expect(r.ok, `in-browser build failed: ${r.reason || 'n/a'}`).toBe(true);
+    expect(r.box, 'box 10×10×5 volume').toBeCloseTo(500, 1);
+    expect(r.holed, 'holed (500 − 4×4×5) volume').toBeCloseTo(420, 1);
+    // The kernel-ceiling op replicad cannot do — proven in node, now in-browser.
+    expect(Math.abs(r.thicken), 'thicken surface→solid volume (10×10×2)').toBeCloseTo(200, 0);
+  });
+
   test('cylinder revolve via real OCCT', async ({ page, request }) => {
     const diag = await request.get('/api/occt/diagnostic');
     const body = await diag.json() as { mode: string };
