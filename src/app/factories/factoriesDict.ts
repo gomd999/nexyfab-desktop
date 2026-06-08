@@ -38,7 +38,7 @@ export interface FactDict {
 
 export const FACT_DICT: Record<FactLang, FactDict> = {
   ko: {
-    badge: 'VERIFIED · 검증된 제조사',
+    badge: 'DIRECTORY · 한·중 공장 디렉터리',
     title: '제조사 디렉터리',
     subtitle: (ko, cn) => `국내 ${ko}개 · 중국 ${cn}개 공장 데이터베이스`,
     searchPlaceholder: '공장명, 제품, 업종으로 검색...',
@@ -57,7 +57,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     lockNotice: '회원가입 후 전체 정보 열람 가능',
   },
   en: {
-    badge: 'VERIFIED · Trusted manufacturers',
+    badge: 'DIRECTORY · Korea-China factory directory',
     title: 'Manufacturer Directory',
     subtitle: (ko, cn) => `${ko} Korean · ${cn} Chinese factories in the database`,
     searchPlaceholder: 'Search by factory name, product, or industry...',
@@ -76,7 +76,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     lockNotice: 'Sign up to view full details',
   },
   ja: {
-    badge: 'VERIFIED · 検証済みメーカー',
+    badge: 'DIRECTORY · 韓中工場ディレクトリ',
     title: 'メーカーディレクトリ',
     subtitle: (ko, cn) => `国内 ${ko}社 · 中国 ${cn}社の工場データベース`,
     searchPlaceholder: '工場名・製品・業種で検索...',
@@ -95,7 +95,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     lockNotice: '会員登録で全情報を閲覧可能',
   },
   cn: {
-    badge: 'VERIFIED · 已认证制造商',
+    badge: 'DIRECTORY · 韩中工厂目录',
     title: '制造商目录',
     subtitle: (ko, cn) => `韩国 ${ko} 家 · 中国 ${cn} 家工厂数据库`,
     searchPlaceholder: '按工厂名称、产品或行业搜索...',
@@ -114,7 +114,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     lockNotice: '注册后可查看完整信息',
   },
   es: {
-    badge: 'VERIFIED · Fabricantes verificados',
+    badge: 'DIRECTORY · Directorio de fábricas Corea-China',
     title: 'Directorio de fabricantes',
     subtitle: (ko, cn) => `${ko} fábricas coreanas · ${cn} chinas en la base de datos`,
     searchPlaceholder: 'Buscar por nombre, producto o sector...',
@@ -133,7 +133,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     lockNotice: 'Regístrate para ver todos los detalles',
   },
   ar: {
-    badge: 'VERIFIED · مصنّعون موثّقون',
+    badge: 'DIRECTORY · دليل المصانع الكوري-الصيني',
     title: 'دليل المصنّعين',
     subtitle: (ko, cn) => `قاعدة بيانات ${ko} مصنعًا كوريًا · ${cn} مصنعًا صينيًا`,
     searchPlaceholder: 'ابحث بالاسم أو المنتج أو الصناعة...',
