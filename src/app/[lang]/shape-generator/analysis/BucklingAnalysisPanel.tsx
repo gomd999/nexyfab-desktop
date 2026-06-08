@@ -123,6 +123,7 @@ export default function BucklingAnalysisPanel({
 
   return (
     <div
+      data-testid="buckling-panel"
       style={{
         position: 'fixed', top: 60, right: 16, width: 320,
         maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
@@ -159,6 +160,7 @@ export default function BucklingAnalysisPanel({
         <input type="range" min={1} max={100} value={refStress} onChange={(e) => setRefStress(Number(e.target.value))} style={{ width: '100%', accentColor: C.accent }} />
 
         <button
+          data-testid="buckling-run"
           onClick={handleRun}
           disabled={running || !geometry}
           style={{
@@ -171,11 +173,11 @@ export default function BucklingAnalysisPanel({
         </button>
 
         {result && (
-          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, marginTop: 4 }}>
+          <div data-testid="buckling-result" style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, marginTop: 4 }}>
             <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>{t.results}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ color: C.textDim, fontSize: 12 }}>{t.critFactor}</span>
-              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: result.criticalLoadFactor < 1 ? C.warn : C.green }}>
+              <span data-testid="buckling-kt" style={{ fontFamily: 'monospace', fontWeight: 700, color: result.criticalLoadFactor < 1 ? C.warn : C.green }}>
                 {result.criticalLoadFactor.toFixed(3)}
               </span>
             </div>
