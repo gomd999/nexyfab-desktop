@@ -2,7 +2,7 @@
  * auto-match factory selection — customer preference vs scorer.
  */
 import { describe, it, expect } from 'vitest';
-import { scoreFactory, pickAssignedFactory, type RfqRow, type FactoryRow } from './route';
+import { scoreFactory, pickAssignedFactory, type RfqRow, type FactoryRow } from './matchSelection';
 
 function rfq(over: Partial<RfqRow> = {}): RfqRow {
   return {

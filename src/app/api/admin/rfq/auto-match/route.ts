@@ -15,85 +15,11 @@ import { sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+// Helpers + types live in a sibling module: Next.js 16 forbids non-handler
+// exports from a route file (only GET/POST/… + route config are allowed).
+import { type RfqRow, type FactoryRow, type ScoredFactory, pickAssignedFactory } from './matchSelection';
 
 export const dynamic = 'force-dynamic';
-
-export interface RfqRow {
-  id: string;
-  material_id: string | null;
-  dfm_process: string | null;
-  volume_cm3: number | null;
-  quantity: number;
-  shape_name: string | null;
-  status: string;
-  preferred_factory_id: string | null;
-}
-
-export interface FactoryRow {
-  id: string;
-  name: string;
-  partner_email: string | null;
-  contact_email: string | null;
-  processes: string | null; // JSON text array
-  rating: number | null;
-  price_level: number | null;
-}
-
-interface ScoredFactory extends FactoryRow {
-  score: number;
-}
-
-export function scoreFactory(rfq: RfqRow, factory: FactoryRow): number {
-  let score = 10; // base
-
-  // Process match: +40
-  if (rfq.dfm_process && factory.processes) {
-    try {
-      const procs: string[] = JSON.parse(factory.processes);
-      if (Array.isArray(procs) && procs.includes(rfq.dfm_process)) {
-        score += 40;
-      }
-    } catch {
-      // malformed JSON — skip process score
-    }
-  }
-
-  // Rating: (rating / 5) * 30 — clamped [0, 30]
-  const rating = typeof factory.rating === 'number' ? factory.rating : 0;
-  const ratingScore = (Math.min(5, Math.max(0, rating)) / 5) * 30;
-  score += ratingScore;
-
-  // Price level: lower price_level = higher score
-  // price_level expected range: 1–3
-  // (3 - price_level) / 2 * 20 → price_level=1 → 20, price_level=2 → 10, price_level=3 → 0
-  const priceLevel = typeof factory.price_level === 'number' ? factory.price_level : 3;
-  const clamped = Math.min(3, Math.max(1, priceLevel));
-  const priceScore = ((3 - clamped) / 2) * 20;
-  score += priceScore;
-
-  return Math.round(score * 100) / 100;
-}
-
-/**
- * Decide which active factory an RFQ is assigned to. A customer-named factory
- * (preferred_factory_id), when active, wins outright — an explicit choice
- * overrides the scorer; otherwise the highest-scoring factory is picked. Pure +
- * exported so the policy is unit-tested independent of the DB/route.
- */
-export function pickAssignedFactory(
-  rfq: RfqRow,
-  factories: FactoryRow[],
-): { factory: FactoryRow; score: number; matchedBy: 'preference' | 'score' } | null {
-  if (factories.length === 0) return null;
-  const preferred = rfq.preferred_factory_id
-    ? factories.find((f) => f.id === rfq.preferred_factory_id) ?? null
-    : null;
-  if (preferred) return { factory: preferred, score: -1, matchedBy: 'preference' };
-  const scored = factories
-    .map((f) => ({ f, s: scoreFactory(rfq, f) }))
-    .sort((a, b) => b.s - a.s);
-  return { factory: scored[0]!.f, score: scored[0]!.s, matchedBy: 'score' };
-}
 
 export async function POST(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
