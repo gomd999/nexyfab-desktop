@@ -133,7 +133,10 @@ in a Node sandbox via `wasmWorker.integration.test.ts`); the real
 browser-verified by the user (`e2e/occt` W2 drives the real worker over
 postMessage → thicken volume ≈ 200).
 
-**Next (W3):** route `occtEngine` ops through `createWasmBridge` behind
-`?occtWorker=1` (the async refactor), with a replicad-vs-worker parity gate; keep
-mesh the drag fast-path. Then surface `thicken`/`surfaceTrim` to the surfaces UI
-(W5) — the logic is now reachable through the worker.
+**Next (W3):** route `occtEngine` ops to the K-series behind `?occtWorker=1` (the
+async refactor), with a replicad-vs-K-series parity gate; keep mesh the drag
+fast-path. **Detailed, code-grounded design: [OCCT_W3_DESIGN.md](./OCCT_W3_DESIGN.md)**
+— covers the architecture decision (load the K-series IN the pipeline worker vs
+nested-worker RPC; recommends the former), the kernel facade, the first consumer
+(`occtExtrudeProfile` → `occtBooleanSolids`), and the parity-gate form. Then
+surface `thicken`/`surfaceTrim` to the surfaces UI (W5).
