@@ -225,6 +225,77 @@ export function runIncrementalLoading(
   return { steps, finalState: states, fullyConverged };
 }
 
+// ── Consistent (closed-form) 1D J2 return map ────────────────────
+
+export interface Return1DResult {
+  /** Stress after the return (MPa). */
+  stress: number;
+  /** Accumulated plastic strain. */
+  plasticStrain: number;
+  /** Yield-surface size (MPa). */
+  yieldStress: number;
+  /** Consistent (algorithmic) tangent modulus dσ/dε: E elastic, E·H/(E+H) plastic. */
+  tangent: number;
+  plastic: boolean;
+}
+
+/**
+ * Closed-form 1D J2 return map for a STRAIN-controlled step with bilinear
+ * isotropic hardening. Unlike {@link runIncrementalLoading}'s fixed-point loop
+ * (geometric convergence — thousands of sweeps near the surface), this returns
+ * the exact stress + plastic strain + CONSISTENT TANGENT (E_t = E·H/(E+H)) in
+ * ONE evaluation. This is the Track-M depth the loop deferred, for the 1D case.
+ *
+ *   σ_trial = E·(ε − ε_p^old);  if |σ_trial| ≤ Y → elastic.
+ *   else Δλ = (|σ_trial| − Y)/(E + H);  σ = σ_trial − E·Δλ·sign(σ_trial).
+ */
+export function consistentReturnMap1D(
+  material: BilinearElastoPlastic,
+  totalStrain: number,
+  prevPlasticStrain: number,
+  prevYield: number,
+): Return1DResult {
+  const E = material.E;
+  const H = material.tangentModulus;
+  const sigmaTrial = E * (totalStrain - prevPlasticStrain);
+  const vm = Math.abs(sigmaTrial);
+  if (vm <= prevYield) {
+    return { stress: sigmaTrial, plasticStrain: prevPlasticStrain, yieldStress: prevYield, tangent: E, plastic: false };
+  }
+  const dLambda = (vm - prevYield) / (E + H);
+  const sign = Math.sign(sigmaTrial) || 1;
+  return {
+    stress: sigmaTrial - E * dLambda * sign,
+    plasticStrain: prevPlasticStrain + dLambda,
+    yieldStress: prevYield + H * dLambda,
+    tangent: (E * H) / (E + H),
+    plastic: true,
+  };
+}
+
+export interface BilinearPoint {
+  strain: number;
+  stress: number;
+  plasticStrain: number;
+  tangent: number;
+}
+
+/**
+ * Strain-controlled uniaxial σ–ε curve via the consistent return map — one
+ * closed-form step per strain level (no iteration). Reproduces the bilinear law
+ * σ(ε) = σ_y0 + E_t·(ε − ε_y) exactly past yield.
+ */
+export function uniaxialBilinearCurve(material: BilinearElastoPlastic, strains: number[]): BilinearPoint[] {
+  let ep = 0;
+  let Y = material.yieldStrength;
+  return strains.map((eps) => {
+    const r = consistentReturnMap1D(material, eps, ep, Y);
+    ep = r.plasticStrain;
+    Y = r.yieldStress;
+    return { strain: eps, stress: r.stress, plasticStrain: ep, tangent: r.tangent };
+  });
+}
+
 // ── Uniaxial elastoplastic reference solver (benchmark for the loop) ──
 
 export interface UniaxialPlasticStep {
