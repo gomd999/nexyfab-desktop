@@ -25,6 +25,14 @@ export interface FilletWeldInput {
   thinnerPlateMm: number;
   thickerPlateMm: number;
   loadType?: LoadType;      // transverse welds ~30% stronger (AWS allows it)
+  /**
+   * Heat-affected-zone strength-retention factor (0..1). Hardenable steels and
+   * heat-treated aluminium lose strength in the HAZ; multiplying the allowable
+   * shear by this factor couples that loss into capacity + the pass check.
+   * Default 1.0 (no softening) — back-compatible. Derive from a material class
+   * via {@link hazSofteningFactor}.
+   */
+  hazSofteningFactor?: number;
 }
 
 export interface FilletWeldResult {
@@ -37,6 +45,8 @@ export interface FilletWeldResult {
   awsMaxLegMm: number;
   legWithinAwsRange: boolean;
   passed: boolean | null;
+  /** Allowable shear after HAZ softening (= allowableShearMpa × hazSofteningFactor). */
+  effectiveAllowableShearMpa: number;
   warnings: string[];
 }
 
@@ -54,19 +64,27 @@ export function size(input: FilletWeldInput): FilletWeldResult {
   // (or transverse +30%); use a directional factor on capacity.
   const dirFactor = (input.loadType ?? 'transverse') === 'transverse' ? 1.0 : 0.75;
 
-  const minLeg = (0.707 * input.weldLengthMm * input.allowableShearMpa * dirFactor) > 0
-    ? input.appliedLoadN / (0.707 * input.weldLengthMm * input.allowableShearMpa * dirFactor)
+  // HAZ softening reduces the usable allowable shear (hardenable steels /
+  // heat-treated Al lose strength in the heat-affected zone). Default 1.0.
+  const hazFactor = input.hazSofteningFactor ?? 1.0;
+  const effectiveAllowable = input.allowableShearMpa * hazFactor;
+  if (hazFactor < 1) {
+    warnings.push(`HAZ softening ${(hazFactor * 100).toFixed(0)}% applied — allowable shear reduced ${input.allowableShearMpa} → ${effectiveAllowable.toFixed(1)} MPa.`);
+  }
+
+  const minLeg = (0.707 * input.weldLengthMm * effectiveAllowable * dirFactor) > 0
+    ? input.appliedLoadN / (0.707 * input.weldLengthMm * effectiveAllowable * dirFactor)
     : Infinity;
 
   const leg = input.legSizeMm ?? Math.max(minLeg, awsMin);
   const throat = 0.707 * leg;
-  const capacity = throat * input.weldLengthMm * input.allowableShearMpa * dirFactor;
+  const capacity = throat * input.weldLengthMm * effectiveAllowable * dirFactor;
 
   let shearStress: number | null = null;
   let passed: boolean | null = null;
   if (input.legSizeMm != null && input.legSizeMm > 0) {
     shearStress = input.appliedLoadN / (0.707 * input.legSizeMm * input.weldLengthMm * dirFactor);
-    passed = shearStress <= input.allowableShearMpa + 1e-9;
+    passed = shearStress <= effectiveAllowable + 1e-9;
   }
 
   const withinRange = leg >= awsMin - 1e-9 && leg <= awsMax + 1e-9;
@@ -85,8 +103,35 @@ export function size(input: FilletWeldInput): FilletWeldResult {
     awsMaxLegMm: awsMax,
     legWithinAwsRange: withinRange,
     passed,
+    effectiveAllowableShearMpa: effectiveAllowable,
     warnings,
   };
+}
+
+// ── HAZ softening by material class ────────────────────────────────────────
+
+export type WeldMaterialClass =
+  | 'mild-steel'
+  | 'stainless'
+  | 'quenched-tempered-steel'
+  | 'non-heat-treated-aluminum'
+  | 'heat-treated-aluminum';
+
+/**
+ * Typical HAZ strength-retention factors. As-rolled mild steel keeps its
+ * strength; quenched-&-tempered steel is tempered back in the HAZ; heat-treated
+ * (precipitation-hardened) aluminium over-ages worst.
+ */
+export const HAZ_SOFTENING: Record<WeldMaterialClass, number> = {
+  'mild-steel': 1.0,
+  'stainless': 0.95,
+  'quenched-tempered-steel': 0.85,
+  'non-heat-treated-aluminum': 0.9,
+  'heat-treated-aluminum': 0.7,
+};
+
+export function hazSofteningFactor(materialClass: WeldMaterialClass): number {
+  return HAZ_SOFTENING[materialClass] ?? 1.0;
 }
 
 /** AWS D1.1 Table 5.8 minimum fillet size (mm) by thicker part thickness. */

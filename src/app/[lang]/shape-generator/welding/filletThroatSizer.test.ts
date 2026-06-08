@@ -4,6 +4,8 @@ import {
   awsMinFillet,
   safetyFactor,
   summarize,
+  hazSofteningFactor,
+  HAZ_SOFTENING,
   type FilletWeldInput,
 } from './filletThroatSizer';
 
@@ -102,5 +104,38 @@ describe('summarize', () => {
     const s = summarize(r);
     expect(s.legSizeMm).toBe(r.legSizeMm);
     expect(s.throatMm).toBe(r.throatMm);
+  });
+});
+
+describe('HAZ softening coupling', () => {
+  it('default = no softening (effective allowable == allowable, back-compatible)', () => {
+    const r = size({ ...base, legSizeMm: 8 });
+    expect(r.effectiveAllowableShearMpa).toBe(95);
+    const explicit = size({ ...base, legSizeMm: 8, hazSofteningFactor: 1.0 });
+    expect(explicit.capacityN).toBeCloseTo(r.capacityN, 9);
+  });
+
+  it('softening scales capacity + effective allowable + warns', () => {
+    const full = size({ ...base, legSizeMm: 8 });
+    const soft = size({ ...base, legSizeMm: 8, hazSofteningFactor: 0.7 });
+    expect(soft.effectiveAllowableShearMpa).toBeCloseTo(95 * 0.7, 6);
+    expect(soft.capacityN).toBeCloseTo(full.capacityN * 0.7, 6);
+    expect(soft.warnings.some((w) => /HAZ softening/.test(w))).toBe(true);
+  });
+
+  it('a joint that passes at full strength can FAIL after HAZ softening', () => {
+    // size leg so shear stress sits just under the full allowable, then soften.
+    const tuned: FilletWeldInput = { ...base, appliedLoadN: 50000, legSizeMm: 8, allowableShearMpa: 95 };
+    const full = size(tuned);
+    expect(full.passed).toBe(true);
+    const soft = size({ ...tuned, hazSofteningFactor: 0.7 });
+    expect(soft.passed).toBe(false); // reduced allowable now exceeded
+  });
+
+  it('material-class lookup: mild steel 1.0, heat-treated Al worst', () => {
+    expect(hazSofteningFactor('mild-steel')).toBe(1.0);
+    expect(hazSofteningFactor('heat-treated-aluminum')).toBe(0.7);
+    expect(HAZ_SOFTENING['quenched-tempered-steel']).toBeLessThan(1);
+    expect(hazSofteningFactor('quenched-tempered-steel')).toBeLessThan(hazSofteningFactor('stainless'));
   });
 });
