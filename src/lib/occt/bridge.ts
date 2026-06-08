@@ -94,6 +94,25 @@ export interface OcctBridge {
     shape: OcctShape,
     opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number },
   ): Promise<OcctOperationResult>;
+  /**
+   * Build a planar FACE (open surface / sheet body) from a 2D loop at height
+   * `z` (default 0). The input to {@link thicken} / {@link surfaceTrim}. The
+   * mesh/stub bridges have no surface-body concept → OPTIONAL, real-kernel only.
+   */
+  buildPlanarFace?(loop: ReadonlyArray<{ x: number; y: number }>, z?: number): Promise<OcctOperationResult>;
+  /**
+   * THICKEN an open surface/shell into a SOLID of wall thickness `thickness`
+   * (`BRepOffsetAPI_MakeThickSolid`). replicad's high-level API cannot express
+   * this (confirmed 2026-06-07; the ceiling spike validated the K-series can —
+   * see `ceilingSpike.thicken.test.ts`). Real-kernel only → OPTIONAL.
+   */
+  thicken?(shape: OcctShape, thickness: number): Promise<OcctOperationResult>;
+  /**
+   * Surface–surface TRIM: the section (intersection curve) of two shapes
+   * (`BRepAlgoAPI_Section`), returned as a compound of the intersection edges.
+   * The mesh path only does UV-space trim → OPTIONAL, real-kernel only.
+   */
+  surfaceTrim?(a: OcctShape, b: OcctShape): Promise<OcctOperationResult>;
   exportSTEP(shape: OcctShape): Promise<string>;
   importSTEP(source: string): Promise<OcctOperationResult>;
   /**

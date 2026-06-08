@@ -248,4 +248,55 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(res.ok).toBe(true);
     expect(res.mesh!.triangleCount).toBeGreaterThanOrEqual(12);
   });
+
+  // ── ADR-014 kernel-ceiling ops (promoted from ceilingSpike, 2026-06-08) ──
+
+  it('K8: buildPlanarFace makes a face (surface body), not a solid', async () => {
+    if (!okLoad) return;
+    const face = await bridge.buildPlanarFace!(SQ(0, 10), 0);
+    expect(face.ok).toBe(true);
+    expect(face.shape?.kind).toBe('face');
+    expect(face.shape?.volume).toBeUndefined(); // a surface has no volume
+  });
+
+  it('K8: thicken turns a surface into a solid of the expected volume (replicad cannot)', async () => {
+    if (!okLoad) return;
+    const face = await bridge.buildPlanarFace!(SQ(0, 10), 0); // 10×10 sheet
+    const solid = await bridge.thicken!(face.shape!, 2);
+    expect(solid.ok).toBe(true);
+    expect(solid.shape?.kind).toBe('solid');
+    expect(solid.shape?.volume).toBeCloseTo(200, 1); // 10×10×2
+  });
+
+  it('K8: thicken rejects a non-positive thickness', async () => {
+    if (!okLoad) return;
+    const face = await bridge.buildPlanarFace!(SQ(0, 10), 0);
+    const bad = await bridge.thicken!(face.shape!, 0);
+    expect(bad.ok).toBe(false);
+    expect(bad.error).toMatch(/positive finite/);
+  });
+
+  it('K8: surfaceTrim sections two crossing faces into intersection edge(s)', async () => {
+    if (!okLoad) return;
+    const flat = await bridge.buildPlanarFace!(
+      [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 0,
+    );
+    // A second face crossing the first along y=10 (built directly from a loop in
+    // the z direction would need a non-XY plane; reuse a tall thin face via the
+    // extrude→cut path is overkill — instead trim against a box that spans it).
+    const box = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(5, 15), depth: 10, direction: 'midplane', mode: 'add' });
+    const sec = await bridge.surfaceTrim!(flat.shape!, box.shape!);
+    expect(sec.ok).toBe(true);
+    expect(sec.shape?.kind).toBe('compound');
+    expect(sec.warnings.join(' ')).toMatch(/intersection edge/);
+  });
+
+  it('K8: surfaceTrim reports no intersection for disjoint shapes', async () => {
+    if (!okLoad) return;
+    const a = await bridge.buildPlanarFace!(SQ(0, 5), 0);
+    const b = await bridge.buildPlanarFace!(SQ(100, 105), 50); // far away
+    const sec = await bridge.surfaceTrim!(a.shape!, b.shape!);
+    expect(sec.ok).toBe(false);
+    expect(sec.error).toMatch(/do not intersect/);
+  });
 });
