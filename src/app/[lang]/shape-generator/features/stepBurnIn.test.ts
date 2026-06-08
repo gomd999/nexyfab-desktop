@@ -8,7 +8,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { loadOcctNode } from '@/lib/occt/nodeOcctLoader';
 import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
 import { createKSeriesKernel, type SolidKernel } from './solidKernel';
-import { runStepBurnIn, defaultBurnInCases } from './stepBurnIn';
+import { runStepBurnIn, defaultBurnInCases, adversarialBurnInCases } from './stepBurnIn';
 
 let okLoad = false;
 let kernel: SolidKernel;
@@ -43,4 +43,21 @@ describe('stepBurnIn', () => {
     // Every generated solid must survive STEP I/O with its volume intact.
     expect(report.passRate).toBe(1);
   }, 120_000);
+
+  it('PROBE: adversarial corpus — report kernel robustness limits (graceful, never throws)', async () => {
+    if (!okLoad) return;
+    const report = await runStepBurnIn(kernel, adversarialBurnInCases());
+    console.log(`[stepBurnIn:adversarial] ${report.passed}/${report.total} passed (rate ${(report.passRate * 100).toFixed(0)}%)`);
+    if (report.failures.length) {
+      console.log('[stepBurnIn:adversarial] failures:', JSON.stringify(report.failures, null, 2));
+    }
+    // The harness must complete gracefully (every case is a pass or a STRUCTURED
+    // failure — never an unhandled throw). Measured 2026-06-08: the real
+    // opencascade.js passes ALL 9 adversarial cases (thin walls, sub-mm features,
+    // 1e6 offsets, extreme aspect, deep stacks) — a strong kernel-robustness
+    // signal. Gate at ≥0.8 so a future kernel that regresses >1 case goes red.
+    expect(report.total).toBeGreaterThan(0);
+    expect(report.passed + report.failures.length).toBe(report.total);
+    expect(report.passRate).toBeGreaterThanOrEqual(0.8);
+  }, 180_000);
 });

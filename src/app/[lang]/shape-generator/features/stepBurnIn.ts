@@ -98,6 +98,70 @@ export function defaultBurnInCases(): StepBurnInCase[] {
 }
 
 /**
+ * ADVERSARIAL corpus — deliberately hard inputs that hunt kernel robustness
+ * limits: thin walls, sub-mm features, far-from-origin coordinates, deep
+ * feature stacks, extreme aspect ratios. A burn-in's value is FINDING failures;
+ * run report-only (don't assert 100%) and treat any failure as a documented
+ * kernel limit or a bug to fix.
+ */
+export function adversarialBurnInCases(): StepBurnInCase[] {
+  const SQat = (x0: number, y0: number, size: number): Array<{ x: number; y: number }> => [
+    { x: x0, y: y0 }, { x: x0 + size, y: y0 }, { x: x0 + size, y: y0 + size }, { x: x0, y: y0 + size },
+  ];
+  return [
+    // Thin-walled square tube (0.2 mm wall).
+    {
+      label: 'thin wall 0.2mm tube',
+      build: async (k) => {
+        const outer = await k.extrude(SQ(0, 10), 5);
+        const inner = await k.extrude(SQat(0.2, 0.2, 9.6), 7);
+        if (!outer || !inner) return null;
+        return k.boolean('subtract', outer.id, inner.id);
+      },
+    },
+    // Sub-mm tiny box.
+    { label: 'tiny 0.05mm box', build: (k) => k.extrude(SQ(0, 0.05), 0.02) },
+    // Tiny fillet on a normal box.
+    {
+      label: 'tiny 0.01mm fillet',
+      build: async (k) => { const b = await k.extrude(SQ(0, 10), 5); return b ? k.fillet(b.id, ['sel:all'], 0.01) : null; },
+    },
+    // Far-from-origin box (float precision).
+    { label: 'box at 1e6 offset', build: (k) => k.extrude(SQat(1_000_000, 1_000_000, 10), 5) },
+    // Extreme thin slab.
+    { label: 'thin slab 200x200x0.5', build: (k) => k.extrude(SQ(0, 200), 0.5) },
+    // Extreme tall column.
+    { label: 'tall column 1x1x1000', build: (k) => k.extrude(SQ(0, 1), 1000) },
+    // Deep feature stack: extrude → cut → fillet.
+    {
+      label: 'stack extrude→cut→fillet',
+      build: async (k) => {
+        const base = await k.extrude(SQ(0, 10), 5);
+        const tool = await k.extrude(SQ(3, 7), 7);
+        if (!base || !tool) return null;
+        const cut = await k.boolean('subtract', base.id, tool.id);
+        return cut ? k.fillet(cut.id, ['sel:all'], 0.5) : null;
+      },
+    },
+    // High-aspect cut (narrow slot).
+    {
+      label: 'narrow slot cut',
+      build: async (k) => {
+        const base = await k.extrude(SQ(0, 20), 5);
+        const tool = await k.extrude(SQat(2, 9.7, 0.6), 7); // 0.6mm-wide slot tool (x16 long)
+        if (!base || !tool) return null;
+        return k.boolean('subtract', base.id, tool.id);
+      },
+    },
+    // Large fillet relative to the edge (radius = 40% of side).
+    {
+      label: 'large fillet r4 on 10mm box',
+      build: async (k) => { const b = await k.extrude(SQ(0, 10), 5); return b ? k.fillet(b.id, ['e.vert.0', 'e.vert.1', 'e.vert.2', 'e.vert.3'], 4) : null; },
+    },
+  ];
+}
+
+/**
  * Round-trip every case through STEP and check volume preservation. `volTol` is
  * the relative volume tolerance (default 0.1%). Never throws — a failed case is
  * recorded, not fatal, so one bad shape doesn't hide the rest.
