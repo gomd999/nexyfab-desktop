@@ -18,7 +18,7 @@ import { normPartnerEmail } from '@/lib/partner-factory-access';
 
 export const dynamic = 'force-dynamic';
 
-interface RfqRow {
+export interface RfqRow {
   id: string;
   material_id: string | null;
   dfm_process: string | null;
@@ -26,9 +26,10 @@ interface RfqRow {
   quantity: number;
   shape_name: string | null;
   status: string;
+  preferred_factory_id: string | null;
 }
 
-interface FactoryRow {
+export interface FactoryRow {
   id: string;
   name: string;
   partner_email: string | null;
@@ -42,7 +43,7 @@ interface ScoredFactory extends FactoryRow {
   score: number;
 }
 
-function scoreFactory(rfq: RfqRow, factory: FactoryRow): number {
+export function scoreFactory(rfq: RfqRow, factory: FactoryRow): number {
   let score = 10; // base
 
   // Process match: +40
@@ -73,6 +74,27 @@ function scoreFactory(rfq: RfqRow, factory: FactoryRow): number {
   return Math.round(score * 100) / 100;
 }
 
+/**
+ * Decide which active factory an RFQ is assigned to. A customer-named factory
+ * (preferred_factory_id), when active, wins outright — an explicit choice
+ * overrides the scorer; otherwise the highest-scoring factory is picked. Pure +
+ * exported so the policy is unit-tested independent of the DB/route.
+ */
+export function pickAssignedFactory(
+  rfq: RfqRow,
+  factories: FactoryRow[],
+): { factory: FactoryRow; score: number; matchedBy: 'preference' | 'score' } | null {
+  if (factories.length === 0) return null;
+  const preferred = rfq.preferred_factory_id
+    ? factories.find((f) => f.id === rfq.preferred_factory_id) ?? null
+    : null;
+  if (preferred) return { factory: preferred, score: -1, matchedBy: 'preference' };
+  const scored = factories
+    .map((f) => ({ f, s: scoreFactory(rfq, f) }))
+    .sort((a, b) => b.s - a.s);
+  return { factory: scored[0]!.f, score: scored[0]!.s, matchedBy: 'score' };
+}
+
 export async function POST(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -93,7 +115,8 @@ export async function POST(req: NextRequest) {
 
   // ── 1. Fetch the RFQ ──────────────────────────────────────────────────────────
   const rfq = await db.queryOne<RfqRow>(
-    `SELECT id, material_id, dfm_process, volume_cm3, quantity, shape_name, status
+    `SELECT id, material_id, dfm_process, volume_cm3, quantity, shape_name, status,
+            preferred_factory_id
      FROM nf_rfqs
      WHERE id = ? AND user_id <> 'demo-user'`,
     rfqId,
@@ -114,15 +137,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No active factories available' }, { status: 404 });
   }
 
-  // ── 3. Score each factory ─────────────────────────────────────────────────────
-  const scored: ScoredFactory[] = factories.map((f) => ({
-    ...f,
-    score: scoreFactory(rfq, f),
-  }));
-
-  // ── 4. Sort by score descending, pick top ─────────────────────────────────────
-  scored.sort((a, b) => b.score - a.score);
-  const best = scored[0];
+  // ── 3. Pick the factory — customer preference wins, else best score ───────────
+  const picked = pickAssignedFactory(rfq, factories);
+  if (!picked) {
+    return NextResponse.json({ error: 'No active factories available' }, { status: 404 });
+  }
+  const best: ScoredFactory = { ...picked.factory, score: picked.score };
+  const preferred = picked.matchedBy === 'preference';
 
   // ── 5. Update the RFQ ────────────────────────────────────────────────────────
   const now = Date.now();
@@ -179,6 +200,7 @@ export async function POST(req: NextRequest) {
       factoryId: best.id,
       factoryName: best.name,
       score: best.score,
+      matchedBy: preferred ? 'preference' : 'score',
     },
   });
 
@@ -188,6 +210,7 @@ export async function POST(req: NextRequest) {
     factoryId: best.id,
     factoryName: best.name,
     score: best.score,
+    matchedBy: preferred ? 'preference' : 'score',
     status: 'assigned',
   });
 }
