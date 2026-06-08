@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { downloadBlob } from '@/lib/platform';
 import type { FeatureInstance } from '../features/types';
 import { emitScadFromFeatures } from './emitScadFromFeatures';
-import { parseScadToFeatures } from './parseScadToFeatures';
+import { parseScadToFeatures, type ScadRecognisedFeature } from './parseScadToFeatures';
 import { useSceneStore } from '../store/sceneStore';
 
 interface Props {
@@ -118,7 +118,11 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
   /** Centralised so the auto-apply path and the manual button do the
    *  same thing (incl. the translate → moveCopy side-effect). Returns
    *  the human-readable status the caller writes into applyMsg. */
-  const applyParsedResult = (shape: { baseShapeId: 'box' | 'cylinder' | 'sphere'; params: Record<string, number>; translate?: { x: number; y: number; z: number } }, manual: boolean): string => {
+  const applyParsedResult = (
+    shape: { baseShapeId: 'box' | 'cylinder' | 'sphere' | 'cone' | 'torus'; params: Record<string, number>; translate?: { x: number; y: number; z: number } },
+    features: ScadRecognisedFeature[] | undefined,
+    manual: boolean,
+  ): string => {
     const { baseShapeId, params, translate } = shape;
     const store = useSceneStore.getState();
     store.setSelectedId(baseShapeId);
@@ -134,11 +138,21 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
         },
       }));
     }
+    // Phase 2 — each subtractive hole recovered from a `difference()` becomes a
+    // real `hole` feature node (same add-feature channel as moveCopy), so an
+    // edited SCAD difference round-trips into the parametric tree, not a flat mesh.
+    const holes = features ?? [];
+    for (const h of holes) {
+      window.dispatchEvent(new CustomEvent('nexyfab:add-feature', {
+        detail: { type: h.type, overrides: h.params },
+      }));
+    }
     const prefix = manual ? (isKo ? '피처 트리에 적용됨' : 'Applied to tree') : (isKo ? '자동 적용됨' : 'Auto-applied');
     const xfmNote = translate ? (isKo
       ? ` + 이동 (${translate.x}, ${translate.y}, ${translate.z})`
       : ` + move (${translate.x}, ${translate.y}, ${translate.z})`) : '';
-    return `${prefix} — ${baseShapeId}${xfmNote}`;
+    const holeNote = holes.length ? (isKo ? ` + 구멍 ${holes.length}개` : ` + ${holes.length} hole(s)`) : '';
+    return `${prefix} — ${baseShapeId}${xfmNote}${holeNote}`;
   };
 
   const handleApplyToTree = () => {
@@ -149,7 +163,7 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
         : 'Not recognised — use Apply (server render) or simplify to a primitive');
       return;
     }
-    setApplyMsg(applyParsedResult(res.shape, true));
+    setApplyMsg(applyParsedResult(res.shape, res.features, true));
   };
 
   /** Auto-apply debounce — only fires while the user is actively editing
@@ -161,6 +175,10 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
     const timer = setTimeout(() => {
       const res = parseScadToFeatures(code);
       if (!res.ok) return;
+      // Subtractive holes append a feature node each fire — like moveCopy, that
+      // would spam duplicates during live typing. Leave hole-bearing SCAD to the
+      // explicit Apply button (handleApplyToTree) and only auto-apply base edits.
+      if (res.features && res.features.length > 0) return;
       const { baseShapeId, params, translate } = res.shape;
       const store = useSceneStore.getState();
       // Skip when nothing changed (idempotent typing — the user added a
@@ -173,7 +191,7 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
           && JSON.stringify(store.params) === JSON.stringify({ ...store.params, ...params })) {
         return;
       }
-      setApplyMsg(applyParsedResult(res.shape, false));
+      setApplyMsg(applyParsedResult(res.shape, res.features, false));
     }, 600);
     return () => clearTimeout(timer);
     // applyParsedResult is intentionally not in deps — it closes over

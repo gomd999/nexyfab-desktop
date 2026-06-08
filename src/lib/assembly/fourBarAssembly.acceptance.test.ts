@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest';
 import { partInstance, IDENTITY_QUAT, type AssemblyState, type PartInstance } from './assemblyState';
 import type { Mate, MateRef } from './mate';
 import { iterativeSolve, type GeometryResolver, type ResolvedGeometry } from './iterativeSolver';
+import { lagrangianSolveAdaptive } from './lagrangianSolver';
 import { vec3 } from '@/lib/sketch/sketchPlane';
 import { rotateVec } from './mateSolver';
 
@@ -167,5 +168,39 @@ describe('Phase 3.A — 4-bar linkage assembly acceptance', () => {
     expect(dof.rawDoF).toBe(18);
     expect(dof.removedByMates).toBe(16);
     expect(dof.approximate).toBe(2);
+  });
+});
+
+describe('Phase 3.A — 4-bar via the Newton-Lagrange (LM) solver', () => {
+  const maxResidual = (rs: ReadonlyArray<{ residual: number }>): number => Math.max(...rs.map((r) => r.residual));
+
+  it('PROBE: LM vs Gauss-Seidel final residual on the closed loop', () => {
+    const resolve = makeResolver(LINK_LENGTHS);
+    const gs = iterativeSolve(build4BarAssembly(), resolve, { maxIterations: 500 });
+    const lm = lagrangianSolveAdaptive(build4BarAssembly(), resolve, { maxIterations: 100 });
+     
+    console.log(`[4bar] Gauss-Seidel max residual ${maxResidual(gs.residuals).toFixed(4)} vs LM ${maxResidual(lm.residuals).toFixed(4)}`);
+    expect(lm.residuals.every((r) => r.supported)).toBe(true);
+  });
+
+  it('LM beats Gauss-Seidel by a wide margin on the closed loop (measured ~4.6×)', () => {
+    const resolve = makeResolver(LINK_LENGTHS);
+    const gs = iterativeSolve(build4BarAssembly(), resolve, { maxIterations: 500 });
+    const lm = lagrangianSolveAdaptive(build4BarAssembly(), resolve, { maxIterations: 100 });
+    // The Newton-Lagrange path closes the loop far tighter than Gauss-Seidel
+    // (which the original acceptance noted "only required dramatic improvement").
+    // Honest scope: this planar-4-bar-as-3D-concentric is over-constrained + the
+    // initial guess is loose, so neither reaches zero — but LM is ≥2× tighter.
+    expect(maxResidual(lm.residuals)).toBeLessThan(maxResidual(gs.residuals) * 0.5);
+    // ground stays pinned.
+    const ground = lm.state.parts.find((p) => p.id === 'ground')!;
+    expect(ground.position).toEqual({ x: 0, y: 0, z: 0 });
+  });
+
+  it('all mates stay analytically supported under the LM solver', () => {
+    const resolve = makeResolver(LINK_LENGTHS);
+    const lm = lagrangianSolveAdaptive(build4BarAssembly(), resolve, { maxIterations: 100 });
+    expect(lm.residuals.every((r) => r.supported)).toBe(true);
+    expect(lm.residuals).toHaveLength(4); // all 4 pin mates accounted
   });
 });

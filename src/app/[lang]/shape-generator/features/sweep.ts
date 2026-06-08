@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
 import { occtSweepProfile, occtSweepHelix } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 /** Rectangular cross-section half-extents from the input geometry bbox. */
 function crossSection(geometry: THREE.BufferGeometry): { hw: number; hh: number } | null {
@@ -145,6 +146,6 @@ export const sweepFeature: FeatureDefinition = {
       const brep = applySweepOcct(geometry, params);
       if (brep) return brep;
     }
-    return applySweepMesh(geometry, params);
+    return noteMeshFallback(applySweepMesh(geometry, params), { op: 'Sweep' });
   },
 };

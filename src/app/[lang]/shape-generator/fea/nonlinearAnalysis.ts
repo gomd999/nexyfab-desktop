@@ -225,6 +225,134 @@ export function runIncrementalLoading(
   return { steps, finalState: states, fullyConverged };
 }
 
+// ── Consistent (closed-form) 1D J2 return map ────────────────────
+
+export interface Return1DResult {
+  /** Stress after the return (MPa). */
+  stress: number;
+  /** Accumulated plastic strain. */
+  plasticStrain: number;
+  /** Yield-surface size (MPa). */
+  yieldStress: number;
+  /** Consistent (algorithmic) tangent modulus dσ/dε: E elastic, E·H/(E+H) plastic. */
+  tangent: number;
+  plastic: boolean;
+}
+
+/**
+ * Closed-form 1D J2 return map for a STRAIN-controlled step with bilinear
+ * isotropic hardening. Unlike {@link runIncrementalLoading}'s fixed-point loop
+ * (geometric convergence — thousands of sweeps near the surface), this returns
+ * the exact stress + plastic strain + CONSISTENT TANGENT (E_t = E·H/(E+H)) in
+ * ONE evaluation. This is the Track-M depth the loop deferred, for the 1D case.
+ *
+ *   σ_trial = E·(ε − ε_p^old);  if |σ_trial| ≤ Y → elastic.
+ *   else Δλ = (|σ_trial| − Y)/(E + H);  σ = σ_trial − E·Δλ·sign(σ_trial).
+ */
+export function consistentReturnMap1D(
+  material: BilinearElastoPlastic,
+  totalStrain: number,
+  prevPlasticStrain: number,
+  prevYield: number,
+): Return1DResult {
+  const E = material.E;
+  const H = material.tangentModulus;
+  const sigmaTrial = E * (totalStrain - prevPlasticStrain);
+  const vm = Math.abs(sigmaTrial);
+  if (vm <= prevYield) {
+    return { stress: sigmaTrial, plasticStrain: prevPlasticStrain, yieldStress: prevYield, tangent: E, plastic: false };
+  }
+  const dLambda = (vm - prevYield) / (E + H);
+  const sign = Math.sign(sigmaTrial) || 1;
+  return {
+    stress: sigmaTrial - E * dLambda * sign,
+    plasticStrain: prevPlasticStrain + dLambda,
+    yieldStress: prevYield + H * dLambda,
+    tangent: (E * H) / (E + H),
+    plastic: true,
+  };
+}
+
+export interface BilinearPoint {
+  strain: number;
+  stress: number;
+  plasticStrain: number;
+  tangent: number;
+}
+
+/**
+ * Strain-controlled uniaxial σ–ε curve via the consistent return map — one
+ * closed-form step per strain level (no iteration). Reproduces the bilinear law
+ * σ(ε) = σ_y0 + E_t·(ε − ε_y) exactly past yield.
+ */
+export function uniaxialBilinearCurve(material: BilinearElastoPlastic, strains: number[]): BilinearPoint[] {
+  let ep = 0;
+  let Y = material.yieldStrength;
+  return strains.map((eps) => {
+    const r = consistentReturnMap1D(material, eps, ep, Y);
+    ep = r.plasticStrain;
+    Y = r.yieldStress;
+    return { strain: eps, stress: r.stress, plasticStrain: ep, tangent: r.tangent };
+  });
+}
+
+// ── Uniaxial elastoplastic reference solver (benchmark for the loop) ──
+
+export interface UniaxialPlasticStep {
+  /** Applied uniaxial stress for this load level (MPa). */
+  appliedStress: number;
+  /** Accumulated equivalent plastic strain after this level. */
+  plasticStrain: number;
+  /** Yield-surface size after this level (MPa). */
+  currentYield: number;
+  converged: boolean;
+}
+
+export interface UniaxialPlasticResult {
+  steps: UniaxialPlasticStep[];
+  final: PlasticState;
+  fullyConverged: boolean;
+}
+
+/**
+ * Single-element, stress-controlled uniaxial elastoplastic test — the reference
+ * benchmark that exercises {@link runIncrementalLoading} + {@link radialReturn}
+ * as a COUPLED loop (not the mock-solver unit tests). Each applied stress level
+ * is held while the return-mapping hardens the yield surface up to it; the
+ * material follows the bilinear law `currentYield = σ_y0 + H·ε_p`.
+ *
+ * Note: this loop is a fixed-point return-map iteration (no consistent tangent),
+ * so it converges GEOMETRICALLY (factor 3G/(3G+H)) — a high `maxIterPerStep` is
+ * needed near the surface. A closed-form single-step return / Newton with the
+ * consistent elastoplastic tangent is the remaining depth (Track M M4).
+ */
+export function uniaxialElastoPlastic(
+  material: BilinearElastoPlastic,
+  appliedStresses: number[],
+  maxIterPerStep = 4000,
+): UniaxialPlasticResult {
+  const states = [newPlasticState(material)];
+  const r = runIncrementalLoading(
+    states,
+    material,
+    appliedStresses.map((s) => ({ factor: s })),
+    // `factor` IS the applied uniaxial stress; return it as the trial σ₁.
+    (factor) => [{ sigma1: factor, sigma2: 0, sigma3: 0 }],
+    maxIterPerStep,
+    1e-9,
+  );
+  return {
+    steps: r.steps.map((s, i) => ({
+      appliedStress: appliedStresses[i]!,
+      plasticStrain: s.maxPlasticStrain,
+      currentYield: material.yieldStrength + material.tangentModulus * s.maxPlasticStrain,
+      converged: s.converged,
+    })),
+    final: r.finalState[0]!,
+    fullyConverged: r.fullyConverged,
+  };
+}
+
 // ── Geometric nonlinearity helpers ───────────────────────────────
 
 /** Update the deformed configuration. For large displacements, the

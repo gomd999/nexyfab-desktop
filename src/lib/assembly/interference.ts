@@ -146,3 +146,95 @@ export function assemblyInterferences(
   }
   return out;
 }
+
+// ─── spatial broad-phase (A4: scales to 10k+ parts) ────────────────────────
+
+export interface SpatialBroadPhaseOptions {
+  /** Grid cell size (world units). Default: mean part AABB max-extent. */
+  cellSize?: number;
+  /**
+   * If a box spans more cells than this, it goes to an "oversized" bucket
+   * tested against everything (avoids exploding insertions for huge parts).
+   */
+  maxCellsPerBox?: number;
+}
+
+/**
+ * Same result as {@link assemblyInterferences} but with a uniform spatial-hash
+ * broad-phase instead of the O(N²) all-pairs scan — the Phase-3.4.3 BVH gap.
+ *
+ * EXACT, not approximate: two AABBs can only overlap if they share a grid cell,
+ * and every box is inserted into ALL cells it spans, so no overlapping pair is
+ * ever missed. Only candidate pairs that co-occupy a cell run `aabbOverlap`,
+ * making the cost ≈ O(N) for spatially-distributed assemblies (vs N²/2).
+ * `partA`/`partB` are emitted id-sorted for deterministic, comparable output.
+ */
+export function assemblyInterferencesSpatial(
+  parts: ReadonlyArray<PartInstance>,
+  localBoxes: ReadonlyMap<string, AABB>,
+  whitelist?: ReadonlySet<string>,
+  opts?: SpatialBroadPhaseOptions,
+): InterferencePair[] {
+  const worldBoxes = new Map<string, AABB>();
+  const ids: string[] = [];
+  let extentSum = 0;
+  for (const p of parts) {
+    const local = localBoxes.get(p.id);
+    if (!local) continue;
+    const wb = transformAabb(local, p);
+    worldBoxes.set(p.id, wb);
+    ids.push(p.id);
+    extentSum += Math.max(wb.max.x - wb.min.x, wb.max.y - wb.min.y, wb.max.z - wb.min.z);
+  }
+  if (ids.length < 2) return [];
+
+  const cell = opts?.cellSize ?? Math.max(1e-6, extentSum / ids.length);
+  const maxCells = opts?.maxCellsPerBox ?? 64;
+  const ci = (v: number): number => Math.floor(v / cell);
+
+  const grid = new Map<string, string[]>();
+  const oversized: string[] = [];
+  const bucket = (k: string, id: string): void => {
+    let arr = grid.get(k);
+    if (!arr) { arr = []; grid.set(k, arr); }
+    arr.push(id);
+  };
+  for (const id of ids) {
+    const b = worldBoxes.get(id)!;
+    const x0 = ci(b.min.x), x1 = ci(b.max.x);
+    const y0 = ci(b.min.y), y1 = ci(b.max.y);
+    const z0 = ci(b.min.z), z1 = ci(b.max.z);
+    const span = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1);
+    if (span > maxCells) { oversized.push(id); continue; }
+    for (let x = x0; x <= x1; x++)
+      for (let y = y0; y <= y1; y++)
+        for (let z = z0; z <= z1; z++) bucket(`${x},${y},${z}`, id);
+  }
+
+  const seen = new Set<string>();
+  const out: InterferencePair[] = [];
+  const consider = (a: string, b: string): void => {
+    if (a === b) return;
+    const [pa, pb] = a < b ? [a, b] : [b, a];
+    const key = `${pa}::${pb}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (whitelist && whitelist.has(key)) return;
+    const ab = worldBoxes.get(pa)!;
+    const bb = worldBoxes.get(pb)!;
+    if (aabbOverlap(ab, bb)) {
+      out.push({ partA: pa, partB: pb, penetration: aabbPenetration(ab, bb), bboxA: ab, bboxB: bb });
+    }
+  };
+
+  for (const arr of grid.values()) {
+    for (let i = 0; i < arr.length; i++) {
+      for (let j = i + 1; j < arr.length; j++) consider(arr[i]!, arr[j]!);
+      for (const o of oversized) consider(o, arr[i]!);
+    }
+  }
+  for (let i = 0; i < oversized.length; i++)
+    for (let j = i + 1; j < oversized.length; j++) consider(oversized[i]!, oversized[j]!);
+
+  return out;
+}

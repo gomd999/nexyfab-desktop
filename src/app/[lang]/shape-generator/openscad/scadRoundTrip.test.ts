@@ -103,6 +103,258 @@ describe('C2 — parser handles rotate / scale / mirror prefixes', () => {
   });
 });
 
+describe('Phase 2 — difference() → base + hole features', () => {
+  it('round-trips a single hole through emit → parse (base + 1 hole)', () => {
+    const features = [feat('h1', 'hole', { diameter: 6, depth: 40, posX: 5, posY: -3, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.shape.params).toMatchObject({ width: 60, depth: 40, height: 30 });
+      expect(r.features).toHaveLength(1);
+      expect(r.features![0]!.type).toBe('hole');
+      // posX/posY/posZ + diameter + depth survive the Y-up↔Z-up swap.
+      expect(r.features![0]!.params).toMatchObject({ diameter: 6, depth: 40, posX: 5, posY: -3, posZ: 0 });
+    }
+  });
+
+  it('recovers MULTIPLE holes (nested difference) in application order', () => {
+    const features = [
+      feat('h1', 'hole', { diameter: 4, depth: 30, posX: -10, posY: 0, posZ: 0 }),
+      feat('h2', 'hole', { diameter: 8, depth: 30, posX: 10, posY: 6, posZ: 0 }),
+    ];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features).toHaveLength(2);
+      expect(r.features!.map((f) => f.params.diameter)).toEqual([4, 8]); // h1 then h2
+      expect(r.features![0]!.params).toMatchObject({ posX: -10, diameter: 4 });
+      expect(r.features![1]!.params).toMatchObject({ posX: 10, posY: 6, diameter: 8 });
+    }
+  });
+
+  it('parses a hand-written difference with a translated cylinder hole', () => {
+    const r = parseScadToFeatures(
+      'difference() {\n  cube([20, 20, 20], center=true);\n  translate([2, 0, 4]) cylinder(h=25, r=2.5, center=true, $fn=32);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.features).toHaveLength(1);
+      // SCAD translate([2,0,4]) → NexyFab posX=2, posZ(=scad y)=0, posY(=scad z)=4.
+      expect(r.features![0]!.params).toMatchObject({ posX: 2, posY: 4, posZ: 0, diameter: 5, depth: 25 });
+    }
+  });
+
+  it('a non-primitive tool (linear_extrude stub) is skipped — base still parses', () => {
+    const r = parseScadToFeatures(
+      'difference() {\n  cube([20, 20, 20], center=true);\n  linear_extrude(height=30) square([4, 4], center=true);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      // neither a hole (cylinder) nor a boolean primitive (box/sphere) → skipped,
+      // base-only result (features absent).
+      expect(r.features ?? []).toHaveLength(0);
+    }
+  });
+
+  it('a box cut in a difference is recovered as a boolean subtract (no longer lossy)', () => {
+    const r = parseScadToFeatures(
+      'difference() {\n  cube([20, 20, 20], center=true);\n  translate([2, 0, 4]) cube([3, 3, 30], center=true);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features![0]!).toMatchObject({ type: 'boolean', params: { operation: 1, toolShape: 0, toolWidth: 3, toolDepth: 3, toolHeight: 30 } });
+    }
+  });
+
+  it('a difference with no holes still yields the base (back-compat)', () => {
+    const r = parseScadToFeatures('difference() {\n  sphere(r=5);\n}');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.shape.baseShapeId).toBe('sphere');
+  });
+});
+
+describe('Phase 2 — cone / torus recognition + diameter↔radius symmetry', () => {
+  it('emit→parse round-trips a cone (bottom/top diameter, height)', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'cone', baseParams: { bottomDiameter: 60, topDiameter: 20, height: 40 } });
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('cone');
+      expect(r.shape.params).toMatchObject({ height: 40, bottomDiameter: 60, topDiameter: 20 });
+    }
+  });
+
+  it('emit→parse round-trips a torus (major / tube diameter)', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'torus', baseParams: { majorDiameter: 80, tubeDiameter: 24 } });
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('torus');
+      expect(r.shape.params).toMatchObject({ majorDiameter: 80, tubeDiameter: 24 });
+    }
+  });
+
+  it('cylinder diameter survives emit→parse (was emitting a stale default radius)', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'cylinder', baseParams: { diameter: 30, height: 20 } });
+    expect(scad).toContain('r=15'); // 30mm diameter → 15mm radius, not the old default 25
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.shape.params).toMatchObject({ diameter: 30, height: 20 });
+  });
+
+  it('sphere diameter survives emit→parse', () => {
+    const scad = emitScadFromFeatures([], { baseShapeId: 'sphere', baseParams: { diameter: 18 } });
+    expect(scad).toContain('r=9');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.shape.params).toMatchObject({ diameter: 18 });
+  });
+
+  it('parses a hand-written cone and a pointed cone (r2=0)', () => {
+    const taper = parseScadToFeatures('cylinder(h=50, r1=20, r2=8, center=true, $fn=64);');
+    expect(taper.ok && taper.shape.baseShapeId).toBe('cone');
+    if (taper.ok) expect(taper.shape.params).toMatchObject({ bottomDiameter: 40, topDiameter: 16 });
+    const pointed = parseScadToFeatures('cylinder(h=30, r1=15, r2=0, center=true, $fn=64);');
+    expect(pointed.ok && pointed.shape.baseShapeId).toBe('cone');
+    if (pointed.ok) expect(pointed.shape.params.topDiameter).toBe(0);
+  });
+
+  it('a plain cylinder is NOT mis-read as a cone', () => {
+    const r = parseScadToFeatures('cylinder(h=50, r=25, center=true, $fn=64);');
+    expect(r.ok && r.shape.baseShapeId).toBe('cylinder');
+  });
+});
+
+describe('Phase 2 — for-loop patterns → linearPattern / circularPattern', () => {
+  it('emit→parse round-trips a linear pattern (count / spacing / axis)', () => {
+    const features = [feat('lp', 'linearPattern', { count: 3, spacing: 20, axis: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.features).toHaveLength(1);
+      expect(r.features![0]!).toMatchObject({ type: 'linearPattern', params: { count: 3, spacing: 20, axis: 0 } });
+    }
+  });
+
+  it('recovers the Z / Y axis from the translate slot', () => {
+    for (const axis of [1, 2]) {
+      const scad = emitScadFromFeatures([feat('lp', 'linearPattern', { count: 4, spacing: 15, axis })], BASE);
+      const r = parseScadToFeatures(scad);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.features![0]!.params).toMatchObject({ count: 4, spacing: 15, axis });
+    }
+  });
+
+  it('emit→parse round-trips a circular pattern (count + total angle)', () => {
+    const scad = emitScadFromFeatures([feat('cp', 'circularPattern', { count: 6, totalAngle: 360 })], BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features![0]!).toMatchObject({ type: 'circularPattern', params: { count: 6, totalAngle: 360 } });
+    }
+  });
+
+  it('a pattern OVER a holed body recovers both, in application order', () => {
+    const features = [
+      feat('h1', 'hole', { diameter: 5, depth: 40, posX: 0, posY: 0, posZ: 0 }),
+      feat('lp', 'linearPattern', { count: 3, spacing: 25, axis: 0 }),
+    ];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features!.map((f) => f.type)).toEqual(['hole', 'linearPattern']); // hole first, pattern last
+      expect(r.shape.baseShapeId).toBe('box');
+    }
+  });
+});
+
+describe('Phase 2 — union / intersection → boolean feature', () => {
+  it('emit→parse round-trips a union with a box tool', () => {
+    const features = [feat('b', 'boolean', { operation: 0, toolShape: 0, toolWidth: 20, toolDepth: 15, toolHeight: 10, posX: 5, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('union()');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.features![0]!).toMatchObject({
+        type: 'boolean',
+        params: { operation: 0, toolShape: 0, toolWidth: 20, toolDepth: 15, toolHeight: 10, posX: 5 },
+      });
+    }
+  });
+
+  it('round-trips a union with a cylinder tool (diameter = 2r)', () => {
+    const features = [feat('b', 'boolean', { operation: 0, toolShape: 1, toolWidth: 10, toolHeight: 30, toolDepth: 10, posX: 0, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('r=5');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.features![0]!.params).toMatchObject({ operation: 0, toolShape: 1, toolWidth: 10, toolHeight: 30 });
+  });
+
+  it('round-trips an intersection with a sphere tool', () => {
+    const features = [feat('b', 'boolean', { operation: 2, toolShape: 2, toolWidth: 16, toolHeight: 16, toolDepth: 16, posX: 0, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('intersection()');
+    expect(scad).toContain('sphere(r=8');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.features![0]!).toMatchObject({ type: 'boolean', params: { operation: 2, toolShape: 2, toolWidth: 16 } });
+  });
+
+  it('emit→parse round-trips a SUBTRACT with a box tool (boolean op 1)', () => {
+    const features = [feat('b', 'boolean', { operation: 1, toolShape: 0, toolWidth: 8, toolDepth: 6, toolHeight: 4, posX: 10, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('difference()');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features![0]!).toMatchObject({
+        type: 'boolean',
+        params: { operation: 1, toolShape: 0, toolWidth: 8, toolDepth: 6, toolHeight: 4, posX: 10 },
+      });
+    }
+  });
+
+  it('a cylinder subtract stays a hole; a box subtract is a boolean — both recovered together', () => {
+    const features = [
+      feat('h', 'hole', { diameter: 6, depth: 40, posX: -8, posY: 0, posZ: 0 }),
+      feat('b', 'boolean', { operation: 1, toolShape: 2, toolWidth: 12, toolHeight: 12, toolDepth: 12, posX: 8, posY: 0, posZ: 0 }),
+    ];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features!.map((f) => f.type)).toEqual(['hole', 'boolean']);
+      expect(r.features![1]!.params).toMatchObject({ operation: 1, toolShape: 2, toolWidth: 12 });
+    }
+  });
+
+  it('parses a hand-written union with a translated box tool', () => {
+    const r = parseScadToFeatures(
+      'union() {\n  cube([40, 40, 40], center=true);\n  translate([10, 0, 5]) cube([8, 6, 4], center=true);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      // translate([10,0,5]) → posX=10, posZ(=scad y)=0, posY(=scad z)=5
+      expect(r.features![0]!).toMatchObject({
+        type: 'boolean',
+        params: { operation: 0, toolShape: 0, toolWidth: 8, toolDepth: 6, toolHeight: 4, posX: 10, posY: 5, posZ: 0 },
+      });
+    }
+  });
+});
+
 describe('O1 — fast box fillet (hull, not minkowski)', () => {
   it('emitRoundedBoxFilletScad uses hull() of 8 corner spheres, no minkowski', () => {
     const scad = emitRoundedBoxFilletScad(60, 40, 30, 4);

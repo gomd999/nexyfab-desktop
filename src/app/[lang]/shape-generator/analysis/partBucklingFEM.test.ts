@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { runPartBuckling } from './partBucklingFEM';
+import { runPartBuckling, computeBucklingForPanel, BUCKLING_MATERIALS } from './partBucklingFEM';
 
 const STEEL = { E: 210_000, nu: 0.3 };
 
@@ -41,5 +41,37 @@ describe('partBucklingFEM — TET10 part buckling', () => {
     const ratio = stiff.criticalLoadFactor / base.criticalLoadFactor;
     expect(ratio).toBeGreaterThan(1.9);
     expect(ratio).toBeLessThan(2.1);
+  });
+});
+
+describe('computeBucklingForPanel — panel adapter', () => {
+  it('clamps the named face, compresses its axis, and reports a positive λ_cr + stress', () => {
+    // Column long axis = X; clamp 'left' (X-min) → loadAxis 0, compress σ_xx.
+    const r = computeBucklingForPanel(new THREE.BoxGeometry(200, 10, 10), 'steel', 'left', 2);
+    expect(r.loadAxis).toBe(0);
+    expect(r.criticalLoadFactor).toBeGreaterThan(0);
+    expect(r.refStressMPa).toBe(2);
+    // Buckling stress = λ_cr · |ref|.
+    expect(r.bucklingStressMPa).toBeCloseTo(r.criticalLoadFactor * 2, 6);
+    expect(r.nodeCount).toBeGreaterThan(0);
+    expect(r.freeDofCount).toBeGreaterThan(0);
+  });
+
+  it('a stiffer material yields a higher critical load factor (steel > ABS)', () => {
+    const box = () => new THREE.BoxGeometry(200, 10, 10);
+    const steel = computeBucklingForPanel(box(), 'steel', 'left', 1);
+    const abs = computeBucklingForPanel(box(), 'abs', 'left', 1);
+    expect(steel.criticalLoadFactor).toBeGreaterThan(abs.criticalLoadFactor);
+    // λ_cr ∝ E → ratio tracks the modulus ratio within mesh tolerance.
+    const eRatio = BUCKLING_MATERIALS.steel!.E / BUCKLING_MATERIALS.abs!.E;
+    const lamRatio = steel.criticalLoadFactor / abs.criticalLoadFactor;
+    expect(lamRatio).toBeGreaterThan(eRatio * 0.8);
+    expect(lamRatio).toBeLessThan(eRatio * 1.2);
+  });
+
+  it('falls back to steel/left for unknown material + face keys', () => {
+    const r = computeBucklingForPanel(new THREE.BoxGeometry(200, 10, 10), 'nope', 'bogus', 1);
+    expect(r.loadAxis).toBe(0); // left → axis 0
+    expect(r.criticalLoadFactor).toBeGreaterThan(0);
   });
 });

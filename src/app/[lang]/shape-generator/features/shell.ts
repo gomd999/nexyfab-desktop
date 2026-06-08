@@ -3,6 +3,7 @@ import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 import { buildFaceFinderBySignature } from './topologyEdgeFinder';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
@@ -130,7 +131,7 @@ export const shellFeature: FeatureDefinition = {
       propagateFeatureIdMap(result.geometry, prev, cutBox);
     }
 
-    return result.geometry;
+    return noteMeshFallback(result.geometry, { op: 'Shell', engine, featureId: ctx?.featureId });
   },
 
   /** OCCT async path: when the user picked a face to leave open, re-resolve it

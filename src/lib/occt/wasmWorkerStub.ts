@@ -77,6 +77,9 @@ export type WireOp =
   | 'booleanIntersect'
   | 'fillet'
   | 'chamfer'
+  | 'buildPlanarFace'
+  | 'thicken'
+  | 'surfaceTrim'
   | 'exportSTEP'
   | 'importSTEP'
   | 'tessellate'
@@ -232,6 +235,62 @@ export function createWasmWorkerStub(opts: CreateStubOpts = {}): WorkerLike {
             : await inner.chamfer(s, edgeIds, dim);
           if (!r.ok || !r.shape) {
             reply({ reqId, ok: false, error: r.error ?? `${op} failed`, warnings: r.warnings });
+            return;
+          }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'buildPlanarFace': {
+          if (!inner.buildPlanarFace) {
+            reply({ reqId, ok: false, error: 'buildPlanarFace: not supported by this kernel' });
+            return;
+          }
+          const loop = Array.isArray(args.loop) ? (args.loop as Array<{ x: number; y: number }>) : [];
+          const z = typeof args.z === 'number' ? args.z : 0;
+          const r = await inner.buildPlanarFace(loop, z);
+          if (!r.ok || !r.shape) {
+            reply({ reqId, ok: false, error: r.error ?? 'buildPlanarFace failed', warnings: r.warnings });
+            return;
+          }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'thicken': {
+          const s = resolveHandle(args.handle);
+          if (!s) {
+            reply({ reqId, ok: false, error: `thicken: unknown handle (${String(args.handle)})` });
+            return;
+          }
+          if (!inner.thicken) {
+            reply({ reqId, ok: false, error: 'thicken: not supported by this kernel' });
+            return;
+          }
+          const thickness = typeof args.dim === 'number' ? args.dim : NaN;
+          const r = await inner.thicken(s, thickness);
+          if (!r.ok || !r.shape) {
+            reply({ reqId, ok: false, error: r.error ?? 'thicken failed', warnings: r.warnings });
+            return;
+          }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'surfaceTrim': {
+          const a = resolveHandle(args.handleA);
+          const b = resolveHandle(args.handleB);
+          if (!a || !b) {
+            reply({ reqId, ok: false, error: `surfaceTrim: unknown handle (a=${String(args.handleA)}, b=${String(args.handleB)})` });
+            return;
+          }
+          if (!inner.surfaceTrim) {
+            reply({ reqId, ok: false, error: 'surfaceTrim: not supported by this kernel' });
+            return;
+          }
+          const r = await inner.surfaceTrim(a, b);
+          if (!r.ok || !r.shape) {
+            reply({ reqId, ok: false, error: r.error ?? 'surfaceTrim failed', warnings: r.warnings });
             return;
           }
           reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });

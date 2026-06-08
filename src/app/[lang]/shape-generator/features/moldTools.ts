@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 export const moldToolsFeature: FeatureDefinition = {
   type: 'moldTools',
@@ -144,10 +145,11 @@ export const moldToolsFeature: FeatureDefinition = {
 
       const result = evaluator.evaluate(geoBrush, cutBrush, SUBTRACTION);
       result.geometry.computeVertexNormals();
-      return result.geometry;
+      return noteMeshFallback(result.geometry, { op: 'MoldTool', engine });
     } catch {
-      // If CSG unavailable, fall back to returning original geometry
-      return geometry;
+      // If CSG unavailable, fall back to returning original geometry — a no-op
+      // against B-rep intent, so flag it as blocked (nothing was actually cut).
+      return noteMeshFallback(geometry, { op: 'MoldTool', engine, isNoOp: true });
     }
   },
 };

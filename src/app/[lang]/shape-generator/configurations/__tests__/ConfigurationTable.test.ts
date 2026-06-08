@@ -491,3 +491,58 @@ describe('ConfigurationTable — JSON round-trip', () => {
     expect(t.getActiveId()).toBeNull();
   });
 });
+
+describe('A3 — expression evaluation in resolveActive (EquationManager)', () => {
+  it('lowers a global-var expression override to a number', () => {
+    const t = new ConfigurationTable();
+    t.setGlobalVar('width', 10);
+    const c = t.add('Wide', { id: 'c' });
+    t.setOverride(c.id, 'f', 'length', '2 * width + 5'); // → 25
+    const [f] = t.getResolved(c.id, [feat('f', { length: 1 })]);
+    expect(f!.params.length).toBe(25);
+  });
+
+  it('uses config-scoped expressionVars (and a leaf shadows a global)', () => {
+    const t = new ConfigurationTable();
+    t.setGlobalVar('wall', 1);
+    const c = t.add('Thick', { id: 'c' });
+    t.setExpressionVar(c.id, 'wall', 2);         // shadows the global
+    t.setOverride(c.id, 'f', 'thickness', 'wall * 3'); // → 6
+    const [f] = t.getResolved(c.id, [feat('f', { thickness: 0 })]);
+    expect(f!.params.thickness).toBe(6);
+  });
+
+  it('a numeric-string override still resolves (back-compatible)', () => {
+    const t = new ConfigurationTable();
+    const c = t.add('N', { id: 'c' });
+    t.setOverride(c.id, 'f', 'h', '42');
+    const [f] = t.getResolved(c.id, [feat('f', { h: 0 })]);
+    expect(f!.params.h).toBe(42);
+  });
+
+  it('a literal-number override is unchanged', () => {
+    const t = new ConfigurationTable();
+    const c = t.add('N', { id: 'c' });
+    t.setOverride(c.id, 'f', 'h', 7);
+    const [f] = t.getResolved(c.id, [feat('f', { h: 0 })]);
+    expect(f!.params.h).toBe(7);
+  });
+
+  it('an unknown-variable reference falls back gracefully (NaN, no throw)', () => {
+    const t = new ConfigurationTable();
+    const c = t.add('N', { id: 'c' });
+    t.setOverride(c.id, 'f', 'h', '2 * nope');
+    const [f] = t.getResolved(c.id, [feat('f', { h: 0 })]);
+    expect(Number.isNaN(f!.params.h)).toBe(true);
+  });
+
+  it('chained expressionVars evaluate through the DAG', () => {
+    const t = new ConfigurationTable();
+    t.setGlobalVar('base', 4);
+    const c = t.add('C', { id: 'c' });
+    t.setExpressionVar(c.id, 'derived', '2 * base'); // 8
+    t.setOverride(c.id, 'f', 'len', 'derived + 1');  // 9
+    const [f] = t.getResolved(c.id, [feat('f', { len: 0 })]);
+    expect(f!.params.len).toBe(9);
+  });
+});

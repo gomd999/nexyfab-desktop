@@ -91,18 +91,32 @@ export function evalNurbsSurface(surface: NurbsSurface, u: number, v: number): T
   const nVCols = surface.controlPoints[0].length;
   const collapsedPoints: THREE.Vector3[] = [];
   const collapsedWeights: number[] = [];
+  const hasWeights = !!surface.weights;
   for (let j = 0; j < nVCols; j++) {
     const colCurve = columnCurve(surface, j);
     const pt = evalNurbsCurve3D(colCurve, u);
     collapsedPoints.push(pt);
-    // For rational surfaces we should track the interpolated weight
-    // through the homogeneous form, but evalNurbsCurve3D already
-    // normalises by the weight sum and returns Cartesian. We treat the
-    // collapsed row as weight=1 for the V pass — this is correct only
-    // when the original surface's weights are uniform along U for each
-    // V-column. NURBS surfaces with strongly varying U-weights need a
-    // full homogeneous-grid pass; left as a follow-up.
-    collapsedWeights.push(1);
+    // Track the interpolated weight W_j(u) = Σᵢ Nᵢ(u)·wᵢⱼ through the
+    // homogeneous form so varying U-weights survive the U→V collapse. We get
+    // it by evaluating a NON-rational B-spline of the scalar weights along U:
+    // with uniform weights the basis is a partition of unity, so the x-coord
+    // of that curve IS Σᵢ Nᵢ(u)·wᵢⱼ. (Uniform-weight surfaces give Wⱼ≡1, so
+    // the V pass is byte-identical to the old behaviour.)
+    if (hasWeights) {
+      const wPts: THREE.Vector3[] = [];
+      for (let i = 0; i < surface.controlPoints.length; i++) {
+        wPts.push(new THREE.Vector3(surface.weights![i][j], 0, 0));
+      }
+      const wCurve: NurbsCurve3D = {
+        controlPoints: wPts,
+        weights: wPts.map(() => 1),
+        degree: surface.degreeU,
+        knots: surface.knotsU,
+      };
+      collapsedWeights.push(evalNurbsCurve3D(wCurve, u).x);
+    } else {
+      collapsedWeights.push(1);
+    }
   }
   const rowCurve = rowCurveFromPoints(
     collapsedPoints,

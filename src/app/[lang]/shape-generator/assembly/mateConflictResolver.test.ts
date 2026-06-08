@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveConflicts,
+  proposeConflictResolutions,
+  applyAcceptedResolution,
+  acceptAllRecommended,
   autoStrength,
   summarize,
   MATE_TYPE_DOFS,
@@ -46,6 +49,82 @@ describe('resolveConflicts', () => {
     ];
     const r = resolveConflicts(mates, ['A', 'B']);
     expect(r.resolved).toBe(true);
+  });
+
+  describe('proposeConflictResolutions (A1 viewport feedback)', () => {
+    it('no conflict → no proposals', () => {
+      const proposals = proposeConflictResolutions([mate('m1', 'A', 'B', 'parallel')], ['A', 'B']);
+      expect(proposals).toEqual([]);
+    });
+
+    it('over-constrained → ranked options (weakest first) + highlight set, non-destructive', () => {
+      const mates = [
+        mate('m1', 'A', 'B', 'coincident', 50),
+        mate('m2', 'A', 'B', 'coincident', 80),
+        mate('m3', 'A', 'B', 'coincident', 100),
+        mate('m4', 'A', 'B', 'coincident', 30),
+      ];
+      const proposals = proposeConflictResolutions(mates, ['A', 'B']);
+      expect(proposals).toHaveLength(1);
+      const p = proposals[0]!;
+      // Highlights the whole over-constrained subgraph.
+      expect(new Set(p.highlightMateIds)).toEqual(new Set(['m1', 'm2', 'm3', 'm4']));
+      // Options ranked weakest-first.
+      expect(p.options.map((o) => o.dropMateId)).toEqual(['m4', 'm1', 'm2', 'm3']);
+      // Recommended = weakest = what resolveConflicts drops first.
+      expect(p.recommended?.dropMateId).toBe('m4');
+      expect(resolveConflicts(mates, ['A', 'B']).droppedMates[0]).toBe('m4');
+      // Non-destructive: the input list is untouched.
+      expect(mates).toHaveLength(4);
+    });
+
+    it('accept loop (propose → applyAccepted → re-propose) converges to resolveConflicts', () => {
+      const bodies = ['A', 'B'];
+      let mates = [
+        mate('m1', 'A', 'B', 'coincident', 50),
+        mate('m2', 'A', 'B', 'coincident', 80),
+        mate('m3', 'A', 'B', 'coincident', 100),
+        mate('m4', 'A', 'B', 'coincident', 30),
+      ];
+      const accepted: string[] = [];
+      for (let guard = 0; guard < 16; guard++) {
+        const proposals = proposeConflictResolutions(mates, bodies);
+        if (proposals.length === 0) break;
+        const pick = proposals[0]!.recommended!.dropMateId;
+        accepted.push(pick);
+        mates = applyAcceptedResolution(mates, pick); // user accepts the recommended
+      }
+      expect(proposeConflictResolutions(mates, bodies)).toEqual([]); // converged
+      // Same mates dropped as the fully-automatic path.
+      const auto = resolveConflicts(
+        [
+          mate('m1', 'A', 'B', 'coincident', 50),
+          mate('m2', 'A', 'B', 'coincident', 80),
+          mate('m3', 'A', 'B', 'coincident', 100),
+          mate('m4', 'A', 'B', 'coincident', 30),
+        ],
+        bodies,
+      );
+      expect(new Set(accepted)).toEqual(new Set(auto.droppedMates));
+    });
+
+    it('acceptAllRecommended drops every recommended mate in one pass', () => {
+      // Each pair over-constrained: 2 concentric (4+4=8 DOF) on 2 bodies (avail 6).
+      const mates = [
+        mate('m1', 'A', 'B', 'concentric', 50),
+        mate('m2', 'A', 'B', 'concentric', 30), // weakest in A-B
+        mate('c1', 'C', 'D', 'concentric', 90),
+        mate('c2', 'C', 'D', 'concentric', 40), // weakest in C-D
+      ];
+      const proposals = proposeConflictResolutions(mates, ['A', 'B', 'C', 'D']);
+      expect(proposals.length).toBe(2); // two independent over-constrained pairs
+      const next = acceptAllRecommended(mates, proposals);
+      const remaining = next.map((m) => m.id);
+      expect(remaining).not.toContain('m2');
+      expect(remaining).not.toContain('c2');
+      expect(remaining).toContain('m1');
+      expect(remaining).toContain('c1');
+    });
   });
 
   it('preserves stronger mates over weaker ones', () => {

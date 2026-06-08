@@ -23,8 +23,8 @@
 // primitives, expression evaluator, and feature tree round-trip.
 
 export interface ScadRecognisedShape {
-  /** Maps to the existing base shape id in NexyFab (`box`, `cylinder`, `sphere`). */
-  baseShapeId: 'box' | 'cylinder' | 'sphere';
+  /** Maps to the existing base shape id in NexyFab. */
+  baseShapeId: 'box' | 'cylinder' | 'sphere' | 'cone' | 'torus';
   /** Numeric params keyed by NexyFab parameter name. */
   params: Record<string, number>;
   /** Phase 2-b — translate prefix offset captured during stripping. Caller
@@ -40,8 +40,18 @@ export interface ScadRecognisedShape {
   mirror?: { x: number; y: number; z: number };
 }
 
+/** Phase 2 — a feature recovered from the SCAD structure (the inverse of an
+ *  emitFeature case): a subtractive `hole` from a `difference()` body, or a
+ *  `linearPattern`/`circularPattern` from a `for` loop wrapper. The shape mirrors
+ *  NexyFab's FeatureInstance params so the caller can
+ *  `addFeatureWithParams(type, params)` directly. */
+export interface ScadRecognisedFeature {
+  type: 'hole' | 'linearPattern' | 'circularPattern' | 'boolean';
+  params: Record<string, number>;
+}
+
 export type ScadParseResult =
-  | { ok: true; shape: ScadRecognisedShape }
+  | { ok: true; shape: ScadRecognisedShape; features?: ScadRecognisedFeature[] }
   | { ok: false; reason: 'empty' | 'unsupported' | 'unparseable'; detail?: string };
 
 const NUM = '(-?\\d+(?:\\.\\d+)?)';
@@ -74,6 +84,19 @@ const CYL_RE = new RegExp(
 );
 // `sphere(r=r, ...)`.
 const SPHERE_RE = new RegExp('^sphere\\s*\\([^\\)]*?r\\s*=\\s*' + NUM);
+// `cylinder(h=h, r1=br, r2=tr, ...)` — a cone (tapered). Distinct from CYL_RE:
+// the `r1=`/`r2=` keys mean CYL_RE's bare `r=` never matches this, so order is
+// irrelevant, but we test cone first for clarity.
+const CONE_RE = new RegExp(
+  '^cylinder\\s*\\([^\\)]*?h\\s*=\\s*' + NUM + '[^\\)]*?r1\\s*=\\s*' + NUM + '[^\\)]*?r2\\s*=\\s*' + NUM,
+);
+// `rotate_extrude(...) translate([majorR, 0, 0]) circle(r=minorR, ...)` — the
+// torus idiom our emitter writes (the inner translate is part of the idiom, not
+// a transform prefix, so it isn't peeled by stripTransforms).
+const TORUS_RE = new RegExp(
+  '^rotate_extrude\\s*\\([^\\)]*\\)\\s*translate\\s*\\(\\s*\\[\\s*' + NUM + '\\s*,\\s*' + NUM + '\\s*,\\s*' + NUM +
+  '\\s*\\]\\s*\\)\\s*circle\\s*\\(\\s*r\\s*=\\s*' + NUM,
+);
 
 interface StrippedTransforms {
   rest: string;
@@ -162,15 +185,175 @@ function unwrapTopLevelContainer(src: string): { kind: 'union' | 'difference' | 
   return null;
 }
 
+/** Split a boolean-container body into its top-level children, respecting
+ *  `{}` / `()` / `[]` nesting. The first child may be a nested boolean BLOCK
+ *  (`difference() { … }`, no trailing `;`); the rest are `;`-terminated
+ *  statements (the subtractive tools). Comments are stripped first. */
+function splitTopLevelChildren(body: string): string[] {
+  const clean = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const children: string[] = [];
+  let brace = 0, paren = 0, bracket = 0, buf = '';
+  for (const ch of clean) {
+    buf += ch;
+    if (ch === '{') brace++;
+    else if (ch === '}') { brace--; if (brace === 0 && paren === 0 && bracket === 0) { children.push(buf); buf = ''; } }
+    else if (ch === '(') paren++;
+    else if (ch === ')') paren--;
+    else if (ch === '[') bracket++;
+    else if (ch === ']') bracket--;
+    else if (ch === ';' && brace === 0 && paren === 0 && bracket === 0) { children.push(buf); buf = ''; }
+  }
+  if (buf.trim()) children.push(buf);
+  return children.map((c) => c.replace(/;\s*$/, '').trim()).filter(Boolean);
+}
+
+// A subtractive cylinder tool: `cylinder(h=…, r=…, …)` (the bare call after its
+// transform prefix is peeled). Mirrors the base CYL_RE.
+const HOLE_CYL_RE = new RegExp('^cylinder\\s*\\([^\\)]*?h\\s*=\\s*' + NUM + '[^\\)]*?r\\s*=\\s*' + NUM);
+
+/** Recognise a `difference()` tool statement as a NexyFab `hole` feature — the
+ *  inverse of emitFeature's hole case `translate([posX, posZ, posY])
+ *  cylinder(h=depth, r=dia/2)`. Returns null for tools we don't model as holes
+ *  (e.g. cube pockets), so the base shape still applies losslessly. */
+function parseHoleTool(stmt: string): ScadRecognisedFeature | null {
+  const { rest, offset } = stripTransforms(stmt);
+  const m = HOLE_CYL_RE.exec(rest);
+  if (!m) return null;
+  const depth = parseFloat(m[1]!);
+  const r = parseFloat(m[2]!);
+  // SCAD vector is [posX, posZ, posY] (NexyFab is Y-up, SCAD Z-up) → invert.
+  return {
+    type: 'hole',
+    params: { posX: offset.x, posY: offset.z, posZ: offset.y, diameter: r * 2, depth },
+  };
+}
+
+// `for (i = [0 : N]) translate([…]) …` — the linearPattern wrapper. The offset
+// vector carries `SPACING*i` in one slot (axis); the inner body follows.
+const FOR_LINEAR_RE = /^for\s*\(\s*i\s*=\s*\[\s*0\s*:\s*(\d+)\s*\]\s*\)\s*translate\s*\(\s*\[([^\]]+)\]\s*\)\s*/;
+// `for (a = [0 : N]) rotate([0, ANGLE*a, 0]) …` — the circularPattern wrapper.
+const FOR_CIRCULAR_RE = /^for\s*\(\s*a\s*=\s*\[\s*0\s*:\s*(\d+)\s*\]\s*\)\s*rotate\s*\(\s*\[\s*0\s*,\s*(-?\d+(?:\.\d+)?)\s*\*\s*a\s*,\s*0\s*\]\s*\)\s*/;
+// The emit maps pattern axis → translate slot: X→slot0, Y→slot1, Z→slot2 (SCAD
+// is Z-up); NexyFab's `axis` enum is X=0, Z=1, Y=2. Invert slot→axis here.
+const SLOT_TO_AXIS: Record<number, number> = { 0: 0, 1: 2, 2: 1 };
+
+/** Recognise a top-level `for` loop as a NexyFab pattern feature + the inner
+ *  body it repeats — the inverse of emitFeature's linearPattern/circularPattern.
+ *  Returns null for any other (or non-pattern) loop. */
+function unwrapForPattern(src: string): { feature: ScadRecognisedFeature; body: string } | null {
+  const t = src.trim();
+  let m = FOR_LINEAR_RE.exec(t);
+  if (m) {
+    const count = parseInt(m[1]!, 10) + 1;
+    const slots = m[2]!.split(',');
+    let spacing = 0, axis = 0;
+    for (let s = 0; s < slots.length; s++) {
+      const im = /(-?\d+(?:\.\d+)?)\s*\*\s*i/.exec(slots[s]!);
+      if (im) { spacing = parseFloat(im[1]!); axis = SLOT_TO_AXIS[s] ?? 0; break; }
+    }
+    return { feature: { type: 'linearPattern', params: { count, spacing, axis } }, body: t.slice(m[0].length) };
+  }
+  m = FOR_CIRCULAR_RE.exec(t);
+  if (m) {
+    const count = parseInt(m[1]!, 10) + 1;
+    const anglePer = parseFloat(m[2]!);
+    // emit wrote angle/count per step; recover the total it came from.
+    return { feature: { type: 'circularPattern', params: { count, totalAngle: anglePer * count } }, body: t.slice(m[0].length) };
+  }
+  return null;
+}
+
+/** Recognise a `union()` / `intersection()` tool statement as a NexyFab
+ *  `boolean` feature: a translated box / cylinder / sphere combined with the
+ *  base via `operation` (0=union, 2=intersect). The inverse of emitFeature's
+ *  boolean tool. Returns null for non-primitive tools (e.g. linear_extrude
+ *  stubs), which are skipped so the base still applies. */
+function parseBooleanTool(stmt: string, operation: number): ScadRecognisedFeature | null {
+  const { rest, offset } = stripTransforms(stmt);
+  // SCAD vector is [posX, posZ, posY] (Y-up↔Z-up) → invert, as for holes.
+  const pos = { posX: offset.x, posY: offset.z, posZ: offset.y };
+  let m = CUBE_ARRAY_RE.exec(rest);
+  if (m) {
+    // emit wrote cube([toolWidth, toolDepth, toolHeight]).
+    return { type: 'boolean', params: { operation, toolShape: 0, toolWidth: parseFloat(m[1]!), toolDepth: parseFloat(m[2]!), toolHeight: parseFloat(m[3]!), ...pos } };
+  }
+  m = CUBE_SCALAR_RE.exec(rest);
+  if (m) {
+    const s = parseFloat(m[1]!);
+    return { type: 'boolean', params: { operation, toolShape: 0, toolWidth: s, toolDepth: s, toolHeight: s, ...pos } };
+  }
+  m = HOLE_CYL_RE.exec(rest); // cylinder(h, r) — tool diameter = 2r in toolWidth.
+  if (m) {
+    const h = parseFloat(m[1]!), r = parseFloat(m[2]!);
+    return { type: 'boolean', params: { operation, toolShape: 1, toolWidth: r * 2, toolHeight: h, toolDepth: r * 2, ...pos } };
+  }
+  m = SPHERE_RE.exec(rest);
+  if (m) {
+    const r = parseFloat(m[1]!);
+    return { type: 'boolean', params: { operation, toolShape: 2, toolWidth: r * 2, toolHeight: r * 2, toolDepth: r * 2, ...pos } };
+  }
+  return null;
+}
+
 export function parseScadToFeatures(scad: string): ScadParseResult {
   if (!scad || !scad.trim()) return { ok: false, reason: 'empty' };
 
-  // Phase 3 — if the file is wrapped in a top-level boolean container,
-  // recurse into the body so the inner primitive becomes the recognised
-  // base shape. Future phase: track the container kind + subsequent
-  // children as hole / cut features in the returned shape.
-  const wrapped = unwrapTopLevelContainer(scad);
+  // Phase 2/3 — a top-level boolean container. For `difference()` we now invert
+  // it into a base shape + subtractive `hole` features (nested differences =
+  // multiple holes, peeled by recursion). `union`/`intersection` keep the prior
+  // behaviour (recurse to the first recognised primitive as the base).
+  // Strip comments first so the emitter's file-level header (always prepended)
+  // doesn't hide the `difference()` / `for` that follows it.
+  const stripped = scad.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  // A `for` pattern wrapper is the OUTERMOST feature (applied last), so peel it
+  // first and recurse into the repeated body; the pattern feature is appended
+  // after the body's own features to keep application order.
+  const pat = unwrapForPattern(stripped);
+  if (pat) {
+    const baseRes = parseScadToFeatures(pat.body);
+    if (!baseRes.ok) return baseRes;
+    return { ok: true, shape: baseRes.shape, features: [...(baseRes.features ?? []), pat.feature] };
+  }
+
+  const wrapped = unwrapTopLevelContainer(stripped);
   if (wrapped) {
+    if (wrapped.kind === 'difference') {
+      const children = splitTopLevelChildren(wrapped.body);
+      if (children.length === 0) {
+        return { ok: false, reason: 'unsupported', detail: 'empty difference body' };
+      }
+      const baseRes = parseScadToFeatures(children[0]!);
+      if (!baseRes.ok) return baseRes;
+      const features: ScadRecognisedFeature[] = [...(baseRes.features ?? [])];
+      for (const tool of children.slice(1)) {
+        // A cylinder cut is the natural `hole`; a box/sphere cut is a boolean
+        // subtract (operation 1). Anything else (extrude stub) is skipped.
+        const hole = parseHoleTool(tool);
+        if (hole) { features.push(hole); continue; }
+        const sub = parseBooleanTool(tool, 1);
+        if (sub) features.push(sub);
+      }
+      return features.length
+        ? { ok: true, shape: baseRes.shape, features }
+        : baseRes;
+    }
+    if (wrapped.kind === 'union' || wrapped.kind === 'intersection') {
+      // base + additive/intersect primitive tool(s) → boolean feature(s).
+      const op = wrapped.kind === 'union' ? 0 : 2;
+      const children = splitTopLevelChildren(wrapped.body);
+      if (children.length === 0) {
+        return { ok: false, reason: 'unsupported', detail: `empty ${wrapped.kind} body` };
+      }
+      const baseRes = parseScadToFeatures(children[0]!);
+      if (!baseRes.ok) return baseRes;
+      const features: ScadRecognisedFeature[] = [...(baseRes.features ?? [])];
+      for (const tool of children.slice(1)) {
+        const bf = parseBooleanTool(tool, op);
+        if (bf) features.push(bf); // non-primitive tools (extrude stubs) skipped
+      }
+      return features.length ? { ok: true, shape: baseRes.shape, features } : baseRes;
+    }
     return parseScadToFeatures(wrapped.body);
   }
 
@@ -192,6 +375,17 @@ export function parseScadToFeatures(scad: string): ScadParseResult {
     if (m) {
       const s = parseFloat(m[1]);
       return { ok: true, shape: { baseShapeId: 'box', params: { width: s, depth: s, height: s }, ...tf } };
+    }
+    m = CONE_RE.exec(line);
+    if (m) {
+      const [h, r1, r2] = [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])];
+      // SCAD radii → NexyFab diameters (scene stores bottom/topDiameter).
+      return { ok: true, shape: { baseShapeId: 'cone', params: { height: h, bottomDiameter: r1 * 2, topDiameter: r2 * 2 }, ...tf } };
+    }
+    m = TORUS_RE.exec(line);
+    if (m) {
+      const [majorR, , , minorR] = [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])];
+      return { ok: true, shape: { baseShapeId: 'torus', params: { majorDiameter: majorR * 2, tubeDiameter: minorR * 2 }, ...tf } };
     }
     m = CYL_RE.exec(line);
     if (m) {

@@ -103,6 +103,11 @@ export function usePipelineWorker() {
           if (data.topoEdgeSignatures) {
             geo.userData = { ...geo.userData, topoEdgeSignatures: data.topoEdgeSignatures };
           }
+          // Re-attach OCCT→mesh downgrade notices so the banner sees the worker
+          // path too (the same userData-doesn't-cross-the-boundary issue).
+          if (data.meshDowngrades && data.meshDowngrades.length > 0) {
+            geo.userData = { ...geo.userData, meshDowngrades: data.meshDowngrades };
+          }
           pending.resolve({ geometry: geo, errors: data.errors ?? {} });
         } else {
           pending.reject(new Error(data.error ?? 'Pipeline worker returned unknown error'));

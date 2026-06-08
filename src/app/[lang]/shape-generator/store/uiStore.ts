@@ -41,6 +41,7 @@ const analysisPanelKeys = [
   'showThermalPanel',
   'showMotionStudy',
   'showModalAnalysis',
+  'showBucklingAnalysis',
   'showParametricSweep',
   'showToleranceStackup',
   'showSurfaceQuality',
@@ -191,6 +192,7 @@ interface UIState {
   showThermalPanel: boolean
   showMotionStudy: boolean
   showModalAnalysis: boolean
+  showBucklingAnalysis: boolean
   showParametricSweep: boolean
   showToleranceStackup: boolean
   showSurfaceQuality: boolean
@@ -259,6 +261,7 @@ type PanelKey =
   | 'showThermalPanel'
   | 'showMotionStudy'
   | 'showModalAnalysis'
+  | 'showBucklingAnalysis'
   | 'showParametricSweep'
   | 'showToleranceStackup'
   | 'showSurfaceQuality'
@@ -338,6 +341,7 @@ interface UIActions {
   setShowThermalPanel: (v: boolean) => void
   setShowMotionStudy: (v: boolean) => void
   setShowModalAnalysis: (v: boolean) => void
+  setShowBucklingAnalysis: (v: boolean) => void
   setShowParametricSweep: (v: boolean) => void
   setShowToleranceStackup: (v: boolean) => void
   setShowSurfaceQuality: (v: boolean) => void
@@ -421,6 +425,7 @@ export const useUIStore = create<UIStore>()(
     showThermalPanel: false,
     showMotionStudy: false,
     showModalAnalysis: false,
+    showBucklingAnalysis: false,
     showParametricSweep: false,
     showToleranceStackup: false,
     showSurfaceQuality: false,
@@ -504,6 +509,7 @@ export const useUIStore = create<UIStore>()(
         'showFEA',
         'showThermalPanel',
         'showModalAnalysis',
+        'showBucklingAnalysis',
         'showParametricSweep',
         'showToleranceStackup',
         'showSurfaceQuality',
@@ -629,6 +635,7 @@ export const useUIStore = create<UIStore>()(
     setShowThermalPanel: (v) => set((state) => { setExclusivePanel(state, 'showThermalPanel', v) }),
     setShowMotionStudy: (v) => set((state) => { setExclusivePanel(state, 'showMotionStudy', v) }),
     setShowModalAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showModalAnalysis', v) }),
+    setShowBucklingAnalysis: (v) => set((state) => { setExclusivePanel(state, 'showBucklingAnalysis', v) }),
     setShowParametricSweep: (v) => set((state) => { setExclusivePanel(state, 'showParametricSweep', v) }),
     setShowToleranceStackup: (v) => set((state) => { setExclusivePanel(state, 'showToleranceStackup', v) }),
     setShowSurfaceQuality: (v) => set((state) => { setExclusivePanel(state, 'showSurfaceQuality', v) }),

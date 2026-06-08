@@ -217,6 +217,7 @@ import SketchInputCluster from './panels/SketchInputCluster';
 import BodyCsgDock from './panels/BodyCsgDock';
 import ComposeIndicator from './panels/ComposeIndicator';
 import CanvasGizmoOverlays from './panels/CanvasGizmoOverlays';
+import { collectDowngrades } from './features/downgradeNotice';
 import StatusFooter from './panels/StatusFooter';
 import AuthModelPlacementDock from './panels/AuthModelPlacementDock';
 import SplitExportDock from './panels/SplitExportDock';
@@ -1347,6 +1348,12 @@ export function ShapeGeneratorInner() {
       geo.setIndex(new Uint32BufferAttribute(data.triangles, 1));
       geo.computeVertexNormals();
       geo.computeBoundingBox();
+      // Preserve B-rep lineage: the browser holds only this mesh, but the exact
+      // B-rep is still live in the server registry under `handle`. Stamping it
+      // lets the adopted body export STEP losslessly (brep-step endpoint) instead
+      // of re-meshing, and upgrade to a live browser handle once K-series lands.
+      const { tagBrepProvenance } = await import('./features/agentBrepAdoption');
+      tagBrepProvenance(geo, handle);
       const edgeGeo = makeEdges(geo);
       const vol = meshVolume(geo) / 1000;
       const sa = meshSurfaceArea(geo) / 100;
@@ -2344,6 +2351,8 @@ export function ShapeGeneratorInner() {
   const [motionPartTransforms, setMotionPartTransforms] = useState<Record<string, import('three').Matrix4> | null>(null);
   const showModalAnalysis    = useUIStore(s => s.showModalAnalysis);
   const setShowModalAnalysis = useUIStore(s => s.setShowModalAnalysis);
+  const showBucklingAnalysis = useUIStore(s => s.showBucklingAnalysis);
+  const setShowBucklingAnalysis = useUIStore(s => s.setShowBucklingAnalysis);
   const showParametricSweep  = useUIStore(s => s.showParametricSweep);
   const setShowParametricSweep = useUIStore(s => s.setShowParametricSweep);
   const showToleranceStackup = useUIStore(s => s.showToleranceStackup);
@@ -2369,6 +2378,7 @@ export function ShapeGeneratorInner() {
         { id: 'gen', active: showGenDesign },
         { id: 'motion', active: showMotionStudy },
         { id: 'modal', active: showModalAnalysis },
+        { id: 'buckling', active: showBucklingAnalysis },
         { id: 'tol', active: showToleranceStackup },
         { id: 'surf', active: showSurfaceQuality },
         { id: 'mfgpipe', active: showMfgPipeline },
@@ -2384,6 +2394,7 @@ export function ShapeGeneratorInner() {
       showGenDesign,
       showMotionStudy,
       showModalAnalysis,
+      showBucklingAnalysis,
       showToleranceStackup,
       showSurfaceQuality,
       showMfgPipeline,
@@ -6284,6 +6295,7 @@ export function ShapeGeneratorInner() {
     ecad:             () => setShowECADPanel(true),
     motionStudy:      () => setShowMotionStudy(true),
     modalAnalysis:    () => setShowModalAnalysis(true),
+    bucklingAnalysis: () => setShowBucklingAnalysis(true),
     parametricSweep:  () => setShowParametricSweep(true),
     toleranceStackup: () => setShowToleranceStackup(true),
     surfaceQuality:   () => setShowSurfaceQuality(true),
@@ -6298,7 +6310,7 @@ export function ShapeGeneratorInner() {
   // opening the panel if `effectiveResult.geometry` is missing.
   const PANELS_REQUIRING_GEO = new Set([
     'fea', 'massProperties', 'gdt', 'dfm', 'thermal',
-    'generativeDesign', 'ecad', 'motionStudy', 'modalAnalysis',
+    'generativeDesign', 'ecad', 'motionStudy', 'modalAnalysis', 'bucklingAnalysis',
     'parametricSweep', 'toleranceStackup', 'surfaceQuality',
     'autoDrawing', 'mfgPipeline',
   ]);
@@ -9049,6 +9061,9 @@ export function ShapeGeneratorInner() {
                   onParamChange={_handleParamChangeCmd}
                   bbox={effectiveResult?.bbox ?? null}
                   dfmResults={dfmResults}
+                  downgradeNotices={
+                    effectiveResult?.geometry ? collectDowngrades(effectiveResult.geometry) : []
+                  }
                 />
                 {/* Manufacturing Ready Card */}
                 {showManufacturingCard && effectiveResult && (
@@ -10494,6 +10509,8 @@ export function ShapeGeneratorInner() {
         setMotionPartTransforms={setMotionPartTransforms}
         showModalAnalysis={showModalAnalysis}
         setShowModalAnalysis={setShowModalAnalysis}
+        showBucklingAnalysis={showBucklingAnalysis}
+        setShowBucklingAnalysis={setShowBucklingAnalysis}
         showToleranceStackup={showToleranceStackup}
         setShowToleranceStackup={setShowToleranceStackup}
         showSurfaceQuality={showSurfaceQuality}

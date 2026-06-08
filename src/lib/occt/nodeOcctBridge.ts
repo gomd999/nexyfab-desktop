@@ -13,7 +13,7 @@
  */
 
 import type { OcctBridge, OcctBooleanOps } from './bridge';
-import type { OcctShape, OcctOperationResult, Vec3 } from './types';
+import type { OcctShape, OcctShapeKind, OcctOperationResult, Vec3 } from './types';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { OcctModule } from './nodeOcctLoader';
@@ -63,16 +63,31 @@ function extrudeZRange(f: ExtrudeFeature): { z0: number; h: number } {
   }
 }
 
+/** Planar face from a 2D loop at height z (an open surface / sheet body). */
+function buildFace(oc: OcctModule, loop: ReadonlyArray<{ x: number; y: number }>, z: number): OcctInstance {
+  const m = maker(oc);
+  const poly = m.inst('BRepBuilderAPI_MakePolygon_1');
+  for (const p of loop) poly.Add_1(m.inst('gp_Pnt_3', p.x, p.y, z));
+  poly.Close();
+  return m.inst('BRepBuilderAPI_MakeFace_15', poly.Wire(), false).Face() as OcctInstance;
+}
+
 /** Closed prism solid from a 2D loop at z0, extruded `h` along +Z. */
 function buildPrism(oc: OcctModule, loop: ReadonlyArray<{ x: number; y: number }>, z0: number, h: number): OcctInstance {
   const m = maker(oc);
-  const poly = m.inst('BRepBuilderAPI_MakePolygon_1');
-  for (const p of loop) poly.Add_1(m.inst('gp_Pnt_3', p.x, p.y, z0));
-  poly.Close();
-  const wire = poly.Wire();
-  const face = (m.inst('BRepBuilderAPI_MakeFace_15', wire, false).Face()) as OcctInstance;
+  const face = buildFace(oc, loop, z0);
   const vec = m.inst('gp_Vec_4', 0, 0, h);
   return m.inst('BRepPrimAPI_MakePrism_1', face, vec, false, true).Shape() as OcctInstance;
+}
+
+/** Total edge count (TopExp_Explorer over TopAbs_EDGE; not deduped). */
+function rawEdgeCount(oc: OcctModule, shape: OcctInstance): number {
+  const m = maker(oc);
+  const en = oc.TopAbs_ShapeEnum as unknown as { TopAbs_EDGE: unknown; TopAbs_SHAPE: unknown };
+  const exp = m.inst('TopExp_Explorer_2', shape, en.TopAbs_EDGE, en.TopAbs_SHAPE);
+  let n = 0;
+  while (exp.More()) { n++; exp.Next(); }
+  return n;
 }
 
 function volumeOf(oc: OcctModule, shape: OcctInstance): number {
@@ -137,14 +152,17 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
   const topos = new Map<string, EdgeAnchorSource>();
   let seq = 0;
 
-  const register = (shape: OcctInstance, topo?: EdgeAnchorSource): OcctShape => {
+  const register = (shape: OcctInstance, topo?: EdgeAnchorSource, kind: OcctShapeKind = 'solid'): OcctShape => {
     const id = `occt_${++seq}`;
     registry.set(id, shape);
     if (topo) topos.set(id, topo);
-    return { id, kind: 'solid', volume: volumeOf(oc, shape), bbox: bboxOf(oc, shape) };
+    // Volume is only meaningful for closed solids; lower-dim shapes (face/shell/
+    // compound from a section) report it as undefined.
+    const volume = kind === 'solid' ? volumeOf(oc, shape) : undefined;
+    return { id, kind, volume, bbox: bboxOf(oc, shape) };
   };
-  const result = (shape: OcctInstance, warnings: string[] = [], topo?: EdgeAnchorSource): OcctOperationResult => ({
-    ok: true, shape: register(shape, topo), warnings,
+  const result = (shape: OcctInstance, warnings: string[] = [], topo?: EdgeAnchorSource, kind: OcctShapeKind = 'solid'): OcctOperationResult => ({
+    ok: true, shape: register(shape, topo, kind), warnings,
   });
   const lookup = (s: OcctShape, where: string): OcctInstance => {
     const live = registry.get(s.id);
@@ -367,7 +385,102 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     }
   }
 
+  /**
+   * Thicken an open surface/shell into a solid of wall thickness `thickness`
+   * via BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple. The offset sign
+   * the kernel accepts depends on the face orientation, so we try +t then −t and
+   * keep whichever yields a finite non-zero volume. replicad cannot express this
+   * (the kernel ceiling) — proven by ceilingSpike.thicken.test.ts (vol exact).
+   */
+  function thickenImpl(shape: OcctShape, thickness: number): OcctOperationResult {
+    if (!(thickness > 0) || !Number.isFinite(thickness)) {
+      return { ok: false, error: `thicken: thickness must be positive finite, got ${thickness}`, warnings: [] };
+    }
+    let live: OcctInstance;
+    try {
+      live = lookup(shape, 'thicken');
+    } catch (e) {
+      return { ok: false, error: `thicken: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+    // The accepted offset sign depends on the face orientation: one sign yields
+    // a correctly-oriented solid (+volume), the other an inside-out one
+    // (−volume). Try both and PREFER the positively-oriented result.
+    let solid: OcctInstance | null = null;
+    let used = 0;
+    let fallback: { shape: OcctInstance; off: number } | null = null;
+    for (const off of [thickness, -thickness]) {
+      try {
+        const mts = m.inst('BRepOffsetAPI_MakeThickSolid_1');
+        if (typeof mts.MakeThickSolidBySimple !== 'function') {
+          return { ok: false, error: 'thicken: this OCCT build lacks MakeThickSolidBySimple', warnings: [] };
+        }
+        mts.MakeThickSolidBySimple(live, off);
+        if (typeof mts.Build === 'function') mts.Build();
+        if (typeof mts.IsDone === 'function' && !(mts.IsDone() as boolean)) continue;
+        const s = mts.Shape() as OcctInstance;
+        const v = volumeOf(oc, s);
+        if (!Number.isFinite(v) || Math.abs(v) <= 1e-9) continue;
+        if (v > 0) { solid = s; used = off; break; } // correctly oriented → done
+        if (!fallback) fallback = { shape: s, off };  // keep the inverted one as a backup
+      } catch {
+        /* try the other offset sign */
+      }
+    }
+    if (!solid && fallback) { solid = fallback.shape; used = fallback.off; }
+    if (!solid) {
+      return { ok: false, error: 'thicken: kernel produced no solid for ±thickness (degenerate surface?)', warnings: [] };
+    }
+    return result(solid, [`thickened surface → solid @ wall ${Math.abs(used)}`]);
+  }
+
+  /**
+   * Surface–surface trim: the section (intersection curve) of two shapes via
+   * BRepAlgoAPI_Section, returned as a compound of intersection edges. The mesh
+   * path only does UV-space trim; this is the kernel-exact route.
+   */
+  function surfaceTrimImpl(a: OcctShape, b: OcctShape): OcctOperationResult {
+    let liveA: OcctInstance, liveB: OcctInstance;
+    try {
+      liveA = lookup(a, 'surfaceTrim');
+      liveB = lookup(b, 'surfaceTrim');
+    } catch (e) {
+      return { ok: false, error: `surfaceTrim: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+    try {
+      // BRepAlgoAPI_Section_3(S1, S2, PerformNow=true).
+      const sec = m.inst('BRepAlgoAPI_Section_3', liveA, liveB, true);
+      if (typeof sec.Build === 'function') sec.Build();
+      const shape = sec.Shape() as OcctInstance;
+      const edges = rawEdgeCount(oc, shape);
+      if (edges === 0) {
+        return { ok: false, error: 'surfaceTrim: shapes do not intersect (no section edges)', warnings: [] };
+      }
+      return result(shape, [`section: ${edges} intersection edge(s)`], undefined, 'compound');
+    } catch (e) {
+      return { ok: false, error: `surfaceTrim: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+  }
+
   return {
+    async buildPlanarFace(loop: ReadonlyArray<{ x: number; y: number }>, z = 0) {
+      if (loop.length < 3) {
+        return { ok: false, error: `buildPlanarFace: loop must have ≥3 points, got ${loop.length}`, warnings: [] };
+      }
+      try {
+        const face = buildFace(oc, loop, z);
+        return result(face, ['planar surface (sheet body)'], undefined, 'face');
+      } catch (e) {
+        return { ok: false, error: `buildPlanarFace: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+      }
+    },
+
+    async thicken(shape, thickness) {
+      return thickenImpl(shape, thickness);
+    },
+    async surfaceTrim(a, b) {
+      return surfaceTrimImpl(a, b);
+    },
+
     async buildFromExtrude(feature: ExtrudeFeature) {
       try {
         const { z0, h } = extrudeZRange(feature);

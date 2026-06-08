@@ -8,6 +8,7 @@ import { downloadBlob } from '@/lib/platform';
 
 import type { DrawingResult, DrawingLine, DrawingText, ViewResult } from './autoDrawing';
 import type { jsPDF } from 'jspdf';
+import { detectCirclesAndArcs, type Seg } from './dxfArcDetect';
 
 /** PDF/DXF/SVG 미리보기 공통 — 표제란 리비전 필드 접두사(CAD 관례, ASCII). */
 export const DRAWING_TITLE_REVISION_LABEL = 'Rev';
@@ -404,14 +405,42 @@ function drawTitleBlockPDF(doc: jsPDF, drawing: DrawingResult): void {
 // Accepted by AutoCAD, FreeCAD, LibreCAD, DraftSight, Inkscape.
 
 const DXF_LAYERS = [
-  { name: 'VISIBLE',   color: 7 },   // white (renders black on white paper)
-  { name: 'HIDDEN',    color: 8 },   // dark gray
-  { name: 'CENTER',    color: 5 },   // blue
-  { name: 'DIMENSION', color: 1 },   // red
-  { name: 'TEXT',      color: 7 },
-  { name: 'TITLE',     color: 7 },
-  { name: 'DATUM',     color: 7 },   // GD&T datum reference frames
+  { name: 'VISIBLE',   color: 7, ltype: 'CONTINUOUS' }, // white (renders black on white paper)
+  { name: 'HIDDEN',    color: 8, ltype: 'DASHED' },     // dark gray, dashed per CAD convention
+  { name: 'CENTER',    color: 5, ltype: 'CENTERLT' },   // blue, long-dash-dot
+  { name: 'DIMENSION', color: 1, ltype: 'CONTINUOUS' }, // red
+  { name: 'TEXT',      color: 7, ltype: 'CONTINUOUS' },
+  { name: 'TITLE',     color: 7, ltype: 'CONTINUOUS' },
+  { name: 'DATUM',     color: 7, ltype: 'CONTINUOUS' }, // GD&T datum reference frames
 ];
+
+/** R12 LTYPE definitions referenced by the layers above. */
+const DXF_LTYPES = [
+  { name: 'CONTINUOUS', desc: 'Solid line', pattern: [] as number[] },
+  { name: 'DASHED', desc: 'Dashed __ __ __', pattern: [1.25, -0.75] },
+  { name: 'CENTERLT', desc: 'Center ____ _ ____ _', pattern: [3.0, -0.5, 0.5, -0.5] },
+];
+
+/** Emit the TABLES section (LTYPE before LAYER — AutoCAD requires the order). */
+function dxfTablesSection(): string {
+  let s = '0\nSECTION\n2\nTABLES\n';
+  // LTYPE table.
+  s += '0\nTABLE\n2\nLTYPE\n70\n' + DXF_LTYPES.length + '\n';
+  for (const lt of DXF_LTYPES) {
+    const total = lt.pattern.reduce((a, d) => a + Math.abs(d), 0);
+    s += '0\nLTYPE\n2\n' + lt.name + '\n70\n0\n3\n' + lt.desc +
+      '\n72\n65\n73\n' + lt.pattern.length + '\n40\n' + total.toFixed(3) + '\n';
+    for (const d of lt.pattern) s += '49\n' + d.toFixed(3) + '\n';
+  }
+  s += '0\nENDTAB\n';
+  // LAYER table (references the linetypes above via code 6).
+  s += '0\nTABLE\n2\nLAYER\n70\n' + DXF_LAYERS.length + '\n';
+  for (const L of DXF_LAYERS) {
+    s += '0\nLAYER\n2\n' + L.name + '\n70\n0\n62\n' + L.color + '\n6\n' + L.ltype + '\n';
+  }
+  s += '0\nENDTAB\n0\nENDSEC\n';
+  return s;
+}
 
 function layerFor(type: DrawingLine['type']): string {
   switch (type) {
@@ -443,6 +472,27 @@ function dxfText(layer: string, x: number, y: number, height: number, text: stri
   ].join('\n') + '\n';
 }
 
+function dxfCircle(layer: string, cx: number, cy: number, r: number): string {
+  return [
+    '0', 'CIRCLE',
+    '8', layer,
+    '10', cx.toFixed(3), '20', cy.toFixed(3), '30', '0.0',
+    '40', r.toFixed(3),
+  ].join('\n') + '\n';
+}
+
+function dxfArc(layer: string, cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
+  // DXF ARC is always drawn CCW from start angle to end angle.
+  return [
+    '0', 'ARC',
+    '8', layer,
+    '10', cx.toFixed(3), '20', cy.toFixed(3), '30', '0.0',
+    '40', r.toFixed(3),
+    '50', startDeg.toFixed(3),
+    '51', endDeg.toFixed(3),
+  ].join('\n') + '\n';
+}
+
 /** R12 ASCII DXF (mm). Exposed for CI; `exportDrawingDXF` wraps this + download. */
 export function buildDrawingDxfString(
   drawing: DrawingResult,
@@ -456,12 +506,7 @@ export function buildDrawingDxfString(
   dxf += '9\n$INSUNITS\n70\n4\n'; // millimeters
   dxf += '0\nENDSEC\n';
 
-  dxf += '0\nSECTION\n2\nTABLES\n';
-  dxf += '0\nTABLE\n2\nLAYER\n70\n' + DXF_LAYERS.length + '\n';
-  for (const L of DXF_LAYERS) {
-    dxf += '0\nLAYER\n2\n' + L.name + '\n70\n0\n62\n' + L.color + '\n6\nCONTINUOUS\n';
-  }
-  dxf += '0\nENDTAB\n0\nENDSEC\n';
+  dxf += dxfTablesSection();
 
   dxf += '0\nSECTION\n2\nENTITIES\n';
 
@@ -477,12 +522,29 @@ export function buildDrawingDxfString(
 
     dxf += dxfText('TEXT', ox + view.width / 2, oy + view.height + 2, 3, view.projection.toUpperCase());
 
+    // Collapse faceted visible/hidden segment fans into true CIRCLE/ARC entities
+    // per layer (machinist/CAM fidelity); centerlines & dimensions stay as LINEs.
+    // Detection is offset into sheet coords so the emitted center/radius match.
+    const byLayer = new Map<string, Seg[]>();
+    const passthrough: DrawingLine[] = [];
     for (const line of view.lines) {
-      dxf += dxfLine(
-        layerFor(line.type),
-        ox + line.x1, oy + line.y1,
-        ox + line.x2, oy + line.y2,
-      );
+      if (line.type === 'visible' || line.type === 'hidden') {
+        const arr = byLayer.get(line.type) ?? [];
+        arr.push({ x1: ox + line.x1, y1: oy + line.y1, x2: ox + line.x2, y2: oy + line.y2 });
+        byLayer.set(line.type, arr);
+      } else {
+        passthrough.push(line);
+      }
+    }
+    for (const [type, segs] of byLayer) {
+      const layer = layerFor(type as DrawingLine['type']);
+      const { circles, arcs, remaining } = detectCirclesAndArcs(segs);
+      for (const c of circles) dxf += dxfCircle(layer, c.cx, c.cy, c.r);
+      for (const a of arcs) dxf += dxfArc(layer, a.cx, a.cy, a.r, a.startDeg, a.endDeg);
+      for (const s of remaining) dxf += dxfLine(layer, s.x1, s.y1, s.x2, s.y2);
+    }
+    for (const line of passthrough) {
+      dxf += dxfLine(layerFor(line.type), ox + line.x1, oy + line.y1, ox + line.x2, oy + line.y2);
     }
     for (const tx of view.texts ?? []) {
       const layer = tx.style === 'dimension' ? 'DIMENSION' : 'TEXT';

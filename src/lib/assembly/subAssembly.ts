@@ -112,15 +112,22 @@ export function flattenAssembly(nested: NestedAssemblyState): AssemblyState {
 
 function expandSub(sub: SubAssemblyRef, idPrefix: string): { parts: PartInstance[]; mates: Mate[] } {
   const flat = flattenAssembly(sub.state as NestedAssemblyState);
+  const rigid = sub.rigid ?? true;
   const transformedParts: PartInstance[] = flat.parts.map((p) => ({
     ...p,
     id: `${idPrefix}/${p.id}`,
     name: `${sub.name} / ${p.name}`,
     position: add(sub.position, rotateVec(p.position, sub.orientation)),
     orientation: sub.orientation, // simplified — true composition needs quatMul
-    fixed: sub.rigid ?? true ? true : p.fixed,
+    fixed: rigid ? true : p.fixed,
   }));
-  const remappedMates: Mate[] = flat.mates.map((m) => prefixMateIds(m, idPrefix));
+  // A2 constraint reduction: a RIGID sub-assembly collapses to a single rigid
+  // body. Its member parts are all frozen (fixed=true above), so its internal
+  // mates are redundant — they can only ever be trivially satisfied and just
+  // inflate the solver's constraint matrix + skew DoF/redundancy analysis. Drop
+  // them. FLEXIBLE subs keep their internal mates so the parent solver can
+  // re-solve the sub's own DoF.
+  const remappedMates: Mate[] = rigid ? [] : flat.mates.map((m) => prefixMateIds(m, idPrefix));
   return { parts: transformedParts, mates: remappedMates };
 }
 

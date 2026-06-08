@@ -338,6 +338,27 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     return toOperationResult(resp);
   };
 
+  const buildPlanarFace = async (loop: ReadonlyArray<{ x: number; y: number }>, z = 0): Promise<OcctOperationResult> => {
+    await ensureReady();
+    const resp = await sendRequest('buildPlanarFace', { loop, z });
+    return toOperationResult(resp);
+  };
+
+  const thicken = async (shape: OcctShape, thickness: number): Promise<OcctOperationResult> => {
+    await ensureReady();
+    const handle = wireHandleOf(shape, 'thicken');
+    const resp = await sendRequest('thicken', { handle, dim: thickness });
+    return toOperationResult(resp);
+  };
+
+  const surfaceTrim = async (a: OcctShape, b: OcctShape): Promise<OcctOperationResult> => {
+    await ensureReady();
+    const handleA = wireHandleOf(a, 'surfaceTrim');
+    const handleB = wireHandleOf(b, 'surfaceTrim');
+    const resp = await sendRequest('surfaceTrim', { handleA, handleB });
+    return toOperationResult(resp);
+  };
+
   const exportSTEP = async (shape: OcctShape): Promise<string> => {
     await ensureReady();
     const handle = wireHandleOf(shape, 'exportSTEP');
@@ -403,6 +424,9 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     boolean,
     fillet,
     chamfer,
+    buildPlanarFace,
+    thicken,
+    surfaceTrim,
     exportSTEP,
     importSTEP,
     tessellate,

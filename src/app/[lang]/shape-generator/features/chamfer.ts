@@ -5,6 +5,7 @@ import { occtChamferBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadE
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
+import { classifyMeshDowngrade, stampDowngrade } from './downgradeNotice';
 import { tryMeshChamfer } from './meshRounding';
 import {
   buildEdgeFinderFromSelection,
@@ -105,7 +106,22 @@ function applyChamferMeshCsg(
   if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
     throw new Error(`Chamfer distance ${dist.toFixed(2)} is too large for this solid — the bevel produced no geometry`);
   }
-  if (guardNoOp) assertRoundingApplied(geometry, result.geometry, 'Chamfer');
+  if (guardNoOp) {
+    // No-op against B-rep intent → throw (blocked). Past that, the mesh CSG DID
+    // bevel but it is a faceted approximation, not exact B-rep — stamp a soft,
+    // non-fatal downgrade notice so the UI stops shipping it silently.
+    assertRoundingApplied(geometry, result.geometry, 'Chamfer');
+    stampDowngrade(
+      result.geometry,
+      classifyMeshDowngrade({
+        op: 'Chamfer',
+        featureId: ctx?.featureId,
+        wantedOcct: true,
+        occtRan: false,
+        isNoOp: false,
+      }),
+    );
+  }
   return result.geometry;
 }
 

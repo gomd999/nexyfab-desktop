@@ -49,6 +49,30 @@ unit-tested without the 65 MB wasm; the worker executes it.
 
 Critical path: K1a → K1b → **K2** (the hard CAD problem) → K3/K4/K5/K6.
 
+### K8 — kernel-ceiling ops (added 2026-06-08)
+
+The de-risking spike (see `3D_MODELER_STATUS_AND_ROADMAP.md` §3.1,
+`src/lib/occt/ceilingSpike.thicken.test.ts`) confirmed that the headless
+K-series performs the ops replicad's high-level API **cannot** — the gap that
+motivates this whole ADR. Those proven calls are now promoted into the
+`OcctBridge` interface + `nodeOcctBridge.ts` as real (optional, real-kernel-only)
+methods:
+
+| Method | Kernel call | Gate | Status |
+|---|---|---|---|
+| `buildPlanarFace` | `BRepBuilderAPI_MakeFace` | a sheet body, `kind='face'`, no volume | ✅ |
+| `thicken` | `BRepOffsetAPI_MakeThickSolid_1.MakeThickSolidBySimple` | 10×10 sheet ×2 → solid volume = 200 (positive-oriented) | ✅ |
+| `surfaceTrim` | `BRepAlgoAPI_Section_3` | two crossing shapes → ≥1 intersection edge; disjoint → `ok=false` | ✅ |
+
+These are server/headless-only (Node bridge); browser consumption follows the
+same worker-RPC migration as the other K-ops. Note this build's bindings
+**lack** `BRepOffset_MakeOffset` — use `MakeThickSolid` / `MakeOffsetShape`.
+
+**Engine-selection decision (path b, accepted 2026-06-08):** the spike settles
+the Tier-0 question — adopting the real `opencascade.js` K-series as the modelling
+kernel (over replicad raw-`oc` extension, path a) is validated. The remaining
+work is the in-process-sync → async-worker **migration**, not kernel capability.
+
 ## Consequences
 
 - Dual-path means a feature is valid only if BOTH paths agree (a parity gate);

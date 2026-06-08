@@ -3,6 +3,7 @@ import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -159,6 +160,6 @@ export const holeFeature: FeatureDefinition = {
     if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
       throw new Error('Hole is larger than the part — it would remove all material; reduce the diameter or depth');
     }
-    return result.geometry;
+    return noteMeshFallback(result.geometry, { op: 'Hole', engine, featureId: ctx?.featureId });
   },
 };

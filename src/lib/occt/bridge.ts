@@ -94,6 +94,25 @@ export interface OcctBridge {
     shape: OcctShape,
     opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number },
   ): Promise<OcctOperationResult>;
+  /**
+   * Build a planar FACE (open surface / sheet body) from a 2D loop at height
+   * `z` (default 0). The input to {@link thicken} / {@link surfaceTrim}. The
+   * mesh/stub bridges have no surface-body concept → OPTIONAL, real-kernel only.
+   */
+  buildPlanarFace?(loop: ReadonlyArray<{ x: number; y: number }>, z?: number): Promise<OcctOperationResult>;
+  /**
+   * THICKEN an open surface/shell into a SOLID of wall thickness `thickness`
+   * (`BRepOffsetAPI_MakeThickSolid`). replicad's high-level API cannot express
+   * this (confirmed 2026-06-07; the ceiling spike validated the K-series can —
+   * see `ceilingSpike.thicken.test.ts`). Real-kernel only → OPTIONAL.
+   */
+  thicken?(shape: OcctShape, thickness: number): Promise<OcctOperationResult>;
+  /**
+   * Surface–surface TRIM: the section (intersection curve) of two shapes
+   * (`BRepAlgoAPI_Section`), returned as a compound of the intersection edges.
+   * The mesh path only does UV-space trim → OPTIONAL, real-kernel only.
+   */
+  surfaceTrim?(a: OcctShape, b: OcctShape): Promise<OcctOperationResult>;
   exportSTEP(shape: OcctShape): Promise<string>;
   importSTEP(source: string): Promise<OcctOperationResult>;
   /**
@@ -260,6 +279,40 @@ function makeStubBridge(): OcctBridge {
     };
   };
 
+  const buildPlanarFace = async (loop: ReadonlyArray<{ x: number; y: number }>, z = 0): Promise<OcctOperationResult> => {
+    if (!Array.isArray(loop) || loop.length < 3) {
+      return { ok: false, error: `buildPlanarFace: loop must have ≥3 points, got ${loop?.length ?? 0}`, warnings: [] };
+    }
+    const b2 = bboxOf2D(loop);
+    const shape: OcctShape = {
+      id: allocId(), kind: 'face',
+      bbox: { min: { x: b2.minX, y: b2.minY, z }, max: { x: b2.maxX, y: b2.maxY, z } },
+    };
+    return { ok: true, shape, warnings: ['stub: synthetic planar face; no real BREP'] };
+  };
+
+  const thicken = async (shape: OcctShape, thickness: number): Promise<OcctOperationResult> => {
+    assertLive(shape, 'thicken');
+    if (!(thickness > 0) || !Number.isFinite(thickness)) {
+      return { ok: false, error: `thicken: thickness must be positive finite, got ${thickness}`, warnings: [] };
+    }
+    // Synthetic: extrude the face's bbox by `thickness` along +Z → a solid envelope.
+    const bb = cloneBBox(shape.bbox);
+    const bbox = bb ? { min: { ...bb.min }, max: { x: bb.max.x, y: bb.max.y, z: bb.min.z + thickness } } : undefined;
+    const out: OcctShape = { id: allocId(), kind: 'solid', bbox };
+    return { ok: true, shape: out, warnings: ['stub: synthetic thicken (no real BREP)'] };
+  };
+
+  const surfaceTrim = async (a: OcctShape, b: OcctShape): Promise<OcctOperationResult> => {
+    assertLive(a, 'surfaceTrim'); assertLive(b, 'surfaceTrim');
+    const bbox = bboxIntersection(a.bbox, b.bbox);
+    if (!bbox) {
+      return { ok: false, error: 'surfaceTrim: shapes do not intersect (stub: bbox disjoint)', warnings: [] };
+    }
+    const shape: OcctShape = { id: allocId(), kind: 'compound', bbox };
+    return { ok: true, shape, warnings: ['stub: synthetic surface trim (bbox section)'] };
+  };
+
   const exportSTEP = async (shape: OcctShape): Promise<string> => {
     assertLive(shape, 'exportSTEP');
     const feature = internals.featureOf.get(shape);
@@ -399,6 +452,9 @@ function makeStubBridge(): OcctBridge {
     boolean,
     fillet,
     chamfer,
+    buildPlanarFace,
+    thicken,
+    surfaceTrim,
     exportSTEP,
     importSTEP,
     tessellate,

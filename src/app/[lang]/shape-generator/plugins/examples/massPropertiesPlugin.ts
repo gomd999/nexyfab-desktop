@@ -8,6 +8,7 @@ export const massPropertiesManifest: PluginManifest = {
   name: 'Mass properties',
   version: '1.0.0',
   author: 'NexyFab',
+  apiVersion: '1.0.0',
   description: 'Calculates center of mass, volume, and moments of inertia for the current geometry',
 };
 
