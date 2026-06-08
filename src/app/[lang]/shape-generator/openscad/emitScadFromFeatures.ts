@@ -130,11 +130,8 @@ function emitFeature(f: FeatureInstance, prior: string): string {
       // dropped the tool entirely.) Subtract stays an op-only marker — a
       // cylindrical subtract round-trips through the `hole` path instead.
       const operation = Math.round(p.operation ?? 0);
-      if (operation === 0 || operation === 2) {
-        const kind = operation === 2 ? 'intersection' : 'union';
-        return `${kind}() {\n${INDENT}${prior}\n${INDENT}${emitBooleanTool(p)}\n}`;
-      }
-      return `// boolean difference with auxiliary body (see feature tree)\n${prior}`;
+      const kind = operation === 1 ? 'difference' : operation === 2 ? 'intersection' : 'union';
+      return `${kind}() {\n${INDENT}${prior}\n${INDENT}${emitBooleanTool(p)}\n}`;
     }
     case 'scale': {
       return `scale([${fmt(p.x, 1)}, ${fmt(p.y, 1)}, ${fmt(p.z, 1)}]) ${prior}`;

@@ -148,15 +148,26 @@ describe('Phase 2 — difference() → base + hole features', () => {
     }
   });
 
-  it('an unrecognised tool (cube pocket) is skipped — base still parses', () => {
+  it('a non-primitive tool (linear_extrude stub) is skipped — base still parses', () => {
+    const r = parseScadToFeatures(
+      'difference() {\n  cube([20, 20, 20], center=true);\n  linear_extrude(height=30) square([4, 4], center=true);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      // neither a hole (cylinder) nor a boolean primitive (box/sphere) → skipped,
+      // base-only result (features absent).
+      expect(r.features ?? []).toHaveLength(0);
+    }
+  });
+
+  it('a box cut in a difference is recovered as a boolean subtract (no longer lossy)', () => {
     const r = parseScadToFeatures(
       'difference() {\n  cube([20, 20, 20], center=true);\n  translate([2, 0, 4]) cube([3, 3, 30], center=true);\n}',
     );
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.shape.baseShapeId).toBe('box');
-      // no hole recognised → falls back to the base-only result (features absent)
-      expect(r.features ?? []).toHaveLength(0);
+      expect(r.features![0]!).toMatchObject({ type: 'boolean', params: { operation: 1, toolShape: 0, toolWidth: 3, toolDepth: 3, toolHeight: 30 } });
     }
   });
 
@@ -298,6 +309,34 @@ describe('Phase 2 — union / intersection → boolean feature', () => {
     const r = parseScadToFeatures(scad);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.features![0]!).toMatchObject({ type: 'boolean', params: { operation: 2, toolShape: 2, toolWidth: 16 } });
+  });
+
+  it('emit→parse round-trips a SUBTRACT with a box tool (boolean op 1)', () => {
+    const features = [feat('b', 'boolean', { operation: 1, toolShape: 0, toolWidth: 8, toolDepth: 6, toolHeight: 4, posX: 10, posY: 0, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    expect(scad).toContain('difference()');
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features![0]!).toMatchObject({
+        type: 'boolean',
+        params: { operation: 1, toolShape: 0, toolWidth: 8, toolDepth: 6, toolHeight: 4, posX: 10 },
+      });
+    }
+  });
+
+  it('a cylinder subtract stays a hole; a box subtract is a boolean — both recovered together', () => {
+    const features = [
+      feat('h', 'hole', { diameter: 6, depth: 40, posX: -8, posY: 0, posZ: 0 }),
+      feat('b', 'boolean', { operation: 1, toolShape: 2, toolWidth: 12, toolHeight: 12, toolDepth: 12, posX: 8, posY: 0, posZ: 0 }),
+    ];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features!.map((f) => f.type)).toEqual(['hole', 'boolean']);
+      expect(r.features![1]!.params).toMatchObject({ operation: 1, toolShape: 2, toolWidth: 12 });
+    }
   });
 
   it('parses a hand-written union with a translated box tool', () => {

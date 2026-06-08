@@ -327,8 +327,12 @@ export function parseScadToFeatures(scad: string): ScadParseResult {
       if (!baseRes.ok) return baseRes;
       const features: ScadRecognisedFeature[] = [...(baseRes.features ?? [])];
       for (const tool of children.slice(1)) {
+        // A cylinder cut is the natural `hole`; a box/sphere cut is a boolean
+        // subtract (operation 1). Anything else (extrude stub) is skipped.
         const hole = parseHoleTool(tool);
-        if (hole) features.push(hole); // unrecognised tools skipped (lossy, base intact)
+        if (hole) { features.push(hole); continue; }
+        const sub = parseBooleanTool(tool, 1);
+        if (sub) features.push(sub);
       }
       return features.length
         ? { ok: true, shape: baseRes.shape, features }
