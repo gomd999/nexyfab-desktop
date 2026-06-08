@@ -103,6 +103,70 @@ describe('C2 — parser handles rotate / scale / mirror prefixes', () => {
   });
 });
 
+describe('Phase 2 — difference() → base + hole features', () => {
+  it('round-trips a single hole through emit → parse (base + 1 hole)', () => {
+    const features = [feat('h1', 'hole', { diameter: 6, depth: 40, posX: 5, posY: -3, posZ: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.shape.params).toMatchObject({ width: 60, depth: 40, height: 30 });
+      expect(r.features).toHaveLength(1);
+      expect(r.features![0]!.type).toBe('hole');
+      // posX/posY/posZ + diameter + depth survive the Y-up↔Z-up swap.
+      expect(r.features![0]!.params).toMatchObject({ diameter: 6, depth: 40, posX: 5, posY: -3, posZ: 0 });
+    }
+  });
+
+  it('recovers MULTIPLE holes (nested difference) in application order', () => {
+    const features = [
+      feat('h1', 'hole', { diameter: 4, depth: 30, posX: -10, posY: 0, posZ: 0 }),
+      feat('h2', 'hole', { diameter: 8, depth: 30, posX: 10, posY: 6, posZ: 0 }),
+    ];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features).toHaveLength(2);
+      expect(r.features!.map((f) => f.params.diameter)).toEqual([4, 8]); // h1 then h2
+      expect(r.features![0]!.params).toMatchObject({ posX: -10, diameter: 4 });
+      expect(r.features![1]!.params).toMatchObject({ posX: 10, posY: 6, diameter: 8 });
+    }
+  });
+
+  it('parses a hand-written difference with a translated cylinder hole', () => {
+    const r = parseScadToFeatures(
+      'difference() {\n  cube([20, 20, 20], center=true);\n  translate([2, 0, 4]) cylinder(h=25, r=2.5, center=true, $fn=32);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.features).toHaveLength(1);
+      // SCAD translate([2,0,4]) → NexyFab posX=2, posZ(=scad y)=0, posY(=scad z)=4.
+      expect(r.features![0]!.params).toMatchObject({ posX: 2, posY: 4, posZ: 0, diameter: 5, depth: 25 });
+    }
+  });
+
+  it('an unrecognised tool (cube pocket) is skipped — base still parses', () => {
+    const r = parseScadToFeatures(
+      'difference() {\n  cube([20, 20, 20], center=true);\n  translate([2, 0, 4]) cube([3, 3, 30], center=true);\n}',
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      // no hole recognised → falls back to the base-only result (features absent)
+      expect(r.features ?? []).toHaveLength(0);
+    }
+  });
+
+  it('a difference with no holes still yields the base (back-compat)', () => {
+    const r = parseScadToFeatures('difference() {\n  sphere(r=5);\n}');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.shape.baseShapeId).toBe('sphere');
+  });
+});
+
 describe('O1 — fast box fillet (hull, not minkowski)', () => {
   it('emitRoundedBoxFilletScad uses hull() of 8 corner spheres, no minkowski', () => {
     const scad = emitRoundedBoxFilletScad(60, 40, 30, 4);

@@ -40,8 +40,17 @@ export interface ScadRecognisedShape {
   mirror?: { x: number; y: number; z: number };
 }
 
+/** Phase 2 — a subtractive feature recovered from a `difference()` body. Today
+ *  only `hole` (a `translate(...) cylinder(...)` tool, the inverse of the
+ *  emitter's hole feature); the shape mirrors NexyFab's FeatureInstance params
+ *  so the caller can `addFeatureWithParams('hole', params)` directly. */
+export interface ScadRecognisedFeature {
+  type: 'hole';
+  params: Record<string, number>;
+}
+
 export type ScadParseResult =
-  | { ok: true; shape: ScadRecognisedShape }
+  | { ok: true; shape: ScadRecognisedShape; features?: ScadRecognisedFeature[] }
   | { ok: false; reason: 'empty' | 'unsupported' | 'unparseable'; detail?: string };
 
 const NUM = '(-?\\d+(?:\\.\\d+)?)';
@@ -162,15 +171,77 @@ function unwrapTopLevelContainer(src: string): { kind: 'union' | 'difference' | 
   return null;
 }
 
+/** Split a boolean-container body into its top-level children, respecting
+ *  `{}` / `()` / `[]` nesting. The first child may be a nested boolean BLOCK
+ *  (`difference() { … }`, no trailing `;`); the rest are `;`-terminated
+ *  statements (the subtractive tools). Comments are stripped first. */
+function splitTopLevelChildren(body: string): string[] {
+  const clean = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const children: string[] = [];
+  let brace = 0, paren = 0, bracket = 0, buf = '';
+  for (const ch of clean) {
+    buf += ch;
+    if (ch === '{') brace++;
+    else if (ch === '}') { brace--; if (brace === 0 && paren === 0 && bracket === 0) { children.push(buf); buf = ''; } }
+    else if (ch === '(') paren++;
+    else if (ch === ')') paren--;
+    else if (ch === '[') bracket++;
+    else if (ch === ']') bracket--;
+    else if (ch === ';' && brace === 0 && paren === 0 && bracket === 0) { children.push(buf); buf = ''; }
+  }
+  if (buf.trim()) children.push(buf);
+  return children.map((c) => c.replace(/;\s*$/, '').trim()).filter(Boolean);
+}
+
+// A subtractive cylinder tool: `cylinder(h=…, r=…, …)` (the bare call after its
+// transform prefix is peeled). Mirrors the base CYL_RE.
+const HOLE_CYL_RE = new RegExp('^cylinder\\s*\\([^\\)]*?h\\s*=\\s*' + NUM + '[^\\)]*?r\\s*=\\s*' + NUM);
+
+/** Recognise a `difference()` tool statement as a NexyFab `hole` feature — the
+ *  inverse of emitFeature's hole case `translate([posX, posZ, posY])
+ *  cylinder(h=depth, r=dia/2)`. Returns null for tools we don't model as holes
+ *  (e.g. cube pockets), so the base shape still applies losslessly. */
+function parseHoleTool(stmt: string): ScadRecognisedFeature | null {
+  const { rest, offset } = stripTransforms(stmt);
+  const m = HOLE_CYL_RE.exec(rest);
+  if (!m) return null;
+  const depth = parseFloat(m[1]!);
+  const r = parseFloat(m[2]!);
+  // SCAD vector is [posX, posZ, posY] (NexyFab is Y-up, SCAD Z-up) → invert.
+  return {
+    type: 'hole',
+    params: { posX: offset.x, posY: offset.z, posZ: offset.y, diameter: r * 2, depth },
+  };
+}
+
 export function parseScadToFeatures(scad: string): ScadParseResult {
   if (!scad || !scad.trim()) return { ok: false, reason: 'empty' };
 
-  // Phase 3 — if the file is wrapped in a top-level boolean container,
-  // recurse into the body so the inner primitive becomes the recognised
-  // base shape. Future phase: track the container kind + subsequent
-  // children as hole / cut features in the returned shape.
-  const wrapped = unwrapTopLevelContainer(scad);
+  // Phase 2/3 — a top-level boolean container. For `difference()` we now invert
+  // it into a base shape + subtractive `hole` features (nested differences =
+  // multiple holes, peeled by recursion). `union`/`intersection` keep the prior
+  // behaviour (recurse to the first recognised primitive as the base).
+  // Strip comments first so the emitter's file-level header (always prepended)
+  // doesn't hide the `difference()` that follows it.
+  const stripped = scad.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const wrapped = unwrapTopLevelContainer(stripped);
   if (wrapped) {
+    if (wrapped.kind === 'difference') {
+      const children = splitTopLevelChildren(wrapped.body);
+      if (children.length === 0) {
+        return { ok: false, reason: 'unsupported', detail: 'empty difference body' };
+      }
+      const baseRes = parseScadToFeatures(children[0]!);
+      if (!baseRes.ok) return baseRes;
+      const features: ScadRecognisedFeature[] = [...(baseRes.features ?? [])];
+      for (const tool of children.slice(1)) {
+        const hole = parseHoleTool(tool);
+        if (hole) features.push(hole); // unrecognised tools skipped (lossy, base intact)
+      }
+      return features.length
+        ? { ok: true, shape: baseRes.shape, features }
+        : baseRes;
+    }
     return parseScadToFeatures(wrapped.body);
   }
 
