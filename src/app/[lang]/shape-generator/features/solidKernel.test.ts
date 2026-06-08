@@ -114,3 +114,63 @@ describe('createKSeriesKernel (real OCCT via node bridge)', () => {
     await expect(kernel.tessellate(s!.id)).rejects.toThrow(/unknown id/);
   });
 });
+
+describe('createKSeriesKernel — full op coverage (real OCCT)', () => {
+  const VERT_EDGES = ['e.vert.0', 'e.vert.1', 'e.vert.2', 'e.vert.3'];
+
+  it('revolve 360° → cylinder volume πr²h', async () => {
+    if (!okLoad) return;
+    // rectangle (X≥0, axis=Y) r=10, h=20 → cylinder vol ≈ π·100·20 ≈ 6283.
+    const s = await kernel.revolve([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }], 360);
+    expect(s).not.toBeNull();
+    expect(s!.volume).toBeCloseTo(Math.PI * 100 * 20, -1);
+  });
+
+  it('fillet the 4 vertical edges removes the expected material', async () => {
+    if (!okLoad) return;
+    const box = await kernel.extrude(SQ(0, 10), 5);
+    const f = await kernel.fillet(box!.id, VERT_EDGES, 1);
+    expect(f).not.toBeNull();
+    expect(f!.volume).toBeCloseTo(495.71, 1); // 500 − 4·(1−π/4)·1·5
+  });
+
+  it('chamfer the 4 vertical edges', async () => {
+    if (!okLoad) return;
+    const box = await kernel.extrude(SQ(0, 10), 5);
+    const c = await kernel.chamfer(box!.id, VERT_EDGES, 1);
+    expect(c).not.toBeNull();
+    expect(c!.volume).toBeCloseTo(490, 0); // 500 − 4·0.5·1·1·5
+  });
+
+  it('variableFillet applies per-edge radii (more removed than uniform 1mm)', async () => {
+    if (!okLoad) return;
+    const box = await kernel.extrude(SQ(0, 10), 5);
+    const vf = await kernel.variableFillet(box!.id, [
+      { edgeId: 'e.vert.0', radius: 1 }, { edgeId: 'e.vert.1', radius: 1.5 },
+      { edgeId: 'e.vert.2', radius: 0.5 }, { edgeId: 'e.vert.3', radius: 2 },
+    ]);
+    expect(vf).not.toBeNull();
+    expect(vf!.volume).toBeLessThan(495.71);
+    expect(vf!.volume).toBeGreaterThan(485);
+  });
+
+  it('draft tapers the side walls (volume shrinks)', async () => {
+    if (!okLoad) return;
+    const box = await kernel.extrude(SQ(0, 10), 5);
+    const d = await kernel.draft(box!.id, { angleDeg: 5 });
+    expect(d).not.toBeNull();
+    expect(d!.volume).toBeLessThan(500);
+    expect(d!.volume).toBeGreaterThan(440);
+  });
+
+  it('STEP round-trips a solid with volume preserved', async () => {
+    if (!okLoad) return;
+    const box = await kernel.extrude(SQ(0, 10), 5);
+    const step = await kernel.exportStep(box!.id);
+    expect(step).not.toBeNull();
+    expect(step!.startsWith('ISO-10303-21')).toBe(true);
+    const back = await kernel.importStep(step!);
+    expect(back).not.toBeNull();
+    expect(back!.volume).toBeCloseTo(500, 1);
+  });
+});

@@ -23,6 +23,7 @@
 import type { OcctBridge } from '@/lib/occt/bridge';
 import type { OcctShape, OcctShapeKind, OcctTessellation, Vec3 } from '@/lib/occt/types';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 
 export interface KernelBBox { min: Vec3; max: Vec3 }
 
@@ -38,10 +39,17 @@ export type BooleanKind = 'union' | 'subtract' | 'intersect';
 
 export interface SolidKernel {
   extrude(loop: ReadonlyArray<{ x: number; y: number }>, depth: number, direction?: ExtrudeFeature['direction']): Promise<KernelShape | null>;
+  revolve(loop: ReadonlyArray<{ x: number; y: number }>, angleDegrees: number): Promise<KernelShape | null>;
   boolean(op: BooleanKind, a: string, b: string): Promise<KernelShape | null>;
+  fillet(id: string, edgeIds: string[], radius: number): Promise<KernelShape | null>;
+  chamfer(id: string, edgeIds: string[], distance: number): Promise<KernelShape | null>;
+  variableFillet(id: string, edges: ReadonlyArray<{ edgeId: string; radius: number }>): Promise<KernelShape | null>;
+  draft(id: string, opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number }): Promise<KernelShape | null>;
   buildPlanarFace(loop: ReadonlyArray<{ x: number; y: number }>, z?: number): Promise<KernelShape | null>;
   thicken(id: string, thickness: number): Promise<KernelShape | null>;
   surfaceTrim(a: string, b: string): Promise<KernelShape | null>;
+  exportStep(id: string): Promise<string | null>;
+  importStep(source: string): Promise<KernelShape | null>;
   tessellate(id: string, deflection?: number): Promise<OcctTessellation | null>;
   release(id: string): void;
 }
@@ -71,10 +79,33 @@ export function createKSeriesKernel(bridge: OcctBridge): SolidKernel {
       const r = await bridge.buildFromExtrude(feature);
       return r.ok && r.shape ? record(r.shape) : null;
     },
+    async revolve(loop, angleDegrees) {
+      const feature: RevolveFeature = { kind: 'revolve', loop: [...loop], angleDegrees, mode: 'add' };
+      const r = await bridge.buildFromRevolve(feature);
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
     async boolean(op, a, b) {
       const sa = resolve(a, `boolean.${op}`);
       const sb = resolve(b, `boolean.${op}`);
       const r = await bridge.boolean[op](sa, sb);
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
+    async fillet(id, edgeIds, radius) {
+      const r = await bridge.fillet(resolve(id, 'fillet'), edgeIds, radius);
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
+    async chamfer(id, edgeIds, distance) {
+      const r = await bridge.chamfer(resolve(id, 'chamfer'), edgeIds, distance);
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
+    async variableFillet(id, edges) {
+      if (!bridge.variableFillet) return null;
+      const r = await bridge.variableFillet(resolve(id, 'variableFillet'), edges);
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
+    async draft(id, opts) {
+      if (!bridge.draft) return null;
+      const r = await bridge.draft(resolve(id, 'draft'), opts);
       return r.ok && r.shape ? record(r.shape) : null;
     },
     async buildPlanarFace(loop, z = 0) {
@@ -90,6 +121,13 @@ export function createKSeriesKernel(bridge: OcctBridge): SolidKernel {
     async surfaceTrim(a, b) {
       if (!bridge.surfaceTrim) return null;
       const r = await bridge.surfaceTrim(resolve(a, 'surfaceTrim'), resolve(b, 'surfaceTrim'));
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
+    async exportStep(id) {
+      return bridge.exportSTEP(resolve(id, 'exportStep'));
+    },
+    async importStep(source) {
+      const r = await bridge.importSTEP(source);
       return r.ok && r.shape ? record(r.shape) : null;
     },
     async tessellate(id, deflection) {
