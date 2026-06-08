@@ -11,7 +11,9 @@ import React from 'react';
 import InViewportGizmo from '../InViewportGizmo';
 import DimensionLinesOverlay from '../DimensionLinesOverlay';
 import DFMWarningBadges from '../DFMWarningBadges';
+import DowngradeBanner from '../features/DowngradeBanner';
 import type { DFMResult } from '../analysis/dfmAnalysis';
+import type { MeshDowngradeNotice } from '../features/downgradeNotice';
 
 interface ParamDef {
   key: string;
@@ -41,6 +43,10 @@ interface CanvasGizmoOverlaysProps {
 
   // DFMWarningBadges
   dfmResults: DFMResult[] | null;
+
+  // DowngradeBanner — OCCT→mesh downgrades on the displayed geometry. Defaults
+  // to empty (inert) until the call-site threads `collectDowngrades(geometry)`.
+  downgradeNotices?: readonly MeshDowngradeNotice[];
 }
 
 export default function CanvasGizmoOverlays({
@@ -48,6 +54,7 @@ export default function CanvasGizmoOverlays({
   shapeId, params, paramDefs, labelDict, onParamChange,
   bbox,
   dfmResults,
+  downgradeNotices = [],
 }: CanvasGizmoOverlaysProps) {
   return (
     <>
@@ -66,6 +73,11 @@ export default function CanvasGizmoOverlays({
       />
       <DFMWarningBadges
         dfmResults={dfmResults}
+        visible={visible}
+        lang={lang}
+      />
+      <DowngradeBanner
+        notices={downgradeNotices}
         visible={visible}
         lang={lang}
       />

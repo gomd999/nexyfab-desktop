@@ -19,6 +19,7 @@
 import './ensureWorkerWindow';
 import * as THREE from 'three';
 import type { FeatureInstance } from '../features/types';
+import { collectDowngrades, type MeshDowngradeNotice } from '../features/downgradeNotice';
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
@@ -49,6 +50,11 @@ export interface PipelineWorkerOutput {
   /** Stable topology data (plain JSON) so the main thread can tag selections
    *  with rebuild-stable edge ids — userData itself doesn't cross the boundary. */
   topoEdgeSignatures?: { id: string; mid: [number, number, number]; dir: [number, number, number]; length: number }[];
+  /** OCCT→mesh downgrade notices (plain JSON) — like topoEdgeSignatures, userData
+   *  is dropped at the worker boundary, so we ferry them as an explicit field and
+   *  re-attach on the main thread (else the downgrade banner is blind to the
+   *  worker path, the primary production eval). */
+  meshDowngrades?: MeshDowngradeNotice[];
 }
 
 // ─── Worker handler ──────────────────────────────────────────────────────────
@@ -114,6 +120,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
       indices: outIndices,
       errors: result.errors,
       topoEdgeSignatures: outGeo.userData?.topoEdgeSignatures as PipelineWorkerOutput['topoEdgeSignatures'],
+      meshDowngrades: collectDowngrades(outGeo),
     };
 
     const transferables: ArrayBuffer[] = [outPositions.buffer as ArrayBuffer];

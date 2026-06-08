@@ -217,6 +217,7 @@ import SketchInputCluster from './panels/SketchInputCluster';
 import BodyCsgDock from './panels/BodyCsgDock';
 import ComposeIndicator from './panels/ComposeIndicator';
 import CanvasGizmoOverlays from './panels/CanvasGizmoOverlays';
+import { collectDowngrades } from './features/downgradeNotice';
 import StatusFooter from './panels/StatusFooter';
 import AuthModelPlacementDock from './panels/AuthModelPlacementDock';
 import SplitExportDock from './panels/SplitExportDock';
@@ -9054,6 +9055,9 @@ export function ShapeGeneratorInner() {
                   onParamChange={_handleParamChangeCmd}
                   bbox={effectiveResult?.bbox ?? null}
                   dfmResults={dfmResults}
+                  downgradeNotices={
+                    effectiveResult?.geometry ? collectDowngrades(effectiveResult.geometry) : []
+                  }
                 />
                 {/* Manufacturing Ready Card */}
                 {showManufacturingCard && effectiveResult && (
