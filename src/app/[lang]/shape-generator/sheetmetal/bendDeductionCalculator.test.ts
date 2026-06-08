@@ -7,6 +7,7 @@ import {
   summarize,
   K_FACTOR_TABLE,
   SPRINGBACK_DEG,
+  BEND_TYPE_K_MULTIPLIER,
   type MaterialName,
 } from './bendDeductionCalculator';
 import {
@@ -181,5 +182,41 @@ describe('K-factor drift — Schema C → Schema A delegation', () => {
       const canonical = getKFactor(schemaA, 2, 1);
       expect(Math.abs(snapshot - canonical)).toBeLessThan(1e-9);
     }
+  });
+});
+
+describe('bend-type K-factor correction (coining / bottom-bend)', () => {
+  const base = { insideRadiusMm: 2, thicknessMm: 1, angleDeg: 90, material: 'mild-steel' as MaterialName };
+
+  it('air-bend is the unchanged baseline (== no bendType)', () => {
+    const air = computeBend({ ...base, bendType: 'air-bend' });
+    const def = computeBend(base);
+    expect(air.kFactor).toBeCloseTo(def.kFactor, 12);
+    expect(air.bendDeductionMm).toBeCloseTo(def.bendDeductionMm, 12);
+  });
+
+  it('coining lowers K below bottom-bend below air-bend', () => {
+    const air = computeBend({ ...base, bendType: 'air-bend' }).kFactor;
+    const bottom = computeBend({ ...base, bendType: 'bottom-bend' }).kFactor;
+    const coined = computeBend({ ...base, bendType: 'coined' }).kFactor;
+    expect(coined).toBeLessThan(bottom);
+    expect(bottom).toBeLessThan(air);
+    // exact multipliers off the baseline
+    expect(coined).toBeCloseTo(air * BEND_TYPE_K_MULTIPLIER.coined, 12);
+    expect(bottom).toBeCloseTo(air * BEND_TYPE_K_MULTIPLIER['bottom-bend'], 12);
+  });
+
+  it('coining yields a LARGER bend deduction (tighter, shorter blank)', () => {
+    // Lower K → smaller bend allowance → BD = 2·OSSB − BA is larger.
+    const air = computeBend({ ...base, bendType: 'air-bend' }).bendDeductionMm;
+    const coined = computeBend({ ...base, bendType: 'coined' }).bendDeductionMm;
+    expect(coined).toBeGreaterThan(air);
+  });
+
+  it('an explicit K override ignores the bend-type correction', () => {
+    const a = computeBend({ ...base, kFactorOverride: 0.4, bendType: 'air-bend' });
+    const c = computeBend({ ...base, kFactorOverride: 0.4, bendType: 'coined' });
+    expect(a.kFactor).toBe(0.4);
+    expect(c.kFactor).toBe(0.4); // override wins; bend-type does not touch it
   });
 });

@@ -40,6 +40,24 @@ export type BendType = 'air-bend' | 'coined' | 'bottom-bend';
 export type MaterialName = 'mild-steel' | 'stainless-304' | 'aluminum-5052' | 'aluminum-6061' | 'copper' | 'brass';
 
 /**
+ * Bend-type adjustment to the baseline (air-bend) K-factor. Pressing the bend
+ * harder shifts the neutral axis TOWARD the inside surface, lowering K → a
+ * smaller bend allowance → a LARGER bend deduction (a tighter, shorter blank):
+ *   - air-bend    — baseline (the die only contacts the punch tip).
+ *   - bottom-bend — the bend is set against the die: more consistent, K a touch
+ *     lower (~5%).
+ *   - coined      — the punch presses the zone past yield into the die: the
+ *     neutral axis is driven inward, K ~15% lower (shop K ≈ 0.33–0.42).
+ * Multipliers are applied to the canonical Schema-A K. air-bend = 1.0 keeps the
+ * default behaviour byte-identical (back-compatible).
+ */
+export const BEND_TYPE_K_MULTIPLIER: Record<BendType, number> = {
+  'air-bend': 1.0,
+  'bottom-bend': 0.95,
+  'coined': 0.85,
+};
+
+/**
  * Typical K-factor by material at R/T = 2.0, sampled from the canonical Schema
  * A table. This is a *display snapshot* for shop tickets — the live K-factor
  * lookup that drives `computeBend()` always goes through `getKFactor()` so r/t
@@ -99,16 +117,15 @@ export function computeBend(params: BendParams): BendResult {
 }
 
 function pickKFactor(params: BendParams): number {
+  // An explicit override is the user's exact K — never adjust it.
   if (params.kFactorOverride !== undefined) return params.kFactorOverride;
-  if (params.material !== undefined) {
-    // Delegate to Schema A canonical via the alias map. `getKFactor` already
-    // interpolates against the per-material r/t curve, so the hand-rolled
-    // r/t < 1 / r/t > 3 nudges that this module used to do are no longer
-    // needed (they were a coarse approximation of what the curve does
-    // exactly).
-    return getKFactor(aliasSheetMetalMaterialId(params.material), params.insideRadiusMm, params.thicknessMm);
-  }
-  return 0.44; // mild-steel default — matches Schema A at R/T = 2
+  // Baseline (air-bend) K from the canonical Schema-A r/t curve, or the
+  // mild-steel default at R/T = 2.
+  const baseK = params.material !== undefined
+    ? getKFactor(aliasSheetMetalMaterialId(params.material), params.insideRadiusMm, params.thicknessMm)
+    : 0.44;
+  // Process correction: coining/bottom-bending shift the neutral axis inward.
+  return baseK * BEND_TYPE_K_MULTIPLIER[params.bendType ?? 'air-bend'];
 }
 
 // ── Flat length for a chain of bends ──────────────────────────
