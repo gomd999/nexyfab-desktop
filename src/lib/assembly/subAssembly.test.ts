@@ -49,7 +49,7 @@ describe('flattenAssembly', () => {
     expect(flat.parts[1]!.id).toBe('p2');
   });
 
-  it('one sub-assembly: parts get sub-id prefixed; flexible internals preserved', () => {
+  it('one FLEXIBLE sub-assembly: parts get sub-id prefixed; internal mates preserved', () => {
     const inner: AssemblyState = {
       parts: [makePart('a', vec3(1, 2, 3), true), makePart('b', vec3(5, 5, 5))],
       mates: [concentric('m1', 'a', 'b')],
@@ -57,7 +57,8 @@ describe('flattenAssembly', () => {
     const parent: NestedAssemblyState = {
       parts: [makePart('chassis', vec3(0, 0, 0), true)],
       mates: [],
-      subs: [subAssemblyRef({ id: 'mech', name: 'Mechanism', state: inner })],
+      // rigid:false → the parent solver should still see the sub's internal mate.
+      subs: [subAssemblyRef({ id: 'mech', name: 'Mechanism', state: inner, rigid: false })],
     };
     const flat = flattenAssembly(parent);
     expect(flat.parts.map((p) => p.id)).toEqual(['chassis', 'mech/a', 'mech/b']);
@@ -66,6 +67,26 @@ describe('flattenAssembly', () => {
     // Sub-assembly mate refs are remapped to flat part ids.
     expect(flat.mates[0]!.a.partId).toBe('mech/a');
     expect(flat.mates[0]!.b.partId).toBe('mech/b');
+  });
+
+  it('RIGID sub-assembly: internal mates are dropped (A2 constraint reduction)', () => {
+    const inner: AssemblyState = {
+      parts: [makePart('a', vec3(1, 2, 3), true), makePart('b', vec3(5, 5, 5))],
+      mates: [concentric('m1', 'a', 'b')],
+    };
+    const parent: NestedAssemblyState = {
+      parts: [makePart('chassis', vec3(0, 0, 0), true)],
+      // A parent-level mate referencing a sub part survives; only the sub's
+      // OWN internal mates collapse away.
+      mates: [concentric('pm', 'chassis', 'chassis')],
+      subs: [subAssemblyRef({ id: 'rigid', name: 'Rigid', state: inner, rigid: true })],
+    };
+    const flat = flattenAssembly(parent);
+    // Both inner parts present + frozen, but the inner mate 'rigid/m1' is gone.
+    expect(flat.parts.map((p) => p.id)).toEqual(['chassis', 'rigid/a', 'rigid/b']);
+    expect(flat.parts.every((p) => (p.id.startsWith('rigid/') ? p.fixed : true))).toBe(true);
+    expect(flat.mates.map((m) => m.id)).toEqual(['pm']); // parent mate kept, inner dropped
+    expect(flat.mates.some((m) => m.id === 'rigid/m1')).toBe(false);
   });
 
   it('rigid sub: all internal parts are marked fixed in the flattened output', () => {
