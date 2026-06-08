@@ -1348,6 +1348,12 @@ export function ShapeGeneratorInner() {
       geo.setIndex(new Uint32BufferAttribute(data.triangles, 1));
       geo.computeVertexNormals();
       geo.computeBoundingBox();
+      // Preserve B-rep lineage: the browser holds only this mesh, but the exact
+      // B-rep is still live in the server registry under `handle`. Stamping it
+      // lets the adopted body export STEP losslessly (brep-step endpoint) instead
+      // of re-meshing, and upgrade to a live browser handle once K-series lands.
+      const { tagBrepProvenance } = await import('./features/agentBrepAdoption');
+      tagBrepProvenance(geo, handle);
       const edgeGeo = makeEdges(geo);
       const vol = meshVolume(geo) / 1000;
       const sa = meshSurfaceArea(geo) / 100;
