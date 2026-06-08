@@ -219,6 +219,52 @@ describe('Phase 2 — cone / torus recognition + diameter↔radius symmetry', ()
   });
 });
 
+describe('Phase 2 — for-loop patterns → linearPattern / circularPattern', () => {
+  it('emit→parse round-trips a linear pattern (count / spacing / axis)', () => {
+    const features = [feat('lp', 'linearPattern', { count: 3, spacing: 20, axis: 0 })];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.shape.baseShapeId).toBe('box');
+      expect(r.features).toHaveLength(1);
+      expect(r.features![0]!).toMatchObject({ type: 'linearPattern', params: { count: 3, spacing: 20, axis: 0 } });
+    }
+  });
+
+  it('recovers the Z / Y axis from the translate slot', () => {
+    for (const axis of [1, 2]) {
+      const scad = emitScadFromFeatures([feat('lp', 'linearPattern', { count: 4, spacing: 15, axis })], BASE);
+      const r = parseScadToFeatures(scad);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.features![0]!.params).toMatchObject({ count: 4, spacing: 15, axis });
+    }
+  });
+
+  it('emit→parse round-trips a circular pattern (count + total angle)', () => {
+    const scad = emitScadFromFeatures([feat('cp', 'circularPattern', { count: 6, totalAngle: 360 })], BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features![0]!).toMatchObject({ type: 'circularPattern', params: { count: 6, totalAngle: 360 } });
+    }
+  });
+
+  it('a pattern OVER a holed body recovers both, in application order', () => {
+    const features = [
+      feat('h1', 'hole', { diameter: 5, depth: 40, posX: 0, posY: 0, posZ: 0 }),
+      feat('lp', 'linearPattern', { count: 3, spacing: 25, axis: 0 }),
+    ];
+    const scad = emitScadFromFeatures(features, BASE);
+    const r = parseScadToFeatures(scad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.features!.map((f) => f.type)).toEqual(['hole', 'linearPattern']); // hole first, pattern last
+      expect(r.shape.baseShapeId).toBe('box');
+    }
+  });
+});
+
 describe('O1 — fast box fillet (hull, not minkowski)', () => {
   it('emitRoundedBoxFilletScad uses hull() of 8 corner spheres, no minkowski', () => {
     const scad = emitRoundedBoxFilletScad(60, 40, 30, 4);

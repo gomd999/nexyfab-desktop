@@ -40,12 +40,13 @@ export interface ScadRecognisedShape {
   mirror?: { x: number; y: number; z: number };
 }
 
-/** Phase 2 — a subtractive feature recovered from a `difference()` body. Today
- *  only `hole` (a `translate(...) cylinder(...)` tool, the inverse of the
- *  emitter's hole feature); the shape mirrors NexyFab's FeatureInstance params
- *  so the caller can `addFeatureWithParams('hole', params)` directly. */
+/** Phase 2 — a feature recovered from the SCAD structure (the inverse of an
+ *  emitFeature case): a subtractive `hole` from a `difference()` body, or a
+ *  `linearPattern`/`circularPattern` from a `for` loop wrapper. The shape mirrors
+ *  NexyFab's FeatureInstance params so the caller can
+ *  `addFeatureWithParams(type, params)` directly. */
 export interface ScadRecognisedFeature {
-  type: 'hole';
+  type: 'hole' | 'linearPattern' | 'circularPattern';
   params: Record<string, number>;
 }
 
@@ -227,6 +228,41 @@ function parseHoleTool(stmt: string): ScadRecognisedFeature | null {
   };
 }
 
+// `for (i = [0 : N]) translate([…]) …` — the linearPattern wrapper. The offset
+// vector carries `SPACING*i` in one slot (axis); the inner body follows.
+const FOR_LINEAR_RE = /^for\s*\(\s*i\s*=\s*\[\s*0\s*:\s*(\d+)\s*\]\s*\)\s*translate\s*\(\s*\[([^\]]+)\]\s*\)\s*/;
+// `for (a = [0 : N]) rotate([0, ANGLE*a, 0]) …` — the circularPattern wrapper.
+const FOR_CIRCULAR_RE = /^for\s*\(\s*a\s*=\s*\[\s*0\s*:\s*(\d+)\s*\]\s*\)\s*rotate\s*\(\s*\[\s*0\s*,\s*(-?\d+(?:\.\d+)?)\s*\*\s*a\s*,\s*0\s*\]\s*\)\s*/;
+// The emit maps pattern axis → translate slot: X→slot0, Y→slot1, Z→slot2 (SCAD
+// is Z-up); NexyFab's `axis` enum is X=0, Z=1, Y=2. Invert slot→axis here.
+const SLOT_TO_AXIS: Record<number, number> = { 0: 0, 1: 2, 2: 1 };
+
+/** Recognise a top-level `for` loop as a NexyFab pattern feature + the inner
+ *  body it repeats — the inverse of emitFeature's linearPattern/circularPattern.
+ *  Returns null for any other (or non-pattern) loop. */
+function unwrapForPattern(src: string): { feature: ScadRecognisedFeature; body: string } | null {
+  const t = src.trim();
+  let m = FOR_LINEAR_RE.exec(t);
+  if (m) {
+    const count = parseInt(m[1]!, 10) + 1;
+    const slots = m[2]!.split(',');
+    let spacing = 0, axis = 0;
+    for (let s = 0; s < slots.length; s++) {
+      const im = /(-?\d+(?:\.\d+)?)\s*\*\s*i/.exec(slots[s]!);
+      if (im) { spacing = parseFloat(im[1]!); axis = SLOT_TO_AXIS[s] ?? 0; break; }
+    }
+    return { feature: { type: 'linearPattern', params: { count, spacing, axis } }, body: t.slice(m[0].length) };
+  }
+  m = FOR_CIRCULAR_RE.exec(t);
+  if (m) {
+    const count = parseInt(m[1]!, 10) + 1;
+    const anglePer = parseFloat(m[2]!);
+    // emit wrote angle/count per step; recover the total it came from.
+    return { feature: { type: 'circularPattern', params: { count, totalAngle: anglePer * count } }, body: t.slice(m[0].length) };
+  }
+  return null;
+}
+
 export function parseScadToFeatures(scad: string): ScadParseResult {
   if (!scad || !scad.trim()) return { ok: false, reason: 'empty' };
 
@@ -235,8 +271,19 @@ export function parseScadToFeatures(scad: string): ScadParseResult {
   // multiple holes, peeled by recursion). `union`/`intersection` keep the prior
   // behaviour (recurse to the first recognised primitive as the base).
   // Strip comments first so the emitter's file-level header (always prepended)
-  // doesn't hide the `difference()` that follows it.
+  // doesn't hide the `difference()` / `for` that follows it.
   const stripped = scad.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  // A `for` pattern wrapper is the OUTERMOST feature (applied last), so peel it
+  // first and recurse into the repeated body; the pattern feature is appended
+  // after the body's own features to keep application order.
+  const pat = unwrapForPattern(stripped);
+  if (pat) {
+    const baseRes = parseScadToFeatures(pat.body);
+    if (!baseRes.ok) return baseRes;
+    return { ok: true, shape: baseRes.shape, features: [...(baseRes.features ?? []), pat.feature] };
+  }
+
   const wrapped = unwrapTopLevelContainer(stripped);
   if (wrapped) {
     if (wrapped.kind === 'difference') {
