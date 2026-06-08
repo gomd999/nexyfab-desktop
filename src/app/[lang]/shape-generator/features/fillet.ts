@@ -5,6 +5,7 @@ import { occtFilletBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEd
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
+import { classifyMeshDowngrade, stampDowngrade } from './downgradeNotice';
 import { tryMeshFillet } from './meshRounding';
 import {
   buildEdgeFinderFromSelection,
@@ -95,7 +96,22 @@ function applyFilletMeshCsg(
     propagateFeatureIdMap(resultBrush.geometry, runningGeo, intermediate);
     runningGeo = resultBrush.geometry;
   }
-  if (guardNoOp) assertRoundingApplied(geometry, resultBrush.geometry, 'Fillet');
+  if (guardNoOp) {
+    // No-op against B-rep intent → throw (blocked). Past that, the mesh CSG DID
+    // round but it is a faceted approximation, not exact B-rep — stamp a soft,
+    // non-fatal downgrade notice so the UI stops shipping it silently.
+    assertRoundingApplied(geometry, resultBrush.geometry, 'Fillet');
+    stampDowngrade(
+      resultBrush.geometry,
+      classifyMeshDowngrade({
+        op: 'Fillet',
+        featureId: ctx?.featureId,
+        wantedOcct: true,
+        occtRan: false,
+        isNoOp: false,
+      }),
+    );
+  }
   return resultBrush.geometry;
 }
 
