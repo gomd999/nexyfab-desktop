@@ -56,8 +56,8 @@ function saveInquiry(data: Record<string, unknown>): void {
   const db = getDbAdapter();
   db.execute(
     `INSERT INTO nf_inquiries
-       (id, action, name, email, project_name, budget, message, phone, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+       (id, action, name, email, project_name, budget, message, phone, factory_id, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
     id,
     String(data.action ?? 'send_contact'),
     String(data.name ?? ''),
@@ -66,6 +66,7 @@ function saveInquiry(data: Record<string, unknown>): void {
     String(data.budget ?? data.budget_range ?? ''),
     message,
     String(data.phone ?? ''),
+    factoryId || null,
     now,
   ).catch(err => console.error('saveInquiry DB write failed:', err));
 }

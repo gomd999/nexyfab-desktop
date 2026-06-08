@@ -26,6 +26,7 @@ interface InquiryRow {
   shape_id: string | null;
   material_id: string | null;
   volume_cm3: number | null;
+  factory_id: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -46,6 +47,7 @@ function rowToInquiry(r: InquiryRow) {
     shapeId: r.shape_id,
     materialId: r.material_id,
     volume_cm3: r.volume_cm3,
+    factoryId: r.factory_id,
     date: r.created_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,

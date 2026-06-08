@@ -1661,3 +1661,10 @@ CREATE TABLE IF NOT EXISTS nf_dodo_webhook_events (
 );
 CREATE INDEX IF NOT EXISTS idx_dodo_webhook_events_received_at
   ON nf_dodo_webhook_events(received_at);
+
+-- ─── v89: directory inquiries carry the clicked factory's id ─────────────────
+-- A customer who clicks 문의하기 on a specific directory factory now records which
+-- one, so ops/concierge can route the inquiry to that partner instead of guessing
+-- from free text. (Client + send-mail wiring shipped alongside.)
+ALTER TABLE nf_inquiries ADD COLUMN IF NOT EXISTS factory_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_inquiries_factory ON nf_inquiries(factory_id);
