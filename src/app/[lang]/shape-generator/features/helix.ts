@@ -19,6 +19,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FeatureDefinition } from './types';
 import { occtSweepHelix, occtBooleanSolids } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 /** A closed circular cross-section (polygon) for the helical sweep profile. */
 function circleProfile(r: number, segs = 24): { x: number; y: number }[] {
@@ -138,6 +139,6 @@ export const helixFeature: FeatureDefinition = {
         console.warn('[helix] OCCT path failed, falling back to mesh:', err);
       }
     }
-    return helixFeature.apply(geometry, params);
+    return noteMeshFallback(helixFeature.apply(geometry, params), { op: 'Helix' });
   },
 };

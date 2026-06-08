@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
 import { occtDraft } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
   const angleDeg = params.angle;
@@ -64,6 +65,7 @@ export const draftFeature: FeatureDefinition = {
         }
       }
     }
-    return applyDraftMesh(geometry, params);
+    // Wanted B-rep but meshed (no handle / OCCT unavailable / threw) → soft notice.
+    return noteMeshFallback(applyDraftMesh(geometry, params), { op: 'Draft' });
   },
 };

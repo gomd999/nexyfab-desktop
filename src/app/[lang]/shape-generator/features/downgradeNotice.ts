@@ -22,6 +22,7 @@
  */
 
 import type * as THREE from 'three';
+import { wantsOcctEngine } from './engineSelection';
 
 export type DowngradeSeverity = 'blocked' | 'approximated';
 
@@ -108,4 +109,32 @@ export function collectDowngrades(geometry: THREE.BufferGeometry): MeshDowngrade
 /** True if any stamped downgrade is hard (blocked) rather than a soft approximation. */
 export function hasBlockingDowngrade(geometry: THREE.BufferGeometry): boolean {
   return collectDowngrades(geometry).some((n) => n.severity === 'blocked');
+}
+
+/**
+ * Chainable convenience for the common feature mesh-fallback site:
+ *
+ *     if (shouldUseOcctEngine(engine)) { try { return occt } catch { warn } }
+ *     return noteMeshFallback(applyXMesh(geo), { op: 'X', engine, featureId });
+ *
+ * Self-gating: it stamps a soft 'approximated' notice ONLY when the engine intent
+ * actually wanted B-rep (wantsOcctEngine) — so wrapping a pure-mesh return where
+ * the user explicitly picked the mesh engine is a no-op. Returns the geometry so
+ * it drops in around the existing `return`.
+ */
+export function noteMeshFallback(
+  geometry: THREE.BufferGeometry,
+  args: { op: string; engine?: number; featureId?: string; isNoOp?: boolean },
+): THREE.BufferGeometry {
+  stampDowngrade(
+    geometry,
+    classifyMeshDowngrade({
+      op: args.op,
+      featureId: args.featureId,
+      wantedOcct: wantsOcctEngine(args.engine),
+      occtRan: false,
+      isNoOp: args.isNoOp ?? false,
+    }),
+  );
+  return geometry;
 }

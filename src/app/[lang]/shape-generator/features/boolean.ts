@@ -3,6 +3,7 @@ import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh
 import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 import { reportWarning } from '../lib/telemetry';
 import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
 
@@ -316,6 +317,8 @@ export const booleanFeature: FeatureDefinition = {
     if (ctx?.featureId) {
       stampFaceFeatureIdAll(toolGeo, ctx.featureId, { avoidIdsFrom: geometry });
     }
-    return applyBooleanSync(type, geometry, toolGeo);
+    return noteMeshFallback(applyBooleanSync(type, geometry, toolGeo), {
+      op: 'Boolean', engine, featureId: ctx?.featureId,
+    });
   },
 };

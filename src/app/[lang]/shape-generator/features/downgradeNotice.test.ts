@@ -9,6 +9,7 @@ import {
   stampDowngrade,
   collectDowngrades,
   hasBlockingDowngrade,
+  noteMeshFallback,
 } from './downgradeNotice';
 
 describe('classifyMeshDowngrade — truth table', () => {
@@ -83,5 +84,32 @@ describe('stamp / collect via userData side-channel', () => {
     const hard = new THREE.BufferGeometry();
     stampDowngrade(hard, classifyMeshDowngrade({ op: 'Fillet', wantedOcct: true, occtRan: false, isNoOp: true }));
     expect(hasBlockingDowngrade(hard)).toBe(true);
+  });
+});
+
+describe('noteMeshFallback — the feature call-site helper', () => {
+  // engine === 1 is the per-feature B-rep intent (no global mode needed in test);
+  // engine === 0 is the explicit mesh choice → wantsOcctEngine is false.
+  it('engine=1 (B-rep wanted) stamps an approximated notice and returns the geometry', () => {
+    const g = new THREE.BufferGeometry();
+    const out = noteMeshFallback(g, { op: 'Boolean', engine: 1, featureId: 'b3' });
+    expect(out).toBe(g); // chainable: same object back
+    const list = collectDowngrades(out);
+    expect(list).toHaveLength(1);
+    expect(list[0]!.severity).toBe('approximated');
+    expect(list[0]!.op).toBe('Boolean');
+    expect(list[0]!.featureId).toBe('b3');
+  });
+
+  it('engine=0 (explicit mesh) stamps nothing', () => {
+    const g = new THREE.BufferGeometry();
+    noteMeshFallback(g, { op: 'Boolean', engine: 0 });
+    expect(collectDowngrades(g)).toEqual([]);
+  });
+
+  it('engine=1 + isNoOp marks the result blocked (hard)', () => {
+    const g = new THREE.BufferGeometry();
+    noteMeshFallback(g, { op: 'MoldTool', engine: 1, isNoOp: true });
+    expect(hasBlockingDowngrade(g)).toBe(true);
   });
 });
