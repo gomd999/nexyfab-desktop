@@ -22,7 +22,7 @@ const dict = {
         just: '방금 전', d: '일 전', h: '시간 전', m: '분 전' },
   en: { recovered: 'Unsaved work recovered', crashRecovered: 'Recovered after unexpected exit',
         restore: 'Restore', dismiss: 'Dismiss', compare: 'Compare',
-        just: 'just now', d: ' day ago', h: ' hour ago', m: ' minute ago' },
+        just: 'just now', d: ' day', h: ' hour', m: ' minute' },
   ja: { recovered: '未保存の作業を復元しました', crashRecovered: '異常終了後の復元',
         restore: '復元', dismiss: '閉じる', compare: '比較',
         just: 'たった今', d: '日前', h: '時間前', m: '分前' },
@@ -47,9 +47,12 @@ function formatTimeAgo(ts: number, tt: typeof dict[keyof typeof dict], isEn: boo
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) return `${days}${tt.d}${isEn && days > 1 ? 's' : ''}`;
-  if (hours > 0) return `${hours}${tt.h}${isEn && hours > 1 ? 's' : ''}`;
-  if (minutes > 0) return `${minutes}${tt.m}${isEn && minutes > 1 ? 's' : ''}`;
+  // English keeps the unit + plural 's' + " ago" separate ("3 days ago"); other
+  // languages bake the suffix into d/h/m ("3日前", "3일 전") so append nothing.
+  const ago = isEn ? ' ago' : '';
+  if (days > 0) return `${days}${tt.d}${isEn && days > 1 ? 's' : ''}${ago}`;
+  if (hours > 0) return `${hours}${tt.h}${isEn && hours > 1 ? 's' : ''}${ago}`;
+  if (minutes > 0) return `${minutes}${tt.m}${isEn && minutes > 1 ? 's' : ''}${ago}`;
   return tt.just;
 }
 

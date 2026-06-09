@@ -153,6 +153,26 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
   },
 };
 
+/** Industry filter labels per language. The KEY stays Korean (the API filters on
+ *  it); only the displayed label is translated. ko omits the map → Korean key
+ *  shows as-is. Factory-record tags (DB content) are a separate data-i18n task. */
+export const INDUSTRY_LABELS: Partial<Record<FactLang, Record<string, string>>> = {
+  en: { '절삭·가공': 'Cutting & Machining', '금형': 'Mold & Die', '배전·전장': 'Power & Electrical', '자동차부품': 'Auto Parts', '금속가공': 'Metalworking', '플라스틱': 'Plastics', '전자부품': 'Electronics', '반도체장비': 'Semiconductor Equip.', '도금·도장': 'Plating & Coating', '선박': 'Marine' },
+  ja: { '절삭·가공': '切削・加工', '금형': '金型', '배전·전장': '配電・電装', '자동차부품': '自動車部品', '금속가공': '金属加工', '플라스틱': 'プラスチック', '전자부품': '電子部品', '반도체장비': '半導体装置', '도금·도장': 'めっき・塗装', '선박': '船舶' },
+  cn: { '절삭·가공': '切削·加工', '금형': '模具', '배전·전장': '配电·电装', '자동차부품': '汽车零部件', '금속가공': '金属加工', '플라스틱': '塑料', '전자부품': '电子元件', '반도체장비': '半导体设备', '도금·도장': '电镀·涂装', '선박': '船舶' },
+  es: { '절삭·가공': 'Mecanizado', '금형': 'Moldes', '배전·전장': 'Eléctrico', '자동차부품': 'Autopartes', '금속가공': 'Metalurgia', '플라스틱': 'Plásticos', '전자부품': 'Electrónica', '반도체장비': 'Semiconductores', '도금·도장': 'Recubrimiento', '선박': 'Naval' },
+  ar: { '절삭·가공': 'القطع والتشغيل', '금형': 'القوالب', '배전·전장': 'الكهرباء', '자동차부품': 'قطع السيارات', '금속가공': 'تشغيل المعادن', '플라스틱': 'البلاستيك', '전자부품': 'الإلكترونيات', '반도체장비': 'معدات أشباه الموصلات', '도금·도장': 'الطلاء', '선박': 'السفن' },
+};
+
+/** Region filter labels per language (Korean + Chinese-province keys). */
+export const REGION_LABELS: Partial<Record<FactLang, Record<string, string>>> = {
+  en: { '수도권': 'Seoul Metro', '경상': 'Gyeongsang', '전라': 'Jeolla', '충청': 'Chungcheong', '강원': 'Gangwon', '제주': 'Jeju', '광둥': 'Guangdong', '산둥': 'Shandong', '장쑤': 'Jiangsu', '저장': 'Zhejiang', '허베이': 'Hebei', '상하이': 'Shanghai', '베이징': 'Beijing', '쓰촨': 'Sichuan' },
+  ja: { '수도권': '首都圏', '경상': '慶尚', '전라': '全羅', '충청': '忠清', '강원': '江原', '제주': '済州', '광둥': '広東', '산둥': '山東', '장쑤': '江蘇', '저장': '浙江', '허베이': '河北', '상하이': '上海', '베이징': '北京', '쓰촨': '四川' },
+  cn: { '수도권': '首都圈', '경상': '庆尚', '전라': '全罗', '충청': '忠清', '강원': '江原', '제주': '济州', '광둥': '广东', '산둥': '山东', '장쑤': '江苏', '저장': '浙江', '허베이': '河北', '상하이': '上海', '베이징': '北京', '쓰촨': '四川' },
+  es: { '수도권': 'Área de Seúl', '경상': 'Gyeongsang', '전라': 'Jeolla', '충청': 'Chungcheong', '강원': 'Gangwon', '제주': 'Jeju', '광둥': 'Guangdong', '산둥': 'Shandong', '장쑤': 'Jiangsu', '저장': 'Zhejiang', '허베이': 'Hebei', '상하이': 'Shanghái', '베이징': 'Pekín', '쓰촨': 'Sichuan' },
+  ar: { '수도권': 'منطقة سيول', '경상': 'غيونغسانغ', '전라': 'جيولا', '충청': 'تشونغتشيونغ', '강원': 'غانغوون', '제주': 'جيجو', '광둥': 'غوانغدونغ', '산둥': 'شاندونغ', '장쑤': 'جيانغسو', '저장': 'تشجيانغ', '허베이': 'خبي', '상하이': 'شنغهاي', '베이징': 'بكين', '쓰촨': 'سيتشوان' },
+};
+
 const SEG_TO_LANG: Record<string, FactLang> = {
   kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar',
 };

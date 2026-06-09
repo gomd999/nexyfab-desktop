@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { FACT_DICT, pickFactLang, type FactDict, type FactLang } from './factoriesDict';
+import { FACT_DICT, pickFactLang, INDUSTRY_LABELS, REGION_LABELS, type FactDict, type FactLang } from './factoriesDict';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 
@@ -482,7 +482,7 @@ export default function FactoriesPage() {
                     display: 'flex', alignItems: 'center', gap: 4,
                   }}>
                     <span style={{ fontSize: 11 }}>{ind.icon}</span>
-                    {ind.label}
+                    {INDUSTRY_LABELS[lang]?.[ind.key] ?? ind.label}
                   </button>
                 ))}
               </div>
@@ -512,7 +512,7 @@ export default function FactoriesPage() {
                     color: active ? '#fff' : '#475569',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}>
-                    {isAll ? t.all : r}
+                    {isAll ? t.all : (REGION_LABELS[lang]?.[r] ?? r)}
                   </button>
                 );
               })}
