@@ -1657,7 +1657,10 @@ export function ShapeGeneratorInner() {
   const setIsPreviewMode = useSceneStore(s => s.setIsPreviewMode);
 
   // ── Tutorial / Onboarding ──
-  const tutorial = useTutorial();
+  // Suppress the legacy auto welcome-banner/tutorial while the first-run sample
+  // template picker owns the screen (empty part) — they used to stack on top of
+  // it (the reported onboarding clutter). Manual tutorial start still works.
+  const tutorial = useTutorial(features.length === 0);
   const contextHelp = useContextHelp();
 
   useEffect(() => {
@@ -10088,6 +10091,7 @@ export function ShapeGeneratorInner() {
         tutorial={tutorial}
         userId={authUser?.id ?? null}
         onOpenChat={() => openAIAssistant('chat')}
+        suppressAutoTour={features.length === 0}
       />
 
       {/* ═══ Split-screen + STL Export dock ═══ */}

@@ -40,10 +40,13 @@ interface OnboardingDockProps {
   tutorial: TutorialState;
   userId: string | null;
   onOpenChat: () => void;
+  /** True while the first-run sample-template picker owns the screen — don't
+   *  auto-open the post-signup tour on top of it (onboarding-clutter fix). */
+  suppressAutoTour?: boolean;
 }
 
 export default function OnboardingDock({
-  lang, tutorial, userId, onOpenChat,
+  lang, tutorial, userId, onOpenChat, suppressAutoTour = false,
 }: OnboardingDockProps) {
   return (
     <>
@@ -68,7 +71,7 @@ export default function OnboardingDock({
           onDismiss={tutorial.completeTutorial}
         />
       )}
-      <FirstTimeTour userId={userId} lang={lang} onOpenChat={onOpenChat} />
+      {!suppressAutoTour && <FirstTimeTour userId={userId} lang={lang} onOpenChat={onOpenChat} />}
     </>
   );
 }

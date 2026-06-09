@@ -6,15 +6,22 @@ export const TUTORIAL_KEY = 'nexyfab_tutorial_done';
 const SKETCH_TUTORIAL_KEY = 'nexyfab_sketch_tutorial_done';
 const VISITED_KEY         = 'nexyfab_visited';
 
-export function useTutorial() {
+/** @param suppressAutoWelcome true while another first-run surface (the sample
+ *  template picker, shown when the part is empty) owns the screen — so the legacy
+ *  welcome banner / tutorial don't auto-pop ON TOP of it. Manual start
+ *  (startTutorial / restartTutorial from the help menu) is unaffected. */
+export function useTutorial(suppressAutoWelcome = false) {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [activeSteps, setActiveSteps] = useState<TutorialStep[]>(TUTORIAL_STEPS);
 
-  // On mount: show WelcomeBanner for brand-new visitors, auto-show tutorial if
-  // they reload before dismissing the banner (visited but not done).
+  // On mount: show WelcomeBanner for brand-new visitors — UNLESS the template
+  // picker is the active first-run surface (then it would stack on top, the
+  // reported clutter). Skipping the auto-banner there; the picker is the
+  // onboarding and the tutorial stays available from the help menu.
   useEffect(() => {
+    if (suppressAutoWelcome) return;
     try {
       const done    = localStorage.getItem(TUTORIAL_KEY);
       const visited = localStorage.getItem(VISITED_KEY);
@@ -27,7 +34,7 @@ export function useTutorial() {
     } catch {
       // localStorage unavailable (SSR / private mode)
     }
-  }, []);
+  }, [suppressAutoWelcome]);
 
   const completeTutorial = useCallback(() => {
     setShowTutorial(false);
