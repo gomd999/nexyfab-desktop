@@ -5986,6 +5986,21 @@ export function ShapeGeneratorInner() {
     );
   }, [effectiveResult]);
 
+  // While 2D-sketching a fresh part the right-hand 3D preview is just an empty
+  // placeholder that squeezes the canvas — collapse it on ENTER and restore it on
+  // EXIT. Transition-based (a ref tracks the prior state) so a manual 3D▶ toggle
+  // mid-sketch is preserved; we only act when crossing into/out of that state.
+  const sketch2dCollapsedPreviewRef = useRef(false);
+  useEffect(() => {
+    const fresh2dSketch = isSketchMode && sketchViewMode === '2d' && !effectiveResult?.geometry;
+    if (fresh2dSketch && !sketch2dCollapsedPreviewRef.current) {
+      setShow3DPreview(false);
+    } else if (!fresh2dSketch && sketch2dCollapsedPreviewRef.current) {
+      setShow3DPreview(true);
+    }
+    sketch2dCollapsedPreviewRef.current = fresh2dSketch;
+  }, [isSketchMode, sketchViewMode, effectiveResult?.geometry, setShow3DPreview]);
+
   // ══════════════════════════════════════════════════════════════════════════
   // FILE IMPORT / EXPORT HANDLERS
   // ══════════════════════════════════════════════════════════════════════════
