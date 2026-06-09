@@ -99,15 +99,12 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const seen = window.localStorage.getItem(STORAGE_KEY);
-    if (!seen) {
-      // Slight delay so Shell mounts + DOM anchors exist.
-      const id = setTimeout(() => setOpen(true), 600);
-      return () => clearTimeout(id);
-    }
-  }, []);
+  // Auto-show retired (2026-06-09 UX cleanup): the 6-mode welcome tour was one of
+  // several first-run modals firing at once. New users now open straight into the
+  // blank workspace (pro-CAD style); the empty-canvas Shape Library / AI cards +
+  // the first-steps checklist are the guidance. The tour stays mounted so it can
+  // be replayed manually from help. (Was: auto-open 600ms after mount when unseen;
+  // dismiss() still persists STORAGE_KEY for the manual-replay path.)
 
   useEffect(() => {
     if (!open) return;

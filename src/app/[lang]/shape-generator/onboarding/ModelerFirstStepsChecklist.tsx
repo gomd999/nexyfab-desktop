@@ -47,15 +47,18 @@ const STEPS: ReadonlyArray<{
 ];
 
 export default function ModelerFirstStepsChecklist({
-  lang, completed, defaultCollapsed = false,
+  lang, completed, defaultCollapsed = true,
 }: ModelerFirstStepsChecklistProps) {
   const [dismissed, setDismissed] = useState(true);
+  // Start COLLAPSED (a small pill) so the checklist isn't a persistent panel
+  // across every mode — the user expands it on demand (2026-06-09 UX cleanup).
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   useEffect(() => {
     try {
       setDismissed(window.localStorage.getItem(STORAGE_DISMISSED) === 'true');
-      setCollapsed(window.localStorage.getItem(STORAGE_COLLAPSED) === 'true');
+      // Collapsed unless the user explicitly expanded it before (stored 'false').
+      setCollapsed(window.localStorage.getItem(STORAGE_COLLAPSED) !== 'false');
     } catch {
       setDismissed(false);
     }

@@ -213,7 +213,10 @@ export default function InViewportGizmo({
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const tt = dict[langMap[seg] ?? 'en'];
 
-  const [collapsed, setCollapsed] = useState(false);
+  // Start COLLAPSED (a small draggable pill) so the dimension gizmo doesn't sit
+  // expanded over the model in the viewport — the user clicks to expand + edit
+  // W/H/D, and can drag it anywhere. (2026-06-09 UX cleanup.)
+  const [collapsed, setCollapsed] = useState(true);
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 16, y: 120 });
   const [locked, setLocked] = useState<Set<string>>(new Set());
   const dragRef = useRef({ active: false, sx: 0, sy: 0, ix: 0, iy: 0 });
