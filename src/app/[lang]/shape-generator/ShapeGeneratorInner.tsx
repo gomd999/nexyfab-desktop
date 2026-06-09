@@ -1962,13 +1962,19 @@ export function ShapeGeneratorInner() {
   // ── Pipeline errors (set by result useMemo, consumed by FeatureTree + toast) ──
   const [pipelineErrors, setPipelineErrors] = useState<Record<string, string>>({});
 
+  // True while a sample template is loading its features in bulk. Each add fires
+  // its own pipeline eval, so a dependent feature (fillet) can transiently fail
+  // against base geometry that hasn't computed yet — a spurious error toast even
+  // though the final tree recomputes fine. Suppress the toasts during that window.
+  const templateLoadingRef = useRef(false);
+
   // ── Feature validation error (e.g. param out of range) → toast ──
   useEffect(() => {
     const errorIds = Object.keys(featureErrors);
     if (errorIds.length > 0) {
       const lastErrorId = errorIds[errorIds.length - 1];
       const msg = featureErrors[lastErrorId];
-      addToast('error', lt.cannotApplyFeature(msg));
+      if (!templateLoadingRef.current) addToast('error', lt.cannotApplyFeature(msg));
       clearFeatureError(lastErrorId);
     }
   }, [featureErrors]);
@@ -1983,6 +1989,7 @@ export function ShapeGeneratorInner() {
     }
     prevPipelineErrorsRef.current = pipelineErrors;
     if (newlyFailed.length === 0) return;
+    if (templateLoadingRef.current) return; // suppress transient errors during bulk template load
     // Show a toast for the most recent failure only (rest are visible as red badges in tree)
     const id = newlyFailed[newlyFailed.length - 1];
     const raw = pipelineErrors[id];
@@ -10121,6 +10128,11 @@ export function ShapeGeneratorInner() {
           // through the public addFeature APIs. SetTimeout 0 lets the
           // clearAll commit before features land (same pattern as
           // handleRestoreVersion).
+          // Suppress transient per-feature error toasts while the bulk add races
+          // ahead of the async base-geometry eval; clear the flag once the
+          // pipeline has settled on the complete tree.
+          templateLoadingRef.current = true;
+          window.setTimeout(() => { templateLoadingRef.current = false; }, 1200);
           clearAll();
           window.setTimeout(() => {
             for (const feat of template.build()) {
