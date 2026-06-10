@@ -241,6 +241,17 @@ import { useVersionHistory } from './history/useVersionHistory';
 import type { DesignVersion } from './history/useVersionHistory';
 import { useCommandHistory } from './history/useCommandHistory';
 import { commandHistory } from './history/CommandHistory';
+import {
+  createFeatureParamCoalescer,
+  makeArrayAddCommand,
+  makeArrayRemoveCommand,
+  makeArrayUpdateCommand,
+  makeToggleCommand,
+  makeInsertStandardPartCommand,
+  makePlacePartWithMatesCommand,
+  makeRemoveFeatureCommand,
+  snapshotFeatureTree,
+} from './history/undoableCommands';
 import { captureCanvasSnapshot } from './history/useCanvasSnapshot';
 import RightPanel from './panels/RightPanel';
 import { mapDFMToParams, getBestDFMScore, getTopDFMIssues } from './analysis/dfmParamMapper';
@@ -512,6 +523,39 @@ export function ShapeGeneratorInner() {
     }
   }, [paramExpressions]);
   const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, addNode, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
+
+  // ── Phase A undo unification: tracked feature-param / suppress wrappers ────
+  // updateFeatureParamCmd routes param edits through commandHistory with
+  // commit-on-settle coalescing (one undo step per drag / typing burst, same
+  // contract as the base-shape handleParamChange/handleParamCommit pair).
+  // getOrderedNodes recreates whenever the node map changes, so the coalescer
+  // reads it through a render-synced ref — the 500ms settle callback must see
+  // the params AFTER the last setNodeMap commit, not the closure it was
+  // created under.
+  const getOrderedNodesRef = useRef(getOrderedNodes);
+  getOrderedNodesRef.current = getOrderedNodes;
+  const featureParamCoalescer = useMemo(() => createFeatureParamCoalescer({
+    getParams: (featureId) =>
+      getOrderedNodesRef.current().find(n => n.id === featureId)?.params ?? null,
+    applyParam: (featureId, key, value) => updateFeatureParam(featureId, key, value),
+    // Whole-params restore via updateNode also reverses the NURBS cp_* wipe
+    // that updateFeatureParam performs on uCount/vCount edits.
+    restoreParams: (featureId, params) =>
+      updateNode(featureId, { params: { ...params }, error: undefined }),
+    push: (cmd) => commandHistory.execute(cmd),
+  }), [updateFeatureParam, updateNode]);
+  const updateFeatureParamCmd = useCallback((id: string, key: string, value: number) => {
+    featureParamCoalescer.edit(id, key, value);
+  }, [featureParamCoalescer]);
+  const toggleFeatureCmd = useCallback((id: string) => {
+    commandHistory.execute(makeToggleCommand({
+      commandId: `toggle-feature-${id}-${Date.now()}`,
+      label: 'Suppress/unsuppress feature',
+      labelKo: '피처 표시/숨김 전환',
+      toggle: () => toggleFeature(id),
+    }));
+  }, [toggleFeature]);
+
   const { performCSG, loading: csgLoading, cancel: cancelCsg } = useCsgWorker();
   const { runFEA: runFEAWorker, loading: feaWorkerLoading, cancel: cancelFea } = useFEAWorker();
   const { analyzeDFM: analyzeDFMWorker, loading: dfmWorkerLoading, cancel: cancelDfm } = useDFMWorker();
@@ -3357,6 +3401,9 @@ export function ShapeGeneratorInner() {
   // Long-term: migrate all mutations onto commandHistory and remove the
   // legacy snapshot stack (tracked as a follow-up; not in this audit).
   const handleHistoryUndo = useCallback(() => {
+    // Commit any still-settling feature-param edit FIRST so Ctrl+Z within the
+    // 500ms coalescing window undoes that edit (not the command before it).
+    featureParamCoalescer.flush();
     if (cmdHistory.canUndo) {
       cmdHistory.undo();
       return;
@@ -3368,9 +3415,10 @@ export function ShapeGeneratorInner() {
       setParams,
       setParamExpressions,
     });
-  }, [history, cmdHistory, setParams, setParamExpressions]);
+  }, [history, cmdHistory, featureParamCoalescer, setParams, setParamExpressions]);
 
   const handleHistoryRedo = useCallback(() => {
+    featureParamCoalescer.flush();
     if (cmdHistory.canRedo) {
       cmdHistory.redo();
       return;
@@ -3382,7 +3430,7 @@ export function ShapeGeneratorInner() {
       setParams,
       setParamExpressions,
     });
-  }, [history, cmdHistory, setParams, setParamExpressions]);
+  }, [history, cmdHistory, featureParamCoalescer, setParams, setParamExpressions]);
 
   // ─── Command-pattern wrappers (for tracked undo/redo via CommandHistory) ────
 
@@ -3903,37 +3951,32 @@ export function ShapeGeneratorInner() {
    * gates this with a confirm modal when impact analysis flags major impact.
    */
   const performRemoveFeature = useCallback((featureId: string) => {
-    // Capture the node before removal so undo can restore it
-    const snapshot = featureHistory?.nodes.find(n => n.id === featureId);
-    const id = `remove-feature-${featureId}-${Date.now()}`;
+    // Phase A fix: capture the FULL pre-removal tree (rootId/activeNodeId and
+    // every node incl. sketchData / edgeSelections / faceSelections / original
+    // position). removeNode also deletes descendants, and the old undo
+    // re-added a bare feature at the END of the tree with numeric params only.
+    // Restoring via replaceHistory puts everything back exactly where it was;
+    // redo still works because replaceHistory preserves node ids.
+    const snapshot = snapshotFeatureTree(
+      getOrderedNodes(),
+      featureHistory.rootId,
+      featureHistory.activeNodeId,
+    );
     // F4: emit macro action up-front so even a destructive sequence is
     // replayable. Removal undo is handled separately by commandHistory.
     globalMacroRecorder.record({ kind: 'remove-feature', featureId });
-    commandHistory.execute({
-      id,
-      label: `Remove feature`,
-      labelKo: `피처 제거`,
-      execute: () => { removeFeature(featureId); },
-      undo: () => {
-        if (!snapshot || !snapshot.featureType) {
-          addToast('warning', lt.featureCannotRestore);
-          return;
-        }
-        // Re-add the feature with its original params
-        addFeature(snapshot.featureType);
-        // Restore params after a tick so the new node is in the tree
-        setTimeout(() => {
-          const nodes = getOrderedNodes();
-          const restored = nodes[nodes.length - 1];
-          if (restored) {
-            Object.entries(snapshot.params).forEach(([key, val]) => {
-              updateFeatureParam(restored.id, key, val);
-            });
-          }
-        }, 0);
-        addToast('success', lt.featureRestored);
-      } });
-  }, [removeFeature, featureHistory, addFeature, updateFeatureParam, getOrderedNodes, addToast, lt]);
+    commandHistory.execute(makeRemoveFeatureCommand({
+      commandId: `remove-feature-${featureId}-${Date.now()}`,
+      label: 'Remove feature',
+      labelKo: '피처 제거',
+      featureId,
+      snapshot,
+      removeFeature,
+      replaceHistory,
+      onRestored: () => addToast('success', lt.featureRestored),
+      onRestoreFailed: () => addToast('warning', lt.featureCannotRestore),
+    }));
+  }, [removeFeature, featureHistory, replaceHistory, getOrderedNodes, addToast, lt]);
 
   // F6 — public wrapper. Runs analyzeChangeImpact and gates `major` impact
   // through a confirm modal so the user sees the cascade (broken
@@ -4160,12 +4203,12 @@ export function ShapeGeneratorInner() {
       const ce = e as CustomEvent<{ id: string; key: string; value: number }>;
       const { id, key, value } = ce.detail ?? {};
       if (id && typeof key === 'string' && Number.isFinite(value)) {
-        updateFeatureParam(id, key, value);
+        updateFeatureParamCmd(id, key, value);
       }
     };
     window.addEventListener('nexyfab:update-feature-param', onUpdate);
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
-  }, [updateFeatureParam]);
+  }, [updateFeatureParamCmd]);
 
   // Shell-v2 Sketch dimension inline edit → patch sketchDimensions by id.
   // SketchLeftPane's DimensionEditableRow dispatches this event on commit.
@@ -4266,11 +4309,13 @@ export function ShapeGeneratorInner() {
       const ce = e as CustomEvent<{ featureId?: string; key?: string; value?: number }>;
       const { featureId, key, value } = ce.detail ?? {};
       if (!featureId || !key || typeof value !== 'number') return;
-      updateFeatureParam(featureId, key, value);
+      // Tracked + coalesced: a push/pull drag emits many events for the same
+      // (featureId, key) → ONE undo step on settle.
+      updateFeatureParamCmd(featureId, key, value);
     };
     window.addEventListener('nexyfab:update-feature-param', onUpdate);
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
-  }, [updateFeatureParam]);
+  }, [updateFeatureParamCmd]);
 
   // Shell-v2 Components → Standard parts materialization. The grid emits a
   // resolved SCAD source; we POST it to /api/nexyfab/openscad-render to get
@@ -4310,10 +4355,6 @@ export function ShapeGeneratorInner() {
           rotation: [0, 0, 0],
           color: '#8aa2c2',
         };
-        // Attach geometry via the BomPart sync (placedPart → bomPart mapper).
-        // Cleanest path is to extend placedPartsToBomResults; for v1 we push
-        // an inline bomPart entry with the parsed geometry.
-        setPlacedParts([...placedParts, newPart]);
         // Build minimal ShapeResult — edgeGeometry stays as an empty
         // BufferGeometry; downstream rendering uses real edges via
         // computeVertexNormals on the parsed STL.
@@ -4329,7 +4370,22 @@ export function ShapeGeneratorInner() {
           volume_cm3: 0,
           surface_area_cm2: 0,
         };
-        setBomParts(prev => [...prev, { name: newPart.name, result, position: newPart.position, rotation: newPart.rotation, color: newPart.color }]);
+        // Attach geometry via the BomPart sync (placedPart → bomPart mapper).
+        // Cleanest path is to extend placedPartsToBomResults; for v1 we push
+        // an inline bomPart entry with the parsed geometry.
+        const bomEntry = { name: newPart.name, result, position: newPart.position, rotation: newPart.rotation, color: newPart.color };
+        // Phase A undo unification: COTS insert (placedPart + bom entry) is
+        // ONE tracked undo step. bomParts is a plain useState array whose
+        // entries lack ids, so the command matches the entry by reference.
+        commandHistory.execute(makeInsertStandardPartCommand({
+          commandId: `insert-standard-part-${newPart.id}`,
+          label: `Insert ${ce.detail.title}`,
+          labelKo: `${ce.detail.title} 삽입`,
+          part: newPart,
+          setParts: setPlacedParts,
+          bomEntry,
+          setBom: setBomParts,
+        }));
         addToast('success', `${ce.detail.title} 어셈블리에 추가됨`);
       } catch (err) {
         console.error('Standard part materialize failed', err);
@@ -6014,7 +6070,7 @@ export function ShapeGeneratorInner() {
       case 'sketch-toggle-slice': setSketchPalSlice(v => !v); break;
       case 'measure': toggleMeasureMode(); break;
       case 'delete': if (selectedFeatureId) handleRemoveFeatureCmd(selectedFeatureId); break;
-      case 'suppress': if (selectedFeatureId) toggleFeature(selectedFeatureId); break;
+      case 'suppress': if (selectedFeatureId) toggleFeatureCmd(selectedFeatureId); break;
       case 'add-dimension': setShowDimensions(true); setSketchPalDims(true); break;
       case 'properties': if (selectedFeatureId) setShowPropertyManager(true); break;
       case 'add-to-cart': handleAddToCart(); break;
@@ -6096,14 +6152,21 @@ export function ShapeGeneratorInner() {
           partB,
           ...(mateType === 'distance' ? { value: 0 } : {}),
           locked: false };
-        setAssemblyMates([...assemblyMates, newMate]);
+        // Phase A undo unification: tracked mate add (Ctrl+Z removes it).
+        commandHistory.execute(makeArrayAddCommand({
+          commandId: `mate-add-${newMate.id}`,
+          label: 'Add mate',
+          labelKo: '메이트 추가',
+          items: [newMate],
+          set: setAssemblyMates,
+        }));
         setShowAssemblyPanel(true);
         const mateLabel = mateType === 'coincident' ? lt.mateCoincident : mateType === 'concentric' ? lt.mateConcentric : lt.mateDistance;
         addToast('success', lt.mateAdded(mateLabel, partA, partB));
         break;
       }
     }
-  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial, selectedElement, setMateFaceA, setPendingChatMsg, openAIAssistant, lt]);
+  }, [selectedFeatureId, removeFeature, toggleFeatureCmd, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial, selectedElement, setMateFaceA, setPendingChatMsg, openAIAssistant, lt]);
 
   const handleExportDrawingPDF = useCallback(async () => {
     if (!effectiveResult) return;
@@ -6977,17 +7040,61 @@ export function ShapeGeneratorInner() {
   // ASSEMBLY HANDLERS
   // ══════════════════════════════════════════════════════════════════════════
 
+  // Phase A undo unification: mate add/remove/update flow through
+  // commandHistory (mirrors the mate→placement command below). assemblyMates
+  // is a Yjs id-keyed map sorted by id on read, so undo only needs to
+  // re-add/remove the affected ITEM — no order restoration required.
   const handleAddMate = useCallback((mate: AssemblyMate) => {
-    setAssemblyMates(prev => [...prev, mate]);
-  }, []);
+    commandHistory.execute(makeArrayAddCommand({
+      commandId: `mate-add-${mate.id}`,
+      label: 'Add mate',
+      labelKo: '메이트 추가',
+      items: [mate],
+      set: setAssemblyMates,
+    }));
+  }, [setAssemblyMates]);
 
   const handleRemoveMate = useCallback((id: string) => {
-    setAssemblyMates(prev => prev.filter(m => m.id !== id));
-  }, []);
+    const removed = assemblyMates.find(m => m.id === id);
+    if (!removed) return;
+    commandHistory.execute(makeArrayRemoveCommand({
+      commandId: `mate-remove-${id}-${Date.now()}`,
+      label: 'Remove mate',
+      labelKo: '메이트 제거',
+      item: removed,
+      set: setAssemblyMates,
+    }));
+  }, [assemblyMates, setAssemblyMates]);
 
   const handleUpdateMate = useCallback((id: string, updates: Partial<AssemblyMate>) => {
-    setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-  }, []);
+    const before = assemblyMates.find(m => m.id === id);
+    if (!before) return;
+    commandHistory.execute(makeArrayUpdateCommand({
+      commandId: `mate-update-${id}-${Date.now()}`,
+      label: 'Edit mate',
+      labelKo: '메이트 수정',
+      before,
+      updates,
+      set: setAssemblyMates,
+    }));
+  }, [assemblyMates, setAssemblyMates]);
+
+  // Phase A undo unification: PartPlacementPanel (add/duplicate/remove/move
+  // placed parts) mutates through this tracked setter. Whole-array before/
+  // after snapshots are used deliberately — the panel hands us a full new
+  // array and placedParts stays small, so item-level diffing isn't worth the
+  // complexity here.
+  const setPlacedPartsTracked = useCallback((action: PlacedPart[] | ((prev: PlacedPart[]) => PlacedPart[])) => {
+    const before = placedParts;
+    const after = typeof action === 'function' ? action(before) : action;
+    commandHistory.execute({
+      id: `placed-parts-edit-${Date.now()}`,
+      label: 'Edit placed parts',
+      labelKo: '배치 파트 편집',
+      execute: () => { setPlacedParts(after); },
+      undo: () => { setPlacedParts(before); },
+    });
+  }, [placedParts, setPlacedParts]);
 
   // Shell-v2 assembly sidebar → mate edit bridge. The AssemblyLeftPane/
   // AssemblyRightPane mate rows dispatch these so the user can delete / lock a
@@ -7001,7 +7108,13 @@ export function ShapeGeneratorInner() {
     const onToggle = (e: Event) => {
       const id = (e as CustomEvent<{ id: string }>).detail?.id;
       if (!id) return;
-      setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, locked: !m.locked } : m));
+      // Self-inverse lock flip — tracked so Ctrl+Z reverses the toggle.
+      commandHistory.execute(makeToggleCommand({
+        commandId: `mate-lock-${id}-${Date.now()}`,
+        label: 'Toggle mate lock',
+        labelKo: '메이트 잠금 전환',
+        toggle: () => setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, locked: !m.locked } : m)),
+      }));
     };
     window.addEventListener('nexyfab:assembly-mate-remove', onRemove);
     window.addEventListener('nexyfab:assembly-mate-toggle', onToggle);
@@ -7394,27 +7507,38 @@ export function ShapeGeneratorInner() {
         rotation: rot,
       };
 
-      setPlacedParts(prev => [...prev, newPlacedPart]);
+      // Smart mates (Coincident + Concentric) when dropped onto another part.
+      const newMates = evt.intersectedPartName
+        ? [
+            {
+              id: `mate_coincident_${Date.now()}`,
+              type: 'coincident' as const,
+              partA: evt.intersectedPartName,
+              partB: newPlacedPartId, // partB is the standard part
+              locked: false,
+            },
+            {
+              id: `mate_concentric_${Date.now() + 1}`,
+              type: 'concentric' as const,
+              partA: evt.intersectedPartName,
+              partB: newPlacedPartId,
+              locked: false,
+            },
+          ]
+        : [];
 
-      if (evt.intersectedPartName) {
-        // Add smart mates! Coincident and Concentric
-        const newMates = [
-          {
-            id: `mate_coincident_${Date.now()}`,
-            type: 'coincident' as const,
-            partA: evt.intersectedPartName,
-            partB: newPlacedPartId, // partB is the standard part
-            locked: false,
-          },
-          {
-            id: `mate_concentric_${Date.now() + 1}`,
-            type: 'concentric' as const,
-            partA: evt.intersectedPartName,
-            partB: newPlacedPartId,
-            locked: false,
-          }
-        ];
-        setAssemblyMates(prev => [...prev, ...newMates]);
+      // Phase A undo unification: part placement + auto-mates is ONE undo step.
+      commandHistory.execute(makePlacePartWithMatesCommand({
+        commandId: `place-standard-part-${newPlacedPartId}`,
+        label: 'Place standard part',
+        labelKo: '규격 부품 배치',
+        part: newPlacedPart,
+        setParts: setPlacedParts,
+        mates: newMates,
+        setMates: setAssemblyMates,
+      }));
+
+      if (newMates.length > 0) {
         addToast('success', lang === 'ko' ? `규격 부품 배치 및 자동 메이트 체결 완료` : `Standard part placed with smart mates`);
       } else {
         addToast('success', lang === 'ko' ? `규격 부품 배치 완료` : `Standard part placed`);
@@ -7501,7 +7625,14 @@ export function ShapeGeneratorInner() {
         mateParallel: (lt as { mateParallel?: string }).mateParallel ?? 'Parallel',
       },
       onMateCreated: (mate, partA, partB, mateLabel) => {
-        setAssemblyMates(prev => [...prev, mate]);
+        // Phase A undo unification: face-pick mate creation is tracked.
+        commandHistory.execute(makeArrayAddCommand({
+          commandId: `mate-add-${mate.id}`,
+          label: 'Add mate',
+          labelKo: '메이트 추가',
+          items: [mate],
+          set: setAssemblyMates,
+        }));
         setShowAssemblyPanel(true);
         addToast('success', lt.mateAdded?.(mateLabel, partA, partB) ?? `Added Mate between ${partA} and ${partB}`);
       },
@@ -7529,7 +7660,7 @@ export function ShapeGeneratorInner() {
   });
 
   const { nurbsCPEdit: canvasNurbsCPEdit, nurbsCPParams: canvasNurbsCPParams, onNurbsCPParamChange: canvasOnNurbsCPParamChange } =
-    useNurbsCpEdit({ selectedFeatureId, features, updateFeatureParam });
+    useNurbsCpEdit({ selectedFeatureId, features, updateFeatureParam: updateFeatureParamCmd });
 
   const canvasPinComments = useCanvasPinCommentHandlers({
     authUserName: authUser?.name,
@@ -8253,9 +8384,9 @@ export function ShapeGeneratorInner() {
           finishEditing={finishEditing}
           toggleExpanded={toggleExpanded}
           ensureExpanded={ensureExpanded}
-          toggleFeature={toggleFeature}
+          toggleFeature={toggleFeatureCmd}
           removeNode={removeNode}
-          updateFeatureParam={updateFeatureParam}
+          updateFeatureParam={updateFeatureParamCmd}
           addFeature={addFeatureWithContext}
           moveFeatureByIds={handleMoveFeatureByIds}
           sketchProfiles={sketchProfiles}
@@ -8460,8 +8591,8 @@ export function ShapeGeneratorInner() {
             exportingFormat={exportingFormat}
             onSetCamPost={setMfgCamPost}
             activeCamPost={mfgCamPost}
-            onUndo={cmdHistory.undo}
-            onRedo={cmdHistory.redo}
+            onUndo={() => { featureParamCoalescer.flush(); cmdHistory.undo(); }}
+            onRedo={() => { featureParamCoalescer.flush(); cmdHistory.redo(); }}
             canUndo={cmdHistory.canUndo}
             canRedo={cmdHistory.canRedo}
             showHistoryPanel={showHistoryPanel}
@@ -8790,7 +8921,7 @@ export function ShapeGeneratorInner() {
                     min: 0,
                     max: typeof val === 'number' ? Math.max(val * 3, 100) : 100,
                     step: 1 })) : []}
-                  onParamChange={(param, value) => { if (selectedFeatureId) updateFeatureParam(selectedFeatureId, param, value); }}
+                  onParamChange={(param, value) => { if (selectedFeatureId) updateFeatureParamCmd(selectedFeatureId, param, value); }}
                   onClose={() => setShowPropertyManager(false)}
                   onApply={() => setShowPropertyManager(false)}
                 />
@@ -9494,7 +9625,7 @@ export function ShapeGeneratorInner() {
                     instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, enabled: editingNode.enabled, error: editingNode.error }}
                     definition={editingDef}
                     t={shapeLabels}
-                    onParamChange={(id, key, value) => updateFeatureParam(id, key, value)}
+                    onParamChange={(id, key, value) => updateFeatureParamCmd(id, key, value)}
                   />
                 </div>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
@@ -9510,7 +9641,7 @@ export function ShapeGeneratorInner() {
               features={features}
               selectedId={selectedFeatureId}
               onSelect={setSelectedFeatureId}
-              onToggle={toggleFeature}
+              onToggle={toggleFeatureCmd}
               onMoveFeature={handleMoveFeatureByIds}
               onEditFeature={(id) => {
                 const f = features.find(x => x.id === id);
@@ -9529,7 +9660,7 @@ export function ShapeGeneratorInner() {
                 }
               }}
               onDeleteFeature={removeNode}
-              onSuppressFeature={toggleFeature}
+              onSuppressFeature={toggleFeatureCmd}
               baseShapeName={shapeLabels[`shapeName_${selectedId}`] || selectedId}
               baseShapeIcon={SHAPE_ICONS[selectedId] || '🧊'}
               analysisProgress={
@@ -10386,7 +10517,7 @@ export function ShapeGeneratorInner() {
         setModelVars={setModelVars}
         showPartPlacement={showPartPlacement}
         placedParts={placedParts}
-        setPlacedParts={setPlacedParts}
+        setPlacedParts={setPlacedPartsTracked}
         selectedId={selectedId}
         params={params}
         setHighlightedPartId={setHighlightedPartId}
@@ -10518,10 +10649,12 @@ export function ShapeGeneratorInner() {
           features,
           addFeatureWithParams: (type, params) => addFeatureWithParams(type as FeatureType, params),
           addSketchFeature: () => { /* sketch via picker not via free-form prompt */ },
-          updateFeatureParam,
+          // Tracked wrappers: AI-driven edits land in commandHistory too, so
+          // a bad AI patch is one Ctrl+Z away from reverting.
+          updateFeatureParam: updateFeatureParamCmd,
           removeFeature,
           moveFeature,
-          toggleFeature,
+          toggleFeature: toggleFeatureCmd,
           clearAll,
         }}
         promptToIntents={async (prompt) => resolveFeatureEditPrompt(prompt, features)}
