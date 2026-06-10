@@ -90,3 +90,101 @@ describe('CommandHistory', () => {
     expect(commandHistory.future).toHaveLength(0);
   });
 });
+
+// ─── Undo unification Phase B ─────────────────────────────────────────────────
+// The legacy useHistory snapshot stack is gone; these tests pin the behaviors
+// it used to (partially) provide, now expressed purely as commands.
+
+describe('CommandHistory — Phase B (single source of truth)', () => {
+  beforeEach(() => {
+    commandHistory.clear();
+  });
+
+  /** Mirrors handleSelectShape: a shape switch is one command that swaps
+   *  selectedId + params and restores both on undo. */
+  function makeShapeChangeCmd(
+    state: { selectedId: string; params: Record<string, number> },
+    nextId: string,
+    nextParams: Record<string, number>,
+  ): HistoryCommand {
+    const prevSelectedId = state.selectedId;
+    const prevParams = { ...state.params };
+    return {
+      id: `shape-change-${nextId}-${Math.random()}`,
+      label: `Shape → ${nextId}`,
+      labelKo: `형상 변경 → ${nextId}`,
+      execute: () => { state.selectedId = nextId; state.params = { ...nextParams }; },
+      undo: () => { state.selectedId = prevSelectedId; state.params = prevParams; },
+    };
+  }
+
+  it('undo after a selectedId switch restores the prior shape selection + params', () => {
+    const state = { selectedId: 'box', params: { w: 10, h: 20 } };
+    commandHistory.execute(makeShapeChangeCmd(state, 'cylinder', { r: 5, h: 30 }));
+    expect(state.selectedId).toBe('cylinder');
+    commandHistory.undo();
+    expect(state.selectedId).toBe('box');
+    expect(state.params).toEqual({ w: 10, h: 20 });
+    // and redo re-applies the switch
+    commandHistory.redo();
+    expect(state.selectedId).toBe('cylinder');
+    expect(state.params).toEqual({ r: 5, h: 30 });
+  });
+
+  it('chained shape switches undo in LIFO order back to the original shape', () => {
+    const state = { selectedId: 'box', params: { w: 1 } };
+    commandHistory.execute(makeShapeChangeCmd(state, 'cylinder', { r: 2 }));
+    commandHistory.execute(makeShapeChangeCmd(state, 'sphere', { r: 3 }));
+    commandHistory.undo();
+    expect(state.selectedId).toBe('cylinder');
+    commandHistory.undo();
+    expect(state.selectedId).toBe('box');
+    expect(state.params).toEqual({ w: 1 });
+  });
+
+  it('a new mutation after undo clears the redo branch (canRedo drops)', () => {
+    const state = { selectedId: 'box', params: {} };
+    commandHistory.execute(makeShapeChangeCmd(state, 'cylinder', {}));
+    commandHistory.undo();
+    expect(commandHistory.canRedo).toBe(true);
+    commandHistory.execute(makeShapeChangeCmd(state, 'torus', {}));
+    expect(commandHistory.canRedo).toBe(false);
+    expect(commandHistory.redo()).toBe(false); // no zombie redo
+    expect(state.selectedId).toBe('torus');
+  });
+
+  it('canUndo/canRedo are reactive: every transition notifies subscribers with a fresh snapshot', () => {
+    const seen: { canUndo: boolean; canRedo: boolean }[] = [];
+    const unsub = commandHistory.subscribe(() => {
+      const snap = commandHistory.getSnapshot();
+      seen.push({ canUndo: snap.past.length > 0, canRedo: snap.future.length > 0 });
+    });
+    expect(commandHistory.canUndo).toBe(false);
+    expect(commandHistory.canRedo).toBe(false);
+
+    commandHistory.execute(makeCmd('a'));
+    expect(commandHistory.canUndo).toBe(true);
+    commandHistory.undo();
+    expect(commandHistory.canUndo).toBe(false);
+    expect(commandHistory.canRedo).toBe(true);
+    commandHistory.redo();
+    expect(commandHistory.canUndo).toBe(true);
+    expect(commandHistory.canRedo).toBe(false);
+
+    expect(seen).toEqual([
+      { canUndo: true, canRedo: false },   // execute
+      { canUndo: false, canRedo: true },   // undo
+      { canUndo: true, canRedo: false },   // redo
+    ]);
+
+    // snapshot identity changes per notify (useSyncExternalStore contract)
+    const s1 = commandHistory.getSnapshot();
+    commandHistory.execute(makeCmd('b'));
+    expect(commandHistory.getSnapshot()).not.toBe(s1);
+
+    unsub();
+    const before = seen.length;
+    commandHistory.execute(makeCmd('c'));
+    expect(seen.length).toBe(before); // unsubscribed → no further notifications
+  });
+});

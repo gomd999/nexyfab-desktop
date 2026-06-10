@@ -83,7 +83,6 @@ import { useFeatureStack, type FeatureHistory } from './useFeatureStack';
 import { useShapeCart } from './useShapeCart';
 import { exportBomCSV, exportBomExcel, estimateWeight, type BomRow } from './io/bomExport';
 import { canExportStepViaBridge } from './io/stepExporter';
-import { useHistory } from './useHistory';
 import { useToast } from './useToast';
 import ToastContainer from './ToastContainer';
 import SidebarResizer from './SidebarResizer';
@@ -579,7 +578,6 @@ export function ShapeGeneratorInner() {
   // Forward ref to handleGenerateActiveProfile so the early-mounted tool
   // listener can fire it (the handler is declared later in this function).
   const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
-  const history = useHistory();
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   // Auto-clear stale selection when undo/rollback removes the selected feature.
   // Avoids "selection points to a feature that no longer exists" after history nav.
@@ -3371,11 +3369,9 @@ export function ShapeGeneratorInner() {
   const shape = useMemo(() => SHAPES.find(s => s.id === selectedId) ?? SHAPES[0], [selectedId]);
 
   const handleSelectShape = useCallback((s: ShapeConfig) => {
-    // Round 29 Phase 4: route shape changes through commandHistory so Ctrl+Z
-    // reverses them in one step. Legacy `history.push` is kept as a backup
-    // snapshot so non-tracked callers (e.g. older URL-restore paths) can
-    // still rollback via the coordinated undo, but the modern stack is the
-    // primary source of truth.
+    // Undo Phase B: shape changes flow ONLY through commandHistory — the
+    // legacy useHistory snapshot stack has been retired (single source of
+    // truth for Ctrl+Z).
     const prevSelectedId = selectedId;
     const prevParams = { ...params };
     const newP: Record<string, number> = {};
@@ -3398,7 +3394,6 @@ export function ShapeGeneratorInner() {
         setParamExpressions(e);
       },
     });
-    history.push({ selectedId: prevSelectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     setSketchResult(null);
@@ -3406,7 +3401,7 @@ export function ShapeGeneratorInner() {
     setEditMode('none');
     setShowManufacturingCard(false);
     collabSendShapeChange(s.id);
-  }, [clearAll, selectedId, params, features, history, collabSendShapeChange, setIsSketchMode]);
+  }, [clearAll, selectedId, params, collabSendShapeChange, setIsSketchMode]);
 
   // ── LOD-during-drag: hide expensive edge overlay while a slider is held ──
   const [paramDragging, setParamDragging] = React.useState(false);
@@ -3448,11 +3443,9 @@ export function ShapeGeneratorInner() {
     }
   }, [params, modelVars, setParam, setParamExpression]);
 
-  // Push to history on significant param changes (debounced via blur/enter).
-  // Records both the legacy snapshot stack (for compat) AND a commandHistory
-  // entry so the modern Ctrl+Z path reverses the drag in one step.
-  // Phase 1 of the unified-history migration: param drags are now first-class
-  // command entries instead of opaque snapshots.
+  // Commit on significant param changes (debounced via blur/enter): one
+  // commandHistory entry per drag so Ctrl+Z reverses the whole drag in one
+  // step (undo Phase B — commandHistory is the only history stack).
   const handleParamCommit = useCallback(() => {
     const before = paramDragBeforeRef.current;
     paramDragBeforeRef.current = null;
@@ -3483,15 +3476,13 @@ export function ShapeGeneratorInner() {
         });
       }
     }
-    // Legacy snapshot — kept until all paths migrate.
-    history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
     if (paramDragTimerRef.current) { clearTimeout(paramDragTimerRef.current); paramDragTimerRef.current = null; }
     setParamDragging(false);
-  }, [history, selectedId, params, features, setParams, setParamExpressions]);
+  }, [params, setParams, setParamExpressions]);
 
   const handleShapeReset = useCallback(() => {
     // Phase 5: track shape resets in commandHistory so Ctrl+Z restores the
-    // user's prior parameters in one step. Legacy push retained as backup.
+    // user's prior parameters in one step.
     const prevParams = { ...params };
     const newP: Record<string, number> = {};
     const newE: Record<string, string> = {};
@@ -3511,7 +3502,6 @@ export function ShapeGeneratorInner() {
         setParamExpressions(e);
       },
     });
-    history.push({ selectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     // Reset formula values to defaults for new shape
@@ -3522,7 +3512,7 @@ export function ShapeGeneratorInner() {
     } else {
       setFormulaValues({});
     }
-  }, [shape, clearAll, history, selectedId, params, features]);
+  }, [shape, clearAll, selectedId, params]);
 
   // ── Formula values (for functionSurface / latheProfile etc.) ──────────────
   const [formulaValues, setFormulaValues] = React.useState<Record<string, string>>(() => {
@@ -3546,53 +3536,29 @@ export function ShapeGeneratorInner() {
     setFormulaValues(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  // Coordinated undo/redo across the two history stacks.
+  // Undo/redo — commandHistory is the SINGLE source of truth (undo Phase B).
   //
-  // We have two independent histories that both track edits:
-  //   - `commandHistory` (Command pattern, src/.../history/CommandHistory.ts):
-  //     used by mate-to-placement, the tracked param-change panel, etc.
-  //   - `history` (legacy useHistory hook): plain shape+params snapshots
-  //     pushed by direct setSelectedId/setParams paths.
+  // Phase A routed every user mutation (base params, feature add/remove/
+  // param/suppress, assembly mates, COTS inserts, drag gestures, shape
+  // switches) through commandHistory; Phase B retired the legacy useHistory
+  // snapshot stack ({selectedId, params, featureIds} — it could not restore
+  // feature params and duplicated every command-tracked mutation), so the
+  // drains below no longer need a fallback.
   //
-  // Ctrl+Z used to drain only the legacy stack, which silently swallowed
-  // commandHistory entries. We now drain whichever stack actually has work
-  // pending — preferring commandHistory (it has finer-grained undo for
-  // recent operations). When commandHistory is empty we fall back to the
-  // legacy snapshot stack so older operations are still reversible.
-  //
-  // Long-term: migrate all mutations onto commandHistory and remove the
-  // legacy snapshot stack (tracked as a follow-up; not in this audit).
+  // Sketch mode is the one deliberate exception: while a sketch session is
+  // active, Ctrl+Z is handled by the sketch editor's own session-scoped stack
+  // (see sketchUndoRef below) and these drains are not invoked.
   const handleHistoryUndo = useCallback(() => {
     // Commit any still-settling feature-param edit FIRST so Ctrl+Z within the
     // 500ms coalescing window undoes that edit (not the command before it).
     featureParamCoalescer.flush();
-    if (cmdHistory.canUndo) {
-      cmdHistory.undo();
-      return;
-    }
-    const snap = history.undo();
-    if (!snap) return;
-    setSelectedId(snap.selectedId);
-    applySceneParamsToSetters(SHAPE_MAP[snap.selectedId], snap.params, {
-      setParams,
-      setParamExpressions,
-    });
-  }, [history, cmdHistory, featureParamCoalescer, setParams, setParamExpressions]);
+    cmdHistory.undo();
+  }, [cmdHistory, featureParamCoalescer]);
 
   const handleHistoryRedo = useCallback(() => {
     featureParamCoalescer.flush();
-    if (cmdHistory.canRedo) {
-      cmdHistory.redo();
-      return;
-    }
-    const snap = history.redo();
-    if (!snap) return;
-    setSelectedId(snap.selectedId);
-    applySceneParamsToSetters(SHAPE_MAP[snap.selectedId], snap.params, {
-      setParams,
-      setParamExpressions,
-    });
-  }, [history, cmdHistory, featureParamCoalescer, setParams, setParamExpressions]);
+    cmdHistory.redo();
+  }, [cmdHistory, featureParamCoalescer]);
 
   // ─── Command-pattern wrappers (for tracked undo/redo via CommandHistory) ────
 
@@ -3614,35 +3580,8 @@ export function ShapeGeneratorInner() {
       } });
   }, [params, setParam, setParamExpression]);
 
-  const _handleShapeChangeCmd = useCallback((s: ShapeConfig) => {
-    const prevId = selectedId;
-    const prevParams = { ...params };
-    const id = `shape-${s.id}-${Date.now()}`;
-    const newP: Record<string, number> = {};
-    const newE: Record<string, string> = {};
-    s.params.forEach(sp => { newP[sp.key] = sp.default; newE[sp.key] = String(sp.default); });
-    commandHistory.execute({
-      id,
-      label: `Shape → ${s.id}`,
-      labelKo: `형상 변경 → ${s.id}`,
-      execute: () => {
-        history.push({ selectedId: prevId, params: prevParams, featureIds: features.map(f => f.id) });
-        setSelectedId(s.id);
-        setParams(newP);
-        setParamExpressions(newE);
-        clearAll();
-        setSelectedFeatureId(null);
-        setSketchResult(null);
-        setEditMode('none');
-      },
-      undo: () => {
-        setSelectedId(prevId);
-        setParams(prevParams);
-        const e: Record<string, string> = {};
-        Object.entries(prevParams).forEach(([k, v]) => { e[k] = String(v); });
-        setParamExpressions(e);
-      } });
-  }, [selectedId, params, features, history, clearAll]);
+  // (Phase B: the unused `_handleShapeChangeCmd` duplicate of handleSelectShape
+  // was deleted along with the legacy useHistory stack it pushed to.)
 
   // Tracked feature add — drops the legacy `_` prefix and is now wired into
   // every UI entry point that adds a feature (Round 26 Phase 2). Restoration
@@ -5462,7 +5401,25 @@ export function ShapeGeneratorInner() {
     prevIsSketchModeRef.current = isSketchMode;
   }, [isSketchMode]);
 
-  // ── Sketch undo/redo stack (unlimited, covers profiles + constraints + dimensions) ──
+  // ── Sketch undo/redo stack (session-scoped; covers profiles + constraints + dimensions) ──
+  //
+  // Undo Phase B note: this stack is deliberately KEPT separate from
+  // commandHistory. Sketch mode is a modal editing session — Ctrl+Z inside it
+  // is routed to handleSketchUndo by the sketch editor / useKeyboardShortcuts
+  // (never to the global commandHistory drain). Unifying onto commandHistory
+  // would break two invariants:
+  //   1. Scope: once the in-session entries were exhausted, a unified Ctrl+Z
+  //      would walk past the sketch-entry boundary and undo pre-sketch
+  //      modeling commands while the sketch UI is still open (mode/state
+  //      corruption — e.g. undoing a shape switch under an open sketch).
+  //   2. Granularity: in-sketch micro-edits (per-segment draws, drag-solve
+  //      gestures via onPointDragStart — one snapshot per gesture) would
+  //      flood the document history shown in HistoryPanel.
+  // This stack dies with the session and never duplicated the legacy
+  // useHistory stack, so retiring that stack does not affect it. (The
+  // session's exit paths — setSketchResult / addSketchFeature — are
+  // document-level mutations that remain untracked today; making "finish
+  // sketch" a single commandHistory step is a separate follow-up.)
   type SketchSnapshot = {
     profiles: SketchProfile[];
     constraints: SketchConstraint[];
@@ -5991,8 +5948,7 @@ export function ShapeGeneratorInner() {
         for (let i = 0; i < featuresAddedRef; i++) undoLast();
       },
     });
-    history.push({ selectedId, params: prevParams, featureIds: features.map(f => f.id) });
-  }, [addFeature, history, selectedId, params, features, setParam, setParams, setParamExpressions, undoLast]);
+  }, [addFeature, params, setParam, setParams, setParamExpressions, undoLast]);
 
   /** Called after modify is auto-applied — show undo toast */
   const handleModifyAutoApplied = useCallback((actionCount: number) => {
@@ -6299,13 +6255,12 @@ export function ShapeGeneratorInner() {
         setParamExpressions(e);
       },
     });
-    history.push({ selectedId: prevSelectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     setSketchResult(null);
     setEditMode('none');
     addToast('success', lt.shapeFromText(sc.id));
-  }, [selectedId, params, features, history, setSelectedId, setParams, setParamExpressions, clearAll, setSelectedFeatureId, setSketchResult, setEditMode, addToast, lt]);
+  }, [selectedId, params, setSelectedId, setParams, setParamExpressions, clearAll, setSelectedFeatureId, setSketchResult, setEditMode, addToast, lt]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // CONTEXT MENU HANDLERS
@@ -8441,8 +8396,8 @@ export function ShapeGeneratorInner() {
         lang={lang}
         langSeg={langSeg}
         isSketchMode={isSketchMode}
-        canUndo={history.canUndo}
-        canRedo={history.canRedo}
+        canUndo={cmdHistory.canUndo}
+        canRedo={cmdHistory.canRedo}
         onHistoryUndo={handleHistoryUndo}
         onHistoryRedo={handleHistoryRedo}
         showVersionPanel={showVersionPanel}

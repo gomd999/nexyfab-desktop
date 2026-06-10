@@ -24,6 +24,7 @@ import { useSearchParams } from 'next/navigation';
 import { Shell } from './Shell';
 import { I } from './Icons';
 import { useShellBridge } from './shellBridgeStore';
+import { useCommandHistory } from '../history/useCommandHistory';
 import { sketchStatusLabel } from './sketchStatusUi';
 import { ViewportChips } from './ViewportChips';
 import { SelectionBubble } from './SelectionBubble';
@@ -247,6 +248,11 @@ export function ModelerShell() {
     ? [{ initials: userInitials, color: userColor }, ...remoteAvatars]
     : [];
 
+  // Undo/redo button state — read straight from the commandHistory singleton
+  // (shared module instance with Inner; useSyncExternalStore keeps it live).
+  // Undo Phase B: replaces the previous hardcoded `canUndo: true`.
+  const { canUndo, canRedo } = useCommandHistory();
+
   // Pull live status from Inner via the bridge store.
   const bridgeEditMode = useShellBridge(s => s.editMode);
   const bridgeUnits = useShellBridge(s => s.unitSystem);
@@ -365,8 +371,11 @@ export function ModelerShell() {
             }
           : undefined,
         avatars,
-        canUndo: true,
-        canRedo: true,
+        // In sketch mode the Ctrl+Z we dispatch is consumed by the sketch
+        // session's own stack (not commandHistory), whose depth isn't exposed
+        // reactively — keep the buttons enabled there rather than lying.
+        canUndo: bridgeEditMode === 'sketch' ? true : canUndo,
+        canRedo: bridgeEditMode === 'sketch' ? true : canRedo,
         onNew: () => setFileMenuOpen(v => !v),
         onOpen: () => router.push(`/${langSeg}/nexyfab/projects`),
         onSave: () => {
