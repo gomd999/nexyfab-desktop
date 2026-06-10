@@ -63,9 +63,9 @@ export function useProcessRecommendation(
     const types = features.map(f => f.type) as string[];
 
     // ── Sheet metal signals ──
-    if (types.some(t => ['bend', 'flange', 'flatPattern'].includes(t))) {
+    if (types.some(t => ['bend', 'flange', 'flatPattern', 'hem', 'jog', 'tab', 'bendRelief', 'cornerRelief'].includes(t))) {
       scores.sheet_metal += 70;
-      reasons.sheet_metal.push('bend / flange / flatPattern 피처 감지');
+      reasons.sheet_metal.push('판금 피처(bend/flange/hem/tab/relief 등) 감지');
     }
     if (types.includes('weldment')) {
       scores.sheet_metal += 25;

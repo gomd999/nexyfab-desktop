@@ -74,6 +74,24 @@ export const FEATURE_PARAM_RANGES: Record<string, Record<string, ParamRange>> = 
     height: { min: 1, max: 100, default: 10 },
     direction: { min: 0, max: 1, default: 0, integer: true },
   },
+  tab: {
+    width: { min: 1, max: 200, default: 20 },
+    length: { min: 1, max: 200, default: 10 },
+    position: { min: 1, max: 99, default: 50 },
+    edgeIndex: { min: 0, max: 3, default: 0, integer: true },
+  },
+  bendRelief: {
+    width: { min: 0.5, max: 50, default: 3 },
+    depth: { min: 0.5, max: 100, default: 5 },
+    position: { min: 1, max: 99, default: 50 },
+    shape: { min: 0, max: 1, default: 0, integer: true },
+  },
+  cornerRelief: {
+    corner: { min: 0, max: 3, default: 0, integer: true },
+    shape: { min: 0, max: 1, default: 0, integer: true },
+    size: { min: 0.5, max: 50, default: 4 },
+    inset: { min: 0, max: 50, default: 0 },
+  },
 };
 
 export function isSchemaKnownFeature(type: string): boolean {
@@ -90,7 +108,8 @@ export function isSchemaKnownFeature(type: string): boolean {
 export const KNOWN_FEATURE_TYPES: ReadonlySet<string> = new Set([
   'fillet', 'chamfer', 'shell', 'hole', 'linearPattern', 'circularPattern',
   'mirror', 'boolean', 'draft', 'scale', 'moveCopy', 'splitBody', 'bend',
-  'flange', 'hem', 'jog', 'flatPattern', 'variableFillet', 'boundarySurface',
+  'flange', 'hem', 'jog', 'tab', 'bendRelief', 'cornerRelief',
+  'flatPattern', 'variableFillet', 'boundarySurface',
   'revolve', 'sweep', 'loft', 'thread', 'moldTools', 'weldment', 'nurbsSurface',
   'helix', 'variableShell', 'rib',
   // sketch types are materialised in the pipeline, not via FEATURE_MAP

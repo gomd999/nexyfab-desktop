@@ -157,6 +157,9 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'flange':
     case 'hem':
     case 'jog':
+    case 'tab':
+    case 'bendRelief':
+    case 'cornerRelief':
     case 'flatPattern':
       return `${nfabTag(f.type)}\n${prior}`;
     case 'sweep':

@@ -4625,6 +4625,32 @@ export function ShapeGeneratorInner() {
           addFeatureWithParams('bend', { ...baseParams, angle: 90, radius: 1.5, position: 0.5, direction: 0 });
           addToast('info', 'Bend 추가됨');
           break;
+        // Tab — flat rectangular protrusion grown from a sheet edge
+        // (undoable through the command-history wrapper, then tunable in
+        // FeatureParams like every other feature).
+        case 'sm.tab':
+          addFeatureWithParamsAndContext('tab', { width: 20, length: 10, position: 50, edgeIndex: 0 });
+          addToast('info', 'Tab 추가됨 — 피처 파라미터에서 폭/길이/위치 조정');
+          break;
+        // Hem — the hem feature has existed in the registry; this finally
+        // routes the ribbon button to it (closed hem on the +Z edge by
+        // default; type/length/edge editable in FeatureParams).
+        case 'sm.hem':
+          addFeatureWithParamsAndContext('hem', { hemType: 0, length: 6, edgeIndex: 0 });
+          addToast('info', 'Hem 추가됨 — 피처 파라미터에서 종류/길이 조정');
+          break;
+        // Bend relief — notch pair at both ends of the bend line. Add it
+        // BEFORE the bend at the same position % so the notches line up.
+        case 'sm.bend-relief':
+          addFeatureWithParamsAndContext('bendRelief', { width: 3, depth: 5, position: 50, shape: 0 });
+          addToast('info', 'Bend relief 추가됨 — 굽힘과 같은 위치%로 정렬하세요');
+          break;
+        // Corner relief — circular cut centered on a sheet corner where
+        // two flange bend lines meet.
+        case 'sm.corner-relief':
+          addFeatureWithParamsAndContext('cornerRelief', { corner: 0, shape: 0, size: 4, inset: 0 });
+          addToast('info', 'Corner relief 추가됨 — 코너/크기 조정 가능');
+          break;
         case 'sm.flatten':
           // Route through the nexyfab:tool 'flat-pattern' case, which opens
           // SheetMetalPanel (its Unfold tab hosts FlatPatternPanel).
@@ -4640,7 +4666,7 @@ export function ShapeGeneratorInner() {
     };
     window.addEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
     return () => window.removeEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
-  }, [addFeatureWithParams, addToast]);
+  }, [addFeatureWithParams, addFeatureWithParamsAndContext, addToast]);
 
   // Shell-v2 Assembly mate hookup → run v3 solver on every mate change.
   // Builds a v3 Mate spec from each AssemblyMate, seeds the current placed
