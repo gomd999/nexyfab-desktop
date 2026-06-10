@@ -108,3 +108,6 @@ public/occt-worker/node_modules/
 # Phase 5: opencascade.js loader is copied from node_modules by scripts/copy-occt.js
 # at prebuild (the .wasm is already ignored by *.wasm above). Generated, not source.
 public/occt-worker/opencascade.js
+
+cron-worker/.cron-secret.txt
+.claude/worktrees/

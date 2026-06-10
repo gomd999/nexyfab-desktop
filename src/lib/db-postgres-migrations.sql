@@ -1668,3 +1668,42 @@ CREATE INDEX IF NOT EXISTS idx_dodo_webhook_events_received_at
 -- from free text. (Client + send-mail wiring shipped alongside.)
 ALTER TABLE nf_inquiries ADD COLUMN IF NOT EXISTS factory_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_inquiries_factory ON nf_inquiries(factory_id);
+
+-- ─── v90: project sharing tables (members + email invites) ───────────────────
+-- Promoted from runtime lazy-create (src/lib/nfProjectAccess.ts,
+-- nfProjectInvites.ts) so Postgres gets durable schema with BIGINT timestamps.
+-- The lazy CREATEs use INTEGER, which on Postgres overflows ms-epoch values
+-- (Date.now() ≈ 1.7e12 > INT4 max 2.1e9); these BIGINT definitions run at
+-- startup before any lazy CREATE-IF-NOT-EXISTS, so the correct types win.
+CREATE TABLE IF NOT EXISTS nf_project_members (
+  project_id TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  role       TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  PRIMARY KEY (project_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_pm_user ON nf_project_members(user_id);
+
+CREATE TABLE IF NOT EXISTS nf_project_invites (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL,
+  email_norm  TEXT NOT NULL,
+  role        TEXT NOT NULL,
+  token       TEXT NOT NULL UNIQUE,
+  expires_at  BIGINT NOT NULL,
+  created_at  BIGINT NOT NULL,
+  UNIQUE (project_id, email_norm)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_pinv_token ON nf_project_invites(token);
+CREATE INDEX IF NOT EXISTS idx_nf_pinv_project ON nf_project_invites(project_id);
+
+-- Repair pass: deployments where the runtime lazy-CREATE ran before v90 have
+-- INT4 timestamp columns (Date.now() ~ 1.7e12 overflows INT4 -> "integer out
+-- of range" on every insert), and the CREATE IF NOT EXISTS above no-ops there.
+-- These ALTERs are unconditional but safe: the tables are guaranteed to exist
+-- by the CREATEs above, and BIGINT->BIGINT re-alters are cheap on these tiny
+-- tables. This whole file runs as one batch at startup, so every statement
+-- here must always succeed -- these do.
+ALTER TABLE nf_project_members ALTER COLUMN created_at TYPE BIGINT;
+ALTER TABLE nf_project_invites ALTER COLUMN expires_at TYPE BIGINT;
+ALTER TABLE nf_project_invites ALTER COLUMN created_at TYPE BIGINT;

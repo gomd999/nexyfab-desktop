@@ -1,0 +1,6 @@
+name = "nexyfab-cron"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+[triggers]
+crons = ["*/5 * * * *", "0 18 * * *", "0 0 * * *", "0 1 * * 1"]

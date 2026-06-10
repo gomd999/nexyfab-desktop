@@ -236,6 +236,35 @@ export async function PATCH(req: NextRequest) {
   }
 
   const db = getDbAdapter();
+
+  const existing = await db.queryOne<QuoteRow>('SELECT * FROM nf_quotes WHERE id = ?', id);
+  if (!existing) {
+    return NextResponse.json({ error: '견적을 찾을 수 없습니다.' }, { status: 404 });
+  }
+
+  // Authorization: accepting a quote now auto-creates a contract AND a
+  // production order, so "any logged-in user who knows the quote id" is no
+  // longer an acceptable bar. Admins may set any status; the RFQ owner
+  // (buyer) may accept/reject their own quotes; everyone else is denied.
+  const isAdmin = authUser.globalRole === 'super_admin' || (await verifyAdmin(req));
+  if (!isAdmin) {
+    if (status !== 'accepted' && status !== 'rejected') {
+      return NextResponse.json({ error: '이 상태로 변경할 권한이 없습니다.' }, { status: 403 });
+    }
+    const rfqOwner = existing.inquiry_id
+      ? await db.queryOne<{ user_id: string | null; user_email: string | null }>(
+          'SELECT user_id, user_email FROM nf_rfqs WHERE id = ?',
+          existing.inquiry_id,
+        ).catch(() => null)
+      : null;
+    const ownsByUserId = !!rfqOwner?.user_id && rfqOwner.user_id === authUser.userId;
+    const ownsByEmail = !rfqOwner?.user_id && !!rfqOwner?.user_email && !!authUser.email
+      && rfqOwner.user_email.trim().toLowerCase() === authUser.email.trim().toLowerCase();
+    if (!ownsByUserId && !ownsByEmail) {
+      return NextResponse.json({ error: '이 견적을 변경할 권한이 없습니다.' }, { status: 403 });
+    }
+  }
+
   const updatedAt = new Date().toISOString();
   let result: { changes: number };
   try {
@@ -356,6 +385,92 @@ export async function PATCH(req: NextRequest) {
         // Non-blocking: the quote still flips to accepted even if contract
         // creation hits a race or transient DB error. Operator can retry
         // via /admin/contracts.
+      }
+
+      // Auto-create the production order (nf_orders) so the buyer immediately
+      // gets a trackable order (steps / QC / shipping) instead of the pipeline
+      // stalling at an accepted-quote+contract with no production record. The
+      // modeler's direct /api/nexyfab/orders path required a manual checkout;
+      // an accepted quote IS the commitment, so we materialize the order here.
+      // Idempotent on quote_id; non-blocking. We intentionally do NOT fire
+      // onContractCreated (NexyFlow approval) — the contract row above already
+      // represents the deal, and the orders route's trigger is for the manual
+      // checkout path. (2026-06-09 design→manufacturing continuity.)
+      try {
+        const existingOrder = await db.queryOne<{ id: string }>(
+          `SELECT id FROM nf_orders WHERE quote_id = ? LIMIT 1`,
+          id,
+        ).catch(() => null);
+        if (!existingOrder) {
+          const rfqForOrder = await db.queryOne<{
+            user_id: string | null; quantity: number | null; shape_name: string | null;
+          }>(
+            `SELECT user_id, quantity, shape_name FROM nf_rfqs WHERE id = ?`,
+            quote.inquiryId,
+          ).catch(() => null);
+          // No resolvable buyer → skip. An order owned by user_id '' is an
+          // orphan no buyer can ever see; better to leave it to the operator
+          // (who gets the quote_accepted notification above) than to create
+          // an invisible row.
+          if (!rfqForOrder?.user_id) {
+            throw new Error(`RFQ ${quote.inquiryId ?? '(none)'} has no user_id — skipping order auto-create`);
+          }
+          const DAY = 86_400_000;
+          const ordNow = Date.now();
+          const leadDays = 14;
+          const steps = [
+            { label: 'Order Placed',  labelKo: '주문 완료', completedAt: ordNow },
+            { label: 'In Production', labelKo: '생산 중',   estimatedAt: ordNow + 2 * DAY },
+            { label: 'QC',            labelKo: '품질 검사', estimatedAt: ordNow + (leadDays - 4) * DAY },
+            { label: 'Shipped',       labelKo: '배송 시작', estimatedAt: ordNow + (leadDays - 2) * DAY },
+            { label: 'Delivered',     labelKo: '배송 완료', estimatedAt: ordNow + leadDays * DAY },
+          ];
+          const ordId = `ORD-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+          const ordAmount = quote.estimatedAmount ?? 0;
+          // Lazy-add the quote_id column so deploys without the migration work.
+          await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
+          // Unique index makes the check-then-insert above race-safe: a
+          // concurrent second accept hits the constraint and lands in this
+          // block's catch instead of creating a duplicate order. Multiple
+          // NULL quote_ids (manual-checkout orders) are allowed on both
+          // SQLite and Postgres.
+          await db.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_nf_orders_quote_id ON nf_orders(quote_id)',
+          ).catch(() => {});
+          await db.execute(
+            `INSERT INTO nf_orders
+              (id, rfq_id, quote_id, user_id, part_name, manufacturer_name, quantity,
+               total_price_krw, total_price, currency, buyer_country,
+               hs_code, incoterm, ship_from_country, ship_to_country,
+               status, steps, created_at, estimated_delivery_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ordId,
+            quote.inquiryId,
+            id,
+            rfqForOrder.user_id,
+            rfqForOrder.shape_name ?? quote.projectName,
+            // manufacturer_name is NOT NULL in both schemas — a null here
+            // makes the INSERT throw and the order silently never appear.
+            quote.factoryName || quote.partnerEmail || '미지정',
+            rfqForOrder.quantity ?? 1,
+            ordAmount,
+            ordAmount,
+            'KRW',
+            null,
+            null,
+            null,
+            null,
+            null,
+            'placed',
+            JSON.stringify(steps),
+            ordNow,
+            ordNow + leadDays * DAY,
+          );
+        }
+      } catch (err) {
+        console.warn('[quotes PATCH] order auto-create failed:', err);
+        // Non-blocking: acceptance + contract still succeed. Operator can place
+        // the order manually if this races or hits a transient DB error.
       }
     } else if (status === 'rejected') {
       createNotification(
