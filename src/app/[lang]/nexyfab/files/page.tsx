@@ -116,7 +116,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  cad: '#388bfd', image: '#a371f7', document: '#d29922', general: '#6e7681',
+  cad: '#388bfd', image: '#a371f7', document: '#d29922', general: 'var(--nx-text-3)',
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -242,7 +242,7 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
   // ── Login guard ────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#8b949e', fontSize: '15px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--nx-text-2)', fontSize: '15px' }}>
         {t.loginRequired}
       </div>
     );
@@ -255,14 +255,14 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: 960, margin: '0 auto', color: '#c9d1d9' }}>
+    <div style={{ padding: '32px', maxWidth: 960, margin: '0 auto', color: 'var(--nx-text)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#e6edf3' }}>{t.title}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--nx-text)' }}>{t.title}</h1>
         <button
           onClick={() => setShowRetention(!showRetention)}
-          style={{ fontSize: 12, color: '#8b949e', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+          style={{ fontSize: 12, color: 'var(--nx-text-2)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
         >
           {t.retentionTitle}
         </button>
@@ -271,10 +271,10 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
       {/* Retention notice (collapsible) */}
       {showRetention && (
         <div style={{
-          marginBottom: 16, padding: '12px 16px', background: '#161b22',
-          border: '1px solid #30363d', borderRadius: 10, fontSize: 12, color: '#8b949e', lineHeight: 1.7,
+          marginBottom: 16, padding: '12px 16px', background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)', borderRadius: 10, fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.7,
         }}>
-          <div style={{ fontWeight: 700, color: '#c9d1d9', marginBottom: 4 }}>{t.retentionTitle}</div>
+          <div style={{ fontWeight: 700, color: 'var(--nx-text)', marginBottom: 4 }}>{t.retentionTitle}</div>
           {t.retentionItems.map((item, i) => (
             <div key={i}>• {item}</div>
           ))}
@@ -284,19 +284,19 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
       {/* Storage usage bar */}
       {storage && (
         <div style={{
-          marginBottom: 20, padding: '14px 18px', background: '#161b22',
-          border: '1px solid #30363d', borderRadius: 12,
+          marginBottom: 20, padding: '14px 18px', background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)', borderRadius: 12,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>{t.storageUsed}</span>
-            <span style={{ fontSize: 13, color: '#8b949e' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>{t.storageUsed}</span>
+            <span style={{ fontSize: 13, color: 'var(--nx-text-2)' }}>
               {storage.used_gb.toFixed(2)} GB {t.of} {storage.limit_gb} GB
-              <span style={{ marginLeft: 6, fontSize: 11, color: storage.usage_percent > 90 ? '#f85149' : '#8b949e' }}>
+              <span style={{ marginLeft: 6, fontSize: 11, color: storage.usage_percent > 90 ? '#f85149' : 'var(--nx-text-2)' }}>
                 ({storage.usage_percent}%)
               </span>
             </span>
           </div>
-          <div style={{ height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: 6, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 3, transition: 'width 0.3s',
               width: `${Math.min(100, storage.usage_percent)}%`,
@@ -318,8 +318,8 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
         onClick={() => fileInputRef.current?.click()}
         style={{
           marginBottom: 20, padding: '28px 20px', textAlign: 'center', cursor: 'pointer',
-          borderRadius: 12, border: `2px dashed ${isDragging ? '#388bfd' : '#30363d'}`,
-          background: isDragging ? 'rgba(56,139,253,0.08)' : '#0d1117',
+          borderRadius: 12, border: `2px dashed ${isDragging ? '#388bfd' : 'var(--nx-border)'}`,
+          background: isDragging ? 'rgba(56,139,253,0.08)' : 'var(--nx-bg)',
           transition: 'all 0.2s',
         }}
       >
@@ -336,8 +336,8 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
         ) : (
           <>
             <div style={{ fontSize: 28, marginBottom: 6 }}>{isDragging ? '📂' : '📤'}</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#e6edf3' }}>{t.dropHint}</div>
-            <div style={{ fontSize: 12, color: '#6e7681', marginTop: 4 }}>{t.dropFormats}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--nx-text)' }}>{t.dropHint}</div>
+            <div style={{ fontSize: 12, color: 'var(--nx-text-3)', marginTop: 4 }}>{t.dropFormats}</div>
           </>
         )}
       </div>
@@ -373,9 +373,9 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
             onClick={() => { setCategory(cat); setPage(1); }}
             style={{
               padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-              border: `1px solid ${category === cat ? '#388bfd' : '#30363d'}`,
+              border: `1px solid ${category === cat ? '#388bfd' : 'var(--nx-border)'}`,
               background: category === cat ? 'rgba(56,139,253,0.15)' : 'transparent',
-              color: category === cat ? '#388bfd' : '#8b949e',
+              color: category === cat ? '#388bfd' : 'var(--nx-text-2)',
               cursor: 'pointer', transition: 'all 0.15s',
             }}
           >
@@ -386,12 +386,12 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
 
       {/* File list */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#6e7681' }}>{t.loading}</div>
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--nx-text-3)' }}>{t.loading}</div>
       ) : files.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#8b949e' }}>{t.noFiles}</div>
-          <div style={{ fontSize: 12, color: '#6e7681', marginTop: 4 }}>{t.noFilesDesc}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--nx-text-2)' }}>{t.noFiles}</div>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-3)', marginTop: 4 }}>{t.noFilesDesc}</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -399,17 +399,17 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
             <div key={file.id} style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '10px 14px', borderRadius: 10,
-              background: '#161b22', border: '1px solid #21262d',
+              background: 'var(--nx-panel)', border: '1px solid var(--nx-panel-2)',
               transition: 'border-color 0.15s',
             }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = '#30363d')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = '#21262d')}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--nx-border)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--nx-panel-2)')}
             >
               {/* Icon */}
               <div style={{
                 width: 36, height: 36, borderRadius: 8, display: 'flex',
                 alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                background: `${CATEGORY_COLORS[file.category] ?? '#6e7681'}22`,
+                background: `${CATEGORY_COLORS[file.category] ?? 'var(--nx-text-3)'}22`,
                 flexShrink: 0,
               }}>
                 {CATEGORY_ICONS[file.category] ?? '📎'}
@@ -418,17 +418,17 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
               {/* File info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: 13, fontWeight: 600, color: '#e6edf3',
+                  fontSize: 13, fontWeight: 600, color: 'var(--nx-text)',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
                   {file.filename}
                 </div>
-                <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {formatBytes(file.size_bytes)} · {formatDate(file.created_at)}
                   {file.ref_type && (
                     <span style={{
                       marginLeft: 6, padding: '1px 6px', borderRadius: 4,
-                      background: '#21262d', fontSize: 10,
+                      background: 'var(--nx-panel-2)', fontSize: 10,
                     }}>
                       {file.ref_type}{file.ref_id ? ` #${file.ref_id.slice(0, 8)}` : ''}
                     </span>
@@ -444,7 +444,7 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
                   rel="noopener noreferrer"
                   style={{
                     padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                    border: '1px solid #30363d', background: '#21262d', color: '#c9d1d9',
+                    border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
                     textDecoration: 'none', cursor: 'pointer',
                   }}
                 >
@@ -478,9 +478,9 @@ export default function FilesPage({ params }: { params: Promise<{ lang: string }
               onClick={() => setPage(p)}
               style={{
                 width: 32, height: 32, borderRadius: 8, fontSize: 12, fontWeight: 600,
-                border: `1px solid ${p === page ? '#388bfd' : '#30363d'}`,
+                border: `1px solid ${p === page ? '#388bfd' : 'var(--nx-border)'}`,
                 background: p === page ? 'rgba(56,139,253,0.15)' : 'transparent',
-                color: p === page ? '#388bfd' : '#8b949e',
+                color: p === page ? '#388bfd' : 'var(--nx-text-2)',
                 cursor: 'pointer',
               }}
             >

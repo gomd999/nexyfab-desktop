@@ -74,7 +74,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
     else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
       router.push(`/${langSeg}/shape-generator${project}`);
     else if (id === 'assembly')
-      router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
+      router.push(`/${langSeg}/shape-generator${project ? project + '&entry=assembly' : '?entry=assembly'}`);
   };
   const [matFilter, setMatFilter] = useState<MaterialSwatch['group'] | 'all'>('all');
   const [selectedMaterial, setSelectedMaterialLocal] = useState(() => useSceneStore.getState().materialId ?? 'aluminum');
@@ -148,6 +148,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
           filename: isKo ? '렌더 — 무제 파트' : 'Render — Untitled Part',
           savedAt: isKo ? '자동 저장됨' : 'Auto-saved',
           breadcrumbs: ['Projects', 'Render Studio'],
+          onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
           mode: isKo ? '렌더 모드' : 'RENDER STUDIO',
           onShare: () => {},
           onPublish: onRenderFinal,

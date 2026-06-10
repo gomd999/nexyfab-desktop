@@ -1,8 +1,14 @@
 'use client';
 
 import { use, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { COTS_PARTS, COTSPart } from '@/app/[lang]/shape-generator/cots/cotsData';
 import { isKorean } from '@/lib/i18n/normalize';
+
+// Handoff key — the COTS selection is stashed here so the RFQ page can pick it
+// up and prefill the request (previously the "Send RFQ" link dropped the
+// selection entirely). (2026-06-09 follow-up #1)
+const COTS_RFQ_STASH_KEY = 'nexyfab_cots_rfq';
 
 const CATEGORIES = ['All', 'bolt', 'nut', 'bearing', 'collar', 'clip', 'washer'] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -20,6 +26,7 @@ const CATEGORY_LABELS: Record<Category, { ko: string; en: string }> = {
 export default function CotsPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   const isKo = isKorean(lang);
+  const router = useRouter();
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<Category>('All');
@@ -56,23 +63,23 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0d1117',
-      color: '#e6edf3',
+      background: 'var(--nx-bg)',
+      color: 'var(--nx-text)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       {/* Header */}
       <div style={{
-        borderBottom: '1px solid #21262d',
+        borderBottom: '1px solid var(--nx-panel-2)',
         padding: '20px 28px',
         position: 'sticky',
         top: 0,
-        background: '#0d1117',
+        background: 'var(--nx-bg)',
         zIndex: 10,
       }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
           🔩 {isKo ? 'COTS 부품 카탈로그' : 'COTS Parts Catalog'}
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6e7681' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--nx-text-3)' }}>
           {isKo
             ? '규격 부품을 검색하고 견적에 추가하세요'
             : 'Search standard parts and add them to your RFQ'}
@@ -93,9 +100,9 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
                 minWidth: 220,
                 padding: '8px 12px',
                 borderRadius: 8,
-                background: '#161b22',
-                border: '1px solid #30363d',
-                color: '#e6edf3',
+                background: 'var(--nx-panel)',
+                border: '1px solid var(--nx-border)',
+                color: 'var(--nx-text)',
                 fontSize: 13,
                 outline: 'none',
               }}
@@ -108,9 +115,9 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
                   style={{
                     padding: '6px 12px',
                     borderRadius: 6,
-                    border: `1px solid ${category === cat ? '#388bfd' : '#30363d'}`,
+                    border: `1px solid ${category === cat ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                     background: category === cat ? '#388bfd1a' : 'transparent',
-                    color: category === cat ? '#388bfd' : '#8b949e',
+                    color: category === cat ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -124,14 +131,14 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
           </div>
 
           {/* Count */}
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#6e7681' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--nx-text-3)' }}>
             {filtered.length}{isKo ? '개 부품' : ' parts'}
           </p>
 
           {/* Table */}
           <div style={{
-            background: '#161b22',
-            border: '1px solid #30363d',
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 10,
             overflow: 'hidden',
           }}>
@@ -141,7 +148,7 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
               fontSize: 12,
             }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #30363d', background: '#0d1117' }}>
+                <tr style={{ borderBottom: '1px solid var(--nx-border)', background: 'var(--nx-bg)' }}>
                   {[
                     isKo ? 'ID' : 'ID',
                     isKo ? '이름' : 'Name',
@@ -157,7 +164,7 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
                       style={{
                         padding: '10px 12px',
                         textAlign: 'left',
-                        color: '#8b949e',
+                        color: 'var(--nx-text-2)',
                         fontWeight: 600,
                         whiteSpace: 'nowrap',
                       }}
@@ -170,7 +177,7 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#6e7681' }}>
+                    <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--nx-text-3)' }}>
                       {isKo ? '검색 결과가 없습니다' : 'No results found'}
                     </td>
                   </tr>
@@ -181,31 +188,31 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
                       <tr
                         key={part.id}
                         style={{
-                          borderBottom: idx < filtered.length - 1 ? '1px solid #21262d' : 'none',
+                          borderBottom: idx < filtered.length - 1 ? '1px solid var(--nx-panel-2)' : 'none',
                           transition: 'background 0.1s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#1c2128'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                       >
-                        <td style={{ padding: '9px 12px', color: '#6e7681', fontFamily: 'monospace', fontSize: 11 }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-text-3)', fontFamily: 'monospace', fontSize: 11 }}>
                           {part.id}
                         </td>
-                        <td style={{ padding: '9px 12px', color: '#e6edf3', fontWeight: 600 }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-text)', fontWeight: 600 }}>
                           {isKo ? part.nameKo : part.name}
                         </td>
-                        <td style={{ padding: '9px 12px', color: '#8b949e', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-text-2)', whiteSpace: 'nowrap' }}>
                           {part.standard}
                         </td>
-                        <td style={{ padding: '9px 12px', color: '#8b949e', fontFamily: 'monospace', fontSize: 11 }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-text-2)', fontFamily: 'monospace', fontSize: 11 }}>
                           {formatParams(part.params)}
                         </td>
-                        <td style={{ padding: '9px 12px', color: '#8b949e', textAlign: 'right' }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-text-2)', textAlign: 'right' }}>
                           {part.unitWeightG}
                         </td>
-                        <td style={{ padding: '9px 12px', color: '#3fb950', fontWeight: 600, textAlign: 'right' }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-ok)', fontWeight: 600, textAlign: 'right' }}>
                           {part.unitPriceKRW.toLocaleString()}
                         </td>
-                        <td style={{ padding: '9px 12px', color: '#8b949e' }}>
+                        <td style={{ padding: '9px 12px', color: 'var(--nx-text-2)' }}>
                           {part.suppliers.join(', ')}
                         </td>
                         <td style={{ padding: '9px 12px', textAlign: 'right' }}>
@@ -214,9 +221,9 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
                             style={{
                               padding: '4px 10px',
                               borderRadius: 6,
-                              border: `1px solid ${inQuote ? '#3fb950' : '#388bfd'}`,
+                              border: `1px solid ${inQuote ? 'var(--nx-ok)' : 'var(--nx-accent)'}`,
                               background: inQuote ? '#3fb9501a' : '#388bfd1a',
-                              color: inQuote ? '#3fb950' : '#388bfd',
+                              color: inQuote ? 'var(--nx-ok)' : 'var(--nx-accent)',
                               fontSize: 11,
                               fontWeight: 600,
                               cursor: 'pointer',
@@ -243,28 +250,28 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
           <div style={{
             width: 260,
             minWidth: 260,
-            borderLeft: '1px solid #30363d',
-            background: '#161b22',
+            borderLeft: '1px solid var(--nx-border)',
+            background: 'var(--nx-panel)',
             overflowY: 'auto',
             padding: '20px 16px',
             flexShrink: 0,
           }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>
               💬 {isKo ? '선택된 부품' : 'Selected Parts'} ({selected.length})
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
               {selected.map(part => (
                 <div key={part.id} style={{
-                  background: '#0d1117',
-                  border: '1px solid #30363d',
+                  background: 'var(--nx-bg)',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 8,
                   padding: '10px 12px',
                   position: 'relative',
                 }}>
-                  <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 600, color: '#e6edf3', paddingRight: 20 }}>
+                  <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 600, color: 'var(--nx-text)', paddingRight: 20 }}>
                     {isKo ? part.nameKo : part.name}
                   </p>
-                  <p style={{ margin: 0, fontSize: 11, color: '#3fb950' }}>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-ok)' }}>
                     ₩{part.unitPriceKRW.toLocaleString()}
                   </p>
                   <button
@@ -275,7 +282,7 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
                       right: 8,
                       background: 'none',
                       border: 'none',
-                      color: '#6e7681',
+                      color: 'var(--nx-text-3)',
                       cursor: 'pointer',
                       fontSize: 12,
                       padding: 0,
@@ -288,36 +295,48 @@ export default function CotsPage({ params }: { params: Promise<{ lang: string }>
               ))}
             </div>
             <div style={{
-              borderTop: '1px solid #30363d',
+              borderTop: '1px solid var(--nx-border)',
               paddingTop: 12,
               marginBottom: 12,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#8b949e' }}>{isKo ? '소계' : 'Subtotal'}</span>
-                <span style={{ fontWeight: 700, color: '#e6edf3' }}>
+                <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '소계' : 'Subtotal'}</span>
+                <span style={{ fontWeight: 700, color: 'var(--nx-text)' }}>
                   ₩{selected.reduce((s, p) => s + p.unitPriceKRW, 0).toLocaleString()}
                 </span>
               </div>
             </div>
-            <a
-              href={`/${lang}/nexyfab/rfq`}
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  const payload = selected.map(p => ({
+                    id: p.id, name: p.name, nameKo: p.nameKo,
+                    standard: p.standard, qty: 1, unitPriceKRW: p.unitPriceKRW,
+                  }));
+                  sessionStorage.setItem(COTS_RFQ_STASH_KEY, JSON.stringify(payload));
+                } catch { /* ignore */ }
+                router.push(`/${lang}/nexyfab/rfq?from=cots`);
+              }}
               style={{
                 display: 'block',
+                width: '100%',
                 textAlign: 'center',
                 padding: '10px 0',
+                border: 'none',
                 borderRadius: 8,
-                background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+                background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                 color: '#fff',
                 fontSize: 13,
                 fontWeight: 700,
-                textDecoration: 'none',
+                cursor: 'pointer',
                 transition: 'opacity 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
             >
               {isKo ? '견적 요청하기 →' : 'Send RFQ →'}
-            </a>
+            </button>
           </div>
         )}
       </div>

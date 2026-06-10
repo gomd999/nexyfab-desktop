@@ -23,7 +23,7 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
   return (
     <div style={{
       position: 'absolute', top: 60, right: 20, width: 340,
-      background: 'var(--nx-text)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+      background: 'var(--nx-panel)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
       border: '1px solid #d0d7de', zIndex: 150, display: 'flex', flexDirection: 'column'
     }}>
       <div style={{ padding: '16px', borderBottom: '1px solid #d0d7de', background: 'var(--nx-panel-2)', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

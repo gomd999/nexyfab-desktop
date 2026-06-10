@@ -722,7 +722,7 @@ export default function AnnotationPanel({
           onClick={handleAddDimension}
           style={{
             ...btnBase, width: '100%', marginBottom: 10,
-            background: '#fbbf24', color: 'var(--nx-bg)',
+            background: '#fbbf24', color: 'var(--nx-text)',
           }}
         >
           {t.addDimBtn}

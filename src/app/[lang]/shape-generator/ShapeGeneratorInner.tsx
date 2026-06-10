@@ -279,6 +279,7 @@ const UpgradePrompt = dynamic(() => import('./freemium/UpgradePrompt'), { ssr: f
 const COTSPanel = dynamic(() => import('./cots/COTSPanel'), { ssr: false });
 const CAMSimPanel = dynamic(() => import('./analysis/CAMSimPanel'), { ssr: false });
 import type { COTSPart } from './cots/cotsData';
+import { cotsToScad } from './cots/cotsGeometry';
 import { usePinComments } from './comments/PinComments';
 const CommentsPanel = dynamic(() => import('./comments/CommentsPanel'), { ssr: false });
 import type { ActivityEvent } from './comments/CommentsPanel';
@@ -1036,11 +1037,25 @@ export function ShapeGeneratorInner() {
       router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
       return;
     }
+    if (searchParams?.get('entry') === 'ai') {
+      // Hub "Nexy AI Studio" deep-link: open the AI chat panel in the design
+      // workspace. (HubFrame previously linked ?mode=ai, which no handler read,
+      // so the button opened a plain modeler. 2026-06-09 fix.)
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(false);
+      applyCadWorkspace('design', { isSketchMode: false });
+      setShowChatPanel(true);
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+      return;
+    }
     if (searchParams?.get('tab') === 'optimize') {
       urlWorkspaceOrTabAppliedRef.current = true;
       applyCadWorkspace('optimize', { isSketchMode });
     }
-  }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel]);
+  }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel, setShowChatPanel]);
 
   const sketchViewMode = useSceneStore(s => s.sketchViewMode);
   const splitMode = useSceneStore(s => s.splitMode);
@@ -2324,12 +2339,33 @@ export function ShapeGeneratorInner() {
 
   const toggleFaceSelectionMode = useCallback(() => {
     setSelectionActive(prev => {
-      if (prev) setSelectedElement(null);
       const next = !prev;
-      if (next) setMeasureActive(false);
+      if (prev) {
+        setSelectedElement(null);
+        // Turning the toolbar "Face Select" toggle OFF → drop back to body
+        // (editMode 'none'), which unmounts FaceScene. Without this the top
+        // selection-filter chip would stay stuck on "면".
+        setEditMode('none');
+      } else {
+        setMeasureActive(false);
+        // Turning it ON must actually enter face-edit mode. FaceScene (real
+        // face picking + Push/Pull) only mounts when editMode === 'face'
+        // (ShapePreview), so the prominent "면 선택 ON" toggle and the top
+        // selection-filter chip were previously disconnected — toggling the
+        // toolbar did nothing on click. Sync them here. (2026-06-10 fix)
+        setEditMode('face');
+      }
       return next;
     });
-  }, [setMeasureActive]);
+  }, [setMeasureActive, setEditMode]);
+
+  // Keep the toolbar "Face Select" toggle (selectionActive) in sync with the
+  // top selection-filter chips: picking 면/엣지/정점 directly (editMode !==
+  // 'none') reflects as ON; switching back to 바디 turns it OFF. Without this
+  // the two controls drift apart and the toolbar lies about the current mode.
+  useEffect(() => {
+    setSelectionActive(editMode !== 'none');
+  }, [editMode]);
   // ── AI pipeline chain: Process Router → Supplier Matcher pre-fill ──
 
   const [chainedSupplierProcess, setChainedSupplierProcess] = React.useState<string | undefined>(undefined);
@@ -2571,6 +2607,7 @@ export function ShapeGeneratorInner() {
   const {
     desktopFilePath,
     desktopDirty,
+    getCloudSceneObject,
     handleSaveNfab,
     handleSaveNfabCloud,
     handleLoadNfab,
@@ -2635,8 +2672,34 @@ export function ShapeGeneratorInner() {
     // preview instead of a placeholder. captureRef may not yet be wired on
     // initial mount — that's fine, the next save attempt will catch it.
     const thumb = captureRef.current ? captureRef.current() : null;
-    scheduleCloudSync(buildAutoSaveState(), selectedId ?? '', materialId, thumb);
+    // Persist the FULL .nfab payload to the cloud (assembly / configurations /
+    // studio-view / feature history included), falling back to the lossy
+    // AutoSaveState only before the feature history is ready on first mount.
+    // This makes useCloudSaveFlow the single full-fidelity cloud writer — the
+    // old path sent AutoSaveState, which dropped assembly/configs and got
+    // clobbered against the .nfab tick. (2026-06-09 dual-writer unification.)
+    const cloudScene = getCloudSceneObject() ?? buildAutoSaveState();
+    scheduleCloudSync(cloudScene, selectedId ?? '', materialId, thumb);
   }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode]);
+
+  // Guest save nudge: a logged-out user's work lives only in THIS browser
+  // (localStorage autosave — no cloud sync). Once they've built something real,
+  // point them to sign-in / .nfab export so a cleared browser or device switch
+  // doesn't silently lose it. Fires once per browser. (2026-06-09 storage
+  // robustness.)
+  const guestSaveHintShownRef = useRef(false);
+  useEffect(() => {
+    if (authUser || guestSaveHintShownRef.current) return;
+    if (viewMode !== 'workspace' || !desktopDirty || features.length === 0) return;
+    guestSaveHintShownRef.current = true;
+    try {
+      if (window.localStorage.getItem('nexyfab_guest_save_hint_v1') === '1') return;
+      window.localStorage.setItem('nexyfab_guest_save_hint_v1', '1');
+    } catch { /* ignore */ }
+    addToast('info', lang === 'ko'
+      ? '게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 안전하게 저장되고, File → .nfab로 파일 내보내기도 됩니다.'
+      : 'Guest work is saved only in this browser. Sign in to save to the cloud, or export a file via File → .nfab.');
+  }, [authUser, viewMode, desktopDirty, features.length, addToast, lang]);
 
 
   // 스케치 모드 진입/이탈 시 3D 편집 모드는 항상 'none'으로 리셋.
@@ -2655,7 +2718,24 @@ export function ShapeGeneratorInner() {
       setShowSketchActionMenu(false);
     }
   }, [activeProfile.closed]);
-  useEffect(() => { if (viewMode !== 'workspace') return; const h = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener('beforeunload', h); return () => window.removeEventListener('beforeunload', h); }, [viewMode]);
+  // Dirty-gated unload guard. Previously this fired the browser "Leave site?"
+  // dialog on EVERY refresh/close while in the workspace, even with zero unsaved
+  // edits — so users learned to dismiss it reflexively (cry-wolf). Now it only
+  // prompts when there are actual unsaved changes (.nfab dirty flag or a save in
+  // flight). A ref holds the latest dirty value so the listener isn't re-bound on
+  // every keystroke. (2026-06-09 UX cleanup.)
+  const unloadDirtyRef = useRef(false);
+  unloadDirtyRef.current = desktopDirty || isSaving;
+  useEffect(() => {
+    if (viewMode !== 'workspace') return;
+    const h = (e: BeforeUnloadEvent) => {
+      if (!unloadDirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [viewMode]);
   const handleRestoreRecovery = useCallback(() => {
     if (!recoveryData) return;
     setSelectedId(recoveryData.selectedId);
@@ -2715,7 +2795,11 @@ export function ShapeGeneratorInner() {
 
   // ═══ PROJECT LOAD (from dashboard ?projectId=xxx) ═══
   useEffect(() => {
-    const projectId = searchParams?.get('projectId');
+    // Accept the legacy `?project=` alias too: the main projects list, the
+    // nexyfab dashboard, and the in-modeler hub all link with `?project=`,
+    // while this loader historically only read `?projectId=` — so clicking
+    // "Open" on a saved project opened a blank workspace. (2026-06-09 fix.)
+    const projectId = searchParams?.get('projectId') ?? searchParams?.get('project');
     if (!projectId) {
       useCloudProjectAccessStore.getState().reset();
       return;
@@ -2800,6 +2884,35 @@ export function ShapeGeneratorInner() {
       })
       .catch(() => {});
   // Intentionally keyed on URL only — avoid re-fetch loops when callback identities churn.
+  }, [searchParams]);
+
+  // ═══ SAMPLE LOAD (Hub "예제로 시작" → ?from=sample&intent=) ═══
+  // Without this the sample link opened a blank workspace (the intent was
+  // never read; one sample even used a non-existent shapeId). (2026-06-09)
+  useEffect(() => {
+    if (searchParams?.get('from') !== 'sample') return;
+    const raw = searchParams?.get('intent');
+    if (raw) {
+      try {
+        const intent = JSON.parse(decodeURIComponent(raw)) as { shapeId?: string; params?: Record<string, number> };
+        const sid = intent.shapeId && SHAPE_MAP[intent.shapeId] ? intent.shapeId : 'box';
+        // Force the 3D solid workspace — otherwise a restored guest/sketch
+        // session leaves the modeler in sketch mode and the sample's solid
+        // never renders in the center. (2026-06-09)
+        setIsSketchMode(false);
+        setSelectedId(sid);
+        if (intent.params) {
+          applySceneParamsToSetters(SHAPE_MAP[sid], intent.params, { setParams, setParamExpressions });
+        }
+        setViewMode('workspace');
+        addToast('success', lang === 'ko' ? '예제를 불러왔습니다.' : 'Sample loaded.');
+      } catch { /* ignore malformed intent */ }
+    }
+    const qs = new URLSearchParams(searchParams?.toString() ?? '');
+    qs.delete('from'); qs.delete('sampleId'); qs.delete('intent');
+    const n = qs.toString();
+    router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+     
   }, [searchParams]);
 
   // ═══ SHARED MODEL LOAD (from /view/{token} → sessionStorage) ═══
@@ -3555,6 +3668,7 @@ export function ShapeGeneratorInner() {
   const bridgeCloud = useShellBridge(s => s.setCloud);
   const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
   const bridgeAssemblyItems = useShellBridge(s => s.setAssemblyItems);
+  const bridgeAssemblyMates = useShellBridge(s => s.setAssemblyMates);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
@@ -3935,7 +4049,21 @@ export function ShapeGeneratorInner() {
       })),
       selectedId ?? null,
     );
-  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, bridgeAssemblyItems, bomParts, cloudProjectId]);
+    // Publish REAL mates so the assembly sidebars list actual constraints
+    // instead of a placeholder. Resolve partA/partB ids → display labels via
+    // placedParts (id→name). (2026-06-09 follow-up #4)
+    const partLabel = new Map(placedParts.map(p => [p.id, p.name]));
+    bridgeAssemblyMates(
+      assemblyMates.map(m => ({
+        id: m.id,
+        type: m.type,
+        partA: partLabel.get(m.partA) ?? m.partA,
+        partB: partLabel.get(m.partB) ?? m.partB,
+        value: m.value,
+        locked: m.locked,
+      })),
+    );
+  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, bridgeAssemblyItems, bridgeAssemblyMates, bomParts, placedParts, assemblyMates, cloudProjectId]);
 
   // Shell-v2 Inspector → Inner bridge for parameter edits. Listener decoupled
   // from the visual chrome so the new sidebar can edit live params without
@@ -6731,6 +6859,28 @@ export function ShapeGeneratorInner() {
     setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
   }, []);
 
+  // Shell-v2 assembly sidebar → mate edit bridge. The AssemblyLeftPane/
+  // AssemblyRightPane mate rows dispatch these so the user can delete / lock a
+  // mate inline (the full editor stays available via the ribbon mate tools).
+  // (2026-06-09 P1)
+  useEffect(() => {
+    const onRemove = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (id) handleRemoveMate(id);
+    };
+    const onToggle = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (!id) return;
+      setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, locked: !m.locked } : m));
+    };
+    window.addEventListener('nexyfab:assembly-mate-remove', onRemove);
+    window.addEventListener('nexyfab:assembly-mate-toggle', onToggle);
+    return () => {
+      window.removeEventListener('nexyfab:assembly-mate-remove', onRemove);
+      window.removeEventListener('nexyfab:assembly-mate-toggle', onToggle);
+    };
+  }, [handleRemoveMate, setAssemblyMates]);
+
   const handleApplyMatesToPlacement = useCallback(() => {
     if (placedParts.length < 2 || assemblyMates.length === 0) return;
     const mateRows = assemblyMates.map(m => ({ id: m.id, partA: m.partA, partB: m.partB, type: m.type }));
@@ -8650,9 +8800,12 @@ export function ShapeGeneratorInner() {
                     />
                   )}
 
-                  {/* First-use sketch hint — shows once, then dismissed */}
+                  {/* First-use sketch hint — auto-modal retired (2026-06-09):
+                      it popped over the canvas on entry, adding to the on-entry
+                      overlay pile. visible={false} so it never auto-shows; the
+                      Draw ribbon + tool tooltips guide instead. */}
                   {isSketchMode && sketchViewMode === '2d' && (
-                    <SketchContextTip visible={isSketchMode} lang={lang} recoveryVisible={showRecovery && !!recoveryData} />
+                    <SketchContextTip visible={false} lang={lang} recoveryVisible={showRecovery && !!recoveryData} />
                   )}
 
                   {showMainWorkspacePreview && (
@@ -8665,6 +8818,24 @@ export function ShapeGeneratorInner() {
                       flexDirection: 'column',
                     }}>
                       {renderWorkspaceShapePreview('main')}
+                      {/* Gizmo / dimension lines / DFM badges over the MAIN-slot
+                          model. Without this they rendered only over the (empty)
+                          right column placeholder and visually leaked into the
+                          gap between the viewport and the inspector. (2026-06-09) */}
+                      <CanvasGizmoOverlays
+                        visible={!!effectiveResult && !isSketchMode}
+                        lang={lang}
+                        shapeId={selectedId}
+                        params={params}
+                        paramDefs={selectedId ? (SHAPE_MAP[selectedId]?.params ?? []) : []}
+                        labelDict={t as unknown as Record<string, string>}
+                        onParamChange={_handleParamChangeCmd}
+                        bbox={effectiveResult?.bbox ?? null}
+                        dfmResults={dfmResults}
+                        downgradeNotices={
+                          effectiveResult?.geometry ? collectDowngrades(effectiveResult.geometry) : []
+                        }
+                      />
                       {/* Presence sidebar — hidden when alone in the room. */}
                       <AwarenessPresencePanel
                         presences={awarenessPresences}
@@ -8777,26 +8948,30 @@ export function ShapeGeneratorInner() {
             )}
 
             {/* ── 3D Preview toggle button (shown when hidden) ── */}
-            {activeTab === 'design' && !isMobile && !show3DPreview && (
+            {activeTab === 'design' && !isMobile && !show3DPreview && !showMainWorkspacePreview && (
               <button
                 onClick={() => setShow3DPreview(true)}
                 title={lt.show3dPreview}
                 style={{
                   position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                  zIndex: 30, padding: '8px 6px', borderRadius: 8,
+                  zIndex: 30, padding: '10px 7px', borderRadius: 8,
                   background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
                   color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
-                  writingMode: 'vertical-rl', fontWeight: 700,
+                  writingMode: 'vertical-rl', fontWeight: 700, letterSpacing: '0.02em',
                   transition: 'all 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
               >
-                3D ▶
+                ◀ {lang === 'ko' ? '3D 미리보기' : '3D preview'}
               </button>
             )}
 
-            {/* ── 3D Preview side (right panel) ── */}
-            {activeTab === 'design' && show3DPreview && (
+            {/* ── 3D Preview side (right panel) ──
+                 Hidden when the model already fills the MAIN column
+                 (showMainWorkspacePreview) — otherwise this fixed-width panel
+                 showed only a "3D is in the main area" placeholder + leaked
+                 gizmo overlays, wasting ~half the viewport. (2026-06-09) */}
+            {activeTab === 'design' && show3DPreview && !showMainWorkspacePreview && (
               <div style={{
                 width: isMobile ? '100%' : designPreviewWidth,
                 flexShrink: 0,
@@ -9075,9 +9250,13 @@ export function ShapeGeneratorInner() {
                   onApply={canvasCommitPendingMate}
                   onCancel={canvasCancelPendingMate}
                 />
-                {/* Canvas gizmo overlays (gizmo + dimension lines + DFM badges) */}
+                {/* Canvas gizmo overlays (gizmo + dimension lines + DFM badges).
+                    Suppressed in main-slot mode — there a duplicate set renders
+                    over the actual model (see showMainWorkspacePreview block);
+                    keeping this one on would leak the overlays into the empty
+                    right-column placeholder. (2026-06-09) */}
                 <CanvasGizmoOverlays
-                  visible={!!effectiveResult && !isSketchMode}
+                  visible={!!effectiveResult && !isSketchMode && !showMainWorkspacePreview}
                   lang={lang}
                   shapeId={selectedId}
                   params={params}
@@ -9189,7 +9368,7 @@ export function ShapeGeneratorInner() {
                   />
                 </div>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #d0d7de', background: 'var(--nx-text)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
+                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
                 </div>
               </div>
             );
@@ -9364,6 +9543,18 @@ export function ShapeGeneratorInner() {
         lang={lang}
         onInsert={(part: COTSPart) => {
           addToast('success', lt.cotsAddedToBom(lang === 'ko' ? part.nameKo : part.name));
+          // Insert real (simplified) geometry into the assembly via the same
+          // pipeline as the ISO standard-parts grid — was BOM-toast only.
+          // (2026-06-09 P3)
+          window.dispatchEvent(new CustomEvent('nexyfab:insert-standard-part', {
+            detail: {
+              id: part.id,
+              title: lang === 'ko' ? part.nameKo : part.name,
+              standard: part.standard,
+              params: part.params,
+              scad: cotsToScad(part),
+            },
+          }));
         }}
       />
 
@@ -10113,7 +10304,12 @@ export function ShapeGeneratorInner() {
         tutorial={tutorial}
         userId={authUser?.id ?? null}
         onOpenChat={() => openAIAssistant('chat')}
-        suppressAutoTour={features.length === 0}
+        // Auto-tour retired: it suppressed on a blank workspace but popped a
+        // full-screen "build your first shape" modal over an ALREADY-LOADED
+        // project (features.length>0). Blank entry is guided by the empty-canvas
+        // cards + 5-min checklist; the tour stays available for manual replay.
+        // (2026-06-09 C2)
+        suppressAutoTour
       />
 
       {/* ═══ Split-screen + STL Export dock ═══ */}

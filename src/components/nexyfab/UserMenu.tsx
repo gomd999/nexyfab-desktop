@@ -10,7 +10,7 @@ interface UserMenuProps {
 }
 
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
-  free: { label: 'FREE', color: '#6e7681' },
+  free: { label: 'FREE', color: 'var(--nx-text-3)' },
   pro: { label: 'PRO', color: '#388bfd' },
   team: { label: 'TEAM', color: '#a371f7' },
   enterprise: { label: 'ENT', color: '#d29922' },
@@ -36,12 +36,12 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
           onClick={() => onOpenAuth('login')}
           style={{
             padding: '5px 12px', borderRadius: 6,
-            border: '1px solid #30363d', background: 'transparent',
-            color: '#8b949e', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            border: '1px solid var(--nx-border)', background: 'transparent',
+            color: 'var(--nx-text-2)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
             transition: 'all 0.15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#c9d1d9'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
         >
           {isKorean(lang) ? '로그인' : 'Log in'}
         </button>
@@ -72,10 +72,10 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
         style={{
           display: 'flex', alignItems: 'center', gap: 7,
           padding: '4px 8px', borderRadius: 8,
-          border: '1px solid #30363d', background: open ? '#21262d' : 'transparent',
+          border: '1px solid var(--nx-border)', background: open ? 'var(--nx-panel-2)' : 'transparent',
           cursor: 'pointer', transition: 'all 0.15s',
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
         onMouseLeave={e => { if (!open) e.currentTarget.style.background = 'transparent'; }}
       >
         {/* Avatar */}
@@ -87,7 +87,7 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
         }}>
           {initials}
         </div>
-        <span style={{ fontSize: 12, color: '#e6edf3', fontWeight: 600, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 600, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {user.name}
         </span>
         <span style={{
@@ -96,19 +96,19 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
         }}>
           {badge.label}
         </span>
-        <span style={{ fontSize: 10, color: '#6e7681' }}>▾</span>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>▾</span>
       </button>
 
       {open && (
         <div style={{
           position: 'absolute', top: '100%', right: 0, marginTop: 6,
-          background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 10,
           minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
           overflow: 'hidden', zIndex: 1000,
         }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262d' }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>{user.name}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6e7681' }}>{user.email}</p>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>{user.name}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--nx-text-3)' }}>{user.email}</p>
           </div>
           {[
             { label: isKorean(lang) ? '내 프로젝트' : 'My Projects', icon: '📁', href: `/${lang}/nexyfab/dashboard` },
@@ -116,17 +116,17 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
           ].map(item => (
             <a key={item.label} href={item.href} style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              padding: '9px 14px', color: '#c9d1d9', fontSize: 12,
+              padding: '9px 14px', color: 'var(--nx-text)', fontSize: 12,
               textDecoration: 'none', transition: 'background 0.12s',
             }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#21262d'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-panel-2)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
             >
               <span>{item.icon}</span> {item.label}
             </a>
           ))}
           {/* Manufacturing section */}
-          <div style={{ borderTop: '1px solid #21262d', marginTop: 2 }} />
+          <div style={{ borderTop: '1px solid var(--nx-panel-2)', marginTop: 2 }} />
           {[
             { label: isKorean(lang) ? '견적 요청' : 'RFQ', icon: '💬', href: `/${lang}/nexyfab/rfq` },
             { label: isKorean(lang) ? '주문 추적' : 'Orders', icon: '📦', href: `/${lang}/nexyfab/orders` },
@@ -134,10 +134,10 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
           ].map(item => (
             <a key={item.label} href={item.href} style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              padding: '9px 14px', color: '#c9d1d9', fontSize: 12,
+              padding: '9px 14px', color: 'var(--nx-text)', fontSize: 12,
               textDecoration: 'none', transition: 'background 0.12s',
             }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#21262d'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-panel-2)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
             >
               <span>{item.icon}</span> {item.label}
@@ -147,12 +147,12 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
             onClick={() => { logout(); setOpen(false); }}
             style={{
               width: '100%', padding: '9px 14px', textAlign: 'left',
-              background: 'none', border: 'none', borderTop: '1px solid #21262d',
+              background: 'none', border: 'none', borderTop: '1px solid var(--nx-panel-2)',
               color: '#f85149', fontSize: 12, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 8,
               transition: 'background 0.12s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
           >
             🚪 {isKorean(lang) ? '로그아웃' : 'Log out'}

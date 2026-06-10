@@ -92,7 +92,7 @@ export default function MobileSendToDesktop({ labels }: Props) {
             alt={labels.qrAlt}
             width={200}
             height={200}
-            style={{ borderRadius: 8, background: 'var(--nx-text)', padding: 4 }}
+            style={{ borderRadius: 8, background: '#fff', padding: 4 }}
           />
         </div>
       )}

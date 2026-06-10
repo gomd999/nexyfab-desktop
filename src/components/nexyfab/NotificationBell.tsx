@@ -164,7 +164,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
   };
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', borderTop: '1px solid #21262d', padding: '8px 12px' }}>
+    <div ref={dropdownRef} style={{ position: 'relative', borderTop: '1px solid var(--nx-panel-2)', padding: '8px 12px' }}>
       {/* Bell button */}
       <button
         onClick={() => setOpen(o => !o)}
@@ -185,12 +185,12 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
           alignItems: 'center',
           gap: 8,
           width: '100%',
-          color: '#6e7681',
+          color: 'var(--nx-text-3)',
           fontSize: 13,
           position: 'relative',
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = '#161b22'; e.currentTarget.style.color = '#c9d1d9'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6e7681'; }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--nx-text-3)'; }}
       >
         <span aria-hidden="true" style={{ fontSize: 16, position: 'relative', flexShrink: 0 }}>
           🔔
@@ -231,8 +231,8 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
             bottom: '100%',
             left: 8,
             width: 320,
-            background: '#161b22',
-            border: '1px solid #30363d',
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 10,
             boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
             zIndex: 9999,
@@ -246,9 +246,9 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '10px 14px',
-            borderBottom: '1px solid #30363d',
+            borderBottom: '1px solid var(--nx-border)',
           }}>
-            <span id="nx-notif-title" style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+            <span id="nx-notif-title" style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
               {isKo ? '알림' : 'Notifications'}
             </span>
             {unreadCount > 0 && (
@@ -275,7 +275,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
               <div style={{
                 padding: '24px 14px',
                 textAlign: 'center',
-                color: '#6e7681',
+                color: 'var(--nx-text-3)',
                 fontSize: 13,
               }}>
                 {isKo ? '새 알림이 없습니다' : 'No new notifications'}
@@ -293,13 +293,13 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                     display: 'flex',
                     gap: 10,
                     padding: '10px 14px',
-                    borderBottom: '1px solid #21262d',
+                    borderBottom: '1px solid var(--nx-panel-2)',
                     cursor: n.link ? 'pointer' : 'default',
-                    background: n.read === 0 ? '#1c2128' : 'transparent',
+                    background: n.read === 0 ? 'var(--nx-panel-2)' : 'transparent',
                     transition: 'background 0.12s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = n.read === 0 ? '#1c2128' : 'transparent'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = n.read === 0 ? 'var(--nx-panel-2)' : 'transparent'; }}
                 >
                   <span aria-hidden="true" style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.4 }}>{getIcon(n.type)}</span>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -307,7 +307,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                       margin: 0,
                       fontSize: 13,
                       fontWeight: n.read === 0 ? 600 : 400,
-                      color: '#e6edf3',
+                      color: 'var(--nx-text)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -318,7 +318,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                       <p style={{
                         margin: '2px 0 0',
                         fontSize: 12,
-                        color: '#8b949e',
+                        color: 'var(--nx-text-2)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -326,7 +326,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                         {n.body}
                       </p>
                     )}
-                    <span style={{ fontSize: 11, color: '#6e7681' }}>{timeAgo(n.created_at, isKo)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>{timeAgo(n.created_at, isKo)}</span>
                   </div>
                   {n.read === 0 && (
                     <span style={{
@@ -344,7 +344,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
           </div>
 
           {/* Footer */}
-          <div style={{ padding: '8px 14px', borderTop: '1px solid #21262d' }}>
+          <div style={{ padding: '8px 14px', borderTop: '1px solid var(--nx-panel-2)' }}>
             <button
               onClick={clearRead}
               style={{
@@ -352,13 +352,13 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 12,
-                color: '#6e7681',
+                color: 'var(--nx-text-3)',
                 padding: 0,
                 width: '100%',
                 textAlign: 'left',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#c9d1d9'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#6e7681'; }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-3)'; }}
             >
               {isKo ? '읽은 알림 지우기' : 'Clear read notifications'}
             </button>

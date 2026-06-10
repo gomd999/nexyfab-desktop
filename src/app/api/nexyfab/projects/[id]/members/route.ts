@@ -129,6 +129,27 @@ export async function POST(
     metadata: { memberUserId: target.id, role },
   });
 
+  // Notify the new member — in-app bell + email. Non-blocking. (2026-06-09 P2)
+  void (async () => {
+    try {
+      const { createNotification } = await import('@/app/lib/notify');
+      await createNotification(
+        target.id,
+        'project_shared',
+        '프로젝트가 공유되었습니다 / Project shared with you',
+        `${role} 권한으로 프로젝트에 초대되었습니다. "공유된 항목"에서 확인하세요. / You were given ${role} access — see "Shared with me".`,
+      );
+    } catch { /* ignore */ }
+    try {
+      const { sendNotificationEmail } = await import('@/app/lib/mailer');
+      await sendNotificationEmail(
+        emailNorm,
+        'A NexyFab project was shared with you',
+        `You now have ${role} access to a project on NexyFab. Open it from "Shared with me" in your dashboard.`,
+      );
+    } catch { /* ignore */ }
+  })();
+
   const row = await db.queryOne<{ user_id: string; email: string; role: string; created_at: number }>(
     `SELECT m.user_id, u.email, m.role, m.created_at
      FROM nf_project_members m

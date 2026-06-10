@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import ErrorBoundary from '@/components/nexyfab/ErrorBoundary';
-import { OrbitControls, Grid, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
+import { OrbitControls, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
 import { NF_R3F_VIEWPORT_DATA_ENGINE } from '@/lib/nexyfab/viewport';
 import * as THREE from 'three';
 import type { TransformControls as TransformControlsThree } from 'three/examples/jsm/controls/TransformControls.js';
@@ -1929,6 +1929,26 @@ export default function ShapePreview({
     return { vol: totalVol, sa: totalSA, w: size.x, h: size.y, d: size.z };
   }, [allResults]);
 
+  // Ground-grid span. The gridHelper is finite (a plain LineSegments, not the
+  // infinite drei shader), so a fixed 600-unit pad clipped large parts or parts
+  // placed far from the origin (they floated off the grid). Grow the span to
+  // cover the model's XZ footprint+offset while keeping the grid centred on the
+  // world origin so its lines still align to world snap multiples. (2026-06-10)
+  const gridSpan = useMemo(() => {
+    if (allResults.length === 0) return 600;
+    const combined = new THREE.Box3();
+    for (const r of allResults) {
+      if (!r.geometry.boundingBox) r.geometry.computeBoundingBox();
+      if (r.geometry.boundingBox) combined.union(r.geometry.boundingBox);
+    }
+    if (combined.isEmpty()) return 600;
+    const maxAbs = Math.max(
+      Math.abs(combined.min.x), Math.abs(combined.max.x),
+      Math.abs(combined.min.z), Math.abs(combined.max.z),
+    );
+    return Math.max(600, Math.ceil((maxAbs * 2.4) / 100) * 100);
+  }, [allResults]);
+
   // Total triangle count across all displayed geometries (for the overlay badge)
   const totalTriCount = useMemo(() => {
     let sum = 0;
@@ -2659,7 +2679,15 @@ export default function ShapePreview({
               </div>
             )}
             <Canvas
-              camera={{ position: [150, 120, 150], fov: 50, near: 0.05, far: 2_000_000 }}
+              // near:0.05 / far:2,000,000 gave a 4e7 depth range → catastrophic
+              // depth-buffer precision loss → the ground grid (and coplanar
+              // faces) shimmered / Z-fought when orbiting. Tighten the range to
+              // a CAD-sane span (5e4 ratio → ample 24-bit precision).
+              // NOTE: do NOT enable logarithmicDepthBuffer — drei's <Grid>
+              // shader doesn't write logarithmic depth, so it renders at the
+              // wrong depth under a log buffer and Z-fights HARDER. The tight
+              // near/far range alone fixes the shimmer. (2026-06-09)
+              camera={{ position: [150, 120, 150], fov: 50, near: 1, far: 50_000 }}
               shadows
               gl={{ antialias: true, preserveDrawingBuffer: true }}
               onCreated={({ gl, scene }) => {
@@ -3053,20 +3081,29 @@ export default function ShapePreview({
                   )
                 )}
               </Suspense>
-              <group position={[0, bottomY - 2, 0]}>
-                <Grid
-                  args={[2000, 2000]}
-                  cellSize={typeof snapGrid === 'number' && snapGrid > 0 ? snapGrid : 10}
-                  cellThickness={0.6}
-                  cellColor="#e5e7eb"
-                  sectionSize={50}
-                  sectionThickness={1.2}
-                  sectionColor="#d1d5db"
-                  fadeDistance={800}
-                  fadeStrength={3}
-                  infiniteGrid
-                />
-              </group>
+              {/* Plain three.js gridHelper (LineSegments) instead of drei's
+                  <Grid>. The drei infinite-grid is a SHADER that computes lines
+                  via screen-space derivatives — that derivative AA is what
+                  shimmers/"지직" at grazing angles when orbiting, and it survived
+                  every depth/fade tweak. A gridHelper has no shader, so it can't
+                  shimmer that way. Finite 600-unit pad around the model; cells
+                  follow the snap size. (2026-06-10)
+                  Two helpers: fine cells + bolder section lines, the section one
+                  lifted 0.02 so the overlapping lines don't co-planar Z-fight. */}
+              {(() => {
+                const cell = typeof snapGrid === 'number' && snapGrid > 0 ? snapGrid : 10;
+                const SPAN = gridSpan;
+                // Cap line counts so a huge span (big/far parts) doesn't spawn
+                // thousands of LineSegments and tank the framerate.
+                const fineDiv = Math.min(400, Math.max(2, Math.round(SPAN / cell)));
+                const sectDiv = Math.min(200, Math.max(2, Math.round(SPAN / 50)));
+                return (
+                  <group position={[0, bottomY - 2, 0]}>
+                    <gridHelper args={[SPAN, fineDiv, '#e5e7eb', '#e5e7eb']} />
+                    <gridHelper args={[SPAN, sectDiv, '#cbd2d9', '#cbd2d9']} position={[0, 0.02, 0]} />
+                  </group>
+                );
+              })()}
               {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid.
                   Colors are forced to match GizmoViewport (iOS red/green/blue) so the bottom-left
                   triad and the ground axes read as the same coordinate system. */}

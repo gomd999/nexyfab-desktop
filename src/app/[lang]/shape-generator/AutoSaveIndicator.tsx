@@ -144,7 +144,9 @@ export default function AutoSaveIndicator({
 
   return (
     <div style={{
-      position: 'fixed', top: 64, right: 16, zIndex: 45,
+      // Sits BELOW the SCAD mode toggle (빠름/에이전트, fixed top:56 right:16) so
+      // the two top-right pills no longer overlap (reported clutter 2026-06-09).
+      position: 'fixed', top: 92, right: 16, zIndex: 45,
       display: 'flex', alignItems: 'center', gap: 6,
       padding: '5px 10px', borderRadius: 8,
       background: 'rgba(13,17,23,0.88)',

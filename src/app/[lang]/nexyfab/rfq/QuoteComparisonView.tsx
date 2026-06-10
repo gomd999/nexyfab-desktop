@@ -130,7 +130,7 @@ export default function QuoteComparisonView({ lang, quotes, acting, onAction }: 
                 const best = q.estimatedAmount === minPrice;
                 return (
                   <td key={q.id} style={{ ...tdCellStyle, background: best ? '#0d3819' : 'transparent' }}>
-                    <div style={{ fontWeight: 700, color: best ? '#7ee787' : '#e6edf3' }}>
+                    <div style={{ fontWeight: 700, color: best ? '#7ee787' : 'var(--nx-text)' }}>
                       {q.estimatedAmount.toLocaleString('ko-KR')}원
                     </div>
                     {best && <div style={badgeStyle}>{t.bestPrice}</div>}
@@ -144,7 +144,7 @@ export default function QuoteComparisonView({ lang, quotes, acting, onAction }: 
                 const best = q.estimatedDays !== null && q.estimatedDays === minLead;
                 return (
                   <td key={q.id} style={{ ...tdCellStyle, background: best ? '#0d3819' : 'transparent' }}>
-                    <div style={{ fontWeight: 700, color: best ? '#7ee787' : '#e6edf3' }}>
+                    <div style={{ fontWeight: 700, color: best ? '#7ee787' : 'var(--nx-text)' }}>
                       {q.estimatedDays ?? t.none}
                     </div>
                     {best && q.estimatedDays !== null && <div style={badgeStyle}>{t.bestLead}</div>}
@@ -156,7 +156,7 @@ export default function QuoteComparisonView({ lang, quotes, acting, onAction }: 
               <td style={tdLabelStyle}>{t.rowNote}</td>
               {sorted.map(q => (
                 <td key={q.id} style={tdCellStyle}>
-                  <div style={{ fontSize: 11, color: '#c9d1d9', lineHeight: 1.4 }}>{q.note ?? t.none}</div>
+                  <div style={{ fontSize: 11, color: 'var(--nx-text)', lineHeight: 1.4 }}>{q.note ?? t.none}</div>
                 </td>
               ))}
             </tr>
@@ -164,7 +164,7 @@ export default function QuoteComparisonView({ lang, quotes, acting, onAction }: 
               <td style={tdLabelStyle}>{t.rowValid}</td>
               {sorted.map(q => (
                 <td key={q.id} style={tdCellStyle}>
-                  <div style={{ fontSize: 11, color: '#c9d1d9' }}>{q.validUntil ?? t.none}</div>
+                  <div style={{ fontSize: 11, color: 'var(--nx-text)' }}>{q.validUntil ?? t.none}</div>
                 </td>
               ))}
             </tr>
@@ -199,7 +199,7 @@ export default function QuoteComparisonView({ lang, quotes, acting, onAction }: 
 }
 
 const containerStyle: React.CSSProperties = {
-  background: '#0d1117',
+  background: 'var(--nx-bg)',
   border: '1px solid #1f6feb',
   borderRadius: 10,
   padding: 14,
@@ -210,28 +210,28 @@ const headerRow: React.CSSProperties = {
   marginBottom: 10, flexWrap: 'wrap', gap: 8,
 };
 const titleStyle: React.CSSProperties = { fontSize: 14, fontWeight: 800, color: '#79c0ff' };
-const subtitleStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginTop: 2 };
+const subtitleStyle: React.CSSProperties = { fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 };
 const sortBtn: React.CSSProperties = {
   padding: '3px 10px', fontSize: 11, fontWeight: 600,
-  borderRadius: 12, border: '1px solid #30363d', cursor: 'pointer',
+  borderRadius: 12, border: '1px solid var(--nx-border)', cursor: 'pointer',
 };
 const tableStyle: React.CSSProperties = {
   width: '100%', borderCollapse: 'collapse', fontSize: 12,
 };
 const thLabelStyle: React.CSSProperties = {
   textAlign: 'left', padding: '6px 8px',
-  color: '#8b949e', fontWeight: 600, borderBottom: '1px solid #30363d',
+  color: 'var(--nx-text-2)', fontWeight: 600, borderBottom: '1px solid var(--nx-border)',
 };
 const thCellStyle: React.CSSProperties = {
-  padding: '6px 8px', fontSize: 12, fontWeight: 700, color: '#e6edf3',
-  borderBottom: '1px solid #30363d', textAlign: 'left',
+  padding: '6px 8px', fontSize: 12, fontWeight: 700, color: 'var(--nx-text)',
+  borderBottom: '1px solid var(--nx-border)', textAlign: 'left',
 };
 const tdLabelStyle: React.CSSProperties = {
-  padding: '8px', color: '#8b949e', fontSize: 11,
-  borderTop: '1px solid #21262d', verticalAlign: 'top', whiteSpace: 'nowrap',
+  padding: '8px', color: 'var(--nx-text-2)', fontSize: 11,
+  borderTop: '1px solid var(--nx-panel-2)', verticalAlign: 'top', whiteSpace: 'nowrap',
 };
 const tdCellStyle: React.CSSProperties = {
-  padding: '8px', borderTop: '1px solid #21262d', verticalAlign: 'top',
+  padding: '8px', borderTop: '1px solid var(--nx-panel-2)', verticalAlign: 'top',
 };
 const badgeStyle: React.CSSProperties = {
   marginTop: 4, display: 'inline-block',

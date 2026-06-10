@@ -134,6 +134,36 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
       let rfqData: { rfqId?: string } = {};
       try { rfqData = await rfqRes.json(); } catch { /* ignore */ }
 
+      // ── Attach the actual CAD files (STEP + STL) to the RFQ ───────────────
+      // Previously an RFQ carried only metrics + a /view/ viewer link, so a
+      // partner had no manufacturable file to quote/produce from. Generate the
+      // STEP + STL headlessly and upload them against the rfqId (stored in
+      // nf_files, ref_type='rfq'). Non-blocking: a failure must not fail RFQ
+      // creation. (2026-06-09 design→manufacturing continuity.)
+      if (rfqData.rfqId && effectiveResult.geometry) {
+        const rfqId = rfqData.rfqId;
+        const geo = effectiveResult.geometry;
+        void (async () => {
+          try {
+            const [{ exportToStepAsync }, { buildBinaryStl }] = await Promise.all([
+              import('../io/stepExporter'),
+              import('../io/stlEncode'),
+            ]);
+            const stepText = await exportToStepAsync(geo, shapeName);
+            const stlBuf = buildBinaryStl(geo);
+            const fd = new FormData();
+            fd.append('rfqId', rfqId);
+            fd.append('file', new Blob([stepText], { type: 'application/step' }), `${shapeName}.step`);
+            fd.append('file', new Blob([stlBuf], { type: 'model/stl' }), `${shapeName}.stl`);
+            await fetch('/api/quick-quote/upload', {
+              method: 'POST',
+              headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              body: fd,
+            });
+          } catch { /* non-blocking — the RFQ itself is already created */ }
+        })();
+      }
+
       // ── 현재 사용자 정보 ──────────────────────────────────────────────────
       let currentUser: { name?: string; email?: string } = {};
       if (typeof window !== 'undefined') {

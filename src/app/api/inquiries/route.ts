@@ -174,6 +174,10 @@ const inquirySchema = z.object({
   shapeId: z.string().max(100).optional(),
   materialId: z.string().max(100).optional(),
   volume_cm3: z.number().nonnegative().max(1_000_000).optional(),
+  // Directory→inquiry linkage: which factory the user contacted from the
+  // factories directory. The column already exists (db.ts ALTER); only
+  // /api/send-mail wrote it before, via a free-text side-channel. (2026-06-09)
+  factoryId: z.string().max(100).optional(),
 });
 
 // POST /api/inquiries — 새 문의 접수
@@ -192,7 +196,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, email, projectName, budget, message, phone, rfqId, shapeId, materialId, volume_cm3 } = parsed.data;
+  const { name, email, projectName, budget, message, phone, rfqId, shapeId, materialId, volume_cm3, factoryId } = parsed.data;
 
   const id = `INQ-${Date.now()}`;
   const now = new Date().toISOString();
@@ -201,12 +205,12 @@ export async function POST(req: NextRequest) {
   await db.execute(
     `INSERT INTO nf_inquiries
       (id, action, name, email, project_name, budget, message, phone,
-       status, rfq_id, shape_id, material_id, volume_cm3, created_at)
-     VALUES (?, 'send_contact', ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+       status, rfq_id, shape_id, material_id, volume_cm3, factory_id, created_at)
+     VALUES (?, 'send_contact', ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
     id, name, email.trim().toLowerCase(), projectName,
     budget ?? null, message ?? '', phone ?? null,
     rfqId ?? null, shapeId ?? null, materialId ?? null,
-    volume_cm3 ?? null, now,
+    volume_cm3 ?? null, factoryId ?? null, now,
   );
 
   // 어드민 알림 이메일 — fire-and-forget

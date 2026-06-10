@@ -30,7 +30,7 @@ const NAV_ITEMS: { icon: string; labelKo: string; labelEn: string; href: string;
 ];
 
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
-  free:       { label: 'FREE', color: '#6e7681' },
+  free:       { label: 'FREE', color: 'var(--nx-text-3)' },
   pro:        { label: 'PRO',  color: '#388bfd' },
   team:       { label: 'TEAM', color: '#a371f7' },
   enterprise: { label: 'ENT',  color: '#d29922' },
@@ -83,8 +83,8 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
         className="nf-nav"
         style={{
           height: '100vh',
-          background: '#0d1117',
-          borderRight: '1px solid #30363d',
+          background: 'var(--nx-bg)',
+          borderRight: '1px solid var(--nx-border)',
           display: 'flex',
           flexDirection: 'column',
           position: 'sticky',
@@ -96,11 +96,11 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
         }}
       >
         {/* Logo */}
-        <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid #21262d' }}>
+        <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid var(--nx-panel-2)' }}>
           <Link
             prefetch
             href={`/${lang}/nexyfab`}
-            style={{ fontSize: 17, fontWeight: 800, color: '#e6edf3', textDecoration: 'none', letterSpacing: '-0.02em' }}
+            style={{ fontSize: 17, fontWeight: 800, color: 'var(--nx-text)', textDecoration: 'none', letterSpacing: '-0.02em' }}
           >
             <span style={{ color: '#8b9cf4' }}>N</span>
             <span className="nf-logo-text" style={{ color: '#8b9cf4' }}>exy</span>
@@ -118,7 +118,7 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
             if (item.accent) {
               return (
                 <div key={item.href} style={{ padding: '4px 10px 4px' }}>
-                  <div style={{ borderTop: '1px solid #21262d', marginBottom: 8 }} />
+                  <div style={{ borderTop: '1px solid var(--nx-panel-2)', marginBottom: 8 }} />
                   <Link
                     prefetch
                     href={href}
@@ -163,8 +163,8 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
                   gap: 9,
                   padding: '8px 16px',
                   marginBottom: 1,
-                  color: active ? '#e6edf3' : '#6e7681',
-                  background: active ? '#21262d' : 'transparent',
+                  color: active ? 'var(--nx-text)' : 'var(--nx-text-3)',
+                  background: active ? 'var(--nx-panel-2)' : 'transparent',
                   borderLeft: active ? '3px solid #388bfd' : '3px solid transparent',
                   fontSize: 13,
                   fontWeight: active ? 600 : 400,
@@ -176,13 +176,13 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
                 }}
                 onMouseEnter={e => {
                   if (!active) {
-                    e.currentTarget.style.color = '#c9d1d9';
-                    e.currentTarget.style.background = '#161b22';
+                    e.currentTarget.style.color = 'var(--nx-text)';
+                    e.currentTarget.style.background = 'var(--nx-panel)';
                   }
                 }}
                 onMouseLeave={e => {
                   if (!active) {
-                    e.currentTarget.style.color = '#6e7681';
+                    e.currentTarget.style.color = 'var(--nx-text-3)';
                     e.currentTarget.style.background = 'transparent';
                   }
                 }}
@@ -209,7 +209,7 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
         {user && <NotificationBell token={token} lang={lang} />}
 
         {/* Bottom: plan badge + profile */}
-        <div style={{ borderTop: '1px solid #21262d', padding: '12px', marginTop: 8 }}>
+        <div style={{ borderTop: '1px solid var(--nx-panel-2)', padding: '12px', marginTop: 8 }}>
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
@@ -232,7 +232,7 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
                   margin: 0,
                   fontSize: 12,
                   fontWeight: 600,
-                  color: '#e6edf3',
+                  color: 'var(--nx-text)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -256,7 +256,7 @@ export default function NexyfabNav({ lang }: NexyfabNavProps) {
             <Link
               prefetch
               href={`/${lang}/nexyfab`}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6e7681', textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--nx-text-3)', textDecoration: 'none' }}
             >
               <span style={{ flexShrink: 0 }}>👤</span>
               <span className="nf-nav-label">{isKo ? '로그인' : 'Sign in'}</span>

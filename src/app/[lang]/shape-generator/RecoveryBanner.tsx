@@ -83,18 +83,21 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
   const timeAgo = formatTimeAgo(timestamp, t, key === 'en');
 
   return (
-    // In-flow banner strip (sibling of the other TopBanners) so it sits BELOW
-    // the ribbon instead of a fixed top:56 that overlapped the taller shell-v2
-    // chrome. Right-aligned compact pill; overflow-hidden contains the slide-in.
+    // FLOATING popup (position:fixed) so it overlays the top-right corner instead
+    // of an in-flow strip that pushed the toolbar/sidebar down (reported clutter).
+    // pointer-events:none on the wrapper so only the pill itself is interactive —
+    // the rest of the chrome underneath stays clickable.
     <div
       style={{
-        width: '100%',
+        position: 'fixed',
+        // Stacks below the SCAD toggle (top:56) and the auto-save pill (top:92)
+        // in the top-right column so none of the three overlap.
+        top: 128,
+        right: 16,
+        zIndex: 250,
         display: 'flex',
         justifyContent: 'flex-end',
-        padding: '6px 16px 0',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
-        flexShrink: 0,
+        pointerEvents: 'none',
       }}
     >
     <div
@@ -108,6 +111,7 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
         borderRadius: 8,
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         flexShrink: 0,
+        pointerEvents: 'auto',
         transform: visible && !exiting ? 'translateX(0)' : 'translateX(120%)',
         opacity: visible && !exiting ? 1 : 0,
         transition: 'transform 0.3s ease, opacity 0.3s ease',

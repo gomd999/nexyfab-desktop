@@ -13,13 +13,13 @@ import { useState } from 'react';
 import { negotiateQuotes, type QuoteInput, type RfqContext, type NegotiatorResult, type NegotiationDraft } from './quoteNegotiator';
 
 const C = {
-  bg: '#0d1117',
-  surface: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#e6edf3',
-  textDim: '#8b949e',
-  textMuted: '#6e7681',
+  bg: 'var(--nx-bg)',
+  surface: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  textMuted: 'var(--nx-text-3)',
   accent: '#388bfd',
   green: '#3fb950',
   yellow: '#d29922',

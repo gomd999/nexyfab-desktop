@@ -17,6 +17,12 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
+
+// DrawingPageContent's back-to-editor button calls useRouter() (next/navigation);
+// jsdom has no app router mounted, so stub it.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+}));
 import OrdinateDimensionPanel, {
   type DrawingLang,
   type OrdinateDimensionChain,

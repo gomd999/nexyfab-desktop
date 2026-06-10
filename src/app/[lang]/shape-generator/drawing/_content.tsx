@@ -34,6 +34,7 @@
 
 import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   standardThreeViewSheet,
   paperDimensions,
@@ -1139,6 +1140,8 @@ function partInstanceToAssemblyPart(p: PartInstance): AssemblyPart {
 
 export function DrawingPageContent({ lang }: { lang: string }): React.ReactElement {
   const dict = pickDict(lang);
+  const router = useRouter();
+  const langSeg = lang === 'ko' ? 'kr' : lang;
   const [sourceId, setSourceId] = useState<string>(SAMPLE_PARTS[0].sourceId);
   const [paperSize, setPaperSize] = useState<PaperSize>('A3');
   const [scale, setScale] = useState<number>(1);
@@ -2071,9 +2074,24 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           data-testid="drawing-page-header"
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}
         >
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <button
+              type="button"
+              onClick={() => router.push(`/${langSeg}/shape-generator`)}
+              title={dict.closeEditor}
+              style={{
+                marginTop: 2, padding: '6px 12px', borderRadius: 8,
+                border: '1px solid #d1d5db', background: '#fff',
+                color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              ← {dict.closeEditor}
+            </button>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
+              <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <label

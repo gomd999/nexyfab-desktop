@@ -142,9 +142,9 @@ export default function OrderMilestoneFeed({ lang, orderId, isPartner }: OrderMi
           <div key={m.id} style={milestoneStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <span style={stepBadgeStyle}>{t.stepLabels[m.step as Step] ?? m.step}</span>
-              <span style={{ fontSize: 10, color: '#8b949e' }}>{new Date(m.createdAt).toLocaleString()}</span>
+              <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{new Date(m.createdAt).toLocaleString()}</span>
             </div>
-            {m.note && <div style={{ fontSize: 12, color: '#c9d1d9', lineHeight: 1.5, marginBottom: 6 }}>{m.note}</div>}
+            {m.note && <div style={{ fontSize: 12, color: 'var(--nx-text)', lineHeight: 1.5, marginBottom: 6 }}>{m.note}</div>}
             {m.attachments.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {m.attachments.map((url, i) => {
@@ -152,7 +152,7 @@ export default function OrderMilestoneFeed({ lang, orderId, isPartner }: OrderMi
                   return isImage ? (
                      
                     <a key={i} href={url} target="_blank" rel="noreferrer">
-                      <img src={url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid #30363d' }} />
+                      <img src={url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--nx-border)' }} />
                     </a>
                   ) : (
                     <a key={i} href={url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#79c0ff', textDecoration: 'underline', wordBreak: 'break-all' }}>
@@ -199,36 +199,36 @@ export default function OrderMilestoneFeed({ lang, orderId, isPartner }: OrderMi
 }
 
 const containerStyle: React.CSSProperties = {
-  background: '#0d1117', border: '1px solid #30363d', borderRadius: 10,
-  padding: 12, color: '#c9d1d9', marginTop: 12,
+  background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 10,
+  padding: 12, color: 'var(--nx-text)', marginTop: 12,
 };
-const titleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#e6edf3' };
-const mutedStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', padding: 12, textAlign: 'center' };
+const titleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' };
+const mutedStyle: React.CSSProperties = { fontSize: 11, color: 'var(--nx-text-2)', padding: 12, textAlign: 'center' };
 const milestoneStyle: React.CSSProperties = {
-  padding: 10, background: '#161b22', borderRadius: 8, border: '1px solid #21262d',
+  padding: 10, background: 'var(--nx-panel)', borderRadius: 8, border: '1px solid var(--nx-panel-2)',
 };
 const stepBadgeStyle: React.CSSProperties = {
   padding: '2px 8px', fontSize: 10, fontWeight: 700,
   borderRadius: 10, background: '#1f6feb22', color: '#79c0ff',
 };
 const composerStyle: React.CSSProperties = {
-  marginTop: 10, paddingTop: 10, borderTop: '1px solid #21262d',
+  marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--nx-panel-2)',
   display: 'flex', flexDirection: 'column', gap: 6,
 };
 const selectStyle: React.CSSProperties = {
   padding: '6px 8px', fontSize: 12,
-  background: '#161b22', border: '1px solid #30363d',
-  borderRadius: 6, color: '#e6edf3', outline: 'none',
+  background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+  borderRadius: 6, color: 'var(--nx-text)', outline: 'none',
 };
 const textareaStyle: React.CSSProperties = {
-  padding: 8, background: '#161b22', border: '1px solid #30363d',
-  borderRadius: 6, color: '#e6edf3', fontSize: 12, fontFamily: 'inherit',
+  padding: 8, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+  borderRadius: 6, color: 'var(--nx-text)', fontSize: 12, fontFamily: 'inherit',
   resize: 'vertical', outline: 'none',
 };
 const inputStyle: React.CSSProperties = {
   padding: '6px 8px', fontSize: 11, fontFamily: 'monospace',
-  background: '#161b22', border: '1px solid #30363d',
-  borderRadius: 6, color: '#c9d1d9', outline: 'none',
+  background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+  borderRadius: 6, color: 'var(--nx-text)', outline: 'none',
 };
 const errStyle: React.CSSProperties = {
   fontSize: 11, color: '#ffa198', padding: '4px 8px',
@@ -242,6 +242,6 @@ const postBtnStyle: React.CSSProperties = {
 };
 const refreshStyle: React.CSSProperties = {
   padding: '3px 10px', fontSize: 10,
-  borderRadius: 4, border: '1px solid #30363d',
+  borderRadius: 4, border: '1px solid var(--nx-border)',
   background: 'transparent', color: '#9ca3af', cursor: 'pointer',
 };

@@ -100,8 +100,8 @@ export default function SettingsPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0d1117',
-      color: '#e6edf3',
+      background: 'var(--nx-bg)',
+      color: 'var(--nx-text)',
       padding: '40px 24px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
@@ -109,12 +109,12 @@ export default function SettingsPage() {
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
           <h1 style={{
-            fontSize: 26, fontWeight: 800, color: '#e6edf3',
+            fontSize: 26, fontWeight: 800, color: 'var(--nx-text)',
             margin: 0, letterSpacing: '-0.02em',
           }}>
             {isKo ? '설정' : 'Settings'}
           </h1>
-          <p style={{ fontSize: 14, color: '#6e7681', marginTop: 6, marginBottom: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--nx-text-3)', marginTop: 6, marginBottom: 0 }}>
             {isKo ? '계정 및 보안 설정을 관리하세요' : 'Manage your account and security settings'}
           </p>
         </div>
@@ -125,8 +125,8 @@ export default function SettingsPage() {
             <div
               key={card.href}
               style={{
-                background: '#161b22',
-                border: '1px solid #30363d',
+                background: 'var(--nx-panel)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 12,
                 padding: '24px 20px',
                 display: 'flex',
@@ -136,10 +136,10 @@ export default function SettingsPage() {
             >
               <div style={{ fontSize: 28, lineHeight: 1 }}>{card.icon}</div>
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, color: '#e6edf3', margin: '0 0 6px' }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--nx-text)', margin: '0 0 6px' }}>
                   {isKo ? card.titleKo : card.titleEn}
                 </h2>
-                <p style={{ fontSize: 13, color: '#8b949e', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: 0, lineHeight: 1.5 }}>
                   {isKo ? card.descKo : card.descEn}
                 </p>
               </div>
@@ -147,9 +147,9 @@ export default function SettingsPage() {
                 href={`/${lang}${card.href}`}
                 style={{
                   display: 'inline-block', alignSelf: 'flex-start',
-                  padding: '7px 16px', background: '#21262d',
-                  color: '#e6edf3', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  textDecoration: 'none', border: '1px solid #30363d',
+                  padding: '7px 16px', background: 'var(--nx-panel-2)',
+                  color: 'var(--nx-text)', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  textDecoration: 'none', border: '1px solid var(--nx-border)',
                   transition: 'background 0.12s, border-color 0.12s',
                 }}
                 onMouseEnter={e => {
@@ -158,9 +158,9 @@ export default function SettingsPage() {
                   (e.currentTarget as HTMLAnchorElement).style.color = '#388bfd';
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = '#21262d';
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = '#30363d';
-                  (e.currentTarget as HTMLAnchorElement).style.color = '#e6edf3';
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-panel-2)';
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--nx-border)';
+                  (e.currentTarget as HTMLAnchorElement).style.color = 'var(--nx-text)';
                 }}
               >
                 {isKo ? '이동 →' : 'Go →'}
@@ -172,15 +172,15 @@ export default function SettingsPage() {
         {/* Data Export */}
         <div style={{
           marginTop: 32,
-          border: '1px solid #30363d',
+          border: '1px solid var(--nx-border)',
           borderRadius: 12,
           padding: '24px 20px',
-          background: '#161b22',
+          background: 'var(--nx-panel)',
         }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3', margin: '0 0 8px' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--nx-text)', margin: '0 0 8px' }}>
             {isKo ? '내 데이터 내보내기' : 'Export My Data'}
           </h2>
-          <p style={{ fontSize: 13, color: '#8b949e', margin: '0 0 16px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 16px', lineHeight: 1.5 }}>
             {isKo
               ? 'GDPR 제20조에 따라 주문, RFQ, 프로젝트 등 모든 개인 데이터를 JSON 파일로 내보낼 수 있습니다.'
               : 'Under GDPR Article 20, you can export all your personal data (orders, RFQs, projects, etc.) as a JSON file.'}
@@ -190,9 +190,9 @@ export default function SettingsPage() {
             disabled={exporting}
             style={{
               padding: '8px 18px',
-              background: '#21262d',
-              color: '#e6edf3',
-              border: '1px solid #30363d',
+              background: 'var(--nx-panel-2)',
+              color: 'var(--nx-text)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
@@ -215,7 +215,7 @@ export default function SettingsPage() {
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f85149', margin: '0 0 8px' }}>
             {isKo ? '위험 구역' : 'Danger Zone'}
           </h2>
-          <p style={{ fontSize: 13, color: '#8b949e', margin: '0 0 16px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 16px', lineHeight: 1.5 }}>
             {isKo
               ? '계정을 삭제하면 모든 프로젝트, 주문, 파일이 영구적으로 제거됩니다. 이 작업은 되돌릴 수 없습니다.'
               : 'Deleting your account permanently removes all projects, orders, and files. This cannot be undone.'}

@@ -40,6 +40,15 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
   const toast = useToast();
   const { user } = useAuthStore();
   const isFreePlan = !user?.plan || user.plan === 'free';
+  // "공유된 항목" nav links here with ?filter=shared. Project-level sharing has
+  // no backend yet (the projects API is owner-scoped), so we show an honest
+  // "nothing shared with you yet" state rather than mislabeling owned projects
+  // as shared. Read from window (not useSearchParams) to avoid a Suspense
+  // build requirement. (2026-06-09 follow-up #2)
+  const [sharedView, setSharedView] = useState(false);
+  useEffect(() => {
+    try { setSharedView(new URLSearchParams(window.location.search).get('filter') === 'shared'); } catch { /* ignore */ }
+  }, []);
 
   const [projects, setProjects] = useState<NexyfabProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +70,34 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
   const loadProjects = useCallback(async () => {
     setLoading(true);
     setError(null);
+    // Guests have no server-side projects — the API 401s, which previously
+    // surfaced as a red "Failed to load" error. Show a friendly sign-in nudge
+    // instead. (2026-06-09)
+    if (!user) {
+      setProjects([]);
+      setTotal(0);
+      setError('GUEST');
+      setLoading(false);
+      return;
+    }
+    if (sharedView) {
+      // Projects shared WITH me (nf_project_members ACL). Empty → honest
+      // "nothing shared yet" state. (2026-06-09 P2)
+      try {
+        const r = await fetch('/api/nexyfab/projects?shared=true');
+        if (!r.ok) throw new Error('Failed to load');
+        const data = await r.json() as { projects: NexyfabProject[]; pagination: { total: number } };
+        const list = data.projects ?? [];
+        setProjects(list);
+        setTotal(data.pagination?.total ?? 0);
+        setError(list.length === 0 ? 'SHARED_EMPTY' : null);
+      } catch {
+        setError('SHARED_EMPTY');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const url = tab === 'archived'
         ? '/api/nexyfab/projects?archived=true'
@@ -75,7 +112,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, [tab, user, sharedView]);
 
   useEffect(() => {
     loadProjects();
@@ -163,27 +200,30 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
 
   const selectStyle: React.CSSProperties = {
     padding: '8px 10px', minHeight: 36, borderRadius: 7, fontSize: 12,
-    background: '#161b22', border: '1px solid #30363d',
-    color: '#e6edf3', outline: 'none', cursor: 'pointer',
+    background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+    color: 'var(--nx-text)', outline: 'none', cursor: 'pointer',
     minWidth: 0, flex: '1 1 110px',
   };
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0d1117', color: '#e6edf3',
+      // No minHeight:100vh — the nexyfab layout's <main> already owns the
+      // viewport height + scroll; forcing 100vh here stacked on top of the
+      // footer and created extra space. (2026-06-09)
+      minHeight: '100%', background: 'var(--nx-bg)', color: 'var(--nx-text)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       {/* ── Header ── */}
       <div style={{
-        borderBottom: '1px solid #21262d', padding: '16px clamp(16px, 4vw, 32px)',
+        borderBottom: '1px solid var(--nx-panel-2)', padding: '16px clamp(16px, 4vw, 32px)',
         display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-        position: 'sticky', top: 0, background: '#0d1117', zIndex: 10,
+        position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
       }}>
         <Link prefetch href={`/${lang}/shape-generator`} style={{ textDecoration: 'none' }}>
-          <span style={{ fontSize: 20, fontWeight: 800, color: '#388bfd' }}>Nexy</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--nx-accent)' }}>Nexy</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: '#3fb950' }}>Fab</span>
         </Link>
-        <span style={{ color: '#30363d' }}>/</span>
+        <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>
           {isKo ? '내 프로젝트' : 'My Projects'}
         </span>
@@ -205,7 +245,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
               prefetch
               href={`/${lang}/shape-generator`}
               style={{
-                padding: '8px 16px', borderRadius: 8, background: '#388bfd',
+                padding: '8px 16px', borderRadius: 8, background: 'var(--nx-accent)',
                 color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
@@ -246,15 +286,15 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         )}
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #21262d', paddingBottom: 0 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--nx-panel-2)', paddingBottom: 0 }}>
           {(['active', 'archived'] as TabKey[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '8px 16px', borderRadius: '8px 8px 0 0',
-              background: tab === t ? '#161b22' : 'transparent',
-              border: tab === t ? '1px solid #30363d' : '1px solid transparent',
-              borderBottom: tab === t ? '1px solid #161b22' : '1px solid transparent',
+              background: tab === t ? 'var(--nx-panel)' : 'transparent',
+              border: tab === t ? '1px solid var(--nx-border)' : '1px solid transparent',
+              borderBottom: tab === t ? '1px solid var(--nx-panel)' : '1px solid transparent',
               marginBottom: tab === t ? -1 : 0,
-              color: tab === t ? '#e6edf3' : '#8b949e',
+              color: tab === t ? 'var(--nx-text)' : 'var(--nx-text-2)',
               fontSize: 13, fontWeight: tab === t ? 700 : 400,
               cursor: 'pointer', transition: 'all 0.15s',
             }}>
@@ -300,27 +340,27 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
 
         {/* ── Loading ── */}
         {loading && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#6e7681' }}>
+          <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--nx-text-3)' }}>
             <div style={{
-              width: 40, height: 40, border: '3px solid #30363d',
-              borderTopColor: '#388bfd', borderRadius: '50%',
+              width: 40, height: 40, border: '3px solid var(--nx-border)',
+              borderTopColor: 'var(--nx-accent)', borderRadius: '50%',
               animation: 'spin 0.9s linear infinite', margin: '0 auto 16px',
             }} />
             {isKo ? '불러오는 중...' : 'Loading...'}
           </div>
         )}
 
-        {/* ── Error ── */}
-        {error && (
+        {/* ── Error (real load failure only) ── */}
+        {error && error !== 'GUEST' && error !== 'SHARED_EMPTY' && (
           <div style={{
             background: '#da363322', border: '1px solid #da363355',
-            borderRadius: 8, padding: '14px 16px', color: '#f85149', fontSize: 13, marginBottom: 16,
+            borderRadius: 8, padding: '14px 16px', color: 'var(--nx-error)', fontSize: 13, marginBottom: 16,
           }}>
             {error === 'LOAD_FAILED' ? (isKo ? '프로젝트를 불러오지 못했습니다.' : 'Failed to load projects.') : error}
             <button
               onClick={loadProjects}
               style={{
-                marginLeft: 12, fontSize: 12, color: '#388bfd', background: 'none',
+                marginLeft: 12, fontSize: 12, color: 'var(--nx-accent)', background: 'none',
                 border: 'none', cursor: 'pointer', textDecoration: 'underline',
               }}
             >
@@ -329,18 +369,70 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
           </div>
         )}
 
+        {/* ── Shared-with-me empty state (no project-share backend yet) ── */}
+        {error === 'SHARED_EMPTY' && (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🔗</div>
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
+              {isKo ? '아직 공유받은 프로젝트가 없습니다.' : 'Nothing shared with you yet.'}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 24px' }}>
+              {isKo
+                ? '다른 사용자가 프로젝트를 공유하면 여기에 표시됩니다. 팀 공유 기능은 준비 중입니다.'
+                : 'Projects others share with you will appear here. Team sharing is coming soon.'}
+            </p>
+            <Link
+              prefetch
+              href={`/${lang}/nexyfab/projects`}
+              style={{
+                display: 'inline-block', padding: '10px 20px', borderRadius: 8,
+                background: 'var(--nx-panel-2, var(--nx-panel-2))', border: '1px solid var(--nx-border)',
+                color: 'var(--nx-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none',
+              }}
+            >
+              {isKo ? '내 프로젝트 보기' : 'View my projects'}
+            </Link>
+          </div>
+        )}
+
+        {/* ── Guest sign-in nudge (no red error) ── */}
+        {error === 'GUEST' && (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🔒</div>
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
+              {isKo ? '로그인하면 저장한 프로젝트가 여기에 표시됩니다.' : 'Sign in to see your saved projects here.'}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 24px' }}>
+              {isKo
+                ? '게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 영구 저장돼요.'
+                : 'Guest work stays in this browser only — sign in to save it to the cloud.'}
+            </p>
+            <Link
+              prefetch
+              href={`/${lang}/shape-generator`}
+              style={{
+                display: 'inline-block', padding: '10px 20px', borderRadius: 8,
+                background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+              }}
+            >
+              {isKo ? '3D 설계 시작 →' : 'Start designing →'}
+            </Link>
+          </div>
+        )}
+
         {/* ── Empty state ── */}
         {!loading && !error && projects.length === 0 && (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>{tab === 'archived' ? '🗃️' : '📐'}</div>
-            <p style={{ fontSize: 16, fontWeight: 600, color: '#e6edf3', margin: '0 0 8px' }}>
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
               {tab === 'archived'
                 ? (isKo ? '보관된 프로젝트가 없습니다.' : 'No archived projects.')
                 : (isKo ? '아직 저장된 프로젝트가 없습니다.' : 'No saved projects yet.')}
             </p>
             {tab === 'active' && (
               <>
-                <p style={{ fontSize: 13, color: '#8b949e', margin: '0 0 24px' }}>
+                <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 24px' }}>
                   {isKo
                     ? '3D 형상을 설계하고 프로젝트로 저장해 보세요.'
                     : 'Design a 3D shape and save it as a project.'}
@@ -350,7 +442,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                   href={`/${lang}/shape-generator`}
                   style={{
                     display: 'inline-block', padding: '10px 24px', borderRadius: 8,
-                    background: '#388bfd', color: '#fff', fontWeight: 700,
+                    background: 'var(--nx-accent)', color: '#fff', fontWeight: 700,
                     fontSize: 14, textDecoration: 'none',
                   }}
                 >
@@ -363,7 +455,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
 
         {/* ── No filter results ── */}
         {!loading && !error && projects.length > 0 && filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#8b949e' }}>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--nx-text-2)' }}>
             {isKo ? '검색 결과가 없습니다.' : 'No matching projects.'}
           </div>
         )}
@@ -386,6 +478,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 isArchiving={archivingId === project.id}
                 onDelete={requestDelete}
                 onToggleArchive={toggleArchive}
+                canManage={!sharedView}
               />
             ))}
           </div>
@@ -416,7 +509,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
 function ProjectCard({
-  project, lang, isKo, tab, isDeleting, isArchiving, onDelete, onToggleArchive,
+  project, lang, isKo, tab, isDeleting, isArchiving, onDelete, onToggleArchive, canManage = true,
 }: {
   project: NexyfabProject;
   lang: string;
@@ -426,23 +519,25 @@ function ProjectCard({
   isArchiving: boolean;
   onDelete: (p: NexyfabProject) => void;
   onToggleArchive: (p: NexyfabProject) => void;
+  /** Owner-only actions (archive/delete) — hidden for shared (non-owner) cards. */
+  canManage?: boolean;
 }) {
   const busy = isDeleting || isArchiving;
 
   return (
     <div style={{
-      background: '#161b22', border: '1px solid #30363d',
+      background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
       borderRadius: 12, overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
       transition: 'border-color 0.15s',
     }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = '#388bfd55')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#30363d')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--nx-accent-line)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--nx-border)')}
     >
       {/* Thumbnail */}
       <div style={{
         width: '100%', height: 160,
-        background: '#0d1117',
+        background: 'var(--nx-bg)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', position: 'relative',
         opacity: tab === 'archived' ? 0.6 : 1,
@@ -464,8 +559,8 @@ function ProjectCard({
         {tab === 'archived' && (
           <div style={{
             position: 'absolute', top: 8, right: 8,
-            background: '#21262d', borderRadius: 6, padding: '2px 8px',
-            fontSize: 10, color: '#8b949e',
+            background: 'var(--nx-panel-2)', borderRadius: 6, padding: '2px 8px',
+            fontSize: 10, color: 'var(--nx-text-2)',
           }}>
             {isKo ? '보관됨' : 'Archived'}
           </div>
@@ -475,7 +570,7 @@ function ProjectCard({
       {/* Info */}
       <div style={{ padding: '14px 16px', flex: 1 }}>
         <div style={{
-          fontSize: 14, fontWeight: 700, color: '#e6edf3',
+          fontSize: 14, fontWeight: 700, color: 'var(--nx-text)',
           marginBottom: 6, lineHeight: 1.3,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
@@ -485,8 +580,8 @@ function ProjectCard({
         {project.materialId && (
           <span style={{
             display: 'inline-block', fontSize: 10, padding: '2px 8px',
-            borderRadius: 10, background: '#388bfd18', color: '#79c0ff',
-            border: '1px solid #388bfd33', marginBottom: 6,
+            borderRadius: 10, background: 'var(--nx-accent-soft)', color: 'var(--nx-accent-2)',
+            border: '1px solid var(--nx-accent-line)', marginBottom: 6,
           }}>
             {project.materialId}
           </span>
@@ -497,7 +592,7 @@ function ProjectCard({
             {project.tags.slice(0, 4).map(tag => (
               <span key={tag} style={{
                 fontSize: 10, padding: '2px 7px',
-                borderRadius: 10, background: '#21262d', color: '#8b949e',
+                borderRadius: 10, background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
               }}>
                 {tag}
               </span>
@@ -505,7 +600,7 @@ function ProjectCard({
           </div>
         )}
 
-        <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 14 }}>
+        <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 14 }}>
           {isKo ? '수정' : 'Updated'}: {fmtDate(project.updatedAt, isKo)}
         </div>
 
@@ -517,8 +612,8 @@ function ProjectCard({
               href={`/${lang}/shape-generator?project=${project.id}`}
               style={{
                 flex: 1, padding: '7px 10px', borderRadius: 7,
-                background: '#388bfd22', color: '#388bfd',
-                border: '1px solid #388bfd44',
+                background: 'var(--nx-accent-soft)', color: 'var(--nx-accent)',
+                border: '1px solid var(--nx-accent-line)',
                 fontSize: 12, fontWeight: 700, textDecoration: 'none',
                 textAlign: 'center', minWidth: 48,
               }}
@@ -526,37 +621,46 @@ function ProjectCard({
               {isKo ? '열기' : 'Open'}
             </Link>
           )}
-          <button
-            onClick={() => onToggleArchive(project)}
-            disabled={busy}
-            style={{
-              padding: '7px 10px', borderRadius: 7, fontSize: 11, fontWeight: 600,
-              background: 'transparent',
-              color: isArchiving ? '#6e7681' : '#8b949e',
-              border: '1px solid #30363d',
-              cursor: busy ? 'not-allowed' : 'pointer',
-              opacity: busy ? 0.55 : 1,
-              transition: 'all 0.15s',
-            }}
-          >
-            {isArchiving ? '...' : (tab === 'archived' ? (isKo ? '복원' : 'Restore') : (isKo ? '보관' : 'Archive'))}
-          </button>
-          <button
-            onClick={() => onDelete(project)}
-            disabled={busy}
-            aria-busy={isDeleting}
-            style={{
-              padding: '7px 10px', borderRadius: 7, fontSize: 11, fontWeight: 600,
-              background: isDeleting ? '#21262d' : 'transparent',
-              color: isDeleting ? '#6e7681' : '#f85149',
-              border: '1px solid #da363344',
-              cursor: busy ? 'not-allowed' : 'pointer',
-              opacity: busy ? 0.55 : 1,
-              transition: 'all 0.15s',
-            }}
-          >
-            {isDeleting ? '...' : (isKo ? '삭제' : 'Delete')}
-          </button>
+          {canManage && (
+            <button
+              onClick={() => onToggleArchive(project)}
+              disabled={busy}
+              style={{
+                padding: '7px 10px', borderRadius: 7, fontSize: 11, fontWeight: 600,
+                background: 'transparent',
+                color: isArchiving ? 'var(--nx-text-3)' : 'var(--nx-text-2)',
+                border: '1px solid var(--nx-border)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+                opacity: busy ? 0.55 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              {isArchiving ? '...' : (tab === 'archived' ? (isKo ? '복원' : 'Restore') : (isKo ? '보관' : 'Archive'))}
+            </button>
+          )}
+          {canManage && (
+            <button
+              onClick={() => onDelete(project)}
+              disabled={busy}
+              aria-busy={isDeleting}
+              style={{
+                padding: '7px 10px', borderRadius: 7, fontSize: 11, fontWeight: 600,
+                background: isDeleting ? 'var(--nx-panel-2)' : 'transparent',
+                color: isDeleting ? 'var(--nx-text-3)' : 'var(--nx-error)',
+                border: '1px solid #da363344',
+                cursor: busy ? 'not-allowed' : 'pointer',
+                opacity: busy ? 0.55 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              {isDeleting ? '...' : (isKo ? '삭제' : 'Delete')}
+            </button>
+          )}
+          {!canManage && (
+            <span style={{ padding: '7px 10px', fontSize: 11, color: 'var(--nx-text-3)' }}>
+              {isKo ? '공유받음' : 'Shared'}
+            </span>
+          )}
         </div>
       </div>
     </div>

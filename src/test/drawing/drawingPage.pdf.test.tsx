@@ -18,6 +18,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import React from 'react';
 
+// DrawingPageContent's back-to-editor button calls useRouter() (next/navigation);
+// jsdom has no app router mounted, so stub it.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+}));
+
 // ─── svg2pdfBridge mock (Phase 2 vector pipeline) ────────────────────────
 //
 // Mocked BEFORE the component import so the bound reference inside

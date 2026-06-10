@@ -129,7 +129,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     { id: 'projects', lbl: isKo ? '프로젝트' : 'Projects', ico: 'folder', href: `/${lang}/nexyfab/projects` },
     { id: 'shared', lbl: isKo ? '공유된 항목' : 'Shared with me', ico: 'share', href: `/${lang}/nexyfab/projects?filter=shared` },
     { id: 'branches', lbl: isKo ? '브랜치' : 'Branches', ico: 'branch', comingSoon: true },
-    { id: 'ai', lbl: isKo ? 'Nexy AI 스튜디오' : 'Nexy AI Studio', ico: 'ai', badge: 'NEW', href: `/${lang}/shape-generator?mode=ai` },
+    { id: 'ai', lbl: isKo ? 'Nexy AI 스튜디오' : 'Nexy AI Studio', ico: 'ai', badge: 'NEW', href: `/${lang}/shape-generator?entry=ai` },
     { id: 'library', lbl: isKo ? '부품 라이브러리' : 'Part Library', ico: 'cube', href: `/${lang}/nexyfab/cots` },
   ];
 
@@ -148,7 +148,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       lblKo: '새 어셈블리',
       sub: 'Mate components',
       subKo: '부품 결합',
-      href: `/${lang}/shape-generator?mode=assembly`,
+      href: `/${lang}/shape-generator?entry=assembly`,
     },
     {
       ico: 'doc',
@@ -164,7 +164,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       lblKo: '스케치에서',
       sub: 'Import DXF / SVG',
       subKo: 'DXF / SVG 가져오기',
-      href: `/${lang}/shape-generator?import=sketch`,
+      href: `/${lang}/shape-generator?entry=sketch`,
     },
   ];
 
@@ -240,9 +240,15 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     }
   }, [user, saveProject, isKo]);
 
-  const handleNewDesign = async () => {
+  // Single entry point for starting ANY new design (quick-start tiles, AI hero,
+  // New Design). For guests it bootstraps the claimable demo session BEFORE
+  // navigating, so the project created in guest mode carries a session_id and
+  // can be atomically migrated on signup. The visible quick-start tiles used to
+  // call router.push(href) directly, skipping this — so guest work was orphaned
+  // from the migration path. (2026-06-09 B2 fix.)
+  const startDesign = async (href: string) => {
     if (user) {
-      router.push(`/${lang}/shape-generator`);
+      router.push(href);
       return;
     }
     // Guest path: allow up to 1 project; force auth modal beyond that.
@@ -268,8 +274,11 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     try {
       await fetch('/api/nexyfab/demo/start', { method: 'POST', credentials: 'same-origin' });
     } catch { /* network — skip silently */ }
-    router.push(`/${lang}/shape-generator?guest=1`);
+    const sep = href.includes('?') ? '&' : '?';
+    router.push(`${href}${sep}guest=1`);
   };
+
+  const handleNewDesign = () => startDesign(`/${lang}/shape-generator`);
 
   return (
     <div
@@ -484,7 +493,9 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
           }}
         >
           <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--nx-text)' }}>
-            {isKo ? `다시 오신 것을 환영합니다, ${userName.split(' ')[0]}` : `Welcome back, ${userName.split(' ')[0]}`}
+            {user
+              ? (isKo ? `다시 오신 것을 환영합니다, ${userName.split(' ')[0]}` : `Welcome back, ${userName.split(' ')[0]}`)
+              : (isKo ? '시작해 볼까요 — 가입 없이 바로 설계' : 'Start designing — no sign-up needed')}
           </div>
           <span style={{ color: 'var(--nx-text-3)', fontSize: 12, marginLeft: 6 }}>
             {(projects?.length ?? 0)} {isKo ? '개 프로젝트' : 'projects'}
@@ -519,15 +530,8 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
           >
             {themeMode === 'dark' ? <I.sun size={14} /> : <I.moon size={14} />}
           </button>
-          <button
-            type="button"
-            className="nx-pillbtn"
-            style={{ height: 32 }}
-            onClick={() => router.push(`/${lang}/nexyfab/releases`)}
-            title={isKo ? '릴리스 노트' : 'Release notes'}
-          >
-            <I.bolt size={14} /> {isKo ? '새 소식' : "What's new"}
-          </button>
+          {/* "What's new" button removed — it linked to /nexyfab/releases,
+              which has no route (404). Re-add with a real releases page. (C3) */}
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
@@ -621,7 +625,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
               gap: 12,
               marginBottom: 32,
             }}
@@ -632,7 +636,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 <button
                   type="button"
                   key={i}
-                  onClick={() => router.push(t.href)}
+                  onClick={() => startDesign(t.href)}
                   style={{
                     background: 'var(--nx-panel)',
                     border: '1px solid var(--nx-border)',
@@ -684,10 +688,14 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   color: 'var(--nx-text)',
                 }}
               >
-                {isKo ? '최근 열어본 항목' : 'Recently opened'}
+                {recentProjects.length === 0
+                  ? (isKo ? '예제로 시작' : 'Start with an example')
+                  : (isKo ? '최근 열어본 항목' : 'Recently opened')}
               </h3>
               <span style={{ color: 'var(--nx-text-3)', fontSize: 11, marginLeft: 8 }}>
-                {isKo ? '모든 프로젝트' : 'Across all projects'}
+                {recentProjects.length === 0
+                  ? (isKo ? '60초 둘러보기' : '60-second tour')
+                  : (isKo ? '모든 프로젝트' : 'Across all projects')}
               </span>
               <span style={{ flex: 1 }} />
               <a
@@ -711,7 +719,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 16, textAlign: 'center' }}>
                   {isKo ? '예제 프로젝트로 60초 안에 둘러보기' : 'Try a sample project — explore in 60 seconds'}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                   {SAMPLE_PROJECTS.map(sample => (
                     <a
                       key={sample.id}
@@ -749,7 +757,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(6, 1fr)',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
                   gap: 12,
                 }}
               >
@@ -895,17 +903,50 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                           color: 'var(--nx-text-3)',
                         }}
                       >
-                        {isLoading
-                          ? isKo
-                            ? '불러오는 중…'
-                            : 'Loading…'
-                          : searchQuery
-                            ? isKo
-                              ? `'${searchQuery}' 에 해당하는 프로젝트가 없습니다.`
-                              : `No projects match '${searchQuery}'.`
-                            : isKo
-                              ? '아직 프로젝트가 없습니다.'
-                              : 'No projects yet.'}
+                        {isLoading ? (
+                          isKo ? '불러오는 중…' : 'Loading…'
+                        ) : searchQuery ? (
+                          isKo
+                            ? `'${searchQuery}' 에 해당하는 프로젝트가 없습니다.`
+                            : `No projects match '${searchQuery}'.`
+                        ) : (
+                          // Empty-state CTA instead of dead text — guests get a
+                          // cloud-save sign-in nudge, signed-in users a create
+                          // prompt. (2026-06-09 hub optimization.)
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                            <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
+                              {user
+                                ? (isKo ? '아직 프로젝트가 없습니다. 첫 파트를 만들어보세요.' : 'No projects yet — create your first part.')
+                                : (isKo ? '로그인하면 프로젝트가 클라우드에 영구 저장됩니다.' : 'Sign in to save your projects to the cloud.')}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/${lang}/shape-generator`)}
+                                style={{
+                                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                                  background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                                  color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                                }}
+                              >
+                                {isKo ? '+ 새 파트' : '+ New part'}
+                              </button>
+                              {!user && onShowAuth && (
+                                <button
+                                  type="button"
+                                  onClick={() => onShowAuth()}
+                                  style={{
+                                    padding: '8px 16px', borderRadius: 8,
+                                    background: 'transparent', border: '1px solid var(--nx-border)',
+                                    color: 'var(--nx-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                  }}
+                                >
+                                  {isKo ? '로그인' : 'Sign in'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ) : (

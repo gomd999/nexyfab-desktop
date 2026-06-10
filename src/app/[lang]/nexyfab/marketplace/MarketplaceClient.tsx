@@ -171,37 +171,37 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0d1117',
-      fontFamily: 'system-ui, -apple-system, sans-serif', color: '#e6edf3',
+      minHeight: '100vh', background: 'var(--nx-bg)',
+      fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--nx-text)',
     }}>
       {/* Header */}
       <div style={{
-        borderBottom: '1px solid #21262d', padding: '14px 32px',
+        borderBottom: '1px solid var(--nx-panel-2)', padding: '14px 32px',
         display: 'flex', alignItems: 'center', gap: 16,
-        position: 'sticky', top: 0, background: '#0d1117', zIndex: 10,
+        position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
       }}>
-        <Link prefetch href={`/${lang}/shape-generator`} style={{ fontSize: 18, fontWeight: 800, color: '#e6edf3', textDecoration: 'none' }}>
+        <Link prefetch href={`/${lang}/shape-generator`} style={{ fontSize: 18, fontWeight: 800, color: 'var(--nx-text)', textDecoration: 'none' }}>
           <span style={{ color: '#8b9cf4' }}>Nexy</span>Fab
         </Link>
-        <span style={{ color: '#30363d' }}>|</span>
-        <span style={{ fontSize: 14, color: '#6e7681' }}>
+        <span style={{ color: 'var(--nx-border)' }}>|</span>
+        <span style={{ fontSize: 14, color: 'var(--nx-text-3)' }}>
           {isKo ? '제조사 마켓플레이스' : 'Manufacturer Marketplace'}
         </span>
         <div style={{ flex: 1 }} />
         <div style={{
           display: 'flex', alignItems: 'center',
-          background: '#161b22', border: '1px solid #30363d',
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
           borderRadius: 8, padding: '5px 12px', gap: 8,
           flex: '1 1 auto', maxWidth: 260,
         }}>
-          <span style={{ fontSize: 13, color: '#8b949e' }}>🔍</span>
+          <span style={{ fontSize: 13, color: 'var(--nx-text-2)' }}>🔍</span>
           <input
             value={searchText}
             onChange={e => { setSearchText(e.target.value); setPage(1); }}
             placeholder={isKo ? '제조사 검색...' : 'Search manufacturers...'}
             style={{
               background: 'transparent', border: 'none', outline: 'none',
-              color: '#e6edf3', fontSize: 13, width: '100%', minWidth: 0,
+              color: 'var(--nx-text)', fontSize: 13, width: '100%', minWidth: 0,
             }}
           />
         </div>
@@ -221,7 +221,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
             <button
               onClick={() => setSidebarOpen(v => !v)}
               style={{
-                background: 'transparent', border: 'none', color: '#8b949e',
+                background: 'transparent', border: 'none', color: 'var(--nx-text-2)',
                 fontSize: 13, cursor: 'pointer', padding: '0 0 12px',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
@@ -321,13 +321,13 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
               {isKo ? '제조사 목록' : 'Manufacturers'}
             </h1>
             {!loading && (
-              <span style={{ fontSize: 12, color: '#6e7681' }}>
+              <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
                 {filtered.length}{isKo ? '개' : ' results'}
               </span>
             )}
             <div style={{ flex: 1 }} />
             {totalPages > 1 && (
-              <span style={{ fontSize: 12, color: '#6e7681' }}>
+              <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
                 {page} / {totalPages} {isKo ? '페이지' : 'pages'}
               </span>
             )}
@@ -338,7 +338,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[1, 2, 3].map(i => (
                 <div key={i} style={{
-                  background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
+                  background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
                   padding: '18px 20px', height: 120,
                   animation: 'pulse 1.5s ease-in-out infinite',
                 }} />
@@ -349,7 +349,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
           {/* Error */}
           {!loading && error && (
             <div style={{
-              background: '#161b22', border: '1px solid #f85149',
+              background: 'var(--nx-panel)', border: '1px solid #f85149',
               borderRadius: 10, padding: '32px', textAlign: 'center', color: '#f85149',
             }}>
               {error === 'LOAD_FAILED'
@@ -369,8 +369,8 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
           {/* Empty state */}
           {!loading && !error && filtered.length === 0 && (
             <div style={{
-              background: '#161b22', border: '1px solid #30363d',
-              borderRadius: 10, padding: '48px', textAlign: 'center', color: '#6e7681',
+              background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+              borderRadius: 10, padding: '48px', textAlign: 'center', color: 'var(--nx-text-3)',
             }}>
               {manufacturers.length === 0
                 ? (isKo ? '등록된 제조사가 없습니다.' : 'No manufacturers registered yet.')
@@ -448,12 +448,12 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
 
       {/* Drawer */}
       <div style={{
-        width: 'min(calc(100vw - 24px), 420px)', background: '#161b22', borderLeft: '1px solid #30363d',
-        display: 'flex', flexDirection: 'column', color: '#e6edf3',
+        width: 'min(calc(100vw - 24px), 420px)', background: 'var(--nx-panel)', borderLeft: '1px solid var(--nx-border)',
+        display: 'flex', flexDirection: 'column', color: 'var(--nx-text)',
         fontFamily: 'system-ui, sans-serif', overflowY: 'auto',
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 20px', borderBottom: '1px solid #21262d', display: 'flex', gap: 14, alignItems: 'center' }}>
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', gap: 14, alignItems: 'center' }}>
           <div style={{
             width: 52, height: 52, borderRadius: 12, flexShrink: 0,
             background: `linear-gradient(135deg, ${gradFrom}, ${gradTo})`,
@@ -464,7 +464,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 800 }}>{isKo ? m.nameKo : m.name}</div>
-            <div style={{ fontSize: 12, color: '#6e7681', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--nx-text-3)', marginTop: 2 }}>
               📍 {REGION_LABELS[m.region] ?? m.region}
               {m.hasPartnerProfile && (
                 <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#388bfd18', color: '#388bfd' }}>
@@ -473,7 +473,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
               )}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6e7681', cursor: 'pointer', fontSize: 20, padding: 4, flexShrink: 0 }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 20, padding: 4, flexShrink: 0 }}>✕</button>
         </div>
 
         {/* Body */}
@@ -482,25 +482,25 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {/* Rating + Price */}
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 4 }}>{isKo ? '평점' : 'Rating'}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '평점' : 'Rating'}</div>
               {m.reviewCount >= MIN_REVIEWS ? (
                 <>
                   <div style={{ fontSize: 15, color: '#e3b341' }}>{stars(m.rating)}</div>
-                  <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>
                     {m.rating.toFixed(1)} ({m.reviewCount.toLocaleString()} {isKo ? '리뷰' : 'reviews'})
                   </div>
                 </>
               ) : (
-                <div style={{ fontSize: 11, color: '#484f58', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {isKo ? '리뷰 준비 중' : 'No reviews yet'}
                   {m.reviewCount > 0 && (
-                    <span style={{ marginLeft: 4, color: '#30363d' }}>({m.reviewCount}/{MIN_REVIEWS})</span>
+                    <span style={{ marginLeft: 4, color: 'var(--nx-border)' }}>({m.reviewCount}/{MIN_REVIEWS})</span>
                   )}
                 </div>
               )}
             </div>
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 4 }}>{isKo ? '가격 수준' : 'Price Level'}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '가격 수준' : 'Price Level'}</div>
               <div style={{
                 fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
                 background: pl.color + '18', color: pl.color, display: 'inline-block',
@@ -509,8 +509,8 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 4 }}>{isKo ? '납기' : 'Lead Time'}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '납기' : 'Lead Time'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>
                 {m.minLeadTime}–{m.maxLeadTime}{isKo ? '일' : 'd'}
               </div>
             </div>
@@ -519,22 +519,22 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {/* Description */}
           {desc && (
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 {isKo ? '소개' : 'About'}
               </div>
-              <p style={{ margin: 0, fontSize: 13, color: '#c9d1d9', lineHeight: 1.65 }}>{desc}</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text)', lineHeight: 1.65 }}>{desc}</p>
             </div>
           )}
 
           {/* Processes */}
           {m.processes.length > 0 && (
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 {isKo ? '공정 유형' : 'Processes'}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {m.processes.map(p => (
-                  <span key={p} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
+                  <span key={p} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)' }}>
                     {PROCESS_LABELS[p]?.[isKo ? 'ko' : 'en'] ?? p}
                   </span>
                 ))}
@@ -545,7 +545,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {/* Certifications */}
           {m.certifications.length > 0 && (
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 {isKo ? '인증' : 'Certifications'}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -561,7 +561,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {/* Website */}
           {m.website && (
             <div>
-              <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 {isKo ? '홈페이지' : 'Website'}
               </div>
               <a href={m.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#388bfd', wordBreak: 'break-all' }}>
@@ -572,7 +572,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
         </div>
 
         {/* CTA */}
-        <div style={{ padding: '14px 20px', borderTop: '1px solid #21262d', display: 'flex', gap: 10 }}>
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--nx-panel-2)', display: 'flex', gap: 10 }}>
           <a
             href={`/${lang}/nexyfab/rfq?factoryId=${m.id}`}
             style={{
@@ -610,8 +610,8 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
   return (
     <div
       style={{
-        background: '#161b22',
-        border: `1px solid ${hovered ? '#388bfd55' : '#30363d'}`,
+        background: 'var(--nx-panel)',
+        border: `1px solid ${hovered ? '#388bfd55' : 'var(--nx-border)'}`,
         borderRadius: 12, padding: '18px 20px',
         display: 'flex', gap: 18, alignItems: 'flex-start',
         transition: 'border-color 0.15s, transform 0.15s',
@@ -633,10 +633,10 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#e6edf3' }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--nx-text)' }}>
             {isKo ? m.nameKo : m.name}
           </span>
-          <span style={{ fontSize: 11, color: '#6e7681' }}>
+          <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
             📍 {REGION_LABELS[m.region] ?? m.region}
           </span>
           <span style={{
@@ -656,7 +656,7 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
         </div>
 
         {desc && (
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#8b949e', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
             {desc}
           </p>
         )}
@@ -666,7 +666,7 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
           {m.processes.map(p => (
             <span key={p} style={{
               fontSize: 10, padding: '2px 8px', borderRadius: 5,
-              background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+              background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)',
             }}>
               {PROCESS_LABELS[p]?.[isKo ? 'ko' : 'en'] ?? p}
             </span>
@@ -686,22 +686,22 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
           {m.reviewCount >= MIN_REVIEWS ? (
             <>
               <span style={{ color: '#e3b341', letterSpacing: 1 }}>{stars(m.rating)}</span>
-              <span style={{ color: '#8b949e' }}>
+              <span style={{ color: 'var(--nx-text-2)' }}>
                 {m.rating.toFixed(1)} ({m.reviewCount.toLocaleString()} {isKo ? '리뷰' : 'reviews'})
               </span>
             </>
           ) : (
-            <span style={{ color: '#484f58', fontSize: 11 }}>{isKo ? '리뷰 준비 중' : 'No reviews yet'}</span>
+            <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{isKo ? '리뷰 준비 중' : 'No reviews yet'}</span>
           )}
-          <span style={{ color: '#6e7681' }}>|</span>
-          <span style={{ color: '#8b949e' }}>
+          <span style={{ color: 'var(--nx-text-3)' }}>|</span>
+          <span style={{ color: 'var(--nx-text-2)' }}>
             {isKo
               ? `납기 ${m.minLeadTime}–${m.maxLeadTime}일`
               : `Lead ${m.minLeadTime}–${m.maxLeadTime}d`}
           </span>
           {m.website && (
             <>
-              <span style={{ color: '#6e7681' }}>|</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>|</span>
               <a href={m.website} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 11, color: '#388bfd', textDecoration: 'none' }}>
                 🌐 {isKo ? '홈페이지' : 'Website'}
@@ -734,15 +734,15 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
             display: 'block', padding: '7px 18px',
             borderRadius: 8, cursor: 'pointer',
             background: 'transparent',
-            border: '1px solid #30363d',
-            color: '#8b949e',
+            border: '1px solid var(--nx-border)',
+            color: 'var(--nx-text-2)',
             fontSize: 12, fontWeight: 600,
             transition: 'border-color 0.15s, color 0.15s',
             whiteSpace: 'nowrap',
             textAlign: 'center',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b949e'; e.currentTarget.style.color = '#e6edf3'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-text-2)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
         >
           {isKo ? '상세 보기' : 'View Details'}
         </button>
@@ -758,7 +758,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
     <div style={{ marginBottom: 20 }}>
       <p style={{
         margin: '0 0 8px', fontSize: 11, fontWeight: 700,
-        color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5,
+        color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: 0.5,
       }}>
         {title}
       </p>
@@ -777,9 +777,9 @@ function FilterChip({ active, onClick, color = '#388bfd', children }: {
       onClick={onClick}
       style={{
         padding: '3px 9px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-        border: `1px solid ${active ? color : '#30363d'}`,
+        border: `1px solid ${active ? color : 'var(--nx-border)'}`,
         background: active ? color + '22' : 'transparent',
-        color: active ? color : '#8b949e',
+        color: active ? color : 'var(--nx-text-2)',
         fontWeight: active ? 700 : 400,
         transition: 'background 0.15s, color 0.15s',
       }}
@@ -798,9 +798,9 @@ function PageButton({ children, onClick, disabled, active }: {
       disabled={disabled}
       style={{
         padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: disabled ? 'default' : 'pointer',
-        border: `1px solid ${active ? '#388bfd' : '#30363d'}`,
+        border: `1px solid ${active ? '#388bfd' : 'var(--nx-border)'}`,
         background: active ? '#388bfd22' : 'transparent',
-        color: disabled ? '#484f58' : active ? '#388bfd' : '#8b949e',
+        color: disabled ? 'var(--nx-text-3)' : active ? '#388bfd' : 'var(--nx-text-2)',
         fontWeight: active ? 700 : 400,
         transition: 'background 0.15s',
       }}

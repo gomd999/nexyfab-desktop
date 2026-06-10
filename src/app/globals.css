@@ -433,6 +433,14 @@ body[data-mobile="1"] .nx-tool { min-width: 44px; min-height: 44px; }
 body[data-mobile="1"] .nx-tool .lbl { display: none; }
 body[data-mobile="1"] .nx-ribbon-tabs button { padding: 8px 12px; font-size: 13px; }
 body[data-mobile="1"] .nx-readout { font-size: 10px; }
+/* Collapse the fixed 280/320 side rails on phones so the viewport (mobile
+   read-only viewer / use-desktop wall) isn't crushed into a sliver with a
+   horizontal scrollbar. The full editor rails are desktop-only anyway.
+   (2026-06-09 D1) */
+@media (max-width: 767px) {
+  body[data-mobile="1"] .nx-panel { display: none; }
+  body[data-mobile="1"] .nx-viewport { flex: 1 1 100% !important; min-width: 0; }
+}
 
 /* ── Sidebar v3 (mockup-matching) ──────────────────────────────────────────
    Used by _shell/sidebars/* components. Light/dark consistency hinges on the

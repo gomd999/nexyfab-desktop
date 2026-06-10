@@ -39,6 +39,18 @@ export interface ShellAssemblyItem {
   kind?: 'part' | 'subassembly' | 'reference';
 }
 
+export interface ShellMate {
+  id: string;
+  /** Mate type — coincident / concentric / distance / parallel / etc. */
+  type: string;
+  /** Display labels for the two mated parts (resolved from part ids). */
+  partA: string;
+  partB: string;
+  /** Distance (mm) or angle (deg) when applicable. */
+  value?: number;
+  locked?: boolean;
+}
+
 export interface ShellSketchEntity {
   id: string;
   type: string;
@@ -117,6 +129,9 @@ export interface ShellBridgeState {
   // assembly mode (parts list with mate counts + mass).
   assemblyItems: ShellAssemblyItem[];
   selectedAssemblyId: string | null;
+  /** Real mates (constraints between parts) — published from Inner's
+   *  assemblyMates so the assembly sidebars show actual mates, not placeholders. */
+  assemblyMates: ShellMate[];
   // Sketch snapshot — published from sketch store so SketchLeftPane shows
   // real entities/constraints/dimensions instead of placeholders.
   sketchEntityList: ShellSketchEntity[];
@@ -135,6 +150,7 @@ export interface ShellBridgeState {
   setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
   setHoveredFeatureId: (id: string | null) => void;
   setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
+  setAssemblyMates: (mates: ShellMate[]) => void;
   setSketchSnapshot: (s: {
     entities: ShellSketchEntity[];
     constraints: ShellSketchConstraint[];
@@ -171,6 +187,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   hoveredFeatureId: null,
   assemblyItems: [],
   selectedAssemblyId: null,
+  assemblyMates: [],
   sketchEntityList: [],
   sketchConstraintList: [],
   sketchDimensionList: [],
@@ -186,6 +203,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
   setHoveredFeatureId: (id) => set({ hoveredFeatureId: id }),
   setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
+  setAssemblyMates: (mates) => set({ assemblyMates: mates }),
   setSketchSnapshot: (s) => set({
     sketchEntityList: s.entities,
     sketchConstraintList: s.constraints,

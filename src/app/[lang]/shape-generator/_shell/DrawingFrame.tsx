@@ -87,7 +87,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
     else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
       router.push(`/${langSeg}/shape-generator${project}`);
     else if (id === 'assembly')
-      router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
+      router.push(`/${langSeg}/shape-generator${project ? project + '&entry=assembly' : '?entry=assembly'}`);
   };
 
   // Sheet tree nodes — one entry per sheet plus its view children (built
@@ -211,6 +211,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
           filename: isKo ? '도면 — 무제 파트' : 'Drawing — Untitled Part',
           savedAt: isKo ? '자동 저장됨' : 'Auto-saved',
           breadcrumbs: ['Projects', 'Drawing', isKo ? '도면 1' : 'Sheet 1'],
+          onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
           mode: isKo ? '도면 모드' : 'DRAWING MODE',
           canUndo: true,
           canRedo: false,

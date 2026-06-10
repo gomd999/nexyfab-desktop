@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getStorage } from '@/lib/storage';
+import { getRfqAccessForUser } from '@/lib/rfq-partner-access';
 
 // GET /api/nexyfab/files/[id]/download — generate signed URL and redirect
 
@@ -20,8 +21,9 @@ export async function GET(
   const db = getDbAdapter();
   const file = await db.queryOne<{
     id: string; user_id: string; storage_key: string; filename: string; mime_type: string;
+    ref_type: string | null; ref_id: string | null;
   }>(
-    `SELECT id, user_id, storage_key, filename, mime_type FROM nf_files WHERE id = ?`,
+    `SELECT id, user_id, storage_key, filename, mime_type, ref_type, ref_id FROM nf_files WHERE id = ?`,
     id,
   );
 
@@ -29,8 +31,16 @@ export async function GET(
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
 
-  // Ownership check
-  if (file.user_id !== authUser.userId) {
+  // Access check: the owner always; otherwise, for a file attached to an RFQ,
+  // a partner who has a quote on that RFQ may download it (so they can quote/
+  // produce from the real STEP/STL). Without this, RFQ-attached CAD files were
+  // owner-only and the quoting partner had no way to fetch them. (2026-06-09)
+  let allowed = file.user_id === authUser.userId;
+  if (!allowed && file.ref_type === 'rfq' && file.ref_id) {
+    const access = await getRfqAccessForUser(file.ref_id, authUser).catch(() => null);
+    allowed = !!access;
+  }
+  if (!allowed) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

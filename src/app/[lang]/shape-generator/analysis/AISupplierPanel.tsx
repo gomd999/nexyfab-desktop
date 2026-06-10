@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { matchSuppliers, type SupplierMatchResult } from './supplierMatcher';
 import type { RfqSupplierBrief } from './rfqWriter';
-import { submitRfqOrder } from './rfqSubmitter';
+import { requestSupplierQuote } from './rfqSubmitter';
 
 // ─── i18n dict (6 languages) ───────────────────────────────────────────────
 const dict = {
@@ -473,11 +473,13 @@ export default function AISupplierPanel({
     setRfqSubmittingIdx(idx);
     setRfqResultByIdx(prev => { const n = { ...prev }; delete n[idx]; return n; });
     const mfrName = isKo ? row.manufacturer.nameKo : row.manufacturer.name;
-    const r = await submitRfqOrder({
+    const r = await requestSupplierQuote({
       partName,
       manufacturerName: mfrName,
+      materialId: material,
       quantity,
-      estimatedLeadDays: row.manufacturer.minLeadTime,
+      volume_cm3,
+      bbox,
     });
     setRfqResultByIdx(prev => ({
       ...prev,
@@ -485,11 +487,11 @@ export default function AISupplierPanel({
         ? { ok: true, message: tt.quoteRequested }
         : { ok: false, message: r.message ?? 'failed' },
     }));
-    if (r.ok && r.orderId) {
-      onRfqSubmitted?.(mfrName, quantity, r.orderId);
+    if (r.ok && r.rfqId) {
+      onRfqSubmitted?.(mfrName, quantity, r.rfqId);
     }
     setRfqSubmittingIdx(null);
-  }, [partName, quantity, isKo, onRfqSubmitted, tt]);
+  }, [partName, quantity, material, volume_cm3, bbox, isKo, onRfqSubmitted, tt]);
 
   return (
     <div style={{
@@ -878,16 +880,18 @@ export default function AISupplierPanel({
           onRequirePro={onRequirePro}
           onSendDraft={async (subject, bodyText) => {
             const mfrName = rfqWriterFor.nameKo ?? rfqWriterFor.name ?? 'Supplier';
-            const r = await submitRfqOrder({
+            const r = await requestSupplierQuote({
               partName,
               manufacturerName: mfrName,
+              materialId: material,
               quantity,
-              estimatedLeadDays: rfqWriterFor.minLeadTime,
+              volume_cm3,
+              bbox,
               rfqSubject: subject,
               rfqBody: bodyText,
             });
-            if (r.ok && r.orderId) {
-              onRfqSubmitted?.(mfrName, quantity, r.orderId);
+            if (r.ok && r.rfqId) {
+              onRfqSubmitted?.(mfrName, quantity, r.rfqId);
               return { ok: true, message: tt.rfqSent };
             }
             return { ok: false, message: r.message ?? 'failed' };

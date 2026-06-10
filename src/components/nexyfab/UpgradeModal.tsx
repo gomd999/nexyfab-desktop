@@ -147,7 +147,7 @@ export default function UpgradeModal({
       <div
         style={{
           width: '100%', maxWidth: 400,
-          background: '#161b22', border: '1px solid #30363d',
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
           borderRadius: 16, overflow: 'hidden',
           boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
         }}
@@ -156,15 +156,15 @@ export default function UpgradeModal({
         {/* Header gradient */}
         <div style={{
           background: 'linear-gradient(135deg, #1a2e4a, #1a1a3a)',
-          borderBottom: '1px solid #30363d',
+          borderBottom: '1px solid var(--nx-border)',
           padding: '20px 24px',
           textAlign: 'center',
         }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>⚡</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#e6edf3', marginBottom: 4 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--nx-text)', marginBottom: 4 }}>
             {isKo ? 'Pro 플랜이 필요합니다' : 'Pro Plan Required'}
           </div>
-          <div style={{ fontSize: 12, color: '#8b949e' }}>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
             {isKo ? 'Pro로 업그레이드하고 모든 기능을 사용하세요' : 'Upgrade to Pro and unlock all features'}
           </div>
         </div>
@@ -172,27 +172,27 @@ export default function UpgradeModal({
         <div style={{ padding: '20px 24px' }}>
           {/* Blocked feature */}
           <div style={{
-            background: '#21262d', borderRadius: 10,
-            border: '1px solid #30363d', padding: '12px 16px', marginBottom: 16,
+            background: 'var(--nx-panel-2)', borderRadius: 10,
+            border: '1px solid var(--nx-border)', padding: '12px 16px', marginBottom: 16,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 20 }}>{info.icon}</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
                   {isKo ? info.nameKo : info.nameEn}
                 </div>
-                <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>
                   {isKo ? info.descKo : info.descEn}
                 </div>
               </div>
             </div>
             {overLimit && limit !== undefined && used !== undefined && (
               <div style={{ marginTop: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#8b949e' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: 'var(--nx-text-2)' }}>
                   <span>{isKo ? '이번 달 사용량' : 'Monthly usage'}</span>
                   <span style={{ color: '#f85149', fontWeight: 700 }}>{used} / {limit}</span>
                 </div>
-                <div style={{ height: 4, background: '#30363d', borderRadius: 2 }}>
+                <div style={{ height: 4, background: 'var(--nx-border)', borderRadius: 2 }}>
                   <div style={{ height: '100%', width: '100%', background: '#f85149', borderRadius: 2 }} />
                 </div>
                 <div style={{ marginTop: 6, fontSize: 11, color: '#f85149' }}>
@@ -206,12 +206,12 @@ export default function UpgradeModal({
 
           {/* Pro benefits */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               Pro {isKo ? '플랜 혜택' : 'Plan includes'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {benefits.map((b, i) => (
-                <div key={i} style={{ fontSize: 12, color: '#c9d1d9', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <div key={i} style={{ fontSize: 12, color: 'var(--nx-text)', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
                   <span style={{ color: '#3fb950', flexShrink: 0 }}>✓</span>
                   <span>{b}</span>
                 </div>
@@ -225,11 +225,11 @@ export default function UpgradeModal({
               onClick={onClose}
               style={{
                 flex: 1, padding: '10px 0', borderRadius: 8,
-                border: '1px solid #30363d', background: 'transparent',
-                color: '#8b949e', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                border: '1px solid var(--nx-border)', background: 'transparent',
+                color: 'var(--nx-text-2)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#e6edf3'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
             >
               {isKo ? '나중에' : 'Later'}
             </button>

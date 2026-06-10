@@ -111,7 +111,12 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
         )
       )}
       {activeTab === 'bodies' && (
-        <EmptyHint isKo={isKo} message={isKo ? '바디 보기 — 모든 솔리드 / 서피스 / 메시 보디' : 'Bodies view — solids, surfaces, meshes'} />
+        // Honest state instead of a static "Bodies view — solids/surfaces"
+        // description that masqueraded as content. The shell bridge tracks
+        // features, not a separate multi-body list. (2026-06-09 C3)
+        <EmptyHint isKo={isKo} message={features.length === 0
+          ? (isKo ? '바디 없음 — 피처를 만들면 솔리드 바디가 생깁니다.' : 'No bodies — create a feature to form a solid body.')
+          : (isKo ? '현재 파트는 단일 솔리드 바디입니다.' : 'This part is a single solid body.')} />
       )}
       {activeTab === 'components' && <StandardPartsGrid isKo={isKo} />}
     </SidePanel>

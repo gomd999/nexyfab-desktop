@@ -1262,7 +1262,7 @@ export default function HoleWizardModalV2({
     flex: 1,
     padding: '8px 12px',
     background: active ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
-    color: 'var(--nx-panel-2)',
+    color: 'var(--nx-text)',
     border: 'none',
     borderRadius: 4,
     cursor: 'pointer',
@@ -1273,7 +1273,7 @@ export default function HoleWizardModalV2({
   const tileBtnStyle = (active: boolean): React.CSSProperties => ({
     padding: '10px 8px',
     background: active ? '#059669' : 'var(--nx-border-strong)',
-    color: 'var(--nx-panel-2)',
+    color: 'var(--nx-text)',
     border: 'none',
     borderRadius: 4,
     cursor: 'pointer',
@@ -1285,7 +1285,7 @@ export default function HoleWizardModalV2({
     width: '100%',
     padding: '6px 8px',
     background: 'var(--nx-bg)',
-    color: 'var(--nx-panel-2)',
+    color: 'var(--nx-text)',
     border: '1px solid #374151',
     borderRadius: 4,
     marginTop: 4,
@@ -1328,7 +1328,7 @@ export default function HoleWizardModalV2({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--nx-panel)',
-          color: 'var(--nx-panel-2)',
+          color: 'var(--nx-text)',
           borderRadius: 10,
           padding: 20,
           width: 640,
@@ -1450,7 +1450,7 @@ export default function HoleWizardModalV2({
                   style={{
                     padding: '6px 10px',
                     background: series === s ? 'var(--nx-accent)' : 'var(--nx-border-strong)',
-                    color: 'var(--nx-panel-2)',
+                    color: 'var(--nx-text)',
                     border: 'none',
                     borderRadius: 4,
                     cursor: 'pointer',
@@ -1489,7 +1489,7 @@ export default function HoleWizardModalV2({
                       flex: 1,
                       padding: '6px 8px',
                       background: fitClass === f ? '#0ea5e9' : 'var(--nx-border-strong)',
-                      color: 'var(--nx-panel-2)',
+                      color: 'var(--nx-text)',
                       border: 'none',
                       borderRadius: 4,
                       cursor: 'pointer',
@@ -1520,7 +1520,7 @@ export default function HoleWizardModalV2({
                         flex: 1,
                         padding: '6px 8px',
                         background: tapClassOverride === tc ? '#0ea5e9' : 'var(--nx-border-strong)',
-                        color: 'var(--nx-panel-2)',
+                        color: 'var(--nx-text)',
                         border: 'none',
                         borderRadius: 4,
                         cursor: 'pointer',
@@ -1558,7 +1558,7 @@ export default function HoleWizardModalV2({
                         style={{
                           padding: '6px 4px',
                           background: pipeTapClassOverride === pc ? '#0ea5e9' : 'var(--nx-border-strong)',
-                          color: 'var(--nx-panel-2)',
+                          color: 'var(--nx-text)',
                           border: 'none',
                           borderRadius: 4,
                           cursor: 'pointer',
@@ -1585,7 +1585,7 @@ export default function HoleWizardModalV2({
                   borderRadius: 6,
                   fontFamily: 'monospace',
                   fontSize: 12,
-                  color: '#d1d5db',
+                  color: 'var(--nx-text)',
                 }}
               >
                 <div>name: <b>{selectedRow.name}</b></div>
@@ -1716,7 +1716,7 @@ export default function HoleWizardModalV2({
                           flex: 1,
                           padding: '6px 8px',
                           background: blindBottomShape === shape ? '#0ea5e9' : 'var(--nx-border-strong)',
-                          color: 'var(--nx-panel-2)',
+                          color: 'var(--nx-text)',
                           border: 'none',
                           borderRadius: 4,
                           cursor: 'pointer',
@@ -1854,7 +1854,7 @@ export default function HoleWizardModalV2({
               style={{
                 padding: '8px 14px',
                 background: 'var(--nx-border-strong)',
-                color: 'var(--nx-panel-2)',
+                color: 'var(--nx-text)',
                 border: 'none',
                 borderRadius: 6,
                 cursor: 'pointer',
@@ -2035,7 +2035,7 @@ function PositionKindEditor({ def, onChange, labels, inputStyle, availableSketch
                     flex: 1,
                     padding: '6px 8px',
                     background: (d.direction ?? 'ccw') === dir ? '#0ea5e9' : 'var(--nx-border-strong)',
-                    color: 'var(--nx-panel-2)',
+                    color: 'var(--nx-text)',
                     border: 'none',
                     borderRadius: 4,
                     cursor: 'pointer',
@@ -2180,7 +2180,7 @@ function PositionKindEditor({ def, onChange, labels, inputStyle, availableSketch
                 border: '1px solid #374151',
                 borderRadius: 6,
                 fontSize: 12,
-                color: '#d1d5db',
+                color: 'var(--nx-text)',
                 fontFamily: 'monospace',
               }}
             >
@@ -2247,7 +2247,7 @@ function ManualEditor({ def, labels, inputStyle, onPatch }: ManualEditorProps) {
     flex: 1,
     padding: '6px 10px',
     background: active ? '#0ea5e9' : 'var(--nx-border-strong)',
-    color: 'var(--nx-panel-2)',
+    color: 'var(--nx-text)',
     border: 'none',
     borderRadius: 4,
     cursor: 'pointer',
@@ -2331,7 +2331,7 @@ function ManualEditor({ def, labels, inputStyle, onPatch }: ManualEditorProps) {
               style={{
                 padding: '6px 10px',
                 background: 'var(--nx-border-strong)',
-                color: 'var(--nx-panel-2)',
+                color: 'var(--nx-text)',
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -2378,7 +2378,7 @@ function ManualEditor({ def, labels, inputStyle, onPatch }: ManualEditorProps) {
                 border: '1px solid #374151',
                 borderRadius: 6,
                 fontSize: 12,
-                color: '#d1d5db',
+                color: 'var(--nx-text)',
                 fontFamily: 'monospace',
                 whiteSpace: 'pre-wrap',
               }}
@@ -2546,7 +2546,7 @@ function PreviewPanel({ spec, term, positionCount, labels }: PreviewPanelProps) 
             padding: 10,
             fontFamily: 'monospace',
             fontSize: 12,
-            color: '#d1d5db',
+            color: 'var(--nx-text)',
           }}
         >
           {summaryRows.map((row) => (

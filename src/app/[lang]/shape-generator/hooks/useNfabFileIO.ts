@@ -110,7 +110,6 @@ export function useNfabFileIO(deps: Deps) {
   /** Server `nf_projects.updated_at` from last GET/POST/PATCH — drives optional if-match. */
   const cloudServerUpdatedAtRef = useRef<number | null>(null);
   const cloudDirtyRef = useRef(false);
-  const cloudSavingRef = useRef(false);
 
   const buildSerializeInput = useCallback((): SerializeInput | null => {
     if (!featureHistory) return null;
@@ -299,64 +298,14 @@ export function useNfabFileIO(deps: Deps) {
     }
   }, [featureHistory, buildSerializeInput, saveProject, updateProject, addToast, lang]);
 
-  // Cloud auto-save: 3-min interval flush while dirty + logged in
-  useEffect(() => {
-    const FLUSH_MS = 180_000;
-    const tick = async () => {
-      if (!cloudDirtyRef.current) return;
-      if (cloudSavingRef.current) return;
-      if (!useAuthStore.getState().user) return;
-      const accFlush = useCloudProjectAccessStore.getState();
-      if (accFlush.hydrated && !accFlush.canEdit) return;
-      if (!featureHistory) return;
-      cloudSavingRef.current = true;
-      try {
-        const input = buildSerializeInput();
-        if (!input) return;
-        const project = serializeProject(input);
-        const sceneData = toJsonString(project);
-        const sceneSnapshot = useSceneStore.getState();
-        const existingId = cloudProjectIdRef.current;
-        if (existingId) {
-          const patch: NexyfabProjectPatchPayload = {
-            name: project.name,
-            shapeId: sceneSnapshot.selectedId,
-            materialId: sceneSnapshot.materialId,
-            sceneData,
-          };
-          if (cloudServerUpdatedAtRef.current != null) {
-            patch.ifMatchUpdatedAt = cloudServerUpdatedAtRef.current;
-          }
-          const updated = await updateProject(existingId, patch);
-          if (updated) {
-            cloudServerUpdatedAtRef.current = updated.updatedAt;
-            cloudDirtyRef.current = false;
-          } else if (useProjectsStore.getState().lastErrorCode === 'PROJECT_VERSION_CONFLICT') {
-            notifyProjectVersionConflict(addToast, lang, existingId);
-            useProjectsStore.getState().clearError();
-          }
-        } else {
-          const saved = await saveProject({
-            name: project.name,
-            shapeId: sceneSnapshot.selectedId,
-            materialId: sceneSnapshot.materialId,
-            sceneData,
-          });
-          if (saved) {
-            cloudProjectIdRef.current = saved.id;
-            cloudServerUpdatedAtRef.current = saved.updatedAt;
-            cloudDirtyRef.current = false;
-          }
-        }
-      } catch {
-        // Silent — local autoSave still active; retry next tick.
-      } finally {
-        cloudSavingRef.current = false;
-      }
-    };
-    const id = window.setInterval(() => { void tick(); }, FLUSH_MS);
-    return () => window.clearInterval(id);
-  }, [featureHistory, buildSerializeInput, saveProject, updateProject, addToast, lang]);
+  // Automatic cloud autosave is now OWNED by useCloudSaveFlow (the 10s writer),
+  // which serializes the full .nfab via getCloudSceneObject(). This hook's old
+  // 3-min .nfab tick wrote the SAME nf_projects row through a SEPARATE
+  // updatedAt ref, so the two writers tripped each other's 409 guard and could
+  // even create a duplicate project mid-session. Retiring the tick leaves a
+  // single automatic cloud writer. (2026-06-09 dual-writer unification.)
+  // The manual "save to cloud" button (handleSaveNfabCloud) and local .nfab
+  // file save/open remain here unchanged.
 
   /** Apply parsed .nfab payload — shared by disk open, recent file, and dashboard cloud open */
   const applyLoadedNfabProject = useCallback(
@@ -500,9 +449,22 @@ export function useNfabFileIO(deps: Deps) {
     useCloudProjectAccessStore.getState().reset();
   }, []);
 
+  // Full-fidelity .nfab scene object for the unified cloud writer. The legacy
+  // 10s cloud autosave (useCloudSaveFlow) previously persisted a lossy
+  // AutoSaveState JSON that dropped assembly/configurations/studio-view, and
+  // it raced this hook's separate 3-min .nfab writer over the same row. Routing
+  // the 10s writer through THIS serializer makes the cloud always hold a full
+  // .nfab — so the dual-writer clobber + 409 fights disappear. (2026-06-09.)
+  const getCloudSceneObject = useCallback((): NfabProjectV1 | null => {
+    const input = buildSerializeInput();
+    if (!input) return null;
+    return serializeProject(input);
+  }, [buildSerializeInput]);
+
   return {
     desktopFilePath,
     desktopDirty,
+    getCloudSceneObject,
     handleSaveNfab,
     handleSaveNfabCloud,
     handleLoadNfab,

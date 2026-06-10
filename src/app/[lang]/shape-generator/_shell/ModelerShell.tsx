@@ -42,6 +42,7 @@ import { VersionTreePanel } from './VersionTreePanel';
 import { EmailVerifyBanner } from './EmailVerifyBanner';
 import { AccountTypeCard } from './AccountTypeCard';
 import { GuestExpiryBanner } from './GuestExpiryBanner';
+import { ShareProjectModal } from './ShareProjectModal';
 import AuthModal from '@/components/nexyfab/AuthModal';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useTouchGestures } from './useTouchGestures';
@@ -103,6 +104,7 @@ export function ModelerShell() {
   const user = useAuthStore(s => s.user);
   const [activeTab, setActiveTab] = useState('solid');
   const [mode, setMode] = useState<ShellMode>('modeling');
+  const [showShareModal, setShowShareModal] = useState(false);
   const [tool, setTool] = useState<string | null>(null);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
 
@@ -344,6 +346,7 @@ export function ModelerShell() {
           : (isKo ? '무제.nxpart' : 'Untitled.nxpart'),
         savedAt: savedAtLabel,
         breadcrumbs: ['Projects', bridgeSelectedLabel ?? (isKo ? '무제' : 'Untitled')],
+        onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
         mode: modeChip,
         modeHint,
         onExitMode: modeChip
@@ -368,7 +371,7 @@ export function ModelerShell() {
         onUndo: () => dispatchKey({ key: 'z', code: 'KeyZ', ctrl: true, meta: true }),
         onRedo: () => dispatchKey({ key: 'z', code: 'KeyZ', ctrl: true, meta: true, shift: true }),
         onSearch: dispatchCmdPalette,
-        onShare: () => router.push(`/${langSeg}/nexyfab/projects`),
+        onShare: () => setShowShareModal(true),
         shareLabel: isKo ? '공유' : 'Share',
         onPublish: () => {
           // Publish = persist current state and toast. Inner handles via Ctrl+S.
@@ -486,6 +489,9 @@ export function ModelerShell() {
           <EmailVerifyBanner isKo={isKo} />
           <AccountTypeCard isKo={isKo} />
           <GuestExpiryBanner isKo={isKo} />
+          {showShareModal && (
+            <ShareProjectModal isKo={isKo} onClose={() => setShowShareModal(false)} />
+          )}
           <AuthModal
             open={signupModalOpen}
             onClose={() => setSignupModalOpen(false)}

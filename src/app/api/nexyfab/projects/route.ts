@@ -50,8 +50,46 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') ?? '20', 10)));
   const offset = (page - 1) * limit;
   const showArchived = req.nextUrl.searchParams.get('archived') === 'true';
+  const showShared = req.nextUrl.searchParams.get('shared') === 'true';
 
   const db = getDbAdapter();
+
+  // "Shared with me" — projects where the user is a member (not the owner).
+  // Joins the existing nf_project_members ACL. (2026-06-09 P2)
+  if (showShared) {
+    try {
+      const sharedRows = await db.queryAll<Record<string, unknown>>(
+        `SELECT p.*, m.role AS member_role FROM nf_projects p
+           INNER JOIN nf_project_members m ON m.project_id = p.id
+          WHERE m.user_id = ? AND p.archived_at IS NULL
+          ORDER BY p.updated_at DESC LIMIT ? OFFSET ?`,
+        authUser.userId, limit, offset,
+      );
+      const sharedTotal = (await db.queryOne<{ c: number }>(
+        `SELECT COUNT(*) as c FROM nf_project_members m
+           INNER JOIN nf_projects p ON p.id = m.project_id
+          WHERE m.user_id = ? AND p.archived_at IS NULL`,
+        authUser.userId,
+      ))?.c ?? 0;
+      return NextResponse.json({
+        projects: sharedRows.map(r => {
+          const role = String(r.member_role ?? 'viewer');
+          return { ...rowToProject(r), role: role as 'editor' | 'viewer', canEdit: role === 'editor' };
+        }),
+        pagination: {
+          page, limit, total: sharedTotal,
+          totalPages: Math.ceil(sharedTotal / limit),
+          hasNext: page * limit < sharedTotal, hasPrev: page > 1,
+        },
+      });
+    } catch {
+      // Members table absent (no shares ever) — return an empty shared list.
+      return NextResponse.json({
+        projects: [],
+        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+      });
+    }
+  }
 
   const archivedFilter = showArchived ? 'archived_at IS NOT NULL' : 'archived_at IS NULL';
   const totalRow = await db.queryOne<{ c: number }>(

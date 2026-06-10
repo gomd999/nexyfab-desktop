@@ -233,17 +233,9 @@ function InspectorTab({
       <PropSection title={isKo ? 'CAM' : 'CAM'} defaultExpanded={false}>
         <CamSection isKo={isKo} />
       </PropSection>
-
-      {/* Cancel / Apply CTA mirroring mockup. Both no-op until wired. */}
-      <div style={{
-        position: 'sticky', bottom: 0,
-        display: 'flex', gap: 6, padding: '10px 12px',
-        background: 'var(--nx-panel)',
-        borderTop: '1px solid var(--nx-border)',
-      }}>
-        <button style={btnStyle('ghost')}>{isKo ? '취소' : 'Cancel'}</button>
-        <button style={btnStyle('primary')}>{isKo ? '✓ 적용' : '✓ Apply'}</button>
-      </div>
+      {/* (Removed the no-op Cancel/Apply footer — parameter edits already apply
+          live via nexyfab:update-feature-param, so those buttons did nothing
+          and implied an apply/cancel model that doesn't exist. 2026-06-09) */}
     </>
   );
 }
@@ -377,21 +369,3 @@ function CommentsTab({ isKo }: { isKo: boolean }) {
   return <CommentsPanel isKo={isKo} />;
 }
 
-// ─── Shared button style ───────────────────────────────────────────────────
-
-function btnStyle(kind: 'primary' | 'ghost'): React.CSSProperties {
-  if (kind === 'primary') {
-    return {
-      flex: 1, height: 26, padding: '0 12px',
-      border: 0, borderRadius: 4,
-      background: 'var(--nx-accent)', color: '#fff',
-      fontSize: 11, fontWeight: 600, cursor: 'pointer',
-    };
-  }
-  return {
-    flex: 1, height: 26, padding: '0 12px',
-    border: '1px solid var(--nx-border)', borderRadius: 4,
-    background: 'transparent', color: 'var(--nx-text)',
-    fontSize: 11, fontWeight: 600, cursor: 'pointer',
-  };
-}

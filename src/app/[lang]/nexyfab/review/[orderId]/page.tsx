@@ -69,7 +69,7 @@ export default function StandaloneReviewPage() {
     );
   }
   if (!order) {
-    return <main style={pageStyle}><div style={{ color: '#8b949e', padding: 24 }}>{t.loading}</div></main>;
+    return <main style={pageStyle}><div style={{ color: 'var(--nx-text-2)', padding: 24 }}>{t.loading}</div></main>;
   }
   if (order.status !== 'delivered') {
     return (
@@ -93,10 +93,10 @@ export default function StandaloneReviewPage() {
   return (
     <main style={pageStyle}>
       <h1 style={titleStyle}>{t.title}</h1>
-      <div style={{ marginBottom: 16, fontSize: 12, color: '#8b949e' }}>
-        {t.forOrder} <code style={{ background: '#161b22', padding: '2px 6px', borderRadius: 4, color: '#c9d1d9' }}>{order.id}</code>
+      <div style={{ marginBottom: 16, fontSize: 12, color: 'var(--nx-text-2)' }}>
+        {t.forOrder} <code style={{ background: 'var(--nx-panel)', padding: '2px 6px', borderRadius: 4, color: 'var(--nx-text)' }}>{order.id}</code>
         {' · '}
-        <strong style={{ color: '#e6edf3' }}>{lang === 'ko' && order.partNameKo ? order.partNameKo : order.partName}</strong>
+        <strong style={{ color: 'var(--nx-text)' }}>{lang === 'ko' && order.partNameKo ? order.partNameKo : order.partName}</strong>
         {' · '}
         {order.manufacturerName}
       </div>
@@ -120,7 +120,7 @@ export default function StandaloneReviewPage() {
 const pageStyle: React.CSSProperties = {
   maxWidth: 580, margin: '0 auto', padding: '40px 20px',
   fontFamily: 'system-ui, sans-serif',
-  color: '#e6edf3',
+  color: 'var(--nx-text)',
 };
 const titleStyle: React.CSSProperties = {
   fontSize: 24, fontWeight: 800, margin: '0 0 16px',
