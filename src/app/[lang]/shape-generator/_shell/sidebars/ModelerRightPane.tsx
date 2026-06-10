@@ -1,14 +1,22 @@
 'use client';
 
-// Modeling mode right pane — Inspector / Nexy AI / Comments 3-tab matching
-// mockup #29. Inspector exposes GEOMETRY / EDGES / APPEARANCE / PARAMETERS
-// / ANALYZE sections; ANALYZE rows open the BottomDrawer with the existing
-// DFM/FEA/Cost/Variants panels via the `analyze:open` custom event.
+// Modeling mode right pane — Inspector / Engineering / Nexy AI / Comments.
+// All Inspector sections are LIVE (2026-06-10): the mockup-era hardcoded
+// GEOMETRY (fake constant-radius rows) / EDGES (fabricated Edge.42…) /
+// APPEARANCE (dead Aluminum button) blocks were replaced with real data —
+//   edges       ← selected feature's edgeSelections (bridged via featureItems)
+//   geometry    ← the live PARAMETERS rows, retitled for fillet/chamfer types
+//   appearance  ← sceneStore materialId (editable, same path as material drop)
+//   DFM meta    ← bridged dfmWarningCount from the auto-DFM worker run
+//   badge       ← real open-comment count from CommentsPanel's storage
+// ANALYZE rows open the BottomDrawer panels via `nexyfab:analyze-open`.
 
-import { useState } from 'react';
-import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, PropItemRow } from './';
+import { useEffect, useState } from 'react';
+import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropItemRow } from './';
 import { I } from '../Icons';
 import { useShellBridge } from '../shellBridgeStore';
+import { useSceneStore } from '../../store/sceneStore';
+import { MATERIAL_PRESETS } from '../../materials';
 import { AiChatPanel } from './AiChatPanel';
 import { CommentsPanel } from './CommentsPanel';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
@@ -42,6 +50,30 @@ const ENG_CATALOG_DICT_EN: CatalogPanelDict = {
   catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
 };
 
+// Real open-comment count for the Comments tab badge. CommentsPanel persists
+// to localStorage under `nexyfab.comments.v1.<projectId|'local'>`; this pane
+// mounts it without a projectId, so the namespace is deterministic. Re-reads
+// on tab switches (same-tab edits) and `storage` events (other tabs).
+const COMMENTS_STORAGE_KEY = 'nexyfab.comments.v1.local';
+
+function useOpenCommentCount(activeTab: Tab): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const read = () => {
+      try {
+        const raw = window.localStorage.getItem(COMMENTS_STORAGE_KEY);
+        if (!raw) { setCount(0); return; }
+        const threads = JSON.parse(raw) as Array<{ resolved?: boolean }>;
+        setCount(Array.isArray(threads) ? threads.filter(c => !c.resolved).length : 0);
+      } catch { setCount(0); }
+    };
+    read();
+    window.addEventListener('storage', read);
+    return () => window.removeEventListener('storage', read);
+  }, [activeTab]);
+  return count;
+}
+
 export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
   const [activeTab, setActiveTab] = useState<Tab>('inspector');
   const selectedLabel = useShellBridge(s => s.selectedLabel);
@@ -50,6 +82,7 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
   const triangleCount = useShellBridge(s => s.triangleCount);
   const featureItems = useShellBridge(s => s.featureItems);
   const selectedFeatureId = useShellBridge(s => s.selectedFeatureId);
+  const openComments = useOpenCommentCount(activeTab);
   const selectedFeature = selectedFeatureId
     ? featureItems.find(f => f.id === selectedFeatureId)
     : null;
@@ -61,7 +94,7 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
         { id: 'inspector', label: isKo ? '인스펙터' : 'Inspector', icon: <I.tree size={12} /> },
         { id: 'engineering', label: isKo ? '엔지니어링' : 'Engineering', icon: <I.cog size={12} /> },
         { id: 'ai', label: isKo ? 'Nexy AI' : 'Nexy AI', icon: <I.ai size={12} /> },
-        { id: 'comments', label: isKo ? '코멘트' : 'Comments', icon: <I.comments size={12} />, badge: 3 },
+        { id: 'comments', label: isKo ? '코멘트' : 'Comments', icon: <I.comments size={12} />, ...(openComments > 0 ? { badge: openComments } : {}) },
       ]}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as Tab)}
@@ -76,6 +109,7 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
           featureId={selectedFeature?.id ?? null}
           featureType={selectedFeature?.type ?? null}
           featureParams={selectedFeature?.params ?? null}
+          featureEdges={selectedFeature?.edges ?? null}
         />
       )}
       {activeTab === 'engineering' && <EngineeringTab isKo={isKo} />}
@@ -87,9 +121,14 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
 
 // ─── Inspector tab ─────────────────────────────────────────────────────────
 
+// Feature types whose params describe local geometry (radius / distance on
+// picked edges). The live param section is titled GEOMETRY for these and
+// PARAMETERS for everything else — one section, no duplicated rows.
+const GEOMETRY_FEATURE_TYPES = new Set(['fillet', 'chamfer', 'variableFillet']);
+
 function InspectorTab({
   isKo, selectedLabel, selectionCount, volume, triangleCount,
-  featureId, featureType, featureParams,
+  featureId, featureType, featureParams, featureEdges,
 }: {
   isKo: boolean;
   selectedLabel: string | null;
@@ -99,7 +138,9 @@ function InspectorTab({
   featureId: string | null;
   featureType: string | null;
   featureParams: Record<string, number> | null;
+  featureEdges: { id: string; meta?: string }[] | null;
 }) {
+  const dfmWarningCount = useShellBridge(s => s.dfmWarningCount);
   // Empty state when nothing selected.
   if (!selectedLabel) {
     return (
@@ -124,74 +165,40 @@ function InspectorTab({
         </div>
       </div>
 
-      <PropSection title={isKo ? '지오메트리' : 'Geometry'}>
-        <PropRow label={isKo ? '유형' : 'Type'}>
-          <PropSelect
-            value="constant"
-            onChange={() => { /* TODO wire to feature */ }}
-            options={[
-              { value: 'constant', label: isKo ? '일정 반경' : 'Constant radius' },
-              { value: 'variable', label: isKo ? '가변 반경' : 'Variable radius' },
-            ]}
-          />
-        </PropRow>
-        <PropRow label={isKo ? '반경' : 'Radius'}>
-          <PropNumber value={2.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label={isKo ? '접선' : 'Tangent prop.'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '켜짐' : 'On'} />
-        </PropRow>
-        <PropRow label={isKo ? '오버플로' : 'Overflow'}>
-          <PropSelect
-            value="default"
-            onChange={() => { /* TODO */ }}
-            options={[
-              { value: 'default', label: isKo ? '기본' : 'Default' },
-              { value: 'tangent', label: isKo ? '접선' : 'Tangent' },
-              { value: 'keep', label: isKo ? '엣지 유지' : 'Keep edge' },
-            ]}
-          />
-        </PropRow>
-      </PropSection>
+      {/* EDGES — the feature's REAL click-time edge selections (fillet /
+          chamfer / shell on picked edges). Hidden when the selected feature
+          carries no edge selections. Removing an edge dispatches to Inner,
+          which routes it through commandHistory (undoable); the last edge
+          can't be removed because an empty selection silently reverts the
+          feature to all-edges behaviour. */}
+      {featureId && featureEdges && featureEdges.length > 0 && (
+        <PropSection title={isKo ? `엣지 (${featureEdges.length})` : `Edges (${featureEdges.length})`} defaultExpanded={false}>
+          {featureEdges.map((edge, i) => (
+            <PropItemRow
+              key={`${edge.id}-${i}`}
+              bullet="●"
+              label={edge.id}
+              meta={edge.meta}
+              onRemove={featureEdges.length > 1 ? () => {
+                if (typeof window === 'undefined') return;
+                window.dispatchEvent(new CustomEvent('nexyfab:remove-feature-edge', {
+                  detail: { featureId, edgeIndex: i },
+                }));
+              } : undefined}
+            />
+          ))}
+        </PropSection>
+      )}
 
-      <PropSection title={isKo ? `엣지 (${selectionCount})` : `Edges (${selectionCount})`} defaultExpanded={false}>
-        {Array.from({ length: Math.min(selectionCount, 6) }, (_, i) => (
-          <PropItemRow
-            key={i}
-            bullet="●"
-            label={`Edge.${42 + i}`}
-            meta={i % 2 === 0 ? 'top outer' : 'top inner'}
-            onRemove={() => { /* TODO */ }}
-          />
-        ))}
-        {selectionCount > 6 && (
-          <div style={{ fontSize: 10, color: 'var(--nx-accent)', padding: '4px 0', cursor: 'pointer' }}>
-            + {isKo ? `엣지 추가 (${selectionCount - 6}개 더)` : `Add edges (+${selectionCount - 6} more)`}
-          </div>
-        )}
-      </PropSection>
+      <AppearanceSection isKo={isKo} />
 
-      <PropSection title={isKo ? '외형' : 'Appearance'} defaultExpanded={false}>
-        <PropRow label={isKo ? '상속' : 'Inherit'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '본체에서' : 'From body'} />
-        </PropRow>
-        <PropRow label={isKo ? '재질' : 'Material'}>
-          <button
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '2px 8px', height: 22,
-              background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
-              borderRadius: 3, fontSize: 11, color: 'var(--nx-text)',
-              cursor: 'pointer', width: '100%',
-            }}
-          >
-            <span style={{ width: 12, height: 12, borderRadius: 2, background: '#cdd2d8', flex: '0 0 12px' }} />
-            <span style={{ flex: 1, textAlign: 'left' }}>Aluminum 6061-T6</span>
-          </button>
-        </PropRow>
-      </PropSection>
-
-      <PropSection title={isKo ? `파라미터${featureType ? ` · ${featureType}` : ''}` : `Parameters${featureType ? ` · ${featureType}` : ''}`}>
+      {/* Live editable params — titled GEOMETRY for fillet/chamfer-type
+          features (radius / distance on selected edges), PARAMETERS for the
+          rest. Edits flow through nexyfab:update-feature-param → Inner's
+          undoable updateFeatureParamCmd. */}
+      <PropSection title={(featureType && GEOMETRY_FEATURE_TYPES.has(featureType))
+        ? (isKo ? `지오메트리 · ${featureType}` : `Geometry · ${featureType}`)
+        : (isKo ? `파라미터${featureType ? ` · ${featureType}` : ''}` : `Parameters${featureType ? ` · ${featureType}` : ''}`)}>
         {featureId && featureParams && Object.keys(featureParams).length > 0 ? (
           Object.entries(featureParams).map(([key, value]) => (
             <PropRow key={key} label={key}>
@@ -217,10 +224,18 @@ function InspectorTab({
       </PropSection>
 
       <PropSection title={isKo ? '분석' : 'Analyze'} defaultExpanded>
-        <AnalyzeRow label={isKo ? 'DFM 검사' : 'DFM check'} meta={isKo ? '경고 2개' : '2 warns'} drawer="dfm" />
+        {/* DFM meta = REAL warning count from the last auto-DFM run (bridged
+            from Inner); "run" until the first analysis completes. */}
+        <AnalyzeRow
+          label={isKo ? 'DFM 검사' : 'DFM check'}
+          meta={dfmWarningCount === null
+            ? (isKo ? '실행' : 'run')
+            : (isKo ? `경고 ${dfmWarningCount}개` : `${dfmWarningCount} warns`)}
+          drawer="dfm"
+        />
         <AnalyzeRow label={isKo ? 'FEA · 정적/비선형/모달' : 'FEA — linear/nonlinear/modal'} meta={isKo ? '실행' : 'run'} drawer="fea" />
         <AnalyzeRow label={isKo ? '비용 예상' : 'Cost estimate'} meta={volume ? `≈ ${(volume * 0.003).toFixed(2)} g` : ''} drawer="cost" />
-        <AnalyzeRow label={isKo ? '설계 변형' : 'Design variants'} meta={isKo ? '3개' : '3'} drawer="variants" />
+        <AnalyzeRow label={isKo ? '설계 변형' : 'Design variants'} drawer="variants" />
         <AnalyzeRow label={isKo ? '모션 스터디' : 'Motion study'} meta={isKo ? '시뮬' : 'sim'} drawer="motion" />
         <PropRow label={isKo ? '삼각형' : 'Triangles'}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
@@ -237,6 +252,31 @@ function InspectorTab({
           live via nexyfab:update-feature-param, so those buttons did nothing
           and implied an apply/cancel model that doesn't exist. 2026-06-09) */}
     </>
+  );
+}
+
+// APPEARANCE — live material straight from sceneStore (same store the
+// viewport renderer reads). Editing the select swaps the actual rendered
+// material via setMaterialId, matching the toolbar material-drop behaviour.
+function AppearanceSection({ isKo }: { isKo: boolean }) {
+  const materialId = useSceneStore(s => s.materialId);
+  const setMaterialId = useSceneStore(s => s.setMaterialId);
+  const preset = MATERIAL_PRESETS.find(m => m.id === materialId);
+  return (
+    <PropSection title={isKo ? '외형' : 'Appearance'} defaultExpanded={false}>
+      <PropRow label={isKo ? '재질' : 'Material'}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 12, height: 12, borderRadius: 2, background: preset?.color ?? 'var(--nx-border)', flex: '0 0 12px' }} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <PropSelect
+              value={materialId}
+              onChange={setMaterialId}
+              options={MATERIAL_PRESETS.map(m => ({ value: m.id, label: isKo ? m.name.ko : m.name.en }))}
+            />
+          </span>
+        </div>
+      </PropRow>
+    </PropSection>
   );
 }
 

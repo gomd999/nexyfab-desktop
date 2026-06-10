@@ -24,6 +24,10 @@ export interface ShellFeatureItem {
   meta?: string;
   /** Numeric params keyed by name — drives the Inspector PARAMETERS section. */
   params?: Record<string, number>;
+  /** Real edge selections attached to this feature (fillet/chamfer/shell) —
+   *  drives the Inspector EDGES section. id = persistent topology id when
+   *  available; meta = human hint (e.g. "L 12.0 mm"). */
+  edges?: { id: string; meta?: string }[];
   /** Children for sketch profile / sub-features. */
   children?: ShellFeatureItem[];
 }
@@ -158,6 +162,11 @@ export interface ShellBridgeState {
    *  drives the SketchRightPane "Active Selection" section. */
   sketchSelectedEntityId: string | null;
 
+  /** Real DFM error/warning count from the last analysis run (worker auto-DFM).
+   *  null = no analysis has completed yet — Inspector shows "run" instead of
+   *  a fabricated count. */
+  dfmWarningCount: number | null;
+
   // Writers
   setMode: (s: Partial<Pick<ShellBridgeState, 'isSketchMode' | 'assemblyOpen' | 'editMode'>>) => void;
   setUnits: (u: ShellUnitSystem) => void;
@@ -177,6 +186,7 @@ export interface ShellBridgeState {
     dimensions: ShellSketchDimension[];
   }) => void;
   setSketchSelectedEntity: (id: string | null) => void;
+  setDfmWarningCount: (n: number | null) => void;
 }
 
 export const useShellBridge = create<ShellBridgeState>((set) => ({
@@ -215,6 +225,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   sketchConstraintList: [],
   sketchDimensionList: [],
   sketchSelectedEntityId: null,
+  dfmWarningCount: null,
 
   setMode: (s) => set(s),
   setUnits: (u) => set({ unitSystem: u }),
@@ -234,4 +245,5 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
     sketchDimensionList: s.dimensions,
   }),
   setSketchSelectedEntity: (id) => set({ sketchSelectedEntityId: id }),
+  setDfmWarningCount: (n) => set({ dfmWarningCount: n }),
 }));

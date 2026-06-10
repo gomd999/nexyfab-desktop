@@ -4340,6 +4340,12 @@ export function ShapeGeneratorInner() {
         muted: f.enabled === false,
         meta: undefined,
         params: { ...f.params },
+        // Real click-time edge selections (fillet/chamfer/shell) so the
+        // Inspector EDGES section lists actual edges, not placeholders.
+        edges: (f.edgeSelections ?? []).map((sel, i) => ({
+          id: sel.persistentId ?? `edge-${i + 1}`,
+          meta: Number.isFinite(sel.length) ? `L ${sel.length.toFixed(1)} mm` : undefined,
+        })),
       })),
       selectedId ?? null,
     );
@@ -4388,6 +4394,32 @@ export function ShapeGeneratorInner() {
     window.addEventListener('nexyfab:update-feature-param', onUpdate);
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
   }, [updateFeatureParamCmd]);
+
+  // Shell-v2 Inspector EDGES section → remove one edge selection from a
+  // fillet/chamfer/shell feature. Undoable via commandHistory. Refuses to
+  // remove the LAST edge — an empty edgeSelections silently flips the
+  // feature back to legacy all-edges behaviour, which would be surprising.
+  useEffect(() => {
+    const onRemoveEdge = (e: Event) => {
+      const ce = e as CustomEvent<{ featureId: string; edgeIndex: number }>;
+      const { featureId, edgeIndex } = ce.detail ?? {};
+      if (!featureId || !Number.isInteger(edgeIndex)) return;
+      const node = getOrderedNodesRef.current().find(n => n.id === featureId);
+      const before = node?.edgeSelections;
+      if (!node || !before || before.length <= 1) return;
+      if (edgeIndex < 0 || edgeIndex >= before.length) return;
+      const after = before.filter((_, i) => i !== edgeIndex);
+      commandHistory.execute({
+        id: `remove-feature-edge-${featureId}-${Date.now()}`,
+        label: 'Remove edge from feature',
+        labelKo: '피처 엣지 제거',
+        execute: () => updateNode(featureId, { edgeSelections: after, error: undefined }),
+        undo: () => updateNode(featureId, { edgeSelections: before, error: undefined }),
+      });
+    };
+    window.addEventListener('nexyfab:remove-feature-edge', onRemoveEdge);
+    return () => window.removeEventListener('nexyfab:remove-feature-edge', onRemoveEdge);
+  }, [updateNode]);
 
   // Shell-v2 Sketch dimension inline edit → patch sketchDimensions by id.
   // SketchLeftPane's DimensionEditableRow dispatches this event on commit.
@@ -4957,6 +4989,13 @@ export function ShapeGeneratorInner() {
     () => dfmResults ? dfmResults.reduce((n, r) => n + r.issues.filter(i => i.severity !== 'info').length, 0) : 0,
     [dfmResults],
   );
+
+  // Shell-v2 bridge: publish the REAL DFM warning count so the Inspector
+  // ANALYZE row shows actual numbers (null until the first analysis lands).
+  const bridgeDfmWarningCount = useShellBridge(s => s.setDfmWarningCount);
+  useEffect(() => {
+    bridgeDfmWarningCount(dfmResults !== null ? dfmIssueCount : null);
+  }, [dfmResults, dfmIssueCount, bridgeDfmWarningCount]);
 
   // ── REST-based DFM warnings (debounced 800ms, supplements worker-based analysis) ──
   // Used on free plan (worker DFM disabled) or before worker completes its first run.
