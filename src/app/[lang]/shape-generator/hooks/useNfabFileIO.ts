@@ -14,6 +14,7 @@ import {
   type SerializeInput,
   type NfabAssemblySnapshotV1,
   type NfabConfigurationV1,
+  type NfabGlobalVariableV1,
   type NfabProjectV1,
   type NfabStudioViewV1,
 } from '../io/nfabFormat';
@@ -68,6 +69,11 @@ interface Deps {
     configurations: NfabConfigurationV1[] | undefined,
     activeConfigurationId: string | null | undefined,
   ) => void;
+  /** Current global model variables (name + raw expression) for .nfab serialize. */
+  getGlobalVariables?: () => NfabGlobalVariableV1[];
+  /** After tree + scene hydrate — restore (or clear, on undefined) the
+   *  global variable table from the file. Values are re-derived by the host. */
+  restoreGlobalVariables?: (vars: NfabGlobalVariableV1[] | undefined) => void;
 }
 
 /**
@@ -89,6 +95,8 @@ export function useNfabFileIO(deps: Deps) {
     restoreStudioViewSnapshot,
     getConfigurationsBlock,
     restoreConfigurationsSnapshot,
+    getGlobalVariables,
+    restoreGlobalVariables,
   } = deps;
 
   const [desktopFilePath, setDesktopFilePath] = useState<string | null>(null);
@@ -116,6 +124,7 @@ export function useNfabFileIO(deps: Deps) {
     const sceneSnapshot = useSceneStore.getState();
     const studioView = getStudioViewSnapshot?.();
     const cfgBlock = getConfigurationsBlock?.();
+    const globalVariables = getGlobalVariables?.();
 
     // ── W6 (Track A6) cleanup — the session-only master-snapshot
     // defensive layer (PR #42) was removed. The new A3/A5 path routes
@@ -148,6 +157,9 @@ export function useNfabFileIO(deps: Deps) {
         // plane and the extrude would land in the wrong place.
         sketchFaceFrame: sceneSnapshot.sketchFaceFrame ?? null,
         ...(studioView ? { studioView } : {}),
+        // Global model variables — only emitted when the user defined some,
+        // so variable-free files stay byte-identical to pre-feature saves.
+        ...(globalVariables && globalVariables.length > 0 ? { globalVariables } : {}),
       },
       manufacturing: {
         camPostProcessorId: mfgCamPost,
@@ -180,6 +192,7 @@ export function useNfabFileIO(deps: Deps) {
     getAssemblySnapshot,
     getStudioViewSnapshot,
     getConfigurationsBlock,
+    getGlobalVariables,
   ]);
 
   /** 로컬 .nfab 저장 (Tauri: 네이티브 다이얼로그 또는 기존 경로에 덮어쓰기) */
@@ -351,6 +364,9 @@ export function useNfabFileIO(deps: Deps) {
         sketchFaceFrame: project.scene.sketchFaceFrame ?? null,
       });
       restoreStudioViewSnapshot?.(project.scene.studioView);
+      // Restore (or clear) the global variable table BEFORE the tree lands so
+      // the host's expression re-evaluation effect sees the file's variables.
+      restoreGlobalVariables?.(project.scene.globalVariables);
       replaceHistory(project.tree.nodes, project.tree.rootId, project.tree.activeNodeId);
       restoreConfigurationsSnapshot?.(project.configurations, project.activeConfigurationId);
       restoreAssemblySnapshot?.(project.assembly);
@@ -389,6 +405,7 @@ export function useNfabFileIO(deps: Deps) {
       setMfgQuoteQty,
       restoreStudioViewSnapshot,
       restoreConfigurationsSnapshot,
+      restoreGlobalVariables,
     ],
   );
 

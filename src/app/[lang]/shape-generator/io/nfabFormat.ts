@@ -89,6 +89,15 @@ export interface NfabStudioViewV1 {
   cameraTarget?: [number, number, number];
 }
 
+/** One persisted global model variable. The resolved numeric value is NOT
+ *  stored — `resolveModelVars` recomputes it on load so a hand-edited
+ *  expression can never disagree with a stale cached value. */
+export interface NfabGlobalVariableV1 {
+  name: string;
+  /** Raw expression text — a plain number or a formula referencing earlier variables. */
+  expression: string;
+}
+
 export interface NfabProjectV1 {
   /** Schema discriminator — always 'nfab' so we can detect foreign JSON */
   magic: 'nfab';
@@ -138,6 +147,13 @@ export interface NfabProjectV1 {
       uAxis: [number, number, number];
       vAxis: [number, number, number];
     } | null;
+    /** Global model variables ("W = 80", "ratio = W/2") that drive base-shape
+     *  `paramExpressions` and feature-node `paramExpressions`. Values are
+     *  re-derived on load (only the raw expressions persist). Optional within
+     *  the shared v3 envelope (see header) — absent on files saved before
+     *  variables existed and on projects with no variables; older builds
+     *  ignore the field. */
+    globalVariables?: NfabGlobalVariableV1[];
   };
 
   /** Optional assembly snapshot — absent for single-part projects */
@@ -630,6 +646,23 @@ function normalizeConfigurations(raw: unknown): NfabConfigurationV1[] | undefine
   return out.length > 0 ? out : undefined;
 }
 
+/** Sanitize the optional `scene.globalVariables` list: keep rows with a valid
+ *  identifier name + string expression; drop the field entirely when empty so
+ *  a clean file stays slim. Duplicate names keep the LAST occurrence (matches
+ *  "later definition wins" everywhere else). */
+function normalizeGlobalVariables(raw: unknown): NfabGlobalVariableV1[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const byName = new Map<string, NfabGlobalVariableV1>();
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const o = row as Record<string, unknown>;
+    if (typeof o.name !== 'string' || typeof o.expression !== 'string') continue;
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(o.name)) continue;
+    byName.set(o.name, { name: o.name, expression: o.expression });
+  }
+  return byName.size > 0 ? Array.from(byName.values()) : undefined;
+}
+
 function normalizeProjectV1(obj: Record<string, unknown>): NfabProjectV1 {
   const assembly =
     obj.assembly !== undefined ? normalizeAssemblySnapshot(obj.assembly) : undefined;
@@ -650,6 +683,11 @@ function normalizeProjectV1(obj: Record<string, unknown>): NfabProjectV1 {
     const sv = normalizeStudioView(sceneNext.studioView);
     if (sv) sceneNext.studioView = sv;
     else delete sceneNext.studioView;
+  }
+  if (sceneNext.globalVariables !== undefined) {
+    const gv = normalizeGlobalVariables(sceneNext.globalVariables);
+    if (gv) sceneNext.globalVariables = gv;
+    else delete sceneNext.globalVariables;
   }
   const configs = normalizeConfigurations(obj.configurations);
   const next: Record<string, unknown> = { ...obj, assembly, scene: sceneNext };

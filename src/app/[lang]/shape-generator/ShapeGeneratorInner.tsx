@@ -59,11 +59,18 @@ import { useViewportOverlays } from './hooks/useViewportOverlays';
 import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
 import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
 import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
-import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
+import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabGlobalVariableV1, type NfabStudioViewV1 } from './io/nfabFormat';
 import { ConfigurationTable as ConfigurationTableRuntime } from './configurations/ConfigurationTable';
 import { migrateFromV1 as migrateConfigsFromV1 } from './configurations/migrateFromV1';
 import { ConfigStore, migrateToYjs as migrateConfigStoreToYjs, type ConfigStore as ConfigStoreType } from './configurations/ConfigStore';
-import { setConfigurationTable as setPipelineConfigurationTable } from './features/featureContext';
+import { setConfigurationTable as setPipelineConfigurationTable, setEquationManager as setPipelineEquationManager } from './features/featureContext';
+import { EquationManager } from './equations/equationManager';
+import {
+  parseParamInput,
+  evaluateParamExpression,
+  paramScopeFor,
+  reevaluateFeatureParamExpressionsFixedPoint,
+} from './equations/featureParamExpressions';
 import type * as Y from 'yjs';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
@@ -166,7 +173,7 @@ import { evaluateExpression, findBrokenExpressions, freezeBrokenExpressions, typ
 import { globalMacroRecorder } from './history/macroRecorder';
 import { analyzeChangeImpact } from './analysis/changeImpact';
 import ConfirmModal from '@/components/ConfirmModal';
-import { type ModelVar } from './ModelParametersPanel';
+import { resolveModelVars, type ModelVar } from './ModelParametersPanel';
 import { buildExprGraph, propagateChanges } from './ExpressionGraph';
 import { usePlugins } from './plugins/usePlugins';
 import TransformInputPanel from './TransformInputPanel';
@@ -1191,7 +1198,45 @@ export function ShapeGeneratorInner() {
         if (isFinite(val)) setParam(key, val);
       } catch { /* invalid expression — skip */ }
     });
-  }, [modelVars, setParam]);  
+  }, [modelVars, setParam]);
+
+  // Render-synced ref so call-time handlers (expression commit command) read
+  // the LATEST variable table, not the closure they were created under.
+  const modelVarsRef = useRef(modelVars);
+  modelVarsRef.current = modelVars;
+
+  // Shared variable scope for FEATURE param expressions ("=W/2"): base-shape
+  // params first, global model variables after (user-defined globals shadow a
+  // base param on name collision); sibling params of the edited feature are
+  // appended last by paramScopeFor and shadow both.
+  const featureExprScope = useMemo<ExprVariable[]>(() => [
+    ...Object.entries(params).map(([name, value]) => ({ name, value })),
+    ...modelVars.map(v => ({ name: v.name, value: v.value })),
+  ], [params, modelVars]);
+
+  // Expose the global variable table to the EXISTING EquationManager engine
+  // (features/featureContext slot). The pipeline's applyFeatureContext then
+  // resolves any expression-typed (string) feature params — e.g. emitted by
+  // ConfigurationTable overrides — against the same variables the UI shows.
+  // Formula seeding is best-effort (the EquationManager's parser is the
+  // positionDrivers one); on parse failure we fall back to the value already
+  // resolved by resolveModelVars so the table never goes missing a name.
+  useEffect(() => {
+    if (modelVars.length === 0) {
+      setPipelineEquationManager(null);
+      return;
+    }
+    const em = new EquationManager();
+    for (const v of modelVars) {
+      try {
+        em.set(v.name, v.expression);
+      } catch {
+        try { em.set(v.name, String(v.value)); } catch { /* invalid name — skip */ }
+      }
+    }
+    setPipelineEquationManager(em);
+    return () => setPipelineEquationManager(null);
+  }, [modelVars]);
 
   const lastBrokenSnapshotRef = useRef<string>('');
 
@@ -1989,6 +2034,109 @@ export function ShapeGeneratorInner() {
     }
   }, [features, modelVars, addToast, lang, lt]);
 
+  // ── Feature param "=expression" support (SolidWorks-style) ────────────────
+  // The raw expression lives in the node's `paramExpressions` sidecar; the
+  // evaluated number stays in `params` (pipeline/coalescer untouched). See
+  // equations/featureParamExpressions.ts for the engine + the deleted-variable
+  // policy (keep last value + error badge — never silent NaN).
+
+  /** Commit raw typed input ("=W/2", "12", "") for a feature param as ONE
+   *  undoable command: expression assign/edit, expression clear (plain number
+   *  or empty input), and the accompanying numeric write all restore together
+   *  on undo. Mirrors the makeArrayUpdateCommand before/after-snapshot style. */
+  const setFeatureParamExpressionCmd = useCallback((featureId: string, key: string, raw: string) => {
+    const node = getOrderedNodesRef.current().find(n => n.id === featureId);
+    if (!node) return;
+    const parsed = parseParamInput(raw);
+
+    const beforeParams = { ...node.params };
+    const beforeExprs = node.paramExpressions ? { ...node.paramExpressions } : undefined;
+    const afterParams = { ...node.params };
+    let afterExprs: Record<string, string> | undefined =
+      node.paramExpressions ? { ...node.paramExpressions } : undefined;
+
+    if (parsed.kind === 'expression') {
+      const scope = paramScopeFor(node, key, [
+        ...Object.entries(useSceneStore.getState().params).map(([name, value]) => ({ name, value })),
+        ...modelVarsRef.current.map(v => ({ name: v.name, value: v.value })),
+      ]);
+      const r = evaluateParamExpression(parsed.expression, scope);
+      if (!r.ok) {
+        addToast('warning', lang === 'ko'
+          ? `수식 오류: ${r.error}`
+          : `Invalid expression: ${r.error}`);
+        return;
+      }
+      afterParams[key] = r.value;
+      afterExprs = { ...(afterExprs ?? {}), [key]: parsed.expression };
+    } else {
+      // Plain number / empty input → clear the driving expression; a number
+      // also writes the literal value (expression → frozen literal).
+      if (afterExprs) {
+        delete afterExprs[key];
+        if (Object.keys(afterExprs).length === 0) afterExprs = undefined;
+      }
+      if (parsed.kind === 'number') afterParams[key] = parsed.value;
+    }
+
+    const paramKeys = new Set([...Object.keys(beforeParams), ...Object.keys(afterParams)]);
+    const paramsChanged = Array.from(paramKeys).some(k => beforeParams[k] !== afterParams[k]);
+    const exprsChanged = JSON.stringify(beforeExprs ?? {}) !== JSON.stringify(afterExprs ?? {});
+    if (!paramsChanged && !exprsChanged) return; // no-op — skip empty undo step
+
+    // Don't let a pending slider coalesce interleave with this command.
+    featureParamCoalescer.flush();
+    commandHistory.execute({
+      id: `feature-param-expr-${featureId}-${Date.now()}`,
+      label: 'Edit parameter expression',
+      labelKo: '파라미터 수식 편집',
+      // State does NOT yet hold `after` — execute() applies it (and re-applies
+      // on redo); undo restores the full pre-edit param + expression snapshot.
+      execute: () => updateNode(featureId, { params: { ...afterParams }, paramExpressions: afterExprs, error: undefined }),
+      undo: () => updateNode(featureId, { params: { ...beforeParams }, paramExpressions: beforeExprs, error: undefined }),
+    });
+  }, [featureParamCoalescer, updateNode, addToast, lang]);
+
+  // Re-evaluate expression-driven feature params whenever the variable scope
+  // (global variables / base params) or the tree changes. Writes go through
+  // the RAW param setter — the undo step belongs to the edit that moved the
+  // variable. Failed evaluations keep the last value (error badge in the
+  // FeatureParams dialog); non-converging sibling cycles freeze (no writes).
+  useEffect(() => {
+    const nodes = getOrderedNodesRef.current().filter(
+      n => n.paramExpressions && Object.keys(n.paramExpressions).length > 0,
+    );
+    if (nodes.length === 0) return;
+    const { updates, converged } = reevaluateFeatureParamExpressionsFixedPoint(nodes, featureExprScope);
+    if (!converged) return;
+    for (const u of updates) updateFeatureParam(u.featureId, u.key, u.value);
+  }, [featureExprScope, features, updateFeatureParam]);
+
+  // PropertyManager expression drafts: its ExpressionInput reports text on
+  // every keystroke (onExpressionChange) but only commits a value on
+  // Enter/blur (onParamChange). Keystrokes land in this ref; the commit
+  // routes the final draft through setFeatureParamExpressionCmd so one
+  // undo step covers the whole authoring burst.
+  const pmExprDraftRef = useRef<Record<string, string>>({});
+
+  // ── Global variables ↔ .nfab persistence (scene.globalVariables) ──────────
+  const getGlobalVariables = useCallback((): NfabGlobalVariableV1[] =>
+    modelVarsRef.current.map(v => ({ name: v.name, expression: v.expression })), []);
+  const restoreGlobalVariables = useCallback((vars: NfabGlobalVariableV1[] | undefined) => {
+    if (!vars || vars.length === 0) {
+      setModelVars([]);
+      return;
+    }
+    // Values are re-derived from the expressions (resolveModelVars is the
+    // same resolver the panel uses — later vars can reference earlier ones).
+    setModelVars(resolveModelVars(vars.map((v, i) => ({
+      id: `mv-nfab-${i}-${v.name}`,
+      name: v.name,
+      expression: v.expression,
+      value: 0,
+    }))));
+  }, []);
+
   // 스케치 평면 전환 래퍼: 진행 중인 프로파일이 있으면 사용자에게 알림.
   // 평면을 바꿔도 기존 2D 좌표는 유지되지만 새 평면에 투영되므로 혼란을 방지.
   const setSketchPlane = useCallback((plane: 'xy' | 'xz' | 'yz') => {
@@ -2731,7 +2879,20 @@ export function ShapeGeneratorInner() {
     restoreStudioViewSnapshot,
     getConfigurationsBlock,
     restoreConfigurationsSnapshot,
+    getGlobalVariables,
+    restoreGlobalVariables,
   });
+
+  // Global variable edits dirty the .nfab (they persist in scene.globalVariables).
+  // Skip the mount pass — an unchanged project must not start dirty.
+  const modelVarsDirtySkipRef = useRef(true);
+  useEffect(() => {
+    if (modelVarsDirtySkipRef.current) {
+      modelVarsDirtySkipRef.current = false;
+      return;
+    }
+    markNfabDirty();
+  }, [modelVars, markNfabDirty]);
 
   // Wire scene → autosave + .nfab dirty (debounced + transition triggers)
   useSceneAutoSaveWatchers({
@@ -2789,7 +2950,7 @@ export function ShapeGeneratorInner() {
     // caught via cloudDirtyRef — never re-ran the effect, so those changes were
     // silently dropped from cloud autosave. Track them explicitly here.
   }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode,
-      placedParts, assemblyMates, bodies, configurationsSig, sketchProfile, sketchConfig]);
+      placedParts, assemblyMates, bodies, configurationsSig, sketchProfile, sketchConfig, modelVars]);
 
   // Guest save nudge: a logged-out user's work lives only in THIS browser
   // (localStorage autosave — no cloud sync). Once they've built something real,
@@ -9005,7 +9166,28 @@ export function ShapeGeneratorInner() {
                     min: 0,
                     max: typeof val === 'number' ? Math.max(val * 3, 100) : 100,
                     step: 1 })) : []}
-                  onParamChange={(param, value) => { if (selectedFeatureId) updateFeatureParamCmd(selectedFeatureId, param, value); }}
+                  onParamChange={(param, value) => {
+                    if (!selectedFeatureId) return;
+                    const draft = pmExprDraftRef.current[param];
+                    delete pmExprDraftRef.current[param];
+                    const node = features.find(f => f.id === selectedFeatureId);
+                    const wasDriven = !!node?.paramExpressions?.[param];
+                    if (draft !== undefined && parseParamInput(draft).kind === 'expression') {
+                      // Typed a formula → assign/update the expression (one undo step).
+                      setFeatureParamExpressionCmd(selectedFeatureId, param, draft);
+                      return;
+                    }
+                    if (wasDriven) {
+                      // Plain number over a driven param → freeze to literal
+                      // (clears the expression + writes the value together).
+                      setFeatureParamExpressionCmd(selectedFeatureId, param, String(value));
+                      return;
+                    }
+                    updateFeatureParamCmd(selectedFeatureId, param, value);
+                  }}
+                  expressions={selectedFeatureId ? features.find(f => f.id === selectedFeatureId)?.paramExpressions : undefined}
+                  onExpressionChange={(param, expression) => { pmExprDraftRef.current[param] = expression; }}
+                  extraVariables={featureExprScope}
                   onClose={() => setShowPropertyManager(false)}
                   onApply={() => setShowPropertyManager(false)}
                 />
@@ -9707,10 +9889,14 @@ export function ShapeGeneratorInner() {
                 </div>
                 <div style={{ padding: '12px', maxHeight: '60vh', overflowY: 'auto' }} className="nf-scroll">
                   <FeatureParams
-                    instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, enabled: editingNode.enabled, error: editingNode.error }}
+                    instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, paramExpressions: editingNode.paramExpressions, enabled: editingNode.enabled, error: editingNode.error }}
                     definition={editingDef}
                     t={shapeLabels}
                     onParamChange={(id, key, value) => updateFeatureParamCmd(id, key, value)}
+                    expressions={editingNode.paramExpressions}
+                    variables={featureExprScope}
+                    onExpressionCommit={setFeatureParamExpressionCmd}
+                    lang={lang}
                   />
                 </div>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>

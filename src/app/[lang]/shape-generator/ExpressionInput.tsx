@@ -44,6 +44,13 @@ const dict = {
   },
 };
 
+/** SolidWorks muscle memory: a leading "=" marks an expression ("=W/2").
+ *  The engine's grammar has no "=" — strip it for evaluation/propagation
+ *  while the input keeps showing exactly what the user typed. */
+function stripLeadingEq(s: string): string {
+  return s.replace(/^\s*=/, '');
+}
+
 interface ExpressionInputProps {
   /** Current raw expression text (may be a plain number or formula) */
   expression: string;
@@ -102,7 +109,7 @@ export default function ExpressionInput({
 
   // Re-evaluate whenever localExpr or variables change
   useEffect(() => {
-    const trimmed = localExpr.trim();
+    const trimmed = stripLeadingEq(localExpr).trim();
     if (trimmed === '') {
       setError(null);
       setEvalResult(null);
@@ -165,14 +172,14 @@ export default function ExpressionInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setLocalExpr(val);
-    onExpressionChange(val);
+    onExpressionChange(stripLeadingEq(val));
     setShowSuggestions(true);
     setSuggestionIdx(0);
     cursorPosRef.current = e.target.selectionStart ?? val.length;
   };
 
   const commitValue = () => {
-    const trimmed = localExpr.trim();
+    const trimmed = stripLeadingEq(localExpr).trim();
     if (trimmed === '') return;
     // Try unit-aware parse first (e.g. "1in" → 25.4 in mm-mode).
     if (unitSystem) {
@@ -224,7 +231,7 @@ export default function ExpressionInput({
     }
   };
 
-  const hasExpr = isExpression(localExpr);
+  const hasExpr = isExpression(stripLeadingEq(localExpr));
   const borderColor = error ? 'var(--nx-error)' : hasExpr ? 'var(--nx-accent)' : 'var(--nx-border)';
   const paramVars = variables.filter(v => !BUILT_IN_FUNCTION_NAMES.includes(v.name));
 
