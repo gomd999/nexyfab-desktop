@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useShellBridge } from './shellBridgeStore';
+import { sketchStatusColor, sketchStatusLabel } from './sketchStatusUi';
 
 interface SolverInfoChipProps {
   isKo: boolean;
@@ -16,7 +17,8 @@ interface SolverInfoChipProps {
 export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
   const [collapsed, setCollapsed] = useState(false);
   const editMode = useShellBridge(s => s.editMode);
-  const ok = useShellBridge(s => s.sketchSolverOk);
+  const status = useShellBridge(s => s.sketchStatus);
+  const redundantCount = useShellBridge(s => s.sketchRedundantCount);
   const dof = useShellBridge(s => s.sketchDof);
   const entities = useShellBridge(s => s.sketchEntities);
   const constraints = useShellBridge(s => s.sketchConstraints);
@@ -24,6 +26,8 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
 
   if (editMode !== 'sketch') return null;
 
+  const ok = status === null ? null : status === 'ok';
+  const statusLabel = sketchStatusLabel(status, dof, redundantCount, isKo);
   const rows: { k: string; v: string; tone?: 'ok' | 'warn' | 'error' }[] = [
     { k: isKo ? '엔티티' : 'entities', v: String(entities) },
     { k: isKo ? '구속' : 'constraints', v: String(constraints) },
@@ -31,12 +35,12 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
     {
       k: 'DOF',
       v: dof !== null ? String(dof) : '—',
-      tone: dof === 0 ? 'ok' : (dof ?? 0) > 0 ? 'warn' : 'error',
+      tone: dof === null ? undefined : dof === 0 ? 'ok' : dof > 0 ? 'warn' : 'error',
     },
     {
-      k: 'solver',
-      v: ok === null ? '—' : ok ? 'OK' : 'fail',
-      tone: ok ? 'ok' : ok === false ? 'error' : undefined,
+      k: isKo ? '상태' : 'status',
+      v: statusLabel ?? '—',
+      tone: status === null ? undefined : status === 'ok' ? 'ok' : status === 'under-defined' ? 'warn' : 'error',
     },
   ];
 
@@ -76,7 +80,7 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
         <span style={{ flex: 1 }}>{isKo ? '솔버' : 'Solver'}</span>
         {collapsed && (
           <span style={{
-            color: ok ? 'var(--nx-ok)' : ok === false ? 'var(--nx-error)' : 'var(--nx-text-3)',
+            color: sketchStatusColor(status),
             fontFamily: 'var(--font-jetbrains-mono), monospace',
             fontSize: 9,
           }}>

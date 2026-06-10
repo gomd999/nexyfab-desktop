@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { SidePanel, PropSection, PropItemRow } from './';
 import { useShellBridge } from '../shellBridgeStore';
+import { sketchStatusColor, sketchStatusLabel } from '../sketchStatusUi';
 import { I } from '../Icons';
 
 export interface SketchLeftPaneProps {
@@ -17,7 +18,8 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
   const entities = useShellBridge(s => s.sketchEntities);
   const constraints = useShellBridge(s => s.sketchConstraints);
   const dimensions = useShellBridge(s => s.sketchDimensions);
-  const solverOk = useShellBridge(s => s.sketchSolverOk);
+  const status = useShellBridge(s => s.sketchStatus);
+  const redundantCount = useShellBridge(s => s.sketchRedundantCount);
   const dof = useShellBridge(s => s.sketchDof);
   const entityList = useShellBridge(s => s.sketchEntityList);
   const constraintList = useShellBridge(s => s.sketchConstraintList);
@@ -38,12 +40,11 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
       titleIcon={<I.sketch size={12} />}
       footer={
         <span
-          className={`nx-panel-footer-pill ${solverOk === false ? 'warn' : ''}`}
+          className={`nx-panel-footer-pill ${status === 'over-defined' || status === 'inconsistent' || status === 'under-defined' ? 'warn' : ''}`}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: solverOk === false ? 'var(--nx-warn, #ffa800)' : 'var(--nx-accent)' }} />
-          {solverOk === false
-            ? (isKo ? `미정의 · DOF ${dof ?? '?'}` : `Under-defined · DOF ${dof ?? '?'}`)
-            : (isKo ? `완전 정의 · DOF ${dof ?? 0} · Solver OK` : `Fully constrained · DOF ${dof ?? 0} · Solver OK`)}
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: sketchStatusColor(status) }} />
+          {sketchStatusLabel(status, dof, redundantCount, isKo)
+            ?? (isKo ? '빈 스케치 — 그리기로 시작' : 'Empty sketch — start drawing')}
         </span>
       }
     >
@@ -102,7 +103,7 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
   );
 }
 
-const CONSTRAINT_GLYPH: Record<string, string> = {
+export const CONSTRAINT_GLYPH: Record<string, string> = {
   coincident: '↗',
   horizontal: '—',
   vertical: '|',
@@ -115,7 +116,7 @@ const CONSTRAINT_GLYPH: Record<string, string> = {
   fix: '◇',
 };
 
-type DimensionRowData = {
+export type DimensionRowData = {
   id: string;
   name: string;
   value: number;
@@ -152,7 +153,7 @@ function formatExprError(err: NonNullable<DimensionRowData['expressionError']>, 
 // Commit via nexyfab:update-sketch-dimension event — Inner listens and
 // calls the sketch store's setDimensionValue (or setDimensionExpression
 // when the committed text isn't a bare number).
-function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: boolean }) {
+export function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: boolean }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(dim.expression ?? String(dim.value));
   React.useEffect(() => setDraft(dim.expression ?? String(dim.value)), [dim.expression, dim.value]);

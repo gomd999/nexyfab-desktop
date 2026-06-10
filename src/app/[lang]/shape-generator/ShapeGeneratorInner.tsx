@@ -97,6 +97,7 @@ import type { SketchProfile, SketchConfig, SketchConstraint, SketchDimension, Sk
 import { profileToGeometry, profileToGeometryMulti, brepContourPoints } from './sketch/extrudeProfile';
 import { occtExtrudeWithHoles, isOcctReady as isOcctReadySync, isOcctGlobalMode as isOcctGlobalModeSync } from './features/occtEngine';
 import { solveConstraints, resolveDimensionTargetsWithErrors } from './sketch/constraintSolver';
+import { computeSketchLiveStatus } from './sketch/sketchStatusLive';
 import SketchCanvas from './sketch/SketchCanvas';
 import {
   type SketchHistoryEntry,
@@ -3841,6 +3842,7 @@ export function ShapeGeneratorInner() {
   // entities/constraints/dimensions/solveMs for the engineer-mode readout.
   const bridgeSketchSolver = useShellBridge(s => s.setSketchSolver);
   const bridgeSketchSnapshot = useShellBridge(s => s.setSketchSnapshot);
+  const bridgeSketchSelectedEntity = useShellBridge(s => s.setSketchSelectedEntity);
   useEffect(() => {
     if (!isSketchMode) {
       bridgeSketchSolver({
@@ -3850,22 +3852,31 @@ export function ShapeGeneratorInner() {
         sketchConstraints: 0,
         sketchDimensions: 0,
         sketchSolveMs: null,
+        sketchStatus: null,
+        sketchRedundantCount: 0,
       });
       bridgeSketchSnapshot({ entities: [], constraints: [], dimensions: [] });
+      bridgeSketchSelectedEntity(null);
       return;
     }
-    const ok = constraintStatus === 'ok';
-    const dof = constraintDiagnostic?.dof ?? null;
+    // Empty sketch → no status (honest "nothing to constrain" instead of a
+    // fake "Fully constrained · DOF 0" green pill on entry).
+    const hasContent = (sketchProfile?.segments?.length ?? 0) > 0;
+    const ok = hasContent ? constraintStatus === 'ok' : null;
+    const dof = hasContent ? constraintDiagnostic?.dof ?? null : null;
     bridgeSketchSolver({
       sketchSolverOk: ok,
       sketchDof: dof,
       sketchEntities: sketchProfile?.segments?.length ?? 0,
       sketchConstraints: sketchConstraints?.length ?? 0,
       sketchDimensions: sketchDimensions?.length ?? 0,
-      sketchSolveMs: typeof constraintDiagnostic?.residual === 'number' ? constraintDiagnostic.residual : null,
+      sketchSolveMs: hasContent && typeof constraintDiagnostic?.solveMs === 'number' ? constraintDiagnostic.solveMs : null,
+      sketchStatus: hasContent ? constraintStatus : null,
+      sketchRedundantCount: constraintDiagnostic?.redundant?.length ?? 0,
     });
     // Publish real sketch entity / constraint / dimension lists so the
     // SketchLeftPane renders actual content instead of mockup placeholders.
+    const unsatisfiedIds = new Set(constraintDiagnostic?.unsatisfiedIds ?? []);
     bridgeSketchSnapshot({
       entities: (sketchProfile?.segments ?? []).map((seg, i) => ({
         id: seg.id ?? `seg${i}`,
@@ -3873,11 +3884,14 @@ export function ShapeGeneratorInner() {
         label: `${seg.type[0].toUpperCase()}${seg.type.slice(1)} ${i + 1}`,
         meta: seg.construction ? 'construction' : `${seg.points.length} pts`,
         construction: seg.construction === true,
+        pointIds: seg.points.map(p => p.id).filter((id): id is string => !!id),
       })),
       constraints: (sketchConstraints ?? []).map((c, i) => ({
         id: (c as { id?: string }).id ?? `c${i}`,
         type: (c as { type?: string }).type ?? 'unknown',
         label: (c as { type?: string }).type ?? undefined,
+        entityIds: (c as { entityIds?: string[] }).entityIds ?? [],
+        satisfied: !unsatisfiedIds.has((c as { id?: string }).id ?? `c${i}`),
       })),
       dimensions: (() => {
         const dims = (sketchDimensions ?? []) as Array<{ id?: string; name?: string; value?: number; unit?: string; expression?: string; type?: string; entityIds?: string[]; position?: { x: number; y: number }; locked?: boolean }>;
@@ -3903,6 +3917,7 @@ export function ShapeGeneratorInner() {
             unit: d.unit ?? 'mm',
             expression: d.expression,
             expressionError: errors.get(id),
+            entityIds: d.entityIds ?? [],
           };
         });
       })(),
@@ -3911,12 +3926,15 @@ export function ShapeGeneratorInner() {
     isSketchMode,
     constraintStatus,
     constraintDiagnostic?.dof,
-    constraintDiagnostic?.residual,
+    constraintDiagnostic?.solveMs,
+    constraintDiagnostic?.redundant,
+    constraintDiagnostic?.unsatisfiedIds,
     sketchProfile,
     sketchConstraints,
     sketchDimensions,
     bridgeSketchSolver,
     bridgeSketchSnapshot,
+    bridgeSketchSelectedEntity,
   ]);
 
   // Selection bridge — drives Shell's floating "{feature} · {n} edges" bubble.
@@ -5308,7 +5326,9 @@ export function ShapeGeneratorInner() {
         else if (code === 'large_constraint_set' && !suppressPerf) addToast('warning', lt.sketchPreflightLargeConstraintSet);
       }
     }
+    const solveT0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const result = solveConstraints(activeProfile.segments, sketchConstraints, sketchDimensions);
+    const solveMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - solveT0;
     // Apply solved point positions back into segments
     const solvedSegments = activeProfile.segments.map(seg => ({
       ...seg,
@@ -5332,7 +5352,9 @@ export function ShapeGeneratorInner() {
       residual: result.solveResult?.residual,
       message: result.solveResult?.message,
       unsatisfiedCount: result.unsatisfiedConstraints.length,
+      unsatisfiedIds: result.unsatisfiedConstraints,
       redundant: result.solveResult?.redundant,
+      solveMs,
       onRemoveRedundant: (id: string) => {
         setSketchConstraints(prev => prev.filter(c => c.id !== id));
       } });
@@ -5375,6 +5397,68 @@ export function ShapeGeneratorInner() {
     }, 150);
     return () => clearTimeout(timer);
   }, [autoSolve, sketchConstraints.length, sketchProfileHash]);
+
+  // Live constraint diagnostics (SolidWorks-style) — when auto-solve is OFF
+  // the solver previously never ran, so the DOF pill / status chip showed a
+  // stale default-green state. Run a READ-ONLY diagnostic solve (geometry is
+  // never moved) debounced 250 ms so the chrome always reflects reality.
+  // Also covers auto-solve ON with zero constraints (auto-solve effects bail
+  // there, which would leave the status stale).
+  React.useEffect(() => {
+    if (!isSketchMode || (autoSolve && sketchConstraints.length > 0)) return;
+    const segments = (sketchProfiles[activeProfileIdx] ?? sketchProfile).segments;
+    if (segments.length === 0) {
+      // Empty sketch → clear diagnostics so the chrome shows no status.
+      setConstraintStatus('ok');
+      setConstraintDiagnostic({});
+      return;
+    }
+    const timer = setTimeout(() => {
+      const live = computeSketchLiveStatus(segments, sketchConstraints, sketchDimensions);
+      if (live.status === null) return;
+      setConstraintStatus(live.status);
+      setConstraintDiagnostic({
+        dof: live.dof ?? undefined,
+        message: live.message,
+        unsatisfiedCount: live.unsatisfiedIds.length,
+        unsatisfiedIds: live.unsatisfiedIds,
+        redundant: live.redundantIds.length > 0 ? live.redundantIds : undefined,
+        solveMs: live.solveMs ?? undefined,
+        onRemoveRedundant: (id: string) => {
+          setSketchConstraints(prev => prev.filter(c => c.id !== id));
+        },
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [isSketchMode, autoSolve, sketchProfiles, activeProfileIdx, sketchProfile, sketchProfileHash, sketchConstraints, sketchDimHash, sketchDimensions]);
+
+  // Shell-v2 SketchRightPane actions — delete a constraint from the
+  // "Constraints on Selection" rows, toggle construction geometry from the
+  // "Active Selection" checkbox. Ids match the bridge snapshot writer
+  // (segment.id ?? `seg${i}`, constraint.id ?? `c${i}`).
+  useEffect(() => {
+    const onDeleteConstraint = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      if (ce.detail?.id) handleRemoveConstraint(ce.detail.id);
+    };
+    const onToggleConstruction = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      const id = ce.detail?.id;
+      if (!id) return;
+      const profile = useSceneStore.getState().sketchProfile;
+      const segments = profile.segments.map((s, i) =>
+        (s.id ?? `seg${i}`) === id ? { ...s, construction: !s.construction } : s);
+      const next = { ...profile, segments };
+      setSketchProfile(next);
+      setSketchProfiles(prev => prev.map((x, i) => i === activeProfileIdx ? next : x));
+    };
+    window.addEventListener('nexyfab:delete-sketch-constraint', onDeleteConstraint);
+    window.addEventListener('nexyfab:toggle-sketch-construction', onToggleConstruction);
+    return () => {
+      window.removeEventListener('nexyfab:delete-sketch-constraint', onDeleteConstraint);
+      window.removeEventListener('nexyfab:toggle-sketch-construction', onToggleConstruction);
+    };
+  }, [handleRemoveConstraint, setSketchProfile, setSketchProfiles, activeProfileIdx]);
 
   // ── Add sketch as feature-tree item ──
   const handleAddSketchToFeatureTree = useCallback(() => {
@@ -9009,6 +9093,7 @@ export function ShapeGeneratorInner() {
                         ...sketchConfig,
                         sweepPath: pts.length > 0 ? { points: pts, steps: sketchConfig.sweepPath?.steps ?? 32 } : undefined,
                       })}
+                      onSelectedEntityChange={bridgeSketchSelectedEntity}
                     />
                   )) : null}
                   </div>

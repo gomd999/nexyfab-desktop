@@ -24,6 +24,7 @@ import { useSearchParams } from 'next/navigation';
 import { Shell } from './Shell';
 import { I } from './Icons';
 import { useShellBridge } from './shellBridgeStore';
+import { sketchStatusLabel } from './sketchStatusUi';
 import { ViewportChips } from './ViewportChips';
 import { SelectionBubble } from './SelectionBubble';
 import { SolverInfoChip } from './SolverInfoChip';
@@ -254,8 +255,9 @@ export function ModelerShell() {
   const bridgeCloudStatus = useShellBridge(s => s.cloudStatus);
   const bridgeCloudSavedAt = useShellBridge(s => s.cloudSavedAt);
   const bridgeAutosaveSavedAt = useShellBridge(s => s.autosaveSavedAt);
-  const bridgeSketchSolverOk = useShellBridge(s => s.sketchSolverOk);
+  const bridgeSketchStatus = useShellBridge(s => s.sketchStatus);
   const bridgeSketchDof = useShellBridge(s => s.sketchDof);
+  const bridgeSketchRedundant = useShellBridge(s => s.sketchRedundantCount);
 
   // Sync shell mode + active sketch tab to Inner's sketch state. When the
   // user toggles sketch mode in Inner, the shell ribbon switches to the
@@ -284,12 +286,11 @@ export function ModelerShell() {
       : bridgeEditMode === 'assembly'
         ? (isKo ? '어셈블리 모드' : 'ASSEMBLY MODE')
         : undefined;
-  // Sketch solver indicator — mockup #15 shows "Fully constrained · DOF 0".
+  // Sketch solver indicator — SolidWorks-style 3-state: under-constrained /
+  // fully constrained / over-defined-or-conflicting. Empty sketch → no pill.
   const sketchSolverLabel =
-    bridgeEditMode === 'sketch' && bridgeSketchSolverOk !== null
-      ? bridgeSketchSolverOk
-        ? (isKo ? `완전 정의 · DOF ${bridgeSketchDof ?? 0}` : `Fully constrained · DOF ${bridgeSketchDof ?? 0}`)
-        : (isKo ? `미정의 · DOF ${bridgeSketchDof ?? '?'}` : `Under-defined · DOF ${bridgeSketchDof ?? '?'}`)
+    bridgeEditMode === 'sketch'
+      ? sketchStatusLabel(bridgeSketchStatus, bridgeSketchDof, bridgeSketchRedundant, isKo) ?? undefined
       : undefined;
 
   const modeHint =

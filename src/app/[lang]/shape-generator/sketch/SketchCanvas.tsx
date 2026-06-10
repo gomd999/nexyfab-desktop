@@ -351,6 +351,10 @@ interface SketchCanvasProps {
    *  alongside `onSweepPathChange` to enable the sweep-path drawing tool. */
   sweepPathPoints?: { x: number; y: number; z: number }[];
   onSweepPathChange?: (points: { x: number; y: number; z: number }[]) => void;
+  /** Fires when the select tool's segment selection changes. The id matches
+   *  `segment.id` (or the `seg${index}` fallback the shell bridge uses), so
+   *  the SketchRightPane can show live selection / constraint info. */
+  onSelectedEntityChange?: (id: string | null) => void;
 }
 
 // ─── Named constants ─────────────────────────────────────────────────────────
@@ -895,6 +899,7 @@ function SketchCanvas({
   pickFilter = 'all',
   sweepPathPoints,
   onSweepPathChange,
+  onSelectedEntityChange,
 }: SketchCanvasProps) {
   // ── i18n: resolve locale from URL segment ──
   const pathname = usePathname();
@@ -975,6 +980,14 @@ function SketchCanvas({
 
   // Selection state (select tool: click segment to select, Delete to remove)
   const [selectedSegIdx, setSelectedSegIdx] = useState<number>(-1);
+
+  // Mirror the selection out to the parent (shell right pane shows live
+  // selection info). Id falls back to `seg${idx}` matching the bridge writer.
+  useEffect(() => {
+    if (!onSelectedEntityChange) return;
+    const seg = selectedSegIdx >= 0 ? profile.segments[selectedSegIdx] : undefined;
+    onSelectedEntityChange(seg ? (seg.id ?? `seg${selectedSegIdx}`) : null);
+  }, [selectedSegIdx, profile.segments, onSelectedEntityChange]);
 
   // Point drag state (select tool: drag a point to move it, solver will re-constrain)
   const [dragPoint, setDragPoint] = useState<{ segIdx: number; ptIdx: number } | null>(null);
