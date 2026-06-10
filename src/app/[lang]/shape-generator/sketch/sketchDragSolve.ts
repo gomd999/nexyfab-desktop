@@ -36,6 +36,27 @@
  *     the existing red status chip already explains why.
  *   - zero constraints & no locked dimensions        → plain raw move.
  *
+ * Whole-segment (edge/body) drag — `dragSolveSegment`:
+ *   Same two-phase machinery, but the pin is MULTI-POINT: each "handle"
+ *   defining point of the segment is soft-pinned to its translated target
+ *   (current position + cursor delta), so the whole edge chases the cursor
+ *   as a rigid translation where the constraint manifold allows it.
+ *   Per-type pin sets (see `segmentPinIndices`):
+ *     line [start,end] / rect [c1,c2] / arc [s,t,e] / nurbs ctrl-pts
+ *                                  → ALL defining points pinned (rigid intent)
+ *     circle / polygon [center, edge] → center pinned only; the edge point is
+ *                                  warm-start translated but NOT pinned, so
+ *                                  radius/orientation stays free for
+ *                                  constraints (tangent, locked radial dim)
+ *                                  to negotiate. An unconstrained circle
+ *                                  still translates rigidly via warm start.
+ *     ellipse [center, rx, ry]    → center pinned; rx/ry handles free.
+ *     slot [c1, c2, radiusPt]     → both cap centers pinned; radius pt free.
+ *   Fixed rules: a `fixed` constraint on the segment id, or on EVERY pinnable
+ *   defining point, blocks the drag; a partially-fixed segment (e.g. a line
+ *   with one fixed endpoint) still drags — the free end chases its pin, the
+ *   classic rotate/stretch-around-the-anchor feel.
+ *
  * Pure function: never mutates its inputs; returns fresh segment arrays.
  */
 
@@ -255,6 +276,165 @@ export function dragSolve(
     ...seg,
     points: seg.points.map(p => {
       if (!p.id) return p;
+      const slot = vars.idx.get(p.id);
+      if (!slot) return p; // fixed or unknown — untouched
+      return { ...p, x: x[slot[0]], y: x[slot[1]] };
+    }),
+  }));
+  return { segments: next, outcome: 'moved', residual: cErr };
+}
+
+// ─── Whole-segment (edge/body) drag-solve ───────────────────────────────────
+
+/** Defining-point indices that receive a cursor pin during a body drag.
+ *  Non-listed points are warm-start translated but left unpinned so the
+ *  solver can trade them freely (e.g. a circle's radius under tangency).
+ *  See module doc, "Whole-segment drag". */
+function segmentPinIndices(seg: SketchSegment): number[] {
+  switch (seg.type) {
+    case 'circle':
+    case 'polygon':
+    case 'ellipse':
+      return [0]; // [center, ...handles] — pin the center only
+    case 'slot':
+      return [0, 1]; // [center1, center2, radiusPt] — pin both cap centers
+    default:
+      // line / rect / arc / nurbs — rigid-translation intent: pin everything.
+      return seg.points.map((_, i) => i);
+  }
+}
+
+/** Raw rigid translation of a segment: every defining point moves by `delta`,
+ *  and points elsewhere that SHARE an id with them (polyline joints) follow,
+ *  mirroring `movePointRaw` semantics so connected geometry never tears. */
+function translateSegmentRaw(
+  segments: SketchSegment[],
+  seg: SketchSegment,
+  delta: { x: number; y: number },
+): SketchSegment[] {
+  const ids = new Set<string>();
+  for (const p of seg.points) if (p.id) ids.add(p.id);
+  return segments.map(s => {
+    const own = s === seg;
+    if (!own && !s.points.some(p => p.id !== undefined && ids.has(p.id))) return s;
+    return {
+      ...s,
+      points: s.points.map(p =>
+        own || (p.id !== undefined && ids.has(p.id))
+          ? { ...p, x: p.x + delta.x, y: p.y + delta.y }
+          : p,
+      ),
+    };
+  });
+}
+
+/**
+ * Drag-solve for a whole segment body (edge drag): translate the segment with
+ * id `segmentId` by `delta` while keeping all constraints + locked dimensions
+ * satisfied. `delta` is measured against the geometry in `segments` — callers
+ * implementing a gesture should pass the GESTURE-START segments together with
+ * the cumulative cursor delta each frame (absolute targets, no drift).
+ *
+ * Outcomes mirror `dragSolve` (free / moved / blocked-fixed /
+ * blocked-unsolvable); an unknown `segmentId` reports blocked-unsolvable.
+ */
+export function dragSolveSegment(
+  segments: SketchSegment[],
+  constraints: SketchConstraint[],
+  dimensions: SketchDimension[],
+  segmentId: string,
+  delta: { x: number; y: number },
+  opts: DragSolveOptions = {},
+): DragSolveResult {
+  const seg = segments.find(s => s.id === segmentId);
+  if (!seg || seg.points.length === 0) {
+    return { segments, outcome: 'blocked-unsolvable', residual: Number.POSITIVE_INFINITY };
+  }
+
+  const hasLockedDims = dimensions.some(d => d.locked);
+
+  // Plain drag when there is no constraint system at all (existing behavior
+  // for zero-constraint sketches: rigid raw translation).
+  if (constraints.length === 0 && !hasLockedDims) {
+    return { segments: translateSegmentRaw(segments, seg, delta), outcome: 'free', residual: 0 };
+  }
+
+  // A `fixed` constraint can target the segment id itself (single-entity
+  // constraint UI) — the whole body is anchored.
+  if (constraints.some(c => c.type === 'fixed' && c.entityIds[0] === segmentId)) {
+    return { segments, outcome: 'blocked-fixed', residual: 0 };
+  }
+
+  const { vars, x } = buildVars(segments, constraints);
+
+  // Collect the pin rows: each pinnable defining point targets its current
+  // position + delta. Fixed points are excluded from the variable set by
+  // buildVars, so they simply contribute no pin.
+  const pins: { ix: number; iy: number; tx: number; ty: number }[] = [];
+  let pinnableIds = 0;
+  for (const i of segmentPinIndices(seg)) {
+    const p = seg.points[i];
+    if (!p?.id) continue;
+    pinnableIds++;
+    const k = vars.idx.get(p.id);
+    if (!k) continue; // fixed — immovable, no pin row
+    pins.push({ ix: k[0], iy: k[1], tx: p.x + delta.x, ty: p.y + delta.y });
+  }
+
+  if (pinnableIds === 0) {
+    // No id'd defining points → invisible to the solver; raw translate is safe.
+    return { segments: translateSegmentRaw(segments, seg, delta), outcome: 'free', residual: 0 };
+  }
+  if (pins.length === 0) {
+    // Every pinnable defining point carries `fixed` — body cannot be dragged.
+    return { segments, outcome: 'blocked-fixed', residual: 0 };
+  }
+
+  const { residuals } = buildResiduals(segments, constraints, dimensions, vars);
+
+  // Warm start: translate ALL of the segment's free points by delta so the
+  // unpinned handles (circle edge, ellipse rx/ry, slot radius pt) ride along
+  // rigidly unless a constraint pulls them elsewhere. With zero residual
+  // rows (e.g. only `fixed` constraints, which are enforced by variable
+  // elimination) this warm start IS the whole move — free points translate,
+  // fixed points stay anchored.
+  for (const p of seg.points) {
+    if (!p.id) continue;
+    const k = vars.idx.get(p.id);
+    if (!k) continue;
+    x[k[0]] = p.x + delta.x;
+    x[k[1]] = p.y + delta.y;
+  }
+
+  let cErr = 0;
+  if (residuals.length > 0) {
+    const w = opts.pinWeight ?? 1;
+    const tol = opts.tolerance ?? 1e-4;
+
+    // Phase 1 — constraints + multi-point soft cursor pin.
+    const pinnedRs: Residual[] = [...residuals];
+    for (const pin of pins) {
+      pinnedRs.push(xv => w * (xv[pin.ix] - pin.tx));
+      pinnedRs.push(xv => w * (xv[pin.iy] - pin.ty));
+    }
+    runLm(pinnedRs, x, opts.maxPinnedIterations ?? 30, tol);
+
+    // Phase 2 — polish constraints exactly (pins removed).
+    cErr = runLm(residuals, x, opts.maxPolishIterations ?? 20, tol);
+
+    if (cErr > Math.max(tol, 1e-3)) {
+      return { segments, outcome: 'blocked-unsolvable', residual: cErr };
+    }
+  }
+
+  // Write back: solved coordinates for id'd points; anonymous points of the
+  // dragged segment translate raw (the solver can't see them).
+  const next = segments.map(sg => ({
+    ...sg,
+    points: sg.points.map(p => {
+      if (!p.id) {
+        return sg === seg ? { ...p, x: p.x + delta.x, y: p.y + delta.y } : p;
+      }
       const slot = vars.idx.get(p.id);
       if (!slot) return p; // fixed or unknown — untouched
       return { ...p, x: x[slot[0]], y: x[slot[1]] };

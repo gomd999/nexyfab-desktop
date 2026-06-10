@@ -8,7 +8,7 @@ import type {
 } from './types';
 import { sampleNurbsSegment } from './nurbs';
 import { CONSTRAINT_ICON, getConstraintsForEntity } from './constraintSolver';
-import { dragSolve } from './sketchDragSolve';
+import { dragSolve, dragSolveSegment } from './sketchDragSolve';
 import { cleanupProfile } from './profileCleanup';
 
 type SketchLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
@@ -892,6 +892,86 @@ function findNearestSegment(
   return null;
 }
 
+/** Hit-test a segment BODY (edge/perimeter) for whole-segment dragging.
+ *  Unlike `findNearestSegment` (line/arc only — the tools that call it only
+ *  operate on line geometry), this covers every typed segment in the data
+ *  model so circle/rect/polygon/ellipse/slot bodies coming from imports,
+ *  scripts or AI generation are body-draggable too. */
+function findNearestSegmentBody(
+  segments: SketchSegment[],
+  pt: SketchPoint,
+  threshold: number,
+): { index: number; distance: number } | null {
+  const lineDist = (a: SketchPoint, b: SketchPoint): number => {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    const t = lenSq > 0 ? Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / lenSq)) : 0;
+    return dist(pt, { x: a.x + t * dx, y: a.y + t * dy });
+  };
+  let bestIdx = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const p = seg.points;
+    let d = Infinity;
+    switch (seg.type) {
+      case 'line':
+        if (p.length >= 2) d = lineDist(p[0], p[1]);
+        break;
+      case 'arc':
+        if (p.length >= 3) {
+          const c = circleThrough3(p[0], p[1], p[2]);
+          if (c) d = Math.abs(dist(pt, { x: c.cx, y: c.cy }) - c.r);
+        }
+        break;
+      case 'circle':
+      case 'polygon': // [center, edge] — perimeter ≈ circumscribed circle
+        if (p.length >= 2) d = Math.abs(dist(pt, p[0]) - dist(p[0], p[1]));
+        break;
+      case 'rect':
+        if (p.length >= 2) {
+          const x1 = Math.min(p[0].x, p[1].x), x2 = Math.max(p[0].x, p[1].x);
+          const y1 = Math.min(p[0].y, p[1].y), y2 = Math.max(p[0].y, p[1].y);
+          d = Math.min(
+            lineDist({ x: x1, y: y2 }, { x: x2, y: y2 }),
+            lineDist({ x: x2, y: y2 }, { x: x2, y: y1 }),
+            lineDist({ x: x2, y: y1 }, { x: x1, y: y1 }),
+            lineDist({ x: x1, y: y1 }, { x: x1, y: y2 }),
+          );
+        }
+        break;
+      case 'ellipse':
+        if (p.length >= 3) {
+          const rx = Math.max(1e-6, dist(p[0], p[1]));
+          const ry = Math.max(1e-6, dist(p[0], p[2]));
+          // Scaled-space approximation of distance to the ellipse outline.
+          const u = (pt.x - p[0].x) / rx;
+          const v = (pt.y - p[0].y) / ry;
+          d = Math.abs(Math.hypot(u, v) - 1) * Math.min(rx, ry);
+        }
+        break;
+      case 'slot':
+        if (p.length >= 3) {
+          const r = dist(p[0], p[2]); // radius pt on the first cap's outer edge
+          d = Math.abs(lineDist(p[0], p[1]) - r); // capsule boundary
+        }
+        break;
+      case 'nurbs':
+        // Approximate with the control polygon — good enough for a grab.
+        for (let k = 0; k + 1 < p.length; k++) d = Math.min(d, lineDist(p[k], p[k + 1]));
+        break;
+    }
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  if (bestIdx >= 0 && bestDist <= threshold) {
+    return { index: bestIdx, distance: bestDist };
+  }
+  return null;
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 function SketchCanvas({
@@ -1018,6 +1098,13 @@ function SketchCanvas({
   // Point drag state (select tool: drag a point to move it, solver will re-constrain)
   const [dragPoint, setDragPoint] = useState<{ segIdx: number; ptIdx: number } | null>(null);
   const isDraggingPointRef = useRef(false);
+  // Segment-body (edge) drag state (select tool: grab an edge away from its
+  // point handles — dragSolveSegment translates the whole segment while the
+  // solver keeps constraints satisfied). Gesture-start snapshot anchors the
+  // absolute cursor delta so per-frame solves never accumulate drift.
+  const [dragSeg, setDragSeg] = useState<number>(-1);
+  const isDraggingSegRef = useRef(false);
+  const dragSegStartRef = useRef<{ segments: SketchSegment[]; cursor: SketchPoint } | null>(null);
   // Drag-solve gesture bookkeeping: capture exactly ONE undo snapshot per
   // gesture (on first actual move), and toast a blocked drag only once.
   const dragUndoCapturedRef = useRef(false);
@@ -1770,6 +1857,54 @@ function SketchCanvas({
       (onProfileChangeLive ?? onProfileChange)({ ...profile, segments: nextSegments });
       return;
     }
+    // Segment-body (edge) drag — whole-segment drag-solve: the segment's
+    // defining points are soft-pinned to gesture-start position + cumulative
+    // cursor delta (two-point pin for lines; see dragSolveSegment), so
+    // constraints + locked dimensions hold every frame. Solving from the
+    // gesture-start snapshot keeps targets absolute (no per-frame drift).
+    if (isDraggingSegRef.current && dragSeg >= 0 && dragSegStartRef.current) {
+      const raw = screenToMm(e.clientX, e.clientY);
+      const start = dragSegStartRef.current;
+      const seg = start.segments[dragSeg];
+      if (!seg) return;
+      const delta = { x: raw.x - start.cursor.x, y: raw.y - start.cursor.y };
+      // Dead-band until the gesture really moves: a click with ±2px jitter
+      // must select the segment, not nudge the whole profile.
+      if (!dragUndoCapturedRef.current && Math.hypot(delta.x, delta.y) * zoom < 3) return;
+
+      let nextSegments: SketchSegment[];
+      if (seg.id) {
+        let result: ReturnType<typeof dragSolveSegment>;
+        try {
+          result = dragSolveSegment(start.segments, constraints, dimensions, seg.id, delta);
+        } catch {
+          return; // solver threw — keep geometry as-is, never corrupt it
+        }
+        if (result.outcome === 'blocked-fixed' || result.outcome === 'blocked-unsolvable') {
+          // No-move fallback, same rules as point drag: toast once per gesture.
+          if (!dragBlockedToastShownRef.current) {
+            dragBlockedToastShownRef.current = true;
+            showToast(L(result.outcome === 'blocked-fixed' ? 'dragBlockedFixed' : 'dragBlockedOver'));
+          }
+          return;
+        }
+        nextSegments = result.segments;
+      } else {
+        // Anonymous segment (no id): invisible to the solver — plain translate.
+        nextSegments = start.segments.map((s, si) =>
+          si === dragSeg
+            ? { ...s, points: s.points.map(p => ({ ...p, x: p.x + delta.x, y: p.y + delta.y })) }
+            : s,
+        );
+      }
+      // One undo step per drag gesture (same flow as point drag).
+      if (!dragUndoCapturedRef.current) {
+        dragUndoCapturedRef.current = true;
+        onPointDragStart?.();
+      }
+      (onProfileChangeLive ?? onProfileChange)({ ...profile, segments: nextSegments });
+      return;
+    }
     const { pt: snapped, type: sType } = smartSnap(e.clientX, e.clientY);
     setMousePos(snapped);
     setSnapType(sType);
@@ -1780,7 +1915,7 @@ function SketchCanvas({
       const nearest = findNearestSegment(profile.segments, snapped, 10 / zoom);
       setHoverSegIdx(nearest ? nearest.index : -1);
     }
-  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, screenToMm, profile, onProfileChange, onProfileChangeLive, onPointDragStart, constraints, dimensions, showToast, L]);
+  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, dragSeg, screenToMm, profile, onProfileChange, onProfileChangeLive, onPointDragStart, constraints, dimensions, showToast, L]);
 
   // Middle-click or right-click pan; left-click in select mode starts point drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1790,20 +1925,35 @@ function SketchCanvas({
       panStartRef.current = { mx: e.clientX, my: e.clientY, px: panX, py: panY };
       return;
     }
-    // Left click in select mode: check if near a point → start drag
-    if (e.button === 0 && activeTool === 'select' && pickFilter !== 'segments') {
+    // Left click in select mode: check if near a point → start drag;
+    // otherwise a segment BODY under the cursor starts a whole-edge drag.
+    if (e.button === 0 && activeTool === 'select') {
       const raw = screenToMm(e.clientX, e.clientY);
-      for (let si = 0; si < profile.segments.length; si++) {
-        const seg = profile.segments[si];
-        for (let pi = 0; pi < seg.points.length; pi++) {
-          if (dist(raw, seg.points[pi]) * zoom < 10) {
-            setDragPoint({ segIdx: si, ptIdx: pi });
-            isDraggingPointRef.current = true;
-            dragUndoCapturedRef.current = false;
-            dragBlockedToastShownRef.current = false;
-            e.preventDefault();
-            return;
+      if (pickFilter !== 'segments') {
+        for (let si = 0; si < profile.segments.length; si++) {
+          const seg = profile.segments[si];
+          for (let pi = 0; pi < seg.points.length; pi++) {
+            if (dist(raw, seg.points[pi]) * zoom < 10) {
+              setDragPoint({ segIdx: si, ptIdx: pi });
+              isDraggingPointRef.current = true;
+              dragUndoCapturedRef.current = false;
+              dragBlockedToastShownRef.current = false;
+              e.preventDefault();
+              return;
+            }
           }
+        }
+      }
+      if (pickFilter !== 'points') {
+        const near = findNearestSegmentBody(profile.segments, raw, 10 / zoom);
+        if (near) {
+          setDragSeg(near.index);
+          isDraggingSegRef.current = true;
+          dragSegStartRef.current = { segments: profile.segments, cursor: raw };
+          dragUndoCapturedRef.current = false;
+          dragBlockedToastShownRef.current = false;
+          e.preventDefault();
+          return;
         }
       }
     }
@@ -1816,6 +1966,13 @@ function SketchCanvas({
       setDragPoint(null);
       // End of drag gesture — the single undo snapshot (captured on first
       // move) stays on the stack; just reset gesture bookkeeping.
+      dragUndoCapturedRef.current = false;
+      dragBlockedToastShownRef.current = false;
+    }
+    if (isDraggingSegRef.current) {
+      isDraggingSegRef.current = false;
+      setDragSeg(-1);
+      dragSegStartRef.current = null;
       dragUndoCapturedRef.current = false;
       dragBlockedToastShownRef.current = false;
     }
