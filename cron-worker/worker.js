@@ -76,15 +76,17 @@ async function runJob(name, env) {
 
 export default {
   async scheduled(event, env, ctx) {
-    let jobs;
-    switch (event.cron) {
-      case '*/5 * * * *': jobs = EVERY_5_MIN; break;
-      case '0 18 * * *': jobs = NIGHTLY_18_UTC; break;
-      case '0 0 * * *': jobs = MORNING_0_UTC; break;
-      case '0 1 * * 1': jobs = WEEKLY_MON_1_UTC; break;
-      default: jobs = [];
+    // Single */5 trigger (account cron-trigger limit); batches are routed
+    // from the tick timestamp. The :00 tick of the matching hour carries
+    // the daily/weekly batches on top of the 5-min sweeps.
+    const t = new Date(event.scheduledTime);
+    const jobs = [...EVERY_5_MIN];
+    if (t.getUTCMinutes() === 0) {
+      if (t.getUTCHours() === 18) jobs.push(...NIGHTLY_18_UTC);
+      if (t.getUTCHours() === 0) jobs.push(...MORNING_0_UTC);
+      if (t.getUTCHours() === 1 && t.getUTCDay() === 1) jobs.push(...WEEKLY_MON_1_UTC);
     }
-    if (jobs.length) ctx.waitUntil(Promise.allSettled(jobs.map((j) => runJob(j, env))));
+    ctx.waitUntil(Promise.allSettled(jobs.map((j) => runJob(j, env))));
   },
 
   // Manual smoke: GET /run/<job-name> with x-admin-key matching CRON_SECRET

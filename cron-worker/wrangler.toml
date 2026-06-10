@@ -3,4 +3,6 @@ main = "worker.js"
 compatibility_date = "2026-06-01"
 
 [triggers]
-crons = ["*/5 * * * *", "0 18 * * *", "0 0 * * *", "0 1 * * 1"]
+# Single trigger (account-wide 5-cron free-plan limit was hit); the worker
+# routes nightly/morning/weekly batches internally from the tick timestamp.
+crons = ["*/5 * * * *"]
