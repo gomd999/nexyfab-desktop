@@ -170,6 +170,11 @@ function runLoopSync(
         featureId: f.id,
         targetEdgeIds: f.targetEdgeIds,
         targetFaceIds: f.targetFaceIds,
+        // Click-time selections were async-loop-only historically; the sync
+        // loop passes them too so selection-driven features (offsetFace mesh
+        // path) behave identically in both loops.
+        edgeSelections: f.edgeSelections,
+        faceSelections: f.faceSelections,
       });
       if (!next || !next.attributes.position || next.attributes.position.count === 0) {
         cacheDelete(key);

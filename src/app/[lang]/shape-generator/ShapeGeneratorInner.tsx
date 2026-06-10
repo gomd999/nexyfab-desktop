@@ -3938,6 +3938,40 @@ export function ShapeGeneratorInner() {
         setShowAssemblyPanel(true);
         return;
       }
+      // Direct editing (Phase 1) — Delete Face / Offset Face operate on the
+      // face selection captured BEFORE the tool is pressed (same flow as the
+      // fillet/shell selection capture). Without a face selected the click
+      // explains itself instead of dead-ending.
+      if (id === 'direct.delete-face' || id === 'direct.offset-face') {
+        const dd = t as unknown as Record<string, string>;
+        const el = useSelectionStore.getState().selectedElement;
+        let faceSel: FaceSelectionInfo[] | undefined;
+        if (el && el.type === 'face') {
+          faceSel = [el as FaceSelectionInfo];
+        } else if (el && el.type === 'multi') {
+          const faces = (el as import('./editing/selectionInfo').MultiSelectionInfo).faces;
+          if (faces && faces.length > 0) faceSel = faces;
+        }
+        if (!faceSel) {
+          addToast('info', dd.directEditSelectFaceFirst
+            ?? 'Select a face first — click the boss/pocket/hole face(s), then press again.');
+          return;
+        }
+        const featType: FeatureType = id === 'direct.delete-face' ? 'deleteFace' : 'offsetFace';
+        // Offset Face moves ONE planar face; Delete Face takes the whole set.
+        const frozen = featType === 'offsetFace' ? [faceSel[0]!] : faceSel;
+        commandHistory.execute({
+          id: `add-feature-${featType}-${Date.now()}`,
+          label: `Add feature: ${featType}`,
+          labelKo: `피처 추가: ${featType}`,
+          execute: () => { addFeatureWithEdges(featType, undefined, frozen); },
+          undo: () => { undoLast(); },
+        });
+        addToast('info', featType === 'deleteFace'
+          ? (dd.directDeleteFaceAdded ?? 'Delete Face added — removes the selected face set and heals with planar caps')
+          : (dd.directOffsetFaceAdded ?? 'Offset Face added — adjust the distance (±) in feature parameters'));
+        return;
+      }
       const ft = FEATURE_TYPES[id];
       if (ft) {
         handleAddFeatureCmd(ft);
@@ -3952,7 +3986,7 @@ export function ShapeGeneratorInner() {
     };
     window.addEventListener('nexyfab:tool', onTool);
     return () => window.removeEventListener('nexyfab:tool', onTool);
-  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, setShowSheetMetalPanel, openAIAssistant]);
+  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, setShowSheetMetalPanel, openAIAssistant, addFeatureWithEdges, undoLast, addToast, t]);
 
   // F7 — DRC rule set state. Loaded from .drc.json or built inline.
 
@@ -6394,8 +6428,24 @@ export function ShapeGeneratorInner() {
       // discoverable AI-hint shortcut alongside that panel — clicking them
       // primes the AI chat with the same intent.
       case 'face-offset': {
-        setPendingChatMsg(`Offset the selected face by 2mm`);
-        openAIAssistant('chat');
+        // Direct edit (Phase 1): with a face selected, add the REAL offsetFace
+        // feature (undoable, tunable in FeatureParams). The AI-hint fallback
+        // only remains for the no-selection edge case.
+        if (selectedElement && selectedElement.type === 'face') {
+          const frozen = [selectedElement as FaceSelectionInfo];
+          commandHistory.execute({
+            id: `add-feature-offsetFace-${Date.now()}`,
+            label: 'Add feature: offsetFace',
+            labelKo: '피처 추가: offsetFace',
+            execute: () => { addFeatureWithEdges('offsetFace', undefined, frozen); },
+            undo: () => { undoLast(); },
+          });
+          const dd = t as unknown as Record<string, string>;
+          addToast('info', dd.directOffsetFaceAdded ?? 'Offset Face added — adjust the distance (±) in feature parameters');
+        } else {
+          setPendingChatMsg(`Offset the selected face by 2mm`);
+          openAIAssistant('chat');
+        }
         break;
       }
       case 'face-shell': {
@@ -6476,7 +6526,7 @@ export function ShapeGeneratorInner() {
         break;
       }
     }
-  }, [selectedFeatureId, removeFeature, toggleFeatureCmd, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial, selectedElement, setMateFaceA, setPendingChatMsg, openAIAssistant, lt]);
+  }, [selectedFeatureId, removeFeature, toggleFeatureCmd, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial, selectedElement, setMateFaceA, setPendingChatMsg, openAIAssistant, lt, addFeatureWithEdges, undoLast, t]);
 
   const handleExportDrawingPDF = useCallback(async () => {
     if (!effectiveResult) return;

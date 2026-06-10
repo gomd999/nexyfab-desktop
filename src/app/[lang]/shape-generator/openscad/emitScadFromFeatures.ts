@@ -174,6 +174,11 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'weldment':
     case 'nurbsSurface':
       return `${nfabTag(f.type)}\n${prior}`;
+    // Direct edits operate on selected B-rep faces — no OpenSCAD equivalent.
+    case 'deleteFace':
+      return `${nfabTag('deleteFace')}\n${prior}`;
+    case 'offsetFace':
+      return `${nfabTag('offsetFace', { distance: p.distance ?? 1 })}\n${prior}`;
     case 'sketch':
       // Pure sketch nodes don't produce 3-D geometry on their own; they
       // feed sketchExtrude. Emit nothing, pass prior through.

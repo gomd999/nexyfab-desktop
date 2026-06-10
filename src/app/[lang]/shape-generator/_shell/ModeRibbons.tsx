@@ -69,6 +69,13 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
         // The drag → upstream-parameter mapping is wired up in phase-2 (#233).
         { id: 'push-pull', lbl: 'Push/Pull', ico: 'extrude' },
       ],
+      [
+        // Direct editing (Phase 1) — both operate on a pre-selected face.
+        // Delete Face = boss/pocket/hole removal + planar healing (B-rep);
+        // Offset Face = planar face offset along its normal (±).
+        { id: 'direct.delete-face', lbl: 'Delete Face', ico: 'combine', big: false },
+        { id: 'direct.offset-face', lbl: 'Offset Face', ico: 'draft', big: false },
+      ],
     ],
   },
   {

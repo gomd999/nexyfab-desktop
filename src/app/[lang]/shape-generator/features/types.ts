@@ -46,7 +46,9 @@ export type FeatureType =
   | 'nurbsSurface'
   | 'helix'
   | 'variableShell'
-  | 'rib';
+  | 'rib'
+  | 'deleteFace'
+  | 'offsetFace';
 
 /** Types dispatched through `FEATURE_MAP` / registry (not the inline sketchExtrude path). */
 export type MapBackedFeatureType = Exclude<FeatureType, 'sketchExtrude'>;

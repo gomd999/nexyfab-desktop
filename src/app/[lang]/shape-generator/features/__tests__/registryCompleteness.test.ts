@@ -38,6 +38,8 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'helix',
     'variableShell',
     'rib',
+    'deleteFace',
+    'offsetFace',
   ];
   return all.filter((t): t is MapBackedFeatureType => t !== 'sketchExtrude');
 }

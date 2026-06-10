@@ -33,6 +33,8 @@ import { sketchFeature } from './sketch';
 import { helixFeature } from './helix';
 import { variableShellFeature } from './variableShell';
 import { ribFeature } from './rib';
+import { deleteFaceFeature } from './deleteFace';
+import { offsetFaceFeature } from './offsetFace';
 
 // ─── Registry ────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,8 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   helixFeature,
   variableShellFeature,
   ribFeature,
+  deleteFaceFeature,
+  offsetFaceFeature,
 ];
 
 export const FEATURE_MAP: Record<MapBackedFeatureType, FeatureDefinition> =

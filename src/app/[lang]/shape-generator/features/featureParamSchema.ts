@@ -92,6 +92,11 @@ export const FEATURE_PARAM_RANGES: Record<string, Record<string, ParamRange>> = 
     size: { min: 0.5, max: 50, default: 4 },
     inset: { min: 0, max: 50, default: 0 },
   },
+  // deleteFace has no numeric params (driven entirely by the face selection),
+  // so it has no range entry; offsetFace mirrors features/offsetFace.ts.
+  offsetFace: {
+    distance: { min: -100, max: 100, default: 1 },
+  },
 };
 
 export function isSchemaKnownFeature(type: string): boolean {
@@ -111,7 +116,7 @@ export const KNOWN_FEATURE_TYPES: ReadonlySet<string> = new Set([
   'flange', 'hem', 'jog', 'tab', 'bendRelief', 'cornerRelief',
   'flatPattern', 'variableFillet', 'boundarySurface',
   'revolve', 'sweep', 'loft', 'thread', 'moldTools', 'weldment', 'nurbsSurface',
-  'helix', 'variableShell', 'rib',
+  'helix', 'variableShell', 'rib', 'deleteFace', 'offsetFace',
   // sketch types are materialised in the pipeline, not via FEATURE_MAP
   'sketch', 'sketchExtrude',
 ]);
