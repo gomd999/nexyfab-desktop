@@ -73,6 +73,11 @@ import {
 } from '@/lib/brep-bridge/stepWriteAssemblyWithPmi';
 import type { AssemblyPart } from '@/lib/brep-bridge/stepWrite';
 import type { PartInstance } from '@/lib/assembly/assemblyState';
+import {
+  buildAssemblyBomSheet,
+  mergePolyhedra,
+  type BomPartInput,
+} from '@/lib/drawing/assemblyBomSheet';
 import { SheetRenderer } from './SheetRenderer';
 import DimensionAnnotationModal from './DimensionAnnotationModal';
 import { SheetSnapIndicator } from './SheetSnapIndicator';
@@ -207,6 +212,9 @@ interface PageDict {
   enablePngExport: string;
   enableOrdinateChain: string;
   hideOrdinateChain: string;
+  /** SolidWorks-parity Phase 3 — assembly BOM table + auto balloons. */
+  bomToggle: string;
+  bomSheetTitle: string;
 }
 
 const DICT: Record<string, PageDict> = {
@@ -297,6 +305,8 @@ const DICT: Record<string, PageDict> = {
     enablePngExport: '고해상도 PNG 내보내기',
     enableOrdinateChain: '기준선 치수',
     hideOrdinateChain: '기준선 치수 숨기기',
+    bomToggle: 'BOM + 벌룬',
+    bomSheetTitle: '조립체 BOM 시트',
   },
   en: {
     title: 'Drawing Studio',
@@ -385,6 +395,8 @@ const DICT: Record<string, PageDict> = {
     enablePngExport: 'High-res PNG export',
     enableOrdinateChain: 'Ordinate dimensions',
     hideOrdinateChain: 'Hide ordinate dimensions',
+    bomToggle: 'BOM + balloons',
+    bomSheetTitle: 'Assembly BOM sheet',
   },
   ja: {
     title: '図面スタジオ',
@@ -473,6 +485,8 @@ const DICT: Record<string, PageDict> = {
     enablePngExport: '高解像度PNG出力',
     enableOrdinateChain: '基準線寸法',
     hideOrdinateChain: '基準線寸法を非表示',
+    bomToggle: 'BOM + バルーン',
+    bomSheetTitle: 'アセンブリ BOM シート',
   },
   zh: {
     title: '图纸工作室',
@@ -561,6 +575,8 @@ const DICT: Record<string, PageDict> = {
     enablePngExport: '高分辨率PNG导出',
     enableOrdinateChain: '基准线尺寸',
     hideOrdinateChain: '隐藏基准线尺寸',
+    bomToggle: 'BOM + 球标',
+    bomSheetTitle: '装配 BOM 图纸',
   },
   es: {
     title: 'Estudio de Planos',
@@ -649,6 +665,8 @@ const DICT: Record<string, PageDict> = {
     enablePngExport: 'Exportación PNG alta resolución',
     enableOrdinateChain: 'Cotas de ordenada',
     hideOrdinateChain: 'Ocultar cotas de ordenada',
+    bomToggle: 'BOM + globos',
+    bomSheetTitle: 'Hoja BOM de ensamblaje',
   },
   ar: {
     title: 'استوديو الرسومات',
@@ -737,6 +755,8 @@ const DICT: Record<string, PageDict> = {
     enablePngExport: 'تصدير PNG بدقة عالية',
     enableOrdinateChain: 'أبعاد خط الأساس',
     hideOrdinateChain: 'إخفاء أبعاد خط الأساس',
+    bomToggle: 'BOM + بالونات',
+    bomSheetTitle: 'ورقة BOM للتجميع',
   },
 };
 
@@ -1117,6 +1137,24 @@ function exportSheetStepWithOcctBindings(
  * Returns a freshly allocated array so the caller can mutate it without
  * disturbing the cached sample.
  */
+/**
+ * SolidWorks-parity Phase 3 — build the BOM builder's part inputs from the
+ * sample assembly's PartInstances. Same 30 mm-cube world-bbox convention as
+ * {@link partInstanceToAssemblyPart} (x/y span ±15 around the origin, z
+ * spans [0, +30] from the one-sided extrude). Material is not carried by
+ * PartInstance yet, so the BOM column stays blank.
+ */
+function partInstanceToBomInput(p: PartInstance): BomPartInput {
+  return {
+    id: p.id,
+    name: p.name,
+    bbox: {
+      min: { x: p.position.x - 15, y: p.position.y - 15, z: p.position.z },
+      max: { x: p.position.x + 15, y: p.position.y + 15, z: p.position.z + 30 },
+    },
+  };
+}
+
 function partInstanceToAssemblyPart(p: PartInstance): AssemblyPart {
   // Cube feature is centred at the part local origin: x/y span [-15, +15],
   // z span [0, +30] (one_sided +Z extrude, depth 30).
@@ -1335,6 +1373,15 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    */
   const [assemblyPdfInfo, setAssemblyPdfInfo] = useState<string | null>(null);
   const [assemblyPdfError, setAssemblyPdfError] = useState<string | null>(null);
+  /**
+   * SolidWorks-parity Phase 3 — "BOM + balloons" toggle. Default OFF so
+   * the pre-existing assembly-mode tests (which assert exact sheet / svg
+   * counts in the PDF export and hidden-mount wrappers) see no new DOM.
+   * When ON, an assembly OVERVIEW sheet (front view + BOM table + auto
+   * balloons) mounts below the canvas and is prepended to the assembly
+   * PDF export.
+   */
+  const [bomEnabled, setBomEnabled] = useState<boolean>(false);
 
   const sheetRef = React.useRef<HTMLDivElement>(null);
   /**
@@ -1351,6 +1398,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * dedicated hidden container side-steps that.
    */
   const hiddenSheetsRef = React.useRef<HTMLDivElement>(null);
+  /** Mount of the assembly BOM overview SheetRenderer (PDF export source). */
+  const bomSheetRef = React.useRef<HTMLDivElement>(null);
 
   /**
    * Memoised sample assembly. Recomputed only when the user picks a new
@@ -1371,7 +1420,50 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setAssemblyExportError(null);
     setAssemblyPdfInfo(null);
     setAssemblyPdfError(null);
+    setBomEnabled(false);
   }, [sampleName]);
+
+  /**
+   * SolidWorks-parity Phase 3 — the assembly overview sheet (front view +
+   * BOM table + balloons). Built only while the toggle is ON; the builder
+   * is pure so the memo recomputes only on sample switches.
+   */
+  const bomSheet = useMemo<Sheet | null>(() => {
+    if (!bomEnabled) return null;
+    const parts = sampleAssembly.state.parts;
+    if (parts.length === 0) return null;
+    try {
+      return buildAssemblyBomSheet({
+        id: `assembly-bom-${sampleName}`,
+        name: `BOM — ${sampleName}`,
+        sourceId: `assembly-${sampleName}`,
+        paperSize: 'A3',
+        parts: parts.map(partInstanceToBomInput),
+      });
+    } catch {
+      return null;
+    }
+  }, [bomEnabled, sampleAssembly, sampleName]);
+
+  /**
+   * Merged assembly polyhedron for the overview viewport, keyed by the
+   * sheet's sourceId so SheetRenderer draws the real projected edges the
+   * balloon anchors were computed against. Each part's FeatureTree is a
+   * single extrude (sample cubes) — featureToPolyhedron meshes it; parts
+   * whose tree can't mesh are skipped (balloons still render).
+   */
+  const bomSheetGeometry = useMemo<ReadonlyMap<string, Polyhedron> | undefined>(() => {
+    if (!bomEnabled) return undefined;
+    const items: Array<{ poly: Polyhedron; offset: { x: number; y: number; z: number } }> = [];
+    for (const p of sampleAssembly.state.parts) {
+      const tree = sampleAssembly.featureTrees[p.id];
+      const payload = tree?.nodes[0]?.payload;
+      const poly = payload ? featureToPolyhedron(payload) : null;
+      if (poly) items.push({ poly, offset: p.position });
+    }
+    const merged = mergePolyhedra(items);
+    return merged ? new Map([[`assembly-${sampleName}`, merged]]) : undefined;
+  }, [bomEnabled, sampleAssembly, sampleName]);
 
   const handleAddSheetForPart = useCallback((partId: string, partName: string) => {
     setPartSheets((prev) => {
@@ -1536,13 +1628,25 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setAssemblyPdfInfo(null);
 
     const entries = Object.entries(partSheets);
-    if (entries.length === 0) {
+    if (entries.length === 0 && !(bomEnabled && bomSheet)) {
       setAssemblyPdfInfo(dict.assemblyPdfNoSheets);
       return;
     }
 
     const sheetsToExport: Sheet[] = [];
     const svgRefs: SVGElement[] = [];
+    // SolidWorks-parity Phase 3 — the BOM overview sheet leads the bundle
+    // (cover-page convention) when the toggle is on. Its renderer is the
+    // visible BOM canvas mount, queried the same way as the hidden mounts.
+    if (bomEnabled && bomSheet) {
+      const bomSvg = bomSheetRef.current?.querySelector(
+        'svg[data-testid="sheet-renderer-root"]',
+      ) as SVGElement | null;
+      if (bomSvg) {
+        sheetsToExport.push(bomSheet);
+        svgRefs.push(bomSvg);
+      }
+    }
     const root = hiddenSheetsRef.current;
     if (root) {
       for (const [partId, partSheet] of entries) {
@@ -1636,6 +1740,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     partSheets,
     sampleName,
     pdfFormat,
+    bomEnabled,
+    bomSheet,
     dict.assemblyPdfError,
     dict.assemblyPdfSuccess,
     dict.assemblyPdfNoSheets,
@@ -2405,6 +2511,31 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 </button>
               </div>
 
+              {/*
+                SolidWorks-parity Phase 3 — BOM + balloons toggle. Adds /
+                removes the assembly overview sheet (BOM block + balloons
+                on the Sheet IR) below the canvas; the PDF export picks it
+                up automatically through the IR.
+              */}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  color: '#374151',
+                  fontWeight: 600,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  data-testid="drawing-assembly-bom-toggle"
+                  checked={bomEnabled}
+                  onChange={(e) => setBomEnabled(e.target.checked)}
+                />
+                {dict.bomToggle}
+              </label>
+
               <button
                 type="button"
                 data-testid="drawing-export-assembly-step"
@@ -2474,16 +2605,22 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 type="button"
                 data-testid="drawing-assembly-export-pdf"
                 onClick={() => { void onExportAssemblyPdf(); }}
-                disabled={Object.keys(partSheets).length === 0}
+                // The BOM overview sheet alone is exportable (cover page),
+                // so the toggle also enables the button.
+                disabled={Object.keys(partSheets).length === 0 && !(bomEnabled && bomSheet)}
                 style={{
                   padding: '8px 14px',
                   background:
-                    Object.keys(partSheets).length === 0 ? '#9ca3af' : '#1d4ed8',
+                    Object.keys(partSheets).length === 0 && !(bomEnabled && bomSheet)
+                      ? '#9ca3af'
+                      : '#1d4ed8',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
                   cursor:
-                    Object.keys(partSheets).length === 0 ? 'not-allowed' : 'pointer',
+                    Object.keys(partSheets).length === 0 && !(bomEnabled && bomSheet)
+                      ? 'not-allowed'
+                      : 'pointer',
                   fontSize: 12,
                 }}
               >
@@ -2546,6 +2683,35 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 </div>
               ))}
             </div>
+
+            {/*
+              SolidWorks-parity Phase 3 — assembly overview sheet with the
+              BOM table + balloons. Visible full-width section (the PDF
+              exporter queries this mount for the cover-page SVG).
+            */}
+            {bomEnabled && bomSheet ? (
+              <div
+                data-testid="drawing-assembly-bom-canvas"
+                style={{
+                  gridColumn: '1 / -1',
+                  background: '#e5e7eb',
+                  padding: 12,
+                  borderRadius: 6,
+                  overflow: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#374151' }}>
+                  {dict.bomSheetTitle}
+                </h2>
+                <div ref={bomSheetRef}>
+                  <SheetRenderer sheet={bomSheet} geometry={bomSheetGeometry} />
+                </div>
+              </div>
+            ) : null}
 
             {/* ─── Export result + warnings ──────────────────────────── */}
             {assemblyExport ? (

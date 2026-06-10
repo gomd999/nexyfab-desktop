@@ -43,6 +43,7 @@ import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
 import { buildLinearDimension, type Pt } from '@/lib/drawing/dimensionAnchor';
 import { buildHoleTable } from '@/lib/drawing/holeTable';
+import type { BomItemRow, BomBalloon } from '@/lib/drawing/bomBalloon';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -245,6 +246,18 @@ export function SheetRenderer({
       {/* Hole table (Phase 4.3) — top-right corner, grouped identical holes. */}
       {sheet.holes && sheet.holes.length > 0 ? (
         <HoleTableLayer holes={sheet.holes} paperWidthMm={dim.width} />
+      ) : null}
+
+      {/* BOM table (SolidWorks-parity Phase 3) — top-left corner grid. */}
+      {sheet.bom && sheet.bom.length > 0 ? (
+        <BomTableLayer rows={sheet.bom} />
+      ) : null}
+
+      {/* BOM balloons — circled item numbers with leader lines. Balloon
+          coords are sheet mm with a bottom-left origin (Sheet IR
+          convention), flipped to SVG's top-left frame here. */}
+      {sheet.balloons && sheet.balloons.length > 0 ? (
+        <BalloonLayer balloons={sheet.balloons} paperHeightMm={dim.height} />
       ) : null}
 
       {/* Title block placeholder (bottom-right). */}
@@ -1106,6 +1119,144 @@ function HoleTableLayer({ holes, paperWidthMm }: HoleTableLayerProps): React.Rea
                 </text>
               );
             })}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+// ─── BOM table (SolidWorks-parity Phase 3) ───────────────────────────────
+
+interface BomTableLayerProps {
+  rows: ReadonlyArray<BomItemRow>;
+}
+
+const BOM_TABLE_STROKE = '#334155';
+const BALLOON_COLOR = '#0f172a';
+
+/**
+ * Render the assembly BOM block as a grid in the top-LEFT corner (the hole
+ * table owns the top-right). Column labels are drafting-convention English
+ * literals, same policy as HoleTableLayer.
+ */
+function BomTableLayer({ rows }: BomTableLayerProps): React.ReactElement {
+  const cols: Array<{ key: 'itemNo' | 'name' | 'qty' | 'material'; label: string; w: number }> = [
+    { key: 'itemNo', label: 'NO', w: 10 },
+    { key: 'name', label: 'PART', w: 44 },
+    { key: 'qty', label: 'QTY', w: 10 },
+    { key: 'material', label: 'MATERIAL', w: 28 },
+  ];
+  const tableW = cols.reduce((a, c) => a + c.w, 0);
+  const rowH = 6;
+  const x0 = 6;
+  const y0 = 8;
+  const fontSize = 3;
+
+  const cellText = (r: BomItemRow, key: (typeof cols)[number]['key']): string => {
+    switch (key) {
+      case 'itemNo': return String(r.itemNo);
+      case 'name': return r.name;
+      case 'qty': return String(r.qty);
+      case 'material': return r.material;
+      default: return '';
+    }
+  };
+
+  return (
+    <g data-testid="sheet-renderer-bom-table" data-rows={rows.length}>
+      {[{ header: true as const }, ...rows.map((r) => ({ header: false as const, r }))].map(
+        (entry, ri) => {
+          const y = y0 + ri * rowH;
+          let cx = x0;
+          return (
+            <g
+              key={ri}
+              data-bom-row={entry.header ? 'header' : String(entry.r.itemNo)}
+            >
+              <rect
+                x={x0} y={y} width={tableW} height={rowH}
+                fill={ri === 0 ? '#e2e8f0' : '#ffffff'}
+                stroke={BOM_TABLE_STROKE} strokeWidth={0.2}
+              />
+              {cols.map((c) => {
+                const tx = cx + 1;
+                cx += c.w;
+                const text = entry.header ? c.label : cellText(entry.r, c.key);
+                return (
+                  <text
+                    key={c.key}
+                    x={tx} y={y + rowH / 2}
+                    fontSize={fontSize}
+                    fontFamily="ui-monospace, SFMono-Regular, monospace"
+                    fill={BOM_TABLE_STROKE}
+                    dominantBaseline="middle"
+                  >
+                    {text}
+                  </text>
+                );
+              })}
+            </g>
+          );
+        },
+      )}
+    </g>
+  );
+}
+
+// ─── BOM balloons ────────────────────────────────────────────────────────
+
+interface BalloonLayerProps {
+  balloons: ReadonlyArray<BomBalloon>;
+  paperHeightMm: number;
+}
+
+/**
+ * One balloon per part instance: a leader line from the circle rim to the
+ * part anchor (small filled dot), plus a circled item number. Balloon IR
+ * coords are bottom-left-origin sheet mm; SVG is top-left, so Y flips.
+ */
+function BalloonLayer({ balloons, paperHeightMm }: BalloonLayerProps): React.ReactElement {
+  const flipY = (y: number): number => paperHeightMm - y;
+  return (
+    <g data-testid="sheet-renderer-balloons" data-count={balloons.length}>
+      {balloons.map((b) => {
+        const cx = b.center.x;
+        const cy = flipY(b.center.y);
+        const ax = b.anchor.x;
+        const ay = flipY(b.anchor.y);
+        // Leader starts on the circle rim, pointing at the anchor.
+        const dx = ax - cx;
+        const dy = ay - cy;
+        const len = Math.hypot(dx, dy);
+        const sx = len > b.radius ? cx + (dx / len) * b.radius : cx;
+        const sy = len > b.radius ? cy + (dy / len) * b.radius : cy;
+        return (
+          <g
+            key={b.id}
+            data-testid={`sheet-renderer-balloon-${b.id}`}
+            data-balloon-item={b.itemNo}
+          >
+            <line
+              x1={sx} y1={sy} x2={ax} y2={ay}
+              stroke={BALLOON_COLOR} strokeWidth={0.3}
+            />
+            <circle cx={ax} cy={ay} r={0.7} fill={BALLOON_COLOR} />
+            <circle
+              cx={cx} cy={cy} r={b.radius}
+              fill="#ffffff" stroke={BALLOON_COLOR} strokeWidth={0.4}
+            />
+            <text
+              x={cx} y={cy}
+              fontSize={b.radius}
+              fontFamily="ui-sans-serif, system-ui, sans-serif"
+              fontWeight={600}
+              fill={BALLOON_COLOR}
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {b.itemNo}
+            </text>
           </g>
         );
       })}

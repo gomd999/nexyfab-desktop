@@ -171,6 +171,7 @@ import type { OrdinateDimensionChain } from './ordinateDimension';
 import type { SurfaceFinishSymbol } from './surfaceFinishSymbol';
 import type { WeldSymbol } from './weldSymbol';
 import type { HoleSpec } from './holeTable';
+import type { BomItemRow, BomBalloon } from './bomBalloon';
 
 export interface Sheet {
   id: string;
@@ -199,6 +200,17 @@ export interface Sheet {
   weldSymbols?: ReadonlyArray<WeldSymbol>;
   /** Phase 4.3 hole schedule — rendered as a hole table in a sheet corner. */
   holes?: ReadonlyArray<HoleSpec>;
+  /**
+   * SolidWorks-parity Phase 3 — assembly BOM table block (item no. / part
+   * name / qty / material), rendered as a grid in the top-left corner.
+   * Backward-compat: missing field is treated as an empty array.
+   */
+  bom?: ReadonlyArray<BomItemRow>;
+  /**
+   * SolidWorks-parity Phase 3 — circled item-number balloons with leader
+   * lines, anchored at part positions (sheet mm, bottom-left origin).
+   */
+  balloons?: ReadonlyArray<BomBalloon>;
 }
 
 // ─── validation ──────────────────────────────────────────────────────────
@@ -344,6 +356,48 @@ export function validateSheet(sheet: Sheet): void {
     if (!ids.has(g.viewportId)) {
       throw new SheetValidationError(
         `sheet ${sheet.id}: GD&T ${g.id} references unknown viewport ${g.viewportId}`,
+      );
+    }
+  }
+
+  // ─── BOM table + balloons (SolidWorks-parity Phase 3) ───────────────────
+  const bomRows = sheet.bom ?? [];
+  const itemNos = new Set<number>();
+  for (const row of bomRows) {
+    if (!Number.isInteger(row.itemNo) || row.itemNo < 1) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: BOM row "${row.name}" has invalid itemNo ${row.itemNo}`,
+      );
+    }
+    if (itemNos.has(row.itemNo)) {
+      throw new SheetValidationError(`sheet ${sheet.id}: duplicate BOM itemNo ${row.itemNo}`);
+    }
+    itemNos.add(row.itemNo);
+    if (!row.name) {
+      throw new SheetValidationError(`sheet ${sheet.id}: BOM row ${row.itemNo} has an empty name`);
+    }
+    if (!Number.isInteger(row.qty) || row.qty < 1) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: BOM row ${row.itemNo} has invalid qty ${row.qty}`,
+      );
+    }
+  }
+  const balloons = sheet.balloons ?? [];
+  const balloonIds = new Set<string>();
+  for (const b of balloons) {
+    if (!b.id) throw new SheetValidationError(`sheet ${sheet.id}: balloon has empty id`);
+    if (balloonIds.has(b.id)) {
+      throw new SheetValidationError(`sheet ${sheet.id}: duplicate balloon id ${b.id}`);
+    }
+    balloonIds.add(b.id);
+    if (!(b.radius > 0)) {
+      throw new SheetValidationError(`sheet ${sheet.id}: balloon ${b.id} radius must be positive`);
+    }
+    // A balloon's itemNo must reference an existing BOM row when a BOM is
+    // present (a sheet may carry balloons without a table — rare but legal).
+    if (bomRows.length > 0 && !itemNos.has(b.itemNo)) {
+      throw new SheetValidationError(
+        `sheet ${sheet.id}: balloon ${b.id} references unknown BOM itemNo ${b.itemNo}`,
       );
     }
   }
