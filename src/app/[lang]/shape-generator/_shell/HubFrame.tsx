@@ -90,10 +90,11 @@ import { useProjectsStore } from '@/hooks/useProjects';
 import { useTheme } from '../ThemeContext';
 import { I, type IconName } from './Icons';
 import { SAMPLE_PROJECTS, sampleHref } from './sampleProjects';
+import { fmtShell, pickShellDict } from './shellDict';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface HubFrameProps {
   lang: string;
-  isKo: boolean;
   onShowAuth?: () => void;
 }
 
@@ -110,13 +111,15 @@ interface NavItem {
 interface QuickStart {
   ico: IconName;
   lbl: string;
-  lblKo: string;
   sub: string;
-  subKo: string;
   href: string;
 }
 
-export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
+export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
+  const d = pickShellDict(lang);
+  // Sample-project titles/descriptions are ko/en data (sampleProjects.ts) —
+  // non-Korean locales fall back to the English strings there.
+  const isKo = toIsoLang(lang) === 'ko';
   const router = useRouter();
   const { user } = useAuthStore();
   const { projects, isLoading, saveProject } = useProjectsStore();
@@ -125,45 +128,37 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const navItems: NavItem[] = [
-    { id: 'recent', lbl: isKo ? '최근' : 'Recent', ico: 'history' },
-    { id: 'projects', lbl: isKo ? '프로젝트' : 'Projects', ico: 'folder', href: `/${lang}/nexyfab/projects` },
-    { id: 'shared', lbl: isKo ? '공유된 항목' : 'Shared with me', ico: 'share', href: `/${lang}/nexyfab/projects?filter=shared` },
-    { id: 'branches', lbl: isKo ? '브랜치' : 'Branches', ico: 'branch', comingSoon: true },
-    { id: 'ai', lbl: isKo ? 'Nexy AI 스튜디오' : 'Nexy AI Studio', ico: 'ai', badge: 'NEW', href: `/${lang}/shape-generator?entry=ai` },
-    { id: 'library', lbl: isKo ? '부품 라이브러리' : 'Part Library', ico: 'cube', href: `/${lang}/nexyfab/cots` },
+    { id: 'recent', lbl: d.navRecent, ico: 'history' },
+    { id: 'projects', lbl: d.navProjects, ico: 'folder', href: `/${lang}/nexyfab/projects` },
+    { id: 'shared', lbl: d.navShared, ico: 'share', href: `/${lang}/nexyfab/projects?filter=shared` },
+    { id: 'branches', lbl: d.navBranches, ico: 'branch', comingSoon: true },
+    { id: 'ai', lbl: d.navAiStudio, ico: 'ai', badge: 'NEW', href: `/${lang}/shape-generator?entry=ai` },
+    { id: 'library', lbl: d.navPartLibrary, ico: 'cube', href: `/${lang}/nexyfab/cots` },
   ];
 
   const quickStarts: QuickStart[] = [
     {
       ico: 'cube',
-      lbl: 'New Part',
-      lblKo: '새 파트',
-      sub: 'Solid · parametric',
-      subKo: '솔리드 · 파라메트릭',
+      lbl: d.qsNewPart,
+      sub: d.qsNewPartSub,
       href: `/${lang}/shape-generator`,
     },
     {
       ico: 'combine',
-      lbl: 'New Assembly',
-      lblKo: '새 어셈블리',
-      sub: 'Mate components',
-      subKo: '부품 결합',
+      lbl: d.qsNewAsm,
+      sub: d.qsNewAsmSub,
       href: `/${lang}/shape-generator?entry=assembly`,
     },
     {
       ico: 'doc',
-      lbl: 'New Drawing',
-      lblKo: '새 도면',
-      sub: 'From a part or assembly',
-      subKo: '파트 또는 어셈블리에서',
+      lbl: d.qsNewDrawing,
+      sub: d.qsNewDrawingSub,
       href: `/${lang}/shape-generator/drawing`,
     },
     {
       ico: 'sketch',
-      lbl: 'From Sketch',
-      lblKo: '스케치에서',
-      sub: 'Import DXF / SVG',
-      subKo: 'DXF / SVG 가져오기',
+      lbl: d.qsFromSketch,
+      sub: d.qsFromSketchSub,
       href: `/${lang}/shape-generator?entry=sketch`,
     },
   ];
@@ -186,7 +181,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   );
 
   const userInitials = user?.email?.slice(0, 2).toUpperCase() ?? '?';
-  const userName = user?.name ?? user?.email ?? (isKo ? '게스트' : 'Guest');
+  const userName = user?.name ?? user?.email ?? d.guest;
   const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Free';
 
   // Guest quota: 1 free project per device. Stored separately from autosave
@@ -228,7 +223,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
       const newest = [...meta].sort((a, b) => b.timestamp - a.timestamp)[0];
       const sceneRaw = localStorage.getItem(newest.key);
       if (!sceneRaw) return;
-      const name = `${newest.selectedId || 'guest'} (${isKo ? '게스트 작업' : 'from guest mode'})`;
+      const name = `${newest.selectedId || 'guest'} (${d.fromGuestMode})`;
       saveProject({ name, shapeId: newest.selectedId || undefined, sceneData: sceneRaw }).then(p => {
         if (p) {
           localStorage.setItem(GUEST_MIGRATED_KEY, '1');
@@ -238,7 +233,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
     } catch {
       // localStorage blocked or malformed — silent fall-through.
     }
-  }, [user, saveProject, isKo]);
+  }, [user, saveProject, d.fromGuestMode]);
 
   // Single entry point for starting ANY new design (quick-start tiles, AI hero,
   // New Design). For guests it bootstraps the claimable demo session BEFORE
@@ -323,7 +318,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               fontSize: 12,
             }}
           >
-            <I.plus size={14} /> {isKo ? '새 디자인' : 'New Design'}
+            <I.plus size={14} /> {d.fmNewDesign}
           </button>
         </div>
 
@@ -349,7 +344,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 key={item.id}
                 onClick={onClick}
                 disabled={disabled}
-                title={item.comingSoon ? (isKo ? '곧 출시' : 'Coming soon') : undefined}
+                title={item.comingSoon ? d.comingSoon : undefined}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -371,7 +366,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                     className="nx-chip"
                     style={{ fontSize: 9, color: 'var(--nx-text-3)' }}
                   >
-                    {isKo ? '준비중' : 'Soon'}
+                    {d.soonChip}
                   </span>
                 )}
                 {item.badge && !item.comingSoon && (
@@ -401,13 +396,13 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               padding: '4px 4px 8px',
             }}
           >
-            {isKo ? '저장 용량' : 'Storage'}
+            {d.storage}
           </div>
           <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>
             <span className="mono" style={{ color: 'var(--nx-text)' }}>
               {projects?.length ?? 0}
             </span>{' '}
-            / {plan === 'free' ? '3' : '∞'} {isKo ? '프로젝트' : 'projects'}
+            / {plan === 'free' ? '3' : '∞'} {d.projectsWord}
           </div>
           <div
             style={{
@@ -466,7 +461,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               {userName}
             </div>
             <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-              {planLabel} · {isKo ? '플랜' : 'plan'}
+              {planLabel} · {d.planWord}
             </div>
           </div>
           <I.cog size={14} />
@@ -498,11 +493,11 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
         >
           <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--nx-text)' }}>
             {user
-              ? (isKo ? `다시 오신 것을 환영합니다, ${userName.split(' ')[0]}` : `Welcome back, ${userName.split(' ')[0]}`)
-              : (isKo ? '시작해 볼까요 — 가입 없이 바로 설계' : 'Start designing — no sign-up needed')}
+              ? fmtShell(d.welcomeBack, { name: userName.split(' ')[0] })
+              : d.startNoSignup}
           </div>
           <span style={{ color: 'var(--nx-text-3)', fontSize: 12, marginLeft: 6 }}>
-            {(projects?.length ?? 0)} {isKo ? '개 프로젝트' : 'projects'}
+            {fmtShell(d.hubProjectsCount, { n: projects?.length ?? 0 })}
           </span>
           <div style={{ flex: 1 }} />
           <label className="nx-search" style={{ width: 320, cursor: 'text' }}>
@@ -511,7 +506,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={isKo ? '파트·프로젝트·브랜치 검색…' : 'Search parts, projects, branches…'}
+              placeholder={d.searchPlaceholder}
               style={{
                 flex: 1,
                 background: 'transparent',
@@ -529,8 +524,8 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
             className="nx-pillbtn"
             style={{ height: 32, padding: '0 10px' }}
             onClick={toggleTheme}
-            title={isKo ? '테마 전환' : 'Toggle theme'}
-            aria-label={isKo ? '테마 전환' : 'Toggle theme'}
+            title={d.toggleTheme}
+            aria-label={d.toggleTheme}
           >
             {themeMode === 'dark' ? <I.sun size={14} /> : <I.moon size={14} />}
           </button>
@@ -575,7 +570,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                     textTransform: 'uppercase',
                   }}
                 >
-                  Nexy AI · {isKo ? '디자인 어시스트' : 'Design Assist'}
+                  Nexy AI · {d.aiAssist}
                 </span>
               </div>
               <h2
@@ -587,9 +582,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   color: 'var(--nx-text)',
                 }}
               >
-                {isKo
-                  ? '자연어로 설명하면 파라메트릭 모델을 즉시 생성합니다.'
-                  : 'Describe a part in words — get a parametric 3D model instantly.'}
+                {d.aiHeroTitle}
               </h2>
               <p
                 style={{
@@ -600,9 +593,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   lineHeight: 1.55,
                 }}
               >
-                {isKo
-                  ? 'Nexy AI 가 OpenSCAD 파이프라인으로 즉시 STL 출력까지 도와드립니다. 자동 DFM · 비용 추정 · 제조사 매칭 포함.'
-                  : 'Nexy AI ships your idea straight to STL via OpenSCAD, with DFM, cost, and manufacturer matching baked in.'}
+                {d.aiHeroBody}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -611,7 +602,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   onClick={handleOpenAiStudio}
                   style={{ height: 30, padding: '0 14px' }}
                 >
-                  {isKo ? 'AI 스튜디오 열기' : 'Open AI Studio'}
+                  {d.openAiStudio}
                 </button>
                 <button
                   type="button"
@@ -619,7 +610,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   onClick={() => router.push(`/${lang}/how-it-works`)}
                   style={{ height: 30, padding: '0 14px' }}
                 >
-                  {isKo ? '튜토리얼 보기' : 'See tutorial'}
+                  {d.seeTutorial}
                 </button>
               </div>
             </div>
@@ -670,9 +661,9 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                     <Icon size={18} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{isKo ? t.lblKo : t.lbl}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{t.lbl}</div>
                     <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
-                      {isKo ? t.subKo : t.sub}
+                      {t.sub}
                     </div>
                   </div>
                 </button>
@@ -693,13 +684,13 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 }}
               >
                 {recentProjects.length === 0
-                  ? (isKo ? '예제로 시작' : 'Start with an example')
-                  : (isKo ? '최근 열어본 항목' : 'Recently opened')}
+                  ? d.startWithExample
+                  : d.recentlyOpened}
               </h3>
               <span style={{ color: 'var(--nx-text-3)', fontSize: 11, marginLeft: 8 }}>
                 {recentProjects.length === 0
-                  ? (isKo ? '60초 둘러보기' : '60-second tour')
-                  : (isKo ? '모든 프로젝트' : 'Across all projects')}
+                  ? d.tour60
+                  : d.acrossAll}
               </span>
               <span style={{ flex: 1 }} />
               <a
@@ -707,7 +698,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 className="nx-link"
                 style={{ fontSize: 11 }}
               >
-                {isKo ? '모두 보기 →' : 'View all →'}
+                {d.viewAll}
               </a>
             </div>
 
@@ -721,7 +712,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 }}
               >
                 <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 16, textAlign: 'center' }}>
-                  {isKo ? '예제 프로젝트로 60초 안에 둘러보기' : 'Try a sample project — explore in 60 seconds'}
+                  {d.trySample}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                   {SAMPLE_PROJECTS.map(sample => (
@@ -820,7 +811,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                   color: 'var(--nx-text)',
                 }}
               >
-                {isKo ? '모든 프로젝트' : 'All projects'}
+                {d.allProjects}
               </h3>
               <span style={{ flex: 1 }} />
               <a
@@ -828,7 +819,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 className="nx-link"
                 style={{ fontSize: 11 }}
               >
-                {isKo ? '운영 대시보드 (주문·견적·정산) →' : 'Ops dashboard (orders · RFQ · settlements) →'}
+                {d.opsDashboard}
               </a>
             </div>
 
@@ -866,7 +857,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                         letterSpacing: '0.04em',
                       }}
                     >
-                      {isKo ? '이름' : 'Name'}
+                      {d.thName}
                     </th>
                     <th
                       style={{
@@ -879,7 +870,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                         letterSpacing: '0.04em',
                       }}
                     >
-                      {isKo ? '유형' : 'Type'}
+                      {d.thType}
                     </th>
                     <th
                       style={{
@@ -892,7 +883,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                         letterSpacing: '0.04em',
                       }}
                     >
-                      {isKo ? '수정일' : 'Updated'}
+                      {d.thUpdated}
                     </th>
                   </tr>
                 </thead>
@@ -908,20 +899,16 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                         }}
                       >
                         {isLoading ? (
-                          isKo ? '불러오는 중…' : 'Loading…'
+                          d.loading
                         ) : searchQuery ? (
-                          isKo
-                            ? `'${searchQuery}' 에 해당하는 프로젝트가 없습니다.`
-                            : `No projects match '${searchQuery}'.`
+                          fmtShell(d.noMatch, { q: searchQuery })
                         ) : (
                           // Empty-state CTA instead of dead text — guests get a
                           // cloud-save sign-in nudge, signed-in users a create
                           // prompt. (2026-06-09 hub optimization.)
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                             <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
-                              {user
-                                ? (isKo ? '아직 프로젝트가 없습니다. 첫 파트를 만들어보세요.' : 'No projects yet — create your first part.')
-                                : (isKo ? '로그인하면 프로젝트가 클라우드에 영구 저장됩니다.' : 'Sign in to save your projects to the cloud.')}
+                              {user ? d.noProjectsYet : d.signInToSave}
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
@@ -933,7 +920,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                                   color: 'var(--nx-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                                 }}
                               >
-                                {isKo ? '+ 새 파트' : '+ New part'}
+                                {d.newPartCta}
                               </button>
                               {!user && onShowAuth && (
                                 <button
@@ -945,7 +932,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                                     color: 'var(--nx-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                                   }}
                                 >
-                                  {isKo ? '로그인' : 'Sign in'}
+                                  {d.signIn}
                                 </button>
                               )}
                             </div>

@@ -14,12 +14,14 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
+import { pickShellDict } from './shellDict';
 
 export interface GuestExpiryBannerProps {
-  isKo: boolean;
+  lang: string;
 }
 
-export function GuestExpiryBanner({ isKo }: GuestExpiryBannerProps) {
+export function GuestExpiryBanner({ lang }: GuestExpiryBannerProps) {
+  const d = pickShellDict(lang);
   const user = useAuthStore(s => s.user);
   const [dismissed, setDismissed] = useState(false);
 
@@ -58,11 +60,9 @@ export function GuestExpiryBanner({ isKo }: GuestExpiryBannerProps) {
     >
       <span style={{ fontSize: 16 }}>👤</span>
       <div style={{ flex: 1, minWidth: 0, lineHeight: 1.4 }}>
-        <div>{isKo ? '게스트 모드' : 'Guest mode'}</div>
+        <div>{d.guestMode}</div>
         <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.85 }}>
-          {isKo
-            ? '작업물은 이 브라우저에만 저장돼요. 로그인하면 클라우드에 영구 저장됩니다.'
-            : 'Your work is saved in this browser only. Sign in to save it to the cloud.'}
+          {d.guestLocalOnly}
         </div>
       </div>
       <button
@@ -74,7 +74,7 @@ export function GuestExpiryBanner({ isKo }: GuestExpiryBannerProps) {
           whiteSpace: 'nowrap',
         }}
       >
-        {isKo ? '지금 가입' : 'Sign in'}
+        {d.signUpNow}
       </button>
       <button
         onClick={() => setDismissed(true)}

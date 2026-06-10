@@ -21,9 +21,11 @@ import { AiChatPanel } from './AiChatPanel';
 import { CommentsPanel } from './CommentsPanel';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
 import type { FeatureRoute } from '../../featureCatalog/registry';
+import { fmtShell, pickShellDict, type ShellDict } from '../shellDict';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export interface ModelerRightPaneProps {
-  isKo: boolean;
+  lang: string;
 }
 
 type Tab = 'inspector' | 'ai' | 'comments' | 'engineering';
@@ -32,23 +34,12 @@ type Tab = 'inspector' | 'ai' | 'comments' | 'engineering';
 // modeling workspace surfaces them through a single switchable catalog panel.
 const ENGINEERING_ROUTES: FeatureRoute[] = ['modeling', 'cam', 'mold', 'sheet-metal', 'plant', 'hvac', 'cost', 'dfm'];
 
-const ENG_ROUTE_LABELS_KO: Partial<Record<FeatureRoute, string>> = {
-  modeling: '모델링/역학', cam: 'CAM 가공', mold: '금형', 'sheet-metal': '판금',
-  plant: '플랜트 배관', hvac: '공조', cost: '견적/원가', dfm: 'DFM',
-};
-const ENG_ROUTE_LABELS_EN: Partial<Record<FeatureRoute, string>> = {
-  modeling: 'Modeling/Dynamics', cam: 'CAM', mold: 'Mold', 'sheet-metal': 'Sheet Metal',
-  plant: 'Plant Piping', hvac: 'HVAC', cost: 'Cost/Estimate', dfm: 'DFM',
-};
-
-const ENG_CATALOG_DICT_KO: CatalogPanelDict = {
-  catalogTitle: '엔지니어링 계산기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
-  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
-};
-const ENG_CATALOG_DICT_EN: CatalogPanelDict = {
-  catalogTitle: 'Engineering Calculators', catalogLoading: 'Loading…', catalogReady: 'Ready',
-  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
-};
+function engCatalogDict(d: ShellDict): CatalogPanelDict {
+  return {
+    catalogTitle: d.catEngTitle, catalogLoading: d.loading, catalogReady: d.catReady,
+    catalogRun: d.catRun, catalogFailed: d.catFailed, catalogEmpty: d.catEmpty,
+  };
+}
 
 // Real open-comment count for the Comments tab badge. CommentsPanel persists
 // to localStorage under `nexyfab.comments.v1.<projectId|'local'>`; this pane
@@ -74,7 +65,10 @@ function useOpenCommentCount(activeTab: Tab): number {
   return count;
 }
 
-export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
+export function ModelerRightPane({ lang }: ModelerRightPaneProps) {
+  const d = pickShellDict(lang);
+  // Deferred sub-panels (AiChatPanel / CommentsPanel) are still ko/en-binary.
+  const isKo = toIsoLang(lang) === 'ko';
   const [activeTab, setActiveTab] = useState<Tab>('inspector');
   const selectedLabel = useShellBridge(s => s.selectedLabel);
   const selectionCount = useShellBridge(s => s.selectionCount);
@@ -91,16 +85,17 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
     <SidePanel
       side="right"
       tabs={[
-        { id: 'inspector', label: isKo ? '인스펙터' : 'Inspector', icon: <I.tree size={12} /> },
-        { id: 'engineering', label: isKo ? '엔지니어링' : 'Engineering', icon: <I.cog size={12} /> },
-        { id: 'ai', label: isKo ? 'Nexy AI' : 'Nexy AI', icon: <I.ai size={12} /> },
-        { id: 'comments', label: isKo ? '코멘트' : 'Comments', icon: <I.comments size={12} />, ...(openComments > 0 ? { badge: openComments } : {}) },
+        { id: 'inspector', label: d.tabInspector, icon: <I.tree size={12} /> },
+        { id: 'engineering', label: d.tabEngineering, icon: <I.cog size={12} /> },
+        { id: 'ai', label: 'Nexy AI', icon: <I.ai size={12} /> },
+        { id: 'comments', label: d.tabComments, icon: <I.comments size={12} />, ...(openComments > 0 ? { badge: openComments } : {}) },
       ]}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as Tab)}
     >
       {activeTab === 'inspector' && (
         <InspectorTab
+          d={d}
           isKo={isKo}
           selectedLabel={selectedLabel}
           selectionCount={selectionCount}
@@ -112,7 +107,7 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
           featureEdges={selectedFeature?.edges ?? null}
         />
       )}
-      {activeTab === 'engineering' && <EngineeringTab isKo={isKo} />}
+      {activeTab === 'engineering' && <EngineeringTab d={d} />}
       {activeTab === 'ai' && <AiTab isKo={isKo} />}
       {activeTab === 'comments' && <CommentsTab isKo={isKo} />}
     </SidePanel>
@@ -127,9 +122,10 @@ export function ModelerRightPane({ isKo }: ModelerRightPaneProps) {
 const GEOMETRY_FEATURE_TYPES = new Set(['fillet', 'chamfer', 'variableFillet']);
 
 function InspectorTab({
-  isKo, selectedLabel, selectionCount, volume, triangleCount,
+  d, isKo, selectedLabel, selectionCount, volume, triangleCount,
   featureId, featureType, featureParams, featureEdges,
 }: {
+  d: ShellDict;
   isKo: boolean;
   selectedLabel: string | null;
   selectionCount: number;
@@ -145,7 +141,7 @@ function InspectorTab({
   if (!selectedLabel) {
     return (
       <div style={{ padding: '20px 16px', fontSize: 11, color: 'var(--nx-text-3)', textAlign: 'center', lineHeight: 1.5 }}>
-        {isKo ? '피처나 엣지를 선택해 속성을 표시합니다.' : 'Select a feature or edge to inspect.'}
+        {d.selectToInspect}
       </div>
     );
   }
@@ -159,7 +155,7 @@ function InspectorTab({
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{selectedLabel}</div>
           {selectionCount > 0 && (
             <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-              {isKo ? `${selectionCount}개 엣지 · 엣지 그룹` : `Edge group · ${selectionCount} edges`}
+              {fmtShell(d.edgeGroup, { n: selectionCount })}
             </div>
           )}
         </div>
@@ -172,7 +168,7 @@ function InspectorTab({
           can't be removed because an empty selection silently reverts the
           feature to all-edges behaviour. */}
       {featureId && featureEdges && featureEdges.length > 0 && (
-        <PropSection title={isKo ? `엣지 (${featureEdges.length})` : `Edges (${featureEdges.length})`} defaultExpanded={false}>
+        <PropSection title={`${d.edgesTitle} (${featureEdges.length})`} defaultExpanded={false}>
           {featureEdges.map((edge, i) => (
             <PropItemRow
               key={`${edge.id}-${i}`}
@@ -190,15 +186,15 @@ function InspectorTab({
         </PropSection>
       )}
 
-      <AppearanceSection isKo={isKo} />
+      <AppearanceSection d={d} isKo={isKo} />
 
       {/* Live editable params — titled GEOMETRY for fillet/chamfer-type
           features (radius / distance on selected edges), PARAMETERS for the
           rest. Edits flow through nexyfab:update-feature-param → Inner's
           undoable updateFeatureParamCmd. */}
       <PropSection title={(featureType && GEOMETRY_FEATURE_TYPES.has(featureType))
-        ? (isKo ? `지오메트리 · ${featureType}` : `Geometry · ${featureType}`)
-        : (isKo ? `파라미터${featureType ? ` · ${featureType}` : ''}` : `Parameters${featureType ? ` · ${featureType}` : ''}`)}>
+        ? `${d.geometryTitle} · ${featureType}`
+        : `${d.paramsTitle}${featureType ? ` · ${featureType}` : ''}`}>
         {featureId && featureParams && Object.keys(featureParams).length > 0 ? (
           Object.entries(featureParams).map(([key, value]) => (
             <PropRow key={key} label={key}>
@@ -218,26 +214,26 @@ function InspectorTab({
           ))
         ) : (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
-            {isKo ? '편집 가능한 파라미터 없음' : 'No editable parameters'}
+            {d.noEditableParams}
           </div>
         )}
       </PropSection>
 
-      <PropSection title={isKo ? '분석' : 'Analyze'} defaultExpanded>
+      <PropSection title={d.analyzeTitle} defaultExpanded>
         {/* DFM meta = REAL warning count from the last auto-DFM run (bridged
             from Inner); "run" until the first analysis completes. */}
         <AnalyzeRow
-          label={isKo ? 'DFM 검사' : 'DFM check'}
+          label={d.dfmCheck}
           meta={dfmWarningCount === null
-            ? (isKo ? '실행' : 'run')
-            : (isKo ? `경고 ${dfmWarningCount}개` : `${dfmWarningCount} warns`)}
+            ? d.runLower
+            : fmtShell(d.warnCount, { n: dfmWarningCount })}
           drawer="dfm"
         />
-        <AnalyzeRow label={isKo ? 'FEA · 정적/비선형/모달' : 'FEA — linear/nonlinear/modal'} meta={isKo ? '실행' : 'run'} drawer="fea" />
-        <AnalyzeRow label={isKo ? '비용 예상' : 'Cost estimate'} meta={volume ? `≈ ${(volume * 0.003).toFixed(2)} g` : ''} drawer="cost" />
-        <AnalyzeRow label={isKo ? '설계 변형' : 'Design variants'} drawer="variants" />
-        <AnalyzeRow label={isKo ? '모션 스터디' : 'Motion study'} meta={isKo ? '시뮬' : 'sim'} drawer="motion" />
-        <PropRow label={isKo ? '삼각형' : 'Triangles'}>
+        <AnalyzeRow label={d.feaRowLabel} meta={d.runLower} drawer="fea" />
+        <AnalyzeRow label={d.costEstimate} meta={volume ? `≈ ${(volume * 0.003).toFixed(2)} g` : ''} drawer="cost" />
+        <AnalyzeRow label={d.variantsTitle} drawer="variants" />
+        <AnalyzeRow label={d.motionStudy} meta={d.simLower} drawer="motion" />
+        <PropRow label={d.triangles}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {Math.round(triangleCount).toLocaleString()}
           </span>
@@ -245,8 +241,8 @@ function InspectorTab({
       </PropSection>
 
       {/* CAM section — exposes the post-processor library */}
-      <PropSection title={isKo ? 'CAM' : 'CAM'} defaultExpanded={false}>
-        <CamSection isKo={isKo} />
+      <PropSection title="CAM" defaultExpanded={false}>
+        <CamSection d={d} />
       </PropSection>
       {/* (Removed the no-op Cancel/Apply footer — parameter edits already apply
           live via nexyfab:update-feature-param, so those buttons did nothing
@@ -258,13 +254,13 @@ function InspectorTab({
 // APPEARANCE — live material straight from sceneStore (same store the
 // viewport renderer reads). Editing the select swaps the actual rendered
 // material via setMaterialId, matching the toolbar material-drop behaviour.
-function AppearanceSection({ isKo }: { isKo: boolean }) {
+function AppearanceSection({ d, isKo }: { d: ShellDict; isKo: boolean }) {
   const materialId = useSceneStore(s => s.materialId);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
   const preset = MATERIAL_PRESETS.find(m => m.id === materialId);
   return (
-    <PropSection title={isKo ? '외형' : 'Appearance'} defaultExpanded={false}>
-      <PropRow label={isKo ? '재질' : 'Material'}>
+    <PropSection title={d.appearance} defaultExpanded={false}>
+      <PropRow label={d.material}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 2, background: preset?.color ?? 'var(--nx-border)', flex: '0 0 12px' }} />
           <span style={{ flex: 1, minWidth: 0 }}>
@@ -298,7 +294,7 @@ function paramStep(key: string): number {
   return 0.5;
 }
 
-function CamSection({ isKo }: { isKo: boolean }) {
+function CamSection({ d }: { d: ShellDict }) {
   const [dialect, setDialect] = useState<'fanuc' | 'mach3' | 'haas' | 'linuxcnc' | 'siemens'>('fanuc');
   const [machine, setMachine] = useState('haas-vf2');
   const onExport = () => {
@@ -310,7 +306,7 @@ function CamSection({ isKo }: { isKo: boolean }) {
   };
   return (
     <>
-      <PropRow label={isKo ? '컨트롤러' : 'Controller'}>
+      <PropRow label={d.controller}>
         <PropSelect
           value={dialect}
           onChange={(v) => setDialect(v as typeof dialect)}
@@ -323,7 +319,7 @@ function CamSection({ isKo }: { isKo: boolean }) {
           ]}
         />
       </PropRow>
-      <PropRow label={isKo ? '머신' : 'Machine'}>
+      <PropRow label={d.machine}>
         <PropSelect
           value={machine}
           onChange={(v) => setMachine(v as string)}
@@ -343,7 +339,7 @@ function CamSection({ isKo }: { isKo: boolean }) {
           background: 'var(--nx-accent)', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
         }}
       >
-        {isKo ? 'G-code 내보내기' : 'Export G-code'}
+        {d.exportGcode}
       </button>
     </>
   );
@@ -378,14 +374,14 @@ function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; dra
 // plant/HVAC/cost/DFM/dynamics) that have no dedicated shell mode. One panel,
 // switchable domain dropdown, click → lazy-load → run example.
 
-function EngineeringTab({ isKo }: { isKo: boolean }) {
+function EngineeringTab({ d }: { d: ShellDict }) {
   return (
     <div style={{ padding: '10px 12px' }}>
       <FeatureCatalogPanel
         routes={ENGINEERING_ROUTES}
-        routeLabels={isKo ? ENG_ROUTE_LABELS_KO : ENG_ROUTE_LABELS_EN}
+        routeLabels={d.engRoutes}
         license="pro"
-        dict={isKo ? ENG_CATALOG_DICT_KO : ENG_CATALOG_DICT_EN}
+        dict={engCatalogDict(d)}
         onRun={(featureId, entryFn) => {
            
           console.info(`[catalog] run ${featureId} via ${entryFn}()`);

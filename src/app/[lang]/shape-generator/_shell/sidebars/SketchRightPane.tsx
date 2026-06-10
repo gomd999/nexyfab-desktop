@@ -16,20 +16,14 @@ import { sketchStatusColor, sketchStatusLabel } from '../sketchStatusUi';
 import { CONSTRAINT_GLYPH, DimensionEditableRow } from './SketchLeftPane';
 import { I } from '../Icons';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+import { pickShellDict, type ShellDict } from '../shellDict';
 
-const SKETCH_CATALOG_DICT_KO: CatalogPanelDict = {
-  catalogTitle: '스케치 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
-  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
-};
-const SKETCH_CATALOG_DICT_EN: CatalogPanelDict = {
-  catalogTitle: 'Sketch Tools', catalogLoading: 'Loading…', catalogReady: 'Ready',
-  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
-};
-
-const TYPE_LABEL_KO: Record<string, string> = {
-  line: '선', arc: '호', circle: '원', rect: '사각형',
-  polygon: '다각형', ellipse: '타원', slot: '슬롯', nurbs: '스플라인',
-};
+function sketchCatalogDict(d: ShellDict): CatalogPanelDict {
+  return {
+    catalogTitle: d.catSketchTitle, catalogLoading: d.loading, catalogReady: d.catReady,
+    catalogRun: d.catRun, catalogFailed: d.catFailed, catalogEmpty: d.catEmpty,
+  };
+}
 
 function Hint({ children }: { children: ReactNode }) {
   return (
@@ -40,10 +34,11 @@ function Hint({ children }: { children: ReactNode }) {
 }
 
 export interface SketchRightPaneProps {
-  isKo: boolean;
+  lang: string;
 }
 
-export function SketchRightPane({ isKo }: SketchRightPaneProps) {
+export function SketchRightPane({ lang }: SketchRightPaneProps) {
+  const d = pickShellDict(lang);
   const entities = useShellBridge(s => s.sketchEntities);
   const constraints = useShellBridge(s => s.sketchConstraints);
   const dof = useShellBridge(s => s.sketchDof);
@@ -70,36 +65,34 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
     : [];
 
   const typeLabel = selected
-    ? (isKo ? TYPE_LABEL_KO[selected.type] ?? selected.type : selected.type)
+    ? (d.entityTypes[selected.type as keyof ShellDict['entityTypes']] ?? selected.type)
     : null;
 
   return (
     <SidePanel
       side="right"
-      title={isKo ? '스케치 속성' : 'SKETCH PROPERTIES'}
+      title={d.sketchProps}
       titleIcon={<I.sketch size={12} />}
     >
-      <PropSection title={isKo ? '활성 선택' : 'Active Selection'}>
+      <PropSection title={d.activeSelection}>
         {!selected ? (
           <Hint>
-            {isKo
-              ? '선택 도구로 엔티티를 클릭하세요'
-              : 'Click an entity with the Select tool'}
+            {d.clickEntity}
           </Hint>
         ) : (
           <>
-            <PropRow label={isKo ? '선택' : 'Selected'}>
+            <PropRow label={d.selectedLabel}>
               <span style={{ fontSize: 11, color: 'var(--nx-accent)' }}>{selected.label}</span>
             </PropRow>
-            <PropRow label={isKo ? '유형' : 'Type'}>
+            <PropRow label={d.typeLabel}>
               <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{typeLabel}</span>
             </PropRow>
             {selected.meta && (
-              <PropRow label={isKo ? '정보' : 'Info'}>
+              <PropRow label={d.infoLabel}>
                 <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{selected.meta}</span>
               </PropRow>
             )}
-            <PropRow label={isKo ? '구성선' : 'Construction'}>
+            <PropRow label={d.construction}>
               <PropCheck
                 checked={selected.construction === true}
                 onChange={() => {
@@ -108,18 +101,18 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
                     detail: { id: selected.id },
                   }));
                 }}
-                label={isKo ? '예' : 'Yes'}
+                label={d.yes}
               />
             </PropRow>
           </>
         )}
       </PropSection>
 
-      <PropSection title={isKo ? '선택에 적용된 구속조건' : 'Constraints on Selection'}>
+      <PropSection title={d.constraintsOnSel}>
         {!selected ? (
-          <Hint>{isKo ? '선택 없음' : 'No selection'}</Hint>
+          <Hint>{d.noSelection}</Hint>
         ) : selConstraints.length === 0 ? (
-          <Hint>{isKo ? '이 엔티티에 구속조건 없음' : 'No constraints on this entity'}</Hint>
+          <Hint>{d.noConstraintsOnEntity}</Hint>
         ) : (
           selConstraints.map(c => (
             <div
@@ -134,7 +127,7 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
               </span>
               {c.satisfied === false && (
                 <span
-                  title={isKo ? '솔버가 만족시키지 못한 구속조건' : 'Constraint the solver could not satisfy'}
+                  title={d.unsatisfied}
                   style={{ fontSize: 10, color: 'var(--nx-error, #f85149)' }}
                 >
                   ⚠
@@ -148,7 +141,7 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
                     detail: { id: c.id },
                   }));
                 }}
-                aria-label={isKo ? '구속조건 제거' : 'Remove constraint'}
+                aria-label={d.removeConstraint}
                 style={{
                   width: 16, height: 16, border: 0, background: 'transparent',
                   color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,
@@ -161,32 +154,30 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
         )}
       </PropSection>
 
-      <PropSection title={isKo ? '파라미터' : 'Parameters'}>
+      <PropSection title={d.paramsTitle}>
         {!selected ? (
-          <Hint>{isKo ? '선택 없음' : 'No selection'}</Hint>
+          <Hint>{d.noSelection}</Hint>
         ) : selDims.length === 0 ? (
           <Hint>
-            {isKo
-              ? '이 엔티티에 치수 없음 — 치수 도구로 추가'
-              : 'No dimensions on this entity — add with the Dimension tool'}
+            {d.noDimsOnEntity}
           </Hint>
         ) : (
-          selDims.map(d => (
-            <DimensionEditableRow key={d.id} dim={d} isKo={isKo} />
+          selDims.map(dim => (
+            <DimensionEditableRow key={dim.id} dim={dim} d={d} />
           ))
         )}
       </PropSection>
 
-      <PropSection title={isKo ? '솔버' : 'Solver'}>
-        <PropRow label={isKo ? '상태' : 'status'}>
+      <PropSection title={d.solver}>
+        <PropRow label={d.statusLower}>
           <span className="mono" style={{ fontSize: 11, color: sketchStatusColor(status) }}>
-            {sketchStatusLabel(status, dof, redundantCount, isKo) ?? '—'}
+            {sketchStatusLabel(status, dof, redundantCount, d) ?? '—'}
           </span>
         </PropRow>
-        <PropRow label={isKo ? '엔티티' : 'entities'}>
+        <PropRow label={d.entitiesLower}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{entities}</span>
         </PropRow>
-        <PropRow label={isKo ? '구속조건' : 'constraints'}>
+        <PropRow label={d.constraintsLower}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{constraints}</span>
         </PropRow>
         <PropRow label="DOF">
@@ -194,23 +185,23 @@ export function SketchRightPane({ isKo }: SketchRightPaneProps) {
             {dof ?? '—'}
           </span>
         </PropRow>
-        <PropRow label={isKo ? '잉여 구속' : 'redundant'}>
+        <PropRow label={d.redundantLower}>
           <span className="mono" style={{ fontSize: 11, color: redundantCount > 0 ? 'var(--nx-error, #f85149)' : 'var(--nx-text-2)' }}>
             {redundantCount}
           </span>
         </PropRow>
-        <PropRow label={isKo ? '풀이 시간' : 'solve time'}>
+        <PropRow label={d.solveTime}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {solveMs != null ? `${solveMs.toFixed(1)} ms` : '—'}
           </span>
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '스케치 도구 (라이브)' : 'Sketch Tools (live)'}>
+      <PropSection title={d.sketchToolsLive}>
         <FeatureCatalogPanel
           route="sketch"
           license="pro"
-          dict={isKo ? SKETCH_CATALOG_DICT_KO : SKETCH_CATALOG_DICT_EN}
+          dict={sketchCatalogDict(d)}
           onRun={(featureId, entryFn) => {
 
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);

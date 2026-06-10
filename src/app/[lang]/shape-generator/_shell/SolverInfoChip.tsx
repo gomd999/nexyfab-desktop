@@ -9,12 +9,14 @@
 import { useState } from 'react';
 import { useShellBridge } from './shellBridgeStore';
 import { sketchStatusColor, sketchStatusLabel } from './sketchStatusUi';
+import { pickShellDict } from './shellDict';
 
 interface SolverInfoChipProps {
-  isKo: boolean;
+  lang: string;
 }
 
-export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
+export function SolverInfoChip({ lang }: SolverInfoChipProps) {
+  const d = pickShellDict(lang);
   const [collapsed, setCollapsed] = useState(false);
   const editMode = useShellBridge(s => s.editMode);
   const status = useShellBridge(s => s.sketchStatus);
@@ -27,18 +29,18 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
   if (editMode !== 'sketch') return null;
 
   const ok = status === null ? null : status === 'ok';
-  const statusLabel = sketchStatusLabel(status, dof, redundantCount, isKo);
+  const statusLabel = sketchStatusLabel(status, dof, redundantCount, d);
   const rows: { k: string; v: string; tone?: 'ok' | 'warn' | 'error' }[] = [
-    { k: isKo ? '엔티티' : 'entities', v: String(entities) },
-    { k: isKo ? '구속' : 'constraints', v: String(constraints) },
-    { k: isKo ? '치수' : 'dimensions', v: String(dimensions) },
+    { k: d.entitiesLower, v: String(entities) },
+    { k: d.constraintsShort, v: String(constraints) },
+    { k: d.dimensionsLower, v: String(dimensions) },
     {
       k: 'DOF',
       v: dof !== null ? String(dof) : '—',
       tone: dof === null ? undefined : dof === 0 ? 'ok' : dof > 0 ? 'warn' : 'error',
     },
     {
-      k: isKo ? '상태' : 'status',
+      k: d.statusLower,
       v: statusLabel ?? '—',
       tone: status === null ? undefined : status === 'ok' ? 'ok' : status === 'under-defined' ? 'warn' : 'error',
     },
@@ -77,7 +79,7 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
           cursor: 'pointer',
         }}
       >
-        <span style={{ flex: 1 }}>{isKo ? '솔버' : 'Solver'}</span>
+        <span style={{ flex: 1 }}>{d.solver}</span>
         {collapsed && (
           <span style={{
             color: sketchStatusColor(status),

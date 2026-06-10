@@ -8,9 +8,10 @@
 
 import { useState } from 'react';
 import { useShellBridge } from './shellBridgeStore';
+import { pickShellDict } from './shellDict';
 
 interface ViewportChipsProps {
-  isKo: boolean;
+  lang: string;
 }
 
 type DisplayMode = 'solid' | 'edges' | 'wireframe';
@@ -20,7 +21,8 @@ function dispatchDisplayMode(mode: DisplayMode) {
   window.dispatchEvent(new CustomEvent('nexyfab:display-mode', { detail: { mode } }));
 }
 
-export function ViewportChips({ isKo }: ViewportChipsProps) {
+export function ViewportChips({ lang }: ViewportChipsProps) {
+  const d = pickShellDict(lang);
   const editMode = useShellBridge(s => s.editMode);
   // Local visual state (mirrors what we dispatch to ShapePreview).
   const [activeMode, setActiveMode] = useState<DisplayMode>('solid');
@@ -60,19 +62,19 @@ export function ViewportChips({ isKo }: ViewportChipsProps) {
         pointerEvents: 'auto',
       }}
     >
-      {chip('shaded', isKo ? '음영' : 'Shaded', activeMode === 'solid', () => {
+      {chip('shaded', d.vpShaded, activeMode === 'solid', () => {
         setActiveMode('solid');
         dispatchDisplayMode('solid');
       })}
-      {chip('wire', isKo ? '와이어' : 'Wireframe', activeMode === 'wireframe', () => {
+      {chip('wire', d.vpWireframe, activeMode === 'wireframe', () => {
         setActiveMode('wireframe');
         dispatchDisplayMode('wireframe');
       })}
-      {chip('edges', isKo ? '모서리' : 'Edges', activeMode === 'edges', () => {
+      {chip('edges', d.vpEdges, activeMode === 'edges', () => {
         setActiveMode('edges');
         dispatchDisplayMode('edges');
       })}
-      {chip('section', isKo ? '단면' : 'Section', section, () => {
+      {chip('section', d.vpSection, section, () => {
         setSection(v => !v);
         window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'section' } }));
       })}

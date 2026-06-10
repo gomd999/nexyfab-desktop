@@ -5,6 +5,7 @@
 // constrained = green, over-defined / conflicting = red.
 
 import type { ShellSketchStatus } from './shellBridgeStore';
+import { fmtShell, type ShellDict } from './shellDict';
 
 /** CSS color (var) for a solver status. */
 export function sketchStatusColor(status: ShellSketchStatus | null): string {
@@ -23,19 +24,19 @@ export function sketchStatusLabel(
   status: ShellSketchStatus | null,
   dof: number | null,
   redundantCount: number,
-  isKo: boolean,
+  d: ShellDict,
 ): string | null {
   switch (status) {
     case 'ok':
-      return isKo ? '완전 정의 · DOF 0' : 'Fully constrained · DOF 0';
+      return d.stFullyConstrained;
     case 'under-defined':
-      return isKo ? `미정의 · DOF ${dof ?? '?'}` : `Under-defined · DOF ${dof ?? '?'}`;
+      return fmtShell(d.stUnderDefined, { dof: dof ?? '?' });
     case 'over-defined':
       return redundantCount > 0
-        ? (isKo ? `과정의 · 잉여 ${redundantCount}개` : `Over-defined · ${redundantCount} redundant`)
-        : (isKo ? '과정의' : 'Over-defined');
+        ? fmtShell(d.stOverDefinedRedundant, { n: redundantCount })
+        : d.stOverDefined;
     case 'inconsistent':
-      return isKo ? '구속조건 충돌' : 'Conflicting constraints';
+      return d.stConflicting;
     default:
       return null;
   }

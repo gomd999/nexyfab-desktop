@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { PREF_KEYS, prefGetString } from '@/lib/platform';
+import { pickShellDict } from './shellDict';
 
 interface Member {
   userId: string;
@@ -17,11 +18,11 @@ interface Member {
 }
 
 export interface ShareProjectModalProps {
-  isKo: boolean;
+  lang: string;
   onClose: () => void;
 }
 
-export function ShareProjectModal({ isKo, onClose }: ShareProjectModalProps) {
+export function ShareProjectModal({ lang, onClose }: ShareProjectModalProps) {
   const [projectId] = useState<string | null>(() => prefGetString(PREF_KEYS.cloudProjectId));
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,22 +32,15 @@ export function ShareProjectModal({ isKo, onClose }: ShareProjectModalProps) {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const t = isKo ? {
-    title: '프로젝트 공유', noProject: '먼저 프로젝트를 저장하면 공유할 수 있습니다.',
-    placeholder: '이메일 주소', viewer: '보기 전용', editor: '편집 가능',
-    add: '추가', members: '멤버', empty: '아직 공유한 멤버가 없습니다.',
-    remove: '제거', owner: '소유자(나)', notFound: '해당 이메일의 사용자를 찾을 수 없습니다.',
-    hint: 'NexyFab 계정이 있으면 바로 추가되고, 없으면 초대 이메일이 발송됩니다. “공유된 항목”에 표시됩니다.',
-    invited: '초대 이메일을 보냈습니다. 상대가 수락하면 멤버로 추가됩니다.',
-    close: '닫기',
-  } : {
-    title: 'Share project', noProject: 'Save the project first to share it.',
-    placeholder: 'Email address', viewer: 'Viewer', editor: 'Editor',
-    add: 'Add', members: 'Members', empty: 'No members yet.',
-    remove: 'Remove', owner: 'Owner (you)', notFound: 'No user with that email.',
-    hint: 'If they have a NexyFab account they’re added instantly; otherwise an email invite is sent. Appears under “Shared with me”.',
-    invited: 'Invite email sent — they become a member once they accept.',
-    close: 'Close',
+  const d = pickShellDict(lang);
+  const t = {
+    title: d.shareTitle, noProject: d.shareNoProject,
+    placeholder: d.emailAddress, viewer: d.roleViewer, editor: d.roleEditor,
+    add: d.add, members: d.members, empty: d.shareEmpty,
+    remove: d.remove, owner: d.ownerYou, notFound: d.shareNotFound,
+    hint: d.shareHint,
+    invited: d.shareInvited,
+    close: d.close,
   };
 
   const load = useCallback(async () => {
