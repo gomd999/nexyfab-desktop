@@ -127,7 +127,7 @@ import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
 const DesktopFirstRunWizard = dynamic(() => import('./onboarding/DesktopFirstRunWizard'), { ssr: false });
-import { useAssemblyState } from './hooks/useAssemblyState';
+import { useAssemblyState, BODY_COLORS } from './hooks/useAssemblyState';
 import { applyCSG, makeToolGeometry } from './editing/CSGOperations';
 import type { CSGOperation, CSGToolParams } from './editing/CSGOperations';
 import { splitBodyBoth } from './features/splitBodyBoth';
@@ -435,7 +435,9 @@ export function ShapeGeneratorInner() {
     onlineCount } = useAssemblyState();
   /** 메이트→배치 적용 후 Solver 탭 `solveAssembly` 상태를 `placedParts`와 다시 맞출 때 증가 (M3 B1). */
   const [assemblySolverResyncNonce, setAssemblySolverResyncNonce] = useState(0);
-  const BODY_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b'];
+  // BODY_COLORS imported from useAssemblyState — the old local copy started
+  // with 'var(--nx-accent-2)', which THREE.Color can't parse (broken
+  // <Instance color>). The hook's palette is THREE-safe ('#8bb7f4' first).
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW MODE: gallery vs workspace
   // ══════════════════════════════════════════════════════════════════════════
@@ -509,7 +511,7 @@ export function ShapeGeneratorInner() {
       if (didChange) setParams(newParams);
     }
   }, [paramExpressions]);
-  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
+  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, addNode, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
   const { performCSG, loading: csgLoading, cancel: cancelCsg } = useCsgWorker();
   const { runFEA: runFEAWorker, loading: feaWorkerLoading, cancel: cancelFea } = useFEAWorker();
   const { analyzeDFM: analyzeDFMWorker, loading: dfmWorkerLoading, cancel: cancelDfm } = useDFMWorker();
@@ -2075,6 +2077,61 @@ export function ShapeGeneratorInner() {
     }
   }, [addToast, promptUpgrade, handleApplyAgentScad, lang]);
 
+  // ── Shell-v2 AiChatPanel "Apply" bridge (orphan CustomEvents fixed) ──
+  // AiChatPanel dispatches 'nexyfab:apply-ai-intent' / 'nexyfab:apply-ai-pattern'
+  // which previously had no listener (the Apply button did nothing).
+  //  · intent  = an IntentInput ({ shapeId, params, features }) — run it through
+  //    the deterministic intentToScad converter and render via the same
+  //    handleApplyAgentScad path the SCAD agent panel uses.
+  //  · pattern = a design-pattern library reference ({ id, title }) — resolve
+  //    its seedPrompt and route through handleFreeAiPrompt, the same free
+  //    NL→intent→render front door the legacy chat flow uses.
+  useEffect(() => {
+    const onApplyIntent = (e: Event) => {
+      const intent = (e as CustomEvent<Record<string, unknown> | undefined>).detail;
+      if (!intent || typeof intent !== 'object') {
+        addToast('warning', lang === 'ko' ? '적용할 AI 의도가 없습니다.' : 'No AI intent to apply.');
+        return;
+      }
+      void (async () => {
+        try {
+          const { intentToScad } = await import('@/lib/openscad-render/intentToScad');
+          const result = intentToScad(intent as unknown as Parameters<typeof intentToScad>[0]);
+          if (!result.ok) { addToast('error', result.reason); return; }
+          await handleApplyAgentScad(result.scad);
+        } catch (err) {
+          addToast('error', `AI intent apply failed: ${(err as Error).message}`);
+        }
+      })();
+    };
+    const onApplyPattern = (e: Event) => {
+      const detail = (e as CustomEvent<{ id?: string; title?: string } | undefined>).detail;
+      if (!detail?.id) {
+        addToast('warning', lang === 'ko' ? '적용할 디자인 패턴이 없습니다.' : 'No design pattern to apply.');
+        return;
+      }
+      void (async () => {
+        try {
+          const { listPatterns } = await import('@/lib/ai/scad-agent/designPatternLibrary');
+          const pattern = listPatterns().find(p => p.id === detail.id);
+          if (!pattern) {
+            addToast('warning', `Unknown design pattern: ${detail.id}`);
+            return;
+          }
+          await handleFreeAiPrompt(pattern.seedPrompt);
+        } catch (err) {
+          addToast('error', `AI pattern apply failed: ${(err as Error).message}`);
+        }
+      })();
+    };
+    window.addEventListener('nexyfab:apply-ai-intent', onApplyIntent);
+    window.addEventListener('nexyfab:apply-ai-pattern', onApplyPattern);
+    return () => {
+      window.removeEventListener('nexyfab:apply-ai-intent', onApplyIntent);
+      window.removeEventListener('nexyfab:apply-ai-pattern', onApplyPattern);
+    };
+  }, [handleApplyAgentScad, handleFreeAiPrompt, addToast, lang]);
+
   // ── Ctrl+\ split-screen toggle ──
   // Cycle splitMode: off → side-notes → side-spec → off. Skip when an input
   // is focused so the keystroke doesn't fight typing.
@@ -2680,7 +2737,14 @@ export function ShapeGeneratorInner() {
     // clobbered against the .nfab tick. (2026-06-09 dual-writer unification.)
     const cloudScene = getCloudSceneObject() ?? buildAutoSaveState();
     scheduleCloudSync(cloudScene, selectedId ?? '', materialId, thumb);
-  }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode]);
+    // 2026-06-09 dual-writer regression: when the 3-min .nfab tick was retired
+    // this effect became the ONLY cloud writer, but its deps still covered just
+    // the lossy AutoSaveState fields. Assembly / multi-body / configuration /
+    // sketch edits — which getCloudSceneObject() serializes and the old tick
+    // caught via cloudDirtyRef — never re-ran the effect, so those changes were
+    // silently dropped from cloud autosave. Track them explicitly here.
+  }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode,
+      placedParts, assemblyMates, bodies, configurationsSig, sketchProfile, sketchConfig]);
 
   // Guest save nudge: a logged-out user's work lives only in THIS browser
   // (localStorage autosave — no cloud sync). Once they've built something real,
@@ -2749,7 +2813,21 @@ export function ShapeGeneratorInner() {
     clearAll();
     if (recoveryData.features.length > 0) {
       setTimeout(() => {
-        recoveryData.features.forEach(f => addFeature(f.type as FeatureType));
+        // Re-add each feature with its SAVED params + enabled flag. Previously
+        // only f.type was restored (addFeature), so every recovered feature
+        // came back with default params. Saved params are merged onto the
+        // definition defaults so keys added to a feature after the save still
+        // get a value; addNode returns the new node id, letting the enabled
+        // flag apply without a deferred tree lookup.
+        recoveryData.features.forEach(f => {
+          const def = getFeatureDefinition(f.type as FeatureType);
+          if (!def) return;
+          const params: Record<string, number> = {};
+          def.params.forEach(p => { params[p.key] = p.default; });
+          Object.assign(params, f.params);
+          const nodeId = addNode('feature', undefined, def.icon, params, f.type as FeatureType);
+          if (f.enabled === false) updateNode(nodeId, { enabled: false });
+        });
       }, 50);
     }
     const ws =
@@ -2768,7 +2846,7 @@ export function ShapeGeneratorInner() {
     }
     setShowRecovery(false);
     setViewMode('workspace');
-  }, [recoveryData, clearAll, addFeature, setParamExpressions, setParams, setSelectedId]);
+  }, [recoveryData, clearAll, addNode, updateNode, setParamExpressions, setParams, setSelectedId]);
   const handleDismissRecovery = useCallback(() => { setShowRecovery(false); dismissRecovery(); }, [dismissRecovery]);
 
   // ═══ SHARE LINK RESTORE ═══
@@ -3517,6 +3595,15 @@ export function ShapeGeneratorInner() {
         setShowAssemblyPanel(true);
         return;
       }
+      // Sheet Metal ribbon "Flatten" — the sheet-metal-tool bridge below
+      // re-dispatches sm.flatten as this id, but the switch previously had no
+      // case for it (dead end). The flatten UI lives in SheetMetalPanel's
+      // Unfold tab (FlatPatternPanel with SVG/DXF export), so open that panel
+      // instead of silently dropping the event.
+      if (id === 'flat-pattern') {
+        setShowSheetMetalPanel(true);
+        return;
+      }
       // Drawing route output buttons — open the AutoDrawingPanel where the
       // PDF/DXF export buttons live. Direct one-click export would need a
       // pre-baked DrawingResult; opening the panel lets the user review the
@@ -3655,7 +3742,7 @@ export function ShapeGeneratorInner() {
     };
     window.addEventListener('nexyfab:tool', onTool);
     return () => window.removeEventListener('nexyfab:tool', onTool);
-  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, openAIAssistant]);
+  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, setShowSheetMetalPanel, openAIAssistant]);
 
   // F7 — DRC rule set state. Loaded from .drc.json or built inline.
 
@@ -4272,8 +4359,8 @@ export function ShapeGeneratorInner() {
           addToast('info', 'Bend 추가됨');
           break;
         case 'sm.flatten':
-          // FlatPatternPanel is already mounted via the Inspector flow.
-          // Dispatch the existing tool route so it opens consistently.
+          // Route through the nexyfab:tool 'flat-pattern' case, which opens
+          // SheetMetalPanel (its Unfold tab hosts FlatPatternPanel).
           window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'flat-pattern' } }));
           addToast('info', 'Flat pattern 열기');
           break;
@@ -6533,6 +6620,49 @@ export function ShapeGeneratorInner() {
       }
     }
   }, [effectiveResult, importedGeometry, sketchResult, addToast, printBuildDir, printOverhangAngle, lang, panelOpeners, mfgCamPost, selectedId, checkFreemium, lt]);
+
+  // ── Shell-v2 File menu / CAM section bridge (orphan CustomEvents fixed) ──
+  // ModelerShell's File menu dispatches 'nexyfab:file-import' / 'nexyfab:file-
+  // export' and ModelerRightPane's CAM section dispatches 'nexyfab:cam-export',
+  // none of which had a listener (dead buttons). Wire them onto the existing
+  // flows — same pattern as the other nexyfab:* listener effects. This effect
+  // lives below the handlers it calls (handleImportFile / handleExportSTEP /
+  // handleAnalysis) to avoid a TDZ on the dep array during render.
+  useEffect(() => {
+    // File → Import STEP/IGES… : reuse the existing picker-based import flow.
+    const onFileImport = () => { handleImportFile(); };
+    // File → Export STL / STEP : call the existing export handlers.
+    const onFileExport = (e: Event) => {
+      const format = (e as CustomEvent<{ format?: string } | undefined>).detail?.format;
+      if (!effectiveResult?.geometry) {
+        addToast('warning', lang === 'ko' ? '내보낼 형상이 없습니다 — 먼저 형상을 생성하세요.' : 'Nothing to export — generate a shape first.');
+        return;
+      }
+      if (format === 'stl') { void handleExportCurrentSTL(); return; }
+      if (format === 'step') { void handleExportSTEP(); return; }
+      addToast('warning', `Unknown export format: ${format ?? '(none)'}`);
+    };
+    // Properties → CAM → export : persist the chosen post-processor dialect,
+    // then run the existing CAM flow (freemium gate → toolpath generation →
+    // CAMSimPanel, where the actual G-code download button lives).
+    const onCamExport = (e: Event) => {
+      const detail = (e as CustomEvent<{ dialect?: string; machine?: string } | undefined>).detail;
+      if (!effectiveResult?.geometry) {
+        addToast('warning', lang === 'ko' ? 'CAM 내보내기는 형상이 필요합니다 — 먼저 형상을 생성하세요.' : 'CAM export needs geometry — generate a shape first.');
+        return;
+      }
+      if (detail?.dialect) setMfgCamPost(detail.dialect);
+      void handleAnalysis('cam');
+    };
+    window.addEventListener('nexyfab:file-import', onFileImport);
+    window.addEventListener('nexyfab:file-export', onFileExport);
+    window.addEventListener('nexyfab:cam-export', onCamExport);
+    return () => {
+      window.removeEventListener('nexyfab:file-import', onFileImport);
+      window.removeEventListener('nexyfab:file-export', onFileExport);
+      window.removeEventListener('nexyfab:cam-export', onCamExport);
+    };
+  }, [handleImportFile, handleExportCurrentSTL, handleExportSTEP, handleAnalysis, setMfgCamPost, effectiveResult, addToast, lang]);
 
   // ── GD&T Annotation handlers ──
   const handleAddGDT = useCallback((a: GDTAnnotation) => addGDTAnnotation(a), [addGDTAnnotation]);

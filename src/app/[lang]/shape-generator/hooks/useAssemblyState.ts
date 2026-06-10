@@ -6,8 +6,10 @@ import type { PlacedPart } from '../assembly/PartPlacementPanel';
 import type { AssemblyMate } from '../assembly/AssemblyMates';
 import type { InterferenceResult } from '../assembly/InterferenceDetection';
 
+// NOTE: these feed THREE.js <Instance color> (ShapePreview getPartColor), so
+// they must be parseable by THREE.Color — CSS var() strings render broken.
 export const BODY_COLORS = [
-  'var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b',
+  '#8bb7f4', '#f4a28b', '#8bf4b0', '#f4e08b',
   '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b',
 ];
 
@@ -18,14 +20,19 @@ const doc = new Y.Doc();
 let provider: WebsocketProvider | null = null;
 
 function initYjs() {
-  if (typeof window !== 'undefined' && !provider) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const room = urlParams.get('room') || 'nexyfab-collab-default';
-    
-    // Using y-websocket public server for demonstration
-    // In production, you would run your own y-websocket or PartyKit server.
-    provider = new WebsocketProvider('wss://demos.yjs.dev/ws', room, doc);
-    
+  // SECURITY: never default to a public relay. The old code connected every
+  // session to wss://demos.yjs.dev with a SHARED room ('nexyfab-collab-default'),
+  // which would merge strangers' assembly state and leak design data to a
+  // third-party server. The web app was only saved by CSP connect-src; the
+  // Tauri desktop build has csp:null and had no such protection. A websocket
+  // provider is now created ONLY when an explicit endpoint is configured
+  // (NEXT_PUBLIC_ASSEMBLY_COLLAB_WS_URL) AND the URL opts in with ?room=.
+  // Without it the Y.Doc stays local-only — all assembly state keeps working.
+  const wsBase = process.env.NEXT_PUBLIC_ASSEMBLY_COLLAB_WS_URL;
+  if (typeof window !== 'undefined' && !provider && wsBase) {
+    const room = new URLSearchParams(window.location.search).get('room');
+    if (!room) return;
+    provider = new WebsocketProvider(wsBase.replace(/\/+$/, ''), room, doc);
     provider.on('status', (event: { status: string }) => {
       console.log(`[Yjs] Connection status: ${event.status} (Room: ${room})`);
     });

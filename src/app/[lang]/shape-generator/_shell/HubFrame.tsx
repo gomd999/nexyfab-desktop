@@ -279,6 +279,10 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
   };
 
   const handleNewDesign = () => startDesign(`/${lang}/shape-generator`);
+  // The AI hero card must land in the AI studio (?entry=ai opens the chat
+  // panel) — plain /shape-generator was the only visible path before, making
+  // the deep-link unreachable from the Hub UI.
+  const handleOpenAiStudio = () => startDesign(`/${lang}/shape-generator?entry=ai`);
 
   return (
     <div
@@ -604,7 +608,7 @@ export function HubFrame({ lang, isKo, onShowAuth }: HubFrameProps) {
                 <button
                   type="button"
                   className="nx-pillbtn primary"
-                  onClick={handleNewDesign}
+                  onClick={handleOpenAiStudio}
                   style={{ height: 30, padding: '0 14px' }}
                 >
                   {isKo ? 'AI 스튜디오 열기' : 'Open AI Studio'}
