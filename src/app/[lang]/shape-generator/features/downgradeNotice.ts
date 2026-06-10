@@ -24,19 +24,54 @@
 import type * as THREE from 'three';
 import { wantsOcctEngine } from './engineSelection';
 
-export type DowngradeSeverity = 'blocked' | 'approximated';
+export type DowngradeSeverity = 'blocked' | 'approximated' | 'reduced';
 
 export interface MeshDowngradeNotice {
   /** The feature operation that downgraded (display label). */
   op: string;
   /** Feature instance id, when known (for click-to-locate in the tree). */
   featureId?: string;
-  /** 'blocked' = no usable result (hard); 'approximated' = faceted, not exact. */
+  /** 'blocked' = no usable result (hard); 'approximated' = faceted, not exact;
+   *  'reduced' = exact B-rep built, but with DEGRADED parameters (Phase-4
+   *  auto-avoidance — e.g. fillet radius reduced, or a subset of edges). */
   severity: DowngradeSeverity;
   /** Translation key for the UI layer. */
   i18nKey: string;
   /** Best-effort English fallback. */
   fallbackMessage: string;
+  /** 'reduced' only — what the user asked for vs what actually built. */
+  requested?: Record<string, number>;
+  applied?: Record<string, number>;
+  /** 'reduced' only — short human summary, e.g. "radius 8 → 4 mm". */
+  detail?: string;
+}
+
+/**
+ * Build a 'reduced' notice for a Phase-4 auto-avoidance success: the kernel
+ * REFUSED the requested parameters but succeeded with degraded ones. The
+ * feature node keeps showing the requested params; this notice is the
+ * mandatory "what was actually applied" signal (never silently apply
+ * different params).
+ */
+export function makeReducedNotice(args: {
+  op: string;
+  featureId?: string;
+  requested: Record<string, number>;
+  applied: Record<string, number>;
+  detail: string;
+}): MeshDowngradeNotice {
+  return {
+    op: args.op,
+    featureId: args.featureId,
+    severity: 'reduced',
+    i18nKey: 'downgrade.reduced',
+    fallbackMessage:
+      `${args.op}: the requested parameters failed in the B-rep kernel — ` +
+      `auto-applied ${args.detail} instead. Adjust the feature to remove this notice.`,
+    requested: args.requested,
+    applied: args.applied,
+    detail: args.detail,
+  };
 }
 
 /**

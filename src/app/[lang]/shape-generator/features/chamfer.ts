@@ -6,6 +6,7 @@ import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
 import { classifyMeshDowngrade, stampDowngrade } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 import { tryMeshChamfer } from './meshRounding';
 import {
   buildEdgeFinderFromSelection,
@@ -60,6 +61,13 @@ function applyChamferOcct(
     return result.geometry;
   } catch (err) {
     console.warn('[chamfer] OCCT path failed, falling back to mesh approximator:', err);
+    captureKernelFailure({
+      op: 'chamfer',
+      params: { distance: dist },
+      geometry,
+      error: err,
+      resolution: { strategy: 'mesh-fallback', requested: { distance: dist } },
+    });
     return null;
   }
 }

@@ -3,6 +3,7 @@ import type { FeatureDefinition } from './types';
 import { occtDraft } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 
 function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
   const angleDeg = params.angle;
@@ -62,6 +63,13 @@ export const draftFeature: FeatureDefinition = {
           }
         } catch (err) {
           console.warn('[draft] OCCT path failed, falling back to mesh:', err);
+          captureKernelFailure({
+            op: 'draft',
+            params: { angle: params.angle, direction: Math.round(params.direction) },
+            geometry,
+            error: err,
+            resolution: { strategy: 'mesh-fallback', requested: { angle: params.angle } },
+          });
         }
       }
     }

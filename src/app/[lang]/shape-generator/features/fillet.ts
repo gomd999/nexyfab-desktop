@@ -1,12 +1,17 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { occtFilletBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { occtEdgeSignatures, type ReplicadEdgeFinder } from './occtEngine';
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
-import { classifyMeshDowngrade, stampDowngrade } from './downgradeNotice';
+import { classifyMeshDowngrade, stampDowngrade, makeReducedNotice } from './downgradeNotice';
 import { tryMeshFillet } from './meshRounding';
+import {
+  occtFilletWithAvoidanceSync,
+  occtFilletWithAvoidanceAsync,
+  type FilletAvoidanceResult,
+} from './occtFilletAvoidance';
 import {
   buildEdgeFinderFromSelection,
   buildEdgeFinderFromMultiSelection,
@@ -115,17 +120,49 @@ function applyFilletMeshCsg(
   return resultBrush.geometry;
 }
 
+/**
+ * Materialize an avoidance outcome: attach the B-rep handle and — when the
+ * kernel applied something other than what was requested — stamp a 'reduced'
+ * downgrade notice so the UI shows requested vs applied (never silent).
+ */
+function materializeFilletOutcome(
+  out: FilletAvoidanceResult,
+  ctx?: FeatureApplyContext,
+): THREE.BufferGeometry {
+  if (out.handle) out.geometry.userData.occtHandle = out.handle;
+  if (out.strategy === 'reduced-radius') {
+    stampDowngrade(out.geometry, makeReducedNotice({
+      op: 'Fillet',
+      featureId: ctx?.featureId,
+      requested: { radius: out.requestedRadius },
+      applied: { radius: out.appliedRadius },
+      detail: `R ${out.requestedRadius} → ${out.appliedRadius} mm`,
+    }));
+  } else if (out.strategy === 'partial-edges') {
+    stampDowngrade(out.geometry, makeReducedNotice({
+      op: 'Fillet',
+      featureId: ctx?.featureId,
+      requested: { radius: out.requestedRadius, edges: out.edgesRequested ?? 0 },
+      applied: { radius: out.appliedRadius, edges: out.edgesApplied ?? 0 },
+      detail: `${out.edgesApplied}/${out.edgesRequested} edges @ R ${out.appliedRadius} mm`,
+    }));
+  }
+  return out.geometry;
+}
+
 function applyFilletOcct(
   geometry: THREE.BufferGeometry,
   radius: number,
   edgeFinder: ReplicadEdgeFinder | null,
+  ctx?: FeatureApplyContext,
 ): THREE.BufferGeometry | null {
   try {
-    const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
-    const host = hostBoxFromGeometry(geometry);
-    const result = occtFilletBox(host, radius, {}, upstreamHandle, edgeFinder ?? undefined);
-    if (result.handle) result.geometry.userData.occtHandle = result.handle;
-    return result.geometry;
+    const out = occtFilletWithAvoidanceSync(geometry, radius, edgeFinder, { featureId: ctx?.featureId });
+    if (!out) {
+      console.warn('[fillet] OCCT path failed (avoidance exhausted), falling back to mesh approximator');
+      return null;
+    }
+    return materializeFilletOutcome(out, ctx);
   } catch (err) {
     console.warn('[fillet] OCCT path failed, falling back to mesh approximator:', err);
     return null;
@@ -144,7 +181,7 @@ function applyFilletSync(
   // OCCT still runs globally if engine === 1.
   const wantedOcct = wantsOcctEngine(engine);
   if (shouldUseOcctEngine(engine)) {
-    const out = applyFilletOcct(geometry, radius, null);
+    const out = applyFilletOcct(geometry, radius, null, ctx);
     if (out) return out;
   }
   // Reaching the mesh path with wantedOcct=true is a silent downgrade — guard
@@ -163,8 +200,18 @@ async function applyFilletWithEdgeFinder(
   const wantedOcct = wantsOcctEngine(engine);
   if (shouldUseOcctEngine(engine)) {
     const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
-    const out = applyFilletOcct(geometry, radius, edgeFinder);
-    if (out) return out;
+    try {
+      // Async avoidance: reduced-radius ladder + per-edge subset fallback
+      // (the latter only when the user picked ≥2 edges).
+      const out = await occtFilletWithAvoidanceAsync(geometry, radius, edgeFinder, {
+        featureId: ctx?.featureId,
+        edgeSelections: ctx?.edgeSelections,
+      });
+      if (out) return materializeFilletOutcome(out, ctx);
+      console.warn('[fillet] OCCT path failed (avoidance exhausted), falling back to mesh approximator');
+    } catch (err) {
+      console.warn('[fillet] OCCT path failed, falling back to mesh approximator:', err);
+    }
   }
   return applyFilletMeshCsg(geometry, radius, segments, ctx, wantedOcct);
 }

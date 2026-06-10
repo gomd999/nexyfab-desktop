@@ -4,6 +4,7 @@ import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 import { reportWarning } from '../lib/telemetry';
 import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
 
@@ -301,6 +302,21 @@ export const booleanFeature: FeatureDefinition = {
           phase: 'occt_to_legacy_fallback',
           op: type,
           toolShape: Math.round(params.toolShape),
+        });
+        // Phase-4 corpus: minimal reproducible record (already telemetered
+        // above → forward:false avoids the double-send).
+        captureKernelFailure({
+          op: 'boolean',
+          params: {
+            type,
+            toolShape: Math.round(params.toolShape),
+            toolWidth: params.toolWidth, toolHeight: params.toolHeight, toolDepth: params.toolDepth,
+            posX: params.posX, posY: params.posY, posZ: params.posZ,
+          },
+          geometry,
+          error: err,
+          resolution: { strategy: 'mesh-fallback' },
+          forward: false,
         });
         // Fall through to legacy path.
       }

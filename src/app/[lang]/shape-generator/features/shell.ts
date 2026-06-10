@@ -4,6 +4,7 @@ import type { FeatureDefinition } from './types';
 import { occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 import { buildFaceFinderBySignature } from './topologyEdgeFinder';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
@@ -58,6 +59,13 @@ export const shellFeature: FeatureDefinition = {
         return result.geometry;
       } catch (err) {
         console.warn('[shell] OCCT path failed, falling back to three-bvh-csg:', err);
+        captureKernelFailure({
+          op: 'shell',
+          params: { wallThickness: thickness, openFace, featureId: ctx?.featureId ?? '' },
+          geometry,
+          error: err,
+          resolution: { strategy: 'mesh-fallback', requested: { wallThickness: thickness } },
+        });
       }
     }
 
@@ -160,6 +168,14 @@ export const shellFeature: FeatureDefinition = {
         }
       } catch (err) {
         console.warn('[shell] OCCT face-finder path failed, falling back:', err);
+        captureKernelFailure({
+          op: 'shell',
+          stage: 'occt-face-finder',
+          params: { wallThickness: thickness, openFace, featureId: ctx?.featureId ?? '' },
+          geometry,
+          error: err,
+          resolution: { strategy: 'mesh-fallback', requested: { wallThickness: thickness } },
+        });
       }
     }
     return shellFeature.apply(geometry, params, ctx);

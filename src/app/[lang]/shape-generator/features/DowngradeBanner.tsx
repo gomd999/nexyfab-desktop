@@ -42,6 +42,7 @@ export default function DowngradeBanner({ notices, visible, lang }: DowngradeBan
     >
       {model.items.slice(0, 4).map((item, i) => {
         const isBlocked = item.severity === 'blocked';
+        const isReduced = item.severity === 'reduced';
         const color = isBlocked ? 'var(--nx-error)' : 'var(--nx-warn)';
         const bg = isBlocked
           ? 'linear-gradient(135deg, rgba(248,81,73,0.15) 0%, rgba(218,54,51,0.2) 100%)'
@@ -49,7 +50,7 @@ export default function DowngradeBanner({ notices, visible, lang }: DowngradeBan
         const borderColor = isBlocked ? 'rgba(248,81,73,0.4)' : 'rgba(210,153,34,0.4)';
         return (
           <div
-            key={`${item.severity}:${item.op}`}
+            key={`${item.severity}:${item.op}:${item.detail ?? ''}`}
             title={item.message}
             style={{
               display: 'flex',
@@ -66,7 +67,7 @@ export default function DowngradeBanner({ notices, visible, lang }: DowngradeBan
               cursor: 'help',
             }}
           >
-            <span style={{ fontSize: 13 }}>{isBlocked ? '🚫' : '⚠️'}</span>
+            <span style={{ fontSize: 13 }}>{isBlocked ? '🚫' : isReduced ? '📏' : '⚠️'}</span>
             <span
               style={{
                 fontSize: 11,
