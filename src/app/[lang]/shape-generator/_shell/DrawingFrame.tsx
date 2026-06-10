@@ -36,7 +36,6 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   const router = useRouter();
   const gate = useFreemiumGate();
   const [activeTab, setActiveTab] = useState('drawing');
-  const [activeTool, setActiveTool] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState('view.iso');
   // Real geometry bridged from modeler via sessionStorage. Falls back to
   // primitive silhouette when not present (route visited directly).
@@ -213,9 +212,8 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
           breadcrumbs: ['Projects', 'Drawing', isKo ? '도면 1' : 'Sheet 1'],
           onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
           mode: isKo ? '도면 모드' : 'DRAWING MODE',
-          canUndo: true,
-          canRedo: false,
-          onShare: () => {},
+          // No file/undo/share plumbing on this surface yet — TitleBar hides
+          // quick buttons + Share when their handlers are omitted.
           onPublish: onExportPDF,
           publishLabel: isKo ? 'PDF 내보내기' : 'Export PDF',
         }}
@@ -223,12 +221,13 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
           activeTab,
           onTabChange: handleTabChange,
           onTool: id => {
-            // Drawing-specific tool handlers — intercept export commands.
-            if (id === 'file.export-pdf') onExportPDF();
-            else if (id === 'file.export-dxf') onExportDXF();
-            else setActiveTool(id);
+            // Every remaining DRAWING_GROUPS id maps to a real capability;
+            // decorative ids were removed from the ribbon (honest wiring).
+            if (id === 'output.pdf') onExportPDF();
+            else if (id === 'output.dxf') onExportDXF();
+            else if (id === 'output.print') { if (typeof window !== 'undefined') window.print(); }
+            else if (id === 'sheet.new') addSheet();
           },
-          isActive: id => activeTool === id,
         }}
         leftWidth={240}
         rightWidth={300}

@@ -222,44 +222,19 @@ const ASSEMBLY_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
 ];
 
 // ── Drawing ──────────────────────────────────────────────────────────────────
+// Honest-wiring policy: only tools backed by a real capability in
+// DrawingFrame are listed. Views (base/projection/section/detail),
+// Dimensions (smart/linear/radial), Annotate (GD&T/note/symbol) and
+// sheet.format were removed 2026-06-10 — no interactive view placement,
+// dimension authoring or format picker exists on this surface yet
+// (manual annotation lives on the production DrawingPageContent page).
+// Re-add each item when its real handler lands.
 const DRAWING_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
-  {
-    title: 'Views',
-    rows: [
-      [
-        { id: 'view.base', lbl: 'Base view', ico: 'plane', hasCaret: true },
-        { id: 'view.projection', lbl: 'Projection', ico: 'cube' },
-        { id: 'view.section', lbl: 'Section', ico: 'section' },
-        { id: 'view.detail', lbl: 'Detail', ico: 'zoom_in' },
-      ],
-    ],
-  },
-  {
-    title: 'Dimensions',
-    rows: [
-      [
-        { id: 'dim.smart', lbl: 'Smart Dim', ico: 'dim', hasCaret: true },
-        { id: 'dim.linear', lbl: 'Linear', ico: 'dim' },
-        { id: 'dim.radial', lbl: 'Radial', ico: 'circle' },
-      ],
-    ],
-  },
-  {
-    title: 'Annotate',
-    rows: [
-      [
-        { id: 'note.gdt', lbl: 'GD&T', ico: 'constraint' },
-        { id: 'note.note', lbl: 'Note', ico: 'comments' },
-        { id: 'note.symbol', lbl: 'Symbol', ico: 'pin' },
-      ],
-    ],
-  },
   {
     title: 'Sheet',
     rows: [
       [
         { id: 'sheet.new', lbl: 'New sheet', ico: 'plus' },
-        { id: 'sheet.format', lbl: 'Format', ico: 'doc', hasCaret: true },
       ],
     ],
   },
@@ -268,6 +243,7 @@ const DRAWING_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [
       [
         { id: 'output.pdf', lbl: 'PDF', ico: 'doc' },
+        { id: 'output.dxf', lbl: 'DXF', ico: 'share' },
         { id: 'output.print', lbl: 'Print', ico: 'print' },
       ],
     ],
@@ -275,40 +251,17 @@ const DRAWING_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
 ];
 
 // ── Render ───────────────────────────────────────────────────────────────────
+// Honest-wiring policy: Studio (scene/env), Materials (library/apply/edit),
+// Camera (lens/DoF) and render.preview were removed 2026-06-10 — those
+// controls already live as always-visible panels (Material Library left
+// pane, Environment/Camera sliders right pane) and the viewport itself is
+// the live preview, so the ribbon buttons had nothing real to invoke.
+// Final · 4K triggers the gated path-traced render (onRenderFinal).
 const RENDER_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
-  {
-    title: 'Studio',
-    rows: [
-      [
-        { id: 'studio.scene', lbl: 'Scene', ico: 'cube', hasCaret: true },
-        { id: 'studio.env', lbl: 'Environment', ico: 'globe' },
-      ],
-    ],
-  },
-  {
-    title: 'Materials',
-    rows: [
-      [
-        { id: 'mat.library', lbl: 'Library', ico: 'paint', hasCaret: true },
-        { id: 'mat.apply', lbl: 'Apply', ico: 'check' },
-        { id: 'mat.edit', lbl: 'Edit PBR', ico: 'sketch' },
-      ],
-    ],
-  },
-  {
-    title: 'Camera',
-    rows: [
-      [
-        { id: 'cam.lens', lbl: 'Lens', ico: 'zoom_in' },
-        { id: 'cam.dof', lbl: 'Depth of field', ico: 'eye' },
-      ],
-    ],
-  },
   {
     title: 'Output',
     rows: [
       [
-        { id: 'render.preview', lbl: 'Preview', ico: 'sun', hasCaret: true },
         { id: 'render.final', lbl: 'Final · 4K', ico: 'bolt' },
       ],
     ],

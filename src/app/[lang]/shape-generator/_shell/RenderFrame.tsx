@@ -61,7 +61,6 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
   const router = useRouter();
   const gate = useFreemiumGate();
   const [activeTab, setActiveTab] = useState('render');
-  const [activeTool, setActiveTool] = useState<string | null>(null);
 
   const langSeg = lang === 'ko' ? 'kr' : lang;
   const project = projectId ? `?project=${projectId}` : '';
@@ -150,15 +149,19 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
           breadcrumbs: ['Projects', 'Render Studio'],
           onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
           mode: isKo ? '렌더 모드' : 'RENDER STUDIO',
-          onShare: () => {},
+          // No file/undo/share plumbing on this surface yet — TitleBar hides
+          // quick buttons + Share when their handlers are omitted.
           onPublish: onRenderFinal,
           publishLabel: isKo ? '최종 렌더 · 4K' : 'Render · Final 4K',
         }}
         ribbon={{
           activeTab,
           onTabChange: handleTabChange,
-          onTool: id => setActiveTool(id),
-          isActive: id => activeTool === id,
+          onTool: id => {
+            // Honest wiring — the only ribbon tool left is the real
+            // path-traced final render (same flow as the Publish button).
+            if (id === 'render.final') onRenderFinal();
+          },
         }}
         leftWidth={280}
         rightWidth={320}

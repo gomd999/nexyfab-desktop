@@ -119,23 +119,38 @@ export function TitleBar({
         <span>NEXYFAB</span>
       </div>
 
-      <div className="quick">
-        <button type="button" title="New" onClick={onNew}>
-          <I.file size={14} />
-        </button>
-        <button type="button" title="Open" onClick={onOpen}>
-          <I.folder size={14} />
-        </button>
-        <button type="button" title="Save" onClick={onSave}>
-          <I.save size={14} />
-        </button>
-        <button type="button" title="Undo" disabled={!canUndo} onClick={onUndo}>
-          <I.undo size={14} />
-        </button>
-        <button type="button" title="Redo" disabled={!canRedo} onClick={onRedo}>
-          <I.redo size={14} />
-        </button>
-      </div>
+      {/* Quick actions render only when the host frame supplies a real
+          handler — frames without file/undo plumbing (Drawing, Render)
+          simply don't show dead buttons. */}
+      {(onNew || onOpen || onSave || onUndo || onRedo) && (
+        <div className="quick">
+          {onNew && (
+            <button type="button" title="New" onClick={onNew}>
+              <I.file size={14} />
+            </button>
+          )}
+          {onOpen && (
+            <button type="button" title="Open" onClick={onOpen}>
+              <I.folder size={14} />
+            </button>
+          )}
+          {onSave && (
+            <button type="button" title="Save" onClick={onSave}>
+              <I.save size={14} />
+            </button>
+          )}
+          {onUndo && (
+            <button type="button" title="Undo" disabled={!canUndo} onClick={onUndo}>
+              <I.undo size={14} />
+            </button>
+          )}
+          {onRedo && (
+            <button type="button" title="Redo" disabled={!canRedo} onClick={onRedo}>
+              <I.redo size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="file">
         {breadcrumbs && breadcrumbs.length > 0 ? (
@@ -172,11 +187,14 @@ export function TitleBar({
         </span>
       )}
 
-      <div className="nx-search" onClick={onSearch} role="button" tabIndex={0}>
-        <I.search size={12} />
-        <span>{searchPlaceholder}</span>
-        <span className="kbd">{searchShortcut}</span>
-      </div>
+      {/* Command-palette search is only shown when the frame wires it. */}
+      {onSearch && (
+        <div className="nx-search" onClick={onSearch} role="button" tabIndex={0}>
+          <I.search size={12} />
+          <span>{searchPlaceholder}</span>
+          <span className="kbd">{searchShortcut}</span>
+        </div>
+      )}
 
       <div className="right">
         {avatars.length > 0 && (
