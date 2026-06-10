@@ -20,7 +20,9 @@
  *      "suppressed" rationale per mate.
  */
 
-export type MateType = 'coincident' | 'parallel' | 'perpendicular' | 'concentric' | 'distance' | 'angle' | 'tangent';
+export type MateType =
+  | 'coincident' | 'parallel' | 'perpendicular' | 'concentric' | 'distance' | 'angle' | 'tangent'
+  | 'hinge' | 'slider' | 'gear' | 'limitDistance' | 'limitAngle' | 'width';
 
 export interface AssemblyMate {
   id: string;
@@ -75,6 +77,14 @@ export const MATE_TYPE_WEIGHT: Record<MateType, number> = {
   tangent: 4,
   distance: 2,
   angle: 2,
+  // Kinematic joints carry strong design intent — drop them last.
+  hinge: 6,
+  slider: 6,
+  gear: 4,
+  // Inequality / centering mates are the cheapest to relax.
+  limitDistance: 1,
+  limitAngle: 1,
+  width: 3,
 };
 
 export const MATE_TYPE_DOFS: Record<MateType, number> = {
@@ -85,6 +95,13 @@ export const MATE_TYPE_DOFS: Record<MateType, number> = {
   tangent: 1,
   distance: 1,
   angle: 1,
+  hinge: 5,
+  slider: 5,
+  gear: 1,
+  // Limit mates remove no DOF while inside their range.
+  limitDistance: 0,
+  limitAngle: 0,
+  width: 1,
 };
 
 export function autoStrength(type: MateType, creationOrder: number): number {

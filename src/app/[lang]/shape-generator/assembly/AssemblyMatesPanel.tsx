@@ -31,6 +31,9 @@ const MATE_ICONS: Record<MateType, string> = {
   slider:        '\u21C4', // ⇄
   gear:          '\u2699', // ⚙
   belt:          '⟿', // ⟿
+  limitDistance: '↤', // ↤ (bounded travel)
+  limitAngle:    '⦡', // ⦡ (bounded angle)
+  width:         '⬌', // ⬌ centered between planes
   fixed:         '\uD83D\uDD12', // 🔒
 };
 
@@ -39,26 +42,32 @@ const MATE_LABELS: Record<string, Record<MateType, string>> = {
   en: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Hinge', slider: 'Slider', gear: 'Gear', belt: 'Belt', fixed: 'Fixed',
+    limitDistance: 'Limit Distance', limitAngle: 'Limit Angle', width: 'Width',
   },
   ko: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '힌지', slider: '슬라이더', gear: '기어', belt: '벨트', fixed: '고정',
+    limitDistance: '거리 제한', limitAngle: '각도 제한', width: '폭',
   },
   ja: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'ヒンジ', slider: 'スライダー', gear: 'ギア', belt: 'ベルト', fixed: '固定',
+    limitDistance: '距離制限', limitAngle: '角度制限', width: '幅',
   },
   zh: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '铰链', slider: '滑块', gear: '齿轮', belt: '皮带', fixed: '固定',
+    limitDistance: '距离限制', limitAngle: '角度限制', width: '宽度',
   },
   es: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Bisagra', slider: 'Deslizador', gear: 'Engranaje', belt: 'Correa', fixed: 'Fijo',
+    limitDistance: 'Distancia límite', limitAngle: 'Ángulo límite', width: 'Anchura',
   },
   ar: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'مفصلة', slider: 'منزلق', gear: 'ترس', belt: 'حزام', fixed: 'ثابت',
+    limitDistance: 'حد المسافة', limitAngle: 'حد الزاوية', width: 'العرض',
   },
 };
 
@@ -362,6 +371,9 @@ export default function AssemblyMatesPanel({
                     {labels[mate.type]}
                     {mate.distance !== undefined && ` (${mate.distance}\u202Fmm)`}
                     {mate.angle    !== undefined && ` (${mate.angle}\u00B0)`}
+                    {mate.gearRatio !== undefined && ` (${mate.gearRatio}:1)`}
+                    {(mate.min !== undefined || mate.max !== undefined) &&
+                      ` [${mate.min ?? 0}\u2026${mate.max ?? mate.min ?? 0}${mate.type === 'limitAngle' ? '\u00B0' : '\u202Fmm'}]`}
                   </div>
                   <div style={{ fontSize: 10, color: theme.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {tt.part}&nbsp;{mate.selections[0].bodyIndex + 1}

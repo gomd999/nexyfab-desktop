@@ -454,6 +454,17 @@ const MATE_TYPES = new Set<string>([
   'parallel',
   'perpendicular',
   'tangent',
+  // Kinematic mates (pre-Phase-2 types — were missing here, so saved
+  // hinge/slider/gear mates got silently dropped on load).
+  'hinge',
+  'slider',
+  'gear',
+  // Phase 2 advanced mates. Their extra fields (min/max/faceA2/value)
+  // ride free — mates serialize wholesale and isMateLike only gates the
+  // required fields.
+  'limitDistance',
+  'limitAngle',
+  'width',
 ]);
 
 function isPlacedPartLike(p: unknown): p is PlacedPart {

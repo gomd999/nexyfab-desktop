@@ -25,31 +25,30 @@ function bodyToWire(b: AssemblyBody): MateWorkerInput['bodies'][number] {
   };
 }
 
+function selectionToWire(s: Mate['selections'][number]): MateWorkerInput['mates'][number]['selections'][number] {
+  return {
+    bodyIndex: s.bodyIndex,
+    type: s.type,
+    localPoint: [s.localPoint.x, s.localPoint.y, s.localPoint.z],
+    localNormal: [s.localNormal.x, s.localNormal.y, s.localNormal.z],
+    localAxis: s.localAxis ? [s.localAxis.x, s.localAxis.y, s.localAxis.z] : undefined,
+  };
+}
+
 function mateToWire(m: Mate): MateWorkerInput['mates'][number] {
-  const s0 = m.selections[0];
-  const s1 = m.selections[1];
   return {
     id: m.id,
     type: m.type,
-    selections: [
-      {
-        bodyIndex: s0.bodyIndex,
-        type: s0.type,
-        localPoint: [s0.localPoint.x, s0.localPoint.y, s0.localPoint.z],
-        localNormal: [s0.localNormal.x, s0.localNormal.y, s0.localNormal.z],
-        localAxis: s0.localAxis ? [s0.localAxis.x, s0.localAxis.y, s0.localAxis.z] : undefined,
-      },
-      {
-        bodyIndex: s1.bodyIndex,
-        type: s1.type,
-        localPoint: [s1.localPoint.x, s1.localPoint.y, s1.localPoint.z],
-        localNormal: [s1.localNormal.x, s1.localNormal.y, s1.localNormal.z],
-        localAxis: s1.localAxis ? [s1.localAxis.x, s1.localAxis.y, s1.localAxis.z] : undefined,
-      },
-    ],
+    selections: [selectionToWire(m.selections[0]), selectionToWire(m.selections[1])],
     distance: m.distance,
     angle: m.angle,
     gearRatio: m.gearRatio,
+    beltRadius0: m.beltRadius0,
+    beltRadius1: m.beltRadius1,
+    beltCrossed: m.beltCrossed,
+    min: m.min,
+    max: m.max,
+    widthSecond: m.widthSecond ? selectionToWire(m.widthSecond) : undefined,
     enabled: m.enabled,
     conflict: m.conflict,
   };

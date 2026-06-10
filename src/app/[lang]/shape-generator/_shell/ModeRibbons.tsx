@@ -201,6 +201,12 @@ const ASSEMBLY_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
         { id: 'mate.distance', lbl: 'Distance', ico: 'dim' },
         { id: 'mate.angle', lbl: 'Angle', ico: 'constraint' },
       ],
+      [
+        { id: 'mate.hinge', lbl: 'Hinge', ico: 'rotate' },
+        { id: 'mate.gear', lbl: 'Gear', ico: 'circle' },
+        { id: 'mate.limitDistance', lbl: 'Limit', ico: 'dim' },
+        { id: 'mate.width', lbl: 'Width', ico: 'constraint' },
+      ],
     ],
   },
   {

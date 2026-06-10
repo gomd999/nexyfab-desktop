@@ -3917,6 +3917,13 @@ export function ShapeGeneratorInner() {
         'mate.concentric': 'concentric',
         'mate.distance': 'distance',
         'mate.angle': 'angle',
+        // Phase 2 advanced mates (SolidWorks-parity roadmap)
+        'mate.hinge': 'hinge',
+        'mate.slider': 'slider',
+        'mate.gear': 'gear',
+        'mate.limitDistance': 'limitDistance',
+        'mate.limitAngle': 'limitAngle',
+        'mate.width': 'width',
       };
       if (MATE_TYPES[id]) {
         setShowAssemblyPanel(true);
@@ -4751,7 +4758,9 @@ export function ShapeGeneratorInner() {
       | { kind: 'coincident'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] } }
       | { kind: 'distance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; distMm: number }
       | { kind: 'parallel'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] } }
-      | { kind: 'angle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; deg: number };
+      | { kind: 'angle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; deg: number }
+      | { kind: 'limitDistance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; minMm: number; maxMm: number }
+      | { kind: 'limitAngle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; minDeg: number; maxDeg: number };
     const mates: V3Mate[] = [];
     for (const m of assemblyMates) {
       if (!partIds.includes(m.partA) || !partIds.includes(m.partB)) continue;
@@ -4771,6 +4780,18 @@ export function ShapeGeneratorInner() {
         case 'angle':
           mates.push({ kind: 'angle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, deg: m.value ?? 0 });
           break;
+        case 'limitDistance':
+          mates.push({ kind: 'limitDistance', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] }, minMm: m.min ?? 0, maxMm: m.max ?? m.min ?? 0 });
+          break;
+        case 'limitAngle':
+          mates.push({ kind: 'limitAngle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, minDeg: m.min ?? 0, maxDeg: m.max ?? m.min ?? 0 });
+          break;
+        // `gear` is a motion coupling (ratio between two revolute axes) —
+        // it has no static-placement meaning, so the reactive re-solve skips
+        // it; the kinematic drag loop (`kinematicDragSolve`) honors it.
+        // `width` needs the two reference-face planes which this synthetic
+        // origin-axis path doesn't carry; it solves through the geometry
+        // path (`applyGeometryMatesToPlaced` / Solver tab) instead.
         default:
           break;
       }

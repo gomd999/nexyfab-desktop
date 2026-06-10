@@ -278,6 +278,7 @@ export function mateSuggestionLabel(s: MateSuggestion, lang = 'en'): string {
       parallel: 'Parallel', perpendicular: 'Perpendicular',
       tangent: 'Tangent', hinge: 'Hinge',
       slider: 'Slider', gear: 'Gear',
+      limitDistance: 'Limit Distance', limitAngle: 'Limit Angle', width: 'Width',
     },
     ko: {
       coincident: '일치', concentric: '동심',
@@ -285,6 +286,7 @@ export function mateSuggestionLabel(s: MateSuggestion, lang = 'en'): string {
       parallel: '평행', perpendicular: '직각',
       tangent: '접선', hinge: '힌지',
       slider: '슬라이더', gear: '기어',
+      limitDistance: '거리 제한', limitAngle: '각도 제한', width: '폭',
     },
   };
   const lk = lang === 'ko' || lang === 'kr' ? 'ko' : 'en';

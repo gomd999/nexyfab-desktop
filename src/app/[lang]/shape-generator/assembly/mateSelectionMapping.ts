@@ -155,10 +155,31 @@ export function mateSelectionFromPlacedFace(
     localPoint,
     localNormal,
   };
-  if (mateType === 'concentric') {
+  if (mateType === 'concentric' || mateType === 'hinge' || mateType === 'slider' || mateType === 'gear') {
     return { ...base, localAxis: localNormal.clone() };
   }
   return base;
+}
+
+/** Shared field carry-over for `AssemblyMate` → solver `Mate` (both the
+ *  placed-part and BOM paths): distance/angle targets, limit ranges, gear
+ *  ratio (`value`), and the width mate's second reference plane on part A. */
+function applyMateExtras(
+  out: Mate,
+  mate: AssemblyMate,
+  geomA: THREE.BufferGeometry,
+  bodyIndexA: number,
+): void {
+  if (mate.type === 'distance' && mate.value !== undefined) out.distance = mate.value;
+  if (mate.type === 'angle' && mate.value !== undefined) out.angle = mate.value;
+  if (mate.type === 'gear' && mate.value !== undefined) out.gearRatio = mate.value;
+  if (mate.type === 'limitDistance' || mate.type === 'limitAngle') {
+    if (mate.min !== undefined) out.min = mate.min;
+    if (mate.max !== undefined) out.max = mate.max;
+  }
+  if (mate.type === 'width' && mate.faceA2 != null) {
+    out.widthSecond = mateSelectionFromPlacedFace(bodyIndexA, geomA, mate.faceA2, mate.type);
+  }
 }
 
 function assemblyBodyFromPlacedPart(p: PlacedPart, fixed: boolean): AssemblyBody {
@@ -201,8 +222,7 @@ export function assemblyMateToSolverMate(mate: AssemblyMate, placed: PlacedPart[
     selections,
     enabled: !mate.locked,
   };
-  if (mate.type === 'distance' && mate.value !== undefined) out.distance = mate.value;
-  if (mate.type === 'angle' && mate.value !== undefined) out.angle = mate.value;
+  applyMateExtras(out, mate, ga, ia);
   return out;
 }
 
@@ -272,8 +292,7 @@ export function assemblyMateToSolverMateForBom(mate: AssemblyMate, bom: BomPartR
     selections,
     enabled: !mate.locked,
   };
-  if (mate.type === 'distance' && mate.value !== undefined) out.distance = mate.value;
-  if (mate.type === 'angle' && mate.value !== undefined) out.angle = mate.value;
+  applyMateExtras(out, mate, ga, ia);
   return out;
 }
 

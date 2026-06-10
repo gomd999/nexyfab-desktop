@@ -17,6 +17,8 @@ import { useFaceEditing } from './editing/useFaceEditing';
 import KinematicDragManager from './assembly/KinematicDragManager';
 import { bomPartResultsAndAssemblyMatesToSolverState } from './assembly/mateSelectionMapping';
 import type { AssemblyState } from './assembly/matesSolver';
+import { restorePoses, type BodyPoseSnapshot } from './assembly/kinematicDragSolve';
+import { commandHistory } from './history/CommandHistory';
 import StandardPartDropHandler, { type StandardPartDropEvent } from './library/StandardPartDropHandler';
 import FaceHandles from './editing/FaceHandles';
 import EdgeContextPanel from './editing/EdgeContextPanel';
@@ -1652,6 +1654,35 @@ export default function ShapePreview({
     setKinematicTransforms(newTransforms);
   }, [kinematicState]);
 
+  // One undo step per drag gesture (sketch drag-solve contract): the manager
+  // hands us before/after pose snapshots when the pointer is released, and we
+  // register a single command that swaps the whole assembly pose set.
+  const handleDragGestureEnd = useCallback((before: BodyPoseSnapshot[], after: BodyPoseSnapshot[]) => {
+    const state = kinematicState;
+    if (!state) return;
+    const applyPoses = (snap: BodyPoseSnapshot[]) => {
+      restorePoses(state, snap);
+      const t: Record<string, THREE.Matrix4> = {};
+      state.bodies.forEach(b => {
+        t[b.name] = new THREE.Matrix4().compose(
+          b.position.clone(),
+          new THREE.Quaternion().setFromEuler(b.rotation),
+          new THREE.Vector3(1, 1, 1),
+        );
+      });
+      setKinematicTransforms(t);
+    };
+    commandHistory.execute({
+      id: `kinematic-drag-${Date.now()}`,
+      label: 'Drag part (kinematic)',
+      labelKo: '기구 드래그',
+      // The drag already left the live state at `after`; execute is also the
+      // redo path, so it must apply the snapshot rather than assume it.
+      execute: () => applyPoses(after),
+      undo: () => applyPoses(before),
+    });
+  }, [kinematicState]);
+
   const [hitboxes, setHitboxes] = useState<THREE.Object3D[]>([]);
   const hitboxesGroupRef = useRef<THREE.Group>(null);
   useEffect(() => {
@@ -2919,6 +2950,7 @@ export default function ShapePreview({
                         bomParts={bomParts}
                         assemblyState={kinematicState}
                         onSolverUpdate={handleSolverUpdate}
+                        onGestureEnd={handleDragGestureEnd}
                         onDragStateChange={(dragging) => onDragStateChange && onDragStateChange(dragging)}
                         hitboxes={hitboxes}
                       />

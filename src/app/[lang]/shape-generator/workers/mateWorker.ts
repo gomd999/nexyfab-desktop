@@ -33,6 +33,14 @@ interface SerializedMate {
   distance?: number;
   angle?: number;
   gearRatio?: number;
+  beltRadius0?: number;
+  beltRadius1?: number;
+  beltCrossed?: boolean;
+  /** limitDistance / limitAngle bounds. */
+  min?: number;
+  max?: number;
+  /** width mate: second reference plane on the same body as selections[0]. */
+  widthSecond?: SerializedMateSelection;
   enabled: boolean;
   conflict?: boolean;
 }
@@ -99,6 +107,12 @@ function deserializeMate(m: SerializedMate): Mate {
     distance: m.distance,
     angle: m.angle,
     gearRatio: m.gearRatio,
+    beltRadius0: m.beltRadius0,
+    beltRadius1: m.beltRadius1,
+    beltCrossed: m.beltCrossed,
+    min: m.min,
+    max: m.max,
+    widthSecond: m.widthSecond ? deserializeSelection(m.widthSecond) : undefined,
     enabled: m.enabled,
     conflict: m.conflict,
   };
