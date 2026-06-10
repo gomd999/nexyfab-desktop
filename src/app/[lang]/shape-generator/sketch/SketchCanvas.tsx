@@ -7,7 +7,8 @@ import type {
   SketchConstraint, SketchDimension, ConstraintType,
 } from './types';
 import { sampleNurbsSegment } from './nurbs';
-import { CONSTRAINT_ICON, getConstraintsForEntity, solveConstraints } from './constraintSolver';
+import { CONSTRAINT_ICON, getConstraintsForEntity } from './constraintSolver';
+import { dragSolve } from './sketchDragSolve';
 import { cleanupProfile } from './profileCleanup';
 
 type SketchLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
@@ -248,6 +249,22 @@ const SKETCH_MSG = {
     es: 'Gris discontinuo = otros perfiles (clic en el contorno para cambiar, o pestañas izquierda). Azul = activo.',
     ar: 'رمادي متقطع = ملفات أخرى (انقر المخطط للتبديل أو التبويبات). أزرق = النشط.',
   },
+  dragBlockedFixed: {
+    ko: '고정(🔒)된 점은 드래그할 수 없습니다',
+    en: 'Point is fixed (🔒) — cannot drag',
+    ja: '固定(🔒)された点はドラッグできません',
+    cn: '固定(🔒)的点无法拖动',
+    es: 'Punto fijado (🔒) — no se puede arrastrar',
+    ar: 'النقطة مثبتة (🔒) — لا يمكن سحبها',
+  },
+  dragBlockedOver: {
+    ko: '과잉 구속 — 이동 불가 (구속을 제거하세요)',
+    en: 'Over-constrained — drag blocked (remove a constraint)',
+    ja: '過剰拘束 — 移動できません (拘束を削除してください)',
+    cn: '过约束 — 无法拖动 (请删除约束)',
+    es: 'Sobre-restringido — arrastre bloqueado (elimina una restricción)',
+    ar: 'مقيّد بشكل زائد — السحب محظور (احذف قيدًا)',
+  },
 } as const;
 
 /** Resolve SKETCH_MSG entry: some keys are plain strings, some are `(n) => string`. */
@@ -355,6 +372,13 @@ interface SketchCanvasProps {
    *  `segment.id` (or the `seg${index}` fallback the shell bridge uses), so
    *  the SketchRightPane can show live selection / constraint info. */
   onSelectedEntityChange?: (id: string | null) => void;
+  /** Fires ONCE per point-drag gesture, before the first geometry change.
+   *  Parent should capture an undo snapshot here (one undo step per drag). */
+  onPointDragStart?: () => void;
+  /** Per-frame profile updates during a point drag. Unlike `onProfileChange`
+   *  this must NOT capture an undo snapshot — `onPointDragStart` already did.
+   *  When absent, drags fall back to `onProfileChange` (legacy behavior). */
+  onProfileChangeLive?: (profile: SketchProfile) => void;
 }
 
 // ─── Named constants ─────────────────────────────────────────────────────────
@@ -900,6 +924,8 @@ function SketchCanvas({
   sweepPathPoints,
   onSweepPathChange,
   onSelectedEntityChange,
+  onPointDragStart,
+  onProfileChangeLive,
 }: SketchCanvasProps) {
   // ── i18n: resolve locale from URL segment ──
   const pathname = usePathname();
@@ -992,6 +1018,10 @@ function SketchCanvas({
   // Point drag state (select tool: drag a point to move it, solver will re-constrain)
   const [dragPoint, setDragPoint] = useState<{ segIdx: number; ptIdx: number } | null>(null);
   const isDraggingPointRef = useRef(false);
+  // Drag-solve gesture bookkeeping: capture exactly ONE undo snapshot per
+  // gesture (on first actual move), and toast a blocked drag only once.
+  const dragUndoCapturedRef = useRef(false);
+  const dragBlockedToastShownRef = useRef(false);
 
   // Dimension inline input (line tool: 첫 점 클릭 후 숫자 입력 → Enter로 정확한 길이 커밋)
   const [dimInput, setDimInput] = useState<string>('');
@@ -1692,44 +1722,52 @@ function SketchCanvas({
       setPanY(panStartRef.current.py - dy);
       return;
     }
-    // Point drag
+    // Point drag — drag-solve (SolidWorks feel): the dragged point chases the
+    // cursor while the LM solver keeps every constraint + locked dimension
+    // satisfied each frame (soft cursor-pin + exact polish, sketchDragSolve).
     if (isDraggingPointRef.current && dragPoint) {
       const raw = screenToMm(e.clientX, e.clientY);
-      const draggedSegments = profile.segments.map((seg, si) => {
-        if (si !== dragPoint.segIdx) return seg;
-        return {
-          ...seg,
-          points: seg.points.map((p, pi) =>
-            pi === dragPoint.ptIdx ? { ...p, x: raw.x, y: raw.y } : p
-          ),
-        };
-      });
-      // E3: dynamic drag — when constraints exist, run a short solver pass so
-      // the drag respects horizontal/vertical/perpendicular/etc. instead of
-      // hard-locking the point. Mirrors Fusion 360's behaviour of "the line
-      // stays horizontal but you can still slide it left/right." If the
-      // solver fails (over-defined, residual blow-up), fall back to raw drag
-      // so the user is never stuck.
-      let solvedSegments = draggedSegments;
-      if (constraints.length > 0 || dimensions.length > 0) {
+      const seg = profile.segments[dragPoint.segIdx];
+      const pt = seg?.points[dragPoint.ptIdx];
+      if (!pt) return;
+
+      let nextSegments: SketchSegment[];
+      if (pt.id) {
+        let result: ReturnType<typeof dragSolve>;
         try {
-          const result = solveConstraints(draggedSegments, constraints, dimensions, 20, 1e-3);
-          const status = result.solveResult?.status;
-          if (status === 'ok' || status === 'under-defined') {
-            solvedSegments = draggedSegments.map(seg => ({
-              ...seg,
-              points: seg.points.map(p => {
-                if (!p.id) return p;
-                const solved = result.points.get(p.id);
-                return solved ? { ...p, x: solved.x, y: solved.y } : p;
-              }),
-            }));
-          }
+          result = dragSolve(profile.segments, constraints, dimensions, pt.id, raw);
         } catch {
-          // Solver threw — keep raw drag.
+          return; // solver threw — keep geometry as-is, never corrupt it
         }
+        if (result.outcome === 'blocked-fixed' || result.outcome === 'blocked-unsolvable') {
+          // No-move fallback: the live status chip already shows the red
+          // over-defined state; toast the reason once per gesture.
+          if (!dragBlockedToastShownRef.current) {
+            dragBlockedToastShownRef.current = true;
+            showToast(L(result.outcome === 'blocked-fixed' ? 'dragBlockedFixed' : 'dragBlockedOver'));
+          }
+          return;
+        }
+        nextSegments = result.segments;
+      } else {
+        // Anonymous point (no id): invisible to the solver — plain move.
+        nextSegments = profile.segments.map((s, si) => {
+          if (si !== dragPoint.segIdx) return s;
+          return {
+            ...s,
+            points: s.points.map((p, pi) =>
+              pi === dragPoint.ptIdx ? { ...p, x: raw.x, y: raw.y } : p
+            ),
+          };
+        });
       }
-      onProfileChange({ ...profile, segments: solvedSegments });
+      // One undo step per drag gesture: snapshot lazily on the first actual
+      // move (a click without movement must not pollute the undo stack).
+      if (!dragUndoCapturedRef.current) {
+        dragUndoCapturedRef.current = true;
+        onPointDragStart?.();
+      }
+      (onProfileChangeLive ?? onProfileChange)({ ...profile, segments: nextSegments });
       return;
     }
     const { pt: snapped, type: sType } = smartSnap(e.clientX, e.clientY);
@@ -1742,7 +1780,7 @@ function SketchCanvas({
       const nearest = findNearestSegment(profile.segments, snapped, 10 / zoom);
       setHoverSegIdx(nearest ? nearest.index : -1);
     }
-  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, screenToMm, profile, onProfileChange, constraints, dimensions]);
+  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, screenToMm, profile, onProfileChange, onProfileChangeLive, onPointDragStart, constraints, dimensions, showToast, L]);
 
   // Middle-click or right-click pan; left-click in select mode starts point drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1761,6 +1799,8 @@ function SketchCanvas({
           if (dist(raw, seg.points[pi]) * zoom < 10) {
             setDragPoint({ segIdx: si, ptIdx: pi });
             isDraggingPointRef.current = true;
+            dragUndoCapturedRef.current = false;
+            dragBlockedToastShownRef.current = false;
             e.preventDefault();
             return;
           }
@@ -1774,6 +1814,10 @@ function SketchCanvas({
     if (isDraggingPointRef.current) {
       isDraggingPointRef.current = false;
       setDragPoint(null);
+      // End of drag gesture — the single undo snapshot (captured on first
+      // move) stays on the stack; just reset gesture bookkeeping.
+      dragUndoCapturedRef.current = false;
+      dragBlockedToastShownRef.current = false;
     }
   }, []);
 

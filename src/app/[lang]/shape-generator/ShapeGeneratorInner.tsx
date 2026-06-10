@@ -9302,6 +9302,14 @@ export function ShapeGeneratorInner() {
                         setSketchProfiles(prev => prev.map((x, i) => i === activeProfileIdx ? p : x));
                         setSketchProfile(p);
                       }}
+                      // Drag-solve gesture: ONE undo snapshot at drag start,
+                      // then per-frame live updates that bypass the snapshot
+                      // (otherwise every mousemove would spam the undo stack).
+                      onPointDragStart={captureSketchSnapshot}
+                      onProfileChangeLive={(p) => {
+                        setSketchProfiles(prev => prev.map((x, i) => i === activeProfileIdx ? p : x));
+                        setSketchProfile(p);
+                      }}
                       activeTool={sketchTool}
                       width={sketchSize.width}
                       height={sketchSize.height}
