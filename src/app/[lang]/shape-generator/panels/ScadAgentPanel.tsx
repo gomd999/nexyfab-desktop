@@ -468,7 +468,8 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
   }, [session]);
 
   const containerStyle: React.CSSProperties = variant === 'floating'
-    ? { position: 'fixed', top: 80, right: 16, width: 420, maxHeight: 'calc(100vh - 100px)', zIndex: 700 }
+    // right: 336 clears the 320px right property pane (2026-06-12)
+    ? { position: 'fixed', top: 80, right: 336, width: 420, maxHeight: 'calc(100vh - 100px)', zIndex: 700 }
     : { width: '100%', height: '100%', minHeight: 360 };
 
   return (

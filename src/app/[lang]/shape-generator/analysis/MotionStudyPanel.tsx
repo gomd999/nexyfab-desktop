@@ -413,7 +413,7 @@ export default function MotionStudyPanel({
   const activeJoints = lastConfigRef.current?.joints ?? joints;
 
   return (
-    <div style={{ position: 'fixed', top: 60, right: 16, width: 320, maxHeight: 'calc(100vh - 80px)', overflow: 'auto', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.6)', zIndex: 800, direction: isAr ? 'rtl' : 'ltr' }}>
+    <div style={{ position: 'fixed', top: 60, /* right: 336 clears the 320px right property pane (2026-06-12) */ right: 336, width: 320, maxHeight: 'calc(100vh - 80px)', overflow: 'auto', background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.6)', zIndex: 800, direction: isAr ? 'rtl' : 'ltr' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid var(--nx-panel-2)', background: 'rgba(139,92,246,0.06)' }}>
         <span style={{ fontSize: 16, marginRight: 6 }}>🎬</span>

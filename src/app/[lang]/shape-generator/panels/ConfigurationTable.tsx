@@ -79,7 +79,8 @@ export default function ConfigurationTable({
   if (configurations.length === 0) {
     return (
       <div style={{
-        position: 'fixed', right: 16, top: 64, width: 520, maxHeight: '70vh',
+        // right: 336 clears the 320px right property pane (2026-06-12)
+        position: 'fixed', right: 336, top: 64, width: 520, maxHeight: '70vh',
         background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
         boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 200, overflow: 'hidden',
       }}>
@@ -93,7 +94,8 @@ export default function ConfigurationTable({
 
   return (
     <div style={{
-      position: 'fixed', right: 16, top: 64, width: 'min(900px, calc(100vw - 32px))',
+      // right: 336 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', right: 336, top: 64, width: 'min(900px, calc(100vw - 32px))',
       maxHeight: '70vh', background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 200,
       display: 'flex', flexDirection: 'column',

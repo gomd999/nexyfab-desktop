@@ -74,7 +74,8 @@ export default function AdvancedAnalysisDock(props: AdvancedAnalysisDockProps) {
   return (
     <>
       {showGenDesign && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + genInset, zIndex: 500 }}>
+        /* 336 = right pane (320) + margin, so the panel clears the inspector */
+        <div style={{ position: 'fixed', top: 60, right: 336 + genInset, zIndex: 500 }}>
           <GenerativeDesignPanel
             geometry={effectiveResultGeometry}
             lang={lang}

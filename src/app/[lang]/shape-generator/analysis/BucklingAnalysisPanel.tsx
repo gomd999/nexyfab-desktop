@@ -125,7 +125,8 @@ export default function BucklingAnalysisPanel({
     <div
       data-testid="buckling-panel"
       style={{
-        position: 'fixed', top: 60, right: 16, width: 320,
+        // right: 336 clears the 320px right property pane (2026-06-12)
+        position: 'fixed', top: 60, right: 336, width: 320,
         maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
         background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10,
         zIndex: 800, color: C.text,

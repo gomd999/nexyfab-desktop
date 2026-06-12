@@ -309,7 +309,8 @@ export default function ModalAnalysisPanel({
       style={{
         position: 'fixed',
         top: 60,
-        right: 16,
+        // right: 336 clears the 320px right property pane (2026-06-12)
+        right: 336,
         width: 320,
         maxHeight: 'calc(100vh - 80px)',
         overflowY: 'auto',
