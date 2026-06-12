@@ -126,7 +126,6 @@ import { useSketchState } from './hooks/useSketchState';
 import { useFreemium } from '@/hooks/useFreemium';
 import UpgradeModalsDock from './panels/UpgradeModalsDock';
 import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
-import GetQuoteButton from './export/GetQuoteButton';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
 import { resolveFeatureEditPrompt } from './ai/featureEditFromPrompt';
@@ -10999,13 +10998,11 @@ export function ShapeGeneratorInner() {
         onExportStl={() => { setStlExportDialogOpen(true); }}
       />
 
-      {/* Lay-conversion CTA: "make it real → quote" once a model exists. Free
-          users hit the rfq upgrade prompt (the conversion ask); Pro opens RFQ. */}
-      <GetQuoteButton
-        lang={lang}
-        hasGeometry={!!effectiveResult?.geometry}
-        onRequestQuote={() => requirePro('rfq', () => setShowRfqPanel(true))}
-      />
+      {/* Manufacturing/quote CTA removed (2026-06-12): the floating
+          "make it real → quote" button duplicated the quote entry already in
+          DesignFunnelBar + ManufacturingPipelinePanel and crowded the
+          bottom-right with the STL/AI buttons. The funnel bar (design → DFM →
+          quote) is the single conversion path now. */}
 
       {/* Phase-2/3 floating AI shell — viewport-overlay prompt + intent
           dispatcher. promptToIntents resolves a prompt parser-first
@@ -11380,7 +11377,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Parametric Sweep Panel ═══ */}
       {showParametricSweep && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('sweep'), zIndex: 500 }}>
+        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('sweep'), zIndex: 500 }}>
           <ParametricSweepPanel
             lang={lang}
             currentParams={params}
@@ -11465,7 +11462,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Auto Drawing Panel ═══ */}
       {showAutoDrawing && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('draw'), zIndex: 500 }}>
+        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('draw'), zIndex: 500 }}>
           <AutoDrawingPanel
             lang={lang}
             geometry={effectiveResult?.geometry ?? null}
@@ -11499,7 +11496,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Copilot Panel ═══ */}
       {showCopilot && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('copilot'), zIndex: 600 }}>
+        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('copilot'), zIndex: 600 }}>
           <CopilotPanel
             lang={lang}
             dispatcher={{

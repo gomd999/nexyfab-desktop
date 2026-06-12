@@ -117,7 +117,7 @@ export default function DimensionOverlay({
                     }
                   }}
                   style={{
-                    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+                    background: 'var(--nx-glass-strong)', backdropFilter: 'blur(4px)',
                     color: '#fbbf24', fontSize: 10, fontWeight: 700,
                     padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap',
                     border: `1px solid ${onDimClick ? 'rgba(56,139,253,0.5)' : 'rgba(251,191,36,0.3)'}`,

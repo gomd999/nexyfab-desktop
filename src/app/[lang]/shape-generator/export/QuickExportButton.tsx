@@ -89,7 +89,9 @@ export default function QuickExportButton({
       style={{
         position: 'fixed',
         bottom: 28,
-        right: 28,
+        // Sit to the LEFT of the AI FAB (corner, ~right:28, ~110px wide) so the
+        // two no longer overlap. (2026-06-12 bottom-right declutter)
+        right: 150,
         zIndex: 800,
         display: 'flex',
         gap: 6,

@@ -90,13 +90,16 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
     <div
       style={{
         position: 'fixed',
-        // Stacks below the SCAD toggle (top:56) and the auto-save pill (top:92)
-        // in the top-right column so none of the three overlap.
-        top: 128,
-        right: 16,
+        // Anchored to the TOP-CENTER under the toolbar. Previously top:128/right:16
+        // with maxWidth 420 — the wide pill extended left across the right
+        // property pane and occluded its top sections (reported overlap).
+        // Centering clears both the left and right side panes. (2026-06-12)
+        top: 64,
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 250,
         display: 'flex',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         pointerEvents: 'none',
       }}
     >
@@ -112,7 +115,8 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         flexShrink: 0,
         pointerEvents: 'auto',
-        transform: visible && !exiting ? 'translateX(0)' : 'translateX(120%)',
+        // Slide down from under the toolbar (top-center anchor).
+        transform: visible && !exiting ? 'translateY(0)' : 'translateY(-120%)',
         opacity: visible && !exiting ? 1 : 0,
         transition: 'transform 0.3s ease, opacity 0.3s ease',
         maxWidth: 420,

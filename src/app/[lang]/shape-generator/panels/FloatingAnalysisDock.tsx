@@ -20,8 +20,14 @@ const ToleranceStackupPanel = dynamic(() => import('../analysis/ToleranceStackup
 const SurfaceQualityPanel = dynamic(() => import('../analysis/SurfaceQualityPanel'), { ssr: false });
 const ManufacturingPipelinePanel = dynamic(() => import('../analysis/ManufacturingPipelinePanel'), { ssr: false });
 
+// Clear the right property pane (Shell default rightWidth = 320px) so these
+// floating analysis panels open INTO the viewport rather than covering the
+// inspector's ANALYZE / DFM / FEA rows. `inset` still stacks multiple open
+// panels leftward on top of that base clearance. (2026-06-12 overlap fix)
+const RIGHT_PANE_CLEARANCE = 336;
+
 function floatWrapRight(inset: number): React.CSSProperties {
-  return { position: 'fixed', top: 60, right: 16 + inset, zIndex: 500 };
+  return { position: 'fixed', top: 60, right: RIGHT_PANE_CLEARANCE + inset, zIndex: 500 };
 }
 
 export type FloatingDockPanelId = 'motion' | 'modal' | 'buckling' | 'tol' | 'surf' | 'mfgpipe';

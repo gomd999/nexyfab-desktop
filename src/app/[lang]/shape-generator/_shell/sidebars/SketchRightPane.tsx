@@ -197,11 +197,16 @@ export function SketchRightPane({ lang }: SketchRightPaneProps) {
         </PropRow>
       </PropSection>
 
-      <PropSection title={d.sketchToolsLive}>
+      {/* Advanced pro tools — collapsed by default so the property inspector
+          stays focused on the live selection. Descriptions are suppressed to
+          keep the rail compact; users expand on demand (full launcher is also
+          on ⌘K). (2026-06-12 declutter) */}
+      <PropSection title={d.sketchToolsLive} defaultExpanded={false}>
         <FeatureCatalogPanel
           route="sketch"
           license="pro"
           dict={sketchCatalogDict(d)}
+          showDescriptions={false}
           onRun={(featureId, entryFn) => {
 
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);

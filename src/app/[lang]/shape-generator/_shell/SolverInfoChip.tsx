@@ -17,7 +17,13 @@ interface SolverInfoChipProps {
 
 export function SolverInfoChip({ lang }: SolverInfoChipProps) {
   const d = pickShellDict(lang);
-  const [collapsed, setCollapsed] = useState(false);
+  // Collapsed by default: the full solver readout (entities/constraints/DOF/
+  // redundant/solve-time) already lives in the right-pane SOLVER section and
+  // the left-pane footer pill. This floating chip is the glanceable third copy
+  // — keep it to a single "DOF n · OK" pill so it stops occluding the
+  // bottom-left of the viewport. Click to expand for the full breakdown.
+  // (2026-06-12 declutter)
+  const [collapsed, setCollapsed] = useState(true);
   const editMode = useShellBridge(s => s.editMode);
   const status = useShellBridge(s => s.sketchStatus);
   const redundantCount = useShellBridge(s => s.sketchRedundantCount);

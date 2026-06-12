@@ -13,6 +13,11 @@ import React, { useState } from 'react';
 import TopoPanel from '../topology/TopoPanel';
 import type { UseTopologicalMapReturn } from '../topology/useTopologicalMap';
 
+// Clear the right property pane (Shell default rightWidth = 320px) so the
+// floating map opens INTO the viewport instead of covering the ANALYZE /
+// DFM / FEA inspector rows. 320 pane + 16 margin. (2026-06-12 overlap fix)
+const RIGHT_PANE_CLEARANCE = 336;
+
 interface TopoMapPanelProps {
   topoMap: UseTopologicalMapReturn;
   lang?: string;
@@ -29,9 +34,9 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
 
   return (
     <>
-      {/* Toggle button — sits in bottom-right chrome zone */}
+      {/* Toggle button — bottom chrome zone, offset left of the right pane */}
       <div style={{
-        position: 'fixed', bottom: 50, right: 16, zIndex: 510,
+        position: 'fixed', bottom: 50, right: RIGHT_PANE_CLEARANCE, zIndex: 510,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4,
       }}>
         <button
@@ -78,7 +83,7 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
         <div style={{
           position: 'fixed',
           bottom: 90,
-          right: 16,
+          right: RIGHT_PANE_CLEARANCE,
           width: 320,
           zIndex: 510,
           borderRadius: 12,

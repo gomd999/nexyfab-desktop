@@ -40,7 +40,10 @@ export function GuestExpiryBanner({ lang }: GuestExpiryBannerProps) {
       aria-atomic="true"
       style={{
         position: 'fixed',
-        bottom: 16,
+        // Raised to the top of the bottom-right stack (AI FAB at ~24, toasts at
+        // ~88) so this one-shot sign-in nudge no longer overlaps either.
+        // (2026-06-12 corner declutter)
+        bottom: 152,
         right: 16,
         zIndex: 7500,
         background: 'rgba(15, 23, 42, 0.92)',

@@ -10,6 +10,7 @@ import type { TransformControls as TransformControlsThree } from 'three/examples
 import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShapeResult } from './shapes';
+import { GL_COLOR } from './lib/glColors';
 import type { EditMode } from './editing/types';
 import { useEditableGeometry } from './editing/useEditableGeometry';
 import { useFaceEditing } from './editing/useFaceEditing';
@@ -800,7 +801,7 @@ function EditScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color={GL_COLOR.accent2} />
 
       {editMode === 'vertex' && (
         <VertexHandles
@@ -955,7 +956,7 @@ function FaceScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color={GL_COLOR.accent2} />
       <FaceHandles
         geometry={editGeometry}
         faces={faces}
@@ -1043,7 +1044,7 @@ function FaceScene({
           <div style={{
             position: 'fixed', top: 84, right: 16, zIndex: 50,
             padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-accent)',
+            background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-accent)',
             color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
             fontFamily: 'system-ui, sans-serif',
             display: 'flex', alignItems: 'center', gap: 10,
@@ -1143,7 +1144,7 @@ function TransformScene({
 
   return (
     <group>
-      <ShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" />
+      <ShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} />
       <mesh ref={meshRef} geometry={result.geometry} visible={false} />
       <TransformControls
         ref={transformRef}
@@ -2149,8 +2150,12 @@ export default function ShapePreview({
           )}
         </div>
 
-        {/* Fusion 360-style Top Right ViewCube */}
-        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Fusion 360-style Top Right ViewCube.
+            In sketch mode the centered "Sketch Plane" selector also sits at
+            top:16 — on the narrow preview panel they collide, so drop the
+            ViewCube to a second row when the plane selector is visible.
+            (2026-06-12 overlap fix) */}
+        <div style={{ position: 'absolute', top: (onSketchPlaneChange && sketchPlane) ? 60 : 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'var(--nx-glass-strong)', padding: 4, borderRadius: 8, border: '1px solid var(--nx-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
             {([
               { label: t.top, key: '7', view: 'top' },
@@ -2772,11 +2777,11 @@ export default function ShapePreview({
                 </Suspense>
               ) : (
                 <>
-                  <hemisphereLight args={['var(--nx-text)', 'var(--nx-panel-2)', 0.8]} />
+                  <hemisphereLight args={['#ffffff', '#444444', 0.8]} />
                   <ambientLight intensity={0.4} />
                   <directionalLight position={[20, 30, 15]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} />
                   <directionalLight position={[-15, 10, -10]} intensity={0.6} color="#eef2ff" />
-                  <pointLight position={[0, 50, 0]} intensity={0.3} color="var(--nx-text)" />
+                  <pointLight position={[0, 50, 0]} intensity={0.3} color="#ffffff" />
                 </>
               )}
               <Suspense fallback={null}>
@@ -2883,7 +2888,7 @@ export default function ShapePreview({
                       return (
                         <mesh key={`interference_${i}`} position={[center.x, center.y, center.z]}>
                           <boxGeometry args={[size.x, size.y, size.z]} />
-                          <meshStandardMaterial color="var(--nx-error)" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
+                          <meshStandardMaterial color={GL_COLOR.error} transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
                         </mesh>
                       );
                     })}
@@ -2965,7 +2970,7 @@ export default function ShapePreview({
                   <TurntableGroup active={effectiveAnimateMode === 'turntable'}>
                   <MotionMeshWrapper transforms={effectiveMotionTransforms}>
                   <>
-                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && selectionActive && onElementSelect && <SelectionMeshR3F geometry={result.geometry} onSelect={onElementSelect} />}
                     {result && highlightTriangles && highlightTriangles.length > 0 && <FaceHighlightMesh sourceGeometry={result.geometry} triangleIndices={highlightTriangles} />}
                     {ghostResult && (
@@ -2981,7 +2986,7 @@ export default function ShapePreview({
                         buildDirection={printBuildDirection as [number, number, number]}
                       />
                     )}
-                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showFEA && feaResult && (
                       <FEAOverlay
                         geometry={result.geometry}
@@ -2990,7 +2995,7 @@ export default function ShapePreview({
                         deformationScale={feaDeformationScale}
                       />
                     )}
-                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* FEA boundary-condition markers — visible during setup */}
                     {result && showFEA && feaConditions && feaConditions.length > 0 && (
                       <FEAConditionMarkers
@@ -3007,7 +3012,7 @@ export default function ShapePreview({
                         highlightedIssue={dfmHighlightedIssue}
                       />
                     )}
-                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showDraftAnalysis && draftResult && (
                       <DraftAnalysisOverlay
                         geometry={result.geometry}
@@ -3016,11 +3021,11 @@ export default function ShapePreview({
                         pullDirection={draftResult.options?.pullDirection}
                       />
                     )}
-                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* Instance Array overlay */}
                     {result && showArray && arrayPattern && (() => {
                       const matrices = buildInstanceMatrices(arrayPattern);
-                      const mat = new THREE.MeshStandardMaterial({ color: 'var(--nx-accent-2)', roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
+                      const mat = new THREE.MeshStandardMaterial({ color: GL_COLOR.accent2, roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
                       return <InstanceArray geometry={result.geometry} material={mat} matrices={matrices} visible={true} />;
                     })()}
                     <OrbitControls makeDefault enableDamping dampingFactor={0.07} minDistance={1} maxDistance={5000} onStart={handleOrbitStart} onEnd={handleOrbitEnd} mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN }} touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }} />
@@ -3169,7 +3174,7 @@ export default function ShapePreview({
           {hasContent && totalTriCount > 0 && (
             <div style={{
               position: 'absolute', bottom: 6, right: 8,
-              background: 'rgba(13,17,23,0.75)', borderRadius: '4px',
+              background: 'var(--nx-glass-strong)', borderRadius: '4px',
               padding: '2px 7px', fontSize: '10px', fontWeight: 600,
               color: isOrbiting ? 'var(--nx-warn)' : 'var(--nx-text-3)',
               pointerEvents: 'none', userSelect: 'none',
