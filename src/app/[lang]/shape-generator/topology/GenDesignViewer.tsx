@@ -5,6 +5,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Face, OptProgress } from './optimizer/types';
+import { GL_COLOR } from '../lib/glColors';
 
 interface GenDesignViewerProps {
   dimX: number;
@@ -65,8 +66,8 @@ function FacePlane({ face, dimX, dimY, dimZ, isFixed, isLoad, selectionMode, onC
 
   let color = '#888888';
   let opacity = 0.3;
-  if (isFixed) { color = 'var(--nx-error)'; opacity = 0.6; }
-  if (isLoad) { color = 'var(--nx-accent)'; opacity = 0.6; }
+  if (isFixed) { color = GL_COLOR.error; opacity = 0.6; }
+  if (isLoad) { color = GL_COLOR.accent; opacity = 0.6; }
   if (hovered && selectionMode !== 'none') {
     opacity = Math.min(opacity + 0.25, 0.85);
   }
@@ -152,7 +153,7 @@ function PulsingBox({ dimX, dimY, dimZ }: { dimX: number; dimY: number; dimZ: nu
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[dimX, dimY, dimZ]} />
-      <meshStandardMaterial color="var(--nx-accent-2)" transparent opacity={0.15} depthWrite={false} />
+      <meshStandardMaterial color={GL_COLOR.accent2} transparent opacity={0.15} depthWrite={false} />
     </mesh>
   );
 }
@@ -412,7 +413,7 @@ export default function GenDesignViewer({
           position={[0, -dimY / 2 - 0.5, 0]}
           cellSize={Math.max(dimX, dimZ) / 8}
           cellThickness={0.5}
-          cellColor="var(--nx-border-strong)"
+          cellColor={GL_COLOR.cell}
           sectionSize={Math.max(dimX, dimZ) / 2}
           sectionThickness={1}
           sectionColor="#334155"
@@ -464,7 +465,7 @@ export default function GenDesignViewer({
               <ResultMeshComponent geometry={resultMesh} materialColor="#b0b8c8" />
             ) : (
               <mesh geometry={resultMesh}>
-                <meshBasicMaterial color="var(--nx-accent-2)" wireframe />
+                <meshBasicMaterial color={GL_COLOR.accent2} wireframe />
               </mesh>
             )}
             <BoxWireframe dimX={dimX} dimY={dimY} dimZ={dimZ} opacity={0.15} />

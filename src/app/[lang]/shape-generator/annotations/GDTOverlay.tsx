@@ -5,13 +5,14 @@ import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { GDTAnnotation, DimensionAnnotation } from './GDTTypes';
 import { GDT_SYMBOLS } from './GDTTypes';
+import { GL_COLOR } from '../lib/glColors';
 
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
 
 const frameStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  background: 'rgba(0,0,0,0.85)',
+  background: 'var(--nx-glass-strong)',
   backdropFilter: 'blur(4px)',
   border: '1.5px solid var(--nx-accent-2)',
   borderRadius: 3,
@@ -38,7 +39,7 @@ const lastCellStyle: React.CSSProperties = {
 };
 
 const dimLabelStyle: React.CSSProperties = {
-  background: 'rgba(0,0,0,0.8)',
+  background: 'var(--nx-glass-strong)',
   backdropFilter: 'blur(4px)',
   color: '#fbbf24',
   fontSize: 11,
@@ -66,7 +67,7 @@ function GDTFrame({ annotation }: { annotation: GDTAnnotation }) {
       {/* Leader line from surface anchor to label */}
       <Line
         points={[pos, labelOffset]}
-        color="var(--nx-accent-2)"
+        color={GL_COLOR.accent2}
         lineWidth={1.5}
         dashed
         dashSize={1.5}
@@ -75,7 +76,7 @@ function GDTFrame({ annotation }: { annotation: GDTAnnotation }) {
       {/* Small sphere at anchor point */}
       <mesh position={pos}>
         <sphereGeometry args={[0.5, 12, 12]} />
-        <meshBasicMaterial color="var(--nx-accent-2)" depthTest={false} transparent opacity={0.9} />
+        <meshBasicMaterial color={GL_COLOR.accent2} depthTest={false} transparent opacity={0.9} />
       </mesh>
       {/* ISO-style feature control frame */}
       <Html position={labelOffset} center style={{ pointerEvents: 'none' }}>

@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
+import { GL_COLOR } from '../lib/glColors';
 
 interface ARViewerProps {
   geometry: THREE.BufferGeometry;
@@ -22,7 +23,7 @@ interface ARViewerProps {
 
 type ARState = 'idle' | 'checking' | 'unsupported' | 'starting' | 'active' | 'error';
 
-export default function ARViewer({ geometry, color = 'var(--nx-accent-2)', onClose, lang = 'ko' }: ARViewerProps) {
+export default function ARViewer({ geometry, color = GL_COLOR.accent2, onClose, lang = 'ko' }: ARViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [arState, setArState] = useState<ARState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -70,8 +71,8 @@ export default function ARViewer({ geometry, color = 'var(--nx-accent-2)', onClo
       const scene = new THREE.Scene();
       sceneRef.current = scene;
 
-      scene.add(new THREE.HemisphereLight('var(--nx-text)', '#444444', 1.2));
-      const dirLight = new THREE.DirectionalLight('var(--nx-text)', 0.8);
+      scene.add(new THREE.HemisphereLight('#ffffff', '#444444', 1.2));
+      const dirLight = new THREE.DirectionalLight('#ffffff', 0.8);
       dirLight.position.set(0, 8, 4);
       scene.add(dirLight);
 
@@ -106,7 +107,7 @@ export default function ARViewer({ geometry, color = 'var(--nx-accent-2)', onClo
       const reticleGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
       const reticle = new THREE.Mesh(
         reticleGeo,
-        new THREE.MeshBasicMaterial({ color: 'var(--nx-ok)' }),
+        new THREE.MeshBasicMaterial({ color: GL_COLOR.ok }),
       );
       reticle.matrixAutoUpdate = false;
       reticle.visible = false;

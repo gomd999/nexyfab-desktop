@@ -5,17 +5,20 @@ import { useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { UniqueVertex, UniqueEdge } from './types';
 import { snapToGrid } from './snap';
+import { GL_COLOR } from '../lib/glColors';
 
 const MAX_EDGES = 500;
 const HANDLE_SIZE = 2;
 
-const COLOR_DEFAULT_EDGE    = new THREE.Color('var(--nx-text-2)');
+// Hex (not CSS vars): THREE.Color can't parse var(--…) and falls back to white,
+// which made the edit handles invisible on the light viewport. (2026-06-12)
+const COLOR_DEFAULT_EDGE    = new THREE.Color(GL_COLOR.neutral);
 const COLOR_HOVERED_EDGE    = new THREE.Color('#22d3ee');
-const COLOR_SELECTED_EDGE   = new THREE.Color('var(--nx-warn)');
-const COLOR_DEFAULT_HANDLE  = new THREE.Color('var(--nx-text-2)');
+const COLOR_SELECTED_EDGE   = new THREE.Color(GL_COLOR.warn);
+const COLOR_DEFAULT_HANDLE  = new THREE.Color(GL_COLOR.neutral);
 const COLOR_HOVERED_HANDLE  = new THREE.Color('#22d3ee');
-const COLOR_DRAGGING_HANDLE = new THREE.Color('var(--nx-ok)');
-const COLOR_SELECTED_HANDLE = new THREE.Color('var(--nx-warn)');
+const COLOR_DRAGGING_HANDLE = new THREE.Color(GL_COLOR.ok);
+const COLOR_SELECTED_HANDLE = new THREE.Color(GL_COLOR.warn);
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();

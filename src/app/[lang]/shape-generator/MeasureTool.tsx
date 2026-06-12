@@ -22,6 +22,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { create } from 'zustand';
 import { formatWithUnit, type UnitSystem } from './units';
+import { GL_COLOR } from './lib/glColors';
 
 // ─── i18n dictionary ─────────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ function DimensionLine({ p1, p2, label, color = '#fbbf24' }: {
       {/* 라벨 */}
       <Html position={mid} center style={{ pointerEvents: 'none' }}>
         <div style={{
-          background: 'rgba(0,0,0,0.85)',
+          background: 'var(--nx-glass-strong)',
           color,
           fontSize: 11,
           fontWeight: 700,
@@ -484,7 +485,9 @@ export default function MeasureTool({
     return msgs[wip.length] ?? '';
   }, [active, mode, wip, t]);
 
-  const POINT_COLORS = ['var(--nx-error)', 'var(--nx-accent)', 'var(--nx-ok)'];
+  // Hex (not CSS vars): these feed WebGL meshBasicMaterial below — var(--…)
+  // can't be parsed by THREE.Color and renders white. (2026-06-12)
+  const POINT_COLORS = [GL_COLOR.error, GL_COLOR.accent, GL_COLOR.ok];
 
   if (!active && entries.length === 0) return null;
 
@@ -518,7 +521,7 @@ export default function MeasureTool({
           {wipLabelPos && wipLabel && (
             <Html position={wipLabelPos} center style={{ pointerEvents: 'none' }}>
               <div style={{
-                background: 'rgba(0,0,0,0.82)',
+                background: 'var(--nx-glass-strong)',
                 color: '#fbbf24',
                 fontSize: 11,
                 fontWeight: 700,
@@ -546,8 +549,8 @@ export default function MeasureTool({
         if (entry.mode === 'angle' && pts.length === 3) {
           return (
             <group key={entry.id}>
-              <DimensionLine p1={pts[0]} p2={pts[1]} label="" color="var(--nx-accent-2)" />
-              <DimensionLine p1={pts[1]} p2={pts[2]} label={entry.label} color="var(--nx-accent-2)" />
+              <DimensionLine p1={pts[0]} p2={pts[1]} label="" color={GL_COLOR.accent2} />
+              <DimensionLine p1={pts[1]} p2={pts[2]} label={entry.label} color={GL_COLOR.accent2} />
             </group>
           );
         }
@@ -567,7 +570,7 @@ export default function MeasureTool({
                 style={{ pointerEvents: 'none' }}
               >
                 <div style={{
-                  background: 'rgba(0,0,0,0.82)',
+                  background: 'var(--nx-glass-strong)',
                   color: '#34d399',
                   fontSize: 11,
                   fontWeight: 700,
@@ -598,7 +601,7 @@ export default function MeasureTool({
             pointerEvents: 'none',
           }}>
             <div style={{
-              background: 'rgba(0,0,0,0.8)',
+              background: 'var(--nx-glass-strong)',
               color: 'var(--nx-text)',
               fontSize: 11,
               fontWeight: 600,

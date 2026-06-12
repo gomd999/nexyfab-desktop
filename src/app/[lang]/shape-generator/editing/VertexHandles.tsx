@@ -6,12 +6,15 @@ import * as THREE from 'three';
 import type { UniqueVertex } from './types';
 import { snapVector3 } from './snap';
 import { findBestEdgeSnap, type SnapCandidate } from './smartSnap';
+import { GL_COLOR } from '../lib/glColors';
 
 const MAX_HANDLES = 1000;
 
-const COLOR_DEFAULT = new THREE.Color('var(--nx-text)');
+// Hex (not CSS vars): THREE.Color can't parse var(--…) → white → invisible
+// vertex handles on the light viewport. (2026-06-12)
+const COLOR_DEFAULT = new THREE.Color(GL_COLOR.neutral);
 const COLOR_HOVERED = new THREE.Color('#fbbf24');
-const COLOR_DRAGGING = new THREE.Color('var(--nx-ok)');
+const COLOR_DRAGGING = new THREE.Color(GL_COLOR.ok);
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();

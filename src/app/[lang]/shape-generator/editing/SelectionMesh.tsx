@@ -131,8 +131,12 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
     // exactly like step 3-a.
     type FeatureTopo = {
       featureId: string;
-      sweepFaces: string[];
-      caps: [string, string];
+      // Optional at runtime: a primitive base shape (box/cylinder) stamps only
+      // `boxFaces` and has no sweep/cap arrays. The cap & sweep heuristics
+      // below MUST guard these or face-picking a box throws
+      // "Cannot read properties of undefined (reading '0')". (2026-06-12)
+      sweepFaces?: string[];
+      caps?: [string, string];
       sideSegmentRanges?: { startTri: number; endTri: number; hash: string }[];
       /** Phase 3-f — box base shape's per-face hash keyed by BoxGeometry
        *  materialIndex (0=+x, 1=-x, 2=+y, 3=-y, 4=+z, 5=-z). */
@@ -177,8 +181,8 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
         const ax = Math.abs(n[0]), ay = Math.abs(n[1]), az = Math.abs(n[2]);
         const max = Math.max(ax, ay, az);
         const dominant = max === ax ? n[0] : max === ay ? n[1] : n[2];
-        persistentId = dominant >= 0 ? topo.caps[0] : topo.caps[1];
-      } else if (matIdx === 0 && topo.sweepFaces.length > 0) {
+        persistentId = dominant >= 0 ? topo.caps?.[0] : topo.caps?.[1];
+      } else if (matIdx === 0 && (topo.sweepFaces?.length ?? 0) > 0) {
         // Side wall — phase 3-b uses per-segment triangle ranges when
         // available so an individual swept face resolves to its
         // authoring sketch segment hash. Fallback to the coarse
@@ -188,7 +192,7 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
         const range = topo.sideSegmentRanges?.find(
           r => triIdx >= r.startTri && triIdx < r.endTri,
         );
-        persistentId = range?.hash ?? topo.sweepFaces[0];
+        persistentId = range?.hash ?? topo.sweepFaces?.[0];
       } else {
         // Non-ExtrudeGeometry source (booleaned downstream, etc.) —
         // fall back to the normal-dominance heuristic from step B.
@@ -196,9 +200,9 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
         const max = Math.max(ax, ay, az);
         if (max > 0.95) {
           const dominant = max === ax ? n[0] : max === ay ? n[1] : n[2];
-          persistentId = dominant >= 0 ? topo.caps[0] : topo.caps[1];
-        } else if (topo.sweepFaces.length > 0) {
-          persistentId = topo.sweepFaces[0];
+          persistentId = dominant >= 0 ? topo.caps?.[0] : topo.caps?.[1];
+        } else if ((topo.sweepFaces?.length ?? 0) > 0) {
+          persistentId = topo.sweepFaces?.[0];
         }
       }
     }
