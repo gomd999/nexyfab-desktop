@@ -109,14 +109,14 @@ export default function CmmComparePanel({ lang, onClose, onResult }: CmmCompareP
         {onClose && <button onClick={onClose} style={xBtnStyle()}>✕</button>}
       </div>
 
-      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{t.pasteMeas}</div>
+      <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.pasteMeas}</div>
       <textarea value={measText} onChange={e => setMeasText(e.target.value)} rows={4} style={textareaStyle()} />
 
-      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8, marginBottom: 4 }}>{t.pasteCad}</div>
+      <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 8, marginBottom: 4 }}>{t.pasteCad}</div>
       <textarea value={cadText} onChange={e => setCadText(e.target.value)} rows={4} style={textareaStyle()} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-        <span style={{ fontSize: 11, color: '#94a3b8' }}>{t.tol}:</span>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.tol}:</span>
         <input type="number" value={toleranceMm} onChange={e => setToleranceMm(Number(e.target.value))} style={{ ...fieldStyle(), width: 80 }} />
       </div>
 
@@ -144,15 +144,16 @@ export default function CmmComparePanel({ lang, onClose, onResult }: CmmCompareP
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-    <span style={{ color: '#94a3b8' }}>{label}</span>
+    <span style={{ color: 'var(--nx-text-2)' }}>{label}</span>
     <strong>{children}</strong>
   </div>
 );
 
-function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 20, zIndex: 700, width: 360, background: '#0f172a', color: '#f1f5f9', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
+// right: 340 clears the 320px right property pane (2026-06-12)
+function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 340, zIndex: 700, width: 360, background: 'var(--nx-panel)', color: 'var(--nx-text)', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
 function headerStyle(): React.CSSProperties { return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }; }
-function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }; }
-function textareaStyle(): React.CSSProperties { return { width: '100%', background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 6, padding: '6px 8px', fontSize: 10, fontFamily: 'monospace', resize: 'vertical' }; }
-function fieldStyle(): React.CSSProperties { return { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 4, padding: '3px 6px', fontSize: 11 }; }
+function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 16 }; }
+function textareaStyle(): React.CSSProperties { return { width: '100%', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 6, padding: '6px 8px', fontSize: 10, fontFamily: 'monospace', resize: 'vertical' }; }
+function fieldStyle(): React.CSSProperties { return { background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11 }; }
 function primaryBtn(): React.CSSProperties { return { width: '100%', marginTop: 8, background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }; }
 function legendSwatch(c: string): React.CSSProperties { return { display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: c, marginRight: 4, fontSize: 10 }; }

@@ -125,7 +125,7 @@ export default function MechanismPicker({
           <SliderRow label={t.lift} value={camParams.liftMm} min={1} max={50} step={1}
             onChange={v => setCamParams({ ...camParams, liftMm: v })} />
           <div style={{ marginTop: 6 }}>
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>{t.camType}: </span>
+            <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.camType}: </span>
             <select value={camParams.type} onChange={e => setCamParams({ ...camParams, type: e.target.value as CamParams['type'] })} style={fieldStyle()}>
               <option value="eccentric">eccentric</option>
               <option value="harmonic">harmonic</option>
@@ -135,7 +135,7 @@ export default function MechanismPicker({
         </>
       )}
       {(kind === 'four-bar' || kind === 'slider-crank') && (
-        <p style={{ fontSize: 11, color: '#94a3b8' }}>UI for {kind} parameters coming in next iteration.</p>
+        <p style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>UI for {kind} parameters coming in next iteration.</p>
       )}
 
       <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
@@ -149,8 +149,8 @@ export default function MechanismPicker({
 const SliderRow: React.FC<{ label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }> = ({ label, value, min, max, step, onChange }) => (
   <div style={{ marginBottom: 8 }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-      <span style={{ color: '#94a3b8' }}>{label}</span>
-      <span style={{ color: '#f1f5f9' }}>{value}</span>
+      <span style={{ color: 'var(--nx-text-2)' }}>{label}</span>
+      <span style={{ color: 'var(--nx-text)' }}>{value}</span>
     </div>
     <input type="range" min={min} max={max} step={step} value={value}
       onChange={e => onChange(Number(e.target.value))}
@@ -158,10 +158,11 @@ const SliderRow: React.FC<{ label: string; value: number; min: number; max: numb
   </div>
 );
 
-function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 20, zIndex: 700, width: 300, background: '#0f172a', color: '#f1f5f9', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
+// right: 336 clears the 320px right property pane (2026-06-12)
+function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 340, zIndex: 700, width: 300, background: 'var(--nx-panel)', color: 'var(--nx-text)', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
 function headerStyle(): React.CSSProperties { return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }; }
-function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }; }
-function fieldStyle(): React.CSSProperties { return { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 4, padding: '3px 6px', fontSize: 11 }; }
-function cardStyle(): React.CSSProperties { return { background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '14px 8px', cursor: 'pointer', color: '#f1f5f9', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }; }
+function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 16 }; }
+function fieldStyle(): React.CSSProperties { return { background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11 }; }
+function cardStyle(): React.CSSProperties { return { background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 8, padding: '14px 8px', cursor: 'pointer', color: 'var(--nx-text)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }; }
 function primaryBtn(): React.CSSProperties { return { flex: 1, background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }; }
-function secondaryBtn(): React.CSSProperties { return { flex: 1, background: 'transparent', color: '#94a3b8', border: '1px solid #334155', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }; }
+function secondaryBtn(): React.CSSProperties { return { flex: 1, background: 'transparent', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }; }

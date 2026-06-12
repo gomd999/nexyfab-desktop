@@ -335,7 +335,8 @@ export default function MaterialPropertiesPanel({
   };
 
   const panelStyle: React.CSSProperties = {
-    position: 'fixed', top: 60, right: 20, zIndex: 500, width: 260,
+    // right: 336 clears the 320px right property pane (2026-06-12)
+    position: 'fixed', top: 60, right: 340, zIndex: 500, width: 260,
     maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
     backgroundColor: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 12,
     color: 'var(--nx-text)', fontFamily: 'sans-serif', fontSize: 13,

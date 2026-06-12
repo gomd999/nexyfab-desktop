@@ -110,7 +110,7 @@ export default function SustainabilityReport({
         </select>
       </Row>
 
-      <div style={{ marginTop: 14, padding: '10px 12px', background: '#1e293b', borderRadius: 6, fontSize: 11, lineHeight: 1.7 }}>
+      <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--nx-panel-2)', borderRadius: 6, fontSize: 11, lineHeight: 1.7 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>{t.materialEmissions}:</span>
           <strong>{result.material.kgCO2e.toFixed(2)} kgCO₂e</strong>
@@ -123,21 +123,21 @@ export default function SustainabilityReport({
           <span>{t.transportEmissions}:</span>
           <strong>{result.transport.kgCO2e.toFixed(2)} kgCO₂e</strong>
         </div>
-        <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '6px 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid var(--nx-border)', margin: '6px 0' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
           <span><strong>{t.total}:</strong></span>
           <strong style={{ color: '#22c55e' }}>{result.total.toFixed(2)} kgCO₂e</strong>
         </div>
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8' }}>
+      <div style={{ marginTop: 8, fontSize: 11, color: 'var(--nx-text-2)' }}>
         <strong>{t.equivalent}:</strong>
         <div>{t.carKm}: {carEquivalentKm(result.total).toFixed(1)} km</div>
         <div>{t.treesYear}: {treesYearEquivalent(result.total).toFixed(2)}</div>
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{t.compare}:</div>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.compare}:</div>
         <select value={comparison ?? ''}
           onChange={e => setComparison((e.target.value || null) as typeof MATERIALS[number] | null)}
           style={fieldStyle()}>
@@ -156,12 +156,13 @@ export default function SustainabilityReport({
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-    <span style={{ width: 90, fontSize: 11, color: '#94a3b8' }}>{label}</span>
+    <span style={{ width: 90, fontSize: 11, color: 'var(--nx-text-2)' }}>{label}</span>
     <span style={{ flex: 1 }}>{children}</span>
   </div>
 );
 
-function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 20, zIndex: 700, width: 340, background: '#0f172a', color: '#f1f5f9', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
+// right: 340 clears the 320px right property pane (2026-06-12)
+function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 340, zIndex: 700, width: 340, background: 'var(--nx-panel)', color: 'var(--nx-text)', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
 function headerStyle(): React.CSSProperties { return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }; }
-function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }; }
-function fieldStyle(): React.CSSProperties { return { width: '100%', background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 4, padding: '4px 6px', fontSize: 11 }; }
+function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 16 }; }
+function fieldStyle(): React.CSSProperties { return { width: '100%', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 6px', fontSize: 11 }; }

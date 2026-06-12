@@ -112,7 +112,8 @@ export default function SmartFastenerPanel({
 
   return (
     <div style={{
-      position: 'fixed', right: 16, top: 64, width: 'min(540px, calc(100vw - 32px))',
+      // right: 336 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', right: 336, top: 64, width: 'min(540px, calc(100vw - 32px))',
       maxHeight: '80vh', background: C.bg, border: `1px solid ${C.border}`,
       borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 200,
       display: 'flex', flexDirection: 'column',

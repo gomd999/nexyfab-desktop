@@ -77,9 +77,10 @@ export default function TolerancePanel({
   return (
     <div
       style={{
-        position: 'fixed', top: 80, right: 20,
+        // right: 336 clears the 320px right property pane (2026-06-12)
+        position: 'fixed', top: 80, right: 340,
         zIndex: 700, width: 420,
-        background: '#0f172a', color: '#f1f5f9',
+        background: 'var(--nx-panel)', color: 'var(--nx-text)',
         borderRadius: 10, padding: '14px 16px',
         boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
         fontFamily: 'system-ui, sans-serif',
@@ -88,7 +89,7 @@ export default function TolerancePanel({
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{t.title}</h3>
         {onClose && (
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer' }}>✕</button>
         )}
       </div>
 
@@ -128,7 +129,7 @@ export default function TolerancePanel({
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        <button onClick={addLink} style={btnStyle('#1e293b', '#94a3b8')}>{t.addLink}</button>
+        <button onClick={addLink} style={btnStyle('var(--nx-panel-2)', 'var(--nx-text-2)')}>{t.addLink}</button>
         <button onClick={run} style={btnStyle('#3b82f6', 'white')}>{t.runAnalysis}</button>
       </div>
 
@@ -145,8 +146,8 @@ export default function TolerancePanel({
 
 function inputStyle(): React.CSSProperties {
   return {
-    background: '#1e293b', color: '#f1f5f9',
-    border: '1px solid #334155', borderRadius: 4,
+    background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
+    border: '1px solid var(--nx-border)', borderRadius: 4,
     padding: '4px 6px', fontSize: 11, width: '100%',
   };
 }
