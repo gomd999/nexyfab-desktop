@@ -3,10 +3,25 @@
 // Drawing mode right pane — VIEW PROPERTIES / DIMENSIONS / GD&T / TITLE BLOCK
 // sections matching mockup #32 right side. Plot PDF / Export DWG CTA at bottom.
 
+import type { ReactNode } from 'react';
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck, PropItemRow } from './';
 import { I } from '../Icons';
 import { ToleranceStackSection } from './ToleranceStackSection';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+// Wraps a control whose handler isn't wired yet so it reads as unavailable
+// instead of pretending to work (dimmed + non-interactive + tooltip).
+// (2026-06-12 honesty: disable dead controls rather than show fake-working ones)
+function Soon({ children, isKo }: { children: ReactNode; isKo: boolean }) {
+  return (
+    <span
+      title={isKo ? '준비 중 — 아직 적용되지 않습니다' : 'Coming soon — not yet wired'}
+      style={{ display: 'block', opacity: 0.4, pointerEvents: 'none' }}
+    >
+      {children}
+    </span>
+  );
+}
 
 const CATALOG_DICT_KO: CatalogPanelDict = {
   catalogTitle: 'GD&T 평가기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
@@ -35,40 +50,40 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
           <span style={{ fontSize: 11, color: 'var(--nx-accent)' }}>Bracket_v14</span>
         </PropRow>
         <PropRow label={isKo ? '투영' : 'Projection'}>
-          <PropSelect
+          <Soon isKo={isKo}><PropSelect
             value="first"
-            onChange={() => { /* TODO wire */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: 'first', label: isKo ? '1각법 (ISO)' : 'First angle (ISO)' },
               { value: 'third', label: isKo ? '3각법 (ANSI)' : 'Third angle (ANSI)' },
             ]}
-          />
+          /></Soon>
         </PropRow>
         <PropRow label={isKo ? '축척' : 'Scale'}>
-          <PropSelect
+          <Soon isKo={isKo}><PropSelect
             value="1:1"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: '1:1', label: '1 : 1' },
               { value: '1:2', label: '1 : 2' },
               { value: '2:1', label: '2 : 1' },
               { value: '5:1', label: '5 : 1' },
             ]}
-          />
+          /></Soon>
         </PropRow>
         <PropRow label={isKo ? '스타일' : 'Style'}>
-          <PropSelect
+          <Soon isKo={isKo}><PropSelect
             value="hidden-visible"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: 'hidden-visible', label: isKo ? '숨김선 표시' : 'Hidden lines visible' },
               { value: 'hidden-removed', label: isKo ? '숨김선 제거' : 'Hidden lines removed' },
               { value: 'shaded', label: isKo ? '쉐이드' : 'Shaded' },
             ]}
-          />
+          /></Soon>
         </PropRow>
         <PropRow label={isKo ? '접선 엣지' : 'Tangent edges'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '팬텀' : 'Phantom'} />
+          <Soon isKo={isKo}><PropCheck checked onChange={() => { /* not wired */ }} label={isKo ? '팬텀' : 'Phantom'} /></Soon>
         </PropRow>
       </PropSection>
 

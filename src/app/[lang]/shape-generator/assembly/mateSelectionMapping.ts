@@ -117,7 +117,8 @@ function faceTriangleIndices(geometry: THREE.BufferGeometry, faceIndex: number):
 
 /** Face centroid in geometry local space (matches `AssemblyMates` triangle indexing). */
 export function faceCentroidLocal(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3 {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Vector3(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const [i0, i1, i2] = faceTriangleIndices(geometry, faceIndex);
   const a = new THREE.Vector3().fromBufferAttribute(posAttr, i0);
   const b = new THREE.Vector3().fromBufferAttribute(posAttr, i1);
@@ -127,7 +128,8 @@ export function faceCentroidLocal(geometry: THREE.BufferGeometry, faceIndex: num
 
 /** Outward-ish face normal in geometry local space (unnormalized cross). */
 export function faceNormalLocal(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3 {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Vector3(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const [i0, i1, i2] = faceTriangleIndices(geometry, faceIndex);
   const a = new THREE.Vector3().fromBufferAttribute(posAttr, i0);
   const b = new THREE.Vector3().fromBufferAttribute(posAttr, i1);

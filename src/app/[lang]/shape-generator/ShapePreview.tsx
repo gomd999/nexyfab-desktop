@@ -1723,6 +1723,15 @@ export default function ShapePreview({
     return () => window.removeEventListener('nexyfab:display-mode', onMode);
   }, []);
   const [fitKey, setFitKey] = useState(0);
+  // Wire the keyboard "fit camera" shortcut: useKeyboardShortcuts dispatches
+  // window 'nexyfab:fit-camera' but nothing listened, so the binding silently
+  // did nothing. Trigger the same fit the toolbar Fit button uses.
+  // (2026-06-12 dead-wiring fix)
+  useEffect(() => {
+    const onFit = () => { onGeometryFitRequest?.(); setFitKey(k => k + 1); };
+    window.addEventListener('nexyfab:fit-camera', onFit);
+    return () => window.removeEventListener('nexyfab:fit-camera', onFit);
+  }, [onGeometryFitRequest]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [internalAnimateMode, setInternalAnimateMode] = useState<'none' | 'turntable'>('none');
   const effectiveAnimateMode = animateMode !== 'none' ? animateMode : internalAnimateMode;

@@ -4,10 +4,25 @@
 // PBR PHYSICAL / ENVIRONMENT / CAMERA / OUTPUT four sections + Final CTA
 // matching mockup #33.
 
+import type { ReactNode } from 'react';
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck } from './';
 import { I } from '../Icons';
 import { CustomMaterialUpload } from './CustomMaterialUpload';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+
+// Wraps a control whose handler isn't wired yet so it reads as unavailable
+// instead of pretending to work (dimmed + non-interactive + tooltip).
+// (2026-06-12 honesty: disable dead controls rather than show fake-working ones)
+function Soon({ children, isKo }: { children: ReactNode; isKo: boolean }) {
+  return (
+    <span
+      title={isKo ? '준비 중 — 아직 적용되지 않습니다' : 'Coming soon — not yet wired'}
+      style={{ display: 'block', opacity: 0.4, pointerEvents: 'none' }}
+    >
+      {children}
+    </span>
+  );
+}
 
 const RENDER_CATALOG_DICT_KO: CatalogPanelDict = {
   catalogTitle: '렌더/애니메이션 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
@@ -99,10 +114,10 @@ export function RenderRightPane({
             ]}
           />
         </PropRow>
-        <Slider label={isKo ? '회전' : 'Rotation'} value={0} min={0} max={360} step={1} onChange={() => { /* TODO */ }} />
+        <Soon isKo={isKo}><Slider label={isKo ? '회전' : 'Rotation'} value={0} min={0} max={360} step={1} onChange={() => { /* not wired */ }} /></Soon>
         <Slider label={isKo ? '노출' : 'Exposure'} value={exposure} min={0.1} max={3} step={0.05} onChange={setExposure} />
         <PropRow label={isKo ? '바닥 그림자' : 'Ground shadow'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '받기' : 'Catch'} />
+          <Soon isKo={isKo}><PropCheck checked onChange={() => { /* not wired */ }} label={isKo ? '받기' : 'Catch'} /></Soon>
         </PropRow>
       </PropSection>
 
@@ -121,47 +136,47 @@ export function RenderRightPane({
             }}
           />
         </PropRow>
-        <Slider label={isKo ? '조리개' : 'Aperture'} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* TODO */ }} />
-        <Slider label={isKo ? '초점거리' : 'Focus dist.'} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* TODO */ }} />
+        <Soon isKo={isKo}><Slider label={isKo ? '조리개' : 'Aperture'} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
+        <Soon isKo={isKo}><Slider label={isKo ? '초점거리' : 'Focus dist.'} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
         <PropRow label={isKo ? '구도' : 'Composition'}>
-          <PropSelect
+          <Soon isKo={isKo}><PropSelect
             value="hero"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: 'hero', label: isKo ? '히어로 · 3/4 iso' : 'Hero · 3/4 iso' },
               { value: 'front', label: isKo ? '정면' : 'Front' },
               { value: 'top', label: isKo ? '상부' : 'Top-down' },
             ]}
-          />
+          /></Soon>
         </PropRow>
       </PropSection>
 
       <PropSection title={isKo ? '출력' : 'Output'}>
         <PropRow label={isKo ? '해상도' : 'Resolution'}>
-          <PropSelect
+          <Soon isKo={isKo}><PropSelect
             value="4k"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: '4k', label: '3840 × 2160 · 4K' },
               { value: '2k', label: '2560 × 1440 · 2K' },
               { value: '1080', label: '1920 × 1080 · FHD' },
             ]}
-          />
+          /></Soon>
         </PropRow>
         <PropRow label={isKo ? '샘플' : 'Samples'}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>256 spp</span>
         </PropRow>
         <PropRow label={isKo ? '포맷' : 'Format'}>
-          <PropSelect
+          <Soon isKo={isKo}><PropSelect
             value="png16"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: 'png16', label: 'PNG · 16-bit' },
               { value: 'png8', label: 'PNG · 8-bit' },
               { value: 'jpg', label: 'JPG · 90%' },
               { value: 'exr', label: 'OpenEXR · 32-bit float' },
             ]}
-          />
+          /></Soon>
         </PropRow>
       </PropSection>
 

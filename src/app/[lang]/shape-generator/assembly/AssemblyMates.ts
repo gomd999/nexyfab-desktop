@@ -58,7 +58,8 @@ export interface AssemblyPart {
 
 /** Estimate face normal from geometry at a given face (triangle) index */
 function getFaceNormal(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3 {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Vector3(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const index = geometry.index;
 
   let i0: number, i1: number, i2: number;
@@ -83,7 +84,8 @@ function getFaceNormal(geometry: THREE.BufferGeometry, faceIndex: number): THREE
 
 /** Get the centroid of a face */
 function getFaceCentroid(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3 {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Vector3(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const index = geometry.index;
 
   let i0: number, i1: number, i2: number;
