@@ -60,14 +60,14 @@ export default function InlineSuggestionOverlay({
           width: 320,
           maxHeight: '60vh',
           overflowY: 'auto',
-          background: '#0f172a',
-          color: '#e5e7eb',
+          background: 'var(--nx-panel)',
+          color: 'var(--nx-text)',
           borderRadius: 10,
           boxShadow: '0 10px 24px rgba(0,0,0,0.35)',
           padding: '8px 0',
         }}
       >
-        <div style={{ padding: '4px 14px 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.04em' }}>
+        <div style={{ padding: '4px 14px 8px', fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600, letterSpacing: '0.04em' }}>
           {ko ? '제안' : 'SUGGESTIONS'} ({suggestions.length})
         </div>
         {suggestions.map(s => (
@@ -75,7 +75,7 @@ export default function InlineSuggestionOverlay({
             key={s.id}
             style={{
               padding: '8px 14px',
-              borderBottom: '1px solid #1e293b',
+              borderBottom: '1px solid var(--nx-panel-2)',
               cursor: s.autoFix ? 'pointer' : 'default',
             }}
             onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
@@ -93,7 +93,7 @@ export default function InlineSuggestionOverlay({
             </div>
             {expandedId === s.id && (
               <>
-                <p style={{ margin: '6px 0 8px', fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+                <p style={{ margin: '6px 0 8px', fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>
                   {s.recommendation}
                 </p>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -115,7 +115,7 @@ export default function InlineSuggestionOverlay({
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onDismiss(s.id); }}
                       style={{
-                        background: 'transparent', color: '#94a3b8', border: 'none',
+                        background: 'transparent', color: 'var(--nx-text-2)', border: 'none',
                         padding: '4px 10px', fontSize: 11, cursor: 'pointer',
                       }}
                     >

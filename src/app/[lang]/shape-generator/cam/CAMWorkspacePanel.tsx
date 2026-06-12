@@ -22,7 +22,8 @@ export default function CAMWorkspacePanel({ onClose }: { onClose?: () => void })
 
   return (
     <div style={{
-      position: 'absolute', top: 60, right: 20, width: 340,
+      // right: 340 clears the 320px right property pane (2026-06-12)
+      position: 'absolute', top: 60, right: 340, width: 340,
       background: 'var(--nx-panel)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
       border: '1px solid #d0d7de', zIndex: 150, display: 'flex', flexDirection: 'column'
     }}>

@@ -110,8 +110,8 @@ export default function DesktopDownloadCard({
   return (
     <div
       style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-        color: '#f1f5f9',
+        background: 'linear-gradient(135deg, var(--nx-panel-2) 0%, var(--nx-panel) 100%)',
+        color: 'var(--nx-text)',
         borderRadius: 12,
         padding: '24px 22px',
         maxWidth: 480,
@@ -121,15 +121,15 @@ export default function DesktopDownloadCard({
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
         <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700 }}>{t.headline}</h3>
-        <span style={{ fontSize: 11, color: '#64748b' }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
           {t.versionLabel} {version} · {t.sizeNote}
         </span>
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8', lineHeight: 1.55 }}>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--nx-text-2)', lineHeight: 1.55 }}>
         {t.sub}
       </p>
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 18px', fontSize: 12.5, lineHeight: 1.7, color: '#cbd5e1' }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 18px', fontSize: 12.5, lineHeight: 1.7, color: 'var(--nx-text-2)' }}>
         <li>{t.bullet1}</li>
         <li>{t.bullet2}</li>
         <li>{t.bullet3}</li>
@@ -157,7 +157,7 @@ export default function DesktopDownloadCard({
           {t.download} · {platformLabel[ko ? 'ko' : 'en']} {PLATFORM_EXT[primaryPlatform]}
         </a>
         <details style={{ position: 'relative', fontSize: 12 }}>
-          <summary style={{ cursor: 'pointer', color: '#94a3b8', listStyle: 'none' }}>
+          <summary style={{ cursor: 'pointer', color: 'var(--nx-text-2)', listStyle: 'none' }}>
             {t.other} ▾
           </summary>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
@@ -168,9 +168,9 @@ export default function DesktopDownloadCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  background: '#1e293b',
-                  border: '1px solid #334155',
-                  color: '#cbd5e1',
+                  background: 'var(--nx-panel-2)',
+                  border: '1px solid var(--nx-border)',
+                  color: 'var(--nx-text-2)',
                   padding: '6px 12px',
                   borderRadius: 6,
                   fontSize: 12,

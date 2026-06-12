@@ -162,13 +162,13 @@ export default function FloatingAiPrompt({
         right: 24,
         zIndex: 850,
         width: 'min(440px, calc(100vw - 48px))',
-        background: '#0f172a',
-        color: '#f1f5f9',
+        background: 'var(--nx-panel)',
+        color: 'var(--nx-text)',
         borderRadius: 12,
         boxShadow: '0 16px 36px rgba(0,0,0,0.4)',
         padding: '12px',
         fontFamily: 'system-ui, sans-serif',
-        border: '1px solid #1e293b',
+        border: '1px solid var(--nx-panel-2)',
       }}
     >
       <div style={{ display: 'flex', gap: 8 }}>
@@ -182,9 +182,9 @@ export default function FloatingAiPrompt({
           disabled={streaming || disabled}
           style={{
             flex: 1,
-            background: '#1e293b',
-            color: '#f1f5f9',
-            border: '1px solid #334155',
+            background: 'var(--nx-panel-2)',
+            color: 'var(--nx-text)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 8,
             padding: '10px 12px',
             fontSize: 13,
@@ -196,7 +196,7 @@ export default function FloatingAiPrompt({
           onClick={handleSubmit}
           disabled={!text.trim() || streaming || disabled}
           style={{
-            background: streaming || !text.trim() ? '#475569' : '#3b82f6',
+            background: streaming || !text.trim() ? 'var(--nx-border)' : '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: 8,
@@ -211,7 +211,7 @@ export default function FloatingAiPrompt({
       </div>
 
       {streaming && (
-        <div style={{ marginTop: 10, padding: '8px 12px', fontSize: 12, color: '#94a3b8' }}>
+        <div style={{ marginTop: 10, padding: '8px 12px', fontSize: 12, color: 'var(--nx-text-2)' }}>
           {t.streaming}
         </div>
       )}
@@ -220,8 +220,8 @@ export default function FloatingAiPrompt({
         <div
           style={{
             marginTop: 10, padding: '10px 12px',
-            background: '#1e293b', borderRadius: 8,
-            fontSize: 13, lineHeight: 1.55, color: '#e2e8f0',
+            background: 'var(--nx-panel-2)', borderRadius: 8,
+            fontSize: 13, lineHeight: 1.55, color: 'var(--nx-text)',
             maxHeight: 220, overflowY: 'auto',
           }}
         >
@@ -235,7 +235,7 @@ export default function FloatingAiPrompt({
             type="button"
             onClick={onOpenFullChat}
             style={{
-              background: 'transparent', border: 'none', color: '#64748b',
+              background: 'transparent', border: 'none', color: 'var(--nx-text-2)',
               fontSize: 11, cursor: 'pointer', textDecoration: 'underline',
             }}
           >
@@ -246,7 +246,7 @@ export default function FloatingAiPrompt({
           type="button"
           onClick={() => setOpen(false)}
           style={{
-            background: 'transparent', border: 'none', color: '#64748b',
+            background: 'transparent', border: 'none', color: 'var(--nx-text-2)',
             fontSize: 11, cursor: 'pointer',
           }}
         >
