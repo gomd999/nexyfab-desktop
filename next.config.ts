@@ -97,11 +97,20 @@ const nextConfig: NextConfig = {
   // Webpack config retained for non-Turbopack builds (e.g. CI, Docker)
   webpack: (config, { isServer }) => {
     config.experiments = { ...config.experiments, asyncWebAssembly: true };
-    if (!isServer) {
+    if (isServer) {
+      // three/examples/jsm is client-only (OrbitControls, TransformControls,
+      // BufferGeometryUtils' mergeVertices/mergeGeometries, …). Stub it on the
+      // SERVER bundle so SSR never pulls browser-only example code.
+      // IMPORTANT: this alias was previously in the `!isServer` branch, which
+      // nulled these in the BROWSER bundle — silently breaking auto-drawing
+      // (mergeVertices), mesh patterns/helix/merge (mergeGeometries), and the
+      // assembly viewer controls. It must stub the server, not the client.
       config.resolve.alias = {
         ...config.resolve.alias,
         'three/examples/jsm': false,
       };
+    }
+    if (!isServer) {
       // WASM packages (replicad-opencascadejs) reference Node.js built-ins
       // that don't exist in the browser. Stub them out so the browser bundle
       // builds cleanly; the WASM module is only executed at runtime via
