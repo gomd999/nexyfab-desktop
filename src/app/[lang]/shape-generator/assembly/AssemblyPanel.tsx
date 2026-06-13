@@ -16,6 +16,7 @@ import {
 } from './mateSelectionMapping';
 import type { BomPartResult } from '../ShapePreview';
 import { useAssemblyState } from './useAssemblyState';
+import { loc } from '../lib/loc';
 import { mateGraphSummary, preflightAssemblyMates } from '@/lib/assemblyMatePreflight';
 import { useUIStore } from '../store/uiStore';
 
@@ -731,7 +732,7 @@ export default function AssemblyPanel({
                 {newMateType === 'gear' && (
                   <div>
                     <label style={{ fontSize: 10, fontWeight: 700, color: C.textDim, display: 'block', marginBottom: 3 }}>
-                      {resolvedLang === 'ko' ? '기어비 (A:B, 음수 = 역회전)' : 'Gear ratio (A:B, negative = reversed)'}
+                      {loc(seg, { ko: '기어비 (A:B, 음수 = 역회전)', en: 'Gear ratio (A:B, negative = reversed)', ja: 'ギア比 (A:B、負 = 逆回転)', zh: '齿轮比 (A:B，负值 = 反转)', es: 'Relación de engranaje (A:B, negativo = invertido)', ar: 'نسبة التروس (A:B، سالب = عكسي)' })}
                     </label>
                     <input
                       type="number"
@@ -762,8 +763,8 @@ export default function AssemblyPanel({
                       <div key={key} style={{ flex: 1 }}>
                         <label style={{ fontSize: 10, fontWeight: 700, color: C.textDim, display: 'block', marginBottom: 3 }}>
                           {key === 'min'
-                            ? (resolvedLang === 'ko' ? '최소' : 'Min')
-                            : (resolvedLang === 'ko' ? '최대' : 'Max')}
+                            ? loc(seg, { ko: '최소', en: 'Min', ja: '最小', zh: '最小', es: 'Mín', ar: 'الحد الأدنى' })
+                            : loc(seg, { ko: '최대', en: 'Max', ja: '最大', zh: '最大', es: 'Máx', ar: 'الحد الأقصى' })}
                           {' '}({newMateType === 'limitDistance' ? 'mm' : 'deg'})
                         </label>
                         <input

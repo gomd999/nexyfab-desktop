@@ -27,18 +27,15 @@ export interface AiChatPanelProps {
   isKo: boolean;
 }
 
-const SUGGESTIONS_KO = [
-  '두께 5mm 알루미늄 브라켓을 만들어줘',
-  '필렛 반경 2mm 적용',
-  '∅6.5 카운터보어 홀 4개를 모서리에 추가',
-  'M5 나사 구멍으로 변경',
-];
-const SUGGESTIONS_EN = [
-  'Make a 5 mm aluminum bracket',
-  'Apply 2 mm fillet to all sharp edges',
-  'Add 4× ∅6.5 counterbore holes in corners',
-  'Change holes to tapped M5',
-];
+// Example prompt chips, keyed by route lang (matches useLang()). (2026-06-13 i18n)
+const SUGGESTIONS: Record<string, string[]> = {
+  ko: ['두께 5mm 알루미늄 브라켓을 만들어줘', '필렛 반경 2mm 적용', '∅6.5 카운터보어 홀 4개를 모서리에 추가', 'M5 나사 구멍으로 변경'],
+  en: ['Make a 5 mm aluminum bracket', 'Apply 2 mm fillet to all sharp edges', 'Add 4× ∅6.5 counterbore holes in corners', 'Change holes to tapped M5'],
+  ja: ['厚さ5mmのアルミブラケットを作って', 'すべての鋭いエッジに2mmのフィレットを適用', '∅6.5のザグり穴を四隅に4つ追加', '穴をM5タップ穴に変更'],
+  cn: ['制作一个5mm厚的铝支架', '对所有尖锐边缘应用2mm圆角', '在四角添加4个∅6.5沉头孔', '将孔改为M5攻丝孔'],
+  es: ['Crea un soporte de aluminio de 5 mm', 'Aplica un redondeo de 2 mm a todas las aristas vivas', 'Añade 4 agujeros avellanados ∅6.5 en las esquinas', 'Cambia los agujeros a roscados M5'],
+  ar: ['أنشئ حاملاً من الألومنيوم بسماكة 5 مم', 'طبّق تدويرًا 2 مم على كل الحواف الحادة', 'أضف 4 ثقوب غاطسة ∅6.5 في الزوايا', 'غيّر الثقوب إلى ملولبة M5'],
+};
 
 export function AiChatPanel({ isKo }: AiChatPanelProps) {
   const lang = useLang();
@@ -207,7 +204,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
     }
   };
 
-  const suggestions = isKo ? SUGGESTIONS_KO : SUGGESTIONS_EN;
+  const suggestions = SUGGESTIONS[lang] ?? SUGGESTIONS.en;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

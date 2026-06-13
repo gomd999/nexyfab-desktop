@@ -16,16 +16,17 @@ export interface CustomMaterialUploadProps {
 
 type Slot = 'albedo' | 'normal' | 'roughness' | 'metalness' | 'ao' | 'displacement';
 
-const SLOT_LABELS: Record<Slot, { ko: string; en: string }> = {
-  albedo: { ko: 'Albedo (Base color)', en: 'Albedo (Base color)' },
-  normal: { ko: 'Normal map', en: 'Normal map' },
-  roughness: { ko: '거칠기 (Roughness)', en: 'Roughness' },
-  metalness: { ko: '금속성 (Metalness)', en: 'Metalness' },
-  ao: { ko: 'AO map', en: 'AO map' },
-  displacement: { ko: 'Displacement', en: 'Displacement' },
+const SLOT_LABELS: Record<Slot, { ko: string; en: string; ja: string; zh: string; es: string; ar: string }> = {
+  albedo:       { ko: 'Albedo (Base color)', en: 'Albedo (Base color)', ja: 'アルベド (ベースカラー)', zh: '反照率 (基础色)', es: 'Albedo (Color base)', ar: 'ألبيدو (اللون الأساسي)' },
+  normal:       { ko: 'Normal map', en: 'Normal map', ja: '法線マップ', zh: '法线贴图', es: 'Mapa de normales', ar: 'خريطة الموجِّهات' },
+  roughness:    { ko: '거칠기 (Roughness)', en: 'Roughness', ja: '粗さ (Roughness)', zh: '粗糙度', es: 'Rugosidad', ar: 'الخشونة' },
+  metalness:    { ko: '금속성 (Metalness)', en: 'Metalness', ja: 'メタリック', zh: '金属度', es: 'Metalicidad', ar: 'المعدنية' },
+  ao:           { ko: 'AO map', en: 'AO map', ja: 'AO マップ', zh: 'AO 贴图', es: 'Mapa AO', ar: 'خريطة AO' },
+  displacement: { ko: 'Displacement', en: 'Displacement', ja: 'ディスプレイスメント', zh: '置换贴图', es: 'Desplazamiento', ar: 'الإزاحة' },
 };
 
 export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
+  void isKo; // prop retained for caller compat; strings now use loc(lang, …)
   const lang = useLang();
   const [urls, setUrls] = useState<Partial<Record<Slot, string>>>({});
 
@@ -81,7 +82,7 @@ export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
         <UploadSlot
           key={slot}
           slot={slot}
-          label={isKo ? SLOT_LABELS[slot].ko : SLOT_LABELS[slot].en}
+          label={loc(lang, SLOT_LABELS[slot])}
           url={urls[slot]}
           onPick={f => onPick(slot, f)}
         />
