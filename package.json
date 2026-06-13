@@ -170,5 +170,9 @@
     "src/**/*.{js,jsx,ts,tsx}": [
       "eslint --fix"
     ]
+  },
+  "overrides": {
+    "three": "$three",
+    "three-mesh-bvh": "$three-mesh-bvh"
   }
 }
