@@ -8,14 +8,15 @@ import { SidePanel, PropSection, PropRow, PropSelect, PropCheck, PropItemRow } f
 import { I } from '../Icons';
 import { ToleranceStackSection } from './ToleranceStackSection';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+import { loc } from '../../lib/loc';
 
 // Wraps a control whose handler isn't wired yet so it reads as unavailable
 // instead of pretending to work (dimmed + non-interactive + tooltip).
 // (2026-06-12 honesty: disable dead controls rather than show fake-working ones)
-function Soon({ children, isKo }: { children: ReactNode; isKo: boolean }) {
+function Soon({ children, lang }: { children: ReactNode; lang: string }) {
   return (
     <span
-      title={isKo ? '준비 중 — 아직 적용되지 않습니다' : 'Coming soon — not yet wired'}
+      title={loc(lang, { ko: '준비 중 — 아직 적용되지 않습니다', en: 'Coming soon — not yet wired', ja: '近日対応 — 未接続です', zh: '即将推出 — 尚未接入', es: 'Próximamente — aún no conectado', ar: 'قريبًا — غير مفعّل بعد' })}
       style={{ display: 'block', opacity: 0.4, pointerEvents: 'none' }}
     >
       {children}
@@ -34,33 +35,34 @@ const CATALOG_DICT_EN: CatalogPanelDict = {
 
 export interface DrawingRightPaneProps {
   isKo: boolean;
+  lang: string;
   onExportPdf: () => void;
   onExportDxf: () => void;
 }
 
-export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRightPaneProps) {
+export function DrawingRightPane({ isKo, lang, onExportPdf, onExportDxf }: DrawingRightPaneProps) {
   return (
     <SidePanel
       side="right"
-      title={isKo ? '뷰 속성' : 'VIEW PROPERTIES'}
+      title={loc(lang, { ko: '뷰 속성', en: 'VIEW PROPERTIES', ja: 'ビュー プロパティ', zh: '视图属性', es: 'PROPIEDADES DE VISTA', ar: 'خصائص العرض' })}
       titleIcon={<I.plane size={12} />}
     >
-      <PropSection title={isKo ? '평면도' : 'Top View'}>
-        <PropRow label={isKo ? '소스' : 'Source'}>
+      <PropSection title={loc(lang, { ko: '평면도', en: 'Top View', ja: '平面図', zh: '俯视图', es: 'Vista superior', ar: 'المنظر العلوي' })}>
+        <PropRow label={loc(lang, { ko: '소스', en: 'Source', ja: 'ソース', zh: '来源', es: 'Origen', ar: 'المصدر' })}>
           <span style={{ fontSize: 11, color: 'var(--nx-accent)' }}>Bracket_v14</span>
         </PropRow>
-        <PropRow label={isKo ? '투영' : 'Projection'}>
-          <Soon isKo={isKo}><PropSelect
+        <PropRow label={loc(lang, { ko: '투영', en: 'Projection', ja: '投影法', zh: '投影', es: 'Proyección', ar: 'الإسقاط' })}>
+          <Soon lang={lang}><PropSelect
             value="first"
             onChange={() => { /* not wired */ }}
             options={[
-              { value: 'first', label: isKo ? '1각법 (ISO)' : 'First angle (ISO)' },
-              { value: 'third', label: isKo ? '3각법 (ANSI)' : 'Third angle (ANSI)' },
+              { value: 'first', label: loc(lang, { ko: '1각법 (ISO)', en: 'First angle (ISO)', ja: '第一角法 (ISO)', zh: '第一角投影 (ISO)', es: 'Primer ángulo (ISO)', ar: 'الزاوية الأولى (ISO)' }) },
+              { value: 'third', label: loc(lang, { ko: '3각법 (ANSI)', en: 'Third angle (ANSI)', ja: '第三角法 (ANSI)', zh: '第三角投影 (ANSI)', es: 'Tercer ángulo (ANSI)', ar: 'الزاوية الثالثة (ANSI)' }) },
             ]}
           /></Soon>
         </PropRow>
-        <PropRow label={isKo ? '축척' : 'Scale'}>
-          <Soon isKo={isKo}><PropSelect
+        <PropRow label={loc(lang, { ko: '축척', en: 'Scale', ja: '尺度', zh: '比例', es: 'Escala', ar: 'المقياس' })}>
+          <Soon lang={lang}><PropSelect
             value="1:1"
             onChange={() => { /* not wired */ }}
             options={[
@@ -71,23 +73,23 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
             ]}
           /></Soon>
         </PropRow>
-        <PropRow label={isKo ? '스타일' : 'Style'}>
-          <Soon isKo={isKo}><PropSelect
+        <PropRow label={loc(lang, { ko: '스타일', en: 'Style', ja: 'スタイル', zh: '样式', es: 'Estilo', ar: 'النمط' })}>
+          <Soon lang={lang}><PropSelect
             value="hidden-visible"
             onChange={() => { /* not wired */ }}
             options={[
-              { value: 'hidden-visible', label: isKo ? '숨김선 표시' : 'Hidden lines visible' },
-              { value: 'hidden-removed', label: isKo ? '숨김선 제거' : 'Hidden lines removed' },
-              { value: 'shaded', label: isKo ? '쉐이드' : 'Shaded' },
+              { value: 'hidden-visible', label: loc(lang, { ko: '숨김선 표시', en: 'Hidden lines visible', ja: '隠れ線を表示', zh: '显示隐藏线', es: 'Líneas ocultas visibles', ar: 'إظهار الخطوط المخفية' }) },
+              { value: 'hidden-removed', label: loc(lang, { ko: '숨김선 제거', en: 'Hidden lines removed', ja: '隠れ線を除去', zh: '移除隐藏线', es: 'Líneas ocultas eliminadas', ar: 'إزالة الخطوط المخفية' }) },
+              { value: 'shaded', label: loc(lang, { ko: '쉐이드', en: 'Shaded', ja: 'シェーディング', zh: '着色', es: 'Sombreado', ar: 'مظلّل' }) },
             ]}
           /></Soon>
         </PropRow>
-        <PropRow label={isKo ? '접선 엣지' : 'Tangent edges'}>
-          <Soon isKo={isKo}><PropCheck checked onChange={() => { /* not wired */ }} label={isKo ? '팬텀' : 'Phantom'} /></Soon>
+        <PropRow label={loc(lang, { ko: '접선 엣지', en: 'Tangent edges', ja: '接線エッジ', zh: '相切边', es: 'Aristas tangentes', ar: 'الحواف المماسّة' })}>
+          <Soon lang={lang}><PropCheck checked onChange={() => { /* not wired */ }} label={loc(lang, { ko: '팬텀', en: 'Phantom', ja: 'ファントム', zh: '幻影线', es: 'Fantasma', ar: 'وهمي' })} /></Soon>
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '치수 (6)' : 'Dimensions (6)'}>
+      <PropSection title={loc(lang, { ko: '치수 (6)', en: 'Dimensions (6)', ja: '寸法 (6)', zh: '尺寸 (6)', es: 'Cotas (6)', ar: 'الأبعاد (6)' })}>
         <PropItemRow bullet="↔" label="80.00" meta="d.1 · width" />
         <PropItemRow bullet="↕" label="50.00" meta="d.2 · depth" />
         <PropItemRow bullet="↔" label="50.00" meta="d.3 · hole spacing" />
@@ -96,17 +98,20 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
         <PropItemRow bullet="↶" label="R 2.0" meta="d.6 · fillet" />
       </PropSection>
 
-      <PropSection title={isKo ? 'GD&T' : 'GD&T'}>
+      <PropSection title={loc(lang, { ko: '기하공차 (GD&T)', en: 'GD&T', ja: '幾何公差 (GD&T)', zh: '几何公差 (GD&T)', es: 'GD&T', ar: 'التفاوتات الهندسية (GD&T)' })}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <FcfBox sym="⌖" tol="∅0.2" datums={['A', 'B', 'C']} note={isKo ? '위치 공차: 4× ∅6.5 홀' : 'Position tolerance: 4× ∅6.5 holes'} />
-          <FcfBox sym="⫳" tol="0.05" datums={['A']} note={isKo ? '평면도: 기준면' : 'Flatness: base face'} />
+          <FcfBox sym="⌖" tol="∅0.2" datums={['A', 'B', 'C']} note={loc(lang, { ko: '위치 공차: 4× ∅6.5 홀', en: 'Position tolerance: 4× ∅6.5 holes', ja: '位置度公差: 4× ∅6.5 穴', zh: '位置公差: 4× ∅6.5 孔', es: 'Tolerancia de posición: 4× ∅6.5 agujeros', ar: 'تفاوت الموضع: 4× ∅6.5 ثقوب' })} />
+          <FcfBox sym="⫳" tol="0.05" datums={['A']} note={loc(lang, { ko: '평면도: 기준면', en: 'Flatness: base face', ja: '平面度: 基準面', zh: '平面度: 基准面', es: 'Planitud: cara base', ar: 'الاستواء: الوجه المرجعي' })} />
         </div>
       </PropSection>
 
-      <PropSection title={isKo ? 'GD&T 평가기 (라이브)' : 'GD&T Evaluators (live)'}>
+      <PropSection title={loc(lang, { ko: 'GD&T 평가기 (라이브)', en: 'GD&T Evaluators (live)', ja: 'GD&T 評価器 (ライブ)', zh: 'GD&T 评估器 (实时)', es: 'Evaluadores GD&T (en vivo)', ar: 'مقيّمات GD&T (مباشر)' })}>
         <FeatureCatalogPanel
           routes={['inspection', 'drawing']}
-          routeLabels={isKo ? { inspection: 'GD&T/검사', drawing: '도면' } : { inspection: 'GD&T/Inspect', drawing: 'Drawing' }}
+          routeLabels={{
+            inspection: loc(lang, { ko: 'GD&T/검사', en: 'GD&T/Inspect', ja: 'GD&T/検査', zh: 'GD&T/检验', es: 'GD&T/Inspección', ar: 'GD&T/الفحص' }),
+            drawing: loc(lang, { ko: '도면', en: 'Drawing', ja: '図面', zh: '图纸', es: 'Plano', ar: 'الرسم' }),
+          }}
           license="pro"
           dict={isKo ? CATALOG_DICT_KO : CATALOG_DICT_EN}
           onRun={(featureId, entryFn) => {
@@ -118,26 +123,26 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
 
       <ToleranceStackSection isKo={isKo} />
 
-      <PropSection title={isKo ? '제목 블록' : 'Title Block'}>
-        <PropRow label={isKo ? '제작자' : 'Drawn by'}>
+      <PropSection title={loc(lang, { ko: '표제란', en: 'Title Block', ja: '表題欄', zh: '标题栏', es: 'Cajetín', ar: 'خانة العنوان' })}>
+        <PropRow label={loc(lang, { ko: '제작자', en: 'Drawn by', ja: '作成者', zh: '制图', es: 'Dibujado por', ar: 'رسمه' })}>
           <input
             defaultValue="J. Kim"
             style={{ width: '100%', height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
           />
         </PropRow>
-        <PropRow label={isKo ? '검토' : 'Checked'}>
+        <PropRow label={loc(lang, { ko: '검토', en: 'Checked', ja: '検図', zh: '审核', es: 'Revisado', ar: 'دُقّق' })}>
           <input
             defaultValue="A. Moon"
             style={{ width: '100%', height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
           />
         </PropRow>
-        <PropRow label={isKo ? '승인' : 'Approved'}>
+        <PropRow label={loc(lang, { ko: '승인', en: 'Approved', ja: '承認', zh: '批准', es: 'Aprobado', ar: 'مُعتمد' })}>
           <input
             defaultValue=""
             style={{ width: '100%', height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
           />
         </PropRow>
-        <PropRow label={isKo ? '표준' : 'Standard'}>
+        <PropRow label={loc(lang, { ko: '표준', en: 'Standard', ja: '規格', zh: '标准', es: 'Norma', ar: 'المعيار' })}>
           <PropSelect
             value="asme"
             onChange={() => { /* TODO */ }}
@@ -158,10 +163,10 @@ export function DrawingRightPane({ isKo, onExportPdf, onExportDxf }: DrawingRigh
         borderTop: '1px solid var(--nx-border)',
       }}>
         <button onClick={onExportPdf} style={primaryBtn}>
-          {isKo ? '📄 PDF 출력' : '📄 Plot PDF'}
+          {loc(lang, { ko: '📄 PDF 출력', en: '📄 Plot PDF', ja: '📄 PDF 出力', zh: '📄 输出 PDF', es: '📄 Trazar PDF', ar: '📄 طباعة PDF' })}
         </button>
         <button onClick={onExportDxf} style={ghostBtn}>
-          {isKo ? '⇩ DWG 내보내기' : '⇩ Export DWG'}
+          {loc(lang, { ko: '⇩ DWG 내보내기', en: '⇩ Export DWG', ja: '⇩ DWG 書き出し', zh: '⇩ 导出 DWG', es: '⇩ Exportar DWG', ar: '⇩ تصدير DWG' })}
         </button>
       </div>
     </SidePanel>

@@ -180,6 +180,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         right={
           <RenderRightPane
             isKo={isKo}
+            lang={lang}
             material={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.lbl ?? selectedMaterial}
             color={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.color ?? '#888'}
             roughness={roughness}

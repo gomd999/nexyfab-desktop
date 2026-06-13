@@ -500,8 +500,8 @@ export function ModelerShell() {
             items={fileMenuItems}
           />
           <OnboardingTutorial isKo={isKo} />
-          <EmailVerifyBanner isKo={isKo} />
-          <AccountTypeCard isKo={isKo} />
+          <EmailVerifyBanner isKo={isKo} lang={lang} />
+          <AccountTypeCard isKo={isKo} lang={lang} />
           <GuestExpiryBanner lang={lang} />
           {showShareModal && (
             <ShareProjectModal lang={lang} onClose={() => setShowShareModal(false)} />

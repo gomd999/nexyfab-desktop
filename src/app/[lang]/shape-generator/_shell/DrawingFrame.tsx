@@ -241,6 +241,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         />}
         right={<DrawingRightPane
           isKo={isKo}
+          lang={lang}
           onExportPdf={onExportPDF}
           onExportDxf={onExportDXF}
         />}
