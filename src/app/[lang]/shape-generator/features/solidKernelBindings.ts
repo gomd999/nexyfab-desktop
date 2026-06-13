@@ -15,7 +15,7 @@
  */
 
 import * as THREE from 'three';
-import { createWasmBridge } from '@/lib/occt/wasmBridge';
+import { createWasmBridge, LAUNCHER_WORKER_URL } from '@/lib/occt/wasmBridge';
 import { meshVolume } from './roundingGuard';
 import {
   occtExtrudeProfile,
@@ -63,6 +63,13 @@ export function replicadDeps(): ReplicadKernelDeps {
  * Reversible per call — the parity gate compares the two.
  */
 export function selectSolidKernel(useWorker: boolean): SolidKernel {
-  if (useWorker) return createKSeriesKernel(createWasmBridge());
+  if (useWorker) {
+    // Point at the LAUNCHER, not the default stub worker — the launcher
+    // feature-detects the real opencascade.js kernel (importScripts the WASM)
+    // and only falls back to the stub if it can't load. Without this the
+    // "K-series worker" silently routed every op to the synthetic stub, so the
+    // kernel-ceiling ops (thicken/surfaceTrim) never reached real OCCT.
+    return createKSeriesKernel(createWasmBridge({ workerUrl: LAUNCHER_WORKER_URL }));
+  }
   return createReplicadKernel(replicadDeps());
 }
