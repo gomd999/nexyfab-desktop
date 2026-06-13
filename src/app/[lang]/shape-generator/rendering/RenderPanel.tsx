@@ -10,31 +10,37 @@ const dict = {
   ko: { title: '렌더링 설정', envHdri: '환경 (HDRI)', upload: '+ .hdr / .exr 파일 업로드',
         display: '표시 옵션', showBg: '배경 표시', ground: '바닥면',
         ptDesc: '느리지만 사실적', lighting: '조명 & 노출', shadow: '그림자 강도', exposure: '노출',
+        dof: '피사계 심도', dofDesc: '배경 흐림 (보케)', focusDist: '초점 거리', blur: '흐림 강도',
         capture: '스크린샷 캡처', hiRes: '고해상도 렌더 (4K)',
         studio: '스튜디오', city: '도시', sunset: '일몰', forest: '숲', warehouse: '창고' },
   en: { title: 'Render Settings', envHdri: 'Environment (HDRI)', upload: '+ Upload .hdr / .exr file',
         display: 'Display', showBg: 'Show Background', ground: 'Ground Plane',
         ptDesc: 'Slower but realistic', lighting: 'Lighting & Exposure', shadow: 'Shadow Intensity', exposure: 'Exposure',
+        dof: 'Depth of Field', dofDesc: 'Background blur (bokeh)', focusDist: 'Focus distance', blur: 'Blur amount',
         capture: 'Capture Screenshot', hiRes: 'High-Res Render (4K)',
         studio: 'Studio', city: 'City', sunset: 'Sunset', forest: 'Forest', warehouse: 'Warehouse' },
   ja: { title: 'レンダー設定', envHdri: '環境 (HDRI)', upload: '+ .hdr / .exr ファイルをアップロード',
         display: '表示オプション', showBg: '背景表示', ground: '地面',
         ptDesc: '遅いがリアル', lighting: '照明 & 露出', shadow: '影の強度', exposure: '露出',
+        dof: '被写界深度', dofDesc: '背景ぼかし (ボケ)', focusDist: '焦点距離', blur: 'ぼかし強度',
         capture: 'スクリーンショット', hiRes: '高解像度レンダー (4K)',
         studio: 'スタジオ', city: '都市', sunset: '夕焼け', forest: '森', warehouse: '倉庫' },
   zh: { title: '渲染设置', envHdri: '环境 (HDRI)', upload: '+ 上传 .hdr / .exr 文件',
         display: '显示选项', showBg: '显示背景', ground: '地面',
         ptDesc: '较慢但真实', lighting: '光照 & 曝光', shadow: '阴影强度', exposure: '曝光',
+        dof: '景深', dofDesc: '背景虚化 (散景)', focusDist: '对焦距离', blur: '虚化强度',
         capture: '截图', hiRes: '高分辨率渲染 (4K)',
         studio: '工作室', city: '城市', sunset: '日落', forest: '森林', warehouse: '仓库' },
   es: { title: 'Configuración de Render', envHdri: 'Entorno (HDRI)', upload: '+ Subir archivo .hdr / .exr',
         display: 'Visualización', showBg: 'Mostrar Fondo', ground: 'Plano de Suelo',
         ptDesc: 'Más lento pero realista', lighting: 'Iluminación & Exposición', shadow: 'Intensidad de Sombra', exposure: 'Exposición',
+        dof: 'Profundidad de campo', dofDesc: 'Desenfoque de fondo (bokeh)', focusDist: 'Distancia de enfoque', blur: 'Cantidad de desenfoque',
         capture: 'Capturar Pantalla', hiRes: 'Render Alta Resolución (4K)',
         studio: 'Estudio', city: 'Ciudad', sunset: 'Atardecer', forest: 'Bosque', warehouse: 'Almacén' },
   ar: { title: 'إعدادات التصيير', envHdri: 'البيئة (HDRI)', upload: '+ رفع ملف .hdr / .exr',
         display: 'عرض', showBg: 'إظهار الخلفية', ground: 'مستوى الأرض',
         ptDesc: 'أبطأ لكن واقعي', lighting: 'الإضاءة والتعريض', shadow: 'شدة الظل', exposure: 'التعريض',
+        dof: 'عمق الميدان', dofDesc: 'ضبابية الخلفية (بوكيه)', focusDist: 'مسافة التركيز', blur: 'مقدار الضبابية',
         capture: 'التقاط لقطة شاشة', hiRes: 'تصيير عالي الدقة (4K)',
         studio: 'استوديو', city: 'مدينة', sunset: 'غروب', forest: 'غابة', warehouse: 'مستودع' },
 };
@@ -54,6 +60,14 @@ export interface RenderSettings {
   customHdriName?: string;
   /** Whether path tracing mode is on */
   pathTracing?: boolean;
+  /** Depth-of-field (bokeh). Opt-in; default off keeps the render unchanged. */
+  dofEnabled?: boolean;
+  /** Focus plane, normalised camera near→far [0,1]. */
+  dofFocusDistance?: number;
+  /** Lens focal length, normalised [0,1] — larger = shallower DoF. */
+  dofFocalLength?: number;
+  /** Bokeh blur kernel scale. */
+  dofBokehScale?: number;
   /** Phase-2 PBR extras (Specular/Clearcoat/Anisotropy). The RenderRightPane
    *  panel exposes sliders for these; the viewport material reads them in
    *  phase-2B so the change becomes visible. */
@@ -232,6 +246,40 @@ export default function RenderPanel({ settings, onChange, onCapture, onHighResCa
           onChange={e => update('exposure', parseFloat(e.target.value))}
           style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 4 }} />
       </div>
+
+      {/* ─ Depth of field (opt-in bokeh) ─ */}
+      <div style={{ ...rowStyle, marginBottom: settings.dofEnabled ? 8 : 12 }}>
+        <div>
+          <label style={labelStyle}>{t.dof}</label>
+          <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 1 }}>{t.dofDesc}</div>
+        </div>
+        <button onClick={() => update('dofEnabled', !settings.dofEnabled)} style={toggleStyle(!!settings.dofEnabled)}>
+          <div style={knobStyle(!!settings.dofEnabled)} />
+        </button>
+      </div>
+
+      {settings.dofEnabled && (
+        <>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <label style={labelStyle}>{t.focusDist}</label>
+              <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontFamily: 'monospace' }}>{(settings.dofFocusDistance ?? 0.02).toFixed(3)}</span>
+            </div>
+            <input type="range" min={0} max={0.3} step={0.005} value={settings.dofFocusDistance ?? 0.02}
+              onChange={e => update('dofFocusDistance', parseFloat(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 4 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <label style={labelStyle}>{t.blur}</label>
+              <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontFamily: 'monospace' }}>{(settings.dofBokehScale ?? 3).toFixed(1)}</span>
+            </div>
+            <input type="range" min={0} max={8} step={0.5} value={settings.dofBokehScale ?? 3}
+              onChange={e => update('dofBokehScale', parseFloat(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 4 }} />
+          </div>
+        </>
+      )}
 
       {/* ─ Capture buttons ─ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

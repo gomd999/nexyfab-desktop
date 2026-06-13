@@ -2,7 +2,9 @@
 
 import { Environment, ContactShadows, Lightformer } from '@react-three/drei';
 import { useThree, useLoader } from '@react-three/fiber';
-import { useEffect, Suspense } from 'react';
+import { EffectComposer, DepthOfField, Bloom, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
+import { useEffect, Suspense, type ReactElement } from 'react';
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
@@ -25,6 +27,19 @@ export interface RenderModeProps {
   exposure: number;
   /** Data URL or blob URL for a custom .hdr/.exr file uploaded by the user */
   customHdriUrl?: string;
+  /**
+   * Depth-of-field (bokeh). Opt-in: when false (default) the render path is
+   * byte-identical to before — no post-processing composer is mounted, so the
+   * proven photorealistic look is untouched. When true, an EffectComposer with
+   * a DepthOfField pass (+ bloom + ACES tone mapping) takes over rendering.
+   */
+  dofEnabled?: boolean;
+  /** Focus plane distance, normalised camera near→far [0,1]. */
+  dofFocusDistance?: number;
+  /** Lens focal length, normalised [0,1] — larger = shallower depth of field. */
+  dofFocalLength?: number;
+  /** Bokeh blur kernel scale (px). */
+  dofBokehScale?: number;
 }
 
 /** Applies tone mapping + exposure to the GL renderer */
@@ -36,6 +51,21 @@ function ToneMapper({ exposure }: { exposure: number }) {
     gl.toneMappingExposure = exposure;
     return () => {
       gl.toneMapping = THREE.NoToneMapping;
+      gl.toneMappingExposure = 1;
+    };
+    /* eslint-enable react-hooks/immutability */
+  }, [gl, exposure]);
+  return null;
+}
+
+/** Sets ONLY the renderer's tone-mapping exposure. Used in the post-fx path,
+ *  where the ACES curve is applied by the ToneMapping effect instead. */
+function ExposureSetter({ exposure }: { exposure: number }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    /* eslint-disable react-hooks/immutability -- imperative Three.js renderer state */
+    gl.toneMappingExposure = exposure;
+    return () => {
       gl.toneMappingExposure = 1;
     };
     /* eslint-enable react-hooks/immutability */
@@ -72,13 +102,46 @@ export default function RenderMode({
   environment = 'studio',
   showBackground = false,
   shadowIntensity = 0.4,
+  bloomIntensity = 0,
   showGround = true,
   exposure = 1.0,
   customHdriUrl,
+  dofEnabled = false,
+  dofFocusDistance = 0.02,
+  dofFocalLength = 0.05,
+  dofBokehScale = 3,
 }: RenderModeProps) {
+  // Post-processing is only mounted when DoF or bloom is requested. Otherwise
+  // the renderer keeps its imperative ACES tone mapping (ToneMapper) and the
+  // scene renders exactly as before — zero regression for the default path.
+  const usePostFx = dofEnabled || bloomIntensity > 0;
+
+  // EffectComposer's children prop is strictly typed (no false/null), so build
+  // the effect list as a filtered array. ToneMapping is always last so the
+  // bokeh/bloom buffers stay linear until the ACES curve is applied.
+  const postFx: ReactElement[] = [];
+  if (dofEnabled) {
+    postFx.push(
+      <DepthOfField
+        key="dof"
+        focusDistance={dofFocusDistance}
+        focalLength={dofFocalLength}
+        bokehScale={dofBokehScale}
+      />,
+    );
+  }
+  if (bloomIntensity > 0) {
+    postFx.push(
+      <Bloom key="bloom" intensity={bloomIntensity} luminanceThreshold={0.8} luminanceSmoothing={0.2} mipmapBlur />,
+    );
+  }
+  postFx.push(<ToneMapping key="tone" mode={ToneMappingMode.ACES_FILMIC} />);
+
   return (
     <>
-      <ToneMapper exposure={exposure} />
+      {/* Exposure always applies; tone-mapping curve is owned by ToneMapper in
+          the default path, or by the ToneMapping effect when post-fx is on. */}
+      {usePostFx ? <ExposureSetter exposure={exposure} /> : <ToneMapper exposure={exposure} />}
 
       {customHdriUrl ? (
         <Suspense fallback={null}>
@@ -117,6 +180,12 @@ export default function RenderMode({
           <planeGeometry args={[500, 500]} />
           <meshStandardMaterial color="#1a1a2e" roughness={0.8} metalness={0.1} transparent opacity={0.6} />
         </mesh>
+      )}
+
+      {usePostFx && (
+        <EffectComposer enableNormalPass={false} multisampling={4}>
+          {postFx}
+        </EffectComposer>
       )}
     </>
   );

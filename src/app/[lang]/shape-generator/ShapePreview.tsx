@@ -2805,6 +2805,10 @@ export default function ShapePreview({
                     showGround={renderSettings.showGround}
                     exposure={renderSettings.exposure}
                     customHdriUrl={renderSettings.customHdriUrl}
+                    dofEnabled={renderSettings.dofEnabled}
+                    dofFocusDistance={renderSettings.dofFocusDistance}
+                    dofFocalLength={renderSettings.dofFocalLength}
+                    dofBokehScale={renderSettings.dofBokehScale}
                   />
                   {renderSettings.pathTracing && (
                     <PathTracer enabled={true} />
