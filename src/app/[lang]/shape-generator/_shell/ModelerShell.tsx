@@ -194,6 +194,18 @@ export function ModelerShell() {
       },
     },
     {
+      // K-series kernel-ceiling op: thicken the active sketch (or a demo
+      // square) into a solid via the real OCCT worker, shown via the import
+      // seam. Lands outside the parametric tree (see ShapeGeneratorInner).
+      id: 'kseries-thicken',
+      label: 'Thicken surface → solid (K-series)',
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:kseries-thicken', { detail: { thickness: 2 } }));
+        }
+      },
+    },
+    {
       id: 'export-stl',
       label: d.fmExportStl,
       onClick: () => {

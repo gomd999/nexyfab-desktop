@@ -6645,6 +6645,44 @@ export function ShapeGeneratorInner() {
     handleExportPLY,
     handleExport3MF } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
 
+  // ─── K-series Thicken (kernel-ceiling op) ────────────────────────────────
+  // Thicken the active closed line-loop sketch (or a 10×10 demo when none)
+  // into a solid via the real opencascade.js worker, and show it through the
+  // import-display seam (setImportedGeometry) — deliberately NOT a parametric
+  // feature, so it can't desync the feature tree. The kernel facade is
+  // lazy-imported so it never weighs down the main modeler bundle.
+  useEffect(() => {
+    const onThicken = async (e: Event) => {
+      const ce = e as CustomEvent<{ thickness?: number }>;
+      const thickness = ce.detail?.thickness ?? 2;
+      // Extract a planar loop from the active sketch's line segments; fall back
+      // to a 10×10 demo square when there is no usable closed line loop.
+      let loop: Array<{ x: number; y: number }> | null = null;
+      const prof = activeProfile;
+      if (prof?.closed) {
+        const lines = prof.segments.filter((s) => s.type === 'line' && s.points.length >= 2);
+        if (lines.length >= 3) loop = lines.map((s) => ({ x: s.points[0].x, y: s.points[0].y }));
+      }
+      if (!loop) loop = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+      addToast('info', 'Thickening surface via OCCT worker…');
+      try {
+        const { thickenSurfaceKSeries } = await import('./features/thickenKSeries');
+        const out = await thickenSurfaceKSeries({ loop, thickness });
+        if (out.ok) {
+          setImportedGeometry(out.result.geometry);
+          setImportedFilename(`thicken-${thickness}mm`);
+          addToast('success', `Solid generated — ${out.result.volume_cm3.toFixed(3)} cm³`);
+        } else {
+          addToast('error', `Thicken failed: ${out.error}`);
+        }
+      } catch (err) {
+        addToast('error', `Thicken failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    window.addEventListener('nexyfab:kseries-thicken', onThicken);
+    return () => window.removeEventListener('nexyfab:kseries-thicken', onThicken);
+  }, [activeProfile, setImportedGeometry, setImportedFilename, addToast]);
+
   const handleExportSTEP = useCallback(async () => {
     const geo = effectiveResult?.geometry;
     if (!geo) return;
