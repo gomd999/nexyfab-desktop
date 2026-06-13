@@ -297,12 +297,12 @@ export default function SketchGroupPanel({
         flexDirection: 'column',
         gap: 8,
         padding: 10,
-        background: '#ffffff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 6,
         fontFamily: 'system-ui, sans-serif',
         fontSize: 12,
-        color: '#111827',
+        color: 'var(--nx-text)',
       }}
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -318,9 +318,9 @@ export default function SketchGroupPanel({
         style={{
           padding: '6px 10px',
           fontSize: 12,
-          background: canGroup ? '#2563eb' : '#f3f4f6',
-          color: canGroup ? '#fff' : '#9ca3af',
-          border: '1px solid ' + (canGroup ? '#2563eb' : '#e5e7eb'),
+          background: canGroup ? '#2563eb' : 'var(--nx-panel-2)',
+          color: canGroup ? '#fff' : 'var(--nx-text-2)',
+          border: '1px solid ' + (canGroup ? '#2563eb' : 'var(--nx-border)'),
           borderRadius: 4,
           cursor: canGroup ? 'pointer' : 'not-allowed',
         }}
@@ -331,7 +331,7 @@ export default function SketchGroupPanel({
       {groups.length === 0 ? (
         <div
           data-testid="solver-sketch-group-empty"
-          style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: '8px 0' }}
+          style={{ fontSize: 11, color: 'var(--nx-text-2)', textAlign: 'center', padding: '8px 0' }}
         >
           {t.empty}
         </div>
@@ -349,9 +349,9 @@ export default function SketchGroupPanel({
                   flexDirection: 'column',
                   gap: 4,
                   padding: 6,
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
-                  background: g.locked ? '#fef3c7' : '#f9fafb',
+                  background: g.locked ? '#fef3c7' : 'var(--nx-panel-2)',
                 }}
               >
                 {/* row header: name + count + lock + delete */}
@@ -364,7 +364,7 @@ export default function SketchGroupPanel({
                   </span>
                   <span
                     data-testid={`solver-sketch-group-count-${g.id}`}
-                    style={{ color: '#6b7280', fontSize: 11 }}
+                    style={{ color: 'var(--nx-text-2)', fontSize: 11 }}
                   >
                     {g.entityIds.length} {t.count}
                   </span>
@@ -377,9 +377,9 @@ export default function SketchGroupPanel({
                     style={{
                       padding: '2px 6px',
                       fontSize: 11,
-                      background: g.locked ? '#d97706' : '#fff',
-                      color: g.locked ? '#fff' : '#374151',
-                      border: '1px solid ' + (g.locked ? '#d97706' : '#d1d5db'),
+                      background: g.locked ? '#d97706' : 'var(--nx-panel)',
+                      color: g.locked ? '#fff' : 'var(--nx-text-2)',
+                      border: '1px solid ' + (g.locked ? '#d97706' : 'var(--nx-border)'),
                       borderRadius: 3,
                       cursor: 'pointer',
                     }}
@@ -394,7 +394,7 @@ export default function SketchGroupPanel({
                     style={{
                       padding: '2px 6px',
                       fontSize: 11,
-                      background: '#fff',
+                      background: 'var(--nx-panel)',
                       color: '#dc2626',
                       border: '1px solid #fca5a5',
                       borderRadius: 3,
@@ -407,7 +407,7 @@ export default function SketchGroupPanel({
 
                 {/* translate row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 64, color: '#6b7280' }}>{t.translate}</span>
+                  <span style={{ width: 64, color: 'var(--nx-text-2)' }}>{t.translate}</span>
                   <input
                     data-testid={`solver-sketch-group-translate-dx-${g.id}`}
                     type="number"
@@ -434,9 +434,9 @@ export default function SketchGroupPanel({
                     style={{
                       padding: '2px 8px',
                       fontSize: 11,
-                      background: g.locked ? '#f3f4f6' : '#fff',
-                      color: g.locked ? '#9ca3af' : '#111827',
-                      border: '1px solid #d1d5db',
+                      background: g.locked ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+                      color: g.locked ? 'var(--nx-text-2)' : 'var(--nx-text)',
+                      border: '1px solid var(--nx-border)',
                       borderRadius: 3,
                       cursor: g.locked ? 'not-allowed' : 'pointer',
                     }}
@@ -447,7 +447,7 @@ export default function SketchGroupPanel({
 
                 {/* rotate row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 64, color: '#6b7280' }}>{t.rotate}</span>
+                  <span style={{ width: 64, color: 'var(--nx-text-2)' }}>{t.rotate}</span>
                   <input
                     data-testid={`solver-sketch-group-rotate-deg-${g.id}`}
                     type="number"
@@ -457,7 +457,7 @@ export default function SketchGroupPanel({
                     onChange={(e) => setDraftField(g.id, 'deg', e.target.value)}
                     style={{ width: 60, fontSize: 11, padding: '2px 4px' }}
                   />
-                  <span style={{ color: '#6b7280' }}>{t.deg}</span>
+                  <span style={{ color: 'var(--nx-text-2)' }}>{t.deg}</span>
                   <button
                     type="button"
                     data-testid={`solver-sketch-group-rotate-apply-${g.id}`}
@@ -466,9 +466,9 @@ export default function SketchGroupPanel({
                     style={{
                       padding: '2px 8px',
                       fontSize: 11,
-                      background: g.locked ? '#f3f4f6' : '#fff',
-                      color: g.locked ? '#9ca3af' : '#111827',
-                      border: '1px solid #d1d5db',
+                      background: g.locked ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+                      color: g.locked ? 'var(--nx-text-2)' : 'var(--nx-text)',
+                      border: '1px solid var(--nx-border)',
                       borderRadius: 3,
                       cursor: g.locked ? 'not-allowed' : 'pointer',
                     }}
@@ -479,7 +479,7 @@ export default function SketchGroupPanel({
 
                 {/* scale row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 64, color: '#6b7280' }}>{t.scale}</span>
+                  <span style={{ width: 64, color: 'var(--nx-text-2)' }}>{t.scale}</span>
                   <input
                     data-testid={`solver-sketch-group-scale-factor-${g.id}`}
                     type="number"
@@ -497,9 +497,9 @@ export default function SketchGroupPanel({
                     style={{
                       padding: '2px 8px',
                       fontSize: 11,
-                      background: g.locked ? '#f3f4f6' : '#fff',
-                      color: g.locked ? '#9ca3af' : '#111827',
-                      border: '1px solid #d1d5db',
+                      background: g.locked ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+                      color: g.locked ? 'var(--nx-text-2)' : 'var(--nx-text)',
+                      border: '1px solid var(--nx-border)',
                       borderRadius: 3,
                       cursor: g.locked ? 'not-allowed' : 'pointer',
                     }}

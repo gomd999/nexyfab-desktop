@@ -177,9 +177,9 @@ export default function IntentExamplesPanel(
         flexDirection: 'column',
         gap: 12,
         padding: 12,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 8,
-        background: '#fff',
+        background: 'var(--nx-panel)',
         fontFamily: 'system-ui, sans-serif',
         fontSize: 12,
         minWidth: 280,
@@ -199,7 +199,7 @@ export default function IntentExamplesPanel(
               flexDirection: 'column',
               gap: 6,
               padding: 8,
-              background: '#f9fafb',
+              background: 'var(--nx-panel-2)',
               borderRadius: 4,
             }}
           >
@@ -207,7 +207,7 @@ export default function IntentExamplesPanel(
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: '#374151',
+                color: 'var(--nx-text-2)',
                 textTransform: 'uppercase',
                 letterSpacing: 0.4,
               }}
@@ -226,9 +226,9 @@ export default function IntentExamplesPanel(
                     title={kind}
                     style={{
                       padding: '4px 8px',
-                      border: '1px solid #d1d5db',
-                      background: '#fff',
-                      color: '#1f2937',
+                      border: '1px solid var(--nx-border)',
+                      background: 'var(--nx-panel)',
+                      color: 'var(--nx-text)',
                       borderRadius: 999,
                       cursor: 'pointer',
                       fontSize: 11,

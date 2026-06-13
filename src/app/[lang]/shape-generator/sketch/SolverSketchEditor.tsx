@@ -104,7 +104,7 @@ const SketchExportModal = dynamic(() => import('./SketchExportModal'), {
   loading: () => (
     <div
       data-testid="solver-sketch-export-modal-loading"
-      style={{ fontSize: 11, color: '#6b7280', padding: 12 }}
+      style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}
     >
       loading…
     </div>
@@ -120,7 +120,7 @@ const SketchImportModal = dynamic(() => import('./SketchImportModal'), {
   loading: () => (
     <div
       data-testid="solver-sketch-import-modal-loading"
-      style={{ fontSize: 11, color: '#6b7280', padding: 12 }}
+      style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}
     >
       loading…
     </div>
@@ -2841,7 +2841,7 @@ export default function SolverSketchEditor({
   }
   if (!solver) {
     return (
-      <div data-testid="solver-sketch-editor" data-state="loading" style={{ padding: 12, color: '#6b7280' }}>
+      <div data-testid="solver-sketch-editor" data-state="loading" style={{ padding: 12, color: 'var(--nx-text-2)' }}>
         {t.loading}
       </div>
     );
@@ -2859,7 +2859,7 @@ export default function SolverSketchEditor({
         gap: 8,
         padding: 12,
         background: '#fafafa',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 8,
         outline: 'none',
         fontFamily: 'system-ui, sans-serif',
@@ -2867,7 +2867,7 @@ export default function SolverSketchEditor({
     >
       {/* Title bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>{t.title}</h2>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--nx-text)' }}>{t.title}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span
             data-testid="solver-sketch-dof"
@@ -2877,7 +2877,7 @@ export default function SolverSketchEditor({
               fontWeight: 600,
               padding: '2px 8px',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--nx-panel)',
               border: `1px solid ${dofColor(dofKind)}`,
               color: dofColor(dofKind),
             }}
@@ -2889,7 +2889,7 @@ export default function SolverSketchEditor({
             onClick={handleExportSvg}
             data-testid="solver-sketch-export-svg"
             title={t.exportSvg}
-            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '4px 10px', fontSize: 12, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.exportSvg}
           </button>
@@ -2898,7 +2898,7 @@ export default function SolverSketchEditor({
             onClick={openExportModal}
             data-testid="solver-sketch-export-modal-button"
             title={t.exportModal}
-            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '4px 10px', fontSize: 12, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.exportModal}
           </button>
@@ -2907,7 +2907,7 @@ export default function SolverSketchEditor({
             onClick={openImportModal}
             data-testid="solver-sketch-import-button"
             title={t.import}
-            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '4px 10px', fontSize: 12, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.import}
           </button>
@@ -2919,7 +2919,7 @@ export default function SolverSketchEditor({
             role="radiogroup"
             aria-label={t.importMode}
             data-testid="solver-sketch-import-mode"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#374151' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--nx-text-2)' }}
           >
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
               <input
@@ -2953,9 +2953,9 @@ export default function SolverSketchEditor({
             style={{
               padding: '4px 10px',
               fontSize: 12,
-              background: aiPanelOpen ? '#7c3aed' : '#fff',
-              color: aiPanelOpen ? '#fff' : '#111827',
-              border: '1px solid ' + (aiPanelOpen ? '#7c3aed' : '#d1d5db'),
+              background: aiPanelOpen ? '#7c3aed' : 'var(--nx-panel)',
+              color: aiPanelOpen ? '#fff' : 'var(--nx-text)',
+              border: '1px solid ' + (aiPanelOpen ? '#7c3aed' : 'var(--nx-border)'),
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -2971,9 +2971,9 @@ export default function SolverSketchEditor({
             style={{
               padding: '4px 10px',
               fontSize: 12,
-              background: groupsOpen ? '#0e7490' : '#fff',
-              color: groupsOpen ? '#fff' : '#111827',
-              border: '1px solid ' + (groupsOpen ? '#0e7490' : '#d1d5db'),
+              background: groupsOpen ? '#0e7490' : 'var(--nx-panel)',
+              color: groupsOpen ? '#fff' : 'var(--nx-text)',
+              border: '1px solid ' + (groupsOpen ? '#0e7490' : 'var(--nx-border)'),
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -2989,9 +2989,9 @@ export default function SolverSketchEditor({
             style={{
               padding: '4px 10px',
               fontSize: 12,
-              background: transformOpen ? '#0e7490' : '#fff',
-              color: transformOpen ? '#fff' : '#111827',
-              border: '1px solid ' + (transformOpen ? '#0e7490' : '#d1d5db'),
+              background: transformOpen ? '#0e7490' : 'var(--nx-panel)',
+              color: transformOpen ? '#fff' : 'var(--nx-text)',
+              border: '1px solid ' + (transformOpen ? '#0e7490' : 'var(--nx-border)'),
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -3007,9 +3007,9 @@ export default function SolverSketchEditor({
             style={{
               padding: '4px 10px',
               fontSize: 12,
-              background: expressionsOpen ? '#0e7490' : '#fff',
-              color: expressionsOpen ? '#fff' : '#111827',
-              border: '1px solid ' + (expressionsOpen ? '#0e7490' : '#d1d5db'),
+              background: expressionsOpen ? '#0e7490' : 'var(--nx-panel)',
+              color: expressionsOpen ? '#fff' : 'var(--nx-text)',
+              border: '1px solid ' + (expressionsOpen ? '#0e7490' : 'var(--nx-border)'),
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -3020,7 +3020,7 @@ export default function SolverSketchEditor({
             type="button"
             onClick={handleClose}
             data-testid="solver-sketch-close"
-            style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '4px 10px', fontSize: 12, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.close}
           </button>
@@ -3041,9 +3041,9 @@ export default function SolverSketchEditor({
               style={{
                 padding: '6px 12px',
                 fontSize: 12,
-                background: active ? '#2563eb' : '#fff',
-                color: active ? '#fff' : '#111827',
-                border: '1px solid ' + (active ? '#2563eb' : '#d1d5db'),
+                background: active ? '#2563eb' : 'var(--nx-panel)',
+                color: active ? '#fff' : 'var(--nx-text)',
+                border: '1px solid ' + (active ? '#2563eb' : 'var(--nx-border)'),
                 borderRadius: 4,
                 cursor: 'pointer',
               }}
@@ -3058,9 +3058,9 @@ export default function SolverSketchEditor({
             current option. Disabling all three turns snap off entirely. */}
         <span
           aria-hidden="true"
-          style={{ width: 1, height: 18, background: '#e5e7eb', margin: '0 6px' }}
+          style={{ width: 1, height: 18, background: 'var(--nx-panel-2)', margin: '0 6px' }}
         />
-        <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginRight: 2 }}>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600, marginRight: 2 }}>
           {t.snapLabel}:
         </span>
         {([
@@ -3083,9 +3083,9 @@ export default function SolverSketchEditor({
               style={{
                 padding: '4px 8px',
                 fontSize: 11,
-                background: active ? '#0e7490' : '#fff',
-                color: active ? '#fff' : '#374151',
-                border: '1px solid ' + (active ? '#0e7490' : '#d1d5db'),
+                background: active ? '#0e7490' : 'var(--nx-panel)',
+                color: active ? '#fff' : 'var(--nx-text-2)',
+                border: '1px solid ' + (active ? '#0e7490' : 'var(--nx-border)'),
                 borderRadius: 12,
                 cursor: 'pointer',
               }}
@@ -3110,9 +3110,9 @@ export default function SolverSketchEditor({
               style={{
                 padding: '6px 10px',
                 fontSize: 11,
-                background: enabled ? '#fff' : '#f3f4f6',
-                color: enabled ? '#111827' : '#9ca3af',
-                border: '1px solid ' + (enabled ? '#d1d5db' : '#e5e7eb'),
+                background: enabled ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+                color: enabled ? 'var(--nx-text)' : 'var(--nx-text-2)',
+                border: '1px solid ' + (enabled ? 'var(--nx-border)' : 'var(--nx-border)'),
                 borderRadius: 4,
                 cursor: enabled ? 'pointer' : 'not-allowed',
               }}
@@ -3156,15 +3156,15 @@ export default function SolverSketchEditor({
             flexDirection: 'column',
             gap: 6,
             padding: 8,
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
+            background: 'var(--nx-panel-2)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 6,
             fontSize: 11,
           }}
         >
           {/* op picker + scope badge + reset/recapture */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, color: '#374151', marginRight: 4 }}>
+            <span style={{ fontWeight: 600, color: 'var(--nx-text-2)', marginRight: 4 }}>
               {t.transform}:
             </span>
             {([
@@ -3184,9 +3184,9 @@ export default function SolverSketchEditor({
                   style={{
                     padding: '4px 10px',
                     fontSize: 11,
-                    background: active ? '#0e7490' : '#fff',
-                    color: active ? '#fff' : '#111827',
-                    border: '1px solid ' + (active ? '#0e7490' : '#d1d5db'),
+                    background: active ? '#0e7490' : 'var(--nx-panel)',
+                    color: active ? '#fff' : 'var(--nx-text)',
+                    border: '1px solid ' + (active ? '#0e7490' : 'var(--nx-border)'),
                     borderRadius: 4,
                     cursor: 'pointer',
                   }}
@@ -3218,9 +3218,9 @@ export default function SolverSketchEditor({
               style={{
                 padding: '4px 8px',
                 fontSize: 11,
-                background: '#fff',
-                color: '#374151',
-                border: '1px solid #d1d5db',
+                background: 'var(--nx-panel)',
+                color: 'var(--nx-text-2)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
                 cursor: 'pointer',
               }}
@@ -3235,7 +3235,7 @@ export default function SolverSketchEditor({
               style={{
                 padding: '4px 10px',
                 fontSize: 11,
-                background: '#fff',
+                background: 'var(--nx-panel)',
                 color: '#b91c1c',
                 border: '1px solid #fecaca',
                 borderRadius: 4,
@@ -3498,7 +3498,7 @@ export default function SolverSketchEditor({
         onMouseMove={handleCanvasMove}
         onMouseUp={handleCanvasMouseUp}
         onMouseLeave={handleCanvasMouseUp}
-        style={{ background: '#ffffff', border: '1px solid #d1d5db', display: 'block' }}
+        style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', display: 'block' }}
       >
         <Grid width={width} height={height} />
 
@@ -3707,7 +3707,7 @@ export default function SolverSketchEditor({
         data-status={hasConflicts ? 'conflict' : hasRedundant ? 'redundant' : 'ready'}
         style={{
           fontSize: 11,
-          color: hasConflicts ? '#dc2626' : hasRedundant ? '#d97706' : '#6b7280',
+          color: hasConflicts ? '#dc2626' : hasRedundant ? '#d97706' : 'var(--nx-text-2)',
           textAlign: 'center',
         }}
       >

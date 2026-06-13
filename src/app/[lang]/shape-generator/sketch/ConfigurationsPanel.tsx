@@ -85,8 +85,8 @@ export default function ConfigurationsPanel({
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
       style={{
         display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
-        background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 6,
-        fontFamily: 'system-ui, sans-serif', fontSize: 12, color: '#111827',
+        background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 6,
+        fontFamily: 'system-ui, sans-serif', fontSize: 12, color: 'var(--nx-text)',
       }}
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -99,9 +99,9 @@ export default function ConfigurationsPanel({
             disabled={!validation.ok}
             style={{
               padding: '4px 10px', fontSize: 11,
-              background: validation.ok ? '#0e7490' : '#f3f4f6',
-              color: validation.ok ? '#fff' : '#9ca3af',
-              border: '1px solid ' + (validation.ok ? '#0e7490' : '#e5e7eb'),
+              background: validation.ok ? '#0e7490' : 'var(--nx-panel-2)',
+              color: validation.ok ? '#fff' : 'var(--nx-text-2)',
+              border: '1px solid ' + (validation.ok ? '#0e7490' : 'var(--nx-border)'),
               borderRadius: 4, cursor: validation.ok ? 'pointer' : 'not-allowed',
             }}
           >
@@ -122,7 +122,7 @@ export default function ConfigurationsPanel({
       )}
 
       {set.configs.length === 0 ? (
-        <div data-testid="configurations-empty" style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: '8px 0' }}>
+        <div data-testid="configurations-empty" style={{ fontSize: 11, color: 'var(--nx-text-2)', textAlign: 'center', padding: '8px 0' }}>
           {t.empty}
         </div>
       ) : (
@@ -136,8 +136,8 @@ export default function ConfigurationsPanel({
                 data-active={isActive ? 'true' : 'false'}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: 6,
-                  border: '1px solid #e5e7eb', borderRadius: 4,
-                  background: isActive ? '#ecfeff' : '#f9fafb',
+                  border: '1px solid var(--nx-border)', borderRadius: 4,
+                  background: isActive ? '#ecfeff' : 'var(--nx-panel-2)',
                 }}
               >
                 <input
@@ -149,7 +149,7 @@ export default function ConfigurationsPanel({
                   aria-label={`${t.active} ${c.name}`}
                 />
                 <span style={{ fontWeight: 600, flex: '1 1 auto' }}>{c.name}</span>
-                <span style={{ color: '#6b7280', fontSize: 11 }}>
+                <span style={{ color: 'var(--nx-text-2)', fontSize: 11 }}>
                   {(c.suppress?.length ?? 0)} {t.suppressed} · {overrideCount(c)} {t.overrides}
                 </span>
               </li>

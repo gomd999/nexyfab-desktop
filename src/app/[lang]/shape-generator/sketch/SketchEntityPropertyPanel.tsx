@@ -554,7 +554,7 @@ function BulkEditor({
         <span style={{ fontWeight: 600, fontSize: 13 }}>
           {t.multiSelection(selectionCount)}
           {subtitle ? (
-            <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: 6 }}>
+            <span style={{ color: 'var(--nx-text-2)', fontWeight: 400, marginLeft: 6 }}>
               · {subtitle}
             </span>
           ) : null}
@@ -763,7 +763,7 @@ function BulkNumberField({
         data-bulk-state={common.kind}
         style={{
           ...inputStyle,
-          border: `1px solid ${invalid ? '#dc2626' : '#d1d5db'}`,
+          border: `1px solid ${invalid ? '#dc2626' : 'var(--nx-border)'}`,
         }}
       />
     </label>
@@ -820,7 +820,7 @@ function EntityEditor({ t, entity, onChange, onDelete, debounceMs }: EditorProps
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <header style={headerStyle}>
         <span style={{ fontWeight: 600, fontSize: 13 }}>
-          {title} <span style={{ color: '#6b7280', fontWeight: 400 }}>#{entity.id}</span>
+          {title} <span style={{ color: 'var(--nx-text-2)', fontWeight: 400 }}>#{entity.id}</span>
         </span>
         {onDelete ? (
           <button
@@ -1161,7 +1161,7 @@ function NumberField({
         aria-invalid={invalid || undefined}
         style={{
           ...inputStyle,
-          border: `1px solid ${invalid ? '#dc2626' : '#d1d5db'}`,
+          border: `1px solid ${invalid ? '#dc2626' : 'var(--nx-border)'}`,
         }}
       />
     </label>
@@ -1175,8 +1175,8 @@ const panelStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: 8,
   padding: 10,
-  background: '#f9fafb',
-  border: '1px solid #e5e7eb',
+  background: 'var(--nx-panel-2)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 6,
   minWidth: 220,
   fontSize: 12,
@@ -1185,7 +1185,7 @@ const panelStyle: React.CSSProperties = {
 const hintStyle: React.CSSProperties = {
   margin: 0,
   padding: '12px 4px',
-  color: '#6b7280',
+  color: 'var(--nx-text-2)',
   fontSize: 12,
   textAlign: 'center',
 };
@@ -1196,14 +1196,14 @@ const headerStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   gap: 8,
   paddingBottom: 4,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--nx-border)',
 };
 
 const deleteButtonStyle: React.CSSProperties = {
   padding: '3px 8px',
   border: '1px solid #fecaca',
   borderRadius: 3,
-  background: '#fff',
+  background: 'var(--nx-panel)',
   color: '#b91c1c',
   fontSize: 11,
   cursor: 'pointer',
@@ -1212,7 +1212,7 @@ const deleteButtonStyle: React.CSSProperties = {
 const fieldsetStyle: React.CSSProperties = {
   margin: 0,
   padding: '4px 8px 6px',
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--nx-border)',
   borderRadius: 4,
   display: 'flex',
   flexDirection: 'column',
@@ -1222,7 +1222,7 @@ const fieldsetStyle: React.CSSProperties = {
 const legendStyle: React.CSSProperties = {
   padding: '0 4px',
   fontSize: 11,
-  color: '#6b7280',
+  color: 'var(--nx-text-2)',
 };
 
 const fieldRowStyle: React.CSSProperties = {
@@ -1234,7 +1234,7 @@ const fieldRowStyle: React.CSSProperties = {
 const fieldLabelStyle: React.CSSProperties = {
   flex: '0 0 auto',
   minWidth: 64,
-  color: '#374151',
+  color: 'var(--nx-text-2)',
   fontSize: 11,
 };
 
@@ -1258,17 +1258,17 @@ const readoutRowStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   gap: 8,
   padding: '2px 4px',
-  background: '#f3f4f6',
+  background: 'var(--nx-panel-2)',
   borderRadius: 3,
 };
 
 const readoutLabelStyle: React.CSSProperties = {
-  color: '#6b7280',
+  color: 'var(--nx-text-2)',
   fontSize: 11,
 };
 
 const readoutValueStyle: React.CSSProperties = {
-  color: '#111827',
+  color: 'var(--nx-text)',
   fontSize: 12,
   fontVariantNumeric: 'tabular-nums',
 };

@@ -273,12 +273,12 @@ export default function SketchExpressionsPanel({
         flexDirection: 'column',
         gap: 8,
         padding: 10,
-        background: '#ffffff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 6,
         fontFamily: 'system-ui, sans-serif',
         fontSize: 12,
-        color: '#111827',
+        color: 'var(--nx-text)',
       }}
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -290,8 +290,8 @@ export default function SketchExpressionsPanel({
             onClick={addRow}
             style={{
               padding: '4px 10px', fontSize: 11,
-              background: '#fff', color: '#111827',
-              border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer',
+              background: 'var(--nx-panel)', color: 'var(--nx-text)',
+              border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer',
             }}
           >
             {t.add}
@@ -303,9 +303,9 @@ export default function SketchExpressionsPanel({
             disabled={rows.length === 0}
             style={{
               padding: '4px 10px', fontSize: 11,
-              background: rows.length === 0 ? '#f3f4f6' : '#0e7490',
-              color: rows.length === 0 ? '#9ca3af' : '#fff',
-              border: '1px solid ' + (rows.length === 0 ? '#e5e7eb' : '#0e7490'),
+              background: rows.length === 0 ? 'var(--nx-panel-2)' : '#0e7490',
+              color: rows.length === 0 ? 'var(--nx-text-2)' : '#fff',
+              border: '1px solid ' + (rows.length === 0 ? 'var(--nx-border)' : '#0e7490'),
               borderRadius: 4,
               cursor: rows.length === 0 ? 'not-allowed' : 'pointer',
             }}
@@ -330,7 +330,7 @@ export default function SketchExpressionsPanel({
       {rows.length === 0 ? (
         <div
           data-testid="solver-sketch-expressions-empty"
-          style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: '8px 0' }}
+          style={{ fontSize: 11, color: 'var(--nx-text-2)', textAlign: 'center', padding: '8px 0' }}
         >
           {t.empty}
         </div>
@@ -359,18 +359,18 @@ export default function SketchExpressionsPanel({
                     onChange={(e) => setField(r.key, 'name', e.target.value)}
                     style={{
                       width: 84, fontSize: 11, padding: '2px 4px',
-                      border: '1px solid ' + (isDup ? '#fca5a5' : '#d1d5db'),
+                      border: '1px solid ' + (isDup ? '#fca5a5' : 'var(--nx-border)'),
                       borderRadius: 3,
                     }}
                   />
-                  <span style={{ color: '#9ca3af' }}>=</span>
+                  <span style={{ color: 'var(--nx-text-2)' }}>=</span>
                   <input
                     data-testid={`solver-sketch-expressions-def-${r.key}`}
                     aria-label={t.definition}
                     placeholder={t.defPlaceholder}
                     value={r.def}
                     onChange={(e) => setField(r.key, 'def', e.target.value)}
-                    style={{ flex: '1 1 auto', fontSize: 11, padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 3 }}
+                    style={{ flex: '1 1 auto', fontSize: 11, padding: '2px 4px', border: '1px solid var(--nx-border)', borderRadius: 3 }}
                   />
                   <span
                     data-testid={`solver-sketch-expressions-value-${r.key}`}
@@ -395,9 +395,9 @@ export default function SketchExpressionsPanel({
                       title={canApply ? undefined : t.applyHint}
                       style={{
                         padding: '2px 8px', fontSize: 11,
-                        background: canApply ? '#0e7490' : '#f3f4f6',
-                        color: canApply ? '#fff' : '#9ca3af',
-                        border: '1px solid ' + (canApply ? '#0e7490' : '#e5e7eb'),
+                        background: canApply ? '#0e7490' : 'var(--nx-panel-2)',
+                        color: canApply ? '#fff' : 'var(--nx-text-2)',
+                        border: '1px solid ' + (canApply ? '#0e7490' : 'var(--nx-border)'),
                         borderRadius: 3,
                         cursor: canApply ? 'pointer' : 'not-allowed',
                       }}
@@ -412,7 +412,7 @@ export default function SketchExpressionsPanel({
                     title={t.delete}
                     style={{
                       padding: '2px 6px', fontSize: 11,
-                      background: '#fff', color: '#dc2626',
+                      background: 'var(--nx-panel)', color: '#dc2626',
                       border: '1px solid #fca5a5', borderRadius: 3, cursor: 'pointer',
                     }}
                   >

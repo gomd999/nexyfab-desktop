@@ -330,7 +330,7 @@ export default function SketchEditor({
         gap: 8,
         padding: 12,
         background: '#fafafa',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 8,
         outline: 'none',
         fontFamily: 'system-ui, sans-serif',
@@ -343,7 +343,7 @@ export default function SketchEditor({
         alignItems: 'center',
         gap: 8,
       }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>{t.title}</h2>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--nx-text)' }}>{t.title}</h2>
         <button
           type="button"
           onClick={handleClose}
@@ -351,8 +351,8 @@ export default function SketchEditor({
           style={{
             padding: '4px 10px',
             fontSize: 12,
-            background: '#fff',
-            border: '1px solid #d1d5db',
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             cursor: 'pointer',
           }}
@@ -375,9 +375,9 @@ export default function SketchEditor({
               style={{
                 padding: '6px 12px',
                 fontSize: 12,
-                background: active ? '#2563eb' : '#fff',
-                color: active ? '#fff' : '#111827',
-                border: '1px solid ' + (active ? '#2563eb' : '#d1d5db'),
+                background: active ? '#2563eb' : 'var(--nx-panel)',
+                color: active ? '#fff' : 'var(--nx-text)',
+                border: '1px solid ' + (active ? '#2563eb' : 'var(--nx-border)'),
                 borderRadius: 4,
                 cursor: 'pointer',
               }}
@@ -397,7 +397,7 @@ export default function SketchEditor({
         viewBox={`0 0 ${width} ${height}`}
         onClick={handleCanvasClick}
         onMouseMove={handleCanvasMove}
-        style={{ background: '#ffffff', border: '1px solid #d1d5db', display: 'block' }}
+        style={{ background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', display: 'block' }}
       >
         <Grid width={width} height={height} />
         {entities.map(ent => (
@@ -415,7 +415,7 @@ export default function SketchEditor({
       {entities.length === 0 && !preview && (
         <div
           data-testid="sketch-hint"
-          style={{ fontSize: 11, color: '#6b7280', textAlign: 'center' }}
+          style={{ fontSize: 11, color: 'var(--nx-text-2)', textAlign: 'center' }}
         >
           {t.empty}
         </div>

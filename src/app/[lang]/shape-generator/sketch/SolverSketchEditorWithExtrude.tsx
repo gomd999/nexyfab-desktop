@@ -65,7 +65,7 @@ import { CollabStatusBadge } from '@/app/[lang]/shape-generator/_shared/CollabSt
 // Sketch editor bundle small for users who never click Extrude.
 const StlViewer = dynamic(() => import('./StlViewer'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>3D viewer loading…</div>,
 });
 
 // Sweep / Loft / Pattern modals are also dynamic-loaded so the wrapper
@@ -73,49 +73,49 @@ const StlViewer = dynamic(() => import('./StlViewer'), {
 // its own copy of the StlViewer dynamic chunk, but only when first opened.
 const SweepModal = dynamic(() => import('./SweepModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const LoftModal = dynamic(() => import('./LoftModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const PatternModal = dynamic(() => import('./PatternModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const ShellModal = dynamic(() => import('./ShellModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const HoleWizardModal = dynamic(() => import('./HoleWizardModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const FilletModal = dynamic(() => import('./FilletModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const ChamferModal = dynamic(() => import('./ChamferModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 const StepImportModal = dynamic(() => import('./StepImportModal'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 // FeatureTreePlannerPanel (Phase 3.AI.UI) — dynamic-loaded so users who
 // never toggle the AI panel pay no bundle cost. Default state below is
 // `showPlanner=false` so the chunk only loads on click.
 const FeatureTreePlannerPanel = dynamic(() => import('./FeatureTreePlannerPanel'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 // IntentExamplesPanel (Phase 3.AI.UI helper) — surfaces INTENT_EXAMPLES
 // as click-to-insert chips. Hidden by default (chunk loads only after the
 // "Show examples" toggle is clicked).
 const IntentExamplesPanel = dynamic(() => import('./IntentExamplesPanel'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
 });
 // FeatureTreeBranchManager (Agent-YYYYY) — standalone panel for snapshot /
 // load / diff / merge / delete of whole-tree branches. Hidden by default
@@ -126,7 +126,7 @@ const FeatureTreeBranchManager = dynamic(
   () => import('./FeatureTreeBranchManager'),
   {
     ssr: false,
-    loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+    loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
   },
 );
 // FeatureTreeStatsPanel (Agent-EEEEEE) — surfaces aggregate + selected-node
@@ -138,7 +138,7 @@ const FeatureTreeStatsPanel = dynamic(
   () => import('./FeatureTreeStatsPanel'),
   {
     ssr: false,
-    loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+    loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
   },
 );
 // FeatureTreeOptimizerPanel (B31.5 wrapper integration) — surfaces the
@@ -151,7 +151,7 @@ const FeatureTreeOptimizerPanel = dynamic(
   () => import('./FeatureTreeOptimizerPanel'),
   {
     ssr: false,
-    loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>loading…</div>,
+    loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
   },
 );
 
@@ -656,8 +656,8 @@ function BooleanPreviewSvg({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       style={{
-        background: '#fff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 4,
         display: 'block',
       }}
@@ -1618,9 +1618,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canExtrude ? '#16a34a' : '#e5e7eb',
-            color: canExtrude ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canExtrude ? '#15803d' : '#d1d5db'),
+            background: canExtrude ? '#16a34a' : 'var(--nx-panel-2)',
+            color: canExtrude ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canExtrude ? '#15803d' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canExtrude ? 'pointer' : 'not-allowed',
           }}
@@ -1636,9 +1636,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canRevolve ? '#0ea5e9' : '#e5e7eb',
-            color: canRevolve ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canRevolve ? '#0284c7' : '#d1d5db'),
+            background: canRevolve ? '#0ea5e9' : 'var(--nx-panel-2)',
+            color: canRevolve ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canRevolve ? '#0284c7' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canRevolve ? 'pointer' : 'not-allowed',
           }}
@@ -1654,9 +1654,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canSweep ? '#8b5cf6' : '#e5e7eb',
-            color: canSweep ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canSweep ? '#7c3aed' : '#d1d5db'),
+            background: canSweep ? '#8b5cf6' : 'var(--nx-panel-2)',
+            color: canSweep ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canSweep ? '#7c3aed' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canSweep ? 'pointer' : 'not-allowed',
           }}
@@ -1672,9 +1672,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canLoft ? '#f59e0b' : '#e5e7eb',
-            color: canLoft ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canLoft ? '#d97706' : '#d1d5db'),
+            background: canLoft ? '#f59e0b' : 'var(--nx-panel-2)',
+            color: canLoft ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canLoft ? '#d97706' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canLoft ? 'pointer' : 'not-allowed',
           }}
@@ -1690,9 +1690,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canPattern ? '#10b981' : '#e5e7eb',
-            color: canPattern ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canPattern ? '#059669' : '#d1d5db'),
+            background: canPattern ? '#10b981' : 'var(--nx-panel-2)',
+            color: canPattern ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canPattern ? '#059669' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canPattern ? 'pointer' : 'not-allowed',
           }}
@@ -1708,9 +1708,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canShell ? '#14b8a6' : '#e5e7eb',
-            color: canShell ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canShell ? '#0d9488' : '#d1d5db'),
+            background: canShell ? '#14b8a6' : 'var(--nx-panel-2)',
+            color: canShell ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canShell ? '#0d9488' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canShell ? 'pointer' : 'not-allowed',
           }}
@@ -1726,9 +1726,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canHole ? '#6366f1' : '#e5e7eb',
-            color: canHole ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canHole ? '#4f46e5' : '#d1d5db'),
+            background: canHole ? '#6366f1' : 'var(--nx-panel-2)',
+            color: canHole ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canHole ? '#4f46e5' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canHole ? 'pointer' : 'not-allowed',
           }}
@@ -1744,9 +1744,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canFillet ? '#f43f5e' : '#e5e7eb',
-            color: canFillet ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canFillet ? '#e11d48' : '#d1d5db'),
+            background: canFillet ? '#f43f5e' : 'var(--nx-panel-2)',
+            color: canFillet ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canFillet ? '#e11d48' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canFillet ? 'pointer' : 'not-allowed',
           }}
@@ -1762,9 +1762,9 @@ export default function SolverSketchEditorWithExtrude(
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 600,
-            background: canChamfer ? '#64748b' : '#e5e7eb',
-            color: canChamfer ? '#fff' : '#9ca3af',
-            border: '1px solid ' + (canChamfer ? '#475569' : '#d1d5db'),
+            background: canChamfer ? '#64748b' : 'var(--nx-panel-2)',
+            color: canChamfer ? '#fff' : 'var(--nx-text-2)',
+            border: '1px solid ' + (canChamfer ? '#475569' : 'var(--nx-border)'),
             borderRadius: 6,
             cursor: canChamfer ? 'pointer' : 'not-allowed',
           }}
@@ -1813,9 +1813,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: '#fff',
-              border: '1px solid #d1d5db',
-              color: '#374151',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
+              color: 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1833,9 +1833,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: canUndo ? '#fff' : '#f3f4f6',
-              border: '1px solid #d1d5db',
-              color: canUndo ? '#374151' : '#9ca3af',
+              background: canUndo ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+              border: '1px solid var(--nx-border)',
+              color: canUndo ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: canUndo ? 'pointer' : 'not-allowed',
             }}
@@ -1853,9 +1853,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: canRedo ? '#fff' : '#f3f4f6',
-              border: '1px solid #d1d5db',
-              color: canRedo ? '#374151' : '#9ca3af',
+              background: canRedo ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+              border: '1px solid var(--nx-border)',
+              color: canRedo ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: canRedo ? 'pointer' : 'not-allowed',
             }}
@@ -1873,9 +1873,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: showPlanner ? '#2563eb' : '#fff',
-              border: '1px solid ' + (showPlanner ? '#1d4ed8' : '#d1d5db'),
-              color: showPlanner ? '#fff' : '#374151',
+              background: showPlanner ? '#2563eb' : 'var(--nx-panel)',
+              border: '1px solid ' + (showPlanner ? '#1d4ed8' : 'var(--nx-border)'),
+              color: showPlanner ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1893,9 +1893,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: showExamples ? '#7c3aed' : '#fff',
-              border: '1px solid ' + (showExamples ? '#6d28d9' : '#d1d5db'),
-              color: showExamples ? '#fff' : '#374151',
+              background: showExamples ? '#7c3aed' : 'var(--nx-panel)',
+              border: '1px solid ' + (showExamples ? '#6d28d9' : 'var(--nx-border)'),
+              color: showExamples ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1913,9 +1913,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: showBranches ? '#0891b2' : '#fff',
-              border: '1px solid ' + (showBranches ? '#0e7490' : '#d1d5db'),
-              color: showBranches ? '#fff' : '#374151',
+              background: showBranches ? '#0891b2' : 'var(--nx-panel)',
+              border: '1px solid ' + (showBranches ? '#0e7490' : 'var(--nx-border)'),
+              color: showBranches ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1933,9 +1933,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: showStats ? '#2563eb' : '#fff',
-              border: '1px solid ' + (showStats ? '#1d4ed8' : '#d1d5db'),
-              color: showStats ? '#fff' : '#374151',
+              background: showStats ? '#2563eb' : 'var(--nx-panel)',
+              border: '1px solid ' + (showStats ? '#1d4ed8' : 'var(--nx-border)'),
+              color: showStats ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1953,9 +1953,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: showOptimize ? '#059669' : '#fff',
-              border: '1px solid ' + (showOptimize ? '#047857' : '#d1d5db'),
-              color: showOptimize ? '#fff' : '#374151',
+              background: showOptimize ? '#059669' : 'var(--nx-panel)',
+              border: '1px solid ' + (showOptimize ? '#047857' : 'var(--nx-border)'),
+              color: showOptimize ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1981,9 +1981,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: wrapperAiOn ? '#7c3aed' : '#fff',
-              border: '1px solid ' + (wrapperAiOn ? '#6d28d9' : '#d1d5db'),
-              color: wrapperAiOn ? '#fff' : '#374151',
+              background: wrapperAiOn ? '#7c3aed' : 'var(--nx-panel)',
+              border: '1px solid ' + (wrapperAiOn ? '#6d28d9' : 'var(--nx-border)'),
+              color: wrapperAiOn ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1999,9 +1999,9 @@ export default function SolverSketchEditorWithExtrude(
               padding: '4px 10px',
               fontSize: 11,
               fontWeight: 600,
-              background: collabEnabled ? '#0ea5e9' : '#fff',
-              border: '1px solid ' + (collabEnabled ? '#0284c7' : '#d1d5db'),
-              color: collabEnabled ? '#fff' : '#374151',
+              background: collabEnabled ? '#0ea5e9' : 'var(--nx-panel)',
+              border: '1px solid ' + (collabEnabled ? '#0284c7' : 'var(--nx-border)'),
+              color: collabEnabled ? '#fff' : 'var(--nx-text-2)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -2102,7 +2102,7 @@ export default function SolverSketchEditorWithExtrude(
                   marginTop: 6,
                   padding: '6px 10px',
                   fontSize: 12,
-                  color: '#1f2937',
+                  color: 'var(--nx-text)',
                   background: '#f5f3ff',
                   border: '1px solid #c4b5fd',
                   borderRadius: 4,
@@ -2263,8 +2263,8 @@ export default function SolverSketchEditorWithExtrude(
               right: 12,
               zIndex: 1001,
               padding: '8px 12px',
-              background: '#fff',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 6,
               display: 'flex',
               flexDirection: 'column',
@@ -2324,7 +2324,7 @@ export default function SolverSketchEditorWithExtrude(
           onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}
         >
           <div style={{
-            background: '#fff',
+            background: 'var(--nx-panel)',
             padding: 20,
             borderRadius: 8,
             maxWidth: 600,
@@ -2346,7 +2346,7 @@ export default function SolverSketchEditorWithExtrude(
                 data-testid="solver-extrude-depth-input"
                 step="0.1"
                 min="0.1"
-                style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
               />
             </label>
 
@@ -2356,7 +2356,7 @@ export default function SolverSketchEditorWithExtrude(
                 value={direction}
                 onChange={(e) => setDirection(e.target.value as ExtrudeDirection)}
                 data-testid="solver-extrude-direction-select"
-                style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
               >
                 <option value="one_sided">{t.oneSided}</option>
                 <option value="two_sided">{t.twoSided}</option>
@@ -2370,7 +2370,7 @@ export default function SolverSketchEditorWithExtrude(
                 value={mode}
                 onChange={(e) => setMode(e.target.value as ExtrudeMode)}
                 data-testid="solver-extrude-mode-select"
-                style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
               >
                 <option value="add">{t.add}</option>
                 <option value="cut">{t.cut}</option>
@@ -2387,7 +2387,7 @@ export default function SolverSketchEditorWithExtrude(
                 step="1"
                 min="-30"
                 max="30"
-                style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
               />
             </label>
 
@@ -2410,7 +2410,7 @@ export default function SolverSketchEditorWithExtrude(
                 >
                   {t.multipleLoopsDetected.replace('{N}', String(detectedLoops.length))}
                 </div>
-                <div style={{ fontSize: 11, color: '#374151' }}>{t.booleanOp}</div>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.booleanOp}</div>
                 <div
                   role="radiogroup"
                   aria-label={t.booleanOp}
@@ -2446,7 +2446,7 @@ export default function SolverSketchEditorWithExtrude(
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
-                      color: '#374151',
+                      color: 'var(--nx-text-2)',
                       marginBottom: 4,
                     }}
                   >
@@ -2478,7 +2478,7 @@ export default function SolverSketchEditorWithExtrude(
             )}
 
             {render.status === 'loading' && (
-              <div style={{ padding: 12, textAlign: 'center', color: '#6b7280' }}>
+              <div style={{ padding: 12, textAlign: 'center', color: 'var(--nx-text-2)' }}>
                 {t.rendering}
               </div>
             )}
@@ -2500,8 +2500,8 @@ export default function SolverSketchEditorWithExtrude(
                     data-testid="solver-extrude-scad-preview"
                     style={{
                       padding: 8,
-                      background: '#f3f4f6',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--nx-panel-2)',
+                      border: '1px solid var(--nx-border)',
                       borderRadius: 4,
                       fontSize: 11,
                       fontFamily: 'monospace',
@@ -2524,9 +2524,9 @@ export default function SolverSketchEditorWithExtrude(
                             data-testid={`solver-extrude-png-preview-${idx}`}
                             src={`data:image/png;base64,${png.base64}`}
                             alt={png.label}
-                            style={{ maxWidth: 240, border: '1px solid #d1d5db', borderRadius: 4 }}
+                            style={{ maxWidth: 240, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                           />
-                          <div style={{ fontSize: 10, color: '#6b7280' }}>{png.label}</div>
+                          <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{png.label}</div>
                         </div>
                       ))}
                     </div>
@@ -2546,7 +2546,7 @@ export default function SolverSketchEditorWithExtrude(
                 type="button"
                 onClick={() => setModalOpen(false)}
                 data-testid="solver-extrude-cancel"
-                style={{ padding: '8px 16px', fontSize: 13, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '8px 16px', fontSize: 13, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
               >
                 {t.cancel}
               </button>
@@ -2559,8 +2559,8 @@ export default function SolverSketchEditorWithExtrude(
                   padding: '8px 16px',
                   fontSize: 13,
                   fontWeight: 600,
-                  background: render.status === 'loading' ? '#e5e7eb' : '#16a34a',
-                  color: render.status === 'loading' ? '#9ca3af' : '#fff',
+                  background: render.status === 'loading' ? 'var(--nx-panel-2)' : '#16a34a',
+                  color: render.status === 'loading' ? 'var(--nx-text-2)' : '#fff',
                   border: '1px solid #15803d',
                   borderRadius: 4,
                   cursor: render.status === 'loading' ? 'not-allowed' : 'pointer',

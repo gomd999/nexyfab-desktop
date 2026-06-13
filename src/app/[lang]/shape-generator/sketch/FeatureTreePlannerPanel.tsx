@@ -583,9 +583,9 @@ export default function FeatureTreePlannerPanel(
         flexDirection: 'column',
         gap: 12,
         padding: 12,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 8,
-        background: '#fff',
+        background: 'var(--nx-panel)',
         fontFamily: 'system-ui, sans-serif',
         fontSize: 13,
         minWidth: 280,
@@ -603,7 +603,7 @@ export default function FeatureTreePlannerPanel(
           style={{
             flex: 1,
             padding: 6,
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             fontFamily: 'inherit',
             fontSize: 12,
@@ -634,7 +634,7 @@ export default function FeatureTreePlannerPanel(
           data-testid="planner-status"
           style={{
             fontSize: 12,
-            color: status.kind === 'error' ? '#dc2626' : '#6b7280',
+            color: status.kind === 'error' ? '#dc2626' : 'var(--nx-text-2)',
           }}
         >
           {statusText}
@@ -673,7 +673,7 @@ export default function FeatureTreePlannerPanel(
             borderRadius: 4,
           }}
         >
-          <div style={{ fontSize: 11, color: '#6b7280' }}>{d.designIntent}</div>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{d.designIntent}</div>
           <div
             data-testid="planner-explain-design-intent"
             style={{ fontSize: 12, lineHeight: 1.45 }}
@@ -683,7 +683,7 @@ export default function FeatureTreePlannerPanel(
 
           {explanation.features.length > 0 && (
             <>
-              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 4 }}>
                 {d.featuresHeading}
               </div>
               <ul
@@ -703,7 +703,7 @@ export default function FeatureTreePlannerPanel(
                           : '1px solid #ede9fe',
                     }}
                   >
-                    <span style={{ color: '#6b7280' }}>[{f.kind}]</span>{' '}
+                    <span style={{ color: 'var(--nx-text-2)' }}>[{f.kind}]</span>{' '}
                     {f.intentDescription}
                   </li>
                 ))}
@@ -742,7 +742,7 @@ export default function FeatureTreePlannerPanel(
             explanation.warnings.length === 0 && (
               <div
                 data-testid="planner-explain-empty"
-                style={{ fontSize: 12, color: '#6b7280' }}
+                style={{ fontSize: 12, color: 'var(--nx-text-2)' }}
               >
                 {d.explainEmpty}
               </div>
@@ -765,9 +765,9 @@ export default function FeatureTreePlannerPanel(
                   aria-expanded={scadCommentsExpanded}
                   style={{
                     padding: '3px 8px',
-                    border: '1px solid #d1d5db',
-                    background: '#fff',
-                    color: '#374151',
+                    border: '1px solid var(--nx-border)',
+                    background: 'var(--nx-panel)',
+                    color: 'var(--nx-text-2)',
                     borderRadius: 4,
                     cursor: 'pointer',
                     fontSize: 11,
@@ -784,7 +784,7 @@ export default function FeatureTreePlannerPanel(
                   style={{
                     padding: '3px 8px',
                     border: '1px solid #059669',
-                    background: copyState === 'copied' ? '#d1fae5' : '#fff',
+                    background: copyState === 'copied' ? '#d1fae5' : 'var(--nx-panel)',
                     color: '#059669',
                     borderRadius: 4,
                     cursor: 'pointer',
@@ -826,18 +826,18 @@ export default function FeatureTreePlannerPanel(
             flexDirection: 'column',
             gap: 8,
             padding: 8,
-            background: '#f9fafb',
+            background: 'var(--nx-panel-2)',
             borderRadius: 4,
           }}
         >
-          <div style={{ fontSize: 11, color: '#6b7280' }}>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {d.rationaleHeading}
           </div>
           <div data-testid="planner-rationale" style={{ fontSize: 12 }}>
             {status.result.rationale}
           </div>
 
-          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 4 }}>
             {d.stepsHeading}
           </div>
           <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
@@ -863,7 +863,7 @@ export default function FeatureTreePlannerPanel(
 
           {status.result.warnings.length > 0 && (
             <>
-              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 4 }}>
                 {d.warningsHeading}
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
@@ -912,16 +912,16 @@ export default function FeatureTreePlannerPanel(
             gap: 8,
           }}
         >
-          <span style={{ fontSize: 11, color: '#6b7280' }}>
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {d.historyHeading}
           </span>
           <span
             data-testid="planner-history-count"
             style={{
               fontSize: 10,
-              color: '#9ca3af',
+              color: 'var(--nx-text-2)',
               padding: '1px 6px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--nx-border)',
               borderRadius: 9999,
             }}
           >
@@ -929,7 +929,7 @@ export default function FeatureTreePlannerPanel(
           </span>
         </div>
         {history.length === 0 ? (
-          <div style={{ fontSize: 12, color: '#9ca3af' }}>{d.historyEmpty}</div>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>{d.historyEmpty}</div>
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
             {history.map((h, idx) => {
@@ -945,7 +945,7 @@ export default function FeatureTreePlannerPanel(
                     fontSize: 11,
                     padding: '2px 0',
                     borderBottom:
-                      idx === history.length - 1 ? 'none' : '1px solid #f3f4f6',
+                      idx === history.length - 1 ? 'none' : '1px solid var(--nx-border)',
                     display: 'flex',
                     alignItems: 'baseline',
                     gap: 4,
@@ -964,7 +964,7 @@ export default function FeatureTreePlannerPanel(
                     </span>
                   )}
                   <span style={{ fontWeight: 500 }}>{h.prompt}</span>
-                  <span style={{ color: '#6b7280' }}>
+                  <span style={{ color: 'var(--nx-text-2)' }}>
                     {' · '}
                     {intentLabel} · {stepCount} steps
                     {warningCount > 0 ? ` · ${warningCount} warn` : ''}
@@ -990,9 +990,9 @@ export default function FeatureTreePlannerPanel(
             disabled={history.length === 0}
             style={{
               padding: '3px 8px',
-              border: '1px solid #d1d5db',
-              background: history.length === 0 ? '#f3f4f6' : '#fff',
-              color: history.length === 0 ? '#9ca3af' : '#374151',
+              border: '1px solid var(--nx-border)',
+              background: history.length === 0 ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+              color: history.length === 0 ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
               borderRadius: 4,
               fontSize: 11,
               cursor: history.length === 0 ? 'not-allowed' : 'pointer',
@@ -1007,9 +1007,9 @@ export default function FeatureTreePlannerPanel(
             disabled={history.length === 0}
             style={{
               padding: '3px 8px',
-              border: '1px solid #d1d5db',
-              background: history.length === 0 ? '#f3f4f6' : '#fff',
-              color: history.length === 0 ? '#9ca3af' : '#b91c1c',
+              border: '1px solid var(--nx-border)',
+              background: history.length === 0 ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+              color: history.length === 0 ? 'var(--nx-text-2)' : '#b91c1c',
               borderRadius: 4,
               fontSize: 11,
               cursor: history.length === 0 ? 'not-allowed' : 'pointer',
