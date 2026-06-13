@@ -560,8 +560,8 @@ export default function MateConstraintsToolbar({
         padding: 6,
         flexWrap: 'wrap',
         alignItems: 'center',
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb',
+        background: 'var(--nx-panel-2)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 6,
       }}
     >
@@ -582,10 +582,10 @@ export default function MateConstraintsToolbar({
                 minWidth: 36,
                 height: 32,
                 padding: '0 8px',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
-                background: enabled ? '#fff' : '#f3f4f6',
-                color: enabled ? '#111827' : '#9ca3af',
+                background: enabled ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+                color: enabled ? 'var(--nx-text)' : 'var(--nx-text-2)',
                 cursor: enabled ? 'pointer' : 'not-allowed',
                 fontSize: 14,
                 lineHeight: 1,
@@ -621,10 +621,10 @@ export default function MateConstraintsToolbar({
             marginInlineStart: 'auto',
             height: 32,
             padding: '0 10px',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
-            background: disabled ? '#f3f4f6' : '#fff',
-            color: disabled ? '#9ca3af' : '#374151',
+            background: disabled ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+            color: disabled ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
             cursor: disabled ? 'not-allowed' : 'pointer',
             fontSize: 12,
           }}
@@ -665,8 +665,8 @@ function ValuePopover({ def, t, onSubmit, onCancel }: ValuePopoverProps): React.
         display: 'flex',
         gap: 4,
         padding: 6,
-        background: '#fff',
-        border: '1px solid #d1d5db',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 4,
         boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
       }}
@@ -682,7 +682,7 @@ function ValuePopover({ def, t, onSubmit, onCancel }: ValuePopoverProps): React.
         style={{
           width: 96,
           padding: '4px 6px',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--nx-border)',
           borderRadius: 3,
           fontSize: 12,
         }}
@@ -708,10 +708,10 @@ function ValuePopover({ def, t, onSubmit, onCancel }: ValuePopoverProps): React.
         onClick={onCancel}
         style={{
           padding: '4px 8px',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--nx-border)',
           borderRadius: 3,
-          background: '#fff',
-          color: '#374151',
+          background: 'var(--nx-panel)',
+          color: 'var(--nx-text-2)',
           fontSize: 11,
           cursor: 'pointer',
         }}

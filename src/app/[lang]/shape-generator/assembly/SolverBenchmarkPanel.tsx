@@ -328,8 +328,8 @@ export function SolverBenchmarkPanel({
       style={{
         padding: 16,
         fontFamily: 'system-ui, sans-serif',
-        background: '#fff',
-        border: '1px solid #d1d5db',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 6,
         maxWidth: '100%',
         overflow: 'auto',
@@ -338,11 +338,11 @@ export function SolverBenchmarkPanel({
       <header style={{ marginBottom: 12 }}>
         <h2
           data-testid="solver-benchmark-title"
-          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}
+          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--nx-text)' }}
         >
           {dict.title}
         </h2>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--nx-text-2)' }}>
           {dict.description}
         </p>
       </header>
@@ -379,8 +379,8 @@ export function SolverBenchmarkPanel({
           disabled={results.length === 0}
           style={{
             padding: '6px 12px',
-            background: results.length === 0 ? '#e5e7eb' : '#16a34a',
-            color: results.length === 0 ? '#9ca3af' : '#fff',
+            background: results.length === 0 ? 'var(--nx-panel-2)' : '#16a34a',
+            color: results.length === 0 ? 'var(--nx-text-2)' : '#fff',
             border: 'none',
             borderRadius: 4,
             fontSize: 12,
@@ -396,8 +396,8 @@ export function SolverBenchmarkPanel({
           disabled={results.length === 0 && error === null}
           style={{
             padding: '6px 12px',
-            background: results.length === 0 && error === null ? '#e5e7eb' : '#6b7280',
-            color: results.length === 0 && error === null ? '#9ca3af' : '#fff',
+            background: results.length === 0 && error === null ? 'var(--nx-panel-2)' : '#6b7280',
+            color: results.length === 0 && error === null ? 'var(--nx-text-2)' : '#fff',
             border: 'none',
             borderRadius: 4,
             fontSize: 12,
@@ -432,10 +432,10 @@ export function SolverBenchmarkPanel({
           style={{
             padding: 24,
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--nx-text-2)',
             fontSize: 13,
-            background: '#f9fafb',
-            border: '1px dashed #d1d5db',
+            background: 'var(--nx-panel-2)',
+            border: '1px dashed var(--nx-border)',
             borderRadius: 4,
           }}
         >
@@ -448,7 +448,7 @@ export function SolverBenchmarkPanel({
             style={{
               marginBottom: 8,
               fontSize: 12,
-              color: '#374151',
+              color: 'var(--nx-text-2)',
               fontWeight: 500,
             }}
           >
@@ -463,7 +463,7 @@ export function SolverBenchmarkPanel({
             }}
           >
             <thead>
-              <tr style={{ background: '#f3f4f6' }}>
+              <tr style={{ background: 'var(--nx-panel-2)' }}>
                 <th style={th}>{dict.colScenario}</th>
                 <th style={th}>{dict.colGsIter}</th>
                 <th style={th}>{dict.colGsMs}</th>
@@ -490,7 +490,7 @@ export function SolverBenchmarkPanel({
                     <td
                       style={{
                         ...td,
-                        color: gsFailedResidual ? '#b91c1c' : '#111827',
+                        color: gsFailedResidual ? '#b91c1c' : 'var(--nx-text)',
                         fontWeight: gsFailedResidual ? 600 : 400,
                       }}
                       data-testid={`solver-benchmark-gs-ok-${r.scenario}`}
@@ -503,7 +503,7 @@ export function SolverBenchmarkPanel({
                     <td
                       style={{
                         ...td,
-                        color: lagFailedResidual ? '#b91c1c' : '#111827',
+                        color: lagFailedResidual ? '#b91c1c' : 'var(--nx-text)',
                         fontWeight: lagFailedResidual ? 600 : 400,
                       }}
                       data-testid={`solver-benchmark-lag-ok-${r.scenario}`}
@@ -541,17 +541,17 @@ export default SolverBenchmarkPanel;
 
 const th: React.CSSProperties = {
   padding: '6px 8px',
-  borderBottom: '1px solid #d1d5db',
+  borderBottom: '1px solid var(--nx-border)',
   textAlign: 'left',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--nx-text-2)',
   whiteSpace: 'nowrap',
 };
 
 const td: React.CSSProperties = {
   padding: '6px 8px',
-  borderBottom: '1px solid #e5e7eb',
-  color: '#111827',
+  borderBottom: '1px solid var(--nx-border)',
+  color: 'var(--nx-text)',
   whiteSpace: 'nowrap',
 };
 

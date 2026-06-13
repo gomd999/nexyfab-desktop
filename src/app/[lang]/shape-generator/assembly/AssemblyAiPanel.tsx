@@ -449,9 +449,9 @@ export default function AssemblyAiPanel(
         flexDirection: 'column',
         gap: 12,
         padding: 12,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 8,
-        background: '#fff',
+        background: 'var(--nx-panel)',
         fontFamily: 'system-ui, sans-serif',
         fontSize: 13,
         minWidth: 280,
@@ -469,7 +469,7 @@ export default function AssemblyAiPanel(
           style={{
             flex: 1,
             padding: 6,
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             fontFamily: 'inherit',
             fontSize: 12,
@@ -503,7 +503,7 @@ export default function AssemblyAiPanel(
             color:
               status.kind === 'error' || status.kind === 'not_understood'
                 ? '#dc2626'
-                : '#6b7280',
+                : 'var(--nx-text-2)',
           }}
         >
           {statusText}
@@ -517,7 +517,7 @@ export default function AssemblyAiPanel(
             flexDirection: 'column',
             gap: 8,
             padding: 8,
-            background: '#f9fafb',
+            background: 'var(--nx-panel-2)',
             borderRadius: 4,
           }}
         >
@@ -532,9 +532,9 @@ export default function AssemblyAiPanel(
               data-testid="assembly-ai-source-badge"
               style={{
                 fontSize: 10,
-                color: '#6b7280',
+                color: 'var(--nx-text-2)',
                 padding: '1px 6px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 9999,
               }}
             >
@@ -544,7 +544,7 @@ export default function AssemblyAiPanel(
 
           {preview.parts.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 2 }}>
                 {d.partsHeading}
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
@@ -563,7 +563,7 @@ export default function AssemblyAiPanel(
 
           {preview.mates.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 2 }}>
                 {d.matesHeading}
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>

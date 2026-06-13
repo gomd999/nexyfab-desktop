@@ -487,9 +487,9 @@ export default function AssemblyConstraintsPanel(
         flexDirection: 'column',
         gap: 12,
         padding: 12,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 8,
-        background: '#fff',
+        background: 'var(--nx-panel)',
         fontFamily: 'system-ui, sans-serif',
         fontSize: 13,
         minWidth: 280,
@@ -505,7 +505,7 @@ export default function AssemblyConstraintsPanel(
         {constraints.length === 0 ? (
           <div
             data-testid="assembly-constraints-empty"
-            style={{ fontSize: 12, color: '#6b7280', padding: 8 }}
+            style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: 8 }}
           >
             {t.emptyList}
           </div>
@@ -533,7 +533,7 @@ export default function AssemblyConstraintsPanel(
           paddingTop: 8,
         }}
       >
-        <label style={{ fontSize: 11, color: '#6b7280' }}>{t.addKindLabel}</label>
+        <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.addKindLabel}</label>
         <select
           data-testid="assembly-constraints-add-kind"
           value={addKind}
@@ -541,7 +541,7 @@ export default function AssemblyConstraintsPanel(
           style={{
             fontSize: 12,
             padding: '4px 6px',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
           }}
         >
@@ -558,8 +558,8 @@ export default function AssemblyConstraintsPanel(
           style={{
             fontSize: 12,
             padding: '6px 10px',
-            background: '#f3f4f6',
-            border: '1px solid #d1d5db',
+            background: 'var(--nx-panel-2)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             cursor: 'pointer',
           }}
@@ -624,7 +624,7 @@ export default function AssemblyConstraintsPanel(
           {result.violations.length === 0 ? (
             <div
               data-testid="assembly-constraints-empty-violations"
-              style={{ fontSize: 12, color: '#6b7280', padding: 4 }}
+              style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: 4 }}
             >
               {t.emptyViolations}
             </div>
@@ -674,7 +674,7 @@ function ConstraintRow(props: ConstraintRowProps): React.ReactElement {
         flexDirection: 'column',
         gap: 6,
         padding: 8,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--nx-border)',
         borderRadius: 4,
         background: '#fafafa',
       }}
@@ -689,7 +689,7 @@ function ConstraintRow(props: ConstraintRowProps): React.ReactElement {
       >
         <span
           data-testid={`assembly-constraints-kind-${index}`}
-          style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}
+          style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text-2)' }}
         >
           {headerLabel}
         </span>
@@ -803,7 +803,7 @@ function ConstraintFields(props: ConstraintFieldsProps): React.ReactElement {
               flexDirection: 'column',
               gap: 2,
               fontSize: 11,
-              color: '#6b7280',
+              color: 'var(--nx-text-2)',
             }}
           >
             <span>{d.fieldCurrency}</span>
@@ -816,7 +816,7 @@ function ConstraintFields(props: ConstraintFieldsProps): React.ReactElement {
               style={{
                 fontSize: 12,
                 padding: '3px 6px',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 3,
               }}
             >
@@ -837,7 +837,7 @@ function ConstraintFields(props: ConstraintFieldsProps): React.ReactElement {
             flexDirection: 'column',
             gap: 2,
             fontSize: 11,
-            color: '#6b7280',
+            color: 'var(--nx-text-2)',
           }}
         >
           <span>{d.fieldAllowedMaterials}</span>
@@ -855,12 +855,12 @@ function ConstraintFields(props: ConstraintFieldsProps): React.ReactElement {
             style={{
               fontSize: 12,
               padding: '3px 6px',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--nx-border)',
               borderRadius: 3,
               minWidth: 240,
             }}
           />
-          <span style={{ fontSize: 10, color: '#9ca3af' }}>{d.materialsHint}</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{d.materialsHint}</span>
         </label>
       );
   }
@@ -882,7 +882,7 @@ function NumberField(props: NumberFieldProps): React.ReactElement {
         flexDirection: 'column',
         gap: 2,
         fontSize: 11,
-        color: '#6b7280',
+        color: 'var(--nx-text-2)',
       }}
     >
       <span>{label}</span>
@@ -899,7 +899,7 @@ function NumberField(props: NumberFieldProps): React.ReactElement {
         style={{
           fontSize: 12,
           padding: '3px 6px',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--nx-border)',
           borderRadius: 3,
           width: 100,
         }}
@@ -950,7 +950,7 @@ function ViolationRow(props: ViolationRowProps): React.ReactElement {
         </span>
         <span style={{ fontSize: 12, fontWeight: 600 }}>{violation.kind}</span>
       </div>
-      <div style={{ fontSize: 11, color: '#374151' }}>
+      <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
         <span data-testid={`assembly-constraints-violation-actual-${index}`}>
           {d.actualLabel}: <code>{formatViolationValue(violation.actual)}</code>
         </span>
@@ -962,7 +962,7 @@ function ViolationRow(props: ViolationRowProps): React.ReactElement {
       {violation.detail !== undefined && (
         <div
           data-testid={`assembly-constraints-violation-detail-${index}`}
-          style={{ fontSize: 11, color: '#6b7280' }}
+          style={{ fontSize: 11, color: 'var(--nx-text-2)' }}
         >
           {violation.detail}
         </div>

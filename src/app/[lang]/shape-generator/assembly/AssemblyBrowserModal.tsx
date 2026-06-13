@@ -3391,7 +3391,7 @@ export default function AssemblyBrowserModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--nx-panel)',
           padding: 20,
           borderRadius: 8,
           maxWidth: 1080,
@@ -3429,9 +3429,9 @@ export default function AssemblyBrowserModal({
             style={{
               fontSize: 11,
               padding: '4px 10px',
-              background: show3DView ? '#ecfdf5' : '#fff',
-              color: show3DView ? '#065f46' : '#374151',
-              border: `1px solid ${show3DView ? '#6ee7b7' : '#d1d5db'}`,
+              background: show3DView ? '#ecfdf5' : 'var(--nx-panel)',
+              color: show3DView ? '#065f46' : 'var(--nx-text-2)',
+              border: `1px solid ${show3DView ? '#6ee7b7' : 'var(--nx-border)'}`,
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 600,
@@ -3448,9 +3448,9 @@ export default function AssemblyBrowserModal({
             style={{
               fontSize: 11,
               padding: '4px 10px',
-              background: aiPanelOn ? '#eff6ff' : '#fff',
-              color: aiPanelOn ? '#1e40af' : '#374151',
-              border: `1px solid ${aiPanelOn ? '#93c5fd' : '#d1d5db'}`,
+              background: aiPanelOn ? '#eff6ff' : 'var(--nx-panel)',
+              color: aiPanelOn ? '#1e40af' : 'var(--nx-text-2)',
+              border: `1px solid ${aiPanelOn ? '#93c5fd' : 'var(--nx-border)'}`,
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 600,
@@ -3467,9 +3467,9 @@ export default function AssemblyBrowserModal({
             style={{
               fontSize: 11,
               padding: '4px 10px',
-              background: constraintsPanelOn ? '#fef3c7' : '#fff',
-              color: constraintsPanelOn ? '#92400e' : '#374151',
-              border: `1px solid ${constraintsPanelOn ? '#fcd34d' : '#d1d5db'}`,
+              background: constraintsPanelOn ? '#fef3c7' : 'var(--nx-panel)',
+              color: constraintsPanelOn ? '#92400e' : 'var(--nx-text-2)',
+              border: `1px solid ${constraintsPanelOn ? '#fcd34d' : 'var(--nx-border)'}`,
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 600,
@@ -3486,9 +3486,9 @@ export default function AssemblyBrowserModal({
             style={{
               fontSize: 11,
               padding: '4px 10px',
-              background: explodeOpen ? '#cffafe' : '#fff',
-              color: explodeOpen ? '#155e75' : '#374151',
-              border: `1px solid ${explodeOpen ? '#67e8f9' : '#d1d5db'}`,
+              background: explodeOpen ? '#cffafe' : 'var(--nx-panel)',
+              color: explodeOpen ? '#155e75' : 'var(--nx-text-2)',
+              border: `1px solid ${explodeOpen ? '#67e8f9' : 'var(--nx-border)'}`,
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 600,
@@ -3510,7 +3510,7 @@ export default function AssemblyBrowserModal({
           <section
             data-testid="solver-assembly-parts-panel"
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--nx-border)',
               borderRadius: 6,
               padding: 12,
               display: 'flex',
@@ -3527,7 +3527,7 @@ export default function AssemblyBrowserModal({
               {state.parts.length === 0 ? (
                 <div
                   data-testid="solver-assembly-parts-empty"
-                  style={{ fontSize: 12, color: '#6b7280', padding: 8 }}
+                  style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: 8 }}
                 >
                   {t.emptyParts}
                 </div>
@@ -3605,7 +3605,7 @@ export default function AssemblyBrowserModal({
                             flex: 1,
                             fontSize: 12,
                             padding: 4,
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--nx-border)',
                             borderRadius: 3,
                           }}
                         />
@@ -3632,7 +3632,7 @@ export default function AssemblyBrowserModal({
                           style={{
                             fontSize: 11,
                             padding: '3px 8px',
-                            background: treeOpen ? '#e0f2fe' : '#fff',
+                            background: treeOpen ? '#e0f2fe' : 'var(--nx-panel)',
                             border: '1px solid #93c5fd',
                             color: '#1d4ed8',
                             borderRadius: 3,
@@ -3648,7 +3648,7 @@ export default function AssemblyBrowserModal({
                           style={{
                             fontSize: 11,
                             padding: '3px 8px',
-                            background: refsOpen ? '#dcfce7' : '#fff',
+                            background: refsOpen ? '#dcfce7' : 'var(--nx-panel)',
                             border: '1px solid #86efac',
                             color: '#166534',
                             borderRadius: 3,
@@ -3664,7 +3664,7 @@ export default function AssemblyBrowserModal({
                           style={{
                             fontSize: 11,
                             padding: '3px 8px',
-                            background: '#fff',
+                            background: 'var(--nx-panel)',
                             border: '1px solid #fca5a5',
                             color: '#b91c1c',
                             borderRadius: 3,
@@ -3696,7 +3696,7 @@ export default function AssemblyBrowserModal({
                               fontFamily: 'monospace',
                               fontSize: 11,
                               padding: 6,
-                              border: `1px solid ${treeErr ? '#fca5a5' : '#d1d5db'}`,
+                              border: `1px solid ${treeErr ? '#fca5a5' : 'var(--nx-border)'}`,
                               borderRadius: 3,
                               resize: 'vertical',
                               minHeight: 60,
@@ -3779,10 +3779,10 @@ export default function AssemblyBrowserModal({
                                   style={{
                                     fontSize: 10,
                                     padding: '2px 6px',
-                                    background: isSelected ? '#166534' : '#fff',
-                                    color: isSelected ? '#fff' : '#374151',
+                                    background: isSelected ? '#166534' : 'var(--nx-panel)',
+                                    color: isSelected ? '#fff' : 'var(--nx-text-2)',
                                     border: `1px solid ${
-                                      isSelected ? '#166534' : '#d1d5db'
+                                      isSelected ? '#166534' : 'var(--nx-border)'
                                     }`,
                                     borderRadius: 3,
                                     cursor: 'pointer',
@@ -3809,8 +3809,8 @@ export default function AssemblyBrowserModal({
                 marginTop: 6,
                 fontSize: 12,
                 padding: '6px 10px',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--nx-panel-2)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
                 cursor: 'pointer',
               }}
@@ -3827,7 +3827,7 @@ export default function AssemblyBrowserModal({
                 gap: 4,
                 marginTop: 8,
                 padding: 6,
-                borderTop: '1px dashed #e5e7eb',
+                borderTop: '1px dashed var(--nx-border)',
               }}
             >
               <div
@@ -3841,7 +3841,7 @@ export default function AssemblyBrowserModal({
               >
                 <span style={{ fontWeight: 600 }}>{t.selectedLabel}:</span>
                 {selection.length === 0 ? (
-                  <span style={{ color: '#6b7280' }}>{t.selectedEmpty}</span>
+                  <span style={{ color: 'var(--nx-text-2)' }}>{t.selectedEmpty}</span>
                 ) : (
                   selection.map((s, idx) => (
                     <span
@@ -3859,7 +3859,7 @@ export default function AssemblyBrowserModal({
                     </span>
                   ))
                 )}
-                <span style={{ color: '#9ca3af', marginInlineStart: 'auto' }}>
+                <span style={{ color: 'var(--nx-text-2)', marginInlineStart: 'auto' }}>
                   ({t.maxRefs})
                 </span>
                 <button
@@ -3870,9 +3870,9 @@ export default function AssemblyBrowserModal({
                   style={{
                     fontSize: 11,
                     padding: '2px 6px',
-                    background: selection.length === 0 ? '#f3f4f6' : '#fff',
-                    color: selection.length === 0 ? '#9ca3af' : '#374151',
-                    border: '1px solid #d1d5db',
+                    background: selection.length === 0 ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+                    color: selection.length === 0 ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
+                    border: '1px solid var(--nx-border)',
                     borderRadius: 3,
                     cursor: selection.length === 0 ? 'not-allowed' : 'pointer',
                   }}
@@ -3894,7 +3894,7 @@ export default function AssemblyBrowserModal({
             <section
               data-testid="solver-assembly-3d-panel"
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 6,
                 padding: 12,
                 display: 'flex',
@@ -3932,7 +3932,7 @@ export default function AssemblyBrowserModal({
                       flexWrap: 'wrap',
                     }}
                   >
-                    <span style={{ color: '#374151' }}>{t.gizmoModeLabel}:</span>
+                    <span style={{ color: 'var(--nx-text-2)' }}>{t.gizmoModeLabel}:</span>
                     <button
                       type="button"
                       onClick={() => setGizmoMode('translate')}
@@ -3941,8 +3941,8 @@ export default function AssemblyBrowserModal({
                       style={{
                         fontSize: 11,
                         padding: '3px 8px',
-                        background: gizmoMode === 'translate' ? '#1e40af' : '#fff',
-                        color: gizmoMode === 'translate' ? '#fff' : '#374151',
+                        background: gizmoMode === 'translate' ? '#1e40af' : 'var(--nx-panel)',
+                        color: gizmoMode === 'translate' ? '#fff' : 'var(--nx-text-2)',
                         border: '1px solid #93c5fd',
                         borderRadius: 3,
                         cursor: 'pointer',
@@ -3959,8 +3959,8 @@ export default function AssemblyBrowserModal({
                       style={{
                         fontSize: 11,
                         padding: '3px 8px',
-                        background: gizmoMode === 'rotate' ? '#1e40af' : '#fff',
-                        color: gizmoMode === 'rotate' ? '#fff' : '#374151',
+                        background: gizmoMode === 'rotate' ? '#1e40af' : 'var(--nx-panel)',
+                        color: gizmoMode === 'rotate' ? '#fff' : 'var(--nx-text-2)',
                         border: '1px solid #93c5fd',
                         borderRadius: 3,
                         cursor: 'pointer',
@@ -3985,7 +3985,7 @@ export default function AssemblyBrowserModal({
           <section
             data-testid="solver-assembly-mates-panel"
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--nx-border)',
               borderRadius: 6,
               padding: 12,
               display: 'flex',
@@ -4002,7 +4002,7 @@ export default function AssemblyBrowserModal({
               {state.mates.length === 0 ? (
                 <div
                   data-testid="solver-assembly-mates-empty"
-                  style={{ fontSize: 12, color: '#6b7280', padding: 8 }}
+                  style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: 8 }}
                 >
                   {t.emptyMates}
                 </div>
@@ -4077,7 +4077,7 @@ export default function AssemblyBrowserModal({
                             marginLeft: 'auto',
                             fontSize: 11,
                             padding: '3px 8px',
-                            background: '#fff',
+                            background: 'var(--nx-panel)',
                             border: '1px solid #fca5a5',
                             color: '#b91c1c',
                             borderRadius: 3,
@@ -4116,7 +4116,7 @@ export default function AssemblyBrowserModal({
                                 flex: 1,
                                 fontSize: 11,
                                 padding: 3,
-                                border: '1px solid #d1d5db',
+                                border: '1px solid var(--nx-border)',
                                 borderRadius: 3,
                               }}
                             />
@@ -4132,7 +4132,7 @@ export default function AssemblyBrowserModal({
                                 flex: 1,
                                 fontSize: 11,
                                 padding: 3,
-                                border: '1px solid #d1d5db',
+                                border: '1px solid var(--nx-border)',
                                 borderRadius: 3,
                               }}
                             />
@@ -4220,13 +4220,13 @@ export default function AssemblyBrowserModal({
                                 fontSize: 11,
                                 padding: 3,
                                 border: `1px solid ${
-                                  invalid ? '#fca5a5' : '#d1d5db'
+                                  invalid ? '#fca5a5' : 'var(--nx-border)'
                                 }`,
-                                background: invalid ? '#fef2f2' : '#fff',
+                                background: invalid ? '#fef2f2' : 'var(--nx-panel)',
                                 borderRadius: 3,
                               }}
                             />
-                            <span style={{ color: '#6b7280' }}>{vSpec.label}</span>
+                            <span style={{ color: 'var(--nx-text-2)' }}>{vSpec.label}</span>
                           </label>
                         );
                       })()}
@@ -4281,8 +4281,8 @@ export default function AssemblyBrowserModal({
                           flex: 1,
                           fontSize: 11,
                           padding: 3,
-                          border: `1px solid ${bulkInvalid ? '#fca5a5' : '#d1d5db'}`,
-                          background: bulkInvalid ? '#fef2f2' : '#fff',
+                          border: `1px solid ${bulkInvalid ? '#fca5a5' : 'var(--nx-border)'}`,
+                          background: bulkInvalid ? '#fef2f2' : 'var(--nx-panel)',
                           borderRadius: 3,
                         }}
                       />
@@ -4296,13 +4296,13 @@ export default function AssemblyBrowserModal({
                           padding: '4px 10px',
                           background:
                             bulkInvalid || bulkValueRaw.trim().length === 0
-                              ? '#f3f4f6'
+                              ? 'var(--nx-panel-2)'
                               : '#3b82f6',
                           color:
                             bulkInvalid || bulkValueRaw.trim().length === 0
-                              ? '#9ca3af'
+                              ? 'var(--nx-text-2)'
                               : '#fff',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--nx-border)',
                           borderRadius: 3,
                           cursor:
                             bulkInvalid || bulkValueRaw.trim().length === 0
@@ -4325,8 +4325,8 @@ export default function AssemblyBrowserModal({
                 marginTop: 6,
                 fontSize: 12,
                 padding: '6px 10px',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--nx-panel-2)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
                 cursor: 'pointer',
               }}
@@ -4431,7 +4431,7 @@ export default function AssemblyBrowserModal({
               style={{
                 fontSize: 11,
                 padding: '2px 8px',
-                background: '#fff',
+                background: 'var(--nx-panel)',
                 border: '1px solid #6ee7b7',
                 color: '#065f46',
                 borderRadius: 3,
@@ -4488,7 +4488,7 @@ export default function AssemblyBrowserModal({
             {hasInferred && suggestions.length === 0 && (
               <span
                 data-testid="solver-assembly-infer-mates-empty"
-                style={{ fontSize: 11, color: '#6b7280' }}
+                style={{ fontSize: 11, color: 'var(--nx-text-2)' }}
               >
                 {t.noSuggestions}
               </span>
@@ -4513,7 +4513,7 @@ export default function AssemblyBrowserModal({
         {solveState.status === 'loading' && (
           <div
             data-testid="solver-assembly-solve-loading"
-            style={{ fontSize: 12, color: '#6b7280', padding: 8 }}
+            style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: 8 }}
           >
             {t.solving}
           </div>
@@ -4674,10 +4674,10 @@ export default function AssemblyBrowserModal({
               data-testid="solver-assembly-import-loading"
               style={{
                 fontSize: 12,
-                color: '#6b7280',
+                color: 'var(--nx-text-2)',
                 padding: 8,
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                background: 'var(--nx-panel-2)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
               }}
             >
@@ -4738,7 +4738,7 @@ export default function AssemblyBrowserModal({
                     style={{
                       fontSize: 11,
                       padding: '2px 6px',
-                      background: '#fff',
+                      background: 'var(--nx-panel)',
                       border: '1px solid #fbbf24',
                       color: '#92400e',
                       borderRadius: 3,
@@ -4782,7 +4782,7 @@ export default function AssemblyBrowserModal({
                     style={{
                       fontSize: 11,
                       padding: '2px 6px',
-                      background: '#fff',
+                      background: 'var(--nx-panel)',
                       border: '1px solid #f87171',
                       color: '#991b1b',
                       borderRadius: 3,
@@ -4828,8 +4828,8 @@ export default function AssemblyBrowserModal({
             flexDirection: 'column',
             gap: 4,
             padding: 8,
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
+            background: 'var(--nx-panel-2)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
           }}
         >
@@ -4847,7 +4847,7 @@ export default function AssemblyBrowserModal({
               data-testid="solver-assembly-history-current"
               style={{
                 fontWeight: 400,
-                color: '#6b7280',
+                color: 'var(--nx-text-2)',
                 fontStyle: 'italic',
               }}
             >
@@ -4872,7 +4872,7 @@ export default function AssemblyBrowserModal({
                   data-testid={`solver-assembly-history-entry-${idx}`}
                   style={{
                     fontSize: 11,
-                    color: idx === 0 ? '#111827' : '#6b7280',
+                    color: idx === 0 ? 'var(--nx-text)' : 'var(--nx-text-2)',
                     fontFamily: 'monospace',
                   }}
                 >
@@ -4884,7 +4884,7 @@ export default function AssemblyBrowserModal({
           ) : (
             <div
               data-testid="solver-assembly-history-empty"
-              style={{ fontSize: 11, color: '#9ca3af' }}
+              style={{ fontSize: 11, color: 'var(--nx-text-2)' }}
             >
               {t.historyEmpty}
             </div>
@@ -5025,9 +5025,9 @@ export default function AssemblyBrowserModal({
               alignItems: 'center',
               gap: 4,
               fontSize: 11,
-              color: '#374151',
+              color: 'var(--nx-text-2)',
               padding: '2px 6px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               background: '#fafafa',
             }}
@@ -5048,9 +5048,9 @@ export default function AssemblyBrowserModal({
               alignItems: 'center',
               gap: 4,
               fontSize: 11,
-              color: '#374151',
+              color: 'var(--nx-text-2)',
               padding: '2px 6px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               background: '#fafafa',
             }}
@@ -5081,9 +5081,9 @@ export default function AssemblyBrowserModal({
             style={{
               padding: '8px 12px',
               fontSize: 13,
-              background: history.canUndo ? '#fff' : '#f3f4f6',
-              color: history.canUndo ? '#111827' : '#9ca3af',
-              border: '1px solid #d1d5db',
+              background: history.canUndo ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+              color: history.canUndo ? 'var(--nx-text)' : 'var(--nx-text-2)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: history.canUndo ? 'pointer' : 'not-allowed',
             }}
@@ -5099,9 +5099,9 @@ export default function AssemblyBrowserModal({
             style={{
               padding: '8px 12px',
               fontSize: 13,
-              background: history.canRedo ? '#fff' : '#f3f4f6',
-              color: history.canRedo ? '#111827' : '#9ca3af',
-              border: '1px solid #d1d5db',
+              background: history.canRedo ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+              color: history.canRedo ? 'var(--nx-text)' : 'var(--nx-text-2)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: history.canRedo ? 'pointer' : 'not-allowed',
             }}
@@ -5125,9 +5125,9 @@ export default function AssemblyBrowserModal({
             style={{
               padding: '8px 12px',
               fontSize: 13,
-              background: importState.status === 'loading' ? '#f3f4f6' : '#fff',
-              color: importState.status === 'loading' ? '#9ca3af' : '#111827',
-              border: '1px solid #d1d5db',
+              background: importState.status === 'loading' ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+              color: importState.status === 'loading' ? 'var(--nx-text-2)' : 'var(--nx-text)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: importState.status === 'loading' ? 'not-allowed' : 'pointer',
             }}
@@ -5141,8 +5141,8 @@ export default function AssemblyBrowserModal({
             style={{
               padding: '8px 16px',
               fontSize: 13,
-              background: '#fff',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -5162,8 +5162,8 @@ export default function AssemblyBrowserModal({
               style={{
                 padding: '8px 16px',
                 fontSize: 13,
-                background: '#fff',
-                border: '1px solid #d1d5db',
+                background: 'var(--nx-panel)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
                 cursor: 'pointer',
               }}
@@ -5179,8 +5179,8 @@ export default function AssemblyBrowserModal({
                   bottom: '100%',
                   right: 0,
                   marginBottom: 4,
-                  background: '#fff',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--nx-panel)',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                   display: 'flex',
@@ -5197,7 +5197,7 @@ export default function AssemblyBrowserModal({
                   style={{
                     padding: '6px 12px',
                     fontSize: 12,
-                    background: '#fff',
+                    background: 'var(--nx-panel)',
                     border: 'none',
                     borderBottom: '1px solid #f3f4f6',
                     textAlign: 'left',
@@ -5214,7 +5214,7 @@ export default function AssemblyBrowserModal({
                   style={{
                     padding: '6px 12px',
                     fontSize: 12,
-                    background: '#fff',
+                    background: 'var(--nx-panel)',
                     border: 'none',
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -5232,8 +5232,8 @@ export default function AssemblyBrowserModal({
             style={{
               padding: '8px 16px',
               fontSize: 13,
-              background: '#fff',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -5248,7 +5248,7 @@ export default function AssemblyBrowserModal({
               alignItems: 'center',
               gap: 4,
               fontSize: 11,
-              color: '#374151',
+              color: 'var(--nx-text-2)',
             }}
           >
             {t.solverLabel}
@@ -5262,9 +5262,9 @@ export default function AssemblyBrowserModal({
               style={{
                 fontSize: 12,
                 padding: '4px 6px',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
-                background: '#fff',
+                background: 'var(--nx-panel)',
               }}
             >
               <option value="auto">{t.solverAuto}</option>
@@ -5285,7 +5285,7 @@ export default function AssemblyBrowserModal({
               alignItems: 'center',
               gap: 4,
               fontSize: 11,
-              color: '#374151',
+              color: 'var(--nx-text-2)',
             }}
           >
             <input
@@ -5306,7 +5306,7 @@ export default function AssemblyBrowserModal({
                 alignItems: 'center',
                 gap: 4,
                 fontSize: 11,
-                color: '#374151',
+                color: 'var(--nx-text-2)',
               }}
             >
               {t.maxParallel}
@@ -5326,9 +5326,9 @@ export default function AssemblyBrowserModal({
                   width: 56,
                   fontSize: 12,
                   padding: '4px 6px',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
-                  background: '#fff',
+                  background: 'var(--nx-panel)',
                 }}
               />
             </label>
@@ -5342,8 +5342,8 @@ export default function AssemblyBrowserModal({
               padding: '8px 16px',
               fontSize: 13,
               fontWeight: 600,
-              background: solveDisabled ? '#e5e7eb' : '#0ea5e9',
-              color: solveDisabled ? '#9ca3af' : '#fff',
+              background: solveDisabled ? 'var(--nx-panel-2)' : '#0ea5e9',
+              color: solveDisabled ? 'var(--nx-text-2)' : '#fff',
               border: '1px solid #0284c7',
               borderRadius: 4,
               cursor: solveDisabled ? 'not-allowed' : 'pointer',

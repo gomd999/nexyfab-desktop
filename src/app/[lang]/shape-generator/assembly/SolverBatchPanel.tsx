@@ -462,8 +462,8 @@ export function SolverBatchPanel({
       style={{
         padding: 16,
         fontFamily: 'system-ui, sans-serif',
-        background: '#fff',
-        border: '1px solid #d1d5db',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 6,
         maxWidth: '100%',
         overflow: 'auto',
@@ -472,11 +472,11 @@ export function SolverBatchPanel({
       <header style={{ marginBottom: 12 }}>
         <h2
           data-testid="solver-batch-title"
-          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}
+          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--nx-text)' }}
         >
           {dict.title}
         </h2>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--nx-text-2)' }}>
           {dict.description}
         </p>
       </header>
@@ -516,8 +516,8 @@ export function SolverBatchPanel({
           style={{
             padding: '6px 12px',
             background:
-              results.length === 0 && error === null ? '#e5e7eb' : '#6b7280',
-            color: results.length === 0 && error === null ? '#9ca3af' : '#fff',
+              results.length === 0 && error === null ? 'var(--nx-panel-2)' : '#6b7280',
+            color: results.length === 0 && error === null ? 'var(--nx-text-2)' : '#fff',
             border: 'none',
             borderRadius: 4,
             fontSize: 12,
@@ -534,7 +534,7 @@ export function SolverBatchPanel({
             alignItems: 'center',
             gap: 8,
             fontSize: 12,
-            color: '#374151',
+            color: 'var(--nx-text-2)',
           }}
         >
           <span data-testid="solver-batch-maxparallel-label">
@@ -574,7 +574,7 @@ export function SolverBatchPanel({
               width: 14,
               height: 14,
               borderRadius: '50%',
-              border: '2px solid #d1d5db',
+              border: '2px solid var(--nx-border)',
               borderTopColor: '#2563eb',
               animation: 'solver-batch-spin 0.8s linear infinite',
             }}
@@ -593,7 +593,7 @@ export function SolverBatchPanel({
         style={{
           marginBottom: 12,
           fontSize: 12,
-          color: '#374151',
+          color: 'var(--nx-text-2)',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
@@ -624,8 +624,8 @@ export function SolverBatchPanel({
               gap: 12,
               flexWrap: 'wrap',
               padding: '8px 10px',
-              background: '#f9fafb',
-              border: '1px solid #e5e7eb',
+              background: 'var(--nx-panel-2)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
             }}
           >
@@ -644,7 +644,7 @@ export function SolverBatchPanel({
                 style={{
                   width: 90,
                   padding: '2px 4px',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 3,
                   fontSize: 12,
                 }}
@@ -665,7 +665,7 @@ export function SolverBatchPanel({
                 style={{
                   width: 90,
                   padding: '2px 4px',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 3,
                   fontSize: 12,
                 }}
@@ -715,10 +715,10 @@ export function SolverBatchPanel({
           style={{
             padding: 24,
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--nx-text-2)',
             fontSize: 13,
-            background: '#f9fafb',
-            border: '1px dashed #d1d5db',
+            background: 'var(--nx-panel-2)',
+            border: '1px dashed var(--nx-border)',
             borderRadius: 4,
           }}
         >
@@ -731,7 +731,7 @@ export function SolverBatchPanel({
             style={{
               marginBottom: 8,
               fontSize: 12,
-              color: '#374151',
+              color: 'var(--nx-text-2)',
               fontWeight: 500,
               display: 'flex',
               gap: 16,
@@ -767,7 +767,7 @@ export function SolverBatchPanel({
             }}
           >
             <thead>
-              <tr style={{ background: '#f3f4f6' }}>
+              <tr style={{ background: 'var(--nx-panel-2)' }}>
                 <th style={th}>{dict.colId}</th>
                 <th style={th}>{dict.colSolver}</th>
                 <th style={th}>{dict.colIterations}</th>
@@ -866,16 +866,16 @@ export default SolverBatchPanel;
 
 const th: React.CSSProperties = {
   padding: '6px 8px',
-  borderBottom: '1px solid #d1d5db',
+  borderBottom: '1px solid var(--nx-border)',
   textAlign: 'left',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--nx-text-2)',
   whiteSpace: 'nowrap',
 };
 
 const td: React.CSSProperties = {
   padding: '6px 8px',
-  borderBottom: '1px solid #e5e7eb',
-  color: '#111827',
+  borderBottom: '1px solid var(--nx-border)',
+  color: 'var(--nx-text)',
   whiteSpace: 'nowrap',
 };

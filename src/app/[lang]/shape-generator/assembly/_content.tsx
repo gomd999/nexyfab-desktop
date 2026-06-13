@@ -203,7 +203,7 @@ export function AssemblyBrowserPageContent({
       data-testid="solver-assembly-page"
       style={{
         minHeight: '100vh',
-        background: '#f3f4f6',
+        background: 'var(--nx-panel-2)',
         fontFamily: 'system-ui, sans-serif',
       }}
     >
@@ -219,8 +219,8 @@ export function AssemblyBrowserPageContent({
           alignItems: 'center',
           gap: 6,
           padding: '6px 10px',
-          background: '#fff',
-          border: '1px solid #d1d5db',
+          background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)',
           borderRadius: 4,
           fontSize: 12,
           fontFamily: 'system-ui, sans-serif',
@@ -229,7 +229,7 @@ export function AssemblyBrowserPageContent({
       >
         <label
           htmlFor="solver-assembly-sample-select"
-          style={{ color: '#374151' }}
+          style={{ color: 'var(--nx-text-2)' }}
         >
           {labels.picker}
         </label>
@@ -241,9 +241,9 @@ export function AssemblyBrowserPageContent({
           style={{
             fontSize: 12,
             padding: '2px 6px',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--nx-border)',
             borderRadius: 3,
-            background: '#fff',
+            background: 'var(--nx-panel)',
           }}
         >
           <option value={BLANK_SENTINEL}>{labels.blank}</option>

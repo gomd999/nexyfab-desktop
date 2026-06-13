@@ -197,12 +197,12 @@ export default function AssemblyExplodePanel({
         flexDirection: 'column',
         gap: 8,
         padding: 10,
-        background: '#ffffff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 6,
         fontFamily: 'system-ui, sans-serif',
         fontSize: 12,
-        color: '#111827',
+        color: 'var(--nx-text)',
       }}
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -220,7 +220,7 @@ export default function AssemblyExplodePanel({
               {t.importedBadge}
             </span>
           )}
-          <span data-testid="solver-assembly-explode-count" style={{ fontSize: 11, color: '#6b7280' }}>
+          <span data-testid="solver-assembly-explode-count" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {movingCount} {t.partsMove}
           </span>
         </span>
@@ -228,12 +228,12 @@ export default function AssemblyExplodePanel({
 
       {/* axis heuristic */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 56, color: '#6b7280' }}>{t.axis}</span>
+        <span style={{ width: 56, color: 'var(--nx-text-2)' }}>{t.axis}</span>
         <select
           data-testid="solver-assembly-explode-heuristic"
           value={heuristic}
           onChange={(e) => onHeuristicChange(e.target.value as ExplodeAxisHeuristic)}
-          style={{ flex: '1 1 auto', fontSize: 11, padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 3 }}
+          style={{ flex: '1 1 auto', fontSize: 11, padding: '2px 4px', border: '1px solid var(--nx-border)', borderRadius: 3 }}
         >
           {HEURISTICS.map((h) => (
             <option key={h} value={h}>
@@ -245,7 +245,7 @@ export default function AssemblyExplodePanel({
 
       {/* spread / scale */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 56, color: '#6b7280' }}>{t.spread}</span>
+        <span style={{ width: 56, color: 'var(--nx-text-2)' }}>{t.spread}</span>
         <input
           data-testid="solver-assembly-explode-scale"
           type="number"
@@ -253,13 +253,13 @@ export default function AssemblyExplodePanel({
           step={0.5}
           value={scale}
           onChange={(e) => handleScale(e.target.value)}
-          style={{ width: 72, fontSize: 11, padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 3 }}
+          style={{ width: 72, fontSize: 11, padding: '2px 4px', border: '1px solid var(--nx-border)', borderRadius: 3 }}
         />
       </label>
 
       {/* amount slider */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 56, color: '#6b7280' }}>{t.amount}</span>
+        <span style={{ width: 56, color: 'var(--nx-text-2)' }}>{t.amount}</span>
         <input
           data-testid="solver-assembly-explode-amount"
           type="range"
@@ -283,9 +283,9 @@ export default function AssemblyExplodePanel({
           disabled={amount === 0}
           style={{
             padding: '4px 10px', fontSize: 11,
-            background: amount === 0 ? '#f3f4f6' : '#fff',
-            color: amount === 0 ? '#9ca3af' : '#374151',
-            border: '1px solid ' + (amount === 0 ? '#e5e7eb' : '#d1d5db'),
+            background: amount === 0 ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+            color: amount === 0 ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
+            border: '1px solid ' + (amount === 0 ? 'var(--nx-border)' : 'var(--nx-border)'),
             borderRadius: 4,
             cursor: amount === 0 ? 'not-allowed' : 'pointer',
           }}
@@ -313,9 +313,9 @@ export default function AssemblyExplodePanel({
             disabled={movingCount === 0}
             style={{
               padding: '4px 10px', fontSize: 11,
-              background: movingCount === 0 ? '#f3f4f6' : '#fff',
-              color: movingCount === 0 ? '#9ca3af' : '#374151',
-              border: '1px solid ' + (movingCount === 0 ? '#e5e7eb' : '#d1d5db'),
+              background: movingCount === 0 ? 'var(--nx-panel-2)' : 'var(--nx-panel)',
+              color: movingCount === 0 ? 'var(--nx-text-2)' : 'var(--nx-text-2)',
+              border: '1px solid ' + (movingCount === 0 ? 'var(--nx-border)' : 'var(--nx-border)'),
               borderRadius: 4,
               cursor: movingCount === 0 ? 'not-allowed' : 'pointer',
             }}
@@ -329,8 +329,8 @@ export default function AssemblyExplodePanel({
             data-testid="solver-assembly-explode-import"
             onClick={() => fileRef.current?.click()}
             style={{
-              padding: '4px 10px', fontSize: 11, background: '#fff', color: '#374151',
-              border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer',
+              padding: '4px 10px', fontSize: 11, background: 'var(--nx-panel)', color: 'var(--nx-text-2)',
+              border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer',
             }}
           >
             {t.importSteps}
@@ -342,7 +342,7 @@ export default function AssemblyExplodePanel({
             data-testid="solver-assembly-explode-clear-import"
             onClick={onClearImport}
             style={{
-              padding: '4px 10px', fontSize: 11, background: '#fff', color: '#b91c1c',
+              padding: '4px 10px', fontSize: 11, background: 'var(--nx-panel)', color: '#b91c1c',
               border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer',
             }}
           >
