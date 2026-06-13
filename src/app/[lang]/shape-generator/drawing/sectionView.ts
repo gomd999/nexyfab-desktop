@@ -109,7 +109,7 @@ function intersectTrianglePlane(
 }
 
 /** Build a basis on the cutting plane (u, v vectors perpendicular to normal). */
-function planeBasis(normal: [number, number, number]): {
+export function planeBasis(normal: [number, number, number]): {
   u: [number, number, number]; v: [number, number, number];
 } {
   // Pick any axis not parallel to normal; cross to get u; cross again for v.
@@ -130,7 +130,7 @@ function planeBasis(normal: [number, number, number]): {
 }
 
 /** Convert a 3-D point on the plane into 2-D (u, v) local coords. */
-function project2D(
+export function project2D(
   p: [number, number, number],
   origin: [number, number, number],
   u: [number, number, number],

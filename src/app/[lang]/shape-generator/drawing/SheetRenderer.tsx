@@ -39,6 +39,7 @@ import type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
 import { buildOrdinateRenderHints } from '@/lib/drawing/ordinateDimension';
 import type { Polyhedron } from '@/lib/cad/featureMesh';
 import { projectPolyhedron } from '@/lib/drawing/projectView';
+import { generateSection, planeBasis, project2D, type CuttingPlane, type SectionKind } from './sectionView';
 import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
 import { buildLinearDimension, type Pt } from '@/lib/drawing/dimensionAnchor';
@@ -82,6 +83,14 @@ export interface SheetRendererProps {
    */
   geometry?: ReadonlyMap<string, Polyhedron>;
   /**
+   * Resolves a section viewport's `projection.cuttingPlaneId` to its actual
+   * cutting plane (origin + normal in model space). When present alongside the
+   * viewport's source geometry, the real cross-section (outline + hatch) is
+   * drawn fitted into the section viewport box. Omitted → section viewports
+   * show only the cutting-plane arrows (back-compat).
+   */
+  cuttingPlanes?: ReadonlyMap<string, CuttingPlane>;
+  /**
    * When true, standard-view viewports that have geometry also get auto
    * overall width + height dimensions (built via dimensionAnchor on the
    * projected bbox; values are true mm). Default off.
@@ -112,6 +121,7 @@ export function SheetRenderer({
   scale = DEFAULT_PX_PER_MM,
   className,
   geometry,
+  cuttingPlanes,
   autoDimension = false,
 }: SheetRendererProps): React.ReactElement {
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
@@ -163,6 +173,7 @@ export function SheetRenderer({
           // Detail-view marker letters cycle A, B, C, ... per detail viewport.
           detailLetter={letterForIndex(idx)}
           geometry={geometry?.get(vp.sourceId) ?? null}
+          cuttingPlane={vp.projection.kind === 'section' ? (cuttingPlanes?.get(vp.projection.cuttingPlaneId) ?? null) : null}
           autoDimension={autoDimension}
         />
       ))}
@@ -273,6 +284,7 @@ interface ViewportLayerProps {
   paperHeightMm: number;
   detailLetter: string;
   geometry?: Polyhedron | null;
+  cuttingPlane?: CuttingPlane | null;
   autoDimension?: boolean;
 }
 
@@ -281,6 +293,7 @@ function ViewportLayer({
   paperHeightMm,
   detailLetter,
   geometry,
+  cuttingPlane,
   autoDimension,
 }: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
@@ -340,7 +353,18 @@ function ViewportLayer({
       ) : null}
 
       {viewport.projection.kind === 'section' ? (
-        <SectionArrows viewport={viewport} box={box} />
+        <>
+          {geometry && cuttingPlane ? (
+            <SectionGeometry
+              viewportId={viewport.id}
+              poly={geometry}
+              plane={cuttingPlane}
+              kind="full"
+              box={box}
+            />
+          ) : null}
+          <SectionArrows viewport={viewport} box={box} />
+        </>
       ) : null}
 
       {viewport.projection.kind === 'detail' ? (
@@ -497,6 +521,91 @@ function renderAutoDimensions(a: AutoDimArgs): React.ReactElement {
     <g data-testid={`sheet-renderer-vp-dim-${viewportId}`}>
       {renderOne('w', widthDim)}
       {renderOne('h', heightDim)}
+    </g>
+  );
+}
+
+// ─── section view: real cross-section (outline + hatch) ──────────────────
+// Wires the standalone generateSection() into the renderer: cut the source
+// solid with the viewport's plane, project the cross-section to the plane's
+// 2-D frame, fit it into the viewport box (uniform scale, centered — same as
+// ProjectedGeometry), and draw the closed outline + cross-hatch. (2026-06-13)
+
+interface SectionGeometryProps {
+  viewportId: string;
+  poly: Polyhedron;
+  plane: CuttingPlane;
+  kind: SectionKind;
+  box: { x: number; y: number; w: number; h: number };
+}
+
+function SectionGeometry({ viewportId, poly, plane, kind, box }: SectionGeometryProps): React.ReactElement | null {
+  // Polyhedron ({x,y,z} verts + per-face vertex-index loops) → flat triangle
+  // array (fan-triangulated) for generateSection.
+  const triangles: Array<[[number, number, number], [number, number, number], [number, number, number]]> = [];
+  for (const f of poly.faces) {
+    const vs = f.vertices;
+    for (let k = 1; k + 1 < vs.length; k++) {
+      const a = poly.vertices[vs[0]!];
+      const b = poly.vertices[vs[k]!];
+      const c = poly.vertices[vs[k + 1]!];
+      if (!a || !b || !c) continue;
+      triangles.push([[a.x, a.y, a.z], [b.x, b.y, b.z], [c.x, c.y, c.z]]);
+    }
+  }
+  const section = generateSection({ triangles, kind, plane });
+
+  // Outline polygons are 3-D points on the plane → project to the plane's 2-D
+  // (u,v) frame. Hatch lines are already in that 2-D frame.
+  const { u, v } = planeBasis(plane.normal);
+  const polys2d = section.polygons.map(pg => pg.points.map(p => project2D(p, plane.origin, u, v)));
+  const hatch2d = section.hatchLines.map(h => [h.start, h.end] as const);
+
+  const allPts: Array<[number, number]> = [...polys2d.flat(), ...hatch2d.flatMap(([s, e]) => [s, e])];
+  if (allPts.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of allPts) {
+    if (x < minX) minX = x; if (y < minY) minY = y;
+    if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+  }
+  const geomW = maxX - minX, geomH = maxY - minY;
+  const margin = Math.min(box.w, box.h) * 0.1;
+  const availW = Math.max(1e-6, box.w - 2 * margin);
+  const availH = Math.max(1e-6, box.h - 2 * margin);
+  const sRaw = Math.min(geomW > 0 ? availW / geomW : Infinity, geomH > 0 ? availH / geomH : Infinity);
+  const s = Number.isFinite(sRaw) ? sRaw : 1;
+  const offX = box.x + (box.w - geomW * s) / 2;
+  const offY = box.y + (box.h - geomH * s) / 2;
+  const tx = (x: number): number => offX + (x - minX) * s;
+  const ty = (y: number): number => offY + (maxY - y) * s; // flip Y for SVG
+  const strokeW = Math.max(0.15, Math.min(box.w, box.h) * 0.006);
+
+  return (
+    <g data-testid={`sheet-renderer-section-geometry-${viewportId}`}>
+      {polys2d.map((pg, i) => (
+        <path
+          key={`o${i}`}
+          data-testid={`section-outline-${viewportId}-${i}`}
+          d={pg.map((pt, j) => `${j === 0 ? 'M' : 'L'} ${tx(pt[0]).toFixed(3)} ${ty(pt[1]).toFixed(3)}`).join(' ') + ' Z'}
+          fill="none"
+          stroke={VP_BORDER_STROKE}
+          strokeWidth={strokeW}
+        />
+      ))}
+      {hatch2d.map(([a, b], i) => (
+        <line
+          key={`h${i}`}
+          data-testid={`section-hatch-${viewportId}-${i}`}
+          x1={tx(a[0])}
+          y1={ty(a[1])}
+          x2={tx(b[0])}
+          y2={ty(b[1])}
+          stroke={VP_BORDER_STROKE}
+          strokeWidth={strokeW * 0.5}
+          opacity={0.6}
+        />
+      ))}
     </g>
   );
 }
