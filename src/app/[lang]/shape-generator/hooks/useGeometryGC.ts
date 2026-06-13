@@ -11,6 +11,7 @@ const localActiveSets = new Set<Set<THREE.BufferGeometry | THREE.EdgesGeometry>>
 /** three-mesh-bvh augments BufferGeometry at runtime (see `trackGeometry`). */
 type BufferGeometryWithBVH = THREE.BufferGeometry & {
   computeBoundsTree?: () => void;
+  disposeBoundsTree?: () => void;
   boundsTree?: unknown;
 };
 
@@ -45,6 +46,13 @@ export function sweepGeometries(mainActiveGeometries: Set<THREE.BufferGeometry |
 
   for (const geo of trackedGeometries) {
     if (!allActive.has(geo)) {
+      // three-mesh-bvh requires disposing the boundsTree BEFORE the geometry.
+      // trackGeometry() calls computeBoundsTree() but nothing freed it, so
+      // geo.dispose() dispatched 'dispose' against a stale BVH — throwing
+      // "Cannot read properties of undefined (reading '0')" during teardown
+      // (e.g. entering Drawing mode triggers this sweep) and leaking the BVH.
+      // (2026-06-13 fix)
+      (geo as BufferGeometryWithBVH).disposeBoundsTree?.();
       geo.dispose();
       trackedGeometries.delete(geo);
     }
