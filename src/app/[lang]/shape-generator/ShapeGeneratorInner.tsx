@@ -4093,6 +4093,23 @@ export function ShapeGeneratorInner() {
     bridgeSelection({ selectionKind: kind, selectionLabel: label, selectionCount: count });
   }, [selectedElement, selectedFeatureId, selectedId, bridgeSelection]);
 
+  // Selection bubble Edit / Suppress buttons: SelectionBubble dispatches these
+  // global events but nothing listened, so the buttons did nothing. Route them
+  // to the exact same guarded handlers the context-menu 'edit-feature' /
+  // 'suppress' commands use — acting on the displayed feature (the bubble's
+  // label IS selectedFeatureId above), and safely no-op when none is selected.
+  // (2026-06-13 dead-wiring fix)
+  useEffect(() => {
+    const onEdit = () => { if (selectedFeatureId) startEditing(selectedFeatureId); };
+    const onSuppress = () => { if (selectedFeatureId) toggleFeatureCmd(selectedFeatureId); };
+    window.addEventListener('nexyfab:selection-edit', onEdit);
+    window.addEventListener('nexyfab:selection-suppress', onSuppress);
+    return () => {
+      window.removeEventListener('nexyfab:selection-edit', onEdit);
+      window.removeEventListener('nexyfab:selection-suppress', onSuppress);
+    };
+  }, [selectedFeatureId, startEditing, toggleFeatureCmd]);
+
   // Note: feature stats bridge writer is declared below after effectiveResult is in scope.
   const [drcRuleSet, setDrcRuleSet] = useState<import('./analysis/drcEngine').DrcRuleSet | null>(null);
 

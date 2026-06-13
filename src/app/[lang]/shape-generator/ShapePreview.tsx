@@ -1852,6 +1852,32 @@ export default function ShapePreview({
     }
   }, [materialId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Custom material upload: CustomMaterialUpload dispatches 'nexyfab:set-custom-material'
+  // with PBR map URLs, but nothing listened — uploads never reached the mesh.
+  // Merge the maps into the live material override so TexturedMeshMaterial picks
+  // them up. The upload panel re-emits its full slot set each change, so writing
+  // all five (undefined = slot cleared) mirrors the panel exactly.
+  // (2026-06-13 dead-wiring fix)
+  useEffect(() => {
+    const onCustomMat = (e: Event) => {
+      const d = (e as CustomEvent).detail as {
+        normalMapUrl?: string; roughnessMapUrl?: string; metalnessMapUrl?: string;
+        aoMapUrl?: string; displacementMapUrl?: string;
+      } | undefined;
+      if (!d) return;
+      setMaterialOverride(prev => ({
+        ...prev,
+        normalMapUrl: d.normalMapUrl,
+        roughnessMapUrl: d.roughnessMapUrl,
+        metalnessMapUrl: d.metalnessMapUrl,
+        aoMapUrl: d.aoMapUrl,
+        displacementMapUrl: d.displacementMapUrl,
+      }));
+    };
+    window.addEventListener('nexyfab:set-custom-material', onCustomMat);
+    return () => window.removeEventListener('nexyfab:set-custom-material', onCustomMat);
+  }, []);
+
   const isAssembly = bomParts && bomParts.length > 0;
 
   const assemblyViewportBand = useMemo(
