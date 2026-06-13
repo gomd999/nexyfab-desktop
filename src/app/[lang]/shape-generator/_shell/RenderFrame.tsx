@@ -13,6 +13,7 @@ import { useFreemiumGate } from '../hooks/useFreemiumGate';
 import { PbrSpherePreview } from './PbrSpherePreview';
 import { RenderRightPane } from './sidebars/RenderRightPane';
 import { useSceneStore } from '../store/sceneStore';
+import { loc } from '../lib/loc';
 
 interface RenderFrameProps {
   lang: string;
@@ -144,15 +145,15 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
       <Shell
         mode="render"
         titleBar={{
-          filename: isKo ? '렌더 — 무제 파트' : 'Render — Untitled Part',
-          savedAt: isKo ? '자동 저장됨' : 'Auto-saved',
+          filename: loc(lang, { ko: '렌더 — 무제 파트', en: 'Render — Untitled Part', ja: 'レンダリング — 無題パート', zh: '渲染 — 未命名零件', es: 'Render — Pieza sin título', ar: 'تصيير — قطعة بدون عنوان' }),
+          savedAt: loc(lang, { ko: '자동 저장됨', en: 'Auto-saved', ja: '自動保存済み', zh: '已自动保存', es: 'Guardado automáticamente', ar: 'تم الحفظ تلقائيًا' }),
           breadcrumbs: ['Projects', 'Render Studio'],
           onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
-          mode: isKo ? '렌더 모드' : 'RENDER STUDIO',
+          mode: loc(lang, { ko: '렌더 모드', en: 'RENDER STUDIO', ja: 'レンダースタジオ', zh: '渲染工作室', es: 'ESTUDIO DE RENDER', ar: 'استوديو التصيير' }),
           // No file/undo/share plumbing on this surface yet — TitleBar hides
           // quick buttons + Share when their handlers are omitted.
           onPublish: onRenderFinal,
-          publishLabel: isKo ? '최종 렌더 · 4K' : 'Render · Final 4K',
+          publishLabel: loc(lang, { ko: '최종 렌더 · 4K', en: 'Render · Final 4K', ja: '最終レンダリング · 4K', zh: '最终渲染 · 4K', es: 'Render · Final 4K', ar: 'تصيير · نهائي 4K' }),
         }}
         ribbon={{
           activeTab,
@@ -168,6 +169,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         left={
           <MaterialLibraryPane
             isKo={isKo}
+            lang={lang}
             materials={visibleMats}
             selectedId={selectedMaterial}
             onSelect={setSelectedMaterial}
@@ -202,6 +204,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         viewport={
           <RenderCanvas
             isKo={isKo}
+            lang={lang}
             material={selectedMaterial}
             color={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.color ?? '#888'}
             roughness={roughness}
@@ -251,12 +254,17 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
             }}
           >
             <h3 style={{ margin: '0 0 8px', fontSize: 16 }}>
-              {isKo ? '사실적 렌더는 Pro 기능입니다' : 'Photoreal render is a Pro feature'}
+              {loc(lang, { ko: '사실적 렌더는 Pro 기능입니다', en: 'Photoreal render is a Pro feature', ja: 'フォトリアルレンダリングはPro機能です', zh: '真实感渲染是 Pro 功能', es: 'El render fotorrealista es una función Pro', ar: 'التصيير الواقعي ميزة احترافية (Pro)' })}
             </h3>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--nx-text-2)' }}>
-              {isKo
-                ? '무료 플랜은 기기당 1회 체험이 제공됩니다. 무제한 렌더링은 Pro 이상에서 사용할 수 있습니다.'
-                : 'Free plan gets 1 photoreal render per device. Upgrade for unlimited.'}
+              {loc(lang, {
+                ko: '무료 플랜은 기기당 1회 체험이 제공됩니다. 무제한 렌더링은 Pro 이상에서 사용할 수 있습니다.',
+                en: 'Free plan gets 1 photoreal render per device. Upgrade for unlimited.',
+                ja: '無料プランはデバイスごとに1回お試しいただけます。無制限のレンダリングはPro以上でご利用いただけます。',
+                zh: '免费方案每台设备可体验 1 次。升级到 Pro 即可无限渲染。',
+                es: 'El plan gratuito incluye 1 render por dispositivo. Actualiza a Pro para uso ilimitado.',
+                ar: 'تتيح الخطة المجانية تصييرًا واحدًا لكل جهاز. قم بالترقية إلى Pro للحصول على تصيير غير محدود.',
+              })}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
@@ -264,14 +272,14 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
                 className="nx-pillbtn"
                 onClick={() => gate.setShowUpgradePrompt(false)}
               >
-                {isKo ? '나중에' : 'Later'}
+                {loc(lang, { ko: '나중에', en: 'Later', ja: '後で', zh: '稍后', es: 'Más tarde', ar: 'لاحقًا' })}
               </button>
               <button
                 type="button"
                 className="nx-pillbtn primary"
                 onClick={() => router.push(`/${lang}/nexyfab/pricing`)}
               >
-                {isKo ? 'Pro 업그레이드' : 'Upgrade to Pro'}
+                {loc(lang, { ko: 'Pro 업그레이드', en: 'Upgrade to Pro', ja: 'Proにアップグレード', zh: '升级到 Pro', es: 'Actualizar a Pro', ar: 'الترقية إلى Pro' })}
               </button>
             </div>
           </div>
@@ -283,6 +291,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
 
 function MaterialLibraryPane({
   isKo,
+  lang,
   materials,
   selectedId,
   onSelect,
@@ -290,6 +299,7 @@ function MaterialLibraryPane({
   onFilter,
 }: {
   isKo: boolean;
+  lang: string;
   materials: MaterialSwatch[];
   selectedId: string;
   onSelect: (id: string) => void;
@@ -300,7 +310,7 @@ function MaterialLibraryPane({
     <>
       <div className="nx-panel-h">
         <I.paint size={14} />
-        {isKo ? '머티리얼 라이브러리' : 'Material Library'}
+        {loc(lang, { ko: '머티리얼 라이브러리', en: 'Material Library', ja: 'マテリアルライブラリ', zh: '材质库', es: 'Biblioteca de materiales', ar: 'مكتبة الخامات' })}
       </div>
 
       <div
@@ -387,6 +397,7 @@ function MaterialLibraryPane({
 
 function RenderPropsPane({
   isKo,
+  lang,
   roughness,
   setRoughness,
   metalness,
@@ -401,6 +412,7 @@ function RenderPropsPane({
   setLens,
 }: {
   isKo: boolean;
+  lang: string;
   roughness: number;
   setRoughness: (v: number) => void;
   metalness: number;
@@ -418,7 +430,7 @@ function RenderPropsPane({
     <>
       <div className="nx-panel-h">
         <I.cog size={14} />
-        {isKo ? '렌더 설정' : 'Render Settings'}
+        {loc(lang, { ko: '렌더 설정', en: 'Render Settings', ja: 'レンダリング設定', zh: '渲染设置', es: 'Ajustes de render', ar: 'إعدادات التصيير' })}
       </div>
 
       <div className="nx-props" style={{ padding: '8px 0' }}>
@@ -426,15 +438,15 @@ function RenderPropsPane({
           <div className="sect-h">
             <span className="tg">▼</span>PBR
           </div>
-          <SliderRow lbl={isKo ? '거칠기' : 'Roughness'} value={roughness} onChange={setRoughness} />
-          <SliderRow lbl={isKo ? '금속성' : 'Metalness'} value={metalness} onChange={setMetalness} />
-          <SliderRow lbl={isKo ? '클리어코트' : 'Clearcoat'} value={0.2} onChange={() => {}} disabled />
+          <SliderRow lbl={loc(lang, { ko: '거칠기', en: 'Roughness', ja: 'ラフネス', zh: '粗糙度', es: 'Rugosidad', ar: 'الخشونة' })} value={roughness} onChange={setRoughness} />
+          <SliderRow lbl={loc(lang, { ko: '금속성', en: 'Metalness', ja: 'メタルネス', zh: '金属度', es: 'Metalicidad', ar: 'المعدنية' })} value={metalness} onChange={setMetalness} />
+          <SliderRow lbl={loc(lang, { ko: '클리어코트', en: 'Clearcoat', ja: 'クリアコート', zh: '清漆层', es: 'Capa transparente', ar: 'الطبقة الشفافة' })} value={0.2} onChange={() => {}} disabled />
         </div>
 
         <div className="sect">
           <div className="sect-h">
             <span className="tg">▼</span>
-            {isKo ? '환경 HDRI' : 'Environment'}
+            {loc(lang, { ko: '환경 HDRI', en: 'Environment', ja: '環境', zh: '环境', es: 'Entorno', ar: 'البيئة' })}
           </div>
           <div
             style={{
@@ -471,30 +483,30 @@ function RenderPropsPane({
               );
             })}
           </div>
-          <SliderRow lbl={isKo ? '회전' : 'Rotation'} value={hdriRot} max={360} step={1} unit="°" onChange={setHdriRot} />
-          <SliderRow lbl={isKo ? '노출' : 'Exposure'} value={exposure} max={2} step={0.05} onChange={setExposure} />
+          <SliderRow lbl={loc(lang, { ko: '회전', en: 'Rotation', ja: '回転', zh: '旋转', es: 'Rotación', ar: 'تدوير' })} value={hdriRot} max={360} step={1} unit="°" onChange={setHdriRot} />
+          <SliderRow lbl={loc(lang, { ko: '노출', en: 'Exposure', ja: '露出', zh: '曝光', es: 'Exposición', ar: 'التعريض الضوئي' })} value={exposure} max={2} step={0.05} onChange={setExposure} />
         </div>
 
         <div className="sect">
           <div className="sect-h">
             <span className="tg">▼</span>
-            {isKo ? '카메라' : 'Camera'}
+            {loc(lang, { ko: '카메라', en: 'Camera', ja: 'カメラ', zh: '相机', es: 'Cámara', ar: 'الكاميرا' })}
           </div>
-          <SliderRow lbl={isKo ? '렌즈' : 'Lens'} value={lens} max={200} min={20} step={1} unit="mm" onChange={setLens} />
-          <SliderRow lbl={isKo ? '심도' : 'DoF'} value={0.0} max={1} step={0.05} onChange={() => {}} disabled />
+          <SliderRow lbl={loc(lang, { ko: '렌즈', en: 'Lens', ja: 'レンズ', zh: '镜头', es: 'Lente', ar: 'العدسة' })} value={lens} max={200} min={20} step={1} unit="mm" onChange={setLens} />
+          <SliderRow lbl={loc(lang, { ko: '심도', en: 'DoF', ja: '被写界深度', zh: '景深', es: 'Profundidad de campo', ar: 'عمق الميدان' })} value={0.0} max={1} step={0.05} onChange={() => {}} disabled />
         </div>
 
         <div className="sect">
           <div className="sect-h">
             <span className="tg">▼</span>
-            {isKo ? '출력' : 'Output'}
+            {loc(lang, { ko: '출력', en: 'Output', ja: '出力', zh: '输出', es: 'Salida', ar: 'الإخراج' })}
           </div>
           <div className="row">
-            <span className="k">{isKo ? '해상도' : 'Resolution'}</span>
+            <span className="k">{loc(lang, { ko: '해상도', en: 'Resolution', ja: '解像度', zh: '分辨率', es: 'Resolución', ar: 'الدقة' })}</span>
             <span className="v">3840 × 2160</span>
           </div>
           <div className="row">
-            <span className="k">{isKo ? '샘플' : 'Samples'}</span>
+            <span className="k">{loc(lang, { ko: '샘플', en: 'Samples', ja: 'サンプル', zh: '采样', es: 'Muestras', ar: 'العينات' })}</span>
             <span className="v">256 spp</span>
           </div>
         </div>
@@ -547,6 +559,7 @@ function SliderRow({
 
 function RenderCanvas({
   isKo,
+  lang,
   material,
   color,
   roughness,
@@ -557,6 +570,7 @@ function RenderCanvas({
   onBackToModeling,
 }: {
   isKo: boolean;
+  lang: string;
   material: string;
   color: string;
   roughness: number;
@@ -581,7 +595,7 @@ function RenderCanvas({
           </div>
         </div>
         <div className="nx-readout bl">
-          <div>{isKo ? '실시간 PBR · WebGL2' : 'Live PBR · WebGL2'}</div>
+          <div>{loc(lang, { ko: '실시간 PBR · WebGL2', en: 'Live PBR · WebGL2', ja: 'リアルタイム PBR · WebGL2', zh: '实时 PBR · WebGL2', es: 'PBR en tiempo real · WebGL2', ar: 'PBR مباشر · WebGL2' })}</div>
         </div>
       </div>
 
@@ -601,7 +615,7 @@ function RenderCanvas({
           <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}>
             <I.caret_r size={12} />
           </span>
-          {isKo ? '모델링으로 돌아가기' : 'Back to Modeling'}
+          {loc(lang, { ko: '모델링으로 돌아가기', en: 'Back to Modeling', ja: 'モデリングに戻る', zh: '返回建模', es: 'Volver al modelado', ar: 'العودة إلى النمذجة' })}
         </button>
       </div>
     </>
