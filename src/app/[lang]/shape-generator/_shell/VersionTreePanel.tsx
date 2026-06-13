@@ -6,6 +6,8 @@
 
 import { useMemo, useState } from 'react';
 import { VersionRepo, type VersionNode } from '@/lib/nexyfab/versionTree';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 export interface VersionTreePanelProps {
   isKo: boolean;
@@ -28,6 +30,8 @@ const DEMO_SEED: VersionNode[] = (() => {
 })();
 
 export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
+  void isKo;
+  const lang = useLang();
   // Production hookup: replace with useProjectsStore version state.
   const [repo] = useState(() => new VersionRepo(DEMO_SEED));
   const [selectedId, setSelectedId] = useState<string | null>(DEMO_SEED[DEMO_SEED.length - 1].id);
@@ -98,20 +102,20 @@ export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
               {selected.tags && <div>tags: {selected.tags.join(', ')}</div>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <button onClick={() => alert(isKo ? '체크아웃 — 백엔드 연동 필요' : 'Checkout — backend wiring pending')} style={primaryBtn}>
-                {isKo ? '이 버전으로 체크아웃' : 'Checkout this version'}
+              <button onClick={() => alert(loc(lang, { ko: '체크아웃 — 백엔드 연동 필요', en: 'Checkout — backend wiring pending', ja: 'チェックアウト — バックエンド連携待ち', zh: '检出 — 后端对接待定', es: 'Checkout — integración de backend pendiente', ar: 'سحب — ربط الخلفية قيد الانتظار' }))} style={primaryBtn}>
+                {loc(lang, { ko: '이 버전으로 체크아웃', en: 'Checkout this version', ja: 'このバージョンをチェックアウト', zh: '检出此版本', es: 'Hacer checkout de esta versión', ar: 'سحب هذا الإصدار' })}
               </button>
-              <button onClick={() => alert(isKo ? '분기 — 백엔드 연동 필요' : 'Branch — backend wiring pending')} style={ghostBtn}>
-                {isKo ? '여기서 분기' : 'Branch from here'}
+              <button onClick={() => alert(loc(lang, { ko: '분기 — 백엔드 연동 필요', en: 'Branch — backend wiring pending', ja: 'ブランチ — バックエンド連携待ち', zh: '分支 — 后端对接待定', es: 'Rama — integración de backend pendiente', ar: 'تفريع — ربط الخلفية قيد الانتظار' }))} style={ghostBtn}>
+                {loc(lang, { ko: '여기서 분기', en: 'Branch from here', ja: 'ここから分岐', zh: '从此处分支', es: 'Ramificar desde aquí', ar: 'تفريع من هنا' })}
               </button>
-              <button onClick={() => alert(isKo ? '머지 — 백엔드 연동 필요' : 'Merge — backend wiring pending')} style={ghostBtn}>
-                {isKo ? 'main 으로 머지' : 'Merge into main'}
+              <button onClick={() => alert(loc(lang, { ko: '머지 — 백엔드 연동 필요', en: 'Merge — backend wiring pending', ja: 'マージ — バックエンド連携待ち', zh: '合并 — 后端对接待定', es: 'Fusión — integración de backend pendiente', ar: 'دمج — ربط الخلفية قيد الانتظار' }))} style={ghostBtn}>
+                {loc(lang, { ko: 'main 으로 머지', en: 'Merge into main', ja: 'main へマージ', zh: '合并到 main', es: 'Fusionar en main', ar: 'دمج في main' })}
               </button>
             </div>
           </>
         ) : (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
-            {isKo ? '커밋을 선택하세요' : 'Select a commit'}
+            {loc(lang, { ko: '커밋을 선택하세요', en: 'Select a commit', ja: 'コミットを選択してください', zh: '请选择一个提交', es: 'Seleccione un commit', ar: 'اختر التزامًا' })}
           </div>
         )}
       </div>

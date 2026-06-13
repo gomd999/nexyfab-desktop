@@ -6,6 +6,8 @@
 // once the collab presence backend is wired.
 
 import { useEffect, useRef, useState } from 'react';
+import { useLang } from '../../hooks/useLang';
+import { loc } from '../../lib/loc';
 
 interface CommentNode {
   id: string;
@@ -29,6 +31,7 @@ export interface CommentsPanelProps {
 const STORAGE_PREFIX = 'nexyfab.comments.v1.';
 
 export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProps) {
+  const lang = useLang();
   const key = STORAGE_PREFIX + (projectId ?? 'local');
   const [comments, setComments] = useState<CommentNode[]>([]);
   const [draft, setDraft] = useState('');
@@ -52,7 +55,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
     try { window.localStorage.setItem(key, JSON.stringify(comments)); } catch { /* quota — ignore */ }
   }, [key, comments]);
 
-  const me = authorName ?? (isKo ? '나' : 'You');
+  const me = authorName ?? loc(lang, { ko: '나', en: 'You', ja: '自分', zh: '我', es: 'Tú', ar: 'أنت' });
 
   const addThread = () => {
     if (!draft.trim()) return;
@@ -103,7 +106,9 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
               border: `1px solid ${filter === f ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
             }}
           >
-            {f === 'open' ? (isKo ? '미해결' : 'Open') : (isKo ? '전체' : 'All')}
+            {f === 'open'
+              ? loc(lang, { ko: '미해결', en: 'Open', ja: '未解決', zh: '未解决', es: 'Abiertos', ar: 'مفتوحة' })
+              : loc(lang, { ko: '전체', en: 'All', ja: 'すべて', zh: '全部', es: 'Todos', ar: 'الكل' })}
             <span style={{ marginLeft: 4, color: 'var(--nx-text-3)' }}>
               {f === 'open' ? comments.filter(c => !c.resolved).length : comments.length}
             </span>
@@ -115,7 +120,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
       <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {visible.length === 0 ? (
           <div style={{ padding: '20px 16px', fontSize: 11, color: 'var(--nx-text-3)', textAlign: 'center', lineHeight: 1.5 }}>
-            {isKo ? '아직 코멘트가 없습니다.' : 'No comments yet.'}
+            {loc(lang, { ko: '아직 코멘트가 없습니다.', en: 'No comments yet.', ja: 'まだコメントがありません。', zh: '暂无评论。', es: 'Aún no hay comentarios.', ar: 'لا توجد تعليقات بعد.' })}
           </div>
         ) : (
           visible.map(c => (
@@ -131,12 +136,14 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
                 <span style={{ flex: 1 }} />
                 <button
                   onClick={() => toggleResolved(c.id)}
-                  title={c.resolved ? (isKo ? '재오픈' : 'Reopen') : (isKo ? '해결' : 'Resolve')}
+                  title={c.resolved
+                    ? loc(lang, { ko: '재오픈', en: 'Reopen', ja: '再オープン', zh: '重新打开', es: 'Reabrir', ar: 'إعادة فتح' })
+                    : loc(lang, { ko: '해결', en: 'Resolve', ja: '解決', zh: '解决', es: 'Resolver', ar: 'حل' })}
                   style={iconBtnStyle}
                 >
                   {c.resolved ? '↺' : '✓'}
                 </button>
-                <button onClick={() => remove(c.id)} title={isKo ? '삭제' : 'Delete'} style={iconBtnStyle}>×</button>
+                <button onClick={() => remove(c.id)} title={loc(lang, { ko: '삭제', en: 'Delete', ja: '削除', zh: '删除', es: 'Eliminar', ar: 'حذف' })} style={iconBtnStyle}>×</button>
               </div>
               <div style={{ fontSize: 11, color: 'var(--nx-text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                 {c.body}
@@ -162,14 +169,14 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
                     autoFocus
                     onChange={e => setReplyDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') addReply(c.id); if (e.key === 'Escape') setActiveReply(null); }}
-                    placeholder={isKo ? '답글…' : 'Reply…'}
+                    placeholder={loc(lang, { ko: '답글…', en: 'Reply…', ja: '返信…', zh: '回复…', es: 'Responder…', ar: 'رد…' })}
                     style={{ flex: 1, height: 22, padding: '0 6px', borderRadius: 3, border: '1px solid var(--nx-border)', background: 'var(--nx-bg)', color: 'var(--nx-text)', fontSize: 11 }}
                   />
                   <button
                     onClick={() => addReply(c.id)}
                     style={{ padding: '0 8px', height: 22, border: 0, borderRadius: 3, background: 'var(--nx-accent)', color: '#fff', fontSize: 10, cursor: 'pointer' }}
                   >
-                    {isKo ? '게시' : 'Post'}
+                    {loc(lang, { ko: '게시', en: 'Post', ja: '投稿', zh: '发布', es: 'Publicar', ar: 'نشر' })}
                   </button>
                 </div>
               ) : (
@@ -177,7 +184,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
                   onClick={() => setActiveReply(c.id)}
                   style={{ marginTop: 4, padding: 0, fontSize: 10, color: 'var(--nx-accent-2)', background: 'transparent', border: 0, cursor: 'pointer' }}
                 >
-                  {isKo ? '+ 답글' : '+ Reply'}
+                  {loc(lang, { ko: '+ 답글', en: '+ Reply', ja: '+ 返信', zh: '+ 回复', es: '+ Responder', ar: '+ رد' })}
                 </button>
               )}
             </div>
@@ -191,7 +198,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addThread(); }}
-          placeholder={isKo ? '코멘트 작성… (⌘+Enter 게시)' : 'Write a comment… (⌘+Enter to post)'}
+          placeholder={loc(lang, { ko: '코멘트 작성… (⌘+Enter 게시)', en: 'Write a comment… (⌘+Enter to post)', ja: 'コメントを入力… (⌘+Enter で投稿)', zh: '撰写评论… (⌘+Enter 发布)', es: 'Escribe un comentario… (⌘+Enter para publicar)', ar: 'اكتب تعليقًا… (⌘+Enter للنشر)' })}
           rows={2}
           style={{
             width: '100%', resize: 'none', padding: 6,
@@ -212,7 +219,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
               cursor: draft.trim() ? 'pointer' : 'not-allowed',
             }}
           >
-            {isKo ? '게시' : 'Post'}
+            {loc(lang, { ko: '게시', en: 'Post', ja: '投稿', zh: '发布', es: 'Publicar', ar: 'نشر' })}
           </button>
         </div>
       </div>

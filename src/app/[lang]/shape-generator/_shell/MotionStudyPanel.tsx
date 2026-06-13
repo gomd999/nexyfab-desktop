@@ -11,6 +11,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { runMotionStudy, type MotionPart, type MotionDriver, type CollisionEvent } from '@/lib/nexyfab/motionStudy';
 import { useShellBridge } from './shellBridgeStore';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 export interface MotionStudyPanelProps {
   isKo: boolean;
@@ -19,6 +21,7 @@ export interface MotionStudyPanelProps {
 const STEP_MS = 50;
 
 export function MotionStudyPanel({ isKo }: MotionStudyPanelProps) {
+  const lang = useLang();
   const assemblyItems = useShellBridge(s => s.assemblyItems);
   const [durationSec, setDurationSec] = useState(5);
   const [tSec, setTSec] = useState(0);
@@ -86,21 +89,28 @@ export function MotionStudyPanel({ isKo }: MotionStudyPanelProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: 'var(--nx-text)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontWeight: 700, fontSize: 14 }}>{isKo ? '모션 스터디' : 'Motion Study'}</div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{loc(lang, { ko: '모션 스터디', en: 'Motion Study', ja: 'モーションスタディ', zh: '运动仿真', es: 'Estudio de Movimiento', ar: 'دراسة الحركة' })}</div>
         <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-          {isKo ? `${parts.length}개 파트 · ${collisions.length}개 충돌` : `${parts.length} parts · ${collisions.length} collisions`}
+          {loc(lang, {
+            ko: `${parts.length}개 파트 · ${collisions.length}개 충돌`,
+            en: `${parts.length} parts · ${collisions.length} collisions`,
+            ja: `${parts.length}個パーツ · ${collisions.length}個衝突`,
+            zh: `${parts.length} 个零件 · ${collisions.length} 个干涉`,
+            es: `${parts.length} piezas · ${collisions.length} colisiones`,
+            ar: `${parts.length} قطعة · ${collisions.length} تصادم`,
+          })}
         </div>
       </div>
 
       {/* Driver editor */}
       <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr', gap: 6, alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{isKo ? '드라이브' : 'Drive part'}</span>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{loc(lang, { ko: '드라이브', en: 'Drive part', ja: '駆動パーツ', zh: '驱动零件', es: 'Pieza motriz', ar: 'الجزء المحرك' })}</span>
         <select
           value={driverPartId ?? ''}
           onChange={e => setDriverPartId(e.target.value || null)}
           style={selectStyle}
         >
-          <option value="">{isKo ? '(없음)' : '(none)'}</option>
+          <option value="">{loc(lang, { ko: '(없음)', en: '(none)', ja: '(なし)', zh: '(无)', es: '(ninguno)', ar: '(لا شيء)' })}</option>
           {parts.map(p => <option key={p.id} value={p.id}>{p.id}</option>)}
         </select>
         <select
@@ -113,9 +123,9 @@ export function MotionStudyPanel({ isKo }: MotionStudyPanelProps) {
           }}
           style={selectStyle}
         >
-          <option value="rotate">{isKo ? '회전' : 'Rotate'}</option>
-          <option value="translate">{isKo ? '병진' : 'Translate'}</option>
-          <option value="pendulum">{isKo ? '진자' : 'Pendulum'}</option>
+          <option value="rotate">{loc(lang, { ko: '회전', en: 'Rotate', ja: '回転', zh: '旋转', es: 'Rotar', ar: 'تدوير' })}</option>
+          <option value="translate">{loc(lang, { ko: '병진', en: 'Translate', ja: '並進', zh: '平移', es: 'Trasladar', ar: 'إزاحة' })}</option>
+          <option value="pendulum">{loc(lang, { ko: '진자', en: 'Pendulum', ja: '振り子', zh: '摆动', es: 'Péndulo', ar: 'بندول' })}</option>
         </select>
       </div>
 
@@ -165,11 +175,18 @@ export function MotionStudyPanel({ isKo }: MotionStudyPanelProps) {
       {/* Collisions */}
       <div style={{ background: 'var(--nx-panel-2)', borderRadius: 4, padding: 8, maxHeight: 100, overflow: 'auto' }}>
         <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)', marginBottom: 4 }}>
-          {isKo ? `현재 시점까지 충돌 (${activeCollisions.length})` : `Collisions up to t (${activeCollisions.length})`}
+          {loc(lang, {
+            ko: `현재 시점까지 충돌 (${activeCollisions.length})`,
+            en: `Collisions up to t (${activeCollisions.length})`,
+            ja: `現在時点までの衝突 (${activeCollisions.length})`,
+            zh: `截至当前时刻的干涉 (${activeCollisions.length})`,
+            es: `Colisiones hasta t (${activeCollisions.length})`,
+            ar: `التصادمات حتى اللحظة (${activeCollisions.length})`,
+          })}
         </div>
         {activeCollisions.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
-            {isKo ? '충돌 없음' : 'No collisions'}
+            {loc(lang, { ko: '충돌 없음', en: 'No collisions', ja: '衝突なし', zh: '无干涉', es: 'Sin colisiones', ar: 'لا توجد تصادمات' })}
           </div>
         ) : (
           activeCollisions.map((c, i) => (

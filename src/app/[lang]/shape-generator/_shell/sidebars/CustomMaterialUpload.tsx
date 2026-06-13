@@ -7,6 +7,8 @@
 // server) so we don't pay R2 cost for one-off experiments.
 
 import { useState } from 'react';
+import { useLang } from '../../hooks/useLang';
+import { loc } from '../../lib/loc';
 
 export interface CustomMaterialUploadProps {
   isKo: boolean;
@@ -24,6 +26,7 @@ const SLOT_LABELS: Record<Slot, { ko: string; en: string }> = {
 };
 
 export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
+  const lang = useLang();
   const [urls, setUrls] = useState<Partial<Record<Slot, string>>>({});
 
   const onPick = (slot: Slot, file: File | null) => {
@@ -65,9 +68,14 @@ export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>
-        {isKo
-          ? 'PNG/JPG 텍스처를 드래그하거나 클릭하여 업로드'
-          : 'Drop or click to upload PNG/JPG texture maps'}
+        {loc(lang, {
+          ko: 'PNG/JPG 텍스처를 드래그하거나 클릭하여 업로드',
+          en: 'Drop or click to upload PNG/JPG texture maps',
+          ja: 'PNG/JPGテクスチャをドラッグまたはクリックしてアップロード',
+          zh: '拖放或点击上传 PNG/JPG 纹理贴图',
+          es: 'Arrastre o haga clic para subir mapas de textura PNG/JPG',
+          ar: 'اسحب أو انقر لتحميل خرائط نسيج PNG/JPG',
+        })}
       </div>
       {(Object.keys(SLOT_LABELS) as Slot[]).map(slot => (
         <UploadSlot
@@ -92,7 +100,7 @@ export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
             fontSize: 10, cursor: 'pointer',
           }}
         >
-          {isKo ? '모두 지우기' : 'Clear all'}
+          {loc(lang, { ko: '모두 지우기', en: 'Clear all', ja: 'すべてクリア', zh: '全部清除', es: 'Borrar todo', ar: 'مسح الكل' })}
         </button>
       )}
     </div>

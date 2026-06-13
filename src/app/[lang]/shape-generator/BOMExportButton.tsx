@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback } from 'react';
+import { useLang } from './hooks/useLang';
+import { loc } from './lib/loc';
 
 interface BomRow {
   partId: string;
@@ -18,14 +20,20 @@ interface BOMExportButtonProps {
 }
 
 export default function BOMExportButton({ parts, disabled, lang }: BOMExportButtonProps) {
-  const isKo = lang === 'ko' || lang === 'kr';
+  void lang;
+  const resolvedLang = useLang();
 
   const handleExportCSV = useCallback(() => {
     if (!parts.length) return;
 
-    const header = isKo
-      ? ['번호', '파트명', '재료', '수량', '체적(cm³)', '무게(g)']
-      : ['#', 'Part Name', 'Material', 'Qty', 'Volume(cm³)', 'Weight(g)'];
+    const header = [
+      loc(resolvedLang, { ko: '번호', en: '#', ja: '番号', zh: '编号', es: 'N.º', ar: 'رقم' }),
+      loc(resolvedLang, { ko: '파트명', en: 'Part Name', ja: '部品名', zh: '零件名称', es: 'Nombre de pieza', ar: 'اسم القطعة' }),
+      loc(resolvedLang, { ko: '재료', en: 'Material', ja: '材料', zh: '材料', es: 'Material', ar: 'المادة' }),
+      loc(resolvedLang, { ko: '수량', en: 'Qty', ja: '数量', zh: '数量', es: 'Cant.', ar: 'الكمية' }),
+      loc(resolvedLang, { ko: '체적(cm³)', en: 'Volume(cm³)', ja: '体積(cm³)', zh: '体积(cm³)', es: 'Volumen(cm³)', ar: 'الحجم(cm³)' }),
+      loc(resolvedLang, { ko: '무게(g)', en: 'Weight(g)', ja: '重量(g)', zh: '重量(g)', es: 'Peso(g)', ar: 'الوزن(g)' }),
+    ];
 
     const rows = parts.map((p, i) => [
       i + 1,
@@ -44,13 +52,13 @@ export default function BOMExportButton({ parts, disabled, lang }: BOMExportButt
     a.download = `nexyfab_bom_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [parts, isKo]);
+  }, [parts, resolvedLang]);
 
   return (
     <button
       onClick={handleExportCSV}
       disabled={disabled || !parts.length}
-      title={isKo ? 'BOM CSV 다운로드' : 'Download BOM as CSV'}
+      title={loc(resolvedLang, { ko: 'BOM CSV 다운로드', en: 'Download BOM as CSV', ja: 'BOM を CSV でダウンロード', zh: '下载 BOM 为 CSV', es: 'Descargar lista de materiales (BOM) en CSV', ar: 'تنزيل قائمة المواد (BOM) بصيغة CSV' })}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -78,7 +86,7 @@ export default function BOMExportButton({ parts, disabled, lang }: BOMExportButt
       }}
     >
       <span style={{ fontSize: 13 }}>📋</span>
-      <span>{isKo ? 'BOM 내보내기' : 'Export BOM'}</span>
+      <span>{loc(resolvedLang, { ko: 'BOM 내보내기', en: 'Export BOM', ja: 'BOM をエクスポート', zh: '导出 BOM', es: 'Exportar BOM', ar: 'تصدير قائمة المواد (BOM)' })}</span>
     </button>
   );
 }

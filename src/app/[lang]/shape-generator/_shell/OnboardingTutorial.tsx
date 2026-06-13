@@ -5,6 +5,8 @@
 // Triggered on first ModelerShell mount when `nexyfab.onboarded` is unset.
 
 import { useEffect, useState } from 'react';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 const STORAGE_KEY = 'nexyfab.onboarded.v1';
 
@@ -96,6 +98,7 @@ export interface OnboardingTutorialProps {
 }
 
 export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
+  const lang = useLang();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -214,7 +217,7 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
               color: 'var(--nx-text-3)', fontSize: 12, cursor: 'pointer',
             }}
           >
-            {isKo ? '건너뛰기' : 'Skip tour'}
+            {loc(lang, { ko: '건너뛰기', en: 'Skip tour', ja: 'スキップ', zh: '跳过', es: 'Omitir', ar: 'تخطّي' })}
           </button>
           <span style={{ flex: 1 }} />
           {step > 0 && (
@@ -227,7 +230,7 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
-              ← {isKo ? '이전' : 'Back'}
+              ← {loc(lang, { ko: '이전', en: 'Back', ja: '戻る', zh: '上一步', es: 'Atrás', ar: 'رجوع' })}
             </button>
           )}
           <button
@@ -241,8 +244,8 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
             }}
           >
             {step >= STEPS.length - 1
-              ? (isKo ? '시작하기' : 'Get started')
-              : (isKo ? '다음 →' : 'Next →')}
+              ? loc(lang, { ko: '시작하기', en: 'Get started', ja: '始める', zh: '开始', es: 'Empezar', ar: 'ابدأ' })
+              : loc(lang, { ko: '다음 →', en: 'Next →', ja: '次へ →', zh: '下一步 →', es: 'Siguiente →', ar: 'التالي →' })}
           </button>
         </div>
       </div>
