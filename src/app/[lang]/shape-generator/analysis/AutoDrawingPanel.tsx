@@ -319,6 +319,10 @@ export default function AutoDrawingPanel({
   const setDrawing = setStoreResult;
   /** `computeDrawingGeometryFingerprint` at last successful Generate — mismatch ⇒ stale preview */
   const [fpAtLastGenerate, setFpAtLastGenerate] = useState<string | null>(null);
+  /** Associativity: when on, the drawing auto-regenerates (debounced) whenever
+   *  the 3D model changes, so views/dimensions track the model without a manual
+   *  Generate. Default on (SolidWorks-like); toggle off for on-demand. */
+  const [autoUpdate, setAutoUpdate] = useState(true);
 
   // K2/K3 — detail + section view specs. Keep them simple: each entry has a
   // unique label letter (A, B, C, …). User adds via the toolbar buttons; the
@@ -504,6 +508,16 @@ export default function AutoDrawingPanel({
   const currentFp = geometry ? computeDrawingGeometryFingerprint(geometry) : null;
   const drawingStale =
     Boolean(drawing && fpAtLastGenerate && currentFp && currentFp !== fpAtLastGenerate);
+
+  // Associativity (#4): when Auto-update is on and the model changed since the
+  // last Generate, regenerate automatically (debounced 500ms) so the drawing
+  // tracks the 3D model — no manual refresh. Toggle off → on-demand + the
+  // stale banner. Only fires while a drawing exists and the fingerprint drifted.
+  useEffect(() => {
+    if (!autoUpdate || !drawingStale) return;
+    const id = window.setTimeout(() => { handleGenerate(); }, 500);
+    return () => window.clearTimeout(id);
+  }, [autoUpdate, drawingStale, handleGenerate]);
 
   const handleDownload = useCallback(() => {
     void (async () => {
@@ -863,7 +877,9 @@ export default function AutoDrawingPanel({
           }}
           role="status"
         >
-          <span style={{ flex: '1 1 200px' }}>{tt.drawingStaleHint}</span>
+          <span style={{ flex: '1 1 200px' }}>
+            {autoUpdate ? 'Model changed — updating drawing…' : tt.drawingStaleHint}
+          </span>
           <button
             type="button"
             title={tt.bumpRevisionTitle}
@@ -888,6 +904,19 @@ export default function AutoDrawingPanel({
       {/* Actions */}
       <div style={{ ...sectionStyle, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" data-testid="auto-drawing-generate" style={primaryBtn} onClick={handleGenerate}>{tt.generate}</button>
+        <label
+          data-testid="auto-drawing-autoupdate"
+          title="Regenerate the drawing automatically when the 3D model changes"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.text, cursor: 'pointer', userSelect: 'none' }}
+        >
+          <input
+            type="checkbox"
+            checked={autoUpdate}
+            onChange={(e) => setAutoUpdate(e.target.checked)}
+            data-state={autoUpdate ? 'on' : 'off'}
+          />
+          Auto-update
+        </label>
         <button
           type="button"
           data-testid="auto-drawing-save-default"
