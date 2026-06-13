@@ -89,7 +89,7 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
       }
       // Race against a 90s wall clock to give a useful error if WASM stalls.
       const occt = await Promise.race([
-        Module({ locateFile: (p: string) => `/occt-worker/${p}` }),
+        Module({ locateFile: (p: string) => `/occt-worker/${p.indexOf('opencascade.wasm') !== -1 ? 'opencascade.wasm' : p}` }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Module() timed out after 90s')), 90_000)),
       ]) as Record<string, unknown>;
       return {
@@ -124,7 +124,7 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
       if (typeof ModuleFactory !== 'function') {
         return { ok: false, shapeOk: false, reason: 'Module factory missing' };
       }
-      const m = await ModuleFactory({ locateFile: (p: string) => `/occt-worker/${p}` });
+      const m = await ModuleFactory({ locateFile: (p: string) => `/occt-worker/${p.indexOf('opencascade.wasm') !== -1 ? 'opencascade.wasm' : p}` });
       const polygon = new m.BRepBuilderAPI_MakePolygon_1() as { Add_1: (p: unknown) => void; Close: () => void; Wire: () => unknown; delete: () => void };
       const pts = [
         new m.gp_Pnt_3(0, 0, 0) as { delete: () => void },
@@ -183,7 +183,7 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
       if (typeof Factory !== 'function') {
         return { ok: false, hasWriter: false, hasReader: false, reason: 'no Module factory' };
       }
-      const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p}` });
+      const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p.indexOf('opencascade.wasm') !== -1 ? 'opencascade.wasm' : p}` });
       // Sanity-check that the STEP symbols exist. Real exportSTEP/importSTEP
       // round-trips live in the worker (occt-worker-real.js); this spec only
       // verifies the symbols are bound so the worker can call them.
@@ -224,7 +224,7 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
         const Factory = (window as unknown as { Module?: (cfg: unknown) => Promise<Record<string, unknown>> }).Module;
         if (typeof Factory !== 'function') return { ok: false, box: 0, holed: 0, thicken: 0, reason: 'no Module factory' };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p}` }) as any;
+        const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p.indexOf('opencascade.wasm') !== -1 ? 'opencascade.wasm' : p}` }) as any;
 
         const vol = (shape: unknown): number => {
           const props = new m.GProp_GProps_1();
@@ -355,12 +355,15 @@ test.describe('OCCT real WASM — Phase 5 launch acceptance', () => {
       if (typeof Factory !== 'function') {
         return { ok: false, shapeOk: false, reason: 'no Module factory' };
       }
-      const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p}` });
-      // BRepPrimAPI_MakeCylinder is the simplest revolve-equivalent.
-      if (typeof m.BRepPrimAPI_MakeCylinder_2 !== 'function') {
-        return { ok: false, shapeOk: false, reason: 'BRepPrimAPI_MakeCylinder_2 not bound' };
+      const m = await Factory({ locateFile: (p: string) => `/occt-worker/${p.indexOf('opencascade.wasm') !== -1 ? 'opencascade.wasm' : p}` });
+      // BRepPrimAPI_MakeCylinder is the simplest revolve-equivalent. The
+      // `(R, H)` overload is `_1` in this build's embind bindings (`_2` is
+      // `(gp_Ax2, R, H)` — calling it with 2 args throws).
+      const CylCtor = m.BRepPrimAPI_MakeCylinder_1 || m.BRepPrimAPI_MakeCylinder_2;
+      if (typeof CylCtor !== 'function') {
+        return { ok: false, shapeOk: false, reason: 'BRepPrimAPI_MakeCylinder_1 not bound' };
       }
-      const cylBuilder = new m.BRepPrimAPI_MakeCylinder_2(5, 10) as unknown as { Shape: () => unknown; delete: () => void };
+      const cylBuilder = new CylCtor(5, 10) as unknown as { Shape: () => unknown; delete: () => void };
       try {
         const shape = cylBuilder.Shape();
         return { ok: true, shapeOk: shape != null, reason: '' };
