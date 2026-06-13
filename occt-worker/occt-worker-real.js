@@ -101,7 +101,15 @@
     try {
       factoryPromise = resolved.factory({
         locateFile: function (p) {
-          return p === 'opencascade.wasm' ? './opencascade.wasm' : p;
+          // The npm loader bakes `wasmBinaryFile="opencascade.wasm.wasm"`, but
+          // copy-occt serves the binary as `opencascade.wasm` (inner `.wasm`
+          // segment dropped). Map ANY opencascade wasm request to the served
+          // name, relative to the worker scope (`/occt-worker/`). Matching only
+          // the exact string `opencascade.wasm` missed the real request and
+          // fetched a 404 → "WebAssembly.instantiate expected 4 bytes".
+          return (typeof p === 'string' && p.indexOf('opencascade.wasm') !== -1)
+            ? './opencascade.wasm'
+            : p;
         },
       });
     } catch (err) {
@@ -169,52 +177,74 @@
     // Try the full OCCT path; if any required symbol is missing fall back to
     // whatever the shape carries (stub modules tag bbox/volume/area on the
     // shape object directly — matches `_vendor/opencascade.stub.ts`).
+    // opencascade.js exposes overloaded ctors/statics with numeric embind
+    // suffixes in this build (Bnd_Box_2, GProp_GProps_1, VolumeProperties_1, …);
+    // the un-suffixed names are ABSENT. The previous code only probed the
+    // un-suffixed names, so bbox/volume/area were silently never computed —
+    // which made `thicken` (gated on a non-zero volume) always report
+    // "no solid". Resolve the suffixed variants (matching the proven
+    // ceilingSpike) with un-suffixed fallbacks, each section isolated so one
+    // missing API can't blank the others.
     try {
-      if (typeof occt.Bnd_Box === 'function' && occt.BRepBndLib && typeof occt.BRepBndLib.Add === 'function') {
-        var bnd = new occt.Bnd_Box();
+    var BndCtor = occt.Bnd_Box_1 || occt.Bnd_Box;
+    var BndLib = occt.BRepBndLib;
+    var addFn = BndLib && (BndLib.Add_2 || BndLib.Add_1 || BndLib.Add);
+    if (typeof BndCtor === 'function' && typeof addFn === 'function') {
+      var bnd = new BndCtor();
+      try {
+        try { BndLib.Add_2 ? BndLib.Add_2(shape, bnd, true) : (BndLib.Add_1 ? BndLib.Add_1(shape, bnd) : BndLib.Add(shape, bnd, true)); }
+        catch (_a) { void _a; }
+        var min = bnd.CornerMin();
+        var max = bnd.CornerMax();
+        out.bbox = {
+          min: { x: min.X(), y: min.Y(), z: min.Z() },
+          max: { x: max.X(), y: max.Y(), z: max.Z() },
+        };
+        if (typeof min.delete === 'function') min.delete();
+        if (typeof max.delete === 'function') max.delete();
+      } finally {
+        if (typeof bnd.delete === 'function') bnd.delete();
+      }
+    } else if (shape.bbox) {
+      out.bbox = shape.bbox;
+    }
+
+    var GPropCtor = occt.GProp_GProps_1 || occt.GProp_GProps;
+    var BG = occt.BRepGProp;
+    if (typeof GPropCtor === 'function' && BG) {
+      var volFn1 = BG.VolumeProperties_1;
+      var volFn = volFn1 || BG.VolumeProperties;
+      if (typeof volFn === 'function') {
+        var vp = new GPropCtor();
         try {
-          occt.BRepBndLib.Add(shape, bnd, true);
-          var min = bnd.CornerMin();
-          var max = bnd.CornerMax();
-          out.bbox = {
-            min: { x: min.X(), y: min.Y(), z: min.Z() },
-            max: { x: max.X(), y: max.Y(), z: max.Z() },
-          };
-          if (typeof min.delete === 'function') min.delete();
-          if (typeof max.delete === 'function') max.delete();
-        } finally {
-          if (typeof bnd.delete === 'function') bnd.delete();
+          // VolumeProperties_1(shape, props, onlyClosed, skipShared, useTriangulation)
+          if (volFn1) BG.VolumeProperties_1(shape, vp, false, false, false);
+          else BG.VolumeProperties(shape, vp);
+          out.volume = vp.Mass();
+          var com = vp.CentreOfMass();
+          out.centerOfMass = { x: com.X(), y: com.Y(), z: com.Z() };
+          if (typeof com.delete === 'function') com.delete();
+        } catch (_v) { void _v; } finally {
+          if (typeof vp.delete === 'function') vp.delete();
         }
-      } else if (shape.bbox) {
-        out.bbox = shape.bbox;
       }
-      if (typeof occt.GProp_GProps === 'function' && occt.BRepGProp) {
-        if (typeof occt.BRepGProp.VolumeProperties === 'function') {
-          var vp = new occt.GProp_GProps();
-          try {
-            occt.BRepGProp.VolumeProperties(shape, vp);
-            out.volume = vp.Mass();
-            var com = vp.CentreOfMass();
-            out.centerOfMass = { x: com.X(), y: com.Y(), z: com.Z() };
-            if (typeof com.delete === 'function') com.delete();
-          } finally {
-            if (typeof vp.delete === 'function') vp.delete();
-          }
+      var surfFn1 = BG.SurfaceProperties_1;
+      var surfFn = surfFn1 || BG.SurfaceProperties;
+      if (typeof surfFn === 'function') {
+        var sp = new GPropCtor();
+        try {
+          if (surfFn1) BG.SurfaceProperties_1(shape, sp, false, false);
+          else BG.SurfaceProperties(shape, sp);
+          out.area = sp.Mass();
+        } catch (_s) { void _s; } finally {
+          if (typeof sp.delete === 'function') sp.delete();
         }
-        if (typeof occt.BRepGProp.SurfaceProperties === 'function') {
-          var sp = new occt.GProp_GProps();
-          try {
-            occt.BRepGProp.SurfaceProperties(shape, sp);
-            out.area = sp.Mass();
-          } finally {
-            if (typeof sp.delete === 'function') sp.delete();
-          }
-        }
-      } else {
-        if (typeof shape.volume === 'number') out.volume = shape.volume;
-        if (typeof shape.area === 'number') out.area = shape.area;
-        if (shape.centerOfMass) out.centerOfMass = shape.centerOfMass;
       }
+    } else {
+      if (typeof shape.volume === 'number') out.volume = shape.volume;
+      if (typeof shape.area === 'number') out.area = shape.area;
+      if (shape.centerOfMass) out.centerOfMass = shape.centerOfMass;
+    }
     } catch (_e) {
       void _e;
       // Last-ditch: copy whatever the shape carries.
@@ -711,7 +741,10 @@
       }
       polygon.Close();
       wire = polygon.Wire();
-      faceBuilder = new MakeFace(wire, true);
+      // OnlyPlane=false matches the proven ceilingSpike face construction;
+      // OnlyPlane=true produced a face that MakeThickSolidBySimple could not
+      // thicken into a positive-volume solid ("kernel produced no solid").
+      faceBuilder = new MakeFace(wire, false);
       var face = faceBuilder.Face();
       var h = alloc(face);
       return { ok: true, handle: h, kind: 'face', warnings: ['planar surface (sheet body)'] };

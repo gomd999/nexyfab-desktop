@@ -200,6 +200,73 @@ function copyWorkerScripts(opts) {
   return { copied, skipped, warnings, srcDir, dstDir };
 }
 
+/**
+ * Rewrite the copied `opencascade.js` loader so a CLASSIC web worker can load it
+ * via `importScripts`. The npm dist (`opencascade.wasm.js`) ends with an ES
+ * module statement: `export default opencascade;`. The OCCT worker
+ * (`occt-worker-real.js`) is a CLASSIC worker — it `importScripts('./opencascade.js')`
+ * then reads a global `self.Module` factory. Two problems with the raw dist:
+ *   1. `export default` is a SyntaxError in classic worker/script scope, so
+ *      `importScripts` throws → worker boot fails ("self.Module is not a function").
+ *   2. Even if parsed, the factory is bound to `opencascade`, not `Module`.
+ * Replacing the trailing ESM export with a global assignment fixes both: the file
+ * becomes a valid classic script AND the worker (and the page-level boot used by
+ * the e2e) find `self.Module`. Idempotent + non-throwing; warns if the expected
+ * tail is absent (loader format changed).
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.root]
+ * @param {object} [opts.fs] - needs readFileSync + writeFileSync (real fs); the
+ *   mock fs used by unit tests omits them, so the patch no-ops there.
+ * @returns {{ patched: boolean, warnings: string[] }}
+ */
+function patchLoaderForClassicWorker(opts) {
+  const options = opts || {};
+  const root = options.root != null ? options.root : process.cwd();
+  const fs = options.fs != null ? options.fs : realFs;
+  const warnings = [];
+
+  if (typeof fs.readFileSync !== 'function' || typeof fs.writeFileSync !== 'function') {
+    return { patched: false, warnings };
+  }
+  const loaderAbs = path.join(root, DST_DIR_REL, 'opencascade.js');
+  if (!safeExists(fs, loaderAbs)) {
+    return { patched: false, warnings }; // copy step already warned
+  }
+
+  let src;
+  try {
+    src = fs.readFileSync(loaderAbs, 'utf8');
+  } catch (err) {
+    warnings.push('failed to read opencascade.js for classic-worker patch: ' + errMsg(err));
+    return { patched: false, warnings };
+  }
+
+  if (src.indexOf('g.Module=opencascade;') !== -1) {
+    return { patched: true, warnings }; // already patched (idempotent)
+  }
+
+  const re = /export\s+default\s+opencascade\s*;?\s*$/;
+  if (!re.test(src)) {
+    warnings.push(
+      'opencascade.js: expected trailing `export default opencascade;` not found — ' +
+        'the loader format may have changed; the OCCT worker may fail to boot.',
+    );
+    return { patched: false, warnings };
+  }
+
+  const GLOBAL_ASSIGN =
+    '\n;(function(){var g=(typeof self!=="undefined")?self:' +
+    '(typeof globalThis!=="undefined"?globalThis:this);g.Module=opencascade;})();\n';
+  try {
+    fs.writeFileSync(loaderAbs, src.replace(re, GLOBAL_ASSIGN));
+  } catch (err) {
+    warnings.push('failed to write patched opencascade.js: ' + errMsg(err));
+    return { patched: false, warnings };
+  }
+  return { patched: true, warnings };
+}
+
 /** existsSync wrapped so a mock that throws is treated as "missing". */
 function safeExists(fs, p) {
   try {
@@ -219,13 +286,17 @@ function errMsg(err) {
 function main() {
   const result = copyOcct({});
   const workers = copyWorkerScripts({});
+  const patch = patchLoaderForClassicWorker({});
 
-  for (const w of result.warnings.concat(workers.warnings)) {
+  for (const w of result.warnings.concat(workers.warnings, patch.warnings)) {
     // Single prefix so log aggregators can grep one tag.
     process.stderr.write(`[copy-occt] WARN: ${w}\n`);
   }
   for (const f of result.copied.concat(workers.copied)) {
     process.stdout.write(`[copy-occt] copied ${f}\n`);
+  }
+  if (patch.patched) {
+    process.stdout.write('[copy-occt] patched opencascade.js for classic-worker importScripts (self.Module)\n');
   }
   if (result.copied.length === 0 && workers.copied.length === 0 && result.warnings.length === 0 && workers.warnings.length === 0) {
     process.stdout.write('[copy-occt] no files to copy (unexpected)\n');
@@ -240,6 +311,7 @@ function main() {
 module.exports = {
   copyOcct,
   copyWorkerScripts,
+  patchLoaderForClassicWorker,
   SRC_DIR_REL,
   DST_DIR_REL,
   WORKER_SRC_DIR_REL,

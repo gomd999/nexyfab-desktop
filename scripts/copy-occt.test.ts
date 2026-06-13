@@ -26,6 +26,7 @@ interface CopyResult {
 const script = req('./copy-occt.js') as {
   copyOcct: (opts: { root?: string; fs?: FakeFs }) => CopyResult;
   copyWorkerScripts: (opts: { root?: string; fs?: FakeFs }) => CopyResult;
+  patchLoaderForClassicWorker: (opts: { root?: string; fs?: unknown }) => { patched: boolean; warnings: string[] };
   SRC_DIR_REL: string;
   DST_DIR_REL: string;
   WORKER_SRC_DIR_REL: string;
@@ -321,5 +322,57 @@ describe('copyWorkerScripts', () => {
     expect(out.copied).toContain('occt-worker.js');
     expect(out.skipped).toContain('occt-worker-real.js');
     expect(out.warnings.some((w) => w.includes('copy failed for worker occt-worker-real.js'))).toBe(true);
+  });
+});
+
+describe('patchLoaderForClassicWorker', () => {
+  const { patchLoaderForClassicWorker, DST_DIR_REL: DST } = script;
+  const LOADER = path.join(ROOT, DST, 'opencascade.js');
+
+  /** Content-aware fake fs (read/write) — the copy mock omits these on purpose. */
+  function makeRwFs(initialContent: string | null) {
+    const files = new Map<string, string>();
+    if (initialContent !== null) files.set(LOADER, initialContent);
+    return {
+      files,
+      existsSync: (p: string) => files.has(p),
+      readFileSync: (p: string) => {
+        if (!files.has(p)) throw new Error('ENOENT ' + p);
+        return files.get(p)!;
+      },
+      writeFileSync: (p: string, data: string) => { files.set(p, data); },
+    };
+  }
+
+  it('rewrites the trailing ESM `export default` into a classic-worker self.Module global', () => {
+    const fs = makeRwFs('var opencascade=(function(){return 1})();\nexport default opencascade;\n');
+    const r = patchLoaderForClassicWorker({ root: ROOT, fs });
+    expect(r.patched).toBe(true);
+    const out = fs.files.get(LOADER)!;
+    expect(out).not.toMatch(/export\s+default/);
+    expect(out).toContain('g.Module=opencascade;');
+  });
+
+  it('is idempotent — a second run leaves the already-patched file unchanged', () => {
+    const fs = makeRwFs('var opencascade=1;\nexport default opencascade;\n');
+    patchLoaderForClassicWorker({ root: ROOT, fs });
+    const once = fs.files.get(LOADER)!;
+    const r2 = patchLoaderForClassicWorker({ root: ROOT, fs });
+    expect(r2.patched).toBe(true);
+    expect(fs.files.get(LOADER)).toBe(once);
+  });
+
+  it('warns (does not throw) when the expected ESM tail is absent', () => {
+    const fs = makeRwFs('var opencascade=1;\n// no esm export here\n');
+    const r = patchLoaderForClassicWorker({ root: ROOT, fs });
+    expect(r.patched).toBe(false);
+    expect(r.warnings.some((w) => w.includes('export default opencascade'))).toBe(true);
+  });
+
+  it('no-ops on a mock fs without read/write (e.g. the copy-step mock)', () => {
+    const fs = makeFs({}); // existsSync/mkdir/copy only — no readFileSync
+    const r = patchLoaderForClassicWorker({ root: ROOT, fs });
+    expect(r.patched).toBe(false);
+    expect(r.warnings).toEqual([]);
   });
 });
