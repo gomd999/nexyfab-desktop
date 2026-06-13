@@ -33,7 +33,7 @@
  */
 
 import * as React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   standardThreeViewSheet,
@@ -60,6 +60,8 @@ import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { featureToPolyhedron, type Polyhedron } from '@/lib/cad/featureMesh';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
+import type { CuttingPlane } from './sectionView';
+import { loc } from '../lib/loc';
 import { exportSheetsToPdfVector, VectorPdfError } from '@/lib/drawing/svg2pdfBridge';
 import { exportLargeSheetToPdf, LargePdfError } from '@/lib/drawing/pdfExportLarge';
 import {
@@ -1183,6 +1185,9 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   const [sourceId, setSourceId] = useState<string>(SAMPLE_PARTS[0].sourceId);
   const [paperSize, setPaperSize] = useState<PaperSize>('A3');
   const [scale, setScale] = useState<number>(1);
+  // User-added section views (increment 2). Each carries its cutting plane in
+  // model space; SheetRenderer cuts the solid and draws the cross-section.
+  const [sectionViews, setSectionViews] = useState<Array<{ id: string; label: string; plane: CuttingPlane }>>([]);
   const [annotations, setAnnotations] = useState<{
     dimensions: Dimension[];
     gdtCallouts: GdtCallout[];
@@ -1754,6 +1759,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   ]);
 
   const sheet: Sheet = useMemo(() => {
+    const built: Sheet = (() => {
     const base = standardThreeViewSheet({
       id: 'drawing-page-sheet',
       name: `Drawing — ${sourceId}`,
@@ -1789,7 +1795,26 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       titleblock: mergedTitleblock,
     };
     return applyTemplate(withAnnotations, merged);
-  }, [sourceId, paperSize, scale, annotations, templateKey, titleblockOverrides]);
+    })();
+    // Append user-added section viewports along the bottom of the sheet.
+    if (sectionViews.length === 0) return built;
+    const sectionVps = sectionViews.map((sv, i) => ({
+      id: sv.id,
+      sourceId,
+      projection: { kind: 'section' as const, cuttingPlaneId: sv.id },
+      centerOnSheet: { x: 45 + i * 60, y: 35 },
+      widthOnSheet: 50,
+      scale,
+      label: sv.label,
+    }));
+    return { ...built, viewports: [...built.viewports, ...sectionVps] };
+  }, [sourceId, paperSize, scale, annotations, templateKey, titleblockOverrides, sectionViews]);
+
+  // Cutting planes for the section viewports, keyed by viewport id.
+  const cuttingPlanes = useMemo(
+    () => (sectionViews.length === 0 ? undefined : new Map(sectionViews.map((sv) => [sv.id, sv.plane]))),
+    [sectionViews],
+  );
 
   const firstViewportId = sheet.viewports[0]?.id ?? '';
 
@@ -1929,6 +1954,32 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     const poly = 'feature' in geo ? featureToPolyhedron(geo.feature) : null;
     return poly ? new Map([[sourceId, poly]]) : undefined;
   }, [sourceId]);
+
+  // Stale section planes (model-space) don't apply to a different part.
+  useEffect(() => { setSectionViews([]); }, [sourceId]);
+
+  // Add a section view: a vertical cut (⊥X) through the part's bounding-box
+  // centre → a YZ cross-section. SheetRenderer cuts the solid and draws it.
+  const addSectionView = useCallback(() => {
+    const poly = sheetGeometry?.get(sourceId);
+    if (!poly || poly.vertices.length === 0) return;
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    for (const v of poly.vertices) {
+      if (v.x < minX) minX = v.x; if (v.y < minY) minY = v.y; if (v.z < minZ) minZ = v.z;
+      if (v.x > maxX) maxX = v.x; if (v.y > maxY) maxY = v.y; if (v.z > maxZ) maxZ = v.z;
+    }
+    const center: [number, number, number] = [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2];
+    setSectionViews((prev) => {
+      const letter = String.fromCharCode(65 + (prev.length % 26)); // A, B, C, …
+      return [
+        ...prev,
+        { id: `section-${letter}-${prev.length}`, label: `SECTION ${letter}-${letter}`, plane: { origin: center, normal: [1, 0, 0] } },
+      ];
+    });
+  }, [sheetGeometry, sourceId]);
+
+  const clearSectionViews = useCallback(() => setSectionViews([]), []);
 
   const onExportPng = useCallback(() => {
     if (!sheetRef.current) return;
@@ -3022,6 +3073,49 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 {dict.snapHint}
               </p>
             ) : null}
+
+            {/* ─── Section views ─────────────────────────────────────── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid #e5e7eb', paddingTop: 10, marginTop: 4 }}>
+              <button
+                type="button"
+                data-testid="drawing-add-section"
+                onClick={addSectionView}
+                disabled={!sheetGeometry}
+                style={{
+                  padding: '6px 10px', height: 30,
+                  border: '1px solid #2563eb', borderRadius: 4,
+                  background: sheetGeometry ? '#2563eb' : '#9ca3af',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  cursor: sheetGeometry ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {loc(langSeg, {
+                  ko: '단면도 추가', en: 'Add section view', ja: '断面図を追加',
+                  zh: '添加剖视图', es: 'Añadir vista de sección', ar: 'إضافة منظر مقطعي',
+                })}
+              </button>
+              {sectionViews.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: '#6b7280' }}>
+                  <span data-testid="drawing-section-count">
+                    {loc(langSeg, {
+                      ko: `단면도 ${sectionViews.length}개`,
+                      en: `${sectionViews.length} section${sectionViews.length > 1 ? 's' : ''}`,
+                      ja: `断面図 ${sectionViews.length}個`,
+                      zh: `剖视图 ${sectionViews.length} 个`,
+                      es: `${sectionViews.length} secci${sectionViews.length > 1 ? 'ones' : 'ón'}`,
+                      ar: `${sectionViews.length} مقطع`,
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearSectionViews}
+                    style={{ padding: '2px 8px', border: '1px solid #d1d5db', borderRadius: 3, background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    {loc(langSeg, { ko: '지우기', en: 'Clear', ja: 'クリア', zh: '清除', es: 'Borrar', ar: 'مسح' })}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </aside>
 
           {/* ─── Main canvas ─────────────────────────────────────────── */}
@@ -3040,7 +3134,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               position: 'relative',
             }}
           >
-            <SheetRenderer sheet={sheet} geometry={sheetGeometry} autoDimension />
+            <SheetRenderer sheet={sheet} geometry={sheetGeometry} cuttingPlanes={cuttingPlanes} autoDimension />
             {snapEnabled ? (
               <SheetSnapIndicator
                 snap={snapTarget}
