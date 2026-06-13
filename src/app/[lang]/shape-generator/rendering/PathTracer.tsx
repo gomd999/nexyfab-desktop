@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { WebGLPathTracer } from 'three-gpu-pathtracer';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 const MAX_SAMPLES = 256;
 
@@ -77,6 +79,7 @@ export default function PathTracer({ enabled, bounces = 6, onProgress }: PathTra
 }
 
 export function PathTracerHUD({ samples, max, isKo }: { samples: number; max: number; isKo: boolean }) {
+  const lang = useLang();
   const pct = Math.round((samples / max) * 100);
   return (
     <div style={{
@@ -87,8 +90,15 @@ export function PathTracerHUD({ samples, max, isKo }: { samples: number; max: nu
       backdropFilter: 'blur(4px)', zIndex: 300, pointerEvents: 'none', whiteSpace: 'nowrap',
     }}>
       <span style={{ color: 'var(--nx-accent)' }}>◉</span>
-      {isKo ? `Path Tracing: ${samples}/${max} (${pct}%)` : `Path Tracing: ${samples}/${max} samples (${pct}%)`}
-      {samples >= max && <span style={{ color: 'var(--nx-ok)', marginLeft: 4 }}>✓ {isKo ? '완료' : 'Done'}</span>}
+      {loc(lang, {
+        ko: `Path Tracing: ${samples}/${max} (${pct}%)`,
+        en: `Path Tracing: ${samples}/${max} samples (${pct}%)`,
+        ja: `パストレーシング: ${samples}/${max} サンプル (${pct}%)`,
+        zh: `路径追踪: ${samples}/${max} 采样 (${pct}%)`,
+        es: `Trazado de rayos: ${samples}/${max} muestras (${pct}%)`,
+        ar: `تتبع المسار: ${samples}/${max} عينة (${pct}%)`,
+      })}
+      {samples >= max && <span style={{ color: 'var(--nx-ok)', marginLeft: 4 }}>✓ {loc(lang, { ko: '완료', en: 'Done', ja: '完了', zh: '完成', es: 'Listo', ar: 'تم' })}</span>}
     </div>
   );
 }

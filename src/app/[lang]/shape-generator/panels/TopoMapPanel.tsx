@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import TopoPanel from '../topology/TopoPanel';
 import type { UseTopologicalMapReturn } from '../topology/useTopologicalMap';
+import { loc } from '../lib/loc';
 
 // Clear the right property pane (Shell default rightWidth = 320px) so the
 // floating map opens INTO the viewport instead of covering the ANALYZE /
@@ -27,9 +28,8 @@ export default function TopoMapPanel({ topoMap, lang = 'en' }: TopoMapPanelProps
   const [open, setOpen] = useState(false);
   const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(null);
 
-  const isKo = lang === 'ko' || lang === 'kr';
-  const labelOpen = isKo ? '위상 ID 맵 열기' : 'Open Topo Map';
-  const labelClose = isKo ? '닫기' : 'Close';
+  const labelOpen = loc(lang, { ko: '위상 ID 맵 열기', en: 'Open Topo Map', ja: '位相 ID マップを開く', zh: '打开拓扑 ID 映射', es: 'Abrir mapa topológico', ar: 'فتح خريطة المعرّف الطوبولوجي' });
+  const labelClose = loc(lang, { ko: '닫기', en: 'Close', ja: '閉じる', zh: '关闭', es: 'Cerrar', ar: 'إغلاق' });
   const faceCount = Object.keys(topoMap.map.faces).length;
 
   return (

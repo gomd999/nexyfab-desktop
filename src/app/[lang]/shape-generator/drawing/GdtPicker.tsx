@@ -11,6 +11,8 @@
 // chosen frame becomes a draggable annotation on the active drawing.
 
 import { useState } from 'react';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 import {
   GDT_SYMBOLS,
   GDT_MODIFIERS,
@@ -28,6 +30,7 @@ interface Props {
 }
 
 export default function GdtPicker({ open, isKo, onClose }: Props) {
+  const lang = useLang();
   const [selected, setSelected] = useState<GdtSymbol | null>(null);
   const [tolerance, setTolerance] = useState(0.1);
   const [modifier, setModifier] = useState<FeatureControlFrame['modifier']>(undefined);
@@ -49,7 +52,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
     if (!frameText) return;
     try {
       await navigator.clipboard.writeText(frameText);
-      setToast(isKo ? '복사됨' : 'Copied');
+      setToast(loc(lang, { ko: '복사됨', en: 'Copied', ja: 'コピーしました', zh: '已复制', es: 'Copiado', ar: 'تم النسخ' }));
       setTimeout(() => setToast(''), 1200);
     } catch { /* unsecured context */ }
   };
@@ -88,7 +91,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>
-            {isKo ? 'GD&T 기호 선택' : 'GD&T symbol picker'}
+            {loc(lang, { ko: 'GD&T 기호 선택', en: 'GD&T symbol picker', ja: 'GD&T 記号の選択', zh: 'GD&T 符号选择', es: 'Selector de símbolos GD&T', ar: 'منتقي رموز GD&T' })}
           </span>
           <button type="button" onClick={onClose} style={{ width: 24, height: 24, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: 'var(--nx-text-3)' }}>×</button>
         </div>
@@ -137,7 +140,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
           <div style={{ borderTop: '1px solid var(--nx-border)', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>{isKo ? '공차' : 'Tolerance'}</span>
+                <span>{loc(lang, { ko: '공차', en: 'Tolerance', ja: '公差', zh: '公差', es: 'Tolerancia', ar: 'التفاوت' })}</span>
                 <input
                   type="number"
                   step={0.01}
@@ -155,7 +158,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
 
               {selected.acceptsModifier && (
                 <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>{isKo ? '조건' : 'Modifier'}</span>
+                  <span>{loc(lang, { ko: '조건', en: 'Modifier', ja: '条件記号', zh: '修饰符', es: 'Modificador', ar: 'مُعدِّل' })}</span>
                   <select
                     value={modifier ?? ''}
                     onChange={e => setModifier((e.target.value || undefined) as FeatureControlFrame['modifier'])}
@@ -175,7 +178,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
 
               {selected.requiresDatum && (
                 <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span>{isKo ? '데이텀' : 'Datums'}</span>
+                  <span>{loc(lang, { ko: '데이텀', en: 'Datums', ja: 'データム', zh: '基准', es: 'Datums', ar: 'المراجع' })}</span>
                   {[0, 1, 2].map(i => (
                     <input
                       key={i}
@@ -224,7 +227,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
                   color: 'var(--nx-text)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                {isKo ? '복사' : 'Copy'}
+                {loc(lang, { ko: '복사', en: 'Copy', ja: 'コピー', zh: '复制', es: 'Copiar', ar: 'نسخ' })}
               </button>
               <button
                 type="button"
@@ -235,7 +238,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
                   color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                {isKo ? '도면에 삽입 →' : 'Insert to drawing →'}
+                {loc(lang, { ko: '도면에 삽입 →', en: 'Insert to drawing →', ja: '図面に挿入 →', zh: '插入到图纸 →', es: 'Insertar en plano →', ar: 'إدراج في الرسم →' })}
               </button>
             </div>
           </div>

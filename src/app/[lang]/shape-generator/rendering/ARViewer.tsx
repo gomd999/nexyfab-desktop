@@ -13,6 +13,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { GL_COLOR } from '../lib/glColors';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 interface ARViewerProps {
   geometry: THREE.BufferGeometry;
@@ -34,16 +36,18 @@ export default function ARViewer({ geometry, color = GL_COLOR.accent2, onClose, 
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
 
   const isKo = lang === 'ko';
+  void isKo;
+  const routeLang = useLang();
 
   const T = {
-    checkingSupport: isKo ? 'AR 지원 확인 중...' : 'Checking AR support…',
-    notSupported:    isKo ? '이 기기/브라우저는 WebXR AR을 지원하지 않습니다. Chrome on Android 또는 iOS Safari (WebXR 지원) 를 사용하세요.' : 'WebXR AR is not supported on this device/browser. Try Chrome on Android or Safari on iOS (with WebXR support).',
-    starting:        isKo ? 'AR 세션 시작 중...' : 'Starting AR session…',
-    active:          isKo ? 'AR 활성 — 평면에 탭하여 배치' : 'AR active — tap a surface to place',
-    close:           isKo ? 'AR 닫기' : 'Close AR',
-    startAR:         isKo ? 'AR로 보기' : 'View in AR',
-    error:           isKo ? 'AR 오류: ' : 'AR error: ',
-    placementHint:   isKo ? '화면을 탭하면 3D 형상이 배치됩니다' : 'Tap the screen to place the 3D shape',
+    checkingSupport: loc(routeLang, { ko: 'AR 지원 확인 중...', en: 'Checking AR support…', ja: 'ARサポートを確認中…', zh: '正在检查AR支持…', es: 'Comprobando compatibilidad con AR…', ar: 'جارٍ التحقق من دعم الواقع المعزز…' }),
+    notSupported:    loc(routeLang, { ko: '이 기기/브라우저는 WebXR AR을 지원하지 않습니다. Chrome on Android 또는 iOS Safari (WebXR 지원) 를 사용하세요.', en: 'WebXR AR is not supported on this device/browser. Try Chrome on Android or Safari on iOS (with WebXR support).', ja: 'このデバイス/ブラウザはWebXR ARに対応していません。Android版ChromeまたはiOS版Safari（WebXR対応）をお使いください。', zh: '此设备/浏览器不支持WebXR AR。请尝试Android版Chrome或iOS版Safari（需支持WebXR）。', es: 'Este dispositivo/navegador no admite WebXR AR. Prueba con Chrome en Android o Safari en iOS (con soporte WebXR).', ar: 'هذا الجهاز/المتصفح لا يدعم الواقع المعزز WebXR. جرّب Chrome على Android أو Safari على iOS (مع دعم WebXR).' }),
+    starting:        loc(routeLang, { ko: 'AR 세션 시작 중...', en: 'Starting AR session…', ja: 'ARセッションを開始中…', zh: '正在启动AR会话…', es: 'Iniciando sesión de AR…', ar: 'جارٍ بدء جلسة الواقع المعزز…' }),
+    active:          loc(routeLang, { ko: 'AR 활성 — 평면에 탭하여 배치', en: 'AR active — tap a surface to place', ja: 'AR有効 — 面をタップして配置', zh: 'AR已激活 — 点击表面以放置', es: 'AR activo — toca una superficie para colocar', ar: 'الواقع المعزز نشط — انقر على سطح للوضع' }),
+    close:           loc(routeLang, { ko: 'AR 닫기', en: 'Close AR', ja: 'ARを閉じる', zh: '关闭AR', es: 'Cerrar AR', ar: 'إغلاق الواقع المعزز' }),
+    startAR:         loc(routeLang, { ko: 'AR로 보기', en: 'View in AR', ja: 'ARで表示', zh: '在AR中查看', es: 'Ver en AR', ar: 'عرض بالواقع المعزز' }),
+    error:           loc(routeLang, { ko: 'AR 오류: ', en: 'AR error: ', ja: 'ARエラー: ', zh: 'AR错误: ', es: 'Error de AR: ', ar: 'خطأ في الواقع المعزز: ' }),
+    placementHint:   loc(routeLang, { ko: '화면을 탭하면 3D 형상이 배치됩니다', en: 'Tap the screen to place the 3D shape', ja: '画面をタップすると3D形状が配置されます', zh: '点击屏幕以放置3D形状', es: 'Toca la pantalla para colocar la forma 3D', ar: 'انقر على الشاشة لوضع الشكل ثلاثي الأبعاد' }),
   };
 
   const startAR = useCallback(async () => {
@@ -268,7 +272,7 @@ export default function ARViewer({ geometry, color = GL_COLOR.accent2, onClose, 
             padding: '8px 24px', borderRadius: 8, border: '1px solid var(--nx-border)',
             background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 13, cursor: 'pointer',
           }}>
-            {isKo ? '닫기' : 'Close'}
+            {loc(routeLang, { ko: '닫기', en: 'Close', ja: '閉じる', zh: '关闭', es: 'Cerrar', ar: 'إغلاق' })}
           </button>
         </div>
       )}
@@ -280,7 +284,7 @@ export default function ARViewer({ geometry, color = GL_COLOR.accent2, onClose, 
             marginTop: 16, padding: '8px 24px', borderRadius: 8, border: '1px solid var(--nx-border)',
             background: 'var(--nx-panel-2)', color: 'var(--nx-text)', fontSize: 13, cursor: 'pointer',
           }}>
-            {isKo ? '닫기' : 'Close'}
+            {loc(routeLang, { ko: '닫기', en: 'Close', ja: '閉じる', zh: '关闭', es: 'Cerrar', ar: 'إغلاق' })}
           </button>
         </div>
       )}

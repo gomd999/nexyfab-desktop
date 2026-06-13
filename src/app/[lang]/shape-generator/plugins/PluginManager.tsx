@@ -4,6 +4,7 @@ import React, { useState, useCallback, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { pluginRegistry } from './PluginRegistry';
 import type { RegisteredPlugin } from './PluginAPI';
+import { useLang } from '../hooks/useLang';
 
 /* ─── i18n dict ──────────────────────────────────────────────────────────── */
 
@@ -66,10 +67,11 @@ interface PluginManagerProps {
   isKo: boolean;
 }
 
-export default function PluginManager({ visible, onClose, isKo }: PluginManagerProps) {
+export default function PluginManager({ visible, onClose }: PluginManagerProps) {
+  const lang = useLang();
   const pathname = usePathname();
-  const seg = pathname?.split('/').filter(Boolean)[0] ?? (isKo ? 'ko' : 'en');
-  const t = dict[langMap[seg] ?? (isKo ? 'ko' : 'en')];
+  const seg = pathname?.split('/').filter(Boolean)[0] ?? lang;
+  const t = dict[langMap[seg] ?? langMap[lang] ?? 'en'];
 
   const plugins = useSyncExternalStore(
     (cb) => pluginRegistry.subscribe(cb),
