@@ -431,7 +431,7 @@ export default function SketchImportModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--nx-panel)',
           borderRadius: 8,
           padding: 20,
           minWidth: 460,
@@ -446,14 +446,14 @@ export default function SketchImportModal({
       >
         <h2
           data-testid="sketch-import-title"
-          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}
+          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--nx-text)' }}
         >
           {t.title}
         </h2>
 
         {/* File picker row */}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-          <span style={{ color: '#374151', fontWeight: 500 }}>{t.fileLabel}</span>
+          <span style={{ color: 'var(--nx-text-2)', fontWeight: 500 }}>{t.fileLabel}</span>
           <input
             type="file"
             accept=".svg,.dxf,.stp,.step,image/svg+xml"
@@ -464,15 +464,15 @@ export default function SketchImportModal({
         </label>
 
         {/* visual separator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#9ca3af' }}>
-          <span style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--nx-text-2)' }}>
+          <span style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
           <span>{t.orPaste}</span>
-          <span style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+          <span style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
         </div>
 
         {/* Paste textarea */}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-          <span style={{ color: '#374151', fontWeight: 500 }}>{t.pasteLabel}</span>
+          <span style={{ color: 'var(--nx-text-2)', fontWeight: 500 }}>{t.pasteLabel}</span>
           <textarea
             data-testid="sketch-import-textarea"
             value={source}
@@ -483,7 +483,7 @@ export default function SketchImportModal({
               fontFamily: 'monospace',
               fontSize: 11,
               padding: 6,
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               resize: 'vertical',
             }}
@@ -562,7 +562,7 @@ export default function SketchImportModal({
             type="button"
             onClick={onClose}
             data-testid="sketch-import-cancel"
-            style={{ padding: '6px 14px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '6px 14px', fontSize: 12, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.cancel}
           </button>

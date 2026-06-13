@@ -48,7 +48,7 @@ import type { SweepLoftMode } from '@/lib/cad/sweepLoft';
 // stays small for users who never open the loft modal.
 const StlViewer = dynamic(() => import('./StlViewer'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>3D viewer loading…</div>,
 });
 
 export type LoftLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -297,7 +297,7 @@ export default function LoftModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: '#fff',
+        background: 'var(--nx-panel)',
         padding: 20,
         borderRadius: 8,
         maxWidth: 640,
@@ -314,9 +314,9 @@ export default function LoftModal({
           data-testid="solver-loft-phase1-note"
           style={{
             fontSize: 11,
-            color: '#6b7280',
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
+            color: 'var(--nx-text-2)',
+            background: 'var(--nx-panel-2)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             padding: 8,
           }}
@@ -324,7 +324,7 @@ export default function LoftModal({
           {t.phase1Note}
         </div>
 
-        <fieldset style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid #e5e7eb', borderRadius: 4, padding: 8 }}>
+        <fieldset style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--nx-border)', borderRadius: 4, padding: 8 }}>
           <legend style={{ padding: '0 4px', fontSize: 12, fontWeight: 600 }}>{t.sectionsHeading}</legend>
 
           {sections.map((s, idx) => (
@@ -333,7 +333,7 @@ export default function LoftModal({
               data-testid={`solver-loft-section-${idx}`}
               style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}
             >
-              <span style={{ fontSize: 11, color: '#6b7280', minWidth: 60 }}>{t.sectionLabel(idx)}</span>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-2)', minWidth: 60 }}>{t.sectionLabel(idx)}</span>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: 1 }}>
                 {t.zLabel}
                 <input
@@ -342,7 +342,7 @@ export default function LoftModal({
                   onChange={(e) => updateSection(idx, { z: e.target.value })}
                   data-testid={`solver-loft-section-${idx}-z-input`}
                   step="0.1"
-                  style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: 1 }}>
@@ -351,7 +351,7 @@ export default function LoftModal({
                   value={s.source}
                   onChange={(e) => updateSection(idx, { source: e.target.value as LoftSectionSource })}
                   data-testid={`solver-loft-section-${idx}-source-select`}
-                  style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                 >
                   <option value="current">{t.sourceCurrent}</option>
                   {/* External is shown but Phase 1 silently uses the current sketch. */}
@@ -368,7 +368,7 @@ export default function LoftModal({
                   fontSize: 11,
                   background: sections.length <= 2 ? '#f3f4f6' : '#fef2f2',
                   color: sections.length <= 2 ? '#9ca3af' : '#dc2626',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
                   cursor: sections.length <= 2 ? 'not-allowed' : 'pointer',
                 }}
@@ -403,7 +403,7 @@ export default function LoftModal({
             value={mode}
             onChange={(e) => setMode(e.target.value as SweepLoftMode)}
             data-testid="solver-loft-mode-select"
-            style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
           >
             <option value="add">{t.add}</option>
             <option value="cut">{t.cut}</option>
@@ -411,7 +411,7 @@ export default function LoftModal({
         </label>
 
         {render.status === 'loading' && (
-          <div style={{ padding: 12, textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ padding: 12, textAlign: 'center', color: 'var(--nx-text-2)' }}>
             {t.rendering}
           </div>
         )}
@@ -433,8 +433,8 @@ export default function LoftModal({
                 data-testid="solver-loft-scad-preview"
                 style={{
                   padding: 8,
-                  background: '#f3f4f6',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--nx-panel-2)',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
                   fontSize: 11,
                   fontFamily: 'monospace',
@@ -457,9 +457,9 @@ export default function LoftModal({
                         data-testid={`solver-loft-png-preview-${idx}`}
                         src={`data:image/png;base64,${png.base64}`}
                         alt={png.label}
-                        style={{ maxWidth: 240, border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ maxWidth: 240, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                       />
-                      <div style={{ fontSize: 10, color: '#6b7280' }}>{png.label}</div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{png.label}</div>
                     </div>
                   ))}
                 </div>
@@ -481,7 +481,7 @@ export default function LoftModal({
             type="button"
             onClick={onClose}
             data-testid="solver-loft-cancel"
-            style={{ padding: '8px 16px', fontSize: 13, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '8px 16px', fontSize: 13, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.cancel}
           </button>

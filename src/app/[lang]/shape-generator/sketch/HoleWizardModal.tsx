@@ -48,7 +48,7 @@ import { TAP_DRILL_SPECS, tapDrillDiameter, type ThreadSpec } from '@/lib/cad/ho
 // stays small for users who never open the hole wizard.
 const StlViewer = dynamic(() => import('./StlViewer'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>3D viewer loading…</div>,
 });
 
 export type HoleWizardLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -426,7 +426,7 @@ export default function HoleWizardModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: '#fff',
+        background: 'var(--nx-panel)',
         padding: 20,
         borderRadius: 8,
         maxWidth: 760,
@@ -448,12 +448,12 @@ export default function HoleWizardModal({
             data-testid="solver-hole-extrude-depth-input"
             min={0.01}
             step={0.1}
-            style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
           />
-          <div style={{ fontSize: 11, color: '#6b7280' }}>{t.extrudeDepthHint}</div>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.extrudeDepthHint}</div>
         </label>
 
-        <fieldset style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid #e5e7eb', borderRadius: 4, padding: 8 }}>
+        <fieldset style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--nx-border)', borderRadius: 4, padding: 8 }}>
           <legend style={{ padding: '0 4px', fontSize: 12, fontWeight: 600 }}>{t.holesHeading}</legend>
 
           {availablePointIds.length === 0 && (
@@ -468,13 +468,13 @@ export default function HoleWizardModal({
                 flexDirection: 'column',
                 gap: 6,
                 padding: 8,
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                background: 'var(--nx-panel-2)',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{t.rowLabel(idx)}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-text-2)' }}>{t.rowLabel(idx)}</div>
                 <button
                   type="button"
                   onClick={() => removeRow(idx)}
@@ -503,7 +503,7 @@ export default function HoleWizardModal({
                     value={row.pointId}
                     onChange={(e) => updateRow(idx, 'pointId', e.target.value)}
                     data-testid={`solver-hole-row-${idx}-point-select`}
-                    style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                   >
                     {availablePointIds.length === 0 && (
                       <option value="">(no points)</option>
@@ -520,7 +520,7 @@ export default function HoleWizardModal({
                     value={row.holeType}
                     onChange={(e) => updateRow(idx, 'holeType', e.target.value as HoleType)}
                     data-testid={`solver-hole-row-${idx}-type-select`}
-                    style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                   >
                     <option value="drilled">{t.drilled}</option>
                     <option value="counterbore">{t.counterbore}</option>
@@ -534,7 +534,7 @@ export default function HoleWizardModal({
                     value={row.standard}
                     onChange={(e) => applyStandard(idx, e.target.value)}
                     data-testid={`solver-hole-row-${idx}-standard-select`}
-                    style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                   >
                     <option value="">{t.standardPlaceholder}</option>
                     {TAP_DRILL_SPECS.map((spec) => (
@@ -553,7 +553,7 @@ export default function HoleWizardModal({
                     onChange={(e) => updateRow(idx, 'diameter', e.target.value)}
                     data-testid={`solver-hole-row-${idx}-diameter-input`}
                     step="0.1"
-                    style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                   />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: '1 1 140px' }}>
@@ -564,7 +564,7 @@ export default function HoleWizardModal({
                     onChange={(e) => updateRow(idx, 'depth', e.target.value)}
                     data-testid={`solver-hole-row-${idx}-depth-input`}
                     step="0.1"
-                    style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                   />
                 </label>
               </div>
@@ -579,7 +579,7 @@ export default function HoleWizardModal({
                       onChange={(e) => updateRow(idx, 'counterboreDiameter', e.target.value)}
                       data-testid={`solver-hole-row-${idx}-cbore-diameter-input`}
                       step="0.1"
-                      style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: '1 1 140px' }}>
@@ -590,7 +590,7 @@ export default function HoleWizardModal({
                       onChange={(e) => updateRow(idx, 'counterboreDepth', e.target.value)}
                       data-testid={`solver-hole-row-${idx}-cbore-depth-input`}
                       step="0.1"
-                      style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                     />
                   </label>
                 </div>
@@ -608,7 +608,7 @@ export default function HoleWizardModal({
                       step="0.5"
                       min={82}
                       max={135}
-                      style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: '1 1 140px' }}>
@@ -619,7 +619,7 @@ export default function HoleWizardModal({
                       onChange={(e) => updateRow(idx, 'countersinkDepth', e.target.value)}
                       data-testid={`solver-hole-row-${idx}-csink-depth-input`}
                       step="0.1"
-                      style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                     />
                   </label>
                 </div>
@@ -647,7 +647,7 @@ export default function HoleWizardModal({
         </fieldset>
 
         {render.status === 'loading' && (
-          <div style={{ padding: 12, textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ padding: 12, textAlign: 'center', color: 'var(--nx-text-2)' }}>
             {t.rendering}
           </div>
         )}
@@ -669,8 +669,8 @@ export default function HoleWizardModal({
                 data-testid="solver-hole-scad-preview"
                 style={{
                   padding: 8,
-                  background: '#f3f4f6',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--nx-panel-2)',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
                   fontSize: 11,
                   fontFamily: 'monospace',
@@ -693,9 +693,9 @@ export default function HoleWizardModal({
                         data-testid={`solver-hole-png-preview-${idx}`}
                         src={`data:image/png;base64,${png.base64}`}
                         alt={png.label}
-                        style={{ maxWidth: 240, border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ maxWidth: 240, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                       />
-                      <div style={{ fontSize: 10, color: '#6b7280' }}>{png.label}</div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{png.label}</div>
                     </div>
                   ))}
                 </div>
@@ -717,7 +717,7 @@ export default function HoleWizardModal({
             type="button"
             onClick={onClose}
             data-testid="solver-hole-cancel"
-            style={{ padding: '8px 16px', fontSize: 13, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '8px 16px', fontSize: 13, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.cancel}
           </button>

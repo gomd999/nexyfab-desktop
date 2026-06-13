@@ -765,7 +765,7 @@ export default function StepImportModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--nx-panel)',
           padding: 20,
           borderRadius: 8,
           maxWidth: 640,
@@ -791,7 +791,7 @@ export default function StepImportModal({
           style={{
             display: 'flex',
             gap: 4,
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--nx-border)',
             marginBottom: 4,
           }}
         >
@@ -811,10 +811,10 @@ export default function StepImportModal({
                   padding: '6px 12px',
                   fontSize: 12,
                   fontWeight: active ? 600 : 400,
-                  background: active ? '#fff' : '#f3f4f6',
-                  color: active ? '#0284c7' : '#4b5563',
-                  border: '1px solid #e5e7eb',
-                  borderBottom: active ? '2px solid #0284c7' : '1px solid #e5e7eb',
+                  background: active ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+                  color: active ? '#0284c7' : 'var(--nx-text-2)',
+                  border: '1px solid var(--nx-border)',
+                  borderBottom: active ? '2px solid #0284c7' : '1px solid var(--nx-border)',
                   borderRadius: '4px 4px 0 0',
                   cursor: 'pointer',
                 }}
@@ -868,7 +868,7 @@ export default function StepImportModal({
                 padding: 8,
                 fontFamily: 'monospace',
                 fontSize: 11,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--nx-border)',
                 borderRadius: 4,
                 resize: 'vertical',
               }}
@@ -888,8 +888,8 @@ export default function StepImportModal({
               alignSelf: 'flex-start',
               padding: '4px 8px',
               fontSize: 11,
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel-2)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -899,7 +899,7 @@ export default function StepImportModal({
         )}
 
         {activeTab === 'step' && state.status === 'loading' && (
-          <div style={{ padding: 12, textAlign: 'center', color: '#6b7280', fontSize: 12 }}>
+          <div style={{ padding: 12, textAlign: 'center', color: 'var(--nx-text-2)', fontSize: 12 }}>
             {t.importing}
           </div>
         )}
@@ -966,7 +966,7 @@ export default function StepImportModal({
                       >
                         <span style={{ fontWeight: 600 }}>{label}</span>
                         {' — '}
-                        <span style={{ color: '#374151' }}>{node.name}</span>
+                        <span style={{ color: 'var(--nx-text-2)' }}>{node.name}</span>
                       </li>
                     );
                   })}
@@ -1021,7 +1021,7 @@ export default function StepImportModal({
             )}
             {state.unsupported.length > 0 && (
               <div data-testid="step-import-phase3-wishlist">
-                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: '#6b7280' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--nx-text-2)' }}>
                   {t.phase3WishlistHeading}
                 </div>
                 <ul
@@ -1029,9 +1029,9 @@ export default function StepImportModal({
                     margin: 0,
                     paddingLeft: 20,
                     fontSize: 11,
-                    color: '#4b5563',
-                    background: '#f9fafb',
-                    border: '1px solid #e5e7eb',
+                    color: 'var(--nx-text-2)',
+                    background: 'var(--nx-panel-2)',
+                    border: '1px solid var(--nx-border)',
                     borderRadius: 4,
                     padding: '6px 6px 6px 24px',
                   }}
@@ -1053,8 +1053,8 @@ export default function StepImportModal({
             style={{
               padding: '8px 16px',
               fontSize: 13,
-              background: '#fff',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}

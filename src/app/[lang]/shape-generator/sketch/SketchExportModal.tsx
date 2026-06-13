@@ -534,7 +534,7 @@ export default function SketchExportModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--nx-panel)',
           padding: 20,
           borderRadius: 8,
           maxWidth: 560,
@@ -558,13 +558,13 @@ export default function SketchExportModal({
         {/* Format radio group */}
         <fieldset
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             padding: '6px 10px',
             margin: 0,
           }}
         >
-          <legend style={{ padding: '0 4px', fontSize: 11, color: '#6b7280' }}>
+          <legend style={{ padding: '0 4px', fontSize: 11, color: 'var(--nx-text-2)' }}>
             {t.formatLabel}
           </legend>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -616,7 +616,7 @@ export default function SketchExportModal({
               min={1}
               step="any"
               onChange={numberOnChange(setWidth)}
-              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+              style={{ padding: '6px 8px', border: '1px solid var(--nx-border)', borderRadius: 4, fontSize: 12 }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
@@ -628,7 +628,7 @@ export default function SketchExportModal({
               min={1}
               step="any"
               onChange={numberOnChange(setHeight)}
-              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+              style={{ padding: '6px 8px', border: '1px solid var(--nx-border)', borderRadius: 4, fontSize: 12 }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
@@ -640,7 +640,7 @@ export default function SketchExportModal({
               min={0}
               step="any"
               onChange={numberOnChange(setMargin)}
-              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+              style={{ padding: '6px 8px', border: '1px solid var(--nx-border)', borderRadius: 4, fontSize: 12 }}
             />
           </label>
           {/* DXF is a pure-vector format with layer-driven line weights —
@@ -660,7 +660,7 @@ export default function SketchExportModal({
                 min={0}
                 step="any"
                 onChange={numberOnChange(setStroke)}
-                style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                style={{ padding: '6px 8px', border: '1px solid var(--nx-border)', borderRadius: 4, fontSize: 12 }}
               />
             </label>
           )}
@@ -674,7 +674,7 @@ export default function SketchExportModal({
               data-testid="sketch-export-unit"
               value={unit}
               onChange={(e) => setUnit(e.target.value as SketchExportUnit)}
-              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, background: '#fff' }}
+              style={{ padding: '6px 8px', border: '1px solid var(--nx-border)', borderRadius: 4, fontSize: 12, background: 'var(--nx-panel)' }}
             >
               <option value="mm">{t.unitMm}</option>
               <option value="inch">{t.unitInch}</option>
@@ -687,18 +687,18 @@ export default function SketchExportModal({
               data-testid="sketch-export-filename"
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
-              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+              style={{ padding: '6px 8px', border: '1px solid var(--nx-border)', borderRadius: 4, fontSize: 12 }}
             />
           </label>
         </div>
 
         {/* Preview */}
         <div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{t.previewLabel}</div>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.previewLabel}</div>
           <div
             data-testid="sketch-export-preview"
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               background: '#fafafa',
               padding: 8,
@@ -711,7 +711,7 @@ export default function SketchExportModal({
             }}
           >
             {isEmpty ? (
-              <span style={{ color: '#9ca3af', fontSize: 12 }}>{t.previewEmpty}</span>
+              <span style={{ color: 'var(--nx-text-2)', fontSize: 12 }}>{t.previewEmpty}</span>
             ) : (
               <div
                 data-testid="sketch-export-preview-svg"
@@ -740,8 +740,8 @@ export default function SketchExportModal({
             style={{
               padding: '8px 16px',
               fontSize: 13,
-              background: '#fff',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}

@@ -35,7 +35,7 @@ import type { FilletEdgeSelection } from '@/lib/cad/filletProfile';
 const StlViewer = dynamic(() => import('./StlViewer'), {
   ssr: false,
   loading: () => (
-    <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>
+    <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>3D viewer loading…</div>
   ),
 });
 
@@ -308,7 +308,7 @@ export default function FilletModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--nx-panel)',
           padding: 20,
           borderRadius: 8,
           maxWidth: 560,
@@ -347,7 +347,7 @@ export default function FilletModal({
             data-testid="solver-fillet-depth-input"
             step="0.1"
             min="0"
-            style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
           />
         </label>
 
@@ -360,13 +360,13 @@ export default function FilletModal({
             data-testid="solver-fillet-radius-input"
             step="0.1"
             min="0"
-            style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
           />
         </label>
 
         <fieldset
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--nx-border)',
             borderRadius: 4,
             padding: '8px 12px',
             display: 'flex',
@@ -395,7 +395,7 @@ export default function FilletModal({
         </fieldset>
 
         {render.status === 'loading' && (
-          <div style={{ padding: 12, textAlign: 'center', color: '#6b7280' }}>{t.rendering}</div>
+          <div style={{ padding: 12, textAlign: 'center', color: 'var(--nx-text-2)' }}>{t.rendering}</div>
         )}
 
         {render.status === 'error' && (
@@ -422,8 +422,8 @@ export default function FilletModal({
                 data-testid="solver-fillet-scad-preview"
                 style={{
                   padding: 8,
-                  background: '#f3f4f6',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--nx-panel-2)',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
                   fontSize: 11,
                   fontFamily: 'monospace',
@@ -454,9 +454,9 @@ export default function FilletModal({
                         data-testid={`solver-fillet-png-preview-${idx}`}
                         src={`data:image/png;base64,${png.base64}`}
                         alt={png.label}
-                        style={{ maxWidth: 240, border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ maxWidth: 240, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                       />
-                      <div style={{ fontSize: 10, color: '#6b7280' }}>{png.label}</div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{png.label}</div>
                     </div>
                   ))}
                 </div>
@@ -481,8 +481,8 @@ export default function FilletModal({
             style={{
               padding: '8px 16px',
               fontSize: 13,
-              background: '#fff',
-              border: '1px solid #d1d5db',
+              background: 'var(--nx-panel)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}

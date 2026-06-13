@@ -35,7 +35,7 @@ import type { SweepPathPoint } from '@/lib/sketch/sweepFromSketch';
 // stays small for users who never open the sweep modal.
 const StlViewer = dynamic(() => import('./StlViewer'), {
   ssr: false,
-  loading: () => <div style={{ fontSize: 11, color: '#6b7280', padding: 12 }}>3D viewer loading…</div>,
+  loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>3D viewer loading…</div>,
 });
 
 export type SweepLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
@@ -282,7 +282,7 @@ export default function SweepModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: '#fff',
+        background: 'var(--nx-panel)',
         padding: 20,
         borderRadius: 8,
         maxWidth: 640,
@@ -295,13 +295,13 @@ export default function SweepModal({
       }}>
         <h3 id="solver-sweep-title" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{t.modalTitle}</h3>
 
-        <fieldset style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid #e5e7eb', borderRadius: 4, padding: 8 }}>
+        <fieldset style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--nx-border)', borderRadius: 4, padding: 8 }}>
           <legend style={{ padding: '0 4px', fontSize: 12, fontWeight: 600 }}>{t.pathHeading}</legend>
-          <div style={{ fontSize: 11, color: '#6b7280' }}>{t.pathHint}</div>
+          <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.pathHint}</div>
 
           {path.map((pt, idx) => (
             <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', minWidth: 48, paddingBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-2)', minWidth: 48, paddingBottom: 6 }}>
                 {t.pointLabel(idx)}
               </div>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: 1 }}>
@@ -312,7 +312,7 @@ export default function SweepModal({
                   onChange={(e) => updatePoint(idx, 'x', e.target.value)}
                   data-testid={`solver-sweep-path-point-${idx}-x-input`}
                   step="0.1"
-                  style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: 1 }}>
@@ -323,7 +323,7 @@ export default function SweepModal({
                   onChange={(e) => updatePoint(idx, 'y', e.target.value)}
                   data-testid={`solver-sweep-path-point-${idx}-y-input`}
                   step="0.1"
-                  style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, flex: 1 }}>
@@ -334,7 +334,7 @@ export default function SweepModal({
                   onChange={(e) => updatePoint(idx, 'z', e.target.value)}
                   data-testid={`solver-sweep-path-point-${idx}-z-input`}
                   step="0.1"
-                  style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                 />
               </label>
               <button
@@ -385,7 +385,7 @@ export default function SweepModal({
             value={mode}
             onChange={(e) => setMode(e.target.value as SweepLoftMode)}
             data-testid="solver-sweep-mode-select"
-            style={{ padding: 6, fontSize: 13, border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
           >
             <option value="add">{t.add}</option>
             <option value="cut">{t.cut}</option>
@@ -393,7 +393,7 @@ export default function SweepModal({
         </label>
 
         {render.status === 'loading' && (
-          <div style={{ padding: 12, textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ padding: 12, textAlign: 'center', color: 'var(--nx-text-2)' }}>
             {t.rendering}
           </div>
         )}
@@ -415,8 +415,8 @@ export default function SweepModal({
                 data-testid="solver-sweep-scad-preview"
                 style={{
                   padding: 8,
-                  background: '#f3f4f6',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--nx-panel-2)',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: 4,
                   fontSize: 11,
                   fontFamily: 'monospace',
@@ -439,9 +439,9 @@ export default function SweepModal({
                         data-testid={`solver-sweep-png-preview-${idx}`}
                         src={`data:image/png;base64,${png.base64}`}
                         alt={png.label}
-                        style={{ maxWidth: 240, border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ maxWidth: 240, border: '1px solid var(--nx-border)', borderRadius: 4 }}
                       />
-                      <div style={{ fontSize: 10, color: '#6b7280' }}>{png.label}</div>
+                      <div style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{png.label}</div>
                     </div>
                   ))}
                 </div>
@@ -463,7 +463,7 @@ export default function SweepModal({
             type="button"
             onClick={onClose}
             data-testid="solver-sweep-cancel"
-            style={{ padding: '8px 16px', fontSize: 13, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '8px 16px', fontSize: 13, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 4, cursor: 'pointer' }}
           >
             {t.cancel}
           </button>
