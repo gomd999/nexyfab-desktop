@@ -124,6 +124,24 @@ describe('projectPolyhedron — silhouette HLR (smooth-edge suppression)', () =>
     // Front view outline is still the full 4-edge square (no over-suppression).
     expect(projectPolyhedron(prism, 'front').visible.length).toBe(4);
   });
+
+  it('emits suppressed smooth wall edges into `tangent` (front-facing only)', () => {
+    // The tube's smooth wall facets are dropped from visible/hidden but now
+    // surface in `tangent` so the UI can optionally draw them.
+    const proj = projectPolyhedron(tube(32), 'front');
+    expect(proj.tangent.length).toBeGreaterThan(0);
+    // Tangent edges are not double-counted in the main line work.
+    expect(proj.visible).not.toContain(proj.tangent[0]);
+  });
+
+  it('a sharp prism has no tangent edges', () => {
+    const prism = extrudePolyhedron({
+      kind: 'extrude',
+      loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+      depth: 10, direction: 'one_sided', mode: 'add',
+    });
+    expect(projectPolyhedron(prism, 'front').tangent.length).toBe(0);
+  });
 });
 
 describe('projectPolyhedron — HLR occlusion (stepped solid)', () => {

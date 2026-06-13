@@ -96,6 +96,18 @@ export interface SheetRendererProps {
    * projected bbox; values are true mm). Default off.
    */
   autoDimension?: boolean;
+  /**
+   * Show hidden (dashed) edges on projected standard views. ISO/ASME drawings
+   * often suppress hidden lines for clarity, so this is a user-facing style
+   * toggle. Default on (back-compat — hidden lines were always drawn before).
+   */
+  showHiddenLines?: boolean;
+  /**
+   * Show smooth/tangent edges (e.g. where a fillet blends into a wall) as thin
+   * phantom lines on projected standard views. Off by default — tangent edges
+   * are normally suppressed for a clean drawing.
+   */
+  showTangentEdges?: boolean;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────
@@ -123,6 +135,8 @@ export function SheetRenderer({
   geometry,
   cuttingPlanes,
   autoDimension = false,
+  showHiddenLines = true,
+  showTangentEdges = false,
 }: SheetRendererProps): React.ReactElement {
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
   const widthPx = dim.width * scale;
@@ -175,6 +189,8 @@ export function SheetRenderer({
           geometry={geometry?.get(vp.sourceId) ?? null}
           cuttingPlane={vp.projection.kind === 'section' ? (cuttingPlanes?.get(vp.projection.cuttingPlaneId) ?? null) : null}
           autoDimension={autoDimension}
+          showHiddenLines={showHiddenLines}
+          showTangentEdges={showTangentEdges}
         />
       ))}
 
@@ -286,6 +302,8 @@ interface ViewportLayerProps {
   geometry?: Polyhedron | null;
   cuttingPlane?: CuttingPlane | null;
   autoDimension?: boolean;
+  showHiddenLines?: boolean;
+  showTangentEdges?: boolean;
 }
 
 function ViewportLayer({
@@ -295,6 +313,8 @@ function ViewportLayer({
   geometry,
   cuttingPlane,
   autoDimension,
+  showHiddenLines = true,
+  showTangentEdges = false,
 }: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
   // Real projected geometry for standard views when a polyhedron is supplied.
@@ -306,6 +326,8 @@ function ViewportLayer({
           view={viewport.projection.view}
           box={box}
           autoDimension={autoDimension}
+          showHiddenLines={showHiddenLines}
+          showTangentEdges={showTangentEdges}
         />
       : null;
   const labelHeight = Math.max(3, box.h * 0.05);
@@ -382,10 +404,13 @@ interface ProjectedGeometryProps {
   view: 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right' | 'iso';
   box: ResolvedBox;
   autoDimension?: boolean;
+  showHiddenLines?: boolean;
+  showTangentEdges?: boolean;
 }
 
 const GEOM_VISIBLE_STROKE = '#0f172a';
 const GEOM_HIDDEN_STROKE = '#94a3b8';
+const GEOM_TANGENT_STROKE = '#c7cdd6';
 const GEOM_MARGIN_FRAC = 0.08;
 const GEOM_DIM_MARGIN_FRAC = 0.18;
 const GEOM_DIM_COLOR = '#1d4ed8';
@@ -401,8 +426,10 @@ function ProjectedGeometry({
   view,
   box,
   autoDimension,
+  showHiddenLines = true,
+  showTangentEdges = false,
 }: ProjectedGeometryProps): React.ReactElement | null {
-  const { visible, hidden, bbox } = projectPolyhedron(poly, view);
+  const { visible, hidden, tangent, bbox } = projectPolyhedron(poly, view);
   const geomW = bbox.maxX - bbox.minX;
   const geomH = bbox.maxY - bbox.minY;
   if (!(geomW > 0) && !(geomH > 0)) return null;
@@ -433,17 +460,30 @@ function ProjectedGeometry({
     <g
       data-testid={`sheet-renderer-vp-geometry-${viewportId}`}
       data-visible={visible.length}
-      data-hidden={hidden.length}
+      data-hidden={showHiddenLines ? hidden.length : 0}
+      data-tangent={showTangentEdges ? tangent.length : 0}
     >
-      {hidden.map((e, i) => (
-        <line
-          key={`h${i}`}
-          x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
-          stroke={GEOM_HIDDEN_STROKE}
-          strokeWidth={strokeW}
-          strokeDasharray={`${strokeW * 4} ${strokeW * 3}`}
-        />
-      ))}
+      {showTangentEdges
+        ? tangent.map((e, i) => (
+            <line
+              key={`t${i}`}
+              x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+              stroke={GEOM_TANGENT_STROKE}
+              strokeWidth={strokeW * 0.7}
+            />
+          ))
+        : null}
+      {showHiddenLines
+        ? hidden.map((e, i) => (
+            <line
+              key={`h${i}`}
+              x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+              stroke={GEOM_HIDDEN_STROKE}
+              strokeWidth={strokeW}
+              strokeDasharray={`${strokeW * 4} ${strokeW * 3}`}
+            />
+          ))
+        : null}
       {visible.map((e, i) => (
         <line
           key={`v${i}`}

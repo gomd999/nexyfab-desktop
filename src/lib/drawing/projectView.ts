@@ -39,6 +39,14 @@ export interface Segment2D {
 export interface ProjectedView {
   visible: Segment2D[];
   hidden: Segment2D[];
+  /**
+   * Smooth (tangent) edges — the boundary between two faces that meet below
+   * the sharp-edge dihedral threshold (e.g. a fillet blending into a flat
+   * wall). These are suppressed from `visible`/`hidden` for a clean drawing,
+   * but emitted here so the UI can optionally show them as thin phantom
+   * lines (a standard CAD "tangent edges" toggle). Front-facing only.
+   */
+  tangent: Segment2D[];
   bbox: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
@@ -163,6 +171,7 @@ export function projectPolyhedron(poly: Polyhedron, view: ProjectionView): Proje
 
   const visible: Segment2D[] = [];
   const hidden: Segment2D[] = [];
+  const tangent: Segment2D[] = [];
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
   for (const e of edges) {
@@ -176,6 +185,13 @@ export function projectPolyhedron(poly: Polyhedron, view: ProjectionView): Proje
       const [f0, f1] = e.faces;
       const silhouette = faceFront[f0] !== faceFront[f1];
       if (!silhouette && dot(poly.faces[f0].normal, poly.faces[f1].normal) > SMOOTH_DIHEDRAL_COS) {
+        // Smooth/tangent edge — dropped from the main line work, but emitted
+        // to `tangent` when on the visible side so the UI can show it as a
+        // thin phantom line. (Occlusion is approximated by the front-face
+        // test; back-side tangent edges are dropped to avoid clutter.)
+        if (faceFront[f0] || faceFront[f1]) {
+          tangent.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+        }
         continue;
       }
     }
@@ -208,5 +224,5 @@ export function projectPolyhedron(poly: Polyhedron, view: ProjectionView): Proje
   if (!Number.isFinite(minX)) {
     minX = minY = maxX = maxY = 0;
   }
-  return { visible, hidden, bbox: { minX, minY, maxX, maxY } };
+  return { visible, hidden, tangent, bbox: { minX, minY, maxX, maxY } };
 }

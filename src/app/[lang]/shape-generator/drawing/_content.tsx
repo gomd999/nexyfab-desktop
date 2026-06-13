@@ -1188,6 +1188,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   // User-added section views (increment 2). Each carries its cutting plane in
   // model space; SheetRenderer cuts the solid and draws the cross-section.
   const [sectionViews, setSectionViews] = useState<Array<{ id: string; label: string; plane: CuttingPlane }>>([]);
+  const [showHiddenLines, setShowHiddenLines] = useState(true);
+  const [showTangentEdges, setShowTangentEdges] = useState(false);
   const [annotations, setAnnotations] = useState<{
     dimensions: Dimension[];
     gdtCallouts: GdtCallout[];
@@ -3074,6 +3076,38 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               </p>
             ) : null}
 
+            {/* ─── Display style ─────────────────────────────────────── */}
+            <label
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 12, color: '#374151', fontWeight: 600,
+                borderTop: '1px solid #e5e7eb', paddingTop: 10, marginTop: 4,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="drawing-hidden-lines-toggle"
+                checked={showHiddenLines}
+                onChange={(e) => setShowHiddenLines(e.target.checked)}
+              />
+              {loc(langSeg, {
+                ko: '숨은선 표시', en: 'Show hidden lines', ja: '隠れ線を表示',
+                zh: '显示隐藏线', es: 'Mostrar líneas ocultas', ar: 'إظهار الخطوط المخفية',
+              })}
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                data-testid="drawing-tangent-edges-toggle"
+                checked={showTangentEdges}
+                onChange={(e) => setShowTangentEdges(e.target.checked)}
+              />
+              {loc(langSeg, {
+                ko: '접선 모서리 표시', en: 'Show tangent edges', ja: '接線エッジを表示',
+                zh: '显示相切边', es: 'Mostrar aristas tangentes', ar: 'إظهار الحواف المماسية',
+              })}
+            </label>
+
             {/* ─── Section views ─────────────────────────────────────── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid #e5e7eb', paddingTop: 10, marginTop: 4 }}>
               <button
@@ -3134,7 +3168,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               position: 'relative',
             }}
           >
-            <SheetRenderer sheet={sheet} geometry={sheetGeometry} cuttingPlanes={cuttingPlanes} autoDimension />
+            <SheetRenderer sheet={sheet} geometry={sheetGeometry} cuttingPlanes={cuttingPlanes} showHiddenLines={showHiddenLines} showTangentEdges={showTangentEdges} autoDimension />
             {snapEnabled ? (
               <SheetSnapIndicator
                 snap={snapTarget}
