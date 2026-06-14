@@ -206,6 +206,18 @@ export function ModelerShell() {
       },
     },
     {
+      // Import a STEP file as a true OCCT B-rep solid (STEPControl_Reader via
+      // the worker) — accurate volume/bbox + re-exportable, vs the default
+      // occt-import-js → tessellated-mesh import.
+      id: 'kseries-import-step',
+      label: 'Import STEP as B-rep (K-series)',
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:kseries-import-step'));
+        }
+      },
+    },
+    {
       id: 'export-stl',
       label: d.fmExportStl,
       onClick: () => {

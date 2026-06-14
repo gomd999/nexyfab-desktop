@@ -6683,6 +6683,44 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:kseries-thicken', onThicken);
   }, [activeProfile, setImportedGeometry, setImportedFilename, addToast]);
 
+  // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
+  // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
+  // worker) and show it through the import-display seam — accurate volume/bbox,
+  // re-exportable, vs the default occt-import-js → tessellated-mesh path. Accepts
+  // inline `stepText` (tests) or opens a file picker. Lazy-imported.
+  useEffect(() => {
+    const runImport = async (stepText: string) => {
+      addToast('info', 'Importing STEP as B-rep via OCCT worker…');
+      try {
+        const { importStepKSeries } = await import('./features/stepImportKSeries');
+        const out = await importStepKSeries(stepText);
+        if (out.ok) {
+          setImportedGeometry(out.result.geometry);
+          setImportedFilename('imported.step (B-rep)');
+          addToast('success', `STEP imported as B-rep — ${out.result.volume_cm3.toFixed(3)} cm³`);
+        } else {
+          addToast('error', `STEP B-rep import failed: ${out.error}`);
+        }
+      } catch (err) {
+        addToast('error', `STEP B-rep import failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    const onImport = (e: Event) => {
+      const ce = e as CustomEvent<{ stepText?: string }>;
+      if (ce.detail?.stepText) { void runImport(ce.detail.stepText); return; }
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.step,.stp,.STEP,.STP';
+      input.onchange = () => {
+        const f = input.files?.[0];
+        if (f) void f.text().then(runImport);
+      };
+      input.click();
+    };
+    window.addEventListener('nexyfab:kseries-import-step', onImport);
+    return () => window.removeEventListener('nexyfab:kseries-import-step', onImport);
+  }, [setImportedGeometry, setImportedFilename, addToast]);
+
   const handleExportSTEP = useCallback(async () => {
     const geo = effectiveResult?.geometry;
     if (!geo) return;
