@@ -5,7 +5,7 @@
  * 스냅샷·다운로드에 쓰이는 메시 솔버는 `applyGeometryMatesToPlaced` → `AssemblyMates.solveMates`
  * (`AssemblyMate` + 면 인덱스) — 두 경로는 의도적으로 분리됨(M3_ASSEMBLY.md §1 P1).
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   solveAssembly,
@@ -15,6 +15,7 @@ import {
   type Mate as _Mate,
   type MateType,
 } from './matesSolver';
+import { analyzeAssemblyRank } from './assemblyRank';
 import { useMateWorker } from '../workers/useMateWorker';
 import { reportError } from '../lib/telemetry';
 
@@ -276,6 +277,16 @@ export default function AssemblyMatesPanel({
   // green "fully constrained". Detect the gross over-constraint explicitly.
   const overConstrained = isAssemblyOverConstrained(assemblyState);
 
+  // Rank-based redundancy (leave-one-out). Heavier than the Grübler count
+  // (numerical Jacobian per mate), so memoise on state and cap the size for a
+  // live panel; large assemblies fall back to the gross over-constraint badge.
+  const rankInfo = useMemo(() => {
+    const enabled = assemblyState.mates.filter(m => m.enabled).length;
+    if (enabled === 0 || enabled > 40) return null;
+    try { return analyzeAssemblyRank(assemblyState); } catch { return null; }
+  }, [assemblyState]);
+  const redundantCount = rankInfo?.redundantMateIds.length ?? 0;
+
   const dofColor =
     overConstrained ? 'var(--nx-error)' : // over-constrained — red
     dof === 0 ? 'var(--nx-ok)' :   // fully constrained — green
@@ -318,6 +329,18 @@ export default function AssemblyMatesPanel({
           {overConstrained ? `DOF: 0 ⚠ ${tt.overConstrained}` : `DOF: ${dof}`}
         </div>
       </div>
+
+      {/* Rank-based redundancy: mates whose removal doesn't change the DOF. */}
+      {redundantCount > 0 && (
+        <div
+          data-testid="assembly-redundant-note"
+          data-count={redundantCount}
+          style={{ fontSize: 11, color: 'var(--nx-error)', background: 'var(--nx-error)18', borderRadius: 6, padding: '5px 8px', lineHeight: 1.4 }}
+          role="status"
+        >
+          ⚠ {redundantCount} {tt.overConstrained} · {redundantCount === 1 ? 'mate is redundant' : 'mates are redundant'} (over-defines the assembly)
+        </div>
+      )}
 
       {/* Parts list */}
       {assemblyState.bodies.length > 0 && (
