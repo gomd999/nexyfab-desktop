@@ -62,6 +62,9 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [
       [
         { id: 'fillet', lbl: 'Fillet', ico: 'fillet', hasCaret: true },
+        // Variable-radius fillet (start→end radius along the edge) — the F3
+        // OCCT B-rep capability. Select an edge first, like uniform Fillet.
+        { id: 'variableFillet', lbl: 'Variable Fillet', ico: 'fillet' },
         { id: 'chamfer', lbl: 'Chamfer', ico: 'chamfer' },
         { id: 'shell', lbl: 'Shell', ico: 'shell' },
         { id: 'draft', lbl: 'Draft', ico: 'draft' },

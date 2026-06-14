@@ -3611,6 +3611,7 @@ export function ShapeGeneratorInner() {
       'loft': 'loft',
       'hole': 'hole',
       'fillet': 'fillet',
+      'variableFillet': 'variableFillet',
       'chamfer': 'chamfer',
       'shell': 'shell',
       'draft': 'draft',
