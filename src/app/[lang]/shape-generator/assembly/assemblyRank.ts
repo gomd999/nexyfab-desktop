@@ -48,8 +48,10 @@ function worldDir(b: AssemblyBody, local: THREE.Vector3): THREE.Vector3 {
 }
 const ONE = new THREE.Vector3(1, 1, 1);
 
-/** Constraint residual vector for one mate (0 when satisfied). null if unmodelled. */
-function mateResidual(bodies: AssemblyBody[], mate: Mate): number[] | null {
+/** Constraint residual vector for one mate (0 when satisfied). null if unmodelled.
+ *  Exported so the Newton solver (assemblyNewtonSolver) shares the exact same
+ *  residual vectorization the rank analysis uses. */
+export function mateResidual(bodies: AssemblyBody[], mate: Mate): number[] | null {
   const [s0, s1] = mate.selections;
   const b0 = bodies[s0.bodyIndex];
   const b1 = bodies[s1.bodyIndex];
@@ -86,8 +88,11 @@ function mateResidual(bodies: AssemblyBody[], mate: Mate): number[] | null {
   }
 }
 
-/** Perturb a free body's DOF index (0-2 = translate x/y/z, 3-5 = rotate x/y/z). */
-function perturb(b: AssemblyBody, dof: number, eps: number): AssemblyBody {
+/** Perturb a free body's DOF index (0-2 = translate x/y/z, 3-5 = rotate x/y/z).
+ *  Exported so the Newton solver reuses the identical DOF parameterization
+ *  (translation additive, rotation as a quaternion pre-multiply) for both its
+ *  finite-difference Jacobian and its step application. */
+export function perturb(b: AssemblyBody, dof: number, eps: number): AssemblyBody {
   const nb: AssemblyBody = { ...b, position: b.position.clone(), rotation: b.rotation.clone() };
   if (dof < 3) {
     nb.position.setComponent(dof, nb.position.getComponent(dof) + eps);
@@ -100,8 +105,10 @@ function perturb(b: AssemblyBody, dof: number, eps: number): AssemblyBody {
   return nb;
 }
 
-/** Row-echelon rank with partial pivoting (rows = constraints, cols = DOF). */
-function matrixRank(rows: number[][], tol = 1e-7): number {
+/** Row-echelon rank with partial pivoting (rows = constraints, cols = DOF).
+ *  Exported so the Newton solver can flag a rank-deficient (under-constrained
+ *  or redundant) Jacobian rather than inferring it from a solve failure. */
+export function matrixRank(rows: number[][], tol = 1e-7): number {
   const M = rows.map(r => r.slice());
   const m = M.length;
   if (m === 0) return 0;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { solveAssemblyNewton } from './assemblyNewtonSolver';
 
 /**
  * Assembly Mate Constraint Solver
@@ -935,6 +936,14 @@ function warmStartPlacement(bodies: AssemblyBody[], mates: Mate[], opts?: SolveO
   for (let i = 0; i < n; i++) bodies[i]!.fixed = origFixed[i]!;
 }
 
+// Mate types the Newton fallback (assemblyNewtonSolver) models with an exact
+// residual. The fallback only engages when EVERY enabled mate is in this set,
+// so it never silently ignores a constraint it can't represent (width, tangent,
+// limit*, gear, …) — those stay on the Gauss-Seidel result.
+const NEWTON_FALLBACK_TYPES = new Set<MateType>([
+  'coincident', 'distance', 'parallel', 'perpendicular', 'angle', 'concentric',
+]);
+
 export function solveAssembly(state: AssemblyState, maxIterations = 200, opts?: SolveOptions): SolveResult {
   // Deep-clone body transforms to avoid mutating the input
   const bodies: AssemblyBody[] = state.bodies.map(b => ({
@@ -982,6 +991,34 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200, opts?: 
     if (maxResidual < 1e-5) {
       converged = true;
       break;
+    }
+  }
+
+  // Newton/Levenberg-Marquardt fallback (#5 inc 3). Gauss-Seidel above relaxes
+  // one mate at a time and stalls on COUPLED constraints (closed loops, a body
+  // pinned by several mates). When it doesn't converge — and every enabled mate
+  // is one the Newton residual model covers (so the comparison is apples-to-
+  // apples and nothing is silently dropped) — solve the whole system at once and
+  // ADOPT the result only if it lowers the residual. Purely additive: a Newton
+  // pass can never degrade a Gauss-Seidel result.
+  if (!converged && conflicts.length === 0 && enabledMates.length > 0 &&
+      enabledMates.every(m => NEWTON_FALLBACK_TYPES.has(m.type))) {
+    const probe = { ...state, bodies };
+    const gsResidual = solveAssemblyNewton(probe, { maxIterations: 0 }).residualNorm;
+    if (gsResidual < 1e-5) {
+      // Already satisfied (e.g. warm-start placed everything) — Gauss-Seidel
+      // just never got an iteration to notice. The L2 residual being below the
+      // per-mate threshold means every constraint holds.
+      converged = true;
+    } else {
+      const newton = solveAssemblyNewton(probe, { maxIterations: 40 });
+      if (Number.isFinite(newton.residualNorm) && newton.residualNorm < gsResidual - 1e-9) {
+        newton.state.bodies.forEach((nb, i) => {
+          bodies[i].position.copy(nb.position);
+          bodies[i].rotation.copy(nb.rotation);
+        });
+        if (newton.converged) converged = true;
+      }
     }
   }
 
