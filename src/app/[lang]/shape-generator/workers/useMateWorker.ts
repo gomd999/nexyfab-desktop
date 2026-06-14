@@ -64,6 +64,7 @@ function wireToSolveResult(out: MateWorkerOutput): SolveResult {
     unsatisfied: out.unsatisfied ?? [],
     conflicts: out.conflicts ?? [],
     remainingDOF: out.remainingDOF ?? 0,
+    overConstrained: out.overConstrained ?? false,
     converged: out.converged ?? false,
     iterations: out.iterations ?? 0,
   };

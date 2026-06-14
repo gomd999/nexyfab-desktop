@@ -65,6 +65,7 @@ export interface MateWorkerOutput {
   unsatisfied?: string[];
   conflicts?: string[];
   remainingDOF?: number;
+  overConstrained?: boolean;
   converged?: boolean;
   iterations?: number;
   error?: string;
@@ -149,6 +150,7 @@ ctx.addEventListener('message', (event: MessageEvent<MateWorkerInput>) => {
       unsatisfied: r.unsatisfied,
       conflicts: r.conflicts,
       remainingDOF: r.remainingDOF,
+      overConstrained: r.overConstrained,
       converged: r.converged,
       iterations: r.iterations,
     };

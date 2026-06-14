@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   solveAssembly,
   calculateDOF,
+  isAssemblyOverConstrained,
   type AssemblyBody,
   type AssemblyState,
   type Mate,
@@ -593,5 +594,60 @@ describe('solveAssembly · performance characteristics (verified)', () => {
     const r = solveAssembly(chain(200));
     expect(r.converged).toBe(true);
     expect(r.iterations).toBe(1);
+  });
+});
+
+// ─── Over-constraint detection (#5) ─────────────────────────────────────────
+describe('isAssemblyOverConstrained', () => {
+  // body b is fixed, so only `a` (6 DOF) counts toward the budget.
+  it('false when enabled mates fit the DOF budget', () => {
+    const state: AssemblyState = {
+      bodies: [body('a'), body('b', 0, 0, 0, true)],
+      mates: [mate('m1', 'coincident', sel(0, [0, 0, 0]), sel(1, [0, 0, 0]))], // 3 ≤ 6
+    };
+    expect(isAssemblyOverConstrained(state)).toBe(false);
+  });
+
+  it('true when Σ mate DOF exceeds the free-body DOF', () => {
+    const state: AssemblyState = {
+      bodies: [body('a'), body('b', 0, 0, 0, true)],
+      mates: [
+        mate('m1', 'coincident', sel(0, [0, 0, 0]), sel(1, [0, 0, 0])), // 3
+        mate('m2', 'concentric', sel(0, [0, 0, 0]), sel(1, [0, 0, 0])), // 4 → 7 > 6
+      ],
+    };
+    expect(isAssemblyOverConstrained(state)).toBe(true);
+  });
+
+  it('ignores disabled mates', () => {
+    const state: AssemblyState = {
+      bodies: [body('a'), body('b', 0, 0, 0, true)],
+      mates: [
+        mate('m1', 'coincident', sel(0, [0, 0, 0]), sel(1, [0, 0, 0])),
+        mate('m2', 'concentric', sel(0, [0, 0, 0]), sel(1, [0, 0, 0]), { enabled: false }),
+      ],
+    };
+    expect(isAssemblyOverConstrained(state)).toBe(false); // only 3 DOF enabled
+  });
+});
+
+describe('solveAssembly — overConstrained flag', () => {
+  it('reports overConstrained=true for an over-defined assembly', () => {
+    const state: AssemblyState = {
+      bodies: [body('a'), body('b', 0, 0, 0, true)],
+      mates: [
+        mate('m1', 'coincident', sel(0, [0, 0, 0]), sel(1, [0, 0, 0])),
+        mate('m2', 'concentric', sel(0, [0, 0, 0]), sel(1, [0, 0, 0])),
+      ],
+    };
+    expect(solveAssembly(state).overConstrained).toBe(true);
+  });
+
+  it('reports overConstrained=false for a well-defined assembly', () => {
+    const state: AssemblyState = {
+      bodies: [body('a'), body('b', 0, 0, 0, true)],
+      mates: [mate('m1', 'coincident', sel(0, [0, 0, 0]), sel(1, [0, 0, 0]))],
+    };
+    expect(solveAssembly(state).overConstrained).toBe(false);
   });
 });

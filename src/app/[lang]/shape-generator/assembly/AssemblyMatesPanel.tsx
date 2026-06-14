@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import {
   solveAssembly,
   calculateDOF,
+  isAssemblyOverConstrained,
   type AssemblyState,
   type Mate as _Mate,
   type MateType,
@@ -78,7 +79,7 @@ const dict = {
     off: '끄기', on: '켜기',
     solving: '계산 중...', solve: '구속 계산',
     status: '상태', converged: '수렴 ✓', notConverged: '수렴 실패 ⚠',
-    iterations: '반복 횟수', remainingDOF: '잔여 자유도',
+    iterations: '반복 횟수', remainingDOF: '잔여 자유도', overConstrained: '과구속',
     unsatisfied: '구속 미충족', conflicting: '충돌 구속',
     dofPreSolve: '자유도(사전·해석)',
     solveTryNext:
@@ -92,7 +93,7 @@ const dict = {
     off: 'Off', on: 'On',
     solving: 'Solving...', solve: 'Solve Mates',
     status: 'Status', converged: 'Converged ✓', notConverged: 'Not Converged ⚠',
-    iterations: 'Iterations', remainingDOF: 'Remaining DOF',
+    iterations: 'Iterations', remainingDOF: 'Remaining DOF', overConstrained: 'Over-constrained',
     unsatisfied: 'unsatisfied mate(s)', conflicting: 'conflicting mate(s)',
     dofPreSolve: 'DOF (pre-solve)',
     solveTryNext:
@@ -106,7 +107,7 @@ const dict = {
     off: 'オフ', on: 'オン',
     solving: '計算中...', solve: '拘束を解く',
     status: 'ステータス', converged: '収束 ✓', notConverged: '収束失敗 ⚠',
-    iterations: '反復回数', remainingDOF: '残存自由度',
+    iterations: '反復回数', remainingDOF: '残存自由度', overConstrained: '過拘束',
     unsatisfied: '未充足の拘束', conflicting: '競合する拘束',
     dofPreSolve: '自由度（事前・解析）',
     solveTryNext:
@@ -120,7 +121,7 @@ const dict = {
     off: '关', on: '开',
     solving: '求解中...', solve: '求解约束',
     status: '状态', converged: '收敛 ✓', notConverged: '未收敛 ⚠',
-    iterations: '迭代次数', remainingDOF: '剩余自由度',
+    iterations: '迭代次数', remainingDOF: '剩余自由度', overConstrained: '过约束',
     unsatisfied: '未满足约束', conflicting: '冲突约束',
     dofPreSolve: '自由度（预解）',
     solveTryNext:
@@ -134,7 +135,7 @@ const dict = {
     off: 'Off', on: 'On',
     solving: 'Resolviendo...', solve: 'Resolver Mates',
     status: 'Estado', converged: 'Convergido ✓', notConverged: 'No Convergido ⚠',
-    iterations: 'Iteraciones', remainingDOF: 'DOF Restante',
+    iterations: 'Iteraciones', remainingDOF: 'DOF Restante', overConstrained: 'Sobredefinido',
     unsatisfied: 'restricción(es) insatisfecha(s)', conflicting: 'restricción(es) en conflicto',
     dofPreSolve: 'DOF (pre-solución)',
     solveTryNext:
@@ -148,7 +149,7 @@ const dict = {
     off: 'إيقاف', on: 'تشغيل',
     solving: 'جار الحل...', solve: 'حل القيود',
     status: 'الحالة', converged: 'تقارب ✓', notConverged: 'لم يتقارب ⚠',
-    iterations: 'التكرارات', remainingDOF: 'DOF المتبقية',
+    iterations: 'التكرارات', remainingDOF: 'DOF المتبقية', overConstrained: 'مقيّد بإفراط',
     unsatisfied: 'قيد (قيود) غير مستوفاة', conflicting: 'قيد (قيود) متعارضة',
     dofPreSolve: 'درجة الحرية (تقديرية)',
     solveTryNext:
@@ -271,13 +272,18 @@ export default function AssemblyMatesPanel({
   // ── Derived values ────────────────────────────────────────────────────────
 
   const dof = calculateDOF(assemblyState);
+  // calculateDOF clamps to 0, so an over-defined assembly would otherwise show
+  // green "fully constrained". Detect the gross over-constraint explicitly.
+  const overConstrained = isAssemblyOverConstrained(assemblyState);
 
   const dofColor =
+    overConstrained ? 'var(--nx-error)' : // over-constrained — red
     dof === 0 ? 'var(--nx-ok)' :   // fully constrained — green
     dof >  0 ? '#e3b341' :    // under-constrained — yellow
-               'var(--nx-error)';     // over-constrained  — red (dof < 0 shouldn't happen; shown as 0)
+               'var(--nx-error)';
 
   const dofBg =
+    overConstrained ? 'var(--nx-error)22' :
     dof === 0 ? '#16a34a22' :
     dof >  0 ? 'var(--nx-warn)22' :
                'var(--nx-error)22';
@@ -305,8 +311,11 @@ export default function AssemblyMatesPanel({
           color: dofColor,
           fontWeight: 700,
           flexShrink: 0,
-        }}>
-          DOF: {dof}
+        }}
+          data-testid="assembly-dof-badge"
+          data-overconstrained={overConstrained ? '1' : '0'}
+        >
+          {overConstrained ? `DOF: 0 ⚠ ${tt.overConstrained}` : `DOF: ${dof}`}
         </div>
       </div>
 

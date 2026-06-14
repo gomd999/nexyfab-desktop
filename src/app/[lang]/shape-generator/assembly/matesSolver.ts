@@ -101,8 +101,16 @@ export interface SolveResult {
   unsatisfied: string[];
   /** Conflicting mate IDs */
   conflicts: string[];
-  /** Degrees of freedom remaining */
+  /** Degrees of freedom remaining (Grübler count, clamped ≥ 0). */
   remainingDOF: number;
+  /**
+   * The mates request more constraint DOF than the free bodies have (Σ
+   * DOF_PER_MATE > 6·freeBodies) — the assembly is over-defined. A necessary
+   * condition for over-constraint (the gross case); redundant-but-within-budget
+   * mates need rank analysis (follow-up). Surfaced so the UI can warn instead
+   * of falsely showing "fully constrained" (DOF clamps to 0 either way).
+   */
+  overConstrained: boolean;
   converged: boolean;
   iterations: number;
 }
@@ -834,6 +842,21 @@ export function calculateDOF(state: AssemblyState): number {
 }
 
 /**
+ * Over-constraint check: the enabled mates request more constraint DOF than the
+ * free bodies have (Σ DOF_PER_MATE > 6·freeBodies). `calculateDOF` clamps this
+ * to 0, so without this an over-defined assembly looks "fully constrained"
+ * (green) instead of warning. This is the gross necessary condition; redundant
+ * mates that fit within the DOF budget need rank analysis (follow-up).
+ */
+export function isAssemblyOverConstrained(state: AssemblyState): boolean {
+  const freeBodies = state.bodies.filter(b => !b.fixed).length;
+  const constrained = state.mates
+    .filter(m => m.enabled)
+    .reduce((sum, m) => sum + (DOF_PER_MATE[m.type] ?? 0), 0);
+  return constrained > freeBodies * 6;
+}
+
+/**
  * Main constraint solver using Gauss-Seidel iteration.
  *
  * Clones all body positions/rotations before solving so the input state is
@@ -1061,12 +1084,14 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200, opts?: 
     (sum, m) => sum + (DOF_PER_MATE[m.type] ?? 0), 0,
   );
   const remainingDOF = Math.max(0, freeBodies * 6 - constrainedDOF);
+  const overConstrained = constrainedDOF > freeBodies * 6;
 
   return {
     bodies: bodies.map(b => ({ position: b.position, rotation: b.rotation })),
     unsatisfied,
     conflicts,
     remainingDOF,
+    overConstrained,
     converged,
     iterations,
   };
