@@ -548,15 +548,18 @@
         return { ok: false, error: 'importSTEP: occt.FS unavailable', warnings: [] };
       }
       reader = new Reader();
+      // Mirror the proven node bridge (nodeOcctBridge.importSTEP): don't bail on
+      // the ReadFile status — many real-world STEPs return a non-RetDone WARNING
+      // status yet still transfer fine. Gate on the TransferRoots() COUNT
+      // instead, and surface the status in the error for diagnosis.
       var status = reader.ReadFile(path);
-      var retDone = (occt.IFSelect_ReturnStatus && (occt.IFSelect_ReturnStatus.RetDone ?? 1)) || 1;
-      if (status !== retDone) {
-        return { ok: false, error: 'importSTEP: parse failed (status=' + status + ')', warnings: [] };
+      var n = reader.TransferRoots();
+      if (!n || n < 1) {
+        return { ok: false, error: 'importSTEP: no transferable B-rep roots (ReadFile status=' + status + ')', warnings: [] };
       }
-      reader.TransferRoots();
       var shape = reader.OneShape();
       var h = alloc(shape);
-      return { ok: true, handle: h, kind: 'solid', warnings: [] };
+      return { ok: true, handle: h, kind: 'solid', warnings: ['imported B-rep — no stable edge names (use sel:all)'] };
     } catch (err) {
       return { ok: false, error: 'importSTEP: ' + (err && err.message), warnings: [] };
     } finally {
