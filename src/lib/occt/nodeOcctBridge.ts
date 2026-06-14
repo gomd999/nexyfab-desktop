@@ -588,7 +588,25 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         const path = STEP_READ_PATH;
         fs.writeFile(path, source);
         const reader = m.inst('STEPControl_Reader_1');
-        reader.ReadFile(path);
+        const status = reader.ReadFile(path);
+        // Distinguish a PARSE failure (RetError/RetFail) from a successfully
+        // parsed-but-empty model. Real-world AP203/AP214/AP242 exported by CAD
+        // tools (Rhino, SolidWorks, …) can return RetError here: this
+        // opencascade.js build's STEP reader cannot parse every schema variant
+        // (both STEPControl_ and STEPCAFControl_Reader fail identically). The
+        // mesh path (occt-import-js `ReadStepFile`) handles those files — so
+        // surface an actionable error instead of a misleading "no roots".
+        const retDone = (oc as unknown as { IFSelect_ReturnStatus?: { IFSelect_RetDone?: unknown } })
+          .IFSelect_ReturnStatus?.IFSelect_RetDone;
+        if (retDone !== undefined && status !== retDone) {
+          if (typeof reader.delete === 'function') reader.delete();
+          try { fs.unlink(path); } catch { /* best-effort cleanup */ }
+          return {
+            ok: false,
+            error: 'importSTEP: this STEP could not be parsed as B-rep by the kernel — import it as a mesh instead',
+            warnings: [],
+          };
+        }
         const n = reader.TransferRoots() as number;
         if (!n || n < 1) {
           if (typeof reader.delete === 'function') reader.delete();

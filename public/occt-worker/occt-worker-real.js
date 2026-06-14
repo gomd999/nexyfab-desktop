@@ -541,22 +541,42 @@
 
     var reader = null;
     try {
-      var path = '/tmp/in.step';
+      // IMPORTANT: a BARE relative filename in the FS CWD. opencascade.js's
+      // STEPControl_Reader.ReadFile returns IFSelect_RetError for ABSOLUTE
+      // paths like '/tmp/in.step' on real-world AP203/AP214 files, but parses
+      // the identical bytes fine from a relative name. The node bridge already
+      // uses this workaround ('cadr.step'); the worker did not, which is why
+      // real STEP B-rep import failed in the browser. Verified against a 1MB
+      // Rhino/ST-Developer AP203 file: '/tmp/in.step' → RetError, 'cadr_in.step'
+      // → RetDone with a transferable root.
+      var path = 'cadr_in.step';
       if (occt.FS && typeof occt.FS.writeFile === 'function') {
         occt.FS.writeFile(path, source);
       } else {
         return { ok: false, error: 'importSTEP: occt.FS unavailable', warnings: [] };
       }
       reader = new Reader();
+      // Mirror the proven node bridge (nodeOcctBridge.importSTEP): don't bail on
+      // the ReadFile status — many real-world STEPs return a non-RetDone WARNING
+      // status yet still transfer fine. Gate on the TransferRoots() COUNT
+      // instead, and surface the status in the error for diagnosis.
       var status = reader.ReadFile(path);
-      var retDone = (occt.IFSelect_ReturnStatus && (occt.IFSelect_ReturnStatus.RetDone ?? 1)) || 1;
-      if (status !== retDone) {
-        return { ok: false, error: 'importSTEP: parse failed (status=' + status + ')', warnings: [] };
+      // Distinguish a PARSE failure (RetError/RetFail) from parsed-but-empty.
+      // Real-world AP203/AP214/AP242 from CAD tools can return RetError: this
+      // opencascade.js build's STEP reader can't parse every schema variant
+      // (STEPControl_ and STEPCAFControl_ fail identically). The mesh path
+      // (occt-import-js ReadStepFile) handles those — give an actionable error.
+      var retDone = occt.IFSelect_ReturnStatus && occt.IFSelect_ReturnStatus.IFSelect_RetDone;
+      if (retDone !== undefined && status !== retDone) {
+        return { ok: false, error: 'importSTEP: this STEP could not be parsed as B-rep by the kernel — import it as a mesh instead', warnings: [] };
       }
-      reader.TransferRoots();
+      var n = reader.TransferRoots();
+      if (!n || n < 1) {
+        return { ok: false, error: 'importSTEP: no transferable B-rep roots (ReadFile status=' + status + ')', warnings: [] };
+      }
       var shape = reader.OneShape();
       var h = alloc(shape);
-      return { ok: true, handle: h, kind: 'solid', warnings: [] };
+      return { ok: true, handle: h, kind: 'solid', warnings: ['imported B-rep — no stable edge names (use sel:all)'] };
     } catch (err) {
       return { ok: false, error: 'importSTEP: ' + (err && err.message), warnings: [] };
     } finally {
