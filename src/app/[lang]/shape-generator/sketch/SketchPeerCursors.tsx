@@ -37,7 +37,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useCollabPresence } from '../collab/CollabProvider';
+import { useCollabPresenceOptional } from '../collab/CollabProvider';
 import { CollabSafe } from '../collab/CollabSafe';
 
 // ─── Public props ───────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ function SketchPeerCursorsInner(props: SketchPeerCursorsProps) {
     viewportHeight,
     hidePeerIds,
   } = props;
-  const { remotePeers } = useCollabPresence();
+  const { remotePeers } = useCollabPresenceOptional();
   // `now` is snapshotted in an effect whenever `remotePeers` identity
   // changes — keeps the staleness check fresh without calling `Date.now()`
   // during render (impure under react-hooks/purity).

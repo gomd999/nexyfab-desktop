@@ -25,7 +25,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useCollabPresence } from './CollabProvider';
+import { useCollabPresenceOptional } from './CollabProvider';
 import { CollabSafe } from './CollabSafe';
 import type { PeerInfo } from './awareness';
 // ─── Z7 boundary-marked import (activity feed embed) ────────────────────────
@@ -248,7 +248,7 @@ function PresencePanelInner(props: PresencePanelProps) {
     getInviteUrl,
   } = props;
   const t = DICT[lang] ?? DICT.en;
-  const { localPeer, remotePeers } = useCollabPresence();
+  const { localPeer, remotePeers } = useCollabPresenceOptional();
   const [collapsed, setCollapsed] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'err'>('idle');
 
@@ -298,8 +298,9 @@ function PresencePanelInner(props: PresencePanelProps) {
     window.setTimeout(() => setCopyState('idle'), 1500);
   }, [getInviteUrl]);
 
-  // Auto-hide when only self is present.
-  if (!forceShow && remoteList.length === 0) {
+  // No <CollabProvider> upstream (bare modeler route) → nothing to show.
+  // Also auto-hide when only self is present.
+  if (!localPeer || (!forceShow && remoteList.length === 0)) {
     return null;
   }
 

@@ -31,7 +31,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { useCollabPresence } from './CollabProvider';
+import { useCollabPresenceOptional } from './CollabProvider';
 import { CollabSafe } from './CollabSafe';
 import type { PeerInfo } from './awareness';
 
@@ -46,7 +46,7 @@ import type { PeerInfo } from './awareness';
  * multi-peer; W5 ships the common case.
  */
 export function useEditingPeer(focusId: string | null | undefined): PeerInfo | null {
-  const { remotePeers } = useCollabPresence();
+  const { remotePeers } = useCollabPresenceOptional();
   return useMemo(() => {
     if (!focusId) return null;
     const candidates = Object.values(remotePeers)

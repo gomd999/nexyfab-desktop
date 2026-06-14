@@ -492,3 +492,29 @@ export function useCollabPresence(): {
 export function useCollabUpdateLocalPresence(): (patch: Partial<PeerInfo>) => void {
   return useCollabContext().updateLocalPresence;
 }
+
+// Stable empty identity so the optional hook doesn't churn renders downstream.
+const EMPTY_REMOTE_PEERS: Record<string, PeerInfo> = {};
+
+/**
+ * Non-throwing variant of {@link useCollabPresence}: returns empty presence
+ * (`localPeer: null`, no remote peers) when rendered OUTSIDE a
+ * `<CollabProvider>` instead of throwing.
+ *
+ * Why this exists: the bare modeler route (pre-Z6 / no collab session) renders
+ * presence-aware components (sketch peer cursors, feature-tree highlights,
+ * presence panel, editing-focus). The throwing `useCollabPresence` + a
+ * `CollabSafe` error boundary "handles" that, but React logs EVERY
+ * boundary-caught throw to `console.error` independently of the boundary's
+ * `componentDidCatch` — so the throw+catch path can never be noise-free and
+ * spams the console on every sketch entry. Consuming this optional hook means
+ * there's simply nothing to throw; `CollabSafe` remains as a backstop.
+ */
+export function useCollabPresenceOptional(): {
+  localPeer: PeerInfo | null;
+  remotePeers: Record<string, PeerInfo>;
+} {
+  const ctx = useContext(CollabContext);
+  if (!ctx) return { localPeer: null, remotePeers: EMPTY_REMOTE_PEERS };
+  return { localPeer: ctx.localPeer, remotePeers: ctx.remotePeers };
+}
