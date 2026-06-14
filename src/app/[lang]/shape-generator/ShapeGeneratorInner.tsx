@@ -7552,6 +7552,16 @@ export function ShapeGeneratorInner() {
     };
   }, [handleRemoveMate, setAssemblyMates]);
 
+  // Shell title-bar "exit assembly mode" chip → close the assembly panel. The
+  // chip dispatches this (mirroring sketch.finish → setIsSketchMode(false));
+  // without this listener the button was a silent no-op (editMode='assembly'
+  // ⟺ showAssemblyPanel, so closing the panel pops the mode back to modeling).
+  useEffect(() => {
+    const onAssemblyClose = () => setShowAssemblyPanel(false);
+    window.addEventListener('nexyfab:assembly-close', onAssemblyClose);
+    return () => window.removeEventListener('nexyfab:assembly-close', onAssemblyClose);
+  }, [setShowAssemblyPanel]);
+
   const handleApplyMatesToPlacement = useCallback(() => {
     if (placedParts.length < 2 || assemblyMates.length === 0) return;
     const mateRows = assemblyMates.map(m => ({ id: m.id, partA: m.partA, partB: m.partB, type: m.type }));
