@@ -72,6 +72,30 @@ function buildFace(oc: OcctModule, loop: ReadonlyArray<{ x: number; y: number }>
   return m.inst('BRepBuilderAPI_MakeFace_15', poly.Wire(), false).Face() as OcctInstance;
 }
 
+type V3 = [number, number, number];
+const cross3 = (a: V3, b: V3): V3 => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const norm3 = (a: V3): V3 => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; };
+
+/** Planar face from a 2D loop placed in the plane (origin, normal) — lets callers
+ *  build NON-parallel faces (XY-only buildFace can't cross for surfaceTrim). */
+function buildFaceOriented(oc: OcctModule, loop: ReadonlyArray<{ x: number; y: number }>, origin: V3, normal: V3): OcctInstance {
+  const m = maker(oc);
+  const n = norm3(normal);
+  const ref: V3 = Math.abs(n[1]) < 0.99 ? [0, 1, 0] : [1, 0, 0];
+  const u = norm3(cross3(ref, n));
+  const v = cross3(n, u); // already unit (n,u orthonormal)
+  const poly = m.inst('BRepBuilderAPI_MakePolygon_1');
+  for (const p of loop) {
+    poly.Add_1(m.inst('gp_Pnt_3',
+      origin[0] + p.x * u[0] + p.y * v[0],
+      origin[1] + p.x * u[1] + p.y * v[1],
+      origin[2] + p.x * u[2] + p.y * v[2],
+    ));
+  }
+  poly.Close();
+  return m.inst('BRepBuilderAPI_MakeFace_15', poly.Wire(), false).Face() as OcctInstance;
+}
+
 /** Closed prism solid from a 2D loop at z0, extruded `h` along +Z. */
 function buildPrism(oc: OcctModule, loop: ReadonlyArray<{ x: number; y: number }>, z0: number, h: number): OcctInstance {
   const m = maker(oc);
@@ -471,6 +495,18 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         return result(face, ['planar surface (sheet body)'], undefined, 'face');
       } catch (e) {
         return { ok: false, error: `buildPlanarFace: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+      }
+    },
+
+    async buildPlanarFaceOriented(loop: ReadonlyArray<{ x: number; y: number }>, origin: V3, normal: V3) {
+      if (loop.length < 3) {
+        return { ok: false, error: `buildPlanarFaceOriented: loop must have ≥3 points, got ${loop.length}`, warnings: [] };
+      }
+      try {
+        const face = buildFaceOriented(oc, loop, origin, normal);
+        return result(face, ['oriented planar surface'], undefined, 'face');
+      } catch (e) {
+        return { ok: false, error: `buildPlanarFaceOriented: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
       }
     },
 

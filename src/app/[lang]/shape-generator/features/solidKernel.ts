@@ -46,6 +46,12 @@ export interface SolidKernel {
   variableFillet(id: string, edges: ReadonlyArray<{ edgeId: string; radius: number }>): Promise<KernelShape | null>;
   draft(id: string, opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number }): Promise<KernelShape | null>;
   buildPlanarFace(loop: ReadonlyArray<{ x: number; y: number }>, z?: number): Promise<KernelShape | null>;
+  /** Planar face in an arbitrary plane (origin + normal) — for crossing faces (surfaceTrim). */
+  buildPlanarFaceOriented(
+    loop: ReadonlyArray<{ x: number; y: number }>,
+    origin: [number, number, number],
+    normal: [number, number, number],
+  ): Promise<KernelShape | null>;
   thicken(id: string, thickness: number): Promise<KernelShape | null>;
   surfaceTrim(a: string, b: string): Promise<KernelShape | null>;
   exportStep(id: string): Promise<string | null>;
@@ -113,6 +119,11 @@ export function createKSeriesKernel(bridge: OcctBridge): SolidKernel {
       const r = await bridge.buildPlanarFace(loop, z);
       return r.ok && r.shape ? record(r.shape) : null;
     },
+    async buildPlanarFaceOriented(loop, origin, normal) {
+      if (!bridge.buildPlanarFaceOriented) return null;
+      const r = await bridge.buildPlanarFaceOriented(loop, origin, normal);
+      return r.ok && r.shape ? record(r.shape) : null;
+    },
     async thicken(id, thickness) {
       if (!bridge.thicken) return null;
       const r = await bridge.thicken(resolve(id, 'thicken'), thickness);
@@ -176,6 +187,7 @@ export function createReplicadKernel(deps: ReplicadKernelDeps): SolidKernel {
     variableFillet: unsupported,
     draft: unsupported,
     buildPlanarFace: unsupported,
+    buildPlanarFaceOriented: unsupported,
     thicken: unsupported,     // replicad ceiling — null by design
     surfaceTrim: unsupported, // replicad ceiling — null by design
     async exportStep(id) { return exportStep(id); },

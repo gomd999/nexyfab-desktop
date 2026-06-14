@@ -65,3 +65,45 @@ describe('SolidKernel facade — kernel-ceiling ops via the K-series bridge', ()
     kernel.release(face!.id);
   });
 });
+
+// A 20×20 square centred on the origin (−10..10), so two oriented copies share
+// the origin region and can actually cross.
+const CENTERED = [
+  { x: -10, y: -10 },
+  { x: 10, y: -10 },
+  { x: 10, y: 10 },
+  { x: -10, y: 10 },
+];
+
+describe('SolidKernel facade — surfaceTrim (kernel-ceiling section)', () => {
+  it('sections two CROSSING oriented faces into intersection edges', async () => {
+    if (!oc) return;
+    const kernel: SolidKernel = createKSeriesKernel(createNodeOcctBridge(oc));
+    // XY-plane face (normal +Z) and XZ-plane face (normal +Y) both span the
+    // origin → they cross along the X axis. buildPlanarFace (XY-only) couldn't
+    // produce a non-parallel pair, which is why surfaceTrim was unusable.
+    const fa = await kernel.buildPlanarFaceOriented(CENTERED, [0, 0, 0], [0, 0, 1]);
+    const fb = await kernel.buildPlanarFaceOriented(CENTERED, [0, 0, 0], [0, 1, 0]);
+    expect(fa, 'oriented face A').not.toBeNull();
+    expect(fb, 'oriented face B').not.toBeNull();
+
+    const section = await kernel.surfaceTrim(fa!.id, fb!.id);
+    expect(section, 'crossing faces must yield a section (intersection edges)').not.toBeNull();
+
+    kernel.release(fa!.id);
+    kernel.release(fb!.id);
+    kernel.release(section!.id);
+  });
+
+  it('returns null when the two faces do NOT intersect (parallel, offset)', async () => {
+    if (!oc) return;
+    const kernel: SolidKernel = createKSeriesKernel(createNodeOcctBridge(oc));
+    // Two parallel XY faces at different z never meet → no section.
+    const fa = await kernel.buildPlanarFaceOriented(CENTERED, [0, 0, 0], [0, 0, 1]);
+    const fb = await kernel.buildPlanarFaceOriented(CENTERED, [0, 0, 50], [0, 0, 1]);
+    const section = await kernel.surfaceTrim(fa!.id, fb!.id);
+    expect(section).toBeNull();
+    kernel.release(fa!.id);
+    kernel.release(fb!.id);
+  });
+});

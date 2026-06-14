@@ -101,6 +101,17 @@ export interface OcctBridge {
    */
   buildPlanarFace?(loop: ReadonlyArray<{ x: number; y: number }>, z?: number): Promise<OcctOperationResult>;
   /**
+   * Build a planar FACE from a 2D loop placed in an arbitrary plane (`origin` +
+   * `normal`), so callers can construct NON-parallel/CROSSING faces — required
+   * for {@link surfaceTrim}, since {@link buildPlanarFace} is XY-only and two
+   * XY faces are always parallel (no section). Real-kernel only → OPTIONAL.
+   */
+  buildPlanarFaceOriented?(
+    loop: ReadonlyArray<{ x: number; y: number }>,
+    origin: [number, number, number],
+    normal: [number, number, number],
+  ): Promise<OcctOperationResult>;
+  /**
    * THICKEN an open surface/shell into a SOLID of wall thickness `thickness`
    * (`BRepOffsetAPI_MakeThickSolid`). replicad's high-level API cannot express
    * this (confirmed 2026-06-07; the ceiling spike validated the K-series can —
