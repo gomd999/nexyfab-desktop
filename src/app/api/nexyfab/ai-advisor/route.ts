@@ -116,7 +116,12 @@ function ruleBased(
   return advice;
 }
 
-function generateDfMFeedback(input: { process?: string; complexity?: number; volume_cm3?: number; bbox?: { w: number; h: number; d: number }; material?: string }): Array<{ severity: 'error' | 'warning' | 'info'; code: string; description: string; recommendation: string }> {
+// NOTE: These are PRELIMINARY, parameter-driven heuristics (they reason about
+// the passed-in complexity score / bbox / process, NOT measured geometry).
+// They are NOT the authoritative geometric DFM check at /api/nexyfab/dfm-check.
+// Every issue is tagged `preliminary: true` so the UI labels it as such and
+// never presents a heuristic guess as a definitive manufacturability verdict.
+function generateDfMFeedback(input: { process?: string; complexity?: number; volume_cm3?: number; bbox?: { w: number; h: number; d: number }; material?: string }): Array<{ severity: 'error' | 'warning' | 'info'; code: string; description: string; recommendation: string; preliminary: true }> {
   const issues = [];
   const { process, complexity = 5, volume_cm3 = 0, bbox, material } = input;
 
@@ -152,10 +157,12 @@ function generateDfMFeedback(input: { process?: string; complexity?: number; vol
   }
 
   if (issues.length === 0) {
-    issues.push({ severity: 'info' as const, code: 'DFM_OK', description: '주요 DfM 이슈 없음', recommendation: '파트너에게 상세 검토를 요청하세요.' });
+    issues.push({ severity: 'info' as const, code: 'DFM_OK', description: '주요 DfM 이슈 없음 (예비 점검)', recommendation: '정밀 기하 검사는 DFM 검사를 실행하고, 최종 확정은 파트너 검토를 받으세요.' });
   }
 
-  return issues;
+  // Tag every issue as preliminary — these are heuristics, not the geometric
+  // DFM check. Consumers/UI surface this so it's not read as a final verdict.
+  return issues.map(i => ({ ...i, preliminary: true as const }));
 }
 
 function ruleBasedMaterial(

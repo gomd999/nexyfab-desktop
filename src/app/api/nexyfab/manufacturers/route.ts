@@ -122,6 +122,11 @@ export async function GET(req: NextRequest) {
     hasPartnerProfile: !!r.partner_email,
     // partner_email 은 metrics-batch 조회에 필요 (다차원 지표 뱃지). 비어 있으면 null.
     partnerEmail: r.partner_email ?? null,
+    // Honesty: the 10 curated seed factories (id 'mfr-NNN') are illustrative
+    // examples with placeholder ratings/reviews, NOT onboarded partners. Flag
+    // them so the directory can badge "예시/example" and never present their
+    // fabricated rating as a real, earned one.
+    isExample: typeof r.id === 'string' && /^mfr-\d+$/.test(r.id),
   }));
 
   const res = NextResponse.json({ manufacturers, total: manufacturers.length });
