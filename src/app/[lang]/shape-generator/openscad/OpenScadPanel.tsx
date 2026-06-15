@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import { runJscadCode } from './jscadRunner';
+import { generateVerifiedJscad } from './verifiedJscadGen';
 import { useJscadWorker } from '../workers/useJscadWorker';
 import { verifyGeneratedModel, formatVerificationCritique } from '../analysis/verifyGeneratedModel';
 import { loadHistory, saveToHistory, deleteFromHistory, type JscadHistoryItem } from './jscadHistory';
@@ -1303,23 +1304,63 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     return data as { code: string; description: string };
   }, [t]);
 
-  // ── Generate (new shape) ──
+  // ── Generate (new shape) — render-verify-repair loop ──
+  // Generation runs through generateVerifiedJscad: the AI's code is rendered +
+  // Layer-1 verified in-process and, on a render error or hard verification
+  // failure, the critique is fed back so the model repairs it (bounded retries)
+  // — instead of dead-ending on the first imperfect generation. The panel used
+  // to compute the verification critique and throw it away; this closes the loop.
   const generate = useCallback(async (text?: string) => {
     const p = (text ?? prompt).trim();
     if (!p) return;
-    setCode(''); setDescription(''); setTriCount(0);
+    setCode(''); setDescription(''); setTriCount(0); setErrorMsg(''); setWarnings([]);
+
+    // Worker-first render (hard-terminable on runaway), main-thread fallback when
+    // the worker is unavailable — mirrors `compile`. A real timeout rejects so
+    // the loop treats it as a render error and repairs.
+    const render = (codeStr: string): Promise<THREE.BufferGeometry> =>
+      runJscad(codeStr).then(r => r.geometry).catch((werr: unknown) => {
+        const msg = werr instanceof Error ? werr.message : String(werr);
+        if (/timed out|terminated|superseded|cancelled/i.test(msg)) throw werr;
+        return runJscadCode(codeStr).geometry;
+      });
+
+    const aiGenerate = async (args: { priorCode: string | null; critique: string | null; attempt: number }) => {
+      if (args.attempt === 1 || !args.priorCode) {
+        return callAI({ prompt: p, mode: 'generate' }, 'generating');
+      }
+      // Repair pass: hand the model its prior code + the blocking critique.
+      return callAI(
+        { prompt: `${p}\n\nThe previous attempt failed verification. Fix exactly this:\n${args.critique ?? ''}`, currentCode: args.priorCode, mode: 'refine' },
+        'refining',
+      );
+    };
+
     try {
-      const data = await callAI({ prompt: p, mode: 'generate' }, 'generating');
-      setCode(data.code);
-      setDescription(data.description);
-      compile(data.code, data.description || p);
-      saveToHistory({ prompt: p, code: data.code, description: data.description, triCount: 0 });
-      setHistory(loadHistory());
+      const result = await generateVerifiedJscad(p, { aiGenerate, render }, { maxAttempts: 3 });
+      setCode(result.code);
+      setDescription(result.description || p);
+      if (result.ok && result.geometry) {
+        prevGeoRef.current?.dispose();
+        prevGeoRef.current = result.geometry;
+        lastGeoRef.current = result.geometry;
+        lastVerifyCritiqueRef.current = result.warnings;
+        const tri = result.geometry.attributes.position.count / 3;
+        setWarnings(result.warnings ? result.warnings.split('\n') : []);
+        setTriCount(tri);
+        setStatus('done');
+        onGeometryReady(result.geometry, result.description || p);
+        saveToHistory({ prompt: p, code: result.code, description: result.description, triCount: tri });
+        setHistory(loadHistory());
+      } else {
+        setStatus('error');
+        setErrorMsg(result.finalCritique || t.errCompile);
+      }
     } catch (e: unknown) {
       setStatus('error');
       setErrorMsg(errorMessageFromUnknown(e) || t.errUnknown);
     }
-  }, [prompt, callAI, compile, t]);
+  }, [prompt, callAI, t, runJscad, onGeometryReady]);
 
   // ── Refine (modify existing code) ──
   const refine = useCallback(async () => {
