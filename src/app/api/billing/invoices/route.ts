@@ -24,10 +24,15 @@ export async function GET(req: NextRequest) {
   const limit   = Math.min(50, parseInt(req.nextUrl.searchParams.get('limit') ?? '20', 10));
   const offset  = (page - 1) * limit;
 
+  // Scope to the caller's personal invoices AND their org's invoices — org-level
+  // invoices carry org_id (user_id NULL), so a user_id-only filter silently
+  // hid them from org members. orgId comes from the VERIFIED session
+  // (authUser.orgIds), never client input — matches /api/billing/portal.
+  const orgId = authUser.orgIds[0] ?? null;
+  const scope = orgId ? '(user_id = ? OR org_id = ?)' : 'user_id = ?';
+  const scopeArgs: (string | number)[] = orgId ? [authUser.userId, orgId] : [authUser.userId];
   const whereProduct = product ? 'AND product = ?' : '';
-  const params = product
-    ? [authUser.userId, product, limit, offset]
-    : [authUser.userId, limit, offset];
+  const productArgs = product ? [product] : [];
 
   const [invoices, totalRow] = await Promise.all([
     db.queryAll<{
@@ -38,14 +43,14 @@ export async function GET(req: NextRequest) {
       `SELECT id, product, plan, base_amount_krw, usage_amount_krw, total_amount_krw,
               status, description, paid_at, created_at
        FROM nf_aw_invoices
-       WHERE user_id = ? ${whereProduct}
+       WHERE ${scope} ${whereProduct}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`,
-      ...params,
+      ...scopeArgs, ...productArgs, limit, offset,
     ),
     db.queryOne<{ c: number }>(
-      `SELECT COUNT(*) as c FROM nf_aw_invoices WHERE user_id = ? ${whereProduct}`,
-      ...(product ? [authUser.userId, product] : [authUser.userId]),
+      `SELECT COUNT(*) as c FROM nf_aw_invoices WHERE ${scope} ${whereProduct}`,
+      ...scopeArgs, ...productArgs,
     ),
   ]);
 
@@ -118,11 +123,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invoiceId and paymentMethodId required' }, { status: 400 });
     }
 
-    // Verify invoice belongs to this user
-    const invoice = await db.queryOne<{ user_id: string }>(
-      'SELECT user_id FROM nf_aw_invoices WHERE id = ?', body.invoiceId,
+    // Verify the invoice belongs to the caller — personally OR via an org they
+    // are a verified member of (org_id checked against the session orgIds, not
+    // trusted from input). Prevents charging an invoice outside your tenant.
+    const invoice = await db.queryOne<{ user_id: string | null; org_id: string | null }>(
+      'SELECT user_id, org_id FROM nf_aw_invoices WHERE id = ?', body.invoiceId,
     );
-    if (!invoice || invoice.user_id !== authUser.userId) {
+    const isOwner = !!invoice && invoice.user_id === authUser.userId;
+    const isOrgMember = !!invoice?.org_id && authUser.orgIds.includes(invoice.org_id);
+    if (!invoice || (!isOwner && !isOrgMember)) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
